@@ -1,0 +1,1109 @@
+/*load font icons */
+@import url('icons.css');
+/*load buttons css */
+@import url('buttons.css');
+/*GENERAL*/
+/*debug
+* { outline: 2px dotted red}
+  * * { outline: 2px dotted green}
+  * * * { outline: 2px dotted orange}
+  * * * * { outline: 2px dotted blue}
+  * * * * * { outline: 1px solid red}
+  * * * * * * { outline: 1px solid green}
+  * * * * * * * { outline: 1px solid orange}
+  * * * * * * * * { outline: 1px solid blue}
+  */
+/*start-clearfix*/
+
+#com-shop .clearfix {
+  *zoom: 1;
+
+}
+
+#com-shop .clearfix:before,
+#com-shop  .clearfix:after {
+  display: table;
+  line-height: 0;
+  content: "";
+}
+
+#com-shop .clearfix:after {
+  clear: both;
+}
+
+
+#com-shop .clr{
+	border: medium none;
+    clear: both;
+    display: block;
+    float: none;
+    height: 0;
+    line-height: 0;
+    margin: 0;
+    padding: 0;
+}
+
+
+/* end-clearfix */
+
+
+/*General Styles */
+
+
+
+
+#com-shop .button {
+   
+    -moz-transition: all 0.2s ease-in-out 0s;
+    background-color: #434E54;
+    border: medium none;
+    border-radius: 3px 3px 3px 3px;
+    color: #FFFFFF;
+    cursor: pointer;
+    float: left;
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 20px;
+   
+    padding: 6px;
+    position: relative;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    width: auto;
+	font-weight:bold;
+
+}
+
+/* Messagess */
+
+#com-shop #shop_info{
+	padding:6px;
+	border-radius:3px 3px 3px 3px;
+	background-color:#E2E2E2;
+	font-size:14px;
+}
+
+#com-shop #shop_info .system_message_error{
+background: url("images/warning.png") no-repeat scroll 10px center #E2E2E2 !important;
+    padding: 0 0 0 40px;
+}
+
+#com-shop #shop_info .system_message_info{
+background: url("images/info.png") no-repeat scroll 10px center #E2E2E2 !important;
+    padding: 0 0 0 35px;
+}
+
+
+
+/*Categories list styles*/
+
+
+
+#com-shop form select.select option{border-bottom: 1px solid #CCCCCC;}
+
+
+
+#com-shop ul.cat_browse, #com-shop ul.gallery_browse,{
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    width:100%;
+
+}
+
+#com-shop ul.cat_browse li ,#com-shop ul.gallery_browse li{
+
+
+    float: left;
+    border: 1px solid #CFCFCF;
+  
+    float: left;
+    margin: 8px;
+    max-width: 25%;
+    padding: 6px;
+    text-align: center;
+    overflow:hidden;
+
+}
+
+
+#com-shop ul.cat_browse li a img, #com-shop ul.gallery_browse li a img {
+    margin:0px;
+}
+
+#com-shop ul.cat_browse h3 {
+    display: block;
+    margin: 0 0 3px;
+    
+}
+
+#com-shop #products-list-top-controls div {
+clear:none;
+}
+
+#com-shop #products-list-top-controls {
+	
+    margin-top: 15px;
+    font-size:11px;
+    border-top:1px solid #D0D0D0;
+    border-bottom:1px solid #D0D0D0;
+}
+#com-shop #products-list-top-controls .height {
+    width:1px;
+    height:33px;
+}
+#com-shop #products-list-top-controls .sort-label {
+    float:right;
+    padding:5px 6px 0 0;
+    color:#666;
+	line-height:20px;
+}
+#com-shop #products-list-top-controls .select { 
+    float:right;
+    padding:7px 5px 0 0;
+    color:#767676;
+}
+#com-shop #products-list-top-controls .change-order {
+    background: url(images/sort_up.png)  no-repeat scroll 0 0 transparent;
+    width:17px;
+    height:17px;
+    float:right;
+    margin:10px 11px 0 0;
+}
+#com-shop #products-list-top-view-mode {
+    float:left;
+    padding:5px 0 0 11px;
+}
+#com-shop #products-list-top-view-mode .view-mode-label {
+    float:left;
+    color:#767676;
+	line-height:20px;
+
+}
+#com-shop #products-list-top-view-mode a {
+    float:left;
+    display:block;
+    padding:5px 5px;
+}
+#com-shop #products-list-top-view-mode a.active {
+    background: url("images/grid.png")  no-repeat scroll 0 0 transparent;
+    height: 20px;
+    width: 42px;
+    padding: 5px 4 110 11px;
+    color:#484848;
+
+    text-decoration:none;
+}
+#com-shop #products-list-top-view-mode a.first {
+    margin-right:-26px;
+    background: url("images/list.png")  no-repeat scroll 0 0 transparent;
+    height: 20px;
+    padding: 5px 4 0 11px;
+    color:#484848;
+    width: 42px;
+    text-decoration:none;
+}
+#com-shop #products-list-btm-controls { 
+    text-align:center;
+    padding:0.3em;
+    font-size:16px;
+    border-top:1px solid #D0D0D0;
+    border-bottom:1px solid #D0D0D0;
+	margin-top:10px;
+
+}
+#com-shop #products-list-btm-controls .height {
+    width:1px;
+    height:33px;
+}
+
+/* Products list styles */
+
+
+
+#com-shop .rowWrapp {
+	margin-top:10px;
+    overflow: hidden;
+}
+/*Base grid container*/
+#com-shop ul.productsGrid{
+	width:100%;
+	list-style: none outside none;
+	padding:0;
+	margin:0;
+	word-spacing:-1em;
+	
+	 
+}
+/*Base list container*/
+#com-shop .productsList{
+display:block;
+width:100%;
+clear:both;
+
+
+}
+/* List item container */
+#com-shop .productsList .listItem{
+display:block;
+clear:both;
+width:inherit!important;
+padding:12px 10px;
+border-bottom:1px solid #DFDED6;
+
+
+}
+/*Remove bottom border from last list item*/
+#com-shop .productsList>.listItem:last-of-type{
+border-bottom:none;
+}
+
+/*Columns definitions*/
+#com-shop .column{
+display:block;
+vertical-align:top;
+float:left;
+
+clear:none
+
+}
+/*Reset paddings and margins in all column childs*/
+#com-shop .column *{
+padding:0;
+margin:0;
+
+}
+
+/*Predefined column widths for easy use*/
+#com-shop .column.width30{
+max-width:30%!important;
+}
+#com-shop .column.width40{
+max-width:40%!important;
+}
+#com-shop .column.width50, .gridItem.width50{
+max-width:50%!important;
+}
+#com-shop .column.width60{
+max-width:60%!important;
+}
+#com-shop .column.width70{
+max-width:70%!important;
+}
+/*Predefined action*/
+#com-shop .moveRightBy10px{
+	margin-left:10px;
+}
+
+#com-shop .addBorder{
+border: 1px solid #DDDDDD;
+border-radius: 6px;
+padding:12px;
+}
+/*Grid item container*/
+#com-shop .productsGrid .gridItem {
+    word-spacing:0;
+    width:160px;
+	display:inline-block;
+   margin-left:10px;
+	margin-top:10px;
+    position:relative;
+    text-align: center;
+	vertical-align:top;
+	*display:inline;
+	*zoom:1;
+	
+    
+}
+#com-shop .productsGrid .gridItem div.itemData{
+position:relative;
+
+}
+/*Make images responsive in grid and list*/
+#com-shop .productsGrid .gridItem img, #com-shop .productsList .listItem  img{
+max-width:100%;
+height:auto;
+
+}
+
+
+
+#com-shop  .gridItem h4, #com-shop .productsList .listItem  h4 {
+    word-wrap:normal;
+	white-space:nowrap;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	font-size:14px;
+	font-weight:normal;
+	min-height:2em;
+               
+}
+
+#com-shop  .gridItem h4 a{
+	font-weight:normal;
+}
+ #com-shop .productsList .listItem  h4 a {
+	font-weight:700;
+ }
+
+#com-shop .productsGrid .gridItem:hover h4{
+	word-wrap:break-word;
+	white-space:normal;
+	overflow:visible;
+
+}
+
+#com-shop .productsGrid .gridItem:hover{
+box-shadow:4px 4px 3px rgba(0, 0, 0, 0.1);
+}
+
+#com-shop  .gridItem .price, #com-shop .productsList .listItem .price {
+   display:block;
+	margin-top:14px;
+	font-size:14px;
+    font-weight:700;
+    margin-bottom:5px;
+    color:#000;
+}
+
+#com-shop .productsGrid.categoryList .gridItem{
+	width:90px;
+}
+
+#com-shop .productsList .listItem .price {
+	
+	display:inline-block;
+
+}
+
+#com-shop  .gridItem a.buy_button, #com-shop .productsList .listItem a.buy_button {
+   
+    text-decoration: none;
+	
+	padding:4px;
+	
+	
+}
+#com-shop .productsList .listItem a.buy_button{
+display:inline-block;
+}
+
+
+
+
+
+
+/* PRODUCT DETAILS */
+
+#com-shop .product-view  form div{
+clear:none;
+margin:0;
+padding:0;
+
+}
+
+#com-shop .product-view div.att-container  input.property {
+
+	margin:0;
+	padding:0;
+}
+#com-shop .product-view #submit-form-container input[type="text"]{
+	width:2.5em;
+	height:18px;
+	line-height:18px;
+	padding:4px;
+	border: 1px solid #CCCCCC;
+    border-radius: 3px 3px 3px 3px;
+    vertical-align: middle;
+	
+	
+}
+
+#com-shop .addFocusGlow:focus{
+	border-color: rgba(82, 168, 236, 0.8);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.075) inset, 0 0 8px rgba(82, 168, 236, 0.6);
+    outline: 0 none;
+
+}
+
+
+
+#com-shop .product-view p{
+    word-wrap:break-word;
+}
+
+#com-shop .product-view .product-shop {
+    float: right;
+    width: 35%;
+}
+
+#com-shop .product-view .product-name h1 {
+    font-size: 16px;
+	font-weight:bold;
+    margin: 0;
+	border-bottom: 1px dotted;
+}
+
+#com-shop .product-view .price {
+    white-space: nowrap !important;
+	color:red;
+}
+
+#com-shop .product-view .product-img-box {
+    float: left;
+    width: 58%;
+	
+}
+
+#com-shop .product-view img {
+    border: 0 none;
+    vertical-align: top;
+	max-width:100%;
+	height:auto;
+}
+
+#com-shop .product-view .product-img-box .product-image {
+    margin: 0 0 13px;
+}
+
+#com-shop .product-view  .product-attributes {
+   
+    margin: 4px 0 0;
+    padding: 10px 6px 6px;
+   
+}
+
+#com-shop .product-view  .attribute-name{
+  font-size: 13px;
+  color: #545050;
+
+  font-weight: bold;
+}
+#com-shop .product-view  .att-container div {
+  font-size: 14px;
+  color: #59577F;
+  font-weight: bold;
+}
+
+
+
+
+#com-shop .product-view  div.att-container:not(#single_attribute )  input[type='checkbox'],
+#com-shop .product-view  div.product-files  input[type='checkbox']
+{
+    display:inline;
+    /* Hide the input, but have it still be clickable */
+    opacity: 0;
+    visibility:hidden;
+    float: left;
+    width: 18px;
+}
+
+#com-shop .product-view  div.att-container:not(#single_attribute )  input[type='checkbox'] + label,
+#com-shop .product-view  div.product-files  input[type='checkbox'] + label
+ {
+    margin: 0;
+    margin-left: -24px;
+    clear: none;
+    display:inline;
+    /* Left padding makes room for image */
+    padding: 5px 0 4px 24px;
+
+    /* Make look clickable because they are */
+    cursor: pointer;
+    
+    background: url(images/off.png) left center no-repeat; 
+}
+
+#com-shop .product-view  div.att-container:not(#single_attribute )  input[type='checkbox']:checked + label,
+#com-shop .product-view  div.product-files  input[type='checkbox']:checked + label
+ {
+ display:inline;
+    background-image: url(images/check.png);
+}
+
+
+#com-shop .product-view  h2 {
+    border-bottom: 1px solid #CCCCCC;
+    font-size: 12px;
+    margin: 0 0 8px;
+    text-transform: uppercase;
+} 
+#com-shop .product-view .product-img-box .more-views {
+margin-top:6px;
+}
+#com-shop .product-view .product-img-box .more-views ul {
+    margin-left: -9px;
+	padding: 0;
+	list-style-type: none;
+}
+
+#com-shop .product-view .product-img-box .more-views li {
+    float: left;
+    margin: 0 0 8px 6px;
+	
+}
+
+/*Checkout Styles*/
+
+#com-shop #checkout div{
+clear:none;
+
+}
+#com-shop #checkout form div{
+margin:0;
+padding:0;
+clear:none;
+}
+
+#com-shop #checkout p.info,div.info {
+    background-color: #EEEEEE;
+    border-bottom: 1px solid #CCCCCC;
+    border-top: 1px solid #CCCCCC;
+    margin: 10px 0 20px;
+    padding: 9px 10px 9px 50px;
+}
+
+#com-shop #checkout input:focus,#com-shop #checkout textarea:focus{
+
+	border-color: rgba(82, 168, 236, 0.8);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.075) inset, 0 0 8px rgba(82, 168, 236, 0.6);
+    outline: 0 none;
+
+
+}
+
+#com-shop #checkout div.login,div.register{
+    padding: 9px 10px 9px 10px!important;
+	
+    
+}
+#com-shop #checkout div.login span.icon-user,#com-shop #checkout div.register span.icon-locked{
+font-size: 21px;
+vertical-align:text-top;
+}
+#com-shop #checkout div.login > div,#com-shop #checkout div.register > div{
+	
+	display: inline-block;
+    margin-left: 20px;
+
+}
+#com-shop #checkout  p {
+    margin: 0 0 1.5em;
+    text-align: justify;
+}
+#com-shop #checkout .info a {
+    color: #93864E;
+}
+#com-shop #checkout form.login, #com-shop #checkout div#register {
+    border: 1px solid #E7E7E7;
+    border-radius: 5px 5px 5px 5px;
+    margin: 20px 0 20px 0;
+    padding: 20px;
+    text-align: left;
+}
+
+#com-shop .form-row {
+    margin: 0 0 6px;
+    overflow: hidden;
+    padding: 3px;
+	display:inline-block!important;
+	min-width:6em;
+	width:47%;
+	overflow: visible;
+	word-spacing:0;
+	
+}
+
+#com-shop .form-row input,#com-shop .form-row select,#com-shop .form-row textarea{
+ border-radius: 5px 5px 5px 5px;
+ box-shadow: 0 0 3px #FFFFFF inset, 0 1px 1px rgba(0, 0, 0, 0.1);
+    color: #444444;
+	border: 1px solid #AAAAAA;
+ }
+
+#com-shop .form-row label {
+   font-family: arial;
+    font-size: 12px;
+    display: block;
+	    font-weight: bold;
+}
+#com-shop .form-row .srequired {
+    color: #CC0000;
+    font-weight: bold;
+}
+
+#com-shop #checkout .error{
+border:1px solid red;
+}
+
+#com-shop form .form-row input.input-text, #com-shop  #content .form-row input.input-text, #com-shop form .form-row textarea, #com-shop #content .form-row textarea {
+    -moz-box-sizing: border-box;
+    background: none repeat scroll 0 0 #FFFFFF;
+    border: 1px solid #CCCCCC;
+    box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.1) inset;
+    font-size: 14px;
+    line-height: 1em;
+    margin: 0;
+    outline: 0 none;
+    padding: 6px;
+    width: 100%;
+
+}
+#com-shop form .form-row textarea, #com-shop #content .form-row textarea {
+
+    height: 3.5em;
+    line-height: 1.5em;
+
+}
+
+#com-shop .col2-set {
+    clear:both;
+    overflow: visible;
+    width: 100%;
+}
+#com-shop .col2-set .col-1 {
+    display:block;
+	float: left;
+    width: 48%;
+	min-width:235px;
+	
+}
+#com-shop #checkout h3 {
+    font-size: 1.5em;
+    line-height: 2;
+     clear: both;
+    color: #111111;
+    font-family: Helvetica,Arial,"Lucida Grande",Verdana,sans-serif;
+}
+
+#com-shop #checkout table.shop_table img{
+width:100%;
+height:auto;
+}
+#com-shop #checkout table.shop_table h2.product-name a{
+	font-size:15px;
+}
+#com-shop #checkout table.shop_table {
+    border: none;
+    border-spacing:3px;
+    margin: 0 -1px 24px 0;
+    text-align: left;
+    width: 100%;
+	
+}
+
+#com-shop #checkout table.shop_table th {
+    color: #888888;
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 18px;
+    padding: 9px 12px;
+	border:none;
+}
+#com-shop #checkout table.shop_table th, #com-shop table.shop_table td {
+    border-bottom: 0.1em solid #DDDDDD;
+    border-style:dashed;
+    height: 1em;
+	border-right:none;
+	border-left:none;
+	border-top:none;
+	vertical-align: middle;
+    
+	
+}
+#com-shop #checkout table.shop_table tbody td {
+    font-weight: bold;
+}
+
+#com-shop #checkout strong {
+    font-weight: bold;
+}
+
+#com-shop #checkout #payment ul.payment_methods {
+    list-style: none outside none;
+    margin: 0;
+    overflow: hidden;
+    padding: 1em;
+    text-align: left;
+}
+.chzn-search input{
+    float:none!important;
+}
+
+#com-shop #checkout #payment ul.payment_methods li {
+    font-weight: normal;
+    line-height: 2em;
+    margin: 0;
+    text-align: left;
+}
+#com-shop #checkout #payment ul.payment_methods li input {
+    margin: 0 1em 0 0;
+}
+#com-shop #checkout #payment div.payment_box:after {
+    -moz-border-bottom-colors: none;
+    -moz-border-image: none;
+    -moz-border-left-colors: none;
+    -moz-border-right-colors: none;
+    -moz-border-top-colors: none;
+    border-color: transparent transparent #EEEEEE;
+    border-style: solid;
+    border-width: 8px;
+    content: "";
+    display: block;
+    left: 0;
+    margin: -1em 0 0 2em;
+    position: absolute;
+    top: -4px;
+}
+#com-shop #checkout #payment div.payment_box {
+    background: none repeat scroll 0 0 #F5F5F5;
+    border: 1px solid #EEEEEE;
+    font-size: 0.92em;
+    margin: 1em 0;
+    padding: 1em 2% 0;
+    position: relative;
+    width: 96%;
+}
+#com-shop #checkout #payment div.payment_box p, #com-shop #checkout #payment div.payment_box .form-row {
+    margin: 0 0 1em;
+}
+#com-shop #checkout #payment ul.payment_methods li img {
+    margin: -2px 0 0 0.5em;
+    position: relative;
+    vertical-align: middle;
+}
+#com-shop #checkout #payment div.form-row {
+    border-top: 1px solid #FFFFFF;
+    padding: 1em;
+}
+#com-shop .form-row {
+    margin: 0 0 6px;
+    overflow: visible;
+    padding: 3px;
+	display:block;
+	float:left;
+	
+	
+}
+
+#com-shop .form-row.addressRow{
+	width:96%;
+}
+
+#com-shop #checkout #payment #place_order {
+    float: right;
+    margin: 0;
+}
+#com-shop  .col2-set .col-2{float:left;width:48%; display:block; min-width:195px; min-width:200px; }
+#com-shop .form-row select {
+    cursor: pointer;
+    margin: 0;
+    width: 100%;
+}
+#com-shop .form-row-last {
+    float: left;
+}
+#com-shop #checkout #shiptobilling {
+    float: right;
+    line-height: 1.62em;
+    margin: 0;
+    padding: 0;
+	width:100%;
+	text-align:right;
+}
+#com-shop .col-2 h3,#com-shop .col-1 h3  {
+    clear: none;
+    float: left;
+	word-spacing:0em;
+}
+#com-shop .form-row label.checkbox {
+    display: inline;
+}
+#com-shop .form-row .input-checkbox {
+    display: inline;
+    margin: -2px 8px 0 0;
+    text-align: center;
+    vertical-align: middle;
+}
+#com-shop #checkout p.form-row.notes{
+clear:both;
+margin: 0 auto;
+width:100%;
+}
+#com-shop #checkout div.processOrderContainer{
+text-align:right;
+width:100%;
+display:block;
+
+}
+#com-shop #checkout div.processOrderContainer span.icon-checkmark:before{
+color:#FFFFFF;
+}
+#com-shop #checkout div.processOrderContainer  button{
+float:right;
+}
+#com-shop #checkout  input[type='checkbox'],
+#com-shop #checkout  input[type='radio']
+ {
+    
+    /* Hide the input, but have it still be clickable */
+    opacity: 0;
+    visibility:hidden;
+    float: left;
+    width: 18px;
+}
+
+#com-shop #checkout  input[type='checkbox'] + label,
+#com-shop #checkout  input[type='radio'] + label
+ {
+    margin: 0;
+    clear: none;
+    
+    /* Left padding makes room for image */
+    padding: 5px 0 4px 24px;
+
+    /* Make look clickable because they are */
+    cursor: pointer;
+    
+    background: url(images/off.png) left center no-repeat; 
+}
+
+#com-shop #checkout  input[type='checkbox']:checked + label,
+#com-shop #checkout  input[type='radio']:checked + label 
+ {
+    background-image: url(images/check.png);
+}
+
+/* Cart View Styles */
+#com-shop #cart-view dl,#com-shop #cart-view dt,#com-shop #cart-view dd{
+padding:0;
+margin:0;
+
+}
+#com-shop #cart-view  ul,#com-shop #cart-view  ol {
+    list-style: none outside none;
+}
+
+
+#com-shop .data-table {
+    border-collapse: collapse;
+    border-color: #D9D9D9 #D9D9D9 -moz-use-text-color;
+    border-style: solid solid none;
+    border-width: 1px 1px 0;
+    width: 100%;
+}
+
+
+#com-shop .data-table thead {
+    background: url("images/thea.gif") repeat-x scroll 0 0 #E8E8E8;
+    font-size: 11px;
+}
+
+#com-shop  .cart-table thead th {
+    vertical-align: bottom;
+}
+
+#com-shop  .data-table th {
+    border-bottom: 1px solid #D9D9D9;
+    color: #2D2D2D;
+    font-weight: normal;
+    padding: 5px 12px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+#com-shop #cart-view caption,#com-shop #cart-view th,#com-shop #cart-view td {
+    font-weight: normal;
+    text-align: left;
+    vertical-align: top;
+}
+
+#com-shop #cart-view .nobr {
+    white-space: nowrap !important;
+}
+
+#com-shop  .data-table tfoot {
+    background-color: #EDEDED;
+}
+
+#com-shop  .data-table tfoot td {
+    padding: 5px 12px;
+}
+
+#com-shop .data-table td {
+    padding: 5px 12px;
+}
+
+#com-shop #cart-view .cart-table tbody td {
+    padding: 12px;
+}
+
+
+
+#com-shop #cart-view a.product-image {
+    cursor: pointer !important;
+}
+
+#com-shop #cart-view img {
+    border: 0 none;
+    vertical-align: top;
+	width:100%;
+	height:auto;
+}
+
+#com-shop #cart-view .product-name {
+    color: #333333;
+    font-size: 12px;
+    font-weight: bold;
+	
+}
+
+#com-shop #cart-view h2 {
+    color: #000000;
+    font-size: 16px;
+    font-weight: normal;
+}
+
+#com-shop #cart-view .product-name a {
+    color: #333333;
+    text-decoration: underline;
+}
+
+
+
+#com-shop #cart-view .data-table .item-options dt {
+    padding: 3px 0 0 10px;
+}
+
+#com-shop #cart-view .item-options dt {
+    font-weight: bold;
+    padding: 7px 0;
+}
+
+#com-shop #cart-view .data-table .item-options dd {
+    padding: 0 0 3px 10px;
+}
+
+#com-shop #cart-view .item-options dd {
+    padding-bottom: 5px;
+}
+
+#com-shop #cart-view .data-table .item-options .price {
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+#com-shop  .a-center {
+    text-align: center !important;
+}
+
+#com-shop .a-right {
+    text-align: right !important;
+}
+
+#com-shop .a-left {
+    text-align: left !important;
+}
+
+#com-shop #cart-view .cart .totals {
+    float: right;
+    font-size: 14px;
+    padding: 0px 15px 0;
+   
+}
+
+#com-shop #cart-view .cart .totals table {
+    width: 100%;
+	border:0px;
+}
+
+#com-shop #cart-view .cart .totals table th,#com-shop #cart-view  .cart .totals table td {
+    padding: 0 5px 5px;
+	border:0px;
+}
+
+#com-shop #cart-view .cart .totals table tbody strong {
+    color: #335EA8;
+    display: block;
+    font-size: 18px;
+    font-weight: normal;
+    margin: 10px 0 15px;
+}
+
+#com-shop #cart-view .cart .totals table tbody td .price {
+    font-weight: bold;
+}
+
+#com-shop #cart-view .price {
+    white-space: nowrap !important;
+}
+
+#com-shop #cart-view .cart .totals .checkout-types li {
+    margin: 0 0 15px;
+}
+
+#com-shop #cart-view .cart .cart-collaterals {
+    padding: 20px 0 10px;
+
+}
+
+#com-shop #cart-view .cart .cart-collaterals h2 {
+    color: #000000;
+    font-weight: normal;
+    margin: 0 0 5px;
+}
+
+/* Account View */
+
+#com-shop #account-view  form div{
+clear:none;
+}
+
+#com-shop #account-view .box-account .box-head h2 {
+font-weight:bold;
+margin:0;
+text-transform:uppercase;
+}
+
+#com-shop .separator {
+margin:0 3px;
+}
+
+#com-shop .box-info .box-head h2 {
+background-image:url("images/i_udata.gif");
+}
+
+#com-shop .box-dashboard .box-title {
+background:url("images/bkg_divide.gif") repeat-x scroll 0 100% transparent;
+margin:0 0 8px;
+padding:0 0 20px;
+text-align:right;
+}
+
+#com-shop .box-dashboard .box-title h3, #com-shop .box-dashboard .box-title h4 {
+float:left;
+font-size:13px;
+font-weight:bold;
+margin:0;
+}
+
+#com-shop .box-info h4 { font-size:11px; font-weight:bold; text-transform:uppercase; }
+
+#com-shop .product-view .att-container select{
+    font-size: 12px;
+    padding: 0.1em 0.2em 0;
+	width:100%;
+}
+
+#com-shop .availability{
+font-size:11px;
+padding-bottom:10px!important;
+}
+#com-shop .availability span{
+font-weight:bold;
+}
+#com-shop .product-view .att-container label{
+    font-size:13px;
+}
