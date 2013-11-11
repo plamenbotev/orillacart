@@ -11,7 +11,7 @@ License URI: http://www.gnu.org/licenses/gpl-3.0.html
 Create your online store in minutes and manage your business with ease.
 
 == Description ==
-EC Plugin have everything you need to to create online store. 
+OrillaCart have everything you need to to create online store. 
 It is free, it is open source and it is build with carefully selected functionalities, user friendly design, flexibility and speed in mind.
 = FEATURES =
 * __Themes Compatible__ - Works out of the box with most themes.
