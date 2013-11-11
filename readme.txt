@@ -1,5 +1,5 @@
 === OrillaCart - sell with ease ===
-Contributors: OrillaCart
+Contributors: orillacart
 Tags: ecommerce plugin, ecommerce, e-commerce, attributes, variations, commerce, wordpress ecommerce, product, store, sales, sell, shop, shopping, cart, checkout, downloadable, digital, inventory, shipping, tax
 Donate link:
 Requires at least: 3.5
