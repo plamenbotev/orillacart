@@ -4,7 +4,7 @@ Tags: ecommerce plugin, ecommerce, e-commerce, attributes, variations, commerce,
 Donate link:
 Requires at least: 3.5
 Tested up to: 3.7
-Stable tag: 1.0.0
+Stable tag: trunk
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
