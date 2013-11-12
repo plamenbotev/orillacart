@@ -8,13 +8,14 @@ Stable tag: trunk
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
-Create your online store in minutes and manage your business with ease.
+Create your online store in minutes using our eCommerce plugin.
 
 == Description ==
-OrillaCart have everything you need to to create online store. 
-It is free, it is open source and it is build with carefully selected functionalities, user friendly design, flexibility and speed in mind.
+OrillaCart have everything you need to to create online store.
+ 
+It is free, it is open source and it is build with carefully selected eCommerce functionalities, user friendly design, flexibility and speed in mind.
 = FEATURES =
-* __Themes Compatible__ - Works out of the box with most themes.
+* __Themes Compatible__ - Works out of the box with most themes. Add eCommerce functionality to your current site easily.
 * __PayPal Standard Gateway__ - Accept credit cards and PayPal payments.
 * __Bank Transfer__, __Cash on Delivery__ and __Cheque__ - Offline payment methods.
 * __Table Rate Shipping__ - Highly customizable shipping options.
