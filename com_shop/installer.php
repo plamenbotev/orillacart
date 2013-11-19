@@ -223,7 +223,7 @@ class shop_installer extends app_object {
 						`shipping_rate_height_end` decimal(10,2) NOT NULL,
 						`shipping_tax_group_id` bigint(20) unsigned DEFAULT NULL,
 						`shipping_rate_state` longtext,
-						`qty_multiply` ENUM( 'no', 'yes' ) NOT NULL DEFAULT 'no'
+						`qty_multiply` ENUM( 'no', 'yes' ) NOT NULL DEFAULT 'no',
 						PRIMARY KEY (`shipping_rate_id`),
 						KEY `carrier` (`carrier`),
 						KEY `shipping_tax_group_id` (`shipping_tax_group_id`),
