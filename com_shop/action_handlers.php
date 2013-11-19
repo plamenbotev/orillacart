@@ -103,8 +103,7 @@ final class orillacart_actions {
         //enque styles and scripts for internal WP screens that loads the framework 
         //after the needed action to add those styles and scripts from the view or the controller
         add_action("admin_enqueue_scripts", array($this, 'add_admin_head_data'));
-        //clear the guest session after user login
-        add_action('wp_login', 'customer_clear_session');
+       
 
         if (Framework::is_admin()) {
 
@@ -1056,10 +1055,7 @@ final class orillacart_actions {
         Request::execute("component=shop&con=user&task=save&id=" . $id);
     }
 
-    public function customer_clear_session() {
-        session_start();
-        unset($_SESSION['customer']);
-    }
+   
 
 }
 

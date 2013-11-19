@@ -78,8 +78,12 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.3 - 19/11/2013 =
+1. Removed php warning message on login page.
+
 = 1.0.2 - 19/11/2013 =
 1. Installation error fix.
+
 = 1.0.1 - 19/11/2013 =
 1. Bug fix in paypal method
 2. Added option to multiply the shipping rate by total quantity
