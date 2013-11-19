@@ -148,22 +148,22 @@ if (!function_exists('paypal_init')) {
                     $post_variables['tax_cart'] = round($order_r->get("order_tax", 0), 2);
 
                     $total_items = count($items);
-
-                    for ($i = 0; $i < $total_items; $i++) {
+					$i = 0;
+                    for (; $i < $total_items; $i++) {
                         $item = $items[$i];
 
 
                         $post_variables["item_name_" . ($i + 1)] = strip_tags($item->order_item_name);
                         $post_variables["quantity_" . ($i + 1)] = $item->product_quantity;
-                        $post_variables["amount_" . ($i + 1)] = number_format(round($item->product_item_price * $item->product_quantity, 2), 2, '.', '');
+                        $post_variables["amount_" . ($i + 1)] = number_format($item->product_item_price , 2, '.', '');
                     }
 
 
                     if ($shipping > 0 && Factory::getApplication('shop')->getParams()->get('shipping')) {
 
-                        $post_variables['item_name_' . $total_items] = __('Shipping via', 'com_shop') . ' ' . ucwords($order_r->get("shipping_name", ""));
-                        $post_variables['quantity_' . $total_items] = '1';
-                        $post_variables['amount_' . $total_items] = number_format(round($shipping, 2), 2, '.', '');
+                        $post_variables['item_name_' . ($i + 1)] = __('Shipping via', 'com_shop') . ' ' . ucwords($order_r->get("shipping_name", ""));
+                        $post_variables['quantity_' . ($i + 1)] = '1';
+                        $post_variables['amount_' . ($i + 1)] = number_format(round($shipping, 2), 2, '.', '');
                     }
 
 

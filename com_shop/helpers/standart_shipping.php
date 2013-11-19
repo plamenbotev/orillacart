@@ -206,6 +206,21 @@ class standart_shipping {
             return Factory::getApplication('shop')->getHelper('cart')->get_total_price();
         }
     }
+	
+	final protected function get_total_qty(){
+	
+		$db = Factory::getDBO();
+		if (!is_null(self::$order) && self::$order->pk()) {
+			$db->setQuery("SELECT SUM(product_quantity) FROM `#_shop_order_item` WHERE order_id = ".(int)self::$order->pk()." LIMIT 1 ");
+			return (int)$db->loadResult();
+		
+		}else{
+			return Factory::getApplication('shop')->getHelper('cart')->get_total_products();
+		
+		}
+		
+	
+	}
 
     final public function get_class_name() {
 
@@ -377,8 +392,14 @@ class standart_shipping {
         foreach ((array) $rates as $rate) {
 
             $row = new stdClass();
-            $row->rate = (double) $rate->shipping_rate_value;
-            $row->raw_rate = (double) $rate->shipping_rate_value;
+            
+			if($rate->qty_multiply == "yes"){
+				$row->rate = (double) $rate->shipping_rate_value * $this->get_total_qty();
+				$row->raw_rate = (double) $rate->shipping_rate_value * $this->get_total_qty();
+			}else{
+				$row->rate = (double) $rate->shipping_rate_value;
+				$row->raw_rate = (double) $rate->shipping_rate_value;
+			}
 
             $gid = !$rate->shipping_tax_group_id ? $params->get('shop_tax_group') : $rate->shipping_tax_group_id;
 

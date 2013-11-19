@@ -27,6 +27,7 @@ class shipping_rateTable extends table {
     public $shipping_rate_height_end = 0;
     public $shipping_tax_group_id = null;
     public $shipping_rate_state = null;
+	public $qty_multiply = "no";
 
     public function __construct() {
         $foreign_keys = array('carrier', 'shipping_tax_group_id');

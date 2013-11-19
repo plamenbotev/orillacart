@@ -134,7 +134,7 @@
                     <select  id="shipping_tax_group_id" name="shipping_tax_group_id">
                         <option value="0"><?php _e('global', 'com_shop'); ?></option>
                         <?php foreach ((array) $this->vat_groups as $o) { ?>
-                            <option value="<?php echo $o->tax_group_id; ?>" <?php echo ($o->tax_group_id == $this->row->shipping_tax_group_id) ? "selected='selected'" : ""; ?> ">
+                            <option value="<?php echo $o->tax_group_id; ?>" <?php echo ($o->tax_group_id == $this->row->shipping_tax_group_id) ? "selected='selected'" : ""; ?> >
                             <?php echo strings::stripAndEncode($o->tax_group_name); ?>
                         </option>
                     <?php } ?>
@@ -145,9 +145,18 @@
                     <?php _e('Add Vat:', 'com_shop'); ?>
                 </label>
                 <select name="apply_vat" id="apply_vat">
-                    <option value="global"><?php _e('global', 'com_shop'); ?></option>
+                    <option value="global"  <?php echo ($this->row->apply_vat == 'global') ? "selected='selected'" : ""; ?> ><?php _e('global', 'com_shop'); ?></option>
                     <option value="yes" <?php echo ($this->row->apply_vat == 'yes') ? "selected='selected'" : ""; ?> ><?php _e('yes', 'com_shop'); ?></option>
                     <option value="no"  <?php echo ($this->row->apply_vat == 'no') ? "selected='selected'" : ""; ?> ><?php _e('no', 'com_shop'); ?></option>
+                </select>
+            </li>
+			<li>
+                <label for="apply_vat">
+                    <?php _e('Multiply by quantity sum:', 'com_shop'); ?>
+                </label>
+                <select name="qty_multiply" id="qty_multiply">
+				   <option value="no"  <?php echo ($this->row->qty_multiply == 'no') ? "selected='selected'" : ""; ?> ><?php _e('no', 'com_shop'); ?></option>
+                   <option value="yes" <?php echo ($this->row->qty_multiply == 'yes') ? "selected='selected'" : ""; ?> ><?php _e('yes', 'com_shop'); ?></option>
                 </select>
             </li>
         </ul>

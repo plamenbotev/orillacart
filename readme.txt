@@ -77,6 +77,9 @@ That page is the front end of your store, you can change the page later from the
 Always backup before upgrade!
 
 == Changelog ==
+= 1.0.1 - 19/11/2013 =
+1. Bug fix in paypal method
+2. Added option to multiply the shipping rate by total quantity
 
 = 1.0 - 27/10/2013 =
 * First public release.

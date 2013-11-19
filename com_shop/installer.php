@@ -223,6 +223,7 @@ class shop_installer extends app_object {
 						`shipping_rate_height_end` decimal(10,2) NOT NULL,
 						`shipping_tax_group_id` bigint(20) unsigned DEFAULT NULL,
 						`shipping_rate_state` longtext,
+						`qty_multiply` ENUM( 'no', 'yes' ) NOT NULL DEFAULT 'no'
 						PRIMARY KEY (`shipping_rate_id`),
 						KEY `carrier` (`carrier`),
 						KEY `shipping_tax_group_id` (`shipping_tax_group_id`),
@@ -456,6 +457,18 @@ class shop_installer extends app_object {
                     exit;
                 }
             }
+			
+			
+			//add multiply by qty for shipping option
+			if(version_compare($params->get('db_version'), '1.1.3', '<')){
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` ADD `qty_multiply` ENUM( 'no', 'yes' ) NOT NULL DEFAULT 'no'");
+				 if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+			}
+			
+			
             //update the parameters after we alter the database
 
             $params->set('db_version', $params->get('db_version', true));
