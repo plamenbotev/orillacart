@@ -28,11 +28,11 @@
                                 <tbody>
 
                                     <tr>
-                                        <td valign="top"><h1  style="font-size:22px; font-weight:normal; line-height:22px; margin:0 0 11px 0;">Hello, test test</h1>
+                                        <td valign="top">
                                             <p style="font-size:12px; line-height:16px; margin:0;">
                                                 Thank you for your order!
                                                 If you had troubles with payment process you can <a href="<?php echo Route::get("component=shop&con=cart&task=process_payment&order_id=" . $this->order['ID'] . "&order_key=" . $this->order['post_password']); ?>">retry the payment</a> or <a href="<?php echo Route::get("component=shop&con=cart&task=cancel_order&order_id=" . $this->order['ID'] . "&order_key=" . $this->order['post_password']); ?>">cancel the order.</a>
-
+											</p>
                                             <p style="font-size:12px; line-height:16px; margin:0;">Your order confirmation is below. Thank you again for your business.</p></td>
                                     </tr>
                                     <tr>
@@ -49,7 +49,7 @@
                                                 </thead>
                                                 <tbody>
                                                     <tr>
-                                                        <td valign="top" style="font-size:12px; padding:7px 9px 9px 9px; border-left:1px solid #EAEAEA; border-bottom:1px solid #EAEAEA; border-right:1px solid #EAEAEA;"> Ime Familia<br>
+                                                        <td valign="top" style="font-size:12px; padding:7px 9px 9px 9px; border-left:1px solid #EAEAEA; border-bottom:1px solid #EAEAEA; border-right:1px solid #EAEAEA;">
                                                             <?php echo Factory::getApplication('shop')->getHelper('order')->format_billing($this->order['ID']); ?>
                                                         </td>
                                                         <td></td>

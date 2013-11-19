@@ -28,7 +28,7 @@
                                 <tbody>
 
                                     <tr>
-                                        <td valign="top"><h1  style="font-size:22px; font-weight:normal; line-height:22px; margin:0 0 11px 0;">Hello, test test</h1>
+                                        <td valign="top">
                                             <p style="font-size:12px; line-height:16px; margin:0;">
                                                 Your order has been refunded! You can see the order details below.
 
@@ -48,7 +48,7 @@
                                                 </thead>
                                                 <tbody>
                                                     <tr>
-                                                        <td valign="top" style="font-size:12px; padding:7px 9px 9px 9px; border-left:1px solid #EAEAEA; border-bottom:1px solid #EAEAEA; border-right:1px solid #EAEAEA;"> Ime Familia<br>
+                                                        <td valign="top" style="font-size:12px; padding:7px 9px 9px 9px; border-left:1px solid #EAEAEA; border-bottom:1px solid #EAEAEA; border-right:1px solid #EAEAEA;">
                                                             <?php echo Factory::getApplication('shop')->getHelper('order')->format_billing($this->order['ID']); ?>
                                                         </td>
                                                         <td></td>
