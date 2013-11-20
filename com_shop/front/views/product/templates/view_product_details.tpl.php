@@ -44,15 +44,16 @@
                 <?php the_content(); ?>
                 <div class="clearfix"></div>
                 <div class="productTaxonomies">
-                    <div class="taxonomyProductTags"><?php echo(get_the_term_list(get_the_ID(), 'product_tags', 'Tagged Under:', ',', '')); ?></div>
-                    <div class="taxonomyProductBrands"><?php echo(get_the_term_list(get_the_ID(), 'product_brand', 'Brands:', ',', '')); ?></div>
+                    <div class="taxonomyProductTags"><?php echo(get_the_term_list(get_the_ID(), 'product_tags', __('Tagged Under:','com_shop'), ',', '')); ?></div>
+                    <div class="taxonomyProductBrands"><?php echo(get_the_term_list(get_the_ID(), 'product_brand', __('Brands:','com_shop'), ',', '')); ?></div>
                 </div>
             </dd>
-
+			<?php if(comments_open()){ ?>
             <dt><span><?php _e('Comments', 'com_shop'); ?></span></dt>
             <dd>
                 <?php comments_template(); ?> 
             </dd>
+			<?php } ?>
             <?php do_action("add_product_tabs", $GLOBALS['post']); ?>
         </dl>
     </div>

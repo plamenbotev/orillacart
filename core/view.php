@@ -258,8 +258,7 @@ abstract class view extends app_object {
 
         static $overrides = array();
 
-
-
+		
         $paths = array();
 
         $com = strtolower($this->app()->getName());
@@ -306,6 +305,6 @@ abstract class view extends app_object {
             }
         }
 
-        throw new Exception("template:" . $tpl . " file cant be located!");
+        throw new Exception("template:" . $tpl . __(" file cant be located!","com_shop"));
     }
 }

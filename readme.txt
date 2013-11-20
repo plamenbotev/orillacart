@@ -78,15 +78,20 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.4 - 20/11/2013 =
+1.	Added missing translations.
+2.	Comments tab not visible if comments are turned off.
+3.	Small fixes for mail templates
+
 = 1.0.3 - 19/11/2013 =
-1. Removed php warning message on login page.
+1.	Removed php warning message on login page.
 
 = 1.0.2 - 19/11/2013 =
-1. Installation error fix.
+1.	Installation error fix.
 
 = 1.0.1 - 19/11/2013 =
-1. Bug fix in paypal method
-2. Added option to multiply the shipping rate by total quantity
+1.	Bug fix in paypal method
+2.	Added option to multiply the shipping rate by total quantity
 
 = 1.0 - 27/10/2013 =
-* First public release.
+*	First public release.

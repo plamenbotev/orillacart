@@ -1,361 +1,361 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: orillacart 1.0\n"
+"Project-Id-Version: orillacart 1.4\n"
 "Report-Msgid-Bugs-To: http://orillacart.com\n"
-"POT-Creation-Date: 2013-11-01 02:54:39+00:00\n"
+"POT-Creation-Date: 2013-11-20 00:30:28+00:00\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "PO-Revision-Date: 2013-MO-DA HO:MI+ZONE\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: action_handlers.php:177
+#: action_handlers.php:176
 msgid "Your database needs an update. Please <strong>backup</strong> &amp; %s."
 msgstr ""
 
-#: action_handlers.php:177
+#: action_handlers.php:176
 msgid "update now"
 msgstr ""
 
-#: action_handlers.php:189
+#: action_handlers.php:188
 msgid "Show all statuses"
 msgstr ""
 
-#: action_handlers.php:347
+#: action_handlers.php:346
 msgid "File price"
 msgstr ""
 
-#: action_handlers.php:404
+#: action_handlers.php:403
 msgid "Product Types"
 msgstr ""
 
-#: action_handlers.php:405
+#: action_handlers.php:404
 msgid "Product Type"
 msgstr ""
 
-#: action_handlers.php:406
+#: action_handlers.php:405
 msgid "Search Product Type"
 msgstr ""
 
-#: action_handlers.php:407
+#: action_handlers.php:406
 msgid "All Product Types"
 msgstr ""
 
-#: action_handlers.php:408
+#: action_handlers.php:407
 msgid "Parent Product Type"
 msgstr ""
 
-#: action_handlers.php:409
+#: action_handlers.php:408
 msgid "Parent Product Type:"
 msgstr ""
 
-#: action_handlers.php:410
+#: action_handlers.php:409
 msgid "Edit Product Type"
 msgstr ""
 
-#: action_handlers.php:411
+#: action_handlers.php:410
 msgid "Update Product Type"
 msgstr ""
 
-#: action_handlers.php:412
+#: action_handlers.php:411
 msgid "Add New Product Type"
 msgstr ""
 
-#: action_handlers.php:413
+#: action_handlers.php:412
 msgid "New Product Type Name"
 msgstr ""
 
-#: action_handlers.php:438
+#: action_handlers.php:437
 msgid "Product Brands"
 msgstr ""
 
-#: action_handlers.php:439
+#: action_handlers.php:438
 msgid "Product Brand"
 msgstr ""
 
-#: action_handlers.php:440
+#: action_handlers.php:439
 msgid "Search Products Brands"
 msgstr ""
 
-#: action_handlers.php:441
+#: action_handlers.php:440
 msgid "All Brands"
 msgstr ""
 
-#: action_handlers.php:442
+#: action_handlers.php:441
 msgid "Edit Brand"
 msgstr ""
 
-#: action_handlers.php:443
+#: action_handlers.php:442
 msgid "Update Brand"
 msgstr ""
 
-#: action_handlers.php:444
+#: action_handlers.php:443
 msgid "Add New Brand"
 msgstr ""
 
-#: action_handlers.php:445
+#: action_handlers.php:444
 msgid "New Product Brand Name"
 msgstr ""
 
-#: action_handlers.php:459 action_handlers.php:460
+#: action_handlers.php:458 action_handlers.php:459
 msgid "Shipping Group"
 msgstr ""
 
-#: action_handlers.php:461
+#: action_handlers.php:460
 msgid "Search Shipping Groups"
 msgstr ""
 
-#: action_handlers.php:462
+#: action_handlers.php:461
 msgid "All Groups"
 msgstr ""
 
-#: action_handlers.php:463
+#: action_handlers.php:462
 msgid "Edit Group"
 msgstr ""
 
-#: action_handlers.php:464
+#: action_handlers.php:463
 msgid "Update Group"
 msgstr ""
 
-#: action_handlers.php:465
+#: action_handlers.php:464
 msgid "Add New Group"
 msgstr ""
 
-#: action_handlers.php:466
+#: action_handlers.php:465
 msgid "New Shipping Group Name"
 msgstr ""
 
-#: action_handlers.php:492
+#: action_handlers.php:491
 msgid "Products"
 msgstr ""
 
-#: action_handlers.php:493
+#: action_handlers.php:492
 #: admin/views/stockroom/templates/manage_product_stocks.tpl.php:9
 #: admin/views/stockroom/templates/manage_property_stocks.tpl.php:9
 #: front/views/cart/templates/order.tpl.php:5
 msgid "Product"
 msgstr ""
 
-#: action_handlers.php:494
+#: action_handlers.php:493
 msgid "All Products"
 msgstr ""
 
-#: action_handlers.php:495
+#: action_handlers.php:494
 msgid "Add Product"
 msgstr ""
 
-#: action_handlers.php:496
+#: action_handlers.php:495
 msgid "Add New Product"
 msgstr ""
 
-#: action_handlers.php:497 action_handlers.php:558
+#: action_handlers.php:496 action_handlers.php:557
 #: admin/views/tax/templates/rates_list.tpl.php:33
 msgid "Edit"
 msgstr ""
 
-#: action_handlers.php:498
+#: action_handlers.php:497
 msgid "Edit Product"
 msgstr ""
 
-#: action_handlers.php:499
+#: action_handlers.php:498
 msgid "New Product"
 msgstr ""
 
-#: action_handlers.php:500 action_handlers.php:501
+#: action_handlers.php:499 action_handlers.php:500
 msgid "View Product"
 msgstr ""
 
-#: action_handlers.php:502
+#: action_handlers.php:501
 msgid "Search Products"
 msgstr ""
 
-#: action_handlers.php:503
+#: action_handlers.php:502
 msgid "No Products found"
 msgstr ""
 
-#: action_handlers.php:504
+#: action_handlers.php:503
 msgid "No Products found in trash"
 msgstr ""
 
-#: action_handlers.php:505
+#: action_handlers.php:504
 msgid "Parent Product"
 msgstr ""
 
-#: action_handlers.php:507
+#: action_handlers.php:506
 msgid "This is where you can add new products to your store."
 msgstr ""
 
-#: action_handlers.php:529
+#: action_handlers.php:528
 msgid "Order statuses"
 msgstr ""
 
-#: action_handlers.php:530
+#: action_handlers.php:529
 msgid "Order status"
 msgstr ""
 
-#: action_handlers.php:531
+#: action_handlers.php:530
 msgid "Search Order statuses"
 msgstr ""
 
-#: action_handlers.php:532
+#: action_handlers.php:531
 msgid "All  Order statuses"
 msgstr ""
 
-#: action_handlers.php:533
+#: action_handlers.php:532
 msgid "Parent Order status"
 msgstr ""
 
-#: action_handlers.php:534
+#: action_handlers.php:533
 msgid "Parent Order status:"
 msgstr ""
 
-#: action_handlers.php:535
+#: action_handlers.php:534
 msgid "Edit Order status"
 msgstr ""
 
-#: action_handlers.php:536
+#: action_handlers.php:535
 msgid "Update Order status"
 msgstr ""
 
-#: action_handlers.php:537
+#: action_handlers.php:536
 msgid "Add New Order status"
 msgstr ""
 
-#: action_handlers.php:538
+#: action_handlers.php:537
 msgid "New Order status Name"
 msgstr ""
 
-#: action_handlers.php:554 action_handlers.php:1042
+#: action_handlers.php:553 action_handlers.php:1041
 msgid "Orders"
 msgstr ""
 
-#: action_handlers.php:555 admin/views/attributes/templates/edit_set.tpl.php:35
+#: action_handlers.php:554 admin/views/attributes/templates/edit_set.tpl.php:35
 #: admin/views/attributes/templates/newsetform.tpl.php:34
 #: admin/views/product/templates/attributes.tpl.php:51
 msgid "Order"
 msgstr ""
 
-#: action_handlers.php:556
+#: action_handlers.php:555
 msgid "Add Order"
 msgstr ""
 
-#: action_handlers.php:557
+#: action_handlers.php:556
 msgid "Add New Order"
 msgstr ""
 
-#: action_handlers.php:559
+#: action_handlers.php:558
 msgid "Edit Order"
 msgstr ""
 
-#: action_handlers.php:560
+#: action_handlers.php:559
 msgid "New Order"
 msgstr ""
 
-#: action_handlers.php:561 action_handlers.php:562
+#: action_handlers.php:560 action_handlers.php:561
 #: front/views/account/templates/account.tpl.php:15
 msgid "View Order"
 msgstr ""
 
-#: action_handlers.php:563
+#: action_handlers.php:562
 msgid "Search Orders"
 msgstr ""
 
-#: action_handlers.php:564
+#: action_handlers.php:563
 msgid "No Orders found"
 msgstr ""
 
-#: action_handlers.php:565
+#: action_handlers.php:564
 msgid "No Orders found in trash"
 msgstr ""
 
-#: action_handlers.php:566
+#: action_handlers.php:565
 msgid "Parent Orders"
 msgstr ""
 
-#: action_handlers.php:568
+#: action_handlers.php:567
 msgid "This is where store orders are stored."
 msgstr ""
 
-#: action_handlers.php:605
-msgid "shop"
+#: action_handlers.php:604
+msgid "My Shop"
 msgstr ""
 
-#: action_handlers.php:606
+#: action_handlers.php:605
 msgid "List all products"
 msgstr ""
 
-#: action_handlers.php:607
+#: action_handlers.php:606
 msgid "Add new product"
 msgstr ""
 
-#: action_handlers.php:607
+#: action_handlers.php:606
 msgid "Add new Product"
 msgstr ""
 
-#: action_handlers.php:608
+#: action_handlers.php:607
 msgid "Product tags"
 msgstr ""
 
-#: action_handlers.php:609
+#: action_handlers.php:608
 msgid "Product categories"
 msgstr ""
 
-#: action_handlers.php:610
+#: action_handlers.php:609
 msgid "Product brands"
 msgstr ""
 
-#: action_handlers.php:611 admin/views/stockroom/view.html.php:11
+#: action_handlers.php:610 admin/views/stockroom/view.html.php:11
 #: admin/views/stockroom/view.html.php:53
 msgid "Stockrooms"
 msgstr ""
 
-#: action_handlers.php:612
+#: action_handlers.php:611
 msgid "Manage Amounts"
 msgstr ""
 
-#: action_handlers.php:613
+#: action_handlers.php:612
 msgid "Attribute Sets"
 msgstr ""
 
-#: action_handlers.php:614 admin/views/country/view.html.php:9
+#: action_handlers.php:613 admin/views/country/view.html.php:9
 msgid "Countries"
 msgstr ""
 
-#: action_handlers.php:615
+#: action_handlers.php:614
 msgid "Taxes"
 msgstr ""
 
-#: action_handlers.php:616
+#: action_handlers.php:615
 msgid "Payment Methods"
 msgstr ""
 
-#: action_handlers.php:617
+#: action_handlers.php:616
 msgid "Shipping Methods"
 msgstr ""
 
-#: action_handlers.php:618
+#: action_handlers.php:617
 msgid "Shipping Groups"
 msgstr ""
 
-#: action_handlers.php:619
+#: action_handlers.php:618
 msgid "Configuration"
 msgstr ""
 
-#: action_handlers.php:860
+#: action_handlers.php:859
 #: admin/views/orders/templates/edit_order_items.tpl.php:10
 #: admin/views/stockroom/templates/manage_product_stocks.tpl.php:49
 #: admin/views/stockroom/templates/manage_property_stocks.tpl.php:48
 msgid "Product Number"
 msgstr ""
 
-#: action_handlers.php:861 action_handlers.php:1175
+#: action_handlers.php:860 action_handlers.php:1171
 #: admin/views/payment/templates/list_payment_methods.tpl.php:24
 #: admin/views/product/templates/productinformation.tpl.php:15
 #: admin/views/shipping/templates/list_carriers.tpl.php:27
 msgid "Ordering"
 msgstr ""
 
-#: action_handlers.php:862 action_handlers.php:1184
+#: action_handlers.php:861 action_handlers.php:1180
 #: admin/views/attributes/templates/edit_set.tpl.php:32
 #: admin/views/attributes/templates/newsetform.tpl.php:31
 #: admin/views/orders/templates/edit_order_items.tpl.php:7
@@ -365,89 +365,89 @@ msgstr ""
 msgid "Price"
 msgstr ""
 
-#: action_handlers.php:863 admin/views/category/view.html.php:9
+#: action_handlers.php:862 admin/views/category/view.html.php:9
 #: admin/views/stockroom/templates/manage_product_stocks.tpl.php:26
 #: admin/views/stockroom/templates/manage_property_stocks.tpl.php:26
 msgid "Category"
 msgstr ""
 
-#: action_handlers.php:864
+#: action_handlers.php:863
 msgid "Manufacturer"
 msgstr ""
 
-#: action_handlers.php:865
+#: action_handlers.php:864
 #: admin/views/attributes/templates/list_attribute_sets.tpl.php:17
 #: admin/views/stockroom/templates/list_stockrooms.tpl.php:22
 msgid "Published"
 msgstr ""
 
-#: action_handlers.php:879
+#: action_handlers.php:878
 msgid "Order Id"
 msgstr ""
 
-#: action_handlers.php:880
+#: action_handlers.php:879
 msgid "Billing"
 msgstr ""
 
-#: action_handlers.php:881
+#: action_handlers.php:880
 msgid "Shipping"
 msgstr ""
 
-#: action_handlers.php:884
+#: action_handlers.php:883
 msgid "Order Status"
 msgstr ""
 
-#: action_handlers.php:885
+#: action_handlers.php:884
 msgid "Total Amount"
 msgstr ""
 
-#: action_handlers.php:1039
+#: action_handlers.php:1038
 #: front/views/account/templates/order_receipt.tpl.php:14
 #: front/views/cart/templates/checkout.tpl.php:78
 #: front/views/cart/templates/order_receipt.tpl.php:14
 msgid "Billing Address"
 msgstr ""
 
-#: action_handlers.php:1040
+#: action_handlers.php:1039
 #: front/views/account/templates/order_receipt.tpl.php:6
 #: front/views/cart/templates/checkout.tpl.php:127
 #: front/views/cart/templates/order_receipt.tpl.php:6
 msgid "Shipping Address"
 msgstr ""
 
-#: action_handlers.php:1069
+#: action_handlers.php:1065
 msgid "Shop related pages"
 msgstr ""
 
-#: action_handlers.php:1096
+#: action_handlers.php:1092
 msgid "URL"
 msgstr ""
 
-#: action_handlers.php:1099
+#: action_handlers.php:1095
 msgid "custumer account"
 msgstr ""
 
-#: action_handlers.php:1100
+#: action_handlers.php:1096
 msgid "custumer cart"
 msgstr ""
 
-#: action_handlers.php:1101
+#: action_handlers.php:1097
 msgid "checkout"
 msgstr ""
 
-#: action_handlers.php:1109
+#: action_handlers.php:1105
 msgid "Label"
 msgstr ""
 
-#: action_handlers.php:1110
+#: action_handlers.php:1106
 msgid "Menu Item"
 msgstr ""
 
-#: action_handlers.php:1117
+#: action_handlers.php:1113
 msgid "Add to Menu"
 msgstr ""
 
-#: action_handlers.php:1173
+#: action_handlers.php:1169
 msgid "Product Data"
 msgstr ""
 
@@ -1339,6 +1339,9 @@ msgstr ""
 #: front/views/account/templates/account.tpl.php:53
 #: front/views/account/templates/order_receipt.tpl.php:48
 #: front/views/cart/templates/order_receipt.tpl.php:47
+#: front/views/mail/templates/admin_notify_mail.tpl.php:96
+#: front/views/mail/templates/invoice_mail.tpl.php:98
+#: front/views/mail/templates/proccessing_mail.tpl.php:103
 msgid "File"
 msgstr ""
 
@@ -1639,12 +1642,14 @@ msgstr ""
 
 #: admin/views/product/templates/productinformation.tpl.php:107
 #: admin/views/shipping/templates/add_rate_form.tpl.php:150
+#: admin/views/shipping/templates/add_rate_form.tpl.php:158
 #: admin/views/user/templates/user_form.tpl.php:17
 msgid "no"
 msgstr ""
 
 #: admin/views/product/templates/productinformation.tpl.php:108
 #: admin/views/shipping/templates/add_rate_form.tpl.php:149
+#: admin/views/shipping/templates/add_rate_form.tpl.php:159
 #: admin/views/user/templates/user_form.tpl.php:20
 msgid "yes"
 msgstr ""
@@ -1771,6 +1776,10 @@ msgstr ""
 
 #: admin/views/shipping/templates/add_rate_form.tpl.php:145
 msgid "Add Vat:"
+msgstr ""
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:155
+msgid "Multiply by quantity sum:"
 msgstr ""
 
 #: admin/views/shipping/templates/list_carriers.tpl.php:24
@@ -2149,6 +2158,13 @@ msgstr ""
 #: front/views/account/templates/account.tpl.php:52
 #: front/views/account/templates/order_receipt.tpl.php:47
 #: front/views/cart/templates/order_receipt.tpl.php:46
+#: front/views/mail/templates/admin_notify_mail.tpl.php:95
+#: front/views/mail/templates/admin_notify_mail.tpl.php:138
+#: front/views/mail/templates/invoice_mail.tpl.php:97
+#: front/views/mail/templates/invoice_mail.tpl.php:140
+#: front/views/mail/templates/proccessing_mail.tpl.php:102
+#: front/views/mail/templates/proccessing_mail.tpl.php:145
+#: front/views/mail/templates/refunded_mail.tpl.php:84
 msgid "Item"
 msgstr ""
 
@@ -2204,6 +2220,9 @@ msgstr ""
 
 #: front/views/account/templates/order_receipt.tpl.php:66
 #: front/views/cart/templates/order_receipt.tpl.php:65
+#: front/views/mail/templates/admin_notify_mail.tpl.php:119
+#: front/views/mail/templates/invoice_mail.tpl.php:121
+#: front/views/mail/templates/proccessing_mail.tpl.php:126
 msgid "download"
 msgstr ""
 
@@ -2221,6 +2240,10 @@ msgstr ""
 #: front/views/cart/templates/cart.tpl.php:15
 #: front/views/cart/templates/order.tpl.php:6
 #: front/views/cart/templates/order_receipt.tpl.php:90
+#: front/views/mail/templates/admin_notify_mail.tpl.php:140
+#: front/views/mail/templates/invoice_mail.tpl.php:142
+#: front/views/mail/templates/proccessing_mail.tpl.php:147
+#: front/views/mail/templates/refunded_mail.tpl.php:86
 msgid "Qty"
 msgstr ""
 
@@ -2229,21 +2252,41 @@ msgstr ""
 #: front/views/cart/templates/cart.tpl.php:16
 #: front/views/cart/templates/order_receipt.tpl.php:91
 #: front/views/cart/templates/order_receipt.tpl.php:97
+#: front/views/mail/templates/admin_notify_mail.tpl.php:141
+#: front/views/mail/templates/admin_notify_mail.tpl.php:175
+#: front/views/mail/templates/invoice_mail.tpl.php:143
+#: front/views/mail/templates/invoice_mail.tpl.php:177
+#: front/views/mail/templates/proccessing_mail.tpl.php:148
+#: front/views/mail/templates/proccessing_mail.tpl.php:183
+#: front/views/mail/templates/refunded_mail.tpl.php:87
+#: front/views/mail/templates/refunded_mail.tpl.php:121
 msgid "Subtotal"
 msgstr ""
 
 #: front/views/account/templates/order_receipt.tpl.php:105
 #: front/views/cart/templates/order_receipt.tpl.php:107
+#: front/views/mail/templates/admin_notify_mail.tpl.php:179
+#: front/views/mail/templates/invoice_mail.tpl.php:181
+#: front/views/mail/templates/proccessing_mail.tpl.php:187
+#: front/views/mail/templates/refunded_mail.tpl.php:125
 msgid "Shipping &amp; Handling"
 msgstr ""
 
 #: front/views/account/templates/order_receipt.tpl.php:115
 #: front/views/cart/templates/order_receipt.tpl.php:117
+#: front/views/mail/templates/admin_notify_mail.tpl.php:184
+#: front/views/mail/templates/invoice_mail.tpl.php:186
+#: front/views/mail/templates/proccessing_mail.tpl.php:192
+#: front/views/mail/templates/refunded_mail.tpl.php:130
 msgid "Tax"
 msgstr ""
 
 #: front/views/account/templates/order_receipt.tpl.php:125
 #: front/views/cart/templates/order_receipt.tpl.php:127
+#: front/views/mail/templates/admin_notify_mail.tpl.php:189
+#: front/views/mail/templates/invoice_mail.tpl.php:191
+#: front/views/mail/templates/proccessing_mail.tpl.php:197
+#: front/views/mail/templates/refunded_mail.tpl.php:135
 msgid "Grand Total"
 msgstr ""
 
@@ -2405,6 +2448,97 @@ msgstr ""
 msgid "Provide payment details"
 msgstr ""
 
+#: front/views/mail/templates/admin_notify_mail.tpl.php:33
+msgid "You have received new order, and that order was marked as completed. You can view order details below."
+msgstr ""
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:37
+#: front/views/mail/templates/invoice_mail.tpl.php:39
+#: front/views/mail/templates/proccessing_mail.tpl.php:44
+#: front/views/mail/templates/refunded_mail.tpl.php:38
+msgid "Your Order #"
+msgstr ""
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:37
+#: front/views/mail/templates/invoice_mail.tpl.php:39
+#: front/views/mail/templates/proccessing_mail.tpl.php:44
+#: front/views/mail/templates/refunded_mail.tpl.php:38
+msgid "placed on"
+msgstr ""
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:43
+#: front/views/mail/templates/invoice_mail.tpl.php:45
+#: front/views/mail/templates/proccessing_mail.tpl.php:50
+#: front/views/mail/templates/refunded_mail.tpl.php:44
+msgid "Billing Information:"
+msgstr ""
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:45
+#: front/views/mail/templates/invoice_mail.tpl.php:47
+#: front/views/mail/templates/proccessing_mail.tpl.php:52
+#: front/views/mail/templates/refunded_mail.tpl.php:46
+msgid "Payment Method:"
+msgstr ""
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:67
+#: front/views/mail/templates/invoice_mail.tpl.php:69
+#: front/views/mail/templates/proccessing_mail.tpl.php:74
+#: front/views/mail/templates/refunded_mail.tpl.php:63
+msgid "Shipping Information:"
+msgstr ""
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:69
+#: front/views/mail/templates/invoice_mail.tpl.php:71
+#: front/views/mail/templates/proccessing_mail.tpl.php:76
+#: front/views/mail/templates/refunded_mail.tpl.php:65
+msgid "Shipping Method:"
+msgstr ""
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:139
+#: front/views/mail/templates/invoice_mail.tpl.php:141
+#: front/views/mail/templates/proccessing_mail.tpl.php:146
+#: front/views/mail/templates/refunded_mail.tpl.php:85
+msgid "Sku"
+msgstr ""
+
+#: front/views/mail/templates/invoice_mail.tpl.php:33
+msgid "Thank you for your order!"
+msgstr ""
+
+#: front/views/mail/templates/invoice_mail.tpl.php:34
+msgid "If you had troubles with payment process you can"
+msgstr ""
+
+#: front/views/mail/templates/invoice_mail.tpl.php:34
+msgid "retry the payment"
+msgstr ""
+
+#: front/views/mail/templates/invoice_mail.tpl.php:34
+msgid "or"
+msgstr ""
+
+#: front/views/mail/templates/invoice_mail.tpl.php:34
+msgid "cancel the order."
+msgstr ""
+
+#: front/views/mail/templates/invoice_mail.tpl.php:36
+#: front/views/mail/templates/proccessing_mail.tpl.php:41
+#: front/views/mail/templates/refunded_mail.tpl.php:35
+msgid "Your order confirmation is below. Thank you again for your business."
+msgstr ""
+
+#: front/views/mail/templates/proccessing_mail.tpl.php:34
+msgid "Your payment for that order has failed."
+msgstr ""
+
+#: front/views/mail/templates/proccessing_mail.tpl.php:36
+msgid "Your order is marked as completed and is awaiting processing and shipment. You will receive updates via email."
+msgstr ""
+
+#: front/views/mail/templates/refunded_mail.tpl.php:33
+msgid "Your order has been refunded! You can see the order details below."
+msgstr ""
+
 #: front/views/product/templates/attributes.tpl.php:3
 msgid "Select Options"
 msgstr ""
@@ -2426,6 +2560,16 @@ msgstr ""
 #: front/views/product_list/templates/list.tpl.php:79
 #: front/views/shortcodes/templates/products_grid.tpl.php:24
 msgid "Add To Cart"
+msgstr ""
+
+#: front/views/product/templates/view_product_details.tpl.php:47
+#: front/views/product_list/templates/list.tpl.php:86
+msgid "Tagged Under:"
+msgstr ""
+
+#: front/views/product/templates/view_product_details.tpl.php:48
+#: front/views/product_list/templates/list.tpl.php:92
+msgid "Brands:"
 msgstr ""
 
 #: front/views/product/templates/view_product_details.tpl.php:52
@@ -2474,16 +2618,8 @@ msgstr ""
 msgid "Sort by"
 msgstr ""
 
-#: front/views/product_list/templates/list.tpl.php:86
-msgid "Tagged Under:"
-msgstr ""
-
 #: front/views/product_list/templates/list.tpl.php:89
 msgid "Categories:"
-msgstr ""
-
-#: front/views/product_list/templates/list.tpl.php:92
-msgid "Brands:"
 msgstr ""
 
 #: front/views/widgets/templates/cart_widget.tpl.php:4
@@ -2664,7 +2800,7 @@ msgstr ""
 msgid "card definition is missing!"
 msgstr ""
 
-#: installer.php:331
+#: installer.php:332
 msgid "Shop"
 msgstr ""
 
@@ -2680,7 +2816,7 @@ msgstr ""
 msgid "Enter method label"
 msgstr ""
 
-#: tables/shipping_rate.php:95
+#: tables/shipping_rate.php:96
 msgid "Enter rate label"
 msgstr ""
 

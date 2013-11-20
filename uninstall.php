@@ -5,9 +5,8 @@ if (!defined('WP_UNINSTALL_PLUGIN'))
     exit();
 
 define('_VALID_EXEC', 1);
+define('DS', "/");
 
-//include global constants
-require_once 'globals.php';
 //include the autoloader
 require_once 'autoload.php';
 //commonly used functions
