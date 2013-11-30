@@ -2,7 +2,7 @@
 
 /*
   Plugin Name: OrillaCart
-  Version: 1.0.4
+  Version: 1.0.5
   Description: ecommerce solution for WordPress
   Plugin URI: http://orillacart.com
   Author: orillacart.com team

@@ -78,6 +78,9 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.5 - 30.11.2013 =
+1. Fix bug in shipping API.
+
 = 1.0.4 - 20/11/2013 =
 1.	Added missing translations.
 2.	Comments tab not visible if comments are turned off.

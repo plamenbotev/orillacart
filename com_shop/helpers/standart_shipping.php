@@ -464,7 +464,7 @@ class standart_shipping {
 
         $params = Request::getVar('params', array());
         $carrier = Table::getInstance('carrier', 'shop')->load($id);
-        $carrier->params->merge($params);
+        $carrier->params = $params;
 
         $carrier->store();
     }
