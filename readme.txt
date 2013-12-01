@@ -1,4 +1,4 @@
-=== Orilla Cart - eCommerce plugin ===
+=== Orilla Cart - eCommerce ===
 Contributors: orillacart
 Tags: ecommerce plugin, ecommerce, e-commerce, attributes, variations, commerce, wordpress ecommerce, product, store, sales, sell, shop, shopping, cart, checkout, downloadable, digital, inventory, shipping, tax
 Donate link:
@@ -8,17 +8,21 @@ Stable tag: trunk
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
-Create your online store in minutes using our eCommerce plugin.
+eCommerce solution designed to help you grow your business.
 
 == Description ==
 Orilla Cart have everything you need to to create online store.
+The plugin is built with simplicity in mind. The idea behind the project is to give simple and yet powerful tool for everybody.
+In few steps you can have your own ecommerce site and sell your digital and physical goods on it.
+
 
 [Orilla Cart eCommerce demo site ](http://demo.orillacart.com/ "eCommerce demo site")
+
 [Orilla Cart eCommerce documentation ](http://orillacart.com/knowledgebase/ "Orilla Cart eCommerce documentation")
 
 It is free, it is open source and it is build with carefully selected eCommerce functionalities, user friendly design, flexibility and speed in mind.
 = FEATURES =
-* __Themes Compatible__ - Works out of the box with most themes. Add eCommerce functionality to your current site easily.
+* __Themes Compatible__ - Works out of the box with most themes. Add eCommerce functionality to your current site easily, no need for specially created theme.
 * __PayPal Standard Gateway__ - Accept credit cards and PayPal payments.
 * __Bank Transfer__, __Cash on Delivery__ and __Cheque__ - Offline payment methods.
 * __Table Rate Shipping__ - Highly customizable shipping options.
@@ -32,26 +36,29 @@ It is free, it is open source and it is build with carefully selected eCommerce 
 * __Payment__ and __Shipping__ Methods - Additional payment and shipping plugins available on our site.
 
 
+
+
 == Installation ==
 
 Installing Orilla Cart eCommerce is very easy, there are a few way’s to do that.
  
 * __Installation using WordPress Dashboard__
 
-Log-in to your WordPress dashboard. Go to Plugins > add new. This menu gives you two options to install your Orilla Cart :
+Log-in to your WordPress dashboard. Go to Plugins > add new. This menu gives you two options to install your Orilla Cart eCommerce solution:
 
 1. __Automatically install plugins from the WordPress Plugin Directory:__ In the search box type "Orilla Cart". After that click on the "Search plugins" button. 
 In the search results you will see our plugin. Below the name of the plugin you need to click on "Install Now" button, then activate the plugin and it`s done.
 2. __Upload a plugin as .zip packed file:__ Go to Plugins > add new > Upload and Browse the latest release of Orilla Cart archive.
-Activate the plugin "Orilla Cart".
+Activate the "Orilla Cart" plugin.
 
 * __Manual installation using FTP file manager__
 
-1. Unzip the latest release of Orilla Cart. You can get it for free on WordPress.org extension directory.
+1. Unzip the latest release of Orilla Cart eCommerce. You can get it for free on WordPress.org extension directory.
 2. Unzip the archive to  "/wp-content/plugins/" directory.
 3. Activate the plugin  through the Dashboard > Plugins menu > Installed Plugins in WordPress
 
 If your installation of Orilla Cart is successful you will see new menu "My Shop" in the WordPress Dashboard.
+Now your site is enhanced with fully fledged ecommerce solution.
 
 Orilla Cart creates automatically static Page called  "shop". 
 That page is the front end of your store, you can change the page later from the plugin parameters.

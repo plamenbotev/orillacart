@@ -250,19 +250,16 @@ abstract class component extends app_object {
             session_start();
             if (isset($_SESSION['messages']['errors'][$this->mode]) && !empty($_SESSION['messages']['errors'][$this->mode])) {
                 $this->sys_errors[$this->mode] = (array) array_merge((array) $_SESSION['messages']['errors'][$this->mode], (array) $this->sys_errors[$this->mode]);
-
-                // unset($_SESSION['messages']['errors']);
+              
             }
             if (isset($_SESSION['messages']['messages'][$this->mode]) && !empty($_SESSION['messages']['messages'][$this->mode])) {
                 $this->sys_messages[$this->mode] = (array) array_merge((array) $_SESSION['messages']['messages'][$this->mode], (array) $this->sys_messages[$this->mode]);
-
-                //  unset($_SESSION['messages']['messages']);
+               
             }
 
             if (isset($_SESSION['messages']['custom_messages'][$this->mode]) && !empty($_SESSION['messages']['custom_messages'][$this->mode])) {
                 $this->contex_errors[$this->mode] = (array) array_merge((array) $_SESSION['messages']['custom_messages'][$this->mode], (array) $this->contex_errors[$this->mode]);
-
-                //  unset($_SESSION['messages']['custom_messages']);
+                
             }
 
             add_action('admin_notices', array($this, 'show_messages'));
@@ -302,7 +299,7 @@ abstract class component extends app_object {
         
         $locale = apply_filters( 'plugin_locale', get_locale(), "com_".$this->getName() );
       
-	load_textdomain( "com_".$this->getName(), WP_LANG_DIR . "/com_".$this->getName()."/com_".$this->getName()."-".$locale."mo" );
+		load_textdomain( "com_".$this->getName(), WP_LANG_DIR . "/com_".$this->getName()."/com_".$this->getName()."-".$locale."mo" );
            
         load_plugin_textdomain("com_".$this->getName(),false, $this->rel_path."/languages");
     
@@ -312,7 +309,7 @@ abstract class component extends app_object {
     public function getAssetsPath() {
 
 
-        return str_replace('\\', '/', $this->base_path . DS . ".." . DS . "assets");
+        return realpath(str_replace('\\', '/', $this->base_path . DS . ".." . DS . "assets"));
     }
 
     public function getAssetsUrl() {

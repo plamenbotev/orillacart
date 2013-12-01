@@ -325,9 +325,7 @@ final class Framework {
 
             $app->clearMessages();
 
-
-
-
+			
             return "<div id='com-" . strtolower(request::getCmd('component')) . "'>" . $this->messages . $this->content . "</div>";
         }
     }
