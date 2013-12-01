@@ -82,8 +82,8 @@ abstract class parameters {
             return $status;
 
         if (method_exists($this, 'filter'))
-            $this->filter(&$this->props);
-        apply_filters('before_parameters_save_' . $this->component, &$this->props);
+            $this->props = $this->filter($this->props);
+        $this->props = apply_filters('before_parameters_save_' . $this->component, $this->props);
         update_option($this->component . "_parameters", $this->props);
 
         return true;

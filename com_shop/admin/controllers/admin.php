@@ -55,7 +55,7 @@ class shopControllerAdmin extends controller {
         $params = Factory::getApplication('shop')->getParams();
 
         try {
-            $params->bind(&$_POST);
+            $params->bind($_POST);
             
         } catch (Exception $e) {
             Factory::getApplication('shop')->setMessage($e->getMessage());

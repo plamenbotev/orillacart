@@ -161,14 +161,14 @@ class ArrayHelper {
             return $myArray;
         }
 
-        foreach ($myArray as &$myvalue) {
-            $myvalue = serialize($myvalue);
+        foreach ($myArray as $k => $myvalue) {
+            $myArray[$k] =  serialize($myvalue);
         }
 
         $myArray = array_unique($myArray);
 
-        foreach ($myArray as &$myvalue) {
-            $myvalue = unserialize($myvalue);
+        foreach ($myArray as $k => $myvalue) {
+            $myArray[$k] = unserialize($myvalue);
         }
 
         return $myArray;

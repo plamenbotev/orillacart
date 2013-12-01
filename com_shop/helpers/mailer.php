@@ -26,17 +26,17 @@ class mailer {
         /**
          * Email Header + Footer
          * */
-        add_action('orillacart_email_header', array(&$this, 'email_header'));
-        add_action('orillacart_email_footer', array(&$this, 'email_footer'));
+        add_action('orillacart_email_header', array($this, 'email_header'));
+        add_action('orillacart_email_footer', array($this, 'email_footer'));
 
         /**
          * Add order meta to email templates
          * */
-        add_action('orillacart_email_after_order_table', array(&$this, 'order_meta'), 10, 2);
+        add_action('orillacart_email_after_order_table', array($this, 'order_meta'), 10, 2);
 
 
-        add_action('orillacart_order_status_change_email', array(&$this, 'status_change_mail'), 10, 3);
-        add_action('orillacart_order_status_change_email', array(&$this, 'admin_notify'), 11, 3);
+        add_action('orillacart_order_status_change_email', array($this, 'status_change_mail'), 10, 3);
+        add_action('orillacart_order_status_change_email', array($this, 'admin_notify'), 11, 3);
 
         add_action('orillacart_send_order_invoice', array($this, 'invoice_mail'));
 
@@ -57,9 +57,9 @@ class mailer {
     }
 
     function send($to, $subject, $message, $headers = "Content-Type: text/html\r\n", $attachments = "") {
-        add_filter('wp_mail_from', array(&$this, 'get_from_address'));
-        add_filter('wp_mail_from_name', array(&$this, 'get_from_name'));
-        add_filter('wp_mail_content_type', array(&$this, 'get_content_type'));
+        add_filter('wp_mail_from', array($this, 'get_from_address'));
+        add_filter('wp_mail_from_name', array($this, 'get_from_name'));
+        add_filter('wp_mail_content_type', array($this, 'get_content_type'));
 
         ob_start();
 
@@ -70,9 +70,9 @@ class mailer {
         ob_end_clean();
 
         // Unhook
-        remove_filter('wp_mail_from', array(&$this, 'get_from_address'));
-        remove_filter('wp_mail_from_name', array(&$this, 'get_from_name'));
-        remove_filter('wp_mail_content_type', array(&$this, 'get_content_type'));
+        remove_filter('wp_mail_from', array($this, 'get_from_address'));
+        remove_filter('wp_mail_from_name', array($this, 'get_from_name'));
+        remove_filter('wp_mail_content_type', array($this, 'get_content_type'));
     }
 
     function invoice_mail($order_id) {

@@ -85,6 +85,9 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.6 - 02.12.2013 =
+1. Pass by reference fix.
+
 = 1.0.5 - 30.11.2013 =
 1. Fix bug in shipping API.
 

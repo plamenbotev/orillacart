@@ -100,7 +100,7 @@ abstract class table extends app_object {
     public function bind($from, $exclude = array()) {
 
         if (method_exists($this, 'filter')) {
-            $this->filter(&$from);
+            $from = $this->filter($from);
         }
 
         if (!is_array($from) && !is_object($from)) {
