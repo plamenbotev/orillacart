@@ -362,16 +362,18 @@ class shop_installer extends app_object {
                 }
             }
 
-
-
-            // Flush Rules
-            flush_rewrite_rules(false);
+			
+			// Flush Rules
+			flush_rewrite_rules();
+            
             $params->set('is_installed', true);
             $params->save();
         } else {
 
             $this->update_db();
         }
+		
+		
     }
 
     public function deactivate() {

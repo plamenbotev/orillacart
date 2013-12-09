@@ -85,6 +85,11 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.7 - 09.12.2013 =
+
+1. french canadian trnaslation added (community provided)
+2. Various fixes
+
 = 1.0.6 - 02.12.2013 =
 1. Pass by reference fix.
 

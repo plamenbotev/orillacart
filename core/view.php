@@ -7,7 +7,6 @@ abstract class view extends app_object {
     protected $_name = null;
     protected $_models = array();
     protected $_tpl = 'default';
-    protected $_infoObject = null;
     protected $_path = null;
     protected $_app = null;
 
@@ -90,24 +89,9 @@ abstract class view extends app_object {
     }
 
     public function setMessage($msg, $type = 'info') {
-
-
-
         Factory::getApplication()->setMessage($msg, $type);
     }
 
-    public function set($property, $value = null) {
-        $previous = isset($this->_infoObject->$property) ? $this->_infoObject->$property : null;
-        $this->_infoObject->$property = $value;
-        return $previous;
-    }
-
-    public function get($property, $default = null) {
-        if (isset($this->_infoObject->$property)) {
-            return $this->_infoObject->$property;
-        }
-        return $default;
-    }
 
     public function __construct() {
 
@@ -121,17 +105,6 @@ abstract class view extends app_object {
 
     public function app() {
         return $this->_app;
-    }
-
-    public function getInfo($p) {
-
-        if ($p == 'view_layout_url') {
-
-            $ap = str_replace('\\', '/', WP_PLUGIN_DIR);
-
-            return WP_PLUGIN_URL . str_replace($ap, '', str_replace('\\', DS, $this->_path . '/' . $this->_name . '/templates'));
-        }
-        return $this->get($p);
     }
 
     public function setModel(model $model) {
@@ -211,34 +184,7 @@ abstract class view extends app_object {
 
     public function display($tpl = 'default') {
 
-
-
-
-        $mainframe = Factory::getMainframe();
-
-        $ap = str_replace('\\', '/', WP_PLUGIN_DIR);
-
-        $view_layout_url = WP_PLUGIN_URL . str_replace($ap, '', str_replace('\\', DS, $this->_path . '/' . $this->_name . '/templates'));
-
-
-
-        $this->set('view_layout_url', $view_layout_url);
-
-
-        if (!empty($this->_infoObject)) {
-
-
-            $mainframe->addCustomHeadTag('shopinfo', "  <script type='text/javascript'>
-                                                shopInfo = " . json_encode($this->_infoObject) . ";
-                                            </script>   ");
-        }
-
-
-
-
-
-
-        $app = $this->app();
+		$app = $this->app();
 
         if (Framework::is_admin() && !request::is_internal() && !Request::is_ajax()) {
             echo "<div class='wrap'>";
