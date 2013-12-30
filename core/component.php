@@ -63,11 +63,12 @@ abstract class component extends app_object {
 
     public function getParams() {
 
-        static $cache = null;
-
-        if ($cache)
-            return $cache;
-
+		$result = wp_cache_get( 'params',strtolower("com_".$this->getName()));
+		
+		if($result !== false){
+			return $result;
+		}
+		
         $path = $this->getComponentPath() . DS . ".." . DS . "params.php";
 
 
@@ -89,6 +90,7 @@ abstract class component extends app_object {
 
                 if (method_exists($cache, 'init'))
                     $cache->init();
+					wp_cache_set("params",$cache,strtolower("com_".$this->getName()));
                 return $cache;
             }
             else {
@@ -330,14 +332,18 @@ abstract class component extends app_object {
     }
 
     static public function get_wp_pages($com = null) {
-        static $cache = array();
-
-        if (!$com)
+          
+	   
+        if (!$com){
             return array();
-
-        if (!empty($cache[$com]))
-            return $cache[$com];
-
+		}
+		
+		$result = wp_cache_get( 'get_wp_pages',strtolower("com_".$com));
+		
+		if($result !== false){
+			return $result;
+		}	
+		       
         $params = Factory::getApplication($com)->getParams();
         $page_id = $params->get('page_id');
 
@@ -373,15 +379,19 @@ abstract class component extends app_object {
             }
         }
 
+		$cache = array();
         if (!empty($path)) {
-            $cache[$com][] = implode('/', array_reverse($path));
+            $cache[] = implode('/', array_reverse($path));
         }
 
-        if (!array_key_exists(0, $cache[$com])) {
-            $cache[$com][] = $com;
+        if (!array_key_exists(0, $cache)) {
+            $cache[] = $com;
         }
+		
+		wp_cache_set( 'get_wp_pages',$cache,strtolower("com_".$com));
+		
 
-        return $cache[$com];
+        return $cache;
     }
 
 }

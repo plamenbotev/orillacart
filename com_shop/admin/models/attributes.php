@@ -228,9 +228,7 @@ class attributesModel extends model {
 
         $ids = array_map("intval", (array) $ids);
 
-        $path = Factory::getApplication('shop')->getAssetsPath() . "/images/product_attributes";
-
-
+       
         switch ($object) {
 
 

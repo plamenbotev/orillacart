@@ -2,7 +2,7 @@
 
 class shop_installer extends app_object {
 
-    protected function tables() {
+    public function tables() {
 
         $tables = array(
             "shop_stockroom" =>
@@ -286,7 +286,8 @@ class shop_installer extends app_object {
         require_once(dirname(__FILE__) . "/action_handlers.php");
         orillacart_actions::init()->register_types();
         $params = Factory::getApplication('shop')->getParams();
-
+		
+		
 
         if (!$params->get('is_installed')) {
 

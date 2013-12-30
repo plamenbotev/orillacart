@@ -2,8 +2,7 @@
 
 class mailer {
 
-    private $_from_address;
-    private $_from_name;
+   
 
     public static function getInstance() {
         static $inst = null;
@@ -20,10 +19,8 @@ class mailer {
 
     /** constructor */
     protected function __construct() {
-        $this->_from_name = Factory::getApplication('shop')->getParams()->get('email_from_name');
-        $this->_from_address = Factory::getApplication('shop')->getParams()->get('email_from_address');
-
-        /**
+        
+         /**
          * Email Header + Footer
          * */
         add_action('orillacart_email_header', array($this, 'email_header'));
@@ -45,11 +42,11 @@ class mailer {
     }
 
     public function get_from_name() {
-        return $this->_from_name;
+        return Factory::getApplication('shop')->getParams()->get('email_from_name');
     }
 
     public function get_from_address() {
-        return $this->_from_address;
+        return Factory::getApplication('shop')->getParams()->get('email_from_address');
     }
 
     public function get_content_type() {

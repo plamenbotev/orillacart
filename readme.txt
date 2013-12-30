@@ -85,6 +85,10 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.8 - 30.12.2013 =
+
+1. Multi site compatible 
+
 = 1.0.7 - 09.12.2013 =
 
 1. french canadian trnaslation added (community provided)

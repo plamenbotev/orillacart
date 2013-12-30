@@ -6,7 +6,7 @@ final class route {
 
     static public function get($url = null, $force_ssl = false) {
 
-        static $wp_pages = array();
+        $wp_pages = array();
 
         parse_str($url, $vars);
 
@@ -14,14 +14,14 @@ final class route {
         unset($vars['component']);
 
         if (empty($com)) {
+		
             return ( stripos('?', $url) === false ? '?' . $url : $url );
         }
 
         $con = isset($vars['con']) ? $vars['con'] : null;
-
-        if (!array_key_exists($com, $wp_pages)) {
-            $wp_pages[$com] = (array) component::get_wp_pages($com);
-        }
+  
+        $wp_pages[$com] = (array) component::get_wp_pages($com);
+      
 
         $page = get_page_by_path($wp_pages[$com][0]);
 

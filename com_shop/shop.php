@@ -116,7 +116,6 @@ class shop extends component {
 
             $mainframe->addscript('jsshopadminhelper', $this->getAssetsUrl() . '/js/jsshopadminhelper.js');
             $mainframe->addStyle('shop-icons', $this->getAssetsUrl() . '/icons.css');
-            $mainframe->addstyle('toolbar-css', $this->getAssetsUrl() . '/toolbar.css');
             $mainframe->addStyle('shop-admin-styles', $this->getAssetsUrl() . '/template.css');
         } else {
 

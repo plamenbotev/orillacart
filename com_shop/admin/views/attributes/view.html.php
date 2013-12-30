@@ -46,8 +46,7 @@ class shopViewAttributes extends view {
         $bar->appendButton('Link', 'cancel', __('cancel', 'com_shop'), admin_url('admin.php?page=component_com_shop-attributes'), false, true);
         $bar->appendButton('Standard', 'save', __('save', 'com_shop'), 'document.adminForm.submit()', false, true);
 
-        $images_path = Factory::getApplication('shop')->getAssetsUrl() . '/images/product_attributes/thumb/';
-
+      
         /* load the ui and the dialog plugin */
         Factory::getMainframe()->addScript('jquery-ui-dialog');
         Factory::getMainframe()->addStyle('jquery-ui-dialog', Factory::getApplication('shop')->getAssetsUrl() . "/jquery.ui.css");
@@ -56,7 +55,7 @@ class shopViewAttributes extends view {
         /* attributes */
         Factory::getMainframe()->addscript('attributesjs', Factory::getApplication('shop')->getAssetsUrl() . "/js/attribs.js", array("jquery-ui-sortable"), false, true);
 
-        $this->assign('images_path', $images_path);
+       
 
         parent::display('edit_set');
     }

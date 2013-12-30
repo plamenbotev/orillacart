@@ -106,7 +106,13 @@ final class orillacart_actions {
        
 
         if (Framework::is_admin()) {
-
+			
+			if(is_multisite()){
+				//install shop tables on mu site creation
+				add_action("wpmu_new_blog",array($this,"create_tables_in_wp_mu"));
+				//uninstall tables on mu site delete
+				add_action( 'delete_blog', array($this,"uninstall_shop_tables_on_mu_site_delete"));
+			}
             //add type=downloadable_product to digital files upload form action url
             add_filter('media_upload_form_url', array($this, 'change_upload_form_type'), 10, 2);
             //add abbility to search the order by all meta values
@@ -154,6 +160,48 @@ final class orillacart_actions {
 
         return $data;
     }
+	
+	public function uninstall_shop_tables_on_mu_site_delete($blog_id, $drop){
+
+			if(!$drop) return;
+			
+			global $wpdb;
+			
+			require_once(dirname(__FILE__) . "/installer.php");
+			
+			$installer = new shop_installer();
+				
+			 $tables = $installer->tables();
+			 $tables = array_reverse($tables, true);
+			
+			foreach ($tables as $table => $def) {
+				$wpdb->query("DROP TABLE IF EXISTS " . $wpdb->prefix . $table);
+			}
+		
+			
+			
+		}
+	
+	
+	
+	public function create_tables_in_wp_mu($id){
+		
+		switch_to_blog($id);
+		$params = Factory::getParams("shop");
+	
+				
+		if(!$params->get("is_installed",false)){
+		
+			require_once(dirname(__FILE__) . "/installer.php");
+			$installer = new shop_installer();
+			
+			$installer->activate();
+			
+		}
+	
+		restore_current_blog();
+	
+	}
 
     public function update_database() {
 
