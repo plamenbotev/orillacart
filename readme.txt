@@ -85,6 +85,10 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.9 - 01.01.2014 =
+
+1. Settings not updated after save, fixed
+
 = 1.0.8 - 30.12.2013 =
 
 1. Multi site compatible 

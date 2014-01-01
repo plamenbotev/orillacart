@@ -85,7 +85,8 @@ abstract class parameters {
             $this->props = $this->filter($this->props);
         $this->props = apply_filters('before_parameters_save_' . $this->component, $this->props);
         update_option($this->component . "_parameters", $this->props);
-
+		//replace the wp object cache
+		wp_cache_replace( "params", $this, "com_".$this->component);
         return true;
     }
 
