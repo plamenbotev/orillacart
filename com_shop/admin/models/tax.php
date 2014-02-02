@@ -20,15 +20,13 @@ class taxModel extends model {
 
     public function getRatesList() {
 
-        $start = request::getInt('limitstart', 0);
-        $offset = request::getInt('limit', 10);
-
-        $this->db->setQuery("SELECT SQL_CALC_FOUND_ROWS a.*,b.country_name,c.state_name FROM `#_shop_tax_rate` AS a 
+       
+        $this->db->setQuery("SELECT a.*,b.country_name,c.state_name FROM `#_shop_tax_rate` AS a 
    
 	LEFT JOIN `#_shop_country` AS b ON a.tax_country = b.country_2_code
 	LEFT JOIN `#_shop_state` AS c ON a.tax_state = c.state_2_code AND a.tax_country = c.country_id
    
-        WHERE a.tax_group_id = " . request::getInt('tax_group_id') . " ORDER BY b.country_name ASC,c.state_name ASC  LIMIT {$start},{$offset}");
+        WHERE a.tax_group_id = " . request::getInt('tax_group_id') . " ORDER BY b.country_name ASC,c.state_name ASC ");
 
         if (!$this->db->getResource()) {
 
@@ -64,11 +62,7 @@ class taxModel extends model {
 
     public function getRateList() {
 
-        $start = request::getInt('limitstart', 0);
-        $offset = request::getInt('limit', 10);
-        $keyword = $this->db->secure(request::getWord('keyword', ''));
-        $country_id = request::getString('country_id', 0);
-
+        
 
         $where = array();
         $where[] = '1';
@@ -88,7 +82,7 @@ class taxModel extends model {
             $where[] = " AND ( state_name LIKE '{$keyword}%' OR state_3_code LIKE '{$keyword}%' OR state_2_code LIKE '{$keyword}%') ";
         }
 
-        $this->db->setQuery("SELECT SQL_CALC_FOUND_ROWS * FROM `#_shop_state` WHERE " . implode(' ', $where) . " ORDER BY state_name ASC LIMIT {$start},{$offset}");
+        $this->db->setQuery("SELECT * FROM `#_shop_state` WHERE " . implode(' ', $where) . " ORDER BY state_name ASC");
 
         if (!$this->db->getResource()) {
 

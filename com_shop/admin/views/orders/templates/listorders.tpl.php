@@ -1,7 +1,6 @@
 <?php
 defined('_VALID_EXEC') or die('access denied');
 
-
 switch ($this->col) {
 
     case "id":
@@ -38,7 +37,7 @@ switch ($this->col) {
 
     case "total_amount":
 
-        echo Factory::getApplication('shop')->getHelper('price')->format($this->order->order_total, $this->order->currency_sign);
+        echo Factory::getApplication('shop')->getHelper('price')->format($this->order['order_total'], $this->order['currency_sign']);
 
         break;
 

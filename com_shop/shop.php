@@ -100,6 +100,60 @@ class shop extends component {
         do_action("after_constructor_shop");
     }
 
+    public function generate_canonical_tag() {
+
+        $canonical = "";
+
+        switch (request::getCmd("con")) {
+
+            case "product_list":
+
+                if (request::getInt("cid", 0) == 0 && request::getCmd("task", null) == null) {
+
+                    $canonical = get_post_type_archive_link('product');
+                } else {
+
+                    if (request::getCmd("product_brand", null)) {
+                        $canonical = get_term_link(request::getWord("product_brand"), "product_brand");
+                    } else if (request::getCmd("product_tags", null)) {
+                        $canonical = get_term_link(request::getWord("product_tags"), "product_tags");
+                    } else if (request::getCmd("product_type", null)) {
+                        $canonical = get_term_link(request::getWord("product_type"), "product_type");
+                    } else {
+
+                        $canonical = get_term_link((int) request::getInt("cid"), "product_cat");
+                    }
+                }
+                if ($canonical && request::getInt('paged') > 1) {
+                    global $wp_rewrite;
+                    if (!$wp_rewrite->using_permalinks()) {
+                        $canonical = add_query_arg('paged', request::getInt('paged'), $canonical);
+                    } else {
+                        if (is_front_page()) {
+                            $base = $GLOBALS['wp_rewrite']->using_index_permalinks() ? 'index.php/' : '/';
+                            $canonical = home_url($base);
+                        }
+                        $canonical = user_trailingslashit(trailingslashit($canonical) . trailingslashit($wp_rewrite->pagination_base) . request::getInt('paged'));
+                    }
+                }
+
+                break;
+
+            case "product":
+
+                $canonical = get_permalink((int) $GLOBALS['wp_the_query']->get_queried_object_id());
+
+                break;
+        }
+
+        $canonical = apply_filters('com_shop_canonical', $canonical);
+
+        if ($canonical && !is_wp_error($canonical)) {
+
+            echo '<link rel="canonical" href="' . esc_url($canonical, null, 'other') . '" />' . "\n";
+        }
+    }
+
     /*
      * Execute current request and prepare the output of the component
      *
@@ -109,6 +163,9 @@ class shop extends component {
 
         session_start();
 
+
+        //add proper canonical tag      
+        add_action("wp_head", array($this, "generate_canonical_tag"));
 
         $mainframe = Factory::getMainframe();
 

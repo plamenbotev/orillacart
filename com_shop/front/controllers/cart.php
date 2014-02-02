@@ -311,6 +311,9 @@ class shopControllerCart extends controller {
             $this->getView('cart');
             $this->view->assign('payment_methods', (array) $cart->get_payment_methods());
             $this->view->assign('cart', $cart);
+            $this->view->assign("taxes", $cart->get_cart_taxes());
+
+
             $this->view->assign('ship_to_billing', $customer->ship_to_billing());
             $this->view->assign('order_comments', $order_comments);
             $this->view->assign('shipping_methods', (array) $cart->get_shipping_rates());
@@ -649,6 +652,7 @@ class shopControllerCart extends controller {
         $this->view->assign('price', $price);
         $this->view->assign('items', $model->get_order_items($order['ID']));
         $this->view->assign('order', $order);
+        $this->view->assign("taxes",$helper->get_order_taxes($order['ID']));
         parent::display('order_receipt');
     }
 

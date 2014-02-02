@@ -65,9 +65,12 @@ class shopViewProduct_list extends view {
                 $title[] = $o->name;
             }
             Factory::getMainframe()->setPageTitle(implode(' - ', $title));
-        } else if (in_array($obj->taxonomy, array('product_tags', 'product_brands', 'product_type'))) {
-
+        } else if (in_array($obj->taxonomy, array('product_tags', 'product_brand', 'product_type'))) {
             Factory::getMainframe()->setPageTitle($obj->name);
+        } else {
+            $page = get_post(Factory::getApplication("shop")->getPArams()->get("page_id"));
+
+            Factory::getMainframe()->setPageTitle(esc_html(stripslashes($page->post_title)));
         }
 
         parent::display($tpl);

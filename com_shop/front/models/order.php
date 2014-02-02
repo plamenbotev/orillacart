@@ -2,8 +2,7 @@
 
 class orderModel extends model {
 
-    protected $order_stats = array('pending', 'failed', 'onhold', 'processing', 'completed', 'refunded', 'cancelled', 'shipped');
-
+   
     public function validate_card(card_method $gateway) {
 
         $card_holder = request::getString('card_holder_name', null);
@@ -185,7 +184,7 @@ class orderModel extends model {
         }
         $order->order_total = round($cart->get_grand_total_price(), 2);
         $order->order_subtotal = round($cart->get_total_price(), 2);
-        $order->order_tax = round($cart->get_order_vat(),2);
+        $order->order_tax = round($cart->get_order_vat(), 2);
         $order->order_shipping = round($cart->selected_shipping_rate() - $cart->selected_shipping_vat(), 2);
         $order->order_shipping_tax = round($cart->selected_shipping_vat(), 2);
         $order->order_status = 'onhold';
@@ -364,6 +363,31 @@ class orderModel extends model {
                             return false;
                         }
                     }
+            }
+
+
+            //store all taxes
+            $taxes = $cart->get_cart_taxes();
+            foreach ((array) $taxes as $id => $tax) {
+                if ($tax->get("value", 0) == 0)
+                    continue;
+                $order_item_attribute->reset();
+
+                $order_item_attribute->order_item_id = $order_item->pk();
+                $order_item_attribute->order_id = $order->pk();
+                $order_item_attribute->section_id = $id;
+                $order_item_attribute->section = 'tax';
+                $order_item_attribute->parent_section_id = 0;
+                $order_item_attribute->section_name = $tax->get("name", "Tax");
+                $order_item_attribute->section_price = $tax->get("value", 0);
+                $order_item_attribute->section_oprand = "+";
+                $order_item_attribute->store();
+
+                if (!$order_item_attribute->pk()) {
+                    wp_delete_post($order->pk(), true);
+                    $this->db->rollback();
+                    return false;
+                }
             }
         } catch (Exception $e) {
             wp_delete_post($order->pk(), true);

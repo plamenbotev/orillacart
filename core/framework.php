@@ -262,16 +262,18 @@ final class Framework {
                 }
             }
 
-
-
+      
+            
+            
             $GLOBALS['query_string'] = "page_id=" . $page->ID;
-            $GLOBALS['wp_the_query'] = $query;
+            $GLOBALS['wp_the_query'] = clone $GLOBALS['wp_query'];
             $GLOBALS['wp_query'] = $query;
             $GLOBALS['post'] = $page;
-
+                
 
             add_filter("the_content", array($this, 'attachTheContent'));
             remove_action('wp_head', 'noindex', 1);
+            remove_action( "wp_head",'rel_canonical' );
 
 
 

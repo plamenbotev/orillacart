@@ -14,14 +14,14 @@ final class route {
         unset($vars['component']);
 
         if (empty($com)) {
-		
+
             return ( stripos('?', $url) === false ? '?' . $url : $url );
         }
 
         $con = isset($vars['con']) ? $vars['con'] : null;
-  
+
         $wp_pages[$com] = (array) component::get_wp_pages($com);
-      
+
 
         $page = get_page_by_path($wp_pages[$com][0]);
 
@@ -37,9 +37,17 @@ final class route {
 
             if (get_option('show_on_front') == 'page' && $pid == get_option('page_on_front')) {
 
+
+                if (empty($vars)) {
+                    return get_permalink($pid);
+                }
+
                 $vars = (array) array_merge(array('page_id' => $pid), (array) $vars);
 
                 return get_permalink($pid) . '?' . http_build_query($vars);
+            }
+            if (empty($vars)) {
+                return get_permalink($pid);
             }
 
             return get_permalink($pid) . "&" . http_build_query($vars);
@@ -65,4 +73,5 @@ final class route {
         }
         return get_permalink($pid) . ( stripos('?', $url) === false ? '?' . $url : $url );
     }
+
 }

@@ -2,8 +2,6 @@
 
 class mailer {
 
-   
-
     public static function getInstance() {
         static $inst = null;
 
@@ -19,8 +17,8 @@ class mailer {
 
     /** constructor */
     protected function __construct() {
-        
-         /**
+
+        /**
          * Email Header + Footer
          * */
         add_action('orillacart_email_header', array($this, 'email_header'));
@@ -82,8 +80,9 @@ class mailer {
         }
         $helper = Helper::getInstance('order', 'shop');
         $order = $helper->get_order($order_id);
-        $view = View::getInstance('mail', 'shop');
 
+        $view = View::getInstance('mail', 'shop');
+        $view->assign("taxes", $helper->get_order_taxes($order_id));
         $view->assign('order', $order);
 
         $blogname = wp_specialchars_decode(get_option('blogname'), ENT_QUOTES);
@@ -127,7 +126,7 @@ class mailer {
 
         $params = Factory::getApplication('shop')->getParams();
 
-        $notify_admin_mail= $params->get('notify_admin_mail');
+        $notify_admin_mail = $params->get('notify_admin_mail');
 
         //if the order is completed notify the admiistrator
         if ($new == 'completed' && $params->get('notify_admin_on_new_order') && !empty($notify_admin_mail)) {
@@ -151,6 +150,7 @@ class mailer {
             $view->assign('order', $order);
             $view->assign('old_status', $old);
             $view->assign('status', $new);
+            $view->assign("taxes", $helper->get_order_taxes($order_id));
 
             ob_start();
 
@@ -170,7 +170,7 @@ class mailer {
             // Send the mail
             return $this->send($notify_admin_mail, $subject, $message, $headers, $attachments);
         }
-        
+
         return true;
     }
 
@@ -223,6 +223,7 @@ class mailer {
         $view->assign('order', $order);
         $view->assign('old_status', $old);
         $view->assign('status', $new);
+        $view->assign("taxes", $helper->get_order_taxes($order_id));
 
 
 

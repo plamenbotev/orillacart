@@ -144,7 +144,7 @@ class shop_installer extends app_object {
 						`order_item_id` bigint(20) unsigned NOT NULL,
 						`order_id` bigint(20) unsigned NOT NULL,
 						`section_id` int(11) NOT NULL,
-						`section` enum('property','file') NOT NULL,
+						`section` enum('property','file','tax') NOT NULL,
 						`parent_section_id` int(11) DEFAULT NULL,
 						`section_name` varchar(250) DEFAULT NULL,
 						`section_price` decimal(15,4) DEFAULT NULL,
@@ -248,13 +248,16 @@ class shop_installer extends app_object {
 						`tax_rate_id` int(11) NOT NULL AUTO_INCREMENT,
 						`tax_state` char(2) DEFAULT NULL,
 						`tax_country` char(2) DEFAULT NULL,
+						`tax_name` varchar(64) DEFAULT NULL,
 						`tax_rate` decimal(10,4) DEFAULT NULL,
 						`tax_group_id` bigint(20) unsigned NOT NULL,
+						`priority` bigint(20) unsigned NOT NULL,
 						PRIMARY KEY (`tax_rate_id`),
-						UNIQUE KEY `tax_state` (`tax_state`,`tax_country`,`tax_group_id`),
+						
 						KEY `tax_state_2` (`tax_state`),
 						KEY `tax_country` (`tax_country`),
 						KEY `tax_group_id` (`tax_group_id`),
+						KEY `priority` (`priority`),
 						FOREIGN KEY (`tax_group_id`) REFERENCES `#_shop_tax_group` (`tax_group_id`) ON DELETE CASCADE ON UPDATE CASCADE,
 						FOREIGN KEY (`tax_country`) REFERENCES `#_shop_country` (`country_2_code`) ON DELETE CASCADE ON UPDATE CASCADE
 					) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Tax Rates' AUTO_INCREMENT=0",
@@ -470,6 +473,43 @@ class shop_installer extends app_object {
                     exit;
                 }
 			}
+			
+			
+			
+			//remove tax_state index to allow compound taxes and add tax name column
+			if(version_compare($params->get('db_version'), '1.1.4', '<')){
+				$db->setQuery("DROP INDEX tax_state ON `#_shop_tax_rate` ");
+				 if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD `tax_name` varchar(64) DEFAULT NULL");
+				if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD `priority` BIGINT(20) UNSIGNED NOT NULL DEFAULT 1");
+				if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD INDEX (`priority`)");
+				if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }			
+				
+				$db->setQuery("ALTER TABLE `#_shop_order_attribute_item` CHANGE `section` `section` ENUM( 'property', 'file', 'tax' ) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL");
+				 if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+			
+			}
+			
 			
 			
             //update the parameters after we alter the database

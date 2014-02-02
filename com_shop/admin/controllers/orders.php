@@ -17,47 +17,37 @@ class shopControllerOrders extends controller {
         global $post;
         remove_meta_box('submitdiv', 'shop_order', 'side');
         remove_meta_box('slugdiv', 'shop_order', 'normal');
-        
+
 
         $this->getView('orders');
 
-
-
-
-
-
-
         add_meta_box('orillacart-order-actions', __('Order Actions', 'com_shop'), array($this->view, 'order_actions_box'), 'shop_order', 'side', 'high');
-
 
 
         $id = $post->ID;
 
         $model = $this->getModel('orders');
-
+        $order_helper = helper::getInstance("order", "shop");
+        
         $product = $this->getModel('product_admin');
-
-
 
         $order = $model->load_order($id);
 
-
         $this->view->assign('user', get_userdata($order['order']->customer_id));
-
 
         $statuses = get_terms('order_status', array('hide_empty' => false));
 
-
-
         $country = $this->getModel('country');
-
 
         $this->view->assign('statuses', $statuses);
 
         $this->view->setModel($product);
+        
         $this->view->setModel($model);
 
         $price = Factory::getApplication('shop')->getHelper('price');
+       
+        $this->view->assign("taxes",$order_helper->get_order_taxes($id));
         $this->view->assign('price', $price);
         $this->view->assign('order', $order['order']);
 

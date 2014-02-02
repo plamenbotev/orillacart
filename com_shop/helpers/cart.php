@@ -9,6 +9,7 @@ final class cart {
     protected $total_price = 0;
     protected $order_vat = 0;
     protected $shipping_vat = 0;
+    
 
     public function getInstance() {
 
@@ -518,6 +519,53 @@ final class cart {
         return (int) $count;
     }
 
+    public function get_cart_taxes() {
+
+
+        static $cache = array();
+
+        if (count($cache)) {
+            return $cache;
+        }
+
+        foreach ((array) $_SESSION['cart'] as $o) {
+
+            $product = Factory::getApplication('shop')->getTable('product')->load($o->id);
+
+            $rates = array();
+
+
+            if (( Factory::getApplication('shop')->getParams()->get('vat') && $product->vat == 'global' ) || $product->vat == 'yes') {
+
+                if ($product->tax_group_id) {
+
+                    $rates = Factory::getApplication('shop')->getHelper('tax')->get_matched_rates(null, null, $product->tax_group_id);
+                } else {
+                    $rates = Factory::getApplication('shop')->getHelper('tax')->get_matched_rates();
+                }
+
+                if (count($rates)) {
+
+                    $price = Factory::getApplication('shop')->getHelper('product_helper')->get_price($o->id, $o->props, $o->files)->raw;
+                    $price = $price * $o->qty;
+
+
+                    foreach ((array) $rates as $id => $rate) {
+
+                        if (array_key_exists($id, $cache)) {
+                            $cache[$id]->value += $price * $rate->rate;
+                        } else {
+                            $cache[$id] = clone $rate;
+                            $cache[$id]->set("value",$price * $rate->rate);
+                        }
+                    }
+                }
+            }
+        }
+
+        return $cache;
+    }
+
     public function get_item() {
 
         $o = current($_SESSION['cart']);
@@ -549,6 +597,9 @@ final class cart {
         if (( Factory::getApplication('shop')->getParams()->get('vat') && $product->vat == 'global' ) || $product->vat == 'yes') {
 
             if ($product->tax_group_id) {
+
+
+
 
                 $row->price += $row->price * Factory::getApplication('shop')->getHelper('tax')->get_tax_rate(null, null, $product->tax_group_id);
             } else {
@@ -652,9 +703,9 @@ final class cart {
 
         $wherestate = '';
 
-       
-            $country = $customer->get('billing_country','');
-        
+
+        $country = $customer->get('billing_country', '');
+
 
         $wherecountry = '(FIND_IN_SET( "' . $country . '", countries ) OR countries="0" OR countries="" OR countries IS NULL )';
 

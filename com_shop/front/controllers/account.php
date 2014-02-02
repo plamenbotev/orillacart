@@ -205,6 +205,7 @@ class shopControllerAccount extends controller {
         $this->view->assign('price', $price);
         $this->view->assign("files", $model->get_order_files((int) $order['ID']));
         $this->view->assign('items', $model->get_order_items($order['ID']));
+        $this->view->assign("taxes",$helper->get_order_taxes($order['ID']));
         $this->view->assign('order', $order);
         parent::display('view_order');
     }

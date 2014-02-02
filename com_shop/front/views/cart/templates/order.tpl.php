@@ -12,8 +12,22 @@
                 <td class="a-right" colspan="3"><?php _e('Subtotal:', 'com_shop'); ?></td>
                 <td><?php echo $this->cart->get_formatted_price(); ?><small>'<?php _e('(ex. tax)', 'com_shop'); ?></small></td>
             </tr>
+
+
+            <?php if (!empty($this->taxes)) { ?>
+
+                <?php foreach ((array) $this->taxes as $tax) { ?>
+
+                    <tr>
+                        <td class="a-right" colspan="3"><?php _e($tax->get("name", "Tax"), "com_shop"); ?>:</td>
+                        <td><?php echo Factory::getApplication('shop')->getHelper('price')->format($tax->get("value", 0)); ?></td>
+                    </tr>    
+
+                <?php } ?>
+            <?php } ?>
+
             <tr>
-                <td class="a-right" colspan="3"><?php _e("VAT:","com_shop"); ?></td>
+                <td class="a-right" colspan="3"><?php _e("Total Tax:", "com_shop"); ?></td>
                 <td><?php echo Factory::getApplication('shop')->getHelper('price')->format($this->cart->get_order_vat()); ?></td>
             </tr>
             <?php if ($this->cart->need_shipping()) { ?>
@@ -55,7 +69,7 @@
                         <?php foreach ((array) $p->props as $prop) { ?>
                             <dl class="item-options">
                                 <dt><?php echo $prop->name; ?><span class="price"><?php echo $prop->price; ?></span></dt>
-                             
+
                             </dl>
                         <?php } ?>
                     </td>

@@ -3,7 +3,7 @@ Contributors: orillacart
 Tags: ecommerce plugin, ecommerce, e-commerce, attributes, variations, commerce, wordpress ecommerce, product, store, sales, sell, shop, shopping, cart, checkout, downloadable, digital, inventory, shipping, tax
 Donate link:
 Requires at least: 3.5
-Tested up to: 3.8
+Tested up to: 3.8.1
 Stable tag: trunk
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -84,6 +84,12 @@ That page is the front end of your store, you can change the page later from the
 Always backup before upgrade!
 
 == Changelog ==
+
+= 1.0.10 - 03.02.2014 =
+
+1. Added proper canonical links generation
+2. Fixed various small bugs
+3. Ability for multiple taxes with custom titles
 
 = 1.0.9 - 01.01.2014 =
 

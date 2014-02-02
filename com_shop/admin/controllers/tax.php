@@ -35,15 +35,9 @@ class shopControllerTax extends controller {
         $this->view->assign('tax_group_id', $tax_group_id);
         $res = $model->getRatesList();
 
-
-        $total = $res->found_rows();
-
         $this->view->assign('res', $res);
 
-        $pagination = new paginator($total, request::getVar('limitstart', 0, 'METHOD', 'int'), request::getVar('limit', 10, 'METHOD', 'int'));
-        $pagination->url = "javascript:void(0);";
-        $pagination->onclick = "document.adminForm.task.value='rates_list'; document.adminForm.limitstart.value=%s;document.adminForm.submit();return false";
-        $this->view->assign('pagination', $pagination);
+     
 
         parent::display('rates_list');
     }
@@ -152,7 +146,10 @@ class shopControllerTax extends controller {
 
 
         try {
-            $row = Factory::getApplication('shop')->getTable('tax_rate')->load(Request::getINT('tax_rate_id', null))->bind(Request::get('POST'))->store();
+            $row = Factory::getApplication('shop')->getTable('tax_rate')->load(Request::getINT('tax_rate_id', null))->bind(Request::get('POST'));
+			$row->tax_state = Request::getWord("shop_state","");
+			
+			$row->store();
             Factory::getApplication('shop')->setMessage(__("Saved", 'com_shop'));
         } catch (Exception $e) {
             Factory::getApplication('shop')->setMessage($e->getMessage());

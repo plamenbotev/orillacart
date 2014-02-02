@@ -77,7 +77,7 @@
                     <table width="100%" border="0" cellspacing="2" cellpadding="2">
                         <tr>
                             <td width="25%">
-                                <textarea cols="50" rows="5" name="excerpt"><?php echo $this->order->order_comments; ?> </textarea></td>
+                                <textarea cols="10" rows="5" name="excerpt"><?php echo $this->order->order_comments; ?> </textarea></td>
 
                             <td></td>
                         </tr>
@@ -86,19 +86,16 @@
             </tr>
         </tbody>
     </table>
-    <table class="wp-list-table widefat">
-        <tbody>
-            <tr style="background-color: #cccccc">
-                <th><?php _e('Billing Address Information', 'com_shop'); ?></th>
-                <th><?php _e('Shipping Address Information', 'com_shop'); ?></th>
-            </tr>
-            <tr valign="top">
-                <td>
-                    <table class="wp-list-table widefat">
-                        <?php while ($f = $this->billing->get_field()) { ?>
-                            <tr>
-                                <td><label for="<?php echo $f->get_name(); ?>"><?php _e($f->get_label(), 'com_shop'); ?></label></td>
-                                <td>
+   
+		<div style="float:left; width:50%;">	
+            <div style="background-color: #cccccc; padding:3px;">
+                <?php _e('Billing Address Information', 'com_shop'); ?>
+			</div>
+			<div>
+			    <?php while ($f = $this->billing->get_field()) { ?>
+                            <div>
+                                <label style="width:30%; display:inline-block;" for="<?php echo $f->get_name(); ?>"><?php _e($f->get_label(), 'com_shop'); ?>:</label>
+                                
                                     <?php if ($f instanceof state && $f->get_name() == "billing_state") { ?>
                                         <span id="billing_states_container">
                                             <?php echo $f->render(); ?>
@@ -108,17 +105,21 @@
                                         ?>
                                         <?php echo $f->render(); ?>
                                     <?php } ?>
-                                </td>
-                            </tr>
+                                
+                            </div>
                         <?php } ?>
-                    </table>
-                </td>
-                <td>
-                    <table class="wp-list-table widefat" border="0">
-                        <?php while ($f = $this->shipping->get_field()) { ?>
-                            <tr>
-                                <td><label for="<?php echo $f->get_name(); ?>"><?php _e($f->get_label(), 'com_shop'); ?></label></td>
-                                <td>
+			</div>
+		</div>	
+		
+		<div style="width:50%; float:left;">	
+            <div style="background-color: #cccccc; padding:3px;">
+                <?php _e('Shipping Address Information', 'com_shop'); ?>
+			</div>
+			<div>
+			 <?php while ($f = $this->shipping->get_field()) { ?>
+                            <div style="">
+                                <label style="width:30%; display:inline-block;" for="<?php echo $f->get_name(); ?>"><?php _e($f->get_label(), 'com_shop'); ?>:</label>
+                               
                                     <?php if ($f instanceof state && $f->get_name() == "shipping_state") { ?>
                                         <span id="shipping_states_container">
                                             <?php echo $f->render(); ?>
@@ -126,10 +127,10 @@
                                     <?php } else { ?>
                                         <?php echo $f->render(); ?>
                                     <?php } ?>
-                                </td>
-                            </tr>
+                                
+                            </div>
                         <?php } ?>
-                    </table>
-        </tbody>
-    </table>
+			</div>
+		</div>
+	<div style="clear:both;"></div>
 </div>

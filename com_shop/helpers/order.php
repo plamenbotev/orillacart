@@ -2,8 +2,6 @@
 
 class order {
 
-    protected $order_stats = array('pending', 'failed', 'on-hold', 'processing', 'completed', 'refunded', 'cancelled', 'shipped');
-
     public function change_order_status($id, $status = 'pending') {
 
         if (!term_exists($status, 'order_status'))
@@ -94,8 +92,7 @@ class order {
             case "property":
                 $table = '#_shop_property_stockroom_xref';
                 $o_name = 'property_id';
-           break;
-   
+                break;
         }
 
 
@@ -135,8 +132,8 @@ class order {
 
         foreach ((array) $used as $k => $v) {
 
-            $db->setQuery("UPDATE ".$table." SET stock = stock - " . (int) $v . "
-                                   WHERE ".$o_name." = " . $oid . " AND stockroom_id = " . (int) $k . " LIMIT 1");
+            $db->setQuery("UPDATE " . $table . " SET stock = stock - " . (int) $v . "
+                                   WHERE " . $o_name . " = " . $oid . " AND stockroom_id = " . (int) $k . " LIMIT 1");
 
             if (!$db->getResource()) {
                 throw new Exception($db->getErrorString());
@@ -462,6 +459,19 @@ class order {
         // End
 
         return $unit;
+    }
+
+    public function get_order_taxes($id) {
+
+        if (!is_numeric($id)) {
+            return array();
+        }
+
+        $db = Factory::getDBO();
+
+        $db->setQuery("SELECT section_name as name,section_price as value FROM #_shop_order_attribute_item where section='tax' and order_id = " . (int) $id);
+
+        return $db->loadObjectList();
     }
 
 }

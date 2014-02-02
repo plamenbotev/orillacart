@@ -773,6 +773,7 @@ final class orillacart_actions {
                 request::setVar('con', 'product_list');
             } else if ($q->is_single() && $q->get('post_type') == 'product') {
 
+               
 
                 request::setVar('component', 'shop');
                 request::setVar('con', 'product');
@@ -1236,4 +1237,26 @@ function com_shop_admin_product_quick_edit($column_name, $post_type) {
         </div>
     </fieldset>
     <?php
+}
+
+add_filter("post_type_archive_link","shop_post_type_archive_link",10,2);
+
+function shop_post_type_archive_link($link,$cpt){
+    
+    if($cpt == 'product'){
+        $link = route::get("component=shop");
+    }
+    
+    return $link;
+}
+
+add_filter("pre_get_shortlink","shop_remove_short_link",12,4);
+
+function shop_remove_short_link($res = false, $id = 0, $context = 'post', $allow_slugs = true){
+    
+    global $wp_query;
+  
+   if(request::getCmd('component',null) == "shop") return "";
+    
+    return $res;
 }
