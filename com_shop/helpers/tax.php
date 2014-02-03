@@ -111,7 +111,7 @@ class tax {
                 case '0':
 
                     $country = $this->country;
-                    $state = !empty($this->state) ? " = '" . $db->secure($this->state) . "'" : " IS NULL ";
+                    $state = !empty($this->state) ? " = '" . $db->secure($this->state) . "'" : " IS NULL OR tax_state =''";
 
                     if (!empty($country)) {
 
@@ -138,6 +138,8 @@ class tax {
                     if (!$this->country || $validate->is_in_eu($this->country)) {
 
                         $country = $params->get('shop_country');
+						 $state = $params->get('shop_state') ? " = '" . $db->secure($params->get('shop_state')) . "'" : " IS NULL OR tax_state = ''";
+
                         if (!empty($country)) {
 
                             $db->setQuery("SELECT * FROM `#_shop_tax_rate` WHERE tax_country = '" . $db->secure($country) . "' AND ( tax_state {$state} || tax_state IS NULL ) AND tax_group_id = {$this->gid} ORDER BY priority ASC,tax_rate_id ASC ");
@@ -160,7 +162,7 @@ class tax {
                 case "3":
 
                     $country = $this->country;
-                    $state = !empty($this->state) ? " = '" . $db->secure($this->state) . "'" : " IS NULL ";
+                    $state = !empty($this->state) ? " = '" . $db->secure($this->state) . "'" : " IS NULL OR tax_state =''";
 
 
                     $db = Factory::getDBO();
@@ -186,7 +188,7 @@ class tax {
                 default:
 
                     $country = $params->get('shop_country');
-                    $state = $params->get('shop_state') ? " = '" . $db->secure($params->get('shop_state')) . "'" : " IS NULL ";
+                    $state = $params->get('shop_state') ? " = '" . $db->secure($params->get('shop_state')) . "'" : " IS NULL OR tax_state =''";
 
                     $db = Factory::getDBO();
 
@@ -228,7 +230,7 @@ class tax {
                 case '0':
 
                     $country = $this->country;
-                    $state = !empty($this->state) ? " = '" . $db->secure($this->state) . "'" : " IS NULL ";
+                    $state = !empty($this->state) ? " = '" . $db->secure($this->state) . "'" : " IS NULL OR tax_state = ''";
 
                     if (!empty($country)) {
 
@@ -256,7 +258,7 @@ class tax {
 
                         $country = $params->get('shop_country');
                         if (!empty($country)) {
-                            $state = $params->get('shop_state') ? " = '" . $db->secure($params->get('shop_state')) . "'" : " IS NULL ";
+                            $state = $params->get('shop_state') ? " = '" . $db->secure($params->get('shop_state')) . "'" : " IS NULL OR tax_state = ''";
 
                             $db = Factory::getDBO();
 
@@ -281,7 +283,7 @@ class tax {
                 case "3":
 
                     $country = $this->country;
-                    $state = !empty($this->state) ? " = '" . $db->secure($this->state) . "'" : " IS NULL ";
+                    $state = !empty($this->state) ? " = '" . $db->secure($this->state) . "'" : " IS NULL OR tax_state = ''";
 
 
                     $db = Factory::getDBO();
@@ -308,7 +310,7 @@ class tax {
                 default:
 
                     $country = $params->get('shop_country');
-                    $state = $params->get('shop_state') ? " = '" . $db->secure($params->get('shop_state')) . "'" : " IS NULL ";
+                    $state = $params->get('shop_state') ? " = '" . $db->secure($params->get('shop_state')) . "'" : " IS NULL OR tax_state = ''";
 
                     $db = Factory::getDBO();
 
