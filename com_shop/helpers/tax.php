@@ -54,6 +54,13 @@ class tax {
         } else {
             $this->gid = (int) $gid;
         }
+		
+		
+		$validate = Helper::getInstance('validation', 'shop');
+        if(!$validate->country_has_states($this->country) || !$validate->state_in_country($this->state,$this->country)){
+			$this->state = null;
+		}
+		
         return $this->calc_tax_rate();
     }
 
@@ -96,7 +103,10 @@ class tax {
             $this->gid = (int) $gid;
         }
 
-        $validate = Factory::getApplication('shop')->getHelper('validation');
+        $validate = Helper::getInstance('validation', 'shop');
+        if(!$validate->country_has_states($this->country) || !$validate->state_in_country($this->state,$this->country)){
+			$this->state = null;
+		}
 
         $country = $state = null;
         $db = Factory::getDBO();

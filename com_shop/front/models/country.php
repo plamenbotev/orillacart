@@ -72,21 +72,7 @@ class countryModel extends model {
         return $this->db->loadObjectList();
     }
 
-    public function state_in_country($state_id, $country_id) {
-
-        $state_id = $this->sb->secure($state_id);
-        $country_id = $this->db->secure($country_id);
-
-        if (!$state_id || !$country_id)
-            return false;
-
-        $this->setQuery("SELECT count(*) FROM `#_shop_states` where state_2_code = '{$state_id}' AND country_id = '{$country_id}' ");
-
-        if (!$this->db->getResource()) {
-            throw new Exception($this->db->getErrorString());
-        }
-        return (bool) $this->db->loadResult();
-    }
+   
 
     public function getStatesByCountry($c) {
 

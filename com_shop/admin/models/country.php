@@ -15,14 +15,6 @@ class countryModel extends model {
         return (int) $this->db->loadResult();
     }
 
-    public function is_state($id) {
-        if (is_numeric($id)) {
-            $this->db->setQuery("SELECT count(*) FROM #_shop_state WHERE state_id = " . (int) $id);
-        } else {
-            $this->db->setQuery("SELECT count(*) FROM #_shop_state WHERE state_2_code = " . $this->db->secure($id));
-        }
-        return (int) $this->db->loadResult();
-    }
 
     public function getCountryList($all = false) {
 
