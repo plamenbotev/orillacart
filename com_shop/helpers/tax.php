@@ -43,8 +43,8 @@ class tax {
 
                 case '1':
                 default:
-                    $this->country = $customer->get('shipping_country');
-                    $this->state = $customer->get('shipping_state');
+                    $this->country = $params->get('shop_country');
+                    $this->state = $params->get('shop_state');
                     break;
             }
         }
@@ -54,13 +54,13 @@ class tax {
         } else {
             $this->gid = (int) $gid;
         }
-		
-		
-		$validate = Helper::getInstance('validation', 'shop');
-        if(!$validate->country_has_states($this->country) || !$validate->state_in_country($this->state,$this->country)){
-			$this->state = null;
-		}
-		
+
+
+        $validate = Helper::getInstance('validation', 'shop');
+        if (!$validate->country_has_states($this->country) || !$validate->state_in_country($this->state, $this->country)) {
+            $this->state = null;
+        }
+
         return $this->calc_tax_rate();
     }
 
@@ -89,8 +89,9 @@ class tax {
 
                 case '1':
                 default:
-                    $this->country = $customer->get('shipping_country');
-                    $this->state = $customer->get('shipping_state');
+
+                    $this->country = $params->get('shop_country');
+                    $this->state = $params->get('shop_state');
                     break;
             }
         }
@@ -104,9 +105,9 @@ class tax {
         }
 
         $validate = Helper::getInstance('validation', 'shop');
-        if(!$validate->country_has_states($this->country) || !$validate->state_in_country($this->state,$this->country)){
-			$this->state = null;
-		}
+        if (!$validate->country_has_states($this->country) || !$validate->state_in_country($this->state, $this->country)) {
+            $this->state = null;
+        }
 
         $country = $state = null;
         $db = Factory::getDBO();
@@ -148,7 +149,7 @@ class tax {
                     if (!$this->country || $validate->is_in_eu($this->country)) {
 
                         $country = $params->get('shop_country');
-						 $state = $params->get('shop_state') ? " = '" . $db->secure($params->get('shop_state')) . "'" : " IS NULL OR tax_state = ''";
+                        $state = $params->get('shop_state') ? " = '" . $db->secure($params->get('shop_state')) . "'" : " IS NULL OR tax_state = ''";
 
                         if (!empty($country)) {
 
@@ -189,6 +190,8 @@ class tax {
                         }
                         $res[$rate->tax_rate_id]->set("rate", $rate->tax_rate / 100);
                     }
+
+
                     return $res;
 
 
@@ -326,7 +329,7 @@ class tax {
 
                     $db->setQuery("SELECT tax_rate FROM `#_shop_tax_rate` WHERE tax_country = '" . $db->secure($country) . "' AND tax_state {$state} AND tax_group_id = {$this->gid} ");
 
-                     $tax_rates = $db->loadArray();
+                    $tax_rates = $db->loadArray();
 
                     if (count($tax_rates) > 1) {
 

@@ -567,6 +567,7 @@ class ordersModel extends Model {
 
             $order->order_tax -= abs($item->vat * $item->product_quantity);
             $order->order_subtotal -= abs($item->product_item_price * $item->product_quantity);
+
             $order->order_total -= abs(($item->product_item_price + $item->vat) * $item->product_quantity);
 
 
@@ -669,7 +670,7 @@ class ordersModel extends Model {
         }
         unset($ids);
 
-        $this->update_price($order, $items);
+       // $this->update_price($order, $items);
 
 //update shipping and billing fields and add all new
 //added trought the fields api 
@@ -695,7 +696,39 @@ class ordersModel extends Model {
 
 
 
+
         $order->store();
+
+        $order_helper = Helper::getInstance("order", "shop");
+        $taxes = $order_helper->recalc_order_taxes($order->ID);
+
+        //clean replace old taxes with recalculated 
+        $db = Factory::getDBO();
+        $db->setQuery("DELETE FROM #_shop_order_attribute_item WHERE section = 'tax' AND order_id = " . (int) $order->ID);
+
+
+
+        if (!empty($taxes)) {
+            $order_item_attribute = Table::getInstance("order_attribute_item", "shop");
+
+            foreach ((array) $taxes as $id => $tax) {
+                if ($tax->get("value", 0) == 0)
+                    continue;
+                $order_item_attribute->reset();
+
+                $order_item_attribute->order_item_id = NULL;
+                $order_item_attribute->order_id = $order->ID;
+                $order_item_attribute->section_id = $id;
+                $order_item_attribute->section = 'tax';
+                $order_item_attribute->parent_section_id = 0;
+                $order_item_attribute->section_name = $tax->get("name", "Tax");
+                $order_item_attribute->section_price = $tax->get("value", 0);
+                $order_item_attribute->section_oprand = "+";
+                $order_item_attribute->store();
+            }
+        }
+
+
         if (request::getInt('send_invoice', 0) == 1) {
             do_action('orillacart_send_order_invoice', $order->pk());
         }
@@ -807,11 +840,36 @@ class ordersModel extends Model {
 
             $order = table::getInstance("order", 'shop')->load($oid);
 
-            $price = $product_helper->get_price_with_tax($product_row, $properties, null, $order->get("billing_country", null), $order->get("billing_state", null));
+            $country = $state = null;
+            switch (Factory::getApplication('shop')->getParams()->get('vatType')) {
+
+                case '3':
+                    $country = $order->get('billing_country');
+                    $state = $order->get('billing_state');
+                    break;
+
+                case '1':
+                    break;
+                case '0':
+
+                case '2':
+                default:
+
+                    $country = $order->get('shipping_country');
+                    $state = $order->get('shipping_state');
+
+                    break;
+            }
+
+
+
+
+
+            $price = $product_helper->get_price_with_tax($product_row, $properties, null, $country, $state);
 
             $order->order_total += $qty * $price->price;
-            $order->order_subtotal += $qty * $price->price;
-            $order->order_tax += $qty * $price->tax;
+            $order->order_subtotal += $qty * $price->raw_price;
+            $order->order_tax += $qty * ($order->order_subtotal* ($price->tax/100));
 
             $order->currency = Factory::getApplication('shop')->getParams()->get('currency');
             $order->currency_sign = Factory::getApplication('shop')->getParams()->get('currency_sign');
@@ -845,7 +903,7 @@ class ordersModel extends Model {
             $order_item->order_item_name = $product_row->name;
             $order_item->product_quantity = $qty;
             $order_item->product_item_price = round($price->raw_price, 2);
-            $order_item->vat = round($price->tax, 2);
+            $order_item->vat = round( $order_item->product_item_price* ($price->tax/100), 2);
             $order_item->product_length = $product_row->product_length;
             $order_item->product_width = $product_row->product_width;
             $order_item->product_height = $product_row->product_height;
@@ -865,6 +923,7 @@ class ordersModel extends Model {
                 }
 
                 $order->store();
+
                 $order_item->store();
 
 //here we will store the properties if the product is not variation and there are any

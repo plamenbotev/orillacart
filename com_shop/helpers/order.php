@@ -474,4 +474,113 @@ class order {
         return $db->loadObjectList();
     }
 
+    public function recalc_order_taxes($oid, $flush = false) {
+
+        if (!is_numeric($oid) || empty($oid))
+            return array();
+        //prepare the order as reistry object for easier manipulation.
+        $order = new Registry($this->get_order($oid));
+
+
+        $country = $state = null;
+        $params = Factory::getApplication('shop')->getParams();
+        switch ($params->get('vatType')) {
+            case '0':
+            case '2':
+                $country = $order->get('shipping_country');
+                $state = $order->get('shipping_state');
+                break;
+
+            case '3':
+                $country = $order->get('billing_country');
+                $state = $order->get('billing_state');
+                break;
+
+            case '1':
+            default:
+
+                $country = $params->get('shop_country');
+                $state = $params->get('shop_state');
+                break;
+        }
+        if (empty($country))
+            return array();
+        $db = Factory::getDBO();
+
+        $db->setQuery("SELECT product_id as pid ,product_quantity as qty FROM #_shop_order_item WHERE order_id = " . (int) $oid);
+
+        $rows = $db->loadObjectList();
+
+        static $cache = array();
+        if ($flush && !empty($cache))
+            $cache = array();
+
+        if (count($cache[$oid])) {
+            return $cache[$oid];
+        }
+
+        foreach ((array) $rows as $row) {
+
+            $pid = (int) $row->pid;
+            $qty = (int) $row->qty;
+            $product = Factory::getApplication('shop')->getTable('product')->load($pid);
+
+            $props = array();
+            $files = array();
+
+            $db->setQuery("SELECT section_id FROM #_shop_order_attribute_item WHERE section = 'property' AND order_item_id =" . (int) $pid . " AND order_id =" . (int) $oid);
+            $props = (array) array_map("intval", (array) $db->loadArray());
+
+            $db->setQuery("SELECT section_id FROM #_shop_order_attribute_item WHERE section = 'file' AND order_item_id =" . (int) $pid . " AND order_id =" . (int) $oid);
+            $files = (array) array_map("intval", (array) $db->loadArray());
+
+
+
+            $rates = array();
+
+
+            if (( Factory::getApplication('shop')->getParams()->get('vat') && $product->vat == 'global' ) || $product->vat == 'yes') {
+
+
+
+                $validate = Helper::getInstance('validation', 'shop');
+                if (!$validate->country_has_states($country) || !$validate->state_in_country($state, $country)) {
+                    $state = null;
+                }
+
+
+                if ($product->tax_group_id) {
+
+                    $rates = Factory::getApplication('shop')->getHelper('tax')->get_matched_rates($country, $state, $product->tax_group_id);
+                } else {
+
+                    $rates = Factory::getApplication('shop')->getHelper('tax')->get_matched_rates($country, $state);
+                }
+
+                if (count($rates)) {
+
+                    $price = Factory::getApplication('shop')->getHelper('product_helper')->get_price($pid, $props, $files)->raw;
+
+                    $price = $price * $qty;
+
+
+                    foreach ((array) $rates as $id => $rate) {
+
+                        if (isset($cache[$oid]) && array_key_exists($id, $cache[$oid])) {
+                            $cache[$oid][$id]->value += $price * $rate->rate;
+                        } else {
+                            if (!isset($cache[$oid])) {
+                                $cache[$oid] = array();
+                            }
+                            $cache[$oid][$id] = clone $rate;
+                            $cache[$oid][$id]->set("value", $price * $rate->rate);
+                        }
+                    }
+                }
+            }
+        }
+
+        return $cache[$oid];
+    }
+
 }

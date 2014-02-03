@@ -85,6 +85,11 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.13 - 03.02.2014 =
+
+1. Bug fixes in order edit screen
+
+
 = 1.0.10 - 03.02.2014 =
 
 1. Added proper canonical links generation

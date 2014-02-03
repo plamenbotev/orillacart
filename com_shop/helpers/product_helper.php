@@ -62,6 +62,7 @@ class product_helper {
                 $price += $price * $tax_rate;
             } else {
                 $tax_rate = $tax->get_tax_rate($country, $state);
+               
                 $price += $price * $tax_rate;
             }
         }
@@ -79,14 +80,17 @@ class product_helper {
 
 
         if (is_int($o)) {
+            
             $r = Factory::getApplication('shop')->getTable('product')->load($o);
-
+          
             if (!$r->pk()) {
                 throw new Exception(__('no such product', 'com_shop'));
             }
         } else if (is_object($o)) {
+           
             $r = $o;
         } else {
+          
             throw new Exception(__('no such product', 'com_shop'));
         }
 

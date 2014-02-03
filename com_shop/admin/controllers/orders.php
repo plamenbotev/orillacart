@@ -220,7 +220,7 @@ class shopControllerOrders extends controller {
         $id = request::getInt('oid');
 
         $model = $this->getModel('orders');
-
+        $order_helper = Helper::getInstance("order", "shop");
         $product = $this->getModel('product_admin');
 
 
@@ -228,7 +228,7 @@ class shopControllerOrders extends controller {
         $order = $model->load_order($id);
 
 
-
+        $this->view->assign("taxes",$order_helper->get_order_taxes($id));
         $this->view->setModel($product);
         $this->view->setModel($model);
 

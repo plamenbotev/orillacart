@@ -373,7 +373,7 @@ class orderModel extends model {
                     continue;
                 $order_item_attribute->reset();
 
-                $order_item_attribute->order_item_id = $order_item->pk();
+                $order_item_attribute->order_item_id = null;
                 $order_item_attribute->order_id = $order->pk();
                 $order_item_attribute->section_id = $id;
                 $order_item_attribute->section = 'tax';

@@ -141,7 +141,7 @@ class shop_installer extends app_object {
             "shop_order_attribute_item" =>
             "CREATE TABLE IF NOT EXISTS `#_shop_order_attribute_item` (
 						`order_att_item_id` int(11) NOT NULL AUTO_INCREMENT,
-						`order_item_id` bigint(20) unsigned NOT NULL,
+						`order_item_id` bigint(20) unsigned DEFAULT NULL,
 						`order_id` bigint(20) unsigned NOT NULL,
 						`section_id` int(11) NOT NULL,
 						`section` enum('property','file','tax') NOT NULL,
@@ -289,8 +289,8 @@ class shop_installer extends app_object {
         require_once(dirname(__FILE__) . "/action_handlers.php");
         orillacart_actions::init()->register_types();
         $params = Factory::getApplication('shop')->getParams();
-		
-		
+
+
 
         if (!$params->get('is_installed')) {
 
@@ -366,18 +366,16 @@ class shop_installer extends app_object {
                 }
             }
 
-			
-			// Flush Rules
-			flush_rewrite_rules();
-            
+
+            // Flush Rules
+            flush_rewrite_rules();
+
             $params->set('is_installed', true);
             $params->save();
         } else {
 
             $this->update_db();
         }
-		
-		
     }
 
     public function deactivate() {
@@ -463,55 +461,64 @@ class shop_installer extends app_object {
                     exit;
                 }
             }
-			
-			
-			//add multiply by qty for shipping option
-			if(version_compare($params->get('db_version'), '1.1.3', '<')){
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` ADD `qty_multiply` ENUM( 'no', 'yes' ) NOT NULL DEFAULT 'no'");
-				 if (!$db->getResource()) {
+
+
+            //add multiply by qty for shipping option
+            if (version_compare($params->get('db_version'), '1.1.3', '<')) {
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` ADD `qty_multiply` ENUM( 'no', 'yes' ) NOT NULL DEFAULT 'no'");
+                if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-			}
-			
-			
-			
-			//remove tax_state index to allow compound taxes and add tax name column
-			if(version_compare($params->get('db_version'), '1.1.4', '<')){
-				$db->setQuery("DROP INDEX tax_state ON `#_shop_tax_rate` ");
-				 if (!$db->getResource()) {
+            }
+
+
+
+            //remove tax_state index to allow compound taxes and add tax name column
+            if (version_compare($params->get('db_version'), '1.1.4', '<')) {
+                $db->setQuery("DROP INDEX tax_state ON `#_shop_tax_rate` ");
+                if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD `tax_name` varchar(64) DEFAULT NULL");
-				if (!$db->getResource()) {
+
+                $db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD `tax_name` varchar(64) DEFAULT NULL");
+                if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD `priority` BIGINT(20) UNSIGNED NOT NULL DEFAULT 1");
-				if (!$db->getResource()) {
+
+                $db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD `priority` BIGINT(20) UNSIGNED NOT NULL DEFAULT 1");
+                if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD INDEX (`priority`)");
-				if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
-                    exit;
-                }			
-				
-				$db->setQuery("ALTER TABLE `#_shop_order_attribute_item` CHANGE `section` `section` ENUM( 'property', 'file', 'tax' ) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL");
-				 if (!$db->getResource()) {
+
+                $db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD INDEX (`priority`)");
+                if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-			
-			}
-			
-			
-			
+
+                $db->setQuery("ALTER TABLE `#_shop_order_attribute_item` CHANGE `section` `section` ENUM( 'property', 'file', 'tax' ) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+            }
+
+             //allow taxes to be written in the order item attributes table
+            if (version_compare($params->get('db_version'), '1.1.6', '<')) {
+
+                $db->setQuery("ALTER TABLE `#_shop_order_attribute_item` CHANGE COLUMN `order_item_id` `order_item_id` BIGINT(20) UNSIGNED NULL DEFAULT NULL AFTER `order_att_item_id`");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+            }
+
+
+
             //update the parameters after we alter the database
 
             $params->set('db_version', $params->get('db_version', true));
