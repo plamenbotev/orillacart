@@ -161,7 +161,9 @@ class shop extends component {
 
     public function main() {
 
+	if(session_id() == ""){
         session_start();
+	}
 
 
         //add proper canonical tag      

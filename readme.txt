@@ -85,6 +85,12 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.14 - 04.02.2014 =
+
+1. Various bug fixes provided by ognjen.kuljic, thanks for the help!
+2. Add the content by replacing the shortcode, not the whole page content.
+ That allows you to add text before and after the shop output.
+
 = 1.0.13 - 03.02.2014 =
 
 1. Bug fixes in order edit screen

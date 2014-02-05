@@ -6,7 +6,7 @@ function shopBuildSef($seg) {
 
     $q = array();
 
-
+	if(isset($seg['con'])){
     switch ($seg['con']) {
         case "account":
             $q[] = 'account';
@@ -44,6 +44,6 @@ function shopBuildSef($seg) {
     }
 
 
-
+	}
     return array($q, $seg);
 }

@@ -188,7 +188,8 @@ class Request {
 
     static public function is_ajax() {
 
-        return (bool) ( $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest');
+        $request = ( !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest') ? true : false;
+		return $request;
     }
 
     static public function getVar($name, $default = null, $hash = 'default', $type = 'none', $mask = 0) {

@@ -34,7 +34,7 @@ class shopViewProduct_list extends view {
         }
 
         if (!in_array(strtolower($tpl), array('list', 'grid')))
-            $tpl = (string) $this->category->view_style;
+            $tpl = (string) empty($this->category->view_style) ? '' : $this->category->view_style;
         if (!in_array(strtolower($tpl), array('list', 'grid')))
             $tpl = $app->getParams()->get('list_type');
 
@@ -48,7 +48,7 @@ class shopViewProduct_list extends view {
         //set proper page title
         $obj = get_queried_object();
 
-        if (isset($obj->taxonomy) && $obj->taxonomy == 'product_cat') {
+        if (isset($obj->taxonomy) && !empty( $obj->taxonomy ) && $obj->taxonomy == 'product_cat') {
             $path = get_ancestors($obj->term_id, $obj->taxonomy);
 
             $path[] = $obj->term_id;
@@ -65,7 +65,7 @@ class shopViewProduct_list extends view {
                 $title[] = $o->name;
             }
             Factory::getMainframe()->setPageTitle(implode(' - ', $title));
-        } else if (in_array($obj->taxonomy, array('product_tags', 'product_brand', 'product_type'))) {
+        } else if (isset($obj->taxonomy) && !empty( $obj->taxonomy ) && in_array($obj->taxonomy, array('product_tags', 'product_brand', 'product_type'))) {
             Factory::getMainframe()->setPageTitle($obj->name);
         } else {
             $page = get_post(Factory::getApplication("shop")->getPArams()->get("page_id"));
@@ -77,8 +77,9 @@ class shopViewProduct_list extends view {
     }
 
     public function override_templates($paths) {
-        $paths[] = dirname(__FILE__) . "/templates/" . $this->category->list_template;
-        return $paths;
+		$paths[] = dirname(__FILE__) . "/templates/" . empty($this->category->list_template) ? 'list.tpl.php': $this->category->list_template;
+	
+		return $paths;
     }
 
 }

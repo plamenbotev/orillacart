@@ -10,8 +10,10 @@ class productModel extends model {
         $p->image_title = null;
 
         $row = Factory::getApplication('shop')->getTable('product')->load($id);
-
-        $def = (array) $this->getProductAttributes($id)->def;
+        		
+		$attribs = $this->getProductAttributes($id);
+		$def = !empty($attribs->def) ? (array)$attribs->def : array() ;
+		
 
         $p->price = Factory::getApplication('shop')->getHelper('product_helper')->get_price_with_tax($row);
 

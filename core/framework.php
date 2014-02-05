@@ -82,6 +82,7 @@ final class Framework {
     }
 
     public function load_active_components() {
+        $components = null;
         $components = $this->get_active_components();
 
         foreach ((array) $components as $k => $v) {
@@ -228,9 +229,9 @@ final class Framework {
                 return $this->template;
             }
 
-            if (file_exists(get_stylesheet_directory() . "/" . strtolower(request::getCmd('component')) . ".php")) {
+            if (file_exists(get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php")) {
 
-                return get_stylesheet_directory() . "/" . strtolower(request::getCmd('component')) . ".php";
+                return get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php";
             }
 
             $rows = component::get_wp_pages(request::getCmd('component'));
@@ -269,9 +270,9 @@ final class Framework {
             $GLOBALS['wp_the_query'] = clone $GLOBALS['wp_query'];
             $GLOBALS['wp_query'] = $query;
             $GLOBALS['post'] = $page;
-                
-
-            add_filter("the_content", array($this, 'attachTheContent'));
+               
+			add_shortcode("framework",array($this,'attachTheContent'));
+            //add_filter("the_content", array($this, 'attachTheContent'));
             remove_action('wp_head', 'noindex', 1);
             remove_action( "wp_head",'rel_canonical' );
 
