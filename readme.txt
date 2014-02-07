@@ -85,6 +85,9 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.15 - 07.02.2014 =
+1. Add action hooks to extend the billing and shipping fields 
+
 = 1.0.14 - 04.02.2014 =
 
 1. Various bug fixes provided by ognjen.kuljic, thanks for the help!

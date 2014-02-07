@@ -39,7 +39,7 @@ class customer {
     public function get_billing_fields() {
 
         $type = 'billing';
-        return new fields(array(
+        $fields = new fields(array(
                             field::_('text', $type . '_first_name')->add_class('input-text billibg_field')
                             ->set_required()
                             ->add_param('placeholder', __('First Name', 'com_shop'))
@@ -87,6 +87,9 @@ class customer {
                             ->set_error_msg(__("Please enter valid phone.","com_shop"))
                             ->add_validation(array($validation, 'is_phone'))
                 ));
+				
+				do_action("extend_billing_fields",$fields);
+				return $fields;
     }
 
     public function get_shipping_fields() {
@@ -94,7 +97,7 @@ class customer {
         
        
         
-        return new fields(array(
+        $fields = new fields(array(
                             field::_('text', $type . '_first_name')->add_class('input-text shipping_field')
                             ->set_required()
                             ->add_param('placeholder', __('First Name','com_shop'))
@@ -136,6 +139,10 @@ class customer {
                             ->set_error_msg(__("Please enter valid phone.","com_shop"))
                             ->add_validation(array($validation, 'is_phone'))
                 ));
+				
+				do_action("extend_shipping_fields",$fields);
+				
+				return $fields;
     }
 
     protected function generate_customer_fields() {
