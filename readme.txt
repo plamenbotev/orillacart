@@ -11,7 +11,7 @@ License URI: http://www.gnu.org/licenses/gpl-3.0.html
 eCommerce solution designed to help you grow your business.
 
 == Description ==
-Orilla Cart have everything you need to to create online store.
+Orilla Cart have everything you need to create online store.
 The plugin is built with simplicity in mind. The idea behind the project is to give simple and yet powerful tool for everybody.
 In few steps you can have your own ecommerce site and sell your digital and physical goods on it.
 
