@@ -168,6 +168,7 @@ class shop extends component {
 
         //add proper canonical tag      
         add_action("wp_head", array($this, "generate_canonical_tag"));
+		add_action("wpseo_canonical",create_function("","return'';"));
 
         $mainframe = Factory::getMainframe();
 

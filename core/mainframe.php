@@ -34,6 +34,7 @@ final class mainframe {
             add_filter('wp_head', array($this, '_appendTags'));
         }
         add_filter('wp_title', array($this, '_appendTags'));
+		add_filter('wpseo_title',array($this, '_appendTags'));
         // add_filter('the_title',array($this,'_appendTags'));
     }
 
@@ -63,6 +64,7 @@ final class mainframe {
                echo implode("\n", $this->custom_tags);
                 break;
             case "wp_title":
+			case "wpseo_title":
 
                 return $this->page_title;
                 break;

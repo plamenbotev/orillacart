@@ -85,6 +85,9 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.16 - 08.02.2014 =
+1. Added compatability for Yoast WordPress SEO plugin.
+
 = 1.0.15 - 07.02.2014 =
 1. Add action hooks to extend the billing and shipping fields 
 
