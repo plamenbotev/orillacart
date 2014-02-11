@@ -245,7 +245,7 @@ final class Framework {
             }
 
             $page->comment_status = "closed";
-            $page->post_title = "";
+            //$page->post_title = "";
 
             $query->posts = array($page);
             $query->post = $page;
