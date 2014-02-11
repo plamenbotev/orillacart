@@ -169,6 +169,8 @@ class product_helper {
                 $price += (double) $row->price;
             }
         }
+		// enable plugins to alter the product price
+		$price = apply_filters( "orillacart_raw_price", $price,$o );
 
         $ret = new stdClass();
         $ret->raw = $price;

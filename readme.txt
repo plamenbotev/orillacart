@@ -85,6 +85,9 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.17 - 11.02.2014 =
+1. Price update on attribute change not working fixed.
+
 = 1.0.16 - 08.02.2014 =
 1. Added compatability for Yoast WordPress SEO plugin.
 

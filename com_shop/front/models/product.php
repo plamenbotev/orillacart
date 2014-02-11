@@ -73,7 +73,7 @@ class productModel extends model {
             $atts = $this->getProductAttributes($pid);
         }
 
-        $this->db->setQuery("SELECT COUNT(*) FROM #_posts WHERE post_parent = " . (int) $pid);
+        $this->db->setQuery("SELECT COUNT(*) FROM #_posts WHERE post_type = 'product' AND post_parent = " . (int) $pid);
         $has_childs = (int) $this->db->loadResult();
 
         if ($has_childs) {
