@@ -270,6 +270,10 @@ final class Framework {
             $GLOBALS['wp_the_query'] = clone $GLOBALS['wp_query'];
             $GLOBALS['wp_query'] = $query;
             $GLOBALS['post'] = $page;
+			
+			if (file_exists(get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php")) {
+				return get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php";
+            }
                
 			add_shortcode("framework",array($this,'attachTheContent'));
             //add_filter("the_content", array($this, 'attachTheContent'));

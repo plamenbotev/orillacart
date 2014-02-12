@@ -19,8 +19,8 @@ class product_helper {
     }
 
     public function get_price_with_tax($o, $p = array(), $f = array(), $country = null, $state = null) {
-
-        if (is_int($o)) {
+		
+        if (is_int($o) || is_string($o)) {
             $r = Factory::getApplication('shop')->getTable('product')->load($o);
 
             if (!$r->pk()) {
@@ -79,7 +79,7 @@ class product_helper {
     public function get_price($o, $p = array(), $f = array()) {
 
 
-        if (is_int($o)) {
+        if (is_int($o) || is_string($o)) {
             
             $r = Factory::getApplication('shop')->getTable('product')->load($o);
           
