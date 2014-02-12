@@ -85,6 +85,9 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.0.20 - 12.02.2014 =
+1. shop manager role added.
+
 = 1.0.17 - 11.02.2014 =
 1. Price update on attribute change not working fixed.
 

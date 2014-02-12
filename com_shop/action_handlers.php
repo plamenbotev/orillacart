@@ -15,14 +15,7 @@ final class orillacart_actions {
 
     private function __construct() {
 
-        //add roles
-
-        add_role('customer', 'Customer', array(
-            'read' => true,
-            'edit_posts' => false,
-            'delete_posts' => false
-        ));
-
+      
         //register all image sizes from the shop params
 
         $app = Factory::getApplication('shop');
@@ -464,6 +457,12 @@ final class orillacart_actions {
             'show_in_menu' => false,
             'show_in_nav_menus' => true,
             'query_var' => true,
+			'capabilities'			=> array(
+					'manage_terms' 		=> 'manage_product_terms',
+					'edit_terms' 		=> 'edit_product_terms',
+					'delete_terms' 		=> 'delete_product_terms',
+					'assign_terms' 		=> 'assign_product_terms',
+				),
             'rewrite' => array('slug' => $base_slug . '/product-type', 'with_front' => false),
                 )
         );
@@ -475,6 +474,12 @@ final class orillacart_actions {
             'show_in_nav_menus' => true,
             'show_in_menu' => true,
             'query_var' => true,
+			'capabilities'			=> array(
+					'manage_terms' 		=> 'manage_product_terms',
+					'edit_terms' 		=> 'edit_product_terms',
+					'delete_terms' 		=> 'delete_product_terms',
+					'assign_terms' 		=> 'assign_product_terms',
+				),
             'rewrite' => array('slug' => $base_slug . '/category', 'with_front' => false),
                 )
         );
@@ -495,6 +500,12 @@ final class orillacart_actions {
             'show_in_nav_menus' => true,
             'show_in_menu' => true,
             'query_var' => true,
+			'capabilities'			=> array(
+					'manage_terms' 		=> 'manage_product_terms',
+					'edit_terms' 		=> 'edit_product_terms',
+					'delete_terms' 		=> 'delete_product_terms',
+					'assign_terms' 		=> 'assign_product_terms',
+				),
             'rewrite' => array('slug' => $base_slug . '/brand', 'with_front' => false),
                 )
         );
@@ -510,6 +521,12 @@ final class orillacart_actions {
                 'edit_item' => __('Edit Group', 'com_shop'),
                 'update_item' => __('Update Group', 'com_shop'),
                 'add_new_item' => __('Add New Group', 'com_shop'),
+				'capabilities'			=> array(
+					'manage_terms' 		=> 'manage_product_terms',
+					'edit_terms' 		=> 'edit_product_terms',
+					'delete_terms' 		=> 'delete_product_terms',
+					'assign_terms' 		=> 'assign_product_terms',
+				),
                 'new_item_name' => __('New Shipping Group Name', 'com_shop')
             ),
             'show_ui' => false,
@@ -527,6 +544,12 @@ final class orillacart_actions {
             'show_in_nav_menus' => true,
             'show_in_menu' => false,
             'query_var' => true,
+			'capabilities'			=> array(
+					'manage_terms' 		=> 'manage_product_terms',
+					'edit_terms' 		=> 'edit_product_terms',
+					'delete_terms' 		=> 'delete_product_terms',
+					'assign_terms' 		=> 'assign_product_terms',
+				),
             'rewrite' => array('slug' => $base_slug . '/tag', 'with_front' => false)
                 )
         );
@@ -555,7 +578,7 @@ final class orillacart_actions {
             'public' => true,
             'show_ui' => true,
             'hierarchical' => true,
-            'capability_type' => 'post',
+            'capability_type' => 'product',
             'publicly_queryable' => true,
             'exclude_from_search' => false,
             'hierarchical' => true,
@@ -615,7 +638,7 @@ final class orillacart_actions {
             'description' => __('This is where store orders are stored.', 'com_shop'),
             'public' => true,
             'show_ui' => true,
-            'capability_type' => 'post',
+            'capability_type' => 'shop_order',
             'publicly_queryable' => false,
             'exclude_from_search' => true,
             'show_in_menu' => 'component_com_shop-orders',
@@ -649,21 +672,21 @@ final class orillacart_actions {
         global $menu;
         $params = Factory::getApplication('shop')->getParams();
 
-        add_menu_page('orillacart', __('My Shop', 'com_shop'), 'manage_options', 'component_com_shop-orders', array(Factory::getFramework(), 'attachTheContent'));
-        add_submenu_page('component_com_shop-orders', __('List all products', 'com_shop'), __('List all products', 'com_shop'), 'manage_options', 'edit.php?post_type=product');
-        add_submenu_page('component_com_shop-orders', __('Add new product', 'com_shop'), __('Add new Product', 'com_shop'), 'manage_options', 'post-new.php?post_type=product');
-        add_submenu_page('component_com_shop-orders', __('Product tags', 'com_shop'), __('Product tags', 'com_shop'), 'manage_options', 'edit-tags.php?taxonomy=product_tags&post_type=product');
-        add_submenu_page('component_com_shop-orders', __('Product categories', 'com_shop'), __('Product categories', 'com_shop'), 'manage_options', 'component_com_shop-category', array(Factory::getFramework(), 'attachTheContent'));
-        add_submenu_page('component_com_shop-orders', __('Product brands', 'com_shop'), __('Product brands', 'com_shop'), 'manage_options', 'edit-tags.php?taxonomy=product_brand&post_type=product');
-        add_submenu_page('component_com_shop-orders', __('Stockrooms', 'com_shop'), __('Stockrooms', 'com_shop'), 'manage_options', 'component_com_shop-stockroom', array(Factory::getFramework(), 'attachTheContent'));
-        add_submenu_page('component_com_shop-orders', __('Manage Amounts', 'com_shop'), __('Manage Amounts', 'com_shop'), 'manage_options', 'component_com_shop-stockroom-manage', array(Factory::getFramework(), 'attachTheContent'));
-        add_submenu_page('component_com_shop-orders', __('Attribute Sets', 'com_shop'), __('Attribute Sets', 'com_shop'), 'manage_options', 'component_com_shop-attributes', array(Factory::getFramework(), 'attachTheContent'));
-        add_submenu_page('component_com_shop-orders', __('Countries', 'com_shop'), __('Countries', 'com_shop'), 'manage_options', 'component_com_shop-country', array(Factory::getFramework(), 'attachTheContent'));
-        add_submenu_page('component_com_shop-orders', __('Taxes', 'com_shop'), __('Taxes', 'com_shop'), 'manage_options', 'component_com_shop-tax', array(Factory::getFramework(), 'attachTheContent'));
-        add_submenu_page('component_com_shop-orders', __('Payment Methods', 'com_shop'), __('Payment Methods', 'com_shop'), 'manage_options', 'component_com_shop-payment', array(Factory::getFramework(), 'attachTheContent'));
-        add_submenu_page('component_com_shop-orders', __('Shipping Methods', 'com_shop'), __('Shipping Methods', 'com_shop'), 'manage_options', 'component_com_shop-shipping', array(Factory::getFramework(), 'attachTheContent'));
-        add_submenu_page('component_com_shop-orders', __('Shipping Groups', 'com_shop'), __('Shipping Groups', 'com_shop'), 'manage_options', 'edit-tags.php?taxonomy=shipping_group&post_type=product');
-        add_submenu_page('component_com_shop-orders', __('Configuration', 'com_shop'), __('Configuration', 'com_shop'), 'manage_options', 'component_com_shop-admin-configuration', array(Factory::getFramework(), 'attachTheContent'));
+        add_menu_page('orillacart', __('My Shop', 'com_shop'), 'manage_shop', 'component_com_shop-orders', array(Factory::getFramework(), 'attachTheContent'));
+        add_submenu_page('component_com_shop-orders', __('List all products', 'com_shop'), __('List all products', 'com_shop'), 'manage_shop', 'edit.php?post_type=product');
+        add_submenu_page('component_com_shop-orders', __('Add new product', 'com_shop'), __('Add new Product', 'com_shop'), 'manage_shop', 'post-new.php?post_type=product');
+        add_submenu_page('component_com_shop-orders', __('Product tags', 'com_shop'), __('Product tags', 'com_shop'), 'manage_shop', 'edit-tags.php?taxonomy=product_tags&post_type=product');
+        add_submenu_page('component_com_shop-orders', __('Product categories', 'com_shop'), __('Product categories', 'com_shop'), 'manage_shop', 'component_com_shop-category', array(Factory::getFramework(), 'attachTheContent'));
+        add_submenu_page('component_com_shop-orders', __('Product brands', 'com_shop'), __('Product brands', 'com_shop'), 'manage_shop', 'edit-tags.php?taxonomy=product_brand&post_type=product');
+        add_submenu_page('component_com_shop-orders', __('Stockrooms', 'com_shop'), __('Stockrooms', 'com_shop'), 'manage_shop', 'component_com_shop-stockroom', array(Factory::getFramework(), 'attachTheContent'));
+        add_submenu_page('component_com_shop-orders', __('Manage Amounts', 'com_shop'), __('Manage Amounts', 'com_shop'), 'manage_shop', 'component_com_shop-stockroom-manage', array(Factory::getFramework(), 'attachTheContent'));
+        add_submenu_page('component_com_shop-orders', __('Attribute Sets', 'com_shop'), __('Attribute Sets', 'com_shop'), 'manage_shop', 'component_com_shop-attributes', array(Factory::getFramework(), 'attachTheContent'));
+        add_submenu_page('component_com_shop-orders', __('Countries', 'com_shop'), __('Countries', 'com_shop'), 'manage_shop', 'component_com_shop-country', array(Factory::getFramework(), 'attachTheContent'));
+        add_submenu_page('component_com_shop-orders', __('Taxes', 'com_shop'), __('Taxes', 'com_shop'), 'manage_shop', 'component_com_shop-tax', array(Factory::getFramework(), 'attachTheContent'));
+        add_submenu_page('component_com_shop-orders', __('Payment Methods', 'com_shop'), __('Payment Methods', 'com_shop'), 'manage_shop', 'component_com_shop-payment', array(Factory::getFramework(), 'attachTheContent'));
+        add_submenu_page('component_com_shop-orders', __('Shipping Methods', 'com_shop'), __('Shipping Methods', 'com_shop'), 'manage_shop', 'component_com_shop-shipping', array(Factory::getFramework(), 'attachTheContent'));
+        add_submenu_page('component_com_shop-orders', __('Shipping Groups', 'com_shop'), __('Shipping Groups', 'com_shop'), 'manage_shop', 'edit-tags.php?taxonomy=shipping_group&post_type=product');
+        add_submenu_page('component_com_shop-orders', __('Configuration', 'com_shop'), __('Configuration', 'com_shop'), 'manage_shop', 'component_com_shop-admin-configuration', array(Factory::getFramework(), 'attachTheContent'));
     }
 
     public function register_product_boxes() {
@@ -1113,6 +1136,9 @@ add_action('admin_init', 'my_add_meta_box');
 function my_add_meta_box() {
     add_meta_box('custom-meta-box', __('Shop related pages', 'com_shop'), 'my_nav_menu_item_link_meta_box', 'nav-menus', 'side', 'default');
 }
+
+
+
 
 function my_nav_menu_item_link_meta_box() {
 

@@ -347,6 +347,112 @@ class shop_installer extends app_object {
             }
 
 
+			//add capabilities and roles
+			  //add roles
+
+        add_role('customer', 'Customer', array(
+            'read' => true,
+            'edit_posts' => false,
+            'delete_posts' => false
+        ));
+		
+		global $wp_roles;
+
+		if ( class_exists( 'WP_Roles' ) ) {
+			if ( ! isset( $wp_roles ) ) {
+				$wp_roles = new WP_Roles();
+			}
+		}
+		
+		add_role( 'shop_manager', __( 'Shop Manager', 'com_shop' ), array(
+				'level_9'                => true,
+				'level_8'                => true,
+				'level_7'                => true,
+				'level_6'                => true,
+				'level_5'                => true,
+				'level_4'                => true,
+				'level_3'                => true,
+				'level_2'                => true,
+				'level_1'                => true,
+				'level_0'                => true,
+				'read'                   => true,
+				'read_private_pages'     => true,
+				'read_private_posts'     => true,
+				'edit_users'             => true,
+				'edit_posts'             => true,
+				'edit_pages'             => true,
+				'edit_published_posts'   => true,
+				'edit_published_pages'   => true,
+				'edit_private_pages'     => true,
+				'edit_private_posts'     => true,
+				'edit_others_posts'      => true,
+				'edit_others_pages'      => true,
+				'publish_posts'          => true,
+				'publish_pages'          => true,
+				'delete_posts'           => true,
+				'delete_pages'           => true,
+				'delete_private_pages'   => true,
+				'delete_private_posts'   => true,
+				'delete_published_pages' => true,
+				'delete_published_posts' => true,
+				'delete_others_posts'    => true,
+				'delete_others_pages'    => true,
+				'manage_categories'      => true,
+				'manage_links'           => true,
+				'moderate_comments'      => true,
+				'unfiltered_html'        => true,
+				'upload_files'           => true,
+				'export'                 => true,
+				'import'                 => true,
+				'list_users'             => true
+			) );
+
+			
+			
+			
+			$capabilities = array();
+
+		$capabilities['core'] = array(
+			'manage_shop'
+			
+		);
+
+		$capability_types = array( 'product', 'shop_order');
+
+		foreach ( $capability_types as $capability_type ) {
+
+			$capabilities[ $capability_type ] = array(
+				// Post type
+				"edit_{$capability_type}",
+				"read_{$capability_type}",
+				"delete_{$capability_type}",
+				"edit_{$capability_type}s",
+				"edit_others_{$capability_type}s",
+				"publish_{$capability_type}s",
+				"read_private_{$capability_type}s",
+				"delete_{$capability_type}s",
+				"delete_private_{$capability_type}s",
+				"delete_published_{$capability_type}s",
+				"delete_others_{$capability_type}s",
+				"edit_private_{$capability_type}s",
+				"edit_published_{$capability_type}s",
+
+				// Terms
+				"manage_{$capability_type}_terms",
+				"edit_{$capability_type}_terms",
+				"delete_{$capability_type}_terms",
+				"assign_{$capability_type}_terms"
+			);
+		}
+			
+		foreach ( $capabilities as $cap_group ) {
+			foreach ( $cap_group as $cap ) {
+				$wp_roles->add_cap( 'shop_manager', $cap );
+				$wp_roles->add_cap( 'administrator', $cap );
+			}
+		}
+			
+			
 
             //Insert taxonomies
 
@@ -390,8 +496,7 @@ class shop_installer extends app_object {
         global $wpdb, $wp_roles;
         $db = Factory::getDBO();
 
-        // Roles
-        remove_role('customer');
+        
 
         // Pages
         $app = Factory::getApplication('shop');
@@ -416,6 +521,10 @@ class shop_installer extends app_object {
 
         // Delete options
         $wpdb->query("DELETE FROM $wpdb->options WHERE option_name = '" . $app->getName() . "_parameters'");
+		
+		remove_role("customer");
+		remove_role("shop_manager");
+		remove_role("product_manager");
     }
 
     public function update_db() {
@@ -516,8 +625,105 @@ class shop_installer extends app_object {
                     exit;
                 }
             }
+			
+			if (version_compare($params->get('db_version'), '1.1.7', '<')) {
+				global $wp_roles;
 
+		if ( class_exists( 'WP_Roles' ) ) {
+			if ( ! isset( $wp_roles ) ) {
+				$wp_roles = new WP_Roles();
+			}
+		}
+		
+		add_role( 'shop_manager', __( 'Shop Manager', 'com_shop' ), array(
+				'level_9'                => true,
+				'level_8'                => true,
+				'level_7'                => true,
+				'level_6'                => true,
+				'level_5'                => true,
+				'level_4'                => true,
+				'level_3'                => true,
+				'level_2'                => true,
+				'level_1'                => true,
+				'level_0'                => true,
+				'read'                   => true,
+				'read_private_pages'     => true,
+				'read_private_posts'     => true,
+				'edit_users'             => true,
+				'edit_posts'             => true,
+				'edit_pages'             => true,
+				'edit_published_posts'   => true,
+				'edit_published_pages'   => true,
+				'edit_private_pages'     => true,
+				'edit_private_posts'     => true,
+				'edit_others_posts'      => true,
+				'edit_others_pages'      => true,
+				'publish_posts'          => true,
+				'publish_pages'          => true,
+				'delete_posts'           => true,
+				'delete_pages'           => true,
+				'delete_private_pages'   => true,
+				'delete_private_posts'   => true,
+				'delete_published_pages' => true,
+				'delete_published_posts' => true,
+				'delete_others_posts'    => true,
+				'delete_others_pages'    => true,
+				'manage_categories'      => true,
+				'manage_links'           => true,
+				'moderate_comments'      => true,
+				'unfiltered_html'        => true,
+				'upload_files'           => true,
+				'export'                 => true,
+				'import'                 => true,
+				'list_users'             => true
+			) );
 
+			
+			
+			
+			$capabilities = array();
+
+		$capabilities['core'] = array(
+			'manage_shop'
+			
+		);
+
+		$capability_types = array( 'product', 'shop_order');
+
+		foreach ( $capability_types as $capability_type ) {
+
+			$capabilities[ $capability_type ] = array(
+				// Post type
+				"edit_{$capability_type}",
+				"read_{$capability_type}",
+				"delete_{$capability_type}",
+				"edit_{$capability_type}s",
+				"edit_others_{$capability_type}s",
+				"publish_{$capability_type}s",
+				"read_private_{$capability_type}s",
+				"delete_{$capability_type}s",
+				"delete_private_{$capability_type}s",
+				"delete_published_{$capability_type}s",
+				"delete_others_{$capability_type}s",
+				"edit_private_{$capability_type}s",
+				"edit_published_{$capability_type}s",
+
+				// Terms
+				"manage_{$capability_type}_terms",
+				"edit_{$capability_type}_terms",
+				"delete_{$capability_type}_terms",
+				"assign_{$capability_type}_terms"
+			);
+		}
+			
+		foreach ( $capabilities as $cap_group ) {
+			foreach ( $cap_group as $cap ) {
+				$wp_roles->add_cap( 'shop_manager', $cap );
+				$wp_roles->add_cap( 'administrator', $cap );
+			}
+		}
+
+			}
 
             //update the parameters after we alter the database
 
