@@ -88,7 +88,8 @@ if (!class_exists("fields")) {
         }
 
         public function remove_field($name) {
-            if (array_key_exists($name, $this->_fields)) {
+			
+		    if (array_key_exists($name, $this->_fields)) {
                 unset($this->_fields[$name]);
                 return true;
             }
@@ -126,6 +127,16 @@ if (!class_exists("field")) {
         protected $_label = '';
         protected $_error_msg = '';
         protected $_val_callback = array();
+		protected $_exclude = false;
+		
+		public function exclude(){
+			$this->_exclude = true;
+			$this->set_required(false);
+		}
+		
+		public function is_excluded(){
+			return (bool)$this->_exclude;
+		}
 
         public function add_validation($v = array()) {
             if (is_callable($v)) {

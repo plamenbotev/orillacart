@@ -21,7 +21,7 @@ class shopViewProduct extends view {
         }
 
 
-        add_filter('override_shop', array($this, 'override_templates'), 1, 9);
+        add_filter('edit_template_paths_shop', array($this, 'override_templates'), 1, 9);
 
         if (has_post_thumbnail()) {
 
@@ -209,7 +209,10 @@ jQuery(function() {
     }
 
     public function override_templates(array $paths) {
-        $paths[] = dirname(__FILE__) . "/templates/" . $this->row->product->tpl;
+
+        foreach ($paths as $k => $v) {
+            $paths[$k] = trailingslashit($v) . $this->row->product->tpl;
+        }
         return $paths;
     }
 

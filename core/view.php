@@ -92,7 +92,6 @@ abstract class view extends app_object {
         Factory::getApplication()->setMessage($msg, $type);
     }
 
-
     public function __construct() {
 
         list($app, $type) = explode("view", strtolower(get_class($this)));
@@ -184,7 +183,7 @@ abstract class view extends app_object {
 
     public function display($tpl = 'default') {
 
-		$app = $this->app();
+        $app = $this->app();
 
         if (Framework::is_admin() && !request::is_internal() && !Request::is_ajax()) {
             echo "<div class='wrap'>";
@@ -204,15 +203,29 @@ abstract class view extends app_object {
 
         static $overrides = array();
 
-		
+
         $paths = array();
 
         $com = strtolower($this->app()->getName());
+        //search for overrides
+
+
 
         if (array_key_exists($com, $overrides)) {
             $paths = (array) $overrides[$com];
         } else {
-           
+
+
+            $view_path = str_replace(path::clean($this->app()->getComponentPath() . DS . "views"), "", path::clean($this->_path));
+
+            $view_path = path::clean($view_path);
+
+            //add wp_content also with lower priority
+            $paths[] = WP_CONTENT_DIR . DS . "com_" . $com . "_" . $this->app()->getMode() . $view_path;
+            //add the template path
+            $paths[] = get_stylesheet_directory() . DS . "com_" . $com . "_" . $this->app()->getMode() . $view_path;
+
+
             $paths = (array) apply_filters('override_' . $com, $paths);
 
 
@@ -220,8 +233,8 @@ abstract class view extends app_object {
         }
 
         $paths = array_reverse($paths);
-
-
+       
+        $paths = (array) apply_filters('edit_template_paths_' . $com, $paths);
 
         $the_path = null;
 
@@ -241,8 +254,6 @@ abstract class view extends app_object {
         } else {
             $path = $this->_path . "/templates";
 
-
-
             if (file_exists($path . "/" . $tpl . ".tpl.php")) {
 
                 require($path . "/" . $tpl . ".tpl.php");
@@ -251,6 +262,7 @@ abstract class view extends app_object {
             }
         }
 
-        throw new Exception("template:" . $tpl . __(" file cant be located!","com_shop"));
+        throw new Exception("template:" . $tpl . __(" file cant be located!", "com_shop"));
     }
+
 }

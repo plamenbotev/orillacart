@@ -17,6 +17,9 @@ abstract class component extends app_object {
 
     abstract static public function register_component($components);
 
+    public function getMode(){
+        return $this->mode;
+    }
     public function add_custom_error($contex, $error, $use_session = true) {
 
         if (!isset($this->contex_errors[$this->mode][$contex])) {

@@ -16,7 +16,7 @@ class shopViewProduct_list extends view {
             'total' => $wp_query->max_num_pages
         ));
         $this->assign('pagination', $pagination);
-        add_filter('override_shop', array($this, 'override_templates'), 1, 9);
+        add_filter('edit_template_paths_shop', array($this, 'override_templates'), 1, 9);
 
         Factory::getMainframe()->addscript('jquery');
 
@@ -76,10 +76,12 @@ class shopViewProduct_list extends view {
         parent::display($tpl);
     }
 
-    public function override_templates($paths) {
-		$paths[] = dirname(__FILE__) . "/templates/" . empty($this->category->list_template) ? 'list.tpl.php': $this->category->list_template;
-	
-		return $paths;
+	public function override_templates(array $paths) {
+
+        foreach ($paths as $k => $v) {
+            $paths[$k] = trailingslashit($v) . $this->row->product->tpl;
+        }
+        return $paths;
     }
 
 }
