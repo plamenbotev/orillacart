@@ -84,6 +84,8 @@ That page is the front end of your store, you can change the page later from the
 Always backup before upgrade!
 
 == Changelog ==
+= 1.0.22 - 22.02.2014 =
+1. Shipping rates bug fix.
 
 = 1.0.21 - 19.02.2014 =
 1. All templates now can be overridden by creating directory com_shop_admin/VIEW_NAME/ and/or com_shop_front/VIEW_NAME/ 

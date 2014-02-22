@@ -327,9 +327,9 @@ class standart_shipping {
 
 
             if ($country) {
-                $wherecountry = '( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $country . '", shipping_rate_country ) OR shipping_rate_country="0" OR shipping_rate_country="" OR shipping_rate_country IS NULL)';
+                $wherecountry = $conditions[$r->params->get('country', 0)][0].' ( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $country . '", shipping_rate_country ) OR shipping_rate_country="0" OR shipping_rate_country="" OR shipping_rate_country IS NULL)';
             } else {
-                $wherecountry = '( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $params->get('shop_country') . '", shipping_rate_country ) )';
+              //  $wherecountry = $conditions[$r->params->get('country', 0)][0].' ( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $params->get('shop_country') . '", shipping_rate_country ) )';
             }
 
             if ($state) {
@@ -342,28 +342,28 @@ class standart_shipping {
 			INNER JOIN `#_shop_methods` as c ON sr.carrier = c.method_id
 			WHERE sr.carrier = {$r->method_id} 
                         
-                        " . $conditions[$r->params->get('country', 0)][0] . " {$wherecountry}
+                        {$wherecountry}
                         {$wherestate}
                         AND c.type='shipping'
 			" . $conditions[$r->params->get('volume', 0)][0] . "
-                        ( " . $conditions[$r->params->get('volume', 0)][1] . " (shipping_rate_volume_start <= '{$volume}' AND  shipping_rate_volume_end >= '{$volume}') OR (shipping_rate_volume_end = 0) )
+                        ( " . $conditions[$r->params->get('volume', 0)][1] . " (shipping_rate_volume_start <= '{$volume}' AND  (shipping_rate_volume_end >= '{$volume}' OR shipping_rate_volume_end = 0) ) )
 			" . $conditions[$r->params->get('total', 0)][0] . "
-                        (" . $conditions[$r->params->get('total', 0)][1] . " (shipping_rate_ordertotal_start <= '{$order_subtotal}' AND  shipping_rate_ordertotal_end >= '{$order_subtotal}')  OR (shipping_rate_ordertotal_end = 0))
+                        (" . $conditions[$r->params->get('total', 0)][1] . " (shipping_rate_ordertotal_start <= '{$order_subtotal}' AND  (shipping_rate_ordertotal_end >= '{$order_subtotal}' OR shipping_rate_ordertotal_end = 0) ))
 			" . $conditions[$r->params->get('weight', 0)][0] . "
-                        (" . $conditions[$r->params->get('weight', 0)][1] . " (shipping_rate_weight_start <= '{$weighttotal}' AND  shipping_rate_weight_end >= '{$weighttotal}')  OR (shipping_rate_weight_end = 0))
+                        (" . $conditions[$r->params->get('weight', 0)][1] . " (shipping_rate_weight_start <= '{$weighttotal}' AND  ( shipping_rate_weight_end >= '{$weighttotal}'  OR shipping_rate_weight_end = 0)))
 			" . $conditions[$r->params->get('width', 0)][0] . "
-                         (" . $conditions[$r->params->get('width', 0)][1] . " (shipping_rate_width_start <= '" . $totaldimention['totalwidth'] . "' AND  shipping_rate_width_end >= '" . $totaldimention['totalwidth'] . "')  OR (shipping_rate_width_end = 0))
+                         (" . $conditions[$r->params->get('width', 0)][1] . " (shipping_rate_width_start <= '" . $totaldimention['totalwidth'] . "' AND  (shipping_rate_width_end >= '" . $totaldimention['totalwidth'] . "'  OR shipping_rate_width_end = 0)))
 			                        
                          " . $conditions[$r->params->get('length', 0)][0] . "
-                         (" . $conditions[$r->params->get('length', 0)][1] . " (shipping_rate_length_start <= '" . $totaldimention['totallength'] . "' AND  shipping_rate_length_end >= '" . $totaldimention['totallength'] . "')  OR (shipping_rate_length_end = 0))
+                         (" . $conditions[$r->params->get('length', 0)][1] . " (shipping_rate_length_start <= '" . $totaldimention['totallength'] . "' AND  (shipping_rate_length_end >= '" . $totaldimention['totallength'] . "'  OR shipping_rate_length_end = 0)))
 			
                           " . $conditions[$r->params->get('height', 0)][0] . "
-                         (" . $conditions[$r->params->get('height', 0)][1] . " (shipping_rate_height_start <= '" . $totaldimention['totalheight'] . "' AND  shipping_rate_height_end >= '" . $totaldimention['totalheight'] . "')  OR (shipping_rate_height_end = 0))
+                         (" . $conditions[$r->params->get('height', 0)][1] . " (shipping_rate_height_start <= '" . $totaldimention['totalheight'] . "' AND  (shipping_rate_height_end >= '" . $totaldimention['totalheight'] . "' OR shipping_rate_height_end = 0)))
 			         
                          
                          
                         ORDER BY sr.shipping_rate_priority,shipping_rate_value ";
-            
+           
             $db->setQuery($sql);
 
             if (!$db->getResource()) {
