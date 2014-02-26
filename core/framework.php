@@ -229,10 +229,7 @@ final class Framework {
                 return $this->template;
             }
 
-            if (file_exists(get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php")) {
-
-                return get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php";
-            }
+           
 
             $rows = component::get_wp_pages(request::getCmd('component'));
             $page = $rows[0];
@@ -263,7 +260,7 @@ final class Framework {
                 }
             }
 
-      
+		
             
             
             $GLOBALS['query_string'] = "page_id=" . $page->ID;
@@ -279,10 +276,34 @@ final class Framework {
             //add_filter("the_content", array($this, 'attachTheContent'));
             remove_action('wp_head', 'noindex', 1);
             remove_action( "wp_head",'rel_canonical' );
+			
+			
+				$tmp = '';
+				foreach ( (array) array($tpl, 'page.php') as $template_name ) {
+	                if ( !$template_name )
+	                        continue;
+					
+	                if ( file_exists(STYLESHEETPATH . '/' . $template_name)) {
+	                        $tmp = STYLESHEETPATH . '/' . $template_name;
+	                        break;
+					}
+					 if ( file_exists(dirname(realpath($template)) . '/' . $template_name)) {
+	                        $tmp = dirname(realpath($template)) . '/' . $template_name;
+	                        break;
+					
+	                } else if ( file_exists(TEMPLATEPATH . '/' . $template_name) ) {
+	                        $tmp = TEMPLATEPATH . '/' . $template_name;
+	                        break;
+	                }
+	        }
+				
+				
+				
+			
+		
+		if($tmp)
 
-
-
-            return locate_template(array($tpl, 'page.php'));
+            return $tmp;
         } else {
             return $template;
         }

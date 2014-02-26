@@ -84,6 +84,11 @@ That page is the front end of your store, you can change the page later from the
 Always backup before upgrade!
 
 == Changelog ==
+
+= 1.0.23 - 26.02.2014 =
+1. Templates compatibility improved.
+2. object cache bug fixed.
+
 = 1.0.22 - 22.02.2014 =
 1. Shipping rates bug fix.
 

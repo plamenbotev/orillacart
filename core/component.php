@@ -66,18 +66,22 @@ abstract class component extends app_object {
 
     public function getParams() {
 
+	
+		$path = $this->getComponentPath() . DS . ".." . DS . "params.php";
+		
+		if (file_exists($path)) {
+			require_once($path);
+		}else{
+			return false;
+		}
+		
 		$result = wp_cache_get( 'params',strtolower("com_".$this->getName()));
 		
 		if($result !== false){
 			return $result;
 		}
 		
-        $path = $this->getComponentPath() . DS . ".." . DS . "params.php";
-
-
-        if (file_exists($path)) {
-
-            require_once($path);
+             
 
             $class = $this->getName() . 'Params';
 
@@ -95,11 +99,8 @@ abstract class component extends app_object {
                     $cache->init();
 					wp_cache_set("params",$cache,strtolower("com_".$this->getName()));
                 return $cache;
-            }
-            else {
-
-                return false;
-            }
+            
+           
         } else {
 
             return false;
