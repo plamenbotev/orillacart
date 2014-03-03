@@ -724,7 +724,106 @@ class shop_installer extends app_object {
 		}
 
 			}
-
+			
+			
+			
+            if (version_compare($params->get('db_version'), '1.1.8', '<')) {
+			
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_weight_start` `shipping_rate_weight_start` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+			
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_weight_end` `shipping_rate_weight_end` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_start` `shipping_rate_volume_start` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_start` `shipping_rate_volume_start` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_end` `shipping_rate_volume_end` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_ordertotal_start` `shipping_rate_ordertotal_start` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_ordertotal_end` `shipping_rate_ordertotal_end` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_value` `shipping_rate_value` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_package_fee` `shipping_rate_package_fee` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_length_start` `shipping_rate_length_start` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_length_end` `shipping_rate_length_end` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_width_start` `shipping_rate_width_start` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_width_end` `shipping_rate_width_end` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_height_start` `shipping_rate_height_start` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_height_end` `shipping_rate_height_end` DECIMAL( 10, 4 ) NOT NULL ;");
+                if (!$db->getResource()) {
+                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    exit;
+                }
+				
+            }
+			
+			
+			
+		
             //update the parameters after we alter the database
 
             $params->set('db_version', $params->get('db_version', true));
