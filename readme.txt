@@ -85,6 +85,11 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.1.0 - 22.03.2014 =
+1. Bootstrap 
+2. API additions
+3. Various bug fixes
+
 = 1.0.23 - 26.02.2014 =
 1. Templates compatibility improved.
 2. object cache bug fixed.

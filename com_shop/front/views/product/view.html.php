@@ -54,7 +54,9 @@ class shopViewProduct extends view {
         Factory::getMainframe()->addstyle('lb', Factory::getApplication('shop')->getAssetsUrl() . "/slimbox.css");
         Factory::getMainframe()->addscript('json', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.json-2.2.js");
         Factory::getMainframe()->addStyle('jquery-btatbs-css', Factory::getApplication('shop')->getAssetsUrl() . "/btabs.style.css");
-        Factory::getMainframe()->addScript('jquery-btabs-js', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.btabs.js");
+      //  Factory::getMainframe()->addScript('jquery-btabs-js', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.btabs.js");
+
+        Factory::getMainframe()->addScript('bootstrap', Factory::getApplication('shop')->getAssetsUrl() . "/js/bootstrap.min.js");
 
         Factory::getMainframe()->addscript('lb', Factory::getApplication('shop')->getAssetsUrl() . "/js/slimbox.js", array('jquery'));
 
@@ -65,7 +67,12 @@ class shopViewProduct extends view {
  window.shop_helper.ID = " . $post->ID . ";       
 	
 jQuery(function() { 
-      jQuery('dl.tabs').btabs();
+      jQuery('.tabable ul li a').click(function (e) {
+  e.preventDefault();
+  jQuery(this).tab('show');
+});
+
+
 }); 
 
 </script>");
@@ -91,7 +98,6 @@ jQuery(function() {
 }); 
 
 </script>");
-
 
 
         parent::display("view_product_details");

@@ -329,11 +329,14 @@ class standart_shipping {
             if ($country) {
                 $wherecountry = $conditions[$r->params->get('country', 0)][0].' ( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $country . '", shipping_rate_country ) OR shipping_rate_country="0" OR shipping_rate_country="" OR shipping_rate_country IS NULL)';
             } else {
-              //  $wherecountry = $conditions[$r->params->get('country', 0)][0].' ( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $params->get('shop_country') . '", shipping_rate_country ) )';
-            }
+               $wherecountry = '';//$conditions[$r->params->get('country', 0)][0].' ( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $params->get('shop_country') . '", shipping_rate_country ) )';
+           
+               }
 
             if ($state) {
                 $wherestate = $conditions[$r->params->get('state', 0)][0] . ' ( ' . $conditions[$r->params->get('state', 0)][1] . ' FIND_IN_SET( "' . $state . '", shipping_rate_state ) OR shipping_rate_state="0" OR shipping_rate_state="" OR shipping_rate_state IS NULL )';
+            }else{
+                $wherestate = '';                
             }
 
 

@@ -133,6 +133,9 @@ class product_listModel extends model {
             } else {
                 $sql2 .= " 0," . (int) Factory::getApplication('shop')->getParams()->get('objects_per_page');
             }
+            
+            $sql2 = apply_filters("orillacart_order_by_price_sql",$sql2,$this->order_type);
+            
             $sql = $db->parseQuery($sql2);
          //  die($sql);
         }

@@ -478,6 +478,10 @@ class shop_installer extends app_object {
 
             $params->set('is_installed', true);
             $params->save();
+			
+			//protect the uploads folder
+			$this->protect_uploads();
+			
         } else {
 
             $this->update_db();
@@ -821,8 +825,9 @@ class shop_installer extends app_object {
 				
             }
 			
-			
-			
+			if (version_compare($params->get('db_version'), '1.1.9', '<')) {
+				$this->protect_uploads();
+			}
 		
             //update the parameters after we alter the database
 
@@ -1568,4 +1573,31 @@ class shop_installer extends app_object {
 	(464, 'PL', 'Zachodniopomorskie', 'ZAC', 'ZA')";
     }
 
+	protected function protect_uploads() {
+		
+		$upload_dir =  wp_upload_dir();
+
+		$files = array(
+			array(
+				'base' 		=> $upload_dir['basedir'] . '/com_shop_uploads',
+				'file' 		=> '.htaccess',
+				'content' 	=> 'deny from all'
+			),
+			array(
+				'base' 		=> $upload_dir['basedir'] . '/com_shop_uploads',
+				'file' 		=> 'index.html',
+				'content' 	=> ''
+			),
+		
+		);
+
+		foreach ( $files as $file ) {
+			if ( wp_mkdir_p( $file['base'] ) && ! file_exists( trailingslashit( $file['base'] ) . $file['file'] ) ) {
+				if ( $file_handle = @fopen( trailingslashit( $file['base'] ) . $file['file'], 'w' ) ) {
+					fwrite( $file_handle, $file['content'] );
+					fclose( $file_handle );
+				}
+			}
+		}
+	}
 }

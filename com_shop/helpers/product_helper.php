@@ -66,12 +66,17 @@ class product_helper {
                 $price += $price * $tax_rate;
             }
         }
+        
+        $price = apply_filters( "orillacart_price_after_tax", $price,$r );
 
         $ret = new stdClass();
         $ret->price_formated = $helper->format($price);
         $ret->price = $price;
         $ret->tax = $tax_rate * 100;
         $ret->raw_price = $raw_price;
+        $ret->base = $r->price;
+        $ret->base_formated = Factory::getApplication('shop')->getHelper('price')->format($ret->base);
+        
 
         return $ret;
     }
@@ -99,6 +104,8 @@ class product_helper {
         if (strtotime($r->discount_start) < time() && strtotime($r->discount_end) > time()) {
             $price = $r->discount_price;
         }
+        
+        $price = apply_filters( "orillacart_raw_price_withouth_attributes", $price,$r );
 
         $db = Factory::getDBO();
 
@@ -169,11 +176,15 @@ class product_helper {
                 $price += (double) $row->price;
             }
         }
+       
 		// enable plugins to alter the product price
-		$price = apply_filters( "orillacart_raw_price", $price,$o );
+		$price = apply_filters( "orillacart_raw_price", $price,$r );
 
         $ret = new stdClass();
         $ret->raw = $price;
+        $ret->base = $r->price;
+        $ret->base_formated = Factory::getApplication('shop')->getHelper('price')->format($ret->base);
+               
         $ret->formated = Factory::getApplication('shop')->getHelper('price')->format($price);
 
         return $ret;

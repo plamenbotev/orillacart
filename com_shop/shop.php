@@ -175,13 +175,28 @@ class shop extends component {
         if (Framework::is_admin()) {
 
             $mainframe->addscript('jsshopadminhelper', $this->getAssetsUrl() . '/js/jsshopadminhelper.js');
+			$mainframe->addStyle('bootstrap', $this->getAssetsUrl() . '/bootstrap.css');
             $mainframe->addStyle('shop-icons', $this->getAssetsUrl() . '/icons.css');
+			$mainframe->addStyle('bootstrap-buttons', $this->getAssetsUrl() . '/buttons.css');
             $mainframe->addStyle('shop-admin-styles', $this->getAssetsUrl() . '/template.css');
+            
+            $mainframe->addCustomHeadTag('ajaxurl', "
+                 <!--[if lt IE 9]>
+                 <script src='".$this->getAssetsUrl()."/js/html5shiv.js'></script>
+                 <script src='".$this->getAssetsUrl()."/js/respond.js'></script>
+                 <![endif]-->
+            ");
+            
+            
+            
         } else {
 
             $this->getHelper('cart')->cron();
             $mainframe->addscript('jquery');
             $mainframe->addscript('shop_helper', $this->getAssetsUrl() . '/js/jsshopfronthelper.js');
+			$mainframe->addstyle('bootstrap', $this->getAssetsUrl() . '/bootstrap.css');
+			$mainframe->addstyle('icons', $this->getAssetsUrl() . '/icons.css');
+			$mainframe->addstyle('bootstrap-buttons', $this->getAssetsUrl() . '/buttons.css');
             $mainframe->addstyle('frontend-styles', $this->getAssetsUrl() . '/frontend-styles.css');
 
             $mainframe->addCustomHeadTag('ajaxurl', "
@@ -191,6 +206,13 @@ class shop extends component {
                    
                     });
                 </script>
+                 <!--[if lt IE 9]>
+                 <script src='".$this->getAssetsUrl()."/js/html5shiv.js'></script>
+                 <script src='".$this->getAssetsUrl()."/js/respond.js'></script>
+                 <![endif]-->
+
+
+
             ");
         }
 

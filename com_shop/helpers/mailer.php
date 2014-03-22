@@ -100,10 +100,10 @@ class mailer {
         ob_end_clean();
 
         //	CC, BCC, additional headers
-        $headers = apply_filters('orillacart_email_headers', '', $mail);
+        $headers = apply_filters('orillacart_email_headers', '', $message);
 
         // Attachments
-        $attachments = apply_filters('orillacart_email_attachments', '', $mail);
+        $attachments = apply_filters('orillacart_email_attachments', '', $message);
 
         // Send the mail
 

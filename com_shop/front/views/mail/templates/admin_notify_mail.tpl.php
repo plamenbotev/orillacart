@@ -61,6 +61,7 @@
                                                 </tbody>
                                             </table>
                                             <br>
+                                            <?php if(Factory::getApplication("shop")->getParams()->get("shipping")){ ?>
                                             <table width="650" cellspacing="0" cellpadding="0" border="0">
                                                 <thead>
                                                     <tr>
@@ -82,7 +83,7 @@
                                                 </tbody>
                                             </table>
                                             <br>
-
+                                            <?php } ?>    
 
                                             <?php if (!empty($this->files)) { ?>
 

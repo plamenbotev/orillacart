@@ -1,129 +1,140 @@
- ;(function(window, $) {
+;
+(function (window, $) {
 
-        window.shop_helper = new function() {
+	window.shop_helper = new function () {
 
-            this.ajaxurl = ''; //url for all ajax requests
-            this.ID = null; //current product id
-            this.req = null; //current ajax request reference
-
+		this.ajaxurl = ''; //url for all ajax requests
+		this.ID = null; //current product id
+		this.req = null; //current ajax request reference
+		this.recalc_params = jQuery.Callbacks();
+		this.after_recalc_price = jQuery.Callbacks();
+		/*
+		 *	load variation or recalculatethe price, based on the product type and if variation is available
+		 *	for the selected attribute properties
+		 */
+		this.recalc_price = function (pid) {
 			/*
-			*	load variation or recalculatethe price, based on the product type and if variation is available
-			*	for the selected attribute properties
-			*/
-            this.recalc_price = function(pid) {
+			q = (typeof q === "undefined") ? jQuery('#submit-form-container input[name="qty"]').val() : q;
 
-                if (!pid)
-                    return false;
+			if(q < 1) q = 1;
+			 */
+			if (!pid)
+				return false;
 
-                jQuery('#submit-form-container, .product-attributes').block({
-                    message: null,
-                    overlayCSS: {
-                        background: '#fff ',
-                        opacity: 0.6
-                    }
+			jQuery('#submit-form-container, .product-attributes').block({
+				message : null,
+				overlayCSS : {
+					background : '#fff ',
+					opacity : 0.6
+				}
 
-                });
+			});
 
-                var data = {
-                    p: [],
-                    f: []
-                }
+			var data = {
+				p : [],
+				f : [],
+				// qty:1
+			}
 
-                jQuery("#com-shop .product-attributes select.property").each(function(i) {
+			this.recalc_params.fire(data);
 
-                    switch (this.nodeName.toLowerCase()) {
+			jQuery("#com-shop .product-attributes select.property").each(function (i) {
 
-                        case "select":
+				switch (this.nodeName.toLowerCase()) {
 
-                            if (this.value)
-                                data.p.push(this.value);
-                            break;
+				case "select":
 
-                        case "input":
+					if (this.value)
+						data.p.push(this.value);
+					break;
 
-                            if (this.type.toLowerCase() != 'radio')
-                                break;
-                            if (!this.checked)
-                                break;
-                            data.p.push(this.value);
+				case "input":
 
-                            break;
-                    }
-                });
+					if (this.type.toLowerCase() != 'radio')
+						break;
+					if (!this.checked)
+						break;
+					data.p.push(this.value);
 
+					break;
+				}
+			});
 
-                jQuery("#com-shop input[name=files\\[\\]]").each(function(i) {
+			jQuery("#com-shop input[name=files\\[\\]]").each(function (i) {
 
-                    if (jQuery(this).attr('checked')) {
-                        data.f.push(jQuery(this).val());
-                    }
-                });
+				if (jQuery(this).attr('checked')) {
+					data.f.push(jQuery(this).val());
+				}
+			});
 
-                var ajaxurl = this.ajaxurl;
+			var ajaxurl = this.ajaxurl;
 
-                if (this.req) {
-                    this.req.abort();
-                }
-				
-				var $this = this;
+			if (this.req) {
+				this.req.abort();
+			}
 
-                this.req = jQuery.ajax({
-                    type: "post",
-                    url: ajaxurl + "?action=framework-ajax-front&component=shop&con=product&task=get_price&pid=" + pid,
-                    data: data,
-                    success: function(res, text) {
+			var $this = this;
+
+			this.req = jQuery.ajax({
+					type : "post",
+					url : ajaxurl + "?action=framework-ajax-front&component=shop&con=product&task=get_price&pid=" + pid,
+					data : data,
+					success : function (res, text) {
 
 						if (typeof res['id'] != "undefined") {
 
-                            $this.ID = res['id'];
+							$this.ID = res['id'];
 
-                            for (var key in res.block) {
-                                jQuery("#product_" + key).html(res.block[key]);
-                            }
+							for (var key in res.block) {
+								jQuery("#product_" + key).html(res.block[key]);
+							}
 
-                            $this.initGallery();
-                        } else {
-                            jQuery("#com-shop #price_container").html(res.price);
-                        }
-                        jQuery('#submit-form-container, .product-attributes').unblock();
-                    },
-                    error: function(request, status, error) {
-                        jQuery('#submit-form-container, .product-attributes').unblock();
-                    }
-                });
-            }
-			
-			
-			/*
-			*	Init the product gallery
-			*/
-            this.initGallery = function() {
-                var total = jQuery("#com-shop #gallery a, [rel^='lightbox']").length;
-                jQuery("#com-shop #gallery a, [rel^='lightbox']").slimbox(0, '', function(e, i) {
+							$this.after_recalc_price.fire(this);
 
-                    if (i == 0 && total > 1) return false;
+							$this.initGallery();
+						} else {
+							jQuery("#com-shop #price_container").html(res.price);
 
-                    return true;
-                });
-            }
+							$this.after_recalc_price.fire(this);
+						}
+						jQuery('#submit-form-container, .product-attributes').unblock();
+					},
+					error : function (request, status, error) {
+						jQuery('#submit-form-container, .product-attributes').unblock();
+					}
+				});
+		}
 
-			//private registry helper
-			
-            function registry(options) {
+		/*
+		 *	Init the product gallery
+		 */
+		this.initGallery = function () {
+			var total = jQuery("#com-shop #gallery a, [rel^='lightbox']").length;
+			jQuery("#com-shop #gallery a, [rel^='lightbox']").slimbox(0, '', function (e, i) {
 
-                this.data = options;
+				if (i == 0 && total > 1)
+					return false;
 
-                this.get = function(k, def) {
-                    if (typeof this.data != "undefined" && typeof this.data[k] != "undefined" && this.data[k] != null) {
-                        return this.data[k];
-                    } else {
-                        if (typeof def != "undefined" && def != null)
-                            return def;
-                        return "";
+				return true;
+			});
+		}
 
-                    }
-                }
-            }
-        }
-    }
-    )(window, jQuery)
+		//private registry helper
+
+		function registry(options) {
+
+			this.data = options;
+
+			this.get = function (k, def) {
+				if (typeof this.data != "undefined" && typeof this.data[k] != "undefined" && this.data[k] != null) {
+					return this.data[k];
+				} else {
+					if (typeof def != "undefined" && def != null)
+						return def;
+					return "";
+
+				}
+			}
+		}
+	}
+})(window, jQuery)

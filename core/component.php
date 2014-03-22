@@ -70,8 +70,10 @@ abstract class component extends app_object {
 		$path = $this->getComponentPath() . DS . ".." . DS . "params.php";
 		
 		if (file_exists($path)) {
+                   
 			require_once($path);
 		}else{
+                   
 			return false;
 		}
 		
@@ -85,8 +87,11 @@ abstract class component extends app_object {
 
             $class = $this->getName() . 'Params';
 
-            if (!class_exists($class))
+            if (!class_exists($class)){
+           
                 return false;
+                
+            }
 
             $reflection = new ReflectionClass($class);
 
@@ -97,7 +102,9 @@ abstract class component extends app_object {
 
                 if (method_exists($cache, 'init'))
                     $cache->init();
-					wp_cache_set("params",$cache,strtolower("com_".$this->getName()));
+                
+              
+                wp_cache_set("params",$cache,strtolower("com_".$this->getName()));
                 return $cache;
             
            
@@ -161,7 +168,10 @@ abstract class component extends app_object {
         return (array) $this->sys_errors[$this->mode];
     }
 
-    abstract public function main();
+    public function main(){
+        return;
+        
+    }
 
     public function getName() {
         return $this->name;
@@ -201,8 +211,8 @@ abstract class component extends app_object {
         if (!request::is_ajax()) {
 
             $error_messages = $this->getErrors();
-
-            $messages .= "<div id='" . $this->getName() . "_info' class='system_messagess' style='background-color:#FFD559; padding:7px; ";
+           
+            $messages  = "<div id='" . $this->getName() . "_info' class='system_messagess' style='background-color:#FFD559; padding:7px; ";
             $messages .= (!$this->messagesCount() & !$this->errorsCount()) ? "display:none;" : "";
             $messages .= "'>";
 
@@ -291,6 +301,7 @@ abstract class component extends app_object {
 
         $plugin_dir_name = plugin_basename($base_path);
         $this->rel_path = $plugin_dir_name;
+       
         if (is_dir($path)) {
             $this->componentBase = $path;
             $this->component_url = WP_PLUGIN_URL . '/' . $plugin_dir_name;

@@ -50,7 +50,7 @@ class shopParams extends parameters {
     public $default_volume_unit = 'cm';
 //Downloads
 
-    public $db_version = "1.1.8";
+    public $db_version = "1.1.9";
     public $is_installed = false;
     public $page_id = null;
     public $front_page_cat = 0;

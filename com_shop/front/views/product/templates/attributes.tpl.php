@@ -4,7 +4,7 @@
         <?php foreach ((array) $this->row->attributes as $att) { ?>
             <div class="att-container" id="att-<?php echo $att->attribute_id; ?>">
                 <h4 class='attribute-name'><?php echo strings::stripAndEncode($att->attribute_name); ?></h4>
-                <select name='property[<?php echo $att->attribute_id; ?>]' class='property <?php echo $att->attribute_required == 'yes' ? "required" : ""; ?>'  onchange="shop_helper.recalc_price(<?php echo $this->row->product->id; ?>);">
+                <select class="form-control" name='property[<?php echo $att->attribute_id; ?>]' class='property <?php echo $att->attribute_required == 'yes' ? "required" : ""; ?>'  onchange="shop_helper.recalc_price(<?php echo $this->row->product->id; ?>);">
                     <option></option>
                     <?php
                     if (!empty($att->properties)) {

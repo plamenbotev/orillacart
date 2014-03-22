@@ -5,7 +5,27 @@
     <?php if (!empty($this->row->product->sku)) { ?>    
         <div class='sku'><?php _e('SKU:', 'com_shop'); ?> <?php echo strings::htmlentities($this->row->product->sku); ?></div>
     <?php } ?>    
-    <div class='price' ><?php _e('Price:', 'com_shop'); ?> <span id='price_container'><?php echo $this->row->price->price_formated; ?></span></div>
+
+
+
+    <?php if ($this->row->price->raw_price < $this->row->price->base) { ?>
+        <div class="oldPriceContainer">
+            <span class="oldPriceTitle"><?php _e("Regular price: ", "com_shop"); ?></span>
+            <span class="old_price ">
+                <?php echo $this->row->price->base_formated; ?>
+            </span>
+        </div>       
+    <?php } ?>
+    <div class="priceContainer">
+        <?php if ($this->row->price->raw_price < $this->row->price->base) : ?>
+            <span class="specialPriceTitle"><?php _e("Special price: "); ?></span>
+        <?php else: ?>
+            <span class="priceTitle"><?php _e("Price: "); ?></span>
+        <?php endif; ?>
+        <span class="price <?php if ($this->row->price->raw_price < $this->row->price->base) echo 'product_has_discount'; ?>">
+            <?php echo $this->row->price->price_formated; ?>
+        </span>
+    </div>
 
     <div class="availability"><?php _e("Availability:", "com_shop"); ?> 
         <span><?php echo $this->availability; ?></span> 
@@ -14,16 +34,20 @@
 
     <?php if (get_post_meta((int) get_the_ID(), '_not_for_sale', true) == 'no' && !Factory::getApplication('shop')->getParams()->get('catalogOnly')) { ?>
         <div id="submit-form-container">
-            <button class="addToCartButton btn btn-primary">
-                <span class="icon-cart"></span>
-                <?php _e('Add To Cart', 'com_shop'); ?>
-            </button>
-
+            <div class="col-xs-8">
+                <button class="addToCartButton btn btn-primary">
+                    <span class="icon-cart"></span>
+                    <?php _e('Add To Cart', 'com_shop'); ?>
+                </button>
+            </div>
             <?php
-            if (!( has_term('digital', 'product_type', $post) && !$this->row->product->download_limit_multiply_qty )) {
+            if (!( has_term('digital', 'product_type', $GLOBALS['post']) && !$this->row->product->download_limit_multiply_qty )):
                 ?>     
-                <input class="addFocusGlow" type='text' name="qty" size='1' value='1' />
-            <?php } ?>
+                <div class="col-xs-4 ">
+                    <input class="form-control input-sm" type='text' name="qty" size='1' value='1' />
+                </div>
+
+            <?php endif; ?>
         </div>
     <?php } ?>
 </div>

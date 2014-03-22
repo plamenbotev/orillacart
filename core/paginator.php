@@ -300,7 +300,7 @@ class paginator {
         $data = new stdClass();
 
         $data->all = new JPaginationObject('View All');
-        if (!$this->_viewall) {
+        if (isset($this->_viewall) && !$this->_viewall) {
             $data->all->base = '0';
 
             $data->all->link = Route::get(sprintf($this->url, "0", $this->limit));

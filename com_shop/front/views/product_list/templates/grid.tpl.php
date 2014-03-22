@@ -5,7 +5,7 @@
                 <h6><?php echo strings::stripAndEncode($o->name); ?></h6>
                 <div class="catThumb">
                     <?php if (!empty($o->image_src)): ?>
-                        <img  border="0" alt="" src="<?php echo $o->image_src; ?>" />
+                        <img src="<?php echo $o->image_src; ?>" />
                     <?php endif; ?>
                 </div>
             </a>
@@ -17,36 +17,46 @@
     <?php
     $uri = uri::getInstance();
     ?>
+
     <form  id='order_list' name="order_list" method="post" action="<?php echo $uri->toString(array('scheme', 'host', 'port', 'path', 'query')); ?>">
-        <input type="hidden" id="list_type" name="list_type" value="<?php echo $this->listtype; ?>" />
+        <input type="hidden" id="list_type" name="list_type" value="<?php echo $this->list_type; ?>" />
 
-        <div id="products-list-top-controls" class="clearfix">
-            <div id="products-list-top-view-mode">
-                <div class="view-mode-label"><?php _e('View as:', 'com_shop'); ?>&nbsp;</div>
-                <a class="first" href="javascript:void(0);" onclick='jQuery("#list_type").val("list").parent().submit();' ></a>
-                <a class="active" href="javascript:void(0);" onclick='jQuery("#list_type").val("grid").parent().submit();'></a>
+        <div id="products-list-top-controls" class="container-fluid clearfix ">    
+            <div class="row clearfix">
+                <div class="col-xs-12 col-md-8"> 
+                    <div id="products-list-top-view-mode" class="pull-left">
+                        <div class="view-mode-label"><?php _e('View as:', 'com_shop'); ?>&nbsp;</div>
+                        <a class="first" href="javascript:void(0);" onclick='jQuery("#list_type").val("list").parent().submit();' ></a>
+                        <a class="active" href="javascript:void(0);" onclick='jQuery("#list_type").val("grid").parent().submit();'></a>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-md-4">
+                    <div class="row">
+                        <div class="col-xs-6 text-right">
+                            <?php _e('Sort by:', 'com_shop'); ?>
+                        </div>
+                        <div class="col-xs-6">
+                            <select name="product_list_order" class="form-control input-sm" onchange="jQuery('#order_list').submit();">
+                                <option value="id" <?php echo ($this->ordering == 'id') ? "selected='selected'" : ""; ?> >
+                                    <?php _e('Most Recent', 'com_shop'); ?>
+                                </option>
+                                <option value="name" <?php echo ($this->ordering == 'name') ? "selected='selected'" : ""; ?> >
+                                    <?php _e('Name', 'com_shop'); ?>
+                                </option>
+                                <option value="price_lowest" <?php echo ($this->ordering == 'price_lowest') ? "selected='selected'" : ""; ?> >
+                                    <?php _e('Price lowest first', 'com_shop'); ?>
+                                </option>
+                                <option value="price_highest" <?php echo ($this->ordering == 'price_highest') ? "selected='selected'" : ""; ?> >
+                                    <?php _e('Price highest first', 'com_shop'); ?>
+                                </option>
+                                <option value="ordering" <?php echo ($this->ordering == 'ordering') ? "selected='selected'" : ""; ?> >
+                                    <?php _e('Featured', 'com_shop'); ?>
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            <div class="select">
-                <select name="product_list_order" onchange="jQuery('#order_list').submit();">
-                    <option value="id" <?php echo ($this->ordering == 'id') ? "selected='selected'" : ""; ?> >
-                        <?php _e('Most Recent', 'com_shop'); ?>
-                    </option>
-                    <option value="name" <?php echo ($this->ordering == 'name') ? "selected='selected'" : ""; ?> >
-                        <?php _e('Name', 'com_shop'); ?>
-                    </option>
-                    <option value="price_lowest" <?php echo ($this->ordering == 'price_lowest') ? "selected='selected'" : ""; ?> >
-                        <?php _e('Price lowest first', 'com_shop'); ?>
-                    </option>
-                    <option value="price_highest" <?php echo ($this->ordering == 'price_highest') ? "selected='selected'" : ""; ?> >
-                        <?php _e('Price highest first', 'com_shop'); ?>
-                    </option>
-                    <option value="ordering" <?php echo ($this->ordering == 'ordering') ? "selected='selected'" : ""; ?> >
-                        <?php _e('Featured', 'com_shop'); ?>
-                    </option>
-                </select>
-            </div>
-            <div class="sort-label"><?php _e('Sort by', 'com_shop'); ?></div>
         </div>
     </form>
 
@@ -58,21 +68,35 @@
             the_post();
             $product = $this->getModel('product')->load_product(get_the_ID());
             ?>
-
-
-
-            <li <?php echo $width; ?> class="gridItem addBorder <?php
+            <li class="gridItem addBorder <?php
             echo get_post_meta(get_the_ID(), '_onsale', true) == 'yes' ? " onsale" : "";
             echo get_post_meta(get_the_ID(), '_special', true) == 'yes' ? " special" : "";
             ?>" >
                 <div class='itemData'> 
                     <a href="<?php the_permalink(); ?>" class="thumb">
-                        <img  src="<?php echo $product->thumb; ?>" alt="<?php echo $product->image_title; ?>" title="<?php echo $product->image_title; ?>">                                
+                        <?php if (!empty($product->thumb)): ?>
+                            <img src="<?php echo $product->thumb; ?>" alt="<?php echo $product->image_title; ?>" title="<?php echo $product->image_title; ?>">                                
+                        <?php endif; ?>
                     </a>
                     <h4><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h4>
                 </div>
                 <div>
-                    <span class="price"><?php echo $product->price->price_formated; ?></span>
+                    <?php if ($product->price->raw_price < $product->price->base) { ?>
+                        <div class="oldPriceContainer">
+                            <span class="oldPriceTitle"><?php _e("Regular price: ", "com_shop"); ?></span>
+                            <span class="old_price ">
+                                <?php echo $product->price->base_formated; ?>
+                            </span>
+                        </div>       
+                    <?php } ?>
+                    <div class="priceContainer">
+                        <?php if ($product->price->raw_price < $product->price->base) { ?>
+                            <span class="specialPriceTitle"><?php _e("Special price: "); ?></span>
+                        <?php } ?>
+                        <span class="price <?php if ($product->price->raw_price < $product->price->base) echo 'product_has_discount'; ?>">
+                            <?php echo $product->price->price_formated; ?>
+                        </span>
+                    </div>
 
                     <?php
                     if (get_post_meta((int) get_the_ID(), '_not_for_sale', true) == 'no' &&
@@ -80,9 +104,9 @@
                         ?>
                         <a id="buy-product-<?php echo get_the_ID(); ?>" class="buy_button btn btn-primary btn-small " href="<?php echo Route::get('component=shop&con=cart&task=add_to_cart&id=' . get_the_ID()); ?>">
                             <span class="icon-cart"></span>
-                        <?php _e('Add To Cart', 'com_shop'); ?>
+                            <?php _e('Add To Cart', 'com_shop'); ?>
                         </a>
-        <?php } ?>
+                    <?php } ?>
                 </div>
             </li>
             <?php if ($c1 % $this->products_per_row == 0 || $c1 == $this->products_count) { ?>
@@ -92,8 +116,19 @@
         }
         ?>
     </ul>
+    <?php if (!empty($this->pagination)): ?>
+        <div class="text-center move-down-by-30px">
+            <ul class="pagination">
+                <?php foreach ((array) $this->pagination as $k => $v) : ?>
+                    <?php if (strings::stripos($v, "current") !== false && strings::stripos($v, "<a") === false): ?>
+                        <li class="active"><?php echo $v; ?></li>
+                        <?php else: ?>
+                        <li><?php echo $v; ?></li>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
+    <?php
 
-    <div id="products-list-btm-controls" class="clearfix">
-    <?php echo $this->pagination; ?>
-    </div>
-<?php endif; ?>
+ endif;

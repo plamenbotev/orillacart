@@ -272,6 +272,7 @@ if (!class_exists("text")) {
         }
 
         public function render() {
+            $html = '';
             $html .="<input id='" . $this->get_name() . "' type='text' name='" . $this->get_name() . "'";
             foreach ((array) $this->_params as $k => $v) {
                 $html .= " " . $k . "='" . $v . "' ";
@@ -304,6 +305,7 @@ if (!class_exists("select")) {
         }
 
         public function render() {
+             $html = '';
             $html .="<select id='" . $this->get_name() . "' name='" . $this->get_name() . "'";
             foreach ((array) $this->_params as $k => $v) {
                 $html .= " " . $k . "='" . $v . "' ";
@@ -411,7 +413,7 @@ if (!class_exists('state')) {
         }
 
         public function render() {
-
+            
             $db = Factory::getDBO();
             $que = "SELECT  * FROM `#_shop_state` WHERE country_id= '" . $db->secure($this->_country) . "' ORDER BY state_name ASC ";
             $db->setQuery($que);
@@ -431,7 +433,7 @@ if (!class_exists('state')) {
                 }
             }
             if (!empty($this->_options)) {
-
+                $html = '';
                 $html .="<select id='" . $this->get_name() . "' name='" . $this->get_name() . "'";
                 foreach ((array) $this->_params as $k => $v) {
                     $html .= " " . $k . "='" . $v . "' ";
@@ -460,7 +462,7 @@ if (!class_exists('state')) {
 
 
                 if (!empty($this->_classes)) {
-                    $html .= " class='" . implode(' ', $this->_classes) . "' ";
+                    $html .= " class='" . implode(" ", $this->_classes) . "' ";
                 }
 
                 $html .=" />";

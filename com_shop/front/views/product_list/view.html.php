@@ -13,8 +13,14 @@ class shopViewProduct_list extends view {
             'base' => str_replace($big, '%#%', get_pagenum_link($big)),
             'format' => '?paged=%#%',
             'current' => max(1, get_query_var('paged')),
-            'total' => $wp_query->max_num_pages
+            'total' => $wp_query->max_num_pages,
+            'type' => "array"
         ));
+
+
+
+
+
         $this->assign('pagination', $pagination);
         add_filter('edit_template_paths_shop', array($this, 'override_templates'), 1, 9);
 
@@ -22,9 +28,14 @@ class shopViewProduct_list extends view {
 
         $app = Factory::getApplication('shop');
 
-        Factory::getMainframe()->addscript("jquery-equalheights", $app->getAssetsUrl() . "/js/jquery.equalheights.js");
+        Factory::getMainframe()->addscript("jquery-equalheights", $app->getAssetsUrl() . "/js/jquery.syncheight.js");
 
-        Factory::getMainframe()->addCustomHeadTag('grid-equals-li', "<script type='text/javascript'>jQuery(function() { jQuery('ul#activeFilter_itemList').equalHeights(); jQuery('ul#activeFilter_itemList').equalWidths();  }); </script>");
+        Factory::getMainframe()->addCustomHeadTag('grid-equals-li', "<script type='text/javascript'> 
+            jQuery(window).load(function(){  
+                    jQuery('#com-shop .productsGrid').each(function(i){
+                        jQuery('.gridItem',this).syncHeight({ 'updateOnResize': true});  
+                    }); 
+            }); </script>");
 
 
         $tpl = request::getString('list_type', null);
@@ -48,7 +59,7 @@ class shopViewProduct_list extends view {
         //set proper page title
         $obj = get_queried_object();
 
-        if (isset($obj->taxonomy) && !empty( $obj->taxonomy ) && $obj->taxonomy == 'product_cat') {
+        if (isset($obj->taxonomy) && !empty($obj->taxonomy) && $obj->taxonomy == 'product_cat') {
             $path = get_ancestors($obj->term_id, $obj->taxonomy);
 
             $path[] = $obj->term_id;
@@ -65,7 +76,7 @@ class shopViewProduct_list extends view {
                 $title[] = $o->name;
             }
             Factory::getMainframe()->setPageTitle(implode(' - ', $title));
-        } else if (isset($obj->taxonomy) && !empty( $obj->taxonomy ) && in_array($obj->taxonomy, array('product_tags', 'product_brand', 'product_type'))) {
+        } else if (isset($obj->taxonomy) && !empty($obj->taxonomy) && in_array($obj->taxonomy, array('product_tags', 'product_brand', 'product_type'))) {
             Factory::getMainframe()->setPageTitle($obj->name);
         } else {
             $page = get_post(Factory::getApplication("shop")->getPArams()->get("page_id"));
@@ -76,10 +87,11 @@ class shopViewProduct_list extends view {
         parent::display($tpl);
     }
 
-	public function override_templates(array $paths) {
-
-        foreach ($paths as $k => $v) {
-            $paths[$k] = trailingslashit($v) . $this->row->product->tpl;
+    public function override_templates(array $paths) {
+        if (isset($this->category->list_template)) {
+            foreach ($paths as $k => $v) {
+                $paths[$k] = trailingslashit($v) . $this->category->list_template;
+            }
         }
         return $paths;
     }

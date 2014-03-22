@@ -1,481 +1,412 @@
 ;
-(function(window, $) {
+(function (window, $) {
 
-    window.jsShopAdminHelper = new function() {
+	window.jsShopAdminHelper = new function () {
 
-        this.data = {};
+		this.data = {};
 
-        this.shipping = new function() {
+		this.shipping = new function () {
 
-            this.loadClassOptions = function(name, carrier_id) {
+			this.loadClassOptions = function (name, carrier_id) {
 
-                jQuery.post(
-                        ajaxurl + "?action=framework-ajax-admin&component=shop&con=shipping&task=get_class_options",
-                        {
-                            "class": name,
-                            "carrier_id": carrier_id
-                        },
-                function(data) {
-                    document.getElementById('class_options').innerHTML = data;
-                });
-            }
+				jQuery.post(
+					ajaxurl + "?action=framework-ajax-admin&component=shop&con=shipping&task=get_class_options", {
+					"class" : name,
+					"carrier_id" : carrier_id
+				},
+					function (data) {
+					document.getElementById('class_options').innerHTML = data;
+				});
+			}
 
-        }
+		}
 
-        this.payment = new function() {
+		this.payment = new function () {
 
-            this.loadClassOptions = function(name) {
+			this.loadClassOptions = function (name) {
 
-                jQuery.post(
-                        ajaxurl + "?action=framework-ajax-admin&component=shop&con=payment&task=get_class_options",
-                        {
-                            "class": name
-                        },
-                function(data) {
-                    document.getElementById('class_options').innerHTML = data;
-                });
-            }
+				jQuery.post(
+					ajaxurl + "?action=framework-ajax-admin&component=shop&con=payment&task=get_class_options", {
+					"class" : name
+				},
+					function (data) {
+					document.getElementById('class_options').innerHTML = data;
+				});
+			}
 
+		}
 
-        }
+		this.loadStatesByCountries = function (sl, id) {
 
-        this.loadStatesByCountries = function(sl, id) {
+			var vals = jQuery(sl).val() || [];
+			jQuery.post(
+				ajaxurl + "?action=framework-ajax-admin&component=shop&con=shipping&task=load_states", {
+				"countries" : vals
+			},
+				function (data) {
+				document.getElementById(id).innerHTML = data;
+			});
+		}
 
+		this.loadStates = function (c, id) {
 
-            var vals = jQuery(sl).val() || [];
-            jQuery.post(
-                    ajaxurl + "?action=framework-ajax-admin&component=shop&con=shipping&task=load_states",
-                    {
-                        "countries": vals
-                    },
-            function(data) {
-                document.getElementById(id).innerHTML = data;
-            });
-        }
+			jQuery.ajax({
+				type : "get",
+				url : ajaxurl + "?action=framework-ajax-admin&component=shop&con=country&task=ajax_get_states&country=" + c,
+				success : function (data, text) {
+					document.getElementById(id).innerHTML = data;
 
-        this.loadStates = function(c, id) {
+				},
+				error : function (request, status, error) {
+					jQuery("#ajax_sys_msg" + id).html(request.responseText);
 
-            jQuery.ajax({
-                type: "get",
-                url: ajaxurl + "?action=framework-ajax-admin&component=shop&con=country&task=ajax_get_states&country=" + c,
-                success: function(data, text) {
-                    document.getElementById(id).innerHTML = data;
+				}
 
-                },
-                error: function(request, status, error) {
-                    jQuery("#ajax_sys_msg" + id).html(request.responseText);
+			});
 
-                }
+		}
 
-            });
+		this.user = new function () {
 
-        }
+			this.get_country_states = function (c, id, type) {
 
-        this.user = new function() {
+				jQuery.ajax({
+					type : "get",
+					url : ajaxurl + "?action=framework-ajax-admin&component=shop&con=user&task=country_states&country=" + c + "&type=" + type,
+					success : function (data, text) {
+						document.getElementById(id).innerHTML = data;
 
-            this.get_country_states = function(c, id, type) {
+					},
+					error : function (request, status, error) {
+						jQuery("#ajax_sys_msg" + id).html(request.responseText);
 
-                jQuery.ajax({
-                    type: "get",
-                    url: ajaxurl + "?action=framework-ajax-admin&component=shop&con=user&task=country_states&country=" + c + "&type=" + type,
-                    success: function(data, text) {
-                        document.getElementById(id).innerHTML = data;
+					}
 
-                    },
-                    error: function(request, status, error) {
-                        jQuery("#ajax_sys_msg" + id).html(request.responseText);
+				});
 
-                    }
+			}
 
-                });
+		}
 
-            }
+		this.attribute = new function () {
 
-        }
+			this.saved = true;
+			this.type = '';
 
-        this.attribute = new function() {
+			this.stockRoom = function (id, obj, type) {
 
-            this.saved = true;
-            this.type = '';
+				this.type = type;
 
-            this.stockRoom = function(id, obj, type) {
+				if (!document.getElementById(type + id + '_stock_room')) {
 
+					room = document.createElement('div');
+					room.innerHTML = "<div id='ajax_sys_msg" + id + "' style='color:red; text-align:center;'></div><div>" + document.getElementById('stock_rooms').innerHTML + "<div/> <table id='" + type + id + "_stock_rooms_container'></table>";
+					room.setAttribute('id', type + id + '_stock_room');
+					room.setAttribute('style', 'display:none');
+					obj.parentNode.appendChild(room);
+					jQuery(room).find('#stock_room_selector').bind('change', function () {
 
-                this.type = type;
+						jsShopAdminHelper.attribute.addStock(this, id);
 
-                if (!document.getElementById(type + id + '_stock_room')) {
+					});
+				} else {
 
-                    room = document.createElement('div');
-                    room.innerHTML = "<div id='ajax_sys_msg" + id + "' style='color:red; text-align:center;'></div><div>" + document.getElementById('stock_rooms').innerHTML + "<div/> <table id='" + type + id + "_stock_rooms_container'></table>";
-                    room.setAttribute('id', type + id + '_stock_room');
-                    room.setAttribute('style', 'display:none');
-                    obj.parentNode.appendChild(room);
-                    jQuery(room).find('#stock_room_selector').bind('change', function() {
+					jQuery('#' + type + id + '_stock_room').find('#selector_container').html(document.getElementById('stock_rooms').innerHTML);
 
-                        jsShopAdminHelper.attribute.addStock(this, id);
+					jQuery('#' + type + id + '_stock_room').find('#stock_room_selector').bind('change', function () {
 
-                    });
-                }
-                else {
+						jsShopAdminHelper.attribute.addStock(this, id);
 
+					});
+				}
 
-                    jQuery('#' + type + id + '_stock_room').find('#selector_container').html(document.getElementById('stock_rooms').innerHTML);
+				this.loadStocks(obj, id);
 
+				jQuery('#' + type + id + '_stock_room').dialog({
+					//autoOpen: false,
+					resizable : false,
+					modal : true,
+					draggable : false,
+					width : 400,
+					height : 450,
+					overlay : {
+						backgroundColor : "#000",
+						opacity : 0.5
+					},
+					buttons : {
+						"apply" : function () {
+							jsShopAdminHelper.attribute.post(id, this);
+						}
+					},
+					close : function (ev, ui) {}
+				});
 
-                    jQuery('#' + type + id + '_stock_room').find('#stock_room_selector').bind('change', function() {
+				return true;
 
-                        jsShopAdminHelper.attribute.addStock(this, id);
+			}
 
+			this.loadStocks = function (o, id) {
 
-                    });
-                }
+				jQuery.ajax({
+					type : "get",
+					url : ajaxurl + "?action=framework-ajax-admin&component=shop&con=attributes&task=get_stock&type=" + jsShopAdminHelper.attribute.type + "&id=" + id,
+					success : function (data, text) {
 
+						if (data.length > 0) {
 
-                this.loadStocks(obj, id);
+							var table = (jQuery("#" + this.type + id + "_stock_rooms_container")[0]);
 
-                jQuery('#' + type + id + '_stock_room').dialog({
-                    //autoOpen: false,
-                    resizable: false,
-                    modal: true,
-                    draggable: false,
-                    width: 400,
-                    height: 450,
-                    overlay: {
-                        backgroundColor: "#000",
-                        opacity: 0.5
-                    },
-                    buttons: {
-                        "apply": function() {
-                            jsShopAdminHelper.attribute.post(id, this);
-                        }
-                    },
-                    close: function(ev, ui) {
-                    }
-                });
+							table.innerHTML = '';
 
-                return true;
+							for (var c = 0; c < data.length; c++) {
 
+								tr = document.createElement('tr');
+								tr.innerHTML = "<td>" + data[c].stockroom_name + "</td><td> <input style='display:block;' type='text' id='stockroom" + data[c].property_id + data[c].stockroom_id + "' name='" + data[c].stockroom_id + "' value='" + data[c].stock + "' /></td><td><input type='button' value='X' onclick='jQuery(this.parentNode.parentNode).remove();' /></td>";
 
-            }
+								table.appendChild(tr);
 
-            this.loadStocks = function(o, id) {
+							}
+						}
 
+					},
+					error : function (request, status, error) {
+						jQuery("#ajax_sys_msg" + id).html(request.responseText);
 
+					}
+				});
 
-                jQuery.ajax({
-                    type: "get",
-                    url: ajaxurl + "?action=framework-ajax-admin&component=shop&con=attributes&task=get_stock&type=" + jsShopAdminHelper.attribute.type + "&id=" + id,
-                    success: function(data, text) {
+			}
 
-                        if (data.length > 0) {
+			this.post = function (id, o) {
 
+				data = {};
 
-                            var table = (jQuery("#" + this.type + id + "_stock_rooms_container")[0]);
+				data['id'] = id;
+				data['values'] = {};
 
-                            table.innerHTML = '';
+				jQuery('input:text', o).each(function (i, v) {
 
-                            for (var c = 0; c < data.length; c++) {
+					data['values'][v.name] = v.value;
+				});
 
-                                tr = document.createElement('tr');
-                                tr.innerHTML = "<td>" + data[c].stockroom_name + "</td><td> <input style='display:block;' type='text' id='stockroom" + data[c].property_id + data[c].stockroom_id + "' name='" + data[c].stockroom_id + "' value='" + data[c].stock + "' /></td><td><input type='button' value='X' onclick='jQuery(this.parentNode.parentNode).remove();' /></td>";
+				jQuery.post('admin.php?page=component_com_shop&con=attributes&task=save_stock&object=' + this.type, data, function (result, status) {
+					jQuery("#ajax_sys_msg" + id).html(result.msg);
+				});
+			}
 
-                                table.appendChild(tr);
+			this.addStock = function (o, att) {
 
-                            }
-                        }
+				if (!o.value || document.getElementById('stockroom' + att + o.value))
+					return false;
 
-                    },
-                    error: function(request, status, error) {
-                        jQuery("#ajax_sys_msg" + id).html(request.responseText);
+				var table = (jQuery("#" + this.type + att + "_stock_rooms_container")[0]);
 
-                    }
-                });
+				tr = document.createElement('tr');
 
-            }
+				tr.innerHTML = "<td>" + jQuery("option:selected", o.parentNode).text() + "</td><td> <input style='display:block;' type='text' id='stockroom" + att + o.value + "' name='" + o.value + "' value='' /></td><td><input type='button' value='X' onclick='jQuery(this.parentNode.parentNode).remove();' /></td>";
 
-            this.post = function(id, o) {
+				table.appendChild(tr);
 
+			}
 
-                data = {};
+			this.create_variation = function () {
+				jQuery.ajax({
+					type : "post",
+					url : ajaxurl + "?action=framework-ajax-admin&component=shop&con=products&task=create_variation&parent=" + jQuery("input#post_ID").val(),
+					data : jQuery('input#variation_sku,input#variation_title,input#variation_price,select.property').serialize(),
+					success : function (data, text) {
+						alert(data.msg);
 
-                data['id'] = id;
-                data['values'] = {};
+					}
 
+				});
 
-                jQuery('input:text', o).each(function(i, v) {
+				return false;
+			}
 
-                    data['values'][v.name] = v.value;
-                });
+		}
 
+		this.products = new function () {
 
-                jQuery.post('admin.php?page=component_com_shop&con=attributes&task=save_stock&object=' + this.type, data, function(result, status) {
-                    jQuery("#ajax_sys_msg" + id).html(result.msg);
-                });
-            }
+			this.addAttributeSet = function (o) {
 
-            this.addStock = function(o, att) {
+				if (!o.value || document.getElementById('attribute_bank' + o.value))
+					return false;
 
+				var table = document.getElementById('attribute_bank_assocs');
+				tr = document.createElement('tr');
 
+				tr.innerHTML = "<td>" + jQuery("option:selected", o).text() + "</td><td align='center'> <input type='hidden' id='attribute_bank" + o.value + "' name='attribute_bank_assoc[]' value='" + o.value + "' />	  <button class='btn btn-danger btn-small' onclick='jQuery(this.parentNode.parentNode).remove(); return false;' ><span class='icon-trash'></span></button></td>";
 
-                if (!o.value || document.getElementById('stockroom' + att + o.value))
-                    return false;
+				table.appendChild(tr);
+			}
 
-                var table = (jQuery("#" + this.type + att + "_stock_rooms_container")[0]);
+			this.addStock = function (o) {
 
+				if (!o.value || document.getElementById('stockroom' + o.value))
+					return false;
 
-                tr = document.createElement('tr');
+				var table = document.getElementById('stockRoomContainer');
 
+				div = document.createElement('div');
 
+				div.innerHTML = "<li><label for='stockroom" + o.value + "'>" + jQuery("option:selected", o.parentNode).text() + "</label><input type='text' id='stockroom" + o.value + "' name='stock_assoc[" + o.value + "]' value='' /><button onclick='jQuery(this.parentNode).remove();' class='btn btn-danger btn-small'><span class='icon-trash'></span></button></li>";
 
-                tr.innerHTML = "<td>" + jQuery("option:selected", o.parentNode).text() + "</td><td> <input style='display:block;' type='text' id='stockroom" + att + o.value + "' name='" + o.value + "' value='' /></td><td><input type='button' value='X' onclick='jQuery(this.parentNode.parentNode).remove();' /></td>";
+				jQuery(div).insertBefore("ul li#stockRoomsDelimiter");
 
-                table.appendChild(tr);
+			}
 
-            }
+			this.addProductToCat = function (c) {
 
-            this.create_variation = function() {
-                jQuery.ajax({
-                    type: "post",
-                    url: ajaxurl + "?action=framework-ajax-admin&component=shop&con=products&task=create_variation&parent="+jQuery("input#post_ID").val(),
-                    data: jQuery('input#variation_sku,input#variation_title,input#variation_price,select.property').serialize(),
-                    success: function(data, text) {
-                        alert(data.msg);
+				var form = document.getElementById('post');
 
-                    }
+				switch (c.checked) {
 
-                });
+				case true:
 
-                return false;
-            }
+					if (document.getElementById("#cat_" + c.value))
+						return true;
 
-        }
+					var el = document.createElement('input');
+					el.type = 'hidden';
+					el.name = "cats[" + c.value + "]";
+					el.id = "cat_" + c.value;
+					el.value = c.value;
+					form.appendChild(el);
+					return true;
+					break;
 
-        this.products = new function() {
+				case false:
 
-            this.addAttributeSet = function(o) {
+					element = document.getElementById("cat_" + c.value);
+					element.parentNode.removeChild(element);
 
+					return true;
 
-                if (!o.value || document.getElementById('attribute_bank' + o.value))
-                    return false;
+					break;
 
-                var table = document.getElementById('attribute_bank_assocs');
-                tr = document.createElement('tr');
+				default:
+					return false;
+					break;
 
-                tr.innerHTML = "<td>" + jQuery("option:selected", o).text() + "</td><td align='center'> <input type='hidden' id='attribute_bank" + o.value + "' name='attribute_bank_assoc[]' value='" + o.value + "' />	  <button class='btn btn-danger btn-small' onclick='jQuery(this.parentNode.parentNode).remove(); return false;' ><span class='icon-trash'></span></button></td>";
+				}
 
-                table.appendChild(tr);
-            }
+			}
 
-            this.addStock = function(o) {
+		}
 
+		this.changeAttributeSetState = function (id, dom) {
 
+			jQuery.post(
+				ajaxurl + "?action=framework-ajax-admin&component=shop&con=attributes&task=changestate", {
+				"id" : id
 
-                if (!o.value || document.getElementById('stockroom' + o.value))
-                    return false;
+			},
+				function (r) {
 
+				if (r.status) {
 
-                var table = document.getElementById('stockRoomContainer');
+					if (r.error)
+						throw r.errormsg;
+					else {
 
+						switch (r.row.published) {
 
-                div = document.createElement('div');
+						case 'yes':
 
-                div.innerHTML = "<li><label for='stockroom" + o.value + "'>" + jQuery("option:selected", o.parentNode).text() + "</label><input type='text' id='stockroom" + o.value + "' name='stock_assoc[" + o.value + "]' value='' /><button onclick='jQuery(this.parentNode).remove();' class='btn btn-danger btn-small'><span class='icon-trash'></span></button></li>";
+							jQuery("i", dom).removeClass('icon-delete').addClass('icon-checkmark');
+							jQuery(dom).addClass('active');
 
-                jQuery(div).insertBefore("ul li#stockRoomsDelimiter");
+							break;
 
-            }
+						case 'no':
+							jQuery("i", dom).removeClass('icon-checkmark').addClass('icon-delete');
+							jQuery(dom).removeClass('active');
 
-            this.addProductToCat = function(c) {
+							break;
 
+						default:
 
-                var form = document.getElementById('post');
+							throw "unknown publish state";
 
-                switch (c.checked) {
+							break;
+						}
 
+					}
 
-                    case true:
+				} else {
+					throw " communication error! ";
+				}
+			});
+		}
 
-                        if (document.getElementById("#cat_" + c.value))
-                            return true;
+		this.changeStockRoomState = function (id, dom) {
 
-                        var el = document.createElement('input');
-                        el.type = 'hidden';
-                        el.name = "cats[" + c.value + "]";
-                        el.id = "cat_" + c.value;
-                        el.value = c.value;
-                        form.appendChild(el);
-                        return true;
-                        break;
+			jQuery.post(
+				ajaxurl + "?action=framework-ajax-admin&component=shop&con=stockroom&task=changestate", {
+				"id" : id
 
-                    case false:
+			},
+				function (r) {
 
+				if (r.status) {
 
-                        element = document.getElementById("cat_" + c.value);
-                        element.parentNode.removeChild(element);
+					if (r.error)
+						throw r.errormsg;
+					else {
 
+						switch (r.row.published) {
 
-                        return true;
+						case 'yes':
 
-                        break;
+							jQuery("i", dom).removeClass('icon-delete').addClass('icon-checkmark');
+							jQuery(dom).addClass('active');
 
-                    default:
-                        return false;
-                        break;
+							break;
 
-                }
+						case 'no':
+							jQuery("i", dom).removeClass('icon-checkmark').addClass('icon-delete');
+							jQuery(dom).removeClass('active');
 
+							break;
 
-            }
+						default:
 
+							throw "unknown publish state";
 
-        }
+							break;
+						}
 
-        this.changeAttributeSetState = function(id, dom) {
+					}
 
-            jQuery.post(
-                    ajaxurl + "?action=framework-ajax-admin&component=shop&con=attributes&task=changestate",
-                    {
-                        "id": id
+				} else {
+					throw " communication error! ";
+				}
+			});
+		}
 
+		this.changeProductState = function (id, dom) {
 
-                    },
-            function(r) {
+			jQuery.post(
+				ajaxurl + "?action=framework-ajax-admin&component=shop&con=products&task=changestate", {
+				"id" : id
 
+			},
+				function (r) {
 
-                if (r.status) {
+				r.status = parseInt(r.status);
 
-                    if (r.error)
-                        throw r.errormsg;
+				if (r.status) {
 
-                    else {
+					jQuery("i", dom).removeClass('icon-delete').addClass('icon-checkmark');
+					jQuery(dom).addClass('active');
 
-                        switch (r.row.published) {
+				} else {
+					jQuery("i", dom).removeClass('icon-checkmark').addClass('icon-delete');
+					jQuery(dom).removeClass('active');
+				}
 
-                            case 'yes':
-
-                                jQuery("i", dom).removeClass('icon-delete').addClass('icon-checkmark');
-                                jQuery(dom).addClass('active');
-
-
-
-                                break;
-
-                            case 'no':
-                                jQuery("i", dom).removeClass('icon-checkmark').addClass('icon-delete');
-                                jQuery(dom).removeClass('active');
-
-                                break;
-
-                            default:
-
-                                throw "unknown publish state";
-
-                                break;
-                        }
-
-
-
-                    }
-
-
-
-                }
-
-
-                else {
-                    throw " communication error! ";
-                }
-            }
-            );
-        }
-
-        this.changeStockRoomState = function(id, dom) {
-
-
-            jQuery.post(
-                    ajaxurl + "?action=framework-ajax-admin&component=shop&con=stockroom&task=changestate",
-                    {
-                        "id": id
-
-
-                    },
-            function(r) {
-
-
-
-
-                if (r.status) {
-
-                    if (r.error)
-                        throw r.errormsg;
-
-                    else {
-
-                        switch (r.row.published) {
-
-                            case 'yes':
-
-                                jQuery("i", dom).removeClass('icon-delete').addClass('icon-checkmark');
-                                jQuery(dom).addClass('active');
-
-
-                                break;
-
-                            case 'no':
-                                jQuery("i", dom).removeClass('icon-checkmark').addClass('icon-delete');
-                                jQuery(dom).removeClass('active');
-
-                                break;
-
-                            default:
-
-                                throw "unknown publish state";
-
-                                break;
-                        }
-
-
-
-                    }
-
-
-
-                }
-
-
-                else {
-                    throw " communication error! ";
-                }
-            }
-            );
-        }
-
-        this.changeProductState = function(id, dom) {
-
-
-            jQuery.post(
-                    ajaxurl + "?action=framework-ajax-admin&component=shop&con=products&task=changestate",
-                    {
-                        "id": id
-
-
-                    },
-            function(r) {
-
-                r.status = parseInt(r.status);
-
-                if (r.status) {
-
-                    jQuery("i", dom).removeClass('icon-delete').addClass('icon-checkmark');
-                    jQuery(dom).addClass('active');
-
-
-                } else {
-                    jQuery("i", dom).removeClass('icon-checkmark').addClass('icon-delete');
-                    jQuery(dom).removeClass('active');
-                }
-
-            });
-        }
-    }
+			});
+		}
+	}
 })(window, jQuery)

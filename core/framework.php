@@ -41,7 +41,7 @@ final class Framework {
 
     public function get_active_components() {
 
-
+        $components = array();
         $components = (array) apply_filters("register_component", $components);
 
 
@@ -193,6 +193,7 @@ final class Framework {
         if (request::get_wp_original_query()->is_page()) {
             request::get_wp_original_query()->get_posts();
         }
+       
         //give the components chance to inspect or alter the request
         do_action('component_parse_request');
 
@@ -229,12 +230,13 @@ final class Framework {
                 return $this->template;
             }
 
-           
+
 
             $rows = component::get_wp_pages(request::getCmd('component'));
             $page = $rows[0];
             $page = get_page_by_path($page);
             $tpl = get_post_meta((int) $page->ID, '_wp_page_template', true);
+
 
             $query = new wp_query("page_id=" . $page->ID);
             if (!$query->have_posts()) {
@@ -260,50 +262,49 @@ final class Framework {
                 }
             }
 
-		
-            
-            
+
+
+
             $GLOBALS['query_string'] = "page_id=" . $page->ID;
             $GLOBALS['wp_the_query'] = clone $GLOBALS['wp_query'];
             $GLOBALS['wp_query'] = $query;
             $GLOBALS['post'] = $page;
-			
-			if (file_exists(get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php")) {
-				return get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php";
+
+            if (file_exists(get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php")) {
+                return get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php";
             }
-               
-			add_shortcode("framework",array($this,'attachTheContent'));
+
+            add_shortcode("framework", array($this, 'attachTheContent'));
             //add_filter("the_content", array($this, 'attachTheContent'));
             remove_action('wp_head', 'noindex', 1);
-            remove_action( "wp_head",'rel_canonical' );
-			
-			
-				$tmp = '';
-				foreach ( (array) array($tpl, 'page.php') as $template_name ) {
-	                if ( !$template_name )
-	                        continue;
-					
-	                if ( file_exists(STYLESHEETPATH . '/' . $template_name)) {
-	                        $tmp = STYLESHEETPATH . '/' . $template_name;
-	                        break;
-					}
-					 if ( file_exists(dirname(realpath($template)) . '/' . $template_name)) {
-	                        $tmp = dirname(realpath($template)) . '/' . $template_name;
-	                        break;
-					
-	                } else if ( file_exists(TEMPLATEPATH . '/' . $template_name) ) {
-	                        $tmp = TEMPLATEPATH . '/' . $template_name;
-	                        break;
-	                }
-	        }
-				
-				
-				
-			
-		
-		if($tmp)
+            remove_action("wp_head", 'rel_canonical');
 
-            return $tmp;
+
+
+            $tmp = '';
+            foreach ((array) array($tpl, 'page.php') as $template_name) {
+                if (!$template_name)
+                    continue;
+
+                if (file_exists(STYLESHEETPATH . '/' . $template_name)) {
+                    $tmp = STYLESHEETPATH . '/' . $template_name;
+                    break;
+                }
+                if (file_exists(dirname(realpath($template)) . '/' . $template_name)) {
+                    $tmp = dirname(realpath($template)) . '/' . $template_name;
+                    break;
+                } else if (file_exists(TEMPLATEPATH . '/' . $template_name)) {
+                    $tmp = TEMPLATEPATH . '/' . $template_name;
+                    break;
+                }
+            }
+
+
+
+
+
+            if ($tmp)
+                return $tmp;
         } else {
             return $template;
         }
@@ -353,8 +354,8 @@ final class Framework {
 
             $app->clearMessages();
 
-			
-            return "<div id='com-" . strtolower(request::getCmd('component')) . "'>" . $this->messages . $this->content . "</div>";
+
+            return "<div id='com-" . strtolower(request::getCmd('component')) . "' class='com-" . strtolower(request::getCmd('component')) . " addBootstrap'>" . $this->messages . $this->content . "</div>";
         }
     }
 

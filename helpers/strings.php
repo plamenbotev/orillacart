@@ -32,9 +32,9 @@ final class strings {
         return mb_strtoupper($string, encoding);
     }
 
-    static public function stristr($string, $haystack, $needle) {
+    static public function stristr($haystack, $needle, $before_needle = false) {
 
-        return mb_stristr($string, $haystack, $needle, encoding);
+        return mb_stristr($haystack, $needle, $before_needle, encoding);
     }
 
     static public function strlen($string) {

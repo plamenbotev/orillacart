@@ -14,7 +14,10 @@ class shopViewShortcodes extends view {
                 case "on_sale_products":
                     $mainframe->addscript('jquery');
                     $mainframe->addscript('shop_helper', Factory::getApplication('shop')->getComponentUrl() . '/front/js/shop_helper.js');
-                    $mainframe->addstyle('frontend-styles', Factory::getApplication('shop')->getAssetsUrl() . '/frontend-styles.css');
+                    $mainframe->addstyle('bootstrap', Factory::getApplication('shop')->getAssetsUrl() . '/bootstrap.css');
+					$mainframe->addstyle('icons', Factory::getApplication('shop')->getAssetsUrl() . '/icons.css');
+					$mainframe->addstyle('bootstrap-buttons',Factory::getApplication('shop')->getAssetsUrl() . '/buttons.css');
+					$mainframe->addstyle('frontend-styles', Factory::getApplication('shop')->getAssetsUrl() . '/frontend-styles.css');
 
                     $mainframe->addCustomHeadTag('ajaxurl', "
                 <script type='text/javascript'>

@@ -38,49 +38,51 @@ class customer {
 
     public function get_billing_fields() {
 
+        $validation = Helper::getInstance("validation","shop");
+        
         $type = 'billing';
         $fields = new fields(array(
-                            field::_('text', $type . '_first_name')->add_class('input-text billibg_field')
+                            field::_('text', $type . '_first_name')->add_class('billibg_field form-control')
                             ->set_required()
                             ->add_param('placeholder', __('First Name', 'com_shop'))
                             ->set_label(__('First Name', 'com_shop'))
                             ->set_error_msg(__("Please enter first name", "com_shop")),
-                            field::_('text', $type . '_last_name')->add_class('input-text billibg_field')
+                            field::_('text', $type . '_last_name')->add_class('billibg_field form-control')
                             ->set_required()
                             ->add_param('placeholder', __('Last Name', 'com_shop'))
                             ->set_label(__('Last Name', 'com_shop'))
                             ->set_error_msg(__("Please enter last name", "com_shop")),
-                            field::_('text', $type . '_address')->add_class('input-text billibg_field')
+                            field::_('text', $type . '_address')->add_class('billibg_field form-control')
                             ->set_required()
                             ->add_param('placeholder', __('Address','com_shop'))
                             ->set_error_msg(__("Please enter valid address.","com_shop"))
                             ->set_label(__('Address','com_shop')),
-                            field::_('text', $type . '_city')->add_class('input-text billibg_field')
+                            field::_('text', $type . '_city')->add_class('form-control billibg_field')
                             ->set_required()
                             ->set_error_msg(__("Please enter valid city.","com_shop"))
                             ->add_param('placeholder', __('City','com_shop'))
                             ->set_label(__('City','com_shop')),
-                            field::_('text', $type . '_zipcode')->add_class('input-text billibg_field')
+                            field::_('text', $type . '_zipcode')->add_class('form-control billibg_field')
                             ->set_required()
                             ->set_error_msg(__("Please enter valid zipcode.",'com_shop'))
                             ->add_param('placeholder', __('Post Code','com_shop'))
                             ->set_label(__('Post/Zip Code','com_shop'))
                             ->add_validation(array($validation, 'is_zipcode')),
-                            field::_('country', $type . '_country')->add_class('refresh-' . $type . '-states billibg_field')
+                            field::_('country', $type . '_country')->add_class('form-control refresh-' . $type . '-states billibg_field')
                             ->set_required()
                             ->set_error_msg(__("Please select country.",'com_shop'))
                             ->set_label(__('Country','com_shop')),
-                            field::_('state', $type . '_state')->add_class($type . '-states billibg_field')
+                            field::_('state', $type . '_state')->add_class($type . '-states billibg_field form-control')
                             ->set_required()
                             ->set_error_msg(__("Please select state.","com_shop"))
                             ->set_label(__('State','com_shop')),
-                            field::_('text', 'billing_email')->add_class('input-text billibg_field')
+                            field::_('text', 'billing_email')->add_class('form-control billibg_field')
                             ->set_required()
                             ->add_param('placeholder', __('Email','com_shop'))
                             ->set_label(__('Email','com_shop'))
                             ->set_error_msg(__("Please enter valid email.","com_shop"))
                             ->add_validation(array($validation, 'is_email')),
-                            field::_('text', 'billing_phone')->add_class('input-text billibg_field')
+                            field::_('text', 'billing_phone')->add_class('form-control billibg_field')
                             ->set_required()
                             ->add_param('placeholder', __('Phone','com_shop'))
                             ->set_label(__('Phone','com_shop'))
@@ -95,44 +97,44 @@ class customer {
     public function get_shipping_fields() {
         $type = 'shipping';
         
-       
+        $validation = Helper::getInstance("validation","shop");
         
         $fields = new fields(array(
-                            field::_('text', $type . '_first_name')->add_class('input-text shipping_field')
+                            field::_('text', $type . '_first_name')->add_class('form-control shipping_field')
                             ->set_required()
                             ->add_param('placeholder', __('First Name','com_shop'))
                             ->set_label(__('First Name','com_shop'))
                             ->set_error_msg(__("Please enter first name","com_shop")),
-                            field::_('text', $type . '_last_name')->add_class('input-text shipping_field')
+                            field::_('text', $type . '_last_name')->add_class('form-control shipping_field')
                             ->set_required()
                             ->add_param('placeholder', __('Last Name','com_shop'))
                             ->set_label(__('Last Name','com_shop'))
                             ->set_error_msg(__("Please enter last name","com_shop")),
-                            field::_('text', $type . '_address')->add_class('input-text shipping_field')
+                            field::_('text', $type . '_address')->add_class('form-control shipping_field')
                             ->set_required()
                             ->add_param('placeholder', __('Address','com_shop'))
                             ->set_error_msg(__("Please enter valid address.","com_shop"))
                             ->set_label(__('Address','com_shop')),
-                            field::_('text', $type . '_city')->add_class('input-text shipping_field')
+                            field::_('text', $type . '_city')->add_class('form-control shipping_field')
                             ->set_required()
                             ->set_error_msg(__("Please enter valid city.",'com_shop'))
                             ->add_param('placeholder', __('City','com_shop'))
                             ->set_label(__('City','com_shop')),
-                            field::_('text', $type . '_zipcode')->add_class('input-text shipping_field')
+                            field::_('text', $type . '_zipcode')->add_class('form-control shipping_field')
                             ->set_required()
                             ->set_error_msg(__("Please enter valid zipcode.","com_shop"))
                             ->add_param('placeholder', __('Post Code','com_shop'))
                             ->set_label(__('Post/Zip Code','com_shop'))
                             ->add_validation(array($validation, 'is_zipcode')),
-                            field::_('country', $type . '_country')->add_class('refresh-' . $type . '-states shipping_field')
+                            field::_('country', $type . '_country')->add_class('form-control refresh-' . $type . '-states shipping_field')
                             ->set_required()
                             ->set_error_msg(__("Please select country.","com_shop"))
                             ->set_label(__('Country','com_shop')),
-                            field::_('state', $type . '_state')->add_class($type . '-states shipping_field')
+                            field::_('state', $type . '_state')->add_class($type . '-states shipping_field form-control')
                             ->set_required()
                             ->set_error_msg(__("Please select state.","com_shop"))
                             ->set_label(__('State','com_shop')),
-                            field::_('text', 'shipping_phone')->add_class('input-text shipping_field')
+                            field::_('text', 'shipping_phone')->add_class('form-control shipping_field')
                             ->set_required()
                             ->add_param('placeholder', __('Shipping Phone','com_shop'))
                             ->set_label(__('Phone','com_shop'))

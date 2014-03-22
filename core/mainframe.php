@@ -34,7 +34,7 @@ final class mainframe {
             add_filter('wp_head', array($this, '_appendTags'));
         }
         add_filter('wp_title', array($this, '_appendTags'));
-		add_filter('wpseo_title',array($this, '_appendTags'));
+        add_filter('wpseo_title', array($this, '_appendTags'));
         // add_filter('the_title',array($this,'_appendTags'));
     }
 
@@ -53,18 +53,18 @@ final class mainframe {
     }
 
     public function _appendTags() {
-        do_action("mainframe_before_add_head_tags",$this);
+        do_action("mainframe_before_add_head_tags", $this);
         $args = func_get_args();
         $now = current_filter();
         switch ($now) {
             case "wp_head":
             case"admin_head":
 
-               
-               echo implode("\n", $this->custom_tags);
+
+                echo implode("\n", $this->custom_tags);
                 break;
             case "wp_title":
-			case "wpseo_title":
+            case "wpseo_title":
 
                 return $this->page_title;
                 break;
@@ -94,15 +94,41 @@ final class mainframe {
         $path = get_stylesheet_directory();
         $url = get_stylesheet_directory_uri();
         if (file_exists($path . "/" . $id . ".css")) {
-            wp_enqueue_style($id, $url . "/" . $id . ".css");
-        } else {
-            wp_enqueue_style($id, $file);
+            return wp_enqueue_style($id, $url . "/" . $id . ".css");
+        } else if (!empty($file) && strings::stripos($file, WP_PLUGIN_URL) !== false && (!defined("SCRIPT_DEBUG") || SCRIPT_DEBUG == false )) {
+            $dir = str_replace(WP_PLUGIN_URL, WP_PLUGIN_DIR, dirname($file));
+            $name = basename($file);
+            $name = str_replace(".css", ".min.css", $name);
+            $dir .= "/" . $name;
+            
+            if (file_exists($dir)) {
+                return wp_enqueue_style($id, str_replace(".css", ".min.css", $file));
+            }else{
+            return wp_enqueue_style($id, $file);
         }
+            
+        } else{
+            return wp_enqueue_style($id, $file);
+        }
+        
+        
     }
 
     public function addScript($id, $file = null, $dep = array(), $ver = false, $footer = false) {
 
-        wp_enqueue_script($id, $file, $dep, $ver, $footer);
+        //check if the file is local before searching for min version.
+        if (!empty($file) && strings::stripos($file, WP_PLUGIN_URL) !== false && (!defined("SCRIPT_DEBUG") || SCRIPT_DEBUG == false )) {
+            $dir = str_replace(WP_PLUGIN_URL, WP_PLUGIN_DIR, dirname($file));
+            $name = basename($file);
+            $name = str_replace(".js", ".min.js", $name);
+            $dir .= "/" . $name;
+            
+            if (file_exists($dir)) {
+
+                return wp_enqueue_script($id, str_replace(".js", ".min.js", $file), $dep, $ver, $footer);
+            }
+        }
+        return wp_enqueue_script($id, $file, $dep, $ver, $footer);
     }
 
     public function removeScript($id) {

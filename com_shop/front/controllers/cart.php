@@ -131,13 +131,18 @@ class shopControllerCart extends controller {
         $cart = Factory::getApplication('shop')->getHelper('cart');
         $response = array();
         $id = Request::getInt("id");
-        $props = array();
 
-        $props = (array) array_map('intval', (array) $_POST['property']);
 
-        foreach ($props as $k => $v) {
-            if (empty($v))
-                unset($props[$k]);
+        if (isset($_POST['property'])) {
+            $props = (array) array_map('intval', (array) $_POST['property']);
+
+            foreach ($props as $k => $v) {
+                if (empty($v))
+                    unset($props[$k]);
+            }
+        }else {
+
+            $props = array();
         }
 
         $qty = Request::getInt('qty', 1);
@@ -356,7 +361,7 @@ class shopControllerCart extends controller {
                     if ($type == 'billing') {
                         $fields = $customer->get_billing();
                     } else {
-                        if ($customer->ship_to_billing())
+                        if ($customer->ship_to_billing() || !Factory::getApplication("shop")->getParams()->get("shipping"))
                             continue;
                         $fields = $customer->get_shipping();
                     }
@@ -395,7 +400,11 @@ class shopControllerCart extends controller {
         if (!in_array($type, array('billing', 'shipping'))) {
             $type = 'billing';
         }
-        echo field::_('state', $type . '_state')->set_country($id)->render();
+
+
+
+
+        echo field::_('state', $type . '_state')->set_country($id)->add_class('form-control')->render();
         exit;
     }
 
@@ -652,7 +661,7 @@ class shopControllerCart extends controller {
         $this->view->assign('price', $price);
         $this->view->assign('items', $model->get_order_items($order['ID']));
         $this->view->assign('order', $order);
-        $this->view->assign("taxes",$helper->get_order_taxes($order['ID']));
+        $this->view->assign("taxes", $helper->get_order_taxes($order['ID']));
         parent::display('order_receipt');
     }
 

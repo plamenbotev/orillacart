@@ -774,8 +774,7 @@ final class orillacart_actions {
 
         $q = request::get_wp_original_query();
 
-        $o = $q->get_queried_object();
-
+      
         if (!Framework::is_admin()) {
 
             if ($q->is_tax('product_cat') || $q->is_tax('product_brand') || $q->is_tax('product_tags') || $q->is_tax("product_type")) {
@@ -787,7 +786,7 @@ final class orillacart_actions {
                 if ($q->is_tax('product_brand') || $q->is_tax('product_tags') || $q->is_tax('product_type')) {
                     request::setVar('task', 'brand');
                 } else {
-
+                    $o = $q->get_queried_object();
                     request::setVar('cid', (int) $o->term_id);
                 }
             } else if ($q->is_post_type_archive('product')) {
@@ -1184,8 +1183,7 @@ function my_nav_menu_item_link_meta_box() {
 
         <p class="button-controls">
             <span class="add-to-menu">
-                <img class="waiting" src="<?php echo esc_url(admin_url('images/wpspin_light.gif')); ?>" alt="" />
-                <input type="submit"<?php disabled($nav_menu_selected_id, 0); ?> class="button-secondary" onclick="return addShopPage()" value="<?php esc_attr_e('Add to Menu'); ?>" name="shop-controllers" id="shop-controllersdiv" />
+               <input type="submit" class="button-secondary" onclick="return addShopPage()" value="<?php esc_attr_e('Add to Menu'); ?>" name="shop-controllers" id="shop-controllersdiv" />
             </span>
         </p>
 

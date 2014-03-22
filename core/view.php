@@ -202,7 +202,8 @@ abstract class view extends app_object {
     public function loadTemplate($tpl = 'default') {
 
         static $overrides = array();
-
+        
+        do_action("view_display",get_class($this),$tpl);
 
         $paths = array();
 

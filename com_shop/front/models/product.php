@@ -176,7 +176,7 @@ class productModel extends model {
     }
 
     public function getAvailableAmount($pid) {
-        if (!$this->is_product($id))
+        if (!$this->is_product($pid))
             return 0;
         return $this->is_variation_available($pid);
     }

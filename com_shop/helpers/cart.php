@@ -584,7 +584,7 @@ final class cart {
         $product = Factory::getApplication('shop')->getTable('product')->load($o->id);
 
         $row->type = $product->type;
-        $row->sku = $o->sku;
+        $row->sku = $product->sku;
         $row->qty = $o->qty;
         $row->id = $o->id;
         $tax_group = null;

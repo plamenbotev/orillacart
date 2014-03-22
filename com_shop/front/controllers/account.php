@@ -22,7 +22,8 @@ class shopControllerAccount extends controller {
                 'base' => rawurldecode(Route::get('component=shop&con=account&paged=%#%')),
                 'format' => '?paged=%#%',
                 'current' => max(1, request::getInt('paged')),
-                'total' => $total
+                'total' => $total,
+                'type'=>"array"
             ));
 
             $this->view->assign('pagination', $pagination);

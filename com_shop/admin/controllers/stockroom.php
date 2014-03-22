@@ -115,10 +115,12 @@ class shopControllerStockroom extends controller {
         $row = null;
         try {
            
-            if (is_numeric($_POST['id'])) {
+            if (isset($_POST['id']) && is_numeric($_POST['id']) && !empty($_POST['id'])) {
                 $row = Factory::getApplication('shop')->getTable('stockroom')->load((int) $_POST['id'])->bind($_POST)->store();
             } else {
-
+				if(isset($_POST['id'])){
+					unset($_POST['id']);
+				}
                 $row = Factory::getApplication('shop')->getTable('stockroom')->bind($_POST)->store();
             }
 
@@ -126,8 +128,6 @@ class shopControllerStockroom extends controller {
         } catch (Exception $e) {
 
             Factory::getApplication('shop')->setMessage($e->getMessage());
-
-
 
             $this->execute('addnew', $row);
             return;
@@ -144,8 +144,6 @@ class shopControllerStockroom extends controller {
         $id = (int) $_POST['id'];
 
         $model->changeState($id);
-
-
 
         $ret = new stdClass();
 

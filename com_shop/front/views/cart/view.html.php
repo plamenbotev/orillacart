@@ -40,7 +40,7 @@ class shopViewCart extends view {
 
 
         if ($cart->is_empty()) {
-            die("<div>Your session has expired and the cart is empty!</div>");
+            die("<div>".__("Your session has expired and the cart is empty!","com_shop")."</div>");
         }
 
         parent::display('order');
