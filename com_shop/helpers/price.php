@@ -95,7 +95,7 @@ class price {
 
             $response = wp_remote_post($curr_filename);
 
-            if (!is_wp_error($response) && $response['response']['code'] >= 200 && $response['code'] < 300) {
+            if (!is_wp_error($response) && $response['response']['code'] >= 200 && $response['response']['code'] < 300) {
 
                 $contents = $response['body'];
             } else {

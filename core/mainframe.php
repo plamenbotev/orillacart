@@ -63,9 +63,17 @@ final class mainframe {
 
                 echo implode("\n", $this->custom_tags);
                 break;
+			case "wpseo_title":
+				
+				if(empty($this->page_title)){
+					return $args[0];
+				}
+				 return $this->page_title;
+			
+			break;
+				
             case "wp_title":
-            case "wpseo_title":
-
+            			
                 return $this->page_title;
                 break;
             default:

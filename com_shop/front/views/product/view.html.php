@@ -29,8 +29,14 @@ class shopViewProduct extends view {
             $this->assign('thumbnail_medium', current(wp_get_attachment_image_src(get_post_thumbnail_id(), 'product_medium')));
         } else {
             $img = current($this->row->images);
-            $this->assign('thumbnail_full', $img->image);
-            $this->assign('thumbnail_medium', $img->medium);
+
+            if (!empty($img)) {
+                $this->assign('thumbnail_full', $img->image);
+                $this->assign('thumbnail_medium', $img->medium);
+            } else {
+                $this->assign('thumbnail_full', null);
+                $this->assign('thumbnail_medium', null);
+            }
         }
 
         if (has_term('digital', 'product_type', $post)) {
@@ -54,7 +60,7 @@ class shopViewProduct extends view {
         Factory::getMainframe()->addstyle('lb', Factory::getApplication('shop')->getAssetsUrl() . "/slimbox.css");
         Factory::getMainframe()->addscript('json', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.json-2.2.js");
         Factory::getMainframe()->addStyle('jquery-btatbs-css', Factory::getApplication('shop')->getAssetsUrl() . "/btabs.style.css");
-      //  Factory::getMainframe()->addScript('jquery-btabs-js', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.btabs.js");
+        //  Factory::getMainframe()->addScript('jquery-btabs-js', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.btabs.js");
 
         Factory::getMainframe()->addScript('bootstrap', Factory::getApplication('shop')->getAssetsUrl() . "/js/bootstrap.min.js");
 

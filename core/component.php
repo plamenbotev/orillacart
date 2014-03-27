@@ -302,12 +302,14 @@ abstract class component extends app_object {
         $plugin_dir_name = plugin_basename($base_path);
         $this->rel_path = $plugin_dir_name;
        
-        if (is_dir($path)) {
+	   
+	   
+        if (is_dir($base_path)) {
             $this->componentBase = $path;
             $this->component_url = WP_PLUGIN_URL . '/' . $plugin_dir_name;
             add_action("init", array($this, "load_language"));
         } else {
-
+die($path);
             throw new Exception("cant determine component directory for component:" . get_class($this));
         }
     }

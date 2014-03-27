@@ -886,14 +886,12 @@ class ordersModel extends Model {
 //store the item
             $order_item = $app->getTable('order_item');
             $order_item->reset();
-            if ($product->type == 'digital') {
-                $order_item->product_type = 'digital';
-            } else if ($product->type == 'virtual') {
-                $order_item->product_type = 'virtual';
-            }
+            
+                       
+         
 
             $manage_stocks = true;
-            if ($product->manage_stock == 'no' || ($product->manage_stock == 'global' && !Factory::getApplication('shop')->getParams()->get('checkStock'))) {
+            if ($product_row->manage_stock == 'no' || ($product_row->manage_stock == 'global' && !Factory::getApplication('shop')->getParams()->get('checkStock'))) {
                 $manage_stocks = false;
             }
 
@@ -911,9 +909,9 @@ class ordersModel extends Model {
             $order_item->product_diameter = $product_row->product_diameter;
             $order_item->product_weight = $product_row->product_weight;
 
-            if ($product->type == 'digital') {
+            if ($product_row->type == 'digital') {
                 $order_item->product_type = 'digital';
-            } else if ($product->type == 'virtual') {
+            } else if ($product_row->type == 'virtual') {
                 $order_item->product_type = 'virtual';
             }
 
@@ -946,7 +944,7 @@ class ordersModel extends Model {
                         $order_item_attribute->section_price = $prop->property_price;
                         $order_item_attribute->section_oprand = $prop->oprand;
                         if ($manage_stocks) {
-                            $order_item_attribute->stockrooms = $order_helper->manage_amounts($item->id, $item->qty, 'property');
+                            $order_item_attribute->stockrooms = $order_helper->manage_amounts($prop->property_id, $qty, 'property');
                         }
 
                         $order_item_attribute->store();

@@ -112,9 +112,7 @@ class product_helper {
         if (!empty($p)) {
             $db = Factory::getDBO();
             $p = (array) array_map('intval', (array) array_unique((array) $p));
-            $s = (array) array_map('intval', (array) array_unique((array) $s));
-
-            $props = array();
+            
 
             $db->setQuery("SELECT p.property_id,p.property_price,p.oprand FROM `#_shop_attribute_property` AS p
 

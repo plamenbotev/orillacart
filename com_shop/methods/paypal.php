@@ -206,11 +206,16 @@ if (!function_exists('paypal_init')) {
                     if ($this->check_ipn_request_is_valid($order)) {
 
                         header('HTTP/1.1 200 OK');
-
+	
                         switch (strtolower($_POST['payment_status'])) {
                             case 'completed' :
+							
                                 // Payment completed
                                 $res->order_status = "completed";
+                                break;
+								
+							case "pending":
+								 $res->order_status = "on-hold";
                                 break;
                             case 'denied' :
                             case 'expired' :
@@ -247,6 +252,7 @@ if (!function_exists('paypal_init')) {
                         'sslverify' => false,
                         'timeout' => 60,
                         'httpversion' => '1.1',
+						'headers' => array('connection','close')
                     );
 
 
@@ -261,18 +267,21 @@ if (!function_exists('paypal_init')) {
                     // Post back to get a response
                     $response = wp_remote_post($paypalurl, $params);
 
+						
+					
                     // Clean
                     unset($_POST['cmd']);
 
                     // check to see if the request was valid
-                    if (!is_wp_error($response) && $response['response']['code'] >= 200 && $response['response']['code'] < 300 && (strcmp($response['body'], "VERIFIED") == 0)) {
+                    if (!is_wp_error($response) && $response['response']['code'] >= 200 && $response['response']['code'] < 300 && (stripos($response['body'], "VERIFIED") !== false)) {
 
                         if (trim($_POST['receiver_email']) != trim($this->params->get("paypal_merchant_email", ''))) {
-
-
+						
                             return false;
                         }
-                        if ((float) $_POST['mc_gross'] != (float) $order->get("order_total")) {
+						
+				
+                        if ( (float) $_POST['mc_gross'] < (float) $order->get("order_total")) {
 
                             return false;
                         }
@@ -284,9 +293,9 @@ if (!function_exists('paypal_init')) {
 										INNER JOIN #_postmeta AS b ON a.post_id = b.post_id
 										WHERE a.meta_key = '_payment_method' AND a.meta_value = 'paypal' AND b.meta_key = '_tid' AND b.meta_value = '" . $db->secure($_POST['txn_id']) . "' AND a.post_id != " . (int) $order->ID);
 
-
-                        if ((int) $db->loadResult() > 0) {
-                            return false;
+					
+					    if ((int) $db->loadResult() > 0) {
+					       return false;
                         }
 
 

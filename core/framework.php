@@ -85,6 +85,7 @@ final class Framework {
         $components = null;
         $components = $this->get_active_components();
 
+               
         foreach ((array) $components as $k => $v) {
 
             Factory::getApplication($v)->init();
