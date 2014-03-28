@@ -38,7 +38,7 @@
 
 			this.recalc_params.fire(data);
 
-			jQuery("#com-shop .product-attributes select.property").each(function (i) {
+			jQuery("#com-shop #product_attributes select.property").each(function (i) {
 
 				switch (this.nodeName.toLowerCase()) {
 
@@ -67,6 +67,8 @@
 				}
 			});
 
+
+
 			var ajaxurl = this.ajaxurl;
 
 			if (this.req) {
@@ -84,7 +86,7 @@
 						if (typeof res['id'] != "undefined") {
 
 							$this.ID = res['id'];
-
+                                                                    
 							for (var key in res.block) {
 								jQuery("#product_" + key).html(res.block[key]);
 							}
