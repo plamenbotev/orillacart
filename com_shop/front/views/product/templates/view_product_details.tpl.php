@@ -1,7 +1,7 @@
 <div class="product-view container-fluid">
     <form role="form" onsubmit="" action='<?php echo Route::get("component=shop&con=cart"); ?>' method="post" id="product_addtocart_form">
 
-        <div clas="row">
+        <div class="row">
             <div class="col-xs-12 col-md-8">
                 <div id="product_gallery">
                     <?php $this->loadTemplate('gallery'); ?>

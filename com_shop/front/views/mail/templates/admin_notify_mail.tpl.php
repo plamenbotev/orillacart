@@ -37,6 +37,12 @@
                                         <td><h2 style="font-size:18px; font-weight:normal; margin:0;"><?php _e("Your Order #", "com_shop"); ?><?php echo (string) $this->order['ID']; ?> <small>(<?php _e("placed on", "com_shop"); ?> <?php echo $this->order['cdate']; ?>)</small></h2></td>
                                     </tr>
                                     <tr>
+                                        <td>
+                                            <p><?php _e('Order key: ', 'com_shop'); ?> <?php echo $this->order['post_password']; ?></p>
+                                        </td>
+                                        
+                                    </tr>
+                                    <tr>
                                         <td><table width="650" cellspacing="0" cellpadding="0" border="0">
                                                 <thead>
                                                     <tr>

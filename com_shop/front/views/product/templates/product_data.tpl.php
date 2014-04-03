@@ -9,7 +9,7 @@
 
 
     <?php if ($this->row->price->raw_price < $this->row->price->base) { ?>
-        <div class="oldPriceContainer">
+        <div id="oldPriceContainer" class="oldPriceContainer">
             <span class="oldPriceTitle"><?php _e("Regular price: ", "com_shop"); ?></span>
             <span class="old_price ">
                 <?php echo $this->row->price->base_formated; ?>
@@ -22,7 +22,7 @@
         <?php else: ?>
             <span class="priceTitle"><?php _e("Price: "); ?></span>
         <?php endif; ?>
-        <span class="price <?php if ($this->row->price->raw_price < $this->row->price->base) echo 'product_has_discount'; ?>">
+        <span id="price_container" class="price <?php if ($this->row->price->raw_price < $this->row->price->base) echo 'product_has_discount'; ?>">
             <?php echo $this->row->price->price_formated; ?>
         </span>
     </div>

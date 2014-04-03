@@ -2,7 +2,7 @@
 
 /*
   Plugin Name: OrillaCart
-  Version: 1.1.2
+  Version: 1.1.3
   Description: ecommerce solution for WordPress
   Plugin URI: http://orillacart.com
   Author: orillacart.com team
@@ -13,10 +13,10 @@ defined('ABSPATH') or die();
 
 
 define('_VALID_EXEC', 1);
-define('DS', "/");
+defined("DS") or define('DS', "/");
 define("ORILLA_FRAMEWORK_BASE",realpath(dirname(__FILE__)));
 define("ORILLA_FRAMEWORK_CORE",realpath(dirname(__FILE__).DS."core"));
-define("ORILLACART_VERSION","1.1.2");
+define("ORILLACART_VERSION","1.1.3");
 
 define("ORILLA_FRAMEWORK_PUBLIC_KEY",realpath(dirname(__FILE__).DS."core".DS."public_key".DS."orillacart.pub"));
 

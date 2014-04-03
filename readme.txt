@@ -84,6 +84,8 @@ That page is the front end of your store, you can change the page later from the
 Always backup before upgrade!
 
 == Changelog ==
+== 1.1.3 - 03.04.2014 ==
+1. Attribute price bugfix.
 
 = 1.1.0 - 22.03.2014 =
 1. Bootstrap 

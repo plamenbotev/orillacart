@@ -1,6 +1,8 @@
 <h1><?php _e('Order #', 'com_shop'); ?><?php echo (string) $this->order['ID']; ?></h1>
 <p class=""><?php _e('Order Date:', 'com_shop'); ?> <?php echo $this->order['cdate']; ?></p>
 <hr />
+<p><?php _e('Order key: ', 'com_shop'); ?> <?php echo $this->order['post_password']; ?></p>
+<hr />
 <div class="container-fluid">
     <div class="row">
         <?php if (Factory::getApplication("shop")->getParams()->get("shipping")) { ?>
