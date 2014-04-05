@@ -76,12 +76,12 @@ class treeBase {
 
             $this->db->setQuery("
                 SELECT * FROM `" . $this->xref . "` as a
-		INNER JOIN `#_term_taxonomy` as b ON b.term_taxonomy_id = a.category_child_id
+		INNER JOIN `#_term_taxonomy` as b ON b.term_id = a.category_child_id
                 INNER JOIN `#_terms` as c on c.term_id = b.term_id
-                WHERE b.parent = " . (int) $id . " ORDER BY a.position ASC
+                WHERE b.taxonomy = '".$this->taxonomy."' AND b.parent = " . (int) $id . " ORDER BY a.position ASC
                     ");
         }
-
+		
         if ($ret_resource)
             return clone $this->db;
 
