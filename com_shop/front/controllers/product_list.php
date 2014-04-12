@@ -28,7 +28,8 @@ class shopControllerProduct_list extends controller {
 
         if ($params->get('display_cetegories')) {
             //if we have category as homepage set the $cid to null, to load all root subcategories
-            if ($cid == $params->get('front_page_cat')) {
+            if ($cid == $params->get('front_page_cat') &&  !Request::getInt('cid', null)) {
+            
                 $cid = null;
             }
             $this->view->assign('sub_cats', $model->getSubCats($cid, $exclude));
