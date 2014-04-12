@@ -85,10 +85,15 @@ Always backup before upgrade!
 
 == Changelog ==
 
-== 1.1.4 - 05.04.2014 ==
+= 1.1.6 - 12.04.2014 =
+
+1. Fix category as homepage bug
+2. Add correct styles for cart widget on non shop related pages
+
+= 1.1.4 - 05.04.2014 =
 1. Category manager bug fixed.
 
-== 1.1.3 - 03.04.2014 ==
+= 1.1.3 - 03.04.2014 =
 1. Attribute price bugfix.
 
 = 1.1.0 - 22.03.2014 =

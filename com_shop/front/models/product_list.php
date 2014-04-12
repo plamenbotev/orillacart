@@ -157,8 +157,9 @@ class product_listModel extends model {
             request::set_wp_var('post_parent', 0);
         }
 
-        if (( isset($req['post_type']) && 'product' == $req['post_type'] ) && !isset($req['product_cat']) && !isset($req['product_brand']) && !isset($req['product_tag'])) {
-            if (Factory::getApplication('shop')->getParams()->get('front_page_cat')) {
+		if (( (isset($req['post_type']) && 'product' == $req['post_type']) || request::getCmd('con') == 'product_list' ) && !isset($req['product_cat']) && !isset($req['product_brand']) && !isset($req['product_tag'])) {
+           
+			if (Factory::getApplication('shop')->getParams()->get('front_page_cat')) {
                 $term = get_term_by('id', (int) Factory::getApplication('shop')->getParams()->get('front_page_cat'), 'product_cat');
                 if (!empty($term->slug)) {
                     $taxquery = array(

@@ -25,7 +25,11 @@ class Widget_Shop_Cart extends WP_Widget {
             Factory::getMainframe()->addScript('jquery-validate', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.validate.js");
             Factory::getMainframe()->addScript('add-to-cart-widget', Factory::getApplication('shop')->getAssetsUrl() . "/js/add-to-cart-widget.js");
             Factory::getMainframe()->addStyle('tipsy', Factory::getApplication('shop')->getAssetsUrl() . "/tipsy.css");
-            Factory::getMainframe()->addscript('block', Factory::getApplication('shop')->getAssetsUrl() . "/js/block.js");
+            Factory::getMainframe()->addStyle('bootstrap', Factory::getApplication('shop')->getAssetsUrl() . "/bootstrap.css");
+            Factory::getMainframe()->addstyle('icons', Factory::getApplication('shop')->getAssetsUrl() . '/icons.css');
+			Factory::getMainframe()->addstyle('bootstrap-buttons', Factory::getApplication('shop')->getAssetsUrl() . '/buttons.css');
+           
+			Factory::getMainframe()->addscript('block', Factory::getApplication('shop')->getAssetsUrl() . "/js/block.js");
         }
         add_filter('orillacart_add_to_cart_json', array($this, 'update_cart_content'));
     }
@@ -118,6 +122,3 @@ function orillacart_register_widgets() {
 }
 
 add_action('widgets_init', 'orillacart_register_widgets');
-
-
-

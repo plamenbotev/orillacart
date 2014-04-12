@@ -1,4 +1,4 @@
-<div id='orillacart_cart_widget_container' class='mini-cart'>
+<div id='orillacart_cart_widget_container' class='mini-cart addBootstrap'>
     <div id='orillacart_cart_widget'>
         <?php if ($this->cart->is_empty()) { ?>
             <?php _e("Your cart is empty.", "com_shop"); ?>
