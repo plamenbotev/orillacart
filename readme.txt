@@ -3,7 +3,7 @@ Contributors: orillacart
 Tags: ecommerce plugin, ecommerce, e-commerce, attributes, variations, commerce, wordpress ecommerce, product, store, sales, sell, shop, shopping, cart, checkout, downloadable, digital, inventory, shipping, tax
 Donate link:
 Requires at least: 3.5
-Tested up to: 3.8.1
+Tested up to: 3.9
 Stable tag: trunk
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -35,7 +35,23 @@ It is free, it is open source and it is build with carefully selected eCommerce 
 * __Countries__ and __States__ Manager - Manage all predefined countries and states.
 * __Payment__ and __Shipping__ Methods - Additional payment and shipping plugins available on our site.
 
+__= Additional eCommerce extensions =__
 
+__Payment Methods__
+
+* [Authorize DPM](http://orillacart.com/shop/authorize-dpm/ "Authorize DPM")
+* [Authorize AIM](http://orillacart.com/shop/authorize-aim/ "Authorize AIM")
+* [PayPal PRO](http://orillacart.com/shop/paypal-pro/ "PayPal PRO")
+* [2Checkout](http://orillacart.com/shop/2checkout/ "2Checkout")
+* [Skrill](http://orillacart.com/shop/skrill/ "Skrill")
+
+__Shipping Methods__
+
+* [FedEx](http://orillacart.com/shop/fedex/ "FedEx")
+
+__Other Tools__
+
+* [Dynamic Product Prices](http://orillacart.com/shop/dynamic-product-prices/ "Dynamic Product Prices")
 
 
 == Installation ==
@@ -110,7 +126,7 @@ Always backup before upgrade!
 
 = 1.0.21 - 19.02.2014 =
 1. All templates now can be overridden by creating directory com_shop_admin/VIEW_NAME/ and/or com_shop_front/VIEW_NAME/ 
-folders in the theme path or in wp-content.  
+folders in the theme path or in wp-content. You can now personalize your ecommerce site templates to better fit your main theme.  
 
 = 1.0.20 - 12.02.2014 =
 1. shop manager role added.
@@ -147,7 +163,7 @@ folders in the theme path or in wp-content.
 
 = 1.0.8 - 30.12.2013 =
 
-1. Multi site compatible 
+1. Multi site compatible. Allows you to add ecommerce toolset in your multiple blogs.
 
 = 1.0.7 - 09.12.2013 =
 
@@ -176,4 +192,4 @@ folders in the theme path or in wp-content.
 2.	Added option to multiply the shipping rate by total quantity
 
 = 1.0 - 27/10/2013 =
-*	First public release.
+*	First public release of our eCommerce plugin.
