@@ -18,6 +18,7 @@ class productTable extends table {
     public $special = 'no';
     public $expired = 'no';
     public $not_for_sale = 'no';
+	public $hide_price = 'no';
     public $price = null;
     public $discount_price = null;
     public $discount_start = '0000-00-00 00:00:00';

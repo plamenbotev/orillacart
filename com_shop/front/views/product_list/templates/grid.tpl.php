@@ -80,7 +80,10 @@
                     </a>
                     <h4><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h4>
                 </div>
-                <div>
+              
+				<?php if(((bool)Factory::getParams('shop')->get('hide_the_price') == false && $product->hide_price == 'global') || $product->hide_price == 'no'): ?>
+ 
+				<div>
                     <?php if ($product->price->raw_price < $product->price->base) { ?>
                         <div class="oldPriceContainer">
                             <span class="oldPriceTitle"><?php _e("Regular price: ", "com_shop"); ?></span>
@@ -108,6 +111,7 @@
                         </a>
                     <?php } ?>
                 </div>
+				<?php endif; ?>
             </li>
             <?php if ($c1 % $this->products_per_row == 0 || $c1 == $this->products_count) { ?>
                 <?php

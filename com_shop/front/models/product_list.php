@@ -114,30 +114,13 @@ class product_listModel extends model {
     }
 
     public function getProductsOrderByPrice($sql, $query) {
-        $db = Factory::getDBO();
+		$db = Factory::getDBO();
         if ($query->is_main_query()) {
 
-        $sql2 = "
-            SELECT SQL_CALC_FOUND_ROWS #_posts.*,CAST(#_postmeta.meta_value AS DECIMAL(65,30)) as thePrice
-            FROM #_posts 
-            INNER JOIN #_postmeta ON (#_posts.ID = #_postmeta.post_id)
-          
-            WHERE 1=1 AND #_posts.post_parent = 0 AND #_posts.post_type = 'product' AND (#_posts.post_status = 'publish') AND (#_postmeta.meta_key = '_price')
-            GROUP BY #_posts.ID
-            ORDER BY thePrice " . $this->order_type . " LIMIT ";
-
-            $tmp = (array) explode("LIMIT", $sql);
-            $tmp = end($tmp);
-            if (!empty($tmp) && is_string($tmp)) {
-                $sql2 .= $tmp;
-            } else {
-                $sql2 .= " 0," . (int) Factory::getApplication('shop')->getParams()->get('objects_per_page');
-            }
-            
-            $sql2 = apply_filters("orillacart_order_by_price_sql",$sql2,$this->order_type);
-            
-            $sql = $db->parseQuery($sql2);
-         //  die($sql);
+			$sql['fields'] .= $db->parseQuery(', CAST(#_postmeta.meta_value AS DECIMAL(65,30)) as thePrice');
+			$sql['orderby'] = 'thePrice '.$this->order_type;
+			
+			$sql = (array)apply_filters("orillacart_order_by_price_sql",$sql,$query,$this->order_type);
         }
         return $sql;
     }
@@ -193,7 +176,7 @@ class product_listModel extends model {
             request::set_wp_var('orderby', 'meta_value');
             request::set_wp_var('order', $this->order_type);
             //include the default selected attributes for the price ordering
-            add_filter('posts_request', array($this, 'getProductsOrderByPrice'), 10, 2);
+            add_filter('posts_clauses_request', array($this, 'getProductsOrderByPrice'), 10, 2);
         } else {
             request::set_wp_var('orderby', $this->order_by);
             request::set_wp_var('order', $this->order_type);

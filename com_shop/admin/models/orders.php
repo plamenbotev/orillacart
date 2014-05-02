@@ -830,7 +830,7 @@ class ordersModel extends Model {
         if ($stock = $product->is_variation_available($variation, $properties)) {
 
             if ($stock < $qty) {
-                throw new Exception(__("Not enought items in stock.", "com_shop"));
+                throw new Exception(__("Not enough items in stock.", "com_shop"));
             }
 
 //check is passed we have the needed stock so we can proceed
@@ -959,7 +959,7 @@ class ordersModel extends Model {
         } else {
 
             if ($stock < $qty) {
-                throw new Exception(__("Not enought items in stock.", "com_shop"));
+                throw new Exception(__("Not enough items in stock.", "com_shop"));
             }
         }
 

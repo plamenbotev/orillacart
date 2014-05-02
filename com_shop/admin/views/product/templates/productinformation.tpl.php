@@ -27,7 +27,7 @@
                 <label class="hasTip" title="<?php _e('upload files for that digital product.', 'com_shop'); ?>" for="uploadfiles">Choose files</label>
                 <button class="btn btn-small upload_file_button">
                     <span class="icon-upload"></span>
-                    Upload a file
+                    <?php _e('Upload a file','com_shop'); ?>
                 </button>
             </li>
             <li class="digital" style="display:<?php echo $this->row->product->type == 'digital' ? 'block' : 'none'; ?>">
@@ -87,6 +87,16 @@
                     <input type="radio" name="not_for_sale" id="not_for_sale1" value="yes"  <?php echo $this->row->product->not_for_sale == 'yes' ? 'checked="checked"' : ''; ?> class="inputbox" />
                     <label for="not_for_sale1"><?php _e('Yes', 'com_shop'); ?></label>
                 </fieldset>
+            </li>
+			<li>
+                <label><?php _e('Hide price:', 'com_shop'); ?></label>
+                <fieldset class="panelform">
+                    <select name='hide_price' id="hide_price">
+						<option value='global' <?php echo ($this->row->product->hide_price == 'global') ? "selected='selected'" : ''; ?>><?php _e('global', 'com_shop'); ?></option>
+						<option value="no" <?php echo ($this->row->product->hide_price == 'no') ? "selected='selected'" : ''; ?> ><?php _e('no', 'com_shop'); ?></option>
+						<option value="yes" <?php echo ($this->row->product->hide_price == 'yes') ? "selected='selected'" : ''; ?> ><?php _e('yes', 'com_shop'); ?></option>
+             		</select>
+				</fieldset>
             </li>
             <li>
                 <label for="discount_price"> <?php _e('Discount Price:', 'com_shop'); ?> </label>

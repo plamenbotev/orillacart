@@ -599,7 +599,7 @@ final class orillacart_actions {
                 'name' => __('Order statuses', 'com_shop'),
                 'singular_name' => __('Order status', 'com_shop'),
                 'search_items' => __('Search Order statuses', 'com_shop'),
-                'all_items' => __('All  Order statuses', 'com_shop'),
+                'all_items' => __('All Order statuses', 'com_shop'),
                 'parent_item' => __('Parent Order status', 'com_shop'),
                 'parent_item_colon' => __('Parent Order status:', 'com_shop'),
                 'edit_item' => __('Edit Order status', 'com_shop'),

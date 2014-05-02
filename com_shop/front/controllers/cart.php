@@ -94,13 +94,13 @@ class shopControllerCart extends controller {
                 $response['action'] = 'msg';
 
                 if ($res > 0) {
-                    $response['data'] = sprintf(__('Not enought quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res);
+                    $response['data'] = sprintf(__('Not enough quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res);
                 } else {
                     $response['data'] = __('Chosen product is out of stock', 'com_shop');
                 }
             } else {
                 if ($res > 0) {
-                    Factory::getApplication('shop')->addError(sprintf(__('Not enought quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res));
+                    Factory::getApplication('shop')->addError(sprintf(__('Not enough quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res));
                 } else {
 
                     Factory::getApplication('shop')->addError(__('Chosen product is out of stock', 'com_shop'));
@@ -217,7 +217,7 @@ class shopControllerCart extends controller {
             if (Request::is_ajax()) {
                 $response['action'] = 'msg';
                 if ($res > 0) {
-                    $response['data'] = sprintf(__('Not enought quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res);
+                    $response['data'] = sprintf(__('Not enough quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res);
                 } else {
                     $response['data'] = __('Chosen product is out of stock', 'com_shop');
                 }
@@ -231,7 +231,7 @@ class shopControllerCart extends controller {
                 Factory::getApplication('shop')->close();
             } else {
                 if ($res > 0) {
-                    Factory::getApplication('shop')->addError(sprintf(__('Not enought quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res));
+                    Factory::getApplication('shop')->addError(sprintf(__('Not enough quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res));
                 } else {
 
                     Factory::getApplication('shop')->addError(__('Chosen product is out of stock', 'com_shop'));

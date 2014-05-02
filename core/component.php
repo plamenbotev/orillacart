@@ -316,9 +316,12 @@ abstract class component extends app_object {
     public function load_language() {
         
         $locale = apply_filters( 'plugin_locale', get_locale(), "com_".$this->getName() );
-      
-		load_textdomain( "com_".$this->getName(), WP_LANG_DIR . "/com_".$this->getName()."/com_".$this->getName()."-".$locale."mo" );
-           
+    
+   
+   
+	  
+		load_textdomain( "com_".$this->getName(), WP_LANG_DIR . "/com_".$this->getName()."/com_".$this->getName()."-".$locale.".mo" );
+          
         load_plugin_textdomain("com_".$this->getName(),false, $this->rel_path."/languages");
     
      

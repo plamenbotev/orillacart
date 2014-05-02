@@ -48,6 +48,13 @@
                 <input name="catalogOnly" type="checkbox" value="1"  <?php echo $this->settings->get('catalogOnly') ? 'checked="checked"' : ''; ?> id="catalogOnly">
 
             </li>
+			<li>
+               <label class="hasTip" for="hide_the_price">
+                   <?php _e('Hide product price', 'com_shop'); ?>
+               </label>
+               <input name="hide_the_price" type="checkbox" value="1"  <?php echo $this->settings->get('hide_the_price') ? 'checked="checked"' : ''; ?> id="hide_the_price">
+
+           </li>
             <li>
                 <label class="hasTip" for="retail_countries">
                     <?php _e('Retail Countries', 'com_shop'); ?>

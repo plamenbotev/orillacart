@@ -23,6 +23,7 @@ class shopParams extends parameters {
     public $products_per_row = 4;
     public $list_type = 'grid';
     public $catalogOnly = false;
+	public $hide_the_price = false;
     public $vat = true;
     public $vatType = 1;
     public $userReg = 0;
@@ -64,6 +65,9 @@ class shopParams extends parameters {
         //make all unchecked checkboxes as false
         if (!isset($from['catalogOnly'])) {
             $from['catalogOnly'] = false;
+        }
+		if (!isset($from['hide_the_price'])) {
+            $from['hide_the_price'] = false;
         }
 
         if (!isset($from['vat'])) {

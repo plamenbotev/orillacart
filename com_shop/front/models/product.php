@@ -29,6 +29,13 @@ class productModel extends model {
             $p->thumb = '';
             $p->image_title = '';
         }
+		
+		$p->hide_price = get_post_meta((int) $id, '_hide_price', true);
+		$p->not_for_sale = get_post_meta((int) $id, '_not_for_sale', true);
+		$p->special = get_post_meta((int) $id, '_special', true);
+		$p->on_sale = get_post_meta((int) $id, '_on_sale', true);
+		$p->expired = get_post_meta((int) $id, '_expired', true);
+		
         return $p;
     }
 

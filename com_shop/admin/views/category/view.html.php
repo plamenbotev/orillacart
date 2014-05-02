@@ -36,6 +36,11 @@ class shopViewCategory extends view {
             <script type=\'text/javascript\'>
                 jQuery(function() {
                     jQuery("dl.tabs").btabs();
+					
+					setTimeout(function(){
+					jQuery("#shop_info").html("").slideUp();
+					},4000);
+					
                 });
             </script>');
 

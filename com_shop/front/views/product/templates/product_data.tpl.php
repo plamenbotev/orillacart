@@ -5,10 +5,8 @@
     <?php if (!empty($this->row->product->sku)) { ?>    
         <div class='sku'><?php _e('SKU:', 'com_shop'); ?> <?php echo strings::htmlentities($this->row->product->sku); ?></div>
     <?php } ?>    
-
-
-
-    <?php if ($this->row->price->raw_price < $this->row->price->base) { ?>
+<?php if(((bool)Factory::getParams('shop')->get('hide_the_price') == false && $this->row->product->hide_price == 'global') || $this->row->product->hide_price == 'no'): ?>
+  <?php if ($this->row->price->raw_price < $this->row->price->base) { ?>
         <div id="oldPriceContainer" class="oldPriceContainer">
             <span class="oldPriceTitle"><?php _e("Regular price: ", "com_shop"); ?></span>
             <span class="old_price ">
@@ -26,10 +24,12 @@
             <?php echo $this->row->price->price_formated; ?>
         </span>
     </div>
-
-    <div class="availability"><?php _e("Availability:", "com_shop"); ?> 
+<?php endif; ?>
+    <?php if((Factory::getParams('shop')->get('checkStock') && $this->row->product->manage_stock == 'global') || $this->row->product->manage_stock == 'yes'): ?>
+	<div class="availability"><?php _e("Availability:", "com_shop"); ?> 
         <span><?php echo $this->availability; ?></span> 
     </div>
+	<?php endif; ?>
 
 
     <?php if (get_post_meta((int) get_the_ID(), '_not_for_sale', true) == 'no' && !Factory::getApplication('shop')->getParams()->get('catalogOnly')) { ?>
