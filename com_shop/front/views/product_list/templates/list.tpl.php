@@ -89,7 +89,7 @@
                     <h4><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h4>
                     <div class="row">
                         <div class="col-xs-12">
-						<?php if(((bool)Factory::getParams('shop')->get('hide_the_price') == false && $product->hide_price == 'global') || $product->hide_price == 'no'): ?>
+						<?php if(((bool)Factory::getParams('shop')->get('hide_the_price') == false && ($product->hide_price == 'global' || empty($product->hide_price) )) || $product->hide_price == 'no'): ?>
  	
 						   <div class="row">
                                 <?php if ($product->price->raw_price < $product->price->base) { ?>

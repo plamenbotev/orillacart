@@ -5,7 +5,7 @@
     <?php if (!empty($this->row->product->sku)) { ?>    
         <div class='sku'><?php _e('SKU:', 'com_shop'); ?> <?php echo strings::htmlentities($this->row->product->sku); ?></div>
     <?php } ?>    
-<?php if(((bool)Factory::getParams('shop')->get('hide_the_price') == false && $this->row->product->hide_price == 'global') || $this->row->product->hide_price == 'no'): ?>
+<?php if(((bool)Factory::getParams('shop')->get('hide_the_price') == false && ($this->row->product->hide_price == 'global' || empty($this->row->product->hide_price))) || $this->row->product->hide_price == 'no'): ?>
   <?php if ($this->row->price->raw_price < $this->row->price->base) { ?>
         <div id="oldPriceContainer" class="oldPriceContainer">
             <span class="oldPriceTitle"><?php _e("Regular price: ", "com_shop"); ?></span>

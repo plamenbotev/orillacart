@@ -67,6 +67,7 @@
         while (have_posts()) {
             the_post();
             $product = $this->getModel('product')->load_product(get_the_ID());
+		
             ?>
             <li class="gridItem addBorder <?php
             echo get_post_meta(get_the_ID(), '_onsale', true) == 'yes' ? " onsale" : "";
@@ -81,7 +82,7 @@
                     <h4><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h4>
                 </div>
               
-				<?php if(((bool)Factory::getParams('shop')->get('hide_the_price') == false && $product->hide_price == 'global') || $product->hide_price == 'no'): ?>
+				<?php if(((bool)Factory::getParams('shop')->get('hide_the_price') == false && ($product->hide_price == 'global' || empty($product->hide_price) )) || $product->hide_price == 'no'): ?>
  
 				<div>
                     <?php if ($product->price->raw_price < $product->price->base) { ?>
