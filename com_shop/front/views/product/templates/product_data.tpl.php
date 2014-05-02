@@ -16,9 +16,9 @@
     <?php } ?>
     <div class="priceContainer">
         <?php if ($this->row->price->raw_price < $this->row->price->base) : ?>
-            <span class="specialPriceTitle"><?php _e("Special price: "); ?></span>
+            <span class="specialPriceTitle"><?php _e("Special price: ","com_shop"); ?></span>
         <?php else: ?>
-            <span class="priceTitle"><?php _e("Price: "); ?></span>
+            <span class="priceTitle"><?php _e("Price: ","com_shop"); ?></span>
         <?php endif; ?>
         <span id="price_container" class="price <?php if ($this->row->price->raw_price < $this->row->price->base) echo 'product_has_discount'; ?>">
             <?php echo $this->row->price->price_formated; ?>

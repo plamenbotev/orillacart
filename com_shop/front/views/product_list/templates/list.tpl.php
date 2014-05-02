@@ -102,7 +102,7 @@
                                 <?php } ?>
                                 <div class="col-xs-12">
                                     <?php if ($product->price->raw_price < $product->price->base) { ?>
-                                        <span class="specialPriceTitle"><?php _e("Special price: "); ?></span>
+                                        <span class="specialPriceTitle"><?php _e("Special price: ","com_shop"); ?></span>
                                     <?php } ?>
                                     <span class="price <?php if ($product->price->raw_price < $product->price->base) echo 'product_has_discount'; ?>">
                                         <?php echo $product->price->price_formated; ?>
@@ -157,7 +157,6 @@
                         <li><?php echo $v; ?></li>
                     <?php endif; ?>
                 <?php endforeach; ?>
-
             </ul>
         </div>
     <?php endif; ?>

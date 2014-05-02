@@ -1,0 +1,2965 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: orillacart 1.4\n"
+"Report-Msgid-Bugs-To: http://orillacart.com\n"
+"POT-Creation-Date: 2014-05-02 01:36:06+00:00\n"
+"PO-Revision-Date: 2014-05-02 11:36-0800\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 1.5.4\n"
+
+#: action_handlers.php:217
+msgid "Your database needs an update. Please <strong>backup</strong> &amp; %s."
+msgstr ""
+"Votre base de données doit être mise à jour. S'il vous plait "
+"<strong>sauvegardez</strong>  %s."
+
+#: action_handlers.php:217
+msgid "update now"
+msgstr "mettre à jour maintenant"
+
+#: action_handlers.php:229
+msgid "Show all statuses"
+msgstr "Montrer tous les statuts"
+
+#: action_handlers.php:387
+msgid "File price"
+msgstr "Prix du fichier"
+
+#: action_handlers.php:444
+msgid "Product Types"
+msgstr "Types de produit"
+
+#: action_handlers.php:445
+msgid "Product Type"
+msgstr "Type du produit"
+
+#: action_handlers.php:446
+msgid "Search Product Type"
+msgstr "Chercher un type de produit"
+
+#: action_handlers.php:447
+msgid "All Product Types"
+msgstr "Tous les types de produit"
+
+#: action_handlers.php:448
+msgid "Parent Product Type"
+msgstr "Type de produit parent"
+
+#: action_handlers.php:449
+msgid "Parent Product Type:"
+msgstr "Type de produit parent:"
+
+#: action_handlers.php:450
+msgid "Edit Product Type"
+msgstr "Éditer le type de produit"
+
+#: action_handlers.php:451
+msgid "Update Product Type"
+msgstr "Mettre à jour le type de produit"
+
+#: action_handlers.php:452
+msgid "Add New Product Type"
+msgstr "Ajouter un nouveau type de produit"
+
+#: action_handlers.php:453
+msgid "New Product Type Name"
+msgstr "Nom du nouveau type de rpoduit"
+
+#: action_handlers.php:490
+msgid "Product Brands"
+msgstr "Marques des produits"
+
+#: action_handlers.php:491
+msgid "Product Brand"
+msgstr "Marque du produit"
+
+#: action_handlers.php:492
+msgid "Search Products Brands"
+msgstr "Chercher des marques de produit"
+
+#: action_handlers.php:493
+msgid "All Brands"
+msgstr "Toutes les marques"
+
+#: action_handlers.php:494
+msgid "Edit Brand"
+msgstr "Éditer la marque"
+
+#: action_handlers.php:495
+msgid "Update Brand"
+msgstr "Mettre à jour la marque"
+
+#: action_handlers.php:496
+msgid "Add New Brand"
+msgstr "Ajouter une nouvelle marque"
+
+#: action_handlers.php:497
+msgid "New Product Brand Name"
+msgstr "Nom de la nouvelle marque de produit"
+
+#: action_handlers.php:517 action_handlers.php:518
+msgid "Shipping Group"
+msgstr "Groupe de livraison"
+
+#: action_handlers.php:519
+msgid "Search Shipping Groups"
+msgstr "Chercher des groupes de livraison"
+
+#: action_handlers.php:520
+msgid "All Groups"
+msgstr "Tous les groupes"
+
+#: action_handlers.php:521
+msgid "Edit Group"
+msgstr "Éditer le groupe"
+
+#: action_handlers.php:522
+msgid "Update Group"
+msgstr "Mettre à jour le groupe"
+
+#: action_handlers.php:523
+msgid "Add New Group"
+msgstr "Ajouter un nouveau groupe"
+
+#: action_handlers.php:530
+msgid "New Shipping Group Name"
+msgstr "Nom du nouveau groupe de livraison"
+
+#: action_handlers.php:562
+msgid "Products"
+msgstr "Produits"
+
+#: action_handlers.php:563
+#: admin/views/stockroom/templates/manage_product_stocks.tpl.php:9
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:9
+#: front/views/cart/templates/order.tpl.php:6
+msgid "Product"
+msgstr "Produit"
+
+#: action_handlers.php:564
+msgid "All Products"
+msgstr "Tous les produits"
+
+#: action_handlers.php:565
+msgid "Add Product"
+msgstr "Ajouter un produit"
+
+#: action_handlers.php:566
+msgid "Add New Product"
+msgstr "Ajouter un nouveau produit"
+
+#: action_handlers.php:567 action_handlers.php:628
+#: admin/views/tax/templates/rates_list.tpl.php:35
+msgid "Edit"
+msgstr "Éditer"
+
+#: action_handlers.php:568
+msgid "Edit Product"
+msgstr "Éditer le produit"
+
+#: action_handlers.php:569
+msgid "New Product"
+msgstr "Nouveau produit"
+
+#: action_handlers.php:570 action_handlers.php:571
+msgid "View Product"
+msgstr "Voir le produit"
+
+#: action_handlers.php:572
+msgid "Search Products"
+msgstr "Chercher des produits"
+
+#: action_handlers.php:573
+msgid "No Products found"
+msgstr "Aucun produit trouvé"
+
+#: action_handlers.php:574
+msgid "No Products found in trash"
+msgstr "Aucun produit trouvé dans la corbeille"
+
+#: action_handlers.php:575
+msgid "Parent Product"
+msgstr "Produit parent"
+
+#: action_handlers.php:577
+msgid "This is where you can add new products to your store."
+msgstr ""
+"C'est ici que vous pouvoez ajouter de nouveaux produit dans votre boutique."
+
+#: action_handlers.php:599
+msgid "Order statuses"
+msgstr "Statuts des commandes"
+
+#: action_handlers.php:600
+msgid "Order status"
+msgstr "Statut de la commande"
+
+#: action_handlers.php:601
+msgid "Search Order statuses"
+msgstr "Chercher des statuts de commande"
+
+#: action_handlers.php:602
+msgid "All Order statuses"
+msgstr "Tous les statuts de commande"
+
+#: action_handlers.php:603
+msgid "Parent Order status"
+msgstr "Statut de la commande parente"
+
+#: action_handlers.php:604
+msgid "Parent Order status:"
+msgstr "Statut de la commande parente:"
+
+#: action_handlers.php:605
+msgid "Edit Order status"
+msgstr "Éditer le statut de la commande"
+
+#: action_handlers.php:606
+msgid "Update Order status"
+msgstr "Mettre à jour le statut de la commande"
+
+#: action_handlers.php:607
+msgid "Add New Order status"
+msgstr "Ajouter un nouveau statut de commande"
+
+#: action_handlers.php:608
+msgid "New Order status Name"
+msgstr "Nom du nouveau statut de commande"
+
+#: action_handlers.php:624 action_handlers.php:1112
+msgid "Orders"
+msgstr "Commandes"
+
+#: action_handlers.php:625
+#: admin/views/attributes/templates/edit_set.tpl.php:35
+#: admin/views/attributes/templates/newsetform.tpl.php:34
+#: admin/views/product/templates/attributes.tpl.php:51
+msgid "Order"
+msgstr "Commande"
+
+#: action_handlers.php:626
+msgid "Add Order"
+msgstr "Ajouter une commande"
+
+#: action_handlers.php:627
+msgid "Add New Order"
+msgstr "Ajouter une nouvelle commande"
+
+#: action_handlers.php:629
+msgid "Edit Order"
+msgstr "Éditer une commande"
+
+#: action_handlers.php:630
+msgid "New Order"
+msgstr "Nouvelle commande"
+
+#: action_handlers.php:631 action_handlers.php:632
+#: front/views/account/templates/account.tpl.php:15
+msgid "View Order"
+msgstr "Voir la commande"
+
+#: action_handlers.php:633
+msgid "Search Orders"
+msgstr "Chercher des commandes"
+
+#: action_handlers.php:634
+msgid "No Orders found"
+msgstr "Aucun commande trouvée"
+
+#: action_handlers.php:635
+msgid "No Orders found in trash"
+msgstr "Aucun commande trouvé dans la corbeille"
+
+#: action_handlers.php:636
+msgid "Parent Orders"
+msgstr "Parent des commandes"
+
+#: action_handlers.php:638
+msgid "This is where store orders are stored."
+msgstr "C'est ici que les commandes sont enregistrées."
+
+#: action_handlers.php:675
+msgid "My Shop"
+msgstr "Ma boutique"
+
+#: action_handlers.php:676
+msgid "List all products"
+msgstr "Lister tous les produits"
+
+#: action_handlers.php:677
+msgid "Add new product"
+msgstr "Ajouter un nouveau produit"
+
+#: action_handlers.php:677
+msgid "Add new Product"
+msgstr "Ajouter un nouveau produit"
+
+#: action_handlers.php:678
+msgid "Product tags"
+msgstr "Tags de produit"
+
+#: action_handlers.php:679
+msgid "Product categories"
+msgstr "Catégorie de produit"
+
+#: action_handlers.php:680
+msgid "Product brands"
+msgstr "Marques de produit"
+
+#: action_handlers.php:681 admin/views/stockroom/view.html.php:11
+#: admin/views/stockroom/view.html.php:53
+msgid "Stockrooms"
+msgstr "Réserves"
+
+#: action_handlers.php:682
+msgid "Manage Amounts"
+msgstr "Gérer les montants"
+
+#: action_handlers.php:683
+msgid "Attribute Sets"
+msgstr "Ensemble d'attributs"
+
+#: action_handlers.php:684 admin/views/country/view.html.php:9
+msgid "Countries"
+msgstr "Pays"
+
+#: action_handlers.php:685
+msgid "Taxes"
+msgstr "Taxes"
+
+#: action_handlers.php:686
+msgid "Payment Methods"
+msgstr "Méthode de payement"
+
+#: action_handlers.php:687
+msgid "Shipping Methods"
+msgstr "Méthode de livraison"
+
+#: action_handlers.php:688
+msgid "Shipping Groups"
+msgstr "Groupes de livraison"
+
+#: action_handlers.php:689
+msgid "Configuration"
+msgstr "Configuration"
+
+#: action_handlers.php:930
+#: admin/views/orders/templates/edit_order_items.tpl.php:10
+#: admin/views/stockroom/templates/manage_product_stocks.tpl.php:49
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:48
+msgid "Product Number"
+msgstr "Numéro de produit"
+
+#: action_handlers.php:931 action_handlers.php:1244
+#: admin/views/payment/templates/list_payment_methods.tpl.php:24
+#: admin/views/product/templates/productinformation.tpl.php:15
+#: admin/views/shipping/templates/list_carriers.tpl.php:27
+msgid "Ordering"
+msgstr "Commande"
+
+#: action_handlers.php:932 action_handlers.php:1253
+#: admin/views/attributes/templates/edit_set.tpl.php:32
+#: admin/views/attributes/templates/newsetform.tpl.php:31
+#: admin/views/orders/templates/edit_order_items.tpl.php:7
+#: admin/views/product/templates/attributes.tpl.php:48
+#: front/views/account/templates/order_receipt.tpl.php:99
+#: front/views/cart/templates/order_receipt.tpl.php:99
+msgid "Price"
+msgstr "Prix"
+
+#: action_handlers.php:933 admin/views/category/view.html.php:9
+#: admin/views/stockroom/templates/manage_product_stocks.tpl.php:26
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:26
+msgid "Category"
+msgstr "atégorie"
+
+#: action_handlers.php:934
+msgid "Manufacturer"
+msgstr "Fabriquant"
+
+#: action_handlers.php:935
+#: admin/views/attributes/templates/list_attribute_sets.tpl.php:17
+#: admin/views/stockroom/templates/list_stockrooms.tpl.php:22
+msgid "Published"
+msgstr "Publié"
+
+#: action_handlers.php:949
+msgid "Order Id"
+msgstr "Identifiant de la commande"
+
+#: action_handlers.php:950
+msgid "Billing"
+msgstr "Facturation"
+
+#: action_handlers.php:951
+msgid "Shipping"
+msgstr "Livraison"
+
+#: action_handlers.php:954
+msgid "Order Status"
+msgstr "Statut de la commande"
+
+#: action_handlers.php:955
+msgid "Total Amount"
+msgstr "Montant total"
+
+#: action_handlers.php:1109
+#: front/views/account/templates/order_receipt.tpl.php:20
+#: front/views/cart/templates/checkout.tpl.php:87
+#: front/views/cart/templates/order_receipt.tpl.php:19
+msgid "Billing Address"
+msgstr "Adresse de facturation"
+
+#: action_handlers.php:1110
+#: front/views/account/templates/order_receipt.tpl.php:11
+#: front/views/cart/templates/checkout.tpl.php:130
+#: front/views/cart/templates/order_receipt.tpl.php:10
+msgid "Shipping Address"
+msgstr "Adresse de livraison"
+
+#: action_handlers.php:1136
+msgid "Shop related pages"
+msgstr "Pages liées à la boutique"
+
+#: action_handlers.php:1166
+msgid "URL"
+msgstr "URL"
+
+#: action_handlers.php:1169
+msgid "custumer account"
+msgstr "compte client"
+
+#: action_handlers.php:1170
+msgid "custumer cart"
+msgstr "panier client"
+
+#: action_handlers.php:1171
+msgid "checkout"
+msgstr "paiement"
+
+#: action_handlers.php:1179
+msgid "Label"
+msgstr "Titre"
+
+#: action_handlers.php:1180
+msgid "Menu Item"
+msgstr "Élément du menu"
+
+#: action_handlers.php:1186
+msgid "Add to Menu"
+msgstr "Ajouter au menu"
+
+#: action_handlers.php:1242
+msgid "Product Data"
+msgstr "Données du produit"
+
+#: admin/controllers/admin.php:75
+msgid "settings updated!"
+msgstr "paramètres mises à jour"
+
+#: admin/controllers/attributes.php:57 admin/controllers/attributes.php:68
+#: admin/controllers/attributes.php:79 admin/controllers/stockroom.php:100
+msgid "error deleteing"
+msgstr "erreur lors de la suppression"
+
+#: admin/controllers/attributes.php:86
+msgid "success"
+msgstr "succés"
+
+#: admin/controllers/attributes.php:100
+msgid "Set saved"
+msgstr "Ennsemble sauvegardé"
+
+#: admin/controllers/attributes.php:157 admin/controllers/stockroom.php:127
+msgid "Stockroom saved"
+msgstr "Réserve sauvegardée"
+
+#: admin/controllers/category.php:33
+msgid "Category saved"
+msgstr "Catégorie sauvegardée"
+
+#: admin/controllers/category.php:35
+msgid "Error saving category"
+msgstr "Erreur lors de la sauvegarde de la catégorie"
+
+#: admin/controllers/country.php:91 admin/controllers/country.php:109
+#: admin/controllers/tax.php:130 admin/controllers/tax.php:153
+msgid "Saved"
+msgstr "Sauvegardé"
+
+#: admin/controllers/country.php:127 admin/controllers/country.php:145
+#: admin/controllers/tax.php:170 admin/controllers/tax.php:188
+msgid "List altered"
+msgstr "Liste modifiée"
+
+#: admin/controllers/country.php:179
+msgid "no country selected"
+msgstr "aucun pays sélectionné"
+
+#: admin/controllers/orders.php:24
+msgid "Order Actions"
+msgstr "Actions de la commande"
+
+#: admin/controllers/orders.php:99
+msgid "Order Data"
+msgstr "Donnée de la commande"
+
+#: admin/controllers/orders.php:100
+msgid "Order Items"
+msgstr "Articles de la commande"
+
+#: admin/controllers/orders.php:101
+msgid "Order Totals"
+msgstr "Totals de la commande"
+
+#: admin/controllers/payment.php:53
+msgid "Please install payment plugin!"
+msgstr "Sil vous plaît installer le plugin de paiement!"
+
+#: admin/controllers/payment.php:132
+msgid "Payment saved!"
+msgstr "Paiement sauvegardé!"
+
+#: admin/controllers/payment.php:167
+msgid "Select methods to be removed!"
+msgstr "Sélectionnez les méthodes à supprimer!"
+
+#: admin/controllers/payment.php:173
+msgid "Selected methods were deleted."
+msgstr "Les méthodes sélectionnées ont été supprimées."
+
+#: admin/controllers/products.php:82 admin/controllers/products.php:90
+#: admin/controllers/products.php:97
+msgid "access denied"
+msgstr "accès refusé"
+
+#: admin/controllers/products.php:182
+msgid "Variation was created."
+msgstr "La variation a été créée."
+
+#: admin/controllers/shipping.php:122
+msgid "Carrier saved!"
+msgstr "Livreur sauvegardé!"
+
+#: admin/controllers/shipping.php:157
+msgid "Select carriers to be removed!"
+msgstr "Sélectionnez les livreurs à supprimer!"
+
+#: admin/controllers/shipping.php:163
+msgid "Selected carriers were deleted."
+msgstr "Les livreurs sélectionnés ont été supprimés."
+
+#: admin/controllers/shipping.php:174
+msgid "Invalid carrier"
+msgstr "Livreur invalide"
+
+#: admin/controllers/shipping.php:179 admin/controllers/stockroom.php:107
+msgid "Nothing selected"
+msgstr "Rien de sélectionné"
+
+#: admin/controllers/shipping.php:184
+msgid "Rates deleted"
+msgstr "Taux supprimés"
+
+#: admin/controllers/shipping.php:212
+msgid "No such carrier!"
+msgstr "Pas de tel livreur!"
+
+#: admin/controllers/shipping.php:229
+msgid "Choose carrier!"
+msgstr "Choisissez un livreur!"
+
+#: admin/controllers/shipping.php:316
+msgid "rate saved!"
+msgstr "Taux sauvegardé!"
+
+#: admin/controllers/shoptree.php:37 admin/models/category.php:12
+msgid "Invalid category"
+msgstr "catégorie invalide"
+
+#: admin/controllers/stockroom.php:94
+msgid "Success"
+msgstr "Succès"
+
+#: admin/controllers/stockroom.php:179
+msgid "Amounts updated"
+msgstr "Montants mis à jour"
+
+#: admin/controllers/tax.php:92
+msgid "No tax group selected"
+msgstr "Aucun groupe de taxe sélectionné"
+
+#: admin/controllers/user.php:93 front/controllers/cart.php:407
+#: helpers/customer.php:75 helpers/customer.php:133
+msgid "state"
+msgstr "état"
+
+#: admin/models/attributes.php:121
+msgid "Unknown object"
+msgstr "Objet inconnu"
+
+#: admin/models/country.php:116 admin/models/tax.php:73
+msgid "A country ID could not be found"
+msgstr "Un ID de pays n'a pas pu être trouvé"
+
+#: admin/models/country.php:145 admin/models/country.php:164
+#: admin/models/tax.php:102 admin/models/tax.php:133
+msgid "nothing selected"
+msgstr "rien de sélectionné"
+
+#: admin/models/orders.php:833 admin/models/orders.php:962
+msgid "Not enough items in stock."
+msgstr "Pas assez d'articles en stock."
+
+#: admin/models/product_admin.php:648
+msgid "You have to select attribute property to create variation."
+msgstr ""
+"Vous devez sélectionner une propriété d'attribut pour créer une variation."
+
+#: admin/models/product_admin.php:654
+msgid "Selected variation allready exists"
+msgstr "La variation sélectionnée existe déjà."
+
+#: admin/models/product_admin.php:659
+msgid "Provide variation title."
+msgstr "Renseignez le titre de la variation."
+
+#: admin/models/product_admin.php:667
+msgid "Unable to create the child product."
+msgstr "Impossible de créer le produit enfant."
+
+#: admin/models/product_admin.php:687
+msgid "Unable to store variation associations in database."
+msgstr ""
+"Impossible de sauvegarder les associations de variation dans la base de "
+"données."
+
+#: admin/models/product_admin.php:708
+msgid "The same variation allready exists."
+msgstr "La même variation existe déjà."
+
+#: admin/models/stockroom.php:286
+msgid "unknown stock room type!"
+msgstr "Type de stock inconnu."
+
+#: admin/views/attributes/templates/attributes.tpl.php:20
+#: admin/views/generalsettings/templates/site.settings.tpl.php:57
+msgid "name"
+msgstr "nom"
+
+#: admin/views/attributes/templates/attributes.tpl.php:21
+#: admin/views/attributes/templates/attributes.tpl.php:40
+msgid "edit"
+msgstr "éditer"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:10
+#: admin/views/attributes/templates/newsetform.tpl.php:8
+msgid "Attribute Set Name:"
+msgstr "Nom de l'ensemble d'attribut:"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:15
+#: admin/views/attributes/templates/newsetform.tpl.php:13
+#: admin/views/stockroom/templates/stockroomform.tpl.php:39
+#: admin/views/tax/templates/group_form.tpl.php:16
+msgid "Published:"
+msgstr "Publié:"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:18
+#: admin/views/attributes/templates/newsetform.tpl.php:16
+#: admin/views/country/templates/country_form.tpl.php:32
+#: admin/views/product/templates/inventory.tpl.php:36
+#: admin/views/product/templates/productinformation.tpl.php:36
+#: admin/views/product/templates/productinformation.tpl.php:43
+#: admin/views/product/templates/productinformation.tpl.php:59
+#: admin/views/product/templates/productinformation.tpl.php:68
+#: admin/views/product/templates/productinformation.tpl.php:77
+#: admin/views/product/templates/productinformation.tpl.php:86
+#: admin/views/stockroom/templates/stockroomform.tpl.php:43
+msgid "No"
+msgstr "Non"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:20
+#: admin/views/attributes/templates/newsetform.tpl.php:18
+#: admin/views/country/templates/country_form.tpl.php:35
+#: admin/views/product/templates/inventory.tpl.php:35
+#: admin/views/product/templates/productinformation.tpl.php:37
+#: admin/views/product/templates/productinformation.tpl.php:44
+#: admin/views/product/templates/productinformation.tpl.php:61
+#: admin/views/product/templates/productinformation.tpl.php:70
+#: admin/views/product/templates/productinformation.tpl.php:79
+#: admin/views/product/templates/productinformation.tpl.php:88
+#: admin/views/stockroom/templates/stockroomform.tpl.php:45
+msgid "Yes"
+msgstr "Oui"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:26
+#: admin/views/attributes/templates/newsetform.tpl.php:24
+#: admin/views/product/templates/attributes.tpl.php:42
+msgid "Add New Attribute"
+msgstr "Ajouter un nouvel attribut"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:28
+#: admin/views/attributes/templates/edit_set.tpl.php:62
+#: admin/views/attributes/templates/newsetform.tpl.php:26
+#: admin/views/product/templates/attributes.tpl.php:44
+#: admin/views/product/templates/attributes.tpl.php:76
+msgid "Title"
+msgstr "Titre"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:29
+#: admin/views/attributes/templates/newsetform.tpl.php:27
+#: admin/views/product/templates/attributes.tpl.php:45
+msgid "Required Attribute"
+msgstr "Attribut requis"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:30
+#: admin/views/attributes/templates/edit_set.tpl.php:76
+#: admin/views/attributes/templates/newsetform.tpl.php:29
+#: admin/views/product/templates/attributes.tpl.php:46
+#: admin/views/product/templates/attributes.tpl.php:92
+msgid "Hide Attribute Price"
+msgstr "Cacher l'attribut prix"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:31
+#: admin/views/attributes/templates/edit_set.tpl.php:33
+#: admin/views/attributes/templates/edit_set.tpl.php:65
+#: admin/views/attributes/templates/newsetform.tpl.php:30
+#: admin/views/attributes/templates/newsetform.tpl.php:32
+#: admin/views/product/templates/attributes.tpl.php:47
+#: admin/views/product/templates/attributes.tpl.php:49
+msgid "Enter sub attribute"
+msgstr "Entrez le sous-attribut"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:34
+#: admin/views/attributes/templates/newsetform.tpl.php:33
+#: admin/views/product/templates/attributes.tpl.php:50
+msgid "Delete Attribute"
+msgstr "Supprimer l'attribut"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:36
+#: admin/views/attributes/templates/newsetform.tpl.php:36
+#: admin/views/product/templates/attributes.tpl.php:53
+msgid "Show property title"
+msgstr "Montrer la propriété titre"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:39
+#: admin/views/product/templates/attributes.tpl.php:56
+msgid "select stock room"
+msgstr "Sélectionner un stock"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:69
+#: admin/views/attributes/templates/edit_set.tpl.php:99
+msgid "Click to change"
+msgstr "Cliquez pour modifier"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:74
+#: admin/views/product/templates/attributes.tpl.php:90
+msgid "Required Attribute:"
+msgstr "Attribut requis:"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:93
+#: admin/views/product/templates/attributes.tpl.php:109
+#: admin/views/product/templates/variations.tpl.php:13 widgets/cart.php:112
+msgid "Title:"
+msgstr "Titre:"
+
+#: admin/views/attributes/templates/edit_set.tpl.php:106
+#: admin/views/product/templates/attributes.tpl.php:122
+#: admin/views/product/templates/productinformation.tpl.php:6
+#: admin/views/product/templates/variations.tpl.php:21
+msgid "Price:"
+msgstr "Prix:"
+
+#: admin/views/attributes/templates/list_attribute_sets.tpl.php:14
+msgid "Set name"
+msgstr "Nom de l'ensemble"
+
+#: admin/views/attributes/templates/newsetform.tpl.php:28
+msgid "Allow Multiple Property Selection"
+msgstr "Autoriser la sélection de plusieurs propriétés"
+
+#: admin/views/attributes/templates/newsetform.tpl.php:35
+#: admin/views/product/templates/attributes.tpl.php:52
+msgid "Default"
+msgstr "Défaut"
+
+#: admin/views/attributes/view.html.php:9
+#: admin/views/product/templates/attributes.tpl.php:1
+msgid "Attributes"
+msgstr "Attributs"
+
+#: admin/views/attributes/view.html.php:10
+#: admin/views/country/view.html.php:10 admin/views/country/view.html.php:30
+#: admin/views/payment/view.html.php:10 admin/views/shipping/view.html.php:9
+#: admin/views/shipping/view.html.php:29
+#: admin/views/stockroom/view.html.php:13 admin/views/tax/view.html.php:9
+#: admin/views/tax/view.html.php:28
+msgid "new"
+msgstr "nouveau"
+
+#: admin/views/attributes/view.html.php:11
+#: admin/views/country/view.html.php:11 admin/views/country/view.html.php:31
+#: admin/views/payment/view.html.php:11 admin/views/shipping/view.html.php:10
+#: admin/views/shipping/view.html.php:30
+#: admin/views/stockroom/view.html.php:14 admin/views/tax/view.html.php:10
+#: admin/views/tax/view.html.php:29
+msgid "delete"
+msgstr "Supprimer"
+
+#: admin/views/attributes/view.html.php:29
+msgid "New Attribute Set"
+msgstr "Nouvel ensemble d'attributs"
+
+#: admin/views/attributes/view.html.php:30
+#: admin/views/attributes/view.html.php:46
+#: admin/views/country/view.html.php:50 admin/views/country/view.html.php:58
+#: admin/views/payment/view.html.php:30 admin/views/shipping/view.html.php:28
+#: admin/views/shipping/view.html.php:52 admin/views/shipping/view.html.php:63
+#: admin/views/stockroom/view.html.php:54
+#: admin/views/stockroom/view.html.php:64 admin/views/tax/view.html.php:46
+#: admin/views/tax/view.html.php:55
+msgid "cancel"
+msgstr "Annuler"
+
+#: admin/views/attributes/view.html.php:31
+#: admin/views/attributes/view.html.php:47
+#: admin/views/category/view.html.php:10 admin/views/country/view.html.php:51
+#: admin/views/country/view.html.php:59
+#: admin/views/generalsettings/view.html.php:10
+#: admin/views/payment/view.html.php:31
+#: admin/views/shipping/templates/add_carrier_form.tpl.php:37
+#: admin/views/shipping/view.html.php:53 admin/views/shipping/view.html.php:64
+#: admin/views/stockroom/view.html.php:55 admin/views/tax/view.html.php:47
+#: admin/views/tax/view.html.php:56
+msgid "save"
+msgstr "sauvegarder"
+
+#: admin/views/attributes/view.html.php:45
+msgid "Edit Attribute Set"
+msgstr "Éditer l'ensemble d'attributs"
+
+#: admin/views/category/templates/category.editor.tpl.php:7
+msgid "Category ID"
+msgstr "ID de la catégorie"
+
+#: admin/views/category/templates/category.editor.tpl.php:13
+msgid "Category name:"
+msgstr "Nom de la catégorie:"
+
+#: admin/views/category/templates/category.editor.tpl.php:19
+msgid "Category description:"
+msgstr "Description de la catégorie:"
+
+#: admin/views/category/templates/category.editor.tpl.php:25
+msgid "Products per row:"
+msgstr "Produits par ligne:"
+
+#: admin/views/category/templates/category.editor.tpl.php:32
+msgid "List template:"
+msgstr "Modèle de liste:"
+
+#: admin/views/category/templates/category.editor.tpl.php:35
+#: admin/views/category/templates/category.editor.tpl.php:49
+#: admin/views/product/templates/productinformation.tpl.php:124
+msgid "default"
+msgstr "défaut"
+
+#: admin/views/category/templates/category.editor.tpl.php:46
+msgid "View style:"
+msgstr "Voir le style:"
+
+#: admin/views/category/templates/category.editor.tpl.php:50
+#: admin/views/generalsettings/templates/site.settings.tpl.php:92
+msgid "grid"
+msgstr "Grille"
+
+#: admin/views/category/templates/category.editor.tpl.php:51
+#: admin/views/generalsettings/templates/site.settings.tpl.php:95
+msgid "list"
+msgstr "Liste"
+
+#: admin/views/category/templates/category.editor.tpl.php:57
+msgid "Thumbnail"
+msgstr "Vignette"
+
+#: admin/views/category/templates/category.editor.tpl.php:63
+msgid "Upload/Add image"
+msgstr "Télécharger/ ajouter une image"
+
+#: admin/views/category/templates/category.editor.tpl.php:67
+msgid "Remove thumbnail"
+msgstr "Supprimer une vignett"
+
+#: admin/views/category/templates/category.form.tpl.php:11
+msgid "Category information"
+msgstr "Informations de catégorie"
+
+#: admin/views/category/templates/category.tree.tpl.php:8
+msgid "Add new"
+msgstr "Ajouter nouveau"
+
+#: admin/views/category/templates/category.tree.tpl.php:13
+msgid "Rename"
+msgstr "Renommer"
+
+#: admin/views/category/templates/category.tree.tpl.php:18
+#: front/views/cart/templates/cart.tpl.php:17
+msgid "Remove"
+msgstr "Supprimer"
+
+#: admin/views/category/templates/category.tree.tpl.php:83
+msgid "communication error!"
+msgstr "erreur de communication!"
+
+#: admin/views/country/templates/country_form.tpl.php:10
+msgid "Country Name:"
+msgstr "Nom du pays:"
+
+#: admin/views/country/templates/country_form.tpl.php:16
+msgid "Country Code (2):"
+msgstr "Code de pays (2):"
+
+#: admin/views/country/templates/country_form.tpl.php:22
+msgid "Country Code (3):"
+msgstr "Code de pays (3):"
+
+#: admin/views/country/templates/country_form.tpl.php:28
+msgid "In EU:"
+msgstr "Dans l'UE:"
+
+#: admin/views/country/templates/country_list.tpl.php:11
+#: admin/views/country/templates/state_list.tpl.php:10
+#: admin/views/stockroom/templates/manage_product_stocks.tpl.php:38
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:37
+#: admin/views/tax/templates/groups_list.tpl.php:10
+msgid "search"
+msgstr "rechercher"
+
+#: admin/views/country/templates/country_list.tpl.php:20
+#: admin/views/tax/templates/rates_list.tpl.php:11
+msgid "Country Name"
+msgstr "Nom de pays"
+
+#: admin/views/country/templates/country_list.tpl.php:21
+msgid "Country Code (3)"
+msgstr "Code de pays (3)"
+
+#: admin/views/country/templates/country_list.tpl.php:22
+msgid "Country Code (2)"
+msgstr "Code de pays (2)"
+
+#: admin/views/country/templates/country_list.tpl.php:50
+msgid "List States"
+msgstr "Lister les états"
+
+#: admin/views/country/templates/state_form.tpl.php:11
+msgid "State Name:"
+msgstr "Nom de l'état:"
+
+#: admin/views/country/templates/state_form.tpl.php:17
+msgid "State Code (2):"
+msgstr "Code de l'état (2):"
+
+#: admin/views/country/templates/state_form.tpl.php:23
+msgid "State Code (3):"
+msgstr "Code de l'état (3):"
+
+#: admin/views/country/templates/state_list.tpl.php:22
+#: admin/views/tax/templates/rates_list.tpl.php:12
+msgid "State Name"
+msgstr "Nom de l'état"
+
+#: admin/views/country/templates/state_list.tpl.php:24
+msgid "State Code (3)"
+msgstr "Code de l'état (3)"
+
+#: admin/views/country/templates/state_list.tpl.php:25
+msgid "State Code (2)"
+msgstr "Code de l'état (2)"
+
+#: admin/views/country/view.html.php:29
+msgid "States list"
+msgstr "Liste des états"
+
+#: admin/views/country/view.html.php:49 helpers/customer.php:74
+#: helpers/customer.php:132
+msgid "Country"
+msgstr "Pays"
+
+#: admin/views/country/view.html.php:57 helpers/customer.php:78
+#: helpers/customer.php:136
+msgid "State"
+msgstr "État"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:8
+msgid "Mails from e-mail:"
+msgstr "Mails depuis courriel:"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:14
+msgid "Mails from name:"
+msgstr "Mails depuis nom:"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:20
+msgid "Notify admin on order"
+msgstr "Notifier les administrateurs suite à une commande"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:26
+msgid "Notify e-mail:"
+msgstr "E-mail de fotification:"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:32
+msgid "File download method"
+msgstr "Méthode de téléchargement de fichier"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:36
+msgid "readfile"
+msgstr "readfile"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:39
+msgid "xsendfile"
+msgstr "xsendfile"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:46
+msgid "Use only as catalogue"
+msgstr "Utiliser seulement comme catalogue"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:53
+msgid "Hide product price"
+msgstr "Cacher l'attribut prix"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:60
+msgid "Retail Countries"
+msgstr "Pays de vente au détail"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:72
+msgid "Price Decimal"
+msgstr "Décimal des prix"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:78
+msgid "Price Separator"
+msgstr "Séparateur des prix"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:84
+msgid "Thousand Separator"
+msgstr "Séparateur des miliers"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:90
+msgid "Currency"
+msgstr "Devise"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:96
+msgid "Currency Sign"
+msgstr "Symbole de la devise"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:102
+msgid "Currency Place"
+msgstr "Lieu de la devise"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:105
+msgid "Before the price ($100)"
+msgstr "Avant le prix (€100)"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:106
+msgid "Before the price with space ($ 100)"
+msgstr "Avant le prix avec espace (€ 100)"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:107
+msgid "After the price (100$)"
+msgstr "Après le prix (100€)"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:108
+msgid "After the price with space (100 $)"
+msgstr "Après le prix avec espace (100 €)"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:113
+msgid "Virtual Tax"
+msgstr "Taxe virtuelle"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:119
+msgid "Shop Country"
+msgstr "Pays de la boutique"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:132
+msgid "Shop State"
+msgstr "État le la boutique"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:147
+msgid "Shop Zip"
+msgstr "Code postal de la boutique"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:153
+msgid "Default tax group"
+msgstr "Groupe de taxe par défaut"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:166
+msgid "Tax mode:"
+msgstr "Mode de taxe:"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:170
+msgid "Based on shipping address"
+msgstr "Sur la base de l'adresse de livraison"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:173
+msgid "Based on vendor address"
+msgstr "Sur la base de l'adresse du vendeur"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:176
+msgid "EU mode"
+msgstr "Mode UE"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:179
+msgid "Based on billing address"
+msgstr "Sur la base de l'adresse du facturaction"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:185
+msgid "User Registration Type"
+msgstr "Type d'enregistrement d'utilisateur"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:195
+msgid "Check Stock"
+msgstr "Vérifier le stock"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:201
+msgid "Enable shipping?"
+msgstr "Activer la livraison?"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:207
+msgid "Default volume unit:"
+msgstr "Unité de volume par défaut:"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:210
+msgid "Millimeter"
+msgstr "Millimètre"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:211
+msgid "Centimeters"
+msgstr "Centimètres"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:212
+msgid "Inches"
+msgstr "Pouces"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:213
+msgid "Feet"
+msgstr "Pieds"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:214
+msgid "Meter"
+msgstr "Mètre"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:219
+msgid "Default weight unit:"
+msgstr "Unité de poids par défaut:"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:222
+msgid "Grams"
+msgstr "Grammes"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:223
+msgid "Pounds"
+msgstr "Livres"
+
+#: admin/views/generalsettings/templates/global.settings.tpl.php:224
+msgid "Kg."
+msgstr "Kg."
+
+#: admin/views/generalsettings/templates/settings.tpl.php:5
+msgid "Global"
+msgstr "Globale"
+
+#: admin/views/generalsettings/templates/settings.tpl.php:7
+msgid "Appearance"
+msgstr "Apparence"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:8
+msgid "Number of objects per page?"
+msgstr "Nombre d'objets par page?"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:14
+msgid "Display categories in content?"
+msgstr "Afficher les catégories dans le contenu?"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:20
+msgid "Exclude frontpage category from list?"
+msgstr "Exclure le catégorie en première page de la liste?"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:26
+msgid "Shop Front Page :"
+msgstr "Première page de la boutique:"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:36
+msgid "All products"
+msgstr "Tous les produits"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:43
+msgid "List variations in categories?"
+msgstr "Lister les variations dans les catégories?"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:50
+msgid "Product default sorting:"
+msgstr "Tri par défaut des produits:"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:54
+msgid "id"
+msgstr "identifiant"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:60
+msgid "price ascending[lowest first ]"
+msgstr "Prix croissant [moins cher en premier]"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:63
+msgid "price descending[highest first ]"
+msgstr "Prix décroissant [plus cher en premier]"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:66
+msgid "product ordering"
+msgstr "commande de produit"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:72
+msgid "Products per row :"
+msgstr "Produits par ligne:"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:78
+msgid "Shop Page :"
+msgstr "Page de la boutique:"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:88
+msgid "Default List Type :"
+msgstr "Type de liste par défaut:"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:101
+msgid "cat thumb X :"
+msgstr "cat thumb X:"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:107
+msgid "cat thumb Y :"
+msgstr "cat thumb Y:"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:113
+msgid "Mini X :"
+msgstr "X mini:"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:119
+msgid "Mini Y :"
+msgstr "Y mini:"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:125
+msgid "Medium X :"
+msgstr "X moyen:"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:131
+msgid "Medium Y :"
+msgstr "Y moyen:"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:137
+msgid "Thumbs X :"
+msgstr "Thumbs X :"
+
+#: admin/views/generalsettings/templates/site.settings.tpl.php:143
+msgid "Thumbs Y :"
+msgstr "Thumbs Y :"
+
+#: admin/views/generalsettings/view.html.php:9
+msgid "Settings"
+msgstr "Paramètres"
+
+#: admin/views/generalsettings/view.html.php:18
+msgid "Shop Settings"
+msgstr "Paramètres de la boutique"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:11
+msgid "Order id:"
+msgstr "Identifiant de la commande:"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:15
+#: front/views/account/templates/order_receipt.tpl.php:2
+#: front/views/cart/templates/order_receipt.tpl.php:2
+msgid "Order Date:"
+msgstr "Date de la commande:"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:19
+msgid "Order Payment Method:"
+msgstr "Méthode de paiement de la commande:"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:23
+msgid "Shipping Method Name:"
+msgstr "Nom de la méthode de livraison:"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:27
+msgid "Shipping Mode:"
+msgstr "Mode de livraison:"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:31
+msgid "Change shipping rate:"
+msgstr "Modifier le taux de livraison:"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:43
+msgid "Order Status:"
+msgstr "Statut de la commande:"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:54
+msgid "User Login:"
+msgstr "Pseudo:"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:62
+msgid "Assign User:"
+msgstr "Assigner un utilisateur:"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:69
+msgid "set as guest"
+msgstr "Définir en tant qu'invité"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:75
+msgid "Comment:"
+msgstr "Commentaire:"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:92
+msgid "Billing Address Information"
+msgstr "Informations de l'adresse de factioration"
+
+#: admin/views/orders/templates/edit_order_form.tpl.php:116
+msgid "Shipping Address Information"
+msgstr "Information de l'adresse de livraison"
+
+#: admin/views/orders/templates/edit_order_items.tpl.php:5
+#: admin/views/stockroom/templates/manage_product_stocks.tpl.php:50
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:49
+#: front/views/account/templates/order_receipt.tpl.php:97
+#: front/views/cart/templates/cart.tpl.php:13
+#: front/views/cart/templates/order_receipt.tpl.php:97
+msgid "Product Name"
+msgstr "Nom du produit"
+
+#: admin/views/orders/templates/edit_order_items.tpl.php:6
+msgid "Note"
+msgstr "Note"
+
+#: admin/views/orders/templates/edit_order_items.tpl.php:8
+msgid "Quantity"
+msgstr "Quantité"
+
+#: admin/views/orders/templates/edit_order_items.tpl.php:11
+msgid "Total Price"
+msgstr "Prix total"
+
+#: admin/views/orders/templates/edit_order_items.tpl.php:20
+msgid "remove"
+msgstr "supprimer"
+
+#: admin/views/orders/templates/edit_order_items.tpl.php:56
+#: front/views/account/templates/account.tpl.php:64
+#: front/views/account/templates/order_receipt.tpl.php:57
+#: front/views/cart/templates/order_receipt.tpl.php:55
+#: front/views/mail/templates/admin_notify_mail.tpl.php:103
+#: front/views/mail/templates/invoice_mail.tpl.php:105
+#: front/views/mail/templates/proccessing_mail.tpl.php:110
+msgid "File"
+msgstr "Fichier"
+
+#: admin/views/orders/templates/edit_order_items.tpl.php:57
+msgid "Downloads remaining"
+msgstr "Téléchargements restant"
+
+#: admin/views/orders/templates/edit_order_items.tpl.php:58
+msgid "Expires on"
+msgstr "Expire le"
+
+#: admin/views/orders/templates/edit_order_items.tpl.php:59
+msgid "Access granted on"
+msgstr "Accès accordé le"
+
+#: admin/views/orders/templates/edit_order_totals.tpl.php:4
+msgid "Order Subtotal:"
+msgstr "Total partiel de la commande:"
+
+#: admin/views/orders/templates/edit_order_totals.tpl.php:24
+msgid "TAX:"
+msgstr "TAXE:"
+
+#: admin/views/orders/templates/edit_order_totals.tpl.php:30
+#: front/views/cart/templates/order.tpl.php:36
+msgid "Shipping:"
+msgstr "Livraison:"
+
+#: admin/views/orders/templates/edit_order_totals.tpl.php:36
+msgid "Shipping Tax:"
+msgstr "Taxe de livraison:"
+
+#: admin/views/orders/templates/edit_order_totals.tpl.php:47
+msgid "Total:"
+msgstr "Total:"
+
+#: admin/views/orders/templates/order_actions_box.tpl.php:6
+msgid "Save Order"
+msgstr "Sauvegarder la commande"
+
+#: admin/views/orders/templates/order_actions_box.tpl.php:13
+msgid "Email invoice"
+msgstr "Facture par email"
+
+#: admin/views/orders/templates/order_actions_box.tpl.php:23
+msgid "Delete Permanently"
+msgstr "Supprimer de manière permanente"
+
+#: admin/views/orders/templates/order_actions_box.tpl.php:25
+msgid "Move to Trash"
+msgstr "Déplacer vers la corbeille"
+
+#: admin/views/orders/templates/order_actions_box.tpl.php:35
+msgid "Add product:"
+msgstr "Ajouter un produit:"
+
+#: admin/views/orders/view.html.php:104
+msgid "Qty:"
+msgstr "Quantité:"
+
+#: admin/views/orders/view.html.php:110
+#: admin/views/product/templates/variations.tpl.php:50
+#: front/views/account/templates/account.tpl.php:170
+msgid "Save"
+msgstr "Sauvegarder"
+
+#: admin/views/payment/templates/add_payment_form.tpl.php:7
+msgid "Display name:"
+msgstr "Nom d'affichage:"
+
+#: admin/views/payment/templates/add_payment_form.tpl.php:12
+#: admin/views/shipping/templates/add_carrier_form.tpl.php:14
+msgid "Listorder:"
+msgstr "Order de liste:"
+
+#: admin/views/payment/templates/add_payment_form.tpl.php:16
+#: admin/views/shipping/templates/add_carrier_form.tpl.php:20
+msgid "Predefined class:"
+msgstr "Classe prédéfinie:"
+
+#: admin/views/payment/templates/add_payment_form.tpl.php:25
+msgid "Available in:"
+msgstr "Disponible dans:"
+
+#: admin/views/payment/templates/add_payment_form.tpl.php:27
+msgid "--All countries--"
+msgstr "--Tous le pays--"
+
+#: admin/views/payment/templates/add_payment_form.tpl.php:36
+msgid "Method options"
+msgstr "Options de la méthode"
+
+#: admin/views/payment/templates/list_payment_methods.tpl.php:17
+#: admin/views/shipping/templates/list_carriers.tpl.php:22
+#: admin/views/shipping/templates/list_rates.tpl.php:19
+#: front/views/product_list/templates/grid.tpl.php:44
+#: front/views/product_list/templates/list.tpl.php:49
+msgid "Name"
+msgstr "Nom"
+
+#: admin/views/payment/templates/list_payment_methods.tpl.php:20
+msgid "Class"
+msgstr "Classe"
+
+#: admin/views/payment/view.html.php:9
+msgid "Payment"
+msgstr "Paiement"
+
+#: admin/views/payment/view.html.php:28
+msgid "payment"
+msgstr "paiement"
+
+#: admin/views/product/templates/attributes.tpl.php:4
+msgid "--Select Predefined Set--"
+msgstr "--Sélectionnez un ensemble prédéfini--"
+
+#: admin/views/product/templates/attributes.tpl.php:12
+msgid "Selected attribute set"
+msgstr "Ensemble d'attribut sélectionné"
+
+#: admin/views/product/templates/attributes.tpl.php:13
+msgid "Delete"
+msgstr "Supprimer"
+
+#: admin/views/product/templates/dimensions.tpl.php:1
+msgid "Dimensions"
+msgstr "Dimensions"
+
+#: admin/views/product/templates/dimensions.tpl.php:7
+msgid "Length:"
+msgstr "Longueur:"
+
+#: admin/views/product/templates/dimensions.tpl.php:13
+msgid "Width:"
+msgstr "Largeur:"
+
+#: admin/views/product/templates/dimensions.tpl.php:19
+msgid "Height:"
+msgstr "Hauteur:"
+
+#: admin/views/product/templates/dimensions.tpl.php:25
+msgid "Volume:"
+msgstr "Volume:"
+
+#: admin/views/product/templates/dimensions.tpl.php:31
+msgid "Diameter:"
+msgstr "Diamètre:"
+
+#: admin/views/product/templates/dimensions.tpl.php:37
+msgid "Weight:"
+msgstr "Poids:"
+
+#: admin/views/product/templates/inventory.tpl.php:1
+msgid "Inventory"
+msgstr "Inventaire"
+
+#: admin/views/product/templates/inventory.tpl.php:7
+msgid "Stock Room"
+msgstr "Réserve"
+
+#: admin/views/product/templates/inventory.tpl.php:10
+msgid "no stockroom"
+msgstr "pas de réserve"
+
+#: admin/views/product/templates/inventory.tpl.php:31
+msgid "Manage Stock"
+msgstr "Gérer le stock"
+
+#: admin/views/product/templates/inventory.tpl.php:34
+#: admin/views/product/templates/inventory.tpl.php:44
+#: admin/views/product/templates/productinformation.tpl.php:95
+#: admin/views/product/templates/productinformation.tpl.php:116
+#: admin/views/shipping/templates/add_rate_form.tpl.php:135
+#: admin/views/shipping/templates/add_rate_form.tpl.php:148
+msgid "global"
+msgstr "gobal"
+
+#: admin/views/product/templates/inventory.tpl.php:41
+msgid "Stock Availability"
+msgstr "Disponibilté du stock"
+
+#: admin/views/product/templates/inventory.tpl.php:45
+msgid "In Stock"
+msgstr "En stock"
+
+#: admin/views/product/templates/inventory.tpl.php:46
+msgid "Out of Stock"
+msgstr "Rupture de stock"
+
+#: admin/views/product/templates/productinformation.tpl.php:1
+msgid "Information"
+msgstr "Information"
+
+#: admin/views/product/templates/productinformation.tpl.php:10
+msgid "Stock keeping unit."
+msgstr "Unité de gestion de stock."
+
+#: admin/views/product/templates/productinformation.tpl.php:10
+#: admin/views/product/templates/variations.tpl.php:17
+#: front/views/product/templates/product_data.tpl.php:6
+msgid "SKU:"
+msgstr "UGS:"
+
+#: admin/views/product/templates/productinformation.tpl.php:15
+msgid "Ordering:"
+msgstr "Commande:"
+
+#: admin/views/product/templates/productinformation.tpl.php:19
+msgid "Choose product type."
+msgstr "Choisissez un type de produit."
+
+#: admin/views/product/templates/productinformation.tpl.php:19
+msgid "Product type:"
+msgstr "Type de produit:"
+
+#: admin/views/product/templates/productinformation.tpl.php:27
+msgid "upload files for that digital product."
+msgstr "Télécharger des fichiers pour ce produit numérique."
+
+#: admin/views/product/templates/productinformation.tpl.php:30
+msgid "Upload a file"
+msgstr "Télécharger/ ajouter une image"
+
+#: admin/views/product/templates/productinformation.tpl.php:34
+msgid "Multiply download limit by quantity of ordered items."
+msgstr "Limite de téléchargement multiple par quantité d'articles commandés."
+
+#: admin/views/product/templates/productinformation.tpl.php:34
+msgid "Download limit multiply by quantity:"
+msgstr "Limite de téléchargement multipliée par la quantité:"
+
+#: admin/views/product/templates/productinformation.tpl.php:41
+msgid "Allow user to choose which files to purchase."
+msgstr "Permettre à l'utilisateur de choisir quels fichiers acheter."
+
+#: admin/views/product/templates/productinformation.tpl.php:41
+msgid "Allow customer to choose file:"
+msgstr "Permettre à l'utilisateur de choisir un fichier:"
+
+#: admin/views/product/templates/productinformation.tpl.php:48
+msgid "Number of allowed downloads for file in that product."
+msgstr "Nombre de télécharrgement permis pour le fichier dand ce produit."
+
+#: admin/views/product/templates/productinformation.tpl.php:48
+msgid "Download Limit"
+msgstr "Limite de téléchargement"
+
+#: admin/views/product/templates/productinformation.tpl.php:49
+msgid "Unlimited"
+msgstr "Illimité"
+
+#: admin/views/product/templates/productinformation.tpl.php:52
+msgid "Number of days, download to be allowed."
+msgstr "Nombre de jours, le téléchargement est autorisé."
+
+#: admin/views/product/templates/productinformation.tpl.php:52
+msgid "Download Expiry"
+msgstr "Expiration du téléchargement"
+
+#: admin/views/product/templates/productinformation.tpl.php:53
+msgid "Never"
+msgstr "Jamais"
+
+#: admin/views/product/templates/productinformation.tpl.php:56
+msgid "Mark product as on-sale."
+msgstr "Marquer le produit comme en vente."
+
+#: admin/views/product/templates/productinformation.tpl.php:56
+msgid "Product on sale:"
+msgstr "Produit en vente:"
+
+#: admin/views/product/templates/productinformation.tpl.php:65
+msgid "Mark product as special."
+msgstr "Marquer le produit comme spécial."
+
+#: admin/views/product/templates/productinformation.tpl.php:65
+msgid "Special Product:"
+msgstr "Produit spécial:"
+
+#: admin/views/product/templates/productinformation.tpl.php:74
+msgid "Expired?:"
+msgstr "Expiré?"
+
+#: admin/views/product/templates/productinformation.tpl.php:83
+msgid "Product is not for sale:"
+msgstr "Le produit n'est pas à vendre:"
+
+#: admin/views/product/templates/productinformation.tpl.php:92
+msgid "Hide price:"
+msgstr "Prix du fichier"
+
+#: admin/views/product/templates/productinformation.tpl.php:96
+#: admin/views/product/templates/productinformation.tpl.php:117
+#: admin/views/shipping/templates/add_rate_form.tpl.php:150
+#: admin/views/shipping/templates/add_rate_form.tpl.php:158
+#: admin/views/user/templates/user_form.tpl.php:17
+msgid "no"
+msgstr "non"
+
+#: admin/views/product/templates/productinformation.tpl.php:97
+#: admin/views/product/templates/productinformation.tpl.php:118
+#: admin/views/shipping/templates/add_rate_form.tpl.php:149
+#: admin/views/shipping/templates/add_rate_form.tpl.php:159
+#: admin/views/user/templates/user_form.tpl.php:20
+msgid "yes"
+msgstr "oui"
+
+#: admin/views/product/templates/productinformation.tpl.php:102
+msgid "Discount Price:"
+msgstr "Prix réduit:"
+
+#: admin/views/product/templates/productinformation.tpl.php:106
+msgid "Discount Start Date:"
+msgstr "Date de début de la réduction:"
+
+#: admin/views/product/templates/productinformation.tpl.php:110
+msgid "Discount End Date:"
+msgstr "Date de fin de la réduction:"
+
+#: admin/views/product/templates/productinformation.tpl.php:114
+msgid "Add VAT:"
+msgstr "Ajouter la TVA:"
+
+#: admin/views/product/templates/productinformation.tpl.php:122
+msgid "VAT group:"
+msgstr "Groupe de la TVA"
+
+#: admin/views/product/templates/productinformation.tpl.php:133
+msgid "Product Manufacturer:"
+msgstr "Fabriquant du produit:"
+
+#: admin/views/product/templates/productinformation.tpl.php:143
+msgid "Shipping Group:"
+msgstr "Groupe de livraison:"
+
+#: admin/views/product/templates/productinformation.tpl.php:152
+msgid "Template."
+msgstr "Modèle."
+
+#: admin/views/product/templates/productinformation.tpl.php:152
+msgid "Template:"
+msgstr "Modèle:"
+
+#: admin/views/product/templates/variation_assocs.tpl.php:1
+msgid "Attribute Associations"
+msgstr "Associations d'attribut"
+
+#: admin/views/product/templates/variations.tpl.php:1
+msgid "Variations"
+msgstr "Variations"
+
+#: admin/views/shipping/templates/add_carrier_form.tpl.php:8
+msgid "Shipper Company:"
+msgstr "Entreprise d'expédition:"
+
+#: admin/views/shipping/templates/add_carrier_form.tpl.php:31
+msgid "Class options"
+msgstr "Options de classe"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:7
+msgid "Shipping Rate Name:"
+msgstr "Nom du taux de livraison:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:13
+msgid "Weight Start:"
+msgstr "Début du poids:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:19
+msgid "Weight End:"
+msgstr "Fin du poids:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:25
+msgid "Volume Start:"
+msgstr "Début du volume:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:31
+msgid "Volume End:"
+msgstr "Fin du volume:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:37
+msgid "Shipping Rate Length Start:"
+msgstr "Début de la longueur des taux de livraison:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:43
+msgid "Shipping Rate Length End:"
+msgstr "Fin de la longueur des taux de livraison:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:49
+msgid "Shipping Rate Width Start:"
+msgstr "Début de la largeur des taux de livraison:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:55
+msgid "Shipping Rate Width End:"
+msgstr "Fin de la largeur des taux de livraison:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:61
+msgid "Shipping Rate Height Start:"
+msgstr "Début de la hauteur des taux de livraison:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:67
+msgid "Shipping Rate Height End:"
+msgstr "Fin de la hauteur des taux de livraison:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:73
+msgid "Order Total Start:"
+msgstr "Début du total de la commande:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:79
+msgid "Order Total End:"
+msgstr "Fin du total de la commande:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:85
+msgid "Zip code start:"
+msgstr "Début du code postal:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:91
+msgid "Zip code end:"
+msgstr "Fin du code postal:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:97
+msgid "Country:"
+msgstr "Pays:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:100
+msgid "- Everything -"
+msgstr "- Tout -"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:108
+msgid "State:"
+msgstr "État:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:120
+msgid "Shipping Rate:"
+msgstr "Taux de livraison:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:126
+msgid "Shipping Priority:"
+msgstr "Priorité de la livraison:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:132
+msgid "Shipping vat group:"
+msgstr "Groupe de TVA de la livraison:"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:145
+msgid "Add Vat:"
+msgstr "Ajouter TVA"
+
+#: admin/views/shipping/templates/add_rate_form.tpl.php:155
+msgid "Multiply by quantity sum:"
+msgstr "Multiplié par la somme des quantités:"
+
+#: admin/views/shipping/templates/list_carriers.tpl.php:24
+#: admin/views/shipping/view.html.php:27
+#: admin/views/tax/templates/groups_list.tpl.php:20
+msgid "Rates"
+msgstr "Taux"
+
+#: admin/views/shipping/templates/list_carriers.tpl.php:57
+#: admin/views/tax/templates/groups_list.tpl.php:48
+msgid "List Rates"
+msgstr "Liste des taux"
+
+#: admin/views/shipping/templates/list_rates.tpl.php:23
+msgid "Priority"
+msgstr "Priorité"
+
+#: admin/views/shipping/templates/standart_shipping_params.tpl.php:5
+msgid "Weight condition:"
+msgstr "Condition du poids:"
+
+#: admin/views/shipping/templates/standart_shipping_params.tpl.php:16
+msgid "Volume condition:"
+msgstr "Condition du volume:"
+
+#: admin/views/shipping/templates/standart_shipping_params.tpl.php:27
+msgid "Length condition:"
+msgstr "Condition de la longueur:"
+
+#: admin/views/shipping/templates/standart_shipping_params.tpl.php:38
+msgid "Width condition:"
+msgstr "Condition de la largeur:"
+
+#: admin/views/shipping/templates/standart_shipping_params.tpl.php:49
+msgid "Height condition:"
+msgstr "Condition de la hauteur:"
+
+#: admin/views/shipping/templates/standart_shipping_params.tpl.php:60
+msgid "Total condition:"
+msgstr "Condition du total:"
+
+#: admin/views/shipping/templates/standart_shipping_params.tpl.php:71
+msgid "Zip condition:"
+msgstr "Condition du code postal:"
+
+#: admin/views/shipping/templates/standart_shipping_params.tpl.php:83
+#: admin/views/shipping/templates/standart_shipping_params.tpl.php:94
+msgid "Country condition:"
+msgstr "Condition du pays:"
+
+#: admin/views/shipping/view.html.php:8 admin/views/shipping/view.html.php:47
+msgid "Carrier"
+msgstr "Transporteur"
+
+#: admin/views/shipping/view.html.php:50
+msgid "rates"
+msgstr "taux"
+
+#: admin/views/shipping/view.html.php:61
+msgid "Add Rate"
+msgstr "Ajouter un taux"
+
+#: admin/views/stockroom/templates/list_stockrooms.tpl.php:14
+msgid "Stock Room Name"
+msgstr "Nom de la réserve"
+
+#: admin/views/stockroom/templates/list_stockrooms.tpl.php:18
+#: admin/views/stockroom/templates/stockroomform.tpl.php:50
+#: front/views/product/templates/view_product_details.tpl.php:38
+msgid "Description"
+msgstr "Description"
+
+#: admin/views/stockroom/templates/manage_product_stocks.tpl.php:10
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:10
+msgid "Product Attribute property"
+msgstr "Propriété de l'attribut du produit"
+
+#: admin/views/stockroom/templates/manage_product_stocks.tpl.php:16
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:16
+msgid "--stockroom--"
+msgstr "--réserve--"
+
+#: admin/views/stockroom/templates/manage_product_stocks.tpl.php:29
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:29
+msgid "Search Term..."
+msgstr "Chercher un terme..."
+
+#: admin/views/stockroom/templates/manage_product_stocks.tpl.php:31
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:30
+msgid "Parent Product..."
+msgstr "Produit parent..."
+
+#: admin/views/stockroom/templates/manage_product_stocks.tpl.php:51
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:52
+msgid "stock room name"
+msgstr "nom de la réserve"
+
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:50
+msgid "Attribute"
+msgstr "Attribut"
+
+#: admin/views/stockroom/templates/manage_property_stocks.tpl.php:51
+msgid "Property"
+msgstr "Propriété"
+
+#: admin/views/stockroom/templates/stockroomform.tpl.php:10
+msgid "Name:"
+msgstr "Nom:"
+
+#: admin/views/stockroom/templates/stockroomform.tpl.php:16
+msgid "Delivery time in:"
+msgstr "Temps de livraison en:"
+
+#: admin/views/stockroom/templates/stockroomform.tpl.php:20
+msgid "Days"
+msgstr "Jours"
+
+#: admin/views/stockroom/templates/stockroomform.tpl.php:22
+msgid "Weeks"
+msgstr "Semaines"
+
+#: admin/views/stockroom/templates/stockroomform.tpl.php:27
+msgid "Minimum delivery time:"
+msgstr "Temps minimum de livraison:"
+
+#: admin/views/stockroom/templates/stockroomform.tpl.php:33
+msgid "Maximum delivery time:"
+msgstr "Tepms maximum de livraison:"
+
+#: admin/views/stockroom/view.html.php:63
+msgid "Amounts"
+msgstr "Montants"
+
+#: admin/views/tax/templates/group_form.tpl.php:10
+msgid "Group Name:"
+msgstr "Nom du groupe:"
+
+#: admin/views/tax/templates/groups_list.tpl.php:19
+msgid "Group Name"
+msgstr "Nom du groupe"
+
+#: admin/views/tax/templates/rate_form.tpl.php:12
+msgid "Vat Country:"
+msgstr "Pays de la TVA"
+
+#: admin/views/tax/templates/rate_form.tpl.php:15
+msgid "select country"
+msgstr "sélectionnez le pays"
+
+#: admin/views/tax/templates/rate_form.tpl.php:25
+msgid "States:"
+msgstr "États:"
+
+#: admin/views/tax/templates/rate_form.tpl.php:40
+msgid "Rate:"
+msgstr "Taux:"
+
+#: admin/views/tax/templates/rate_form.tpl.php:46
+msgid "Tax Name:"
+msgstr "Mode de taxe:"
+
+#: admin/views/tax/templates/rate_form.tpl.php:52
+msgid "Tax Priority:"
+msgstr "Priorité"
+
+#: admin/views/tax/templates/rates_list.tpl.php:13
+msgid "Tax Name"
+msgstr "Nom"
+
+#: admin/views/tax/templates/rates_list.tpl.php:14
+msgid "Tax Priority"
+msgstr "Priorité"
+
+#: admin/views/tax/templates/rates_list.tpl.php:15
+#: admin/views/tax/view.html.php:54
+msgid "Rate"
+msgstr "Taux"
+
+#: admin/views/tax/view.html.php:8
+msgid "Tax groups"
+msgstr "Groupes de taxes"
+
+#: admin/views/tax/view.html.php:27
+msgid "Rates list"
+msgstr "Liste des taux"
+
+#: admin/views/tax/view.html.php:45
+msgid "Tax group"
+msgstr "Groupe de taxes"
+
+#: admin/views/user/templates/user_form.tpl.php:1
+msgid "Billing fields"
+msgstr "Champs de facturation"
+
+#: admin/views/user/templates/user_form.tpl.php:13
+msgid "Shipping fields"
+msgstr "Champs de livraison"
+
+#: admin/views/user/templates/user_form.tpl.php:14
+msgid "Ship to billing address"
+msgstr "Livrer à l'adresse de facturation"
+
+#: front/controllers/account.php:61
+msgid "No access to that download"
+msgstr "Pas d'accès à ce téléchargement"
+
+#: front/controllers/account.php:65
+msgid "Sorry, you have reached maximum allowed downloads for that file."
+msgstr ""
+"Désolé, vous avez atteint le nombre maximal de téléchargement autorisé pour "
+"ce fichier."
+
+#: front/controllers/account.php:69
+msgid "Download link has expired."
+msgstr "Le lien de téléchargement a expiré."
+
+#: front/controllers/account.php:152
+msgid "File not found"
+msgstr "Fichié introuvable"
+
+#: front/controllers/account.php:152
+msgid "Go to homepage &rarr;"
+msgstr "Allez à la page d'accueil &rarr;"
+
+#: front/controllers/account.php:166
+msgid "Account data has been updated!"
+msgstr "Les données du compte ont été mis à jour"
+
+#: front/controllers/account.php:169
+msgid "Unable to update account!"
+msgstr "Impossible de mettre à jour le compte"
+
+#: front/controllers/account.php:183
+msgid "Invalid order id."
+msgstr "Idintifiant de commande invalide."
+
+#: front/controllers/account.php:190
+msgid "Authentication failed"
+msgstr "Identification échouée"
+
+#: front/controllers/cart.php:30
+msgid "Some quantities were not updated!"
+msgstr "Quelques quantités n'ont pas été mis à jour!"
+
+#: front/controllers/cart.php:88 front/controllers/cart.php:212
+msgid "product added in the cart"
+msgstr "produit ajouté au panier"
+
+#: front/controllers/cart.php:97 front/controllers/cart.php:103
+#: front/controllers/cart.php:220 front/controllers/cart.php:234
+msgid "Not enough quantity in stock. You can buy maximum of %s items."
+msgstr ""
+"Pas assez de quantité en stock. Vous pouvez acheter au maximum %s articles."
+
+#: front/controllers/cart.php:99 front/controllers/cart.php:106
+#: front/controllers/cart.php:222 front/controllers/cart.php:237
+msgid "Chosen product is out of stock"
+msgstr "Le produit choisi est en rupture de stock"
+
+#: front/controllers/cart.php:153 front/models/product.php:49
+#: front/models/product.php:64 helpers/product_helper.php:92
+#: helpers/product_helper.php:99 tables/product.php:78
+msgid "no such product"
+msgstr "Pas de tel produit"
+
+#: front/controllers/cart.php:171 front/controllers/cart.php:172
+msgid "Please select option!"
+msgstr "S'il vous plaît choisissez une option!"
+
+#: front/controllers/cart.php:277
+msgid "Your cart is empty. Please add some products before continue!"
+msgstr ""
+"Votre panier est vide. S'il vous plaît ajouter au moins un produit avant de "
+"continuer!"
+
+#: front/controllers/cart.php:293
+msgid "Choose shipping method!"
+msgstr "Choisissez une méthode de livraison!"
+
+#: front/controllers/cart.php:296
+msgid "Invalid shipping method!"
+msgstr "Méthode de livraison invalide!"
+
+#: front/controllers/cart.php:303
+msgid "Choose payment method!"
+msgstr "Choisissez une méthode de paiement!"
+
+#: front/controllers/cart.php:306
+msgid "Invalid payment method!"
+msgstr "Méthode de paiement invalide!"
+
+#: front/controllers/cart.php:334
+msgid "Totals has been updated."
+msgstr "Les totaux ont été mis à jour."
+
+#: front/controllers/cart.php:354
+msgid "Please login or register to proceed."
+msgstr "S'il vous plaît identifiez ou enregistrez vous pour continuer."
+
+#: front/controllers/cart.php:424
+msgid "Payment gateway class not found!"
+msgstr "La classe de passerelle de paiement non trouvé!"
+
+#: front/controllers/cart.php:449
+msgid "Failed to store the order, try again!"
+msgstr "Échec lors de l'enregistrement de la commande, essayez encore!"
+
+#: front/controllers/cart.php:479
+msgid ""
+"Only not completed orders can be cancelled! Please contact us for additional "
+"information!"
+msgstr ""
+"Seul les commandes non complétées peuvent être annulées! S'il vous plaît "
+"contactez nous pour plus d'informations!"
+
+#: front/controllers/cart.php:486
+msgid "The key provided for that order is incorrect!"
+msgstr "La clé entrez pour cette commande est incorrecte!"
+
+#: front/controllers/cart.php:491
+msgid "Order #%s has been cancelled!"
+msgstr "La commande #%s a été annulée!"
+
+#: front/controllers/cart.php:511 front/controllers/cart.php:645
+msgid "Invalid order id!"
+msgstr "Identifiant de commande invalide!"
+
+#: front/controllers/cart.php:530
+msgid "Invalid order key!"
+msgstr "Clé de commande invalide!"
+
+#: front/controllers/cart.php:542
+msgid "Payment class missing!"
+msgstr "Classe de paiement manquante!"
+
+#: front/controllers/cart.php:593
+msgid "missing gateway method in the notify request!"
+msgstr "Méthode de passerelle maquante dans la requête de notification"
+
+#: front/controllers/cart.php:609
+msgid "missing order id!"
+msgstr "Identifiant de commande manquant!"
+
+#: front/models/order.php:23
+msgid "please fill card holder name!"
+msgstr "S'il vous plaît saisissez le nom du possesseur de la carte de crédit!"
+
+#: front/models/order.php:29 front/models/order.php:35
+msgid "please fill valid card number!"
+msgstr "S'il vous plaît saisissez un numéro de carte valide!"
+
+#: front/models/order.php:41
+msgid "please fill card expire month!"
+msgstr "S'il vous plaît saisissez le mois d'expiration de la carte!"
+
+#: front/models/order.php:46
+msgid "please fill card expire year!"
+msgstr "S'il vous plaît saisissez l'année d'expiration de la carte!"
+
+#: front/models/order.php:51
+msgid "please fill card code!"
+msgstr "S'il vous plaît saisissez le code de la carte!"
+
+#: front/models/order.php:214
+msgid "Shipping data is invalid!"
+msgstr "Données de livraison invalide!"
+
+#: front/views/account/templates/account.tpl.php:4
+msgid "Recent Orders"
+msgstr "Commandes récentes"
+
+#: front/views/account/templates/account.tpl.php:10
+#: front/views/account/templates/account.tpl.php:62
+#: front/views/account/templates/order_receipt.tpl.php:1
+#: front/views/cart/templates/order_receipt.tpl.php:1
+msgid "Order #"
+msgstr "Commande #"
+
+#: front/views/account/templates/account.tpl.php:11
+msgid "Date"
+msgstr "Date"
+
+#: front/views/account/templates/account.tpl.php:12
+msgid "Ship To"
+msgstr "Livraison à"
+
+#: front/views/account/templates/account.tpl.php:13
+msgid "Order Total"
+msgstr "Total de la commande"
+
+#: front/views/account/templates/account.tpl.php:14
+msgid "Status"
+msgstr "Statut"
+
+#: front/views/account/templates/account.tpl.php:57
+#: front/views/account/templates/order_receipt.tpl.php:45
+#: front/views/cart/templates/order_receipt.tpl.php:43
+msgid "Available downloads"
+msgstr "Téléchargements disponibles"
+
+#: front/views/account/templates/account.tpl.php:63
+#: front/views/account/templates/order_receipt.tpl.php:56
+#: front/views/cart/templates/order_receipt.tpl.php:54
+#: front/views/mail/templates/admin_notify_mail.tpl.php:102
+#: front/views/mail/templates/admin_notify_mail.tpl.php:145
+#: front/views/mail/templates/invoice_mail.tpl.php:104
+#: front/views/mail/templates/invoice_mail.tpl.php:147
+#: front/views/mail/templates/proccessing_mail.tpl.php:109
+#: front/views/mail/templates/proccessing_mail.tpl.php:152
+#: front/views/mail/templates/refunded_mail.tpl.php:91
+msgid "Item"
+msgstr "Article"
+
+#: front/views/account/templates/account.tpl.php:65
+msgid "Download"
+msgstr "Téléchargement"
+
+#: front/views/account/templates/account.tpl.php:109
+msgid "Ship to billing address:"
+msgstr "Livrer à l'adresse de facturation:"
+
+#: front/views/account/templates/account.tpl.php:117
+msgid "Default Billing Address"
+msgstr "Adresse de facturation par défaut"
+
+#: front/views/account/templates/account.tpl.php:142
+msgid "Default Shipping Address"
+msgstr "Adresse de livraison par défaut"
+
+#: front/views/account/templates/login_form.tpl.php:7
+#: front/views/cart/templates/checkout.tpl.php:15
+msgid "Username"
+msgstr "Nom d'utilisateur"
+
+#: front/views/account/templates/login_form.tpl.php:11
+#: front/views/cart/templates/checkout.tpl.php:19
+msgid "Password"
+msgstr "Mot de passe"
+
+#: front/views/account/templates/login_form.tpl.php:21
+#: front/views/cart/templates/checkout.tpl.php:28
+msgid "Login"
+msgstr "Pseudo"
+
+#: front/views/account/templates/login_form.tpl.php:24
+#: front/views/cart/templates/checkout.tpl.php:31
+msgid "Lost Password?"
+msgstr "Mot de passe perdu?"
+
+#: front/views/account/templates/order_receipt.tpl.php:4
+#: front/views/cart/templates/order_receipt.tpl.php:4
+#: front/views/mail/templates/admin_notify_mail.tpl.php:41
+#: front/views/mail/templates/invoice_mail.tpl.php:44
+#: front/views/mail/templates/proccessing_mail.tpl.php:48
+#: front/views/mail/templates/refunded_mail.tpl.php:42
+msgid "Order key: "
+msgstr "Date de la commande:"
+
+#: front/views/account/templates/order_receipt.tpl.php:31
+#: front/views/cart/templates/order_receipt.tpl.php:28
+msgid "Shipping Method"
+msgstr "Méthode de livraison"
+
+#: front/views/account/templates/order_receipt.tpl.php:36
+#: front/views/cart/templates/order_receipt.tpl.php:33
+msgid "Payment Method"
+msgstr "Méthode de paiement"
+
+#: front/views/account/templates/order_receipt.tpl.php:75
+#: front/views/cart/templates/order_receipt.tpl.php:73
+#: front/views/mail/templates/admin_notify_mail.tpl.php:126
+#: front/views/mail/templates/invoice_mail.tpl.php:128
+#: front/views/mail/templates/proccessing_mail.tpl.php:133
+msgid "download"
+msgstr "Téléchargement"
+
+#: front/views/account/templates/order_receipt.tpl.php:87
+#: front/views/cart/templates/order_receipt.tpl.php:87
+msgid "Items Ordered"
+msgstr "Articles commandés"
+
+#: front/views/account/templates/order_receipt.tpl.php:98
+#: front/views/cart/templates/order_receipt.tpl.php:98
+msgid "SKU"
+msgstr "UGS"
+
+#: front/views/account/templates/order_receipt.tpl.php:100
+#: front/views/cart/templates/cart.tpl.php:15
+#: front/views/cart/templates/order.tpl.php:7
+#: front/views/cart/templates/order_receipt.tpl.php:100
+#: front/views/mail/templates/admin_notify_mail.tpl.php:147
+#: front/views/mail/templates/invoice_mail.tpl.php:149
+#: front/views/mail/templates/proccessing_mail.tpl.php:154
+#: front/views/mail/templates/refunded_mail.tpl.php:93
+msgid "Qty"
+msgstr "Quantité"
+
+#: front/views/account/templates/order_receipt.tpl.php:101
+#: front/views/account/templates/order_receipt.tpl.php:107
+#: front/views/cart/templates/cart.tpl.php:16
+#: front/views/cart/templates/order_receipt.tpl.php:101
+#: front/views/cart/templates/order_receipt.tpl.php:107
+#: front/views/mail/templates/admin_notify_mail.tpl.php:148
+#: front/views/mail/templates/admin_notify_mail.tpl.php:182
+#: front/views/mail/templates/invoice_mail.tpl.php:150
+#: front/views/mail/templates/invoice_mail.tpl.php:184
+#: front/views/mail/templates/proccessing_mail.tpl.php:155
+#: front/views/mail/templates/proccessing_mail.tpl.php:190
+#: front/views/mail/templates/refunded_mail.tpl.php:94
+#: front/views/mail/templates/refunded_mail.tpl.php:128
+msgid "Subtotal"
+msgstr "Sous-total"
+
+#: front/views/account/templates/order_receipt.tpl.php:117
+#: front/views/cart/templates/order_receipt.tpl.php:117
+#: front/views/mail/templates/admin_notify_mail.tpl.php:186
+#: front/views/mail/templates/invoice_mail.tpl.php:188
+#: front/views/mail/templates/proccessing_mail.tpl.php:194
+#: front/views/mail/templates/refunded_mail.tpl.php:132
+msgid "Shipping &amp; Handling"
+msgstr "Livraison &amp; transport"
+
+#: front/views/account/templates/order_receipt.tpl.php:139
+#: front/views/cart/templates/order_receipt.tpl.php:140
+#: front/views/mail/templates/admin_notify_mail.tpl.php:203
+#: front/views/mail/templates/invoice_mail.tpl.php:205
+#: front/views/mail/templates/proccessing_mail.tpl.php:211
+#: front/views/mail/templates/refunded_mail.tpl.php:149
+msgid "Tax"
+msgstr "Taxe"
+
+#: front/views/account/templates/order_receipt.tpl.php:149
+#: front/views/cart/templates/order_receipt.tpl.php:150
+#: front/views/mail/templates/admin_notify_mail.tpl.php:208
+#: front/views/mail/templates/invoice_mail.tpl.php:210
+#: front/views/mail/templates/proccessing_mail.tpl.php:216
+#: front/views/mail/templates/refunded_mail.tpl.php:154
+msgid "Grand Total"
+msgstr "Montant total"
+
+#: front/views/account/view.html.php:8 front/views/account/view.html.php:32
+msgid "Your Account"
+msgstr "Votre compte"
+
+#: front/views/account/view.html.php:37 front/views/cart/view.html.php:61
+msgid "Order Receipt"
+msgstr "Réception de la commande"
+
+#: front/views/cart/templates/cart.tpl.php:5 widgets/cart.php:19
+msgid "Shopping Cart"
+msgstr "Panier d'achat"
+
+#: front/views/cart/templates/cart.tpl.php:14
+msgid "Unit Price"
+msgstr "Prix unitaire"
+
+#: front/views/cart/templates/cart.tpl.php:23
+msgid "Continue Shopping"
+msgstr "Continuer les achats"
+
+#: front/views/cart/templates/cart.tpl.php:64
+msgid "Remove item"
+msgstr "Supprimer l'article"
+
+#: front/views/cart/templates/cart.tpl.php:68
+msgid "Your cart is currently empty."
+msgstr "Votre panier est vide"
+
+#: front/views/cart/templates/cart.tpl.php:85
+#: front/views/cart/templates/order.tpl.php:13
+msgid "Subtotal:"
+msgstr "Sous-total"
+
+#: front/views/cart/templates/cart.tpl.php:94
+msgid "Proceed to Checkout"
+msgstr "Procéder au paiement"
+
+#: front/views/cart/templates/ccard_form.tpl.php:6
+msgid "Card holder name:"
+msgstr "Nom du possesseur de la carte:"
+
+#: front/views/cart/templates/ccard_form.tpl.php:18
+msgid "Card number"
+msgstr "Numéro de la carte"
+
+#: front/views/cart/templates/ccard_form.tpl.php:28
+msgid "Expiry date:"
+msgstr "Date d'expiration:"
+
+#: front/views/cart/templates/ccard_form.tpl.php:63
+msgid "Card Security Number:"
+msgstr "Numéro de sécurité de la carte:"
+
+#: front/views/cart/templates/ccard_form.tpl.php:76
+msgid "Card type:"
+msgstr "Type de la carte:"
+
+#: front/views/cart/templates/ccard_form.tpl.php:100
+#: front/views/cart/templates/ccard_form.tpl.php:102
+msgid "pay"
+msgstr "paiement"
+
+#: front/views/cart/templates/checkout.tpl.php:6
+msgid "Already registered?"
+msgstr "Déjà enregistré?"
+
+#: front/views/cart/templates/checkout.tpl.php:6
+msgid "Click here to login"
+msgstr "Cliquez ici pour vous identifier"
+
+#: front/views/cart/templates/checkout.tpl.php:12
+msgid ""
+"If you have shopped with us before, please enter your username and password "
+"in the boxes below. If you are a new customer please proceed to the Billing "
+"&amp; Shipping section."
+msgstr ""
+"Si vous avez déjà fait des acahats chez nous, s'il vous plaît entrer votre "
+"nom d'utilisateur et mot de passe dans les entrés ci-dessous. Si vous êtes "
+"un nouveau client allez s'il vous plaît dans la section Facturation &amp; "
+"Livraison. "
+
+#: front/views/cart/templates/checkout.tpl.php:45
+msgid "Create account?"
+msgstr "Créer un compte?"
+
+#: front/views/cart/templates/checkout.tpl.php:52
+msgid ""
+"Create an account by entering the information below. If you are a returning "
+"customer please login with your username at the top of the page."
+msgstr ""
+"Créer un compte en entrant les informations ci-dessous. Si vous êtes déjà "
+"enregistré, s'il vous plaît identifiez vous avec votre nom d'utilisateur en "
+"haut de la page."
+
+#: front/views/cart/templates/checkout.tpl.php:56
+msgid "Account username"
+msgstr "Nom d'utilisateur du compte"
+
+#: front/views/cart/templates/checkout.tpl.php:62
+#: front/views/cart/templates/checkout.tpl.php:66
+msgid "Account password"
+msgstr "Mot de passe du compte"
+
+#: front/views/cart/templates/checkout.tpl.php:80
+msgid "Ship to same address?"
+msgstr "Livrer à la même adresse?"
+
+#: front/views/cart/templates/checkout.tpl.php:174
+msgid "Order Notes"
+msgstr "Notes de la commande"
+
+#: front/views/cart/templates/checkout.tpl.php:175
+msgid "Notes about your order, e.g. special notes for delivery."
+msgstr ""
+"Notes concernant votre commande, par exemple des notes pour la livraison."
+
+#: front/views/cart/templates/checkout.tpl.php:179
+msgid "Your order"
+msgstr "Votre commande"
+
+#: front/views/cart/templates/order.tpl.php:8
+msgid "Totals"
+msgstr "Totaux"
+
+#: front/views/cart/templates/order.tpl.php:14
+msgid "(ex. tax)"
+msgstr "(ex. taxe)"
+
+#: front/views/cart/templates/order.tpl.php:31
+msgid "Total Tax:"
+msgstr "Total:"
+
+#: front/views/cart/templates/order.tpl.php:46
+msgid "Enter all required data"
+msgstr "Entrez toutes les données requises"
+
+#: front/views/cart/templates/order.tpl.php:46
+msgid "and click update totals,"
+msgstr "et cliquez pour mettre a jour les totaux,"
+
+#: front/views/cart/templates/order.tpl.php:46
+msgid "to get shipping options!"
+msgstr "pour obtenir les options de livraison!"
+
+#: front/views/cart/templates/order.tpl.php:52
+msgid "Grand Total:"
+msgstr "Montant total:"
+
+#: front/views/cart/templates/order.tpl.php:110
+msgid "There is no payment method available for your location."
+msgstr ""
+"Il n'y a pas de méthode de payement disponible pour votre localisation."
+
+#: front/views/cart/templates/order.tpl.php:115
+msgid ""
+"Since your browser does not support JavaScript, or it is disabled, please "
+"ensure you click the <em>Update Totals</em> button before placing your "
+"order. You may be charged more than the amount stated above if you fail to "
+"do so."
+msgstr ""
+"Comme votre navigateur ne supporte pas JavaScript, ou qu'il est désactivé, "
+"s'il vous plaît vérifiez que vous ayez bien cliqué sur le bouton <em>Mise à "
+"jour des totaux</em>  avant de placer votre commande. Vous risquez de payer "
+"un mauvais montant si vous ne faites pas ça."
+
+#: front/views/cart/templates/order.tpl.php:115
+msgid "Update totals"
+msgstr "Mettre à jour les totaux"
+
+#: front/views/cart/templates/order.tpl.php:118
+msgid "Place Order"
+msgstr "Commander"
+
+#: front/views/cart/view.html.php:9
+msgid "Your Cart"
+msgstr "Votre panier"
+
+#: front/views/cart/view.html.php:17
+msgid "Checkout"
+msgstr "Paiement"
+
+#: front/views/cart/view.html.php:43
+msgid "Your session has expired and the cart is empty!"
+msgstr "Votre session a expiré et votre panier est vide!"
+
+#: front/views/cart/view.html.php:51
+msgid "Provide payment details"
+msgstr "Fournissez les détails de paiement"
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:33
+msgid ""
+"You have received new order, and that order was marked as completed. You can "
+"view order details below."
+msgstr ""
+"Vous avez reçu une nouvelle commande, et cette commande été marqué comme "
+"complétée. Vous pouvez voir les détails de la commande ci-dessous."
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:37
+#: front/views/mail/templates/invoice_mail.tpl.php:40
+#: front/views/mail/templates/proccessing_mail.tpl.php:44
+#: front/views/mail/templates/refunded_mail.tpl.php:38
+msgid "Your Order #"
+msgstr "Votre commande #"
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:37
+#: front/views/mail/templates/invoice_mail.tpl.php:40
+#: front/views/mail/templates/proccessing_mail.tpl.php:44
+#: front/views/mail/templates/refunded_mail.tpl.php:38
+msgid "placed on"
+msgstr "placé le"
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:49
+#: front/views/mail/templates/invoice_mail.tpl.php:51
+#: front/views/mail/templates/proccessing_mail.tpl.php:55
+#: front/views/mail/templates/refunded_mail.tpl.php:49
+msgid "Billing Information:"
+msgstr "Inforamtion de facturation:"
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:51
+#: front/views/mail/templates/invoice_mail.tpl.php:53
+#: front/views/mail/templates/proccessing_mail.tpl.php:57
+#: front/views/mail/templates/refunded_mail.tpl.php:51
+msgid "Payment Method:"
+msgstr "Méthode de paiement:"
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:74
+#: front/views/mail/templates/invoice_mail.tpl.php:76
+#: front/views/mail/templates/proccessing_mail.tpl.php:80
+#: front/views/mail/templates/refunded_mail.tpl.php:69
+msgid "Shipping Information:"
+msgstr "Information de livraison:"
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:76
+#: front/views/mail/templates/invoice_mail.tpl.php:78
+#: front/views/mail/templates/proccessing_mail.tpl.php:82
+#: front/views/mail/templates/refunded_mail.tpl.php:71
+msgid "Shipping Method:"
+msgstr "Méthode de livraison:"
+
+#: front/views/mail/templates/admin_notify_mail.tpl.php:146
+#: front/views/mail/templates/invoice_mail.tpl.php:148
+#: front/views/mail/templates/proccessing_mail.tpl.php:153
+#: front/views/mail/templates/refunded_mail.tpl.php:92
+msgid "Sku"
+msgstr "Ugs"
+
+#: front/views/mail/templates/invoice_mail.tpl.php:33
+msgid "Thank you for your order!"
+msgstr "Merci pour votre commande"
+
+#: front/views/mail/templates/invoice_mail.tpl.php:34
+msgid "If you had troubles with payment process you can"
+msgstr "Si vous avez eu des troubles à l'étape de paiement vous pouvez"
+
+#: front/views/mail/templates/invoice_mail.tpl.php:34
+msgid "retry the payment"
+msgstr "réessayer de payer"
+
+#: front/views/mail/templates/invoice_mail.tpl.php:34
+msgid "or"
+msgstr "ou"
+
+#: front/views/mail/templates/invoice_mail.tpl.php:34
+msgid "cancel the order."
+msgstr "annuler la commande."
+
+#: front/views/mail/templates/invoice_mail.tpl.php:36
+#: front/views/mail/templates/proccessing_mail.tpl.php:41
+#: front/views/mail/templates/refunded_mail.tpl.php:35
+msgid "Your order confirmation is below. Thank you again for your business."
+msgstr ""
+"La confirmation de votre commande est ci-dessous. Merci encore pour votre "
+"achat."
+
+#: front/views/mail/templates/proccessing_mail.tpl.php:34
+msgid "Your payment for that order has failed."
+msgstr "Le paiement pour cette commande a échoué."
+
+#: front/views/mail/templates/proccessing_mail.tpl.php:36
+msgid ""
+"Your order is marked as completed and is awaiting processing and shipment. "
+"You will receive updates via email."
+msgstr ""
+"Votre commande est marquée comme complétée et est en attente de traitement "
+"et envoie. Vous recevrez les mises à jour par email."
+
+#: front/views/mail/templates/refunded_mail.tpl.php:33
+msgid "Your order has been refunded! You can see the order details below."
+msgstr ""
+"Votre commande a été remboursée! Vous pouvez voir les détails de la commande "
+"ci-dessous."
+
+#: front/views/product/templates/attributes.tpl.php:3
+msgid "Select Options"
+msgstr "Sélctionnez des options"
+
+#: front/views/product/templates/files.tpl.php:5
+msgid "Choose files"
+msgstr "Choisir des fichiers"
+
+#: front/views/product/templates/gallery.tpl.php:6
+msgid "More Views"
+msgstr "Plus de vues"
+
+#: front/views/product/templates/product_data.tpl.php:11
+#: front/views/product_list/templates/grid.tpl.php:89
+#: front/views/product_list/templates/list.tpl.php:97
+#: front/views/shortcodes/templates/products_grid.tpl.php:19
+msgid "Regular price: "
+msgstr "Prix régulier:"
+
+#: front/views/product/templates/product_data.tpl.php:19
+#: front/views/product_list/templates/grid.tpl.php:97
+#: front/views/product_list/templates/list.tpl.php:105
+#: front/views/shortcodes/templates/products_grid.tpl.php:27
+msgid "Special price: "
+msgstr "Produit spécial:"
+
+#: front/views/product/templates/product_data.tpl.php:21
+msgid "Price: "
+msgstr "Prix:"
+
+#: front/views/product/templates/product_data.tpl.php:29
+msgid "Availability:"
+msgstr "Disponibilité:"
+
+#: front/views/product/templates/product_data.tpl.php:40
+#: front/views/product_list/templates/grid.tpl.php:110
+#: front/views/product_list/templates/list.tpl.php:121
+msgid "Add To Cart"
+msgstr "Ajouter au panier"
+
+#: front/views/product/templates/view_product_details.tpl.php:40
+msgid "Comments"
+msgstr "Commentaires"
+
+#: front/views/product/templates/view_product_details.tpl.php:51
+#: front/views/product_list/templates/list.tpl.php:133
+msgid "Tagged Under:"
+msgstr "Taggé sous:"
+
+#: front/views/product/templates/view_product_details.tpl.php:52
+#: front/views/product_list/templates/list.tpl.php:139
+msgid "Brands:"
+msgstr "Marques:"
+
+#: front/views/product/view.html.php:16 front/views/product/view.html.php:146
+msgid "in stock"
+msgstr "en stock"
+
+#: front/views/product/view.html.php:18 front/views/product/view.html.php:148
+msgid "out of stock"
+msgstr "rupture de stock"
+
+#: front/views/product/view.html.php:20 front/views/product/view.html.php:150
+msgid "%s in stock"
+msgstr "%s en stock"
+
+#: front/views/product_list/templates/grid.tpl.php:28
+#: front/views/product_list/templates/list.tpl.php:31
+msgid "View as:"
+msgstr "Voir comme:"
+
+#: front/views/product_list/templates/grid.tpl.php:36
+#: front/views/product_list/templates/list.tpl.php:41
+msgid "Sort by:"
+msgstr "Trier:"
+
+#: front/views/product_list/templates/grid.tpl.php:41
+#: front/views/product_list/templates/list.tpl.php:46
+msgid "Most Recent"
+msgstr "Plus récent"
+
+#: front/views/product_list/templates/grid.tpl.php:47
+#: front/views/product_list/templates/list.tpl.php:52
+msgid "Price lowest first"
+msgstr "Prix croissant"
+
+#: front/views/product_list/templates/grid.tpl.php:50
+#: front/views/product_list/templates/list.tpl.php:55
+msgid "Price highest first"
+msgstr "Prix décroissant"
+
+#: front/views/product_list/templates/grid.tpl.php:53
+#: front/views/product_list/templates/list.tpl.php:58
+msgid "Featured"
+msgstr "Spécial"
+
+#: front/views/product_list/templates/list.tpl.php:136
+msgid "Categories:"
+msgstr "Catégories:"
+
+#: front/views/widgets/templates/cart_widget.tpl.php:4
+#: front/views/widgets/templates/cart_widget_ajax.tpl.php:2
+msgid "Your cart is empty."
+msgstr "Votre panier est vide."
+
+#: front/views/widgets/templates/cart_widget.tpl.php:10
+#: front/views/widgets/templates/cart_widget_ajax.tpl.php:8
+msgid "item in cart."
+msgid_plural "items in cart."
+msgstr[0] "Article dans le panier."
+msgstr[1] "Articles dans le panier."
+
+#: front/views/widgets/templates/cart_widget.tpl.php:15
+#: front/views/widgets/templates/cart_widget_ajax.tpl.php:13
+msgid "View Cart"
+msgstr "Voir le panier"
+
+#: front/views/widgets/templates/cart_widget.tpl.php:20
+#: front/views/widgets/templates/cart_widget_ajax.tpl.php:18
+msgid "Proceed to checkout"
+msgstr "Payer"
+
+#: helpers/cart.php:230 helpers/cart.php:251
+msgid "Select required attributes!"
+msgstr "Sélectionnez les attributs requis!"
+
+#: helpers/customer.php:45 helpers/customer.php:50 helpers/customer.php:55
+#: helpers/customer.php:60 helpers/customer.php:65 helpers/customer.php:79
+#: helpers/customer.php:85 helpers/customer.php:103 helpers/customer.php:108
+#: helpers/customer.php:113 helpers/customer.php:118 helpers/customer.php:123
+#: helpers/customer.php:137
+msgid "text"
+msgstr "texte"
+
+#: helpers/customer.php:47 helpers/customer.php:48 helpers/customer.php:105
+#: helpers/customer.php:106
+msgid "First Name"
+msgstr "Prénom"
+
+#: helpers/customer.php:49 helpers/customer.php:107
+msgid "Please enter first name"
+msgstr "S'il vous plaît entrez votre prénom"
+
+#: helpers/customer.php:52 helpers/customer.php:53 helpers/customer.php:110
+#: helpers/customer.php:111
+msgid "Last Name"
+msgstr "Nom"
+
+#: helpers/customer.php:54 helpers/customer.php:112
+msgid "Please enter last name"
+msgstr "S'il vous plaît entrez votre nom"
+
+#: helpers/customer.php:57 helpers/customer.php:59 helpers/customer.php:115
+#: helpers/customer.php:117
+msgid "Address"
+msgstr "Adresse"
+
+#: helpers/customer.php:58 helpers/customer.php:116
+msgid "Please enter valid address."
+msgstr "S'il vous plaît entrez une adresse valide."
+
+#: helpers/customer.php:62 helpers/customer.php:120
+msgid "Please enter valid city."
+msgstr "S'il vous plaît entrez une ville valide."
+
+#: helpers/customer.php:63 helpers/customer.php:64 helpers/customer.php:121
+#: helpers/customer.php:122
+msgid "City"
+msgstr "Ville"
+
+#: helpers/customer.php:67 helpers/customer.php:125
+msgid "Please enter valid zipcode."
+msgstr "S'il vous plaît entrez un code postal valide."
+
+#: helpers/customer.php:68 helpers/customer.php:126
+msgid "Post Code"
+msgstr "Code postal"
+
+#: helpers/customer.php:69 helpers/customer.php:127
+msgid "Post/Zip Code"
+msgstr "Code postal"
+
+#: helpers/customer.php:71 helpers/customer.php:129
+msgid "country"
+msgstr "pays"
+
+#: helpers/customer.php:73 helpers/customer.php:131
+msgid "Please select country."
+msgstr "S'il vous plaît sélectionnez un pays."
+
+#: helpers/customer.php:77 helpers/customer.php:135
+msgid "Please select state."
+msgstr "S'il vous plaît sélectionnez un état."
+
+#: helpers/customer.php:81 helpers/customer.php:82
+msgid "Email"
+msgstr "Email"
+
+#: helpers/customer.php:83
+msgid "Please enter valid email."
+msgstr "S'il vous plaît entrez un email valide."
+
+#: helpers/customer.php:87 helpers/customer.php:88 helpers/customer.php:140
+msgid "Phone"
+msgstr "Téléphone"
+
+#: helpers/customer.php:89 helpers/customer.php:141
+msgid "Please enter valid phone."
+msgstr "S'il vous plait entrez un numéro de téléphone valide."
+
+#: helpers/customer.php:139
+msgid "Shipping Phone"
+msgstr "Numéro de téléphone de livraison"
+
+#: helpers/customer.php:272
+msgid "Please enter valid username!"
+msgstr "S'il vous plaît entrez un nom d'utilisateur valide!"
+
+#: helpers/customer.php:276
+msgid "Please provide valid e-mail address!"
+msgstr "S'il vous plaît entrez une adresse e-mail valide!"
+
+#: helpers/customer.php:282
+msgid "Please provide valid password!"
+msgstr "S'il vous plaît entrez un mot de passe valide!"
+
+#: helpers/customer.php:287
+msgid "Invalid email/username"
+msgstr "Email/nom d'utilisateur invalide"
+
+#: helpers/customer.php:289
+msgid ""
+"An account is already registered with that username. Please choose another."
+msgstr ""
+"Un compte avec ce nom d'utilisateur existe déjà. S'il vous plaît choisissez "
+"en un autre."
+
+#: helpers/customer.php:294
+msgid "An account is already registered with your email address. Please login."
+msgstr ""
+"Un compte avec cette adresse email existe déjà. S'il vous plaît identifiez-"
+"vous."
+
+#: helpers/customer.php:299
+msgid "Couldn&#8217;t register you..."
+msgstr "Impossible de vous enregistrer..."
+
+#: helpers/mailer.php:90
+msgid "[%s] New Customer Order (%s) Invoice"
+msgstr "[%s] Nouvelle facture de la commande client (%s) "
+
+#: helpers/mailer.php:136
+msgid "[%s] New order (%s) has been recieved and marked as completed"
+msgstr "[%s] La nouvelle commande (%s) a été reçue et marquée comme complétée"
+
+#: helpers/mailer.php:185
+msgid "[%s] Order (%s) Has Failed"
+msgstr "[%s] La commande (%s) a échoué"
+
+#: helpers/mailer.php:189
+msgid "[%s] Order (%s) Completed"
+msgstr "[%s] Commande (%s) complétée"
+
+#: helpers/mailer.php:194
+msgid "[%s] Order (%s) Has Been Refunded"
+msgstr "[%s] La commande (%s) a été remboursée"
+
+#: helpers/mailer.php:198
+msgid "[%s] Order (%s) Changed Status To Processing"
+msgstr "Le statut de la commande (%s) est passé en traitement"
+
+#: helpers/mailer.php:203
+msgid "[%s] Order (%s) Has Been Shipped"
+msgstr "[%s] La commande (%s) a été livrée"
+
+#: helpers/payment_method.php:56
+msgid "Unknown payment gateway type!"
+msgstr "Type de passerelle de paiement inconnu"
+
+#: helpers/payment_method.php:111
+msgid "card definition is missing!"
+msgstr "La définition de la carte est manquante!"
+
+#: installer.php:336
+msgid "Shop"
+msgstr "Boutique"
+
+#: installer.php:367 installer.php:642
+msgid "Shop Manager"
+msgstr "Page de la boutique:"
+
+#: methods/paypal.php:164
+msgid "Shipping via"
+msgstr "Livrer via"
+
+#: tables/carrier.php:47
+msgid "Enter carrier label"
+msgstr "Entrer le nom du livreur"
+
+#: tables/payment.php:45
+msgid "Enter method label"
+msgstr "Entrer le nom de la méthode"
+
+#: tables/shipping_rate.php:96
+msgid "Enter rate label"
+msgstr "Entrez le nom du taux"
+
+#: tables/user.php:143
+msgid "invalid user id"
+msgstr "Identifiant utilisateur invalide"
+
+#: widgets/cart.php:15
+msgid "Shopping cart"
+msgstr "Panier d'achat"
+
+#: widgets/cart.php:65
+msgid "Cart"
+msgstr "Panier"
+
+#~ msgid "Address Book"
+#~ msgstr "Carnet d'adresse"
+
+#~ msgid "VAT:"
+#~ msgstr "TVA:"
