@@ -101,6 +101,10 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.2.0 - 24.05.2014 =
+
+1. Fixes 404 error on activation
+
 = 1.1.6 - 12.04.2014 =
 
 1. Fix category as homepage bug

@@ -287,7 +287,7 @@ class shop_installer extends app_object {
     public function activate() {
 
         require_once(dirname(__FILE__) . "/action_handlers.php");
-        orillacart_actions::init()->register_types();
+       
         $params = Factory::getApplication('shop')->getParams();
 
 
@@ -345,7 +345,8 @@ class shop_installer extends app_object {
                 $params->set('page_id', $id);
                 $params->save();
             }
-
+			
+			orillacart_actions::init()->register_types();
 
 			//add capabilities and roles
 			  //add roles
