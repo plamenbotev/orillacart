@@ -58,8 +58,8 @@ class shopControllerOrders extends controller {
 
         $this->view->assign('items', (array) $order['items']);
 
-        $this->view->assign('billing', Factory::getApplication('shop')->getHelper('order')->get_order_billing($post->ID));
-        $this->view->assign('shipping', Factory::getApplication('shop')->getHelper('order')->get_order_shipping($post->ID));
+        $this->view->assign('billing', Factory::getApplication('shop')->getHelper('order')->get_order_billing($id));
+        $this->view->assign('shipping', Factory::getApplication('shop')->getHelper('order')->get_order_shipping($id));
 
 
 

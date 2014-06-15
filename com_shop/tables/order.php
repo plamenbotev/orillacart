@@ -95,7 +95,7 @@ class orderTable extends table {
     }
 
     public function load($id) {
-
+ 
         $post = get_post($id);
 
         if (!$post)
@@ -109,6 +109,8 @@ class orderTable extends table {
 
         $fields = $this->getPublicFields();
         $meta = get_post_custom($this->ID);
+		
+		
         foreach ((array) $fields as $f => $v) {
 
             if (in_array($f, array('ID', 'order_comments', 'title', 'post_password', 'cdate')))
@@ -146,6 +148,8 @@ class orderTable extends table {
 
             $shipping->shipping_state->set_country($shipping->shipping_country->get_value());
         }
+		
+
         return $this;
     }
 

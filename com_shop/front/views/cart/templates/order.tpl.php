@@ -25,12 +25,14 @@
                         </tr>    
 
                     <?php } ?>
-                <?php } ?>
+                
 
                 <tr>
                     <td class="a-right" colspan="3"><?php _e("Total Tax:", "com_shop"); ?></td>
                     <td><?php echo Factory::getApplication('shop')->getHelper('price')->format($this->cart->get_order_vat()); ?></td>
                 </tr>
+				
+				<?php } ?>
                 <?php if ($this->cart->need_shipping()) { ?>
                     <tr>
                         <td class="a-right" colspan="3"><label for="shipping_method" class="control-label"><?php _e('Shipping:', 'com_shop'); ?></label></td>

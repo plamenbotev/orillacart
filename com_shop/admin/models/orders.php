@@ -489,7 +489,10 @@ class ordersModel extends Model {
             }
             $this->db->setQuery("REPLACE INTO #_shop_order_attribute_item (order_att_item_id,order_item_id,
                                 order_id,section_id,section,downloads_remaining,expires) VALUES" . implode(",", $values));
-            return false;
+             if (!$this->db->getResource()) {
+
+                return false;
+            }
         }
         return true;
     }
@@ -670,7 +673,7 @@ class ordersModel extends Model {
         }
         unset($ids);
 
-       // $this->update_price($order, $items);
+        $this->update_price($order, $items);
 
 //update shipping and billing fields and add all new
 //added trought the fields api 

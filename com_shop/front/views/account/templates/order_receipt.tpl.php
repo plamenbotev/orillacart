@@ -122,18 +122,20 @@
                     </span>                 
                 </td>
             </tr>
-            <?php foreach ((array) $this->taxes as $tax) { ?>
-                <tr class="tax">
-                    <td colspan="4" class="a-right">
-                        <?php _e(strings::stripAndEncode($tax->name), 'com_shop'); ?>
-                    </td>
-                    <td class="last a-right">
-                        <span class="price">
-                            <?php echo $this->price->format($tax->value, $this->order['currency_sign']); ?>
-                        </span>                 
-                    </td>
-                </tr>
-            <?php } ?>
+			<?php if (!empty($this->taxes)) { ?>
+				<?php foreach ((array) $this->taxes as $tax) { ?>
+					<tr class="tax">
+						<td colspan="4" class="a-right">
+							<?php _e(strings::stripAndEncode($tax->name), 'com_shop'); ?>
+						</td>
+						<td class="last a-right">
+							<span class="price">
+								<?php echo $this->price->format($tax->value, $this->order['currency_sign']); ?>
+							</span>                 
+						</td>
+					</tr>
+				<?php } ?>
+		 
             <tr class="tax">
                 <td colspan="4" class="a-right">
                     <?php _e('Tax', 'com_shop'); ?>
@@ -144,6 +146,8 @@
                     </span>                 
                 </td>
             </tr>
+			
+			<?php } ?>
             <tr class="grand_total">
                 <td colspan="4" class="a-right">
                     <strong><?php _e('Grand Total', 'com_shop'); ?></strong>

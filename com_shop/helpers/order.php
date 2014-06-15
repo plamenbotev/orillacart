@@ -45,8 +45,10 @@ class order {
 
                 $p = Factory::getApplication('shop')->getTable('product');
                 $oi = Factory::getApplication('shop')->getTable('order_item');
-                while ($item = $db->nextObject()) {
-
+				$items = $db->loadObjectList();
+				
+                foreach ($items as $item) {
+					
                     if ($item->access_granted != '0000-00-00 00:00:00' && !empty($item->access_granted))
                         continue;
 
@@ -66,7 +68,10 @@ class order {
                     $db->setQuery("UPDATE #_shop_order_attribute_item SET expires = '" . $expiry . "' WHERE section='file' AND order_item_id = " . $item->order_item_id);
 
                     $oi->store();
+					
+
                 }
+				
             }
 
             if ($old != $status)

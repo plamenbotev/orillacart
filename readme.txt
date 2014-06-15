@@ -101,6 +101,11 @@ Always backup before upgrade!
 
 == Changelog ==
 
+= 1.2.1 - 15.06.2014 =
+1. Compatibility with warp and gantry based themes.
+2. Order edit screen bug fixes.
+
+
 = 1.2.0 - 24.05.2014 =
 
 1. Fixes 404 error on activation

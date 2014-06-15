@@ -6,7 +6,7 @@ abstract class component extends app_object {
 
     protected $name = null;
     protected $componentBase = null;
-    protected $base_path = null;
+    protected $root_path = null;
     protected $rel_path = null;
     protected $component_url = null;
     protected $sys_messages = array("admin" => array(), "front" => array());
@@ -16,6 +16,11 @@ abstract class component extends app_object {
     protected $mode = null;
 
     abstract static public function register_component($components);
+	
+	
+	public function getComponentRootPath(){
+		return $this->root_path;
+	}
 
     public function getMode(){
         return $this->mode;
@@ -67,7 +72,7 @@ abstract class component extends app_object {
     public function getParams() {
 
 	
-		$path = $this->getComponentPath() . DS . ".." . DS . "params.php";
+		$path = realpath($this->root_path . DS . "params.php");
 		
 		if (file_exists($path)) {
                    
@@ -285,7 +290,7 @@ abstract class component extends app_object {
         $this->name = strtolower(get_class($this));
 
         $path = '';
-        $base_path = '';
+        $root_path = '';
         $mode = $this->mode;
 
         $components = factory::getFramework()->get_active_components();
@@ -293,18 +298,18 @@ abstract class component extends app_object {
         foreach ((array) $components as $cpath => $class) {
             if ($class == get_class($this)) {
                 $path = $cpath . "/" . $mode;
-                $base_path = $cpath;
+                $root_path = $cpath;
             }
         }
 
-        $this->base_path = $base_path;
+        $this->root_path = $root_path;
 
-        $plugin_dir_name = plugin_basename($base_path);
+        $plugin_dir_name = plugin_basename($root_path);
         $this->rel_path = $plugin_dir_name;
        
 	   
 	   
-        if (is_dir($base_path)) {
+        if (is_dir($root_path)) {
             $this->componentBase = $path;
             $this->component_url = WP_PLUGIN_URL . '/' . $plugin_dir_name;
             add_action("init", array($this, "load_language"));
@@ -330,7 +335,7 @@ abstract class component extends app_object {
     public function getAssetsPath() {
 
 
-        return realpath(str_replace('\\', '/', $this->base_path . DS . ".." . DS . "assets"));
+        return realpath(str_replace('\\', '/', $this->root_path . DS . ".." . DS . "assets"));
     }
 
     public function getAssetsUrl() {

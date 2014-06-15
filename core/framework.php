@@ -282,7 +282,7 @@ final class Framework {
 
 
 
-            $tmp = '';
+            $tmp = null;
             foreach ((array) array($tpl, 'page.php') as $template_name) {
                 if (!$template_name)
                     continue;
@@ -300,13 +300,9 @@ final class Framework {
                 }
             }
 
-
-
-
-
-            if ($tmp)
-                return $tmp;
-        } else {
+			return empty($tmp) ? $template : $tmp;
+        
+		} else {
             return $template;
         }
     }
