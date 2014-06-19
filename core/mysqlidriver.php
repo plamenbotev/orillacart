@@ -165,7 +165,7 @@ class mysqliDriver extends database {
             $data = stripslashes($data);
         }
 
-        $data = mysqli_real_escape_string($data, $this->conn);
+        $data = mysqli_real_escape_string($this->conn,$data);
         //$data=addcslashes($data,"%_");
         return $data;
     }
@@ -242,11 +242,14 @@ class mysqliDriver extends database {
 
     public function nextObject($res = null) {
 
-        if (!is_resource($this->res) && !is_resource($res))
+        if (!is_object($this->res) && !is_object($res))
             return false;
+			
+		if(!($this->res instanceof mysqli_result) && !($res instanceof mysqli_result))
+			return false;
 
-        if (is_resource($res))
-            return mysqli_fetch_object($this->res);
+        if (is_object($res)  && $res instanceof mysqli_result)
+            return mysqli_fetch_object($res);
 
         return mysqli_fetch_object($this->res);
     }
@@ -256,10 +259,10 @@ class mysqliDriver extends database {
         if ($col) {
 
 
-            return is_resource($this->res) ? mysqli_result($this->res, 0, $col) : false;
+            return (is_object($this->res) && $this->res instanceof mysqli_result ) ? mysqli_result($this->res, 0, $col) : false;
         } else if ($this->numRows() > 0) {
 
-            return is_resource($this->res) ? mysqli_result($this->res, 0) : false;
+            return (is_object($this->res) && $this->res instanceof mysqli_result ) ? mysqli_result($this->res, 0) : false;
         }
 
         return false;
@@ -269,6 +272,7 @@ class mysqliDriver extends database {
 
 
 function mysqli_result($res,$row=0,$col=0){
+
     if (mysqli_num_rows($res) && $row <= (mysqli_num_rows($res)-1) && $row >= 0){
         mysqli_data_seek($res,$row);
         $resrow = mysqli_fetch_row($res);
