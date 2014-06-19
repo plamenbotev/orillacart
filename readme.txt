@@ -1,4 +1,4 @@
-=== Orilla Cart - eCommerce ===
+﻿=== Orilla Cart - eCommerce ===
 Contributors: orillacart
 Tags: ecommerce plugin, ecommerce, e-commerce, attributes, variations, commerce, wordpress ecommerce, product, store, sales, sell, shop, shopping, cart, checkout, downloadable, digital, inventory, shipping, tax
 Donate link:
@@ -100,6 +100,9 @@ That page is the front end of your store, you can change the page later from the
 Always backup before upgrade!
 
 == Changelog ==
+
+= 1.2.2 - 19.06.2014 =
+1. MySQLI Driver added
 
 = 1.2.1 - 15.06.2014 =
 1. Compatibility with warp and gantry based themes.

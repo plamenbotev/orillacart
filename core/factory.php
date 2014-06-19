@@ -4,8 +4,22 @@ defined('_VALID_EXEC') or die('access denied');
 
 class Factory {
 
-    static public function getDBO($type = 'mysql') {
-
+    static public function getDBO($type = null) {
+		
+		global $wpdb;
+		
+		if($type == null){
+			
+			if ( ! isset($wpdb->use_mysqli) || ! $wpdb->use_mysqli ){
+				$type = "mysql";
+			}else{
+			
+				$type = "mysqliDriver";
+				
+			}
+			
+		}
+	
         if (class_exists($type) && method_exists($type, 'getInstance'))
             return call_user_func($type . '::getInstance');
         else
