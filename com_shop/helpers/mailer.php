@@ -129,12 +129,17 @@ class mailer {
         $notify_admin_mail = $params->get('notify_admin_mail');
 
         //if the order is completed notify the admiistrator
-        if ($new == 'completed' && $params->get('notify_admin_on_new_order') && !empty($notify_admin_mail)) {
+        if ( $new == 'completed' || (empty($old) && in_array($new,array("on-hold","onhold"))) && $params->get('notify_admin_on_new_order') && !empty($notify_admin_mail)) {
 
 
             $blogname = wp_specialchars_decode(get_option('blogname'), ENT_QUOTES);
-            $subject = sprintf(__('[%s] New order (%s) has been recieved and marked as completed', 'com_shop'), $blogname, $order_id);
+            
+			if(in_array($new,array("on-hold","onhold"))){
+				$subject = sprintf(__('[%s] New order (%s) has been recieved and marked as on-hold', 'com_shop'), $blogname, $order_id);
 
+			}else{
+				$subject = sprintf(__('[%s] New order (%s) has been recieved and marked as completed', 'com_shop'), $blogname, $order_id);
+			}
             $app = Factory::getApplication('shop');
             if (Framework::is_admin()) {
                 View::addIncludePath('shop', dirname($app->getComponentPath()) . DS . "front" . DS . "views");
