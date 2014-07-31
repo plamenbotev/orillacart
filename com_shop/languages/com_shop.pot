@@ -2345,6 +2345,10 @@ msgstr ""
 msgid "Continue Shopping"
 msgstr ""
 
+#: front/views/cart/templates/cart.tpl.php:25
+msgid "Update Cart"
+msgstr ""
+
 #: front/views/cart/templates/cart.tpl.php:64
 msgid "Remove item"
 msgstr ""
