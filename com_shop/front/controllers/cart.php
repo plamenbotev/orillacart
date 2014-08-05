@@ -261,8 +261,9 @@ class shopControllerCart extends controller {
 
         $cart->remove(Request::getInt('group', null));
 
-        $this->view->assign('cart', $cart);
-        parent::display();
+		
+        wp_safe_redirect(Route::get("component=shop&con=cart"));
+		exit;
     }
 
     protected function checkout() {

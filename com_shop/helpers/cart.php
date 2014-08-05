@@ -284,7 +284,11 @@ final class cart {
 
         $item->files = (array) $files;
 
-        $k = count($_SESSION['cart'] > 0) ? count($_SESSION['cart']) : 0;
+        
+		
+
+		$k = count($_SESSION['cart'] > 0 ) ? max(array_keys($_SESSION['cart']))+1 : 0;
+		
         $values = array();
         $values[] = "('" . $db->secure(session_id()) . "'," .
                 "'" . (int) $pid . "'," .
