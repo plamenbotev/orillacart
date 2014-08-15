@@ -287,7 +287,7 @@ final class cart {
         
 		
 
-		$k = count($_SESSION['cart'] > 0 ) ? max(array_keys($_SESSION['cart']))+1 : 0;
+		$k = is_array($_SESSION['cart']) && count($_SESSION['cart']) > 0  ? max(array_keys($_SESSION['cart']))+1 : 0;
 		
         $values = array();
         $values[] = "('" . $db->secure(session_id()) . "'," .
