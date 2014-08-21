@@ -101,6 +101,9 @@ Always backup before upgrade!
 
 == Changelog ==
 
+=1.2.6=
+Cart functionality improved
+
 = 1.2.4 - 31.07.2014 =
 1. Missing string added into the language file
 
