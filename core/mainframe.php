@@ -73,7 +73,11 @@ final class mainframe {
 			break;
 				
             case "wp_title":
-            			
+            	
+				if(empty($this->page_title)){
+					return $args[0];
+				}
+				
                 return $this->page_title;
                 break;
             default:
