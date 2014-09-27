@@ -117,9 +117,7 @@ final class Framework {
      *  
      */
     public function handle_ajax_front() {
-        if (version_compare(PHP_VERSION, '5.3.0', '>=')) {
-            header_remove('Content-Type');
-        }
+        
         request::ajaxMode();
         $this->run(request::getCmd('component'));
         die();
@@ -130,14 +128,14 @@ final class Framework {
      */
     public function handle_ajax_admin() {
 
-
-        if (!current_user_can('manage_options'))
-            if (version_compare(PHP_VERSION, '5.3.0', '>=')) {
-                header_remove('Content-Type');
-            }
+        if (!current_user_can('manage_options')){
+			die("0");
+		}
+		
+			
         request::ajaxMode();
-
         $this->run(Request::getCmd('component'));
+		die();
     }
 
     /**
