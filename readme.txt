@@ -101,6 +101,10 @@ Always backup before upgrade!
 
 == Changelog ==
 
+=1.2.9=
+
+Fix bug in shipping methods.
+
 =1.2.6=
 Cart functionality improved
 
