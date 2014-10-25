@@ -145,7 +145,7 @@ if (!function_exists('paypal_init')) {
 
                     $items = $db->loadObjectList();
 
-                    $post_variables['tax_cart'] = round($order_r->get("order_tax", 0), 2);
+                    $post_variables['tax_cart'] = round($order_r->get("order_tax", 0), 2) + round($order_r->get("order_shipping_tax", 0), 2);
 
                     $total_items = count($items);
 					$i = 0;
