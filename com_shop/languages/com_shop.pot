@@ -2877,6 +2877,10 @@ msgstr ""
 msgid "Shipping via"
 msgstr ""
 
+#: methods/paypal.php:182
+msgid "Please wait, you will be redirected to paypal shortly!"
+msgstr ""
+
 #: tables/carrier.php:47
 msgid "Enter carrier label"
 msgstr ""

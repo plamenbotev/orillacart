@@ -386,6 +386,7 @@ class standart_shipping {
     public function get_available_rates() {
 
         $order = Factory::getApplication('shop')->getHelper('order');
+		$price = Factory::getApplication('shop')->getHelper('price');
         $params = Factory::getApplication('shop')->getParams();
         $rates = $this->get_rates();
 
@@ -431,7 +432,7 @@ class standart_shipping {
             }
 
 
-            $row->name = strings::stripAndEncode($rate->name . " - " . $rate->shipping_rate_name . " (+" . $row->rate . ") ");
+            $row->name = strings::stripAndEncode($rate->name . " - " . $rate->shipping_rate_name . " (+" . $price->format($row->rate) . ") ");
 
             $id = new stdClass();
 

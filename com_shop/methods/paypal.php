@@ -179,7 +179,7 @@ if (!function_exists('paypal_init')) {
                     echo "<noscript><input type='submit' value='click to pay' name='pay' /></noscript>";
                     echo "</form>";
                     ?>
-                    <div style='margin:0 auto; font-weight:bold; width:100%; text-align:center;'>Please wait, you will be redirected to paypal shortly!</div>
+                    <div style='margin:0 auto; font-weight:bold; width:100%; text-align:center;'><?php _e("Please wait, you will be redirected to paypal shortly!","com_shop"); ?></div>
                     <script type='text/javascript'>document.paypalfrm.submit();</script>
 
                     <?php
