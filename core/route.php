@@ -67,9 +67,9 @@ final class route {
 
             if (get_option('show_on_front') == 'page' && $pid == get_option('page_on_front')) {
 
-                $q = $wp_pages[$com][0] . "/" . $q;
+                $q = trailingslashit($wp_pages[$com][0]) . $q;
             }
-            return get_permalink($pid) . $q;
+            return trailingslashit(get_permalink($pid)) . $q;
         }
         return get_permalink($pid) . ( stripos('?', $url) === false ? '?' . $url : $url );
     }
