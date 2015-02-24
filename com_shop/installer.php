@@ -437,6 +437,7 @@ class shop_installer extends app_object {
 				"delete_others_{$capability_type}s",
 				"edit_private_{$capability_type}s",
 				"edit_published_{$capability_type}s",
+				"delete_{$capability_type}s",
 
 				// Terms
 				"manage_{$capability_type}_terms",
@@ -686,7 +687,7 @@ class shop_installer extends app_object {
 			
 			
 			
-			$capabilities = array();
+		$capabilities = array();
 
 		$capabilities['core'] = array(
 			'manage_shop'
@@ -828,6 +829,38 @@ class shop_installer extends app_object {
 			
 			if (version_compare($params->get('db_version'), '1.1.9', '<')) {
 				$this->protect_uploads();
+			}
+			
+			//add trash capability as it was forgotten in the previous versions...
+			if (version_compare($params->get('db_version'), '1.2.0', '<')) {
+				
+				global $wp_roles;
+
+				if ( class_exists( 'WP_Roles' ) ) {
+					if ( ! isset( $wp_roles ) ) {
+						$wp_roles = new WP_Roles();
+					}
+				}
+				
+				$capabilities = array();
+		
+
+				$capability_types = array( 'product', 'shop_order');
+
+				foreach ( $capability_types as $capability_type ) {
+
+					$capabilities[ $capability_type ] = array(
+						"delete_{$capability_type}s",
+					);
+				}
+			
+				foreach ( $capabilities as $cap_group ) {
+					foreach ( $cap_group as $cap ) {
+						$wp_roles->add_cap( 'shop_manager', $cap );
+						$wp_roles->add_cap( 'administrator', $cap );
+					}
+				}
+			
 			}
 		
             //update the parameters after we alter the database
