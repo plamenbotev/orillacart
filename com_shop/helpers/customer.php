@@ -256,20 +256,28 @@ class customer {
             'password-2' => ''
         );
 
-        $data = wp_parse_args($data, $data);
+        $data = wp_parse_args($data, $def);
 
 
         $reg_errors = new WP_Error();
-        do_action('register_post', $data['email'], $data['email'], $reg_errors);
-        $errors = apply_filters('registration_errors', $data['email'], $data['email']);
+		
+		$filter = FilterInput::getInstance();
+		
+		$data['username'] = $filter->clean($data['username'], 'USERNAME');
+		
+		do_action( 'register_post', $data['username'], $data['email'],$reg_errors );
+		
+		$reg_errors = apply_filters( 'registration_errors', $reg_errors, $data['username'], $data['email']);
+				
+
 
         if ($reg_errors->get_error_code()) {
             throw new Exception(__($reg_errors->get_error_message(), 'com_shop'));
         }
 
-        $filter = FilterInput::getInstance();
+      
 
-        $data['username'] = $filter->clean($data['username'], 'USERNAME');
+       
         if (empty($data['username'])) {
             throw new Exception(__("Please enter valid username!", "com_shop"));
         }
@@ -305,8 +313,15 @@ class customer {
         // send the user a confirmation and their login details
         wp_new_user_notification($user_id, $data['password']);
 
+		 wp_set_current_user($user_id, $data['username']);
+	
+
+		
+		
         // set the WP login cookie
         wp_set_auth_cookie($user_id, true, (bool) is_ssl());
+		
+		do_action('wp_login', $data['username']); 
 
         return $user_id;
     }

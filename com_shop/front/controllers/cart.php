@@ -494,8 +494,12 @@ class shopControllerCart extends controller {
         $oid = $input->get('order_id', null, "INT");
         $row = $helper->get_order($oid);
         if (!has_term(array('pending', 'failed'), 'order_status', (int) $oid)) {
-
-            wp_die(__("Only not completed orders can be cancelled! Please contact us for additional information!", 'com_shop'));
+			
+			$message = __("Only not completed orders can be cancelled! Please contact us for additional information!", 'com_shop');
+			$message .="<br />";
+			$message .="<a href=".Route::get("component=shop").">".__("Back to the store.","com_shop")."</a>";
+			
+            wp_die($message);
             exit;
         }
 
@@ -673,7 +677,7 @@ class shopControllerCart extends controller {
 		
 		$key = $input->get('order_key', null, "STRING");
 
-        if ($key !== $order['post_password']) {
+        if ($key !== $order['post_password'] && (!isset($_SESSION['last_order_id']) || $_SESSION['last_order_id'] !=  $order['ID'])) {
             wp_die(__("Authentication failed", 'com_shop'));
             exit;
         }

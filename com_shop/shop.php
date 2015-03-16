@@ -181,7 +181,7 @@ class shop extends component {
             $Head->addStyle('bootstrap', $this->getAssetsUrl() . '/bootstrap.css');
             $Head->addStyle('shop-icons', $this->getAssetsUrl() . '/icons.css');
             $Head->addStyle('bootstrap-buttons', $this->getAssetsUrl() . '/buttons.css');
-            $Head->addStyle('shop-admin-styles', $this->getAssetsUrl() . '/template.css');
+            $Head->addStyle('shop-admin-styles', $this->getAssetsUrl() . '/shop-admin-styles.css');
 
             $Head->addCustomHeadTag('ajaxurl', "
                  <!--[if lt IE 9]>

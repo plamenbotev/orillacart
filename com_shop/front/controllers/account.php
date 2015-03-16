@@ -49,7 +49,7 @@ class shopControllerAccount extends controller {
 
         $input = Factory::getApplication()->getInput();
 
-        $key = $input->getInt('order_key', '', "STRING");
+        $key = $input->get('order_key', '', "STRING");
         $file = $input->get('file', 0, "INT");
         $item = $input->get('item', 0, "INT");
         $db = Factory::getDBO();
