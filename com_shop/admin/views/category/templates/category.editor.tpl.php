@@ -75,7 +75,7 @@
 
     window.send_to_editor_default = window.send_to_editor;
 
-    window.send_to_termmeta = function(html) {
+    window.send_to_termmeta = function (html) {
 
         jQuery('body').append('<div id="temp_image">' + html + '</div>');
 
@@ -94,7 +94,7 @@
         window.send_to_editor = window.send_to_editor_default;
     }
 
-    jQuery('#set_term_image').live('click', function() {
+    jQuery('#set_term_image').live('click', function () {
         var post_id = 0;
 
         window.send_to_editor = window.send_to_termmeta;
@@ -103,11 +103,11 @@
         tb_show('', 'media-upload.php?post_id=' + post_id + '&amp;type=image&amp;TB_iframe=true');
         return false;
     });
-
-    jQuery('#remove_term_image').live('click', function() {
-        jQuery('#product_cat_thumbnail img').attr('src', '<?php ?>');
-        jQuery('#product_cat_thumbnail_id').val('');
-        return false;
+    
+    jQuery('#remove_term_image').live('click', function () {
+        jQuery('img#product_cat_thumbnail').attr('src', '');
+                jQuery('#product_cat_thumbnail_id').val('');
+                return false;
     });
-
+            
 </script>

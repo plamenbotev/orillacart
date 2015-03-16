@@ -9,11 +9,11 @@ abstract class button {
         $this->parent = $parent;
     }
 
-    function getName() {
+    public function getName() {
         return $this->name;
     }
 
-    function render($definition) {
+    public function render($definition) {
         /*
          * Initialize some variables
          */
@@ -36,7 +36,7 @@ abstract class button {
         return $html;
     }
 
-    function fetchIconClass($identifier) {
+    public function fetchIconClass($identifier) {
         return "icon-$identifier";
     }
 

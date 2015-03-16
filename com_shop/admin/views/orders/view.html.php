@@ -4,11 +4,11 @@ defined('_VALID_EXEC') or die('access denied');
 class shopViewOrders extends view {
 
     public function fill_column() {
-        parent::display('listorders');
+         $this->loadTemplate('listorders');
     }
 
     public function display() {
-        Factory::getMainframe()->addScript('admin-list-orders', Factory::getApplication('shop')->getAssetsUrl() . "/js/admin-list-orders.js");
+        Factory::getHead()->addScript('admin-list-orders', Factory::getComponent('shop')->getAssetsUrl() . "/js/admin-list-orders.js");
     }
 
     public function order_actions_box($post) {
@@ -31,24 +31,25 @@ class shopViewOrders extends view {
 
     public function order_meta_js() {
 
-        Factory::getMainframe()->addScript('jquery');
-        Factory::getMainframe()->addScript('jquery-ui-core');
-        Factory::getMainframe()->addStyle('jquery-calendar-css', Factory::getApplication('shop')->getAssetsUrl() . "/ui/jquery-ui-1.8.20.custom.css");
-        Factory::getMainframe()->addScript('jquery-calendar-js', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.ui.datepicker.js");
+        Factory::getHead()->addScript('jquery');
+        Factory::getHead()->addScript('jquery-ui-core');
+        Factory::getHead()->addStyle('jquery-calendar-css', Factory::getComponent('shop')->getAssetsUrl() . "/ui/jquery-ui-1.8.20.custom.css");
+        Factory::getHead()->addScript('jquery-calendar-js', Factory::getComponent('shop')->getAssetsUrl() . "/js/jquery.ui.datepicker.js");
 
         //autocomplete
-        Factory::getMainframe()->addscript('jquery-ui-autocomplete');
-        Factory::getMainframe()->addScript('admin-edit-order', Factory::getApplication('shop')->getAssetsUrl() . "/js/edit-order.js");
-        Factory::getMainframe()->addScript('jquery-ui-core');
-        Factory::getMainframe()->addStyle('jquery-ui-css', Factory::getApplication('shop')->getAssetsUrl() . "/jquery.ui.css");
-        Factory::getMainframe()->addScript('jquery-ui-dialog');
+        Factory::getHead()->addscript('jquery-ui-autocomplete');
+        Factory::getHead()->addScript('admin-edit-order', Factory::getComponent('shop')->getAssetsUrl() . "/js/edit-order.js");
+        Factory::getHead()->addScript('jquery-ui-core');
+        Factory::getHead()->addStyle('jquery-ui-css', Factory::getComponent('shop')->getAssetsUrl() . "/jquery.ui.css");
+        Factory::getHead()->addScript('jquery-ui-dialog');
     }
 
     public function get_parent_list() {
 
+        $input = Factory::getApplication()->getInput();
 
-        $str = Request::getString('str');
-        $exclude = Request::getString('exclude');
+        $str = $input->get('str', "", "STRING");
+        $exclude = $input->get('exclude', "", "STRING");
         $exclude = array_map('intval', (array) explode(',', $exclude));
 
         $model = $this->getModel('orders');
@@ -66,7 +67,9 @@ class shopViewOrders extends view {
 
     public function get_users_list() {
 
-        $str = Request::getString('str');
+        $input = Factory::getApplication()->getInput();
+
+        $str = $input->get('str', "", "STRING");
 
         $model = $this->getModel('orders');
 
@@ -87,14 +90,14 @@ class shopViewOrders extends view {
         <ul>
             <?php foreach ((array) $this->all_attributes as $att) { ?>
                 <li>
-                    <label for="property_<?php echo $att->attribute_id; ?>"> <?php echo strings::stripAndEncode($att->attribute_name); ?></label>
+                    <label for="property_<?php echo $att->attribute_id; ?>"> <?php echo strings::htmlentities($att->attribute_name); ?></label>
                     <select id="property_<?php echo $att->attribute_id; ?>" name='property[<?php echo $att->attribute_id; ?>]' class='property' >
                         <option></option>
                         <?php
                         if (!empty($att->properties)) {
                             foreach ((array) $att->properties as $prop) {
                                 ?>
-                                <option value='<?php echo $prop->property_id; ?>'><?php echo strings::stripAndEncode($prop->property_name); ?></option>
+                                <option value='<?php echo $prop->property_id; ?>'><?php echo strings::htmlentities($prop->property_name); ?></option>
                             <?php } ?>
                         </select>
                     <?php } ?>

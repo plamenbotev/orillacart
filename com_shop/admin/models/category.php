@@ -8,6 +8,8 @@ class categoryModel extends model {
 
         $cid = (int) $d['category_id'];
 
+        $post = Factory::getApplication()->getInput()->post;
+
         if (!$cid || !$this->is_cat($cid))
             throw new message(__("Invalid category", "com_shop"));
 
@@ -28,17 +30,17 @@ class categoryModel extends model {
         }
 
 
-        $term_meta = Factory::getApplication('shop')->getHelper('term_meta');
-        if (isset($_POST['thumbnail_id']) && !empty($_POST['thumbnail_id'])) {
+        $term_meta = Factory::getComponent('shop')->getHelper('term_meta');
+        if (isset($post['thumbnail_id']) && !empty($post['thumbnail_id'])) {
 
-            $term_meta->update($cid, 'thumbnail_id', (int) $_POST['thumbnail_id']);
+            $term_meta->update($cid, 'thumbnail_id', (int) $post['thumbnail_id']);
         } else {
             $term_meta->delete($cid, 'thumbnail_id');
         }
 
-        $term_meta->update($cid, 'products_per_row', (int) $_POST['products_per_row']);
-        $term_meta->update($cid, 'list_template', (string) $_POST['list_template']);
-        $term_meta->update($cid, 'view_style', (string) $_POST['view_style']);
+        $term_meta->update($cid, 'products_per_row', (int) $post['products_per_row']);
+        $term_meta->update($cid, 'list_template', (string) $post['list_template']);
+        $term_meta->update($cid, 'view_style', (string) $post['view_style']);
 
         return $cid;
     }
@@ -58,7 +60,7 @@ class categoryModel extends model {
         if (!$term) {
             return false;
         }
-        $term_meta = Factory::getApplication('shop')->getHelper('term_meta');
+        $term_meta = Factory::getComponent('shop')->getHelper('term_meta');
         $term->image_id = $term_meta->get($cid, 'thumbnail_id', true);
 
         if ($term->image_id) {
@@ -75,13 +77,13 @@ class categoryModel extends model {
     }
 
     public function getItemListTemplates() {
-        $app = Factory::getApplication('shop');
+        $app = Factory::getComponent('shop');
 
         return (array) Path::folders($app->getComponentPath() . "/../front/views/product_list/templates");
     }
 
     public function getProductTemplates() {
-        $app = Factory::getApplication('shop');
+        $app = Factory::getComponent('shop');
 
         return (array) Path::folders($app->getComponentPath() . "/../front/views/product/templates");
     }

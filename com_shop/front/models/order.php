@@ -2,15 +2,16 @@
 
 class orderModel extends model {
 
-   
     public function validate_card(card_method $gateway) {
 
-        $card_holder = request::getString('card_holder_name', null);
-        $card_no = request::getString('card_number', null);
-        $card_expire_month = request::getInt('card_expire_month', 0);
-        $card_expire_year = request::getInt('card_expire_year', 0);
-        $card_cvv = request::getString('card_code', null);
-        $card_type = request::getString('card_type', null);
+        $input = Factory::getApplication()->getInput();
+
+        $card_holder = $input->get('card_holder_name', null, "STRING");
+        $card_no = $input->get('card_number', null, "STRING");
+        $card_expire_month = $input->get('card_expire_month', 0, "INT");
+        $card_expire_year = $input->get('card_expire_year', 0, "INT");
+        $card_cvv = $input->get('card_code', null, "STRING");
+        $card_type = $input->get('card_type', null, "STRING");
 
 
 
@@ -20,35 +21,35 @@ class orderModel extends model {
 
         if (empty($card_holder) || preg_match("/[0-9]+/", $card_holder) == true) {
 
-            Factory::getApplication('shop')->addError(__('please fill card holder name!', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('please fill card holder name!', 'com_shop'));
             return false;
         }
 
 
         if (!ctype_digit($card_no)) {
-            Factory::getApplication('shop')->addError(__('please fill valid card number!', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('please fill valid card number!', 'com_shop'));
             return false;
         }
 
         if ($gateway->require_ctype()) {
             if (!is_object($gateway->get_card($card_type)) || !$gateway->get_card($card_type)->validate($card_no)) {
-                Factory::getApplication('shop')->addError(__('please fill valid card number!', 'com_shop'));
+                Factory::getComponent('shop')->addError(__('please fill valid card number!', 'com_shop'));
                 return false;
             }
         }
 
         if (!$card_expire_month) {
-            Factory::getApplication('shop')->addError(__('please fill card expire month!', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('please fill card expire month!', 'com_shop'));
             return false;
         }
 
         if (!$card_expire_year) {
-            Factory::getApplication('shop')->addError(__('please fill card expire year!', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('please fill card expire year!', 'com_shop'));
             return false;
         }
         if ($gateway->require_cvv()) {
             if (!ctype_digit($card_cvv) || strlen($card_cvv) < 3 || strlen($card_cvv) > 4) {
-                Factory::getApplication('shop')->addError(__('please fill card code!', 'com_shop'));
+                Factory::getComponent('shop')->addError(__('please fill card code!', 'com_shop'));
                 return false;
             }
         }
@@ -115,12 +116,12 @@ class orderModel extends model {
             $file->order_files_count = (int) $row->order_files_count;
             $file->order_item_files_count = (int) $row->order_item_files_count;
             $file->order_id = $row->order_id;
-            $file->product_name = stripslashes($row->order_item_name);
+            $file->product_name = $row->order_item_name;
 
             $file->item_id = $row->order_item_id;
             $file->file_id = $row->section_id;
-            $file->order_key = stripslashes($row->post_password);
-            $file->customer_email = stripslashes($row->customer_email);
+            $file->order_key = $row->post_password;
+            $file->customer_email = $row->customer_email;
 
             $rows[] = $file;
         }
@@ -152,12 +153,12 @@ class orderModel extends model {
 
             $file->order_item_files_count = (int) $row->order_item_files_count;
             $file->order_id = $row->order_id;
-            $file->product_name = stripslashes($row->order_item_name);
+            $file->product_name = $row->order_item_name;
 
             $file->item_id = $row->order_item_id;
             $file->file_id = $row->section_id;
-            $file->order_key = stripslashes($row->post_password);
-            $file->customer_email = stripslashes($row->customer_email);
+            $file->order_key = $row->post_password;
+            $file->customer_email = $row->customer_email;
 
             $rows[] = $file;
         }
@@ -168,16 +169,17 @@ class orderModel extends model {
     public function store_order() {
 
 
-        $cart = Factory::getApplication('shop')->getHelper('cart');
-        $customer = Factory::getApplication('shop')->getHelper('customer');
-        $h_order = Factory::getApplication('shop')->getHelper("order");
+        $cart = Factory::getComponent('shop')->getHelper('cart');
+        $customer = Factory::getComponent('shop')->getHelper('customer');
+        $h_order = Factory::getComponent('shop')->getHelper("order");
 
         $this->db->startTransaction();
 
         $order_dim = $cart->getCartItemDimention();
 
-        $order = Factory::getApplication('shop')->getTable('order');
+        $order = Factory::getComponent('shop')->getTable('order');
 
+        $input = Factory::getApplication()->getInput();
 
         if (is_user_logged_in()) {
             $order->customer_id = get_current_user_id();
@@ -190,7 +192,7 @@ class orderModel extends model {
         $order->order_status = 'onhold';
 
         $order->ship_method_id = $cart->selected_shipping_id();
-        $order->order_comments = request::getString('order_comments', '', 'POST');
+        $order->order_comments = $input->get('order_comments', '', 'STRING');
 
         if (!$cart->need_payment()) {
             $order->payment_method = '';
@@ -198,10 +200,10 @@ class orderModel extends model {
             $order->payment_method = $cart->selected_payment_method()->get_class_name();
         }
 
-        $order->currency = Factory::getApplication('shop')->getParams()->get('currency');
-        $order->currency_sign = Factory::getApplication('shop')->getParams()->get('currency_sign');
-        $order->volume_unit = Factory::getApplication('shop')->getParams()->get('default_volume_unit');
-        $order->weight_unit = Factory::getApplication('shop')->getParams()->get('default_weight_unit');
+        $order->currency = Factory::getComponent('shop')->getParams()->get('currency');
+        $order->currency_sign = Factory::getComponent('shop')->getParams()->get('currency_sign');
+        $order->volume_unit = Factory::getComponent('shop')->getParams()->get('default_volume_unit');
+        $order->weight_unit = Factory::getComponent('shop')->getParams()->get('default_weight_unit');
         $order->volume = (double) $order_dim['totalvolume'];
         $order->length = (double) $order_dim['totallength'];
         $order->width = (double) $order_dim['totalwidth'];
@@ -214,7 +216,7 @@ class orderModel extends model {
                 throw new Exception(__("Shipping data is invalid!", 'com_shop'));
             }
 
-            $carrier = Factory::getApplication('shop')->getTable('carrier')->load((int) $s->carrier_id);
+            $carrier = Factory::getComponent('shop')->getTable('carrier')->load((int) $s->carrier_id);
 
             $order->shipping_name = $carrier->name;
             $order->shipping_rate_name = $s->rate_name;
@@ -226,7 +228,7 @@ class orderModel extends model {
             throw new Exception($this->db->getErrorString());
         }
 
-        $order->payment_name = stripslashes($this->db->loadResult());
+        $order->payment_name = $this->db->loadResult();
 
         $ids = array();
 
@@ -249,8 +251,8 @@ class orderModel extends model {
         }
         $ids[] = $order->pk();
 
-        $order_item = Factory::getApplication('shop')->getTable('order_item');
-        $order_item_attribute = Factory::getApplication('shop')->getTable('order_attribute_item');
+        $order_item = Factory::getComponent('shop')->getTable('order_item');
+        $order_item_attribute = Factory::getComponent('shop')->getTable('order_attribute_item');
 
         try {
 
@@ -258,7 +260,7 @@ class orderModel extends model {
 
                 $order_item->reset();
 
-                $product = Factory::getApplication('shop')->getTable('product')->load($item->id);
+                $product = Factory::getComponent('shop')->getTable('product')->load($item->id);
 
                 if ($product->type == 'digital') {
                     $order_item->product_type = 'digital';
@@ -267,7 +269,7 @@ class orderModel extends model {
                 }
 
                 $manage_stocks = true;
-                if ($product->manage_stock == 'no' || ($product->manage_stock == 'global' && !Factory::getApplication('shop')->getParams()->get('checkStock'))) {
+                if ($product->manage_stock == 'no' || ($product->manage_stock == 'global' && !Factory::getComponent('shop')->getParams()->get('checkStock'))) {
                     $manage_stocks = false;
                 }
 
@@ -401,9 +403,9 @@ class orderModel extends model {
 
     public function process_credit_card($gateway, $oid) {
 
-        $order = Factory::getApplication('shop')->getTable('order')->load($oid);
+        $order = Factory::getComponent('shop')->getTable('order')->load($oid);
 
-        $h_order = Factory::getApplication('shop')->getHelper('order');
+        $h_order = Factory::getComponent('shop')->getHelper('order');
         $res = $gateway->do_payment($order->ID, $order->toArray());
 
 
@@ -416,7 +418,7 @@ class orderModel extends model {
         $order->store();
 
         if (!empty($res->msg)) {
-            Factory::getApplication('shop')->setMessage($res->msg);
+            Factory::getComponent('shop')->setMessage($res->msg);
         }
         if (!empty($res->status)) {
             $h_order->change_order_status($order->pk(), $res->status);

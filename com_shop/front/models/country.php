@@ -51,7 +51,7 @@ class countryModel extends model {
 
     public function getCountryList() {
 
-        $allowed_countries = (array) Factory::getApplication('shop')->getPArams()->get('retail_countries');
+        $allowed_countries = (array) Factory::getComponent('shop')->getPArams()->get('retail_countries');
 
         $ids = array_map(array($this->db, 'secure'), $allowed_countries);
         $where = '';
@@ -71,8 +71,6 @@ class countryModel extends model {
 
         return $this->db->loadObjectList();
     }
-
-   
 
     public function getStatesByCountry($c) {
 
@@ -95,8 +93,7 @@ class countryModel extends model {
                 throw new Exception($this->db->getErrorString());
             }
             return (array) $this->db->loadObjectList();
-        }
-        else
+        } else
             return null;
     }
 

@@ -32,15 +32,15 @@ if (!function_exists('banktransfer_init')) {
                                 </label>
                                 <textarea type="text" name="params[banktransfer_fields]" id="banktransfer_fields"><?php echo $this->params->get('banktransfer_fields', ''); ?></textarea>
                             </li>
-							<li>
+                            <li>
                                 <label for="banktransfer_onreceipt">
-                                   Print on receipt:   
+                                    Print on receipt:   
                                 </label>
                                 <textarea type="text" name="params[banktransfer_onreceipt]" id="banktransfer_onreceipt"><?php echo $this->params->get('banktransfer_onreceipt', ''); ?></textarea>
                             </li>
-							
-							
-							
+
+
+
                         </ul>
                     </fieldset>
                     <?php
@@ -49,16 +49,16 @@ if (!function_exists('banktransfer_init')) {
                 public function fields() {
                     return $this->params->get('banktransfer_fields', '');
                 }
-				
-				public function on_receipt(){
+
+                public function on_receipt($order=null) {
                     return $this->params->get('banktransfer_onreceipt', '');
                 }
 
                 public function do_payment($order_id, $order) {
-
+                    
                 }
-				
-				static public function register_method($methods) {
+
+                static public function register(array $methods) {
                     $methods[] = new self();
 
                     return $methods;
@@ -66,7 +66,7 @@ if (!function_exists('banktransfer_init')) {
 
             }
 
-            add_filter('register_payment_class', 'banktransfer::register_method');
+            add_filter('register_payment_class', 'banktransfer::register');
         }
     }
 

@@ -10,13 +10,14 @@ class shopControllerCountry extends controller {
 
         $this->getView('country');
 
+        $input = Factory::getApplication()->getInput();
 
         $res = $model->getCountryList();
 
         $this->view->assign('res', $res);
 
         $total = $res->found_rows();
-        $pagination = new paginator($total, request::getVar('limitstart', 0, 'METHOD', 'int'), request::getVar('limit', 10, 'METHOD', 'int'));
+        $pagination = new paginator($total, $input->get('limitstart', 0, 'INT'), $input->get('limit', 10, 'INT'));
         $pagination->url = "javascript:void(0);";
         $pagination->onclick = "document.adminForm.task.value='';document.adminForm.limitstart.value=%s;document.adminForm.submit();return false";
 
@@ -29,17 +30,17 @@ class shopControllerCountry extends controller {
     protected function state_list() {
 
         $model = $this->getModel('country');
-
+        $input = Factory::getApplication()->getInput();
 
         $this->getView('country');
-        $country_id = Request::getVar('country_id', null, 'REQUEST', 'string');
+        $country_id = $input->get('country_id', null, 'string');
         $this->view->assign('country_id', $country_id);
         $res = $model->getStateList();
         $total = $res->found_rows();
 
         $this->view->assign('res', $res);
 
-        $pagination = new paginator($total, request::getVar('limitstart', 0, 'METHOD', 'int'), request::getVar('limit', 10, 'METHOD', 'int'));
+        $pagination = new paginator($total, $input->get('limitstart', 0, 'INT'), $input->get('limit', 10, 'INT'));
         $pagination->url = "javascript:void(0);";
         $pagination->onclick = "document.adminForm.task.value='state_list'; document.adminForm.limitstart.value=%s;document.adminForm.submit();return false";
         $this->view->assign('pagination', $pagination);
@@ -52,8 +53,10 @@ class shopControllerCountry extends controller {
         $model = $this->getModel('country');
         $this->getView('country');
 
-        $country_id = request::getVar('country_id', null, 'METHOD', 'string');
-        $row = Factory::getApplication('shop')->getTable('country')->load_by_code($country_id);
+        $input = Factory::getApplication()->getInput();
+
+        $country_id = $input->get('country_id', null, 'STRING');
+        $row = Factory::getComponent('shop')->getTable('country')->load_by_code($country_id);
         $this->view->assign('row', $row);
 
         parent::display('country_form');
@@ -64,14 +67,19 @@ class shopControllerCountry extends controller {
         $model = $this->getModel('country');
         $this->getView('country');
 
-        $country_id = request::getString('country_id', null);
-        $state_id = request::getVar('state_id', null, 'METHOD', 'int');
-        $row = Factory::getApplication('shop')->getTable('state')->load($state_id);
+        $input = Factory::getApplication()->getInput();
+
+        $country_id = $input->get('country_id', null, "STRING");
+        $state_id = $input->get('state_id', null, 'INT');
+
+        $row = Factory::getComponent('shop')->getTable('state')->load($state_id);
+
         if ($row->pk()) {
 
             $country_id = $row->country_id;
         }
         outputFilter::objectHTMLSafe($row);
+
         $this->view->assign('row', $row);
         $this->view->assign('country_id', $country_id);
 
@@ -81,16 +89,16 @@ class shopControllerCountry extends controller {
     protected function save_country() {
 
         $model = $this->getModel('country');
-
+        $input = Factory::getApplication()->getInput();
         $this->getView('country');
 
-        $country_id = request::getVar('country_id', null, 'REQUEST');
+        $country_id = $input->get('country_id', null, 'INT');
 
         try {
-            $row = Factory::getApplication('shop')->getTable('country')->load($country_id)->bind(Request::get('POST'))->store();
-            Factory::getApplication('shop')->setMessage(__("Saved", 'com_shop'));
+            $row = Factory::getComponent('shop')->getTable('country')->load($country_id)->bind($input->post)->store();
+            Factory::getComponent('shop')->setMessage(__("Saved", 'com_shop'));
         } catch (Exception $e) {
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
         }
 
         $this->execute();
@@ -99,17 +107,18 @@ class shopControllerCountry extends controller {
     protected function save_state() {
 
         $model = $this->getModel('country');
+        $input = Factory::getApplication()->getInput();
 
         $this->getView('country');
 
-        $state_id = request::getInt('state_id', null, 'POST');
+        $state_id = $input->get('state_id', null, 'INT');
 
         try {
-            $row = Factory::getApplication('shop')->getTable('state')->load($state_id)->bind(Request::get('POST'))->store();
-            Factory::getApplication('shop')->setMessage(__("Saved", 'com_shop'));
+            $row = Factory::getComponent('shop')->getTable('state')->load($state_id)->bind($input->post)->store();
+            Factory::getComponent('shop')->setMessage(__("Saved", 'com_shop'));
         } catch (Exception $e) {
 
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
         }
 
         $this->execute('state_list');
@@ -124,10 +133,10 @@ class shopControllerCountry extends controller {
         try {
             $model->deleteCountry();
 
-            Factory::getApplication('shop')->setMessage(__("List altered", 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__("List altered", 'com_shop'));
         } catch (Exception $e) {
 
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
         }
 
         $this->execute();
@@ -142,16 +151,18 @@ class shopControllerCountry extends controller {
         try {
             $model->deleteState();
 
-            Factory::getApplication('shop')->setMessage(__("List altered", 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__("List altered", 'com_shop'));
         } catch (Exception $e) {
 
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
         }
 
         $this->execute('state_list');
     }
 
     protected function ajax_get_states() {
+
+        $input = Factory::getApplication()->getInput();
 
         $level = ob_get_level();
         Request::ajaxMode();
@@ -160,7 +171,7 @@ class shopControllerCountry extends controller {
             $level--;
         }
 
-        $cid = Request::getString('country', null);
+        $cid = $input->get('country', null, "WORD");
 
 
         $model = $this->getModel('country');
@@ -183,7 +194,7 @@ class shopControllerCountry extends controller {
             $res = "<select name='shop_state'><option value=''></option>";
 
             foreach ($countries as $o) {
-                $res .=" <option value='" . $o->state_2_code . "'>" . strings::stripAndEncode($o->state_name) . "</option>";
+                $res .=" <option value='" . $o->state_2_code . "'>" . strings::htmlentities($o->state_name) . "</option>";
             }
             $res . "</select>";
 

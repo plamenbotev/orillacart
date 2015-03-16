@@ -39,10 +39,11 @@ defined('_VALID_EXEC') or die('access denied');
 
                     <td>
 
-                        <button onclick="window.location.href='<?php echo admin_url('admin.php?page=component_com_shop-shipping&task=add_rate&id=' . $o->shipping_rate_id); ?>'; return false;" class="btn btn-small">
+                        <button onclick="window.location.href = '<?php echo admin_url('admin.php?page=component_com_shop-shipping&task=add_rate&id=' . $o->shipping_rate_id); ?>';
+                                return false;" class="btn btn-small">
                             <span class="icon-edit">
                             </span>
-                            <?php echo strings::stripandencode($o->shipping_rate_name); ?>
+                            <?php echo strings::htmlentities($o->shipping_rate_name); ?>
                         </button>
                     </td>
 

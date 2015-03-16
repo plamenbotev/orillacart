@@ -27,24 +27,24 @@ class shipping_rateTable extends table {
     public $shipping_rate_height_end = 0;
     public $shipping_tax_group_id = null;
     public $shipping_rate_state = null;
-	public $qty_multiply = "no";
+    public $qty_multiply = "no";
 
     public function __construct() {
         $foreign_keys = array('carrier', 'shipping_tax_group_id');
         parent::__construct('shipping_rate_id', '#_shop_shipping_rate', $foreign_keys);
     }
 
-    public function load($pk) {
+    public function load($pk=null) {
 
         parent::load($pk);
         $this->shipping_rate_country = (array) explode(',', $this->shipping_rate_country);
         $this->shipping_rate_state = (array) explode(',', $this->shipping_rate_state);
-        $this->shipping_rate_state = array_map('stripslashes', $this->shipping_rate_state);
+        $this->shipping_rate_state = $this->shipping_rate_state;
 
         return $this;
     }
 
-    public function bind($from) {
+    public function bind($from, $exclude = Array()) {
 
         if (is_object($from)) {
             $from = arrayHelper::fromObject($from, false);
@@ -59,7 +59,7 @@ class shipping_rateTable extends table {
                 if (!$db->getResource()) {
                     throw new Exception($db->getErrorString());
                 }
-                $this->shipping_rate_country = (array) array_map("stripslashes", $db->loadArray());
+                $this->shipping_rate_country = (array) $db->loadArray();
             }
             unset($countries, $from['shipping_rate_country']);
         } else {
@@ -78,7 +78,7 @@ class shipping_rateTable extends table {
                 if (!$db->getResource()) {
                     throw new Exception($db->getErrorString());
                 }
-                $this->shipping_rate_state = (array) array_map("stripslashes", $db->loadArray());
+                $this->shipping_rate_state = $db->loadArray();
             }
 
             unset($states, $from['shipping_rate_state']);
@@ -90,16 +90,16 @@ class shipping_rateTable extends table {
         return parent::bind($from);
     }
 
-    public function store() {
+    public function store($safe_insert = false) {
 
         if (empty($this->shipping_rate_name)) {
-            Factory::getApplication('shop')->setMessage(__('Enter rate label', 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__('Enter rate label', 'com_shop'));
             return false;
         }
         $this->shipping_rate_country = empty($this->shipping_rate_country) ? null : implode(',', $this->shipping_rate_country);
         $this->shipping_rate_state = empty($this->shipping_rate_state) ? null : implode(',', $this->shipping_rate_state);
 
-        return parent::store();
+        return parent::store($safe_insert);
     }
 
 }

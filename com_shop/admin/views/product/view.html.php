@@ -6,45 +6,45 @@ class shopViewProduct extends view {
 
     public function poduct_meta_js() {
         global $post;
-        $mainframe = Factory::getMainFrame();
+        $Head = Factory::getHead();
 
-        $this->assign('rootImage', Factory::getApplication('shop')->getAssetsUrl() . "/images/root.png");
-        $this->assign('folderImage', Factory::getApplication('shop')->getAssetsUrl() . "/images/folder.png");
+        $this->assign('rootImage', Factory::getComponent('shop')->getAssetsUrl() . "/images/root.png");
+        $this->assign('folderImage', Factory::getComponent('shop')->getAssetsUrl() . "/images/folder.png");
 
 
-        $mainframe->addScript('jquery');
+        $Head->addScript('jquery');
         /* load tabs */
-        $mainframe->addStyle('jquery-btatbs-css', Factory::getApplication('shop')->getAssetsUrl() . "/btabs.style.css");
-        $mainframe->addScript('jquery-btabs-js', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.btabs.js");
+        $Head->addStyle('jquery-btatbs-css', Factory::getComponent('shop')->getAssetsUrl() . "/btabs.style.css");
+        $Head->addScript('jquery-btabs-js', Factory::getComponent('shop')->getAssetsUrl() . "/js/jquery.btabs.js");
+        $Head->addScript('jquery-blockui-js', Factory::getComponent('shop')->getAssetsUrl() . "/js/block.js");
 
+        $Head->addScript('jquery-ui-core');
+        $Head->addStyle('jquery-ui-css', Factory::getComponent('shop')->getAssetsUrl() . "/jquery.ui.css");
 
-        $mainframe->addScript('jquery-ui-core');
-        $mainframe->addStyle('jquery-ui-css', Factory::getApplication('shop')->getAssetsUrl() . "/jquery.ui.css");
-
-        $mainframe->addScript('jquery-calendar-js', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.ui.datepicker.js");
+        $Head->addScript('jquery-calendar-js', Factory::getComponent('shop')->getAssetsUrl() . "/js/jquery.ui.datepicker.js");
 
         /* load overlib */
-        Factory::getMainframe()->addScript('tipsy', Factory::getApplication('shop')->getAssetsUrl() . "/js/tipsy.js");
-        Factory::getMainframe()->addStyle('tipsy', Factory::getApplication('shop')->getAssetsUrl() . "/tipsy.css");
+        Factory::getHead()->addScript('tipsy', Factory::getComponent('shop')->getAssetsUrl() . "/js/tipsy.js");
+        Factory::getHead()->addStyle('tipsy', Factory::getComponent('shop')->getAssetsUrl() . "/tipsy.css");
 
         /* load the tree */
-        $mainframe->addStyle('jquery-tree-css', Factory::getApplication('shop')->getAssetsUrl() . '/jstree.css');
-        $mainframe->addScript('jquery-tree-js', Factory::getApplication('shop')->getAssetsUrl() . '/js/jquery.jstree.js');
-        $mainframe->addScript('jquery-hotkeys-js', Factory::getApplication('shop')->getAssetsUrl() . '/js/jquery.hotkeys.js');
-        $mainframe->addScript('jquery-cookie-js', Factory::getApplication('shop')->getAssetsUrl() . '/js/jquery.cookie.js');
+        $Head->addStyle('jquery-tree-css', Factory::getComponent('shop')->getAssetsUrl() . '/jstree.css');
+        $Head->addScript('jquery-tree-js', Factory::getComponent('shop')->getAssetsUrl() . '/js/jquery.jstree.js');
+        $Head->addScript('jquery-hotkeys-js', Factory::getComponent('shop')->getAssetsUrl() . '/js/jquery.hotkeys.js');
+        $Head->addScript('jquery-cookie-js', Factory::getComponent('shop')->getAssetsUrl() . '/js/jquery.cookie.js');
 
         /* load the ui and the dialog plugin */
-        $mainframe->addScript('jquery-ui-dialog');
+        $Head->addScript('jquery-ui-dialog');
 
         wp_enqueue_script('jquery-ui-sortable');
 
         /* attributes */
-        Factory::getMainframe()->addscript('attributesjs', Factory::getApplication('shop')->getAssetsUrl() . "/js/attribs.js", array("jquery-ui-sortable"), false, true);
+        Factory::getHead()->addscript('attributesjs', Factory::getComponent('shop')->getAssetsUrl() . "/js/attribs.js", array("jquery-ui-sortable"), false, true);
 
-        Factory::getMainframe()->addscript('product-display', Factory::getApplication('shop')->getAssetsUrl() . "/js/product-display.js");
-        
+        Factory::getHead()->addscript('product-display', Factory::getComponent('shop')->getAssetsUrl() . "/js/product-display.js");
 
-        $mainframe->addCustomHeadTag('product-display', '
+
+        $Head->addCustomHeadTag('product-display', '
             <script type=\'text/javascript\'>
                  jsShopAdminHelper.data.folderImage = "' . $this->folderImage . '";
                  jsShopAdminHelper.data.rootImage = "' . $this->rootImage . '";

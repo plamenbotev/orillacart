@@ -38,10 +38,10 @@ defined('_VALID_EXEC') or die('access denied');
                     </td>
                     <td align="left">
                         <button onclick="window.location.href = '<?php echo admin_url('admin.php?page=component_com_shop-stockroom&task=addnew&id=' . $o->id); ?>';
-                                    return false;" class="btn btn-small">
+                                return false;" class="btn btn-small">
                             <span class="icon-edit">
                             </span>
-                            <?php echo strings::stripandencode($o->name); ?>
+                            <?php echo strings::htmlentities($o->name); ?>
                         </button>
                     </td>
                     <td align="left">

@@ -76,7 +76,7 @@ class attributesModel extends model {
 
 
 
-        $row = Factory::getApplication('shop')->getTable('shop_attribute_set')->load($id);
+        $row = Factory::getComponent('shop')->getTable('shop_attribute_set')->load($id);
 
 
         if ($row->published == 'yes')
@@ -125,7 +125,7 @@ class attributesModel extends model {
         if ($object == 'set') {
             if (!$this->is_set($set_id))
                 return false;
-            $set = Factory::getApplication('shop')->getTable('shop_attribute_set')->load($set_id);
+            $set = Factory::getComponent('shop')->getTable('shop_attribute_set')->load($set_id);
 
             $this->db->setQuery("SELECT * FROM `#_shop_attribute` WHERE attribute_set_id = {$set_id} ORDER BY ordering");
         }
@@ -148,7 +148,7 @@ class attributesModel extends model {
         $info = new stdClass();
         $info->total_attributes = 0;
         $info->total_properties = 0;
-       
+
 
 
         while ($att = $this->db->nextObject()) {
@@ -165,7 +165,7 @@ class attributesModel extends model {
 
             $prop_db->setQuery("SELECT * FROM `#_shop_attribute_property` WHERE attribute_id = {$att->attribute_id} ORDER BY ordering");
 
-           
+
             while ($property = $prop_db->nextObject()) {
                 $info->total_properties++;
                 $att_data[$c]['property'][] = $property;
@@ -177,7 +177,7 @@ class attributesModel extends model {
         $set->_data = $att_data;
         $set->_meta = $info;
 
-
+		
 
 
         return $set;
@@ -228,7 +228,7 @@ class attributesModel extends model {
 
         $ids = array_map("intval", (array) $ids);
 
-       
+
         switch ($object) {
 
 
@@ -264,16 +264,21 @@ class attributesModel extends model {
 
     public function store() {
 
-        if ($_POST['attribute_set_name']) {
-            if ((int) $_POST['attribute_set_id'] && $this->is_set((int) $_POST['attribute_set_id'])) {
+        $input = Factory::getApplication()->getInput();
+
+        $post = $input->post;
+
+
+        if ($post['attribute_set_name']) {
+            if ((int) $post['attribute_set_id'] && $this->is_set((int) $post['attribute_set_id'])) {
                 $objects = array();
 
-                foreach ((array) $_POST['attribute_id'] as $ak => $att) {
+                foreach ((array) $post['attribute_id'] as $ak => $att) {
                     if ($att['id'])
                         $objects[] = (int) $att['id'];
                 }
 
-                $this->db->setQuery('SELECT attribute_id FROM `#_shop_attribute` WHERE attribute_set_id = ' . (int) $_POST['attribute_set_id']);
+                $this->db->setQuery('SELECT attribute_id FROM `#_shop_attribute` WHERE attribute_set_id = ' . (int) $post['attribute_set_id']);
 
                 $for_delete = (array) array_diff((array) $this->db->loadArray(), (array) $objects);
 
@@ -287,34 +292,34 @@ class attributesModel extends model {
 
 
             $set = null;
-            $set = Factory::getApplication('shop')->getTable('shop_attribute_set')->load((int) $_POST['attribute_set_id'])->bind($_POST)->store();
+            $set = Factory::getComponent('shop')->getTable('shop_attribute_set')->load((int) $post['attribute_set_id'])->bind($post)->store();
 
             if ($set->pk()) {
 
-                if (!isset($_POST['attribute_id']) || empty($_POST['attribute_id']))
+                if (!isset($post['attribute_id']) || empty($post['attribute_id']))
                     return;
 
-                foreach ((array) $_POST['attribute_id'] as $ak => $att) {
-                    $row = Factory::getApplication('shop')->getTable('shop_attribute');
+                foreach ((array) $post['attribute_id'] as $ak => $att) {
+                    $row = Factory::getComponent('shop')->getTable('shop_attribute');
 
                     if ($this->is_attribute($att['id'])) {
                         $row->load($att['id']);
                     }
 
-                    if (isset($_POST['title'][$ak]['name']))
-                        $row->attribute_name = $_POST['title'][$ak]['name'];
+                    if (isset($post['title'][$ak]['name']))
+                        $row->attribute_name = $post['title'][$ak]['name'];
 
-                    if (isset($_POST['title'][$ak]['required'])) {
+                    if (isset($post['title'][$ak]['required'])) {
                         $row->attribute_required = 'yes';
                     } else {
                         $row->attribute_required = 'no';
                     }
 
 
-                    if (isset($_POST['title'][$ak]['ordering']))
-                        $row->ordering = (int) $_POST['title'][$ak]['ordering'];
+                    if (isset($post['title'][$ak]['ordering']))
+                        $row->ordering = (int) $post['title'][$ak]['ordering'];
 
-                    if (isset($_POST['title'][$ak]['hide_attribute_price'])) {
+                    if (isset($post['title'][$ak]['hide_attribute_price'])) {
                         $row->hide_attribute_price = 'yes';
                     } else {
                         $row->hide_attribute_price = 'no';
@@ -324,14 +329,14 @@ class attributesModel extends model {
                     $row->stockroom_id = null;
                     $row->store();
 
-                    if (isset($_POST['property'][$ak]['value'])) {
+                    if (isset($post['property'][$ak]['value'])) {
 
 
-                        foreach ((array) $_POST['property'][$ak]['value'] as $k => $title) {
-                            $prop_row = Factory::getApplication('shop')->getTable('shop_attribute_property');
+                        foreach ((array) $post['property'][$ak]['value'] as $k => $title) {
+                            $prop_row = Factory::getComponent('shop')->getTable('shop_attribute_property');
 
-                            if ($this->is_property($_POST['property_id'][$ak]['value'][$k])) {
-                                $prop_row->load($_POST['property_id'][$ak]['value'][$k]);
+                            if ($this->is_property($post['property_id'][$ak]['value'][$k])) {
+                                $prop_row->load($post['property_id'][$ak]['value'][$k]);
                                 if ($prop_row->pk())
                                     $props[] = (int) $prop_row->pk();
                             }
@@ -341,13 +346,13 @@ class attributesModel extends model {
                             if (!empty($title))
                                 $prop_row->property_name = $title;
 
-                            $prop_row->property_price = (double) $_POST['att_price'][$ak]['value'][$k];
+                            $prop_row->property_price = (double) $post['att_price'][$ak]['value'][$k];
 
-                            if (isset($_POST['oprand'][$ak]['value'][$k]) &&
-                                    in_array($_POST['oprand'][$ak]['value'][$k], array('*', '-', '+', '/')))
-                                $prop_row->oprand = $_POST['oprand'][$ak]['value'][$k];
+                            if (isset($post['oprand'][$ak]['value'][$k]) &&
+                                    in_array($post['oprand'][$ak]['value'][$k], array('*', '-', '+', '/')))
+                                $prop_row->oprand = $post['oprand'][$ak]['value'][$k];
 
-                            $prop_row->ordering = (int) $_POST['propordering'][$ak]['value'][$k];
+                            $prop_row->ordering = (int) $post['propordering'][$ak]['value'][$k];
 
                             $prop_row->store();
 
@@ -379,7 +384,9 @@ class attributesModel extends model {
             }
 
             return true;
-        }
+        }else{
+			throw new Exception(__("Please provide attribute set name.","com_shop"));
+		}
     }
 
 }

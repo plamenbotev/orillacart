@@ -5,10 +5,8 @@ defined('_VALID_EXEC') or die('access denied');
 class shopControllerAttributesajax extends controller {
 
     protected function __default() {
-
-        die();
-
-        parent::display();
+		
+       $this->execute("newset");
     }
 
     protected function newset() {

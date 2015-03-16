@@ -28,7 +28,7 @@ class shopControllerOrders extends controller {
 
         $model = $this->getModel('orders');
         $order_helper = helper::getInstance("order", "shop");
-        
+
         $product = $this->getModel('product_admin');
 
         $order = $model->load_order($id);
@@ -42,12 +42,12 @@ class shopControllerOrders extends controller {
         $this->view->assign('statuses', $statuses);
 
         $this->view->setModel($product);
-        
+
         $this->view->setModel($model);
 
-        $price = Factory::getApplication('shop')->getHelper('price');
-       
-        $this->view->assign("taxes",$order_helper->get_order_taxes($id));
+        $price = Factory::getComponent('shop')->getHelper('price');
+
+        $this->view->assign("taxes", $order_helper->get_order_taxes($id));
         $this->view->assign('price', $price);
         $this->view->assign('order', $order['order']);
 
@@ -58,8 +58,8 @@ class shopControllerOrders extends controller {
 
         $this->view->assign('items', (array) $order['items']);
 
-        $this->view->assign('billing', Factory::getApplication('shop')->getHelper('order')->get_order_billing($id));
-        $this->view->assign('shipping', Factory::getApplication('shop')->getHelper('order')->get_order_shipping($id));
+        $this->view->assign('billing', Factory::getComponent('shop')->getHelper('order')->get_order_billing($id));
+        $this->view->assign('shipping', Factory::getComponent('shop')->getHelper('order')->get_order_shipping($id));
 
 
 
@@ -108,14 +108,17 @@ class shopControllerOrders extends controller {
         if (!request::is_internal()) {
             return false;
         }
-        $col = request::getWord('column');
-        $id = request::getInt('id');
+
+        $input = Factory::getApplication()->getInput();
+
+        $col = $input->get('column', null, "WORD");
+        $id = $input->get('id', 0, "INT");
 
 
 
         $this->getView('orders');
         $model = $this->getModel('orders');
-        $helper = Factory::getApplication('shop')->getHelper('order');
+        $helper = Factory::getComponent('shop')->getHelper('order');
 
         $this->view->assign("helper", $helper);
         $this->view->assign("order", $helper->get_order($id));
@@ -132,19 +135,22 @@ class shopControllerOrders extends controller {
         if (!request::is_internal())
             return false;
 
+        $input = Factory::getApplication()->getInput();
+
         $model = $this->getModel('orders');
 
-        $res = $model->delete_orders(request::getInt('id'));
+        $res = $model->delete_orders($input->get('id', 0, "INT"));
     }
 
     protected function update_status() {
 
-        $id = request::getInt('oid');
-        $status = request::getString('status', null);
+        $input = Factory::getApplication()->getInput();
+        $id = $input->get('oid', 0, "INT");
+        $status = $input->get('status', null, "WORD");
 
 
 
-        Factory::getApplication('shop')->getHelper('order')->change_order_status($id, $status);
+        Factory::getComponent('shop')->getHelper('order')->change_order_status($id, $status);
         die;
 
 
@@ -177,9 +183,10 @@ class shopControllerOrders extends controller {
 
     protected function add_product_to_order() {
 
+        $input = Factory::getApplication()->getInput();
         $this->getView('orders');
         $model = $this->getModel('product_admin');
-        $this->view->assign('all_attributes', (array) $model->getProductAttributes(request::getInt('pid', 0)));
+        $this->view->assign('all_attributes', (array) $model->getProductAttributes($input->get('pid', 0, "INT")));
 
 
 
@@ -190,10 +197,12 @@ class shopControllerOrders extends controller {
 
         $this->getView('orders');
 
-        $oid = request::getInt('oid');
-        $pid = request::getInt('pid');
-        $properties = array_map('intval', (array) request::getVar('property', array()));
-        $qty = request::getInt('product_quantity', 1);
+        $input = Factory::getApplication()->getInput();
+
+        $oid = $input->get('oid', 0, "INT");
+        $pid = $input->get('pid', 0, "INT");
+        $properties = array_map('intval', (array) $input->get('property', array(), "ARRAY"));
+        $qty = $input->get('product_quantity', 1, "INT");
         $model = $this->getModel('orders');
 
         $status = '';
@@ -212,12 +221,15 @@ class shopControllerOrders extends controller {
 
     protected function reload_order_files_and_totals() {
 
+
         //load the view only if there is no internal redirect
         //from save_product_to_order method
         if (!$this->view) {
             $this->getView('orders');
         }
-        $id = request::getInt('oid');
+
+        $input = Factory::getApplication()->getInput();
+        $id = $input->get('oid', 0, "INT");
 
         $model = $this->getModel('orders');
         $order_helper = Helper::getInstance("order", "shop");
@@ -228,11 +240,11 @@ class shopControllerOrders extends controller {
         $order = $model->load_order($id);
 
 
-        $this->view->assign("taxes",$order_helper->get_order_taxes($id));
+        $this->view->assign("taxes", $order_helper->get_order_taxes($id));
         $this->view->setModel($product);
         $this->view->setModel($model);
 
-        $price = Factory::getApplication('shop')->getHelper('price');
+        $price = Factory::getComponent('shop')->getHelper('price');
         $this->view->assign('price', $price);
         $this->view->assign('order', $order['order']);
 

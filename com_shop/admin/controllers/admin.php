@@ -15,7 +15,7 @@ class shopControllerAdmin extends controller {
         $tax_model = $this->getModel('tax');
         $country_model = $this->getModel('country');
 
-        $config = Factory::getApplication('shop')->getParams();
+        $config = Factory::getComponent('shop')->getParams();
 
         $this->getView('generalsettings');
 
@@ -52,13 +52,17 @@ class shopControllerAdmin extends controller {
 
         $this->getView('generalsettings');
 
-        $params = Factory::getApplication('shop')->getParams();
+        $input = Factory::getApplication()->getInput();
+
+        $params = Factory::getComponent('shop')->getParams();
 
         try {
-            $params->bind($_POST);
-            
+
+
+
+            $params->bind($input->post);
         } catch (Exception $e) {
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
             $this->execute('configuration');
             return;
         }
@@ -66,13 +70,13 @@ class shopControllerAdmin extends controller {
         try {
             $status = $params->save();
         } catch (Exception $e) {
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
 
             $this->execute('configuration');
             return;
         }
 
-        Factory::getApplication('shop')->setMessage(__('settings updated!', 'com_shop'));
+        Factory::getComponent('shop')->setMessage(__('settings updated!', 'com_shop'));
         $this->execute('configuration');
         return;
     }

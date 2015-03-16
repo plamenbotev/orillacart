@@ -51,24 +51,24 @@ class shopViewProduct extends view {
         }
 
 
-        Factory::getMainframe()->addscript('jquery');
+        Factory::getHead()->addscript('jquery');
 
-        Factory::getMainframe()->setPAgeTitle(get_the_title());
+        Factory::getHead()->setPAgeTitle(get_the_title());
 
-        Factory::getMainframe()->addscript('block', Factory::getApplication('shop')->getAssetsUrl() . "/js/block.js");
+        Factory::getHead()->addscript('block', Factory::getComponent('shop')->getAssetsUrl() . "/js/block.js");
 
-        Factory::getMainframe()->addstyle('lb', Factory::getApplication('shop')->getAssetsUrl() . "/slimbox.css");
-        Factory::getMainframe()->addscript('json', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.json-2.2.js");
-        Factory::getMainframe()->addStyle('jquery-btatbs-css', Factory::getApplication('shop')->getAssetsUrl() . "/btabs.style.css");
-        //  Factory::getMainframe()->addScript('jquery-btabs-js', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.btabs.js");
+        Factory::getHead()->addstyle('lb', Factory::getComponent('shop')->getAssetsUrl() . "/slimbox.css");
+        Factory::getHead()->addscript('json', Factory::getComponent('shop')->getAssetsUrl() . "/js/jquery.json-2.2.js");
+        Factory::getHead()->addStyle('jquery-btatbs-css', Factory::getComponent('shop')->getAssetsUrl() . "/btabs.style.css");
+        //  Factory::getHead()->addScript('jquery-btabs-js', Factory::getComponent('shop')->getAssetsUrl() . "/js/jquery.btabs.js");
 
-        Factory::getMainframe()->addScript('bootstrap', Factory::getApplication('shop')->getAssetsUrl() . "/js/bootstrap.min.js");
+        Factory::getHead()->addScript('bootstrap', Factory::getComponent('shop')->getAssetsUrl() . "/js/bootstrap.min.js");
 
-        Factory::getMainframe()->addscript('lb', Factory::getApplication('shop')->getAssetsUrl() . "/js/slimbox.js", array('jquery'));
+        Factory::getHead()->addscript('lb', Factory::getComponent('shop')->getAssetsUrl() . "/js/slimbox.js", array('jquery'));
 
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
 
-        Factory::getMainframe()->addCustomHeadTag('product-display', "<script type='text/javascript'>
+        Factory::getHead()->addCustomHeadTag('product-display', "<script type='text/javascript'>
 	
  window.shop_helper.ID = " . $post->ID . ";       
 	
@@ -83,7 +83,7 @@ jQuery(function() {
 
 </script>");
 
-        Factory::getMainframe()->addCustomHeadTag('product-gallery', "<script type='text/javascript'>
+        Factory::getHead()->addCustomHeadTag('product-gallery', "<script type='text/javascript'>
 	
 		
 	
@@ -106,29 +106,33 @@ jQuery(function() {
 </script>");
 
 
-        parent::display("view_product_details");
+        $this->loadTemplate("view_product_details");
     }
 
     public function load_child_product() {
 
         global $wp_query, $post;
-        $post = get_post(request::getInt('pid', 0));
+
+        $input = Factory::getApplication()->getInput();
+
+        $post = get_post($input->get('pid', 0, "INT"));
 
         $model = $this->getModel('product');
-        $helper = Factory::getApplication('shop')->getHelper('product_helper');
+        $helper = Factory::getComponent('shop')->getHelper('product_helper');
 
+        $input = Factory::getApplication()->getInput();
         //we are in variation, so lets search for another variations,
         //based on the parent product id!
         if ($post->post_parent) {
-            request::setVar('pid', $post->post_parent);
+            $input->set('pid', $post->post_parent);
         }
 
-        $pid = $model->get_variation(request::getInt('pid', 0), request::getVar('p', array()));
+        $pid = $model->get_variation($input->get('pid', 0, "INT"), $input->get('p', array(), "ARRAY"));
 
         if ($post->post_parent && !$pid) {
             $pid = $post->post_parent;
         } else if (!$post->post_parent && $pid === null) {
-            $pid = request::getInt('pid', 0);
+            $pid = $input->get('pid', 0, "INT");
         }
 
         if ($pid && (!isset($_POST['f']) || empty($_POST['f']))) {
@@ -202,7 +206,7 @@ jQuery(function() {
             //  $this->loadTemplate('attributes');
             //   $res->attributes = ob_get_clean();
         } else {
-            $price = $helper->get_price_with_tax(Request::getInt('pid', null), (array) $_POST['p'], (array) $_POST['f']);
+            $price = $helper->get_price_with_tax($input->get('pid', null, "INT"), (array) $input->get("p", array(), "ARRAY"), (array) $input->get("f", array(), "ARRAY"));
 
             $res = new stdClass();
             $res->price = null;

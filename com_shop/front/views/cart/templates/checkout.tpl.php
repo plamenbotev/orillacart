@@ -1,5 +1,5 @@
 <div id="checkout">
-    <?php if (!is_user_logged_in() && Factory::getApplication('shop')->getParams()->get('userReg') != 2) : ?>
+    <?php if (!is_user_logged_in() && Factory::getComponent('shop')->getParams()->get('userReg') != 2) : ?>
         <div class="info login">
             <span class="icon-user"></span>
             <div>
@@ -37,12 +37,12 @@
 
 
     <form name="checkout"  method="post" class="checkout" action="<?php echo Route::get("component=shop&con=cart&task=checkout"); ?>">
-        <?php if (!is_user_logged_in() && Factory::getApplication('shop')->getParams()->get('userReg') != 2) : ?>
+        <?php if (!is_user_logged_in() && Factory::getComponent('shop')->getParams()->get('userReg') != 2) : ?>
             <?php do_action("com_shop_before_checkout_register", $this); ?>
             <div class="info register">
                 <span class="icon-locked"></span>
                 <div>
-                    <?php _e('Create account?', 'com_shop'); ?><input type="checkbox" id="createaccount" name="createaccount" value="1" <?php echo request::getBool('createaccount') ? "checked='checked'" : ""; ?> />
+                    <?php _e('Create account?', 'com_shop'); ?><input type="checkbox" id="createaccount" name="createaccount" value="1" <?php echo Factory::getApplication()->getInput()->get('createaccount', true, "BOOL") ? "checked='checked'" : ""; ?> />
                     <label for="createaccount">&nbsp;</label>
                 </div>
             </div>
@@ -74,7 +74,7 @@
 
         <?php do_action("com_shop_before_checkout_fields", $this); ?>
 
-        <?php if (Factory::getApplication("shop")->getParams()->get('shipping')) { ?>
+        <?php if (Factory::getComponent("shop")->getParams()->get('shipping')) { ?>
             <span id="shiptobilling">
                 <input id="ship_to_billing" <?php echo $this->ship_to_billing ? "checked='checked'" : ''; ?> type="checkbox" name="ship_to_billing" value="1" />
                 <label for="ship_to_billing"><?php _e('Ship to same address?', 'com_shop'); ?></label>
@@ -83,7 +83,7 @@
 
         <div class="container-fluid" id="customer_details">
             <div class="row">
-                <div id="billing_fields" class="col-xs-12 col-md-<?php echo Factory::getApplication("shop")->getParams()->get('shipping') ? "6" : "12"; ?>">
+                <div id="billing_fields" class="col-xs-12 col-md-<?php echo Factory::getComponent("shop")->getParams()->get('shipping') ? "6" : "12"; ?>">
                     <h3><?php _e('Billing Address', 'com_shop'); ?></h3>
                     <div class="clearfix"></div>
                     <?php do_action("com_shop_before_billing_fields", $this); ?>
@@ -124,7 +124,7 @@
                     </div>  
                 </div>
 
-                <?php if (Factory::getApplication("shop")->getParams()->get('shipping')) { ?>
+                <?php if (Factory::getComponent("shop")->getParams()->get('shipping')) { ?>
 
                     <div class="col-xs-12 col-md-6" id='col-2'>
                         <h3><?php _e('Shipping Address', 'com_shop'); ?></h3>

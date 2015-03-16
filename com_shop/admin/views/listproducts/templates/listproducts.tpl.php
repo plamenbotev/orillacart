@@ -20,11 +20,11 @@ switch ($this->col) {
 
     case "product_number":
 
-        echo strings::stripAndEncode($this->p->sku);
+        echo strings::htmlentities($this->p->sku);
         break;
 
     case 'price':
-        echo $this->p->price . Factory::getApplication('shop')->getParams()->get('currency');
+        echo $this->p->price . Factory::getComponent('shop')->getParams()->get('currency');
         break;
 
     case 'category':
@@ -32,7 +32,7 @@ switch ($this->col) {
         $cats = $this->getModel('product_admin')->getProductCats($this->id);
 
         foreach ($cats as $cat) {
-            echo "<strong>" . strings::stripandencode($cat->name) . "</strong><hr style='height:1px; ' />";
+            echo "<strong>" . strings::htmlentities($cat->name) . "</strong><hr style='height:1px; ' />";
         }
         break;
 
@@ -40,7 +40,7 @@ switch ($this->col) {
         $brands = $this->getModel('product_admin')->get_product_brands($this->id);
 
         foreach ((array) $brands as $brand) {
-            echo "<strong>" . strings::stripandencode($brand->name) . "</strong><hr style='height:1px;' />";
+            echo "<strong>" . strings::htmlentities($brand->name) . "</strong><hr style='height:1px;' />";
         }
         break;
 

@@ -15,46 +15,45 @@ switch ($this->col) {
         break;
 
 
-    case "billing":
-        ?>
+        case "billing":
+    ?>
 
         <address>
             <?php echo $this->helper->format_billing($this->id); ?>
+                </address>
+
+                <?php
+                
+        break;
+
+        case "shipping":
+        ?>
+
+    <address>
+        <?php echo $this->helper->format_shipping($this->id); ?>
         </address>
 
         <?php
-        break;
+                break;
 
-    case "shipping":
-        ?>
+        case "total_amount":
 
-        <address>
-            <?php echo $this->helper->format_shipping($this->id); ?>
-        </address>
+        echo Factory::getComponent('shop')->getHelper('price')->format($this->order['order_total'], $this->order['currency_sign']);
 
-        <?php
-        break;
+                break; case "order_status":
+                $st = get_terms('order_status', array('hide_empty' => false));
+                ?>
+                <select id="order_ <?php echo $this->id; ?>" class="change_order_status" name="new_order_status">
 
-    case "total_amount":
+                    <?php foreach((array) $st as $s) { ?>
+                    <option <?php echo has_term($s->term_id, 'order_status', $this->id) ? "selected='selected'" : ""; ?> value="<?php echo $s->slug; ?>"><?php echo strings ::htmlentities($s->name); ?></option>
+                    <?php } ?>
 
-        echo Factory::getApplication('shop')->getHelper('price')->format($this->order['order_total'], $this->order['currency_sign']);
+                </select>
+                <?php
+                break;
 
-        break;
-
-    case "order_status":
-        $st = get_terms('order_status', array('hide_empty' => false));
-        ?>
-        <select id="order_<?php echo $this->id; ?>" class="change_order_status" name="new_order_status">
-
-            <?php foreach ((array) $st as $s) { ?>
-                <option <?php echo has_term($s->term_id, 'order_status', $this->id) ? "selected='selected'" : ""; ?> value="<?php echo $s->slug; ?>"><?php echo strings::htmlentities($s->name); ?></option>
-            <?php } ?>
-
-        </select>
-        <?php
-        break;
-
-    default:
-        echo "";
-        break;
-}
+                default:
+                echo "";
+                break;
+                }                  

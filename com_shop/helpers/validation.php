@@ -51,14 +51,14 @@ class validation {
     }
 
     public function is_state($id) {
-        
-		if(is_numeric($id)){
-			$this->db->setQuery("SELECT count(*) FROM #_shop_state WHERE state_id = " . (int) $id);
-		}else if(is_string($id) && strings::strlen($id) == 2){
-			$this->db->setQuery("SELECT count(*) FROM #_shop_state WHERE state_2_code = '" . $this->db->secure($id)."'");
-		}else{
-			return false;
-		}
+
+        if (is_numeric($id)) {
+            $this->db->setQuery("SELECT count(*) FROM #_shop_state WHERE state_id = " . (int) $id);
+        } else if (is_string($id) && strings::strlen($id) == 2) {
+            $this->db->setQuery("SELECT count(*) FROM #_shop_state WHERE state_2_code = '" . $this->db->secure($id) . "'");
+        } else {
+            return false;
+        }
         if (!$this->db->getResource()) {
 
             throw new Exception($this->db->getErrorString());
@@ -83,7 +83,7 @@ class validation {
 
     public function country_has_states($id) {
         $id = $this->db->secure($id);
-        $this->db->setQuery("SELECT count(*) FROM `#_shop_state` where country_id = '".$id."' ");
+        $this->db->setQuery("SELECT count(*) FROM `#_shop_state` where country_id = '" . $id . "' ");
 
         if (!$this->db->getResource()) {
             throw new Exception($this->db->getErrorString());

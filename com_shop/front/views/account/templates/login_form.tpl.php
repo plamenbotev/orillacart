@@ -16,12 +16,12 @@
 
         <div class="row">
             <div class="col-xs-12 move-down-by-20px">
-                 <button class="btn btn-primary">
+                <button class="btn btn-primary">
                     <span class="icon-key"></span>
                     <?php _e('Login', 'com_shop'); ?>
                 </button>
-           
-                 <a class="btn btn-link" href="<?php echo get_option('home'); ?>/wp-login.php?action=lostpassword"><?php _e('Lost Password?', 'com_shop'); ?></a>
+
+                <a class="btn btn-link" href="<?php echo get_option('home'); ?>/wp-login.php?action=lostpassword"><?php _e('Lost Password?', 'com_shop'); ?></a>
             </div>
         </div>
     </div>

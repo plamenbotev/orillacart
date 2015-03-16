@@ -23,14 +23,11 @@ class toolbar {
         $this->buttonPath[] = realpath(dirname(__FILE__) . DS . 'button');
     }
 
-    public function getInstance($name = 'toolbar', $title = '', $title_image = 'default', $icon = null) {
-        static $instances;
+    public static function getInstance($name = 'toolbar', $title = '', $title_image = 'default', $icon = null) {
+        static $instances = array();;
+       
 
-        if (!isset($instances)) {
-            $instances = array();
-        }
-
-        if (empty($instances[$name])) {
+        if (!isset($instances[$name])) {
             $instances[$name] = new self($name, $title, $title_image, $icon);
         }
 
@@ -89,6 +86,7 @@ class toolbar {
         if ($button === false) {
             throw new Exception('Button not defined for type = ' . $type);
         }
+		unset($node[0]);
         return $button->render($node);
     }
 
@@ -112,8 +110,8 @@ class toolbar {
             } else {
                 $dirs = array();
             }
-
-            $file = FilterInput::clean(str_replace('_', DS, strtolower($type)) . '.php', 'path');
+			$filter = FilterInput::getInstance();
+            $file = $filter->clean(str_replace('_', DS, strtolower($type)) . '.php', 'path');
 
 
             $full_path = null;

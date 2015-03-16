@@ -6,12 +6,12 @@
 
 <div class="container-fluid">
     <div class="row">
-        <?php if (Factory::getApplication("shop")->getParams()->get("shipping")) { ?>
+        <?php if (Factory::getComponent("shop")->getParams()->get("shipping")) { ?>
             <div class="col-xs-12 col-sm-6">
                 <h2><?php _e('Shipping Address', 'com_shop'); ?></h2>
                 <address>
                     <?php
-                    echo Factory::getApplication('shop')->getHelper('order')->format_shipping($this->order['ID']);
+                    echo Factory::getComponent('shop')->getHelper('order')->format_shipping($this->order['ID']);
                     ?>
                 </address>
             </div>
@@ -20,13 +20,13 @@
             <h2><?php _e('Billing Address', 'com_shop'); ?></h2>
             <address>
                 <?php
-                echo Factory::getApplication('shop')->getHelper('order')->format_billing($this->order['ID']);
+                echo Factory::getComponent('shop')->getHelper('order')->format_billing($this->order['ID']);
                 ?>
             </address>
         </div>
     </div>
     <div class="row">
-        <?php if (Factory::getApplication("shop")->getParams()->get("shipping")) { ?>
+        <?php if (Factory::getComponent("shop")->getParams()->get("shipping")) { ?>
             <div class="col-xs-12 col-sm-6">
                 <h2><?php _e('Shipping Method', 'com_shop'); ?></h2>
                 <?php echo strings::htmlentities($this->order['shipping_name']); ?> - <?php echo strings::htmlentities($this->order['shipping_rate_name']); ?>
@@ -122,32 +122,32 @@
                     </span>                 
                 </td>
             </tr>
-			<?php if (!empty($this->taxes)) { ?>
-				<?php foreach ((array) $this->taxes as $tax) { ?>
-					<tr class="tax">
-						<td colspan="4" class="a-right">
-							<?php _e(strings::stripAndEncode($tax->name), 'com_shop'); ?>
-						</td>
-						<td class="last a-right">
-							<span class="price">
-								<?php echo $this->price->format($tax->value, $this->order['currency_sign']); ?>
-							</span>                 
-						</td>
-					</tr>
-				<?php } ?>
-		 
-            <tr class="tax">
-                <td colspan="4" class="a-right">
-                    <?php _e('Tax', 'com_shop'); ?>
-                </td>
-                <td class="last a-right">
-                    <span class="price">
-                        <?php echo $this->price->format($this->order['order_shipping_tax'] + $this->order['order_tax'], $this->order['currency_sign']); ?>
-                    </span>                 
-                </td>
-            </tr>
-			
-			<?php } ?>
+            <?php if (!empty($this->taxes)) { ?>
+                <?php foreach ((array) $this->taxes as $tax) { ?>
+                    <tr class="tax">
+                        <td colspan="4" class="a-right">
+                            <?php _e(strings::htmlentities($tax->name), 'com_shop'); ?>
+                        </td>
+                        <td class="last a-right">
+                            <span class="price">
+                                <?php echo $this->price->format($tax->value, $this->order['currency_sign']); ?>
+                            </span>                 
+                        </td>
+                    </tr>
+                <?php } ?>
+
+                <tr class="tax">
+                    <td colspan="4" class="a-right">
+                        <?php _e('Tax', 'com_shop'); ?>
+                    </td>
+                    <td class="last a-right">
+                        <span class="price">
+                            <?php echo $this->price->format($this->order['order_shipping_tax'] + $this->order['order_tax'], $this->order['currency_sign']); ?>
+                        </span>                 
+                    </td>
+                </tr>
+
+            <?php } ?>
             <tr class="grand_total">
                 <td colspan="4" class="a-right">
                     <strong><?php _e('Grand Total', 'com_shop'); ?></strong>
@@ -165,8 +165,8 @@
             ?>
             <tbody class="<?php echo $c % 2 ? 'odd' : 'even'; ?> " >
                 <tr >
-                    <td><h3 class="product-name"><?php echo strings::stripAndEncode($item->order_item_name); ?></h3></td>
-                    <td><?php echo strings::stripAndEncode($item->order_item_sku); ?></td>
+                    <td><h3 class="product-name"><?php echo strings::htmlentities($item->order_item_name); ?></h3></td>
+                    <td><?php echo strings::htmlentities($item->order_item_sku); ?></td>
                     <td class="a-right">
                         <span class="price-excl-tax">
                             <span class="cart-price">
@@ -197,7 +197,7 @@
                     <tr>
                         <td>
                             <div class="option-label">
-                                <?php echo strings::stripandencode($p->section_name); ?>
+                                <?php echo strings::htmlentities($p->section_name); ?>
                                 <?php if ($p->section_price > 0) { ?> 
                                     <span class="price">( <?php echo $p->section_oprand . " " . $this->price->format($p->section_price, $this->order['currency_sign']); ?> )</span></div></td>
                                 <?php } ?>

@@ -25,14 +25,13 @@ class order_attribute_itemTable extends table {
 
         if (!empty($this->stockrooms)) {
             $this->stockrooms = json_encode($this->stockrooms);
-        }
-        else
+        } else
             $this->stockrooms = null;
 
         return parent::store($safe_insert);
     }
 
-    public function load($id) {
+    public function load($id=null) {
         parent::load($id);
 
         if (!empty($this->stockrooms)) {

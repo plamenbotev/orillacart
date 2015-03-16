@@ -18,9 +18,11 @@ class shopControllerPayment extends controller {
 
     protected function add_payment() {
 
-        $id = Request::getInt('method_id', null);
+        $input = Factory::getApplication()->getInput();
 
-        $row = Factory::getApplication('shop')->getTable('payment')->load($id);
+        $id = $input->get('method_id', null, "INT");
+
+        $row = Factory::getComponent('shop')->getTable('payment')->load($id);
 
         $model = $this->getModel('payment');
 
@@ -50,7 +52,7 @@ class shopControllerPayment extends controller {
         }
 
         if (!count($payment_classes)) {
-            Factory::getApplication('shop')->addError(__("Please install payment plugin!", "com_shop"));
+            Factory::getComponent('shop')->addError(__("Please install payment plugin!", "com_shop"));
             return $this->execute();
         }
         $this->getView('payment');
@@ -71,11 +73,12 @@ class shopControllerPayment extends controller {
 
         $this->getView('payment');
 
+        $input = Factory::getApplication()->getInput();
 
-        $row = Factory::getApplication('shop')
+        $row = Factory::getComponent('shop')
                 ->getTable('payment')
-                ->load(Request::getInt('method_id', null))
-                ->bind($_POST, array('params'));
+                ->load($input->get('method_id', null, "INT"))
+                ->bind($input->post, array('params'));
 
 
         $model = $this->getModel('payment');
@@ -129,14 +132,16 @@ class shopControllerPayment extends controller {
             }
 
 
-            Factory::getApplication('shop')->setMessage(__('Payment saved!', 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__('Payment saved!', 'com_shop'));
             return $this->execute();
         }
     }
 
     protected function get_class_options() {
 
-        $class = Request::getCmd('class', 'payment_method');
+        $input = Factory::getApplication()->getInput();
+
+        $class = $input->get('class', 'payment_method', "CMD");
 
 
         $payment_classes = array();
@@ -161,16 +166,18 @@ class shopControllerPayment extends controller {
 
     protected function delete() {
 
-        $ids = Request::getVar('ids', null, 'POST', 'ARRAY');
+        $input = Factory::getApplication()->getInput();
+
+        $ids = $input->get("ids", array(), "ARRAY");
 
         if (empty($ids)) {
-            Factory::getApplication('shop')->addError(__("Select methods to be removed!", 'com_shop'));
+            Factory::getComponent('shop')->addError(__("Select methods to be removed!", 'com_shop'));
             return $this->execute();
         }
         $model = $this->getModel('payment');
         $count = $model->remove_methods($ids);
 
-        Factory::getApplication('shop')->setMessage(__("Selected methods were deleted.", 'com_shop'));
+        Factory::getComponent('shop')->setMessage(__("Selected methods were deleted.", 'com_shop'));
         return $this->execute();
     }
 

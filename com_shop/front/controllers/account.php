@@ -2,9 +2,11 @@
 
 class shopControllerAccount extends controller {
 
-    protected function display() {
+    protected function __default() {
 
         $this->getview('account');
+
+        $input = Factory::getApplication()->getInput();
 
         if (!is_user_logged_in()) {
             parent::display('login_form');
@@ -12,29 +14,29 @@ class shopControllerAccount extends controller {
             $model = $this->getModel('account');
             $order = $this->getModel('order');
             $uid = get_current_user_id();
-            $start = max(1, request::getInt('paged'));
+            $start = max(1, $input->get('paged', 0, "INT"));
             $orders = $model->get_user_orders($uid, $start);
-            
-            
+
+
             $total = ceil($model->get_total_user_orders() / 10);
 
             $pagination = paginate_links(array(
                 'base' => rawurldecode(Route::get('component=shop&con=account&paged=%#%')),
                 'format' => '?paged=%#%',
-                'current' => max(1, request::getInt('paged')),
+                'current' => max(1, $input->get('paged', 0, "INT")),
                 'total' => $total,
-                'type'=>"array"
+                'type' => "array"
             ));
 
             $this->view->assign('pagination', $pagination);
-            $this->view->assign('price', Factory::getApplication('shop')->getHelper('price'));
+            $this->view->assign('price', Factory::getComponent('shop')->getHelper('price'));
             $this->view->assign('orders', $orders);
 
             $files = $order->get_customer_files($uid);
-          
+
             $this->view->assign('files', $files);
 
-            $customer = Factory::getApplication('shop')->getTable('user')->load($uid);
+            $customer = Factory::getComponent('shop')->getTable('user')->load($uid);
 
             $this->view->assign('billing', $customer->get_billing());
             $this->view->assign('shipping', $customer->get_shipping());
@@ -45,9 +47,11 @@ class shopControllerAccount extends controller {
 
     protected function download() {
 
-        $key = request::getString('order_key', '');
-        $file = request::getInt('file', 0);
-        $item = request::getInt('item', 0);
+        $input = Factory::getApplication()->getInput();
+
+        $key = $input->getInt('order_key', '', "STRING");
+        $file = $input->get('file', 0, "INT");
+        $item = $input->get('item', 0, "INT");
         $db = Factory::getDBO();
 
         $db->setQuery("SELECT * FROM #_shop_order_item as oi
@@ -70,7 +74,7 @@ class shopControllerAccount extends controller {
             exit;
         }
         if ($row->downloads_remaining > 0) {
-            $file = Factory::getApplication('shop')->getTable('order_attribute_item')->load($row->order_att_item_id);
+            $file = Factory::getComponent('shop')->getTable('order_attribute_item')->load($row->order_att_item_id);
             $file->downloads_remaining--;
             $file->store();
         }
@@ -105,7 +109,7 @@ class shopControllerAccount extends controller {
                 break;
             }
         }
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
         switch ($params->get('download_method')) {
             case "xsendfile":
 
@@ -163,19 +167,21 @@ class shopControllerAccount extends controller {
 
         try {
             if ($model->update_account()) {
-                Factory::getApplication('shop')->setMessage(__("Account data has been updated!", 'com_shop'));
+                Factory::getComponent('shop')->setMessage(__("Account data has been updated!", 'com_shop'));
             }
         } catch (Exception $e) {
-            Factory::getApplication('shop')->addError(__('Unable to update account!', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('Unable to update account!', 'com_shop'));
         }
         $this->execute();
     }
 
     protected function view_order() {
 
-        $helper = Factory::getApplication('shop')->getHelper('order');
-        $order = $helper->get_order(request::getInt('id', null));
-        $price = Factory::getApplication('shop')->getHelper('price');
+        $input = Factory::getApplication()->getInput();
+
+        $helper = Factory::getComponent('shop')->getHelper('order');
+        $order = $helper->get_order($input->get('id', null, "INT"));
+        $price = Factory::getComponent('shop')->getHelper('price');
         $model = $this->getModel('order');
 
         $this->getView('account');
@@ -184,7 +190,7 @@ class shopControllerAccount extends controller {
             exit;
         }
 
-        $key = Request::getString('order_key', null);
+        $key = $input->get('order_key', null, "STRING");
 
         if ($key !== $order['post_password']) {
             wp_die(__("Authentication failed", 'com_shop'));
@@ -206,7 +212,7 @@ class shopControllerAccount extends controller {
         $this->view->assign('price', $price);
         $this->view->assign("files", $model->get_order_files((int) $order['ID']));
         $this->view->assign('items', $model->get_order_items($order['ID']));
-        $this->view->assign("taxes",$helper->get_order_taxes($order['ID']));
+        $this->view->assign("taxes", $helper->get_order_taxes($order['ID']));
         $this->view->assign('order', $order);
         parent::display('view_order');
     }

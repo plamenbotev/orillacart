@@ -16,8 +16,8 @@ require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
 //include the default built in component
 if (file_exists(realpath(dirname(__FILE__)) . "/com_shop/shop.php") && !is_plugin_active("com_shop/loader.php")) {
     require_once realpath(dirname(__FILE__)) . "/com_shop/shop.php";
-    $framework = Factory::getFramework();
-    Factory::getApplication('shop')->init();
+    $Application = Factory::getApplication();
+    Factory::getComponent('shop')->init();
     shop::uninstall();
 }
 

@@ -42,19 +42,21 @@ defined('_VALID_EXEC') or die('access denied');
                     </td>
 
                     <td width="75%">
-                        <button onclick="window.location.href='<?php echo admin_url('admin.php?page=component_com_shop-shipping&task=add_carrier&method_id=' . $o->method_id); ?>'; return false;" class="btn btn-small">
+                        <button onclick="window.location.href = '<?php echo admin_url('admin.php?page=component_com_shop-shipping&task=add_carrier&method_id=' . $o->method_id); ?>';
+                                return false;" class="btn btn-small">
                             <span class="icon-edit">
                             </span>
-                            <?php echo strings::stripandencode($o->name); ?>
+                            <?php echo strings::htmlentities($o->name); ?>
                         </button>
 
 
                     </td>
                     <td>
-                        <button onclick="window.location.href='<?php echo admin_url('admin.php?page=component_com_shop-shipping&task=list_rates&carrier=' . $o->method_id); ?>'; return false;" class="btn btn-small">
+                        <button onclick="window.location.href = '<?php echo admin_url('admin.php?page=component_com_shop-shipping&task=list_rates&carrier=' . $o->method_id); ?>';
+                                return false;" class="btn btn-small">
                             <span class="icon-list">
                             </span>
-                            <?php _e('List Rates','com_shop'); ?>
+                            <?php _e('List Rates', 'com_shop'); ?>
                         </button>
 
 

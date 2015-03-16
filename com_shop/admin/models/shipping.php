@@ -16,9 +16,9 @@ class shippingModel extends model {
 
     public function list_carriers() {
 
-
-        $start = request::getInt('limitstart', 0);
-        $limit = (int) Factory::getApplication('shop')->getParams()->get('objects_per_page');
+        $input = Factory::getApplication()->getInput();
+        $start = $input->get('limitstart', 0, "INT");
+        $limit = (int) Factory::getComponent('shop')->getParams()->get('objects_per_page');
 
 
 
@@ -36,8 +36,9 @@ class shippingModel extends model {
 
     public function list_rates($cid) {
 
-        $start = request::getInt('limitstart', 0);
-        $limit = (int) Factory::getApplication('shop')->getParams()->get('objects_per_page');
+        $input = Factory::getApplication()->getInput();
+        $start = $input->get('limitstart', 0, "INT");
+        $limit = (int) Factory::getComponent('shop')->getParams()->get('objects_per_page');
 
 
 

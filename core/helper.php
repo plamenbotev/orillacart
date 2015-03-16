@@ -24,7 +24,6 @@ class helper {
         return $paths[$prefix];
     }
 
-
     public static function getInstance($type, $prefix) {
         $type = preg_replace('/[^A-Z0-9_\.-]/i', '', $type);
         $helperClass = ucfirst($type);
@@ -49,12 +48,14 @@ class helper {
 
         $o = null;
         if (method_exists($helperClass, 'getInstance')) {
-            $o = call_user_func_array(array($helperClass,"getInstance"), $args);
+            $o = call_user_func_array(array($helperClass, "getInstance"), $args);
         } else {
             $o = new $helperClass($args);
         }
-      
-        if(method_exists($o,'init')) $o->init();
+
+        if (method_exists($o, 'init'))
+            $o->init();
         return $o;
     }
+
 }

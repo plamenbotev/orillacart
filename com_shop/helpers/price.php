@@ -4,7 +4,7 @@ class price {
 
     protected $archive = true;
 
-    public function getInstance() {
+    public static function getInstance() {
 
         static $instance = null;
 
@@ -20,12 +20,12 @@ class price {
 
     public function format($price, $currency_sign = null) {
 
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
         if (!$currency_sign) {
             $currency_sign = $params->get('currency_sign');
         }
 
-        switch (Factory::getApplication('shop')->getParams()->get('currency_place')) {
+        switch (Factory::getComponent('shop')->getParams()->get('currency_place')) {
 
             case "before":
                 return $currency_sign . number_format((double) $price, $params->get('price_decimal'), $params->get('price_separator'), $params->get('thousand_separator'));
@@ -62,7 +62,7 @@ class price {
         $time_ecb_update = '1415';
 
 
-        $archivefile_name = Factory::getApplication('shop')->getAssetsPath() . '/daily.xml';
+        $archivefile_name = Factory::getComponent('shop')->getAssetsPath() . '/daily.xml';
         $ecb_filename = 'http://www.ecb.int/stats/eurofxref/eurofxref-daily.xml';
         $val = '';
 
@@ -86,7 +86,7 @@ class price {
             $curr_filename = $ecb_filename;
         }
 
-        if (!is_writable(Factory::getApplication('shop')->getAssetsPath())) {
+        if (!is_writable(Factory::getComponent('shop')->getAssetsPath())) {
             $this->archive = false;
         }
         if ($curr_filename == $ecb_filename) {
@@ -137,10 +137,10 @@ class price {
         }
 
         if (empty($from) || !array_key_exists($from, $rates)) {
-            $from = Factory::getApplication('shop')->getParams()->get('currency');
+            $from = Factory::getComponent('shop')->getParams()->get('currency');
         }
         if (empty($to) || !array_key_exists($to, $rates)) {
-            $to = Factory::getApplication('shop')->getParams()->get('currency');
+            $to = Factory::getComponent('shop')->getParams()->get('currency');
         }
         if ($from == $to) {
             return $amount;

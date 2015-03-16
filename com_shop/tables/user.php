@@ -15,7 +15,7 @@ class userTable extends table {
     public function __construct() {
         parent::__construct('ID', '#_users');
 
-        $helper = Factory::getApplication('shop')->getHelper('customer');
+        $helper = Factory::getComponent('shop')->getHelper('customer');
 
         $this->__fields['billing'] = $helper->get_billing_fields();
         $this->__fields['shipping'] = $helper->get_shipping_fields();
@@ -36,7 +36,7 @@ class userTable extends table {
         return $this->__fields['billing'];
     }
 
-    public function load($id) {
+    public function load($id=null) {
 
 
         $this->ID = (int) $id;
@@ -64,7 +64,7 @@ class userTable extends table {
                 $val = isset($this->{$fkey}) ? $this->{$fkey} : null;
 
                 if ($field->get_name() == $type . "_country" && empty($val)) {
-                    $val = Factory::getApplication('shop')->getParams()->get('shop_country');
+                    $val = Factory::getComponent('shop')->getParams()->get('shop_country');
                 }
 
 
@@ -78,7 +78,7 @@ class userTable extends table {
 
                     $this->__fields[$type]->{$type . "_state"}->set_country($this->__fields[$type]->{$type . "_country"}->get_value());
                 } else {
-                    $this->__fields[$type]->{$type . "_state"}->set_country(Factory::getApplication('shop')->getParams()->get('shop_country'));
+                    $this->__fields[$type]->{$type . "_state"}->set_country(Factory::getComponent('shop')->getParams()->get('shop_country'));
                 }
             }
         }
@@ -88,9 +88,9 @@ class userTable extends table {
         return $this;
     }
 
-    public function bind($from) {
+    public function bind($from, $exclude = Array()) {
 
-        parent::bind($from);
+        parent::bind($from, $exclude);
 
 
         foreach (array('billing', 'shipping') as $type) {
@@ -111,7 +111,7 @@ class userTable extends table {
                 $val = isset($this->{$fkey}) ? $this->{$fkey} : null;
 
                 if ($field->get_name() == $type . "_country" && empty($val)) {
-                    $val = Factory::getApplication('shop')->getParams()->get('shop_country');
+                    $val = Factory::getComponent('shop')->getParams()->get('shop_country');
                 }
 
 
@@ -125,7 +125,7 @@ class userTable extends table {
 
                     $this->__fields[$type]->{$type . "_state"}->set_country($this->__fields[$type]->{$type . "_country"}->get_value());
                 } else {
-                    $this->__fields[$type]->{$type . "_state"}->set_country(Factory::getApplication('shop')->getParams()->get('shop_country'));
+                    $this->__fields[$type]->{$type . "_state"}->set_country(Factory::getComponent('shop')->getParams()->get('shop_country'));
                 }
             }
         }
@@ -133,14 +133,14 @@ class userTable extends table {
         return $this;
     }
 
-    public function store() {
+    public function store($safe_insert=false) {
 
         $model = Model::getInstance('user', 'shop');
 
 
         if (!$this->ID || !$model->is_user($this->ID)) {
 
-            Factory::getApplication('shop')->addError(__('invalid user id', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('invalid user id', 'com_shop'));
             return false;
         }
 

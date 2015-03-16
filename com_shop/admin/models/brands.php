@@ -18,8 +18,11 @@ class brandsModel extends model {
 
     public function listBrands() {
 
-        $start = request::getInt('limitstart', 0);
-        $limit = (int) Factory::getApplication('shop')->getParams()->get('objects_per_page');
+        $input = Factory::getApplication()->getInput();
+
+
+        $start = $input->get('limitstart', 0, "INT");
+        $limit = (int) Factory::getComponent('shop')->getParams()->get('objects_per_page');
 
         $brands = get_terms('product_brand', 'hide_empty=0&offset' . $start . '&number=' . $limit);
 

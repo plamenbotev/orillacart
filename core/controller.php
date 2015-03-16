@@ -2,7 +2,7 @@
 
 defined('_VALID_EXEC') or die('access denied');
 
-abstract class controller extends app_object {
+abstract class controller extends BObject {
 
     protected $methods = array();
     protected $taskMap = array();
@@ -14,14 +14,13 @@ abstract class controller extends app_object {
 
         list($app, $type) = explode("controller", strtolower(get_class($this)));
 
-        $this->app = Factory::getApplication($app);
+        $this->app = Factory::getComponent($app);
 
         $thisMethods = get_class_methods(get_class($this));
 
         $baseMethods = get_class_methods(__CLASS__);
         $methods = array_diff($thisMethods, $baseMethods);
-
-        $methods[] = 'display';
+   
 
 
         foreach ($methods as $method) {
@@ -99,9 +98,8 @@ abstract class controller extends app_object {
 
         if (!Request::is_internal() && !Request::is_ajax()) {
             if ($this->view instanceof view && method_exists($this->view, $method)) {
-                factory::getFramework()->set_output($this->view, $method);
-            }
-            else
+                factory::getApplication()->set_output($this->view, $method);
+            } else
                 throw new Exception("no view loaded");
         }else {
             if ($this->view instanceof view && method_exists($this->view, $method)) {
@@ -124,7 +122,8 @@ abstract class controller extends app_object {
             $this->doTask = '__default';
             return $this->__default();
         } else {
-            $this->display();
+            throw new BadMethodCallException("The supplied task is not available in the controller and there is no __default task handler.");
         }
     }
+
 }

@@ -2,7 +2,7 @@
 
 defined('_VALID_EXEC') or die('access denied');
 
-abstract class model extends app_object {
+abstract class model extends BObject {
 
     protected $name = null;
     protected $db = null;

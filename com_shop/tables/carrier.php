@@ -14,7 +14,7 @@ class carrierTable extends table {
         parent::__construct('method_id', '#_shop_methods');
     }
 
-    public function load($id) {
+    public function load($id = NULL) {
 
         parent::load($id);
 
@@ -31,20 +31,20 @@ class carrierTable extends table {
             $this->method_order = (int) $db->loadResult();
         }
 
-        $this->params = new Registry(stripslashes($this->params));
+        $this->params = new Registry($this->params);
 
 
 
         return $this;
     }
 
-    public function store() {
+    public function store($safe_insert = false) {
 
         if ($this->class == 'standart_shipping')
             $this->class = null;
 
         if (empty($this->name)) {
-            Factory::getApplication('shop')->addError(__('Enter carrier label', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('Enter carrier label', 'com_shop'));
             return false;
         }
 

@@ -2,7 +2,7 @@
 
 class shopControllerProduct extends controller {
 
-    protected function display() {
+    protected function __default() {
         $this->getView('product');
         $model = $this->getModel('product');
         $this->view->setModel($model);
@@ -17,8 +17,5 @@ class shopControllerProduct extends controller {
 
         parent::display('load_child_product');
     }
-    
-    
-    
 
 }

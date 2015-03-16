@@ -5,7 +5,7 @@
         <h2><?php _e('Choose files', 'com_shop'); ?></h2>
 
         <?php
-        $errors = (array) Factory::getApplication('shop')->get_custom_error('product_digital_files');
+        $errors = (array) Factory::getComponent('shop')->getCustomError('product_digital_files');
         ?>
         <div class="std <?php echo count($errors) ? '' : 'highlight'; ?>">
 

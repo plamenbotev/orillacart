@@ -1,8 +1,12 @@
 <?php
 
+/*
+ * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
+ * @license     GNU General Public License version 2 or later; see LICENSE
+ */
 defined('_VALID_EXEC') or die('access denied');
 
-class URI extends app_object {
+class URI extends BObject {
 
     protected $_uri = null;
     protected $_scheme = null;
@@ -87,7 +91,7 @@ class URI extends app_object {
                 self::$base['prefix'] = $uri->toString(array('scheme', 'host', 'port'));
                 self::$base['path'] = rtrim($uri->toString(array('path')), '/\\');
 
-                if (Factory::getFramework()->is_admin()) {
+                if (Factory::getApplication()->is_admin()) {
                     self::$base['path'] .= '/wp-admin';
                 }
             } else {
@@ -338,12 +342,12 @@ class URI extends app_object {
 
         for ($i = 0, $n = count($path); $i < $n; $i++) {
             if ($path[$i] == '.' or $path[$i] == '..') {
-                if (($path[$i] == '.') or ($path[$i] == '..' and $i == 1 and $path[0] == '')) {
+                if (($path[$i] == '.') or ( $path[$i] == '..' and $i == 1 and $path[0] == '')) {
                     unset($path[$i]);
                     $path = array_values($path);
                     $i--;
                     $n--;
-                } elseif ($path[$i] == '..' and ($i > 1 or ($i == 1 and $path[0] != ''))) {
+                } elseif ($path[$i] == '..' and ( $i > 1 or ( $i == 1 and $path[0] != ''))) {
                     unset($path[$i]);
                     unset($path[$i - 1]);
                     $path = array_values($path);
@@ -355,4 +359,5 @@ class URI extends app_object {
 
         return implode('/', $path);
     }
+
 }

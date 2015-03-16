@@ -5,40 +5,38 @@ defined('_VALID_EXEC') or die('access denied');
 class Factory {
 
     static public function getDBO($type = null) {
-		
-		global $wpdb;
-		
-		if($type == null){
-			
-			if ( ! isset($wpdb->use_mysqli) || ! $wpdb->use_mysqli ){
-				$type = "mysql";
-			}else{
-			
-				$type = "mysqliDriver";
-				
-			}
-			
-		}
-	
-        if (class_exists($type) && method_exists($type, 'getInstance'))
-            return call_user_func($type . '::getInstance');
+
+        global $wpdb;
+
+        if ($type == null) {
+
+            if (!isset($wpdb->use_mysqli) || !$wpdb->use_mysqli) {
+                $type = "mysql";
+            } else {
+
+                $type = "mysqliDriver";
+            }
+        }
+
+        if (class_exists($type))
+            return new $type;
         else
             throw new Exception("database driver not found!");
     }
 
-    static public function getFramework() {
-        return framework::getInstance();
+    static public function getApplication() {
+        return Application::getInstance();
     }
 
-    static public function getMainframe() {
-        return mainframe::getInstance();
+    static public function getHead() {
+        return Head::getInstance();
     }
 
     static public function getParams($com) {
-        return self::getApplication($com)->getParams();
+        return self::getComponent($com)->getParams();
     }
 
-    static public function getApplication($component) {
+    static public function getComponent($component) {
 
         static $apps = array();
 
@@ -48,7 +46,7 @@ class Factory {
         }
 
 
-        $components = self::getFramework()->get_active_components();
+        $components = self::getApplication()->get_active_components();
 
         foreach ((array) $components as $k => $v) {
             if ($v == $component) {

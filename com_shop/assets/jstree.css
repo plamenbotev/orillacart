@@ -79,13 +79,13 @@
 #alog { font-size:9px !important; margin:5px; border:1px solid silver; }
 #node_0 > a {
 
-padding-bottom:10px !important;
+    padding-bottom:10px !important;
 
 }
 
 #node_0 > a > ins{
 
-width:30px !important;
-height:27px !important;
+    width:30px !important;
+    height:27px !important;
 
 }

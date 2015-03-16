@@ -7,13 +7,15 @@ class product_listModel extends model {
 
     public function __construct() {
 
-        $order = request::getCmd('product_list_order', null);
+        $input = Factory::getApplication()->getInput();
+
+        $order = $input->get('product_list_order', null, "CMD");
 
         if (!in_array($order, array('id', 'name', 'price_lowest', 'price_highest', 'ordering'))) {
             if (isset($_SESSION['product_list_order']) && $_SESSION['product_list_order']) {
                 $order = $_SESSION['product_list_order'];
             } else {
-                $order = Factory::getApplication('shop')->getParams()->get('productSort');
+                $order = Factory::getComponent('shop')->getParams()->get('productSort');
             }
         }
         $_SESSION['product_list_order'] = $order;
@@ -51,15 +53,19 @@ class product_listModel extends model {
     }
 
     public function load($cid = null) {
-        if ($cid == null)
-            $cid = Request::getInt('cid', null);
+
+        $input = Factory::getApplication()->getInput();
+
+        if ($cid == null) {
+            $cid = $input->get('cid', null, "INT");
+        }
 
         $term = get_term_by('id', (int) $cid, 'product_cat');
 
         if (!$term) {
             return false;
         }
-        $term_meta = Factory::getApplication('shop')->getHelper('term_meta');
+        $term_meta = Factory::getComponent('shop')->getHelper('term_meta');
         $term->image_id = $term_meta->get($cid, 'thumbnail_id', true);
 
         if ($term->image_id) {
@@ -97,7 +103,7 @@ class product_listModel extends model {
         }
 
         $rows = $db->loadObjectList();
-        $term_meta = Factory::getApplication('shop')->getHelper('term_meta');
+        $term_meta = Factory::getComponent('shop')->getHelper('term_meta');
 
         foreach ((array) $rows as $row) {
             $row->image_id = $term_meta->get($row->term_id, 'thumbnail_id', true);
@@ -114,13 +120,13 @@ class product_listModel extends model {
     }
 
     public function getProductsOrderByPrice($sql, $query) {
-		$db = Factory::getDBO();
+        $db = Factory::getDBO();
         if ($query->is_main_query()) {
 
-			$sql['fields'] .= $db->parseQuery(', CAST(#_postmeta.meta_value AS DECIMAL(65,30)) as thePrice');
-			$sql['orderby'] = 'thePrice '.$this->order_type;
-			
-			$sql = (array)apply_filters("orillacart_order_by_price_sql",$sql,$query,$this->order_type);
+            $sql['fields'] .= $db->parseQuery(', CAST(#_postmeta.meta_value AS DECIMAL(65,30)) as thePrice');
+            $sql['orderby'] = 'thePrice ' . $this->order_type;
+
+            $sql = (array) apply_filters("orillacart_order_by_price_sql", $sql, $query, $this->order_type);
         }
         return $sql;
     }
@@ -131,19 +137,21 @@ class product_listModel extends model {
 
         $paged = isset($req['paged']) ? (int) $req['paged'] : 1;
 
+        $input = Factory::getApplication()->getInput();
 
-        request::set_wp_var('posts_per_page', (int) Factory::getApplication('shop')->getParams()->get('objects_per_page'));
+
+        request::set_wp_var('posts_per_page', (int) Factory::getComponent('shop')->getParams()->get('objects_per_page'));
         request::set_wp_var('post_status', 'publish');
         request::set_wp_var('post_type', 'product');
         request::set_wp_var('paged', $paged);
-        if (!Factory::getApplication('shop')->getParams()->get('list_variations')) {
+        if (!Factory::getComponent('shop')->getParams()->get('list_variations')) {
             request::set_wp_var('post_parent', 0);
         }
 
-		if (( (isset($req['post_type']) && 'product' == $req['post_type']) || request::getCmd('con') == 'product_list' ) && !isset($req['product_cat']) && !isset($req['product_brand']) && !isset($req['product_tag'])) {
-           
-			if (Factory::getApplication('shop')->getParams()->get('front_page_cat')) {
-                $term = get_term_by('id', (int) Factory::getApplication('shop')->getParams()->get('front_page_cat'), 'product_cat');
+        if (( (isset($req['post_type']) && 'product' == $req['post_type']) || $input->get('con', null, "CMD") == 'product_list' ) && !isset($req['product_cat']) && !isset($req['product_brand']) && !isset($req['product_tag'])) {
+
+            if (Factory::getComponent('shop')->getParams()->get('front_page_cat')) {
+                $term = get_term_by('id', (int) Factory::getComponent('shop')->getParams()->get('front_page_cat'), 'product_cat');
                 if (!empty($term->slug)) {
                     $taxquery = array(
                         array(

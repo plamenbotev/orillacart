@@ -14,8 +14,10 @@ class shopControllerTax extends controller {
 
         $this->view->assign('res', $res);
 
+        $input = Factory::getApplication()->getInput();
+
         $total = $res->found_rows();
-        $pagination = new paginator($total, request::getVar('limitstart', 0, 'METHOD', 'int'), request::getVar('limit', 10, 'METHOD', 'int'));
+        $pagination = new paginator($total, $input->get('limitstart', 0, 'INT'), $input->get('limit', 10, 'INT'));
         $pagination->url = "javascript:void(0);";
         $pagination->onclick = "document.adminForm.task.value='';document.adminForm.limitstart.value=%s;document.adminForm.submit();return false";
 
@@ -29,15 +31,16 @@ class shopControllerTax extends controller {
 
         $model = $this->getModel('tax');
 
+        $input = Factory::getApplication()->getInput();
 
         $this->getView('tax');
-        $tax_group_id = Request::getVar('tax_group_id', null, 'REQUEST', 'int');
+        $tax_group_id = $input->get('tax_group_id', null, 'INT');
         $this->view->assign('tax_group_id', $tax_group_id);
         $res = $model->getRatesList();
 
         $this->view->assign('res', $res);
 
-     
+
 
         parent::display('rates_list');
     }
@@ -49,9 +52,10 @@ class shopControllerTax extends controller {
         $model = $this->getModel('tax');
         $this->getView('tax');
 
+        $input = Factory::getApplication()->getInput();
 
-        $tax_group_id = Request::getVar('tax_group_id', null, 'METHOD', 'int');
-        $row = Factory::getApplication('shop')->getTable('tax_group')->load($tax_group_id);
+        $tax_group_id = $input->get('tax_group_id', null, 'INT');
+        $row = Factory::getComponent('shop')->getTable('tax_group')->load($tax_group_id);
         $this->view->assign('row', $row);
 
 
@@ -64,8 +68,9 @@ class shopControllerTax extends controller {
         $model = $this->getModel('tax');
         $this->getView('tax');
         $country_model = $this->getModel('country');
+        $input = Factory::getApplication()->getInput();
 
-        $tax_rate_id = Request::getInt('tax_rate_id', null);
+        $tax_rate_id = $input->get('tax_rate_id', null, "INT");
         $states = array();
 
 
@@ -73,7 +78,7 @@ class shopControllerTax extends controller {
         if ($tax_rate_id && $model->is_tax_rate($tax_rate_id)) {
 
 
-            $row = Factory::getApplication('shop')->getTable('tax_rate')->load($tax_rate_id);
+            $row = Factory::getComponent('shop')->getTable('tax_rate')->load($tax_rate_id);
             $this->view->assign('row', $row);
             $this->view->assign('tax_group_id', $row->tax_group_id);
 
@@ -85,11 +90,11 @@ class shopControllerTax extends controller {
             }
         } else {
 
-            $tax_group_id = Request::getInt('tax_group_id', null);
+            $tax_group_id = $input->get('tax_group_id', null, "INT");
 
             if (!$tax_group_id || !$model->is_tax_group($tax_group_id)) {
 
-                Factory::getApplication('shop')->setMessage(__("No tax group selected", 'com_shop'));
+                Factory::getComponent('shop')->setMessage(__("No tax group selected", 'com_shop'));
                 $this->execute();
                 return 0;
             } else {
@@ -123,13 +128,15 @@ class shopControllerTax extends controller {
 
         $this->getView('tax');
 
-        $group_id = request::getVar('tax_group_id', null, 'REQUEST');
+        $input = Factory::getApplication()->getInput();
+
+        $group_id = $input->get('tax_group_id', null, 'INT');
 
         try {
-            $row = Factory::getApplication('shop')->getTable('tax_group')->load($group_id)->bind(Request::get('POST'))->store();
-            Factory::getApplication('shop')->setMessage(__("Saved", 'com_shop'));
+            $row = Factory::getComponent('shop')->getTable('tax_group')->load($group_id)->bind($input->post)->store();
+            Factory::getComponent('shop')->setMessage(__("Saved", 'com_shop'));
         } catch (Exception $e) {
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
         }
 
         $this->execute();
@@ -142,17 +149,19 @@ class shopControllerTax extends controller {
 
         $model = $this->getModel('tax');
 
+        $input = Factory::getApplication()->getInput();
+
         $this->getView('tax');
 
 
         try {
-            $row = Factory::getApplication('shop')->getTable('tax_rate')->load(Request::getINT('tax_rate_id', null))->bind(Request::get('POST'));
-			$row->tax_state = Request::getWord("shop_state","");
-			
-			$row->store();
-            Factory::getApplication('shop')->setMessage(__("Saved", 'com_shop'));
+            $row = Factory::getComponent('shop')->getTable('tax_rate')->load($input->get('tax_rate_id', null, "INT"))->bind($input->post);
+            $row->tax_state = $input->get("shop_state", "", "WORD");
+
+            $row->store();
+            Factory::getComponent('shop')->setMessage(__("Saved", 'com_shop'));
         } catch (Exception $e) {
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
         }
 
         $this->execute();
@@ -167,10 +176,10 @@ class shopControllerTax extends controller {
         try {
             $model->deleteGroup();
 
-            Factory::getApplication('shop')->setMessage(__("List altered", 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__("List altered", 'com_shop'));
         } catch (Exception $e) {
 
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
         }
 
         $this->execute();
@@ -185,10 +194,10 @@ class shopControllerTax extends controller {
         try {
             $model->deleteRate();
 
-            Factory::getApplication('shop')->setMessage(__("List altered", 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__("List altered", 'com_shop'));
         } catch (Exception $e) {
 
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
         }
 
         $this->execute('rate_list');

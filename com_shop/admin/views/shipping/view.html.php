@@ -6,10 +6,10 @@ class shopViewShipping extends view {
 
     public function display() {
         $bar = toolbar::getInstance('toolbar', __('Carrier', 'com_shop'), 'default', 'cube');
-        $bar->appendButton('Link', 'new', __('new', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping&task=add_carrier'), false, true);
-        $bar->appendButton('Standard', 'delete', __('delete', 'com_shop'), 'document.adminForm.submit()', false, true);
+        $bar->appendButton('Link', 'new', __('new', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping&task=add_carrier'));
+        $bar->appendButton('Standard', 'delete', __('delete', 'com_shop'), 'document.adminForm.submit()');
 
-        Factory::getMainframe()->addCustomHeadTag('shipping-display', '
+        Factory::getHead()->addCustomHeadTag('shipping-display', '
            <script type="text/javascript">
             jQuery(function() {
             jQuery("#toggle").click(function(){
@@ -19,17 +19,17 @@ class shopViewShipping extends view {
            </script>
         ');
 
-        parent::display('list_carriers');
+         $this->loadTemplate('list_carriers');
     }
 
     public function list_rates() {
 
         $bar = toolbar::getInstance('toolbar', __('Rates', 'com_shop'), 'default', 'cube');
-        $bar->appendButton('Link', 'cancel', __('cancel', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping'), false, true);
-        $bar->appendButton('Link', 'new', __('new', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping&task=add_rate&carrier=' . $this->carrier->pk()), false, true);
-        $bar->appendButton('Standard', 'delete', __('delete', 'com_shop'), 'document.adminForm.submit()', false, true);
+        $bar->appendButton('Link', 'cancel', __('cancel', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping'));
+        $bar->appendButton('Link', 'new', __('new', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping&task=add_rate&carrier=' . $this->carrier->pk()));
+        $bar->appendButton('Standard', 'delete', __('delete', 'com_shop'), 'document.adminForm.submit()');
 
-        Factory::getMainframe()->addCustomHeadTag('shipping-list_rates', '
+        Factory::getHead()->addCustomHeadTag('shipping-list_rates', '
            <script type="text/javascript">
             jQuery(function() {
             jQuery("#toggle").click(function(){
@@ -39,7 +39,7 @@ class shopViewShipping extends view {
            </script>
         ');
 
-        parent::display('list_rates');
+         $this->loadTemplate('list_rates');
     }
 
     public function add_carrier() {
@@ -47,29 +47,30 @@ class shopViewShipping extends view {
         $bar = toolbar::getInstance('toolbar', __('Carrier', 'com_shop'), 'default', 'cube');
 
         if ($this->row->pk()) {
-            $bar->appendButton('Link', 'list', __('rates', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping&task=list_rates&carrier=' . $this->row->pk()), false, true);
+            $bar->appendButton('Link', 'list', __('rates', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping&task=list_rates&carrier=' . $this->row->pk()));
         }
-        $bar->appendButton('Link', 'cancel', __('cancel', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping'), false, true);
-        $bar->appendButton('Standard', 'save', __('save', 'com_shop'), 'document.adminForm.submit()', false, true);
+        $bar->appendButton('Link', 'cancel', __('cancel', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping'));
+        $bar->appendButton('Standard', 'save', __('save', 'com_shop'), 'document.adminForm.submit()');
 
-        parent::display('add_carrier_form');
+         $this->loadTemplate('add_carrier_form');
     }
 
     public function add_rate() {
 
+        $input = Factory::getApplication()->getInput();
 
         $bar = toolbar::getInstance('toolbar', __('Add Rate', 'com_shop'), 'default', 'cube');
-        $carrier = $this->row->carrier | Request::getInt('cid', null);
-        $bar->appendButton('Link', 'cancel', __('cancel', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping&task=list_rates&carrier=' . $carrier), false, true);
-        $bar->appendButton('Standard', 'save', __('save', 'com_shop'), 'document.adminForm.submit()', false, true);
+        $carrier = $this->row->carrier | $input->get('cid', null, "INT");
+        $bar->appendButton('Link', 'cancel', __('cancel', 'com_shop'), admin_url('admin.php?page=component_com_shop-shipping&task=list_rates&carrier=' . $carrier));
+        $bar->appendButton('Standard', 'save', __('save', 'com_shop'), 'document.adminForm.submit()');
 
 
-        parent::display('add_rate_form');
+         $this->loadTemplate('add_rate_form');
     }
 
     public function select_states() {
 
-        parent::display('select_states');
+         $this->loadTemplate('select_states');
     }
 
     public function standart_shipping_params() {

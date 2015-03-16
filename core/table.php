@@ -1,6 +1,6 @@
 <?php
 
-abstract class table extends app_object {
+abstract class table extends BObject {
 
     const safe_insert = true;
 
@@ -123,8 +123,7 @@ abstract class table extends app_object {
                 if (in_array($k, $this->fk) && !$v) {
 
                     $this->$k = null;
-                }
-                else
+                } else
                     $this->$k = $v;
             }
         }
@@ -153,6 +152,7 @@ abstract class table extends app_object {
 
     public function store($safe_insert = false) {
 
+
         $k = $this->pk;
 
         $public_vars = array();
@@ -171,6 +171,7 @@ abstract class table extends app_object {
 
             $arr[$key] = $v;
         }
+
 
         if (!empty($this->$k) && !$safe_insert && !$this->is_empty) {
 
@@ -275,10 +276,6 @@ abstract class table extends app_object {
         }
 
         if ($result = $this->db->nextObject()) {
-
-            foreach ($result as $k => $v) {
-                $result->{$k} = stripslashes($v);
-            }
 
             $this->is_empty = false;
             return $this->bind($result);

@@ -13,13 +13,15 @@ class shopControllerUser extends controller {
 
         $this->getView('user');
 
-        $col = Request::getString("col", null);
-        $id = Request::getInt("id", null);
+        $input = Factory::getApplication()->getInput();
+
+        $col = $input->get("col", null, "STRING");
+        $id = $input->get("id", null, "INT");
         switch ($col) {
 
             case "billing_address":
 
-                $row = Factory::getApplication('shop')->getTable('user')->load($id);
+                $row = Factory::getComponent('shop')->getTable('user')->load($id);
                 $customer = Helper::getInstance('customer', 'shop');
 
                 echo $customer->format_billing($row->toArray());
@@ -30,7 +32,7 @@ class shopControllerUser extends controller {
 
             case "shipping_address":
 
-                $row = Factory::getApplication('shop')->getTable('user')->load($id);
+                $row = Factory::getComponent('shop')->getTable('user')->load($id);
                 $customer = Helper::getInstance('customer', 'shop');
 
                 echo $customer->format_shipping($row->toArray());
@@ -62,10 +64,11 @@ class shopControllerUser extends controller {
         if (!Request::is_internal())
             return;
 
+        $input = Factory::getApplication()->getInput();
 
         $this->getView('user');
 
-        $row = Factory::getApplication('shop')->getTable('user')->load(Request::getInt('id', null));
+        $row = Factory::getComponent('shop')->getTable('user')->load($input->get('id', null, "INT"));
 
         $this->view->assign('row', $row);
 
@@ -81,10 +84,11 @@ class shopControllerUser extends controller {
     protected function country_states() {
 
 
+        $input = Factory::getApplication()->getInput();
 
+        $id = $input->get('country', null, "WORD");
+        $type = strtolower($input->get('type', 'billing', "WORD"));
 
-        $id = Request::getString('country', null);
-        $type = strtolower(Request::getWord('type', 'billing'));
         if (!in_array($type, array('billing', 'shipping'))) {
             $type = 'billing';
         }

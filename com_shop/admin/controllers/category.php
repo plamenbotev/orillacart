@@ -16,23 +16,23 @@ class shopControllerCategory extends controller {
         lib::import('image');
 
         $this->getView('category');
-        $this->view->assignref('settings', Factory::getApplication('shop')->getParams());
-		
+        $this->view->assign('settings', Factory::getComponent('shop')->getParams());
+
         $model = $this->getModel('category');
-		$this->view->setModel($model);
+        $this->view->setModel($model);
         try {
-            $res = $model->saveCat($_POST);
+            $res = $model->saveCat(Factory::getApplication()->getInput()->post);
         } catch (message $e) {
 
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
             parent::display();
             return;
         }
-        
+
         if ($res)
-            Factory::getApplication('shop')->setMessage(__("Category saved", 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__("Category saved", 'com_shop'));
         else
-            Factory::getApplication('shop')->setMessage(__("Error saving category", 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__("Error saving category", 'com_shop'));
         parent::display();
     }
 

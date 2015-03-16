@@ -5,7 +5,7 @@ class shopViewMail extends view {
     public function processing() {
 
         $order = $this->order;
-        $price = Factory::getApplication('shop')->getHelper('price');
+        $price = Factory::getComponent('shop')->getHelper('price');
         $model = Model::getInstance('order', 'shop');
 
         $class = $order['payment_method'];
@@ -35,7 +35,7 @@ class shopViewMail extends view {
     public function invoice() {
         $order = $this->order;
 
-        $price = Factory::getApplication('shop')->getHelper('price');
+        $price = Factory::getComponent('shop')->getHelper('price');
         $model = Model::getInstance('order', 'shop');
 
 
@@ -62,11 +62,11 @@ class shopViewMail extends view {
 
         $this->loadTemplate("invoice_mail");
     }
-    
-    public function admin_notify_mail(){
+
+    public function admin_notify_mail() {
         $order = $this->order;
 
-        $price = Factory::getApplication('shop')->getHelper('price');
+        $price = Factory::getComponent('shop')->getHelper('price');
         $model = Model::getInstance('order', 'shop');
 
 
@@ -97,7 +97,7 @@ class shopViewMail extends view {
     public function refunded() {
         $order = $this->order;
 
-        $price = Factory::getApplication('shop')->getHelper('price');
+        $price = Factory::getComponent('shop')->getHelper('price');
         $model = Model::getInstance('order', 'shop');
 
 

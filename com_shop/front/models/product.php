@@ -9,13 +9,13 @@ class productModel extends model {
         $p->thumb = null;
         $p->image_title = null;
 
-        $row = Factory::getApplication('shop')->getTable('product')->load($id);
-        		
-		$attribs = $this->getProductAttributes($id);
-		$def = !empty($attribs->def) ? (array)$attribs->def : array() ;
-		
+        $row = Factory::getComponent('shop')->getTable('product')->load($id);
 
-        $p->price = Factory::getApplication('shop')->getHelper('product_helper')->get_price_with_tax($row);
+        $attribs = $this->getProductAttributes($id);
+        $def = !empty($attribs->def) ? (array) $attribs->def : array();
+
+
+        $p->price = Factory::getComponent('shop')->getHelper('product_helper')->get_price_with_tax($row);
 
         if (has_post_thumbnail($id)) {
             $thumb = wp_get_attachment_image_src(get_post_thumbnail_id(), 'product_thumb');
@@ -29,27 +29,27 @@ class productModel extends model {
             $p->thumb = '';
             $p->image_title = '';
         }
-		
-		$p->hide_price = get_post_meta((int) $id, '_hide_price', true);
-		$p->not_for_sale = get_post_meta((int) $id, '_not_for_sale', true);
-		$p->special = get_post_meta((int) $id, '_special', true);
-		$p->on_sale = get_post_meta((int) $id, '_on_sale', true);
-		$p->expired = get_post_meta((int) $id, '_expired', true);
-		
+
+        $p->hide_price = get_post_meta((int) $id, '_hide_price', true);
+        $p->not_for_sale = get_post_meta((int) $id, '_not_for_sale', true);
+        $p->special = get_post_meta((int) $id, '_special', true);
+        $p->on_sale = get_post_meta((int) $id, '_on_sale', true);
+        $p->expired = get_post_meta((int) $id, '_expired', true);
+
         return $p;
     }
 
     public function get_product_data($id) {
 
-        $helper = Factory::getApplication('shop')->getHelper('product_helper');
-        $app = Factory::getApplication('shop');
+        $helper = Factory::getComponent('shop')->getHelper('product_helper');
+        $app = Factory::getComponent('shop');
         $pid = (int) $id;
 
         if (!$pid || !$this->is_product($pid)) {
             throw new not_found_404(__('no such product', 'com_shop'));
         }
 
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
 
         $row = new stdClass();
 
@@ -58,7 +58,7 @@ class productModel extends model {
 
 
 
-        $row->product = Factory::getApplication('shop')->getTable('product')->load($pid);
+        $row->product = Factory::getComponent('shop')->getTable('product')->load($pid);
 
         if ($row->product->published == 'no') {
             throw new not_found_404(__('no such product', 'com_shop'));
@@ -189,6 +189,11 @@ class productModel extends model {
     }
 
     public function get_child_products($pid) {
+        global $post;
+
+        if (is_object($post)) {
+            $tmp = clone $post;
+        }
 
         $res = array();
         $childs = new WP_Query();
@@ -199,12 +204,17 @@ class productModel extends model {
         }
 
         wp_reset_postdata();
+        wp_reset_query();
+
+        if (isset($tmp)) {
+            $post = $tmp;
+        }
         return $res;
     }
 
     public function is_variation_available($pid, $props = array()) {
         $amounts = array();
-        $row = Factory::getApplication('shop')->getTable('product')->load($pid);
+        $row = Factory::getComponent('shop')->getTable('product')->load($pid);
         if (!$row->pk()) {
 
             return 0;
@@ -219,7 +229,7 @@ class productModel extends model {
         if ($row->post->post_parent) {
             $props = array();
         }
-        if ($row->manage_stock == 'no' || ($row->manage_stock == 'global' && !Factory::getApplication('shop')->getParams()->get('checkStock')))
+        if ($row->manage_stock == 'no' || ($row->manage_stock == 'global' && !Factory::getComponent('shop')->getParams()->get('checkStock')))
             return true;
 
         if ($row->stock == "no")
@@ -366,7 +376,7 @@ class productModel extends model {
         while ($a = $this->db->nextObject()) {
 
             $db->setQuery("SELECT p.* FROM `#_shop_attribute_property` as p
-                           ".$join."
+                           " . $join . "
 			   WHERE p.attribute_id = {$a->attribute_id} ORDER BY p.ordering");
 
             if (!$db->getResource())
@@ -379,7 +389,8 @@ class productModel extends model {
             while ($o = $db->nextObject()) {
                 $a->properties[$o->property_id] = $o;
             }
-            if(empty($a->properties)) continue;
+            if (empty($a->properties))
+                continue;
             $atts[] = $a;
         }
 
@@ -421,7 +432,8 @@ class productModel extends model {
         if (!$db->numRows())
             return false;
 
-        return (int) $db->loadResult('pid');
+
+        return (int) $db->loadResult(0);
     }
 
     public function is_variable($pid = 0) {

@@ -2,8 +2,8 @@
 
 defined('_VALID_EXEC') or die('access denied');
 
-abstract class component extends app_object {
-
+abstract class component extends BObject implements SelfRegisterable {
+  
     protected $name = null;
     protected $componentBase = null;
     protected $root_path = null;
@@ -15,17 +15,17 @@ abstract class component extends app_object {
     protected $params = null;
     protected $mode = null;
 
-    abstract static public function register_component($components);
-	
-	
-	public function getComponentRootPath(){
-		return $this->root_path;
-	}
+  
 
-    public function getMode(){
+    public function getComponentRootPath() {
+        return $this->root_path;
+    }
+
+    public function getMode() {
         return $this->mode;
     }
-    public function add_custom_error($contex, $error, $use_session = true) {
+
+    public function addCustomError($contex, $error, $use_session = true) {
 
         if (!isset($this->contex_errors[$this->mode][$contex])) {
             $this->contex_errors[$this->mode][$contex] = array();
@@ -43,18 +43,18 @@ abstract class component extends app_object {
         }
     }
 
-    public function count_custom_errors($contex) {
+    public function countCustomErrors($contex) {
         return count($this->contex_errors[$this->mode][$contex]);
     }
 
-    public function get_custom_error($contex) {
+    public function getCustomError($contex) {
         if (!isset($this->contex_errors[$this->mode][$contex])) {
             return array();
         }
         return $this->contex_errors[$this->mode][$contex];
     }
 
-    public function clear_error_contex($contex) {
+    public function clearErrorContex($contex) {
         if (isset($this->contex_errors[$this->mode][$contex])) {
             unset($this->contex_errors[$this->mode][$contex]);
             unset($_SESSION['messages']['custom_messages'][$this->mode][$context]);
@@ -71,48 +71,46 @@ abstract class component extends app_object {
 
     public function getParams() {
 
-	
-		$path = realpath($this->root_path . DS . "params.php");
-		
-		if (file_exists($path)) {
-                   
-			require_once($path);
-		}else{
-                   
-			return false;
-		}
-		
-		$result = wp_cache_get( 'params',strtolower("com_".$this->getName()));
-		
-		if($result !== false){
-			return $result;
-		}
-		
-             
 
-            $class = $this->getName() . 'Params';
+        $path = realpath($this->root_path . DS . "params.php");
 
-            if (!class_exists($class)){
-           
-                return false;
-                
-            }
+        if (file_exists($path)) {
 
-            $reflection = new ReflectionClass($class);
+            require_once($path);
+        } else {
+
+            return false;
+        }
+
+        $result = wp_cache_get('params', strtolower("com_" . $this->getName()));
+
+        if ($result !== false) {
+
+            return $result;
+        }
 
 
-            if (is_object($reflection) && $reflection instanceof ReflectionClass && $reflection->isSubclassOf('parameters')) {
 
-                $cache = new $class($this);
+        $class = $this->getName() . 'Params';
 
-                if (method_exists($cache, 'init'))
-                    $cache->init();
-                
-              
-                wp_cache_set("params",$cache,strtolower("com_".$this->getName()));
-                return $cache;
-            
-           
+        if (!class_exists($class)) {
+
+            return false;
+        }
+
+        $reflection = new ReflectionClass($class);
+
+
+        if (is_object($reflection) && $reflection instanceof ReflectionClass && $reflection->isSubclassOf('parameters')) {
+
+            $cache = new $class($this);
+
+            if (method_exists($cache, 'init'))
+                $cache->init();
+
+
+            wp_cache_set("params", $cache, strtolower("com_" . $this->getName()));
+            return $cache;
         } else {
 
             return false;
@@ -173,9 +171,8 @@ abstract class component extends app_object {
         return (array) $this->sys_errors[$this->mode];
     }
 
-    public function main(){
+    public function main() {
         return;
-        
     }
 
     public function getName() {
@@ -211,13 +208,13 @@ abstract class component extends app_object {
         $this->close();
     }
 
-    public function show_messages() {
+    public function showMessages() {
 
         if (!request::is_ajax()) {
 
             $error_messages = $this->getErrors();
-           
-            $messages  = "<div id='" . $this->getName() . "_info' class='system_messagess' style='background-color:#FFD559; padding:7px; ";
+
+            $messages = "<div id='" . $this->getName() . "_info' class='system_messagess' style='background-color:#FFD559; padding:7px; ";
             $messages .= (!$this->messagesCount() & !$this->errorsCount()) ? "display:none;" : "";
             $messages .= "'>";
 
@@ -257,7 +254,7 @@ abstract class component extends app_object {
 
         static $init = false;
 
-        if (Framework::is_admin()) {
+        if (Factory::getApplication()->is_admin()) {
             $this->mode = 'admin';
         } else {
 
@@ -271,20 +268,19 @@ abstract class component extends app_object {
             session_start();
             if (isset($_SESSION['messages']['errors'][$this->mode]) && !empty($_SESSION['messages']['errors'][$this->mode])) {
                 $this->sys_errors[$this->mode] = (array) array_merge((array) $_SESSION['messages']['errors'][$this->mode], (array) $this->sys_errors[$this->mode]);
-              
             }
             if (isset($_SESSION['messages']['messages'][$this->mode]) && !empty($_SESSION['messages']['messages'][$this->mode])) {
                 $this->sys_messages[$this->mode] = (array) array_merge((array) $_SESSION['messages']['messages'][$this->mode], (array) $this->sys_messages[$this->mode]);
-               
             }
 
             if (isset($_SESSION['messages']['custom_messages'][$this->mode]) && !empty($_SESSION['messages']['custom_messages'][$this->mode])) {
                 $this->contex_errors[$this->mode] = (array) array_merge((array) $_SESSION['messages']['custom_messages'][$this->mode], (array) $this->contex_errors[$this->mode]);
-                
             }
 
-            add_action('admin_notices', array($this, 'show_messages'));
-        }
+			if(Factory::getApplication()->is_admin()){
+				add_action('admin_notices', array($this, 'showMessages'));
+			}
+		}
         $init = true;
 
         $this->name = strtolower(get_class($this));
@@ -293,7 +289,7 @@ abstract class component extends app_object {
         $root_path = '';
         $mode = $this->mode;
 
-        $components = factory::getFramework()->get_active_components();
+        $components = factory::getApplication()->get_active_components();
 
         foreach ((array) $components as $cpath => $class) {
             if ($class == get_class($this)) {
@@ -306,30 +302,25 @@ abstract class component extends app_object {
 
         $plugin_dir_name = plugin_basename($root_path);
         $this->rel_path = $plugin_dir_name;
-       
-	   
-	   
+
+
+
         if (is_dir($root_path)) {
             $this->componentBase = $path;
             $this->component_url = WP_PLUGIN_URL . '/' . $plugin_dir_name;
-            add_action("init", array($this, "load_language"));
+            add_action("init", array($this, "loadLanguage"));
         } else {
             throw new Exception("cant determine component directory for component:" . get_class($this));
         }
     }
 
-    public function load_language() {
-        
-        $locale = apply_filters( 'plugin_locale', get_locale(), "com_".$this->getName() );
-    
-   
-   
-	  
-		load_textdomain( "com_".$this->getName(), WP_LANG_DIR . "/com_".$this->getName()."/com_".$this->getName()."-".$locale.".mo" );
-          
-        load_plugin_textdomain("com_".$this->getName(),false, $this->rel_path."/languages");
-    
-     
+    public function loadLanguage() {
+
+        $locale = apply_filters('plugin_locale', get_locale(), "com_" . $this->getName());
+
+        load_textdomain("com_" . $this->getName(), WP_LANG_DIR . "/com_" . $this->getName() . "/com_" . $this->getName() . "-" . $locale . ".mo");
+
+        load_plugin_textdomain("com_" . $this->getName(), false, $this->rel_path . "/languages");
     }
 
     public function getAssetsPath() {
@@ -355,20 +346,21 @@ abstract class component extends app_object {
         return $c;
     }
 
-    static public function get_wp_pages($com = null) {
-          
-	   
-        if (!$com){
+    static public function getWPPages($com = null) {
+
+        wp_cache_flush();
+        if (!$com) {
             return array();
-		}
-		
-		$result = wp_cache_get( 'get_wp_pages',strtolower("com_".$com));
-		
-		if($result !== false){
-			return $result;
-		}	
-		       
-        $params = Factory::getApplication($com)->getParams();
+        }
+
+        $result = wp_cache_get('getWPPages', strtolower("com_" . $com));
+
+        if ($result !== false) {
+            return $result;
+        }
+
+        $params = Factory::getComponent($com)->getParams();
+
         $page_id = $params->get('page_id');
 
         if (!$page_id)
@@ -403,7 +395,7 @@ abstract class component extends app_object {
             }
         }
 
-		$cache = array();
+        $cache = array();
         if (!empty($path)) {
             $cache[] = implode('/', array_reverse($path));
         }
@@ -411,9 +403,9 @@ abstract class component extends app_object {
         if (!array_key_exists(0, $cache)) {
             $cache[] = $com;
         }
-		
-		wp_cache_set( 'get_wp_pages',$cache,strtolower("com_".$com));
-		
+
+        wp_cache_set('getWPPages', $cache, strtolower("com_" . $com));
+
 
         return $cache;
     }

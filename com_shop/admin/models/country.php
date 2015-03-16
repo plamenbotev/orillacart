@@ -15,13 +15,13 @@ class countryModel extends model {
         return (int) $this->db->loadResult();
     }
 
-
     public function getCountryList($all = false) {
 
+        $input = Factory::getApplication()->getInput();
 
-        $start = request::getInt('limitstart', 0);
-        $offset = request::getInt('limit', 10);
-        $keyword = $this->db->secure(request::getWord('keyword', ''));
+        $start = $input->get('limitstart', 0, "INT");
+        $offset = $input->get('limit', 10, "INT");
+        $keyword = $this->db->secure($input->get('keyword', '', "WORD"));
         $where = array();
         $where[] = '1';
 
@@ -93,18 +93,18 @@ class countryModel extends model {
                 throw new Exception($this->db->getErrorString());
             }
             return (array) $this->db->loadObjectList();
-        }
-        else
+        } else
             return null;
     }
 
     public function getStateList() {
 
+        $input = Factory::getApplication()->getInput();
 
-        $start = request::getInt('limitstart', 0);
-        $offset = request::getInt('limit', 10);
-        $keyword = $this->db->secure(request::getWord('keyword', ''));
-        $country_id = request::getString('country_id', 0);
+        $start = $input->get('limitstart', 0, "INT");
+        $offset = $input->get('limit', 10, "INT");
+        $keyword = $this->db->secure($input->get('keyword', '', "WORD"));
+        $country_id = $input->get('country_id', null, "WORD");
 
 
         $where = array();
@@ -137,7 +137,9 @@ class countryModel extends model {
 
     public function deleteCountry() {
 
-        $ids = request::getVar('country_id', array(), 'REQUEST', 'array');
+        $input = Factory::getApplication()->getInput();
+
+        $ids = $input->get('country_id', array(), 'ARRAY');
 
         $ids = (array) array_map('intval', $ids);
         if (empty($ids)) {
@@ -156,7 +158,9 @@ class countryModel extends model {
 
     public function deleteState() {
 
-        $ids = request::getVar('state_id', array(), 'REQUEST', 'array');
+        $input = Factory::getApplication()->getInput();
+
+        $ids = $input->get('state_id', array(), 'ARRAY');
 
         $ids = (array) array_map('intval', $ids);
         if (empty($ids)) {

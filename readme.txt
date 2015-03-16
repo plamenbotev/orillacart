@@ -101,6 +101,11 @@ Always backup before upgrade!
 
 == Changelog ==
 
+=1.3.4=
+
+Framework improvements.
+Variations manager in the parent product.
+Various bug fixes and code cleanups. 
 =1.2.9=
 
 Fix bug in shipping methods.

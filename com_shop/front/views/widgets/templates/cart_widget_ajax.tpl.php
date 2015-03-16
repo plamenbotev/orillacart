@@ -10,7 +10,7 @@
     <div class="btn-group">
         <a class="btn  btn-small" href='<?php echo Route::get("component=shop&con=cart"); ?>'>
             <span class="icon-cart"></span>
-            <?php _e("View Cart", "com_shop"); ?>
+            <?php _e("View Cart", "com_shop"); ?> 
         </a>
     </div>
     <div class="btn-group">

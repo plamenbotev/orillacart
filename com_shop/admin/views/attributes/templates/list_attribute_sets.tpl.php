@@ -32,7 +32,7 @@ defined('_VALID_EXEC') or die('access denied');
                         <input type="checkbox"  name="ids[]" value="<?php echo $o->attribute_set_id; ?>"  />		
                     </td>
                     <td align="left">
-                        <a href="<?php echo admin_url('admin.php?page=component_com_shop-attributes&task=edit&id=' . $o->attribute_set_id); ?>"><?php echo strings::stripandencode($o->attribute_set_name); ?></a>
+                        <a href="<?php echo admin_url('admin.php?page=component_com_shop-attributes&task=edit&id=' . $o->attribute_set_id); ?>"><?php echo strings::htmlentities($o->attribute_set_name); ?></a>
 
                     </td>
 
@@ -40,7 +40,7 @@ defined('_VALID_EXEC') or die('access denied');
                     <td align="center">
 
 
-                        <a onclick="jsShopAdminHelper.changeAttributeSetState(<?php echo $o->attribute_set_id; ?>,this);" href="javascript:void(0);" class="btn btn-small <?php echo ($o->published == 'yes') ? 'active' : ''; ?>">
+                        <a onclick="jsShopAdminHelper.changeAttributeSetState(<?php echo $o->attribute_set_id; ?>, this);" href="javascript:void(0);" class="btn btn-small <?php echo ($o->published == 'yes') ? 'active' : ''; ?>">
                             <i class="icon-<?php echo ($o->published == 'yes') ? 'checkmark' : 'delete'; ?>">
                             </i>
                         </a>

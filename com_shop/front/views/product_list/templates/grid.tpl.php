@@ -2,7 +2,7 @@
     <div class="productsGrid categoryList" >
         <?php foreach ((array) $this->sub_cats as $o) { ?>
             <a href="<?php echo get_term_link((int) $o->term_id, 'product_cat'); ?>" class="gridItem addBorder">
-                <h6><?php echo strings::stripAndEncode($o->name); ?></h6>
+                <h6><?php echo strings::htmlentities($o->name); ?></h6>
                 <div class="catThumb">
                     <?php if (!empty($o->image_src)): ?>
                         <img src="<?php echo $o->image_src; ?>" />
@@ -27,7 +27,8 @@
                     <div id="products-list-top-view-mode" class="pull-left">
                         <div class="view-mode-label"><?php _e('View as:', 'com_shop'); ?>&nbsp;</div>
                         <a class="first" href="javascript:void(0);" onclick='jQuery("#list_type").val("list").parent().submit();' ></a>
-                        <a class="active" href="javascript:void(0);" onclick='jQuery("#list_type").val("grid").parent().submit();'></a>
+                        <a class="active" href="javascript:void(0);" onclick='jQuery("#l
+                                        ist_type").val("grid").parent().submit();'></a>
                     </div>
                 </div>
                 <div class="col-xs-12 col-md-4">
@@ -67,7 +68,6 @@
         while (have_posts()) {
             the_post();
             $product = $this->getModel('product')->load_product(get_the_ID());
-		
             ?>
             <li class="gridItem addBorder <?php
             echo get_post_meta(get_the_ID(), '_onsale', true) == 'yes' ? " onsale" : "";
@@ -81,38 +81,38 @@
                     </a>
                     <h4><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h4>
                 </div>
-              
-				<?php if(((bool)Factory::getParams('shop')->get('hide_the_price') == false && ($product->hide_price == 'global' || empty($product->hide_price) )) || $product->hide_price == 'no'): ?>
- 
-				<div>
-                    <?php if ($product->price->raw_price < $product->price->base) { ?>
-                        <div class="oldPriceContainer">
-                            <span class="oldPriceTitle"><?php _e("Regular price: ", "com_shop"); ?></span>
-                            <span class="old_price ">
-                                <?php echo $product->price->base_formated; ?>
-                            </span>
-                        </div>       
-                    <?php } ?>
-                    <div class="priceContainer">
-                        <?php if ($product->price->raw_price < $product->price->base) { ?>
-                            <span class="specialPriceTitle"><?php _e("Special price: ","com_shop"); ?></span>
-                        <?php } ?>
-                        <span class="price <?php if ($product->price->raw_price < $product->price->base) echo 'product_has_discount'; ?>">
-                            <?php echo $product->price->price_formated; ?>
-                        </span>
-                    </div>
 
-                    <?php
-                    if (get_post_meta((int) get_the_ID(), '_not_for_sale', true) == 'no' &&
-                            !Factory::getApplication('shop')->getParams()->get('catalogOnly')) {
-                        ?>
-                        <a id="buy-product-<?php echo get_the_ID(); ?>" class="buy_button btn btn-primary btn-small " href="<?php echo Route::get('component=shop&con=cart&task=add_to_cart&id=' . get_the_ID()); ?>">
-                            <span class="icon-cart"></span>
-                            <?php _e('Add To Cart', 'com_shop'); ?>
-                        </a>
-                    <?php } ?>
-                </div>
-				<?php endif; ?>
+                <?php if (((bool) Factory::getParams('shop')->get('hide_the_price') == false && ($product->hide_price == 'global' || empty($product->hide_price) )) || $product->hide_price == 'no'): ?>
+
+                    <div>
+                        <?php if ($product->price->raw_price < $product->price->base) { ?>
+                            <div class="oldPriceContainer">
+                                <span class="oldPriceTitle"><?php _e("Regular price: ", "com_shop"); ?></span>
+                                <span class="old_price ">
+                                    <?php echo $product->price->base_formated; ?>
+                                </span>
+                            </div>       
+                        <?php } ?>
+                        <div class="priceContainer">
+                            <?php if ($product->price->raw_price < $product->price->base) { ?>
+                                <span class="specialPriceTitle"><?php _e("Special price: ", "com_shop"); ?></span>
+                            <?php } ?>
+                            <span class="price <?php if ($product->price->raw_price < $product->price->base) echo 'product_has_discount'; ?>">
+                                <?php echo $product->price->price_formated; ?>
+                            </span>
+                        </div>
+
+                        <?php
+                        if (get_post_meta((int) get_the_ID(), '_not_for_sale', true) == 'no' &&
+                                !Factory::getComponent('shop')->getParams()->get('catalogOnly')) {
+                            ?>
+                            <a id="buy-product-<?php echo get_the_ID(); ?>" class="buy_button btn btn-primary btn-small " href="<?php echo Route::get('component=shop&con=cart&task=add_to_cart&id=' . get_the_ID()); ?>">
+                                <span class="icon-cart"></span>
+                                <?php _e('Add To Cart', 'com_shop'); ?>
+                            </a>
+                        <?php } ?>
+                    </div>
+                <?php endif; ?>
             </li>
             <?php if ($c1 % $this->products_per_row == 0 || $c1 == $this->products_count) { ?>
                 <?php
@@ -135,5 +135,8 @@
         </div>
     <?php endif; ?>
     <?php
+
+
+
 
  endif;

@@ -94,12 +94,13 @@ if (!function_exists('paypal_init')) {
                         'cmd' => '_cart',
                         'business' => $this->params->get("paypal_merchant_email", ''),
                         'no_note' => 1,
-                        'currency_code' => Factory::getApplication('shop')->getParams()->get('currency'),
+                        'currency_code' => Factory::getComponent('shop')->getParams()->get('currency'),
                         'charset' => 'UTF-8',
                         'rm' => is_ssl() ? 2 : 1,
                         'upload' => 1,
-                        'return' => Route::get('component=shop&con=cart&task=order_details&order_id=' . $order_id),
-                        'cancel_return' => Route::get('component=shop&con=cart&task=order_details&order_id=' . $order_id),
+                        'return' => Route::get('component=shop&con=cart&task=order_details&order_id=' . $order_id."&order_key=".$order->get("post_password","")),
+                       
+						'cancel_return' => Route::get('component=shop&con=cart&task=cancel_order&order_id=' . $order_id."&order_key=".$order->get("post_password","")),
                         'page_style' => "",
                         // Order key + ID
                         'invoice' => $order_id,
@@ -121,7 +122,7 @@ if (!function_exists('paypal_init')) {
                     );
 
 
-                    if (Factory::getApplication('shop')->getParams()->get('shipping')) {
+                    if (Factory::getComponent('shop')->getParams()->get('shipping')) {
 
                         $post_variables["address1"] = $order_r->get('shipping_address', '');
                         $post_variables["address2"] = $order_r->get('shipping_address', '');
@@ -148,18 +149,18 @@ if (!function_exists('paypal_init')) {
                     $post_variables['tax_cart'] = round($order_r->get("order_tax", 0), 2) + round($order_r->get("order_shipping_tax", 0), 2);
 
                     $total_items = count($items);
-					$i = 0;
+                    $i = 0;
                     for (; $i < $total_items; $i++) {
                         $item = $items[$i];
 
 
                         $post_variables["item_name_" . ($i + 1)] = strip_tags($item->order_item_name);
                         $post_variables["quantity_" . ($i + 1)] = $item->product_quantity;
-                        $post_variables["amount_" . ($i + 1)] = number_format($item->product_item_price , 2, '.', '');
+                        $post_variables["amount_" . ($i + 1)] = number_format($item->product_item_price, 2, '.', '');
                     }
 
 
-                    if ($shipping > 0 && Factory::getApplication('shop')->getParams()->get('shipping')) {
+                    if ($shipping > 0 && Factory::getComponent('shop')->getParams()->get('shipping')) {
 
                         $post_variables['item_name_' . ($i + 1)] = __('Shipping via', 'com_shop') . ' ' . ucwords($order_r->get("shipping_name", ""));
                         $post_variables['quantity_' . ($i + 1)] = '1';
@@ -179,7 +180,7 @@ if (!function_exists('paypal_init')) {
                     echo "<noscript><input type='submit' value='click to pay' name='pay' /></noscript>";
                     echo "</form>";
                     ?>
-                    <div style='margin:0 auto; font-weight:bold; width:100%; text-align:center;'><?php _e("Please wait, you will be redirected to paypal shortly!","com_shop"); ?></div>
+                    <div style='margin:0 auto; font-weight:bold; width:100%; text-align:center;'><?php _e("Please wait, you will be redirected to paypal shortly!", "com_shop"); ?></div>
                     <script type='text/javascript'>document.paypalfrm.submit();</script>
 
                     <?php
@@ -206,16 +207,16 @@ if (!function_exists('paypal_init')) {
                     if ($this->check_ipn_request_is_valid($order)) {
 
                         header('HTTP/1.1 200 OK');
-	
+
                         switch (strtolower($_POST['payment_status'])) {
                             case 'completed' :
-							
+
                                 // Payment completed
                                 $res->order_status = "completed";
                                 break;
-								
-							case "pending":
-								 $res->order_status = "on-hold";
+
+                            case "pending":
+                                $res->order_status = "on-hold";
                                 break;
                             case 'denied' :
                             case 'expired' :
@@ -252,7 +253,7 @@ if (!function_exists('paypal_init')) {
                         'sslverify' => false,
                         'timeout' => 60,
                         'httpversion' => '1.1',
-						'headers' => array('connection','close')
+                        'headers' => array('connection', 'close')
                     );
 
 
@@ -267,8 +268,8 @@ if (!function_exists('paypal_init')) {
                     // Post back to get a response
                     $response = wp_remote_post($paypalurl, $params);
 
-						
-					
+
+
                     // Clean
                     unset($_POST['cmd']);
 
@@ -276,12 +277,12 @@ if (!function_exists('paypal_init')) {
                     if (!is_wp_error($response) && $response['response']['code'] >= 200 && $response['response']['code'] < 300 && (stripos($response['body'], "VERIFIED") !== false)) {
 
                         if (trim($_POST['receiver_email']) != trim($this->params->get("paypal_merchant_email", ''))) {
-						
+
                             return false;
                         }
-						
-				
-                        if ( (float) $_POST['mc_gross'] < (float) $order->get("order_total")) {
+
+
+                        if ((float) $_POST['mc_gross'] < (float) $order->get("order_total")) {
 
                             return false;
                         }
@@ -293,9 +294,9 @@ if (!function_exists('paypal_init')) {
 										INNER JOIN #_postmeta AS b ON a.post_id = b.post_id
 										WHERE a.meta_key = '_payment_method' AND a.meta_value = 'paypal' AND b.meta_key = '_tid' AND b.meta_value = '" . $db->secure($_POST['txn_id']) . "' AND a.post_id != " . (int) $order->ID);
 
-					
-					    if ((int) $db->loadResult() > 0) {
-					       return false;
+
+                        if ((int) $db->loadResult() > 0) {
+                            return false;
                         }
 
 
@@ -307,7 +308,7 @@ if (!function_exists('paypal_init')) {
                     return false;
                 }
 
-                static public function register_method($methods) {
+                static public function register(array $methods) {
                     $methods[] = new self();
 
                     return $methods;
@@ -315,7 +316,7 @@ if (!function_exists('paypal_init')) {
 
             }
 
-            add_filter('register_payment_class', 'paypal::register_method');
+            add_filter('register_payment_class', 'paypal::register');
         }
     }
 

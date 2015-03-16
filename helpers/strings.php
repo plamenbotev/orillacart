@@ -47,12 +47,6 @@ final class strings {
         return mb_stripos($string, $needle, $pos, encoding);
     }
 
-    static public function stripandencode($string) {
-
-
-        return htmlentities(stripslashes($string), ENT_QUOTES, encoding);
-    }
-
     static public function show($object, $default = null, $strip_slashes = true, $type = false) {
 
         if (!isset($object) || empty($object))
@@ -71,7 +65,7 @@ final class strings {
             if (!$strip_slashes)
                 return self::htmlentities($object);
             else
-                return self::stripAndEncode($object);
+                return self::htmlentities($object);
         }
 
 

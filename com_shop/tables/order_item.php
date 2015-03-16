@@ -37,7 +37,7 @@ class order_itemTable extends table {
         return parent::store($safe_insert);
     }
 
-    public function load($id) {
+    public function load($id=null) {
         parent::load($id);
 
         if (!empty($this->stockrooms)) {

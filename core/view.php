@@ -2,7 +2,7 @@
 
 defined('_VALID_EXEC') or die('access denied');
 
-abstract class view extends app_object {
+abstract class view extends BObject {
 
     protected $_name = null;
     protected $_models = array();
@@ -79,7 +79,7 @@ abstract class view extends app_object {
 
         $obj = new $viewClass();
         if (method_exists($obj, 'setApp'))
-            $obj->setApp(Factory::getApplication($prefix));
+            $obj->setApp(Factory::getComponent($prefix));
         if (method_exists($obj, 'init'))
             $obj->init();
 
@@ -89,24 +89,24 @@ abstract class view extends app_object {
     }
 
     public function setMessage($msg, $type = 'info') {
-        Factory::getApplication()->setMessage($msg, $type);
+        Factory::getComponent()->setMessage($msg, $type);
     }
 
     public function __construct() {
 
         list($app, $type) = explode("view", strtolower(get_class($this)));
 
-        $this->_app = Factory::getApplication($app);
+        $this->_app = Factory::getComponent($app);
 
 
         $this->_name = preg_replace("/(view)$/i", "", strtolower(get_class($this)));
     }
 
-    public function app() {
+    final public function app() {
         return $this->_app;
     }
 
-    public function setModel(model $model) {
+	final public function setModel(model $model) {
 
         if ($model instanceof model) {
 
@@ -116,7 +116,7 @@ abstract class view extends app_object {
         return false;
     }
 
-    protected function getModel($model) {
+    final protected function getModel($model) {
 
         if (array_key_exists(strtolower($model . "model"), $this->_models))
             return $this->_models[strtolower($model . "model")];
@@ -124,11 +124,11 @@ abstract class view extends app_object {
         return false;
     }
 
-    private function __CLONE() {
+    private function __clone() {
         
     }
 
-    public function assign() {
+    final public function assign() {
 
 
 
@@ -172,7 +172,7 @@ abstract class view extends app_object {
         return false;
     }
 
-    public function assignRef($key, &$val) {
+    final public function assignRef($key, &$val) {
         if (is_string($key) && substr($key, 0, 1) != '_') {
             $this->$key = & $val;
             return true;
@@ -181,29 +181,15 @@ abstract class view extends app_object {
         return false;
     }
 
-    public function display($tpl = 'default') {
-
-        $app = $this->app();
-
-        if (Framework::is_admin() && !request::is_internal() && !Request::is_ajax()) {
-            echo "<div class='wrap'>";
-            $bar = toolbar::getInstance('toolbar');
-
-            echo $bar->render();
-        }
-
-
-        $this->loadTemplate($tpl);
-        if (Framework::is_admin() && !request::is_internal() && !Request::is_ajax()) {
-            echo "</div>";
-        }
+    public function display() {
+			        
     }
 
     public function loadTemplate($tpl = 'default') {
 
         static $overrides = array();
-        
-        do_action("view_display",get_class($this),$tpl);
+
+        do_action("view_display", get_class($this), $tpl);
 
         $paths = array();
 
@@ -227,15 +213,15 @@ abstract class view extends app_object {
             $paths[] = get_stylesheet_directory() . DS . "com_" . $com . "_" . $this->app()->getMode() . $view_path;
 
 
-            $paths = (array) apply_filters('override_' . $com, $paths);
+            $paths = (array) apply_filters('override_' . $com."_".$this->app()->getMode(), $paths);
 
 
             $overrides[$com] = (array) $paths;
         }
 
         $paths = array_reverse($paths);
-       
-        $paths = (array) apply_filters('edit_template_paths_' . $com, $paths);
+
+        $paths = (array) apply_filters('edit_template_paths_' . $com."_".$this->app()->getMode(), $paths);
 
         $the_path = null;
 
@@ -264,6 +250,10 @@ abstract class view extends app_object {
         }
 
         throw new Exception("template:" . $tpl . __(" file cant be located!", "com_shop"));
+    }
+
+    protected function escape($val) {
+        return strings::htmlentities($val);
     }
 
 }

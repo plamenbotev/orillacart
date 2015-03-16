@@ -7,14 +7,14 @@ class order {
         if (!term_exists($status, 'order_status'))
             return false;
 
-        $order = Factory::getApplication('shop')->getTable('order')->load($id);
+        $order = Factory::getComponent('shop')->getTable('order')->load($id);
         if (!$order->pk())
             return false;
 
         $ok = true;
         if ($order->payment_method && !has_term($status, 'order_status', (int) $id)) {
 
-            $methods = Factory::getApplication('shop')->getHelper('cart')->get_payment_methods();
+            $methods = Factory::getComponent('shop')->getHelper('cart')->get_payment_methods();
             foreach ((array) $methods as $method) {
                 if ($method instanceof $order->payment_method && method_exists($method, 'change_order_state')) {
 
@@ -43,12 +43,12 @@ class order {
                     throw new Exception($db->getErrorString());
                 }
 
-                $p = Factory::getApplication('shop')->getTable('product');
-                $oi = Factory::getApplication('shop')->getTable('order_item');
-				$items = $db->loadObjectList();
-				
+                $p = Factory::getComponent('shop')->getTable('product');
+                $oi = Factory::getComponent('shop')->getTable('order_item');
+                $items = $db->loadObjectList();
+
                 foreach ($items as $item) {
-					
+
                     if ($item->access_granted != '0000-00-00 00:00:00' && !empty($item->access_granted))
                         continue;
 
@@ -68,10 +68,7 @@ class order {
                     $db->setQuery("UPDATE #_shop_order_attribute_item SET expires = '" . $expiry . "' WHERE section='file' AND order_item_id = " . $item->order_item_id);
 
                     $oi->store();
-					
-
                 }
-				
             }
 
             if ($old != $status)
@@ -158,7 +155,7 @@ class order {
 
     public function get_order($id) {
 
-        $row = Factory::getApplication('shop')->getTable('order')->load($id);
+        $row = Factory::getComponent('shop')->getTable('order')->load($id);
 
         if (!$row->pk())
             return false;
@@ -168,14 +165,14 @@ class order {
 
     public function format_shipping($id) {
         $data = $this->get_order($id);
-        $helper = Factory::getApplication('shop')->getHelper('customer');
+        $helper = Factory::getComponent('shop')->getHelper('customer');
 
         return $helper->format_shipping($data);
     }
 
     public function get_order_shipping($id = null) {
 
-        $fields = Factory::getApplication('shop')->getHelper('customer')->get_shipping_fields();
+        $fields = Factory::getComponent('shop')->getHelper('customer')->get_shipping_fields();
 
 
         if (!$id)
@@ -199,7 +196,7 @@ class order {
 
     public function get_order_billing($id = null) {
 
-        $fields = Factory::getApplication('shop')->getHelper('customer')->get_billing_fields();
+        $fields = Factory::getComponent('shop')->getHelper('customer')->get_billing_fields();
 
         if (!$id)
             return $fields;
@@ -223,7 +220,7 @@ class order {
 
     public function format_billing($id) {
         $data = $this->get_order($id);
-        $helper = Factory::getApplication('shop')->getHelper('customer');
+        $helper = Factory::getComponent('shop')->getHelper('customer');
 
         return $helper->format_billing($data);
     }
@@ -488,7 +485,7 @@ class order {
 
 
         $country = $state = null;
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
         switch ($params->get('vatType')) {
             case '0':
             case '2':
@@ -528,7 +525,7 @@ class order {
 
             $pid = (int) $row->pid;
             $qty = (int) $row->qty;
-            $product = Factory::getApplication('shop')->getTable('product')->load($pid);
+            $product = Factory::getComponent('shop')->getTable('product')->load($pid);
 
             $props = array();
             $files = array();
@@ -544,7 +541,7 @@ class order {
             $rates = array();
 
 
-            if (( Factory::getApplication('shop')->getParams()->get('vat') && $product->vat == 'global' ) || $product->vat == 'yes') {
+            if (( Factory::getComponent('shop')->getParams()->get('vat') && $product->vat == 'global' ) || $product->vat == 'yes') {
 
 
 
@@ -556,15 +553,15 @@ class order {
 
                 if ($product->tax_group_id) {
 
-                    $rates = Factory::getApplication('shop')->getHelper('tax')->get_matched_rates($country, $state, $product->tax_group_id);
+                    $rates = Factory::getComponent('shop')->getHelper('tax')->get_matched_rates($country, $state, $product->tax_group_id);
                 } else {
 
-                    $rates = Factory::getApplication('shop')->getHelper('tax')->get_matched_rates($country, $state);
+                    $rates = Factory::getComponent('shop')->getHelper('tax')->get_matched_rates($country, $state);
                 }
 
                 if (count($rates)) {
 
-                    $price = Factory::getApplication('shop')->getHelper('product_helper')->get_price($pid, $props, $files)->raw;
+                    $price = Factory::getComponent('shop')->getHelper('product_helper')->get_price($pid, $props, $files)->raw;
 
                     $price = $price * $qty;
 

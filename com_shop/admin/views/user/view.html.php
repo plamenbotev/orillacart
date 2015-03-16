@@ -11,11 +11,11 @@ class shopViewUser extends view {
     public function user_form() {
         $this->assign('billing', $this->row->get_billing());
         $this->assign('shipping', $this->row->get_shipping());
-        parent::display('user_form');
+         $this->loadTemplate('user_form');
     }
 
     public function country_states_select() {
-        parent::display('country_states_select');
+         $this->loadTemplate('country_states_select');
     }
 
 }

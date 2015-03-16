@@ -33,19 +33,19 @@
                 <tr>
                     <td  class="a-center" colspan="6">
                         <?php if (!empty($this->pagination)): ?>
-                           
-                                <ul class="pagination pagination-sm">
-                                    <?php foreach ((array) $this->pagination as $k => $v) : ?>
 
-                                        <?php if (strings::stripos($v, "current") !== false && strings::stripos($v, "<a") === false): ?>
-                                            <li class="active"><?php echo $v; ?></li>
-                                        <?php else: ?>
-                                            <li><?php echo $v; ?></li>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
+                            <ul class="pagination pagination-sm">
+                                <?php foreach ((array) $this->pagination as $k => $v) : ?> 
 
-                                </ul>
-                        
+                                    <?php if (strings::stripos($v, "current") !== false && strings::stripos($v, "<a") === false) : ?>
+                                        <li class="active"> <?php echo $v; ?></li>
+                                    <?php else: ?>
+                                        <li><?php echo $v; ?></li>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+
+                            </ul>
+
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -93,12 +93,14 @@
                         $c1++;
                     if ($file->order_item_files_count > 1)
                         $c2++;
+
                 endforeach;
                 ?>
             </tbody>
             <tfoot>
             </tfoot>
-        </table>
+            </ta
+            ble>
     </div>
 
     <form name="checkout"  method="post" class="checkout" action="<?php echo Route::get("component=shop&con=account"); ?>">
@@ -167,7 +169,7 @@
                 <div class="col-xs-12 text-right">
                     <button class="btn btn-success">
                         <span class="icon-ok"></span>
-                        <?php _e("Save", "com_shop"); ?>
+                        <?php _e("Save", "com_shop"); ?>      
                     </button>
                 </div>
             </div>

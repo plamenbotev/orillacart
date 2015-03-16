@@ -7,20 +7,20 @@ class shopViewGeneralsettings extends view {
     public function display() {
 
         $bar = toolbar::getInstance('toolbar', __('Settings', 'com_shop'), 'default', 'power-cord');
-        $bar->appendButton('Standard', 'save', __('save', 'com_shop'), 'document.adminForm.submit()', false, true);
+        $bar->appendButton('Standard', 'save', __('save', 'com_shop'), 'document.adminForm.submit()');
 
-        $mainframe = Factory::getMainFrame();
+        $Head = Factory::getHead();
 
         $uri = uri::getInstance();
 
         $this->assign('currenturl', $uri->toString(array('scheme', 'host', 'port', 'path', 'query')));
 
-        $mainframe->setPageTitle(__("Shop Settings", "com_shop"));
+        $Head->setPageTitle(__("Shop Settings", "com_shop"));
 
-        $mainframe->addStyle('jquery-bratbs-css', Factory::getApplication('shop')->getAssetsUrl() . "/btabs.style.css");
-        $mainframe->addScript('jquery-btabs-js', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.btabs.js");
+        $Head->addStyle('jquery-bratbs-css', Factory::getComponent('shop')->getAssetsUrl() . "/btabs.style.css");
+        $Head->addScript('jquery-btabs-js', Factory::getComponent('shop')->getAssetsUrl() . "/js/jquery.btabs.js");
 
-        $mainframe->addCustomHeadTag('generalsettings-display', '
+        $Head->addCustomHeadTag('generalsettings-display', '
         <script type=\'text/javascript\'>
             jQuery(function() {
                 jQuery("dl.tabs").btabs();
@@ -28,7 +28,7 @@ class shopViewGeneralsettings extends view {
         </script>
         ');
 
-        parent::display('settings');
+         $this->loadTemplate('settings');
     }
 
 }

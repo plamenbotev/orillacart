@@ -9,7 +9,7 @@ class treeBase {
     public $cat = null;
     public $db = null;
     public $taxonomy = null;
-    public $cpt = null;
+   
 
     // Constructor
 
@@ -19,7 +19,7 @@ class treeBase {
         $this->cat = $cat;
         $this->db = Factory::getDBO();
         $this->taxonomy = $taxonomy;
-        $this->cpt = $cpt;
+       
     }
 
     public function get_root_object() {
@@ -78,10 +78,10 @@ class treeBase {
                 SELECT * FROM `" . $this->xref . "` as a
 		INNER JOIN `#_term_taxonomy` as b ON b.term_id = a.category_child_id
                 INNER JOIN `#_terms` as c on c.term_id = b.term_id
-                WHERE b.taxonomy = '".$this->taxonomy."' AND b.parent = " . (int) $id . " ORDER BY a.position ASC
+                WHERE b.taxonomy = '" . $this->taxonomy . "' AND b.parent = " . (int) $id . " ORDER BY a.position ASC
                     ");
         }
-		
+
         if ($ret_resource)
             return clone $this->db;
 
@@ -222,7 +222,7 @@ class treeBase {
 
         $id = wp_insert_term($title, $this->taxonomy, array(
             'parent' => $parent,
-            'post_type' => $this->cpt
+            
         ));
 
         if (is_wp_error($id)) {

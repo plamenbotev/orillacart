@@ -5,21 +5,21 @@ class shopViewShortcodes extends view {
     public function shortcodes_head_data() {
 
         $used = $this->shortcodes;
-        $mainframe = Factory::getMainframe();
+        $Head = Factory::getHead();
         foreach ((array) $used as $code) {
             switch ($code) {
 
                 case "recent_products":
                 case "special_products":
                 case "on_sale_products":
-                    $mainframe->addscript('jquery');
-                    $mainframe->addscript('shop_helper', Factory::getApplication('shop')->getComponentUrl() . '/front/js/shop_helper.js');
-                    $mainframe->addstyle('bootstrap', Factory::getApplication('shop')->getAssetsUrl() . '/bootstrap.css');
-					$mainframe->addstyle('icons', Factory::getApplication('shop')->getAssetsUrl() . '/icons.css');
-					$mainframe->addstyle('bootstrap-buttons',Factory::getApplication('shop')->getAssetsUrl() . '/buttons.css');
-					$mainframe->addstyle('frontend-styles', Factory::getApplication('shop')->getAssetsUrl() . '/frontend-styles.css');
+                    $Head->addscript('jquery');
+                    $Head->addscript('shop_helper', Factory::getComponent('shop')->getComponentUrl() . '/front/js/shop_helper.js');
+                    $Head->addstyle('bootstrap', Factory::getComponent('shop')->getAssetsUrl() . '/bootstrap.css');
+                    $Head->addstyle('icons', Factory::getComponent('shop')->getAssetsUrl() . '/icons.css');
+                    $Head->addstyle('bootstrap-buttons', Factory::getComponent('shop')->getAssetsUrl() . '/buttons.css');
+                    $Head->addstyle('frontend-styles', Factory::getComponent('shop')->getAssetsUrl() . '/frontend-styles.css');
 
-                    $mainframe->addCustomHeadTag('ajaxurl', "
+                    $Head->addCustomHeadTag('ajaxurl', "
                 <script type='text/javascript'>
                     jQuery(function() { 
                     window.shop_helper.ajaxurl = '" . admin_url('admin-ajax.php') . "';
@@ -29,9 +29,9 @@ class shopViewShortcodes extends view {
 				
             ");
 
-                    Factory::getMainframe()->addscript("jquery-equalheights", Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.equalheights.js");
+                    Factory::getHead()->addscript("jquery-equalheights", Factory::getComponent('shop')->getAssetsUrl() . "/js/jquery.equalheights.js");
 
-                    Factory::getMainframe()->addCustomHeadTag('grid-equals-li', "<script type='text/javascript'>jQuery(function() { jQuery('ul#activeFilter_itemList').equalHeights(); jQuery('ul#activeFilter_itemList').equalWidths();  }); </script>");
+                    Factory::getHead()->addCustomHeadTag('grid-equals-li', "<script type='text/javascript'>jQuery(function() { jQuery('ul#activeFilter_itemList').equalHeights(); jQuery('ul#activeFilter_itemList').equalWidths();  }); </script>");
 
                     break;
             }

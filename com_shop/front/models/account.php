@@ -25,7 +25,7 @@ class accountModel extends Model {
         while ($q->have_posts()) {
             $q->the_post();
 
-            $orders[$c] = Factory::getApplication('shop')->getTable('order')->load(get_the_ID());
+            $orders[$c] = Factory::getComponent('shop')->getTable('order')->load(get_the_ID());
             $term_list = wp_get_post_terms(get_the_ID(), 'order_status', array("fields" => "names"));
             $orders[$c]->order_status = $term_list[0];
             $c++;
@@ -42,12 +42,14 @@ class accountModel extends Model {
         if (!$this->db->getResource()) {
             throw new Exception($this->db->getErrorString());
         }
-        return Factory::getApplication('shop')->getTable('order')->load((int) $this->db->loadResult());
+        return Factory::getComponent('shop')->getTable('order')->load((int) $this->db->loadResult());
     }
 
     public function update_account() {
 
-        $customer = Factory::getApplication('shop')->getHelper('customer');
+        $customer = Factory::getComponent('shop')->getHelper('customer');
+
+        $input = Factory::getApplication()->getInput();
 
         if ($customer->ship_to_billing()) {
             update_user_meta(get_current_user_id(), '_ship_to_billing', 1);
@@ -56,16 +58,16 @@ class accountModel extends Model {
         }
 
         while ($field = $customer->get_billing()->get_field()) {
-            if (!$field->validate($_POST)) {
-                Factory::getApplication('shop')->addError("(billing) " . $field->get_error_msg());
+            if (!$field->validate($input->post)) {
+                Factory::getComponent('shop')->addError("(billing) " . $field->get_error_msg());
                 continue;
             }
             update_user_meta(get_current_user_id(), "_" . $field->get_name(), $field->get_value());
         }
 
         while ($field = $customer->get_shipping()->get_field()) {
-            if (!$field->validate($_POST)) {
-                Factory::getApplication('shop')->addError("(shipping) " . $field->get_error_msg());
+            if (!$field->validate($input->post)) {
+                Factory::getComponent('shop')->addError("(shipping) " . $field->get_error_msg());
                 continue;
             }
             update_user_meta(get_current_user_id(), "_" . $field->get_name(), $field->get_value());

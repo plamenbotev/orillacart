@@ -11,7 +11,7 @@ class paymentModel extends model {
             throw new Exception($this->db->getErrorString());
         }
 
-        return (array) array_map('stripslashes', $this->db->loadArray());
+        return (array) $this->db->loadArray();
     }
 
     public function list_methods() {

@@ -4,9 +4,9 @@
     <?php if (!count($this->all_attributes)) { ?>
 
 
-        <h4>To create variations, you firstly need to create all needed attributes and associate all needed attribute sets!</h4>
+        <h4><?php _e("To create variations, you firstly need to create all needed attributes and associate all needed attribute sets!","com_shop"); ?></h4>
     <?php } else { ?>
-  
+
         <fieldset class="panelform">
             <ul class="adminformlist">
                 <li>
@@ -24,14 +24,14 @@
 
                 <?php foreach ((array) $this->all_attributes as $att) { ?>
                     <li>
-                        <label for="property_<?php echo $att->attribute_id; ?>"> <?php echo strings::stripAndEncode($att->attribute_name); ?></label>
+                        <label for="property_<?php echo $att->attribute_id; ?>"> <?php echo strings::htmlentities($att->attribute_name); ?></label>
                         <select id="property_<?php echo $att->attribute_id; ?>" name='property[<?php echo $att->attribute_id; ?>]' class='property' >
                             <option></option>
                             <?php
                             if (!empty($att->properties)) {
                                 foreach ((array) $att->properties as $prop) {
                                     ?>
-                                    <option value='<?php echo $prop->property_id; ?>'><?php echo strings::stripAndEncode($prop->property_name); ?></option>
+                                    <option value='<?php echo $prop->property_id; ?>'><?php echo strings::htmlentities($prop->property_name); ?></option>
                                 <?php } ?>
                             </select>
                         <?php } ?>
@@ -45,12 +45,23 @@
 
 
 
-        <button class="btn btn-success" onclick=" return jsShopAdminHelper.attribute.create_variation();">
+        <button class="btn btn-success btn-save-variation" onclick=" return jsShopAdminHelper.attribute.create_variation();">
             <i class="icon-new"></i>
-            <?php _e("Save","com_shop"); ?>
+            <?php _e("Save", "com_shop"); ?>
         </button>
 
 
 
+
     <?php } ?>
+
+
+    <div id="variations_manager_container">
+        <?php if (!empty($this->variations)): ?>
+            <?php $this->loadTemplate("variations_manager"); ?>
+        <?php endif; ?>
+    </div>
+
+
+
 </dd>

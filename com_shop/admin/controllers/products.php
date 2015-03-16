@@ -18,8 +18,11 @@ class shopControllerProducts extends controller {
         if (!request::is_internal()) {
             die();
         }
-        $col = request::getWord('column');
-        $id = request::getInt('id');
+
+        $input = Factory::getApplication()->getInput();
+
+        $col = $input->get('column', null, "WORD");
+        $id = $input->get('id', 0, "INT");
 
 
 
@@ -46,8 +49,9 @@ class shopControllerProducts extends controller {
 
         $model = $this->getModel('product_admin');
 
+        $input = Factory::getApplication()->getInput();
 
-        $ids = (array) array_map('intval', (array) request::getVar('ids', array()));
+        $ids = (array) array_map('intval', (array) $input->get('ids', array(), "ARRAY"));
 
 
         $model->deleteProducts($ids);
@@ -81,7 +85,10 @@ class shopControllerProducts extends controller {
         if (!request::is_internal())
             throw new Exception(__("access denied", "com_shop"));
         $model = $this->getModel('product_admin');
-        $model->save($_POST);
+
+        $input = Factory::getApplication()->getInput();
+
+        $model->save($input->post);
     }
 
     protected function save_variation() {
@@ -89,7 +96,10 @@ class shopControllerProducts extends controller {
         if (!request::is_internal())
             throw new Exception(__("access denied", "com_shop"));
         $model = $this->getModel('product_admin');
-        $model->save($_POST);
+
+        $input = Factory::getApplication()->getInput();
+
+        $model->save($input->post);
     }
 
     protected function meta_boxes() {
@@ -99,12 +109,21 @@ class shopControllerProducts extends controller {
         $this->getView('product');
         global $post;
 
+
+        $app = Factory::getComponent("shop");
+
+
+        Model::addIncludePath($app->getName(), $app->getComponentRootPath() . "/front/models");
+
         $model = $this->getModel('product_admin');
+        $front_model = $this->getModel('product');
+
         $shipping_model = $this->getModel('shipping');
         $pid = (int) $post->ID;
         $stock_model = $this->getModel('stockroom');
         $att_model = $this->getModel('attributes');
         $cat_model = $this->getModel('category');
+
         $templates = $cat_model->getProductTemplates();
 
         $this->view->assign('templates', $templates);
@@ -123,16 +142,24 @@ class shopControllerProducts extends controller {
         }
 
         $row = new stdClass();
-        $row->product = Factory::getApplication('shop')->getTable('product')->load($pid);
+        $row->product = Factory::getComponent('shop')->getTable('product')->load($pid);
+
+        if ($front_model->is_variable($pid)) {
+            $variations = $front_model->get_child_products($pid);
+
+            $this->view->assign("variations", $variations);
+        }
 
         if ($post->post_parent) {
 
             $this->view->assign('variations_assoc', $model->get_variation_properties($pid));
 
-            $parent = Factory::getApplication('shop')->getTable('product')->load($post->post_parent);
+            $parent = Factory::getComponent('shop')->getTable('product')->load($post->post_parent);
 
             $this->view->assign('parent_id', $parent->post->ID);
             $this->view->assign('parent_title', $parent->post->post_title);
+
+
             unset($parent);
         } else {
             $this->view->assign('parent_id', '');
@@ -154,7 +181,7 @@ class shopControllerProducts extends controller {
         $this->view->assign('row', $row);
         $this->view->assign('brands', $brands_model->getAllBrands());
         $this->view->assign('shipping_groups', $shipping_model->getAllShippingGroups());
-        $this->view->assignref('settings', Factory::getApplication('shop')->getParams());
+        $this->view->assignref('settings', Factory::getComponent('shop')->getParams());
 
         $path = wp_upload_dir();
         $this->view->assign('images_path', $path['baseurl']);
@@ -170,19 +197,108 @@ class shopControllerProducts extends controller {
 
     public function create_variation() {
 
+        $app = Factory::getComponent("shop");
+        Model::addIncludePath($app->getName(), $app->getComponentRootPath() . "/front/models");
+
         $model = $this->getModel('product_admin');
+        $front_model = $this->getModel('product');
 
-        $props = array_map('intval', (array) $_POST['property']);
-        $product = request::getInt('parent', null);
+        $input = Factory::getApplication()->getInput();
 
+        $props = array_map('intval', (array) $input->get('property', array(), "ARRAY"));
+        $product = $input->get('parent', null, "INT");
+        $this->getView('product');
         $res = new stdClass();
 
         try {
             $model->create_variation($product, $props);
             $res->msg = __("Variation was created.", "com_shop");
+
+            if ($front_model->is_variable($product)) {
+                $variations = $front_model->get_child_products($product);
+
+                $this->view->assign("variations", $variations);
+
+                ob_start();
+
+                $this->view->loadTemplate("variations_manager");
+
+                $res->variations = ob_get_contents();
+                ob_end_clean();
+            }
         } catch (Exception $e) {
             $res->msg = $e->getMessage();
         }
+
+
+
+
+
+
+
+        header("HTTP/1.0 200 OK");
+        header('Content-type: text/json; charset=utf-8');
+        header("Cache-Control: no-cache, must-revalidate");
+        header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
+        header("Pragma: no-cache");
+
+        echo json_encode($res);
+        die();
+    }
+
+    public function delete_variation() {
+
+        $app = Factory::getComponent("shop");
+        Model::addIncludePath($app->getName(), $app->getComponentRootPath() . "/front/models");
+
+        $model = $this->getModel('product_admin');
+        $front_model = $this->getModel('product');
+
+        $input = Factory::getApplication()->getInput();
+
+
+        $product = $input->get('id', null, "INT");
+
+        $post = get_post($product);
+        $ok = false;
+
+        if ($post->post_parent) {
+            if (wp_delete_post($product, $true) !== false) {
+                $ok = true;
+            }
+        }
+
+        $this->getView('product');
+        $res = new stdClass();
+
+        try {
+            if ($ok) {
+                $res->msg = __("Variation was deleted.", "com_shop");
+
+                if ($front_model->is_variable($post->post_parent)) {
+                    $variations = $front_model->get_child_products($post->post_parent);
+
+                    $this->view->assign("variations", $variations);
+
+                    ob_start();
+
+                    $this->view->loadTemplate("variations_manager");
+
+                    $res->variations = ob_get_contents();
+                    ob_end_clean();
+                } else {
+                    $res->variations = "";
+                }
+            } else {
+                $res->msg = __("Error deleteing the selected variation.", "com_shop");
+            }
+        } catch (Exception $e) {
+            $res->msg = $e->getMessage();
+        }
+
+
+
+
 
 
 

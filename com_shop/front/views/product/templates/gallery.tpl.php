@@ -9,7 +9,7 @@
             foreach ((array) $this->row->images as $k => $i) {
                 ?>
                 <li>
-                    <a href="<?php echo $i->image; ?>" id='image-<?php echo $k; ?>' onmouseover="<?php echo apply_filters("com_shop_product_gallery_onmouseover","gallery(this, '".$i->medium."');",$this,$i); ?>" rel="" ><img src="<?php echo $i->mini; ?>"  alt="" /></a>
+                    <a href="<?php echo $i->image; ?>" id='image-<?php echo $k; ?>' onmouseover="<?php echo apply_filters("com_shop_product_gallery_onmouseover", "gallery(this, '" . $i->medium . "');", $this, $i); ?>" rel="" ><img src="<?php echo $i->mini; ?>"  alt="" /></a>
                 </li>
             <?php } ?>
         </ul>

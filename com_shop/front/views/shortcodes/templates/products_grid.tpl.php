@@ -32,14 +32,11 @@
                     </div>
                 </li>
 
+
             <?php endwhile; // end of the loop.    ?>
 
         </ul></div>
 
     <?php
 
-
-
-
-
-endif;
+        endif;  

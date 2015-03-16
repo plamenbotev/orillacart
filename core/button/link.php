@@ -4,8 +4,13 @@ class buttonLink extends button {
 
     protected $name = 'Link';
 
-    function fetchButton($type = 'Link', $name = 'back', $text = '', $url = null) {
-        //$text	= JText::_($text);
+    public function fetchButton() {
+       
+	   $name = func_get_arg(0)?func_get_arg(0):"Back";
+	   $text = func_get_arg(1)?func_get_arg(1):"";
+	   $url = func_get_arg(2)?func_get_arg(2):null;
+	   
+	   
         $class = $this->fetchIconClass($name);
         $doTask = $this->getCommand($url);
 
@@ -20,8 +25,8 @@ class buttonLink extends button {
         return $html;
     }
 
-    function fetchId($name) {
-        return $this->parent->getName() . '-' . $name;
+    public function fetchId() {
+        return $this->parent->getName() . '-' . (func_get_arg(0)?func_get_arg(0):"");
     }
 
     private function getCommand($url) {

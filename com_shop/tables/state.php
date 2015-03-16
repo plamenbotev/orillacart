@@ -25,9 +25,6 @@ class stateTable extends table {
 
         if ($result = $this->db->nextObject()) {
 
-            foreach ($result as $k => $v) {
-                $result->{$k} = stripslashes($v);
-            }
 
             $this->is_empty = false;
             return $this->bind($result);

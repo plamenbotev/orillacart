@@ -1,5 +1,10 @@
 <?php
 
+/*
+ * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
+ * @license     GNU General Public License version 2 or later; see LICENSE
+ */
+
 class ArrayHelper {
 
     static public function toInt($array, $default = null) {
@@ -162,7 +167,7 @@ class ArrayHelper {
         }
 
         foreach ($myArray as $k => $myvalue) {
-            $myArray[$k] =  serialize($myvalue);
+            $myArray[$k] = serialize($myvalue);
         }
 
         $myArray = array_unique($myArray);

@@ -40,7 +40,7 @@
                                         <td>
                                             <p><?php _e('Order key: ', 'com_shop'); ?> <?php echo $this->order['post_password']; ?></p>
                                         </td>
-                                        
+
                                     </tr>
                                     <tr>
                                         <td><table width="650" cellspacing="0" cellpadding="0" border="0">
@@ -54,7 +54,7 @@
                                                 <tbody>
                                                     <tr>
                                                         <td valign="top" style="font-size:12px; padding:7px 9px 9px 9px; border-left:1px solid #EAEAEA; border-bottom:1px solid #EAEAEA; border-right:1px solid #EAEAEA;">
-                                                            <?php echo Factory::getApplication('shop')->getHelper('order')->format_billing($this->order['ID']); ?>
+                                                            <?php echo Factory::getComponent('shop')->getHelper('order')->format_billing($this->order['ID']); ?>
                                                         </td>
                                                         <td></td>
                                                         <td valign="top" style="font-size:12px; padding:7px 9px 9px 9px; border-left:1px solid #EAEAEA; border-bottom:1px solid #EAEAEA; border-right:1px solid #EAEAEA;">
@@ -67,28 +67,28 @@
                                                 </tbody>
                                             </table>
                                             <br>
-                                            <?php if(Factory::getApplication("shop")->getParams()->get("shipping")){ ?>
-                                            <table width="650" cellspacing="0" cellpadding="0" border="0">
-                                                <thead>
-                                                    <tr>
-                                                        <th width="325" bgcolor="#EAEAEA" align="left" style="font-size:13px; padding:5px 9px 6px 9px; line-height:1em;"><?php _e("Shipping Information:", "com_shop"); ?></th>
-                                                        <th width="10"></th>
-                                                        <th width="325" bgcolor="#EAEAEA" align="left" style="font-size:13px; padding:5px 9px 6px 9px; line-height:1em;"><?php _e("Shipping Method:", "com_shop"); ?></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <tr>
-                                                        <td valign="top" style="font-size:12px; padding:7px 9px 9px 9px; border-left:1px solid #EAEAEA; border-bottom:1px solid #EAEAEA; border-right:1px solid #EAEAEA;">
-                                                            <?php echo Factory::getApplication('shop')->getHelper('order')->format_shipping($this->order['ID']); ?>
-                                                        </td>
-                                                        <td></td>
-                                                        <td valign="top" style="font-size:12px; padding:7px 9px 9px 9px; border-left:1px solid #EAEAEA; border-bottom:1px solid #EAEAEA; border-right:1px solid #EAEAEA;"> 
-                                                            <?php echo strings::htmlentities($this->order['shipping_name']); ?> - <?php echo strings::htmlentities($this->order['shipping_rate_name']); ?>
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                            <br>
+                                            <?php if (Factory::getComponent("shop")->getParams()->get("shipping")) { ?>
+                                                <table width="650" cellspacing="0" cellpadding="0" border="0">
+                                                    <thead>
+                                                        <tr>
+                                                            <th width="325" bgcolor="#EAEAEA" align="left" style="font-size:13px; padding:5px 9px 6px 9px; line-height:1em;"><?php _e("Shipping Information:", "com_shop"); ?></th>
+                                                            <th width="10"></th>
+                                                            <th width="325" bgcolor="#EAEAEA" align="left" style="font-size:13px; padding:5px 9px 6px 9px; line-height:1em;"><?php _e("Shipping Method:", "com_shop"); ?></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td valign="top" style="font-size:12px; padding:7px 9px 9px 9px; border-left:1px solid #EAEAEA; border-bottom:1px solid #EAEAEA; border-right:1px solid #EAEAEA;">
+                                                                <?php echo Factory::getComponent('shop')->getHelper('order')->format_shipping($this->order['ID']); ?>
+                                                            </td>
+                                                            <td></td>
+                                                            <td valign="top" style="font-size:12px; padding:7px 9px 9px 9px; border-left:1px solid #EAEAEA; border-bottom:1px solid #EAEAEA; border-right:1px solid #EAEAEA;"> 
+                                                                <?php echo strings::htmlentities($this->order['shipping_name']); ?> - <?php echo strings::htmlentities($this->order['shipping_rate_name']); ?>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                                <br>
                                             <?php } ?>    
 
                                             <?php if (!empty($this->files)) { ?>
@@ -154,8 +154,8 @@
 
                                                     <tbody bgcolor="<?php echo $c % 2 == 0 ? '#F6F6F6' : ''; ?>" >
                                                         <tr id="order-item-row-92255">
-                                                            <td valign="top" align="left" style="padding:3px 9px"><strong><?php echo strings::stripAndEncode($item->order_item_name); ?></strong></td>
-                                                            <td valign="top" align="left" style="padding:3px 9px"><?php echo strings::stripAndEncode($item->order_item_sku); ?></td>
+                                                            <td valign="top" align="left" style="padding:3px 9px"><strong><?php echo strings::htmlentities($item->order_item_name); ?></strong></td>
+                                                            <td valign="top" align="left" style="padding:3px 9px"><?php echo strings::htmlentities($item->order_item_sku); ?></td>
                                                             <td valign="top" align="center" style="padding:3px 9px">  <?php echo $item->product_quantity; ?> </td>
                                                             <td valign="top" align="right" style="padding:3px 9px"><?php echo $this->price->format(($item->product_quantity * $item->product_item_price), $this->order['currency_sign']); ?></td>
                                                         </tr>
@@ -163,7 +163,7 @@
                                                             <tr>
                                                                 <td valign="top" align="left" style="padding:3px 9px"><strong>
                                                                         <em>
-                                                                            <?php echo strings::stripandencode($p->section_name); ?>
+                                                                            <?php echo strings::htmlentities($p->section_name); ?>
                                                                             <?php if ($p->section_price > 0) { ?> 
                                                                                 (&nbsp;<?php echo $p->section_oprand . " " . $this->price->format($p->section_price, $this->order['currency_sign']); ?> )</td>
                                                                             <?php } ?>
@@ -189,7 +189,7 @@
                                                     <?php foreach ((array) $this->taxes as $tax) { ?>
                                                         <tr class="tax">
                                                             <td colspan="4" class="a-right">
-                                                                <?php _e(strings::stripAndEncode($tax->name), 'com_shop'); ?>
+                                                                <?php _e(strings::htmlentities($tax->name), 'com_shop'); ?>
                                                             </td>
                                                             <td class="last a-right">
                                                                 <span class="price">

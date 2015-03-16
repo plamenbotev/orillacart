@@ -24,38 +24,32 @@ class shopControllerStockroom extends controller {
             $opts->start = (int) $_GET['page'] * $opts->limit;
         }
 
-        $this->view->assignref('settings', Factory::getApplication('shop')->getParams());
-        $this->view->assignref('db', clone $model->listStockRooms($opts));
+        $this->view->assign('settings', Factory::getComponent('shop')->getParams());
+        $this->view->assign('db', clone $model->listStockRooms($opts));
 
 
         parent::display();
     }
 
-    protected function addnew($row = null) {
+    protected function addnew() {
 
         $this->getView('stockroom');
         $model = $this->getModel('stockroom');
         $country_model = $this->getModel('country');
 
-        $row = Factory::getApplication('shop')->getTable('stockroom')->load(Request::getInt('id', null));
+        $input = Factory::getApplication()->getInput();
 
-        $tax_model = $this->getModel('tax');
+        $row = Factory::getComponent('shop')->getTable('stockroom')->load($input->get('id', null, "INT"));
 
-        $this->view->assign('tax_groups', (array) $tax_model->getAllGroups());
-
-        if ($row->country_code) {
-            $states = $country_model->getStatesByCountry($row->country_code);
-        }
-
-        $all_countries = $country_model->getCountryList(true);
-
-
-        $this->view->assign('countries', $all_countries->loadObjectList());
-        $this->view->assign('states', $states);
-
+		//the form is loaded from the save task, because the save was not successful.
+		//That is why we should prefill the form with the provided details from the $_POST.
+		if($input->get("task",null,"CMD") == "save"){
+			$row->bind($input->post);
+		}
+      
         $this->view->assign('row', $row);
 
-        $this->view->assignref('settings', Factory::getApplication('shop')->getParams());
+        $this->view->assign('settings', Factory::getComponent('shop')->getParams());
 
         parent::display('addnew');
     }
@@ -91,20 +85,20 @@ class shopControllerStockroom extends controller {
 
             if ($res) {
 
-                Factory::getApplication('shop')->setMessage(__("Success", 'com_shop'));
+                Factory::getComponent('shop')->setMessage(__("Success", 'com_shop'));
                 $this->execute();
                 return;
             } else {
 
 
-                Factory::getApplication('shop')->setMessage(__("error deleteing", 'com_shop'));
+                Factory::getComponent('shop')->setMessage(__("error deleteing", 'com_shop'));
                 $this->execute();
                 return;
             }
         } else {
 
 
-            Factory::getApplication('shop')->setMessage(__("Nothing selected", 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__("Nothing selected", 'com_shop'));
             $this->execute();
             return;
         }
@@ -113,23 +107,26 @@ class shopControllerStockroom extends controller {
     protected function save() {
 
         $row = null;
+
+        $input = Factory::getApplication()->getInput();
+
         try {
-           
+
             if (isset($_POST['id']) && is_numeric($_POST['id']) && !empty($_POST['id'])) {
-                $row = Factory::getApplication('shop')->getTable('stockroom')->load((int) $_POST['id'])->bind($_POST)->store();
+                $row = Factory::getComponent('shop')->getTable('stockroom')->load($input->get('id', 0, "INT"))->bind($input->post)->store();
             } else {
-				if(isset($_POST['id'])){
-					unset($_POST['id']);
-				}
-                $row = Factory::getApplication('shop')->getTable('stockroom')->bind($_POST)->store();
+                if (isset($_POST['id'])) {
+                    unset($_POST['id']);
+                }
+                $row = Factory::getComponent('shop')->getTable('stockroom')->bind($input->post)->store();
             }
 
-            Factory::getApplication('shop')->setMessage(__('Stockroom saved', 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__('Stockroom saved', 'com_shop'));
         } catch (Exception $e) {
 
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
 
-            $this->execute('addnew', $row);
+            $this->execute('addnew');
             return;
         }
 
@@ -167,28 +164,30 @@ class shopControllerStockroom extends controller {
         $model = $this->getModel('stockroom');
         $this->getView('stockroom');
 
-        if (request::getVar('action', null, 'POST', 'string') == 'save') {
+        $input = Factory::getApplication()->getInput();
+
+        if ($input->get('action', null, 'CMD') == 'save') {
             try {
 
                 $model->updateStocks();
             } catch (Exception $e) {
 
-                Factory::getApplication('shop')->setMessage($e->getMessage());
+                Factory::getComponent('shop')->setMessage($e->getMessage());
             }
 
-            Factory::getApplication('shop')->setMessage(__("Amounts updated", 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__("Amounts updated", 'com_shop'));
         }
 
 
         $_SESSION['filter']['cats'] = array();
 
-        $filter = request::getVar('filter', array(), 'POST', 'array');
+        $filter = $input->get('filter', array(), 'ARRAY');
 
-        $_SESSION['filter']['cats'] = $filter['cats'];
+        $_SESSION['filter']['cats'] = isset($filter['cats'])?$filter['cats']:array();
 
 
         //reset the pagination if the filter is used
-        if (!$_POST['action'])
+        if (!$input->get("action", null, "CMD"))
             unset($_POST['limitstart']);
 
 
@@ -200,7 +199,7 @@ class shopControllerStockroom extends controller {
 
         $total = (int) $res->found_rows();
 
-        $pagination = new paginator($total, request::getInt('limitstart', 0), request::getInt('limit', 10));
+        $pagination = new paginator($total, $input->get('limitstart', 0, "INT"), $input->get('limit', 10, "INT"));
         $pagination->url = "javascript:void(0);";
         $pagination->onclick = "document.adminForm.action.value='paginate';document.adminForm.limitstart.value=%s;document.adminForm.submit();return false";
 

@@ -17,14 +17,15 @@ class ordersModel extends Model {
     }
 
     public function list_orders() {
+        $input = Factory::getApplication()->getInput();
 
-        $start = request::getInt('limitstart', 0);
-        $limit = request::getInt('limit', 10);
+        $start = $input->get('limitstart', 0, "INT");
+        $limit = $input->get('limit', 10, "INT");
 
         $w = array();
 
-        $filter_by_no = request::getInt('filter', null, 'POST');
-        $filter_by_status = request::getWord('filter_status', null, 'POST');
+        $filter_by_no = $input->get('filter', null, 'INT');
+        $filter_by_status = $input->get('filter_status', null, 'WORD');
         $w[] = "1";
         if ($filter_by_no) {
             $w[] = "order_id = " . $filter_by_no;
@@ -44,14 +45,9 @@ class ordersModel extends Model {
 
         $rows = array();
 
-        $order = Factory::getApplication('shop')->getTable("order");
+        $order = Factory::getComponent('shop')->getTable("order");
 
         while ($row = $this->db->nextObject()) {
-
-            foreach ($row as $k => $v) {
-                $row->{$k} = stripslashes($v);
-            }
-
 
             $rows[] = clone $order->reset()->bind($row);
         }
@@ -101,7 +97,7 @@ class ordersModel extends Model {
 
             foreach ((array) $items[$id] as $item) {
 
-                $sr = json_decode(stripslashes($item->stockrooms), true);
+                $sr = json_decode($item->stockrooms, true);
 
                 if (empty($sr))
                     continue;
@@ -134,7 +130,7 @@ class ordersModel extends Model {
             foreach ((array) $props[$id] as $prop) {
 
 
-                $sr = json_decode(stripslashes($item->stockrooms), true);
+                $sr = json_decode($item->stockrooms, true);
                 if (empty($sr))
                     continue;
 
@@ -180,7 +176,7 @@ class ordersModel extends Model {
     public function load_order($id) {
         $order = array();
 
-        $order['order'] = Factory::getApplication('shop')->getTable('order')->load($id);
+        $order['order'] = Factory::getComponent('shop')->getTable('order')->load($id);
 
         $this->db->setQuery("SELECT * FROM #_shop_order_item WHERE order_id =  " . $order['order']->pk());
         $db = Factory::getDBO();
@@ -215,7 +211,7 @@ class ordersModel extends Model {
 
     public function update_user_details($id, $data) {
 
-        $row = Factory::getApplication('shop')->getTable('order')->load($id);
+        $row = Factory::getComponent('shop')->getTable('order')->load($id);
 
         if (!empty($data['customer_phone'])) {
             $row->customer_phone = $data['customer_phone'];
@@ -248,7 +244,7 @@ class ordersModel extends Model {
 
             $remove_custom_state = false;
             if (!empty($data["customer_" . $type]['country_code'])) {
-                $country = Factory::getApplication('shop')->getTable('country')->load($data["customer_" . $type]['country_code']);
+                $country = Factory::getComponent('shop')->getTable('country')->load($data["customer_" . $type]['country_code']);
                 if ($country->pk()) {
                     $row->{"customer_" . $type}['country_code'] = $country->pk();
                     $row->{"customer_" . $type}['country_name'] = $country->country_name;
@@ -257,7 +253,7 @@ class ordersModel extends Model {
 
                     if (!empty($data["customer_" . $type]['state_code'])) {
 
-                        $state = Factory::getApplication('shop')->getTable('state')->load($data["customer_" . $type]['state_code']);
+                        $state = Factory::getComponent('shop')->getTable('state')->load($data["customer_" . $type]['state_code']);
                         if ($state->pk() && $state->country_id == $country->country_id) {
 
                             $row->{"customer_" . $type}['state_code'] = $state->pk();
@@ -293,10 +289,10 @@ class ordersModel extends Model {
     public function remove_item($item_id = null, orderTable $order = null) {
 
         $item_id = (int) $item_id;
-
+        $input = Factory::getApplication()->getInput();
 
         if (!$item_id) {
-            $item_id = request::getInt('item_id');
+            $item_id = $input->get('item_id', 0, "INT");
         }
 
 
@@ -330,7 +326,7 @@ class ordersModel extends Model {
 
         if ($item && !empty($item->stockrooms)) {
 
-            $sr = json_decode(stripslashes($item->stockrooms), true);
+            $sr = json_decode($item->stockrooms, true);
 
             if (!empty($sr)) {
 
@@ -363,7 +359,7 @@ class ordersModel extends Model {
         foreach ((array) $props as $prop) {
 
 
-            $sr = json_decode(stripslashes($item->stockrooms), true);
+            $sr = json_decode($item->stockrooms, true);
             if (empty($sr))
                 continue;
 
@@ -393,7 +389,7 @@ class ordersModel extends Model {
         }
 
         if (!is_object($order)) {
-            $order = Factory::getApplication('shop')->getTable('order')->load($item->order_id);
+            $order = Factory::getComponent('shop')->getTable('order')->load($item->order_id);
         }
         $order->order_tax -= $item->vat * $item->product_quantity;
         $order->order_subtotal -= $item->product_item_price * $item->product_quantity;
@@ -437,7 +433,8 @@ class ordersModel extends Model {
         if (!$item->pk())
             return false;
 
-        $post = $_POST;
+
+        $post = Factory::getApplication()->getInput()->post;
 
 
         if (isset($post['access_granted'][$item->order_item_id]) && $item->access_granted != $post['access_granted'][$item->order_item_id]) {
@@ -489,7 +486,7 @@ class ordersModel extends Model {
             }
             $this->db->setQuery("REPLACE INTO #_shop_order_attribute_item (order_att_item_id,order_item_id,
                                 order_id,section_id,section,downloads_remaining,expires) VALUES" . implode(",", $values));
-             if (!$this->db->getResource()) {
+            if (!$this->db->getResource()) {
 
                 return false;
             }
@@ -499,15 +496,17 @@ class ordersModel extends Model {
 
     public function update_price(orderTable $order, array $ids) {
 
-        $prices = request::getVar('new_price', array(), 'array');
-        $qtys = request::getVar('new_quantity', array(), 'array');
-        $tax = Factory::getApplication('shop')->getHelper('tax');
+        $input = Factory::getApplication()->getInput();
+
+        $prices = $input->get('new_price', array(), 'ARRAY');
+        $qtys = $input->get('new_quantity', array(), 'ARRAY');
+        $tax = Factory::getComponent('shop')->getHelper('tax');
         $vat = 0;
         $db = Factory::getDBO();
 
 
         $country = $state = null;
-        switch (Factory::getApplication('shop')->getParams()->get('vatType')) {
+        switch (Factory::getComponent('shop')->getParams()->get('vatType')) {
 
             case '3':
                 $country = $order->get('billing_country');
@@ -532,7 +531,7 @@ class ordersModel extends Model {
 
         foreach ((array) $ids as $id) {
 
-            $item = Factory::getApplication('shop')->getTable('order_item')->load((int) $id);
+            $item = Factory::getComponent('shop')->getTable('order_item')->load((int) $id);
 
 
 
@@ -542,11 +541,11 @@ class ordersModel extends Model {
             $price = (double) $prices[$id];
             $qty = (int) $qtys[$id];
 
-            $product = Factory::getApplication('shop')->getTable('product')->load($item->product_id);
+            $product = Factory::getComponent('shop')->getTable('product')->load($item->product_id);
 
             if ($product->pk()) {
 
-                if (( Factory::getApplication('shop')->getParams()->get('vat') && $product->vat == 'global' ) || $product->vat == 'yes') {
+                if (( Factory::getComponent('shop')->getParams()->get('vat') && $product->vat == 'global' ) || $product->vat == 'yes') {
 
                     if ($product->tax_group_id) {
                         $tax_rate = $tax->get_tax_rate($country, $state, $product->tax_group_id);
@@ -557,7 +556,7 @@ class ordersModel extends Model {
                     }
                 }
             } else {
-                if (Factory::getApplication('shop')->getParams()->get('vat')) {
+                if (Factory::getComponent('shop')->getParams()->get('vat')) {
                     $tax_rate = $tax->get_tax_rate($country, $state);
                     $vat = $price * $tax_rate;
                 }
@@ -611,24 +610,29 @@ class ordersModel extends Model {
 
     public function update() {
 
-        $post = null;
-        $post = get_post(Request::getInt('id'));
-        if (!$post)
+
+        $input = Factory::getApplication()->getInput();
+
+
+        $wp_post = null;
+        $wp_post = get_post($input->get('id', 0, "INT"));
+        if (!$wp_post)
             return;
 
-        $helper = Factory::getApplication('shop')->getHelper('order');
 
-        $status = request::getInt('new_status', null);
+        $helper = Factory::getComponent('shop')->getHelper('order');
+
+        $status = $input->get('new_status', null, "INT");
 
         if (term_exists($status, 'order_status')) {
 
-            Factory::getApplication('shop')->getHelper('order')->change_order_status($post->ID, $status);
+            Factory::getComponent('shop')->getHelper('order')->change_order_status($wp_post->ID, $status);
         }
 
-        $order = Factory::getApplication('shop')->getTable('order')->load($post->ID)->bind($_POST);
+        $order = Factory::getComponent('shop')->getTable('order')->load($wp_post->ID)->bind($input->post);
 
 
-        $sid = request::getString('new_shipping_rate', null);
+        $sid = $input->get('new_shipping_rate', null, "STRING");
 
         $rates = $this->get_shipping_rates($order->pk());
 
@@ -652,16 +656,16 @@ class ordersModel extends Model {
             $order->order_shipping_tax = $rate->rate - $rate->raw_rate;
             $order->ship_method_id = $rate->id;
 
-            $helper = Factory::getApplication('shop')->getHelper('order');
+            $helper = Factory::getComponent('shop')->getHelper('order');
 
-            $carrier = Factory::getApplication('shop')->getTable('carrier')->load((int) $s->carrier_id);
+            $carrier = Factory::getComponent('shop')->getTable('carrier')->load((int) $s->carrier_id);
 
             $order->shipping_name = $carrier->name;
             $order->shipping_rate_name = $s->rate_name;
         }
 
-        $items = array_map("intval", request::getVar('items', array(), 'POST', 'array'));
-        $this->db->setQuery("SELECT order_item_id FROM #_shop_order_item WHERE order_id =" . (int) $post->ID);
+        $items = array_map("intval", $input->get("items", array(), "ARRAY"));
+        $this->db->setQuery("SELECT order_item_id FROM #_shop_order_item WHERE order_id =" . (int) $wp_post->ID);
         if (!$this->db->getResource()) {
             throw new Exception($this->db->getErrorString());
         }
@@ -683,16 +687,16 @@ class ordersModel extends Model {
 
         while ($f = $billing->get_field()) {
 
-            if (isset($_POST[$f->get_name()])) {
-                $f->set_value(trim($_POST[$f->get_name()]));
+            if (isset($input->post[$f->get_name()])) {
+                $f->set_value(trim($input->post[$f->get_name()]));
             }
             $order->{$f->get_name()} = $f->get_value();
         }
 
         while ($f = $shipping->get_field()) {
 
-            if (isset($_POST[$f->get_name()])) {
-                $f->set_value(trim($_POST[$f->get_name()]));
+            if (isset($input->post[$f->get_name()])) {
+                $f->set_value(trim($input->post[$f->get_name()]));
             }
             $order->{$f->get_name()} = $f->get_value();
         }
@@ -732,14 +736,14 @@ class ordersModel extends Model {
         }
 
 
-        if (request::getInt('send_invoice', 0) == 1) {
+        if ($input->get('send_invoice', 0, "INT") == 1) {
             do_action('orillacart_send_order_invoice', $order->pk());
         }
     }
 
     public function get_shipping_rates($id) {
 
-        $row = Factory::getApplication('shop')->getTable('order')->load($id);
+        $row = Factory::getComponent('shop')->getTable('order')->load($id);
         if (!$row->pk())
             return array();
 
@@ -749,7 +753,7 @@ class ordersModel extends Model {
 
 //get available rates from all carriers.
 
-        return (array) Factory::getApplication('shop')->getHelper('cart')->get_shipping_rates();
+        return (array) Factory::getComponent('shop')->getHelper('cart')->get_shipping_rates();
     }
 
     public function filter_post_by_title($where, &$wp_query) {
@@ -794,7 +798,7 @@ class ordersModel extends Model {
         $this->db->setQuery("SELECT ID,user_nicename as nicename FROM #_users WHERE user_nicename LIKE '" . $this->db->secure($str) . "%'");
         $rows = $this->db->loadObjectList();
         foreach ((array) $rows as $row) {
-            $res[$row->ID] = stripslashes($row->nicename);
+            $res[$row->ID] = $row->nicename;
         }
 
 
@@ -810,7 +814,7 @@ class ordersModel extends Model {
         $product_admin = model::getInstance('product_admin', 'shop');
         $order_helper = helper::getInstance('order', 'shop');
         $product_helper = helper::getInstance('product_helper', 'shop');
-        $app = factory::getApplication('shop');
+        $app = factory::getComponent('shop');
 //include frontend model to use stock check method
         Model::addIncludePath('shop', dirname($app->getComponentPath()) . DS . "front" . DS . "models");
 
@@ -844,7 +848,7 @@ class ordersModel extends Model {
             $order = table::getInstance("order", 'shop')->load($oid);
 
             $country = $state = null;
-            switch (Factory::getApplication('shop')->getParams()->get('vatType')) {
+            switch (Factory::getComponent('shop')->getParams()->get('vatType')) {
 
                 case '3':
                     $country = $order->get('billing_country');
@@ -872,12 +876,12 @@ class ordersModel extends Model {
 
             $order->order_total += $qty * $price->price;
             $order->order_subtotal += $qty * $price->raw_price;
-            $order->order_tax += $qty * ($order->order_subtotal* ($price->tax/100));
+            $order->order_tax += $qty * ($order->order_subtotal * ($price->tax / 100));
 
-            $order->currency = Factory::getApplication('shop')->getParams()->get('currency');
-            $order->currency_sign = Factory::getApplication('shop')->getParams()->get('currency_sign');
-            $order->volume_unit = Factory::getApplication('shop')->getParams()->get('default_volume_unit');
-            $order->weight_unit = Factory::getApplication('shop')->getParams()->get('default_weight_unit');
+            $order->currency = Factory::getComponent('shop')->getParams()->get('currency');
+            $order->currency_sign = Factory::getComponent('shop')->getParams()->get('currency_sign');
+            $order->volume_unit = Factory::getComponent('shop')->getParams()->get('default_volume_unit');
+            $order->weight_unit = Factory::getComponent('shop')->getParams()->get('default_weight_unit');
 
             $order->volume += (double) $qty * $product_row->get('product_volume', 0);
             $order->length += (double) $qty * $product_row->get('product_length', 0);
@@ -889,12 +893,12 @@ class ordersModel extends Model {
 //store the item
             $order_item = $app->getTable('order_item');
             $order_item->reset();
-            
-                       
-         
+
+
+
 
             $manage_stocks = true;
-            if ($product_row->manage_stock == 'no' || ($product_row->manage_stock == 'global' && !Factory::getApplication('shop')->getParams()->get('checkStock'))) {
+            if ($product_row->manage_stock == 'no' || ($product_row->manage_stock == 'global' && !Factory::getComponent('shop')->getParams()->get('checkStock'))) {
                 $manage_stocks = false;
             }
 
@@ -904,7 +908,7 @@ class ordersModel extends Model {
             $order_item->order_item_name = $product_row->name;
             $order_item->product_quantity = $qty;
             $order_item->product_item_price = round($price->raw_price, 2);
-            $order_item->vat = round( $order_item->product_item_price* ($price->tax/100), 2);
+            $order_item->vat = round($order_item->product_item_price * ($price->tax / 100), 2);
             $order_item->product_length = $product_row->product_length;
             $order_item->product_width = $product_row->product_width;
             $order_item->product_height = $product_row->product_height;
@@ -928,7 +932,7 @@ class ordersModel extends Model {
                 $order_item->store();
 
 //here we will store the properties if the product is not variation and there are any
-                $order_item_attribute = Factory::getApplication('shop')->getTable('order_attribute_item');
+                $order_item_attribute = Factory::getComponent('shop')->getTable('order_attribute_item');
 
                 if (!empty($properties)) {
 

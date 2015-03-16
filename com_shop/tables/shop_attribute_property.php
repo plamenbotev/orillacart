@@ -10,7 +10,7 @@ class shop_attribute_propertyTable extends table {
     public $property_price = '';
     public $oprand = '+';
     public $ordering = '';
-  
+
     public function __construct() {
         $foreign_keys = array('attribute_id');
         parent::__construct('property_id', '#_shop_attribute_property', $foreign_keys);

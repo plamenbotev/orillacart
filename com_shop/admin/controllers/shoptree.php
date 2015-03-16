@@ -6,7 +6,7 @@ lib::import("tree");
 
 class shopControllerShopTree extends controller {
 
-    public function display() {
+    public function __default() {
 
 
         $jstree = new treeBase("#_shop_category", "#_shop_category_xref", 'product_cat', 'product');
@@ -105,8 +105,8 @@ class shopControllerShopTree extends controller {
         $jstree = new treeBase("#_shop_category", "#_shop_category_xref", 'product_cat', 'product');
 
 
-        $thumb_path = Factory::getApplication('shop')->getParams()->get('categoryThumbPath');
-        $img_path = Factory::getApplication('shop')->getParams()->get('categoryImagePath');
+        $thumb_path = Factory::getComponent('shop')->getParams()->get('categoryThumbPath');
+        $img_path = Factory::getComponent('shop')->getParams()->get('categoryImagePath');
 
 
 
@@ -145,7 +145,7 @@ class shopControllerShopTree extends controller {
 
 
                 $selected_cats = $product->getProductCatIds($data['pid']);
-            } else {
+            } else if(isset($_SESSION['filter']['cats'])) {
 
                 $selected_cats = ArrayHelper::toInt($_SESSION['filter']['cats']);
             }

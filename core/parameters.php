@@ -40,6 +40,7 @@ abstract class parameters {
         $params = (array) get_option($component . "_parameters");
 
 
+
         foreach ($params as $k => $v) {
 
             if (array_key_exists($k, $this->props)) {
@@ -65,7 +66,7 @@ abstract class parameters {
                 continue;
 
 
-            if (array_key_exists($k, $var)) {
+            if (isset($var[$k])) {
 
                 $this->props[$k] = $var[$k];
             }
@@ -84,9 +85,11 @@ abstract class parameters {
         if (method_exists($this, 'filter'))
             $this->props = $this->filter($this->props);
         $this->props = apply_filters('before_parameters_save_' . $this->component, $this->props);
+
+
         update_option($this->component . "_parameters", $this->props);
-		//replace the wp object cache
-		wp_cache_replace( "params", $this, "com_".$this->component);
+        //replace the wp object cache
+        wp_cache_replace("params", $this, "com_" . $this->component);
         return true;
     }
 

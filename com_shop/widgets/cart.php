@@ -20,16 +20,16 @@ class Widget_Shop_Cart extends WP_Widget {
 
         if (is_active_widget(false, false, $this->id_base) && !is_admin()) {
 
-            Factory::getMainframe()->addscript('jquery');
-            Factory::getMainframe()->addScript('tipsy', Factory::getApplication('shop')->getAssetsUrl() . "/js/tipsy.js");
-            Factory::getMainframe()->addScript('jquery-validate', Factory::getApplication('shop')->getAssetsUrl() . "/js/jquery.validate.js");
-            Factory::getMainframe()->addScript('add-to-cart-widget', Factory::getApplication('shop')->getAssetsUrl() . "/js/add-to-cart-widget.js");
-            Factory::getMainframe()->addStyle('tipsy', Factory::getApplication('shop')->getAssetsUrl() . "/tipsy.css");
-            Factory::getMainframe()->addStyle('bootstrap', Factory::getApplication('shop')->getAssetsUrl() . "/bootstrap.css");
-            Factory::getMainframe()->addstyle('icons', Factory::getApplication('shop')->getAssetsUrl() . '/icons.css');
-			Factory::getMainframe()->addstyle('bootstrap-buttons', Factory::getApplication('shop')->getAssetsUrl() . '/buttons.css');
-           
-			Factory::getMainframe()->addscript('block', Factory::getApplication('shop')->getAssetsUrl() . "/js/block.js");
+            Factory::getHead()->addscript('jquery');
+            Factory::getHead()->addScript('tipsy', Factory::getComponent('shop')->getAssetsUrl() . "/js/tipsy.js");
+            Factory::getHead()->addScript('jquery-validate', Factory::getComponent('shop')->getAssetsUrl() . "/js/jquery.validate.js");
+            Factory::getHead()->addScript('add-to-cart-widget', Factory::getComponent('shop')->getAssetsUrl() . "/js/add-to-cart-widget.js");
+            Factory::getHead()->addStyle('tipsy', Factory::getComponent('shop')->getAssetsUrl() . "/tipsy.css");
+            Factory::getHead()->addStyle('bootstrap', Factory::getComponent('shop')->getAssetsUrl() . "/bootstrap.css");
+            Factory::getHead()->addstyle('icons', Factory::getComponent('shop')->getAssetsUrl() . '/icons.css');
+            Factory::getHead()->addstyle('bootstrap-buttons', Factory::getComponent('shop')->getAssetsUrl() . '/buttons.css');
+
+            Factory::getHead()->addscript('block', Factory::getComponent('shop')->getAssetsUrl() . "/js/block.js");
         }
         add_filter('orillacart_add_to_cart_json', array($this, 'update_cart_content'));
     }
@@ -90,8 +90,8 @@ class Widget_Shop_Cart extends WP_Widget {
         $instance = $old_instance;
 
         // Save new values
-        $instance['title'] = strip_tags(stripslashes($new_instance['title']));
-        $instance['taxonomy'] = stripslashes(isset($new_instance['taxonomy']) ? $new_instance['taxonomy'] : '');
+        $instance['title'] = strip_tags($new_instance['title']);
+        $instance['taxonomy'] = isset($new_instance['taxonomy']) ? $new_instance['taxonomy'] : '';
 
         return $instance;
     }

@@ -4,22 +4,22 @@ class buttonSeparator extends button {
 
     protected $name = 'Separator';
 
-    public function render($definition) {
+    public function fetchButton() {
 
         $html = null;
         $class = null;
         $style = null;
 
+		$definition = func_get_args();
+		
         // Separator class name
-        $class = (empty($definition[1])) ? 'spacer' : $definition[1];
+        $class = (empty($definition[0])) ? 'spacer' : $definition[0];
         // Custom width
-        $style = (empty($definition[2])) ? null : ' style="width:' . intval($definition[2]) . 'px;"';
+        $style = (empty($definition[1])) ? null : ' style="width:' . intval($definition[1]) . 'px;"';
 
         return '<div class="' . $class . '"' . $style . ">\n</div>\n";
     }
 
-    public function fetchButton() {
-        
-    }
+    
 
 }

@@ -2,16 +2,10 @@
 
 defined('_VALID_EXEC') or die('access denied');
 
-final class mainframe {
+final class Head {
 
     private $page_title = null;
     private $custom_tags = array();
-
-    static public function isHome() {
-        if (uri::parse()->get('base') == uri::parse()->get('current'))
-            return true;
-        return false;
-    }
 
     static public function getInstance() {
 
@@ -26,7 +20,7 @@ final class mainframe {
 
 // register needed filters and actions to update styles and head tags
 
-        if (Framework::is_admin()) {
+        if (Factory::getApplication()->is_admin()) {
 
             add_filter('admin_head', array($this, '_appendTags'));
         } else {
@@ -53,7 +47,7 @@ final class mainframe {
     }
 
     public function _appendTags() {
-        do_action("mainframe_before_add_head_tags", $this);
+        do_action("Head_before_add_head_tags", $this);
         $args = func_get_args();
         $now = current_filter();
         switch ($now) {
@@ -63,21 +57,21 @@ final class mainframe {
 
                 echo implode("\n", $this->custom_tags);
                 break;
-			case "wpseo_title":
-				
-				if(empty($this->page_title)){
-					return $args[0];
-				}
-				 return $this->page_title;
-			
-			break;
-				
+            case "wpseo_title":
+
+                if (empty($this->page_title)) {
+                    return $args[0];
+                }
+                return $this->page_title;
+
+                break;
+
             case "wp_title":
-            	
-				if(empty($this->page_title)){
-					return $args[0];
-				}
-				
+
+                if (empty($this->page_title)) {
+                    return $args[0];
+                }
+
                 return $this->page_title;
                 break;
             default:
@@ -112,18 +106,15 @@ final class mainframe {
             $name = basename($file);
             $name = str_replace(".css", ".min.css", $name);
             $dir .= "/" . $name;
-            
+
             if (file_exists($dir)) {
                 return wp_enqueue_style($id, str_replace(".css", ".min.css", $file));
-            }else{
+            } else {
+                return wp_enqueue_style($id, $file);
+            }
+        } else {
             return wp_enqueue_style($id, $file);
         }
-            
-        } else{
-            return wp_enqueue_style($id, $file);
-        }
-        
-        
     }
 
     public function addScript($id, $file = null, $dep = array(), $ver = false, $footer = false) {
@@ -134,7 +125,7 @@ final class mainframe {
             $name = basename($file);
             $name = str_replace(".js", ".min.js", $name);
             $dir .= "/" . $name;
-            
+
             if (file_exists($dir)) {
 
                 return wp_enqueue_script($id, str_replace(".js", ".min.js", $file), $dep, $ver, $footer);

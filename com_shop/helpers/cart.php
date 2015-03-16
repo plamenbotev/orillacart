@@ -9,9 +9,8 @@ final class cart {
     protected $total_price = 0;
     protected $order_vat = 0;
     protected $shipping_vat = 0;
-    
 
-    public function getInstance() {
+    public static function getInstance() {
 
         static $instance = null;
 
@@ -67,7 +66,7 @@ final class cart {
 
 
 
-            $data = Factory::getApplication('shop')->getTable('product')->load($p->id);
+            $data = Factory::getComponent('shop')->getTable('product')->load($p->id);
 
             if (!has_term('regular', 'product_type', $p->id))
                 continue;
@@ -143,7 +142,7 @@ final class cart {
         $totalwidth = 0;
 
         foreach ((array) $_SESSION['cart'] as $o) {
-            $p = Factory::getApplication('shop')->getTable('product')->load($o->id);
+            $p = Factory::getComponent('shop')->getTable('product')->load($o->id);
 
             //we need data only from phisical products, that will be shiped
             if ($p->type != 'regular') {
@@ -192,7 +191,7 @@ final class cart {
         if ($qty < 1) {
             $qty = 1;
         }
-        $app = Factory::getApplication('shop');
+        $app = Factory::getComponent('shop');
         $product = Table::getInstance('product', 'shop')->load($pid);
         $product_helper = $app->getHelper('product_helper');
         $model = Model::getInstance('product', 'shop');
@@ -227,7 +226,7 @@ final class cart {
         $req_atts = $db->loadArray();
 
         if (!empty($req_atts) && empty($props)) {
-            Factory::getApplication('shop')->addError(__("Select required attributes!", 'com_shop'));
+            Factory::getComponent('shop')->addError(__("Select required attributes!", 'com_shop'));
             return false;
         }
 
@@ -248,7 +247,7 @@ final class cart {
             }
 
             if (!empty($req_atts)) {
-                Factory::getApplication('shop')->addError(__("Select required attributes!", 'com_shop'));
+                Factory::getComponent('shop')->addError(__("Select required attributes!", 'com_shop'));
                 return false;
             }
 
@@ -284,11 +283,11 @@ final class cart {
 
         $item->files = (array) $files;
 
-        
-		
 
-		$k = is_array($_SESSION['cart']) && count($_SESSION['cart']) > 0  ? max(array_keys($_SESSION['cart']))+1 : 0;
-		
+
+
+        $k = is_array($_SESSION['cart']) && count($_SESSION['cart']) > 0 ? max(array_keys($_SESSION['cart'])) + 1 : 0;
+
         $values = array();
         $values[] = "('" . $db->secure(session_id()) . "'," .
                 "'" . (int) $pid . "'," .
@@ -401,10 +400,10 @@ final class cart {
 
         switch ($type) {
             case "grand_total":
-                return Factory::getApplication('shop')->getHelper('price')->format($this->get_grand_total_price());
+                return Factory::getComponent('shop')->getHelper('price')->format($this->get_grand_total_price());
                 break;
             default:
-                return Factory::getApplication('shop')->getHelper('price')->format($this->get_total_price());
+                return Factory::getComponent('shop')->getHelper('price')->format($this->get_total_price());
                 break;
         }
     }
@@ -534,23 +533,23 @@ final class cart {
 
         foreach ((array) $_SESSION['cart'] as $o) {
 
-            $product = Factory::getApplication('shop')->getTable('product')->load($o->id);
+            $product = Factory::getComponent('shop')->getTable('product')->load($o->id);
 
             $rates = array();
 
 
-            if (( Factory::getApplication('shop')->getParams()->get('vat') && $product->vat == 'global' ) || $product->vat == 'yes') {
+            if (( Factory::getComponent('shop')->getParams()->get('vat') && $product->vat == 'global' ) || $product->vat == 'yes') {
 
                 if ($product->tax_group_id) {
 
-                    $rates = Factory::getApplication('shop')->getHelper('tax')->get_matched_rates(null, null, $product->tax_group_id);
+                    $rates = Factory::getComponent('shop')->getHelper('tax')->get_matched_rates(null, null, $product->tax_group_id);
                 } else {
-                    $rates = Factory::getApplication('shop')->getHelper('tax')->get_matched_rates();
+                    $rates = Factory::getComponent('shop')->getHelper('tax')->get_matched_rates();
                 }
 
                 if (count($rates)) {
 
-                    $price = Factory::getApplication('shop')->getHelper('product_helper')->get_price($o->id, $o->props, $o->files)->raw;
+                    $price = Factory::getComponent('shop')->getHelper('product_helper')->get_price($o->id, $o->props, $o->files)->raw;
                     $price = $price * $o->qty;
 
 
@@ -560,7 +559,7 @@ final class cart {
                             $cache[$id]->value += $price * $rate->rate;
                         } else {
                             $cache[$id] = clone $rate;
-                            $cache[$id]->set("value",$price * $rate->rate);
+                            $cache[$id]->set("value", $price * $rate->rate);
                         }
                     }
                 }
@@ -585,7 +584,7 @@ final class cart {
         $row->group = key($_SESSION['cart']);
         next($_SESSION['cart']);
 
-        $product = Factory::getApplication('shop')->getTable('product')->load($o->id);
+        $product = Factory::getComponent('shop')->getTable('product')->load($o->id);
 
         $row->type = $product->type;
         $row->sku = $product->sku;
@@ -594,24 +593,24 @@ final class cart {
         $tax_group = null;
         $row->files = $o->files;
 
-        $row->raw_price = Factory::getApplication('shop')->getHelper('product_helper')->get_price($o->id, $o->props, $o->files)->raw;
+        $row->raw_price = Factory::getComponent('shop')->getHelper('product_helper')->get_price($o->id, $o->props, $o->files)->raw;
 
         $row->price = $row->raw_price;
 
-        if (( Factory::getApplication('shop')->getParams()->get('vat') && $product->vat == 'global' ) || $product->vat == 'yes') {
+        if (( Factory::getComponent('shop')->getParams()->get('vat') && $product->vat == 'global' ) || $product->vat == 'yes') {
 
             if ($product->tax_group_id) {
 
 
 
 
-                $row->price += $row->price * Factory::getApplication('shop')->getHelper('tax')->get_tax_rate(null, null, $product->tax_group_id);
+                $row->price += $row->price * Factory::getComponent('shop')->getHelper('tax')->get_tax_rate(null, null, $product->tax_group_id);
             } else {
-                $row->price += $row->price * Factory::getApplication('shop')->getHelper('tax')->get_tax_rate();
+                $row->price += $row->price * Factory::getComponent('shop')->getHelper('tax')->get_tax_rate();
             }
         }
-        $row->price_formatted = Factory::getApplication('shop')->getHelper('price')->format($row->price);
-        $row->raw_price_formatted = Factory::getApplication('shop')->getHelper('price')->format($row->raw_price);
+        $row->price_formatted = Factory::getComponent('shop')->getHelper('price')->format($row->price);
+        $row->raw_price_formatted = Factory::getComponent('shop')->getHelper('price')->format($row->raw_price);
         $row->vat = $row->price - $row->raw_price;
 
         $row->name = $product->name;
@@ -663,7 +662,7 @@ final class cart {
     }
 
     public function need_shipping() {
-        if (!Factory::getApplication('shop')->getParams()->get('shipping')) {
+        if (!Factory::getComponent('shop')->getParams()->get('shipping')) {
             return false;
         } else {
             while ($p = $this->get_item()) {
@@ -699,7 +698,7 @@ final class cart {
 
         static $rows = array();
 
-        $customer = Factory::getApplication('shop')->getHelper('customer');
+        $customer = Factory::getComponent('shop')->getHelper('customer');
 
         $db = Factory::getDBO();
 
@@ -720,7 +719,7 @@ final class cart {
         $methods = array();
         while ($m = $db->nextObject()) {
 
-            $methods[] = stripslashes($m->class);
+            $methods[] = $m->class;
         }
 
         if (!empty($rows))

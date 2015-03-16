@@ -99,7 +99,7 @@ class product_adminModel extends model {
 
         if ($this->is_product($id)) {
 
-            $p = Factory::getApplication('shop')->getTable('product');
+            $p = Factory::getComponent('shop')->getTable('product');
 
 
             return $p->load($id);
@@ -121,30 +121,30 @@ class product_adminModel extends model {
 
     public function save() {
 
+        $input = Factory::getApplication()->getInput();
 
-
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
 
         $in_autosave = false;
         if ((defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) || (defined('DOING_AJAX') && DOING_AJAX)) {
 
             $in_autosave = true;
 
-            if (!is_numeric($_POST['menu_order']))
-                unset($_POST['menu_order']);
-            if (!is_numeric($_POST['price']))
-                unset($_POST['price']);
+            if (!is_numeric($input->post['menu_order']))
+                unset($input->post['menu_order']);
+            if (!is_numeric($input->post['price']))
+                unset($input->post['price']);
         }
 
 
 
-        $p = Factory::getApplication('shop')->getTable('product');
+        $p = Factory::getComponent('shop')->getTable('product');
 
-        if ($_POST['id']) {
+        if ($input->post['id']) {
 
-            $p->load((int) $_POST['id']);
+            $p->load((int) $input->post['id']);
         }
-        $p->bind($_POST);
+        $p->bind($input->post);
 
 
         if (!$p->id)
@@ -165,7 +165,7 @@ class product_adminModel extends model {
 
             if (!$is_variation) {
                 $sets = array();
-                $sets = array_map('intval', (array) $_POST['attribute_bank_assoc']);
+                $sets = array_map('intval', (array) $input->post['attribute_bank_assoc']);
 
                 $this->db->setQuery("SELECT attribute_set_id  FROM `#_shop_attribute_set` WHERE attribute_set_id IN(" . implode(',', $sets) . ")");
 
@@ -222,9 +222,9 @@ class product_adminModel extends model {
 
 
 
-            if ($_POST['cats']) {
+            if ($input->post['cats']) {
 
-                $cats = array_map('intval', $_POST['cats']);
+                $cats = array_map('intval', $input->post['cats']);
                 $cats = array_unique($cats);
 
                 wp_set_post_terms($p->pk(), $cats, 'product_cat');
@@ -233,9 +233,9 @@ class product_adminModel extends model {
                 wp_set_post_terms($p->pk(), array(), 'product_cat');
             }
 
-            if ($_POST['brand']) {
+            if ($input->post['brand']) {
 
-                $brands = array_map('intval', $_POST['brand']);
+                $brands = array_map('intval', $input->post['brand']);
                 $brands = array_unique($brands);
 
                 wp_set_post_terms($p->pk(), $brands, 'product_brand');
@@ -244,12 +244,12 @@ class product_adminModel extends model {
                 wp_set_post_terms($p->pk(), array(), 'product_brand');
             }
 
-            if ($_POST['shipping_group']) {
+            if (isset($input->post['shipping_group'])) {
 
-                if (is_array($_POST['shipping_group'])) {
-                    $_POST['shipping_group'] = $_POST['shipping_group'][0];
+                if (is_array($input->post['shipping_group'])) {
+                    $input->post['shipping_group'] = $input->post['shipping_group'][0];
                 }
-                $shipping_group = (int) $_POST['shipping_group'];
+                $shipping_group = (int) $input->post['shipping_group'];
 
 
                 wp_set_post_terms($p->pk(), array($shipping_group), 'shipping_group');
@@ -258,7 +258,7 @@ class product_adminModel extends model {
             }
 
             if (!$in_autosave) {
-                $product_type = Request::getString('type', 'regular');
+                $product_type = $input->get('type', 'regular', "WORD");
                 if (!in_array($product_type, array('regular', 'digital', 'virtual'))) {
                     $product_type = 'regular';
                 }
@@ -268,10 +268,10 @@ class product_adminModel extends model {
 
             $stockroom_ids = array();
 
-            if (isset($_POST['stock_assoc'])) {
+            if (isset($input->post['stock_assoc'])) {
 
 
-                $stockroom_ids = array_keys($_POST['stock_assoc']);
+                $stockroom_ids = array_keys($input->post['stock_assoc']);
                 $stockroom_ids = array_map('intval', $stockroom_ids);
                 $stockroom_ids = array_unique($stockroom_ids);
 
@@ -286,7 +286,7 @@ class product_adminModel extends model {
 
                 foreach ((array) $stockroom_ids as $id) {
 
-                    $que [] = "({$p->id},{$id}," . (int) $_POST['stock_assoc'][$id] . ")";
+                    $que [] = "({$p->id},{$id}," . (int) $input->post['stock_assoc'][$id] . ")";
                 }
 
                 $que = "REPLACE INTO `#_shop_products_stockroom_xref` (product_id,stockroom_id,stock) VALUES" . implode(',', $que);
@@ -297,9 +297,9 @@ class product_adminModel extends model {
                 $this->db->setQuery("DELETE FROM `#_shop_products_stockroom_xref` WHERE product_id = {$p->id} ");
             }
 
-            if ($is_variation && request::getCmd('task', null) != 'save_variation') {
+            if ($is_variation && $input->get('task', null, "CMD") != 'save_variation') {
 
-                $this->update_variation_assocs($p->id, (array) request::getVar('property', array()));
+                $this->update_variation_assocs($p->id, (array) $input->get('property', array(), "ARRAY"));
             }
 
             return true;
@@ -344,7 +344,7 @@ class product_adminModel extends model {
         if (!$this->is_product($id))
             return false;
 
-        $row = Factory::getApplication('shop')->getTable('product')->load($id);
+        $row = Factory::getComponent('shop')->getTable('product')->load($id);
 
 
 
@@ -413,11 +413,13 @@ class product_adminModel extends model {
         $pid = (int) $pid;
         $att_model = model::getInstance('attributes', 'shop');
 
+        $input = Factory::getApplication()->getInput();
+
         if ($this->is_product($pid)) {
 
             $objects = array();
 
-            foreach ((array) $_POST['attribute_id'] as $ak => $att) {
+            foreach ((array) $input->post['attribute_id'] as $ak => $att) {
                 if ($att['id'])
                     $objects[] = (int) $att['id'];
             }
@@ -433,28 +435,28 @@ class product_adminModel extends model {
             $props = array();
             $sub_attribs = array();
 
-            if (!isset($_POST['attribute_id']) || empty($_POST['attribute_id']))
+            if (!isset($input->post['attribute_id']) || empty($input->post['attribute_id']))
                 return;
 
-            foreach ((array) $_POST['attribute_id'] as $ak => $att) {
-                $row = Factory::getApplication('shop')->getTable('shop_attribute');
+            foreach ((array) $input->post['attribute_id'] as $ak => $att) {
+                $row = Factory::getComponent('shop')->getTable('shop_attribute');
 
                 if ($att_model->is_attribute($att['id'])) {
                     $row->load($att['id']);
                 }
 
-                if (isset($_POST['title'][$ak]['name']))
-                    $row->attribute_name = $_POST['title'][$ak]['name'];
-                if (isset($_POST['title'][$ak]['required'])) {
+                if (isset($input->post['title'][$ak]['name']))
+                    $row->attribute_name = $input->post['title'][$ak]['name'];
+                if (isset($input->post['title'][$ak]['required'])) {
                     $row->attribute_required = 'yes';
                 } else {
                     $row->attribute_required = 'no';
                 }
 
-                if (isset($_POST['title'][$ak]['ordering']))
-                    $row->ordering = (int) $_POST['title'][$ak]['ordering'];
+                if (isset($input->post['title'][$ak]['ordering']))
+                    $row->ordering = (int) $input->post['title'][$ak]['ordering'];
 
-                if (isset($_POST['title'][$ak]['hide_attribute_price'])) {
+                if (isset($input->post['title'][$ak]['hide_attribute_price'])) {
                     $row->hide_attribute_price = 'yes';
                 } else {
                     $row->hide_attribute_price = 'no';
@@ -465,17 +467,17 @@ class product_adminModel extends model {
                 $row->store();
 
 
-                if (isset($_POST['property'][$ak]['value'])) {
+                if (isset($input->post['property'][$ak]['value'])) {
 
 
-                    foreach ((array) $_POST['property'][$ak]['value'] as $k => $title) {
+                    foreach ((array) $input->post['property'][$ak]['value'] as $k => $title) {
 
 
                         $prop_row = table::getInstance('shop_attribute_property', 'shop');
 
-                        if ($att_model->is_property($_POST['property_id'][$ak]['value'][$k])) {
+                        if ($att_model->is_property($input->post['property_id'][$ak]['value'][$k])) {
 
-                            $prop_row->load($_POST['property_id'][$ak]['value'][$k]);
+                            $prop_row->load($input->post['property_id'][$ak]['value'][$k]);
                             if ($prop_row->pk())
                                 $props[] = (int) $prop_row->pk();
                         }
@@ -487,13 +489,13 @@ class product_adminModel extends model {
                         if (!empty($title))
                             $prop_row->property_name = $title;
 
-                        $prop_row->property_price = (double) $_POST['att_price'][$ak]['value'][$k];
+                        $prop_row->property_price = (double) $input->post['att_price'][$ak]['value'][$k];
 
-                        if (isset($_POST['oprand'][$ak]['value'][$k]) &&
-                                in_array($_POST['oprand'][$ak]['value'][$k], array('*', '-', '+', '/')))
-                            $prop_row->oprand = $_POST['oprand'][$ak]['value'][$k];
+                        if (isset($input->post['oprand'][$ak]['value'][$k]) &&
+                                in_array($input->post['oprand'][$ak]['value'][$k], array('*', '-', '+', '/')))
+                            $prop_row->oprand = $input->post['oprand'][$ak]['value'][$k];
 
-                        $prop_row->ordering = (int) $_POST['propordering'][$ak]['value'][$k];
+                        $prop_row->ordering = (int) $input->post['propordering'][$ak]['value'][$k];
 
 
 
@@ -629,15 +631,18 @@ class product_adminModel extends model {
         $db->setQuery($query);
         if (!$db->numRows())
             return false;
-//die((string) $db->loadResult());
-        return (int) $db->loadResult('pid');
+
+        return (int) $db->loadResult(0);
     }
 
     public function create_variation($parent, array $props) {
+
         if (!$this->is_product($parent) || !count($props)) {
-          
+
             return 1;
         }
+
+        $input = Factory::getApplication()->getInput();
 
         foreach ($props as $k => $v) {
             if (!is_numeric($v) || empty($v))
@@ -655,11 +660,12 @@ class product_adminModel extends model {
         }
         //sort($props);
         // $def = md5(implode(',', $props));
-        if (!request::getString('variation_title', null)) {
+
+        if (!$input->get('variation_title', null, "STRING")) {
             throw new Exception(__("Provide variation title.", "com_Shop"));
         }
 
-        $post = array('post_type' => "product", 'post_title' => request::getString('variation_title', null), 'post_status' => 'draft', 'post_parent' => (int) $parent);
+        $post = array('post_type' => "product", 'post_title' => $input->get('variation_title', null, "STRING"), 'post_status' => 'draft', 'post_parent' => (int) $parent);
 
         $res = wp_insert_post($post, true);
 
@@ -667,9 +673,9 @@ class product_adminModel extends model {
             throw new Exception(__("Unable to create the child product.", "com_Shop"));
         }
 
-        $variation_data = Factory::getApplication('shop')->getTable('product')->load($res);
-        $variation_data->price = (double) $_POST['variation_price'];
-        $variation_data->sku = (double) $_POST['variation_sku'];
+        $variation_data = Factory::getComponent('shop')->getTable('product')->load($res);
+        $variation_data->price = (double) $input->post['variation_price'];
+        $variation_data->sku = (string) $input->post['variation_sku'];
         $variation_data->store();
 
         $values = array();
@@ -705,7 +711,7 @@ class product_adminModel extends model {
 
         if ($pid = $this->variation_exists($post->post_parent, $props)) {
             if ($pid != $product_id) {
-                Factory::getApplication('shop')->setMessage(__("The same variation allready exists.", "com_shop"));
+                Factory::getComponent('shop')->setMessage(__("The same variation allready exists.", "com_shop"));
             }
             return false;
         }

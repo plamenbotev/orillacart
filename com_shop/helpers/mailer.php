@@ -40,29 +40,29 @@ class mailer {
     }
 
     public function get_from_name() {
-        return Factory::getApplication('shop')->getParams()->get('email_from_name');
+        return Factory::getComponent('shop')->getParams()->get('email_from_name');
     }
 
     public function get_from_address() {
-        return Factory::getApplication('shop')->getParams()->get('email_from_address');
+        return Factory::getComponent('shop')->getParams()->get('email_from_address');
     }
 
     public function get_content_type() {
         return 'text/html';
     }
 
-    function send($to, $subject, $message, $headers = "Content-Type: text/html\r\n", $attachments = "") {
+    public function send($to, $subject, $message, $headers = "Content-Type: text/html\r\n", $attachments = "") {
         add_filter('wp_mail_from', array($this, 'get_from_address'));
         add_filter('wp_mail_from_name', array($this, 'get_from_name'));
         add_filter('wp_mail_content_type', array($this, 'get_content_type'));
 
-        ob_start();
+        
 
         $res = wp_mail($to, $subject, $message, $headers, $attachments);
         if (!$res)
-            Factory::getApplication('shop')->setMessage("there was error sending mail to your address.");
+            Factory::getComponent('shop')->setMessage("there was error sending mail to your address.");
 
-        ob_end_clean();
+        
 
         // Unhook
         remove_filter('wp_mail_from', array($this, 'get_from_address'));
@@ -70,9 +70,9 @@ class mailer {
         remove_filter('wp_mail_content_type', array($this, 'get_content_type'));
     }
 
-    function invoice_mail($order_id) {
-        $app = Factory::getApplication('shop');
-        if (Framework::is_admin()) {
+    public function invoice_mail($order_id) {
+        $app = Factory::getComponent('shop');
+        if (Factory::getApplication()->is_admin()) {
             //since we are in the admin area, the models and the views that are loaded
             //are from there but we need those from the frontend so load them
             View::addIncludePath('shop', dirname($app->getComponentPath()) . DS . "front" . DS . "views");
@@ -96,7 +96,7 @@ class mailer {
         $view->invoice();
 
         // Get contents
-        $message = ob_get_clean();
+        $message = ob_get_contents();
         ob_end_clean();
 
         //	CC, BCC, additional headers
@@ -119,29 +119,28 @@ class mailer {
      * New order
      * 
      * */
-    function admin_notify($old, $new, $order_id) {
+    public function admin_notify($old, $new, $order_id) {
 
         $mail = '';
         $blogname = wp_specialchars_decode(get_option('blogname'), ENT_QUOTES);
 
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
 
         $notify_admin_mail = $params->get('notify_admin_mail');
 
         //if the order is completed notify the admiistrator
-        if ( $new == 'completed' || (empty($old) && in_array($new,array("on-hold","onhold"))) && $params->get('notify_admin_on_new_order') && !empty($notify_admin_mail)) {
+        if ($new == 'completed' || (empty($old) && in_array($new, array("on-hold", "onhold"))) && $params->get('notify_admin_on_new_order') && !empty($notify_admin_mail)) {
 
 
             $blogname = wp_specialchars_decode(get_option('blogname'), ENT_QUOTES);
-            
-			if(in_array($new,array("on-hold","onhold"))){
-				$subject = sprintf(__('[%s] New order (%s) has been recieved and marked as on-hold', 'com_shop'), $blogname, $order_id);
 
-			}else{
-				$subject = sprintf(__('[%s] New order (%s) has been recieved and marked as completed', 'com_shop'), $blogname, $order_id);
-			}
-            $app = Factory::getApplication('shop');
-            if (Framework::is_admin()) {
+            if (in_array($new, array("on-hold", "onhold"))) {
+                $subject = sprintf(__('[%s] New order (%s) has been recieved and marked as on-hold', 'com_shop'), $blogname, $order_id);
+            } else {
+                $subject = sprintf(__('[%s] New order (%s) has been recieved and marked as completed', 'com_shop'), $blogname, $order_id);
+            }
+            $app = Factory::getComponent('shop');
+            if (Factory::getApplication()->is_admin()) {
                 View::addIncludePath('shop', dirname($app->getComponentPath()) . DS . "front" . DS . "views");
                 Model::addIncludePath('shop', dirname($app->getComponentPath()) . DS . "front" . DS . "models");
             }
@@ -179,7 +178,7 @@ class mailer {
         return true;
     }
 
-    function status_change_mail($old, $new, $order_id) {
+    public function status_change_mail($old, $new, $order_id) {
 
         $mail = '';
         $blogname = wp_specialchars_decode(get_option('blogname'), ENT_QUOTES);
@@ -213,8 +212,8 @@ class mailer {
         if (!$mail)
             return false;
 
-        $app = Factory::getApplication('shop');
-        if (Framework::is_admin()) {
+        $app = Factory::getComponent('shop');
+        if (Factory::getApplication()->is_admin()) {
             View::addIncludePath('shop', dirname($app->getComponentPath()) . DS . "front" . DS . "views");
             Model::addIncludePath('shop', dirname($app->getComponentPath()) . DS . "front" . DS . "models");
         }

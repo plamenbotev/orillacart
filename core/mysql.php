@@ -4,12 +4,9 @@ defined('_VALID_EXEC') or die('access denied');
 
 class mysql extends database {
 
-    static public function getInstance() {
+    
 
-        return new self();
-    }
-
-    protected function __construct() {
+    public function __construct() {
 
         global $wpdb;
 
@@ -71,9 +68,9 @@ class mysql extends database {
 
         $this->res = mysql_query($que, $this->conn);
     }
-    
-    public function parseQuery($que){
-        return  $que = str_replace('#_', $this->getPrefix(), $que);
+
+    public function parseQuery($que) {
+        return $que = str_replace('#_', $this->getPrefix(), $que);
     }
 
     public function buildQuery($arr, $update = false) {
@@ -160,10 +157,6 @@ class mysql extends database {
     }
 
     public function secure($data) {
-
-        if (get_magic_quotes_gpc()) {
-            $data = stripslashes($data);
-        }
 
         $data = mysql_real_escape_string($data, $this->conn);
         //$data=addcslashes($data,"%_");

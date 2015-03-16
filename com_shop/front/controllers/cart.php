@@ -4,19 +4,20 @@ class shopControllerCart extends controller {
 
     public function init() {
 
-        if (Factory::getApplication('shop')->getParams()->get('catalogOnly', false)) {
+        if (Factory::getComponent('shop')->getParams()->get('catalogOnly', false)) {
 
-            Factory::getApplication('shop')->redirect(Route::get("component=shop"));
+            Factory::getComponent('shop')->redirect(Route::get("component=shop"));
         }
     }
 
-    protected function display() {
+    protected function __default() {
 
-        $cart = factory::getApplication('shop')->getHelper('cart');
+        $cart = Factory::getComponent('shop')->getHelper('cart');
+        $input = Factory::getApplication()->getInput();
 
         $update_errors = array();
-        if (request::getMethod() == 'POST') {
-            $qty = request::getVar('qty', array());
+        if ($input->getMethod() == 'POST') {
+            $qty = $input->get('qty', array(), "ARRAY");
 
             foreach ((array) $qty as $k => $v) {
 
@@ -27,7 +28,7 @@ class shopControllerCart extends controller {
         }
 
         if (!empty($update_errors)) {
-            factory::getApplication('shop')->addError(__("Some quantities were not updated!", 'com_shop'));
+            Factory::getComponent('shop')->addError(__("Some quantities were not updated!", 'com_shop'));
         }
 
 
@@ -40,15 +41,18 @@ class shopControllerCart extends controller {
 
     protected function add_to_cart() {
         global $wp_query;
+
+        $input = Factory::getApplication()->getInput();
+
         if (isset($_SESSION['last_order_id'])) {
             unset($_SESSION['last_order_id']);
         }
         $response = array();
 
-        $id = Request::getInt("id");
-        $qty = Request::getInt('qty', 1);
+        $id = $input->get("id", 0, "INT");
+        $qty = $input->get('qty', 1, "INT");
         $model = $this->getModel('product');
-        $cart = Factory::getApplication('shop')->getHelper('cart');
+        $cart = Factory::getComponent('shop')->getHelper('cart');
 
         $this->getView('cart');
         if (!$model->is_product($id)) {
@@ -77,9 +81,9 @@ class shopControllerCart extends controller {
                     header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                     header("Pragma: no-cache");
                     echo json_encode(apply_filters('orillacart_add_to_cart_json', $response));
-                    Factory::getApplication('shop')->close();
+                    Factory::getComponent('shop')->close();
                 } else {
-                    Factory::getApplication('shop')->redirect(get_permalink($id));
+                    Factory::getComponent('shop')->redirect(get_permalink($id));
                     exit;
                 }
             } else {
@@ -100,10 +104,10 @@ class shopControllerCart extends controller {
                 }
             } else {
                 if ($res > 0) {
-                    Factory::getApplication('shop')->addError(sprintf(__('Not enough quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res));
+                    Factory::getComponent('shop')->addError(sprintf(__('Not enough quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res));
                 } else {
 
-                    Factory::getApplication('shop')->addError(__('Chosen product is out of stock', 'com_shop'));
+                    Factory::getComponent('shop')->addError(__('Chosen product is out of stock', 'com_shop'));
                 }
             }
         }
@@ -116,7 +120,7 @@ class shopControllerCart extends controller {
             header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
             header("Pragma: no-cache");
             echo json_encode(apply_filters('orillacart_add_to_cart_json', $response));
-            Factory::getApplication('shop')->close();
+            Factory::getComponent('shop')->close();
         }
 
         $this->view->assign('cart', $cart);
@@ -124,13 +128,16 @@ class shopControllerCart extends controller {
     }
 
     protected function add_to_cart_custom() {
+
+        $input = Factory::getApplication()->getInput();
+
         if (isset($_SESSION['last_order_id'])) {
             unset($_SESSION['last_order_id']);
         }
         $this->getView('cart');
-        $cart = Factory::getApplication('shop')->getHelper('cart');
+        $cart = Factory::getComponent('shop')->getHelper('cart');
         $response = array();
-        $id = Request::getInt("id");
+        $id = $input->get("id", 0, "INT");
 
 
         if (isset($_POST['property'])) {
@@ -145,7 +152,7 @@ class shopControllerCart extends controller {
             $props = array();
         }
 
-        $qty = Request::getInt('qty', 1);
+        $qty = $input->get('qty', 1, "INT");
 
         $model = $this->getModel('product');
 
@@ -160,16 +167,16 @@ class shopControllerCart extends controller {
             $files = array();
 
             if (has_term('digital', 'product_type', (int) $id)) {
-                $row = Factory::getApplication('shop')->getTable('product')->load((int) $id);
-                $files = request::getVar('files', array());
+                $row = Factory::getComponent('shop')->getTable('product')->load((int) $id);
+                $files = $input->get('files', array(), "ARRAY");
 
                 if (!$row->download_choose_file) {
                     $files = null;
                 }
 
                 if (empty($files) && $files !== null) {
-                    Factory::getApplication('shop')->add_custom_error('product_digital_files', __('Please select option!', 'com_shop'));
-                    Factory::getApplication('shop')->addError(__('Please select option!', 'com_shop'));
+                    Factory::getComponent('shop')->addCustomError('product_digital_files', __('Please select option!', 'com_shop'));
+                    Factory::getComponent('shop')->addError(__('Please select option!', 'com_shop'));
                     if (Request::is_ajax()) {
                         $response['action'] = 'redirect';
                         $response['data'] = get_permalink($id);
@@ -180,9 +187,9 @@ class shopControllerCart extends controller {
                         header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                         header("Pragma: no-cache");
                         echo json_encode(apply_filters('orillacart_add_to_cart_json', $response));
-                        Factory::getApplication('shop')->close();
+                        Factory::getComponent('shop')->close();
                     } else {
-                        Factory::getApplication('shop')->redirect(get_permalink($id));
+                        Factory::getComponent('shop')->redirect(get_permalink($id));
                         exit;
                     }
                 }
@@ -201,9 +208,9 @@ class shopControllerCart extends controller {
                     header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                     header("Pragma: no-cache");
                     echo json_encode(apply_filters('orillacart_add_to_cart_json', $response));
-                    Factory::getApplication('shop')->close();
+                    Factory::getComponent('shop')->close();
                 } else {
-                    Factory::getApplication('shop')->redirect(get_permalink($id));
+                    Factory::getComponent('shop')->redirect(get_permalink($id));
                 }
                 exit;
             } else {
@@ -228,13 +235,13 @@ class shopControllerCart extends controller {
                 header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
                 header("Pragma: no-cache");
                 echo json_encode(apply_filters('orillacart_add_to_cart_json', $response));
-                Factory::getApplication('shop')->close();
+                Factory::getComponent('shop')->close();
             } else {
                 if ($res > 0) {
-                    Factory::getApplication('shop')->addError(sprintf(__('Not enough quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res));
+                    Factory::getComponent('shop')->addError(sprintf(__('Not enough quantity in stock. You can buy maximum of %s items.', 'com_shop'), $res));
                 } else {
 
-                    Factory::getApplication('shop')->addError(__('Chosen product is out of stock', 'com_shop'));
+                    Factory::getComponent('shop')->addError(__('Chosen product is out of stock', 'com_shop'));
                 }
             }
         }
@@ -247,7 +254,7 @@ class shopControllerCart extends controller {
             header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
             header("Pragma: no-cache");
             echo json_encode(apply_filters('orillacart_add_to_cart_json', $response));
-            Factory::getApplication('shop')->close();
+            Factory::getComponent('shop')->close();
         }
 
         $this->view->assign('cart', $cart);
@@ -256,55 +263,59 @@ class shopControllerCart extends controller {
 
     protected function remove() {
 
+        $input = Factory::getApplication()->getInput();
         $this->getView('cart');
-        $cart = Factory::getApplication('shop')->getHelper('cart');
+        $cart = Factory::getComponent('shop')->getHelper('cart');
 
-        $cart->remove(Request::getInt('group', null));
+        $cart->remove($input->get('group', null, "INT"));
 
-		
+
         wp_safe_redirect(Route::get("component=shop&con=cart"));
-		exit;
+        exit;
     }
 
     protected function checkout() {
 
-        $cart = Factory::getApplication('shop')->getHelper('cart');
+        $cart = Factory::getComponent('shop')->getHelper('cart');
+        $input = Factory::getApplication()->getInput();
+        $filter = FilterInput::getInstance();
 
         if ($cart->is_empty() && !Request::is_ajax()) {
             if (isset($_SESSION['last_order_id'])) {
-                Request::setVar('order_id', $_SESSION['last_order_id']);
+                $input->set('order_id', $_SESSION['last_order_id']);
                 return $this->execute('process_payment');
             }
-            Factory::getApplication('shop')->addError(__('Your cart is empty. Please add some products before continue!', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('Your cart is empty. Please add some products before continue!', 'com_shop'));
             return $this->execute();
         }
         if (request::is_ajax() && isset($_POST['update_totals'])) {
             $post = null;
-            parse_str($_POST['post_data'], $post);
-            request::set($post, 'POST');
+
+            parse_str($input->get('post_data', "", "STRING"), $post);
+            $input->set($post);
         }
 
-        $customer = Factory::getApplication('shop')->getHelper('customer');
+        $customer = Factory::getComponent('shop')->getHelper('customer');
 
-        $order_comments = request::getString('order_comments', '');
+        $order_comments = $input->get('order_comments', '', "STRING");
 
-        if (request::getMethod() == 'POST') {
+        if ($input->getMethod() == 'POST') {
             if ($cart->need_shipping()) {
-                if (!request::getString('shipping_method', null)) {
-                    Factory::getApplication('shop')->addError(__("Choose shipping method!", 'com_shop'), false);
+                if (!$input->get('shipping_method', null, "STRING")) {
+                    Factory::getComponent('shop')->addError(__("Choose shipping method!", 'com_shop'), false);
                 } else {
-                    if (!$cart->set_shipping(request::getString('shipping_method', null))) {
-                        Factory::getApplication('shop')->addError(__("Invalid shipping method!", 'com_shop'), false);
+                    if (!$cart->set_shipping($input->get('shipping_method', null, "STRING"))) {
+                        Factory::getComponent('shop')->addError(__("Invalid shipping method!", 'com_shop'), false);
                     }
                 }
             }
 
             if ($cart->need_payment()) {
-                if (!request::getString('payment_method', null)) {
-                    Factory::getApplication('shop')->addError(__("Choose payment method!", 'com_shop'), false);
+                if (!$input->get('payment_method', null, "STRING")) {
+                    Factory::getComponent('shop')->addError(__("Choose payment method!", 'com_shop'), false);
                 } else {
-                    if (!$cart->set_payment(request::getString('payment_method', null))) {
-                        Factory::getApplication('shop')->addError(__("Invalid payment method!", 'com_shop'), false);
+                    if (!$cart->set_payment($input->get('payment_method', null, "STRING"))) {
+                        Factory::getComponent('shop')->addError(__("Invalid payment method!", 'com_shop'), false);
                     }
                 }
             }
@@ -313,7 +324,7 @@ class shopControllerCart extends controller {
                 unset($_SESSION['last_order_id']);
         }
 
-        if (Factory::getApplication('shop')->errorsCount() > 0 || request::getMethod() != 'POST' || isset($_POST['update_totals'])) {
+        if (Factory::getComponent('shop')->errorsCount() > 0 || $input->getMethod() != 'POST' || isset($_POST['update_totals'])) {
             $this->getView('cart');
             $this->view->assign('payment_methods', (array) $cart->get_payment_methods());
             $this->view->assign('cart', $cart);
@@ -324,35 +335,39 @@ class shopControllerCart extends controller {
             $this->view->assign('order_comments', $order_comments);
             $this->view->assign('shipping_methods', (array) $cart->get_shipping_rates());
 
-            $user_name = isset($_POST['account']['username']) ? $_POST['account']['username'] : '';
+
+
+            $user_name = isset($input->post['account']['username']) ? $filter->clean($input->post['account']['username'], "USERNAME") : '';
+
+
 
             $this->view->assign('user_name', $user_name);
             $this->view->assign('billing', $customer->get_billing());
             $this->view->assign('shipping', $customer->get_shipping());
-            $this->view->assign('params', Factory::getApplication('shop')->getParams());
+            $this->view->assign('params', Factory::getComponent('shop')->getParams());
 
             if (isset($_POST['update_totals'])) {
-                Factory::getApplication('shop')->setMessage(__("Totals has been updated.", 'com_shop'), false);
+                Factory::getComponent('shop')->setMessage(__("Totals has been updated.", 'com_shop'), false);
             }
 
             if (Request::is_ajax()) {
                 return parent::display('update_totals');
             }
         } else {
-            $reg_type = Factory::getApplication('shop')->getParams()->get('userReg');
+            $reg_type = Factory::getComponent('shop')->getParams()->get('userReg');
 
-            if (( request::getBool('createaccount', false) || $reg_type == 1 ) && !get_current_user_id()) {
+            if (( $input->get('createaccount', false, "BOOL") || $reg_type == 1 ) && !get_current_user_id()) {
                 try {
-                    $acc = request::getVar('account', array(), 'POST');
-                    $acc['email'] = request::getString('billing_email', null, 'POST');
+                    $acc = $input->get('account', array(), "ARRAY");
+                    $acc['email'] = $input->get('billing_email', null, 'STRING');
                     $customer->create_user($acc);
                 } catch (Exception $e) {
-                    Factory::getApplication('shop')->addError($e->getMessage(), false);
+                    Factory::getComponent('shop')->addError($e->getMessage(), false);
                     return $this->execute('checkout');
                 }
 
                 if ($reg_type == 1 && !get_current_user_id()) {
-                    Factory::getApplication('shop')->addError(__("Please login or register to proceed.", 'com_shop'), false);
+                    Factory::getComponent('shop')->addError(__("Please login or register to proceed.", 'com_shop'), false);
                     return $this->execute('checkout');
                 }
             }
@@ -362,7 +377,7 @@ class shopControllerCart extends controller {
                     if ($type == 'billing') {
                         $fields = $customer->get_billing();
                     } else {
-                        if ($customer->ship_to_billing() || !Factory::getApplication("shop")->getParams()->get("shipping"))
+                        if ($customer->ship_to_billing() || !Factory::getComponent("shop")->getParams()->get("shipping"))
                             continue;
                         $fields = $customer->get_shipping();
                     }
@@ -371,9 +386,9 @@ class shopControllerCart extends controller {
                         if (!$f->validate()) {
                             $res = false;
                             if (!$customer->ship_to_billing()) {
-                                Factory::getApplication('shop')->addError("(" . $type . ")" . $f->get_error_msg(), false);
+                                Factory::getComponent('shop')->addError("(" . $type . ")" . $f->get_error_msg(), false);
                             } else {
-                                Factory::getApplication('shop')->addError($f->get_error_msg(), false);
+                                Factory::getComponent('shop')->addError($f->get_error_msg(), false);
                             }
                         }
                     }
@@ -383,7 +398,7 @@ class shopControllerCart extends controller {
                     return $this->execute('checkout');
                 }
             } catch (Exception $e) {
-                Factory::getApplication('shop')->addError($e->getMessage(), false);
+                Factory::getComponent('shop')->addError($e->getMessage(), false);
                 return $this->execute('checkout');
             }
             return $this->process_checkout();
@@ -393,11 +408,12 @@ class shopControllerCart extends controller {
 
     protected function load_states() {
 
+        $input = Factory::getApplication()->getInput();
         $this->getView('cart');
         $model = $this->getModel("country");
 
-        $id = Request::getString('country', null);
-        $type = strtolower(Request::getWord('type', 'billing'));
+        $id = $input->get('country', null, "STRING");
+        $type = strtolower($input->get('type', 'billing', "WORD"));
         if (!in_array($type, array('billing', 'shipping'))) {
             $type = 'billing';
         }
@@ -411,18 +427,19 @@ class shopControllerCart extends controller {
 
     private function process_checkout() {
 
-        $cart = Factory::getApplication('shop')->getHelper('cart');
+        $cart = Factory::getComponent('shop')->getHelper('cart');
         $model = $this->getModel('order');
+        $input = Factory::getApplication()->getInput();
 
         if (isset($_SESSION['last_order_id']) && $_SESSION['last_order_id']) {
-            request::setVar('order_id', $_SESSION['last_order_id']);
+            $input->set('order_id', $_SESSION['last_order_id']);
             return $this->execute('process_payment');
         }
 
         if ($cart->need_payment()) {
             $class = $cart->selected_payment_method()->get_class_name();
             if (!class_exists($class) || !is_subclass_of($class, 'payment_method')) {
-                Factory::getApplication('shop')->addError(__('Payment gateway class not found!', 'com_shop'));
+                Factory::getComponent('shop')->addError(__('Payment gateway class not found!', 'com_shop'));
                 return $this->execute('checkout');
             }
 
@@ -447,12 +464,12 @@ class shopControllerCart extends controller {
         do_action('orillacart_send_order_invoice', $oid);
 
         if (!$oid) {
-            Factory::getApplication('shop')->addError(__('Failed to store the order, try again!', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('Failed to store the order, try again!', 'com_shop'));
             return $this->execute('checkout');
         }
 
         $_SESSION['last_order_id'] = $oid;
-        request::setVar('order_id', $_SESSION['last_order_id']);
+        $input->set('order_id', $_SESSION['last_order_id']);
 //give directly completed status if order does not need payment
 //e.x. all products are free and shipping is free also.
         if (!$cart->need_payment()) {
@@ -460,7 +477,7 @@ class shopControllerCart extends controller {
         }
 
         $cart->empty_cart();
-        $helper = Factory::getApplication('shop')->getHelper('order');
+        $helper = Factory::getComponent('shop')->getHelper('order');
 
 //setting default order status as on-hold or pending 
 //depending on the type of the gateway used
@@ -471,9 +488,10 @@ class shopControllerCart extends controller {
 
     protected function cancel_order() {
 
-        $helper = Factory::getApplication('shop')->getHelper('order');
+        $helper = Factory::getComponent('shop')->getHelper('order');
+        $input = Factory::getApplication()->getInput();
 
-        $oid = Request::getInt('order_id', null);
+        $oid = $input->get('order_id', null, "INT");
         $row = $helper->get_order($oid);
         if (!has_term(array('pending', 'failed'), 'order_status', (int) $oid)) {
 
@@ -481,7 +499,7 @@ class shopControllerCart extends controller {
             exit;
         }
 
-        $key = Request::getString("order_key", null);
+        $key = $input->get("order_key", null, "STRING");
 
         if (!$key || $key != $row['post_password']) {
             wp_die(__("The key provided for that order is incorrect!", 'com_shop'));
@@ -495,17 +513,19 @@ class shopControllerCart extends controller {
 
     protected function process_payment() {
 
-        $error = Request::getString("gateway_error", '');
-        $msg = Request::getString("gateway_msg", '');
+        $input = Factory::getApplication()->getInput();
+
+        $error = $input->get("gateway_error", '', "STRING");
+        $msg = $input->get("gateway_msg", '', "STRING");
         if (!empty($error)) {
-            Factory::getApplication('shop')->addError($error);
+            Factory::getComponent('shop')->addError($error);
         }
         if (!empty($msg)) {
-            Factory::getApplication('shop')->addMessage($msg);
+            Factory::getComponent('shop')->addMessage($msg);
         }
 
-        $order = Factory::getApplication('shop')->getHelper('order');
-        $oid = Request::getInt('order_id', null);
+        $order = Factory::getComponent('shop')->getHelper('order');
+        $oid = $input->get('order_id', null, "INT");
         $row = $order->get_order($oid);
 
         if (!$row) {
@@ -520,7 +540,7 @@ class shopControllerCart extends controller {
             $can_pay = true;
         } else {
 //validate is that order really belongs to that customer
-            $key = Request::getString("order_key", null);
+            $key = $input->get("order_key", "", "STRING");
 
             if ($key && $key == $row['post_password'])
                 $can_pay = true;
@@ -547,11 +567,11 @@ class shopControllerCart extends controller {
 
         switch ($type) {
             case payment_method::ccard :
-                if ($model->validate_card($gateway) && !Factory::getApplication('shop')->errorsCount()) {
+                if ($model->validate_card($gateway) && !Factory::getComponent('shop')->errorsCount()) {
                     try {
                         $model->process_credit_card($gateway, $oid);
                     } catch (gateway_exception $e) {
-                        Factory::getApplication('shop')->addError($e->getMessage());
+                        Factory::getComponent('shop')->addError($e->getMessage());
                         return $this->execute('process_payment');
                     }
                     return $this->execute('order_details');
@@ -568,7 +588,7 @@ class shopControllerCart extends controller {
             case payment_method::form :
             case payment_method::pod :
             default:
-                $helper = Factory::getApplication('shop')->getHelper('order');
+                $helper = Factory::getComponent('shop')->getHelper('order');
 
                 if ($type != payment_method::pod) {
                     $this->getView('cart');
@@ -587,11 +607,14 @@ class shopControllerCart extends controller {
 
         do_action('before_gateway_notify');
         $model = Model::getInstance("order", "shop");
-        $helper = Factory::getApplication('shop')->getHelper('order');
-        $class = request::getString('gateway', null);
+        $input = Factory::getApplication()->getInput();
+
+        $helper = Factory::getComponent('shop')->getHelper('order');
+
+        $class = $input->get('gateway', null, "STRING");
 
         if (!class_exists($class) || !is_subclass_of($class, 'payment_method')) {
-            Factory::getApplication('shop')->addError(__("missing gateway method in the notify request!", 'com_shop'));
+            Factory::getComponent('shop')->addError(__("missing gateway method in the notify request!", 'com_shop'));
             return $this->execute('order_details');
         }
 
@@ -600,16 +623,16 @@ class shopControllerCart extends controller {
 
 
         if (!empty($res->msg)) {
-            Factory::getApplication('shop')->setMessage($res->msg);
+            Factory::getComponent('shop')->setMessage($res->msg);
         }
         if (!empty($res->order_status) && !empty($res->order_id)) {
             $helper->change_order_status($res->order_id, $res->order_status);
         }
 
         if (empty($res->order_id)) {
-            Factory::getApplication('shop')->addError(__("missing order id!", 'com_shop'));
+            Factory::getComponent('shop')->addError(__("missing order id!", 'com_shop'));
         } else {
-            request::setVar('order_id', $res->order_id);
+            $input->set('order_id', $res->order_id);
         }
 
         if (property_exists($res, "tid") && !empty($res->tid)) {
@@ -628,22 +651,31 @@ class shopControllerCart extends controller {
 
     protected function order_details() {
 
-        $error = Request::getString("gateway_error", '');
-        $msg = Request::getString("gateway_msg", '');
+        $input = Factory::getApplication()->getInput();
+
+        $error = $input->get("gateway_error", '', "STRING");
+        $msg = $input->get("gateway_msg", '', "STRING");
         if (!empty($error)) {
-            Factory::getApplication('shop')->addError($error);
+            Factory::getComponent('shop')->addError($error);
         }
         if (!empty($msg)) {
-            Factory::getApplication('shop')->setMessage($msg);
+            Factory::getComponent('shop')->setMessage($msg);
         }
 
-        $helper = Factory::getApplication('shop')->getHelper('order');
-        $order = $helper->get_order(request::getInt('order_id', null));
-        $price = Factory::getApplication('shop')->getHelper('price');
+        $helper = Factory::getComponent('shop')->getHelper('order');
+        $order = $helper->get_order($input->get('order_id', null, "INT"));
+        $price = Factory::getComponent('shop')->getHelper('price');
         $model = $this->getModel('order');
         $this->getView('cart');
         if (!$order) {
             wp_die(__("Invalid order id!", 'com_shop'));
+        }
+		
+		$key = $input->get('order_key', null, "STRING");
+
+        if ($key !== $order['post_password']) {
+            wp_die(__("Authentication failed", 'com_shop'));
+            exit;
         }
 
         $class = $order['payment_method'];
@@ -669,8 +701,11 @@ class shopControllerCart extends controller {
     protected function gateway_ajax() {
         for ($c = 0; $c < ob_get_level(); $c++)
             ob_end_clean();
-        $class = request::getString('gateway', null);
-        $method = request::getCmd('method', 'ajax');
+
+        $input = Factory::getApplication()->getInput();
+
+        $class = $input->get('gateway', null, "STRING");
+        $method = $input->get('method', 'ajax', "CMD");
 
         if (!class_exists($class) || !is_subclass_of($class, 'payment_method')) {
             exit;

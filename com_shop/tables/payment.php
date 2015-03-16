@@ -14,7 +14,7 @@ class paymentTable extends table {
         parent::__construct('method_id', '#_shop_methods');
     }
 
-    public function load($id) {
+    public function load($id=null) {
 
         parent::load($id);
 
@@ -34,15 +34,15 @@ class paymentTable extends table {
             $this->countries = array();
         }
 
-        $this->params = new Registry(stripslashes($this->params));
+        $this->params = new Registry($this->params);
 
         return $this;
     }
 
-    public function store() {
+    public function store($safe_insert = false) {
 
         if (empty($this->name)) {
-            Factory::getApplication('shop')->addError(__('Enter method label', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('Enter method label', 'com_shop'));
             return false;
         }
 
@@ -64,7 +64,7 @@ class paymentTable extends table {
 
 
 
-        return parent::store();
+        return parent::store($safe_insert);
     }
 
 }

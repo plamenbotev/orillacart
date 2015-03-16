@@ -15,5 +15,13 @@ class stockroomTable extends table {
     public function __construct() {
         parent::__construct('id', '#_shop_stockroom');
     }
+	
+	public function store($safe_insert=false){
+		if(empty($this->name)){
+			throw new Exception(__("Please provide stockroom name.","com_shop"));
+		}
+		
+		parent::store($safe_insert);
+	}
 
 }

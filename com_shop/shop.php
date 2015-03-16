@@ -17,10 +17,10 @@ class shop extends component {
         orillacart_actions::init();
 
         //load shipping api
-        require_once(realpath(dirname(__FILE__) . DS . 'helpers' . DS . 'standart_shipping.php'));
-        add_filter('register_shipping_class', 'standart_shipping::register_method');
+        require_once(realpath(dirname(__FILE__) . DS . 'methods' . DS . 'standart_shipping.php'));
+        add_filter('register_shipping_class', 'standart_shipping::register');
         //load payments api
-        require_once(realpath(dirname(__FILE__) . DS . 'helpers' . DS . 'payment_method.php'));
+        require_once(realpath(dirname(__FILE__) . DS . 'methods' . DS . 'payment_method.php'));
 
         //load default widgets
 
@@ -104,36 +104,38 @@ class shop extends component {
 
         $canonical = "";
 
-        switch (request::getCmd("con")) {
+        $input = Factory::getApplication()->getInput();
+
+        switch ($input->get("con", null, "CMD")) {
 
             case "product_list":
 
-                if (request::getInt("cid", 0) == 0 && request::getCmd("task", null) == null) {
+                if ($input->get("cid", 0, "INT") == 0 && $input->get("task", null, "CMD") == null) {
 
                     $canonical = get_post_type_archive_link('product');
                 } else {
 
-                    if (request::getCmd("product_brand", null)) {
-                        $canonical = get_term_link(request::getWord("product_brand"), "product_brand");
-                    } else if (request::getCmd("product_tags", null)) {
-                        $canonical = get_term_link(request::getWord("product_tags"), "product_tags");
-                    } else if (request::getCmd("product_type", null)) {
-                        $canonical = get_term_link(request::getWord("product_type"), "product_type");
+                    if ($input->get("product_brand", null, "WORD")) {
+                        $canonical = get_term_link($input->get("product_brand", null, "WORD"), "product_brand");
+                    } else if ($input->get("product_tags", null, "WORD")) {
+                        $canonical = get_term_link($input->get("product_tags", null, "WORD"), "product_tags");
+                    } else if ($input->get("product_type", null, "WORD")) {
+                        $canonical = get_term_link($input->get("product_type", null, "WORD"), "product_type");
                     } else {
 
-                        $canonical = get_term_link((int) request::getInt("cid"), "product_cat");
+                        $canonical = get_term_link((int) $input->get("cid", 0, "INT"), "product_cat");
                     }
                 }
-                if ($canonical && request::getInt('paged') > 1) {
+                if ($canonical && $input->get('paged', 0, "INT") > 1) {
                     global $wp_rewrite;
                     if (!$wp_rewrite->using_permalinks()) {
-                        $canonical = add_query_arg('paged', request::getInt('paged'), $canonical);
+                        $canonical = add_query_arg('paged', $input->get('paged', 0, "INT"), $canonical);
                     } else {
                         if (is_front_page()) {
                             $base = $GLOBALS['wp_rewrite']->using_index_permalinks() ? 'index.php/' : '/';
                             $canonical = home_url($base);
                         }
-                        $canonical = user_trailingslashit(trailingslashit($canonical) . trailingslashit($wp_rewrite->pagination_base) . request::getInt('paged'));
+                        $canonical = user_trailingslashit(trailingslashit($canonical) . trailingslashit($wp_rewrite->pagination_base) . $input->get('paged', 0, "INT"));
                     }
                 }
 
@@ -161,45 +163,43 @@ class shop extends component {
 
     public function main() {
 
-	if(session_id() == ""){
-        session_start();
-	}
+        if (session_id() == "") {
+            session_start();
+        }
 
+        $input = Factory::getApplication()->getInput();
 
         //add proper canonical tag      
         add_action("wp_head", array($this, "generate_canonical_tag"));
-		add_action("wpseo_canonical",create_function("","return'';"));
+        add_action("wpseo_canonical", create_function("", "return'';"));
 
-        $mainframe = Factory::getMainframe();
+        $Head = Factory::getHead();
 
-        if (Framework::is_admin()) {
+        if (Factory::getApplication()->is_admin()) {
 
-            $mainframe->addscript('jsshopadminhelper', $this->getAssetsUrl() . '/js/jsshopadminhelper.js');
-			$mainframe->addStyle('bootstrap', $this->getAssetsUrl() . '/bootstrap.css');
-            $mainframe->addStyle('shop-icons', $this->getAssetsUrl() . '/icons.css');
-			$mainframe->addStyle('bootstrap-buttons', $this->getAssetsUrl() . '/buttons.css');
-            $mainframe->addStyle('shop-admin-styles', $this->getAssetsUrl() . '/template.css');
-            
-            $mainframe->addCustomHeadTag('ajaxurl', "
+            $Head->addscript('jsshopadminhelper', $this->getAssetsUrl() . '/js/jsshopadminhelper.js');
+            $Head->addStyle('bootstrap', $this->getAssetsUrl() . '/bootstrap.css');
+            $Head->addStyle('shop-icons', $this->getAssetsUrl() . '/icons.css');
+            $Head->addStyle('bootstrap-buttons', $this->getAssetsUrl() . '/buttons.css');
+            $Head->addStyle('shop-admin-styles', $this->getAssetsUrl() . '/template.css');
+
+            $Head->addCustomHeadTag('ajaxurl', "
                  <!--[if lt IE 9]>
-                 <script src='".$this->getAssetsUrl()."/js/html5shiv.js'></script>
-                 <script src='".$this->getAssetsUrl()."/js/respond.js'></script>
+                 <script src='" . $this->getAssetsUrl() . "/js/html5shiv.js'></script>
+                 <script src='" . $this->getAssetsUrl() . "/js/respond.js'></script>
                  <![endif]-->
             ");
-            
-            
-            
         } else {
 
             $this->getHelper('cart')->cron();
-            $mainframe->addscript('jquery');
-            $mainframe->addscript('shop_helper', $this->getAssetsUrl() . '/js/jsshopfronthelper.js');
-			$mainframe->addstyle('bootstrap', $this->getAssetsUrl() . '/bootstrap.css');
-			$mainframe->addstyle('icons', $this->getAssetsUrl() . '/icons.css');
-			$mainframe->addstyle('bootstrap-buttons', $this->getAssetsUrl() . '/buttons.css');
-            $mainframe->addstyle('frontend-styles', $this->getAssetsUrl() . '/frontend-styles.css');
+            $Head->addscript('jquery');
+            $Head->addscript('shop_helper', $this->getAssetsUrl() . '/js/jsshopfronthelper.js');
+            $Head->addstyle('bootstrap', $this->getAssetsUrl() . '/bootstrap.css');
+            $Head->addstyle('icons', $this->getAssetsUrl() . '/icons.css');
+            $Head->addstyle('bootstrap-buttons', $this->getAssetsUrl() . '/buttons.css');
+            $Head->addstyle('frontend-styles', $this->getAssetsUrl() . '/frontend-styles.css');
 
-            $mainframe->addCustomHeadTag('ajaxurl', "
+            $Head->addCustomHeadTag('ajaxurl', "
                 <script type='text/javascript'>
                     jQuery(function() { 
                     window.shop_helper.ajaxurl = '" . admin_url('admin-ajax.php') . "';
@@ -207,8 +207,8 @@ class shop extends component {
                     });
                 </script>
                  <!--[if lt IE 9]>
-                 <script src='".$this->getAssetsUrl()."/js/html5shiv.js'></script>
-                 <script src='".$this->getAssetsUrl()."/js/respond.js'></script>
+                 <script src='" . $this->getAssetsUrl() . "/js/html5shiv.js'></script>
+                 <script src='" . $this->getAssetsUrl() . "/js/respond.js'></script>
                  <![endif]-->
 
 
@@ -216,7 +216,9 @@ class shop extends component {
             ");
         }
 
-        $this->getController(Request::getCmd('con', ''))->execute(Request::getCmd('task'));
+
+
+        $this->getController($input->get('con', '', "CMD"))->execute($input->get('task', '', "CMD"));
     }
 
     //Shortcodes handlers begin from here
@@ -346,7 +348,7 @@ class shop extends component {
      * @return array
      */
 
-    static public function register_component($components) {
+    static public function register(array $components) {
 
         $components[dirname(__FILE__)] = __CLASS__;
 
@@ -356,4 +358,4 @@ class shop extends component {
 }
 
 //Register that class as a new component, and allow the framework to initialize it properly
-add_filter('register_component', 'shop::register_component');
+add_filter('register_component', 'shop::register');

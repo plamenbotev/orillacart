@@ -9,8 +9,8 @@ class tax_rateTable extends table {
     public $tax_country = null;
     public $tax_rate = null;
     public $tax_group_id = null;
-	public $tax_name = null;
-	public $priority = 1;
+    public $tax_name = null;
+    public $priority = 1;
 
     public function __construct() {
         $foreign_keys = array('tax_state', 'tax_country', 'tax_group_id');

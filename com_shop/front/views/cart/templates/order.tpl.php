@@ -21,18 +21,18 @@
 
                         <tr>
                             <td class="a-right" colspan="3"><?php _e($tax->get("name", "Tax"), "com_shop"); ?>:</td>
-                            <td><?php echo Factory::getApplication('shop')->getHelper('price')->format($tax->get("value", 0)); ?></td>
+                            <td><?php echo Factory::getComponent('shop')->getHelper('price')->format($tax->get("value", 0)); ?></td>
                         </tr>    
 
                     <?php } ?>
-                
 
-                <tr>
-                    <td class="a-right" colspan="3"><?php _e("Total Tax:", "com_shop"); ?></td>
-                    <td><?php echo Factory::getApplication('shop')->getHelper('price')->format($this->cart->get_order_vat()); ?></td>
-                </tr>
-				
-				<?php } ?>
+
+                    <tr>
+                        <td class="a-right" colspan="3"><?php _e("Total Tax:", "com_shop"); ?></td>
+                        <td><?php echo Factory::getComponent('shop')->getHelper('price')->format($this->cart->get_order_vat()); ?></td>
+                    </tr>
+
+                <?php } ?>
                 <?php if ($this->cart->need_shipping()) { ?>
                     <tr>
                         <td class="a-right" colspan="3"><label for="shipping_method" class="control-label"><?php _e('Shipping:', 'com_shop'); ?></label></td>
@@ -61,10 +61,10 @@
                     ?>
                     <tr>
                         <td>
-                            <?php if(!empty($p->thumb)): ?>
-                            <a class="product-image" href="<?php echo get_permalink($p->id); ?>">
-                                <img  style="max-width:<?php echo Factory::getApplication('shop')->getParams()->get('thumbX'); ?>px" src="<?php echo $p->thumb; ?>" />
-                            </a>
+                            <?php if (!empty($p->thumb)): ?>
+                                <a class="product-image" href="<?php echo get_permalink($p->id); ?>">
+                                    <img  style="max-width:<?php echo Factory::getComponent('shop')->getParams()->get('thumbX'); ?>px" src="<?php echo $p->thumb; ?>" />
+                                </a>
                             <?php endif; ?>
                         </td>
                         <td>

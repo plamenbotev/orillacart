@@ -53,6 +53,7 @@ class stockroomModel extends model {
 
     public function getObjects() {
 
+        $input = Factory::getApplication()->getInput();
 
         $joins = array();
         $where = array();
@@ -60,23 +61,26 @@ class stockroomModel extends model {
         $order_by = '';
         $limit = '';
         $group_by = '';
-        $id = request::getInt('sr_id', null, 'POST');
-        $type = request::getWord('stockroom_type', 'product', 'POST');
-        $parent_product = request::getInt('parent_product', 0);
+        $id = $input->get('sr_id', null, 'INT');
+        $type = $input->get('stockroom_type', 'product', 'WORD');
+        $parent_product = $input->get('parent_product', 0, "INT");
 
 
-        $keyword = request::getWord('keyword', null, 'POST');
+        $keyword = $input->get('keyword', null, 'WORD');
 
         $keyword = $this->db->secure($keyword);
-        $filter = request::getVar('filter', array(), 'array');
-        $cats = ArrayHelper::toInt($filter['cats']);
+        $filter = $input->get('filter', array(), 'ARRAY');
+        if(isset($filter['cats'])){
+			$cats = ArrayHelper::toInt($filter['cats']);
+		}else{
+			$cats = null;
+		}
 
 
+        $recursive = $input->get('recursive', false, 'BOOL');
 
-        $recursive = request::getBool('recursive', false, 'POST');
-
-        $start = request::getInt('limitstart', 0, 'POST');
-        $offset = request::getInt('limit', 10, 'POST');
+        $start = $input->get('limitstart', 0, 'INT');
+        $offset = $input->get('limit', 10, 'INT');
 
 
         $limit = "LIMIT {$start},{$offset}";
@@ -200,7 +204,7 @@ class stockroomModel extends model {
                 implode("\n", (array) $joins) . " WHERE " .
                 implode(" ", (array) $where) . " " . $group_by . " " . $order_by . " " . $limit);
 
-      
+
         if (!$this->db->getResource()) {
 
             throw new Exception($this->db->getErrorString());
@@ -230,7 +234,7 @@ class stockroomModel extends model {
         if (!$this->is_StockRoom($id))
             return false;
 
-        return Factory::getApplication('shop')->getTable('stockroom')->load($id);
+        return Factory::getComponent('shop')->getTable('stockroom')->load($id);
     }
 
     public function delete($ids) {
@@ -251,9 +255,11 @@ class stockroomModel extends model {
 
         $values = array();
 
-        $sid = (array) array_map('intval', request::getVar('sid', array(), 'POST', 'array'));
-        $pid = (array) array_map('intval', request::getVar('pid', array(), 'POST', 'array'));
-        $amounts = (array) array_map('intval', request::getVar('quantity', array(), 'POST', 'array'));
+        $input = Factory::getApplication()->getInput();
+
+        $sid = (array) array_map('intval', $input->get('sid', array(), 'ARRAY'));
+        $pid = (array) array_map('intval', $input->get('pid', array(), 'ARRAY'));
+        $amounts = (array) array_map('intval', $input->get('quantity', array(), 'ARRAY'));
 
         if (empty($sid))
             return false;
@@ -268,7 +274,7 @@ class stockroomModel extends model {
 
 
         $table = null;
-        switch ($_POST['stockroom_type']) {
+        switch ($input->post->get("stockroom_type", null, "CMD")) {
 
             case 'product':
 

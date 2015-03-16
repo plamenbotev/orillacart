@@ -19,8 +19,7 @@ final class image {
             $this->image = imagecreatefromgif($filename);
         } elseif ($this->image_type == IMAGETYPE_PNG) {
             $this->image = imagecreatefrompng($filename);
-        }
-        else
+        } else
             return self::notImage;
     }
 

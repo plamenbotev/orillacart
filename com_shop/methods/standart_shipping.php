@@ -1,6 +1,6 @@
 <?php
 
-class standart_shipping {
+class standart_shipping implements SelfRegisterable {
 
     protected static $order = null;
 
@@ -10,9 +10,9 @@ class standart_shipping {
 
     final protected function get_shipping_address() {
         if (!is_null(self::$order) && self::$order->pk()) {
-            return Factory::getApplication('shop')->getHelper('order')->get_order_shipping(self::$order->pk());
+            return Factory::getComponent('shop')->getHelper('order')->get_order_shipping(self::$order->pk());
         } else {
-            return Factory::getApplication('shop')->getHelper('customer')->get_shipping();
+            return Factory::getComponent('shop')->getHelper('customer')->get_shipping();
         }
     }
 
@@ -21,15 +21,15 @@ class standart_shipping {
 
         if (!is_null(self::$order) && self::$order->pk()) {
 
-            return Factory::getApplication('shop')->getHelper('order')->get_order_billing(self::$order->pk());
+            return Factory::getComponent('shop')->getHelper('order')->get_order_billing(self::$order->pk());
         } else {
-            return Factory::getApplication('shop')->getHelper('customer')->get_billing();
+            return Factory::getComponent('shop')->getHelper('customer')->get_billing();
         }
     }
 
     final protected function get_tax_rate($gid = null) {
 
-        switch (Factory::getApplication('shop')->getParams()->get('vatType')) {
+        switch (Factory::getComponent('shop')->getParams()->get('vatType')) {
 
             case '3':
                 $billing = $this->get_billing_address();
@@ -47,7 +47,7 @@ class standart_shipping {
                         $state = $billing->billing_state->get_value();
                     }
 
-                    return Factory::getApplication('shop')->getHelper('tax')->get_tax_rate($country, $state, $gid);
+                    return Factory::getComponent('shop')->getHelper('tax')->get_tax_rate($country, $state, $gid);
                 }
                 break;
 
@@ -70,7 +70,7 @@ class standart_shipping {
                         $state = $shipping->shipping_state->get_value();
                     }
 
-                    return Factory::getApplication('shop')->getHelper('tax')->get_tax_rate($country, $state, $gid);
+                    return Factory::getComponent('shop')->getHelper('tax')->get_tax_rate($country, $state, $gid);
                 }
                 break;
         }
@@ -83,7 +83,7 @@ class standart_shipping {
         if (!is_null(self::$order) && self::$order->pk()) {
             return self::$order->currency;
         } else {
-            return Factory::getApplication('shop')->getParams()->get('currency');
+            return Factory::getComponent('shop')->getParams()->get('currency');
         }
     }
 
@@ -152,7 +152,7 @@ class standart_shipping {
 
             return $cases;
         } else {
-            $cart = Factory::getApplication('shop')->getHelper('cart');
+            $cart = Factory::getComponent('shop')->getHelper('cart');
             return $cart->getProductVolumeShipping();
         }
     }
@@ -161,7 +161,7 @@ class standart_shipping {
         if (!is_null(self::$order) && self::$order->pk()) {
             return self::$order->volume_unit;
         } else {
-            return Factory::getApplication('shop')->getParams()->get('default_volume_unit');
+            return Factory::getComponent('shop')->getParams()->get('default_volume_unit');
         }
     }
 
@@ -169,7 +169,7 @@ class standart_shipping {
         if (!is_null(self::$order) && self::$order->pk()) {
             return self::$order->weight_unit;
         } else {
-            return Factory::getApplication('shop')->getParams()->get('default_weight_unit');
+            return Factory::getComponent('shop')->getParams()->get('default_weight_unit');
         }
     }
 
@@ -194,7 +194,7 @@ class standart_shipping {
 
             return $res;
         } else {
-            $cart = Factory::getApplication('shop')->getHelper('cart');
+            $cart = Factory::getComponent('shop')->getHelper('cart');
             return $cart->getCartItemDimention();
         }
     }
@@ -203,24 +203,20 @@ class standart_shipping {
         if (!is_null(self::$order) && self::$order->pk()) {
             return self::$order->order_subtotal;
         } else {
-            return Factory::getApplication('shop')->getHelper('cart')->get_total_price();
+            return Factory::getComponent('shop')->getHelper('cart')->get_total_price();
         }
     }
-	
-	final protected function get_total_qty(){
-	
-		$db = Factory::getDBO();
-		if (!is_null(self::$order) && self::$order->pk()) {
-			$db->setQuery("SELECT SUM(product_quantity) FROM `#_shop_order_item` WHERE order_id = ".(int)self::$order->pk()." LIMIT 1 ");
-			return (int)$db->loadResult();
-		
-		}else{
-			return Factory::getApplication('shop')->getHelper('cart')->get_total_products();
-		
-		}
-		
-	
-	}
+
+    final protected function get_total_qty() {
+
+        $db = Factory::getDBO();
+        if (!is_null(self::$order) && self::$order->pk()) {
+            $db->setQuery("SELECT SUM(product_quantity) FROM `#_shop_order_item` WHERE order_id = " . (int) self::$order->pk() . " LIMIT 1 ");
+            return (int) $db->loadResult();
+        } else {
+            return Factory::getComponent('shop')->getHelper('cart')->get_total_products();
+        }
+    }
 
     final public function get_class_name() {
 
@@ -256,7 +252,7 @@ class standart_shipping {
 
         foreach ((array) $rows as $k => $v) {
 
-            $rows[$k]->params = new Registry(stripslashes($v->params));
+            $rows[$k]->params = new Registry($v->params);
         }
 
         return $rows;
@@ -266,9 +262,9 @@ class standart_shipping {
 
         $db = Factory::getDBO();
 
-        $cart = Factory::getApplication('shop')->getHelper("cart");
+        $cart = Factory::getComponent('shop')->getHelper("cart");
 
-        $customer = Factory::getApplication('shop')->getHelper('customer');
+        $customer = Factory::getComponent('shop')->getHelper('customer');
 
 
 
@@ -276,9 +272,9 @@ class standart_shipping {
 
         $shipping = $this->get_shipping_address();
 
-        $customer = Factory::getApplication('shop')->getHelper('customer');
+        $customer = Factory::getComponent('shop')->getHelper('customer');
 
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
 
 
         $order_subtotal = $this->get_order_subtotal();
@@ -327,16 +323,15 @@ class standart_shipping {
 
 
             if ($country) {
-                $wherecountry = $conditions[$r->params->get('country', 0)][0].' ( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $country . '", shipping_rate_country ) OR shipping_rate_country="0" OR shipping_rate_country="" OR shipping_rate_country IS NULL)';
+                $wherecountry = $conditions[$r->params->get('country', 0)][0] . ' ( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $country . '", shipping_rate_country ) OR shipping_rate_country="0" OR shipping_rate_country="" OR shipping_rate_country IS NULL)';
             } else {
-               $wherecountry = '';//$conditions[$r->params->get('country', 0)][0].' ( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $params->get('shop_country') . '", shipping_rate_country ) )';
-           
-               }
+                $wherecountry = ''; //$conditions[$r->params->get('country', 0)][0].' ( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $params->get('shop_country') . '", shipping_rate_country ) )';
+            }
 
             if ($state) {
                 $wherestate = $conditions[$r->params->get('state', 0)][0] . ' ( ' . $conditions[$r->params->get('state', 0)][1] . ' FIND_IN_SET( "' . $state . '", shipping_rate_state ) OR shipping_rate_state="0" OR shipping_rate_state="" OR shipping_rate_state IS NULL )';
-            }else{
-                $wherestate = '';                
+            } else {
+                $wherestate = '';
             }
 
 
@@ -366,7 +361,7 @@ class standart_shipping {
                          
                          
                         ORDER BY sr.shipping_rate_priority,shipping_rate_value ";
-           
+
             $db->setQuery($sql);
 
             if (!$db->getResource()) {
@@ -385,9 +380,9 @@ class standart_shipping {
 
     public function get_available_rates() {
 
-        $order = Factory::getApplication('shop')->getHelper('order');
-		$price = Factory::getApplication('shop')->getHelper('price');
-        $params = Factory::getApplication('shop')->getParams();
+        $order = Factory::getComponent('shop')->getHelper('order');
+        $price = Factory::getComponent('shop')->getHelper('price');
+        $params = Factory::getComponent('shop')->getParams();
         $rates = $this->get_rates();
 
 
@@ -396,14 +391,14 @@ class standart_shipping {
         foreach ((array) $rates as $rate) {
 
             $row = new stdClass();
-            
-			if($rate->qty_multiply == "yes"){
-				$row->rate = (double) $rate->shipping_rate_value * $this->get_total_qty();
-				$row->raw_rate = (double) $rate->shipping_rate_value * $this->get_total_qty();
-			}else{
-				$row->rate = (double) $rate->shipping_rate_value;
-				$row->raw_rate = (double) $rate->shipping_rate_value;
-			}
+
+            if ($rate->qty_multiply == "yes") {
+                $row->rate = (double) $rate->shipping_rate_value * $this->get_total_qty();
+                $row->raw_rate = (double) $rate->shipping_rate_value * $this->get_total_qty();
+            } else {
+                $row->rate = (double) $rate->shipping_rate_value;
+                $row->raw_rate = (double) $rate->shipping_rate_value;
+            }
 
             $gid = !$rate->shipping_tax_group_id ? $params->get('shop_tax_group') : $rate->shipping_tax_group_id;
 
@@ -432,7 +427,7 @@ class standart_shipping {
             }
 
 
-            $row->name = strings::stripAndEncode($rate->name . " - " . $rate->shipping_rate_name . " (+" . $price->format($row->rate) . ") ");
+            $row->name = strings::htmlentities($rate->name . " - " . $rate->shipping_rate_name . " (+" . $price->format($row->rate) . ") ");
 
             $id = new stdClass();
 
@@ -456,7 +451,8 @@ class standart_shipping {
 
     public function print_options() {
 
-        $id = Request::getInt('method_id', 0);
+        $input = Factory::getApplication()->getInput();
+        $id = $input->get('method_id', 0, "INT");
 
         $carrier = Table::getInstance('carrier', 'shop')->load($id);
         $view = view::getInstance("shipping", "shop");
@@ -466,14 +462,16 @@ class standart_shipping {
 
     public function save_options($id) {
 
-        $params = Request::getVar('params', array());
+        $input = Factory::getApplication()->getInput();
+
+        $params = $input->get('params', array(), "ARRAY");
         $carrier = Table::getInstance('carrier', 'shop')->load($id);
         $carrier->params = $params;
 
         $carrier->store();
     }
 
-    public static function register_method($methods) {
+    public static function register(array $methods) {
         $methods[] = new self();
         return $methods;
     }

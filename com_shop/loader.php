@@ -1,4 +1,5 @@
 <?php
+
 /* This loader is example how to create whole component as a separate plugin
  * to make it work you will need to add correct plugin meta comments here.
  */

@@ -4,13 +4,13 @@
         <ul class="adminformlist">
             <li>
                 <label for="price"> <?php _e('Price:', 'com_shop'); ?> </label>
-                <input class="text_area" type="text" name="price" id="price" size="10" maxlength="10" value="<?php echo strings::stripAndEncode($this->row->product->price); ?>" />
+                <input class="text_area" type="text" name="price" id="price" size="10" maxlength="10" value="<?php echo strings::htmlentities($this->row->product->price); ?>" />
             </li>
             <li>
                 <label class="hasTip" title="<?php _e('Stock keeping unit.', 'com_shop'); ?>" for="sku"> <?php _e('SKU:', 'com_shop'); ?> </label>
-                <input class="text_area" type="text" name="sku" id="sku" size="32" maxlength="250" value="<?php echo strings::stripAndEncode($this->row->product->sku); ?>" />
+                <input class="text_area" type="text" name="sku" id="sku" size="32" maxlength="250" value="<?php echo strings::htmlentities($this->row->product->sku); ?>" />
             </li>
-            
+
             <li>
                 <label class="hasTip" title="<?php _e('Ordering', 'com_shop'); ?>" for="product_menu_order"> <?php _e('Ordering:', 'com_shop'); ?> </label>
                 <input type="text" id="product_menu_order" name="menu_order" value="<?php echo $this->post->menu_order; ?>" />
@@ -27,7 +27,7 @@
                 <label class="hasTip" title="<?php _e('upload files for that digital product.', 'com_shop'); ?>" for="uploadfiles">Choose files</label>
                 <button class="btn btn-small upload_file_button">
                     <span class="icon-upload"></span>
-                    <?php _e('Upload a file','com_shop'); ?>
+                    <?php _e('Upload a file', 'com_shop'); ?>
                 </button>
             </li>
             <li class="digital" style="display:<?php echo $this->row->product->type == 'digital' ? 'block' : 'none'; ?>">
@@ -88,27 +88,27 @@
                     <label for="not_for_sale1"><?php _e('Yes', 'com_shop'); ?></label>
                 </fieldset>
             </li>
-			<li>
+            <li>
                 <label><?php _e('Hide price:', 'com_shop'); ?></label>
                 <fieldset class="panelform">
                     <select name='hide_price' id="hide_price">
-						<option value='global' <?php echo ($this->row->product->hide_price == 'global') ? "selected='selected'" : ''; ?>><?php _e('global', 'com_shop'); ?></option>
-						<option value="no" <?php echo ($this->row->product->hide_price == 'no') ? "selected='selected'" : ''; ?> ><?php _e('no', 'com_shop'); ?></option>
-						<option value="yes" <?php echo ($this->row->product->hide_price == 'yes') ? "selected='selected'" : ''; ?> ><?php _e('yes', 'com_shop'); ?></option>
-             		</select>
-				</fieldset>
+                        <option value='global' <?php echo ($this->row->product->hide_price == 'global') ? "selected='selected'" : ''; ?>><?php _e('global', 'com_shop'); ?></option>
+                        <option value="no" <?php echo ($this->row->product->hide_price == 'no') ? "selected='selected'" : ''; ?> ><?php _e('no', 'com_shop'); ?></option>
+                        <option value="yes" <?php echo ($this->row->product->hide_price == 'yes') ? "selected='selected'" : ''; ?> ><?php _e('yes', 'com_shop'); ?></option>
+                    </select>
+                </fieldset>
             </li>
             <li>
                 <label for="discount_price"> <?php _e('Discount Price:', 'com_shop'); ?> </label>
-                <input  type="text" name="discount_price" id="discount_price" size="10" maxlength="10" value="<?php echo strings::stripAndEncode($this->row->product->discount_price); ?> " />
+                <input  type="text" name="discount_price" id="discount_price" size="10" maxlength="10" value="<?php echo strings::htmlentities($this->row->product->discount_price); ?> " />
             </li>
             <li>
                 <label for="discount_start"> <?php _e('Discount Start Date:', 'com_shop'); ?> </label>
-                <input type="text" name="discount_start" id="discount_start" value="<?php echo strings::stripAndEncode($this->row->product->discount_start); ?>"  class="calendar" size="15" maxlength="19" />
+                <input type="text" name="discount_start" id="discount_start" value="<?php echo strings::htmlentities($this->row->product->discount_start); ?>"  class="calendar" size="15" maxlength="19" />
             </li>
             <li>
                 <label for="discount_end"> <?php _e('Discount End Date:', 'com_shop'); ?> </label>
-                <input type="text" name="discount_end" id="discount_end"  value="<?php echo strings::stripAndEncode($this->row->product->discount_end); ?>" class="calendar" size="15" maxlength="19" />
+                <input type="text" name="discount_end" id="discount_end"  value="<?php echo strings::htmlentities($this->row->product->discount_end); ?>" class="calendar" size="15" maxlength="19" />
             </li>
             <li>
                 <label for="vat"> <?php _e('Add VAT:', 'com_shop'); ?> </label>
@@ -124,7 +124,7 @@
                     <option value='' <?php echo (!$this->row->product->tax_group_id) ? "selected='selected'" : ''; ?>><?php _e('default', 'com_shop'); ?></option>
                     <?php foreach ((array) $this->tax_groups as $group) { ?>
                         <option value='<?php echo $group->tax_group_id; ?>' <?php echo ($this->row->product->tax_group_id == $group->tax_group_id) ? " selected='selected'" : ""; ?>>
-                            <?php echo strings::stripAndEncode($group->tax_group_name); ?>
+                            <?php echo strings::htmlentities($group->tax_group_name); ?>
                         </option>
                     <?php } ?>
                 </select>

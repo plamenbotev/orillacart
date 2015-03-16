@@ -9,7 +9,7 @@
         <div class="row clearfix">
             <div class="col-xs-12 col-sm-6">
 
-                <input class="form-control" type='text' name='card_holder_name' id="card_holder_name" value='<?php echo strings::htmlentities(request::getString('card_holder_name')); ?>' />
+                <input class="form-control" type='text' name='card_holder_name' id="card_holder_name" value='<?php echo strings::htmlentities($this->input->get('card_holder_name', "", "STRING")); ?>' />
             </div>
         </div>
 
@@ -20,7 +20,7 @@
         </div>
         <div class="row clearfix">
             <div class="col-xs-12 col-sm-6">
-                <input class="form-control" type='text' name='card_number' id="card_number" value='<?php echo strings::htmlentities(request::getString('card_number')); ?>' />
+                <input class="form-control" type='text' name='card_number' id="card_number" value='<?php echo strings::htmlentities($this->input->get('card_number', "", "STRING")); ?>' />
             </div>
         </div>
         <div class="row clearfix">
@@ -37,7 +37,7 @@
                             $months = range(1, 12);
                             foreach ($months as $month) {
                                 ?>
-                                <option value='<?php echo $month; ?>' <?php echo request::getString('card_expire_month', date('n')) == $month ? "selected='selected'" : ""; ?> ><?php echo $month; ?></option>
+                                <option value='<?php echo $month; ?>' <?php echo $this->input->get('card_expire_month', date('n'), "STRING") == $month ? "selected='selected'" : ""; ?> ><?php echo $month; ?></option>
                             <?php }
                             ?>
                         </select>
@@ -49,7 +49,7 @@
                             $dates = range(date('Y'), date('Y') + 10);
                             foreach ($dates as $date) {
                                 ?>
-                                <option value='<?php echo $date; ?>' <?php echo request::getString('card_expire_year') == $date ? "selected='selected'" : ""; ?>><?php echo $date; ?> </option>
+                                <option value='<?php echo $date; ?>' <?php echo $this->input->get('card_expire_year', "", "STRING") == $date ? "selected='selected'" : ""; ?>><?php echo $date; ?> </option>
                             <?php } ?>
                         </select>
                     </div>
@@ -81,7 +81,7 @@
                         <select class="form-control" name='card_type' id="card_type">
                             <?php foreach ((array) $this->cards as $card) { ?>
 
-                                <option <?php echo request::getString('card_type') == $card->get_symbol() ? "selected='selected'" : ""; ?>  value="<?php echo $card->get_symbol(); ?>">
+                                <option <?php echo $this->input->get('card_type', "", "STRING") == $card->get_symbol() ? "selected='selected'" : ""; ?>  value="<?php echo $card->get_symbol(); ?>">
                                     <?php echo $card->get_name(); ?>
                                 </option>
 
@@ -97,7 +97,7 @@
         <div class="row clearfix">
             <div class="col-xs-12 col-sm-6 text-right move-down-by-20px">
                 <label for="pay_button" class="btn btn-block btn-large btn-primary btn-success">
-                   <i class="icon-cart"><?php _e("pay", "com_shop"); ?></i>
+                    <i class="icon-cart"><?php _e("pay", "com_shop"); ?></i>
                 </label>
                 <input type='submit' style="display:none!important;" id="pay_button" name='pay_button' value='<?php _e("pay", "com_shop"); ?>' />
             </div>

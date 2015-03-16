@@ -1,5 +1,11 @@
 <?php
 
+/*
+ * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
+ * @license     GNU General Public License version 2 or later; see LICENSE
+ * 
+ */
+
 class paginator {
 
     /**
@@ -132,7 +138,6 @@ class paginator {
         }
     }
 
- 
     public function getRowOffset($index) {
         return $index + 1 + $this->limitstart;
     }
@@ -145,7 +150,6 @@ class paginator {
         return $data;
     }
 
-  
     public function getPagesCounter() {
         // Initialize variables
         $html = null;
@@ -155,7 +159,6 @@ class paginator {
         return $html;
     }
 
-  
     public function getResultsCounter() {
         // Initialize variables
         $html = null;
@@ -179,7 +182,6 @@ class paginator {
         return $html;
     }
 
-   
     public function getPagesLinks() {
 
 
@@ -255,7 +257,7 @@ class paginator {
         // Initialize variables
 
 
-        $html .= $this->getPagesLinks();
+        $html = $this->getPagesLinks();
 
         $html .= "\n<input type=\"hidden\" name=\"limitstart\" id='limitstart' value=\"" . $this->limitstart . "\" />";
         $html .= "\n<input type=\"hidden\" name=\"limit\" id='limit' value=\"" . $this->limit . "\" />";
@@ -294,7 +296,6 @@ class paginator {
         return "<span class=\"pagenav\">" . $item->text . "</span>";
     }
 
-    
     protected function _buildDataObject() {
         // Initialize variables
         $data = new stdClass();
@@ -359,7 +360,7 @@ class paginator {
             $offset = $offset == 0 ? '' : $offset;  //set the empty for removal from route
 
             $data->pages[$i] = new JPaginationObject($i);
-            if ($i != $this->get('pages.current') || $this->_viewall) {
+            if ($i != $this->get('pages.current') || (isset($this->_viewall) && $this->_viewall)) {
                 $data->pages[$i]->base = $offset;
                 $data->pages[$i]->link = Route::get(sprintf($this->url, $offset, $this->limit));
                 if ($this->onclick) {

@@ -6,6 +6,7 @@ class shopViewProduct_list extends view {
 
         global $wp_query;
 
+        $input = Factory::getApplication()->getInput();
 
         $big = 999999999;
 
@@ -24,13 +25,13 @@ class shopViewProduct_list extends view {
         $this->assign('pagination', $pagination);
         add_filter('edit_template_paths_shop', array($this, 'override_templates'), 1, 9);
 
-        Factory::getMainframe()->addscript('jquery');
+        Factory::getHead()->addscript('jquery');
 
-        $app = Factory::getApplication('shop');
+        $app = Factory::getComponent('shop');
 
-        Factory::getMainframe()->addscript("jquery-equalheights", $app->getAssetsUrl() . "/js/jquery.syncheight.js");
+        Factory::getHead()->addscript("jquery-equalheights", $app->getAssetsUrl() . "/js/jquery.syncheight.js");
 
-        Factory::getMainframe()->addCustomHeadTag('grid-equals-li', "<script type='text/javascript'> 
+        Factory::getHead()->addCustomHeadTag('grid-equals-li', "<script type='text/javascript'> 
             jQuery(window).load(function(){  
                     jQuery('#com-shop .productsGrid').each(function(i){
                         jQuery('.gridItem',this).syncHeight({ 'updateOnResize': true});  
@@ -38,7 +39,7 @@ class shopViewProduct_list extends view {
             }); </script>");
 
 
-        $tpl = request::getString('list_type', null);
+        $tpl = $input->get('list_type', null, "STRING");
 
         if (!$tpl && isset($_SESSION['list_type'])) {
             $tpl = $_SESSION['list_type'];
@@ -50,7 +51,7 @@ class shopViewProduct_list extends view {
             $tpl = $app->getParams()->get('list_type');
 
         $this->assign('list_type', $tpl);
-        if (request::getString('list_type', null)) {
+        if ($input->get('list_type', null, "STRING")) {
             $_SESSION['list_type'] = $tpl;
         }
         $this->assign('products_per_row', $app->getParams()->get('products_per_row'));
@@ -75,16 +76,16 @@ class shopViewProduct_list extends view {
             foreach ((array) $terms as $o) {
                 $title[] = $o->name;
             }
-            Factory::getMainframe()->setPageTitle(implode(' - ', $title));
+            Factory::getHead()->setPageTitle(implode(' - ', $title));
         } else if (isset($obj->taxonomy) && !empty($obj->taxonomy) && in_array($obj->taxonomy, array('product_tags', 'product_brand', 'product_type'))) {
-            Factory::getMainframe()->setPageTitle($obj->name);
+            Factory::getHead()->setPageTitle($obj->name);
         } else {
-            $page = get_post(Factory::getApplication("shop")->getPArams()->get("page_id"));
+            $page = get_post(Factory::getComponent("shop")->getPArams()->get("page_id"));
 
-            Factory::getMainframe()->setPageTitle(esc_html(stripslashes($page->post_title)));
+            Factory::getHead()->setPageTitle(esc_html($page->post_title));
         }
 
-        parent::display($tpl);
+        $this->loadTemplate($tpl);
     }
 
     public function override_templates(array $paths) {

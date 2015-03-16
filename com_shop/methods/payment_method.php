@@ -1,6 +1,6 @@
 <?php
 
-abstract class payment_method {
+abstract class payment_method implements SelfRegisterable {
 
     const pod = 1;
     const ccard = 2;
@@ -25,7 +25,7 @@ abstract class payment_method {
 
         if ($row) {
             $this->active = true;
-            $this->name = stripslashes($row->name);
+            $this->name = $row->name;
             $this->id = (int) $row->method_id;
             $this->params = new Registry($row->params);
         } else {
@@ -70,7 +70,7 @@ abstract class payment_method {
 
     abstract public function print_options();
 
-    abstract public static function register_method($methods);
+
 
     public function on_receipt($order = null) {
         return "";
@@ -82,7 +82,9 @@ abstract class payment_method {
 
     public function save_options($id) {
 
-        $params = Request::getVar('params', array());
+        $input = Factory::getApplication()->getInput();
+
+        $params = $input->get('params', array(), "ARRAY");
         $gw = Table::getInstance('payment', 'shop')->load($id);
         $gw->params = $params;
         $gw->store();

@@ -32,15 +32,15 @@ if (!function_exists('payondelivery_init')) {
                                 </label>
                                 <textarea type="text" name="params[payondelivery_fields]" id="payondelivery_fields"><?php echo $this->params->get('payondelivery_fields', ''); ?></textarea>
                             </li>
-							<li>
+                            <li>
                                 <label for="payondelivery_onreceipt">
                                     Print on receipt:
                                 </label>
                                 <textarea type="text" name="params[payondelivery_onreceipt]" id="payondelivery_onreceipt"><?php echo $this->params->get('payondelivery_onreceipt', ''); ?></textarea>
                             </li>
-							
-							
-							
+
+
+
                         </ul>
                     </fieldset>
                     <?php
@@ -49,16 +49,16 @@ if (!function_exists('payondelivery_init')) {
                 public function fields() {
                     return $this->params->get('payondelivery_fields', '');
                 }
-				
-				public function on_receipt(){
+
+                public function on_receipt($order=null) {
                     return $this->params->get('payondelivery_onreceipt', '');
                 }
 
                 public function do_payment($order_id, $order) {
-
+                    
                 }
-				
-				static public function register_method($methods) {
+
+                static public function register(array $methods) {
                     $methods[] = new self();
 
                     return $methods;
@@ -66,7 +66,7 @@ if (!function_exists('payondelivery_init')) {
 
             }
 
-            add_filter('register_payment_class', 'payondelivery::register_method');
+            add_filter('register_payment_class', 'payondelivery::register');
         }
     }
 

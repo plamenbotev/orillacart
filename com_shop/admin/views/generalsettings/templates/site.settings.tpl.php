@@ -7,7 +7,7 @@
                 <label class="hasTip" for="objects_per_page">
                     <?php _e('Number of objects per page?', 'com_shop'); ?>
                 </label>
-                <input type="text" value="<?php echo $this->settings->get('objects_per_page'); ?>" name="objects_per_page" id="objects_per_page">
+                <input type="text" value="<?php echo $this->escape($this->settings->get('objects_per_page')); ?>" name="objects_per_page" id="objects_per_page">
             </li>
             <li>
                 <label class="hasTip" for="display_cetegories">
@@ -71,7 +71,7 @@
                 <label class="hasTip" for="products_per_row">
                     <?php _e('Products per row :', 'com_shop'); ?>
                 </label>
-                <input type='text' value='<?php echo $this->settings->get('products_per_row'); ?>' name='products_per_row' id='products_per_row' />
+                <input type='text' value='<?php echo $this->escape($this->settings->get('products_per_row')); ?>' name='products_per_row' id='products_per_row' />
             </li>
             <li>
                 <label class="hasTip" for="page_id">
@@ -100,49 +100,49 @@
                 <label class="hasTip" for="catX">
                     <?php _e('cat thumb X :', 'com_shop'); ?>
                 </label>
-                <input type='text' value='<?php echo $this->settings->get('catX'); ?>' name='catX' id='catX' />
+                <input type='text' value='<?php echo (int) $this->settings->get('catX'); ?>' name='catX' id='catX' />
             </li>
             <li>
                 <label class="hasTip" for="catY">
                     <?php _e('cat thumb Y :', 'com_shop'); ?>
                 </label>
-                <input type='text' value='<?php echo $this->settings->get('catY'); ?>' name='catY' id='catY' />
+                <input type='text' value='<?php echo (int) $this->settings->get('catY'); ?>' name='catY' id='catY' />
             </li>         
             <li>
                 <label class="hasTip" for="miniX">
                     <?php _e('Mini X :', 'com_shop'); ?>
                 </label>
-                <input type='text' value='<?php echo $this->settings->get('miniX'); ?>' name='miniX' id='miniX' />
+                <input type='text' value='<?php echo (int) $this->settings->get('miniX'); ?>' name='miniX' id='miniX' />
             </li>
             <li>
                 <label class="hasTip" for="miniY">
                     <?php _e('Mini Y :', 'com_shop'); ?>
                 </label>
-                <input type='text' value='<?php echo $this->settings->get('miniY'); ?>' name='miniY' id='miniY' />
+                <input type='text' value='<?php echo (int) $this->settings->get('miniY'); ?>' name='miniY' id='miniY' />
             </li>
             <li>
                 <label class="hasTip" for="mediumX">
                     <?php _e('Medium X :', 'com_shop'); ?>
                 </label>
-                <input type='text' value='<?php echo $this->settings->get('mediumX'); ?>' name='mediumX' id='mediumX' />
+                <input type='text' value='<?php echo (int) $this->settings->get('mediumX'); ?>' name='mediumX' id='mediumX' />
             </li>
             <li>
                 <label class="hasTip" for="mediumY">
                     <?php _e('Medium Y :', 'com_shop'); ?>
                 </label>
-                <input type='text' value='<?php echo $this->settings->get('mediumY'); ?>' name='mediumY' id='mediumY' />
+                <input type='text' value='<?php echo (int) $this->settings->get('mediumY'); ?>' name='mediumY' id='mediumY' />
             </li>
             <li>
                 <label class="hasTip" for="thumbX">
                     <?php _e('Thumbs X :', 'com_shop'); ?>
                 </label>
-                <input type='text' value='<?php echo $this->settings->get('thumbX'); ?>' name='thumbX' id='thumbX' />
+                <input type='text' value='<?php echo (int) $this->settings->get('thumbX'); ?>' name='thumbX' id='thumbX' />
             </li>
             <li>
                 <label class="hasTip" for="thumbY">
                     <?php _e('Thumbs Y :', 'com_shop'); ?>
                 </label>
-                <input type='text' value='<?php echo $this->settings->get('thumbY'); ?>' name='thumbY' id='thumbY' />
+                <input type='text' value='<?php echo (int) $this->settings->get('thumbY'); ?>' name='thumbY' id='thumbY' />
             </li>
         </ul>
     </fieldset>

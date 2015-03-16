@@ -10,14 +10,14 @@ class shopViewStockroom extends view {
 
         $bar = toolbar::getInstance('toolbar', __('Stockrooms', 'com_shop'), 'default', 'cube');
 
-        $bar->appendButton('Link', 'new', __('new', 'com_shop'), admin_url('admin.php?page=component_com_shop-stockroom&task=addnew'), false, true);
-        $bar->appendButton('Standard', 'delete', __('delete', 'com_shop'), 'document.adminForm.submit()', false, true);
+        $bar->appendButton('Link', 'new', __('new', 'com_shop'), admin_url('admin.php?page=component_com_shop-stockroom&task=addnew'));
+        $bar->appendButton('Standard', 'delete', __('delete', 'com_shop'), 'document.adminForm.submit()');
 
 
 
 
 
-        Factory::getMainframe()->addCustomHeadTag('stockroom-display', "
+        Factory::getHead()->addCustomHeadTag('stockroom-display', "
 
 <script type='text/javascript'>
 jQuery(document).ready(function() {
@@ -45,35 +45,35 @@ jQuery('#toggle').click(
 
 
 
-        parent::display('list_stockrooms');
+        $this->loadTemplate('list_stockrooms');
     }
 
     public function addnew() {
 
         $bar = toolbar::getInstance('toolbar', __('Stockrooms', 'com_shop'), 'default', 'cube');
-        $bar->appendButton('Link', 'cancel', __('cancel', 'com_shop'), admin_url('admin.php?page=component_com_shop-stockroom'), false, true);
-        $bar->appendButton('Standard', 'save', __('save', 'com_shop'), 'document.adminForm.submit()', false, true);
+        $bar->appendButton('Link', 'cancel', __('cancel', 'com_shop'), admin_url('admin.php?page=component_com_shop-stockroom'));
+        $bar->appendButton('Standard', 'save', __('save', 'com_shop'), 'document.adminForm.submit()');
 
-        parent::display('stockroomform');
+         $this->loadTemplate('stockroomform');
     }
 
     public function manage_stocks() {
 
 
         $bar = toolbar::getInstance('toolbar', __('Amounts', 'com_shop'), 'default', 'cube');
-        $bar->appendButton('Link', 'cancel', __('cancel', 'com_shop'), admin_url('admin.php?page=component_com_shop-stockroom'), false, true);
+        $bar->appendButton('Link', 'cancel', __('cancel', 'com_shop'), admin_url('admin.php?page=component_com_shop-stockroom'));
 
 
 
 
         /* load the ui and the dialog plugin */
-        Factory::getMainframe()->addScript('jquery-ui-dialog');
-        Factory::getMainframe()->addStyle('jquery.ui.theme', Factory::getApplication('shop')->getAssetsUrl() . "/jquery.ui.css");
+        Factory::getHead()->addScript('jquery-ui-dialog');
+        Factory::getHead()->addStyle('jquery.ui.theme', Factory::getComponent('shop')->getAssetsUrl() . "/jquery.ui.css");
 
-        Factory::getMainframe()->addCustomHeadTag('stockroom-manage_stocks', "<script type='text/javascript'>
+        Factory::getHead()->addCustomHeadTag('stockroom-manage_stocks', "<script type='text/javascript'>
 
-		var shop_tree_folderImage = \"" . Factory::getApplication('shop')->getAssetsUrl() . "/images/folder.png" . "\";
-		var shop_tree_root_image  = \"" . Factory::getApplication('shop')->getAssetsUrl() . "/images/root.png" . "\";
+		var shop_tree_folderImage = \"" . Factory::getComponent('shop')->getAssetsUrl() . "/images/folder.png" . "\";
+		var shop_tree_root_image  = \"" . Factory::getComponent('shop')->getAssetsUrl() . "/images/root.png" . "\";
 		</script>
 		
 		
@@ -89,7 +89,7 @@ jQuery(function() {
     jQuery('input#select_parent').autocomplete({
         source: function(request, response) {
             jQuery.ajax({
-                url: ajaxurl + '?action=framework-ajax-admin&component=shop&con=orders&task=get_parent_list',
+                url: ajaxurl + '?action=ajax-call-admin&component=shop&con=orders&task=get_parent_list',
                 dataType: 'json',
                 data: {
                     str: request.term
@@ -140,7 +140,7 @@ dialog = jQuery('<div id=\"catselect\" style=\"display:none;\"><div>\
 </div>\<div id=\"tree\"  class=\"tree\"></div></div>').appendTo('body');
 	
 
-jQuery.getScript('" . Factory::getApplication('shop')->getAssetsUrl() . "/js/stockroom_categories_tree.js');	
+jQuery.getScript('" . Factory::getComponent('shop')->getAssetsUrl() . "/js/stockroom_categories_tree.js');	
 
   jQuery(\"#modal\").click(function() {
  
@@ -180,30 +180,31 @@ jQuery(\"#clearall\").click(function(){
 
 
         /* load the tree */
-         Factory::getMainframe()->addscript('jquery');
-   
-        Factory::getMainframe()->addStyle('jquery-tree-css', Factory::getApplication('shop')->getAssetsUrl() . '/jstree.css');
-        Factory::getMainframe()->addScript('jquery-tree-js', Factory::getApplication('shop')->getAssetsUrl() . '/js/jquery.jstree.js');
-        Factory::getMainframe()->addScript('jquery-hotkeys-js', Factory::getApplication('shop')->getAssetsUrl() . '/js/jquery.hotkeys.js');
-        Factory::getMainframe()->addScript('jquery-cookie-js', Factory::getApplication('shop')->getAssetsUrl() . '/js/jquery.cookie.js');
-         Factory::getMainframe()->addscript('jquery-ui-autocomplete');
-   
-        
+        Factory::getHead()->addscript('jquery');
+
+        Factory::getHead()->addStyle('jquery-tree-css', Factory::getComponent('shop')->getAssetsUrl() . '/jstree.css');
+        Factory::getHead()->addScript('jquery-tree-js', Factory::getComponent('shop')->getAssetsUrl() . '/js/jquery.jstree.js');
+        Factory::getHead()->addScript('jquery-hotkeys-js', Factory::getComponent('shop')->getAssetsUrl() . '/js/jquery.hotkeys.js');
+        Factory::getHead()->addScript('jquery-cookie-js', Factory::getComponent('shop')->getAssetsUrl() . '/js/jquery.cookie.js');
+        Factory::getHead()->addscript('jquery-ui-autocomplete');
 
 
 
+        $input = Factory::getApplication()->getInput();
 
-        switch (request::getWord('stockroom_type', 'product', 'POST')) {
+        $this->assign("input", $input);
+
+        switch ($input->get('stockroom_type', 'product', 'WORD')) {
 
             case 'product_attribute_property':
 
-                parent::display('manage_property_stocks');
+                $this->loadTemplate('manage_property_stocks');
 
                 break;
 
             case 'product':
             default:
-                parent::display('manage_product_stocks');
+                 $this->loadTemplate('manage_product_stocks');
                 break;
         }
     }

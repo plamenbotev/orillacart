@@ -55,7 +55,7 @@ class session {
             return false;
         }
 
-        return (string) stripslashes($this->db->loadResult());
+        return (string) $this->db->loadResult();
     }
 
     public function write($ses_id, $data) {
@@ -85,8 +85,7 @@ class session {
         if (!$this->db->getResource()) {
 
             return false;
-        }
-        else
+        } else
             return TRUE;
     }
 
@@ -101,8 +100,7 @@ class session {
         if (!$this->db->getResource()) {
 
             return false;
-        }
-        else
+        } else
             return true;
     }
 
@@ -113,8 +111,7 @@ class session {
         if (!$this->db->getResource()) {
 
             return false;
-        }
-        else
+        } else
             return true;
     }
 

@@ -2,7 +2,7 @@
 
 class product_helper {
 
-    public function getInstance() {
+    public static function getInstance() {
 
         static $instance = null;
 
@@ -19,9 +19,9 @@ class product_helper {
     }
 
     public function get_price_with_tax($o, $p = array(), $f = array(), $country = null, $state = null) {
-		
+
         if (is_int($o) || is_string($o)) {
-            $r = Factory::getApplication('shop')->getTable('product')->load($o);
+            $r = Factory::getComponent('shop')->getTable('product')->load($o);
 
             if (!$r->pk()) {
 
@@ -40,13 +40,13 @@ class product_helper {
 
 
 
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
 
 
 
 
-        $helper = Factory::getApplication('shop')->getHelper('price');
-        $tax = Factory::getApplication('shop')->getHelper('tax');
+        $helper = Factory::getComponent('shop')->getHelper('price');
+        $tax = Factory::getComponent('shop')->getHelper('tax');
         $price = $this->get_price($o, $p, $f)->raw;
         $raw_price = $price;
         $tax_rate = 0;
@@ -62,12 +62,12 @@ class product_helper {
                 $price += $price * $tax_rate;
             } else {
                 $tax_rate = $tax->get_tax_rate($country, $state);
-               
+
                 $price += $price * $tax_rate;
             }
         }
-        
-        $price = apply_filters( "orillacart_price_after_tax", $price,$r );
+
+        $price = apply_filters("orillacart_price_after_tax", $price, $r);
 
         $ret = new stdClass();
         $ret->price_formated = $helper->format($price);
@@ -75,8 +75,8 @@ class product_helper {
         $ret->tax = $tax_rate * 100;
         $ret->raw_price = $raw_price;
         $ret->base = $r->price;
-        $ret->base_formated = Factory::getApplication('shop')->getHelper('price')->format($ret->base);
-        
+        $ret->base_formated = Factory::getComponent('shop')->getHelper('price')->format($ret->base);
+
 
         return $ret;
     }
@@ -85,17 +85,17 @@ class product_helper {
 
 
         if (is_int($o) || is_string($o)) {
-            
-            $r = Factory::getApplication('shop')->getTable('product')->load($o);
-          
+
+            $r = Factory::getComponent('shop')->getTable('product')->load($o);
+
             if (!$r->pk()) {
                 throw new Exception(__('no such product', 'com_shop'));
             }
         } else if (is_object($o)) {
-           
+
             $r = $o;
         } else {
-          
+
             throw new Exception(__('no such product', 'com_shop'));
         }
 
@@ -104,15 +104,15 @@ class product_helper {
         if (strtotime($r->discount_start) < time() && strtotime($r->discount_end) > time()) {
             $price = $r->discount_price;
         }
-        
-        $price = apply_filters( "orillacart_raw_price_withouth_attributes", $price,$r );
+
+        $price = apply_filters("orillacart_raw_price_withouth_attributes", $price, $r);
 
         $db = Factory::getDBO();
 
         if (!empty($p)) {
             $db = Factory::getDBO();
             $p = (array) array_map('intval', (array) array_unique((array) $p));
-            
+
 
             $db->setQuery("SELECT p.property_id,p.property_price,p.oprand FROM `#_shop_attribute_property` AS p
 
@@ -149,7 +149,6 @@ class product_helper {
                         break;
                 }
             }
-         
         }
 
         if ((!empty($f) || !$r->download_choose_file ) && has_term('digital', 'product_type', (int) $r->pk())) {
@@ -174,16 +173,16 @@ class product_helper {
                 $price += (double) $row->price;
             }
         }
-       
-		// enable plugins to alter the product price
-		$price = apply_filters( "orillacart_raw_price", $price,$r );
+
+        // enable plugins to alter the product price
+        $price = apply_filters("orillacart_raw_price", $price, $r);
 
         $ret = new stdClass();
         $ret->raw = $price;
         $ret->base = $r->price;
-        $ret->base_formated = Factory::getApplication('shop')->getHelper('price')->format($ret->base);
-               
-        $ret->formated = Factory::getApplication('shop')->getHelper('price')->format($price);
+        $ret->base_formated = Factory::getComponent('shop')->getHelper('price')->format($ret->base);
+
+        $ret->formated = Factory::getComponent('shop')->getHelper('price')->format($price);
 
         return $ret;
     }

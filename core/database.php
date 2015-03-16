@@ -25,8 +25,7 @@ abstract class database {
     }
 
     abstract public function getTableColumns($table, $typeOnly = true);
-
-    abstract static function getInstance(); //get new database instance
+ 
 
     abstract protected function __construct(); //connet to the database
 

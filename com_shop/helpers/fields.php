@@ -34,7 +34,7 @@ if (!class_exists("fields")) {
             if (array_key_exists($k, $this->_fields)) {
 
                 return true;
-            } 
+            }
             return false;
         }
 
@@ -88,8 +88,8 @@ if (!class_exists("fields")) {
         }
 
         public function remove_field($name) {
-			
-		    if (array_key_exists($name, $this->_fields)) {
+
+            if (array_key_exists($name, $this->_fields)) {
                 unset($this->_fields[$name]);
                 return true;
             }
@@ -127,16 +127,16 @@ if (!class_exists("field")) {
         protected $_label = '';
         protected $_error_msg = '';
         protected $_val_callback = array();
-		protected $_exclude = false;
-		
-		public function exclude(){
-			$this->_exclude = true;
-			$this->set_required(false);
-		}
-		
-		public function is_excluded(){
-			return (bool)$this->_exclude;
-		}
+        protected $_exclude = false;
+
+        public function exclude() {
+            $this->_exclude = true;
+            $this->set_required(false);
+        }
+
+        public function is_excluded() {
+            return (bool) $this->_exclude;
+        }
 
         public function add_validation($v = array()) {
             if (is_callable($v)) {
@@ -150,7 +150,7 @@ if (!class_exists("field")) {
             if ($app instanceof component)
                 return $app;
             else {
-                $app = Factory::getApplication('shop');
+                $app = Factory::getComponent('shop');
                 return $app;
             }
         }
@@ -305,7 +305,7 @@ if (!class_exists("select")) {
         }
 
         public function render() {
-             $html = '';
+            $html = '';
             $html .="<select id='" . $this->get_name() . "' name='" . $this->get_name() . "'";
             foreach ((array) $this->_params as $k => $v) {
                 $html .= " " . $k . "='" . $v . "' ";
@@ -360,7 +360,7 @@ if (!class_exists('country')) {
 
             $db = Factory::getDBO();
 
-            $allowed_countries = (array) Factory::getApplication('shop')->getPArams()->get('retail_countries');
+            $allowed_countries = (array) Factory::getComponent('shop')->getPArams()->get('retail_countries');
 
             $ids = array_map(array($db, 'secure'), $allowed_countries);
             $where = '';
@@ -387,7 +387,7 @@ if (!class_exists('country')) {
 
 
             foreach ((array) $rows as $row) {
-                $this->_options[$row->country_2_code] = stripslashes($row->country_name);
+                $this->_options[$row->country_2_code] = $row->country_name;
             }
 
 
@@ -413,7 +413,7 @@ if (!class_exists('state')) {
         }
 
         public function render() {
-            
+
             $db = Factory::getDBO();
             $que = "SELECT  * FROM `#_shop_state` WHERE country_id= '" . $db->secure($this->_country) . "' ORDER BY state_name ASC ";
             $db->setQuery($que);
@@ -429,7 +429,7 @@ if (!class_exists('state')) {
 
 
                 foreach ((array) $rows as $row) {
-                    $this->_options[stripslashes($row->state_2_code)] = stripslashes($row->state_name);
+                    $this->_options[$row->state_2_code] = $row->state_name;
                 }
             }
             if (!empty($this->_options)) {
@@ -475,7 +475,7 @@ if (!class_exists('state')) {
         }
 
         public function set_country($id) {
-            $validation = Factory::getApplication('shop')->getHelper('validation');
+            $validation = Factory::getComponent('shop')->getHelper('validation');
             if (!$validation->is_country($id)) {
                 $this->_country = null;
                 return $this;

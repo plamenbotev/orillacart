@@ -4,11 +4,17 @@ class buttonStandard extends button {
 
     protected $name = 'Standard';
 
-    function fetchButton($type = 'Standard', $name = '', $text = '', $task = '', $list = true, $hideMenu = false) {
-
+    public function fetchButton() {
+		
+		$args = func_get_args();
+		
+		$name = isset($args[0])? $args[0] : "";
+		$text = isset($args[1])? $args[1] : "";
+		$task = isset($args[2])? $args[2] : "";
+	
         $i18n_text = $text;
         $class = $this->fetchIconClass($name);
-        //$doTask = $this->_getCommand($text, $task, $list);
+       
 
         if ($name == "apply" || $name == "new") {
             $btnClass = "btn btn-small btn-success";
@@ -27,24 +33,8 @@ class buttonStandard extends button {
         return $html;
     }
 
-    public function fetchId($type = 'Standard', $name = '', $text = '', $task = '', $list = true, $hideMenu = false) {
-        return $this->parent->getName() . '-' . $name;
-    }
-
-    protected function getCommand($name, $task, $list, $hide) {
-        $todo = strings::strtolower($name);
-        $message = 'Please make a selection from the list to' . $todo;
-        $message = addslashes($message);
-        $hidecode = $hide ? 'hideMainMenu();' : '';
-
-        if ($list) {
-            $cmd = "javascript:if(document.adminForm.boxchecked.value==0){alert('$message');}else{ $hidecode submitbutton('$task')}";
-        } else {
-            $cmd = "javascript:$hidecode submitbutton('$task')";
-        }
-
-
-        return $cmd;
+    public function fetchId() {
+        return $this->parent->getName() . '-' . func_get_arg(0);
     }
 
 }

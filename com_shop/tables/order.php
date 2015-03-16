@@ -54,7 +54,7 @@ class orderTable extends table {
         parent::__construct('ID', '#_posts');
     }
 
-    public function store() {
+    public function store($safe_insert = false) {
 
 
 
@@ -94,8 +94,8 @@ class orderTable extends table {
         return $this;
     }
 
-    public function load($id) {
- 
+    public function load($id=null) {
+
         $post = get_post($id);
 
         if (!$post)
@@ -109,8 +109,8 @@ class orderTable extends table {
 
         $fields = $this->getPublicFields();
         $meta = get_post_custom($this->ID);
-		
-		
+
+
         foreach ((array) $fields as $f => $v) {
 
             if (in_array($f, array('ID', 'order_comments', 'title', 'post_password', 'cdate')))
@@ -121,7 +121,7 @@ class orderTable extends table {
             }
         }
 
-        $customer = Factory::getApplication('shop')->getHelper('customer');
+        $customer = Factory::getComponent('shop')->getHelper('customer');
 
         $billing = $customer->get_billing_fields();
 
@@ -148,7 +148,7 @@ class orderTable extends table {
 
             $shipping->shipping_state->set_country($shipping->shipping_country->get_value());
         }
-		
+
 
         return $this;
     }

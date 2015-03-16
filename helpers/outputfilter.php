@@ -1,5 +1,10 @@
 <?php
 
+/*
+ * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
+ * @license     GNU General Public License version 2 or later; see LICENSE
+ */
+
 class OutputFilter {
 
     static public function objectHTMLSafe(&$mixed, $quote_style = ENT_QUOTES, $exclude_keys = '') {
@@ -72,7 +77,7 @@ class OutputFilter {
             else
                 return false;# Does not match any model
             for ($j = 0; $j < $n; $j++) { # n bytes matching 10bbbbbb follow ?
-                if ((++$i == $length) || ((ord($str[$i]) & 0xC0) != 0x80))
+                if (( ++$i == $length) || ((ord($str[$i]) & 0xC0) != 0x80))
                     return false;
             }
         }

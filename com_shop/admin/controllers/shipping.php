@@ -7,11 +7,12 @@ class shopControllerShipping extends controller {
         $model = $this->getModel("shipping");
         $this->getView('shipping');
 
+        $input = Factory::getApplication()->getInput();
 
 
         $res = $model->list_carriers();
 
-        $pagination = new paginator($res->found_rows(), request::getInt('limitstart', 0), Factory::getApplication('shop')->getParams()->get('objects_per_page'));
+        $pagination = new paginator($res->found_rows(), $input->get('limitstart', 0, "INT"), Factory::getComponent('shop')->getParams()->get('objects_per_page'));
 
 
         $this->view->assign('pagination', $pagination);
@@ -22,9 +23,10 @@ class shopControllerShipping extends controller {
 
     protected function add_carrier() {
 
-        $id = Request::getInt('method_id', null);
+        $input = Factory::getApplication()->getInput();
+        $id = $input->get('method_id', null, "INT");
 
-        $row = Factory::getApplication('shop')->getTable('carrier')->load($id);
+        $row = Factory::getComponent('shop')->getTable('carrier')->load($id);
         $model = $this->getModel('shipping');
 
         $assigned = $model->get_used_classes();
@@ -65,10 +67,12 @@ class shopControllerShipping extends controller {
         $this->getView('shipping');
         $assigned = $model->get_used_classes();
 
-        $row = Factory::getApplication('shop')
+        $input = Factory::getApplication()->getInput();
+
+        $row = Factory::getComponent('shop')
                 ->getTable('carrier')
-                ->load(Request::getInt('method_id', null))
-                ->bind($_POST, array('params'));
+                ->load($input->get('method_id', null, "INT"))
+                ->bind($input->post, array('params'));
 
 
         if ($row->class != 'standart_shipping') {
@@ -119,15 +123,17 @@ class shopControllerShipping extends controller {
             }
 
 
-            Factory::getApplication('shop')->setMessage(__('Carrier saved!', 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__('Carrier saved!', 'com_shop'));
             return $this->execute();
         }
     }
 
     protected function get_class_options() {
 
-        $class = Request::getCmd('class', 'standart_shipping');
-        $carrier_id = Request::getInt('carrier_id', null);
+        $input = Factory::getApplication()->getInput();
+
+        $class = $input->get('class', 'standart_shipping', "CMD");
+        $carrier_id = $input->get('carrier_id', null, "INT");
 
         $shipping_classes = array();
         $shipping_classes = apply_filters('register_shipping_class', $shipping_classes);
@@ -151,16 +157,17 @@ class shopControllerShipping extends controller {
 
     protected function delete() {
 
-        $ids = Request::getVar('ids', null, 'POST', 'ARRAY');
+        $input = Factory::getApplication()->getInput();
+        $ids = $input->get('ids', array(), 'ARRAY');
 
         if (empty($ids)) {
-            Factory::getApplication('shop')->addError(__("Select carriers to be removed!", 'com_shop'));
+            Factory::getComponent('shop')->addError(__("Select carriers to be removed!", 'com_shop'));
             return $this->execute();
         }
         $model = $this->getModel('shipping');
         $count = $model->remove_carriers($ids);
 
-        Factory::getApplication('shop')->setMessage(__("Selected carriers were deleted.", 'com_shop'));
+        Factory::getComponent('shop')->setMessage(__("Selected carriers were deleted.", 'com_shop'));
         return $this->execute();
     }
 
@@ -168,28 +175,31 @@ class shopControllerShipping extends controller {
 
         $model = $this->getModel('shipping');
         $this->getView('shipping');
-        $carrier = Factory::getApplication('shop')->getTable('carrier')->load(Request::getInt('carrier', null));
-        $ids = Request::getVar('ids', array(), 'POST');
+        $input = Factory::getApplication()->getInput();
+        $carrier = Factory::getComponent('shop')->getTable('carrier')->load($input->get('carrier', null, "INT"));
+        $ids = $input->get('ids', array(), 'ARRAY');
         if (!$carrier->pk()) {
-            Factory::getApplication('shop')->setMessage(__("Invalid carrier", "com_shop"));
+            Factory::getComponent('shop')->setMessage(__("Invalid carrier", "com_shop"));
             return $this->execute();
         }
 
         if (empty($ids)) {
-            Factory::getApplication('shop')->addError(__('Nothing selected', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('Nothing selected', 'com_shop'));
             return $this->execute('list_rates');
         }
 
         $model->remove_rates($ids, $carrier->pk());
-        Factory::getApplication('shop')->setMessage(__('Rates deleted', 'com_shop'));
+        Factory::getComponent('shop')->setMessage(__('Rates deleted', 'com_shop'));
         return $this->execute('list_rates');
     }
 
     protected function list_rates() {
 
-        $cid = Request::getInt('carrier', null);
+        $input = Factory::getApplication()->getInput();
 
-        $carrier = Factory::getApplication('shop')->getTable('carrier')->load($cid);
+        $cid = $input->get('carrier', null, "INT");
+
+        $carrier = Factory::getComponent('shop')->getTable('carrier')->load($cid);
         if ($carrier->pk()) {
 
             $this->getView('shipping');
@@ -198,7 +208,7 @@ class shopControllerShipping extends controller {
 
             $res = $model->list_rates($carrier->pk());
 
-            $pagination = new paginator($res->found_rows(), request::getInt('limitstart', 0), Factory::getApplication('shop')->getParams()->get('objects_per_page'));
+            $pagination = new paginator($res->found_rows(), $input->get('limitstart', 0, "INT"), Factory::getComponent('shop')->getParams()->get('objects_per_page'));
 
 
             $this->view->assign('carrier', $carrier);
@@ -209,24 +219,25 @@ class shopControllerShipping extends controller {
             return parent::display('list_rates');
         } else {
 
-            Factory::getApplication('shop')->addError(__('No such carrier!', 'com_shop'));
+            Factory::getComponent('shop')->addError(__('No such carrier!', 'com_shop'));
             return $this->execute();
         }
     }
 
     protected function add_rate() {
 
+        $input = Factory::getApplication()->getInput();
 
-        $cid = Request::getInt('carrier', null);
-        $id = Request::getInt('id', null);
+        $cid = $input->get('carrier', null, "INT");
+        $id = $input->get('id', null, "INT");
 
 
-        $carrier = Factory::getApplication('shop')->getTable('carrier')->load($cid);
-        $rate = Factory::getApplication('shop')->getTable('shipping_rate')->load($id);
+        $carrier = Factory::getComponent('shop')->getTable('carrier')->load($cid);
+        $rate = Factory::getComponent('shop')->getTable('shipping_rate')->load($id);
 
         if (!$carrier->pk() && !$rate->pk()) {
 
-            Factory::getApplication('shop')->addError(__("Choose carrier!", 'com_shop'));
+            Factory::getComponent('shop')->addError(__("Choose carrier!", 'com_shop'));
             return $this->execute();
         } else if (!$rate->pk()) {
 
@@ -279,11 +290,12 @@ class shopControllerShipping extends controller {
 
         $this->getView('shipping');
 
+        $input = Factory::getApplication()->getInput();
 
-        $row = Factory::getApplication('shop')
+        $row = Factory::getComponent('shop')
                 ->getTable('shipping_rate')
-                ->load(Request::getInt('shipping_rate_id', null))
-                ->bind($_POST);
+                ->load($input->get('shipping_rate_id', null, "INT"))
+                ->bind($input->post);
 
         if (!$row->store()) {
 
@@ -313,7 +325,7 @@ class shopControllerShipping extends controller {
 
             return parent::display('add_rate');
         } else {
-            Factory::getApplication('shop')->setMessage(__('rate saved!', 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__('rate saved!', 'com_shop'));
             return $this->execute('list_rates');
         }
     }

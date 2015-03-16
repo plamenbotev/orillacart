@@ -38,7 +38,9 @@ class shopControllerAttributes extends controller {
 
     protected function delete_sets() {
 
-        $sets = (array) array_map('intval', (array) $_POST['ids']);
+        $post = Factory::getApplication()->getInput()->post;
+
+        $sets = (array) array_map('intval', (array) $post['ids']);
 
         $model = $this->getModel('attributes');
         $this->getView('attributes');
@@ -54,7 +56,7 @@ class shopControllerAttributes extends controller {
                 $model->delete((array) $db->loadArray());
             } catch (Exception $e) {
                 $db->rollback();
-                Factory::getApplication('shop')->setMessage(__("error deleteing", 'com_shop'));
+                Factory::getComponent('shop')->setMessage(__("error deleteing", 'com_shop'));
                 $this->execute();
 
                 return false;
@@ -65,7 +67,7 @@ class shopControllerAttributes extends controller {
             if (!$db->getResource()) {
 
                 $db->rollback();
-                Factory::getApplication('shop')->setMessage(__("error deleteing", 'com_shop'));
+                Factory::getComponent('shop')->setMessage(__("error deleteing", 'com_shop'));
                 $this->execute();
                 return false;
             }
@@ -76,14 +78,14 @@ class shopControllerAttributes extends controller {
 
         if (!$db->getResource()) {
             $db->rollback();
-            Factory::getApplication('shop')->setMessage(__("error deleteing", 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__("error deleteing", 'com_shop'));
             $this->execute();
             return false;
         }
 
         $db->commit();
 
-        Factory::getApplication('shop')->setMessage(__("success", 'com_shop'));
+        Factory::getComponent('shop')->setMessage(__("success", 'com_shop'));
 
         $this->execute();
         return true;
@@ -97,9 +99,10 @@ class shopControllerAttributes extends controller {
         try {
             $model->store();
 
-            Factory::getApplication('shop')->setMessage(__("Set saved", 'com_shop'));
+            Factory::getComponent('shop')->setMessage(__("Set saved", 'com_shop'));
         } catch (Exception $e) {
-            Factory::getApplication('shop')->setMessage($e->getMessage());
+            Factory::getComponent('shop')->setMessage($e->getMessage());
+			return $this->execute("edit");
         }
 
         $this->execute();
@@ -108,41 +111,120 @@ class shopControllerAttributes extends controller {
     protected function edit() {
 
         $stock_model = $this->getModel('stockroom');
-
-        $set_id = (int) $_GET['id'];
+		$input = Factory::getApplication()->getInput();
+        $set_id = (int) $input->get("id",$input->get("attribute_set_id",0,"INT"),"INT");
+		
+		
 
         $model = $this->getModel('attributes');
         $this->getView('attributes');
 
         $this->view->assign('stock_rooms', $stock_model->getAllStockRooms());
-
+		$set  = null;
         if ($model->is_set($set_id)) {
-            $this->view->assign('set', $model->getattributes($set_id));
+            $set = $model->getattributes($set_id);
+			
 
-            parent::display('edit_set');
-            return;
+            
+            
         } else {
-            $this->addnew();
-            return;
-        }
+          
+			
+			$set = new stdClass();
+			
+			$set->attribute_set_id = 0;
+			$set->published = "no";
+			$set->attribute_set_name = "";
+			$set->_data = array();
+			$set->_meta = new stdClass();
+			$set->_meta->total_attributes = 0;
+			$set->_meta->total_properties = 0;
+			
+			
+			
+			
+			
+		}
+		
+		//Preserve the edited attributes on error.
+		if($input->get("task",null,"CMD") == "save"){
+				
+			$set->published = $input->get("published","no","WORD");
+			$set->attribute_set_name = $input->get("attribute_set_name","","STRING");
+			$set->_data = array();
+			
+			$atts = $input->get("attribute_id",array(),"ARRAY");
+			
+			foreach((array)$atts as $k => $id){
+				
+				$set->_data[$k] = array();
+				
+				$set->_data[$k]['att'] = new stdClass();
+				
+				$set->_data[$k]['att']->attribute_id = (int)$id;
+				$set->_data[$k]['att']->attribute_name = isset($input->request["title"][$k]['name']) ? $input->request["title"][$k]['name'] : "";
+				$set->_data[$k]['att']->attribute_required = !empty($input->request["title"][$k]['required']) ? "yes" : "no";
+				$set->_data[$k]['att']->hide_attribute_price = !empty($input->request["title"][$k]['hide_attribute_price']) ? "yes" : "no";
+				$set->_data[$k]['att']->product_id=0;
+				$set->_data[$k]['att']->ordering = !empty($input->request["title"][$k]['ordering']) ? $input->request["title"][$k]['ordering'] : $k;
+				$set->_data[$k]['att']->product_id = $set->attribute_set_id;
+							
+				
+				$set->_data[$k]['property'] = array();
+				if(isset($input->request['property_id'][$k]['value'])){
+					
+					$props = (array)$input->request['property_id'][$k]['value'];
+					
+					
+					foreach((array)$props as $kp => $pid){
+						
+						$set->_data[$k]['property'][$kp] = new stdClass();
+						
+						$set->_data[$k]['property'][$kp]->property_id = (int)$pid;
+						$set->_data[$k]['property'][$kp]->attribute_id = $set->_data[$k]['att']->attribute_id;
+						
+						$set->_data[$k]['property'][$kp]->property_name = "";
+						if(isset($input->request['property'][$k]['value'][$kp])){
+							$set->_data[$k]['property'][$kp]->property_name = $input->request['property'][$k]['value'][$kp];
+						}
+						
+						$set->_data[$k]['property'][$kp]->property_price = 0;
+						if(isset($input->request['att_price'][$k]['value'][$kp])){
+							$set->_data[$k]['property'][$kp]->property_price = $input->request['att_price'][$k]['value'][$kp];
+						}
+						
+						$set->_data[$k]['property'][$kp]->oprand = "+";
+						if(isset($input->request['oprand'][$k]['value'][$kp])){
+							$set->_data[$k]['property'][$kp]->oprand = $input->request['oprand'][$k]['value'][$kp];
+						}
+						
+						$set->_data[$k]['property'][$kp]->ordering = $kp;
+						if(isset($input->request['propordering'][$k]['value'][$kp])){
+							$set->_data[$k]['property'][$kp]->ordering = $input->request['propordering'][$k]['value'][$kp];
+						}
+						
+					}
+				}
+			}
+		}
+			
+		$this->view->assign("set",$set);
+		
+		parent::display('edit_set');
+		
     }
 
-    protected function addnew() {
 
-        $this->getView('attributes');
-
-        parent::display('newsetform');
-
-        return true;
-    }
 
     protected function save_stock() {
 
         $model = $this->getModel('attributes');
 
-        $el_id = (int) $_POST['id'];
-        $el_type = (string) $_GET['object'];
-        $values = (array) array_map('intval', (array) $_POST['values']);
+        $input = Factory::getApplication()->getInput();
+
+        $el_id = $input->get("id", 0, "INT");
+        $el_type = $input->get("object", "", "STRING");
+        $values = (array) array_map('intval', (array) $input->get('values', array(), "ARRAY"));
 
 
         $result = new stdClass();
@@ -151,7 +233,7 @@ class shopControllerAttributes extends controller {
 
 
         try {
-            $result->status = $model->updateStockAndDeleteDiff($el_id,$values);
+            $result->status = $model->updateStockAndDeleteDiff($el_id, $values);
 
             $result->status = true;
             $result->msg = __("Stockroom saved", 'com_shop');

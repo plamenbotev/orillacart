@@ -11,9 +11,12 @@ class userModel extends model {
     }
 
     public function save() {
-        $id = Request::getInt('id', null);
 
-        Factory::getApplication('shop')->getTable('user')->load($id)->bind($_POST)->store();
+        $input = Factory::getApplication()->getInput();
+
+        $id = $input->get("id", 0, "INT");
+
+        Factory::getComponent('shop')->getTable('user')->load($id)->bind($input->post)->store();
     }
 
 }

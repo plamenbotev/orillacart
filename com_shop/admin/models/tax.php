@@ -20,13 +20,14 @@ class taxModel extends model {
 
     public function getRatesList() {
 
-       
+        $input = Factory::getApplication()->getInput();
+
         $this->db->setQuery("SELECT a.*,b.country_name,c.state_name FROM `#_shop_tax_rate` AS a 
    
 	LEFT JOIN `#_shop_country` AS b ON a.tax_country = b.country_2_code
 	LEFT JOIN `#_shop_state` AS c ON a.tax_state = c.state_2_code AND a.tax_country = c.country_id
    
-        WHERE a.tax_group_id = " . request::getInt('tax_group_id') . " ORDER BY b.country_name ASC,c.state_name ASC ");
+        WHERE a.tax_group_id = " . (int) $input->get('tax_group_id', 0, "INT") . " ORDER BY b.country_name ASC,c.state_name ASC ");
 
         if (!$this->db->getResource()) {
 
@@ -38,9 +39,11 @@ class taxModel extends model {
 
     public function getGroupsList() {
 
-        $start = request::getInt('limitstart', 0);
-        $offset = request::getInt('limit', 10);
-        $keyword = $this->db->secure(Request::getWord('keyword', ''));
+        $input = Factory::getApplication()->getInput();
+
+        $start = $input->get('limitstart', 0, "INT");
+        $offset = $input->get('limit', 10, "INT");
+        $keyword = $this->db->secure($input->get('keyword', '', "WORD"));
         $where = array();
         $where[] = '1';
 
@@ -58,11 +61,10 @@ class taxModel extends model {
 
         return clone $this->db;
     }
-    
 
     public function getRateList() {
 
-        
+
 
         $where = array();
         $where[] = '1';
@@ -94,7 +96,9 @@ class taxModel extends model {
 
     public function deleteGroup() {
 
-        $ids = request::getVar('tax_group_ids', array(), 'REQUEST', 'array');
+        $input = Factory::getApplication()->getInput();
+
+        $ids = $input->get('tax_group_ids', array(), 'ARRAY');
 
         $ids = (array) array_map('intval', $ids);
         if (empty($ids)) {
@@ -125,7 +129,9 @@ class taxModel extends model {
 
     public function deleteRate() {
 
-        $ids = request::getVar('tax_rate_ids', array());
+        $input = Factory::getApplication()->getInput();
+
+        $ids = $input->get('tax_rate_ids', array(), "ARRAY");
 
         $ids = (array) array_map('intval', $ids);
         if (empty($ids)) {

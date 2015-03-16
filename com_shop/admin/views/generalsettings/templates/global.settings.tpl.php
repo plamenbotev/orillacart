@@ -7,13 +7,13 @@
                 <label class="hasTip" for="email_from_address">
                     <?php _e('Mails from e-mail:', 'com_shop'); ?>
                 </label>
-                <input type="text" value="<?php echo $this->settings->get('email_from_address'); ?>" name="email_from_address" id="email_from_address">         
+                <input type="text" value="<?php echo $this->escape($this->settings->get('email_from_address')); ?>" name="email_from_address" id="email_from_address">         
             </li>
             <li>
                 <label class="hasTip" for="email_from_name">
                     <?php _e('Mails from name:', 'com_shop'); ?>
                 </label>
-                <input type="text" value="<?php echo $this->settings->get('email_from_name'); ?>" name="email_from_name" id="email_from_name">
+                <input type="text" value="<?php echo $this->escape($this->settings->get('email_from_name')); ?>" name="email_from_name" id="email_from_name">
             </li>
             <li>
                 <label class="hasTip" for="notify_admin_on_new_order">
@@ -25,7 +25,7 @@
                 <label class="hasTip" for="notify_admin_mail">
                     <?php _e('Notify e-mail:', 'com_shop'); ?>
                 </label>
-                <input type="text" value="<?php echo $this->settings->get('notify_admin_mail'); ?>" name="notify_admin_mail" id="notify_admin_mail">
+                <input type="text" value="<?php echo $this->escape($this->settings->get('notify_admin_mail')); ?>" name="notify_admin_mail" id="notify_admin_mail">
             </li>
             <li>
                 <label class="hasTip" for="download_method">
@@ -48,13 +48,13 @@
                 <input name="catalogOnly" type="checkbox" value="1"  <?php echo $this->settings->get('catalogOnly') ? 'checked="checked"' : ''; ?> id="catalogOnly">
 
             </li>
-			<li>
-               <label class="hasTip" for="hide_the_price">
-                   <?php _e('Hide product price', 'com_shop'); ?>
-               </label>
-               <input name="hide_the_price" type="checkbox" value="1"  <?php echo $this->settings->get('hide_the_price') ? 'checked="checked"' : ''; ?> id="hide_the_price">
+            <li>
+                <label class="hasTip" for="hide_the_price">
+                    <?php _e('Hide product price', 'com_shop'); ?>
+                </label>
+                <input name="hide_the_price" type="checkbox" value="1"  <?php echo $this->settings->get('hide_the_price') ? 'checked="checked"' : ''; ?> id="hide_the_price">
 
-           </li>
+            </li>
             <li>
                 <label class="hasTip" for="retail_countries">
                     <?php _e('Retail Countries', 'com_shop'); ?>
@@ -62,7 +62,7 @@
                 <select name='retail_countries[]' multiple='multiple' id="retail_countries" size='5'>
                     <?php foreach ((array) $this->countries as $country) { ?>
                         <option <?php echo is_array($this->settings->get('retail_countries')) && in_array($country->country_2_code, $this->settings->get('retail_countries')) ? "selected='selected'" : ''; ?> value='<?php echo $country->country_2_code; ?>'>
-                            <?php echo strings::stripAndEncode($country->country_name); ?>
+                            <?php echo $this->escape($country->country_name); ?>
                         </option>
                     <?php } ?>
                 </select>
@@ -71,31 +71,31 @@
                 <label class="hasTip" for="price_decimal">
                     <?php _e('Price Decimal', 'com_shop'); ?>
                 </label>
-                <input type="text" value="<?php echo $this->settings->get('price_decimal'); ?>" id="price_decimal" name="price_decimal" />
+                <input type="text" value="<?php echo $this->escape($this->settings->get('price_decimal')); ?>" id="price_decimal" name="price_decimal" />
             </li>
             <li>
                 <label class="hasTip" for="price_separator">
                     <?php _e('Price Separator', 'com_shop'); ?>
                 </label>
-                <input type="text" value="<?php echo $this->settings->get('price_separator'); ?>" id="price_separator" name="price_separator" />
+                <input type="text" value="<?php echo $this->escape($this->settings->get('price_separator')); ?>" id="price_separator" name="price_separator" />
             </li>
             <li>
                 <label class="hasTip" for="thousand_separator">
                     <?php _e('Thousand Separator', 'com_shop'); ?>
                 </label>
-                <input type="text" value="<?php echo $this->settings->get('thousand_separator'); ?>" id="thousand_separator" name="thousand_separator" />
+                <input type="text" value="<?php echo $this->escape($this->settings->get('thousand_separator')); ?>" id="thousand_separator" name="thousand_separator" />
             </li>
             <li>
                 <label class="hasTip" for="currency">
                     <?php _e('Currency', 'com_shop'); ?>
                 </label>
-                <input type="text" value="<?php echo $this->settings->get('currency'); ?>" id="currency" name="currency">
+                <input type="text" value="<?php echo $this->escape($this->settings->get('currency')); ?>" id="currency" name="currency">
             </li>
             <li>
                 <label class="hasTip" for="currency_sign">
                     <?php _e('Currency Sign', 'com_shop'); ?>
                 </label>
-                <input type="text" value="<?php echo $this->settings->get('currency_sign'); ?>" id="currency_sign" name="currency_sign">
+                <input type="text" value="<?php echo $this->escape($this->settings->get('currency_sign')); ?>" id="currency_sign" name="currency_sign">
             </li>
             <li>
                 <label class="hasTip" for="currency_place">
@@ -122,7 +122,7 @@
                     <option value=''></option>
                     <?php foreach ((array) $this->countries as $country) { ?>
                         <option <?php echo $country->country_2_code == $this->settings->get('shop_country') ? "selected='selected'" : ''; ?> value='<?php echo $country->country_2_code; ?>'>
-                            <?php echo strings::stripAndEncode($country->country_name); ?>
+                            <?php echo$this->escape($country->country_name); ?>
                         </option>
                     <?php } ?>
                 </select>
@@ -136,7 +136,7 @@
                         <option value=''></option>
                         <?php foreach ((array) $this->states as $state) { ?>
                             <option <?php echo ($state->state_2_code == $this->settings->get('shop_state') ? "selected='selected'" : ''); ?> value='<?php echo $state->state_2_code; ?>'>
-                                <?php echo strings::stripAndEncode($state->state_name); ?>
+                                <?php echo $this->escape($state->state_name); ?>
                             </option>
                         <?php } ?>
                     </select>
@@ -146,7 +146,7 @@
                 <label class="hasTip" for="shop_zip">
                     <?php _e('Shop Zip', 'com_shop'); ?>
                 </label>
-                <input type="text" value="<?php echo $this->settings->get('shop_zip'); ?>" id="shop_zip" name="shop_zip" />
+                <input type="text" value="<?php echo $this->escape($this->settings->get('shop_zip')); ?>" id="shop_zip" name="shop_zip" />
             </li>
             <li>
                 <label class="hasTip" for="shop_tax_group">
@@ -156,7 +156,7 @@
                     <option value=''></option>
                     <?php foreach ((array) $this->tax_groups as $tax) { ?>
                         <option <?php echo $tax->tax_group_id == $this->settings->get('shop_tax_group') ? "selected='selected'" : ''; ?> value='<?php echo $tax->tax_group_id; ?>'>
-                            <?php echo strings::stripAndEncode($tax->tax_group_name); ?>
+                            <?php echo strings::htmlentities($tax->tax_group_name); ?>
                         </option>
                     <?php } ?>
                 </select>

@@ -6,6 +6,11 @@ final class route {
 
     static public function get($url = null, $force_ssl = false) {
 
+		if(Factory::getApplication()->is_admin()){
+			return $url;
+		}
+	
+	
         $wp_pages = array();
 
         parse_str($url, $vars);
@@ -20,7 +25,7 @@ final class route {
 
         $con = isset($vars['con']) ? $vars['con'] : null;
 
-        $wp_pages[$com] = (array) component::get_wp_pages($com);
+        $wp_pages[$com] = (array) component::getWPPages($com);
 
 
         $page = get_page_by_path($wp_pages[$com][0]);

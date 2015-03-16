@@ -1,11 +1,12 @@
 <?php
-class componentAttEmpty  extends Exception{
 
-   public function __construct() {
+class componentAttEmpty extends Exception {
 
-       parent::__construct('The short tag has to contain attribute \'component="com_example"\' ', 0);
+    public function __construct() {
 
-       
+        parent::__construct('The short tag has to contain attribute \'component="com_example"\' ', 0);
     }
+
 }
+
 ?>

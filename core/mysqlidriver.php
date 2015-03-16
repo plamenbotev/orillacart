@@ -4,12 +4,8 @@ defined('_VALID_EXEC') or die('access denied');
 
 class mysqliDriver extends database {
 
-    public static function getInstance() {
-
-        return new self();
-    }
-
-    protected function __construct() {
+    
+    public function __construct() {
 
         global $wpdb;
 
@@ -69,11 +65,11 @@ class mysqliDriver extends database {
 
         $que = str_replace('#_', $this->getPrefix(), $que);
 
-        $this->res = mysqli_query($this->conn,$que);
+        $this->res = mysqli_query($this->conn, $que);
     }
-    
-    public function parseQuery($que){
-        return  $que = str_replace('#_', $this->getPrefix(), $que);
+
+    public function parseQuery($que) {
+        return $que = str_replace('#_', $this->getPrefix(), $que);
     }
 
     public function buildQuery($arr, $update = false) {
@@ -127,7 +123,7 @@ class mysqliDriver extends database {
 
     public function found_rows() {
 
-        $res = mysqli_query($this->conn,'SELECT FOUND_ROWS()');
+        $res = mysqli_query($this->conn, 'SELECT FOUND_ROWS()');
 
         if (!$res)
             return false;
@@ -161,11 +157,7 @@ class mysqliDriver extends database {
 
     public function secure($data) {
 
-        if (get_magic_quotes_gpc()) {
-            $data = stripslashes($data);
-        }
-
-        $data = mysqli_real_escape_string($this->conn,$data);
+        $data = mysqli_real_escape_string($this->conn, $data);
         //$data=addcslashes($data,"%_");
         return $data;
     }
@@ -244,11 +236,11 @@ class mysqliDriver extends database {
 
         if (!is_object($this->res) && !is_object($res))
             return false;
-			
-		if(!($this->res instanceof mysqli_result) && !($res instanceof mysqli_result))
-			return false;
 
-        if (is_object($res)  && $res instanceof mysqli_result)
+        if (!($this->res instanceof mysqli_result) && !($res instanceof mysqli_result))
+            return false;
+
+        if (is_object($res) && $res instanceof mysqli_result)
             return mysqli_fetch_object($res);
 
         return mysqli_fetch_object($this->res);
@@ -267,16 +259,15 @@ class mysqliDriver extends database {
 
         return false;
     }
-	
+
 }
 
+function mysqli_result($res, $row = 0, $col = 0) {
 
-function mysqli_result($res,$row=0,$col=0){
-
-    if (mysqli_num_rows($res) && $row <= (mysqli_num_rows($res)-1) && $row >= 0){
-        mysqli_data_seek($res,$row);
+    if (mysqli_num_rows($res) && $row <= (mysqli_num_rows($res) - 1) && $row >= 0) {
+        mysqli_data_seek($res, $row);
         $resrow = mysqli_fetch_row($res);
-        if (isset($resrow[$col])){
+        if (isset($resrow[$col])) {
             return $resrow[$col];
         }
     }

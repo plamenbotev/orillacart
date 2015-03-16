@@ -1,6 +1,6 @@
 <?php
 
-class shop_installer extends app_object {
+class shop_installer extends BObject {
 
     public function tables() {
 
@@ -287,8 +287,8 @@ class shop_installer extends app_object {
     public function activate() {
 
         require_once(dirname(__FILE__) . "/action_handlers.php");
-       
-        $params = Factory::getApplication('shop')->getParams();
+
+        $params = Factory::getComponent('shop')->getParams();
 
 
 
@@ -345,116 +345,114 @@ class shop_installer extends app_object {
                 $params->set('page_id', $id);
                 $params->save();
             }
-			
-			orillacart_actions::init()->register_types();
 
-			//add capabilities and roles
-			  //add roles
+            orillacart_actions::init()->register_types();
 
-        add_role('customer', 'Customer', array(
-            'read' => true,
-            'edit_posts' => false,
-            'delete_posts' => false
-        ));
-		
-		global $wp_roles;
+            //add capabilities and roles
+            //add roles
 
-		if ( class_exists( 'WP_Roles' ) ) {
-			if ( ! isset( $wp_roles ) ) {
-				$wp_roles = new WP_Roles();
-			}
-		}
-		
-		add_role( 'shop_manager', __( 'Shop Manager', 'com_shop' ), array(
-				'level_9'                => true,
-				'level_8'                => true,
-				'level_7'                => true,
-				'level_6'                => true,
-				'level_5'                => true,
-				'level_4'                => true,
-				'level_3'                => true,
-				'level_2'                => true,
-				'level_1'                => true,
-				'level_0'                => true,
-				'read'                   => true,
-				'read_private_pages'     => true,
-				'read_private_posts'     => true,
-				'edit_users'             => true,
-				'edit_posts'             => true,
-				'edit_pages'             => true,
-				'edit_published_posts'   => true,
-				'edit_published_pages'   => true,
-				'edit_private_pages'     => true,
-				'edit_private_posts'     => true,
-				'edit_others_posts'      => true,
-				'edit_others_pages'      => true,
-				'publish_posts'          => true,
-				'publish_pages'          => true,
-				'delete_posts'           => true,
-				'delete_pages'           => true,
-				'delete_private_pages'   => true,
-				'delete_private_posts'   => true,
-				'delete_published_pages' => true,
-				'delete_published_posts' => true,
-				'delete_others_posts'    => true,
-				'delete_others_pages'    => true,
-				'manage_categories'      => true,
-				'manage_links'           => true,
-				'moderate_comments'      => true,
-				'unfiltered_html'        => true,
-				'upload_files'           => true,
-				'export'                 => true,
-				'import'                 => true,
-				'list_users'             => true
-			) );
+            add_role('customer', 'Customer', array(
+                'read' => true,
+                'edit_posts' => false,
+                'delete_posts' => false
+            ));
 
-			
-			
-			
-			$capabilities = array();
+            global $wp_roles;
 
-		$capabilities['core'] = array(
-			'manage_shop'
-			
-		);
+            if (class_exists('WP_Roles')) {
+                if (!isset($wp_roles)) {
+                    $wp_roles = new WP_Roles();
+                }
+            }
 
-		$capability_types = array( 'product', 'shop_order');
+            add_role('shop_manager', __('Shop Manager', 'com_shop'), array(
+                'level_9' => true,
+                'level_8' => true,
+                'level_7' => true,
+                'level_6' => true,
+                'level_5' => true,
+                'level_4' => true,
+                'level_3' => true,
+                'level_2' => true,
+                'level_1' => true,
+                'level_0' => true,
+                'read' => true,
+                'read_private_pages' => true,
+                'read_private_posts' => true,
+                'edit_users' => true,
+                'edit_posts' => true,
+                'edit_pages' => true,
+                'edit_published_posts' => true,
+                'edit_published_pages' => true,
+                'edit_private_pages' => true,
+                'edit_private_posts' => true,
+                'edit_others_posts' => true,
+                'edit_others_pages' => true,
+                'publish_posts' => true,
+                'publish_pages' => true,
+                'delete_posts' => true,
+                'delete_pages' => true,
+                'delete_private_pages' => true,
+                'delete_private_posts' => true,
+                'delete_published_pages' => true,
+                'delete_published_posts' => true,
+                'delete_others_posts' => true,
+                'delete_others_pages' => true,
+                'manage_categories' => true,
+                'manage_links' => true,
+                'moderate_comments' => true,
+                'unfiltered_html' => true,
+                'upload_files' => true,
+                'export' => true,
+                'import' => true,
+                'list_users' => true
+            ));
 
-		foreach ( $capability_types as $capability_type ) {
 
-			$capabilities[ $capability_type ] = array(
-				// Post type
-				"edit_{$capability_type}",
-				"read_{$capability_type}",
-				"delete_{$capability_type}",
-				"edit_{$capability_type}s",
-				"edit_others_{$capability_type}s",
-				"publish_{$capability_type}s",
-				"read_private_{$capability_type}s",
-				"delete_{$capability_type}s",
-				"delete_private_{$capability_type}s",
-				"delete_published_{$capability_type}s",
-				"delete_others_{$capability_type}s",
-				"edit_private_{$capability_type}s",
-				"edit_published_{$capability_type}s",
-				"delete_{$capability_type}s",
 
-				// Terms
-				"manage_{$capability_type}_terms",
-				"edit_{$capability_type}_terms",
-				"delete_{$capability_type}_terms",
-				"assign_{$capability_type}_terms"
-			);
-		}
-			
-		foreach ( $capabilities as $cap_group ) {
-			foreach ( $cap_group as $cap ) {
-				$wp_roles->add_cap( 'shop_manager', $cap );
-				$wp_roles->add_cap( 'administrator', $cap );
-			}
-		}
-			
-			
+
+            $capabilities = array();
+
+            $capabilities['core'] = array(
+                'manage_shop'
+            );
+
+            $capability_types = array('product', 'shop_order');
+
+            foreach ($capability_types as $capability_type) {
+
+                $capabilities[$capability_type] = array(
+                    // Post type
+                    "edit_{$capability_type}",
+                    "read_{$capability_type}",
+                    "delete_{$capability_type}",
+                    "edit_{$capability_type}s",
+                    "edit_others_{$capability_type}s",
+                    "publish_{$capability_type}s",
+                    "read_private_{$capability_type}s",
+                    "delete_{$capability_type}s",
+                    "delete_private_{$capability_type}s",
+                    "delete_published_{$capability_type}s",
+                    "delete_others_{$capability_type}s",
+                    "edit_private_{$capability_type}s",
+                    "edit_published_{$capability_type}s",
+                    "delete_{$capability_type}s",
+                    // Terms
+                    "manage_{$capability_type}_terms",
+                    "edit_{$capability_type}_terms",
+                    "delete_{$capability_type}_terms",
+                    "assign_{$capability_type}_terms"
+                );
+            }
+
+            foreach ($capabilities as $cap_group) {
+                foreach ($cap_group as $cap) {
+                    $wp_roles->add_cap('shop_manager', $cap);
+                    $wp_roles->add_cap('administrator', $cap);
+                }
+            }
+
+
 
             //Insert taxonomies
 
@@ -480,10 +478,9 @@ class shop_installer extends app_object {
 
             $params->set('is_installed', true);
             $params->save();
-			
-			//protect the uploads folder
-			$this->protect_uploads();
-			
+
+            //protect the uploads folder
+            $this->protect_uploads();
         } else {
 
             $this->update_db();
@@ -502,10 +499,10 @@ class shop_installer extends app_object {
         global $wpdb, $wp_roles;
         $db = Factory::getDBO();
 
-        
+
 
         // Pages
-        $app = Factory::getApplication('shop');
+        $app = Factory::getComponent('shop');
         $params = $app->getParams();
         $page_id = $params->get('page_id');
         if (!empty($page_id))
@@ -527,19 +524,19 @@ class shop_installer extends app_object {
 
         // Delete options
         $wpdb->query("DELETE FROM $wpdb->options WHERE option_name = '" . $app->getName() . "_parameters'");
-		
-		remove_role("customer");
-		remove_role("shop_manager");
-		remove_role("product_manager");
+
+        remove_role("customer");
+        remove_role("shop_manager");
+        remove_role("product_manager");
     }
 
     public function update_db() {
 
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
 
         if (is_admin() && version_compare($params->get('db_version'), $params->get('db_version', true), '<')) {
 
-            $params = Factory::getApplication('shop')->getParams();
+            $params = Factory::getComponent('shop')->getParams();
             $db = Factory::getDBO();
 
 
@@ -622,7 +619,7 @@ class shop_installer extends app_object {
                 }
             }
 
-             //allow taxes to be written in the order item attributes table
+            //allow taxes to be written in the order item attributes table
             if (version_compare($params->get('db_version'), '1.1.6', '<')) {
 
                 $db->setQuery("ALTER TABLE `#_shop_order_attribute_item` CHANGE COLUMN `order_item_id` `order_item_id` BIGINT(20) UNSIGNED NULL DEFAULT NULL AFTER `order_att_item_id`");
@@ -631,238 +628,233 @@ class shop_installer extends app_object {
                     exit;
                 }
             }
-			
-			if (version_compare($params->get('db_version'), '1.1.7', '<')) {
-				global $wp_roles;
 
-		if ( class_exists( 'WP_Roles' ) ) {
-			if ( ! isset( $wp_roles ) ) {
-				$wp_roles = new WP_Roles();
-			}
-		}
-		
-		add_role( 'shop_manager', __( 'Shop Manager', 'com_shop' ), array(
-				'level_9'                => true,
-				'level_8'                => true,
-				'level_7'                => true,
-				'level_6'                => true,
-				'level_5'                => true,
-				'level_4'                => true,
-				'level_3'                => true,
-				'level_2'                => true,
-				'level_1'                => true,
-				'level_0'                => true,
-				'read'                   => true,
-				'read_private_pages'     => true,
-				'read_private_posts'     => true,
-				'edit_users'             => true,
-				'edit_posts'             => true,
-				'edit_pages'             => true,
-				'edit_published_posts'   => true,
-				'edit_published_pages'   => true,
-				'edit_private_pages'     => true,
-				'edit_private_posts'     => true,
-				'edit_others_posts'      => true,
-				'edit_others_pages'      => true,
-				'publish_posts'          => true,
-				'publish_pages'          => true,
-				'delete_posts'           => true,
-				'delete_pages'           => true,
-				'delete_private_pages'   => true,
-				'delete_private_posts'   => true,
-				'delete_published_pages' => true,
-				'delete_published_posts' => true,
-				'delete_others_posts'    => true,
-				'delete_others_pages'    => true,
-				'manage_categories'      => true,
-				'manage_links'           => true,
-				'moderate_comments'      => true,
-				'unfiltered_html'        => true,
-				'upload_files'           => true,
-				'export'                 => true,
-				'import'                 => true,
-				'list_users'             => true
-			) );
+            if (version_compare($params->get('db_version'), '1.1.7', '<')) {
+                global $wp_roles;
 
-			
-			
-			
-		$capabilities = array();
+                if (class_exists('WP_Roles')) {
+                    if (!isset($wp_roles)) {
+                        $wp_roles = new WP_Roles();
+                    }
+                }
 
-		$capabilities['core'] = array(
-			'manage_shop'
-			
-		);
+                add_role('shop_manager', __('Shop Manager', 'com_shop'), array(
+                    'level_9' => true,
+                    'level_8' => true,
+                    'level_7' => true,
+                    'level_6' => true,
+                    'level_5' => true,
+                    'level_4' => true,
+                    'level_3' => true,
+                    'level_2' => true,
+                    'level_1' => true,
+                    'level_0' => true,
+                    'read' => true,
+                    'read_private_pages' => true,
+                    'read_private_posts' => true,
+                    'edit_users' => true,
+                    'edit_posts' => true,
+                    'edit_pages' => true,
+                    'edit_published_posts' => true,
+                    'edit_published_pages' => true,
+                    'edit_private_pages' => true,
+                    'edit_private_posts' => true,
+                    'edit_others_posts' => true,
+                    'edit_others_pages' => true,
+                    'publish_posts' => true,
+                    'publish_pages' => true,
+                    'delete_posts' => true,
+                    'delete_pages' => true,
+                    'delete_private_pages' => true,
+                    'delete_private_posts' => true,
+                    'delete_published_pages' => true,
+                    'delete_published_posts' => true,
+                    'delete_others_posts' => true,
+                    'delete_others_pages' => true,
+                    'manage_categories' => true,
+                    'manage_links' => true,
+                    'moderate_comments' => true,
+                    'unfiltered_html' => true,
+                    'upload_files' => true,
+                    'export' => true,
+                    'import' => true,
+                    'list_users' => true
+                ));
 
-		$capability_types = array( 'product', 'shop_order');
 
-		foreach ( $capability_types as $capability_type ) {
 
-			$capabilities[ $capability_type ] = array(
-				// Post type
-				"edit_{$capability_type}",
-				"read_{$capability_type}",
-				"delete_{$capability_type}",
-				"edit_{$capability_type}s",
-				"edit_others_{$capability_type}s",
-				"publish_{$capability_type}s",
-				"read_private_{$capability_type}s",
-				"delete_{$capability_type}s",
-				"delete_private_{$capability_type}s",
-				"delete_published_{$capability_type}s",
-				"delete_others_{$capability_type}s",
-				"edit_private_{$capability_type}s",
-				"edit_published_{$capability_type}s",
 
-				// Terms
-				"manage_{$capability_type}_terms",
-				"edit_{$capability_type}_terms",
-				"delete_{$capability_type}_terms",
-				"assign_{$capability_type}_terms"
-			);
-		}
-			
-		foreach ( $capabilities as $cap_group ) {
-			foreach ( $cap_group as $cap ) {
-				$wp_roles->add_cap( 'shop_manager', $cap );
-				$wp_roles->add_cap( 'administrator', $cap );
-			}
-		}
+                $capabilities = array();
 
-			}
-			
-			
-			
+                $capabilities['core'] = array(
+                    'manage_shop'
+                );
+
+                $capability_types = array('product', 'shop_order');
+
+                foreach ($capability_types as $capability_type) {
+
+                    $capabilities[$capability_type] = array(
+                        // Post type
+                        "edit_{$capability_type}",
+                        "read_{$capability_type}",
+                        "delete_{$capability_type}",
+                        "edit_{$capability_type}s",
+                        "edit_others_{$capability_type}s",
+                        "publish_{$capability_type}s",
+                        "read_private_{$capability_type}s",
+                        "delete_{$capability_type}s",
+                        "delete_private_{$capability_type}s",
+                        "delete_published_{$capability_type}s",
+                        "delete_others_{$capability_type}s",
+                        "edit_private_{$capability_type}s",
+                        "edit_published_{$capability_type}s",
+                        // Terms
+                        "manage_{$capability_type}_terms",
+                        "edit_{$capability_type}_terms",
+                        "delete_{$capability_type}_terms",
+                        "assign_{$capability_type}_terms"
+                    );
+                }
+
+                foreach ($capabilities as $cap_group) {
+                    foreach ($cap_group as $cap) {
+                        $wp_roles->add_cap('shop_manager', $cap);
+                        $wp_roles->add_cap('administrator', $cap);
+                    }
+                }
+            }
+
+
+
             if (version_compare($params->get('db_version'), '1.1.8', '<')) {
-			
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_weight_start` `shipping_rate_weight_start` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_weight_start` `shipping_rate_weight_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-			
+
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_weight_end` `shipping_rate_weight_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_start` `shipping_rate_volume_start` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_start` `shipping_rate_volume_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_start` `shipping_rate_volume_start` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_start` `shipping_rate_volume_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_end` `shipping_rate_volume_end` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_end` `shipping_rate_volume_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_ordertotal_start` `shipping_rate_ordertotal_start` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_ordertotal_start` `shipping_rate_ordertotal_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_ordertotal_end` `shipping_rate_ordertotal_end` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_ordertotal_end` `shipping_rate_ordertotal_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_value` `shipping_rate_value` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_value` `shipping_rate_value` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_package_fee` `shipping_rate_package_fee` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_package_fee` `shipping_rate_package_fee` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_length_start` `shipping_rate_length_start` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_length_start` `shipping_rate_length_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_length_end` `shipping_rate_length_end` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_length_end` `shipping_rate_length_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_width_start` `shipping_rate_width_start` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_width_start` `shipping_rate_width_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_width_end` `shipping_rate_width_end` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_width_end` `shipping_rate_width_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_height_start` `shipping_rate_height_start` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_height_start` `shipping_rate_height_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
-				$db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_height_end` `shipping_rate_height_end` DECIMAL( 10, 4 ) NOT NULL ;");
+
+                $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_height_end` `shipping_rate_height_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
                     trigger_error($db->getErrorString(), E_USER_ERROR);
                     exit;
                 }
-				
             }
-			
-			if (version_compare($params->get('db_version'), '1.1.9', '<')) {
-				$this->protect_uploads();
-			}
-			
-			//add trash capability as it was forgotten in the previous versions...
-			if (version_compare($params->get('db_version'), '1.2.0', '<')) {
-				
-				global $wp_roles;
 
-				if ( class_exists( 'WP_Roles' ) ) {
-					if ( ! isset( $wp_roles ) ) {
-						$wp_roles = new WP_Roles();
-					}
-				}
-				
-				$capabilities = array();
-		
+            if (version_compare($params->get('db_version'), '1.1.9', '<')) {
+                $this->protect_uploads();
+            }
 
-				$capability_types = array( 'product', 'shop_order');
+            //add trash capability as it was forgotten in the previous versions...
+            if (version_compare($params->get('db_version'), '1.2.0', '<')) {
 
-				foreach ( $capability_types as $capability_type ) {
+                global $wp_roles;
 
-					$capabilities[ $capability_type ] = array(
-						"delete_{$capability_type}s",
-					);
-				}
-			
-				foreach ( $capabilities as $cap_group ) {
-					foreach ( $cap_group as $cap ) {
-						$wp_roles->add_cap( 'shop_manager', $cap );
-						$wp_roles->add_cap( 'administrator', $cap );
-					}
-				}
-			
-			}
-		
+                if (class_exists('WP_Roles')) {
+                    if (!isset($wp_roles)) {
+                        $wp_roles = new WP_Roles();
+                    }
+                }
+
+                $capabilities = array();
+
+
+                $capability_types = array('product', 'shop_order');
+
+                foreach ($capability_types as $capability_type) {
+
+                    $capabilities[$capability_type] = array(
+                        "delete_{$capability_type}s",
+                    );
+                }
+
+                foreach ($capabilities as $cap_group) {
+                    foreach ($cap_group as $cap) {
+                        $wp_roles->add_cap('shop_manager', $cap);
+                        $wp_roles->add_cap('administrator', $cap);
+                    }
+                }
+            }
+
             //update the parameters after we alter the database
 
             $params->set('db_version', $params->get('db_version', true));
@@ -1607,31 +1599,31 @@ class shop_installer extends app_object {
 	(464, 'PL', 'Zachodniopomorskie', 'ZAC', 'ZA')";
     }
 
-	protected function protect_uploads() {
-		
-		$upload_dir =  wp_upload_dir();
+    protected function protect_uploads() {
 
-		$files = array(
-			array(
-				'base' 		=> $upload_dir['basedir'] . '/com_shop_uploads',
-				'file' 		=> '.htaccess',
-				'content' 	=> 'deny from all'
-			),
-			array(
-				'base' 		=> $upload_dir['basedir'] . '/com_shop_uploads',
-				'file' 		=> 'index.html',
-				'content' 	=> ''
-			),
-		
-		);
+        $upload_dir = wp_upload_dir();
 
-		foreach ( $files as $file ) {
-			if ( wp_mkdir_p( $file['base'] ) && ! file_exists( trailingslashit( $file['base'] ) . $file['file'] ) ) {
-				if ( $file_handle = @fopen( trailingslashit( $file['base'] ) . $file['file'], 'w' ) ) {
-					fwrite( $file_handle, $file['content'] );
-					fclose( $file_handle );
-				}
-			}
-		}
-	}
+        $files = array(
+            array(
+                'base' => $upload_dir['basedir'] . '/com_shop_uploads',
+                'file' => '.htaccess',
+                'content' => 'deny from all'
+            ),
+            array(
+                'base' => $upload_dir['basedir'] . '/com_shop_uploads',
+                'file' => 'index.html',
+                'content' => ''
+            ),
+        );
+
+        foreach ($files as $file) {
+            if (wp_mkdir_p($file['base']) && !file_exists(trailingslashit($file['base']) . $file['file'])) {
+                if ($file_handle = @fopen(trailingslashit($file['base']) . $file['file'], 'w')) {
+                    fwrite($file_handle, $file['content']);
+                    fclose($file_handle);
+                }
+            }
+        }
+    }
+
 }

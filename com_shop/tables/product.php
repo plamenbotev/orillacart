@@ -18,7 +18,7 @@ class productTable extends table {
     public $special = 'no';
     public $expired = 'no';
     public $not_for_sale = 'no';
-	public $hide_price = 'global';
+    public $hide_price = 'global';
     public $price = null;
     public $discount_price = null;
     public $discount_start = '0000-00-00 00:00:00';
@@ -45,7 +45,7 @@ class productTable extends table {
         parent::__construct('id', '#_posts');
     }
 
-    public function store() {
+    public function store($safe_insert = false) {
 
         $this->price = str_replace(',', '.', $this->price);
         $this->discount_price = str_replace(',', '.', $this->discount_price);
@@ -68,7 +68,7 @@ class productTable extends table {
         return $this;
     }
 
-    public function load($id) {
+    public function load($id=null) {
 
         if (!$id)
             return $this;

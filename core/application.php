@@ -2,7 +2,7 @@
 
 defined('_VALID_EXEC') or die('access denied');
 
-final class Framework {
+final class Application {
 
     private $output = null;
     private $method = 'default';
@@ -10,15 +10,31 @@ final class Framework {
     private $template = null;
     private $content = '';
     private $messages = '';
-    private static $is_admin = null;
+    private $is_admin = null;
+    protected $input = null;
+    protected $input_override = null;
 
-    public static function is_admin() {
+    public function getInput() {
 
-        if (self::$is_admin === null) {
+        if ($this->input_override && $this->input_override instanceof Input) {
+
+            return $this->input_override;
+        }
+        return $this->input;
+    }
+
+    public function setInput(Input $i = null) {
+        $this->input_override = $i;
+    }
+
+    public function is_admin() {
+
+        if ($this->is_admin === null) {
             return is_admin();
         }
-        return self::$is_admin;
+        return $this->is_admin;
     }
+	
 
     public function set_output(view $o, $m) {
         $this->output = $o;
@@ -64,19 +80,23 @@ final class Framework {
      */
     private function __construct() {
 
+        $this->input = new Input();
+
+
+
         if (defined('DOING_AJAX')) {
-            if (Request::getVar('action', null) == 'framework-ajax-front') {
-                self::$is_admin = false;
-            } else if (Request::getVar('action', null) == 'framework-ajax-admin') {
-                self::$is_admin = true;
+            if ($this->input->get('action', null) == 'ajax-call-front') {
+                $this->is_admin = false;
+            } else if ($this->input->get('action', null) == 'ajax-call-admin') {
+                $this->is_admin = true;
             }
         }
 
-        if (self::$is_admin === null) {
+        if ($this->is_admin === null) {
             if (is_admin()) {
-                self::$is_admin = true;
+                $this->is_admin = true;
             } else {
-                self::$is_admin = false;
+                $this->is_admin = false;
             }
         }
     }
@@ -85,10 +105,10 @@ final class Framework {
         $components = null;
         $components = $this->get_active_components();
 
-               
+
         foreach ((array) $components as $k => $v) {
 
-            Factory::getApplication($v)->init();
+            Factory::getComponent($v)->init();
         }
     }
 
@@ -106,9 +126,12 @@ final class Framework {
      * @param type $component 
      */
     public function run($component) {
-        $app = Factory::getApplication($component);
+        $app = Factory::getComponent($component);
         do_action("before_component_run");
         do_action("before_run_" . $app->getName());
+
+
+
         $app->main();
     }
 
@@ -117,9 +140,9 @@ final class Framework {
      *  
      */
     public function handle_ajax_front() {
-        
+
         request::ajaxMode();
-        $this->run(request::getCmd('component'));
+        $this->run($this->input->get('component'));
         die();
     }
 
@@ -128,14 +151,14 @@ final class Framework {
      */
     public function handle_ajax_admin() {
 
-        if (!current_user_can('manage_options')){
-			die("0");
-		}
-		
-			
+        if (!current_user_can('manage_options')) {
+            die("0");
+        }
+
+
         request::ajaxMode();
-        $this->run(Request::getCmd('component'));
-		die();
+        $this->run($this->input->get('component'));
+        die();
     }
 
     /**
@@ -148,13 +171,14 @@ final class Framework {
     public function initialize() {
 
         if (defined('DOING_AJAX')) {
-            add_action('wp_ajax_nopriv_framework-ajax-front', array($this, 'handle_ajax_front'));
-            add_action('wp_ajax_framework-ajax-front', array($this, 'handle_ajax_front'));
+            add_action('wp_ajax_nopriv_ajax-call-front', array($this, 'handle_ajax_front'));
+            add_action('wp_ajax_ajax-call-front', array($this, 'handle_ajax_front'));
 
-            add_action('wp_ajax_nopriv_framework-ajax-admin', array($this, 'handle_ajax_admin'));
-            add_action('wp_ajax_framework-ajax-admin', array($this, 'handle_ajax_admin'));
+            add_action('wp_ajax_nopriv_ajax-call-admin', array($this, 'handle_ajax_admin'));
+            add_action('wp_ajax_ajax-call-admin', array($this, 'handle_ajax_admin'));
             return;
-        } else if (!Framework::is_admin()) {
+        } else if (!$this->is_admin()) {
+
             add_filter('request', array($this, 'component_dispatch'), 0);
             add_action('wp', array($this, 'view_dispatch'));
             add_filter('template_include', array($this, 'output_content'));
@@ -173,7 +197,8 @@ final class Framework {
             return '';
         ob_start();
         $this->output->{$this->method}();
-        $this->content = ob_get_clean();
+        $this->content = ob_get_contents();
+		ob_end_clean();
     }
 
     /**
@@ -192,20 +217,20 @@ final class Framework {
         if (request::get_wp_original_query()->is_page()) {
             request::get_wp_original_query()->get_posts();
         }
-       
+
         //give the components chance to inspect or alter the request
         do_action('component_parse_request');
 
         try {
             //run the matched component that should handle the request if any.
 
-            if (request::getCmd('component', null)) {
-                $this->run(request::getCmd('component', null));
+            if ($this->input->get('component', null, "CMD")) {
+                $this->run($this->input->get('component', null, "CMD"));
             }
         } catch (not_found_404 $e) {
 
             status_header('404');
-            request::setVar('component', null);
+            $this->input->set('component', null);
             $this->template = get_404_template();
         }
 
@@ -223,15 +248,16 @@ final class Framework {
      */
     public function output_content($template) {
 
-        if (request::getCmd('component', null)) {
+        if ($this->input->get('component', null, "cmd")) {
 
             if ($this->template) {
+
                 return $this->template;
             }
 
 
 
-            $rows = component::get_wp_pages(request::getCmd('component'));
+            $rows = component::getWPPages($this->input->get('component', null, "CMD"));
             $page = $rows[0];
             $page = get_page_by_path($page);
             $tpl = get_post_meta((int) $page->ID, '_wp_page_template', true);
@@ -248,7 +274,7 @@ final class Framework {
             $query->posts = array($page);
             $query->post = $page;
             $conditions = array();
-            $conditions = apply_filters(strtolower(request::getCmd('component') . "_set_conditions"), $conditions);
+            $conditions = apply_filters(strtolower($this->input->get('component', null, "CMD") . "_set_conditions"), $conditions);
 
             if (!empty($conditions)) {
                 $query->init_query_flags();
@@ -269,8 +295,8 @@ final class Framework {
             $GLOBALS['wp_query'] = $query;
             $GLOBALS['post'] = $page;
 
-            if (file_exists(get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php")) {
-                return get_stylesheet_directory() . "/com_" . strtolower(request::getCmd('component')) . ".php";
+            if (file_exists(get_stylesheet_directory() . "/com_" . strtolower($this->input->get('component', null, "CMD")) . ".php")) {
+                return get_stylesheet_directory() . "/com_" . strtolower($this->input->get('component', null, "CMD")) . ".php";
             }
 
             add_shortcode("framework", array($this, 'attachTheContent'));
@@ -298,9 +324,8 @@ final class Framework {
                 }
             }
 
-			return empty($tmp) ? $template : $tmp;
-        
-		} else {
+            return empty($tmp) ? $template : $tmp;
+        } else {
             return $template;
         }
     }
@@ -312,11 +337,11 @@ final class Framework {
      */
     public function attachTheContent() {
 
-        if (self::is_admin()) {
+        if ($this->is_admin()) {
             echo $this->content;
         } else {
 
-            $app = Factory::getApplication(Request::getCMD('component'));
+            $app = Factory::getComponent($this->input->get('component', null, "CMD"));
 
             $error_messages = $app->getErrors();
 
@@ -350,7 +375,7 @@ final class Framework {
             $app->clearMessages();
 
 
-            return "<div id='com-" . strtolower(request::getCmd('component')) . "' class='com-" . strtolower(request::getCmd('component')) . " addBootstrap'>" . $this->messages . $this->content . "</div>";
+            return "<div id='com-" . strtolower($this->input->get('component')) . "' class='com-" . strtolower($this->input->get('component')) . " addBootstrap'>" . $this->messages . $this->content . "</div>";
         }
     }
 
@@ -366,20 +391,41 @@ final class Framework {
             $com = null;
 
             if (preg_match("/component_com_[a-z]+/i", $page)) {
-                $com = Request::getCmd('page', null);
+                $com = $this->input->get('page', null);
                 $com = explode('-', $com);
                 if (isset($com[1])) {
-                    Request::setVar('con', $com[1]);
+                    $this->input->set('con', $com[1]);
                 }
-                if (isset($com[2]) && !request::getCmd('task', null)) {
-                    request::setVar('task', $com[2]);
+                if (isset($com[2]) && !$this->input->get('task', null, "CMD")) {
+                    $this->input->set('task', $com[2]);
                 }
                 $this->run(str_replace('component_com_', '', $com[0]));
 
-                $this->view_dispatch();
+				 $this->view_dispatch();
+					
+					
+					
+				$tmp = $this->content;
+				$this->content = "";
+				
+				if (!Request::is_internal() && !Request::is_ajax()) {
+					$this->content = "<div class='wrap'>";
+					
+					$bar = Toolbar::getInstance('toolbar');
+					
+					
+					
+					$this->content .= $bar->render();
+				}
+				
+				$this->content .= $tmp;
+				
+				if (!Request::is_internal() && !Request::is_ajax()) {
+					$this->content .= "</div>";
+				}
             }
         }
-        do_action('framework_admin_pages');
+        do_action('application_admin_pages');
     }
 
 }

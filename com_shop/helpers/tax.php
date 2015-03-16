@@ -6,7 +6,7 @@ class tax {
     protected $country = null;
     protected $state = null;
 
-    public function getInstance() {
+    public static function getInstance() {
         static $instance = null;
 
         if ($instance instanceof self)
@@ -20,13 +20,13 @@ class tax {
 
     public function get_tax_rate($country = null, $state = null, $gid = null) {
 
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
         if (!empty($country)) {
             $this->country = $country;
             $this->state = $state;
         } else {
 
-            $customer = Factory::getApplication('shop')->getHelper('customer');
+            $customer = Factory::getComponent('shop')->getHelper('customer');
 
 
             switch ($params->get('vatType')) {
@@ -66,13 +66,13 @@ class tax {
 
     public function get_matched_rates($country = null, $state = null, $gid = null) {
 
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
         if (!empty($country)) {
             $this->country = $country;
             $this->state = $state;
         } else {
 
-            $customer = Factory::getApplication('shop')->getHelper('customer');
+            $customer = Factory::getComponent('shop')->getHelper('customer');
 
 
             switch ($params->get('vatType')) {
@@ -132,9 +132,9 @@ class tax {
 
                         foreach ((array) $tax_rates as $rate) {
 
-                            $res[$rate->tax_rate_id] = new app_object();
+                            $res[$rate->tax_rate_id] = new BObject();
                             if (!empty($rate->tax_name)) {
-                                $res[$rate->tax_rate_id]->set("name", stripslashes($rate->tax_name));
+                                $res[$rate->tax_rate_id]->set("name", $rate->tax_name);
                             }
                             $res[$rate->tax_rate_id]->set("rate", $rate->tax_rate / 100);
                         }
@@ -159,9 +159,9 @@ class tax {
 
                             foreach ((array) $tax_rates as $rate) {
 
-                                $res[$rate->tax_rate_id] = new app_object();
+                                $res[$rate->tax_rate_id] = new BObject();
                                 if (!empty($rate->tax_name)) {
-                                    $res[$rate->tax_rate_id]->set("name", stripslashes($rate->tax_name));
+                                    $res[$rate->tax_rate_id]->set("name", $rate->tax_name);
                                 }
                                 $res[$rate->tax_rate_id]->set("rate", $rate->tax_rate / 100);
                             }
@@ -184,9 +184,9 @@ class tax {
 
                     foreach ((array) $tax_rates as $rate) {
 
-                        $res[$rate->tax_rate_id] = new app_object();
+                        $res[$rate->tax_rate_id] = new BObject();
                         if (!empty($rate->tax_name)) {
-                            $res[$rate->tax_rate_id]->set("name", stripslashes($rate->tax_name));
+                            $res[$rate->tax_rate_id]->set("name", $rate->tax_name);
                         }
                         $res[$rate->tax_rate_id]->set("rate", $rate->tax_rate / 100);
                     }
@@ -211,9 +211,9 @@ class tax {
 
                     foreach ((array) $tax_rates as $rate) {
 
-                        $res[$rate->tax_rate_id] = new app_object();
+                        $res[$rate->tax_rate_id] = new BObject();
                         if (!empty($rate->tax_name)) {
-                            $res[$rate->tax_rate_id]->set("name", stripslashes($rate->tax_name));
+                            $res[$rate->tax_rate_id]->set("name", $rate->tax_name);
                         }
                         $res[$rate->tax_rate_id]->set("rate", $rate->tax_rate / 100);
                     }
@@ -229,9 +229,9 @@ class tax {
     protected function calc_tax_rate() {
 
 
-        $validate = Factory::getApplication('shop')->getHelper('validation');
+        $validate = Factory::getComponent('shop')->getHelper('validation');
 
-        $params = Factory::getApplication('shop')->getParams();
+        $params = Factory::getComponent('shop')->getParams();
 
         $country = $state = null;
         $db = Factory::getDBO();
