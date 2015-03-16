@@ -98,9 +98,9 @@ if (!function_exists('paypal_init')) {
                         'charset' => 'UTF-8',
                         'rm' => is_ssl() ? 2 : 1,
                         'upload' => 1,
-                        'return' => Route::get('component=shop&con=cart&task=order_details&order_id=' . $order_id."&order_key=".$order->get("post_password","")),
+                        'return' => Route::get('component=shop&con=cart&task=order_details&order_id=' . $order_id."&order_key=".$order_r->get("post_password","")),
                        
-						'cancel_return' => Route::get('component=shop&con=cart&task=cancel_order&order_id=' . $order_id."&order_key=".$order->get("post_password","")),
+						'cancel_return' => Route::get('component=shop&con=cart&task=cancel_order&order_id=' . $order_id."&order_key=".$order_r->get("post_password","")),
                         'page_style' => "",
                         // Order key + ID
                         'invoice' => $order_id,
