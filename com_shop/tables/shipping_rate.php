@@ -46,7 +46,7 @@ class shipping_rateTable extends table {
 
     public function bind($from, $exclude = Array()) {
 
-        if (is_object($from)) {
+        if (is_object($from) && !($from instanceof Input)) {
             $from = arrayHelper::fromObject($from, false);
         }
 
