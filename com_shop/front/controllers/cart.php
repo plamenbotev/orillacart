@@ -293,6 +293,7 @@ class shopControllerCart extends controller {
 
             parse_str($input->get('post_data', "", "STRING"), $post);
             $input->set($post);
+			$input->post->set($post);
         }
 
         $customer = Factory::getComponent('shop')->getHelper('customer');
@@ -413,6 +414,9 @@ class shopControllerCart extends controller {
         $model = $this->getModel("country");
 
         $id = $input->get('country', null, "STRING");
+
+		
+		
         $type = strtolower($input->get('type', 'billing', "WORD"));
         if (!in_array($type, array('billing', 'shipping'))) {
             $type = 'billing';

@@ -8,7 +8,7 @@
   Plugin URI: http://orillacart.com
   Description: paypal standart form based
   Author: orillacart.com Team
-  Version: 1.0
+  Version: 1.1
   Author URI: http://orillacart.com/
  */
 
@@ -117,7 +117,8 @@ if (!function_exists('paypal_init')) {
                         'state' => $order_r->get("billing_state", ""),
                         'zip' => $order_r->get("billing_zipcode", ""),
                         'country' => $order_r->get("billing_country", ""),
-                        'email' => $order_r->get("billing_email", "")
+                        'email' => $order_r->get("billing_email", ""),
+						'bn' => 'OrillaCart_SP'
                             ), $phone_args
                     );
 

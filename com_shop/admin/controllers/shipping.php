@@ -30,6 +30,7 @@ class shopControllerShipping extends controller {
         $model = $this->getModel('shipping');
 
         $assigned = $model->get_used_classes();
+	
         if ($row->class != 'standart_shipping') {
             $key = array_search($row->class, $assigned);
 
@@ -76,6 +77,7 @@ class shopControllerShipping extends controller {
 
 
         if ($row->class != 'standart_shipping') {
+			
             $key = array_search($row->class, $assigned);
 
             if ($key !== false)
@@ -94,8 +96,12 @@ class shopControllerShipping extends controller {
             foreach ((array) $shipping_classes as $class) {
                 if ($class instanceof standart_shipping && !in_array($class->get_class_name(), $assigned)) {
                     $class_names[] = $class->get_class_name();
+					
+					
                     if (strtolower($row->class) == strtolower(get_class($class))) {
-                        ob_start();
+                        
+					
+						ob_start();
                         $class->print_options($row->pk());
                         $class_options = ob_get_contents();
                         ob_end_clean();
@@ -105,6 +111,7 @@ class shopControllerShipping extends controller {
 
             $this->view->assign('class_names', $class_names);
             $this->view->assign('class_options', $class_options);
+			
             return parent::display('add_carrier');
         } else {
 

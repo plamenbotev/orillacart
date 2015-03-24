@@ -1,7 +1,7 @@
 <table class="wp-list-table widefat fixed">
     <tr>
-        <th><?php _e("title", "com_shop"); ?></th>
-        <th><?php _e("remove", "com_shop"); ?></th>
+        <th><?php _e("Title", "com_shop"); ?></th>
+        <th><?php _e("Remove", "com_shop"); ?></th>
     </tr>
 
     <?php foreach ((array) $this->variations as $id => $title): ?>

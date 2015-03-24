@@ -385,10 +385,15 @@ if (!class_exists('country')) {
 
             $rows = $db->loadObjectList();
 
-
-            foreach ((array) $rows as $row) {
-                $this->_options[$row->country_2_code] = $row->country_name;
-            }
+			if(!empty($rows)){
+				 $this->_options[null] = "";
+			
+			
+				foreach ((array) $rows as $row) {
+					$this->_options[$row->country_2_code] = $row->country_name;
+				}
+			
+			}
 
 
             parent::__construct($name);
@@ -427,7 +432,7 @@ if (!class_exists('state')) {
 
             if (!empty($rows)) {
 
-
+				 $this->_options[null] = "";
                 foreach ((array) $rows as $row) {
                     $this->_options[$row->state_2_code] = $row->state_name;
                 }

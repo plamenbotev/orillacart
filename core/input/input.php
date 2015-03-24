@@ -94,9 +94,9 @@ class Input implements IteratorAggregate, ArrayAccess, Serializable, Countable {
 
     public function offsetSet($offset, $value) {
         if (is_null($offset)) {
-            $this->container[] = $value;
+            $this->data[] = $value;
         } else {
-            $this->container[$offset] = $value;
+            $this->data[$offset] = $value;
         }
     }
 

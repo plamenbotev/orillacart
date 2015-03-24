@@ -263,7 +263,7 @@ class shopControllerProducts extends controller {
         $ok = false;
 
         if ($post->post_parent) {
-            if (wp_delete_post($product, $true) !== false) {
+            if (wp_delete_post($product, true) !== false) {
                 $ok = true;
             }
         }

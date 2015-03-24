@@ -45,6 +45,11 @@ class carrierTable extends table {
 
         if (empty($this->name)) {
             Factory::getComponent('shop')->addError(__('Enter carrier label', 'com_shop'));
+			
+			if ($this->class == null){
+				$this->class =  'standart_shipping';
+			}
+			
             return false;
         }
 
@@ -56,7 +61,14 @@ class carrierTable extends table {
             $this->params = new Registry($this->params);
             $this->params = $this->params->toString();
         }
-        return parent::store();
+       
+		$res = parent::store();
+		
+		if ($this->class == null){
+			$this->class =  'standart_shipping';
+		}
+		
+		return $res;
     }
 
 }

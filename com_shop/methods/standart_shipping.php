@@ -454,9 +454,18 @@ class standart_shipping implements SelfRegisterable {
         $input = Factory::getApplication()->getInput();
         $id = $input->get('method_id', 0, "INT");
 
-        $carrier = Table::getInstance('carrier', 'shop')->load($id);
+		$params = $input->get("params",null,"ARRAY");
+		
+		if(!empty($params)){
+				$params = new Registry($params);
+		}else{
+			 $carrier = Table::getInstance('carrier', 'shop')->load($id);
+			 $params = $carrier->params;
+		}
+		
+      
         $view = view::getInstance("shipping", "shop");
-        $view->assign('params', $carrier->params);
+        $view->assign('params', $params);
         $view->standart_shipping_params();
     }
 
