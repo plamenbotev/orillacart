@@ -905,7 +905,7 @@ final class orillacart_actions {
             $q_vars['product_type'] = $term->slug;
         }
 
-        if (is_admin() && $pagenow == 'edit.php' && isset($q_vars['post_type']) && $q_vars['post_type'] == $post_type) {
+        if (is_admin() && $pagenow == 'edit.php' && isset($q_vars['post_type']) && $q_vars['post_type'] == $post_type && (!isset($q_vars['post_status']) || $q_vars['post_status'] !='trash')) {
             //remove all variations from the list.
             $query->query_vars['post_parent__in'] = array(0);
         }
