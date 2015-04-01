@@ -195,7 +195,7 @@ class shop extends component {
             ");
         } else {
 
-            $this->getHelper('cart')->cron();
+           
             $Head->addscript('jquery');
             $Head->addscript('shop_helper', $this->getAssetsUrl() . '/js/jsshopfronthelper.js');
             $Head->addstyle('bootstrap', $this->getAssetsUrl() . '/bootstrap.css');
