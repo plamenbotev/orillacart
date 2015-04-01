@@ -21,22 +21,7 @@ final class cart {
         return $instance;
     }
 
-    public function cron() {
-        $db = Factory::getDBO();
-
-        $time = (int) ini_get('session.gc_maxlifetime');
-
-        if (!$time)
-            $time = 3600;
-        $time = (int) ( time() - $time );
-
-        $db->setQuery("DELETE FROM #_shop_cart WHERE last_access < " . $time);
-
-        if (session_id()) {
-            $db->setQuery("UPDATE #_shop_cart SET last_access = '" . time() . "' WHERE session_id = '" . $db->secure(session_id()) . "' LIMIT 1");
-        }
-    }
-
+    
     protected function __construct() {
 
         if (!session_id()) {

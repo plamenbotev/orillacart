@@ -197,7 +197,7 @@ class productModel extends model {
 
         $res = array();
         $childs = new WP_Query();
-        $childs->query('post_type=product&post_parent=' . $pid . '&postprepage=-1');
+        $childs->query('post_type=product&post_parent=' . $pid . '&posts_per_page=-1');
         while ($childs->have_posts()) {
             $childs->the_post();
             $res[get_the_ID()] = get_the_title();

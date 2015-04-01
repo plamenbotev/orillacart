@@ -54,7 +54,7 @@ class shopControllerProducts extends controller {
         $ids = (array) array_map('intval', (array) $input->get('ids', array(), "ARRAY"));
 
 
-        $model->deleteProducts($ids);
+        $model->deleteProducts($ids,true);
     }
 
     protected function changestate() {

@@ -175,8 +175,12 @@ class shop extends component {
 
         $Head = Factory::getHead();
 
+		$this->cron();
+		
         if (Factory::getApplication()->is_admin()) {
-
+			
+		
+			
             $Head->addscript('jsshopadminhelper', $this->getAssetsUrl() . '/js/jsshopadminhelper.js');
             $Head->addStyle('bootstrap', $this->getAssetsUrl() . '/bootstrap.css');
             $Head->addStyle('shop-icons', $this->getAssetsUrl() . '/icons.css');
@@ -220,7 +224,36 @@ class shop extends component {
 
         $this->getController($input->get('con', '', "CMD"))->execute($input->get('task', '', "CMD"));
     }
+	
+	
+	protected function cron() {
+        
+		$db = Factory::getDBO();
+		
+		
+		if(Factory::getApplication()->is_admin()){
+			
+			//admin cron tasks
+			
+		}else{
+		
+			
 
+			$time = (int) ini_get('session.gc_maxlifetime');
+
+			if (!$time){
+				$time = 3600;
+			}
+			
+			$time = (int) ( time() - $time );
+
+			$db->setQuery("DELETE FROM #_shop_cart WHERE last_access < " . $time);
+
+			if (session_id()) {
+				$db->setQuery("UPDATE #_shop_cart SET last_access = '" . time() . "' WHERE session_id = '" . $db->secure(session_id()) . "' LIMIT 1");
+			}
+		}
+	}
     //Shortcodes handlers begin from here
 
     /*
