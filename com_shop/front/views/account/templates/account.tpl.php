@@ -99,8 +99,7 @@
             </tbody>
             <tfoot>
             </tfoot>
-            </ta
-            ble>
+            </table>
     </div>
 
     <form name="checkout"  method="post" class="checkout" action="<?php echo Route::get("component=shop&con=account"); ?>">

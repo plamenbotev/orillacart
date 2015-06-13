@@ -31,8 +31,7 @@
                         <div class="view-mode-label"><?php _e('View as:', 'com_shop'); ?>&nbsp;</div>
 
                         <a class="first" href="javascript:void(0);" onclick='jQuery("#list_type").val("list").parent().submit();' ></a>
-                        <a class="active" href="javascript:void(0);" onclick='jQuery("#l
-                                        ist_type").val("grid").parent().submit();'></a>
+                        <a class="active" href="javascript:void(0);" onclick='jQuery("#list_type").val("grid").parent().submit();'></a>
                     </div>
                 </div>
 
