@@ -489,7 +489,7 @@ final class orillacart_actions {
                 'add_new_item' => __('Add New Brand', 'com_shop'),
                 'new_item_name' => __('New Product Brand Name', 'com_shop')
             ),
-            'show_ui' => false,
+            'show_ui' => true,
             'show_in_nav_menus' => true,
             'show_in_menu' => true,
             'query_var' => true,
@@ -522,7 +522,7 @@ final class orillacart_actions {
                 ),
                 'new_item_name' => __('New Shipping Group Name', 'com_shop')
             ),
-            'show_ui' => false,
+            'show_ui' => true,
             'show_in_nav_menus' => true,
             'show_in_menu' => true,
             'query_var' => is_admin() ? true : false,

@@ -188,6 +188,7 @@ class shopControllerProducts extends controller {
 
         remove_meta_box('slugdiv', 'product', 'normal');
         remove_meta_box('tagsdiv-product_brand', 'product', 'side');
+        remove_meta_box('tagsdiv-shipping_group', 'product', 'side');
 
         $this->view->poduct_meta_js();
 
