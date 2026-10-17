@@ -33,6 +33,7 @@ final readonly class ProductDetails
         public ?string $height = null,
         public ?int $downloadLimit = null,
         public ?int $downloadExpiryDays = null,
+        public PriceVisibility $priceVisibility = PriceVisibility::Shop,
     ) {
         self::validSku($sku);
         if (($downloadLimit !== null && $downloadLimit < 1) || ($downloadExpiryDays !== null && $downloadExpiryDays < 1)) {

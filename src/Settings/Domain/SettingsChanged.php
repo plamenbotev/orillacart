@@ -22,7 +22,7 @@ final readonly class SettingsChanged implements PublicEvent
     }
 
     /**
-     * @return list<array{currency: string, price_decimals: int, weight_unit: string, dimension_unit: string, shop_country: ?string, shop_state: ?string}> current, then previous values
+     * @return list<array{currency: string, price_decimals: int, weight_unit: string, dimension_unit: string, shop_country: ?string, shop_state: ?string, shop_postcode: ?string, currency_sign: string, currency_position: string, catalog_only: bool, hide_prices: bool, sell_to: list<string>}> current, then previous values
      */
     public function hookArguments(): array
     {
@@ -30,7 +30,7 @@ final readonly class SettingsChanged implements PublicEvent
     }
 
     /**
-     * @return array{currency: string, price_decimals: int, weight_unit: string, dimension_unit: string, shop_country: ?string, shop_state: ?string}
+     * @return array{currency: string, price_decimals: int, weight_unit: string, dimension_unit: string, shop_country: ?string, shop_state: ?string, shop_postcode: ?string, currency_sign: string, currency_position: string, catalog_only: bool, hide_prices: bool, sell_to: list<string>}
      */
     private static function values(StoreSettings $settings): array
     {
@@ -41,6 +41,12 @@ final readonly class SettingsChanged implements PublicEvent
             'dimension_unit' => $settings->dimensionUnit->value,
             'shop_country' => $settings->shopCountry,
             'shop_state' => $settings->shopState,
+            'shop_postcode' => $settings->shopPostcode,
+            'currency_sign' => $settings->currencySign,
+            'currency_position' => $settings->currencyPosition->value,
+            'catalog_only' => $settings->catalogOnly,
+            'hide_prices' => $settings->hidePrices,
+            'sell_to' => $settings->sellTo,
         ];
     }
 }

@@ -57,6 +57,9 @@ class Product
     #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
     private ?string $height;
 
+    #[ORM\Column(length: 10, enumType: PriceVisibility::class, options: ['default' => 'shop'])]
+    private PriceVisibility $priceVisibility = PriceVisibility::Shop;
+
     #[ORM\Column(nullable: true)]
     private ?int $downloadLimit = null;
 
@@ -123,6 +126,7 @@ class Product
             $this->height === null ? null : self::trimDecimal($this->height),
             $this->downloadLimit,
             $this->downloadExpiryDays,
+            $this->priceVisibility,
         );
     }
 
@@ -142,6 +146,7 @@ class Product
         $this->height = $details->height;
         $this->downloadLimit = $details->downloadLimit;
         $this->downloadExpiryDays = $details->downloadExpiryDays;
+        $this->priceVisibility = $details->priceVisibility;
     }
 
     // ------------------------------------------------------------------------------------------ downloads

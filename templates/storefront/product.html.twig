@@ -27,7 +27,8 @@
     {% endif %}
 
     <p class="orillacart-stock" data-orillacart-stock>
-        {%- if not offer.for_sale -%}
+        {%- if offer.price_hidden -%}
+        {%- elseif not offer.for_sale -%}
             <span class="orillacart-stock--out">{{ __('Not available') }}</span>
         {%- elseif offer.available is not null -%}
             {{ __('%d in stock')|format(offer.available) }}

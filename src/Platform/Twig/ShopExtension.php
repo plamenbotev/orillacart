@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\Twig;
 
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Settings\Domain\CurrencyPosition;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
@@ -60,13 +61,20 @@ final class ShopExtension extends AbstractExtension
         return (string) wp_date($format, $time);
     }
 
+    /**
+     * An amount in the shop's number format, with the currency's sign (or code) where the shop puts it. An amount
+     * in another currency, such as an old order's, shows that currency's code.
+     */
     public function money(string $amount, ?string $currency = null): string
     {
         $settings = $this->settings->current();
         $number = \function_exists('number_format_i18n')
             ? number_format_i18n((float) $amount, $settings->priceDecimals)
             : number_format((float) $amount, $settings->priceDecimals);
+        $sign = $currency !== null && $currency !== $settings->currency
+            ? $currency
+            : ($settings->currencySign !== '' ? $settings->currencySign : $settings->currency);
 
-        return $number . ' ' . ($currency ?? $settings->currency);
+        return CurrencyPosition::from($settings->currencyPosition)->place($number, $sign);
     }
 }

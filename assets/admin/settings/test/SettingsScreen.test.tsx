@@ -18,8 +18,15 @@ const stored = {
 	dimension_unit: 'cm',
 	shop_country: null,
 	shop_state: null,
+	shop_postcode: null,
+	currency_sign: '€',
+	currency_position: 'after_space',
+	catalog_only: false,
+	hide_prices: false,
+	sell_to: [ 'BG' ],
 	weight_units: [ 'kg', 'g', 'lb', 'oz' ],
 	dimension_units: [ 'cm', 'm', 'mm', 'in' ],
+	currency_positions: [ 'before', 'before_space', 'after', 'after_space' ],
 };
 
 const pages = { shop: 9, cart: 10, checkout: null, account: null };
@@ -104,6 +111,12 @@ describe( 'SettingsScreen', () => {
 				dimension_unit: 'cm',
 				shop_country: null,
 				shop_state: null,
+				shop_postcode: null,
+				currency_sign: '€',
+				currency_position: 'after_space',
+				catalog_only: false,
+				hide_prices: false,
+				sell_to: [ 'BG' ],
 			},
 		} );
 	} );

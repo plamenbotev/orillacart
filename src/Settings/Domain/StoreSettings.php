@@ -14,7 +14,14 @@ use OrillaCart\Shared\Domain\RuleViolation;
 final readonly class StoreSettings
 {
     public const int MAX_PRICE_DECIMALS = 4;
+    public const int MAX_SIGN_LENGTH = 8;
 
+    /**
+     * @param string       $currencySign shown with amounts; empty to show the currency code
+     * @param bool         $catalogOnly  products are shown but not sold
+     * @param bool         $hidePrices   prices are not shown, and products are not sold online, unless a product says otherwise
+     * @param list<string> $sellTo       countries (ISO 3166-1 alpha-2) the shop sells to; empty for everywhere
+     */
     public function __construct(
         public Currency $currency,
         public int $priceDecimals,
@@ -24,6 +31,12 @@ final readonly class StoreSettings
         public ?string $shopCountry = null,
         /** ISO 3166-2 subdivision code without the country prefix; only with a country that has states. */
         public ?string $shopState = null,
+        public ?string $shopPostcode = null,
+        public string $currencySign = '',
+        public CurrencyPosition $currencyPosition = CurrencyPosition::AfterWithSpace,
+        public bool $catalogOnly = false,
+        public bool $hidePrices = false,
+        public array $sellTo = [],
     ) {
         if ($priceDecimals < 0 || $priceDecimals > self::MAX_PRICE_DECIMALS) {
             throw new RuleViolation(
@@ -34,6 +47,26 @@ final readonly class StoreSettings
         if ($shopState !== null && $shopCountry === null) {
             throw new RuleViolation('The shop state needs a shop country.', 'orillacart_invalid_shop_address');
         }
+        if ($shopPostcode !== null && (trim($shopPostcode) === '' || mb_strlen($shopPostcode) > 20)) {
+            throw new RuleViolation('A postcode has 1 to 20 characters.', 'orillacart_invalid_shop_address');
+        }
+        if (mb_strlen($currencySign) > self::MAX_SIGN_LENGTH || trim($currencySign) !== $currencySign) {
+            throw new RuleViolation(\sprintf('A currency sign has up to %d characters, without spaces at either end.', self::MAX_SIGN_LENGTH), 'orillacart_invalid_currency_sign');
+        }
+        foreach ($sellTo as $country) {
+            if (preg_match('/^[A-Z]{2}$/', $country) !== 1) {
+                throw new RuleViolation(\sprintf('"%s" is not a country code.', $country), 'orillacart_invalid_country');
+            }
+        }
+        if (\count($sellTo) !== \count(array_unique($sellTo))) {
+            throw new RuleViolation('A country is listed twice.', 'orillacart_invalid_country');
+        }
+    }
+
+    /** Whether the shop sells to addresses in the country. */
+    public function sellsTo(string $country): bool
+    {
+        return $this->sellTo === [] || \in_array($country, $this->sellTo, true);
     }
 
     public static function defaults(): self
@@ -48,6 +81,12 @@ final readonly class StoreSettings
             && $this->weightUnit === $other->weightUnit
             && $this->dimensionUnit === $other->dimensionUnit
             && $this->shopCountry === $other->shopCountry
-            && $this->shopState === $other->shopState;
+            && $this->shopState === $other->shopState
+            && $this->shopPostcode === $other->shopPostcode
+            && $this->currencySign === $other->currencySign
+            && $this->currencyPosition === $other->currencyPosition
+            && $this->catalogOnly === $other->catalogOnly
+            && $this->hidePrices === $other->hidePrices
+            && $this->sellTo === $other->sellTo;
     }
 }

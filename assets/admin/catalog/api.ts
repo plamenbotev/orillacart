@@ -81,6 +81,8 @@ export interface Product {
 	stock_mode: StockMode;
 	purchasable: boolean;
 	featured: boolean;
+	/** shop: as the shop's setting says; shown; hidden (not sold online). */
+	price_visibility: 'shop' | 'shown' | 'hidden';
 	weight: string | null;
 	length: string | null;
 	width: string | null;
@@ -159,6 +161,7 @@ export function toProductInput( product: Product ): ProductInput {
 		stock_mode: product.stock_mode,
 		purchasable: product.purchasable,
 		featured: product.featured,
+		price_visibility: product.price_visibility,
 		weight: product.weight,
 		length: product.length,
 		width: product.width,

@@ -17,6 +17,8 @@ final class SettingsRestTest extends RestTestCase
 {
     private const string ROUTE = '/settings';
     private const array VALID = ['currency' => 'USD', 'price_decimals' => 3, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY'];
+    /** What the shop has without saying otherwise, besides the fields above. */
+    private const array UNSAID = ['shop_postcode' => null, 'currency_sign' => '', 'currency_position' => 'after_space', 'catalog_only' => false, 'hide_prices' => false, 'sell_to' => []];
 
     /** @var list<array<array-key, mixed>> arguments of each orillacart_settings_changed action */
     private array $announced = [];
@@ -87,7 +89,8 @@ final class SettingsRestTest extends RestTestCase
 
         self::assertSame(200, $response->get_status());
         self::assertSame(
-            ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null, 'weight_units' => ['kg', 'g', 'lb', 'oz'], 'dimension_units' => ['cm', 'm', 'mm', 'in']],
+            ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null, 'weight_units' => ['kg', 'g', 'lb', 'oz'], 'dimension_units' => ['cm', 'm', 'mm', 'in']]
+                + self::UNSAID + ['currency_positions' => ['before', 'before_space', 'after', 'after_space']],
             $this->data($response),
         );
     }
@@ -112,8 +115,8 @@ final class SettingsRestTest extends RestTestCase
 
         self::assertSame(200, $response->get_status());
         self::assertSame('USD', $this->data($response)['currency']);
-        self::assertSame(self::VALID, get_option(OptionSettingsRepository::OPTION));
-        self::assertSame([[self::VALID, ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null]]], $this->announced);
+        self::assertSame(self::VALID + self::UNSAID, get_option(OptionSettingsRepository::OPTION));
+        self::assertSame([[self::VALID + self::UNSAID, ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null] + self::UNSAID]], $this->announced);
         self::assertSame('USD', $this->data($this->request('GET', self::ROUTE))['currency']);
     }
 

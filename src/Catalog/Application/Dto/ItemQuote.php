@@ -13,7 +13,7 @@ final readonly class ItemQuote
      * @param list<QuotedOption> $options   the chosen options of a product without variations, with their adjustments
      * @param string             $unitPrice before tax, options included
      * @param int|null           $available how many can be sold now; null when stock does not limit it
-     * @param bool               $forSale   published, purchasable and not marked unavailable
+     * @param bool               $forSale   published, purchasable, not marked unavailable, and its price shown
      * @param string|null        $weight    in the shop's weight unit; length, width and height in its dimension unit
      * @param list<QuotedDownload> $downloads what the buyer may download once paid
      */

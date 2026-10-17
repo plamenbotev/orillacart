@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Settings\Infrastructure\WordPress;
 
+use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Domain\StoreSettings;
@@ -37,6 +38,12 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
                 DimensionUnit::from(self::string($stored, 'dimension_unit')),
                 self::optionalString($stored, 'shop_country'),
                 self::optionalString($stored, 'shop_state'),
+                self::optionalString($stored, 'shop_postcode'),
+                self::optionalString($stored, 'currency_sign') ?? '',
+                CurrencyPosition::tryFrom(self::optionalString($stored, 'currency_position') ?? '') ?? CurrencyPosition::AfterWithSpace,
+                ($stored['catalog_only'] ?? false) === true,
+                ($stored['hide_prices'] ?? false) === true,
+                array_values(array_filter(\is_array($stored['sell_to'] ?? null) ? $stored['sell_to'] : [], \is_string(...))),
             );
         } catch (RuleViolation|\ValueError|\UnexpectedValueException $e) {
             $this->logger->warning('Stored shop settings are not valid, using the defaults: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
@@ -54,6 +61,12 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
             'dimension_unit' => $settings->dimensionUnit->value,
             'shop_country' => $settings->shopCountry,
             'shop_state' => $settings->shopState,
+            'shop_postcode' => $settings->shopPostcode,
+            'currency_sign' => $settings->currencySign,
+            'currency_position' => $settings->currencyPosition->value,
+            'catalog_only' => $settings->catalogOnly,
+            'hide_prices' => $settings->hidePrices,
+            'sell_to' => $settings->sellTo,
         ], true);
     }
 

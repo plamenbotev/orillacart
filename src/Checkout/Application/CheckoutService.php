@@ -91,11 +91,15 @@ final readonly class CheckoutService
 
     /**
      * @throws CheckoutRuleViolation      for an empty cart, items that cannot be ordered, a missing or unknown
-     *                                    shipping rate or payment method, or stock that ran out
+     *                                    shipping rate or payment method, stock that ran out, an address in a
+     *                                    country the shop does not sell to, or a shop that only shows its catalog
      * @throws PaymentProviderUnavailable when the payment cannot start; the order is then cancelled
      */
     public function placeOrder(CartOwner $owner, PlaceOrder $command): PlacedOrderView
     {
+        if ($this->settings->current()->catalogOnly) {
+            throw new CheckoutRuleViolation('The shop does not take orders online.', 'orillacart_catalog_only');
+        }
         $contents = $this->contents($owner);
         $billingAddress = $this->requireAddress($command->billing, 'billing');
         $shippingAddress = $command->shippingAddress === null ? $billingAddress : $this->requireAddress($command->shippingAddress, 'shipping');
@@ -213,10 +217,14 @@ final readonly class CheckoutService
 
 
     /**
-     * The address with a known country, and a state exactly when the country has states.
+     * The address with a known country the shop sells to, and a state exactly when the country has states.
      */
     private function requireAddress(AddressData $address, string $kind): AddressData
     {
+        $sellTo = $this->settings->current()->sellTo;
+        if ($sellTo !== [] && !\in_array($address->country, $sellTo, true)) {
+            throw new CheckoutRuleViolation(\sprintf('The shop does not sell to the country of the %s address.', $kind), 'orillacart_country_not_served');
+        }
         try {
             $states = $this->geography->states($address->country);
             $this->geography->require($address->country, $states === [] ? null : $address->state);

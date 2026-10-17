@@ -25,15 +25,52 @@ export const EMAIL_LABELS: Record< string, string > = {
 	new_order: __( 'New order (to the shop)', 'orillacart' ),
 };
 
+declare global {
+	interface Window {
+		/** How the shop shows amounts; printed by AdminScripts. */
+		orillacartMoney?: {
+			currency: string;
+			sign: string;
+			position: string;
+			decimals: number;
+		};
+	}
+}
+
 /**
+ * An amount as the shop shows it: its decimals, and the currency sign where the shop puts it. An amount in
+ * another currency, such as an old order's, shows that currency's code.
+ *
  * @param amount   A decimal string from the API.
- * @param currency ISO 4217 code.
- * @return The amount for display, such as "12.50 EUR".
+ * @param currency The amount's currency code.
+ * @return The formatted amount.
  */
 export function money( amount: string, currency: string ): string {
+	const shop = window.orillacartMoney ?? {
+		currency,
+		sign: '',
+		position: 'after_space',
+		decimals: 2,
+	};
 	const number = Number( amount );
-
-	return `${ Number.isFinite( number ) ? number.toFixed( 2 ) : amount } ${ currency }`;
+	const digits = Number.isFinite( number )
+		? number.toLocaleString( undefined, {
+				minimumFractionDigits: shop.decimals,
+				maximumFractionDigits: shop.decimals,
+			} )
+		: amount;
+	const sign =
+		currency === shop.currency && shop.sign !== '' ? shop.sign : currency;
+	switch ( shop.position ) {
+		case 'before':
+			return `${ sign }${ digits }`;
+		case 'before_space':
+			return `${ sign } ${ digits }`;
+		case 'after':
+			return `${ digits }${ sign }`;
+		default:
+			return `${ digits } ${ sign }`;
+	}
 }
 
 /**

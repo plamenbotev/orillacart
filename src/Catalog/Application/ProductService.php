@@ -14,6 +14,7 @@ use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
 use OrillaCart\Catalog\Domain\Event\ProductChanged;
+use OrillaCart\Catalog\Domain\PriceVisibility;
 use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductDetails;
@@ -87,6 +88,7 @@ final readonly class ProductService
             $command->height,
             $command->downloadLimit,
             $command->downloadExpiryDays,
+            PriceVisibility::from($command->priceVisibility),
         );
         $product = $this->products->find($id);
         if ($product === null) {

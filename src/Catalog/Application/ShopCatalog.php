@@ -19,6 +19,7 @@ use OrillaCart\Catalog\Domain\StockMode;
 use OrillaCart\Catalog\Domain\Variation;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use Psr\Clock\ClockInterface;
 
@@ -32,6 +33,7 @@ final readonly class ShopCatalog
         private ProductContent $content,
         private StockService $stock,
         private ClockInterface $clock,
+        private SettingsService $settings,
     ) {}
 
     /**
@@ -71,7 +73,8 @@ final readonly class ShopCatalog
     private function toOffer(Product $product, \DateTimeImmutable $now): ProductOffer
     {
         $details = $product->details();
-        $sellable = $this->content->isPublished($product->id()) && $details->purchasable;
+        $priceHidden = $details->priceVisibility->isHidden($this->settings->current()->hidePrices);
+        $sellable = $this->content->isPublished($product->id()) && $details->purchasable && !$priceHidden;
 
         $attributes = array_map(static fn(array $offered): AttributeView => new AttributeView(
             $offered[0]->id(),
@@ -104,6 +107,7 @@ final readonly class ShopCatalog
                 $attributes,
                 $variations,
                 $downloads,
+                $priceHidden,
             );
         }
 
@@ -123,6 +127,7 @@ final readonly class ShopCatalog
             $attributes,
             [],
             $downloads,
+            $priceHidden,
         );
     }
 

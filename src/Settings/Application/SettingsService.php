@@ -7,6 +7,7 @@ namespace OrillaCart\Settings\Application;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Settings\Application\Dto\SettingsView;
 use OrillaCart\Settings\Application\Dto\UpdateSettings;
+use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\SettingsChanged;
 use OrillaCart\Settings\Domain\SettingsRepository;
@@ -40,6 +41,10 @@ final readonly class SettingsService
         if ($command->shopCountry !== null) {
             $this->geography->require($command->shopCountry, $command->shopState);
         }
+        $sellTo = array_values(array_unique($command->sellTo));
+        foreach ($sellTo as $country) {
+            $this->geography->require($country, null);
+        }
 
         $previous = $this->settings->load();
         $current = new StoreSettings(
@@ -49,6 +54,12 @@ final readonly class SettingsService
             DimensionUnit::from($command->dimensionUnit),
             $command->shopCountry,
             $command->shopState,
+            $command->shopPostcode === null || trim($command->shopPostcode) === '' ? null : trim($command->shopPostcode),
+            trim($command->currencySign),
+            CurrencyPosition::from($command->currencyPosition),
+            $command->catalogOnly,
+            $command->hidePrices,
+            $sellTo,
         );
 
         if (!$current->equals($previous)) {

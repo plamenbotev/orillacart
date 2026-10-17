@@ -49,6 +49,7 @@ final readonly class ProductView
         public ?int $downloadLimit = null,
         public ?int $downloadExpiryDays = null,
         public array $downloads = [],
+        public string $priceVisibility = 'shop',
     ) {}
 
     public static function fromProduct(Product $product, string $name): self
@@ -79,6 +80,7 @@ final readonly class ProductView
             $details->downloadLimit,
             $details->downloadExpiryDays,
             array_map(DownloadView::fromFile(...), $product->downloads()),
+            $details->priceVisibility->value,
         );
     }
 

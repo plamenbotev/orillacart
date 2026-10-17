@@ -18,6 +18,7 @@ use OrillaCart\Catalog\Domain\ProductRepository;
 use OrillaCart\Catalog\Domain\StockMode;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Settings\Application\SettingsService;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -30,6 +31,7 @@ final readonly class ProductQuotes
         private ProductContent $content,
         private StockService $stock,
         private ClockInterface $clock,
+        private SettingsService $settings,
     ) {}
 
     /**
@@ -66,7 +68,8 @@ final readonly class ProductQuotes
                 (string) $option->adjustment(),
             ), $configuration->options),
             $available,
-            $this->content->isPublished($product->id()) && $details->purchasable && $available !== 0,
+            $this->content->isPublished($product->id()) && $details->purchasable && $available !== 0
+                && !$details->priceVisibility->isHidden($this->settings->current()->hidePrices),
             $measures['length'],
             $measures['width'],
             $measures['height'],

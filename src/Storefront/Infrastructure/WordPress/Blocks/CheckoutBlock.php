@@ -61,6 +61,9 @@ final readonly class CheckoutBlock implements BlockDefinition
             return $this->receipt($key);
         }
 
+        if ($this->settings->current()->catalogOnly) {
+            return $this->templates->render('storefront/catalog-only.html.twig', ['links' => $this->links->pages()]);
+        }
         $customer = $this->customer();
         $shop = $this->settings->current();
         $billing = $customer->billing ?? null;

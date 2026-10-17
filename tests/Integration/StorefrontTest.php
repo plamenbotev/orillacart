@@ -241,6 +241,47 @@ final class StorefrontTest extends RestTestCase
         self::assertSame('orillacart_accounts_disabled', $this->data($this->request('POST', '/accounts', ['email' => 'new@example.com', 'password' => 'correct horse', 'first_name' => 'A', 'last_name' => 'B'], nonce: true))['code']);
     }
 
+    public function testTheShopsSettingsDecideHowPricesShowAndWhetherItSells(): void
+    {
+        $stored = get_option('orillacart_settings');
+        try {
+            $this->actAs('administrator');
+            $settings = $this->data($this->request('GET', '/settings'));
+            $saved = $this->request('PUT', '/settings', [
+                'currency' => $settings['currency'], 'price_decimals' => 2, 'weight_unit' => $settings['weight_unit'], 'dimension_unit' => $settings['dimension_unit'],
+                'shop_country' => null, 'shop_state' => null, 'currency_sign' => '$', 'currency_position' => 'before', 'sell_to' => ['BG'],
+            ], nonce: true);
+            self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
+            $mug = $this->product('Mug', ['price' => '9', 'stock_mode' => 'always_available', 'price_visibility' => 'hidden']);
+            wp_set_current_user(0);
+
+            $shop = do_blocks('<!-- wp:orillacart/products /-->');
+            self::assertStringContainsString('<ins aria-label="Sale price">$30.00</ins>', $shop, 'the sign before the amount');
+            self::assertStringContainsString('Ask us for the price', $shop);
+            self::assertStringNotContainsString('name="product_id" value="' . $mug . '"', $shop, 'a hidden price is not sold');
+            self::assertSame('orillacart_not_for_sale', $this->data($this->request('POST', '/cart/items', ['product_id' => $mug], nonce: true))['code']);
+
+            $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->lamp], nonce: true));
+            $_GET = ['billing_country' => 'BG'];
+            $checkout = do_blocks('<!-- wp:orillacart/checkout /-->');
+            self::assertSame(2, substr_count($checkout, '<option value="BG"'), 'billing and shipping: only the countries the shop sells to');
+            self::assertStringNotContainsString('<option value="DE"', $checkout);
+
+            $this->actAs('administrator');
+            $this->request('PUT', '/settings', [
+                'currency' => $settings['currency'], 'price_decimals' => 2, 'weight_unit' => $settings['weight_unit'], 'dimension_unit' => $settings['dimension_unit'],
+                'shop_country' => null, 'shop_state' => null, 'catalog_only' => true,
+            ], nonce: true);
+            wp_set_current_user(0);
+            self::assertStringContainsString('The shop does not take orders online.', do_blocks('<!-- wp:orillacart/cart /-->'));
+            self::assertSame('', do_blocks('<!-- wp:orillacart/mini-cart /-->'));
+            self::assertStringNotContainsString('data-orillacart-add-to-cart', do_blocks('<!-- wp:orillacart/products /-->'));
+            self::assertSame('orillacart_catalog_only', $this->data($this->request('POST', '/cart/items', ['product_id' => $this->lamp], nonce: true))['code']);
+        } finally {
+            update_option('orillacart_settings', $stored);
+        }
+    }
+
     public function testTheSessionGivesVisitorsANonceThatIsNeverCached(): void
     {
         $session = $this->request('GET', '/session');

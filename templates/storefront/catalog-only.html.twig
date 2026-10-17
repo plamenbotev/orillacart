@@ -1,0 +1,5 @@
+{# The cart and checkout of a shop that only shows its catalog. links: the shop's pages. #}
+<div class="orillacart-catalog-only">
+    <p class="orillacart-notice">{{ __('The shop does not take orders online.') }}</p>
+    {% if links.shop %}<p><a class="wp-element-button orillacart-button" href="{{ links.shop }}">{{ __('Go to the shop') }}</a></p>{% endif %}
+</div>

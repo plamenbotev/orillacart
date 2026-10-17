@@ -22,6 +22,7 @@ use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Catalog\Domain\InvalidSelection;
 use OrillaCart\Catalog\Domain\ProductNotFound;
+use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -40,6 +41,7 @@ final readonly class CartService
         private CartRepository $carts,
         private ProductQuotes $quotes,
         private ClockInterface $clock,
+        private SettingsService $settings,
     ) {}
 
     public function cart(CartOwner $owner): CartResult
@@ -58,10 +60,13 @@ final readonly class CartService
     /**
      * @throws ProductNotFound
      * @throws InvalidSelection   for options the product does not offer, or required ones missing
-     * @throws CartRuleViolation  for a product not for sale, or more than the stock allows
+     * @throws CartRuleViolation  for a product not for sale, more than the stock allows, or a shop that only shows its catalog
      */
     public function add(CartOwner $owner, AddToCart $command): CartResult
     {
+        if ($this->settings->current()->catalogOnly) {
+            throw new CartRuleViolation('The shop does not take orders online.', 'orillacart_catalog_only');
+        }
         $quote = $this->quotes->quote(new QuoteRequest($command->productId, $command->optionIds));
         if (!$quote->forSale) {
             throw new CartRuleViolation(\sprintf('%s is not for sale right now.', $quote->name), 'orillacart_not_for_sale');

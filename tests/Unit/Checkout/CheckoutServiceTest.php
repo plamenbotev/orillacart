@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Unit\Checkout;
 
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Cart\Domain\CartRuleViolation;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
@@ -18,6 +19,7 @@ use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
+use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
@@ -197,6 +199,28 @@ final class CheckoutServiceTest extends TestCase
 
         self::assertSame(['cancelled', 'on_hold'], [$this->shop->orders->byKey($placed->key)->status, $this->shop->orders->byKey($held->key)->status]);
         self::assertSame(2, $this->shop->stock->stock(StockItemRef::product(10))->available);
+    }
+
+    public function testTheShopTakesOrdersOnlyFromCountriesItSellsToAndNotAsACatalog(): void
+    {
+        $owner = $this->cart([10, 1]);
+        $settings = $this->shop->settings->load();
+        $this->shop->settings->save(new StoreSettings($settings->currency, 2, $settings->weightUnit, $settings->dimensionUnit, 'BG', sellTo: ['DE']));
+        foreach ([
+            fn() => $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer')),
+            function () use ($settings): void {
+                $this->shop->settings->save(new StoreSettings($settings->currency, 2, $settings->weightUnit, $settings->dimensionUnit, 'BG', catalogOnly: true));
+                $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('bank_transfer'));
+            },
+        ] as $index => $attempt) {
+            try {
+                $attempt();
+                self::fail('Ordered anyway, attempt ' . $index);
+            } catch (CartRuleViolation|CheckoutRuleViolation $e) {
+                self::assertSame($index === 0 ? 'orillacart_country_not_served' : 'orillacart_catalog_only', $e->errorCode);
+            }
+        }
+        self::assertSame(0, $this->shop->orderRecords->search(null, null, null, 0, 10)[1], 'no order');
     }
 
     public function testAnEmptyCartCannotBeOrdered(): void

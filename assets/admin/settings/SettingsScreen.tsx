@@ -2,6 +2,8 @@ import {
 	Button,
 	Card,
 	CardBody,
+	CheckboxControl,
+	FormTokenField,
 	Notice,
 	SelectControl,
 	Spinner,
@@ -36,8 +38,21 @@ function inputOf( settings: Settings ): SettingsInput {
 		dimension_unit: settings.dimension_unit,
 		shop_country: settings.shop_country,
 		shop_state: settings.shop_state,
+		shop_postcode: settings.shop_postcode,
+		currency_sign: settings.currency_sign,
+		currency_position: settings.currency_position,
+		catalog_only: settings.catalog_only,
+		hide_prices: settings.hide_prices,
+		sell_to: settings.sell_to,
 	};
 }
+
+const POSITIONS: Record< string, string > = {
+	before: __( 'Before the amount: $100', 'orillacart' ),
+	before_space: __( 'Before, with a space: $ 100', 'orillacart' ),
+	after: __( 'After the amount: 100$', 'orillacart' ),
+	after_space: __( 'After, with a space: 100 $', 'orillacart' ),
+};
 
 /**
  * The Shop → Settings screen: loads the settings from the REST API and saves them back.
@@ -129,6 +144,41 @@ export function SettingsScreen() {
 							/>
 							<TextControl
 								__next40pxDefaultSize
+								label={ __( 'Currency sign', 'orillacart' ) }
+								help={
+									fieldError( 'currency_sign' ) ??
+									__(
+										'Such as $ or лв. Empty: the currency code is shown.',
+										'orillacart'
+									)
+								}
+								value={ form.currency_sign }
+								maxLength={ 8 }
+								onChange={ ( value ) =>
+									update( 'currency_sign', value )
+								}
+							/>
+							<SelectControl
+								__next40pxDefaultSize
+								label={ __(
+									'Where the sign goes',
+									'orillacart'
+								) }
+								help={ fieldError( 'currency_position' ) }
+								value={ form.currency_position }
+								options={ settings.currency_positions.map(
+									( position ) => ( {
+										label:
+											POSITIONS[ position ] ?? position,
+										value: position,
+									} )
+								) }
+								onChange={ ( value ) =>
+									update( 'currency_position', value )
+								}
+							/>
+							<TextControl
+								__next40pxDefaultSize
 								type="number"
 								min={ 0 }
 								max={ 4 }
@@ -191,6 +241,80 @@ export function SettingsScreen() {
 								optionalCountry
 								countryError={ fieldError( 'shop_country' ) }
 								stateError={ fieldError( 'shop_state' ) }
+							/>
+							<TextControl
+								__next40pxDefaultSize
+								label={ __( 'Shop postcode', 'orillacart' ) }
+								help={ fieldError( 'shop_postcode' ) }
+								value={ form.shop_postcode ?? '' }
+								onChange={ ( value ) =>
+									update(
+										'shop_postcode',
+										value.trim() === '' ? null : value
+									)
+								}
+							/>
+							<FormTokenField
+								__next40pxDefaultSize
+								label={ __( 'Sell to', 'orillacart' ) }
+								value={ form.sell_to.map(
+									( code ) =>
+										countries.find(
+											( country ) => country.code === code
+										)?.name ?? code
+								) }
+								suggestions={ countries.map(
+									( country ) => country.name
+								) }
+								onChange={ ( tokens ) =>
+									update(
+										'sell_to',
+										tokens.flatMap( ( token ) => {
+											const name =
+												typeof token === 'string'
+													? token
+													: token.value;
+											const found = countries.find(
+												( country ) =>
+													country.name === name ||
+													country.code === name
+											);
+											return found ? [ found.code ] : [];
+										} )
+									)
+								}
+								__experimentalExpandOnFocus
+								help={
+									fieldError( 'sell_to' ) ??
+									__(
+										'Checkout offers only these countries. Empty: every country.',
+										'orillacart'
+									)
+								}
+							/>
+							<CheckboxControl
+								label={ __(
+									'Catalog only: show products, take no orders',
+									'orillacart'
+								) }
+								checked={ form.catalog_only }
+								onChange={ ( value ) =>
+									update( 'catalog_only', value )
+								}
+							/>
+							<CheckboxControl
+								label={ __(
+									'Hide prices; shoppers ask for them',
+									'orillacart'
+								) }
+								help={ __(
+									'Products with a hidden price are not sold online. A product can show its price anyway.',
+									'orillacart'
+								) }
+								checked={ form.hide_prices }
+								onChange={ ( value ) =>
+									update( 'hide_prices', value )
+								}
 							/>
 							<Button
 								variant="primary"

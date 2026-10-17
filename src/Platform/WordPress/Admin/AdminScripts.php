@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\WordPress\Admin;
 
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Settings\Application\SettingsService;
 
 /**
  * Loads an admin script built by @wordpress/scripts, with the dependencies and version its .asset.php lists,
@@ -12,11 +13,22 @@ use OrillaCart\Platform\PluginContext;
  */
 final readonly class AdminScripts
 {
-    public function __construct(private PluginContext $context) {}
+    public function __construct(
+        private PluginContext $context,
+        private SettingsService $settings,
+    ) {}
 
     public function enqueue(string $script): void
     {
         $handle = $this->load($script);
+        $settings = $this->settings->current();
+        // How the shop shows amounts, for the screens' own formatting (orders/labels.ts).
+        wp_add_inline_script($handle, 'window.orillacartMoney = ' . wp_json_encode([
+            'currency' => $settings->currency,
+            'sign' => $settings->currencySign,
+            'position' => $settings->currencyPosition,
+            'decimals' => $settings->priceDecimals,
+        ]) . ';', 'before');
         wp_enqueue_script($handle);
         wp_enqueue_style('wp-components');
         if (wp_style_is($handle, 'registered')) {

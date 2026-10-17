@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Settings\Application\Dto;
 
+use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
@@ -15,6 +16,9 @@ use Symfony\Component\Validator\Constraints as Assert;
  */
 final readonly class UpdateSettings
 {
+    /**
+     * @param list<string> $sellTo countries the shop sells to; empty for everywhere
+     */
     public function __construct(
         #[Assert\Regex('/^[A-Z]{3}$/', message: 'Use a three-letter currency code such as EUR.')]
         public string $currency,
@@ -28,5 +32,15 @@ final readonly class UpdateSettings
         public ?string $shopCountry,
         #[Assert\Regex('/^[A-Z0-9]{1,3}$/', message: 'Use the state code, such as CA.')]
         public ?string $shopState,
+        #[Assert\Length(min: 1, max: 20)]
+        public ?string $shopPostcode = null,
+        #[Assert\Length(max: StoreSettings::MAX_SIGN_LENGTH)]
+        public string $currencySign = '',
+        #[Assert\Choice(callback: [CurrencyPosition::class, 'values'])]
+        public string $currencyPosition = 'after_space',
+        public bool $catalogOnly = false,
+        public bool $hidePrices = false,
+        #[Assert\All([new Assert\Regex('/^[A-Z]{2}$/', message: 'Use two-letter country codes such as DE.')])]
+        public array $sellTo = [],
     ) {}
 }

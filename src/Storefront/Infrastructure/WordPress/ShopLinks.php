@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
+use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Storefront\Application\ShopPagesService;
 
 /**
@@ -11,19 +12,25 @@ use OrillaCart\Storefront\Application\ShopPagesService;
  */
 final readonly class ShopLinks
 {
-    public function __construct(private ShopPagesService $pages) {}
+    public function __construct(
+        private ShopPagesService $pages,
+        private SettingsService $settings,
+    ) {}
 
     /**
+     * The pages' addresses. A shop that only shows its catalog has no cart or checkout to send shoppers to.
+     *
      * @return array{shop: ?string, cart: ?string, checkout: ?string, account: ?string}
      */
     public function pages(): array
     {
         $pages = $this->pages->pages();
+        $sells = !$this->settings->current()->catalogOnly;
 
         return [
             'shop' => $this->url($pages->shop),
-            'cart' => $this->url($pages->cart),
-            'checkout' => $this->url($pages->checkout),
+            'cart' => $sells ? $this->url($pages->cart) : null,
+            'checkout' => $sells ? $this->url($pages->checkout) : null,
             'account' => $this->url($pages->account),
         ];
     }

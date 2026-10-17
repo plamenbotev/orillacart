@@ -145,8 +145,8 @@ final class TestShop
         $stockroomRecords = new InMemoryStockroomRepository();
         $this->stockrooms = new StockroomService($stockroomRecords);
         $this->stock = new StockService(new InMemoryStockLevelRepository(), $stockroomRecords, $this->events);
-        $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock);
-        $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock);
+        $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock, $settings);
+        $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings);
 
         $carrierRecords = new InMemoryCarrierRepository();
         $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups);
@@ -161,7 +161,7 @@ final class TestShop
         $this->payPal = new PayPalPayments($this->paymentRecords, $methodRecords, $this->payPalApi, $this->events, $this->clock, $this->logger);
 
         $this->cartRecords = new InMemoryCartRepository();
-        $this->carts = new CartService($this->cartRecords, $quotes, $this->clock);
+        $this->carts = new CartService($this->cartRecords, $quotes, $this->clock, $settings);
         $this->orderRecords = new InMemoryOrderRepository();
         $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, new FakeOrderLinks());
         $this->transactions = new ImmediateTransactions();

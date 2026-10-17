@@ -8,8 +8,19 @@ export interface Settings {
 	dimension_unit: string;
 	shop_country: string | null;
 	shop_state: string | null;
+	shop_postcode: string | null;
+	/** Shown with amounts; empty for the currency code. */
+	currency_sign: string;
+	currency_position: string;
+	/** Products are shown but not sold. */
+	catalog_only: boolean;
+	/** Prices are not shown and products not sold online, unless a product says otherwise. */
+	hide_prices: boolean;
+	/** Countries the shop sells to; empty for everywhere. */
+	sell_to: string[];
 	weight_units: string[];
 	dimension_units: string[];
+	currency_positions: string[];
 }
 
 /** The fields PUT /orillacart/v1/settings accepts; every one is required. */
@@ -21,6 +32,12 @@ export type SettingsInput = Pick<
 	| 'dimension_unit'
 	| 'shop_country'
 	| 'shop_state'
+	| 'shop_postcode'
+	| 'currency_sign'
+	| 'currency_position'
+	| 'catalog_only'
+	| 'hide_prices'
+	| 'sell_to'
 >;
 
 const PATH = '/orillacart/v1/settings';

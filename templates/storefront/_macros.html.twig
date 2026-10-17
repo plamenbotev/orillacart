@@ -4,7 +4,9 @@
 
 {# A product's price today: a sale shows the regular price struck through; products with variations show where prices start. #}
 {% macro price(offer) %}
-    {%- if offer.highest_price -%}
+    {%- if offer.price_hidden -%}
+        <span class="orillacart-price orillacart-price--hidden">{{ __('Ask us for the price') }}</span>
+    {%- elseif offer.highest_price -%}
         <span class="orillacart-price">{{ __('From %s')|format(offer.price|money) }}</span>
     {%- elseif offer.regular_price -%}
         <span class="orillacart-price orillacart-price--sale"><del aria-label="{{ __('Regular price') }}">{{ offer.regular_price|money }}</del> <ins aria-label="{{ __('Sale price') }}">{{ offer.price|money }}</ins></span>

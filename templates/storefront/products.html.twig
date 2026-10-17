@@ -43,7 +43,9 @@
                         <h2 class="orillacart-product-card__name">{{ product.offer.name }}</h2>
                     </a>
                     <p class="orillacart-product-card__price">{{ shop.price(product.offer) }}</p>
-                    {% if not product.offer.for_sale %}
+                    {% if product.offer.price_hidden %}
+                        <a class="wp-element-button orillacart-button" href="{{ product.url }}">{{ __('Details') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></a>
+                    {% elseif not product.offer.for_sale %}
                         <p class="orillacart-stock orillacart-stock--out">{{ __('Not available') }}</p>
                     {% elseif product.simple and cart_url %}
                         <form class="orillacart-add-to-cart orillacart-add-to-cart--card" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}">
@@ -52,8 +54,10 @@
                             <button type="submit" class="wp-element-button orillacart-button">{{ __('Add to cart') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></button>
                             <p class="orillacart-message" role="status" data-orillacart-message></p>
                         </form>
-                    {% else %}
+                    {% elseif cart_url %}
                         <a class="wp-element-button orillacart-button" href="{{ product.url }}">{{ __('Choose options') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></a>
+                    {% else %}
+                        <a class="wp-element-button orillacart-button" href="{{ product.url }}">{{ __('Details') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></a>
                     {% endif %}
                 </li>
             {% endfor %}

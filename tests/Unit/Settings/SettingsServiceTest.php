@@ -19,6 +19,9 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 
 final class SettingsServiceTest extends TestCase
 {
+    /** The values of the settings a shop leaves alone. */
+    private const array UNSAID = ['shop_postcode' => null, 'currency_sign' => '', 'currency_position' => 'after_space', 'catalog_only' => false, 'hide_prices' => false, 'sell_to' => []];
+
     private SettingsRepository $repository;
 
     /** @var object{events: list<object>}&EventDispatcherInterface */
@@ -55,7 +58,7 @@ final class SettingsServiceTest extends TestCase
     public function testAShopThatNeverSavedRunsOnTheDefaults(): void
     {
         self::assertEquals(
-            new SettingsView('EUR', 2, 'kg', 'cm', null, null, ['kg', 'g', 'lb', 'oz'], ['cm', 'm', 'mm', 'in']),
+            new SettingsView('EUR', 2, 'kg', 'cm', null, null, ['kg', 'g', 'lb', 'oz'], ['cm', 'm', 'mm', 'in'], currencyPositions: ['before', 'before_space', 'after', 'after_space']),
             $this->service()->current(),
         );
     }
@@ -72,8 +75,8 @@ final class SettingsServiceTest extends TestCase
         self::assertSame('settings_changed', $event->hookName());
         self::assertSame(
             [
-                ['currency' => 'USD', 'price_decimals' => 3, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY'],
-                ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null],
+                ['currency' => 'USD', 'price_decimals' => 3, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY'] + self::UNSAID,
+                ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null] + self::UNSAID,
             ],
             $event->hookArguments(),
         );
@@ -120,6 +123,27 @@ final class SettingsServiceTest extends TestCase
         $this->expectException(RuleViolation::class);
 
         $this->service()->update(new UpdateSettings('EUR', 2, 'kg', 'cm', null, 'CA'));
+    }
+
+    public function testHowPricesShowAndWhereTheShopSells(): void
+    {
+        $view = $this->service()->update(new UpdateSettings('USD', 2, 'lb', 'in', 'US', 'NY', ' 10001 ', '$', 'before', catalogOnly: true, hidePrices: true, sellTo: ['US', 'CA', 'US']));
+
+        self::assertSame(['10001', '$', 'before', true, true, ['US', 'CA']], [$view->shopPostcode, $view->currencySign, $view->currencyPosition, $view->catalogOnly, $view->hidePrices, $view->sellTo]);
+        self::assertTrue($this->repository->load()->sellsTo('CA'));
+        self::assertFalse($this->repository->load()->sellsTo('BG'));
+
+        foreach ([
+            [new UpdateSettings('USD', 2, 'lb', 'in', null, null, sellTo: ['XX']), 'orillacart_unknown_country'],
+            [new UpdateSettings('USD', 2, 'lb', 'in', null, null, currencySign: 'dollars!!'), 'orillacart_invalid_currency_sign'],
+        ] as [$command, $code]) {
+            try {
+                $this->service()->update($command);
+                self::fail('Refused: ' . $code);
+            } catch (RuleViolation $e) {
+                self::assertSame($code, $e->errorCode);
+            }
+        }
     }
 
     private function service(): SettingsService

@@ -303,6 +303,38 @@ export function ProductPanels() {
 					checked={ draft.featured }
 					onChange={ ( featured ) => change( { featured } ) }
 				/>
+				<SelectControl
+					__next40pxDefaultSize
+					label={ __( 'Show the price', 'orillacart' ) }
+					help={ __(
+						'A hidden price is not shown; shoppers ask for it, and the product is not sold online.',
+						'orillacart'
+					) }
+					value={ draft.price_visibility }
+					options={ [
+						{
+							label: __(
+								'As the shop’s setting says',
+								'orillacart'
+							),
+							value: 'shop',
+						},
+						{
+							label: __( 'Always show it', 'orillacart' ),
+							value: 'shown',
+						},
+						{
+							label: __( 'Hide it', 'orillacart' ),
+							value: 'hidden',
+						},
+					] }
+					onChange={ ( value ) =>
+						change( {
+							price_visibility:
+								value as ProductInput[ 'price_visibility' ],
+						} )
+					}
+				/>
 				<Button
 					variant="primary"
 					isBusy={ saving }

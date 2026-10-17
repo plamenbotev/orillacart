@@ -20,6 +20,8 @@ use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tests\Fixtures\Catalog\CatalogIds;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryAttributeSetRepository;
@@ -29,6 +31,7 @@ use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockLevelRepository;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockroomRepository;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
+use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use PHPUnit\Framework\TestCase;
@@ -36,6 +39,7 @@ use Symfony\Component\Clock\MockClock;
 
 final class ProductQuotesTest extends TestCase
 {
+    private InMemorySettingsRepository $settings;
     private ProductService $products;
     private StockService $stock;
     private ProductQuotes $quotes;
@@ -53,7 +57,8 @@ final class ProductQuotesTest extends TestCase
         $stockrooms = new InMemoryStockroomRepository();
         $this->stock = new StockService(new InMemoryStockLevelRepository(), $stockrooms, $events);
         $this->stockroom = new StockroomService($stockrooms)->create(new SaveStockroom('Sofia'))->id;
-        $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, new MockClock('2026-10-17 12:00:00 UTC'));
+        $this->settings = new InMemorySettingsRepository(StoreSettings::defaults());
+        $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, new MockClock('2026-10-17 12:00:00 UTC'), new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())));
     }
 
     public function testAQuoteHasTheChosenOptionsTheirPriceAndTheStock(): void
@@ -83,6 +88,18 @@ final class ProductQuotesTest extends TestCase
         self::assertSame([$variation->id, 'Hoodie – M', 'HOOD-M', '42', [], 0, false], [$quote->variationId, $quote->name, $quote->sku, $quote->unitPrice, $quote->options, $quote->available, $quote->forSale]);
         self::assertSame(0, $this->quotes->quote(new QuoteRequest(20, [$small]))->available, 'marked unavailable');
         self::assertSame(['1.25', '30'], [$quote->weight, $quote->length], 'its own weight; the product\'s length, since it has none of its own');
+    }
+
+    public function testAProductWhosePriceIsHiddenIsNotSoldOnline(): void
+    {
+        $this->products->save(10, new SaveProduct('5', stockMode: 'always_available'));
+        $this->products->save(20, new SaveProduct('5', stockMode: 'always_available', priceVisibility: 'hidden'));
+        self::assertSame([true, false], [$this->quotes->quote(new QuoteRequest(10))->forSale, $this->quotes->quote(new QuoteRequest(20))->forSale]);
+
+        // The shop hides prices: products that follow it stop selling, one that always shows its price sells on.
+        $this->settings->save(new StoreSettings(StoreSettings::defaults()->currency, 2, StoreSettings::defaults()->weightUnit, StoreSettings::defaults()->dimensionUnit, hidePrices: true));
+        $this->products->save(20, new SaveProduct('5', stockMode: 'always_available', priceVisibility: 'shown'));
+        self::assertSame([false, true], [$this->quotes->quote(new QuoteRequest(10))->forSale, $this->quotes->quote(new QuoteRequest(20))->forSale]);
     }
 
     public function testStockModesAndPublishingDecideWhatIsForSale(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Catalog\Application\Dto;
 
+use OrillaCart\Catalog\Domain\PriceVisibility;
 use OrillaCart\Catalog\Domain\ProductDetails;
 use OrillaCart\Catalog\Domain\ProductType;
 use OrillaCart\Catalog\Domain\StockMode;
@@ -58,6 +59,8 @@ final readonly class SaveProduct
         public ?int $downloadLimit = null,
         #[Assert\Positive]
         public ?int $downloadExpiryDays = null,
+        #[Assert\Choice(callback: [PriceVisibility::class, 'values'])]
+        public string $priceVisibility = 'shop',
     ) {}
 
     /** @return list<string> */

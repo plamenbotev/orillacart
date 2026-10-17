@@ -39,12 +39,16 @@ final readonly class CartBlock implements BlockDefinition
 
     public function render(array $attributes): string
     {
+        $links = $this->links->pages();
+        if ($links['cart'] === null) {
+            return $this->templates->render('storefront/catalog-only.html.twig', ['links' => $links]);
+        }
         $cart = $this->carts->cart($this->shopper->cart())->cart;
 
         return $this->templates->render('storefront/cart.html.twig', [
             'cart' => $cart,
             'product_urls' => $this->links->products(array_map(static fn(CartLineView $line): int => $line->productId, $cart->lines)),
-            'links' => $this->links->pages(),
+            'links' => $links,
         ]);
     }
 }
