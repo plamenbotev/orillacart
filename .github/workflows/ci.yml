@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [master, rebuild]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli, pdo_sqlite
+          coverage: none
+          tools: composer:v2
+      - run: composer validate --strict
+      - run: composer install --no-interaction --no-progress
+      - name: Code style
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+      - name: Static analysis
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+      - name: Architecture rules
+        run: vendor/bin/deptrac analyse --no-progress
+      - name: Unit tests
+        run: vendor/bin/phpunit --testsuite unit
+
+  admin:
+    name: Admin code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint:js
+      - run: npm run test:js
+      - run: npm run build
+
+  integration:
+    name: Integration (wp-env)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: composer install --no-interaction --no-progress
+      - run: npm ci
+      - run: npx wp-env start
+      - run: npm run test:integration
+
+  release:
+    name: Release zip
+    runs-on: ubuntu-latest
+    needs: [php, admin]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: composer install --no-interaction --no-progress
+      - run: npm ci
+      - name: Build
+        run: bin/build
+      - name: Install and run it on a clean WordPress
+        run: bin/smoke-test-release
+      - uses: actions/upload-artifact@v5
+        with:
+          name: orillacart-zip
+          path: dist/*.zip
+          if-no-files-found: error

@@ -1,0 +1,28 @@
+{
+  "name": "orillacart",
+  "private": true,
+  "description": "OrillaCart admin screens and development environment.",
+  "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "wp-scripts build index=./assets/admin/index.ts --output-path=build/admin",
+    "start": "wp-scripts start index=./assets/admin/index.ts --output-path=build/admin",
+    "lint:js": "wp-scripts lint-js assets",
+    "typecheck": "tsc --noEmit",
+    "test:js": "wp-scripts test-unit-js assets",
+    "env:start": "wp-env start",
+    "env:stop": "wp-env stop",
+    "test:integration": "wp-env run tests-cli --env-cwd=wp-content/plugins/orillacart env ORILLACART_WP_LOAD=/var/www/html/wp-load.php vendor/bin/phpunit --testsuite integration"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@wordpress/element": "^9.0.0",
+    "@wordpress/env": "^11.17.0",
+    "@wordpress/scripts": "^34.2.0",
+    "typescript": "^6.0.3"
+  }
+}

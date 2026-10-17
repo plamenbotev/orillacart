@@ -1,0 +1,1 @@
+export { mountAdminApp } from './mount';

@@ -1,0 +1,30 @@
+parameters:
+    level: max
+    phpVersion: 80400
+    paths:
+        - orillacart.php
+        - uninstall.php
+        - config
+        - src
+        - tests
+        - migrations
+        - bin/compile-container.php
+        - bin/check-build.php
+    tmpDir: var/phpstan
+    scanFiles:
+        - tools/phpstan/wp-cli.stub.php
+    treatPhpDocTypesAsCertain: false
+
+    # Hooks are registered only by the WordPress registrars and the per-area escape hatch,
+    # so integration code cannot spread into a catch-all again.
+    disallowedFunctionCalls:
+        -
+            function:
+                - 'add_action()'
+                - 'add_filter()'
+                - 'remove_action()'
+                - 'remove_filter()'
+            message: 'register hooks through a contract and its registrar in Platform\WordPress, or an #[AsHook] class in <Area>/Infrastructure/WordPress/Hooks'
+            allowIn:
+                - src/Platform/WordPress/*
+                - src/*/Infrastructure/WordPress/Hooks/*

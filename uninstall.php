@@ -1,29 +1,13 @@
 <?php
 
-defined('ABSPATH') or die();
-if (!defined('WP_UNINSTALL_PLUGIN'))
-    exit();
+declare(strict_types=1);
 
-define('_VALID_EXEC', 1);
-define('DS', "/");
+defined('WP_UNINSTALL_PLUGIN') || exit;
 
-//include the autoloader
-require_once 'autoload.php';
-//commonly used functions
-require_once dirname(__FILE__) . "/core/functions.php";
-require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
-//session::initialize();
-//include the default built in component
-if (file_exists(realpath(dirname(__FILE__)) . "/com_shop/shop.php") && !is_plugin_active("com_shop/loader.php")) {
-    require_once realpath(dirname(__FILE__)) . "/com_shop/shop.php";
-    $Application = Factory::getApplication();
-    Factory::getComponent('shop')->init();
-    shop::uninstall();
+if (PHP_VERSION_ID < 80400) {
+    return;
 }
 
+require __DIR__ . '/vendor/autoload.php';
 
-
-
-
-
-
+\OrillaCart\Platform\WordPress\Plugin::uninstall(__DIR__ . '/orillacart.php');

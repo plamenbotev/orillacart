@@ -1,0 +1,133 @@
+deptrac:
+  paths:
+    - ./src
+  exclude_files:
+    - '#.*/tests/.*#'
+
+  layers:
+    # Each business area: src/<Area>/{Domain,Application,Infrastructure,Http}
+    - name: Domain
+      collectors:
+        - type: directory
+          value: 'src/(?!Platform/|Shared/)[^/]+/Domain/.*'
+    - name: Application
+      collectors:
+        - type: directory
+          value: 'src/(?!Platform/|Shared/)[^/]+/Application/.*'
+    - name: Http
+      collectors:
+        - type: directory
+          value: 'src/(?!Platform/|Shared/)[^/]+/Http/.*'
+    - name: Infrastructure
+      collectors:
+        - type: directory
+          value: 'src/(?!Platform/|Shared/)[^/]+/Infrastructure/.*'
+    - name: SharedDomain
+      collectors:
+        - type: directory
+          value: 'src/Shared/Domain/.*'
+    - name: SharedKernel
+      collectors:
+        - type: directory
+          value: 'src/Shared/(?!Domain/).*'
+    - name: Platform
+      collectors:
+        - type: directory
+          value: 'src/Platform/.*'
+
+    # Libraries the layers are allowed or forbidden to use
+    - name: DoctrineMapping
+      collectors:
+        - type: classNameRegex
+          value: '#^Doctrine\\ORM\\Mapping\\#'
+    - name: DoctrineCollections
+      collectors:
+        - type: classNameRegex
+          value: '#^Doctrine\\Common\\Collections\\#'
+    - name: Doctrine
+      collectors:
+        - type: bool
+          must:
+            - type: classNameRegex
+              value: '#^Doctrine\\#'
+          must_not:
+            - type: classNameRegex
+              value: '#^Doctrine\\ORM\\Mapping\\#'
+            - type: classNameRegex
+              value: '#^Doctrine\\Common\\Collections\\#'
+    - name: ValidationAttributes
+      collectors:
+        - type: classNameRegex
+          value: '#^Symfony\\Component\\(Validator\\Constraints|Serializer\\Attribute)\\#'
+    - name: Symfony
+      collectors:
+        - type: bool
+          must:
+            - type: classNameRegex
+              value: '#^Symfony\\#'
+          must_not:
+            - type: classNameRegex
+              value: '#^Symfony\\Component\\(Validator\\Constraints|Serializer\\Attribute)\\#'
+    - name: Psr
+      collectors:
+        - type: classNameRegex
+          value: '#^Psr\\#'
+    - name: WordPress
+      collectors:
+        - type: classNameRegex
+          value: '#^(WP_|wpdb$)#'
+
+  ruleset:
+    # Entities and value objects: their own rules, mapping metadata and shared domain types only.
+    Domain:
+      - SharedDomain
+      - DoctrineMapping
+      - DoctrineCollections
+    # Use cases and DTOs: the domain, plus validation and serialization attributes on DTOs.
+    Application:
+      - Domain
+      - SharedDomain
+      - SharedKernel
+      - DoctrineCollections
+      - ValidationAttributes
+      - Psr
+    Http:
+      - Application
+      - SharedDomain
+      - SharedKernel
+      - ValidationAttributes
+      - Psr
+    Infrastructure:
+      - Domain
+      - Application
+      - SharedDomain
+      - SharedKernel
+      - DoctrineMapping
+      - DoctrineCollections
+      - Doctrine
+      - ValidationAttributes
+      - Symfony
+      - Psr
+      - WordPress
+    SharedDomain:
+      - DoctrineMapping
+    SharedKernel:
+      - SharedDomain
+      - ValidationAttributes
+      - Symfony
+      - Psr
+      - WordPress
+    Platform:
+      - Domain
+      - Application
+      - Http
+      - Infrastructure
+      - SharedDomain
+      - SharedKernel
+      - DoctrineMapping
+      - DoctrineCollections
+      - Doctrine
+      - ValidationAttributes
+      - Symfony
+      - Psr
+      - WordPress

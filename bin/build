@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+#
+# Builds the release zip: admin assets, production dependencies, compiled container,
+# libraries prefixed under OrillaCart\Vendor, authoritative class map.
+#
+#   bin/build            -> dist/orillacart-<version>.zip
+#   COMPOSER_BIN=... bin/build   (when composer is not on PATH)
+#
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+COMPOSER_BIN="${COMPOSER_BIN:-composer}"
+SCOPER_VERSION="0.18.20"
+SCOPER="$ROOT/var/tools/php-scoper-$SCOPER_VERSION.phar"
+
+WORK="$ROOT/var/build"
+STAGE="$WORK/stage"
+OUT="$WORK/orillacart"
+VERSION="$(sed -n "s/^define('ORILLACART_VERSION', '\(.*\)');/\1/p" "$ROOT/orillacart.php")"
+
+step() { printf '\n==> %s\n' "$1"; }
+
+step "Admin assets"
+(cd "$ROOT" && npm run --silent build)
+
+step "Staging production files"
+rm -rf "$WORK" && mkdir -p "$STAGE" "$ROOT/dist"
+cp -R "$ROOT/orillacart.php" "$ROOT/uninstall.php" "$ROOT/readme.txt" "$ROOT/composer.json" "$ROOT/composer.lock" \
+      "$ROOT/src" "$ROOT/config" "$ROOT/migrations" "$STAGE/"
+mkdir -p "$STAGE/build" && cp -R "$ROOT/build/admin" "$STAGE/build/"
+$COMPOSER_BIN install --working-dir="$STAGE" --no-dev --no-scripts --no-plugins --prefer-dist --no-interaction --no-progress --quiet
+
+step "Compiling the service container"
+php "$ROOT/bin/compile-container.php" "$STAGE"
+
+step "Prefixing libraries with PHP-Scoper $SCOPER_VERSION"
+if [ ! -f "$SCOPER" ]; then
+    mkdir -p "$(dirname "$SCOPER")"
+    curl -fsSL -o "$SCOPER" "https://github.com/humbug/php-scoper/releases/download/$SCOPER_VERSION/php-scoper.phar"
+fi
+php "$SCOPER" add-prefix --config="$ROOT/scoper.inc.php" --working-dir="$STAGE" --output-dir="$OUT" --force --no-interaction --quiet
+
+# PHP-Scoper only writes the files its finders select; the rest ships unchanged.
+cp -R "$STAGE/build" "$STAGE/readme.txt" "$STAGE/composer.json" "$OUT/"
+mkdir -p "$OUT/migrations"
+
+step "Class map"
+$COMPOSER_BIN dump-autoload --working-dir="$OUT" --no-dev --classmap-authoritative --no-scripts --no-plugins --quiet
+rm -f "$OUT/composer.json"
+
+step "Checking the result"
+for dir in "$OUT/vendor" "$OUT/generated" "$OUT/src"; do
+    [ -d "$dir" ] || { echo "Missing $dir in the build" >&2; exit 1; }
+done
+find "$OUT" -name '*.php' -print0 | xargs -0 -n 50 -P 4 php -l > /dev/null
+# grep exits 1 when nothing matches and 2 on errors; only "no match" may pass here.
+status=0; grep -rlE '^namespace (Symfony|Doctrine|Psr)\\' "$OUT/vendor" "$OUT/generated" > "$WORK/unprefixed.txt" || status=$?
+if [ "$status" -ne 1 ]; then
+    echo "Unprefixed library namespaces left in the build (or grep failed):" >&2
+    head "$WORK/unprefixed.txt" >&2
+    exit 1
+fi
+grep -rqE '^namespace OrillaCart\\Vendor\\Symfony\\' "$OUT/vendor" || { echo "No prefixed Symfony code found" >&2; exit 1; }
+
+php "$ROOT/bin/check-build.php" "$OUT"
+
+step "Zip"
+ZIP="$ROOT/dist/orillacart-$VERSION.zip"
+rm -f "$ZIP"
+(cd "$WORK" && zip -qr "$ZIP" orillacart)
+echo "Built $ZIP ($(stat -c %s "$ZIP") bytes)"

@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+#
+# Installs the release zip on a clean WordPress (PHP 8.4, MySQL 8.4) in throwaway containers and
+# checks the whole lifecycle: activate, CLI, upgrade on an admin request, uninstall.
+#
+#   bin/smoke-test-release [dist/orillacart-<version>.zip]
+#
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ZIP="${1:-$(ls -t "$ROOT"/dist/orillacart-*.zip | head -1)}"
+RUN="orillacart-smoke-$$"
+NET="$RUN-net"
+DB="$RUN-db"
+WP="$RUN-wp"
+
+cleanup() { docker rm -f "$WP" "$DB" > /dev/null 2>&1 || true; docker network rm "$NET" > /dev/null 2>&1 || true; }
+trap cleanup EXIT
+
+fail() { echo "FAIL: $1" >&2; exit 1; }
+wp() { docker exec "$WP" wp --allow-root --path=/var/www/html "$@"; }
+plugin_tables() { docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SHOW TABLES LIKE 'wp\_orillacart\_%'" 2> /dev/null; }
+
+echo "==> Containers"
+docker network create "$NET" > /dev/null
+docker run -d --name "$DB" --network "$NET" -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=wordpress \
+    -e MYSQL_USER=wp -e MYSQL_PASSWORD=wp mysql:8.4 > /dev/null
+docker run -d --name "$WP" --network "$NET" -e WORDPRESS_DB_HOST="$DB" -e WORDPRESS_DB_USER=wp \
+    -e WORDPRESS_DB_PASSWORD=wp -e WORDPRESS_DB_NAME=wordpress wordpress:php8.4-apache > /dev/null
+for _ in $(seq 1 60); do
+    docker exec "$DB" mysqladmin ping -uroot -proot --silent > /dev/null 2>&1 && break
+    sleep 2
+done
+docker exec "$WP" bash -c 'curl -fsSL -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && chmod +x /usr/local/bin/wp'
+for _ in $(seq 1 30); do docker exec "$WP" test -f /var/www/html/wp-config.php && break; sleep 1; done
+wp config set WP_DEBUG true --raw > /dev/null
+wp config set WP_DEBUG_LOG true --raw > /dev/null
+wp config set WP_DEBUG_DISPLAY false --raw > /dev/null
+wp core install --url=http://localhost --title=Smoke --admin_user=admin --admin_password=admin \
+    --admin_email=admin@example.com --skip-email > /dev/null
+echo "    WordPress $(wp core version), $(docker exec "$WP" php -r 'echo PHP_VERSION;')"
+
+echo "==> Install and activate $(basename "$ZIP")"
+docker cp "$ZIP" "$WP:/tmp/orillacart.zip"
+wp plugin install /tmp/orillacart.zip --activate > /dev/null
+[ "$(wp plugin get orillacart --field=status)" = "active" ] || fail "plugin is not active"
+plugin_tables | grep -qx 'wp_orillacart_migrations' || fail "activation did not create the migrations table"
+wp orillacart migrate | grep -q 'up to date' || fail "wp orillacart migrate"
+
+echo "==> Upgrade on an admin request"
+wp option update orillacart_version 0.0.1 > /dev/null
+docker exec "$DB" mysql -uwp -pwp wordpress -e 'DROP TABLE wp_orillacart_migrations' 2> /dev/null
+docker exec "$WP" bash -c 'cd /var/www/html && php -r "
+    define(\"WP_ADMIN\", true);
+    require \"wp-load.php\";
+    wp_set_current_user(1);
+    do_action(\"admin_init\");
+"'
+[ "$(wp option get orillacart_version)" != "0.0.1" ] || fail "admin_init did not run the upgrade"
+plugin_tables | grep -qx 'wp_orillacart_migrations' || fail "the upgrade did not restore the schema"
+
+echo "==> Uninstall"
+before="$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e 'SHOW TABLES' 2> /dev/null | grep -vc orillacart)"
+wp plugin uninstall orillacart --deactivate > /dev/null
+[ -z "$(plugin_tables)" ] || fail "plugin tables left after uninstall"
+after="$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e 'SHOW TABLES' 2> /dev/null | grep -vc orillacart)"
+[ "$before" = "$after" ] || fail "uninstall touched WordPress tables ($before before, $after after)"
+wp option get orillacart_version > /dev/null 2>&1 && fail "version option left after uninstall"
+
+echo "==> Debug log"
+if docker exec "$WP" test -s /var/www/html/wp-content/debug.log; then
+    docker exec "$WP" cat /var/www/html/wp-content/debug.log >&2
+    fail "PHP notices or errors were logged"
+fi
+
+echo "Release smoke test passed"

@@ -1,0 +1,51 @@
+{
+    "name": "orillacart/orillacart",
+    "description": "OrillaCart, an e-commerce plugin for WordPress.",
+    "type": "wordpress-plugin",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": ">=8.4",
+        "doctrine/dbal": "^4.5",
+        "doctrine/migrations": "^3.9",
+        "doctrine/orm": "^3.7",
+        "symfony/cache": "^8.0",
+        "symfony/config": "^8.0",
+        "symfony/dependency-injection": "^8.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "OrillaCart\\": "src/",
+            "OrillaCart\\Migrations\\": "migrations/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "OrillaCart\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "platform": {
+            "php": "8.4.0"
+        },
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": false,
+            "phpstan/extension-installer": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "require-dev": {
+        "deptrac/deptrac": "^4.7",
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.3",
+        "phpstan/phpstan-doctrine": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.1",
+        "phpstan/phpstan-strict-rules": "^2.1",
+        "phpunit/phpunit": "^12.5",
+        "sniccowp/php-scoper-wordpress-excludes": "^7.1",
+        "spaze/phpstan-disallowed-calls": "^4.15",
+        "szepeviktor/phpstan-wordpress": "^2.0"
+    }
+}
