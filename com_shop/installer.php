@@ -241,14 +241,6 @@ class shop_installer extends BObject {
 						FOREIGN KEY (`tax_group_id`) REFERENCES `#_shop_tax_group` (`tax_group_id`) ON DELETE CASCADE ON UPDATE CASCADE,
 						FOREIGN KEY (`tax_country`) REFERENCES `#_shop_country` (`country_2_code`) ON DELETE CASCADE ON UPDATE CASCADE
 					) ENGINE=InnoDB  DEFAULT CHARSET=utf8 COMMENT='Tax Rates' AUTO_INCREMENT=0",
-            "shop_termmeta" =>
-            "CREATE TABLE IF NOT EXISTS `#_shop_termmeta` (
-						`meta_id` bigint(20) NOT NULL AUTO_INCREMENT,
-						`term_id` bigint(20) NOT NULL,
-						`meta_key` varchar(255) DEFAULT NULL,
-						`meta_value` longtext,
-						PRIMARY KEY (`meta_id`)
-					) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=0",
             "shop_variations" =>
             "CREATE TABLE IF NOT EXISTS `#_shop_variations` (
                                                 `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -497,12 +489,16 @@ class shop_installer extends BObject {
         foreach ($tables as $table => $def) {
             $wpdb->query("DROP TABLE IF EXISTS " . $wpdb->prefix . $table);
         }
-        // category tree table of versions before 1.3.0
+        // tables of versions before 1.3.0
         $wpdb->query("DROP TABLE IF EXISTS " . $wpdb->prefix . "shop_category_xref");
+        $wpdb->query("DROP TABLE IF EXISTS " . $wpdb->prefix . "shop_termmeta");
 
-        // Order Status
-        $wpdb->query("DELETE FROM $wpdb->terms WHERE term_id IN (select term_id FROM $wpdb->term_taxonomy WHERE taxonomy IN ('product_type', 'product_cat','product_brand','product_tags','order_status'))");
-        $wpdb->query("DELETE FROM $wpdb->term_taxonomy WHERE taxonomy IN IN ('product_type', 'product_cat','product_brand','product_tags','order_status')");
+        // Shop terms with their meta and relationships
+        $taxonomies = "'product_type', 'product_cat','product_brand','product_tags','order_status'";
+        $wpdb->query("DELETE tm FROM $wpdb->termmeta AS tm INNER JOIN $wpdb->term_taxonomy AS tt ON tt.term_id = tm.term_id WHERE tt.taxonomy IN ($taxonomies)");
+        $wpdb->query("DELETE tr FROM $wpdb->term_relationships AS tr INNER JOIN $wpdb->term_taxonomy AS tt ON tt.term_taxonomy_id = tr.term_taxonomy_id WHERE tt.taxonomy IN ($taxonomies)");
+        $wpdb->query("DELETE t FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON tt.term_id = t.term_id WHERE tt.taxonomy IN ($taxonomies)");
+        $wpdb->query("DELETE FROM $wpdb->term_taxonomy WHERE taxonomy IN ($taxonomies)");
 
         // Delete options
         $wpdb->query("DELETE FROM $wpdb->options WHERE option_name = '" . $app->getName() . "_parameters'");
@@ -837,6 +833,20 @@ class shop_installer extends BObject {
                 }
             }
 
+            //term meta was redirected to shop_termmeta, move it to the WP term meta table 1.3.0
+            if (version_compare($params->get('db_version'), '1.3.0', '<')) {
+
+                $failed = $this->move_term_meta();
+
+                if ($failed !== true) {
+                    // keep the old table and stop here, so the next run retries from this step
+                    $params->set('db_version', '1.2.0');
+                    $params->save();
+                    echo "<div>" . $failed . "</div>";
+                    return;
+                }
+            }
+
             //categories are managed on the standard WP term screens, keep their display order as term meta 1.3.0
             if (version_compare($params->get('db_version'), '1.3.0', '<')) {
 
@@ -878,6 +888,59 @@ class shop_installer extends BObject {
             $params->save();
             echo "<div>Database Updated</div>";
         }
+    }
+
+    /**
+     * Move the rows of the old shop_termmeta table into the WP term meta table.
+     * For a term and key present in both, the shop_termmeta value is the newer one and wins.
+     *
+     * @return true|string true on success or when there is nothing to move, the error otherwise
+     */
+    protected function move_term_meta() {
+
+        global $wpdb;
+
+        $shop = $wpdb->prefix . 'shop_termmeta';
+        $core = $wpdb->termmeta;
+
+        if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $shop)) != $shop) {
+            return true;
+        }
+        if (empty($core) || $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $core)) != $core) {
+            return __('The WordPress term meta table is missing. OrillaCart needs WordPress 4.4 or newer.', 'com_shop');
+        }
+
+        // only rows of terms that still exist
+        $from = "FROM `{$shop}` AS s INNER JOIN `{$wpdb->terms}` AS t ON t.term_id = s.term_id";
+        $expected = (int) $wpdb->get_var("SELECT COUNT(*) {$from}");
+
+        // the two tables can use different collations, compare the keys in the one of the WP table
+        $collation = $wpdb->get_row("SHOW FULL COLUMNS FROM `{$core}` LIKE 'meta_key'");
+        $shop_key = 's.meta_key';
+        if ($collation && !empty($collation->Collation) && preg_match('/^[a-z0-9_]+$/i', $collation->Collation)) {
+            $charset = strtok($collation->Collation, '_');
+            $shop_key = "CONVERT(s.meta_key USING {$charset}) COLLATE {$collation->Collation}";
+        }
+
+        $wpdb->query("START TRANSACTION");
+
+        $ok = false !== $wpdb->query("DELETE c FROM `{$core}` AS c INNER JOIN `{$shop}` AS s ON s.term_id = c.term_id AND {$shop_key} = c.meta_key");
+        $moved = $ok ? $wpdb->query("INSERT INTO `{$core}` (term_id, meta_key, meta_value) SELECT s.term_id, s.meta_key, s.meta_value {$from} ORDER BY s.meta_id") : false;
+
+        if (!$ok || $moved === false || (int) $moved !== $expected) {
+            $error = $wpdb->last_error ? $wpdb->last_error : (int) $moved . '/' . $expected;
+            $wpdb->query("ROLLBACK");
+            return sprintf(__('Could not move the product category data to the WordPress term meta table (%s). The database update was stopped, please try again.', 'com_shop'), $error);
+        }
+
+        $wpdb->query("COMMIT");
+        $wpdb->query("DROP TABLE IF EXISTS `{$shop}`");
+
+        if (function_exists('wp_cache_flush_group')) {
+            wp_cache_flush_group('term_meta');
+        }
+
+        return true;
     }
 
     protected function create_single_page($page_slug, $page_data) {

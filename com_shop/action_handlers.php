@@ -88,8 +88,6 @@ final class orillacart_actions {
         add_action('add_meta_boxes_shop_order', array($this, 'register_order_boxes'));
         //update or store order meta
         add_action('save_post', array($this, 'order_meta_update'));
-        //adds abbility for term meta
-        add_action('init', array($this, 'init_term_meta_table'));
         //remove read more link in twenty eleven theme
         add_action("after_setup_theme", array($this, "remove_read_more"));
         //enque styles and scripts for internal WP screens that loads the framework 
@@ -1021,11 +1019,6 @@ final class orillacart_actions {
         }
     }
 
-    public function init_term_meta_table() {
-        global $wpdb;
-        $wpdb->termmeta = $wpdb->prefix . 'shop_termmeta';
-    }
-
     public function remove_read_more() {
         remove_filter('get_the_excerpt', 'twentyeleven_custom_excerpt_more');
     }
@@ -1258,19 +1251,6 @@ function my_nav_menu_item_link_meta_box() {
 
     </div>
     <?php
-}
-
-add_action("delete_term", 'com_shop_delete_term', 5, 3);
-
-function com_shop_delete_term($term_id, $tt_id, $taxonomy) {
-    $db = Factory::getDBO();
-    $term_id = (int) $term_id;
-
-    if (!$term_id)
-        return;
-
-
-    $db->setQuery("DELETE FROM #_shop_termmeta WHERE `term_id` = " . $term_id);
 }
 
 add_action('quick_edit_custom_box', 'com_shop_admin_product_quick_edit', 10, 2);
