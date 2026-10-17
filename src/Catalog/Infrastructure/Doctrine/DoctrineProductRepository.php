@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Catalog\Infrastructure\Doctrine;
 
 use Doctrine\ORM\EntityManagerInterface;
+use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\AttributeSet;
 use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Catalog\Domain\ProductRepository;
@@ -33,6 +34,60 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->setParameter('ids', $ids)
             ->getQuery()
             ->getResult();
+    }
+
+    public function idsWithSku(string $text): array
+    {
+        $like = '%' . addcslashes($text, '%_\\') . '%';
+        $products = $this->entityManager->createQueryBuilder()
+            ->select('p.id')
+            ->from(Product::class, 'p')
+            ->where('p.sku LIKE :sku')
+            ->setParameter('sku', $like)
+            ->getQuery()
+            ->getSingleColumnResult();
+        $variations = $this->entityManager->createQueryBuilder()
+            ->select('IDENTITY(v.product)')
+            ->from(Variation::class, 'v')
+            ->where('v.sku LIKE :sku')
+            ->setParameter('sku', $like)
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        $ids = [];
+        foreach ([...$products, ...$variations] as $id) {
+            if (is_numeric($id)) {
+                $ids[(int) $id] = (int) $id;
+            }
+        }
+
+        return array_values($ids);
+    }
+
+    public function options(?string $text, int $offset, int $limit): array
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->from(AttributeOption::class, 'o')
+            ->join('o.attribute', 'a')
+            ->leftJoin('a.set', 's')
+            ->leftJoin('a.product', 'p');
+        if ($text !== null && $text !== '') {
+            $query->where('o.name LIKE :text OR a.name LIKE :text OR s.name LIKE :text')
+                ->setParameter('text', '%' . addcslashes($text, '%_\\') . '%');
+        }
+        $total = (int) (clone $query)->select('COUNT(o.id)')->getQuery()->getSingleScalarResult();
+        /** @var list<AttributeOption> $options */
+        $options = $query->select('o', 'a')
+            ->orderBy('s.name')
+            ->addOrderBy('p.id')
+            ->addOrderBy('a.position')
+            ->addOrderBy('o.position')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        return [$options, $total];
     }
 
     public function findByVariation(int $variationId): ?Product

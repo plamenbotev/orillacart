@@ -20,6 +20,39 @@ final class InMemoryProductRepository implements ProductRepository
         return $this->products[$id] ?? null;
     }
 
+    public function idsWithSku(string $text): array
+    {
+        $ids = [];
+        foreach ($this->products as $product) {
+            $skus = [$product->details()->sku, ...array_map(static fn($variation): ?string => $variation->sku(), $product->variations())];
+            foreach ($skus as $sku) {
+                if ($sku !== null && str_contains($sku, $text)) {
+                    $ids[] = $product->id();
+                    break;
+                }
+            }
+        }
+
+        return $ids;
+    }
+
+    public function options(?string $text, int $offset, int $limit): array
+    {
+        $options = [];
+        foreach ($this->products as $product) {
+            foreach ($product->attributes() as $attribute) {
+                foreach ($attribute->options() as $option) {
+                    $names = [$option->name(), $attribute->name(), $attribute->set()?->name() ?? ''];
+                    if ($text === null || array_filter($names, static fn(string $name): bool => str_contains($name, $text)) !== []) {
+                        $options[$option->id()] = $option;
+                    }
+                }
+            }
+        }
+
+        return [\array_slice(array_values($options), $offset, $limit), \count($options)];
+    }
+
     public function findByVariation(int $variationId): ?Product
     {
         foreach ($this->products as $product) {

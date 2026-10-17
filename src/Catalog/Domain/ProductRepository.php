@@ -15,6 +15,20 @@ interface ProductRepository
      */
     public function findMany(array $ids): array;
 
+    /**
+     * Products whose SKU, or one of whose variations' SKU, contains the text.
+     *
+     * @return list<int>
+     */
+    public function idsWithSku(string $text): array;
+
+    /**
+     * Attribute options, of sets and of products, whose own, attribute's or set's name contains the text.
+     *
+     * @return array{list<AttributeOption>, int} a page of them by owner, attribute and position, and how many match in all
+     */
+    public function options(?string $text, int $offset, int $limit): array;
+
     /** The product a variation belongs to. */
     public function findByVariation(int $variationId): ?Product;
 

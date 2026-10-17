@@ -88,6 +88,12 @@ class Attribute
         return $this->position;
     }
 
+    /** The product it belongs to; null for an attribute of a set. */
+    public function product(): ?Product
+    {
+        return $this->product;
+    }
+
     /** The attribute set it comes from; null for a product's own attribute. */
     public function set(): ?AttributeSet
     {

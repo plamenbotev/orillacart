@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Inventory;
 
+use OrillaCart\Inventory\Application\Dto\ChangeStockLevel;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
@@ -36,6 +37,43 @@ final class StockServiceTest extends TestCase
         $this->stockrooms = new StockroomService($stockrooms);
         $this->sofia = $this->stockrooms->create(new SaveStockroom('Sofia', 1, 2))->id;
         $this->berlin = $this->stockrooms->create(new SaveStockroom('Berlin', 3, 7))->id;
+    }
+
+    public function testTheSheetChangesSingleCellsOfManyItems(): void
+    {
+        $this->stock->setLevels(StockItemRef::product(10), new SetStockLevels([new SetStockLevel($this->sofia, 4), new SetStockLevel($this->berlin, 2)]));
+        $this->events->events = [];
+
+        $this->stock->changeLevels([
+            new ChangeStockLevel('product', 10, $this->sofia, 6),
+            new ChangeStockLevel('product', 10, $this->berlin, null),
+            new ChangeStockLevel('variation', 20, $this->berlin, 0),
+        ]);
+
+        self::assertSame(
+            ['product:10' => [$this->sofia => 6], 'variation:20' => [$this->berlin => 0], 'option:30' => []],
+            $this->stock->levelsOf([StockItemRef::product(10), StockItemRef::variation(20), StockItemRef::option(30)]),
+        );
+        self::assertSame(0, $this->stock->available([StockItemRef::variation(20)]), 'a level of 0 counts: none left');
+        self::assertCount(2, $this->events->events);
+    }
+
+    public function testASheetWithOneBadCellChangesNothing(): void
+    {
+        $this->stock->setLevels(StockItemRef::product(10), new SetStockLevels([new SetStockLevel($this->sofia, 4)]));
+
+        foreach ([
+            [[new ChangeStockLevel('product', 10, $this->sofia, 9), new ChangeStockLevel('product', 10, 999, 1)], 'orillacart_unknown_stockroom'],
+            [[new ChangeStockLevel('product', 10, $this->sofia, 9), new ChangeStockLevel('product', 10, $this->sofia, 8)], 'orillacart_duplicate_stockroom'],
+        ] as [$changes, $code]) {
+            try {
+                $this->stock->changeLevels($changes);
+                self::fail('Refused: ' . $code);
+            } catch (InventoryRuleViolation $e) {
+                self::assertSame($code, $e->errorCode);
+            }
+        }
+        self::assertSame(['product:10' => [$this->sofia => 4]], $this->stock->levelsOf([StockItemRef::product(10)]));
     }
 
     public function testSettingLevelsReplacesThemAll(): void

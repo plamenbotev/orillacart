@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Inventory\Application;
 
+use OrillaCart\Inventory\Application\Dto\ChangeStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\StockView;
@@ -33,6 +34,77 @@ final readonly class StockService
     public function stock(StockItemRef $ref): StockView
     {
         return StockView::fromStock($this->levels->stockOf([$ref->toItem()])[0]);
+    }
+
+    /**
+     * How many of each item each stockroom holds, for many items at once. A stockroom without a level of an
+     * item is left out.
+     *
+     * @param list<StockItemRef> $refs
+     *
+     * @return array<string, array<int, int>> by item ("product:12"), then stockroom id
+     */
+    public function levelsOf(array $refs): array
+    {
+        $levels = [];
+        foreach ($this->levels->stockOf(array_map(static fn(StockItemRef $ref): StockItem => $ref->toItem(), $refs)) as $stock) {
+            $levels[(string) $stock->item] = [];
+            foreach ($stock->levels() as $level) {
+                $levels[(string) $stock->item][$level->stockroom()->id()] = $level->quantity();
+            }
+        }
+
+        return $levels;
+    }
+
+    /**
+     * Changes single levels of many items together, as the stock sheet saves them: a quantity sets the
+     * stockroom's level, null removes it. Nothing changes when one change is refused.
+     *
+     * @param list<ChangeStockLevel> $changes
+     *
+     * @throws InventoryRuleViolation for a stockroom that does not exist, or a cell changed twice
+     */
+    public function changeLevels(array $changes): void
+    {
+        $byItem = [];
+        foreach ($changes as $change) {
+            $key = (string) $change->ref()->toItem();
+            if (\array_key_exists($change->stockroomId, $byItem[$key] ?? [])) {
+                throw new InventoryRuleViolation(\sprintf('The level of %s in stockroom %d is changed twice.', $key, $change->stockroomId), 'orillacart_duplicate_stockroom');
+            }
+            $byItem[$key][$change->stockroomId] = $change->quantity;
+        }
+        $stockrooms = [];
+        foreach ($changes as $change) {
+            $stockrooms[$change->stockroomId] ??= $this->stockrooms->find($change->stockroomId)
+                ?? throw new InventoryRuleViolation(\sprintf('There is no stockroom %d.', $change->stockroomId), 'orillacart_unknown_stockroom');
+        }
+
+        foreach ($this->levels->stockOf(array_map(StockItem::fromString(...), array_keys($byItem))) as $stock) {
+            $wanted = $byItem[(string) $stock->item];
+            foreach ($stock->levels() as $level) {
+                $stockroomId = $level->stockroom()->id();
+                if (!\array_key_exists($stockroomId, $wanted)) {
+                    continue;
+                }
+                if ($wanted[$stockroomId] === null) {
+                    $this->levels->remove($level);
+                } else {
+                    $level->set($wanted[$stockroomId]);
+                }
+                unset($wanted[$stockroomId]);
+            }
+            foreach ($wanted as $stockroomId => $quantity) {
+                if ($quantity !== null) {
+                    $this->levels->add(new StockLevel($stockrooms[$stockroomId], $stock->item, $quantity));
+                }
+            }
+        }
+        $this->levels->flush();
+        foreach (array_keys($byItem) as $item) {
+            $this->events->dispatch(new StockChanged($item));
+        }
     }
 
     /**

@@ -45,3 +45,33 @@
 [id^="orillacart-admin-"] .components-card + .dataviews-wrapper {
 	margin-top: 24px;
 }
+
+/* The stock sheet */
+[id^="orillacart-admin-"] .orillacart-stock__filters {
+	margin-bottom: 16px;
+}
+
+[id^="orillacart-admin-"] .orillacart-stock__amount {
+	width: 9em;
+}
+
+[id^="orillacart-admin-"] .orillacart-stock__amount input {
+	width: 100%;
+}
+
+[id^="orillacart-admin-"] .orillacart-stock__amount input.is-changed {
+	border-color: var(--wp-admin-theme-color, #3858e9);
+	box-shadow: 0 0 0 1px var(--wp-admin-theme-color, #3858e9);
+}
+
+[id^="orillacart-admin-"] .orillacart-stock__footer {
+	margin-top: 16px;
+}
+
+[id^="orillacart-admin-"] .orillacart-stock__invalid {
+	color: #cc1818;
+}
+
+[id^="orillacart-admin-"] .orillacart-stock__id {
+	width: 5em;
+}
