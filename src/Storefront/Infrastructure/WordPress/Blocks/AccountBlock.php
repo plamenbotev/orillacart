@@ -1,0 +1,145 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
+
+use OrillaCart\Customers\Application\CustomerService;
+use OrillaCart\Customers\Domain\CustomerNotFound;
+use OrillaCart\Ordering\Application\Downloads;
+use OrillaCart\Ordering\Application\Dto\OrderQuery;
+use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Domain\OrderNotFound;
+use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockDefinition;
+use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
+use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
+use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
+
+/**
+ * The customer's account page. Visitors see WordPress's login form and, unless the shop makes no accounts,
+ * a form to make one. Customers see their orders (?section=orders, or ?order=ID for one), their files
+ * (?section=downloads) and their addresses (?section=addresses).
+ */
+final readonly class AccountBlock implements BlockDefinition
+{
+    private const int ORDERS_PER_PAGE = 10;
+
+    public function __construct(
+        private CustomerService $customers,
+        private OrderService $orders,
+        private Downloads $downloads,
+        private AddressChoices $addresses,
+        private Shopper $shopper,
+        private ShopLinks $links,
+        private TemplateRenderer $templates,
+    ) {}
+
+    public static function name(): string
+    {
+        return 'orillacart/account';
+    }
+
+    public static function metadata(): array
+    {
+        return [
+            'title' => __('Customer account', 'orillacart'),
+            'description' => __('Logging in, making an account, and the customer\'s orders, files and addresses.', 'orillacart'),
+            'icon' => 'admin-users',
+        ];
+    }
+
+    public function render(array $attributes): string
+    {
+        $here = (string) get_permalink();
+        $links = $this->links->pages();
+        $customerId = $this->shopper->customerId();
+        if ($customerId === null) {
+            return $this->templates->render('storefront/account.html.twig', [
+                'logged_in' => false,
+                'accounts' => $this->customers->accountMode(),
+                // The theme's button style for WordPress's login button, like the shop's own buttons.
+                'login_form' => str_replace('class="button button-primary"', 'class="button button-primary wp-element-button"', (string) wp_login_form(['echo' => false, 'redirect' => $here, 'form_id' => 'orillacart-login', 'remember' => true])),
+                'lost_password_url' => wp_lostpassword_url($here),
+                'links' => $links,
+            ]);
+        }
+
+        $orderId = self::number('order');
+        $section = $orderId > 0 ? 'order' : (\is_string($_GET['section'] ?? null) ? sanitize_key($_GET['section']) : 'orders');
+        $section = \in_array($section, ['orders', 'order', 'downloads', 'addresses'], true) ? $section : 'orders';
+        $context = [
+            'logged_in' => true,
+            'section' => $section,
+            'links' => $links,
+            'urls' => [
+                'orders' => $here,
+                'downloads' => add_query_arg('section', 'downloads', $here),
+                'addresses' => add_query_arg('section', 'addresses', $here),
+                // wp_logout_url() returns the address escaped for HTML (&amp;); the template escapes it.
+                'logout' => html_entity_decode(wp_logout_url($here), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            ],
+        ];
+
+        return $this->templates->render('storefront/account.html.twig', $context + match ($section) {
+            'order' => $this->order($customerId, $orderId),
+            'downloads' => ['downloads' => $this->downloads->ofCustomer($customerId)],
+            'addresses' => $this->addressForm($customerId),
+            default => $this->orderList($customerId, $here),
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function orderList(int $customerId, string $here): array
+    {
+        $page = $this->orders->orders(new OrderQuery(customerId: $customerId, page: max(1, self::number('orders-page')), perPage: self::ORDERS_PER_PAGE));
+        $pageUrls = [];
+        for ($number = 1; $number <= $page->pages; ++$number) {
+            $pageUrls[$number] = $number === 1 ? $here : add_query_arg('orders-page', $number, $here);
+        }
+        $orderUrls = [];
+        foreach ($page->orders as $order) {
+            $orderUrls[$order->number] = add_query_arg('order', $order->number, $here);
+        }
+
+        return ['orders' => $page, 'order_urls' => $orderUrls, 'page_urls' => $pageUrls];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function order(int $customerId, int $orderId): array
+    {
+        try {
+            $order = $this->orders->customerOrder($customerId, $orderId);
+        } catch (OrderNotFound) {
+            $order = null;
+        }
+
+        return ['order' => $order, 'country_names' => $this->addresses->all()['country_names']];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function addressForm(int $customerId): array
+    {
+        try {
+            $customer = $this->customers->customer($customerId);
+        } catch (CustomerNotFound) {
+            $customer = null;
+        }
+        $choices = $this->addresses->all();
+
+        return ['customer' => $customer, 'countries' => $choices['countries'], 'states' => $choices['states']];
+    }
+
+    private static function number(string $name): int
+    {
+        $value = $_GET[$name] ?? null;
+
+        return \is_string($value) && ctype_digit($value) ? (int) $value : 0;
+    }
+}

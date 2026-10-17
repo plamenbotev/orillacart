@@ -1,0 +1,85 @@
+{#
+ # An order as its customer sees it: after checkout (with the order's key) and in their account.
+ #
+ # order: the order; country_names: {code: name}; heading: whether to thank the customer for ordering;
+ # links: the shop's pages.
+ #}
+{% import 'storefront/_macros.html.twig' as shop %}
+<div class="orillacart-receipt">
+    {% if heading %}
+        <h2 class="orillacart-heading">{{ order.status in ['failed', 'cancelled'] ? __('Your order was not completed') : __('Thank you for your order') }}</h2>
+    {% endif %}
+
+    <ul class="orillacart-receipt__facts">
+        <li>{{ __('Order') }}: <strong>#{{ order.number }}</strong></li>
+        <li>{{ __('Placed') }}: <strong>{{ order.placed_at|shop_date }}</strong></li>
+        <li>{{ __('Status') }}: <strong>{{ shop.status(order.status) }}</strong></li>
+        <li>{{ __('Total') }}: <strong>{{ order.total|money(order.currency) }}</strong></li>
+        {% if order.payment_name %}<li>{{ __('Payment') }}: <strong>{{ order.payment_name }}</strong></li>{% endif %}
+    </ul>
+
+    {% if order.payment_note and order.status in ['pending_payment', 'on_hold'] %}
+        <div class="orillacart-notice">{{ order.payment_note|nl2br }}</div>
+    {% endif %}
+
+    {% if order.downloads %}
+        <h3 class="orillacart-heading">{{ __('Downloads') }}</h3>
+        {% include 'storefront/_downloads.html.twig' with {downloads: order.downloads, show_order: false} %}
+    {% endif %}
+
+    <h3 class="orillacart-heading">{{ __('Items') }}</h3>
+    <table class="orillacart-table orillacart-receipt__lines">
+        <thead>
+            <tr><th scope="col">{{ __('Product') }}</th><th scope="col">{{ __('Total') }}</th></tr>
+        </thead>
+        <tbody>
+            {% for line in order.lines %}
+                <tr>
+                    <td>
+                        {{ line.name }} &times; {{ line.quantity }}
+                        {% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}
+                    </td>
+                    <td>{{ line.total|money(order.currency) }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr><th scope="row">{{ __('Subtotal') }}</th><td>{{ order.subtotal|money(order.currency) }}</td></tr>
+            {% if order.shipping %}
+                <tr><th scope="row">{{ __('Shipping') }} ({{ order.shipping }})</th><td>{{ order.shipping_total|money(order.currency) }}</td></tr>
+            {% endif %}
+            {% for tax in order.taxes %}
+                <tr><th scope="row">{{ tax.name }} ({{ tax.percent }}%)</th><td>{{ tax.amount|money(order.currency) }}</td></tr>
+            {% endfor %}
+            <tr class="orillacart-total"><th scope="row">{{ __('Total') }}</th><td>{{ order.total|money(order.currency) }}</td></tr>
+        </tfoot>
+    </table>
+
+    {% if order.note %}
+        <h3 class="orillacart-heading">{{ __('Your note') }}</h3>
+        <p>{{ order.note|nl2br }}</p>
+    {% endif %}
+
+    {% if order.notes %}
+        <h3 class="orillacart-heading">{{ __('Messages from the shop') }}</h3>
+        <ul class="orillacart-receipt__notes">
+            {% for note in order.notes %}
+                <li><time datetime="{{ note.created_at }}">{{ note.created_at|shop_date }}</time> {{ note.text|nl2br }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <div class="orillacart-receipt__addresses">
+        <div>
+            <h3 class="orillacart-heading">{{ order.shipping_address ? __('Billing address') : __('Address') }}</h3>
+            {{ shop.address_text(order.billing, country_names) }}
+            <p>{{ order.email }}</p>
+        </div>
+        {% if order.shipping_address %}
+            <div>
+                <h3 class="orillacart-heading">{{ __('Shipping address') }}</h3>
+                {{ shop.address_text(order.shipping_address, country_names) }}
+            </div>
+        {% endif %}
+    </div>
+</div>

@@ -10,8 +10,6 @@ import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import '../shared/dataviews.css';
-
 import { type Address, EMPTY_ADDRESS } from '../shared/address';
 import { AddressFields } from '../shared/AddressFields';
 import { toApiError } from '../shared/api';

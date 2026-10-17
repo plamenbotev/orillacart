@@ -1,0 +1,163 @@
+/**
+ * Add-to-cart forms, on product pages and in the shop's grid, and the mini cart's count.
+ */
+import { __, sprintf } from '@wordpress/i18n';
+
+import { api } from './api';
+import { clearErrors, failure, formBody, showErrors, showMessage } from './dom';
+
+type CartSummary = { items: number };
+
+type Variation = {
+	id: number;
+	option_ids: number[];
+	sku: string | null;
+	for_sale: boolean;
+	available: number | null;
+	price: string;
+};
+
+export function setCartCount( items: number ): void {
+	document
+		.querySelectorAll( '[data-orillacart-cart-count]' )
+		.forEach( ( count ) => {
+			count.textContent = String( items );
+		} );
+}
+
+/** Pages with a mini cart may come from a page cache: the count is corrected from the cart itself. */
+export async function refreshCartCount(): Promise< void > {
+	if ( ! document.querySelector( '[data-orillacart-cart-count]' ) ) {
+		return;
+	}
+	const result = await api< CartSummary >( 'GET', '/cart' );
+	if ( result.ok ) {
+		setCartCount( result.data.items );
+	}
+}
+
+export function bindAddToCart( form: HTMLFormElement ): void {
+	const variations = JSON.parse(
+		form.dataset.variations ?? '[]'
+	) as Variation[];
+	if ( variations.length > 0 ) {
+		form.addEventListener( 'change', () =>
+			showVariation( form, variations )
+		);
+		showVariation( form, variations );
+	}
+
+	form.addEventListener( 'submit', async ( event ) => {
+		event.preventDefault();
+		const button = form.querySelector< HTMLButtonElement >(
+			'button[type="submit"]'
+		);
+		clearErrors( form );
+		if ( button ) {
+			button.disabled = true;
+		}
+		const body = formBody( form, {
+			lists: [ 'option_ids' ],
+			numbers: [ 'product_id', 'quantity' ],
+		} );
+		const result = await api< CartSummary >( 'POST', '/cart/items', {
+			option_ids: [],
+			...body,
+		} );
+		if ( button ) {
+			button.disabled = false;
+		}
+		if ( result.ok ) {
+			setCartCount( result.data.items );
+			const cart = form.dataset.cartUrl;
+			showMessage(
+				form,
+				__( 'Added to your cart.', 'orillacart' ),
+				'success',
+				cart
+					? { url: cart, label: __( 'View cart', 'orillacart' ) }
+					: undefined
+			);
+			return;
+		}
+		showMessage(
+			form,
+			failure( result, showErrors( form, result.violations ) ),
+			'error'
+		);
+	} );
+}
+
+/**
+ * Shows the price, SKU and stock of the variation the chosen options make, once every choice is made.
+ * @param form       The add-to-cart form.
+ * @param variations The product's variations.
+ */
+function showVariation( form: HTMLFormElement, variations: Variation[] ): void {
+	const chosen = Array.from(
+		form.querySelectorAll< HTMLSelectElement >( '[data-orillacart-option]' )
+	)
+		.map( ( select ) => Number( select.value ) )
+		.filter( ( id ) => id > 0 )
+		.sort( ( a, b ) => a - b );
+	const variation = variations.find(
+		( candidate ) =>
+			candidate.option_ids.length === chosen.length &&
+			candidate.option_ids.every(
+				( id, index ) => id === chosen[ index ]
+			)
+	);
+	const product = form.closest( '.orillacart-product' );
+	const button = form.querySelector< HTMLButtonElement >(
+		'button[type="submit"]'
+	);
+	const stock = product?.querySelector( '[data-orillacart-stock]' );
+	const choices = form.querySelectorAll( '[data-orillacart-option]' ).length;
+
+	if ( ! variation ) {
+		if ( stock && chosen.length > 0 && chosen.length === choices ) {
+			stock.textContent = __(
+				'This combination is not sold.',
+				'orillacart'
+			);
+		}
+		if ( button ) {
+			button.disabled = chosen.length > 0 && chosen.length === choices;
+		}
+		return;
+	}
+	const price = product?.querySelector( '[data-orillacart-price]' );
+	const sku = product?.querySelector( '[data-orillacart-sku]' );
+	const quantity = form.querySelector< HTMLInputElement >(
+		'input[name="quantity"]'
+	);
+	if ( price ) {
+		// Rendered by the shop's own template (escaped there): the variation's price as the page shows prices.
+		price.innerHTML = variation.price;
+	}
+	if ( sku && variation.sku ) {
+		sku.textContent = variation.sku;
+	}
+	if ( stock ) {
+		if ( ! variation.for_sale ) {
+			stock.textContent = __( 'Not available', 'orillacart' );
+		} else {
+			stock.textContent =
+				variation.available === null
+					? ''
+					: sprintf(
+							/* translators: %d: how many are in stock */ __(
+								'%d in stock',
+								'orillacart'
+							),
+							variation.available
+						);
+		}
+	}
+	if ( quantity ) {
+		quantity.max = String( variation.available ?? 999 );
+	}
+	if ( button ) {
+		button.disabled = ! variation.for_sale;
+	}
+}

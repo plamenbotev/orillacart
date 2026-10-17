@@ -1,0 +1,6 @@
+{# The price of one variation, which the product form shows once the customer chose it. #}
+{%- if variation.regular_price -%}
+    <span class="orillacart-price orillacart-price--sale"><del aria-label="{{ __('Regular price') }}">{{ variation.regular_price|money }}</del> <ins aria-label="{{ __('Sale price') }}">{{ variation.price|money }}</ins></span>
+{%- else -%}
+    <span class="orillacart-price">{{ variation.price|money }}</span>
+{%- endif -%}

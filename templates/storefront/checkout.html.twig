@@ -1,0 +1,77 @@
+{#
+ # The checkout page. The summary (items, shipping, taxes, ways to pay) depends on the addresses; when they
+ # change, the storefront script reloads it from this page with the addresses in the query string.
+ #
+ # summary: the priced cart, or null with problem set; email; billing and shipping: the addresses to start from;
+ # address_known: whether the summary had a country; ship_elsewhere; countries; states: {country: [states]}; logged_in; accounts: optional | required | disabled;
+ # links: the shop's pages.
+ #}
+{% import 'storefront/_macros.html.twig' as shop %}
+<div class="orillacart-checkout">
+    {% if summary is null %}
+        <p class="orillacart-notice orillacart-notice--error">{{ problem }}</p>
+        {% if links.cart %}<p><a class="wp-element-button orillacart-button" href="{{ links.cart }}">{{ __('Back to the cart') }}</a></p>{% endif %}
+    {% else %}
+        <form class="orillacart-checkout__form" data-orillacart-checkout novalidate>
+            <div class="orillacart-checkout__details">
+                <fieldset class="orillacart-checkout__contact">
+                    <legend>{{ __('Contact') }}</legend>
+                    <p class="orillacart-field">
+                        <label for="orillacart-email">{{ __('Email') }} <span aria-hidden="true">*</span></label>
+                        <input id="orillacart-email" type="email" name="email" value="{{ email }}" autocomplete="email" required data-orillacart-field="email">
+                    </p>
+                    {% if not logged_in and links.account %}
+                        <p class="orillacart-checkout__login">{{ __('Have an account?') }} <a href="{{ login_url }}">{{ __('Log in') }}</a></p>
+                    {% endif %}
+                </fieldset>
+
+                {{ shop.address('billing', summary.needs_shipping ? __('Billing address') : __('Address'), billing, countries, states, 'billing') }}
+
+                {% if summary.needs_shipping %}
+                    <p class="orillacart-field orillacart-field--check">
+                        <input id="orillacart-ship-elsewhere" type="checkbox" name="ship_elsewhere" value="1"{{ ship_elsewhere ? ' checked' }} data-orillacart-ship-elsewhere>
+                        <label for="orillacart-ship-elsewhere">{{ __('Ship to a different address') }}</label>
+                    </p>
+                    <div data-orillacart-shipping-address{{ not ship_elsewhere ? ' hidden' }}>
+                        {{ shop.address('shipping_address', __('Shipping address'), shipping, countries, states, 'shipping') }}
+                    </div>
+                {% endif %}
+
+                <p class="orillacart-field">
+                    <label for="orillacart-note">{{ __('Notes about your order') }}</label>
+                    <textarea id="orillacart-note" name="note" rows="3" data-orillacart-field="note"></textarea>
+                </p>
+
+                {% if logged_in %}
+                    <p class="orillacart-field orillacart-field--check">
+                        <input id="orillacart-remember" type="checkbox" name="remember_addresses" value="1" checked>
+                        <label for="orillacart-remember">{{ __('Save these addresses for next time') }}</label>
+                    </p>
+                {% elseif accounts != 'disabled' %}
+                    <fieldset class="orillacart-checkout__account">
+                        <legend>{{ __('Account') }}</legend>
+                        {% if accounts == 'required' %}
+                            <input type="hidden" name="create_account" value="1">
+                            <p>{{ __('An account is made with your order, so you can follow it and download what you buy.') }}</p>
+                        {% else %}
+                            <p class="orillacart-field orillacart-field--check">
+                                <input id="orillacart-create-account" type="checkbox" name="create_account" value="1" data-orillacart-create-account>
+                                <label for="orillacart-create-account">{{ __('Make an account with this order') }}</label>
+                            </p>
+                        {% endif %}
+                        <p class="orillacart-field" data-orillacart-password{{ accounts != 'required' ? ' hidden' }}>
+                            <label for="orillacart-password">{{ __('Password') }} <span aria-hidden="true">*</span></label>
+                            <input id="orillacart-password" type="password" name="password" autocomplete="new-password" minlength="8" data-orillacart-field="password"{{ accounts == 'required' ? ' required' }}>
+                            <small>{{ __('At least 8 characters.') }}</small>
+                        </p>
+                    </fieldset>
+                {% endif %}
+            </div>
+
+            <div class="orillacart-checkout__summary" data-orillacart-region="checkout-summary" aria-live="polite">
+                {% include 'storefront/_checkout_summary.html.twig' %}
+            </div>
+        </form>
+    {% endif %}
+</div>
+<script type="application/json" data-orillacart-states>{{ states|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw }}</script>

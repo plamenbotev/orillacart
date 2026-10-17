@@ -1,0 +1,10 @@
+{#
+ # A link to the cart with the number of items, for headers. cart: the cart; cart_url. Pages with it may be
+ # cached, so the storefront script corrects the number from the cart API.
+ #}
+<div class="orillacart-mini-cart" data-orillacart-region="mini-cart">
+    <a href="{{ cart_url }}" class="orillacart-mini-cart__link">
+        <span class="orillacart-mini-cart__label">{{ __('Cart') }}</span>
+        <span class="orillacart-mini-cart__count" data-orillacart-cart-count>{{ cart.items }}</span><span class="screen-reader-text"> {{ __("items") }}</span>
+    </a>
+</div>

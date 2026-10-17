@@ -13,5 +13,5 @@
     "noEmit": true,
     "types": ["jest"]
   },
-  "include": ["assets/**/*.ts", "assets/**/*.tsx"]
+  "include": ["assets/**/*.ts", "assets/**/*.tsx", "tests/e2e/**/*.ts"]
 }

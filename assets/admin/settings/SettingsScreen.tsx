@@ -14,6 +14,7 @@ import type { FormEvent } from 'react';
 import { toApiError, violationOf, type Violation } from '../shared/api';
 import { fetchCountries, type Country } from '../shared/geography';
 import { LocationFields } from '../shared/LocationFields';
+import { ShopPagesCard } from './ShopPagesCard';
 import {
 	fetchSettings,
 	saveSettings,
@@ -107,7 +108,7 @@ export function SettingsScreen() {
 			{ settings === null || form === null ? (
 				status.kind !== 'error' && <Spinner />
 			) : (
-				<Card>
+				<Card className="orillacart-settings-card">
 					<CardBody>
 						<form onSubmit={ submit }>
 							<TextControl
@@ -203,6 +204,7 @@ export function SettingsScreen() {
 					</CardBody>
 				</Card>
 			) }
+			<ShopPagesCard />
 		</>
 	);
 }

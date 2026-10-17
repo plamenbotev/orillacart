@@ -31,6 +31,27 @@ final class RouteSecurityGateTest extends TestCase
      */
     private const array SIGNED = ['POST /payments/paypal/webhook'];
 
+    /**
+     * Routes anyone may call, logged in or not: the storefront's and the payment provider's. A new one has to be
+     * added here, on purpose, after checking what it reveals or changes for a visitor.
+     */
+    private const array PUBLIC = [
+        'GET /cart',
+        'POST /cart/items',
+        'PUT /cart/items/{id}',
+        'DELETE /cart/items/{id}',
+        'POST /checkout',
+        'POST /checkout/summary',
+        'GET /receipts/{key}',
+        'POST /accounts',
+        'GET /session',
+        'GET /payments/paypal/return',
+        'GET /payments/paypal/cancel',
+        'POST /payments/paypal/webhook',
+        'GET /countries',
+        'GET /countries/{code}/states',
+    ];
+
     private static ContainerBuilder $container;
     private static FakeAuthorization $authorization;
     private static FakeCsrfProtection $csrf;
@@ -119,6 +140,23 @@ final class RouteSecurityGateTest extends TestCase
         }
 
         self::assertSame(self::SIGNED, $signed);
+    }
+
+    public function testThePublicRoutesAreTheKnownOnes(): void
+    {
+        $public = [];
+        foreach ($this->routes() as $route) {
+            if ($route->isPublic()) {
+                foreach ($route->methods as $method) {
+                    $public[] = "{$method} {$route->path}";
+                }
+            }
+        }
+        $known = self::PUBLIC;
+        sort($public);
+        sort($known);
+
+        self::assertSame($known, $public);
     }
 
     /** @return list<RouteDefinition> */

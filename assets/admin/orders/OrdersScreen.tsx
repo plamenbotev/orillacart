@@ -3,8 +3,6 @@ import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
-import '../shared/dataviews.css';
-
 import { toApiError } from '../shared/api';
 import {
 	fetchOrders,

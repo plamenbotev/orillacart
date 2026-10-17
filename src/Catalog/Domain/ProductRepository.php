@@ -9,6 +9,13 @@ interface ProductRepository
     public function find(int $id): ?Product;
 
     /**
+     * @param list<int> $ids
+     *
+     * @return list<Product> the ones that exist, in no particular order
+     */
+    public function findMany(array $ids): array;
+
+    /**
      * Saves the product with its attributes and variations; new ones have their ids afterwards.
      */
     public function save(Product $product): void;

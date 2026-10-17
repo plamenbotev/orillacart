@@ -133,18 +133,26 @@ return [
 
             return implode("\n", $lines);
         },
-        // Twig writes PHP for each template with its own class names in strings ("use Twig\\Environment;"),
-        // which PHP-Scoper does not rewrite; point them at the prefixed classes.
+        // Twig writes PHP for each template with its own class names in strings ("use Twig\\Environment;",
+        // '\Twig\Extension\CoreExtension::captureOutput(' for macros), which PHP-Scoper does not rewrite; point
+        // them at the prefixed classes. Code never names a class that way outside a string literal, so every
+        // Twig source file is safe to rewrite.
         static function (string $filePath, string $prefix, string $contents): string {
-            if (!str_ends_with($filePath, 'twig/twig/src/Node/ModuleNode.php')) {
+            if (!str_contains($filePath, 'twig/twig/src/')) {
                 return $contents;
             }
-            // Inside those strings namespace separators are escaped: Twig\\Environment.
+            // Escaped separators, in double quotes and as PHP-Scoper prints some single-quoted ones: Twig\\Environment.
             $escapedPrefix = str_replace('\\', '\\\\', $prefix) . '\\\\';
-
-            return (string) preg_replace_callback(
+            $contents = (string) preg_replace_callback(
                 '/(?<![A-Za-z])(?<!Vendor\\\\\\\\)Twig\\\\\\\\/',
                 static fn(array $match): string => $escapedPrefix . $match[0],
+                $contents,
+            );
+
+            // A single separator right after the opening quote: '\Twig\Extension\CoreExtension::captureOutput('.
+            return (string) preg_replace_callback(
+                '/(?<=[\'"])\\\\Twig\\\\(?=[A-Z])/',
+                static fn(array $match): string => '\\' . $prefix . $match[0],
                 $contents,
             );
         },

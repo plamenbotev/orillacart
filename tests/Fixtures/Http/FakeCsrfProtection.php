@@ -26,4 +26,9 @@ final class FakeCsrfProtection implements CsrfProtection
     {
         return ($this->validTokens[$action] ?? null) === $token;
     }
+
+    public function newToken(string $action): string
+    {
+        return $this->validTokens[$action] ??= bin2hex(random_bytes(5));
+    }
 }

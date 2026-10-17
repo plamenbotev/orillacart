@@ -22,6 +22,8 @@ const stored = {
 	dimension_units: [ 'cm', 'm', 'mm', 'in' ],
 };
 
+const pages = { shop: 9, cart: 10, checkout: null, account: null };
+
 const countries = [
 	{ code: 'BG', name: 'Bulgaria', in_eu: true, has_states: false },
 	{ code: 'US', name: 'United States', in_eu: false, has_states: true },
@@ -40,6 +42,15 @@ function serve( save?: () => Promise< unknown > ) {
 		}
 		if ( path === '/orillacart/v1/countries' ) {
 			return Promise.resolve( countries );
+		}
+		if ( path === '/orillacart/v1/shop-pages' ) {
+			return Promise.resolve( pages );
+		}
+		if ( path.startsWith( '/wp/v2/pages' ) ) {
+			return Promise.resolve( [
+				{ id: 9, title: { rendered: 'Shop' } },
+				{ id: 10, title: { rendered: 'Cart &amp; more' } },
+			] );
 		}
 		if ( path === '/orillacart/v1/countries/US/states' ) {
 			return Promise.resolve( [
@@ -165,8 +176,41 @@ describe( 'SettingsScreen', () => {
 
 		render( <SettingsScreen /> );
 
+		// Both cards say so: the settings and the shop pages.
 		expect(
-			await screen.findByText( 'You are not allowed to do this.', NOTICE )
+			await screen.findAllByText(
+				'You are not allowed to do this.',
+				NOTICE
+			)
+		).toHaveLength( 2 );
+	} );
+
+	it( 'saves the page each part of the shop is on', async () => {
+		const save = jest.fn( () =>
+			Promise.resolve( { ...pages, checkout: 10, cart: null } )
+		);
+		serve( save );
+		const user = userEvent.setup();
+		render( <SettingsScreen /> );
+
+		const cart = await screen.findByRole( 'combobox', { name: 'Cart' } );
+		expect( cart ).toHaveDisplayValue( 'Cart & more' );
+		await user.selectOptions( cart, '' );
+		await user.selectOptions(
+			screen.getByRole( 'combobox', { name: 'Checkout' } ),
+			'10'
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save shop pages' } )
+		);
+
+		expect(
+			await screen.findByText( 'Shop pages saved.', NOTICE )
 		).toBeVisible();
+		expect( mockedFetch ).toHaveBeenCalledWith( {
+			path: '/orillacart/v1/shop-pages',
+			method: 'PUT',
+			data: { shop: 9, cart: null, checkout: 10, account: null },
+		} );
 	} );
 } );

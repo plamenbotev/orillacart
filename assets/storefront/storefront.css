@@ -1,0 +1,428 @@
+/*
+ * Storefront styles: layout only. Fonts, colours and buttons come from the theme (buttons use the theme's
+ * .wp-element-button style). Themes adjust the shop through these custom properties.
+ */
+:where(.orillacart-products, .orillacart-product, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart) {
+	--orillacart-gap: 1.5rem;
+	--orillacart-border: color-mix(in srgb, currentColor 18%, transparent);
+	--orillacart-muted: color-mix(in srgb, currentColor 65%, transparent);
+	--orillacart-error: #b32d2e;
+	--orillacart-success: #1e7e34;
+	--orillacart-radius: 4px;
+}
+
+.orillacart-products,
+.orillacart-cart,
+.orillacart-checkout,
+.orillacart-account {
+	display: grid;
+	gap: var(--orillacart-gap);
+}
+
+/* The script hides parts with the hidden attribute; layout rules must not show them again. */
+:where([class^="orillacart-"]) [hidden] {
+	display: none !important;
+}
+
+/* Fields */
+.orillacart-field {
+	display: grid;
+	gap: 0.25rem;
+	margin: 0 0 1rem;
+	min-width: 0;
+}
+
+.orillacart-field input:not([type="checkbox"], [type="radio"]),
+.orillacart-field select,
+.orillacart-field textarea,
+.orillacart-quantity {
+	box-sizing: border-box;
+	width: 100%;
+	padding: 0.5rem 0.625rem;
+	border: 1px solid var(--orillacart-border);
+	border-radius: var(--orillacart-radius);
+	font: inherit;
+	color: inherit;
+	background: transparent;
+}
+
+.orillacart-field--check {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.orillacart-field--quantity {
+	max-width: 7rem;
+	margin: 0;
+}
+
+.orillacart-field [aria-invalid="true"],
+fieldset[aria-invalid="true"] {
+	border-color: var(--orillacart-error);
+}
+
+.orillacart-field__error {
+	display: block;
+	color: var(--orillacart-error);
+	font-size: 0.875em;
+}
+
+.orillacart-address,
+.orillacart-choices,
+.orillacart-checkout fieldset {
+	margin: 0 0 var(--orillacart-gap);
+	padding: 0;
+	border: 0;
+	min-width: 0;
+}
+
+.orillacart-address legend,
+.orillacart-choices legend,
+.orillacart-checkout fieldset legend {
+	margin-bottom: 0.75rem;
+	padding: 0;
+	font-weight: 600;
+}
+
+.orillacart-address__row {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+	gap: 0 1rem;
+}
+
+.orillacart-choice {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.5rem;
+	margin: 0 0 0.5rem;
+}
+
+.orillacart-choice__note {
+	flex-basis: 100%;
+	margin: 0 0 0 1.5rem;
+	color: var(--orillacart-muted);
+	font-size: 0.875em;
+}
+
+/* Messages */
+.orillacart-message:empty {
+	display: none;
+}
+
+.orillacart-message--success {
+	color: var(--orillacart-success);
+}
+
+.orillacart-message--error,
+.orillacart-notice--error,
+.orillacart-stock--out {
+	color: var(--orillacart-error);
+}
+
+.orillacart-notice {
+	padding: 0.75rem 1rem;
+	border-left: 4px solid var(--orillacart-border);
+	background: color-mix(in srgb, currentColor 4%, transparent);
+}
+
+.orillacart-notice--error {
+	border-left-color: var(--orillacart-error);
+}
+
+[aria-busy="true"] {
+	opacity: 0.6;
+	transition: opacity 0.2s;
+}
+
+/* Prices */
+.orillacart-price del {
+	color: var(--orillacart-muted);
+}
+
+.orillacart-price ins {
+	text-decoration: none;
+	font-weight: 600;
+}
+
+.orillacart-product__price {
+	font-size: 1.5em;
+	margin: 0 0 0.5rem;
+}
+
+.orillacart-product {
+	margin-top: var(--orillacart-gap);
+}
+
+.orillacart-add-to-cart__buy {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 1rem;
+}
+
+.orillacart-add-to-cart select {
+	max-width: 24rem;
+}
+
+/* The shop's grid */
+.orillacart-categories ul,
+.orillacart-pagination ul,
+.orillacart-account__nav ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1.25rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.orillacart-categories [aria-current],
+.orillacart-account__nav [aria-current] {
+	font-weight: 600;
+}
+
+.orillacart-products__filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 0 1rem;
+}
+
+.orillacart-products__filters .orillacart-field {
+	flex: 1 1 12rem;
+}
+
+.orillacart-products__filters button {
+	margin-bottom: 1rem;
+}
+
+.orillacart-products__grid {
+	display: grid;
+	grid-template-columns: repeat(var(--orillacart-columns, 3), minmax(0, 1fr));
+	gap: var(--orillacart-gap);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+@media (max-width: 781px) {
+	.orillacart-products__grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 480px) {
+	.orillacart-products__grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.orillacart-product-card {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.orillacart-product-card__link {
+	color: inherit;
+	text-decoration: none;
+}
+
+.orillacart-product-card__image,
+.orillacart-product-card__no-image {
+	display: block;
+	width: 100%;
+	height: auto;
+	aspect-ratio: 1;
+	object-fit: cover;
+	border-radius: var(--orillacart-radius);
+	background: color-mix(in srgb, currentColor 6%, transparent);
+}
+
+.orillacart-product-card__name {
+	margin: 0.5rem 0 0;
+	font-size: 1.125em;
+}
+
+.orillacart-product-card__price,
+.orillacart-product-card .orillacart-add-to-cart {
+	margin: 0;
+}
+
+.orillacart-product-card > :last-child {
+	margin-top: auto;
+}
+
+.orillacart-pagination [aria-current] {
+	font-weight: 600;
+}
+
+/* Tables */
+.orillacart-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.orillacart-table th,
+.orillacart-table td {
+	padding: 0.625rem 0.5rem;
+	border-bottom: 1px solid var(--orillacart-border);
+	text-align: left;
+	vertical-align: top;
+}
+
+.orillacart-table tfoot th,
+.orillacart-total {
+	font-weight: 600;
+}
+
+.orillacart-table td:last-child,
+.orillacart-table th:last-child {
+	text-align: right;
+}
+
+.orillacart-quantity {
+	max-width: 5rem;
+}
+
+.orillacart-remove {
+	padding: 0.25rem 0.5rem;
+	border: 0;
+	background: none;
+	color: inherit;
+	font-size: 1.25em;
+	line-height: 1;
+	cursor: pointer;
+}
+
+@media (max-width: 600px) {
+	.orillacart-cart__table thead {
+		display: none;
+	}
+
+	.orillacart-cart__table tbody tr {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		border-bottom: 1px solid var(--orillacart-border);
+	}
+
+	.orillacart-cart__table tbody td {
+		border: 0;
+	}
+
+	.orillacart-cart__table tbody td:first-child {
+		grid-column: 1 / -1;
+	}
+
+	.orillacart-cart__table tbody td[data-label]::before {
+		content: attr(data-label) ": ";
+		color: var(--orillacart-muted);
+	}
+}
+
+.orillacart-cart__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.orillacart-cart__note {
+	margin: 0;
+	color: var(--orillacart-muted);
+}
+
+/* Checkout */
+.orillacart-checkout__form {
+	display: grid;
+	grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+	gap: calc(var(--orillacart-gap) * 2);
+	align-items: start;
+}
+
+@media (max-width: 781px) {
+	.orillacart-checkout__form {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.orillacart-checkout__summary {
+	position: sticky;
+	top: 2rem;
+	padding: var(--orillacart-gap);
+	border: 1px solid var(--orillacart-border);
+	border-radius: var(--orillacart-radius);
+}
+
+.orillacart-checkout__place {
+	width: 100%;
+}
+
+/* Receipt and account */
+.orillacart-receipt__facts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 2rem;
+	padding: 0;
+	list-style: none;
+}
+
+.orillacart-receipt__addresses,
+.orillacart-account__entry {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+	gap: calc(var(--orillacart-gap) * 2);
+}
+
+.orillacart-address-text {
+	font-style: normal;
+}
+
+.orillacart-account #orillacart-login input[type="text"],
+.orillacart-account #orillacart-login input[type="password"] {
+	box-sizing: border-box;
+	width: 100%;
+	padding: 0.5rem 0.625rem;
+	border: 1px solid var(--orillacart-border);
+	border-radius: var(--orillacart-radius);
+	font: inherit;
+}
+
+.orillacart-account #orillacart-login label {
+	display: block;
+}
+
+/* Mini cart */
+.orillacart-mini-cart__link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375rem;
+	color: inherit;
+	text-decoration: none;
+}
+
+.orillacart-mini-cart__count {
+	min-width: 1.5em;
+	padding: 0 0.375em;
+	border: 1px solid currentColor;
+	border-radius: 1em;
+	text-align: center;
+	font-size: 0.8em;
+}
+
+.orillacart-heading {
+	margin: 0 0 1rem;
+	font-size: 1.25em;
+}
+
+[class^="orillacart-"] .screen-reader-text {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}

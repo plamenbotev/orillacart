@@ -1,0 +1,109 @@
+{#
+ # The customer's account. Visitors log in (WordPress's login) or make an account; customers see their
+ # orders, files and addresses.
+ #
+ # logged_in; accounts: optional | required | disabled; login_form (HTML); lost_password_url; section: orders |
+ # order | downloads | addresses; urls: {orders, downloads, addresses, logout}; orders (a page of them, with
+ # order_urls and page_urls); order (null when not theirs); downloads; customer; countries; states; country_names.
+ #}
+{% import 'storefront/_macros.html.twig' as shop %}
+<div class="orillacart-account">
+    {% if not logged_in %}
+        <div class="orillacart-account__entry">
+            <section class="orillacart-account__login">
+                <h2 class="orillacart-heading">{{ __('Log in') }}</h2>
+                {{ login_form|raw }}
+                <p><a href="{{ lost_password_url }}">{{ __('Forgot your password?') }}</a></p>
+            </section>
+            {% if accounts != 'disabled' %}
+                <section class="orillacart-account__register">
+                    <h2 class="orillacart-heading">{{ __('Make an account') }}</h2>
+                    <form data-orillacart-register novalidate>
+                        <div class="orillacart-address__row">
+                            {{ shop.input('register', 'first_name', __('First name'), '', 'given-name') }}
+                            {{ shop.input('register', 'last_name', __('Last name'), '', 'family-name') }}
+                        </div>
+                        {{ shop.input('register', 'email', __('Email'), '', 'email', 'email') }}
+                        {{ shop.input('register', 'password', __('Password'), '', 'new-password', 'password') }}
+                        <p><small>{{ __('At least 8 characters.') }}</small></p>
+                        <p class="orillacart-message" role="alert" data-orillacart-message></p>
+                        <button type="submit" class="wp-element-button orillacart-button">{{ __('Make an account') }}</button>
+                    </form>
+                </section>
+            {% endif %}
+        </div>
+    {% else %}
+        <nav class="orillacart-account__nav" aria-label="{{ __('Account') }}">
+            <ul>
+                <li><a href="{{ urls.orders }}"{{ section in ['orders', 'order'] ? ' aria-current="page"' }}>{{ __('Orders') }}</a></li>
+                <li><a href="{{ urls.downloads }}"{{ section == 'downloads' ? ' aria-current="page"' }}>{{ __('Downloads') }}</a></li>
+                <li><a href="{{ urls.addresses }}"{{ section == 'addresses' ? ' aria-current="page"' }}>{{ __('Addresses') }}</a></li>
+                <li><a href="{{ urls.logout }}">{{ __('Log out') }}</a></li>
+            </ul>
+        </nav>
+
+        <div class="orillacart-account__content">
+            {% if section == 'order' %}
+                <p><a href="{{ urls.orders }}">&larr; {{ __('All orders') }}</a></p>
+                {% if order %}
+                    <h2 class="orillacart-heading">{{ __('Order #%d')|format(order.number) }}</h2>
+                    {% include 'storefront/receipt.html.twig' with {heading: false} %}
+                {% else %}
+                    <p class="orillacart-notice orillacart-notice--error">{{ __('There is no such order in your account.') }}</p>
+                {% endif %}
+
+            {% elseif section == 'downloads' %}
+                {% if downloads %}
+                    {% include 'storefront/_downloads.html.twig' with {show_order: true} %}
+                {% else %}
+                    <p class="orillacart-empty">{{ __('You have no files to download yet.') }}</p>
+                {% endif %}
+
+            {% elseif section == 'addresses' %}
+                <form class="orillacart-account__addresses" data-orillacart-addresses novalidate>
+                    {{ shop.address('billing', __('Billing address'), customer.billing ?? {}, countries, states, 'billing') }}
+                    {{ shop.address('shipping_address', __('Shipping address'), customer.shipping_address ?? customer.billing ?? {}, countries, states, 'shipping') }}
+                    <p class="orillacart-message" role="status" data-orillacart-message></p>
+                    <button type="submit" class="wp-element-button orillacart-button">{{ __('Save addresses') }}</button>
+                </form>
+                <script type="application/json" data-orillacart-states>{{ states|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw }}</script>
+
+            {% else %}
+                {% if orders.orders %}
+                    <table class="orillacart-table orillacart-account__orders">
+                        <thead>
+                            <tr>
+                                <th scope="col">{{ __('Order') }}</th>
+                                <th scope="col">{{ __('Date') }}</th>
+                                <th scope="col">{{ __('Status') }}</th>
+                                <th scope="col">{{ __('Total') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for summary in orders.orders %}
+                                <tr>
+                                    <td data-label="{{ __('Order') }}"><a href="{{ order_urls[summary.number] }}">#{{ summary.number }}</a></td>
+                                    <td data-label="{{ __('Date') }}">{{ summary.placed_at|shop_date(false) }}</td>
+                                    <td data-label="{{ __('Status') }}">{{ shop.status(summary.status) }}</td>
+                                    <td data-label="{{ __('Total') }}">{{ summary.total|money(summary.currency) }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if orders.pages > 1 %}
+                        <nav class="orillacart-pagination" aria-label="{{ __('Order pages') }}">
+                            <ul>
+                                {% for number, url in page_urls %}
+                                    <li>{% if number == orders.page %}<span aria-current="page">{{ number }}</span>{% else %}<a href="{{ url }}">{{ number }}</a>{% endif %}</li>
+                                {% endfor %}
+                            </ul>
+                        </nav>
+                    {% endif %}
+                {% else %}
+                    <p class="orillacart-empty">{{ __('You have not ordered anything yet.') }}</p>
+                    {% if links.shop %}<p><a class="wp-element-button orillacart-button" href="{{ links.shop }}">{{ __('Go to the shop') }}</a></p>{% endif %}
+                {% endif %}
+            {% endif %}
+        </div>
+    {% endif %}
+</div>

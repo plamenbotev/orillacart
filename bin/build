@@ -27,7 +27,7 @@ step "Staging production files"
 rm -rf "$WORK" && mkdir -p "$STAGE" "$ROOT/dist"
 cp -R "$ROOT/orillacart.php" "$ROOT/uninstall.php" "$ROOT/readme.txt" "$ROOT/composer.json" "$ROOT/composer.lock" \
       "$ROOT/src" "$ROOT/config" "$ROOT/migrations" "$STAGE/"
-mkdir -p "$STAGE/build" && cp -R "$ROOT/build/admin" "$STAGE/build/"
+mkdir -p "$STAGE/build" && cp -R "$ROOT/build/admin" "$ROOT/build/storefront" "$STAGE/build/"
 [ -d "$ROOT/templates" ] && cp -R "$ROOT/templates" "$STAGE/"
 $COMPOSER_BIN install --working-dir="$STAGE" --no-dev --no-scripts --no-plugins --prefer-dist --no-interaction --no-progress --quiet
 

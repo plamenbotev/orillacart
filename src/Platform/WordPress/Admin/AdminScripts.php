@@ -16,18 +16,53 @@ final readonly class AdminScripts
 
     public function enqueue(string $script): void
     {
+        $handle = $this->load($script);
+        wp_enqueue_script($handle);
+        wp_enqueue_style('wp-components');
+        if (wp_style_is($handle, 'registered')) {
+            wp_enqueue_style($handle);
+        }
+    }
+
+    /**
+     * Registers the script and the styles it imports, and first the plugin's own scripts it needs, such as
+     * the shared DataViews (handle orillacart-dataviews, built as build/admin/dataviews.js).
+     *
+     * @return non-empty-string the script's handle
+     */
+    private function load(string $script): string
+    {
         $handle = 'orillacart-' . $script;
+        if (wp_script_is($handle, 'registered')) {
+            return $handle;
+        }
         $asset = $this->context->path('build/admin/' . $script . '.asset.php');
         $meta = is_file($asset) ? require $asset : [];
         $dependencies = \is_array($meta) && \is_array($meta['dependencies'] ?? null) ? array_values(array_filter($meta['dependencies'], static fn(mixed $handle): bool => \is_string($handle) && $handle !== '')) : [];
         $version = \is_array($meta) && \is_string($meta['version'] ?? null) ? $meta['version'] : $this->context->version;
 
-        wp_enqueue_script($handle, plugins_url('build/admin/' . $script . '.js', $this->context->pluginFile), $dependencies, $version, ['in_footer' => true]);
-        wp_set_script_translations($handle, 'orillacart');
-        wp_enqueue_style('wp-components');
-        // Styles the script imports, such as DataViews', are built next to it.
-        if (is_file($this->context->path('build/admin/' . $script . '.css'))) {
-            wp_enqueue_style($handle, plugins_url('build/admin/' . $script . '.css', $this->context->pluginFile), ['wp-components'], $version);
+        $styles = ['wp-components'];
+        foreach ($dependencies as $dependency) {
+            if (str_starts_with($dependency, 'orillacart-')) {
+                $this->load(substr($dependency, \strlen('orillacart-')));
+                if (wp_style_is($dependency, 'registered')) {
+                    $styles[] = $dependency;
+                }
+            }
         }
+
+        $url = plugins_url('build/admin/' . $script . '.js', $this->context->pluginFile);
+        wp_register_script($handle, $url === '' ? false : $url, $dependencies, $version, ['in_footer' => true]);
+        wp_set_script_translations($handle, 'orillacart');
+        // Styles the script imports are built next to it.
+        if (is_file($this->context->path('build/admin/' . $script . '.css'))) {
+            wp_register_style($handle, plugins_url('build/admin/' . $script . '.css', $this->context->pluginFile), $styles, $version);
+            wp_style_add_data($handle, 'rtl', 'replace');
+        } elseif (\count($styles) > 1) {
+            // No styles of its own, but those of the scripts it needs.
+            wp_register_style($handle, false, $styles, $version);
+        }
+
+        return $handle;
     }
 }

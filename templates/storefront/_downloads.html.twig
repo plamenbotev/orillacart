@@ -1,0 +1,26 @@
+{#
+ # Files a customer bought. downloads: [{order_number, product, name, url, remaining, expires_at}]; show_order.
+ #}
+<table class="orillacart-table orillacart-downloads">
+    <thead>
+        <tr>
+            {% if show_order %}<th scope="col">{{ __('Order') }}</th>{% endif %}
+            <th scope="col">{{ __('File') }}</th>
+            <th scope="col">{{ __('Downloads left') }}</th>
+            <th scope="col">{{ __('Available until') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for download in downloads %}
+            <tr>
+                {% if show_order %}<td>#{{ download.order_number }}</td>{% endif %}
+                <td>
+                    {% if download.remaining is same as(0) %}{{ download.name }}{% else %}<a href="{{ download.url }}" rel="nofollow">{{ download.name }}</a>{% endif %}
+                    <br><small>{{ download.product }}</small>
+                </td>
+                <td>{{ download.remaining ?? __('No limit') }}</td>
+                <td>{{ download.expires_at ? download.expires_at|shop_date(false) : __('No end') }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

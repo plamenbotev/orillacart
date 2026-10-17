@@ -19,6 +19,22 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return $this->entityManager->find(Product::class, $id);
     }
 
+    public function findMany(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        /** @var list<Product> */
+        return $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Product::class, 'p')
+            ->where('p.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->getQuery()
+            ->getResult();
+    }
+
     public function save(Product $product): void
     {
         $this->entityManager->persist($product);

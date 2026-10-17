@@ -39,7 +39,8 @@ final readonly class ProductPostType implements PostTypeDefinition
             'menu_icon' => 'dashicons-products',
             'menu_position' => 57,
             'supports' => ['title', 'editor', 'thumbnail', 'excerpt', 'custom-fields', 'revisions'],
-            'has_archive' => 'products',
+            // The shop page lists products, with prices and choices; a theme's archive would not.
+            'has_archive' => false,
             'rewrite' => ['slug' => 'product', 'with_front' => false],
             'map_meta_cap' => true,
             'capabilities' => self::capabilities(),

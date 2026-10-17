@@ -31,6 +31,8 @@ final readonly class TwigFactory
             'strict_variables' => $debug,
             'debug' => $debug,
             'cache' => $this->cacheDir() ?? false,
+            // Recompile a template whose file changed: themes override templates without the plugin's version changing.
+            'auto_reload' => true,
         ]);
         if ($this->extension !== null) {
             $twig->addExtension($this->extension);

@@ -20,6 +20,11 @@ final class InMemoryProductRepository implements ProductRepository
         return $this->products[$id] ?? null;
     }
 
+    public function findMany(array $ids): array
+    {
+        return array_values(array_filter(array_map(fn(int $id): ?Product => $this->products[$id] ?? null, $ids)));
+    }
+
     public function save(Product $product): void
     {
         $this->ids->attributes($product->ownAttributes());

@@ -21,6 +21,7 @@ final readonly class WordPressProductContent implements ProductContent
 
     public function name(int $productId): string
     {
-        return $this->exists($productId) ? get_the_title($productId) : '';
+        // Plain text: the title filters add HTML entities, and templates and emails escape names themselves.
+        return $this->exists($productId) ? wp_strip_all_tags(html_entity_decode(get_the_title($productId), ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '';
     }
 }

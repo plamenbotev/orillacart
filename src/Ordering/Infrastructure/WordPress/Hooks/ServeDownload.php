@@ -6,7 +6,6 @@ namespace OrillaCart\Ordering\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
-use OrillaCart\Ordering\Infrastructure\WordPress\HomeOrderLinks;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
@@ -16,11 +15,13 @@ use OrillaCart\Shared\WordPress\AsHook;
 #[AsHook('template_redirect', priority: 0)]
 final readonly class ServeDownload
 {
+    public const string QUERY = 'orillacart_download';
+
     public function __construct(private Downloads $downloads) {}
 
     public function __invoke(): void
     {
-        $token = $_GET[HomeOrderLinks::DOWNLOAD_QUERY] ?? null;
+        $token = $_GET[self::QUERY] ?? null;
         if (!\is_string($token)) {
             return;
         }

@@ -18,4 +18,9 @@ final readonly class WordPressCsrfProtection implements CsrfProtection
     {
         return wp_verify_nonce($token, $action) !== false;
     }
+
+    public function newToken(string $action): string
+    {
+        return wp_create_nonce($action);
+    }
 }

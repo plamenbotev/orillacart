@@ -32,6 +32,7 @@ import {
 	type Status,
 } from './api';
 import { EMAIL_LABELS, STATUS_LABELS, money, when } from './labels';
+import { ProductPicker } from './ProductPicker';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -402,18 +403,22 @@ function NotesCard( { order, onSaved, onError }: CardProps ) {
 }
 
 function ItemsCard( { order, onSaved, onError }: CardProps ) {
-	const [ items, setItems ] = useState< EditedItem[] >(
+	// Each item with the name to show: the order's lines have one, picked products bring theirs.
+	const [ rows, setRows ] = useState< { item: EditedItem; name: string }[] >(
 		order.lines.map( ( line ) => ( {
-			product_id: line.product_id,
-			option_ids: line.option_ids,
-			quantity: line.quantity,
-			unit_price: line.unit_price,
+			item: {
+				product_id: line.product_id,
+				option_ids: line.option_ids,
+				quantity: line.quantity,
+				unit_price: line.unit_price,
+			},
+			name: line.name,
 		} ) )
 	);
-	const [ added, setAdded ] = useState( '' );
+	const items = rows.map( ( row ) => row.item );
 	const change = ( index: number, item: EditedItem ) =>
-		setItems(
-			items.map( ( current, i ) => ( i === index ? item : current ) )
+		setRows(
+			rows.map( ( row, i ) => ( i === index ? { ...row, item } : row ) )
 		);
 
 	return (
@@ -431,7 +436,7 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 				{ items.map( ( item, index ) => (
 					<Flex key={ index } align="flex-end">
 						<FlexItem isBlock>
-							{ order.lines[ index ]?.name ??
+							{ rows[ index ]?.name ??
 								sprintf(
 									/* translators: %d: product id */
 									__( 'Product %d', 'orillacart' ),
@@ -478,8 +483,8 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 								variant="tertiary"
 								isDestructive
 								onClick={ () =>
-									setItems(
-										items.filter( ( _, i ) => i !== index )
+									setRows(
+										rows.filter( ( _, i ) => i !== index )
 									)
 								}
 							>
@@ -488,43 +493,22 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 						</FlexItem>
 					</Flex>
 				) ) }
-				<Flex align="flex-end">
-					<FlexItem isBlock>
-						<TextControl
-							__next40pxDefaultSize
-							type="number"
-							label={ __(
-								'Add a product by its ID',
-								'orillacart'
-							) }
-							value={ added }
-							onChange={ setAdded }
-						/>
-					</FlexItem>
-					<FlexItem>
-						<Button
-							variant="secondary"
-							disabled={ ! ( Number.parseInt( added, 10 ) > 0 ) }
-							onClick={ () => {
-								setItems( [
-									...items,
-									{
-										product_id: Number.parseInt(
-											added,
-											10
-										),
-										option_ids: [],
-										quantity: 1,
-										unit_price: null,
-									},
-								] );
-								setAdded( '' );
-							} }
-						>
-							{ __( 'Add', 'orillacart' ) }
-						</Button>
-					</FlexItem>
-				</Flex>
+				<ProductPicker
+					onPick={ ( picked ) =>
+						setRows( [
+							...rows,
+							{
+								item: {
+									product_id: picked.product_id,
+									option_ids: picked.option_ids,
+									quantity: 1,
+									unit_price: null,
+								},
+								name: picked.name,
+							},
+						] )
+					}
+				/>
 				<Button
 					variant="primary"
 					disabled={ items.length === 0 }

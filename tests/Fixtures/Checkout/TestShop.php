@@ -8,6 +8,7 @@ use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Catalog\Application\DownloadService;
 use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Catalog\Application\ProductService;
+use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
 use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\OrderEditing;
@@ -92,6 +93,7 @@ final class TestShop
     public readonly MockClock $clock;
     public readonly InMemoryProductContent $content;
     public readonly ProductService $products;
+    public readonly ShopCatalog $catalog;
     public readonly StockService $stock;
     public readonly StockroomService $stockrooms;
     public readonly TaxGroupService $taxGroups;
@@ -144,6 +146,7 @@ final class TestShop
         $this->stockrooms = new StockroomService($stockroomRecords);
         $this->stock = new StockService(new InMemoryStockLevelRepository(), $stockroomRecords, $this->events);
         $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock);
+        $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock);
 
         $carrierRecords = new InMemoryCarrierRepository();
         $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups);

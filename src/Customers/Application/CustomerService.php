@@ -8,6 +8,7 @@ use OrillaCart\Customers\Application\Dto\CustomerPageView;
 use OrillaCart\Customers\Application\Dto\CustomerQuery;
 use OrillaCart\Customers\Application\Dto\CustomerSettingsView;
 use OrillaCart\Customers\Application\Dto\CustomerView;
+use OrillaCart\Customers\Application\Dto\RegisterAccount;
 use OrillaCart\Customers\Application\Dto\SaveAddresses;
 use OrillaCart\Customers\Application\Dto\UpdateCustomerSettings;
 use OrillaCart\Customers\Domain\AccountExists;
@@ -89,6 +90,24 @@ final readonly class CustomerService
     {
         $this->accounts->find($id) ?? throw new CustomerNotFound($id);
         $this->accounts->saveAddresses($id, $command->billing, $command->shippingAddress);
+
+        return $this->customer($id);
+    }
+
+    /**
+     * Makes a visitor's account and logs them in.
+     *
+     * @throws AccountExists
+     * @throws RuleViolation when the shop makes no accounts, or for a password that is too short
+     */
+    public function register(RegisterAccount $command): CustomerView
+    {
+        if (!$this->accountsOffered()) {
+            throw new RuleViolation('The shop does not make accounts.', 'orillacart_accounts_disabled');
+        }
+        $this->checkRegistration($command->email, $command->password);
+        $id = $this->accounts->register($command->email, $command->password, $command->firstName, $command->lastName);
+        $this->accounts->logIn($id);
 
         return $this->customer($id);
     }

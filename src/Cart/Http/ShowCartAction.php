@@ -24,6 +24,7 @@ final readonly class ShowCartAction implements RequestHandlerInterface
     {
         $result = $this->carts->cart($this->cookie->owner($request));
 
-        return $this->cookie->give($this->responder->ok($result->cart), $result->newToken, $request);
+        // Per browser: never from a shared cache. The storefront script reads it to correct cached pages' cart counts.
+        return $this->cookie->give($this->responder->ok($result->cart)->withHeader('Cache-Control', 'no-store, private'), $result->newToken, $request);
     }
 }

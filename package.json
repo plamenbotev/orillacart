@@ -7,17 +7,20 @@
 		"node": ">=22"
 	},
 	"scripts": {
-		"build": "wp-scripts build settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx attribute-sets=./assets/admin/attribute-sets/index.tsx stockrooms=./assets/admin/stockrooms/index.tsx product-editor=./assets/admin/product-editor/index.tsx shipping=./assets/admin/shipping/index.tsx payments=./assets/admin/payments/index.tsx orders=./assets/admin/orders/index.tsx customers=./assets/admin/customers/index.tsx emails=./assets/admin/emails/index.tsx --output-path=build/admin",
-		"start": "wp-scripts start settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx attribute-sets=./assets/admin/attribute-sets/index.tsx stockrooms=./assets/admin/stockrooms/index.tsx product-editor=./assets/admin/product-editor/index.tsx shipping=./assets/admin/shipping/index.tsx payments=./assets/admin/payments/index.tsx orders=./assets/admin/orders/index.tsx customers=./assets/admin/customers/index.tsx emails=./assets/admin/emails/index.tsx --output-path=build/admin",
-		"lint:js": "wp-scripts lint-js assets",
+		"build": "wp-scripts build settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx attribute-sets=./assets/admin/attribute-sets/index.tsx stockrooms=./assets/admin/stockrooms/index.tsx product-editor=./assets/admin/product-editor/index.tsx shipping=./assets/admin/shipping/index.tsx payments=./assets/admin/payments/index.tsx orders=./assets/admin/orders/index.tsx customers=./assets/admin/customers/index.tsx emails=./assets/admin/emails/index.tsx blocks=./assets/admin/blocks/index.tsx dataviews=./assets/admin/dataviews/index.ts --output-path=build/admin && wp-scripts build storefront=./assets/storefront/index.ts --output-path=build/storefront",
+		"start": "wp-scripts start settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx attribute-sets=./assets/admin/attribute-sets/index.tsx stockrooms=./assets/admin/stockrooms/index.tsx product-editor=./assets/admin/product-editor/index.tsx shipping=./assets/admin/shipping/index.tsx payments=./assets/admin/payments/index.tsx orders=./assets/admin/orders/index.tsx customers=./assets/admin/customers/index.tsx emails=./assets/admin/emails/index.tsx blocks=./assets/admin/blocks/index.tsx dataviews=./assets/admin/dataviews/index.ts --output-path=build/admin",
+		"lint:js": "wp-scripts lint-js assets tests/e2e playwright.config.js webpack.config.js",
 		"typecheck": "tsc --noEmit",
 		"test:js": "wp-scripts test-unit-js assets",
 		"env:start": "wp-env start",
 		"env:stop": "wp-env stop",
 		"test:integration": "wp-env run tests-cli --env-cwd=wp-content/plugins/orillacart env ORILLACART_WP_LOAD=/var/www/html/wp-load.php vendor/bin/phpunit --testsuite integration",
-		"db:diff": "wp-env run cli --env-cwd=wp-content/plugins/orillacart wp eval-file bin/make-migration.php"
+		"db:diff": "wp-env run cli --env-cwd=wp-content/plugins/orillacart wp eval-file bin/make-migration.php",
+		"start:storefront": "wp-scripts start storefront=./assets/storefront/index.ts --output-path=build/storefront",
+		"test:e2e": "wp-scripts test-playwright"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.64.1",
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/react": "^16.3.3",
 		"@testing-library/user-event": "^14.6.8",
@@ -25,9 +28,13 @@
 		"@types/react": "^19.3.0",
 		"@types/react-dom": "^19.3.0",
 		"@wordpress/api-fetch": "^7.57.0",
+		"@wordpress/block-editor": "^18.1.0",
+		"@wordpress/blocks": "^16.2.0",
 		"@wordpress/components": "^42.0.0",
 		"@wordpress/data": "^10.57.0",
 		"@wordpress/dataviews": "^20.0.0",
+		"@wordpress/dependency-extraction-webpack-plugin": "^6.57.0",
+		"@wordpress/e2e-test-utils-playwright": "^1.54.0",
 		"@wordpress/editor": "^15.2.0",
 		"@wordpress/element": "^9.0.0",
 		"@wordpress/env": "^11.17.0",

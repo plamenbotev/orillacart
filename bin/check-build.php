@@ -5,7 +5,8 @@ declare(strict_types=1);
 /*
  * Fails when the built plugin does not work after prefixing: the autoloader must resolve prefixed library
  * classes and the plugin's own, and the libraries that generate or reflect code at runtime (Twig compiles
- * templates, the serializer, validator and Doctrine read attributes) must still find their prefixed classes.
+ * templates, the serializer, validator and Doctrine read attributes) must still find their prefixed classes,
+ * and every shipped template must compile to code that names only prefixed classes.
  * Runs without WordPress. Usage: php bin/check-build.php <built-plugin-dir>
  */
 
@@ -20,6 +21,7 @@ use OrillaCart\Platform\Doctrine\EntityManagerFactory;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Serialization\ValidatorFactory;
+use OrillaCart\Platform\Twig\ShopExtension;
 use OrillaCart\Platform\Twig\TwigFactory;
 use OrillaCart\Platform\Twig\TwigRenderer;
 use OrillaCart\Settings\Application\Dto\UpdateSettings;
@@ -59,19 +61,46 @@ echo "Autoloader resolves library and plugin classes\n";
 // Rendered through the plugin's own factory, from a template in a temporary plugin folder.
 $plugin = sys_get_temp_dir() . '/orillacart-check-build-' . bin2hex(random_bytes(4));
 mkdir($plugin . '/' . TwigFactory::PLUGIN_FOLDER, 0o755, true);
-file_put_contents(
-    $plugin . '/' . TwigFactory::PLUGIN_FOLDER . '/check.twig',
-    '{% for item in items %}{{ item|upper }} {% endfor %}{{ html }}{{ "%.2f"|format(price) }}',
-);
+// Macros, imports and includes compile to code of their own, as do tests such as "in" and "starts with".
+$templates = [
+    'check.twig' => '{% import "macros.twig" as m %}{% for item in items %}{{ item|upper }} {% endfor %}{{ html }}'
+        . '{{ "%.2f"|format(price) }}{{ m.mark("a") }}{% include "part.twig" with {x: 1} %}'
+        . '{{ "a" in items ? "" : "-" }}{{ "mug" starts with "m" ? "!" : "" }}{{ items is empty ? "" : "." }}',
+    'macros.twig' => '{% macro mark(text) %}[{{ text }}]{% endmacro %}',
+    'part.twig' => '{% set y = x + 1 %}({{ y }})',
+];
+foreach ($templates as $name => $source) {
+    file_put_contents($plugin . '/' . TwigFactory::PLUGIN_FOLDER . '/' . $name, $source);
+}
 $renderer = new TwigRenderer(new TwigFactory(new PluginContext($plugin . '/orillacart.php', 'check'))->create());
 $html = $renderer->render('check.twig', ['items' => ['mug'], 'html' => '<b>', 'price' => 2.5]);
-unlink($plugin . '/' . TwigFactory::PLUGIN_FOLDER . '/check.twig');
+foreach (array_keys($templates) as $name) {
+    unlink($plugin . '/' . TwigFactory::PLUGIN_FOLDER . '/' . $name);
+}
 rmdir($plugin . '/' . TwigFactory::PLUGIN_FOLDER);
 rmdir($plugin);
-if ($html !== 'MUG &lt;b&gt;2.50') {
+if ($html !== 'MUG &lt;b&gt;2.50[a](2)-!.') {
     $fail('Twig rendered ' . var_export($html, true) . ' instead of the expected template output.');
 }
 echo "Twig compiles and renders templates\n";
+
+// The shipped templates use more of Twig: compile each and look for a class name left without the prefix.
+// The plugin's own extension names the functions and filters; compiling never calls them, so it needs no settings.
+$extension = new ReflectionClass(ShopExtension::class)->newInstanceWithoutConstructor();
+$shipped = new TwigFactory(new PluginContext($pluginDir . '/orillacart.php', 'check'), $extension)->create();
+$folder = $pluginDir . '/' . TwigFactory::PLUGIN_FOLDER;
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($folder, FilesystemIterator::SKIP_DOTS)) as $file) {
+    if (!$file instanceof SplFileInfo) {
+        continue;
+    }
+    $name = substr($file->getPathname(), strlen($folder) + 1);
+    $code = $shipped->compileSource($shipped->getLoader()->getSourceContext($name));
+    // Twig's classes outside the library's prefix; the plugin's own Platform\Twig namespace is fine.
+    if (preg_match('/(?<!Vendor\\\\)(?<!Platform\\\\)(?<![A-Za-z])Twig\\\\[A-Z]/', $code, $match) === 1) {
+        $fail(sprintf('The compiled %s names %s without the prefix.', $name, $match[0]));
+    }
+}
+echo "Every shipped template compiles to prefixed classes\n";
 
 // The serializer and validator read attributes from plugin DTOs; their class names were rewritten too.
 $serializers = new SerializerFactory();

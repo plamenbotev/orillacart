@@ -55,7 +55,7 @@ jobs:
       - run: npm run build
 
   integration:
-    name: Integration (wp-env)
+    name: Integration and end-to-end (wp-env)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -70,8 +70,16 @@ jobs:
           cache: npm
       - run: composer install --no-interaction --no-progress
       - run: npm ci
+      - run: npm run build
       - run: npx wp-env start
       - run: npm run test:integration
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: e2e-artifacts
+          path: artifacts/
 
   release:
     name: Release zip

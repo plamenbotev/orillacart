@@ -1,0 +1,61 @@
+{#
+ # The buying part of a product page, below the product's description.
+ #
+ # offer: the product (price, sale, stock, choices); variations: each variation with its price already
+ # formatted, for the script that shows the chosen one; cart_url: null when the shop has no cart page.
+ #}
+{% import 'storefront/_macros.html.twig' as shop %}
+<section class="orillacart-product" aria-label="{{ __('Buy') }}">
+    <p class="orillacart-product__price" data-orillacart-price>{{ shop.price(offer) }}</p>
+
+    {% if offer.sku %}
+        <p class="orillacart-product__sku">{{ __('SKU') }}: <span data-orillacart-sku>{{ offer.sku }}</span></p>
+    {% endif %}
+
+    <p class="orillacart-stock" data-orillacart-stock>
+        {%- if not offer.for_sale -%}
+            <span class="orillacart-stock--out">{{ __('Not available') }}</span>
+        {%- elseif offer.available is not null -%}
+            {{ __('%d in stock')|format(offer.available) }}
+        {%- endif -%}
+    </p>
+
+    {% if offer.for_sale and cart_url %}
+        <form class="orillacart-add-to-cart" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}" data-variations="{{ variations|json_encode }}">
+            <input type="hidden" name="product_id" value="{{ offer.id }}">
+            {% for attribute in offer.attributes %}
+                <p class="orillacart-field">
+                    <label for="orillacart-attribute-{{ attribute.id }}">
+                        {{ attribute.name }}{% if attribute.required or offer.variations %} <span aria-hidden="true">*</span>{% endif %}
+                    </label>
+                    <select id="orillacart-attribute-{{ attribute.id }}" name="option_ids" data-orillacart-option{{ attribute.required or offer.variations ? ' required' }}>
+                        <option value="">{{ attribute.required or offer.variations ? __('Choose an option') : __('None') }}</option>
+                        {% for option in attribute.options %}
+                            <option value="{{ option.id }}">
+                                {{- option.name -}}
+                                {%- if not offer.variations and not attribute.price_hidden and option.adjustment != '0' %} ({{ option.adjustment starts with '-' ? '' : '+' }}{{ option.adjustment|money }}){% endif -%}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </p>
+            {% endfor %}
+            <div class="orillacart-add-to-cart__buy">
+                <p class="orillacart-field orillacart-field--quantity">
+                    <label for="orillacart-quantity-{{ offer.id }}">{{ __('Quantity') }}</label>
+                    <input id="orillacart-quantity-{{ offer.id }}" type="number" name="quantity" value="1" min="1" max="{{ offer.available ?? 999 }}" step="1" inputmode="numeric" required>
+                </p>
+                <button type="submit" class="wp-element-button orillacart-button">{{ __('Add to cart') }}</button>
+            </div>
+            <p class="orillacart-message" role="status" data-orillacart-message></p>
+        </form>
+    {% endif %}
+
+    {% if offer.downloads %}
+        <div class="orillacart-product__downloads">
+            <h2 class="orillacart-heading">{{ __('Files you get') }}</h2>
+            <ul>
+                {% for name in offer.downloads %}<li>{{ name }}</li>{% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</section>

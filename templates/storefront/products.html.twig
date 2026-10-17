@@ -1,0 +1,74 @@
+{#
+ # The shop: products in a grid, with categories, search, sorting and pages.
+ #
+ # products: [{offer, url, image (HTML), simple}]; categories: [{name, url, current}]; all_url; search; sort;
+ # sorts: {value: label}; page; pages; page_urls: {number: url}; columns; cart_url (null without a cart page).
+ #}
+{% import 'storefront/_macros.html.twig' as shop %}
+<div class="orillacart-products">
+    {% if categories %}
+        <nav class="orillacart-categories" aria-label="{{ __('Product categories') }}">
+            <ul>
+                <li><a href="{{ all_url }}"{{ current_category is empty ? ' aria-current="page"' }}>{{ __('All products') }}</a></li>
+                {% for category in categories %}
+                    <li><a href="{{ category.url }}"{{ category.current ? ' aria-current="page"' }}>{{ category.name }}</a></li>
+                {% endfor %}
+            </ul>
+        </nav>
+    {% endif %}
+
+    <form class="orillacart-products__filters" method="get" action="{{ base_url }}" role="search">
+        {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
+        <p class="orillacart-field">
+            <label for="orillacart-product-search">{{ __('Search products') }}</label>
+            <input id="orillacart-product-search" type="search" name="product-search" value="{{ search }}">
+        </p>
+        <p class="orillacart-field">
+            <label for="orillacart-product-sort">{{ __('Sort by') }}</label>
+            <select id="orillacart-product-sort" name="sort">
+                {% for value, label in sorts %}
+                    <option value="{{ value }}"{{ value == sort ? ' selected' }}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </p>
+        <button type="submit" class="wp-element-button orillacart-button">{{ __('Show') }}</button>
+    </form>
+
+    {% if products %}
+        <ul class="orillacart-products__grid" style="--orillacart-columns: {{ columns }}">
+            {% for product in products %}
+                <li class="orillacart-product-card">
+                    <a class="orillacart-product-card__link" href="{{ product.url }}">
+                        {% if product.image %}{{ product.image|raw }}{% else %}<span class="orillacart-product-card__no-image" aria-hidden="true"></span>{% endif %}
+                        <h2 class="orillacart-product-card__name">{{ product.offer.name }}</h2>
+                    </a>
+                    <p class="orillacart-product-card__price">{{ shop.price(product.offer) }}</p>
+                    {% if not product.offer.for_sale %}
+                        <p class="orillacart-stock orillacart-stock--out">{{ __('Not available') }}</p>
+                    {% elseif product.simple and cart_url %}
+                        <form class="orillacart-add-to-cart orillacart-add-to-cart--card" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}">
+                            <input type="hidden" name="product_id" value="{{ product.offer.id }}">
+                            <input type="hidden" name="quantity" value="1">
+                            <button type="submit" class="wp-element-button orillacart-button">{{ __('Add to cart') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></button>
+                            <p class="orillacart-message" role="status" data-orillacart-message></p>
+                        </form>
+                    {% else %}
+                        <a class="wp-element-button orillacart-button" href="{{ product.url }}">{{ __('Choose options') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></a>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+
+        {% if pages > 1 %}
+            <nav class="orillacart-pagination" aria-label="{{ __('Product pages') }}">
+                <ul>
+                    {% for number, url in page_urls %}
+                        <li>{% if number == page %}<span aria-current="page">{{ number }}</span>{% else %}<a href="{{ url }}">{{ number }}</a>{% endif %}</li>
+                    {% endfor %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+        <p class="orillacart-empty">{{ search ? __('No products match your search.') : __('There are no products here yet.') }}</p>
+    {% endif %}
+</div>

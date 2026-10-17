@@ -1,0 +1,87 @@
+{#
+ # Pieces the storefront templates share. A theme can override this file like any other (orillacart/storefront/_macros.html.twig).
+ #}
+
+{# A product's price today: a sale shows the regular price struck through; products with variations show where prices start. #}
+{% macro price(offer) %}
+    {%- if offer.highest_price -%}
+        <span class="orillacart-price">{{ __('From %s')|format(offer.price|money) }}</span>
+    {%- elseif offer.regular_price -%}
+        <span class="orillacart-price orillacart-price--sale"><del aria-label="{{ __('Regular price') }}">{{ offer.regular_price|money }}</del> <ins aria-label="{{ __('Sale price') }}">{{ offer.price|money }}</ins></span>
+    {%- else -%}
+        <span class="orillacart-price">{{ offer.price|money }}</span>
+    {%- endif -%}
+{% endmacro %}
+
+{% macro status(status) %}
+    {%- set labels = {
+        pending_payment: __('Waiting for payment'),
+        on_hold: __('On hold'),
+        processing: __('Processing'),
+        shipped: __('Shipped'),
+        completed: __('Completed'),
+        cancelled: __('Cancelled'),
+        failed: __('Payment failed'),
+        refunded: __('Refunded'),
+    } -%}
+    <span class="orillacart-status orillacart-status--{{ status }}">{{ labels[status] ?? status }}</span>
+{%- endmacro %}
+
+{#
+ # Address fields named for the REST API: prefix.first_name and so on. The state list is filled for the chosen
+ # country; the storefront script refills it when the country changes.
+ #}
+{% macro address(prefix, title, address, countries, states, section) %}
+    {%- set country = address.country ?? '' -%}
+    {%- set country_states = states[country] ?? [] -%}
+    <fieldset class="orillacart-address" data-orillacart-address="{{ prefix }}">
+        <legend>{{ title }}</legend>
+        <div class="orillacart-address__row">
+            {{ _self.input(prefix, 'first_name', __('First name'), address.first_name ?? '', section ~ ' given-name') }}
+            {{ _self.input(prefix, 'last_name', __('Last name'), address.last_name ?? '', section ~ ' family-name') }}
+        </div>
+        {{ _self.input(prefix, 'street', __('Street address'), address.street ?? '', section ~ ' street-address') }}
+        <div class="orillacart-address__row">
+            {{ _self.input(prefix, 'city', __('City'), address.city ?? '', section ~ ' address-level2') }}
+            {{ _self.input(prefix, 'postcode', __('Postcode'), address.postcode ?? '', section ~ ' postal-code') }}
+        </div>
+        <div class="orillacart-address__row">
+            <p class="orillacart-field">
+                <label for="{{ prefix }}-country">{{ __('Country') }} <span aria-hidden="true">*</span></label>
+                <select id="{{ prefix }}-country" name="{{ prefix }}.country" autocomplete="{{ section }} country" required data-orillacart-country data-orillacart-field="{{ prefix }}.country">
+                    <option value="">{{ __('Choose a country') }}</option>
+                    {% for option in countries %}
+                        <option value="{{ option.code }}"{{ option.code == country ? ' selected' }}>{{ option.name }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+            <p class="orillacart-field" data-orillacart-state-field{{ country_states is empty ? ' hidden' }}>
+                <label for="{{ prefix }}-state">{{ __('State') }} <span aria-hidden="true">*</span></label>
+                <select id="{{ prefix }}-state" name="{{ prefix }}.state" autocomplete="{{ section }} address-level1" data-orillacart-state data-orillacart-field="{{ prefix }}.state"{{ country_states is empty ? ' disabled' : ' required' }}>
+                    <option value="">{{ __('Choose a state') }}</option>
+                    {% for option in country_states %}
+                        <option value="{{ option.code }}"{{ option.code == (address.state ?? '') ? ' selected' }}>{{ option.name }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+        </div>
+        {{ _self.input(prefix, 'phone', __('Phone'), address.phone ?? '', section ~ ' tel', 'tel') }}
+    </fieldset>
+{% endmacro %}
+
+{% macro input(prefix, name, label, value, autocomplete, type = 'text') %}
+    <p class="orillacart-field">
+        <label for="{{ prefix }}-{{ name }}">{{ label }} <span aria-hidden="true">*</span></label>
+        <input id="{{ prefix }}-{{ name }}" type="{{ type }}" name="{{ prefix }}.{{ name }}" value="{{ value }}" autocomplete="{{ autocomplete }}" required data-orillacart-field="{{ prefix }}.{{ name }}">
+    </p>
+{% endmacro %}
+
+{% macro address_text(address, country_names = {}) %}
+    <address class="orillacart-address-text">
+        {{ address.first_name }} {{ address.last_name }}<br>
+        {{ address.street }}<br>
+        {{ address.postcode }} {{ address.city }}{% if address.state %}, {{ address.state }}{% endif %}<br>
+        {{ country_names[address.country] ?? address.country }}<br>
+        {{ address.phone }}
+    </address>
+{% endmacro %}

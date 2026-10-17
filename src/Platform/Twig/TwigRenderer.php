@@ -40,6 +40,7 @@ final readonly class TwigRenderer implements TemplateRenderer
             return $context;
         }
 
-        return array_map(fn(mixed $value): mixed => \is_object($value) ? $this->normalizer->normalize($value, 'json') : $value, $context);
+        // Arrays too: they may hold view DTOs, such as a list of products with their links.
+        return array_map(fn(mixed $value): mixed => \is_object($value) || \is_array($value) ? $this->normalizer->normalize($value, 'json') : $value, $context);
     }
 }

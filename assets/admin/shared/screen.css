@@ -1,0 +1,47 @@
+/*
+ * Layout shared by the shop's admin screens. The WordPress components no longer space form fields themselves,
+ * and stretched to the full screen width forms are hard to read.
+ */
+[id^="orillacart-admin-"] {
+	max-width: 1280px;
+}
+
+[id^="orillacart-admin-"] .components-card-body .components-base-control,
+[id^="orillacart-admin-"] .components-card-body .components-checkbox-control,
+[id^="orillacart-admin-"] .components-card-body .components-toggle-control,
+[id^="orillacart-admin-"] .components-card-body .components-form-token-field {
+	margin-bottom: 16px;
+}
+
+/* Fields side by side line up at the bottom; nested controls keep their own spacing. */
+[id^="orillacart-admin-"] .components-card-body .components-flex .components-base-control,
+[id^="orillacart-admin-"] .components-card-body .components-base-control .components-base-control {
+	margin-bottom: 0;
+}
+
+[id^="orillacart-admin-"] .components-card-body > .components-flex {
+	margin-bottom: 16px;
+}
+
+[id^="orillacart-admin-"] .components-card + .components-card,
+[id^="orillacart-admin-"] .components-card + .components-notice,
+[id^="orillacart-admin-"] .components-notice + .components-card {
+	margin-top: 24px;
+}
+
+[id^="orillacart-admin-"] .components-card form {
+	max-width: 760px;
+}
+
+[id^="orillacart-admin-"] .components-card-header h2 {
+	margin: 0;
+	font-size: 1.1em;
+}
+
+[id^="orillacart-admin-"] > .components-notice {
+	margin: 0 0 16px;
+}
+
+[id^="orillacart-admin-"] .components-card + .dataviews-wrapper {
+	margin-top: 24px;
+}

@@ -16,15 +16,13 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 final readonly class CartCookie
 {
-    public const string NAME = 'orillacart_cart';
+    public const string NAME = CartOwner::COOKIE;
 
     public function __construct(private Authorization $authorization) {}
 
     public function owner(ServerRequestInterface $request): CartOwner
     {
-        $token = $request->getCookieParams()[self::NAME] ?? null;
-
-        return new CartOwner(\is_string($token) && preg_match('/^[a-f0-9]{64}$/', $token) === 1 ? $token : null, $this->authorization->userId());
+        return CartOwner::fromCookie($request->getCookieParams()[self::NAME] ?? null, $this->authorization->userId());
     }
 
     public function give(ResponseInterface $response, ?string $token, ServerRequestInterface $request): ResponseInterface

@@ -1,0 +1,62 @@
+{#
+ # The checkout's summary: the items, how to ship, the totals and how to pay. Inside the checkout form.
+ #}
+<h2 class="orillacart-heading">{{ __('Your order') }}</h2>
+<table class="orillacart-table orillacart-checkout__lines">
+    <thead>
+        <tr><th scope="col">{{ __('Product') }}</th><th scope="col">{{ __('Total') }}</th></tr>
+    </thead>
+    <tbody>
+        {% for line in summary.lines %}
+            <tr>
+                <td>
+                    {{ line.name }} &times; {{ line.quantity }}
+                    {% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}
+                </td>
+                <td>{{ line.total|money(summary.currency) }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr><th scope="row">{{ __('Subtotal') }}</th><td>{{ summary.subtotal|money(summary.currency) }}</td></tr>
+        {% if summary.needs_shipping %}
+            <tr><th scope="row">{{ __('Shipping') }}</th><td>{{ summary.rate_id ? summary.shipping|money(summary.currency) : '—' }}</td></tr>
+        {% endif %}
+        {% for tax in summary.taxes %}
+            <tr><th scope="row">{{ tax.name }} ({{ tax.percent }}%)</th><td>{{ tax.total|money(summary.currency) }}</td></tr>
+        {% endfor %}
+        <tr class="orillacart-total"><th scope="row">{{ __('Total') }}</th><td>{{ summary.total|money(summary.currency) }}</td></tr>
+    </tfoot>
+</table>
+
+{% if summary.needs_shipping %}
+    <fieldset class="orillacart-choices" data-orillacart-field="rate_id">
+        <legend>{{ __('Shipping') }}</legend>
+        {% for option in summary.shipping_options %}
+            <p class="orillacart-choice">
+                <input id="orillacart-rate-{{ option.rate_id }}" type="radio" name="rate_id" value="{{ option.rate_id }}"{{ option.rate_id == summary.rate_id ? ' checked' }} data-orillacart-rate>
+                <label for="orillacart-rate-{{ option.rate_id }}">{{ option.carrier }}: {{ option.name }} <strong>{{ option.total|money(summary.currency) }}</strong></label>
+            </p>
+        {% else %}
+            <p class="orillacart-notice">{{ address_known ? __('We cannot ship your order to this address.') : __('Enter your address to see the ways to ship.') }}</p>
+        {% endfor %}
+    </fieldset>
+{% endif %}
+
+{% if summary.needs_payment %}
+    <fieldset class="orillacart-choices" data-orillacart-field="payment">
+        <legend>{{ __('Payment') }}</legend>
+        {% for method in summary.payment_methods %}
+            <div class="orillacart-choice">
+                <input id="orillacart-payment-{{ method.gateway }}" type="radio" name="payment" value="{{ method.gateway }}"{{ loop.first ? ' checked' }}>
+                <label for="orillacart-payment-{{ method.gateway }}">{{ method.name }}</label>
+                {% if method.instructions %}<p class="orillacart-choice__note">{{ method.instructions|nl2br }}</p>{% endif %}
+            </div>
+        {% else %}
+            <p class="orillacart-notice">{{ __('There is no way to pay for an order to this address.') }}</p>
+        {% endfor %}
+    </fieldset>
+{% endif %}
+
+<p class="orillacart-message" role="alert" data-orillacart-message></p>
+<button type="submit" class="wp-element-button orillacart-button orillacart-checkout__place">{{ __('Place order') }}</button>
