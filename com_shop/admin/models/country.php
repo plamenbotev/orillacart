@@ -21,7 +21,7 @@ class countryModel extends model {
 
         $start = $input->get('limitstart', 0, "INT");
         $offset = $input->get('limit', 10, "INT");
-        $keyword = $this->db->secure($input->get('keyword', '', "WORD"));
+        $keyword = $this->db->escapeLike($input->get('keyword', '', "WORD"));
         $where = array();
         $where[] = '1';
 
@@ -85,7 +85,7 @@ class countryModel extends model {
             return (array) $this->db->loadObjectList();
         } else if ($this->is_country($c)) {
 
-            $this->db->setQuery("SELECT * FROM `#_shop_state` WHERE country_id = '{$c}' ORDER BY state_name ASC");
+            $this->db->setQuery("SELECT * FROM `#_shop_state` WHERE country_id = '" . $this->db->secure($c) . "' ORDER BY state_name ASC");
 
 
             if (!$this->db->getResource()) {
@@ -103,7 +103,7 @@ class countryModel extends model {
 
         $start = $input->get('limitstart', 0, "INT");
         $offset = $input->get('limit', 10, "INT");
-        $keyword = $this->db->secure($input->get('keyword', '', "WORD"));
+        $keyword = $this->db->escapeLike($input->get('keyword', '', "WORD"));
         $country_id = $input->get('country_id', null, "WORD");
 
 
@@ -116,7 +116,7 @@ class countryModel extends model {
             throw new Exception(__('A country ID could not be found', 'com_shop'));
         } else {
 
-            $where[] = " AND country_id = '{$country_id}' ";
+            $where[] = " AND country_id = '" . $this->db->secure($country_id) . "' ";
         }
 
 

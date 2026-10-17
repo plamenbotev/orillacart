@@ -116,6 +116,7 @@ class attributesModel extends model {
     }
 
     function getattributes($set_id, $object = 'set') {
+        $set_id = (int) $set_id;
 
         if (!in_array($object, array('set', 'product')))
             throw new Exception(__("Unknown object", 'com_shop'));

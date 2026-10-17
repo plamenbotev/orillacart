@@ -43,7 +43,7 @@ class taxModel extends model {
 
         $start = $input->get('limitstart', 0, "INT");
         $offset = $input->get('limit', 10, "INT");
-        $keyword = $this->db->secure($input->get('keyword', '', "WORD"));
+        $keyword = $this->db->escapeLike($input->get('keyword', '', "WORD"));
         $where = array();
         $where[] = '1';
 

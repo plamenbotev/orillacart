@@ -1066,7 +1066,9 @@ final class orillacart_actions {
 
 
 
-        $post_ids = $wpdb->get_col($wpdb->prepare('SELECT post_id FROM ' . $wpdb->postmeta . ' WHERE meta_key IN (' . '"' . implode('","', $search_fields) . '"' . ') AND meta_value LIKE "%%%s%%"', esc_attr($_GET['s'])));
+        $like = '%' . $wpdb->esc_like(wp_unslash((string) $wp->query_vars['s'])) . '%';
+
+        $post_ids = $wpdb->get_col($wpdb->prepare('SELECT post_id FROM ' . $wpdb->postmeta . ' WHERE meta_key IN (' . implode(',', array_fill(0, count($search_fields), '%s')) . ') AND meta_value LIKE %s', array_merge($search_fields, array($like))));
 
 
         $post_ids = array_merge($post_ids, $wpdb->get_col($wpdb->prepare('
@@ -1075,18 +1077,18 @@ final class orillacart_actions {
 		LEFT JOIN ' . $wpdb->postmeta . ' ON ' . $wpdb->posts . '.ID = ' . $wpdb->postmeta . '.post_id
 		LEFT JOIN ' . $wpdb->users . ' ON ' . $wpdb->postmeta . '.meta_value = ' . $wpdb->users . '.ID
 		WHERE 
-			post_excerpt 	LIKE "%%%1$s%%" OR
-			post_title 		LIKE "%%%1$s%%" OR
+			post_excerpt 	LIKE %s OR
+			post_title 		LIKE %s OR
 			(
 				meta_key		= "_customer_id" AND
 				(
-					user_login		LIKE "%%%1$s%%" OR
-					user_nicename	LIKE "%%%1$s%%" OR
-					user_email		LIKE "%%%1$s%%" OR
-					display_name	LIKE "%%%1$s%%"
+					user_login		LIKE %s OR
+					user_nicename	LIKE %s OR
+					user_email		LIKE %s OR
+					display_name	LIKE %s
 				)
 			)
-		', esc_attr($_GET['s'])
+		', array_fill(0, 6, $like)
         )));
 
         // Add ID

@@ -149,6 +149,13 @@ class wpdbDriver extends database {
         return $this->conn->remove_placeholder_escape($this->conn->_real_escape((string) $data));
     }
 
+    /**
+     * Escape a value for a LIKE pattern inside quotes, including its % and _ wildcards.
+     */
+    public function escapeLike($data) {
+        return $this->secure($this->conn->esc_like((string) $data));
+    }
+
     public function loadassoc() {
 
         if (count($this->rows) == 1) {

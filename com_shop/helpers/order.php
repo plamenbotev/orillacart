@@ -135,7 +135,7 @@ class order {
         foreach ((array) $used as $k => $v) {
 
             $db->setQuery("UPDATE " . $table . " SET stock = stock - " . (int) $v . "
-                                   WHERE " . $o_name . " = " . $oid . " AND stockroom_id = " . (int) $k . " LIMIT 1");
+                                   WHERE " . $o_name . " = " . (int) $oid . " AND stockroom_id = " . (int) $k . " LIMIT 1");
 
             if (!$db->getResource()) {
                 throw new Exception($db->getErrorString());

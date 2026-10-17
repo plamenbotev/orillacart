@@ -35,6 +35,7 @@ class shippingModel extends model {
     }
 
     public function list_rates($cid) {
+        $cid = (int) $cid;
 
         $input = Factory::getApplication()->getInput();
         $start = $input->get('limitstart', 0, "INT");

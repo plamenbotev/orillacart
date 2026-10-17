@@ -64,19 +64,19 @@ final class cart {
             $switch = array_search(min($tmparr), $tmparr);
             switch ($switch) {
                 case 0:
-                    $length_q[$i] = $data->product_length * $p->qty;
+                    $length_q[$i] = (float) $data->product_length * (int) $p->qty;
                     $width_q[$i] = $data->product_width;
                     $height_q[$i] = $data->product_height;
                     break;
                 case 1:
                     $length_q[$i] = $data->product_length;
-                    $width_q[$i] = $data->product_width * $p->qty;
+                    $width_q[$i] = (float) $data->product_width * (int) $p->qty;
                     $height_q[$i] = $data->product_height;
                     break;
                 case 2:
                     $length_q[$i] = $data->product_length;
                     $width_q[$i] = $data->product_width;
-                    $height_q[$i] = $data->product_height * $p->qty;
+                    $height_q[$i] = (float) $data->product_height * (int) $p->qty;
                     break;
             }
         }
@@ -133,12 +133,12 @@ final class cart {
             if ($p->type != 'regular') {
                 continue;
             }
-            $totalQnt += $o->qty;
-            $totalWeight += $p->product_weight * $o->qty;
-            $totalVolume += $p->product_volume * $o->qty;
-            $totalLength += $p->product_length * $o->qty;
-            $totalheight += $p->product_height * $o->qty;
-            $totalwidth += $p->product_width * $o->qty;
+            $totalQnt += (int) $o->qty;
+            $totalWeight += (float) $p->product_weight * (int) $o->qty;
+            $totalVolume += (float) $p->product_volume * (int) $o->qty;
+            $totalLength += (float) $p->product_length * (int) $o->qty;
+            $totalheight += (float) $p->product_height * (int) $o->qty;
+            $totalwidth += (float) $p->product_width * (int) $o->qty;
         }
 
         $ret = array(
@@ -365,7 +365,7 @@ final class cart {
             $db->startTransaction();
 
 
-            $db->setQuery("UPDATE #_shop_cart SET qty = {$qty} WHERE session_id = '" . $db->secure(session_id()) . "' AND sess_group = " . (int) $k);
+            $db->setQuery("UPDATE #_shop_cart SET qty = " . (int) $qty . " WHERE session_id = '" . $db->secure(session_id()) . "' AND sess_group = " . (int) $k);
 
             if (!$db->getResource()) {
 
@@ -695,7 +695,9 @@ final class cart {
         $country = $customer->get('billing_country', '');
 
 
-        $wherecountry = '(FIND_IN_SET( "' . $country . '", countries ) OR countries="0" OR countries="" OR countries IS NULL )';
+        global $wpdb;
+        // the billing country comes from the posted checkout form
+        $wherecountry = $wpdb->prepare('(FIND_IN_SET( %s, countries ) OR countries="0" OR countries="" OR countries IS NULL )', (string) $country);
 
         $db->setQuery("SELECT class FROM `#_shop_methods` WHERE type='payment' AND {$wherecountry} ORDER BY method_order ASC, method_id DESC");
         if (!$db->getResource()) {

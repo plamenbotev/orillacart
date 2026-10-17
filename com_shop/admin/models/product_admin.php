@@ -145,7 +145,8 @@ class product_adminModel extends model {
             $p->load((int) $input->post['id']);
         }
         $p->bind($input->post);
-
+        // the id ends up in the queries below, bind() copied it from the request
+        $p->id = (int) $p->id;
 
         if (!$p->id)
             return false;
@@ -559,6 +560,7 @@ class product_adminModel extends model {
     }
 
     public function getProductAttributes($pid) {
+        $pid = (int) $pid;
 
 
 
@@ -602,6 +604,7 @@ class product_adminModel extends model {
     }
 
     public function variation_exists($parent, array $props) {
+        $parent = (int) $parent;
         foreach ($props as $k => $v) {
             if (!is_numeric($v) || empty($v))
                 unset($props[$k]);

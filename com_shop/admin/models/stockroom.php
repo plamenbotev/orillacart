@@ -36,7 +36,10 @@ class stockroomModel extends model {
             }
         }
 
-        $this->db->setQuery("SELECT * FROM `" . self::table . "` WHERE 1 ORDER BY {$opts->order_by} {$opts->order_dir} LIMIT {$opts->start},{$opts->limit}");
+        // identifiers can't be escaped, only the known columns and directions are accepted
+        $order_by = in_array($opts->order_by, array('id', 'name', 'delivery_time', 'min_del_time', 'max_del_time', 'published'), true) ? $opts->order_by : 'name';
+        $order_dir = strtoupper((string) $opts->order_dir) === 'DESC' ? 'DESC' : 'ASC';
+        $this->db->setQuery("SELECT * FROM `" . self::table . "` WHERE 1 ORDER BY `{$order_by}` {$order_dir} LIMIT " . (int) $opts->start . "," . (int) $opts->limit);
 
 
 
@@ -68,7 +71,7 @@ class stockroomModel extends model {
 
         $keyword = $input->get('keyword', null, 'WORD');
 
-        $keyword = $this->db->secure($keyword);
+        $keyword = $this->db->escapeLike($keyword);
         $filter = $input->get('filter', array(), 'ARRAY');
         if(isset($filter['cats'])){
 			$cats = ArrayHelper::toInt($filter['cats']);
@@ -238,7 +241,7 @@ class stockroomModel extends model {
         if (empty($ids))
             return false;
 
-        $this->db->setQuery("DELETE FROM `" . self::table . "` WHERE id IN(" . implode(',', (array) $ids) . ") ");
+        $this->db->setQuery("DELETE FROM `" . self::table . "` WHERE id IN(" . implode(',', array_map('intval', (array) $ids)) . ") ");
 
         if ($this->db->getResource())
             return true;

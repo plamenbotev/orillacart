@@ -44,7 +44,7 @@ class countryModel extends model {
         if (is_numeric($id)) {
             $this->db->setQuery("SELECT count(*) FROM #_shop_state WHERE state_id = " . (int) $id);
         } else {
-            $this->db->setQuery("SELECT count(*) FROM #_shop_state WHERE state_2_code = " . $this->db->secure($id));
+            $this->db->setQuery("SELECT count(*) FROM #_shop_state WHERE state_2_code = '" . $this->db->secure($id) . "'");
         }
         return (int) $this->db->loadResult();
     }
@@ -58,7 +58,7 @@ class countryModel extends model {
         if (empty($ids)) {
             $where = "1";
         } else {
-            $where = "country_2_code IN(" . implode(',', $ids) . ")";
+            $where = "country_2_code IN('" . implode("','", $ids) . "')";
         }
 
         $que = "SELECT  * FROM `#_shop_country` WHERE " . $where . " ORDER BY country_name ASC ";
@@ -76,7 +76,7 @@ class countryModel extends model {
 
         if (is_array($c)) {
             foreach ($c as $k => $v) {
-                $c[$k] = "'" . $this->db->seure($v) . "'";
+                $c[$k] = "'" . $this->db->secure($v) . "'";
             }
 
             $this->db->setQuery("SELECT * FROM `#_shop_state` WHERE country_id IN(" . implode(',', $c) . ") ORDER BY country_id, state_name ASC");

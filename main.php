@@ -64,7 +64,14 @@ if (!is_null($prev)) {
 function unhandledExceptions($e) {
     @ob_end_clean();
     do_action("before_exception_print", $e);
-    wp_die("Uncaught exception: <pre>" . $e->getMessage() . "</pre>");
+
+    error_log("OrillaCart uncaught " . get_class($e) . ": " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+
+    // the message can carry SQL and paths, show it only to admins or when WP is set to display errors
+    $show = (defined("WP_DEBUG") && WP_DEBUG && (!defined("WP_DEBUG_DISPLAY") || WP_DEBUG_DISPLAY)) || (function_exists("current_user_can") && current_user_can("manage_options"));
+    $message = $show ? "Uncaught exception: <pre>" . esc_html($e->getMessage()) . "</pre>" : __("Something went wrong. Please try again later.", "com_shop");
+
+    wp_die($message, "", array("response" => 500));
     do_action("after_exception_print", $e);
     exit;
 }

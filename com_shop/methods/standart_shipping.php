@@ -189,7 +189,7 @@ class standart_shipping implements SelfRegisterable {
                 "totalvolume" => self::$order->volume,
                 "totallength" => self::$order->length,
                 "totalheight" => self::$order->height,
-                "totalwidth" => self::$order->weight
+                "totalwidth" => self::$order->width
             );
 
             return $res;
@@ -319,17 +319,27 @@ class standart_shipping implements SelfRegisterable {
 
 
 
+        global $wpdb;
+
+        // country and state come from the posted checkout form or order meta, the measures from order meta
+        $volume = (float) $volume;
+        $order_subtotal = (float) $order_subtotal;
+        $weighttotal = (float) $weighttotal;
+        foreach (array('totalwidth', 'totallength', 'totalheight') as $dim) {
+            $totaldimention[$dim] = isset($totaldimention[$dim]) ? (float) $totaldimention[$dim] : 0.0;
+        }
+
         foreach ((array) $rows as $r) {
 
 
             if ($country) {
-                $wherecountry = $conditions[$r->params->get('country', 0)][0] . ' ( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $country . '", shipping_rate_country ) OR shipping_rate_country="0" OR shipping_rate_country="" OR shipping_rate_country IS NULL)';
+                $wherecountry = $conditions[$r->params->get('country', 0)][0] . ' ( ' . $conditions[$r->params->get('country', 0)][1] . $wpdb->prepare(' FIND_IN_SET( %s, shipping_rate_country )', (string) $country) . ' OR shipping_rate_country="0" OR shipping_rate_country="" OR shipping_rate_country IS NULL)';
             } else {
                 $wherecountry = ''; //$conditions[$r->params->get('country', 0)][0].' ( ' . $conditions[$r->params->get('country', 0)][1] . ' FIND_IN_SET( "' . $params->get('shop_country') . '", shipping_rate_country ) )';
             }
 
             if ($state) {
-                $wherestate = $conditions[$r->params->get('state', 0)][0] . ' ( ' . $conditions[$r->params->get('state', 0)][1] . ' FIND_IN_SET( "' . $state . '", shipping_rate_state ) OR shipping_rate_state="0" OR shipping_rate_state="" OR shipping_rate_state IS NULL )';
+                $wherestate = $conditions[$r->params->get('state', 0)][0] . ' ( ' . $conditions[$r->params->get('state', 0)][1] . $wpdb->prepare(' FIND_IN_SET( %s, shipping_rate_state )', (string) $state) . ' OR shipping_rate_state="0" OR shipping_rate_state="" OR shipping_rate_state IS NULL )';
             } else {
                 $wherestate = '';
             }
@@ -338,7 +348,7 @@ class standart_shipping implements SelfRegisterable {
             $sql = "SELECT sr.*,c.* FROM `#_shop_shipping_rate` as sr
 			
 			INNER JOIN `#_shop_methods` as c ON sr.carrier = c.method_id
-			WHERE sr.carrier = {$r->method_id} 
+			WHERE sr.carrier = " . (int) $r->method_id . " 
                         
                         {$wherecountry}
                         {$wherestate}

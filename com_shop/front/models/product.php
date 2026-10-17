@@ -343,6 +343,7 @@ class productModel extends model {
     }
 
     public function getProductAttributes($pid) {
+        $pid = (int) $pid;
 
         static $res = null;
         if (is_object($res) && $res->pid == $pid) {

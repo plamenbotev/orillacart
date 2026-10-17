@@ -795,7 +795,7 @@ class ordersModel extends Model {
 
         $res = array();
 
-        $this->db->setQuery("SELECT ID,user_nicename as nicename FROM #_users WHERE user_nicename LIKE '" . $this->db->secure($str) . "%'");
+        $this->db->setQuery("SELECT ID,user_nicename as nicename FROM #_users WHERE user_nicename LIKE '" . $this->db->escapeLike($str) . "%'");
         $rows = $this->db->loadObjectList();
         foreach ((array) $rows as $row) {
             $res[$row->ID] = $row->nicename;

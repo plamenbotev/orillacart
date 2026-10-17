@@ -143,7 +143,7 @@ if (!function_exists('paypal_init')) {
 
                     $shipping = $order_r->get("order_shipping", 0);
 
-                    $db->setQuery("SELECT * FROM #_shop_order_item WHERE order_id = {$order_id} ");
+                    $db->setQuery("SELECT * FROM #_shop_order_item WHERE order_id = " . (int) $order_id);
 
                     $items = $db->loadObjectList();
 
