@@ -6,8 +6,8 @@ namespace OrillaCart\Tests\Unit\Platform;
 
 use OrillaCart\Platform\Doctrine\DatabaseMigrator;
 use OrillaCart\Platform\Kernel;
-use OrillaCart\Platform\Lifecycle\LifecycleListener;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
+use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use PHPUnit\Framework\TestCase;
 
 final class KernelTest extends TestCase

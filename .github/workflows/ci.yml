@@ -35,7 +35,7 @@ jobs:
       - name: Static analysis
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
       - name: Architecture rules
-        run: vendor/bin/deptrac analyse --no-progress
+        run: vendor/bin/deptrac analyse --no-progress --fail-on-uncovered
       - name: Unit tests
         run: vendor/bin/phpunit --testsuite unit
 

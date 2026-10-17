@@ -56,6 +56,79 @@ return [
         'ORILLACART_VERSION',
     ],
 
+    'patchers' => [
+        // Libraries probe optional PHP extensions with function_exists('iconv'); PHP-Scoper prefixes those names,
+        // so the probe always fails. Put the global names back.
+        static function (string $filePath, string $prefix, string $contents): string {
+            $functions = ['iconv', 'gzdeflate', 'shell_exec', 'proc_open', 'pcntl_signal', 'imagecreatefromstring', 'token_get_all'];
+            $prefixes = preg_quote($prefix, '/') . '|' . preg_quote(str_replace('\\', '\\\\', $prefix), '/');
+
+            return (string) preg_replace(
+                '/([\'"])(?:' . $prefixes . ')\\\\{1,2}(' . implode('|', $functions) . ')\1/',
+                '$1$2$1',
+                $contents,
+            );
+        },
+        // Regex replacement strings such as 'e\1es' or '_\\0' look like namespaced names to PHP-Scoper, which
+        // prefixes them. A class name never holds a backslash followed by a digit, so any prefixed literal whose
+        // original had one is put back as it was.
+        static function (string $filePath, string $prefix, string $contents): string {
+            // Only files where a prefixed literal goes on with a lower-case letter or "_", which no class name does.
+            $suspect = '/[\'"]' . preg_quote($prefix, '/') . '\\\\{1,2}[a-z_]/';
+            $suspectEscaped = '/[\'"]' . preg_quote(str_replace('\\', '\\\\', $prefix), '/') . '\\\\{1,2}[a-z_]/';
+            if (!is_file($filePath) || (preg_match($suspect, $contents) !== 1 && preg_match($suspectEscaped, $contents) !== 1)) {
+                return $contents;
+            }
+            $original = (string) file_get_contents($filePath);
+            if (preg_match('/[\'"][^\'"]*\\\\[0-9]/', $original) !== 1) {
+                return $contents;
+            }
+
+            $literals = static fn(string $code): array => array_values(array_filter(
+                token_get_all($code),
+                static fn(mixed $token): bool => is_array($token) && $token[0] === T_CONSTANT_ENCAPSED_STRING,
+            ));
+            $before = $literals($original);
+            $after = $literals($contents);
+            if (count($before) !== count($after)) {
+                throw new RuntimeException("Cannot match the string literals of {$filePath} before and after prefixing.");
+            }
+
+            $restore = [];
+            foreach ($after as $index => $token) {
+                $prefixed = str_contains($token[1], $prefix . '\\') || str_contains($token[1], str_replace('\\', '\\\\', $prefix));
+                if ($prefixed && preg_match('/\\\\[0-9]/', $before[$index][1]) === 1) {
+                    $restore[$token[2]][$token[1]] = $before[$index][1];
+                }
+            }
+            if ($restore === []) {
+                return $contents;
+            }
+
+            $lines = explode("\n", $contents);
+            foreach ($restore as $line => $replacements) {
+                $lines[$line - 1] = strtr($lines[$line - 1], $replacements);
+            }
+
+            return implode("\n", $lines);
+        },
+        // Twig writes PHP for each template with its own class names in strings ("use Twig\\Environment;"),
+        // which PHP-Scoper does not rewrite; point them at the prefixed classes.
+        static function (string $filePath, string $prefix, string $contents): string {
+            if (!str_ends_with($filePath, 'twig/twig/src/Node/ModuleNode.php')) {
+                return $contents;
+            }
+            // Inside those strings namespace separators are escaped: Twig\\Environment.
+            $escapedPrefix = str_replace('\\', '\\\\', $prefix) . '\\\\';
+
+            return (string) preg_replace_callback(
+                '/(?<![A-Za-z])(?<!Vendor\\\\\\\\)Twig\\\\\\\\/',
+                static fn(array $match): string => $escapedPrefix . $match[0],
+                $contents,
+            );
+        },
+    ],
+
     'expose-global-constants' => false,
     'expose-global-classes' => false,
     'expose-global-functions' => false,

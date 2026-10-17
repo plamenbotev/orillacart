@@ -36,6 +36,7 @@ for _ in $(seq 1 30); do docker exec "$WP" test -f /var/www/html/wp-config.php &
 wp config set WP_DEBUG true --raw > /dev/null
 wp config set WP_DEBUG_LOG true --raw > /dev/null
 wp config set WP_DEBUG_DISPLAY false --raw > /dev/null
+wp config set WP_ENVIRONMENT_TYPE local > /dev/null  # application passwords over plain HTTP
 wp core install --url=http://localhost --title=Smoke --admin_user=admin --admin_password=admin \
     --admin_email=admin@example.com --skip-email > /dev/null
 echo "    WordPress $(wp core version), $(docker exec "$WP" php -r 'echo PHP_VERSION;')"
@@ -46,6 +47,28 @@ wp plugin install /tmp/orillacart.zip --activate > /dev/null
 [ "$(wp plugin get orillacart --field=status)" = "active" ] || fail "plugin is not active"
 plugin_tables | grep -qx 'wp_orillacart_migrations' || fail "activation did not create the migrations table"
 wp orillacart migrate | grep -q 'up to date' || fail "wp orillacart migrate"
+
+echo "==> REST API over HTTP"
+api() { docker exec "$WP" curl -s -o /dev/null -w '%{http_code}' "$@"; }
+URL='http://localhost/?rest_route=/orillacart/v1/settings'
+docker exec "$WP" test -f /var/www/html/wp-content/plugins/orillacart/build/admin/settings.js || fail "admin script missing"
+[ "$(api "$URL")" = 401 ] || fail "a visitor could read the settings"
+PASS="$(wp user application-password create admin smoke --porcelain)"
+[ "$(api -u "admin:$PASS" "$URL")" = 200 ] || fail "the administrator could not read the settings"
+[ "$(api -u "admin:$PASS" -X PUT -H 'Content-Type: application/json' \
+    -d '{"currency":"USD","price_decimals":2,"weight_unit":"lb","dimension_unit":"in"}' "$URL")" = 200 ] \
+    || fail "the administrator could not save the settings"
+[ "$(wp option pluck orillacart_settings currency)" = USD ] || fail "the settings were not stored"
+[ "$(api -u "admin:$PASS" -X PUT -H 'Content-Type: application/json' -d '{"currency":"usd"}' "$URL")" = 422 ] \
+    || fail "invalid settings were not refused"
+# A cookie session (no application password) must send a nonce.
+status="$(wp eval --user=admin '
+    $request = new WP_REST_Request("PUT", "/orillacart/v1/settings");
+    $request->set_header("Content-Type", "application/json");
+    $request->set_body("{\"currency\":\"GBP\",\"price_decimals\":2,\"weight_unit\":\"lb\",\"dimension_unit\":\"in\"}");
+    echo rest_do_request($request)->get_status();
+')"
+[ "$status" = 403 ] || fail "a save without a nonce answered $status"
 
 echo "==> Upgrade on an admin request"
 wp option update orillacart_version 0.0.1 > /dev/null
@@ -66,6 +89,8 @@ wp plugin uninstall orillacart --deactivate > /dev/null
 after="$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e 'SHOW TABLES' 2> /dev/null | grep -vc orillacart)"
 [ "$before" = "$after" ] || fail "uninstall touched WordPress tables ($before before, $after after)"
 wp option get orillacart_version > /dev/null 2>&1 && fail "version option left after uninstall"
+wp option get orillacart_settings > /dev/null 2>&1 && fail "settings left after uninstall"
+wp cap list administrator | grep -qx manage_orillacart && fail "capability left after uninstall"
 
 echo "==> Debug log"
 if docker exec "$WP" test -s /var/www/html/wp-content/debug.log; then

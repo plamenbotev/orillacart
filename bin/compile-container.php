@@ -9,7 +9,6 @@ declare(strict_types=1);
  */
 
 use OrillaCart\Platform\Kernel;
-use Symfony\Component\DependencyInjection\Dumper\PhpDumper;
 
 $pluginDir = $argv[1] ?? '';
 if ($pluginDir === '' || !is_dir($pluginDir)) {
@@ -23,25 +22,7 @@ require $pluginDir . '/vendor/autoload.php';
 $builder = Kernel::buildContainer($pluginDir);
 $builder->compile();
 
-$code = new PhpDumper($builder)->dump([
-    'namespace' => 'OrillaCart\\Generated',
-    'class' => 'CompiledContainer',
-]);
-if (!is_string($code)) {
-    fwrite(STDERR, "The container dumped into several files; expected one.\n");
-    exit(1);
-}
-
-$generated = $pluginDir . '/generated';
-if (!is_dir($generated) && !mkdir($generated, 0o755, true)) {
-    fwrite(STDERR, "Cannot create {$generated}\n");
-    exit(1);
-}
-
-file_put_contents($generated . '/CompiledContainer.php', $code);
-file_put_contents(
-    $pluginDir . '/' . Kernel::COMPILED_CONTAINER_FILE,
-    "<?php\n\ndeclare(strict_types=1);\n\nrequire_once __DIR__ . '/CompiledContainer.php';\n\nreturn new \\OrillaCart\\Generated\\CompiledContainer();\n",
-);
+$generated = $pluginDir . '/' . dirname(Kernel::COMPILED_CONTAINER_FILE);
+Kernel::writeContainer($builder, $generated, 'CompiledContainer');
 
 echo "Compiled container written to {$generated}\n";

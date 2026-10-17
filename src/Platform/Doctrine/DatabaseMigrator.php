@@ -7,7 +7,7 @@ namespace OrillaCart\Platform\Doctrine;
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\Migrations\MigratorConfiguration;
 use Doctrine\ORM\EntityManagerInterface;
-use OrillaCart\Platform\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\LifecycleListener;
 
 /**
  * Keeps the plugin's tables at the latest migration, and removes them on uninstall.

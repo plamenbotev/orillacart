@@ -10,6 +10,8 @@
 # Caches, tools and scratch space for tests and builds
 /var/
 /.phpunit.cache/
+/.deptrac.cache
+/.playwright-mcp/
 
 # Local environment
 /.wp-env.override.json

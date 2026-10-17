@@ -28,6 +28,7 @@ rm -rf "$WORK" && mkdir -p "$STAGE" "$ROOT/dist"
 cp -R "$ROOT/orillacart.php" "$ROOT/uninstall.php" "$ROOT/readme.txt" "$ROOT/composer.json" "$ROOT/composer.lock" \
       "$ROOT/src" "$ROOT/config" "$ROOT/migrations" "$STAGE/"
 mkdir -p "$STAGE/build" && cp -R "$ROOT/build/admin" "$STAGE/build/"
+[ -d "$ROOT/templates" ] && cp -R "$ROOT/templates" "$STAGE/"
 $COMPOSER_BIN install --working-dir="$STAGE" --no-dev --no-scripts --no-plugins --prefer-dist --no-interaction --no-progress --quiet
 
 step "Compiling the service container"
@@ -42,6 +43,7 @@ php "$SCOPER" add-prefix --config="$ROOT/scoper.inc.php" --working-dir="$STAGE" 
 
 # PHP-Scoper only writes the files its finders select; the rest ships unchanged.
 cp -R "$STAGE/build" "$STAGE/readme.txt" "$STAGE/composer.json" "$OUT/"
+[ -d "$STAGE/templates" ] && cp -R "$STAGE/templates" "$OUT/"
 mkdir -p "$OUT/migrations"
 
 step "Class map"
@@ -61,6 +63,14 @@ if [ "$status" -ne 1 ]; then
     exit 1
 fi
 grep -rqE '^namespace OrillaCart\\Vendor\\Symfony\\' "$OUT/vendor" || { echo "No prefixed Symfony code found" >&2; exit 1; }
+
+# A prefixed string that still holds a regex back-reference (\1) was a replacement pattern, not a class name.
+status=0; grep -rnE "['\"]OrillaCart\\\\{1,2}Vendor\\\\{1,2}[^'\"]*\\\\[0-9]" "$OUT/vendor" --include='*.php' > "$WORK/mangled.txt" || status=$?
+if [ "$status" -ne 1 ]; then
+    echo "PHP-Scoper prefixed regex replacement strings (or grep failed):" >&2
+    head "$WORK/mangled.txt" >&2
+    exit 1
+fi
 
 php "$ROOT/bin/check-build.php" "$OUT"
 

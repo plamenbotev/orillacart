@@ -28,3 +28,4 @@ parameters:
             allowIn:
                 - src/Platform/WordPress/*
                 - src/*/Infrastructure/WordPress/Hooks/*
+                - tests/*

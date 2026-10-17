@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Platform\Lifecycle;
+namespace OrillaCart\Shared\Lifecycle;
 
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 

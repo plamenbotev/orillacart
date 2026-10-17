@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\Lifecycle;
 
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**

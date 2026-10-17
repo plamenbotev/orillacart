@@ -72,6 +72,10 @@ deptrac:
       collectors:
         - type: classNameRegex
           value: '#^Psr\\#'
+    - name: Twig
+      collectors:
+        - type: classNameRegex
+          value: '#^Twig\\#'
     - name: WordPress
       collectors:
         - type: classNameRegex
@@ -130,4 +134,5 @@ deptrac:
       - ValidationAttributes
       - Symfony
       - Psr
+      - Twig
       - WordPress

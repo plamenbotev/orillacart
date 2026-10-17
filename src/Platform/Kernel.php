@@ -4,20 +4,38 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform;
 
+use OrillaCart\Platform\DependencyInjection\HookPass;
+use OrillaCart\Platform\DependencyInjection\RoutePass;
+use OrillaCart\Shared\Http\Routing\ActionDispatcher;
+use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\WordPress\AsHook;
 use Psr\Container\ContainerInterface;
+use Symfony\Component\Config\ConfigCache;
 use Symfony\Component\Config\FileLocator;
+use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface as SymfonyContainer;
+use Symfony\Component\DependencyInjection\Dumper\PhpDumper;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Symfony\Component\EventDispatcher\DependencyInjection\RegisterListenersPass;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\Filesystem\Exception\IOException;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Builds the service container: the class compiled during the release build when it exists,
- * otherwise compiled from config/services.php on each request (development).
+ * otherwise one compiled from config/services.php and cached in var/cache until a source file changes (development).
  */
 final class Kernel
 {
     /** Written by the release build; returns the compiled container instance. */
     public const string COMPILED_CONTAINER_FILE = 'generated/container.php';
+
+    /** Development cache, rebuilt when a file the container was built from changes. */
+    public const string DEV_CONTAINER_FILE = 'var/cache/container.php';
+    private const string DEV_CONTAINER_CLASS = 'DevContainer';
+    private const string CONTAINER_NAMESPACE = 'OrillaCart\\Generated';
 
     private ?SymfonyContainer $container = null;
 
@@ -39,28 +57,105 @@ final class Kernel
     public static function buildContainer(string $pluginDir): ContainerBuilder
     {
         $builder = new ContainerBuilder();
+
+        $builder->registerAttributeForAutoconfiguration(
+            Route::class,
+            static function (ChildDefinition $definition): void {
+                $definition->addTag(ActionDispatcher::ROUTE_TAG);
+            },
+        );
+        $builder->registerAttributeForAutoconfiguration(
+            AsHook::class,
+            static function (ChildDefinition $definition): void {
+                $definition->addTag(AsHook::TAG);
+            },
+        );
+        $builder->registerAttributeForAutoconfiguration(
+            AsEventListener::class,
+            static function (ChildDefinition $definition, AsEventListener $listener, \Reflector $reflector): void {
+                $attributes = array_filter(get_object_vars($listener), static fn(mixed $value): bool => $value !== null);
+                if ($reflector instanceof \ReflectionMethod) {
+                    $attributes['method'] = $reflector->getName();
+                }
+                $definition->addTag('kernel.event_listener', $attributes);
+            },
+        );
+        $builder->registerForAutoconfiguration(EventSubscriberInterface::class)->addTag('kernel.event_subscriber');
+
+        $builder->addCompilerPass(new RoutePass());
+        $builder->addCompilerPass(new HookPass());
+        $builder->addCompilerPass(new RegisterListenersPass());
+
         $loader = new PhpFileLoader($builder, new FileLocator($pluginDir . '/config'));
         $loader->load('services.php');
 
         return $builder;
     }
 
+    private static function dump(ContainerBuilder $builder, string $class): string
+    {
+        $code = new PhpDumper($builder)->dump([
+            'namespace' => self::CONTAINER_NAMESPACE,
+            'class' => $class,
+        ]);
+        if (!\is_string($code)) {
+            throw new \LogicException('The container dumped into several files; expected one.');
+        }
+
+        return $code;
+    }
+
     private function loadContainer(): SymfonyContainer
     {
         $compiled = $this->context->path(self::COMPILED_CONTAINER_FILE);
-
         if (is_file($compiled)) {
-            $container = require $compiled;
-            if (!$container instanceof SymfonyContainer) {
-                throw new \LogicException($compiled . ' does not define a service container.');
-            }
-
-            return $container;
+            return self::requireContainer($compiled);
         }
 
-        $builder = self::buildContainer($this->context->dir);
-        $builder->compile();
+        $cache = new ConfigCache($this->context->path(self::DEV_CONTAINER_FILE), true);
+        if (!$cache->isFresh()) {
+            $builder = self::buildContainer($this->context->dir);
+            $builder->compile();
+            try {
+                self::writeContainer($builder, \dirname($cache->getPath()), self::DEV_CONTAINER_CLASS, $cache);
+            } catch (IOException) {
+                // A read-only plugin folder: run without the cache.
+                return $builder;
+            }
+        }
 
-        return $builder;
+        return self::requireContainer($cache->getPath());
+    }
+
+    /**
+     * Writes the container class and a loader file that returns an instance; the loader can be required
+     * any number of times in one process. With a ConfigCache the loader is written through it, so the
+     * cache knows which source files to watch.
+     */
+    public static function writeContainer(ContainerBuilder $builder, string $dir, string $class, ?ConfigCache $cache = null): string
+    {
+        $filesystem = new Filesystem();
+        $filesystem->dumpFile($dir . '/' . $class . '.php', self::dump($builder, $class));
+
+        $loader = "<?php\n\ndeclare(strict_types=1);\n\nrequire_once __DIR__ . '/{$class}.php';\n\nreturn new \\"
+            . self::CONTAINER_NAMESPACE . '\\' . $class . "();\n";
+        if ($cache !== null) {
+            $cache->write($loader, $builder->getResources());
+
+            return $cache->getPath();
+        }
+        $filesystem->dumpFile($dir . '/container.php', $loader);
+
+        return $dir . '/container.php';
+    }
+
+    private static function requireContainer(string $file): SymfonyContainer
+    {
+        $container = require $file;
+        if (!$container instanceof SymfonyContainer) {
+            throw new \LogicException($file . ' does not define a service container.');
+        }
+
+        return $container;
     }
 }

@@ -30,6 +30,10 @@ final class Plugin
         // After an update the files change without a new activation; admin requests catch up the schema.
         add_action('admin_init', static fn() => self::lifecycle($kernel)->upgradeIfNeeded());
 
+        $integration = $kernel->container()->get(WordPressIntegration::class);
+        \assert($integration instanceof WordPressIntegration);
+        $integration->register();
+
         if (\defined('WP_CLI') && WP_CLI) {
             \WP_CLI::add_command('orillacart migrate', static function () use ($kernel): void {
                 $migrator = $kernel->container()->get(DatabaseMigrator::class);
