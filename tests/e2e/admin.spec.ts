@@ -158,3 +158,84 @@ test.describe( 'The admin', () => {
 		}
 	} );
 } );
+
+test.describe( 'Attribute sets', () => {
+	test( 'keep the order the admin drags options into', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		const set = await requestUtils.rest< { id: number } >( {
+			method: 'POST',
+			path: '/orillacart/v1/attribute-sets',
+			data: {
+				name: 'E2E Sizes',
+				active: true,
+				attributes: [
+					{
+						name: 'E2E Size',
+						required: true,
+						price_hidden: false,
+						options: [
+							{ name: 'Small', adjustment: '0' },
+							{ name: 'Large', adjustment: '0' },
+						],
+					},
+				],
+			},
+		} );
+		try {
+			await admin.visitAdminPage(
+				'admin.php',
+				'page=orillacart-attribute-sets'
+			);
+			await page.getByRole( 'button', { name: 'E2E Sizes' } ).click();
+			const size = page.getByRole( 'button', {
+				name: /E2E Size$/,
+				expanded: false,
+			} );
+			await size.click();
+			const large = page.locator(
+				'.orillacart-sortable .orillacart-sortable',
+				{
+					has: page.getByRole( 'button', {
+						name: 'Large',
+						exact: true,
+					} ),
+				}
+			);
+			await large
+				.locator( '.orillacart-sortable__handle' )
+				.dragTo(
+					page.getByRole( 'button', { name: 'Small', exact: true } )
+				);
+			await page
+				.getByRole( 'button', { name: 'Save attribute set' } )
+				.click();
+			await expect(
+				page
+					.locator( '.components-notice__content' )
+					.getByText( 'Attribute set saved.' )
+			).toBeVisible();
+
+			const saved = await requestUtils.rest< {
+				attributes: { options: { name: string }[] }[];
+			} >( {
+				path: `/orillacart/v1/attribute-sets/${ set.id }`,
+			} );
+			expect(
+				saved.attributes[ 0 ]?.options.map( ( option ) => option.name )
+			).toEqual( [ 'Large', 'Small' ] );
+		} finally {
+			await requestUtils.request.fetch(
+				`${ requestUtils.storageState?.rootURL ?? '' }orillacart/v1/attribute-sets/${ set.id }`,
+				{
+					method: 'DELETE',
+					headers: {
+						'X-WP-Nonce': requestUtils.storageState?.nonce ?? '',
+					},
+				}
+			);
+		}
+	} );
+} );

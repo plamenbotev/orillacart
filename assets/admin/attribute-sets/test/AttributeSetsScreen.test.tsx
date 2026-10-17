@@ -64,15 +64,30 @@ function serve(
 describe( 'AttributeSetsScreen', () => {
 	afterEach( () => mockedFetch.mockReset() );
 
-	it( 'shows the first set with its attributes and options', async () => {
+	it( 'shows the first set with its attributes and options, folded until opened', async () => {
 		serve( [ clothing ] );
+		const user = userEvent.setup();
 
 		render( <AttributeSetsScreen /> );
 
 		expect( await screen.findByLabelText( 'Set name' ) ).toHaveValue(
 			'Clothing'
 		);
+		const size = screen.getByRole( 'button', {
+			name: /Size/,
+			expanded: false,
+		} );
+		expect(
+			screen.queryByLabelText( 'Attribute' )
+		).not.toBeInTheDocument();
+		await user.click( size );
 		expect( screen.getByLabelText( 'Attribute' ) ).toHaveValue( 'Size' );
+		await user.click(
+			screen.getByRole( 'button', { name: /S$/, expanded: false } )
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: /M$/, expanded: false } )
+		);
 		expect(
 			screen
 				.getAllByLabelText( 'Option' )
@@ -91,6 +106,9 @@ describe( 'AttributeSetsScreen', () => {
 		render( <AttributeSetsScreen /> );
 
 		await screen.findByLabelText( 'Set name' );
+		await user.click(
+			screen.getByRole( 'button', { name: /Size/, expanded: false } )
+		);
 		await user.click(
 			screen.getByRole( 'button', { name: 'Add option' } )
 		);
@@ -123,6 +141,52 @@ describe( 'AttributeSetsScreen', () => {
 				],
 			},
 		} );
+	} );
+
+	it( 'sends attributes and options in the order they were moved to', async () => {
+		const colour = {
+			id: 8,
+			name: 'Colour',
+			required: false,
+			price_hidden: false,
+			set_id: 3,
+			options: [ { id: 30, name: 'Red', adjustment: '0' } ],
+		};
+		serve(
+			[ { ...clothing, attributes: [ ...clothing.attributes, colour ] } ],
+			( request ) =>
+				Promise.resolve( {
+					...clothing,
+					...( request.data as object ),
+				} )
+		);
+		const user = userEvent.setup();
+		render( <AttributeSetsScreen /> );
+
+		await screen.findByLabelText( 'Set name' );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Move Colour up' } )
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: /Size/, expanded: false } )
+		);
+		await user.click( screen.getByRole( 'button', { name: 'Move M up' } ) );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save attribute set' } )
+		);
+
+		await screen.findByText( 'Attribute set saved.', NOTICE );
+		const sent = mockedFetch.mock.lastCall?.[ 0 ] as {
+			data: {
+				attributes: { name: string; options: { name: string }[] }[];
+			};
+		};
+		expect(
+			sent.data.attributes.map( ( attribute ) => attribute.name )
+		).toEqual( [ 'Colour', 'Size' ] );
+		expect(
+			sent.data.attributes[ 1 ]?.options.map( ( option ) => option.name )
+		).toEqual( [ 'M', 'S' ] );
 	} );
 
 	it( 'creates a set when there is none', async () => {
