@@ -8,7 +8,9 @@ namespace OrillaCart\Shared\Http\Routing;
  * Declares an action class as the handler of one route. Only declared routes exist.
  *
  * Every route states who may call it: a capability, or Route::PUBLIC for visitors.
- * Requests with unsafe methods (POST, PUT, PATCH, DELETE) must carry a nonce for $nonce.
+ * Requests with unsafe methods (POST, PUT, PATCH, DELETE) must carry a nonce for $nonce, except on a public
+ * route marked $signed: one a payment provider calls server to server, whose action verifies the provider's
+ * signature itself.
  *
  *     #[Route('/settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
  *     #[Route('/products/{id}', methods: ['GET'], capability: Route::PUBLIC, requirements: ['id' => '\d+'])]
@@ -28,6 +30,7 @@ final readonly class Route
      * @param string                $capability   WordPress capability the user needs, or Route::PUBLIC
      * @param string                $nonce        nonce action checked for unsafe methods
      * @param array<string, string> $requirements regular expression per placeholder; [^/]+ when absent
+     * @param bool                  $signed       the action verifies the caller's signature; no nonce (public routes only)
      */
     public function __construct(
         public string $path,
@@ -35,5 +38,6 @@ final readonly class Route
         public string $capability,
         public string $nonce = self::REST_NONCE,
         public array $requirements = [],
+        public bool $signed = false,
     ) {}
 }

@@ -64,6 +64,9 @@ final readonly class ProductQuotes
             ), $configuration->options),
             $available,
             $this->content->isPublished($product->id()) && $details->purchasable && $available !== 0,
+            $details->length,
+            $details->width,
+            $details->height,
         );
     }
 

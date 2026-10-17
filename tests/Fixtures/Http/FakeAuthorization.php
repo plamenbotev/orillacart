@@ -12,7 +12,13 @@ final class FakeAuthorization implements Authorization
     public function __construct(
         public bool $loggedIn = false,
         public array $capabilities = [],
+        public ?int $userId = null,
     ) {}
+
+    public function userId(): ?int
+    {
+        return $this->loggedIn ? $this->userId : null;
+    }
 
     public function isLoggedIn(): bool
     {

@@ -15,6 +15,7 @@ parameters:
         # Run inside a WordPress with the old plugin, against its classes; see the files.
         - tests/Fixtures/Tax/record-legacy-tax.php
         - tests/Fixtures/Catalog/record-legacy-catalog.php
+        - tests/Fixtures/Checkout/record-legacy-checkout.php
     tmpDir: var/phpstan
     scanFiles:
         - tools/phpstan/wp-cli.stub.php

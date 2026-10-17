@@ -11,5 +11,8 @@ interface Authorization
 {
     public function isLoggedIn(): bool;
 
+    /** The logged-in user's id; null for visitors. */
+    public function userId(): ?int;
+
     public function isGranted(string $capability): bool;
 }

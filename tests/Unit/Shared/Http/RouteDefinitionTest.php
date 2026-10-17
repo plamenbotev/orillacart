@@ -56,7 +56,18 @@ final class RouteDefinitionTest extends TestCase
     public function testSurvivesTheTripThroughTheCompiledContainer(): void
     {
         $route = new RouteDefinition('A', '/products/{id}', ['GET', 'HEAD'], 'edit_posts', 'orillacart_product', ['id' => '\d+']);
+        $signed = new RouteDefinition('A', '/webhook', ['POST'], Route::PUBLIC, 'wp_rest', signed: true);
 
         self::assertEquals($route, RouteDefinition::fromArray($route->toArray()));
+        self::assertEquals($signed, RouteDefinition::fromArray($signed->toArray()));
+    }
+
+    public function testOnlyPublicRoutesAreSignedAndSkipTheNonce(): void
+    {
+        self::assertFalse(new RouteDefinition('A', '/webhook', ['POST'], Route::PUBLIC, 'wp_rest', signed: true)->needsNonce('POST'));
+        self::assertTrue(new RouteDefinition('A', '/cart', ['POST'], Route::PUBLIC, 'wp_rest')->needsNonce('POST'));
+
+        $this->expectException(\InvalidArgumentException::class);
+        new RouteDefinition('A', '/webhook', ['POST'], 'manage_orillacart', 'wp_rest', signed: true);
     }
 }

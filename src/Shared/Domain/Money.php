@@ -56,6 +56,55 @@ final readonly class Money implements \Stringable
         return new self($this->tenThousandths * $quantity);
     }
 
+    /**
+     * This share of the amount, such as the tax at a rate: 19 % of 15 is 2.85. Exact to four decimals,
+     * rounded half away from zero.
+     *
+     * @param string $percent a decimal with up to four decimals, such as "19" or "7.25"
+     */
+    public function percent(string $percent): self
+    {
+        if (preg_match('/^(\d{1,3})(?:\.(\d{1,4}))?$/', $percent, $parts) !== 1) {
+            throw new RuleViolation(\sprintf('"%s" is not a percentage.', $percent), 'orillacart_invalid_percentage');
+        }
+        // Percent in ten-thousandths of a percent; the product is in 10^-8 units of money per 100.
+        $share = (int) $parts[1] * self::UNIT + (int) str_pad($parts[2] ?? '', self::DECIMALS, '0');
+
+        if ($share !== 0 && abs($this->tenThousandths) > intdiv(\PHP_INT_MAX, $share)) {
+            throw new RuleViolation('The amount is too large to take a percentage of.', 'orillacart_amount_too_large');
+        }
+
+        return new self(self::divideRounded($this->tenThousandths * $share, 100 * self::UNIT));
+    }
+
+    /**
+     * This amount with no more decimals than the currency shows, rounded half away from zero: 0.435 → 0.44.
+     */
+    public function rounded(int $decimals): self
+    {
+        if ($decimals < 0 || $decimals > self::DECIMALS) {
+            throw new \InvalidArgumentException(\sprintf('Amounts round to 0 to %d decimals.', self::DECIMALS));
+        }
+        $step = 10 ** (self::DECIMALS - $decimals);
+
+        return new self(self::divideRounded($this->tenThousandths, $step) * $step);
+    }
+
+    public function compare(self $other): int
+    {
+        return $this->tenThousandths <=> $other->tenThousandths;
+    }
+
+    /**
+     * Fixed decimals for display or a payment provider: "8.50" with two, "9" with none. Rounds first.
+     */
+    public function format(int $decimals): string
+    {
+        $fixed = $this->rounded($decimals)->toFixed();
+
+        return $decimals === 0 ? substr($fixed, 0, -self::DECIMALS - 1) : substr($fixed, 0, \strlen($fixed) - self::DECIMALS + $decimals);
+    }
+
     /** This amount, or zero when it is below zero. */
     public function atLeastZero(): self
     {
@@ -75,6 +124,17 @@ final readonly class Money implements \Stringable
     public function equals(self $other): bool
     {
         return $this->tenThousandths === $other->tenThousandths;
+    }
+
+    private static function divideRounded(int $value, int $divisor): int
+    {
+        $quotient = intdiv($value, $divisor);
+        $remainder = $value % $divisor;
+        if (2 * abs($remainder) >= $divisor) {
+            $quotient += $value < 0 ? -1 : 1;
+        }
+
+        return $quotient;
     }
 
     /**

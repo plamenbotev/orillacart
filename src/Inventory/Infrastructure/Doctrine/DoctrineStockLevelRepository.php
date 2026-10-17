@@ -11,10 +11,14 @@ use OrillaCart\Inventory\Domain\Stock;
 use OrillaCart\Inventory\Domain\StockItem;
 use OrillaCart\Inventory\Domain\StockLevel;
 use OrillaCart\Inventory\Domain\StockLevelRepository;
+use OrillaCart\Shared\Persistence\Transactions;
 
 final readonly class DoctrineStockLevelRepository implements StockLevelRepository
 {
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    public function __construct(
+        private EntityManagerInterface $entityManager,
+        private Transactions $transactions,
+    ) {}
 
     public function stockOf(array $items): array
     {
@@ -23,9 +27,7 @@ final readonly class DoctrineStockLevelRepository implements StockLevelRepositor
 
     public function lockedStockOf(array $items, \Closure $work): mixed
     {
-        return $this->entityManager->wrapInTransaction(function () use ($items, $work): mixed {
-            return $work($this->group($items, $this->load($items, true)));
-        });
+        return $this->transactions->run(fn(): mixed => $work($this->group($items, $this->load($items, true))));
     }
 
     public function add(StockLevel $level): void

@@ -32,6 +32,7 @@ final readonly class RouteDefinition
         public string $capability,
         public string $nonce,
         public array $requirements = [],
+        public bool $signed = false,
     ) {
         if (!str_starts_with($path, '/')) {
             throw new \InvalidArgumentException(\sprintf('Route path "%s" of %s must start with "/".', $path, $action));
@@ -51,6 +52,9 @@ final readonly class RouteDefinition
         if (trim($nonce) === '') {
             throw new \InvalidArgumentException(\sprintf('Route %s of %s needs a nonce action.', $path, $action));
         }
+        if ($signed && $capability !== Route::PUBLIC) {
+            throw new \InvalidArgumentException(\sprintf('Route %s of %s is signed, so it must be public.', $path, $action));
+        }
         foreach (array_keys($requirements) as $name) {
             if (!str_contains($path, '{' . $name . '}')) {
                 throw new \InvalidArgumentException(\sprintf('Route %s of %s has a requirement for unknown placeholder "%s".', $path, $action, $name));
@@ -62,7 +66,7 @@ final readonly class RouteDefinition
 
     public static function fromAttribute(string $action, Route $route): self
     {
-        return new self($action, $route->path, $route->methods, $route->capability, $route->nonce, $route->requirements);
+        return new self($action, $route->path, $route->methods, $route->capability, $route->nonce, $route->requirements, $route->signed);
     }
 
     /**
@@ -81,6 +85,12 @@ final readonly class RouteDefinition
     public function isPublic(): bool
     {
         return $this->capability === Route::PUBLIC;
+    }
+
+    /** Whether a request needs a nonce: unsafe methods do, unless the action verifies a signature instead. */
+    public function needsNonce(string $method): bool
+    {
+        return !$this->signed && !$this->isSafe($method);
     }
 
     public function isSafe(string $method): bool
@@ -108,7 +118,7 @@ final readonly class RouteDefinition
     }
 
     /**
-     * @return array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>}
+     * @return array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool}
      */
     public function toArray(): array
     {
@@ -119,14 +129,15 @@ final readonly class RouteDefinition
             'capability' => $this->capability,
             'nonce' => $this->nonce,
             'requirements' => $this->requirements,
+            'signed' => $this->signed,
         ];
     }
 
     /**
-     * @param array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>} $data
+     * @param array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool} $data
      */
     public static function fromArray(array $data): self
     {
-        return new self($data['action'], $data['path'], $data['methods'], $data['capability'], $data['nonce'], $data['requirements']);
+        return new self($data['action'], $data['path'], $data['methods'], $data['capability'], $data['nonce'], $data['requirements'], $data['signed']);
     }
 }

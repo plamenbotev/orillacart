@@ -129,6 +129,42 @@ final readonly class StockService
     }
 
     /**
+     * Puts back stock taken for an order, as when the order is cancelled. Stock of a stockroom that was deleted
+     * since, or whose level of the item was removed, is put back as a new level when the stockroom still exists.
+     *
+     * @param list<TakenStock> $taken
+     */
+    public function giveBack(array $taken): void
+    {
+        $items = [];
+        foreach ($taken as $part) {
+            $items[$part->item] = StockItem::fromString($part->item);
+        }
+        if ($items === []) {
+            return;
+        }
+        $this->levels->lockedStockOf(array_values($items), function (array $stocks) use ($taken): void {
+            /** @var list<Stock> $stocks */
+            $byItem = [];
+            foreach ($stocks as $stock) {
+                $byItem[(string) $stock->item] = $stock;
+            }
+            foreach ($taken as $part) {
+                $stock = $byItem[$part->item];
+                if (!$stock->putBack($part->stockroomId, $part->quantity)) {
+                    $stockroom = $this->stockrooms->find($part->stockroomId);
+                    if ($stockroom !== null) {
+                        $this->levels->add(new StockLevel($stockroom, $stock->item, $part->quantity));
+                    }
+                }
+            }
+        });
+        foreach ($items as $item) {
+            $this->events->dispatch(new StockChanged((string) $item));
+        }
+    }
+
+    /**
      * Forgets the stock of items the catalog no longer has.
      *
      * @param list<StockItemRef> $refs

@@ -106,4 +106,30 @@ final class StockServiceTest extends TestCase
         $this->stock->removeItems([StockItemRef::product(5)]);
         self::assertNull($this->stock->available([StockItemRef::product(5)]));
     }
+
+    public function testStockOfACancelledOrderGoesBackWhereItCameFrom(): void
+    {
+        $mug = StockItemRef::product(5);
+        $this->stock->setLevels($mug, new SetStockLevels([new SetStockLevel($this->sofia, 2), new SetStockLevel($this->berlin, 5)]));
+        $taken = $this->stock->take([$mug], 4);
+        self::assertSame(3, $this->stock->stock($mug)->available);
+
+        // Berlin's level was removed meanwhile: it comes back as a new level.
+        $this->stock->setLevels($mug, new SetStockLevels([new SetStockLevel($this->sofia, 0)]));
+        $this->stock->giveBack($taken);
+
+        self::assertSame([[$this->sofia, 2], [$this->berlin, 2]], array_map(static fn($level): array => [$level->stockroomId, $level->quantity], $this->stock->stock($mug)->levels));
+    }
+
+    public function testStockOfADeletedStockroomIsNotPutBack(): void
+    {
+        $mug = StockItemRef::product(5);
+        $this->stock->setLevels($mug, new SetStockLevels([new SetStockLevel($this->berlin, 5)]));
+        $taken = $this->stock->take([$mug], 2);
+        $this->stockrooms->delete($this->berlin);
+
+        $this->stock->giveBack([...$taken, new TakenStock('product:5', $this->sofia, 1)]);
+
+        self::assertSame([[$this->sofia, 1]], array_map(static fn($level): array => [$level->stockroomId, $level->quantity], $this->stock->stock($mug)->levels));
+    }
 }

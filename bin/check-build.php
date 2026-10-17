@@ -9,9 +9,11 @@ declare(strict_types=1);
  * Runs without WordPress. Usage: php bin/check-build.php <built-plugin-dir>
  */
 
+use OrillaCart\Cart\Domain\Cart;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Domain\Product;
+use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
 use OrillaCart\Platform\PluginContext;
@@ -22,6 +24,7 @@ use OrillaCart\Platform\Twig\TwigRenderer;
 use OrillaCart\Settings\Application\Dto\UpdateSettings;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Input\RequestMapper;
+use OrillaCart\Shipping\Domain\ShippingRate;
 use OrillaCart\Tax\Domain\TaxGroup;
 
 $pluginDir = $argv[1] ?? '';
@@ -109,5 +112,17 @@ if (!isset($metadata->embeddedClasses['pricing']) || !is_array($joinTable) || ($
 $sql = $entityManager->createQuery('SELECT g, r FROM ' . TaxGroup::class . ' g LEFT JOIN g.rates r ORDER BY g.name')->getSQL();
 if (!is_string($sql) || !str_contains($sql, 'wp_orillacart_tax_groups')) {
     $fail('Doctrine could not turn a DQL query into SQL.');
+}
+// Embedded value objects with column prefixes, and enum columns, as orders and shipping rates use them.
+$metadata = $entityManager->getClassMetadata(Order::class);
+if (($metadata->getFieldMapping('billing.country')->columnName ?? null) !== 'billing_country' || ($metadata->getFieldMapping('status')->enumType ?? null) === null) {
+    $fail('Doctrine did not read the embedded addresses or the status enum of Order.');
+}
+if ($entityManager->getClassMetadata(ShippingRate::class)->getFieldMapping('weight.max')->columnName !== 'weight_max') {
+    $fail('Doctrine did not read the embedded ranges of ShippingRate.');
+}
+$sql = $entityManager->createQuery('DELETE FROM ' . Cart::class . ' c WHERE c.updatedAt < :before')->getSQL();
+if (!is_string($sql) || !str_contains($sql, 'wp_orillacart_carts')) {
+    $fail('Doctrine could not turn a DQL delete into SQL.');
 }
 echo "Doctrine reads the entity mapping and parses DQL\n";

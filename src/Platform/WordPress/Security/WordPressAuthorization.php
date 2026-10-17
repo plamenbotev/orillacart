@@ -13,6 +13,13 @@ final readonly class WordPressAuthorization implements Authorization
         return is_user_logged_in();
     }
 
+    public function userId(): ?int
+    {
+        $id = get_current_user_id();
+
+        return $id > 0 ? $id : null;
+    }
+
     public function isGranted(string $capability): bool
     {
         return current_user_can($capability);

@@ -18,6 +18,18 @@ final readonly class StockItem implements \Stringable
         }
     }
 
+    /** Parses "product:12", as __toString() writes it. */
+    public static function fromString(string $item): self
+    {
+        [$kind, $id] = array_pad(explode(':', $item, 2), 2, '');
+        $found = StockItemKind::tryFrom($kind);
+        if ($found === null || preg_match('/^\d+$/', $id) !== 1) {
+            throw new InventoryRuleViolation(\sprintf('"%s" is not a stock item.', $item), 'orillacart_invalid_stock_item');
+        }
+
+        return new self($found, (int) $id);
+    }
+
     public function equals(self $other): bool
     {
         return $this->kind === $other->kind && $this->id === $other->id;

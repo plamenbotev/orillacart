@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Nyholm\Psr7\Factory\Psr17Factory;
+use OrillaCart\Cart\Domain\CartRepository;
+use OrillaCart\Cart\Infrastructure\Doctrine\DoctrineCartRepository;
 use OrillaCart\Catalog\Domain\AttributeSetRepository;
 use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductRepository;
@@ -17,8 +19,27 @@ use OrillaCart\Inventory\Domain\StockLevelRepository;
 use OrillaCart\Inventory\Domain\StockroomRepository;
 use OrillaCart\Inventory\Infrastructure\Doctrine\DoctrineStockLevelRepository;
 use OrillaCart\Inventory\Infrastructure\Doctrine\DoctrineStockroomRepository;
+use OrillaCart\Ordering\Application\OrderLinks;
+use OrillaCart\Ordering\Domain\OrderRepository;
+use OrillaCart\Ordering\Infrastructure\Doctrine\DoctrineOrderRepository;
+use OrillaCart\Ordering\Infrastructure\WordPress\HomeOrderLinks;
+use OrillaCart\Payment\Application\Gateway\BankTransfer;
+use OrillaCart\Payment\Application\Gateway\CashOnDelivery;
+use OrillaCart\Payment\Application\Gateway\Cheque;
+use OrillaCart\Payment\Application\Gateway\PaymentGateway;
+use OrillaCart\Payment\Application\Gateways;
+use OrillaCart\Payment\Application\PaymentUrls;
+use OrillaCart\Payment\Application\PayPal\PayPalApi;
+use OrillaCart\Payment\Application\PayPal\PayPalGateway;
+use OrillaCart\Payment\Domain\PaymentMethodRepository;
+use OrillaCart\Payment\Domain\PaymentRepository;
+use OrillaCart\Payment\Infrastructure\Doctrine\DoctrinePaymentMethodRepository;
+use OrillaCart\Payment\Infrastructure\Doctrine\DoctrinePaymentRepository;
+use OrillaCart\Payment\Infrastructure\PayPal\WordPressPayPalApi;
+use OrillaCart\Payment\Infrastructure\WordPress\RestPaymentUrls;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\DatabaseMigrator;
+use OrillaCart\Platform\Doctrine\DoctrineTransactions;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
 use OrillaCart\Platform\Doctrine\MigrationsFactory;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
@@ -31,6 +52,9 @@ use OrillaCart\Platform\WordPress\WordPressIntegration;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
+use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Shipping\Domain\CarrierRepository;
+use OrillaCart\Shipping\Infrastructure\Doctrine\DoctrineCarrierRepository;
 use OrillaCart\Tax\Domain\TaxGroupRepository;
 use OrillaCart\Tax\Domain\TaxSettingsRepository;
 use OrillaCart\Tax\Infrastructure\Doctrine\DoctrineTaxGroupRepository;
@@ -53,6 +77,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Twig\Environment;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 
 return static function (ContainerConfigurator $container): void {
     $services = $container->services()
@@ -84,6 +109,16 @@ return static function (ContainerConfigurator $container): void {
         ->exclude('../src/*/Application/Dto/')
         ->public();
 
+    // Payment gateways: every implementation is one way to pay; Gateways lists them in this order.
+    $services->instanceof(PaymentGateway::class)->tag(PaymentGateway::TAG);
+    $services->set(Gateways::class)->args([tagged_iterator(PaymentGateway::TAG)])->public();
+    $services->set(CashOnDelivery::class)->tag(PaymentGateway::TAG, ['priority' => 40]);
+    $services->set(BankTransfer::class)->tag(PaymentGateway::TAG, ['priority' => 30]);
+    $services->set(Cheque::class)->tag(PaymentGateway::TAG, ['priority' => 20]);
+    $services->set(PayPalGateway::class)->tag(PaymentGateway::TAG, ['priority' => 10]);
+    $services->alias(PayPalApi::class, WordPressPayPalApi::class);
+    $services->alias(PaymentUrls::class, RestPaymentUrls::class);
+
     // Known only at runtime: set by the Kernel after the container is built.
     $services->set(PluginContext::class)->synthetic();
 
@@ -100,6 +135,14 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ProductContent::class, WordPressProductContent::class);
     $services->alias(StockroomRepository::class, DoctrineStockroomRepository::class);
     $services->alias(StockLevelRepository::class, DoctrineStockLevelRepository::class);
+    $services->alias(CarrierRepository::class, DoctrineCarrierRepository::class);
+    $services->alias(PaymentMethodRepository::class, DoctrinePaymentMethodRepository::class);
+    $services->alias(PaymentRepository::class, DoctrinePaymentRepository::class);
+    $services->alias(OrderRepository::class, DoctrineOrderRepository::class);
+    $services->alias(CartRepository::class, DoctrineCartRepository::class);
+    $services->alias(OrderLinks::class, HomeOrderLinks::class);
+
+    $services->alias(Transactions::class, DoctrineTransactions::class);
 
     // Time (PSR-20): use cases ask the clock, so tests can fix "now".
     $services->set(ClockInterface::class, NativeClock::class);

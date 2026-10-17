@@ -25,6 +25,12 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
  */
 final class RouteSecurityGateTest extends TestCase
 {
+    /**
+     * Routes a payment provider calls server to server, without a nonce: their action checks the provider's
+     * signature with the provider. A new one has to be added here, on purpose.
+     */
+    private const array SIGNED = ['POST /payments/paypal/webhook'];
+
     private static ContainerBuilder $container;
     private static FakeAuthorization $authorization;
     private static FakeCsrfProtection $csrf;
@@ -89,12 +95,30 @@ final class RouteSecurityGateTest extends TestCase
                 if ($route->isSafe($method)) {
                     continue;
                 }
+                if (!$route->needsNonce($method)) {
+                    self::assertContains("{$method} {$route->path}", self::SIGNED, "{$method} {$route->path} skips the nonce without being a known signed route");
+                    continue;
+                }
                 $this->actAs(loggedIn: true, capabilities: [$route->capability], nonces: [$route->nonce => 'good-token'], csrfRequired: true);
 
                 self::assertSame(403, $this->statusOf($route, $method), $method . ' ' . $route->path . ' ran without a nonce');
                 self::assertSame(403, $this->statusOf($route, $method, 'forged'), $method . ' ' . $route->path . ' ran with a forged nonce');
             }
         }
+    }
+
+    public function testTheKnownSignedRoutesAreStillSigned(): void
+    {
+        $signed = [];
+        foreach ($this->routes() as $route) {
+            foreach ($route->methods as $method) {
+                if (!$route->isSafe($method) && !$route->needsNonce($method)) {
+                    $signed[] = "{$method} {$route->path}";
+                }
+            }
+        }
+
+        self::assertSame(self::SIGNED, $signed);
     }
 
     /** @return list<RouteDefinition> */

@@ -14,6 +14,7 @@ final readonly class ItemQuote
      * @param string             $unitPrice before tax, options included
      * @param int|null           $available how many can be sold now; null when stock does not limit it
      * @param bool               $forSale   published, purchasable and not marked unavailable
+     * @param string|null        $weight    in the shop's weight unit; length, width and height in its dimension unit
      */
     public function __construct(
         public int $productId,
@@ -28,5 +29,8 @@ final readonly class ItemQuote
         public array $options,
         public ?int $available,
         public bool $forSale,
+        public ?string $length = null,
+        public ?string $width = null,
+        public ?string $height = null,
     ) {}
 }

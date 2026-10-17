@@ -14,7 +14,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Requires a valid nonce for the route's nonce action on every request that changes something.
- * The nonce comes in the X-WP-Nonce header (REST) or the _wpnonce field (forms).
+ * The nonce comes in the X-WP-Nonce header (REST) or the _wpnonce field (forms). Signed routes, which payment
+ * providers call, verify the provider's signature in their action instead.
  */
 final readonly class CsrfMiddleware implements MiddlewareInterface
 {
@@ -27,7 +28,7 @@ final readonly class CsrfMiddleware implements MiddlewareInterface
     {
         $route = RouteDefinition::fromRequest($request);
 
-        if (!$route->isSafe($request->getMethod()) && $this->csrf->isRequired()) {
+        if ($route->needsNonce($request->getMethod()) && $this->csrf->isRequired()) {
             $token = $this->token($request);
             if ($token === '' || !$this->csrf->isTokenValid($token, $route->nonce)) {
                 throw HttpException::invalidNonce();

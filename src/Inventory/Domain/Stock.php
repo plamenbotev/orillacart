@@ -92,4 +92,22 @@ final readonly class Stock
 
         return $taken;
     }
+
+    /**
+     * Puts back stock an order took from a stockroom, as when the order is cancelled.
+     *
+     * @return bool false when the item has no level in that stockroom any more
+     */
+    public function putBack(int $stockroomId, int $quantity): bool
+    {
+        foreach ($this->levels as $level) {
+            if ($level->stockroom()->id() === $stockroomId) {
+                $level->set($level->quantity() + $quantity);
+
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

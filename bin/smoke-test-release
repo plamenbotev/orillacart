@@ -115,6 +115,33 @@ quote="$(wp eval "
 [ "$(api -L "$(wp eval "echo get_permalink($product);")")" = 200 ] \
     || fail "the product page does not open"
 
+echo "==> Cart and checkout"
+rate="$(docker exec "$WP" curl -s -u "admin:$PASS" -X POST -H 'Content-Type: application/json' \
+    -d '{"name":"Courier","rates":[{"name":"Anywhere","price":"5"}]}' "$API/carriers" | sed -n 's/.*"rates":\[{"id":\([0-9]*\).*/\1/p')"
+[ -n "$rate" ] || fail "the administrator could not add a carrier"
+[ "$(api -u "admin:$PASS" -X PUT -H 'Content-Type: application/json' \
+    -d '{"name":"Cash on delivery","active":true}' "$API/payment-methods/cash_on_delivery")" = 200 ] \
+    || fail "the administrator could not turn on cash on delivery"
+# A visitor: the cart lives in the database, the browser keeps its token in a cookie.
+nonce="$(wp eval 'wp_set_current_user(0); echo wp_create_nonce("wp_rest");')"
+visitor() { docker exec "$WP" curl -s -b /tmp/cart -c /tmp/cart -H "X-WP-Nonce: $nonce" -H 'Content-Type: application/json' "$@"; }
+visitor -X POST -d "{\"product_id\":$product,\"quantity\":2}" "$API/cart/items" | grep -q '"items":2' \
+    || fail "a visitor could not add to the cart"
+docker exec "$WP" grep -q 'orillacart_cart' /tmp/cart || fail "the cart cookie was not set"
+placed="$(visitor -X POST -d "{\"email\":\"ada@example.com\",\"billing\":{\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"street\":\"1 Main St\",\"city\":\"Sofia\",\"postcode\":\"1000\",\"country\":\"BG\",\"phone\":\"+359 2 000 0000\"},\"rate_id\":$rate,\"payment\":\"cash_on_delivery\"}" "$API/checkout")"
+echo "$placed" | grep -q '"status":"on_hold"' || fail "the order was not placed: $placed"
+key="$(echo "$placed" | sed -n 's/.*"key":"\([a-f0-9]*\)".*/\1/p')"
+[ "$(api "$API/orders/$key")" = 200 ] || fail "the receipt does not open"
+[ "$(wp eval "
+    \$kernel = new OrillaCart\Platform\Kernel(new OrillaCart\Platform\PluginContext(WP_PLUGIN_DIR . '/orillacart/orillacart.php', ORILLACART_VERSION));
+    echo \$kernel->container()->get(OrillaCart\Inventory\Application\StockService::class)
+        ->stock(OrillaCart\Inventory\Application\Dto\StockItemRef::product($product))->available;
+")" = 1 ] || fail "the order did not take its stock"
+for hook in orillacart_cancel_abandoned_orders orillacart_forget_abandoned_carts; do
+    wp cron event list --fields=hook --format=csv | grep -qx "$hook" || fail "$hook is not scheduled"
+done
+wp cron event run orillacart_cancel_abandoned_orders orillacart_forget_abandoned_carts > /dev/null || fail "the scheduled tasks failed"
+
 echo "==> Upgrade on an admin request"
 wp option update orillacart_version 0.0.1 > /dev/null
 # A site whose files are newer than its database: here, one without any of the plugin's tables.
@@ -144,6 +171,7 @@ wp option get orillacart_tax_settings > /dev/null 2>&1 && fail "tax settings lef
 wp cap list administrator | grep -qx manage_orillacart && fail "capability left after uninstall"
 [ "$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SELECT COUNT(*) FROM wp_posts WHERE post_type = 'orillacart_product'" 2> /dev/null)" = 0 ] \
     || fail "product posts left after uninstall"
+wp cron event list --fields=hook --format=csv | grep -q '^orillacart_' && fail "scheduled tasks left after uninstall"
 
 echo "==> Debug log"
 if docker exec "$WP" test -s /var/www/html/wp-content/debug.log; then

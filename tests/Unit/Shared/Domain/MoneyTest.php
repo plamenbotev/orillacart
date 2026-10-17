@@ -36,6 +36,23 @@ final class MoneyTest extends TestCase
         self::assertSame('1.25', (string) Money::of('2')->subtract(Money::of('0.75')));
     }
 
+    public function testPercentagesAndRoundingAreExact(): void
+    {
+        self::assertSame('2.85', (string) Money::of('15')->percent('19'));
+        self::assertSame('0.145', (string) Money::of('2')->percent('7.25'));
+        // 33.33 × 7.25 % = 2.416425, held to four decimals and rounded half away from zero.
+        self::assertSame('2.4164', (string) Money::of('33.33')->percent('7.25'));
+        self::assertSame('-0.3', (string) Money::of('-1.5')->percent('20'));
+        self::assertSame('0.44', (string) Money::of('0.435')->rounded(2));
+        self::assertSame('-0.44', (string) Money::of('-0.435')->rounded(2));
+        self::assertSame('0.43', (string) Money::of('0.4349')->rounded(2));
+        self::assertSame('3', (string) Money::of('2.5')->rounded(0));
+        self::assertSame('8.50', Money::of('8.5')->format(2));
+        self::assertSame('9', Money::of('8.5')->format(0));
+        self::assertSame('-1.2500', Money::of('-1.25')->format(4));
+        self::assertSame(1, Money::of('2')->compare(Money::of('1.9999')));
+    }
+
     /**
      * @return iterable<string, array{string}>
      */

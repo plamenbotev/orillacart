@@ -1,0 +1,138 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Shipping\Application;
+
+use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shipping\Application\Dto\CarrierView;
+use OrillaCart\Shipping\Application\Dto\SaveCarrier;
+use OrillaCart\Shipping\Application\Dto\SaveRange;
+use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
+use OrillaCart\Shipping\Domain\Carrier;
+use OrillaCart\Shipping\Domain\CarrierNotFound;
+use OrillaCart\Shipping\Domain\CarrierRepository;
+use OrillaCart\Shipping\Domain\Measure;
+use OrillaCart\Shipping\Domain\Range;
+use OrillaCart\Shipping\Domain\RateDetails;
+use OrillaCart\Shipping\Domain\RateDraft;
+use OrillaCart\Shipping\Domain\Region;
+use OrillaCart\Shipping\Domain\ShippingRuleViolation;
+use OrillaCart\Tax\Application\TaxGroupService;
+
+/**
+ * Use cases for carriers and their rates, as the Shipping admin screen runs them.
+ */
+final readonly class CarrierService
+{
+    public function __construct(
+        private CarrierRepository $carriers,
+        private GeographyService $geography,
+        private TaxGroupService $taxGroups,
+    ) {}
+
+    /**
+     * @return list<CarrierView> in checkout order
+     */
+    public function carriers(): array
+    {
+        return array_map(CarrierView::fromCarrier(...), $this->carriers->all());
+    }
+
+    /**
+     * @throws CarrierNotFound
+     */
+    public function carrier(int $id): CarrierView
+    {
+        return CarrierView::fromCarrier($this->get($id));
+    }
+
+    /**
+     * @throws ShippingRuleViolation
+     */
+    public function create(SaveCarrier $command): CarrierView
+    {
+        $carrier = new Carrier($command->name, $command->active, $command->position);
+        $carrier->replaceRates($this->drafts($command->rates));
+        $this->carriers->save($carrier);
+
+        return CarrierView::fromCarrier($carrier);
+    }
+
+    /**
+     * @throws CarrierNotFound
+     * @throws ShippingRuleViolation
+     */
+    public function update(int $id, SaveCarrier $command): CarrierView
+    {
+        $carrier = $this->get($id);
+        $carrier->rename($command->name);
+        $carrier->activate($command->active);
+        $carrier->moveTo($command->position);
+        $carrier->replaceRates($this->drafts($command->rates));
+        $this->carriers->save($carrier);
+
+        return CarrierView::fromCarrier($carrier);
+    }
+
+    /**
+     * Orders keep the carrier's and rate's names, so removing a carrier never changes a placed order.
+     *
+     * @throws CarrierNotFound
+     */
+    public function delete(int $id): void
+    {
+        $this->carriers->remove($this->get($id));
+    }
+
+    private function get(int $id): Carrier
+    {
+        return $this->carriers->find($id) ?? throw new CarrierNotFound($id);
+    }
+
+    /**
+     * @param list<SaveShippingRate> $rates
+     *
+     * @return list<RateDraft>
+     */
+    private function drafts(array $rates): array
+    {
+        return array_map(fn(SaveShippingRate $rate): RateDraft => new RateDraft($rate->id, new RateDetails(
+            $rate->name,
+            Money::of($rate->price),
+            $rate->perItem,
+            array_map($this->region(...), $rate->regions),
+            self::range($rate->weight),
+            self::range($rate->volume),
+            self::range($rate->length),
+            self::range($rate->width),
+            self::range($rate->height),
+            self::range($rate->subtotal),
+            $rate->taxable,
+            $this->taxGroup($rate->taxGroupId),
+        )), $rates);
+    }
+
+    private function region(string $code): Region
+    {
+        $region = Region::of($code);
+        $this->geography->require($region->country, $region->state);
+
+        return $region;
+    }
+
+    private function taxGroup(?int $id): ?int
+    {
+        if ($id !== null && !$this->taxGroups->exists($id)) {
+            throw new ShippingRuleViolation(\sprintf('There is no tax group %d.', $id), 'orillacart_unknown_tax_group');
+        }
+
+        return $id;
+    }
+
+    private static function range(?SaveRange $range): Range
+    {
+        return $range === null ? Range::any() : new Range(Measure::of($range->min), $range->max === null ? null : Measure::of($range->max));
+    }
+}

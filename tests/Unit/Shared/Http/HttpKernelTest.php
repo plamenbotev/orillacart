@@ -111,6 +111,14 @@ final class HttpKernelTest extends TestCase
         self::assertSame(403, $this->send('POST', $route, ['X-WP-Nonce' => 'good-token'])->getStatusCode());
     }
 
+    public function testSignedRoutesLeaveTheCheckToTheirAction(): void
+    {
+        $route = new RouteDefinition(RecordingAction::class, '/payments/paypal/webhook', ['POST'], Route::PUBLIC, Route::REST_NONCE, signed: true);
+
+        self::assertSame(200, $this->send('POST', $route)->getStatusCode());
+        self::assertSame(1, $this->action->calls);
+    }
+
     public function testRequestsWithoutCookiesNeedNoNonce(): void
     {
         $this->csrf->required = false;
