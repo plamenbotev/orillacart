@@ -14,7 +14,9 @@ final readonly class ProductDetails
     /**
      * @param string|null $weight in the shop's weight unit, as a decimal string
      * @param string|null $length in the shop's dimension unit, as are width and height
-     * @param int|null    $taxGroupId null for the shop's default tax group
+     * @param int|null    $taxGroupId          null for the shop's default tax group
+     * @param int|null    $downloadLimit       how many times a buyer may download each file; null for no limit
+     * @param int|null    $downloadExpiryDays  how many days after payment the downloads work; null for always
      */
     public function __construct(
         public ProductType $type,
@@ -29,8 +31,13 @@ final readonly class ProductDetails
         public ?string $length = null,
         public ?string $width = null,
         public ?string $height = null,
+        public ?int $downloadLimit = null,
+        public ?int $downloadExpiryDays = null,
     ) {
         self::validSku($sku);
+        if (($downloadLimit !== null && $downloadLimit < 1) || ($downloadExpiryDays !== null && $downloadExpiryDays < 1)) {
+            throw new CatalogRuleViolation('A download limit and expiry are at least 1, or empty for none.', 'orillacart_invalid_download_terms');
+        }
         foreach (['weight' => $weight, 'length' => $length, 'width' => $width, 'height' => $height] as $name => $value) {
             if ($value !== null && preg_match('/^\d{1,8}(\.\d{1,4})?$/', $value) !== 1) {
                 throw new CatalogRuleViolation(\sprintf('The %s has to be a number of zero or more with up to four decimals.', $name), 'orillacart_invalid_measure');

@@ -1,0 +1,4 @@
+{% extends 'emails/layout.html.twig' %}
+{% block subject %}{{ __('[%s] New order #%s from %s %s')|format(site_name, order.number, order.billing.first_name, order.billing.last_name) }}{% endblock %}
+{% block heading %}{{ __('New order #%s')|format(order.number) }}{% endblock %}
+{% block intro %}<p>{{ order.status == 'on_hold' ? __('The customer will pay offline; the order is on hold until the money arrives.') : __('The order is paid and waits for you.') }}</p>{% if order.note %}<p><strong>{{ __('Customer note') }}:</strong> {{ order.note }}</p>{% endif %}{% endblock %}

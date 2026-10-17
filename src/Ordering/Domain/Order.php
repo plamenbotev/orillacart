@@ -51,6 +51,16 @@ class Order
     #[ORM\OrderBy(['position' => 'ASC'])]
     private Collection $lines;
 
+    /** @var Collection<int, DownloadGrant> */
+    #[ORM\OneToMany(targetEntity: DownloadGrant::class, mappedBy: 'order', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['linePosition' => 'ASC', 'id' => 'ASC'])]
+    private Collection $grants;
+
+    /** @var Collection<int, OrderNote> */
+    #[ORM\OneToMany(targetEntity: OrderNote::class, mappedBy: 'order', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['createdAt' => 'ASC', 'id' => 'ASC'])]
+    private Collection $notes;
+
     #[ORM\Column(nullable: true)]
     private ?int $shippingRateId;
 
@@ -130,6 +140,8 @@ class Order
         $this->billing = $draft->billing;
         $this->shippingAddress = $draft->shippingAddress ?? Address::none();
         $this->lines = new ArrayCollection();
+        $this->notes = new ArrayCollection();
+        $this->grants = new ArrayCollection();
         foreach ($draft->lines as $position => $line) {
             $this->lines->add(new OrderLine($this, $line, $position));
         }
@@ -269,6 +281,150 @@ class Order
         return $this->paidAt;
     }
 
+    /**
+     * @return list<OrderNote> oldest first
+     */
+    public function notes(): array
+    {
+        // Loaded in time order; new notes are added at the end.
+        return array_values($this->notes->toArray());
+    }
+
+    public function addNote(string $text, NoteAuthor $author, bool $forCustomer, \DateTimeImmutable $at, ?int $userId = null): OrderNote
+    {
+        $note = new OrderNote($this, $text, $author, $forCustomer, $at, $userId);
+        $this->notes->add($note);
+
+        return $note;
+    }
+
+    /**
+     * The customer's details as the shop corrected them. The shipping address stays only on orders that ship.
+     *
+     * @throws OrderRuleViolation for an invalid email, or a shipping address on an order that ships nothing
+     */
+    public function changeContact(string $email, Address $billing, ?Address $shippingAddress): void
+    {
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || mb_strlen($email) > 200) {
+            throw new OrderRuleViolation('An order needs a valid email address.', 'orillacart_invalid_email');
+        }
+        if (($shippingAddress === null) !== ($this->shippingName === null)) {
+            throw new OrderRuleViolation($this->shippingName === null ? 'This order ships nothing, so it has no shipping address.' : 'This order ships, so it needs a shipping address.', 'orillacart_invalid_address');
+        }
+        $this->email = $email;
+        $this->billing = $billing;
+        $this->shippingAddress = $shippingAddress ?? Address::none();
+    }
+
+    /**
+     * @return list<DownloadGrant>
+     */
+    public function grants(): array
+    {
+        return array_values($this->grants->toArray());
+    }
+
+    /**
+     * Gives the buyer their downloads, once the order is paid: one secret link per file of each line, with the
+     * product's limit and expiry counted from now.
+     *
+     * @param \Closure(): string $token makes a new secret token
+     *
+     * @return bool whether any download was granted
+     */
+    public function grantDownloads(\Closure $token, \DateTimeImmutable $now): bool
+    {
+        if (!$this->status->isPaid() || !$this->grants->isEmpty()) {
+            return false;
+        }
+        foreach ($this->lines as $line) {
+            foreach ($line->downloads() as $file) {
+                $expiry = $line->downloadExpiryDays();
+                $this->grants->add(new DownloadGrant(
+                    $this,
+                    $token(),
+                    $line->position(),
+                    $file->fileId,
+                    $file->name,
+                    $file->storageKey,
+                    $file->mimeType,
+                    $line->downloadLimit(),
+                    $expiry === null ? null : $now->modify("+{$expiry} days"),
+                ));
+            }
+        }
+
+        return !$this->grants->isEmpty();
+    }
+
+    /** The customer made an account after ordering: the order is theirs. */
+    public function belongTo(int $customerId): void
+    {
+        $this->customerId ??= $customerId;
+    }
+
+    /**
+     * Frees the stock of an order on hold whose items the shop is about to change.
+     *
+     * @return list<TakenItem> the stock to put back
+     *
+     * @throws OrderRuleViolation for an order not on hold
+     */
+    public function releaseStock(): array
+    {
+        $this->requireOnHold();
+        $taken = [];
+        foreach ($this->lines as $line) {
+            array_push($taken, ...$line->stockTaken());
+            $line->forgetStock();
+        }
+
+        return $taken;
+    }
+
+    /**
+     * Replaces what an order on hold contains, as the shop repriced it. Only orders waiting for an offline
+     * payment change: a paid order, or one being paid at a provider, keeps what was paid for.
+     *
+     * @param list<LineDraft> $lines
+     * @param list<TaxLine>   $taxes
+     *
+     * @throws OrderRuleViolation for an order not on hold, or one without items
+     */
+    public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, array $taxes, Money $subtotal, Money $itemsTax, Money $total): void
+    {
+        $this->requireOnHold();
+        if ($lines === []) {
+            throw new OrderRuleViolation('An order has at least one item.', 'orillacart_empty_order');
+        }
+        $shippingTotal = $shipping->price ?? Money::zero();
+        $shippingTax = $shipping->tax ?? Money::zero();
+        if (!$subtotal->add($itemsTax)->add($shippingTotal)->add($shippingTax)->equals($total)) {
+            throw new \LogicException('The order total is not the sum of its parts.');
+        }
+        if (($shipping === null) !== ($shippingAddress === null)) {
+            throw new \LogicException('An order that ships has a shipping address and a way to ship, one that does not has neither.');
+        }
+        $this->lines->clear();
+        foreach ($lines as $position => $line) {
+            $this->lines->add(new OrderLine($this, $line, $position));
+        }
+        $this->shippingAddress = $shippingAddress ?? Address::none();
+        $this->shippingRateId = $shipping?->rateId;
+        $this->shippingName = $shipping === null ? null : mb_substr("{$shipping->carrier} – {$shipping->rate}", 0, 200);
+        $this->shippingTotal = $shippingTotal->toFixed();
+        $this->shippingTax = $shippingTax->toFixed();
+        $this->taxes = array_map(static fn(TaxLine $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount->toFixed()], $taxes);
+        $this->subtotal = $subtotal->toFixed();
+        $this->itemsTax = $itemsTax->toFixed();
+        $this->total = $total->toFixed();
+    }
+
+    public function shippingRateId(): ?int
+    {
+        return $this->shippingRateId;
+    }
+
     /** The shop waits for an offline payment, or for the provider's review. */
     public function hold(): bool
     {
@@ -302,45 +458,86 @@ class Order
     /**
      * The payment failed. The stock the order took is returned to the caller, which puts it back.
      *
-     * @return list<TakenItem> empty when the order was not open
+     * @return list<TakenItem> empty when the order was not open: a payment that fails late changes nothing
      */
     public function fail(): array
     {
-        return $this->close(OrderStatus::Failed);
+        return $this->status->isOpen() ? $this->close(OrderStatus::Failed) : [];
     }
 
     /**
-     * The customer or the shop gave up the order before it was paid.
+     * The customer gave up paying, or never finished.
      *
      * @return list<TakenItem> the stock to put back; empty when the order was not open
      */
     public function cancel(): array
     {
-        return $this->close(OrderStatus::Cancelled);
+        return $this->status->isOpen() ? $this->close(OrderStatus::Cancelled) : [];
+    }
+
+    /**
+     * The shop moves the order along, as its admin screen allows: see OrderStatus::next(). Cancelling puts the
+     * stock back; refunding does when the shop takes the items back.
+     *
+     * @return list<TakenItem> the stock to put back
+     *
+     * @throws OrderRuleViolation for a move the order's status does not allow
+     */
+    public function moveTo(OrderStatus $status, bool $restock, \DateTimeImmutable $at): array
+    {
+        if (!\in_array($status, $this->status->next(), true)) {
+            throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot become %s.', $this->id(), strtolower($this->status->label()), strtolower($status->label())), 'orillacart_invalid_status_change');
+        }
+
+        switch ($status) {
+            case OrderStatus::OnHold:
+                $this->hold();
+
+                return [];
+            case OrderStatus::Processing:
+                $this->markPaid($this->transactionId, $at);
+
+                return [];
+            case OrderStatus::Cancelled:
+                return $this->close(OrderStatus::Cancelled);
+            case OrderStatus::Refunded:
+                return $this->close(OrderStatus::Refunded, $restock);
+            default:
+                $this->status = $status;
+
+                return [];
+        }
     }
 
     /**
      * @return list<TakenItem>
      */
-    private function close(OrderStatus $status): array
+    private function close(OrderStatus $status, bool $restock = true): array
     {
-        if (!$this->status->isOpen()) {
-            return [];
-        }
         $this->status = $status;
+        $this->grants->clear();
         $taken = [];
         foreach ($this->lines as $line) {
-            array_push($taken, ...$line->stockTaken());
+            if ($restock) {
+                array_push($taken, ...$line->stockTaken());
+            }
             $line->forgetStock();
         }
 
         return $taken;
     }
 
+    private function requireOnHold(): void
+    {
+        if ($this->status !== OrderStatus::OnHold) {
+            throw new OrderRuleViolation(\sprintf('Only orders on hold can change their items; order #%d is %s.', $this->id(), strtolower($this->status->label())), 'orillacart_order_not_editable');
+        }
+    }
+
     private function requireOpen(string $change): void
     {
         if (!$this->status->isOpen()) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot be %s.', $this->id(), str_replace('_', ' ', $this->status->value), $change), 'orillacart_order_closed');
+            throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot be %s.', $this->id(), strtolower($this->status->label()), $change), 'orillacart_order_closed');
         }
     }
 }

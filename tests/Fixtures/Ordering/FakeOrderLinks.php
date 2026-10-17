@@ -12,4 +12,9 @@ final class FakeOrderLinks implements OrderLinks
     {
         return "https://shop.test/?orillacart_order={$key}";
     }
+
+    public function downloadUrl(string $token): string
+    {
+        return "https://shop.test/?orillacart_download={$token}";
+    }
 }

@@ -1,0 +1,4 @@
+{% extends 'emails/layout.html.twig' %}
+{% block subject %}{{ __('[%s] The payment for order #%s failed')|format(site_name, order.number) }}{% endblock %}
+{% block heading %}{{ __('Your payment did not go through') }}{% endblock %}
+{% block intro %}<p>{{ __('The payment for your order failed, so the order was not placed. You can order again at any time.') }}</p>{% endblock %}

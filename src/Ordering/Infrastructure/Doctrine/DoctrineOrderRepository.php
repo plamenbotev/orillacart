@@ -38,6 +38,44 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             ->getResult();
     }
 
+    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit): array
+    {
+        $query = $this->entityManager->createQueryBuilder()->from(Order::class, 'o');
+        if ($status !== null) {
+            $query->andWhere('o.status = :status')->setParameter('status', $status);
+        }
+        if ($customerId !== null) {
+            $query->andWhere('o.customerId = :customer')->setParameter('customer', $customerId);
+        }
+        if ($text !== null) {
+            $like = '%' . addcslashes($text, '%_\\') . '%';
+            $matches = ['o.email LIKE :text', 'o.billing.firstName LIKE :text', 'o.billing.lastName LIKE :text', 'o.billing.phone LIKE :text'];
+            $number = ltrim($text, '#');
+            if (ctype_digit($number) && \strlen($number) <= 9) {
+                $matches[] = 'o.id = :number';
+                $query->setParameter('number', (int) $number);
+            }
+            $query->andWhere(implode(' OR ', $matches))->setParameter('text', $like);
+        }
+
+        $total = (int) (clone $query)->select('COUNT(o.id)')->getQuery()->getSingleScalarResult();
+        /** @var list<Order> $orders */
+        $orders = $query->select('o')
+            ->orderBy('o.id', 'DESC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        return [$orders, $total];
+    }
+
+    public function remove(Order $order): void
+    {
+        $this->entityManager->remove($order);
+        $this->entityManager->flush();
+    }
+
     public function save(Order $order): void
     {
         $this->entityManager->persist($order);

@@ -21,13 +21,15 @@ final class CheckoutRestTest extends RestTestCase
     private array $payPalCalls = [];
     private int $product;
     private int $rate;
+    private ?\Closure $payPalFilter = null;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->clean();
         unset($_COOKIE[CartCookie::NAME]);
-        add_filter('pre_http_request', $this->payPal(...), 10, 3);
+        $this->payPalFilter = $this->payPal(...);
+        add_filter('pre_http_request', $this->payPalFilter, 10, 3);
 
         $this->actAs('administrator');
         $this->product = $this->post('Lamp');
@@ -57,7 +59,9 @@ final class CheckoutRestTest extends RestTestCase
 
     protected function tearDown(): void
     {
-        remove_filter('pre_http_request', $this->payPal(...));
+        if ($this->payPalFilter !== null) {
+            remove_filter('pre_http_request', $this->payPalFilter);
+        }
         unset($_COOKIE[CartCookie::NAME]);
         foreach ($this->posts as $post) {
             wp_delete_post($post, true);
@@ -103,10 +107,14 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame(1, $this->stock()->stock(StockItemRef::product($this->product))->available);
         self::assertSame(0, $this->data($this->request('GET', '/cart'))['items']);
 
-        $receipt = $this->request('GET', "/orders/{$this->key($order)}");
+        self::assertSame(['ada@example.com', 'wordpress@example.com'], array_column($this->sentMail(), 'to'));
+        self::assertStringContainsString('We received your order', $this->sentMail()[0]['subject'] ?? '');
+        self::assertStringContainsString('Have the cash ready.', $this->sentMail()[0]['message'] ?? '');
+
+        $receipt = $this->request('GET', "/receipts/{$this->key($order)}");
         self::assertSame(200, $receipt->get_status());
         self::assertSame(['Cash on delivery', 'Have the cash ready.', 'Courier – Bulgaria'], [$this->data($receipt)['payment_name'], $this->data($receipt)['payment_note'], $this->data($receipt)['shipping']]);
-        self::assertSame(404, $this->request('GET', '/orders/' . str_repeat('0', 32))->get_status());
+        self::assertSame(404, $this->request('GET', '/receipts/' . str_repeat('0', 32))->get_status());
     }
 
     public function testAnOrderThatRunsOutOfStockWhilePlacedTakesNothing(): void
@@ -147,7 +155,7 @@ final class CheckoutRestTest extends RestTestCase
         $back = rest_do_request($return);
         self::assertSame(303, $back->get_status());
         self::assertSame($order['receipt_url'], $back->get_headers()['Location']);
-        self::assertSame('processing', $this->data($this->request('GET', "/orders/{$this->key($order)}"))['status']);
+        self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($order)}"))['status']);
     }
 
     public function testPayPalWebhooksAreReadOnlyWhenPayPalSignedThem(): void
@@ -162,11 +170,11 @@ final class CheckoutRestTest extends RestTestCase
         $response = rest_do_request($forged);
 
         self::assertSame(422, $response->get_status());
-        self::assertSame('pending_payment', $this->data($this->request('GET', "/orders/{$this->key($order)}"))['status']);
+        self::assertSame('pending_payment', $this->data($this->request('GET', "/receipts/{$this->key($order)}"))['status']);
 
         $forged->set_header('PayPal-Transmission-Sig', 'genuine');
         self::assertSame(200, rest_do_request($forged)->get_status());
-        self::assertSame('processing', $this->data($this->request('GET', "/orders/{$this->key($order)}"))['status']);
+        self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($order)}"))['status']);
     }
 
     /**

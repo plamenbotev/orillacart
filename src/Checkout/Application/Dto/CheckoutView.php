@@ -31,5 +31,7 @@ final readonly class CheckoutView
         public string $shippingTax,
         public string $total,
         public string $currency,
+        /** Whether visitors may (optional), must (required) or cannot (disabled) make an account. */
+        public string $accounts,
     ) {}
 }

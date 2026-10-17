@@ -35,6 +35,21 @@ final class InMemoryOrderRepository implements OrderRepository
         return array_values(array_filter($this->orders, static fn(Order $order): bool => $order->status() === OrderStatus::PendingPayment && $order->placedAt() < $before));
     }
 
+    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit): array
+    {
+        $found = array_values(array_filter($this->orders, static fn(Order $order): bool => ($status === null || $order->status() === $status)
+            && ($customerId === null || $order->customerId() === $customerId)
+            && ($text === null || str_contains(strtolower($order->email() . ' ' . $order->billing()->firstName() . ' ' . $order->billing()->lastName()), strtolower($text)) || ltrim($text, '#') === (string) $order->id())));
+        usort($found, static fn(Order $a, Order $b): int => $b->id() <=> $a->id());
+
+        return [\array_slice($found, $offset, $limit), \count($found)];
+    }
+
+    public function remove(Order $order): void
+    {
+        unset($this->orders[$order->id()]);
+    }
+
     public function save(Order $order): void
     {
         $id = new \ReflectionProperty(Order::class, 'id');

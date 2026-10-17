@@ -4,17 +4,24 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Application\Dto;
 
+use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\Order;
+use OrillaCart\Ordering\Domain\OrderNote;
+use OrillaCart\Ordering\Domain\OrderStatus;
 use OrillaCart\Ordering\Domain\TaxLine;
 
 /**
- * An order as its receipt shows it.
+ * An order as its receipt shows it. The shop's view also has the notes only the shop sees, and the statuses
+ * the order can move to.
  */
 final readonly class OrderView
 {
     /**
      * @param list<OrderLineView> $lines
      * @param list<TaxLineView>   $taxes
+     * @param list<OrderNoteView> $notes
+     * @param list<string>        $nextStatuses empty in the customer's view
+     * @param list<OrderDownloadView> $downloads once the order is paid
      */
     public function __construct(
         public int $number,
@@ -38,11 +45,21 @@ final readonly class OrderView
         public string $note,
         public string $placedAt,
         public ?string $paidAt,
+        public ?int $customerId,
+        public ?string $transactionId,
+        public array $notes,
+        public array $nextStatuses,
+        public array $downloads = [],
+        public ?int $shippingRateId = null,
     ) {}
 
-    public static function fromOrder(Order $order): self
+    /**
+     * @param (\Closure(string): string)|null $downloadUrl the link of a download token; without it, no downloads are listed
+     */
+    public static function fromOrder(Order $order, bool $forShop = false, ?\Closure $downloadUrl = null): self
     {
         $shippingAddress = $order->shippingAddress();
+        $lines = $order->lines();
 
         return new self(
             $order->id(),
@@ -66,6 +83,15 @@ final readonly class OrderView
             $order->note(),
             $order->placedAt()->format(\DATE_ATOM),
             $order->paidAt()?->format(\DATE_ATOM),
+            $order->customerId(),
+            $forShop ? $order->transactionId() : null,
+            array_values(array_map(OrderNoteView::fromNote(...), array_filter($order->notes(), static fn(OrderNote $note): bool => $forShop || $note->isForCustomer()))),
+            $forShop ? array_map(static fn(OrderStatus $status): string => $status->value, $order->status()->next()) : [],
+            $downloadUrl === null ? [] : array_map(
+                static fn(DownloadGrant $grant): OrderDownloadView => OrderDownloadView::fromGrant($grant, ($lines[$grant->linePosition()] ?? null)?->name() ?? '', $downloadUrl),
+                $order->grants(),
+            ),
+            $order->shippingRateId(),
         );
     }
 }

@@ -36,6 +36,7 @@ import {
 	withSalePrice,
 } from './fields';
 import { StockLevels } from './StockLevels';
+import { DownloadsPanel } from './DownloadsPanel';
 import { VariationsPanel } from './VariationsPanel';
 
 /**
@@ -400,6 +401,30 @@ export function ProductPanels() {
 					attributes={ draft.attributes }
 					onChange={ ( attributes ) => change( { attributes } ) }
 				/>
+			</PluginDocumentSettingPanel>
+
+			<PluginDocumentSettingPanel
+				name="orillacart-downloads"
+				title={ __( 'Downloads', 'orillacart' ) }
+			>
+				{ product.saved ? (
+					<DownloadsPanel
+						productId={ postId }
+						downloads={ product.downloads }
+						limit={ draft.download_limit }
+						expiryDays={ draft.download_expiry_days }
+						onTermsChange={ change }
+						onChanged={ reload }
+						onError={ fail }
+					/>
+				) : (
+					<p>
+						{ __(
+							'Save the product details first.',
+							'orillacart'
+						) }
+					</p>
+				) }
 			</PluginDocumentSettingPanel>
 
 			<PluginDocumentSettingPanel

@@ -26,6 +26,9 @@ final class InMemoryProductRepository implements ProductRepository
         foreach ($product->variations() as $variation) {
             $this->ids->variation($variation);
         }
+        foreach ($product->downloads() as $file) {
+            $this->ids->download($file);
+        }
         $this->products[$product->id()] = $product;
     }
 

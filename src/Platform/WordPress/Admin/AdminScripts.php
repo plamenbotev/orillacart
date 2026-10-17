@@ -7,7 +7,8 @@ namespace OrillaCart\Platform\WordPress\Admin;
 use OrillaCart\Platform\PluginContext;
 
 /**
- * Loads an admin script built by @wordpress/scripts, with the dependencies and version its .asset.php lists.
+ * Loads an admin script built by @wordpress/scripts, with the dependencies and version its .asset.php lists,
+ * and the stylesheet built from the styles it imports.
  */
 final readonly class AdminScripts
 {
@@ -24,5 +25,9 @@ final readonly class AdminScripts
         wp_enqueue_script($handle, plugins_url('build/admin/' . $script . '.js', $this->context->pluginFile), $dependencies, $version, ['in_footer' => true]);
         wp_set_script_translations($handle, 'orillacart');
         wp_enqueue_style('wp-components');
+        // Styles the script imports, such as DataViews', are built next to it.
+        if (is_file($this->context->path('build/admin/' . $script . '.css'))) {
+            wp_enqueue_style($handle, plugins_url('build/admin/' . $script . '.css', $this->context->pluginFile), ['wp-components'], $version);
+        }
     }
 }

@@ -15,6 +15,7 @@ final readonly class ItemQuote
      * @param int|null           $available how many can be sold now; null when stock does not limit it
      * @param bool               $forSale   published, purchasable and not marked unavailable
      * @param string|null        $weight    in the shop's weight unit; length, width and height in its dimension unit
+     * @param list<QuotedDownload> $downloads what the buyer may download once paid
      */
     public function __construct(
         public int $productId,
@@ -32,5 +33,8 @@ final readonly class ItemQuote
         public ?string $length = null,
         public ?string $width = null,
         public ?string $height = null,
+        public array $downloads = [],
+        public ?int $downloadLimit = null,
+        public ?int $downloadExpiryDays = null,
     ) {}
 }

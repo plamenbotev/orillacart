@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Application\Dto;
 
+use OrillaCart\Catalog\Application\Dto\QuotedDownload;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 
 /**
@@ -16,6 +17,7 @@ final readonly class NewOrderLine
      * @param list<int>                                    $optionIds
      * @param list<array{attribute: string, option: string}> $options
      * @param list<TakenStock>                             $taken
+     * @param list<QuotedDownload>                         $downloads
      */
     public function __construct(
         public int $productId,
@@ -30,5 +32,8 @@ final readonly class NewOrderLine
         public string $tax,
         public bool $ships,
         public array $taken,
+        public array $downloads = [],
+        public ?int $downloadLimit = null,
+        public ?int $downloadExpiryDays = null,
     ) {}
 }

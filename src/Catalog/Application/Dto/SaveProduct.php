@@ -54,6 +54,10 @@ final readonly class SaveProduct
         public array $setIds = [],
         #[Assert\Valid]
         public array $attributes = [],
+        #[Assert\Positive]
+        public ?int $downloadLimit = null,
+        #[Assert\Positive]
+        public ?int $downloadExpiryDays = null,
     ) {}
 
     /** @return list<string> */

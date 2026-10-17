@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace OrillaCart\Ordering\Http;
 
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-/**
- * An order's receipt, for whoever holds its key: the customer gets it when ordering, so no account is needed.
- */
-#[Route('/orders/{key}', methods: ['GET'], capability: Route::PUBLIC, requirements: ['key' => '[a-f0-9]{32}'])]
+#[Route('/orders/{id}', methods: ['GET'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ShowOrderAction implements RequestHandlerInterface
 {
     public function __construct(
@@ -24,8 +23,6 @@ final readonly class ShowOrderAction implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $key = $request->getAttribute('key');
-
-        return $this->responder->ok($this->orders->byKey(\is_string($key) ? $key : ''));
+        return $this->responder->ok($this->orders->order(PathParameter::id($request)));
     }
 }

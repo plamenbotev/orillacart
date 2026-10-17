@@ -7,8 +7,8 @@
 		"node": ">=22"
 	},
 	"scripts": {
-		"build": "wp-scripts build settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx attribute-sets=./assets/admin/attribute-sets/index.tsx stockrooms=./assets/admin/stockrooms/index.tsx product-editor=./assets/admin/product-editor/index.tsx shipping=./assets/admin/shipping/index.tsx payments=./assets/admin/payments/index.tsx --output-path=build/admin",
-		"start": "wp-scripts start settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx attribute-sets=./assets/admin/attribute-sets/index.tsx stockrooms=./assets/admin/stockrooms/index.tsx product-editor=./assets/admin/product-editor/index.tsx shipping=./assets/admin/shipping/index.tsx payments=./assets/admin/payments/index.tsx --output-path=build/admin",
+		"build": "wp-scripts build settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx attribute-sets=./assets/admin/attribute-sets/index.tsx stockrooms=./assets/admin/stockrooms/index.tsx product-editor=./assets/admin/product-editor/index.tsx shipping=./assets/admin/shipping/index.tsx payments=./assets/admin/payments/index.tsx orders=./assets/admin/orders/index.tsx customers=./assets/admin/customers/index.tsx emails=./assets/admin/emails/index.tsx --output-path=build/admin",
+		"start": "wp-scripts start settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx attribute-sets=./assets/admin/attribute-sets/index.tsx stockrooms=./assets/admin/stockrooms/index.tsx product-editor=./assets/admin/product-editor/index.tsx shipping=./assets/admin/shipping/index.tsx payments=./assets/admin/payments/index.tsx orders=./assets/admin/orders/index.tsx customers=./assets/admin/customers/index.tsx emails=./assets/admin/emails/index.tsx --output-path=build/admin",
 		"lint:js": "wp-scripts lint-js assets",
 		"typecheck": "tsc --noEmit",
 		"test:js": "wp-scripts test-unit-js assets",
@@ -27,6 +27,7 @@
 		"@wordpress/api-fetch": "^7.57.0",
 		"@wordpress/components": "^42.0.0",
 		"@wordpress/data": "^10.57.0",
+		"@wordpress/dataviews": "^20.0.0",
 		"@wordpress/editor": "^15.2.0",
 		"@wordpress/element": "^9.0.0",
 		"@wordpress/env": "^11.17.0",
@@ -34,6 +35,7 @@
 		"@wordpress/notices": "^5.57.0",
 		"@wordpress/plugins": "^7.57.0",
 		"@wordpress/scripts": "^34.2.0",
+		"@wordpress/url": "^4.57.0",
 		"typescript": "^6.0.3"
 	}
 }

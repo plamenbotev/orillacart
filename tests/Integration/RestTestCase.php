@@ -24,14 +24,52 @@ abstract class RestTestCase extends TestCase
         $lifecycle->activate();
     }
 
+    /** @var list<array{to: string, subject: string, message: string}> mail the plugin sent during the test */
+    protected array $mails = [];
+    private ?\Closure $mailCatcher = null;
+
     protected function setUp(): void
     {
         wp_set_current_user(0);
+        $this->mails = [];
+        // One closure, kept, so remove_filter() finds the same one.
+        $this->mailCatcher = $this->catchMail(...);
+        add_filter('pre_wp_mail', $this->mailCatcher, 10, 2);
     }
 
     protected function tearDown(): void
     {
+        if ($this->mailCatcher !== null) {
+            remove_filter('pre_wp_mail', $this->mailCatcher);
+        }
         wp_set_current_user(0);
+    }
+
+    /**
+     * Keeps mail instead of sending it: the test site has no mail server.
+     *
+     * @param array<string, mixed> $mail
+     */
+    public function catchMail(?bool $short, array $mail): bool
+    {
+        $to = $mail['to'] ?? '';
+        $this->mails[] = [
+            'to' => \is_array($to) ? implode(', ', array_filter($to, \is_string(...))) : (\is_string($to) ? $to : ''),
+            'subject' => \is_string($mail['subject'] ?? null) ? $mail['subject'] : '',
+            'message' => \is_string($mail['message'] ?? null) ? $mail['message'] : '',
+        ];
+
+        return true;
+    }
+
+    /**
+     * The mail caught so far. Read through this method: the mail filter fills the list behind static analysis.
+     *
+     * @return list<array{to: string, subject: string, message: string}>
+     */
+    protected function sentMail(): array
+    {
+        return $this->mails;
     }
 
     protected static function kernel(): Kernel
@@ -44,7 +82,13 @@ abstract class RestTestCase extends TestCase
      */
     protected function request(string $method, string $route, array $body = [], bool|string $nonce = false): \WP_REST_Response
     {
+        $query = [];
+        if (str_contains($route, '?')) {
+            [$route, $string] = explode('?', $route, 2);
+            parse_str($string, $query);
+        }
         $request = new \WP_REST_Request($method, self::NAMESPACE . $route);
+        $request->set_query_params($query);
         if ($body !== []) {
             $request->set_header('Content-Type', 'application/json');
             $request->set_body((string) wp_json_encode($body));

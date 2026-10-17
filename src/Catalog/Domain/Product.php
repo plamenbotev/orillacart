@@ -57,6 +57,17 @@ class Product
     #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
     private ?string $height;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $downloadLimit = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $downloadExpiryDays = null;
+
+    /** @var Collection<int, DownloadFile> */
+    #[ORM\OneToMany(targetEntity: DownloadFile::class, mappedBy: 'product', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $downloads;
+
     /** @var Collection<int, Attribute> the product's own attributes */
     #[ORM\OneToMany(targetEntity: Attribute::class, mappedBy: 'product', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $attributes;
@@ -86,6 +97,7 @@ class Product
         $this->attributes = new ArrayCollection();
         $this->sets = new ArrayCollection();
         $this->variations = new ArrayCollection();
+        $this->downloads = new ArrayCollection();
         $this->change($details);
     }
 
@@ -109,6 +121,8 @@ class Product
             $this->length === null ? null : self::trimDecimal($this->length),
             $this->width === null ? null : self::trimDecimal($this->width),
             $this->height === null ? null : self::trimDecimal($this->height),
+            $this->downloadLimit,
+            $this->downloadExpiryDays,
         );
     }
 
@@ -126,6 +140,51 @@ class Product
         $this->length = $details->length;
         $this->width = $details->width;
         $this->height = $details->height;
+        $this->downloadLimit = $details->downloadLimit;
+        $this->downloadExpiryDays = $details->downloadExpiryDays;
+    }
+
+    // ------------------------------------------------------------------------------------------ downloads
+
+    /**
+     * @return list<DownloadFile> what a buyer may download, in the order they were added
+     */
+    public function downloads(): array
+    {
+        return array_values($this->downloads->toArray());
+    }
+
+    public function addDownload(string $name, string $storageKey, string $mimeType, int $size): DownloadFile
+    {
+        $file = new DownloadFile($this, $name, $storageKey, $mimeType, $size);
+        $this->downloads->add($file);
+
+        return $file;
+    }
+
+    /**
+     * @throws CatalogRuleViolation for a file that is not this product's
+     */
+    public function download(int $fileId): DownloadFile
+    {
+        foreach ($this->downloads as $file) {
+            if ($file->isSaved() && $file->id() === $fileId) {
+                return $file;
+            }
+        }
+
+        throw new CatalogRuleViolation(\sprintf('File %d is not one of this product\'s downloads.', $fileId), 'orillacart_unknown_download');
+    }
+
+    /**
+     * @return DownloadFile the removed file, whose stored copy the caller deletes when no order needs it
+     */
+    public function removeDownload(int $fileId): DownloadFile
+    {
+        $file = $this->download($fileId);
+        $this->downloads->removeElement($file);
+
+        return $file;
     }
 
     // ------------------------------------------------------------------------------------------ attributes

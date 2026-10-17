@@ -1,0 +1,4 @@
+{% extends 'emails/layout.html.twig' %}
+{% block subject %}{{ __('[%s] Your order #%s is complete')|format(site_name, order.number) }}{% endblock %}
+{% block heading %}{{ __('Your order is complete') }}{% endblock %}
+{% block intro %}<p>{{ __('Thank you for shopping with us.') }}</p>{% endblock %}

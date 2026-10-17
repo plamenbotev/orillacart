@@ -1,0 +1,4 @@
+{% extends 'emails/layout.html.twig' %}
+{% block subject %}{{ __('[%s] Your order #%s was refunded')|format(site_name, order.number) }}{% endblock %}
+{% block heading %}{{ __('Your order was refunded') }}{% endblock %}
+{% block intro %}<p>{{ __('We have refunded your order.') }}</p>{% endblock %}

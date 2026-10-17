@@ -14,4 +14,11 @@ interface TemplateRenderer
      * @param array<string, mixed> $context view DTOs and plain values, never entities
      */
     public function render(string $template, array $context = []): string;
+
+    /**
+     * One block of a template, such as an email's subject.
+     *
+     * @param array<string, mixed> $context
+     */
+    public function renderBlock(string $template, string $block, array $context = []): string;
 }

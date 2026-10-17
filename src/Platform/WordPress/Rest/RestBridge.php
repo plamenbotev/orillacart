@@ -10,6 +10,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\UploadedFileFactoryInterface;
 use Psr\Http\Message\UriFactoryInterface;
 
 /**
@@ -22,6 +23,7 @@ final readonly class RestBridge
         private ServerRequestFactoryInterface $requests,
         private UriFactoryInterface $uris,
         private StreamFactoryInterface $streams,
+        private UploadedFileFactoryInterface $uploads,
     ) {}
 
     public function handle(RouteDefinition $route, \WP_REST_Request $request): \WP_REST_Response
@@ -44,6 +46,20 @@ final readonly class RestBridge
             ->withBody($this->streams->createStream($body))
             ->withParsedBody($request->get_json_params() ?? $request->get_body_params())
             ->withAttribute(RouteDefinition::ATTRIBUTE, $route);
+
+        $files = [];
+        foreach ($request->get_file_params() as $name => $file) {
+            if (\is_array($file) && \is_string($file['tmp_name'] ?? null) && \is_int($file['error'] ?? null)) {
+                $files[(string) $name] = $this->uploads->createUploadedFile(
+                    $this->streams->createStreamFromFile($file['tmp_name'] === '' ? 'php://memory' : $file['tmp_name']),
+                    \is_int($file['size'] ?? null) ? $file['size'] : null,
+                    $file['error'],
+                    \is_string($file['name'] ?? null) ? $file['name'] : null,
+                    \is_string($file['type'] ?? null) ? $file['type'] : null,
+                );
+            }
+        }
+        $psr = $psr->withUploadedFiles($files);
 
         // WordPress stores header names lower-cased with underscores: x_wp_nonce
         foreach ($request->get_headers() as $name => $values) {

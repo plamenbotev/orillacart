@@ -1,0 +1,4 @@
+{% extends 'emails/layout.html.twig' %}
+{% block subject %}{{ __('[%s] Your order #%s was cancelled')|format(site_name, order.number) }}{% endblock %}
+{% block heading %}{{ __('Your order was cancelled') }}{% endblock %}
+{% block intro %}<p>{{ __('Your order was cancelled. If you did not expect this, please reply to this email.') }}</p>{% endblock %}

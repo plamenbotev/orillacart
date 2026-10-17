@@ -58,6 +58,16 @@ class OrderLine
     #[ORM\Column(type: 'json')]
     private array $stockTaken;
 
+    /** @var list<array{file_id: int, name: string, storage_key: string, mime_type: string}> */
+    #[ORM\Column(type: 'json')]
+    private array $downloads;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $downloadLimit;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $downloadExpiryDays;
+
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Order::class, inversedBy: 'lines')]
         #[ORM\JoinColumn(name: 'order_id', nullable: false, onDelete: 'CASCADE')]
@@ -80,6 +90,9 @@ class OrderLine
         $this->total = $draft->total->toFixed();
         $this->tax = $draft->tax->toFixed();
         $this->ships = $draft->ships;
+        $this->downloads = array_map(static fn(LineDownload $file): array => ['file_id' => $file->fileId, 'name' => $file->name, 'storage_key' => $file->storageKey, 'mime_type' => $file->mimeType], $draft->downloads);
+        $this->downloadLimit = $draft->downloadLimit;
+        $this->downloadExpiryDays = $draft->downloadExpiryDays;
         $this->stockTaken = array_map(static fn(TakenItem $taken): array => ['item' => $taken->item, 'stockroom_id' => $taken->stockroomId, 'quantity' => $taken->quantity], $draft->taken);
     }
 
@@ -154,6 +167,22 @@ class OrderLine
     public function stockTaken(): array
     {
         return array_map(static fn(array $taken): TakenItem => new TakenItem($taken['item'], $taken['stockroom_id'], $taken['quantity']), $this->stockTaken);
+    }
+
+    /** @return list<LineDownload> */
+    public function downloads(): array
+    {
+        return array_map(static fn(array $file): LineDownload => new LineDownload($file['file_id'], $file['name'], $file['storage_key'], $file['mime_type']), $this->downloads);
+    }
+
+    public function downloadLimit(): ?int
+    {
+        return $this->downloadLimit;
+    }
+
+    public function downloadExpiryDays(): ?int
+    {
+        return $this->downloadExpiryDays;
     }
 
     /** @internal for Order: the stock went back */

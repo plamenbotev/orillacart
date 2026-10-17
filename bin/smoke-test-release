@@ -37,6 +37,15 @@ for _ in $(seq 1 30); do docker exec "$WP" test -f /var/www/html/wp-config.php &
 wp config set WP_DEBUG true --raw > /dev/null
 wp config set WP_DEBUG_LOG true --raw > /dev/null
 wp config set WP_DEBUG_DISPLAY false --raw > /dev/null
+# The container has no mail server: keep each mail's recipient and subject in a file instead.
+docker exec -i "$WP" bash -c 'mkdir -p /var/www/html/wp-content/mu-plugins && cat > /var/www/html/wp-content/mu-plugins/catch-mail.php' <<'PHP'
+<?php
+add_filter('pre_wp_mail', static function ($short, array $mail) {
+    file_put_contents(WP_CONTENT_DIR . '/mail.log', implode(',', (array) $mail['to']) . ': ' . $mail['subject'] . "\n", FILE_APPEND);
+
+    return true;
+}, 10, 2);
+PHP
 wp config set WP_ENVIRONMENT_TYPE local > /dev/null  # application passwords over plain HTTP
 wp core install --url=http://localhost --title=Smoke --admin_user=admin --admin_password=admin \
     --admin_email=admin@example.com --skip-email > /dev/null
@@ -131,7 +140,7 @@ docker exec "$WP" grep -q 'orillacart_cart' /tmp/cart || fail "the cart cookie w
 placed="$(visitor -X POST -d "{\"email\":\"ada@example.com\",\"billing\":{\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"street\":\"1 Main St\",\"city\":\"Sofia\",\"postcode\":\"1000\",\"country\":\"BG\",\"phone\":\"+359 2 000 0000\"},\"rate_id\":$rate,\"payment\":\"cash_on_delivery\"}" "$API/checkout")"
 echo "$placed" | grep -q '"status":"on_hold"' || fail "the order was not placed: $placed"
 key="$(echo "$placed" | sed -n 's/.*"key":"\([a-f0-9]*\)".*/\1/p')"
-[ "$(api "$API/orders/$key")" = 200 ] || fail "the receipt does not open"
+[ "$(api "$API/receipts/$key")" = 200 ] || fail "the receipt does not open"
 [ "$(wp eval "
     \$kernel = new OrillaCart\Platform\Kernel(new OrillaCart\Platform\PluginContext(WP_PLUGIN_DIR . '/orillacart/orillacart.php', ORILLACART_VERSION));
     echo \$kernel->container()->get(OrillaCart\Inventory\Application\StockService::class)
@@ -141,6 +150,26 @@ for hook in orillacart_cancel_abandoned_orders orillacart_forget_abandoned_carts
     wp cron event list --fields=hook --format=csv | grep -qx "$hook" || fail "$hook is not scheduled"
 done
 wp cron event run orillacart_cancel_abandoned_orders orillacart_forget_abandoned_carts > /dev/null || fail "the scheduled tasks failed"
+
+docker exec "$WP" grep -q 'ada@example.com: .* We received your order' /var/www/html/wp-content/mail.log \
+    || fail "the customer was not emailed about the order"
+
+echo "==> Orders, accounts and downloads"
+[ "$(api -u "admin:$PASS" "$API/orders&status=on_hold")" = 200 ] || fail "the administrator could not list orders"
+number="$(echo "$placed" | sed -n 's/.*"number":\([0-9]*\).*/\1/p')"
+[ "$(api -u "admin:$PASS" -X PUT -H 'Content-Type: application/json' -d '{"status":"cancelled"}' "$API/orders/$number/status")" = 200 ] \
+    || fail "the administrator could not cancel the order"
+[ "$(wp eval "
+    \$kernel = new OrillaCart\Platform\Kernel(new OrillaCart\Platform\PluginContext(WP_PLUGIN_DIR . '/orillacart/orillacart.php', ORILLACART_VERSION));
+    echo \$kernel->container()->get(OrillaCart\Inventory\Application\StockService::class)
+        ->stock(OrillaCart\Inventory\Application\Dto\StockItemRef::product($product))->available;
+")" = 3 ] || fail "cancelling did not put the stock back"
+docker exec "$WP" bash -c 'printf "%%PDF guide" > /tmp/guide.pdf'
+upload="$(docker exec "$WP" curl -s -u "admin:$PASS" -F 'file=@/tmp/guide.pdf;type=application/pdf' "$API/products/$product/downloads")"
+echo "$upload" | grep -q '"name":"guide.pdf"' || fail "the administrator could not upload a download: $upload"
+storage="$(docker exec "$WP" curl -s -u "admin:$PASS" "$API/download-storage&fresh=1")"
+echo "$storage" | grep -q '"reachable":true' && fail "the web server hands out download files by itself: $storage"
+[ "$(wp post list --post_type=attachment --format=count)" = 0 ] || fail "a download became a media library item"
 
 echo "==> Upgrade on an admin request"
 wp option update orillacart_version 0.0.1 > /dev/null
@@ -172,6 +201,9 @@ wp cap list administrator | grep -qx manage_orillacart && fail "capability left 
 [ "$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SELECT COUNT(*) FROM wp_posts WHERE post_type = 'orillacart_product'" 2> /dev/null)" = 0 ] \
     || fail "product posts left after uninstall"
 wp cron event list --fields=hook --format=csv | grep -q '^orillacart_' && fail "scheduled tasks left after uninstall"
+wp option get orillacart_email_settings > /dev/null 2>&1 && fail "email settings left after uninstall"
+docker exec "$WP" bash -c 'ls -d /var/www/orillacart-downloads /var/www/html/wp-content/uploads/orillacart-* 2> /dev/null' && fail "download files left after uninstall"
+wp role exists orillacart_customer > /dev/null 2>&1 && fail "customer role left after uninstall"
 
 echo "==> Debug log"
 if docker exec "$WP" test -s /var/www/html/wp-content/debug.log; then

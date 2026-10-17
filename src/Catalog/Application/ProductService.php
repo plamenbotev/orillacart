@@ -12,6 +12,7 @@ use OrillaCart\Catalog\Domain\AttributeSet;
 use OrillaCart\Catalog\Domain\AttributeSetRepository;
 use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
+use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
 use OrillaCart\Catalog\Domain\Event\ProductChanged;
 use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Catalog\Domain\ProductContent;
@@ -84,6 +85,8 @@ final readonly class ProductService
             $command->length,
             $command->width,
             $command->height,
+            $command->downloadLimit,
+            $command->downloadExpiryDays,
         );
         $product = $this->products->find($id);
         if ($product === null) {
@@ -118,8 +121,12 @@ final readonly class ProductService
             array_map(static fn(Variation $variation): int => $variation->id(), $product->variations()),
             $product->ownOptionIds(),
         );
+        $files = $product->downloads();
         $this->products->remove($product);
         $this->events->dispatch($removed);
+        foreach ($files as $file) {
+            $this->events->dispatch(new DownloadRemoved($file->storageKey()));
+        }
     }
 
     /**

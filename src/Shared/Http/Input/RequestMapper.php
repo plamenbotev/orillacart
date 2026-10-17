@@ -22,6 +22,12 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 final readonly class RequestMapper
 {
+    /** Query parameters WordPress adds to REST requests. */
+    private const array WORDPRESS_PARAMETERS = ['_locale', 'rest_route', '_envelope', '_fields', '_wpnonce'];
+
+    /** A format whose values the serializer reads as text, casting "2" to 2 and "true" to true, as CSV does. */
+    private const string TEXT_FORMAT = 'csv';
+
     public function __construct(
         private DenormalizerInterface $denormalizer,
         private ValidatorInterface $validator,
@@ -48,6 +54,27 @@ final readonly class RequestMapper
     }
 
     /**
+     * Turns the query string into a query DTO and validates it. Query values are all text, so numbers and
+     * booleans are read from it; WordPress's own parameters (_locale, rest_route) are left out.
+     *
+     * @template T of object
+     *
+     * @param class-string<T> $class
+     *
+     * @return T
+     */
+    public function query(ServerRequestInterface $request, string $class): object
+    {
+        $data = array_filter(
+            $request->getQueryParams(),
+            static fn(mixed $value, int|string $name): bool => !\in_array($name, self::WORDPRESS_PARAMETERS, true) && $value !== '',
+            ARRAY_FILTER_USE_BOTH,
+        );
+
+        return $this->map($data, $class, self::TEXT_FORMAT);
+    }
+
+    /**
      * @template T of object
      *
      * @param array<array-key, mixed> $data
@@ -55,10 +82,10 @@ final readonly class RequestMapper
      *
      * @return T
      */
-    public function map(array $data, string $class): object
+    public function map(array $data, string $class, string $format = 'json'): object
     {
         try {
-            $dto = $this->denormalizer->denormalize($data, $class, 'json', [
+            $dto = $this->denormalizer->denormalize($data, $class, $format, [
                 DenormalizerInterface::COLLECT_DENORMALIZATION_ERRORS => true,
                 AbstractObjectNormalizer::ALLOW_EXTRA_ATTRIBUTES => false,
             ]);

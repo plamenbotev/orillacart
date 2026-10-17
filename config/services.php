@@ -13,14 +13,26 @@ use OrillaCart\Catalog\Domain\ProductRepository;
 use OrillaCart\Catalog\Infrastructure\Doctrine\DoctrineAttributeSetRepository;
 use OrillaCart\Catalog\Infrastructure\Doctrine\DoctrineProductRepository;
 use OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductContent;
+use OrillaCart\Customers\Application\Accounts;
+use OrillaCart\Customers\Domain\CustomerSettingsRepository;
+use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
+use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Geography\Domain\CountryRepository;
 use OrillaCart\Geography\Infrastructure\Doctrine\DoctrineCountryRepository;
 use OrillaCart\Inventory\Domain\StockLevelRepository;
 use OrillaCart\Inventory\Domain\StockroomRepository;
 use OrillaCart\Inventory\Infrastructure\Doctrine\DoctrineStockLevelRepository;
 use OrillaCart\Inventory\Infrastructure\Doctrine\DoctrineStockroomRepository;
+use OrillaCart\Notifications\Application\Mailer;
+use OrillaCart\Notifications\Application\Site;
+use OrillaCart\Notifications\Domain\EmailSettingsRepository;
+use OrillaCart\Notifications\Infrastructure\WordPress\OptionEmailSettingsRepository;
+use OrillaCart\Notifications\Infrastructure\WordPress\WordPressMailer;
+use OrillaCart\Notifications\Infrastructure\WordPress\WordPressSite;
 use OrillaCart\Ordering\Application\OrderLinks;
+use OrillaCart\Ordering\Domain\DownloadGrantRepository;
 use OrillaCart\Ordering\Domain\OrderRepository;
+use OrillaCart\Ordering\Infrastructure\Doctrine\DoctrineDownloadGrantRepository;
 use OrillaCart\Ordering\Infrastructure\Doctrine\DoctrineOrderRepository;
 use OrillaCart\Ordering\Infrastructure\WordPress\HomeOrderLinks;
 use OrillaCart\Payment\Application\Gateway\BankTransfer;
@@ -47,10 +59,12 @@ use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Serialization\ValidatorFactory;
 use OrillaCart\Platform\Twig\TwigFactory;
+use OrillaCart\Platform\WordPress\Files\LocalPrivateFiles;
 use OrillaCart\Platform\WordPress\Logging\DebugLogLogger;
 use OrillaCart\Platform\WordPress\WordPressIntegration;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
+use OrillaCart\Shared\Files\PrivateFiles;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Domain\CarrierRepository;
@@ -63,6 +77,7 @@ use Psr\Clock\ClockInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\UploadedFileFactoryInterface;
 use Psr\Http\Message\UriFactoryInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Clock\NativeClock;
@@ -141,8 +156,15 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(OrderRepository::class, DoctrineOrderRepository::class);
     $services->alias(CartRepository::class, DoctrineCartRepository::class);
     $services->alias(OrderLinks::class, HomeOrderLinks::class);
+    $services->alias(DownloadGrantRepository::class, DoctrineDownloadGrantRepository::class);
+    $services->alias(EmailSettingsRepository::class, OptionEmailSettingsRepository::class);
+    $services->alias(Mailer::class, WordPressMailer::class);
+    $services->alias(Site::class, WordPressSite::class);
+    $services->alias(Accounts::class, WordPressAccounts::class);
+    $services->alias(CustomerSettingsRepository::class, OptionCustomerSettingsRepository::class);
 
     $services->alias(Transactions::class, DoctrineTransactions::class);
+    $services->alias(PrivateFiles::class, LocalPrivateFiles::class);
 
     // Time (PSR-20): use cases ask the clock, so tests can fix "now".
     $services->set(ClockInterface::class, NativeClock::class);
@@ -161,6 +183,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ServerRequestFactoryInterface::class, Psr17Factory::class);
     $services->alias(StreamFactoryInterface::class, Psr17Factory::class);
     $services->alias(UriFactoryInterface::class, Psr17Factory::class);
+    $services->alias(UploadedFileFactoryInterface::class, Psr17Factory::class);
 
     // Serialization and validation
     $services->set(Serializer::class)

@@ -17,18 +17,26 @@ final readonly class TwigFactory
     public const string THEME_FOLDER = 'orillacart';
     public const string PLUGIN_FOLDER = 'templates';
 
-    public function __construct(private PluginContext $context) {}
+    public function __construct(
+        private PluginContext $context,
+        private ?ShopExtension $extension = null,
+    ) {}
 
     public function create(): Environment
     {
         $debug = \defined('WP_DEBUG') && WP_DEBUG;
 
-        return new Environment(new FilesystemLoader($this->templatePaths()), [
+        $twig = new Environment(new FilesystemLoader($this->templatePaths()), [
             'autoescape' => 'html',
             'strict_variables' => $debug,
             'debug' => $debug,
             'cache' => $this->cacheDir() ?? false,
         ]);
+        if ($this->extension !== null) {
+            $twig->addExtension($this->extension);
+        }
+
+        return $twig;
     }
 
     /** @return list<string> existing folders, most specific first */

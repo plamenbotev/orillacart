@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Fixtures\Catalog;
 use OrillaCart\Catalog\Domain\Attribute;
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\AttributeSet;
+use OrillaCart\Catalog\Domain\DownloadFile;
 use OrillaCart\Catalog\Domain\Variation;
 
 /**
@@ -49,7 +50,14 @@ final class CatalogIds
         }
     }
 
-    private function assign(Attribute|AttributeOption|AttributeSet|Variation $entity): void
+    public function download(DownloadFile $file): void
+    {
+        if (!$file->isSaved()) {
+            $this->assign($file);
+        }
+    }
+
+    private function assign(Attribute|AttributeOption|AttributeSet|Variation|DownloadFile $entity): void
     {
         $class = $entity::class;
         $this->next[$class] ??= 1;

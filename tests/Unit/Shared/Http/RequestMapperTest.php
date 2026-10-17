@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Unit\Shared\Http;
 
 use Nyholm\Psr7\ServerRequest;
+use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Serialization\ValidatorFactory;
 use OrillaCart\Settings\Application\Dto\UpdateSettings;
@@ -21,6 +22,16 @@ final class RequestMapperTest extends TestCase
         $dto = $this->mapper()->body($this->request(self::VALID + ['_wpnonce' => 'abc']), UpdateSettings::class);
 
         self::assertEquals(new UpdateSettings('USD', 2, 'lb', 'in', null, null), $dto);
+    }
+
+    public function testAQueryStringBecomesATypedQuery(): void
+    {
+        $request = new ServerRequest('GET', '/orders')->withQueryParams(['status' => 'on_hold', 'page' => '2', 'per_page' => '50', 'search' => '', '_locale' => 'user']);
+
+        self::assertEquals(new OrderQuery('on_hold', null, null, 2, 50), $this->mapper()->query($request, OrderQuery::class));
+
+        $this->expectException(HttpException::class);
+        $this->mapper()->query(new ServerRequest('GET', '/orders')->withQueryParams(['page' => 'two']), OrderQuery::class);
     }
 
     public function testWrongTypesAreReportedPerField(): void

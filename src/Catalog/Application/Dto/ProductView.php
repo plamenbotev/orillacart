@@ -23,6 +23,7 @@ final readonly class ProductView
      * @param list<AttributeView> $attributes the product's own attributes
      * @param list<AttributeView> $offered    every attribute the product offers, from its active sets and its own
      * @param list<VariationView> $variations
+     * @param list<DownloadView>  $downloads
      */
     public function __construct(
         public int $id,
@@ -45,6 +46,9 @@ final readonly class ProductView
         public array $attributes,
         public array $offered,
         public array $variations,
+        public ?int $downloadLimit = null,
+        public ?int $downloadExpiryDays = null,
+        public array $downloads = [],
     ) {}
 
     public static function fromProduct(Product $product, string $name): self
@@ -72,6 +76,9 @@ final readonly class ProductView
             array_map(AttributeView::fromAttribute(...), $product->ownAttributes()),
             array_map(AttributeView::fromAttribute(...), $product->attributes()),
             array_map(VariationView::fromVariation(...), $product->variations()),
+            $details->downloadLimit,
+            $details->downloadExpiryDays,
+            array_map(DownloadView::fromFile(...), $product->downloads()),
         );
     }
 

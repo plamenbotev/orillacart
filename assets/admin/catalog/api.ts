@@ -86,11 +86,37 @@ export interface Product {
 	/** Every attribute the product offers, from its active sets and its own. */
 	offered: Attribute[];
 	variations: Variation[];
+	/** How many times a buyer may download each file; null for no limit. */
+	download_limit: number | null;
+	/** How many days after payment the downloads work; null for always. */
+	download_expiry_days: number | null;
+	downloads: Download[];
+}
+
+export interface Download {
+	id: number;
+	name: string;
+	mime_type: string;
+	size: number;
+}
+
+export interface DownloadStorage {
+	location: 'outside_web_root' | 'uploads' | 'configured';
+	directory: string;
+	/** Whether the web server handed out a test file by itself; null when not tested. */
+	reachable: boolean | null;
+	nginx_rule: string;
 }
 
 export type ProductInput = Omit<
 	Product,
-	'id' | 'name' | 'saved' | 'attributes' | 'offered' | 'variations'
+	| 'id'
+	| 'name'
+	| 'saved'
+	| 'attributes'
+	| 'offered'
+	| 'variations'
+	| 'downloads'
 > & { attributes: AttributeInput[] };
 
 const BASE = '/orillacart/v1';
@@ -134,6 +160,8 @@ export function toProductInput( product: Product ): ProductInput {
 		height: product.height,
 		set_ids: product.set_ids,
 		attributes: product.attributes.map( toAttributeInput ),
+		download_limit: product.download_limit,
+		download_expiry_days: product.download_expiry_days,
 	};
 }
 
@@ -205,5 +233,49 @@ export function deleteAttributeSet( id: number ): Promise< unknown > {
 	return apiFetch( {
 		path: `${ BASE }/attribute-sets/${ id }`,
 		method: 'DELETE',
+	} );
+}
+
+export function uploadDownload(
+	productId: number,
+	file: File
+): Promise< Download > {
+	const body = new FormData();
+	body.append( 'file', file );
+
+	return apiFetch< Download >( {
+		path: `${ BASE }/products/${ productId }/downloads`,
+		method: 'POST',
+		body,
+	} );
+}
+
+export function renameDownload(
+	productId: number,
+	fileId: number,
+	name: string
+): Promise< Download > {
+	return apiFetch< Download >( {
+		path: `${ BASE }/products/${ productId }/downloads/${ fileId }`,
+		method: 'PUT',
+		data: { name },
+	} );
+}
+
+export function removeDownload(
+	productId: number,
+	fileId: number
+): Promise< unknown > {
+	return apiFetch( {
+		path: `${ BASE }/products/${ productId }/downloads/${ fileId }`,
+		method: 'DELETE',
+	} );
+}
+
+export function fetchDownloadStorage(
+	fresh = false
+): Promise< DownloadStorage > {
+	return apiFetch< DownloadStorage >( {
+		path: `${ BASE }/download-storage${ fresh ? '?fresh=1' : '' }`,
 	} );
 }

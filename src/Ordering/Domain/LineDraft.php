@@ -15,6 +15,7 @@ final readonly class LineDraft
      * @param list<int>                                    $optionIds
      * @param list<array{attribute: string, option: string}> $options   the chosen options as the customer saw them
      * @param list<TakenItem>                              $taken
+     * @param list<LineDownload>                           $downloads what the buyer may download once paid
      */
     public function __construct(
         public int $productId,
@@ -29,5 +30,8 @@ final readonly class LineDraft
         public Money $tax,
         public bool $ships,
         public array $taken = [],
+        public array $downloads = [],
+        public ?int $downloadLimit = null,
+        public ?int $downloadExpiryDays = null,
     ) {}
 }

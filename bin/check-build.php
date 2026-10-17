@@ -13,6 +13,7 @@ use OrillaCart\Cart\Domain\Cart;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Domain\Product;
+use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
@@ -124,5 +125,10 @@ if ($entityManager->getClassMetadata(ShippingRate::class)->getFieldMapping('weig
 $sql = $entityManager->createQuery('DELETE FROM ' . Cart::class . ' c WHERE c.updatedAt < :before')->getSQL();
 if (!is_string($sql) || !str_contains($sql, 'wp_orillacart_carts')) {
     $fail('Doctrine could not turn a DQL delete into SQL.');
+}
+// A download is counted with one UPDATE using CASE, whose DQL tokens must resolve in the scoped lexer too.
+$sql = $entityManager->createQuery('UPDATE ' . DownloadGrant::class . ' g SET g.remaining = CASE WHEN g.remaining IS NULL THEN g.remaining ELSE g.remaining - 1 END WHERE g.id = :id')->getSQL();
+if (!is_string($sql) || !str_contains($sql, 'CASE WHEN')) {
+    $fail('Doctrine could not turn the download counter into SQL.');
 }
 echo "Doctrine reads the entity mapping and parses DQL\n";

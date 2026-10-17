@@ -17,5 +17,14 @@ interface OrderRepository
      */
     public function pendingPaymentSince(\DateTimeImmutable $before): array;
 
+    /**
+     * A page of orders, newest first, and how many orders match in all.
+     *
+     * @return array{list<Order>, int}
+     */
+    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit): array;
+
     public function save(Order $order): void;
+
+    public function remove(Order $order): void;
 }

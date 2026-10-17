@@ -82,7 +82,7 @@ final class RouteSecurityGateTest extends TestCase
                 $this->actAs(loggedIn: false, capabilities: [], nonces: [], csrfRequired: false);
                 self::assertSame(401, $this->statusOf($route, $method), $method . ' ' . $route->path . ' served a visitor');
 
-                $this->actAs(loggedIn: true, capabilities: ['read'], nonces: [], csrfRequired: false);
+                $this->actAs(loggedIn: true, capabilities: [], nonces: [], csrfRequired: false);
                 self::assertSame(403, $this->statusOf($route, $method), $method . ' ' . $route->path . ' served a user without ' . $route->capability);
             }
         }

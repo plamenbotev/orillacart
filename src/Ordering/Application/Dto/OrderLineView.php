@@ -10,6 +10,7 @@ final readonly class OrderLineView
 {
     /**
      * @param list<array{attribute: string, option: string}> $options
+     * @param list<int>                                    $optionIds
      */
     public function __construct(
         public int $productId,
@@ -21,10 +22,11 @@ final readonly class OrderLineView
         public string $unitPrice,
         public string $total,
         public string $tax,
+        public array $optionIds = [],
     ) {}
 
     public static function fromLine(OrderLine $line): self
     {
-        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax());
+        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds());
     }
 }

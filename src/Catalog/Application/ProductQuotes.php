@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace OrillaCart\Catalog\Application;
 
 use OrillaCart\Catalog\Application\Dto\ItemQuote;
+use OrillaCart\Catalog\Application\Dto\QuotedDownload;
 use OrillaCart\Catalog\Application\Dto\QuotedOption;
 use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\Configuration;
+use OrillaCart\Catalog\Domain\DownloadFile;
 use OrillaCart\Catalog\Domain\InvalidSelection;
 use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductNotFound;
@@ -67,6 +69,9 @@ final readonly class ProductQuotes
             $details->length,
             $details->width,
             $details->height,
+            array_map(static fn(DownloadFile $file): QuotedDownload => new QuotedDownload($file->id(), $file->name(), $file->storageKey(), $file->mimeType()), $product->downloads()),
+            $details->downloadLimit,
+            $details->downloadExpiryDays,
         );
     }
 

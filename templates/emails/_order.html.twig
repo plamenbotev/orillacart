@@ -1,0 +1,22 @@
+{# The order: lines, totals, payment and addresses. #}
+<h2 style="font-size:17px;margin:24px 0 8px;">{{ __('Order #%s')|format(order.number) }}</h2>
+<table role="presentation" width="100%" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+{% for line in order.lines %}
+<tr style="border-bottom:1px solid #e4e4e7;">
+<td>{{ line.name }}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}</td>
+<td style="text-align:right;white-space:nowrap;">× {{ line.quantity }}</td>
+<td style="text-align:right;white-space:nowrap;">{{ line.total|money(order.currency) }}</td>
+</tr>
+{% endfor %}
+<tr><td colspan="2">{{ __('Subtotal') }}</td><td style="text-align:right;">{{ order.subtotal|money(order.currency) }}</td></tr>
+{% if order.shipping %}<tr><td colspan="2">{{ __('Shipping') }}: {{ order.shipping }}</td><td style="text-align:right;">{{ order.shipping_total|money(order.currency) }}</td></tr>{% endif %}
+{% for tax in order.taxes %}<tr><td colspan="2">{{ tax.name }} ({{ tax.percent }} %)</td><td style="text-align:right;">{{ tax.amount|money(order.currency) }}</td></tr>{% endfor %}
+<tr style="font-weight:600;"><td colspan="2">{{ __('Total') }}</td><td style="text-align:right;">{{ order.total|money(order.currency) }}</td></tr>
+</table>
+{% if order.payment_name %}<p style="margin:16px 0 0;">{{ __('Payment') }}: {{ order.payment_name }}</p>{% endif %}
+{% if order.payment_note and order.status == 'on_hold' %}<p style="margin:8px 0 0;white-space:pre-line;">{{ order.payment_note }}</p>{% endif %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;font-size:14px;"><tr>
+<td valign="top" style="padding-right:16px;"><strong>{{ __('Billing address') }}</strong>{% include 'emails/_address.html.twig' with {address: order.billing} %}<br>{{ order.email }}</td>
+{% if order.shipping_address %}<td valign="top"><strong>{{ __('Shipping address') }}</strong>{% include 'emails/_address.html.twig' with {address: order.shipping_address} %}</td>{% endif %}
+</tr></table>
+{% if not for_shop %}<p style="margin:24px 0 0;"><a href="{{ receipt_url }}" style="color:#2271b1;">{{ __('See your order online') }}</a></p>{% endif %}

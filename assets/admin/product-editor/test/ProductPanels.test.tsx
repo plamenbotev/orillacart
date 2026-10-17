@@ -87,6 +87,9 @@ const product = {
 	attributes: [],
 	offered: [],
 	variations: [],
+	download_limit: null,
+	download_expiry_days: null,
+	downloads: [],
 };
 
 type Request = { path: string; method?: string; data?: unknown };
