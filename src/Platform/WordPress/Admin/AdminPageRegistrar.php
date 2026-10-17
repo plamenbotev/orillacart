@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Admin;
 
-use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Shared\WordPress\AdminPage;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
@@ -26,7 +25,7 @@ final class AdminPageRegistrar implements Registrar
     public function __construct(
         #[AutowireIterator(AdminPage::TAG)]
         private readonly iterable $pages,
-        private readonly PluginContext $context,
+        private readonly AdminScripts $scripts,
     ) {}
 
     public function register(): void
@@ -73,14 +72,6 @@ final class AdminPageRegistrar implements Registrar
             return;
         }
 
-        $handle = 'orillacart-' . $page->script();
-        $asset = $this->context->path('build/admin/' . $page->script() . '.asset.php');
-        $meta = is_file($asset) ? require $asset : [];
-        $dependencies = \is_array($meta) && \is_array($meta['dependencies'] ?? null) ? array_values(array_filter($meta['dependencies'], static fn(mixed $handle): bool => \is_string($handle) && $handle !== '')) : [];
-        $version = \is_array($meta) && \is_string($meta['version'] ?? null) ? $meta['version'] : $this->context->version;
-
-        wp_enqueue_script($handle, plugins_url('build/admin/' . $page->script() . '.js', $this->context->pluginFile), $dependencies, $version, ['in_footer' => true]);
-        wp_set_script_translations($handle, 'orillacart');
-        wp_enqueue_style('wp-components');
+        $this->scripts->enqueue($page->script());
     }
 }

@@ -1,35 +1,39 @@
 {
-  "name": "orillacart",
-  "private": true,
-  "description": "OrillaCart admin screens and development environment.",
-  "license": "GPL-3.0-or-later",
-  "engines": {
-    "node": ">=22"
-  },
-  "scripts": {
-    "build": "wp-scripts build settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx --output-path=build/admin",
-    "start": "wp-scripts start settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx --output-path=build/admin",
-    "lint:js": "wp-scripts lint-js assets",
-    "typecheck": "tsc --noEmit",
-    "test:js": "wp-scripts test-unit-js assets",
-    "env:start": "wp-env start",
-    "env:stop": "wp-env stop",
-    "test:integration": "wp-env run tests-cli --env-cwd=wp-content/plugins/orillacart env ORILLACART_WP_LOAD=/var/www/html/wp-load.php vendor/bin/phpunit --testsuite integration",
-    "db:diff": "wp-env run cli --env-cwd=wp-content/plugins/orillacart wp eval-file bin/make-migration.php"
-  },
-  "devDependencies": {
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.8",
-    "@types/jest": "^30.0.0",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@wordpress/api-fetch": "^7.57.0",
-    "@wordpress/components": "^42.0.0",
-    "@wordpress/element": "^9.0.0",
-    "@wordpress/env": "^11.17.0",
-    "@wordpress/i18n": "^6.30.0",
-    "@wordpress/scripts": "^34.2.0",
-    "typescript": "^6.0.3"
-  }
+	"name": "orillacart",
+	"private": true,
+	"description": "OrillaCart admin screens and development environment.",
+	"license": "GPL-3.0-or-later",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"build": "wp-scripts build settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx attribute-sets=./assets/admin/attribute-sets/index.tsx stockrooms=./assets/admin/stockrooms/index.tsx product-editor=./assets/admin/product-editor/index.tsx --output-path=build/admin",
+		"start": "wp-scripts start settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx attribute-sets=./assets/admin/attribute-sets/index.tsx stockrooms=./assets/admin/stockrooms/index.tsx product-editor=./assets/admin/product-editor/index.tsx --output-path=build/admin",
+		"lint:js": "wp-scripts lint-js assets",
+		"typecheck": "tsc --noEmit",
+		"test:js": "wp-scripts test-unit-js assets",
+		"env:start": "wp-env start",
+		"env:stop": "wp-env stop",
+		"test:integration": "wp-env run tests-cli --env-cwd=wp-content/plugins/orillacart env ORILLACART_WP_LOAD=/var/www/html/wp-load.php vendor/bin/phpunit --testsuite integration",
+		"db:diff": "wp-env run cli --env-cwd=wp-content/plugins/orillacart wp eval-file bin/make-migration.php"
+	},
+	"devDependencies": {
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.3",
+		"@testing-library/user-event": "^14.6.8",
+		"@types/jest": "^30.0.0",
+		"@types/react": "^19.3.0",
+		"@types/react-dom": "^19.3.0",
+		"@wordpress/api-fetch": "^7.57.0",
+		"@wordpress/components": "^42.0.0",
+		"@wordpress/data": "^10.57.0",
+		"@wordpress/editor": "^15.2.0",
+		"@wordpress/element": "^9.0.0",
+		"@wordpress/env": "^11.17.0",
+		"@wordpress/i18n": "^6.30.0",
+		"@wordpress/notices": "^5.57.0",
+		"@wordpress/plugins": "^7.57.0",
+		"@wordpress/scripts": "^34.2.0",
+		"typescript": "^6.0.3"
+	}
 }

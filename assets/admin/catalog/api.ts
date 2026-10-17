@@ -1,0 +1,209 @@
+import apiFetch from '@wordpress/api-fetch';
+
+export interface AttributeOption {
+	id: number;
+	name: string;
+	/** Decimal string added to the price, such as "2.5" or "-1". */
+	adjustment: string;
+}
+
+export interface Attribute {
+	id: number;
+	name: string;
+	required: boolean;
+	price_hidden: boolean;
+	options: AttributeOption[];
+	/** The attribute set it comes from; null for a product's own attribute. */
+	set_id: number | null;
+}
+
+/** An attribute as it is sent: new attributes and options have no id yet. */
+export interface AttributeInput {
+	id?: number;
+	name: string;
+	required: boolean;
+	price_hidden: boolean;
+	options: { id?: number; name: string; adjustment: string }[];
+}
+
+export interface AttributeSet {
+	id: number;
+	name: string;
+	active: boolean;
+	attributes: Attribute[];
+}
+
+export interface AttributeSetInput {
+	name: string;
+	active: boolean;
+	attributes: AttributeInput[];
+}
+
+export interface Sale {
+	price: string;
+	/** ISO 8601 date-time, or null for an open start. */
+	from: string | null;
+	/** ISO 8601 date-time, or null for an open end. */
+	until: string | null;
+}
+
+export type StockMode = 'tracked' | 'always_available' | 'unavailable';
+
+export interface Variation {
+	id: number;
+	option_ids: number[];
+	/** The option names, such as "M / Blue". */
+	label: string;
+	price: string;
+	sale: Sale | null;
+	sku: string | null;
+	stock_mode: StockMode;
+}
+
+export type VariationInput = Omit< Variation, 'id' | 'label' >;
+
+export interface Product {
+	id: number;
+	name: string;
+	/** False until the commerce details are first saved. */
+	saved: boolean;
+	type: 'physical' | 'virtual';
+	price: string;
+	sale: Sale | null;
+	sku: string | null;
+	taxable: boolean;
+	tax_group_id: number | null;
+	stock_mode: StockMode;
+	purchasable: boolean;
+	featured: boolean;
+	weight: string | null;
+	length: string | null;
+	width: string | null;
+	height: string | null;
+	set_ids: number[];
+	/** The product's own attributes. */
+	attributes: Attribute[];
+	/** Every attribute the product offers, from its active sets and its own. */
+	offered: Attribute[];
+	variations: Variation[];
+}
+
+export type ProductInput = Omit<
+	Product,
+	'id' | 'name' | 'saved' | 'attributes' | 'offered' | 'variations'
+> & { attributes: AttributeInput[] };
+
+const BASE = '/orillacart/v1';
+
+/**
+ * @param attribute An attribute as the API returns it.
+ * @return The same attribute as it is sent back.
+ */
+export function toAttributeInput( attribute: Attribute ): AttributeInput {
+	return {
+		id: attribute.id,
+		name: attribute.name,
+		required: attribute.required,
+		price_hidden: attribute.price_hidden,
+		options: attribute.options.map( ( { id, name, adjustment } ) => ( {
+			id,
+			name,
+			adjustment,
+		} ) ),
+	};
+}
+
+/**
+ * @param product A product as the API returns it.
+ * @return What saving it unchanged sends.
+ */
+export function toProductInput( product: Product ): ProductInput {
+	return {
+		type: product.type,
+		price: product.price,
+		sale: product.sale,
+		sku: product.sku,
+		taxable: product.taxable,
+		tax_group_id: product.tax_group_id,
+		stock_mode: product.stock_mode,
+		purchasable: product.purchasable,
+		featured: product.featured,
+		weight: product.weight,
+		length: product.length,
+		width: product.width,
+		height: product.height,
+		set_ids: product.set_ids,
+		attributes: product.attributes.map( toAttributeInput ),
+	};
+}
+
+export function fetchProduct( id: number ): Promise< Product > {
+	return apiFetch< Product >( { path: `${ BASE }/products/${ id }` } );
+}
+
+export function saveProduct(
+	id: number,
+	input: ProductInput
+): Promise< Product > {
+	return apiFetch< Product >( {
+		path: `${ BASE }/products/${ id }`,
+		method: 'PUT',
+		data: input,
+	} );
+}
+
+export function saveVariation(
+	productId: number,
+	variationId: number | null,
+	input: VariationInput
+): Promise< Variation > {
+	return apiFetch< Variation >(
+		variationId === null
+			? {
+					path: `${ BASE }/products/${ productId }/variations`,
+					method: 'POST',
+					data: input,
+				}
+			: {
+					path: `${ BASE }/products/${ productId }/variations/${ variationId }`,
+					method: 'PUT',
+					data: input,
+				}
+	);
+}
+
+export function deleteVariation(
+	productId: number,
+	variationId: number
+): Promise< unknown > {
+	return apiFetch( {
+		path: `${ BASE }/products/${ productId }/variations/${ variationId }`,
+		method: 'DELETE',
+	} );
+}
+
+export function fetchAttributeSets(): Promise< AttributeSet[] > {
+	return apiFetch< AttributeSet[] >( { path: `${ BASE }/attribute-sets` } );
+}
+
+export function saveAttributeSet(
+	id: number | null,
+	input: AttributeSetInput
+): Promise< AttributeSet > {
+	return apiFetch< AttributeSet >(
+		id === null
+			? { path: `${ BASE }/attribute-sets`, method: 'POST', data: input }
+			: {
+					path: `${ BASE }/attribute-sets/${ id }`,
+					method: 'PUT',
+					data: input,
+				}
+	);
+}
+
+export function deleteAttributeSet( id: number ): Promise< unknown > {
+	return apiFetch( {
+		path: `${ BASE }/attribute-sets/${ id }`,
+		method: 'DELETE',
+	} );
+}

@@ -1,0 +1,412 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Catalog\Domain;
+
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
+use OrillaCart\Shared\Domain\Money;
+
+/**
+ * What the shop sells: the commerce side of a product post, which keeps the name, description and images.
+ * The product shares the post's id. It owns its attributes and variations; attribute sets are shared with
+ * other products and only referred to.
+ */
+#[ORM\Entity]
+#[ORM\Table(name: 'products')]
+#[ORM\UniqueConstraint(name: 'product_sku', columns: ['sku'])]
+class Product
+{
+    use AttributeOwner;
+
+    #[ORM\Column(length: 20, enumType: ProductType::class)]
+    private ProductType $type;
+
+    #[ORM\Column(length: ProductDetails::MAX_SKU_LENGTH, nullable: true)]
+    private ?string $sku;
+
+    #[ORM\Embedded(columnPrefix: false)]
+    private Pricing $pricing;
+
+    #[ORM\Column]
+    private bool $taxable;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $taxGroupId;
+
+    #[ORM\Column(length: 20, enumType: StockMode::class)]
+    private StockMode $stockMode;
+
+    #[ORM\Column]
+    private bool $purchasable;
+
+    #[ORM\Column]
+    private bool $featured;
+
+    #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
+    private ?string $weight;
+
+    #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
+    private ?string $length;
+
+    #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
+    private ?string $width;
+
+    #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
+    private ?string $height;
+
+    /** @var Collection<int, Attribute> the product's own attributes */
+    #[ORM\OneToMany(targetEntity: Attribute::class, mappedBy: 'product', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $attributes;
+
+    /** @var Collection<int, AttributeSet> */
+    #[ORM\ManyToMany(targetEntity: AttributeSet::class)]
+    #[ORM\JoinTable(name: 'product_attribute_sets')]
+    #[ORM\JoinColumn(name: 'product_id', onDelete: 'CASCADE')]
+    #[ORM\InverseJoinColumn(name: 'set_id', onDelete: 'CASCADE')]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $sets;
+
+    /** @var Collection<int, Variation> */
+    #[ORM\OneToMany(targetEntity: Variation::class, mappedBy: 'product', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $variations;
+
+    /**
+     * @param int $id the id of the product's WordPress post
+     */
+    public function __construct(
+        #[ORM\Id]
+        #[ORM\Column]
+        private int $id,
+        ProductDetails $details,
+    ) {
+        $this->attributes = new ArrayCollection();
+        $this->sets = new ArrayCollection();
+        $this->variations = new ArrayCollection();
+        $this->change($details);
+    }
+
+    public function id(): int
+    {
+        return $this->id;
+    }
+
+    public function details(): ProductDetails
+    {
+        return new ProductDetails(
+            $this->type,
+            $this->pricing,
+            $this->sku,
+            $this->taxable,
+            $this->taxGroupId,
+            $this->stockMode,
+            $this->purchasable,
+            $this->featured,
+            $this->weight === null ? null : self::trimDecimal($this->weight),
+            $this->length === null ? null : self::trimDecimal($this->length),
+            $this->width === null ? null : self::trimDecimal($this->width),
+            $this->height === null ? null : self::trimDecimal($this->height),
+        );
+    }
+
+    public function change(ProductDetails $details): void
+    {
+        $this->type = $details->type;
+        $this->sku = $details->sku;
+        $this->pricing = $details->pricing;
+        $this->taxable = $details->taxable;
+        $this->taxGroupId = $details->taxGroupId;
+        $this->stockMode = $details->stockMode;
+        $this->purchasable = $details->purchasable;
+        $this->featured = $details->featured;
+        $this->weight = $details->weight;
+        $this->length = $details->length;
+        $this->width = $details->width;
+        $this->height = $details->height;
+    }
+
+    // ------------------------------------------------------------------------------------------ attributes
+
+    /**
+     * @return list<AttributeSet> the sets assigned to the product, active or not
+     */
+    public function sets(): array
+    {
+        return array_values($this->sets->toArray());
+    }
+
+    /**
+     * Every attribute the product offers: those of its active sets, then its own, each in display order.
+     *
+     * @return list<Attribute>
+     */
+    public function attributes(): array
+    {
+        $attributes = [];
+        foreach ($this->sets as $set) {
+            if ($set->isActive()) {
+                $attributes = [...$attributes, ...$set->ownAttributes()];
+            }
+        }
+
+        return [...$attributes, ...$this->ownAttributes()];
+    }
+
+    /**
+     * Replaces the product's own attributes and its attribute sets.
+     *
+     * @param list<AttributeDraft> $drafts the product's whole list of own attributes, in display order
+     * @param list<AttributeSet>   $sets
+     *
+     * @throws CatalogRuleViolation when a variation uses an option this would remove
+     */
+    public function replaceAttributes(array $drafts, array $sets): void
+    {
+        $removed = $this->optionIdsRemovedBy($drafts);
+        $keptSets = array_map(static fn(AttributeSet $set): int => $set->id(), $sets);
+        foreach ($this->sets as $set) {
+            if (!\in_array($set->id(), $keptSets, true)) {
+                foreach ($set->ownAttributes() as $attribute) {
+                    $removed = [...$removed, ...$attribute->savedOptionIds()];
+                }
+            }
+        }
+        $this->refuseIfVariationsUse($removed);
+
+        $this->syncAttributes($drafts, fn(AttributeDraft $draft, int $position): Attribute => new Attribute($this, null, $draft, $position));
+        $this->sets->clear();
+        foreach ($sets as $set) {
+            if (!$this->sets->contains($set)) {
+                $this->sets->add($set);
+            }
+        }
+    }
+
+    /**
+     * What the customer can choose from, per attribute in display order. A product with variations offers only
+     * the options its variations use, and only the attributes that have such options.
+     *
+     * @return list<array{Attribute, list<AttributeOption>}>
+     */
+    public function offeredOptions(): array
+    {
+        $offered = [];
+        foreach ($this->attributes() as $attribute) {
+            $options = $attribute->options();
+            if (!$this->variations->isEmpty()) {
+                $options = array_values(array_filter($options, $this->isUsedByAVariation(...)));
+            }
+            if ($options !== []) {
+                $offered[] = [$attribute, $options];
+            }
+        }
+
+        return $offered;
+    }
+
+    // ------------------------------------------------------------------------------------------ variations
+
+    /**
+     * @return list<Variation> in the order they were added
+     */
+    public function variations(): array
+    {
+        $variations = array_values($this->variations->toArray());
+        usort($variations, static fn(Variation $a, Variation $b): int => ($a->isSaved() ? $a->id() : PHP_INT_MAX) <=> ($b->isSaved() ? $b->id() : PHP_INT_MAX));
+
+        return $variations;
+    }
+
+    public function hasVariations(): bool
+    {
+        return !$this->variations->isEmpty();
+    }
+
+    /**
+     * @throws CatalogRuleViolation for options the product does not have, or a combination another variation has
+     */
+    public function addVariation(VariationDetails $details): Variation
+    {
+        $options = $this->variationOptions($details, null);
+        $variation = new Variation($this, $details, $options);
+        $this->variations->add($variation);
+
+        return $variation;
+    }
+
+    /**
+     * @throws VariationNotFound
+     * @throws CatalogRuleViolation for options the product does not have, or a combination another variation has
+     */
+    public function changeVariation(int $variationId, VariationDetails $details): Variation
+    {
+        $variation = $this->variation($variationId);
+        $variation->change($details, $this->variationOptions($details, $variation));
+
+        return $variation;
+    }
+
+    /**
+     * @throws VariationNotFound
+     */
+    public function removeVariation(int $variationId): void
+    {
+        $this->variations->removeElement($this->variation($variationId));
+    }
+
+    /**
+     * @throws VariationNotFound
+     */
+    public function variation(int $variationId): Variation
+    {
+        return $this->variations->findFirst(static fn(int $key, Variation $variation): bool => $variation->isSaved() && $variation->id() === $variationId)
+            ?? throw new VariationNotFound($variationId);
+    }
+
+    // ------------------------------------------------------------------------------------------- selling
+
+    /**
+     * Checks the customer's choice of options and prices it.
+     *
+     * A product with variations is sold only as one of them: the options must be exactly a variation's, and the
+     * variation's own price applies. Otherwise each chosen option must be one the product offers, at most one per
+     * attribute, every required attribute needs one, and the options' adjustments are added to the product price,
+     * which never goes below zero.
+     *
+     * @param list<int> $optionIds
+     *
+     * @throws InvalidSelection
+     */
+    public function configure(array $optionIds, \DateTimeImmutable $now): Configuration
+    {
+        $optionIds = array_values(array_unique($optionIds));
+        $chosen = [];
+        $offered = $this->offeredOptions();
+        foreach ($optionIds as $optionId) {
+            $found = false;
+            foreach ($offered as [$attribute, $options]) {
+                foreach ($options as $option) {
+                    if ($option->isSaved() && $option->id() === $optionId) {
+                        if (isset($chosen[spl_object_id($attribute)])) {
+                            throw new InvalidSelection(\sprintf('Choose one option for "%s".', $attribute->name()));
+                        }
+                        $chosen[spl_object_id($attribute)] = $option;
+                        $found = true;
+                    }
+                }
+            }
+            if (!$found) {
+                throw new InvalidSelection(\sprintf('Option %d is not available for this product.', $optionId));
+            }
+        }
+
+        if ($this->hasVariations()) {
+            sort($optionIds);
+            foreach ($this->variations as $variation) {
+                if ($variation->isSaved() && $variation->signature() === $optionIds) {
+                    return new Configuration($this, $variation, [], $variation->pricing()->priceAt($now));
+                }
+            }
+            throw new InvalidSelection('The product is not sold with this combination of options.');
+        }
+
+        $price = $this->pricing->priceAt($now);
+        foreach ($offered as [$attribute, $options]) {
+            $option = $chosen[spl_object_id($attribute)] ?? null;
+            if ($option === null && $attribute->isRequired()) {
+                throw new InvalidSelection(\sprintf('Choose an option for "%s".', $attribute->name()));
+            }
+            if ($option !== null) {
+                $price = $price->add($option->adjustment());
+            }
+        }
+
+        return new Configuration($this, null, array_values($chosen), $price->atLeastZero());
+    }
+
+    public function priceAt(\DateTimeImmutable $now): Money
+    {
+        return $this->pricing->priceAt($now);
+    }
+
+    /**
+     * Ids of every option of the product's own attributes, which go with the product when it is deleted.
+     *
+     * @return list<int>
+     */
+    public function ownOptionIds(): array
+    {
+        $ids = [];
+        foreach ($this->attributes as $attribute) {
+            $ids = [...$ids, ...$attribute->savedOptionIds()];
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @return list<AttributeOption>
+     */
+    private function variationOptions(VariationDetails $details, ?Variation $current): array
+    {
+        $options = [];
+        $attributes = [];
+        foreach ($details->optionIds as $optionId) {
+            $option = $this->findOption($optionId)
+                ?? throw new CatalogRuleViolation(\sprintf('Option %d is not one of this product\'s options.', $optionId), 'orillacart_unknown_option');
+            if (isset($attributes[spl_object_id($option->attribute())])) {
+                throw new CatalogRuleViolation(\sprintf('A variation has one option for "%s".', $option->attribute()->name()), 'orillacart_invalid_variation');
+            }
+            $attributes[spl_object_id($option->attribute())] = true;
+            $options[] = $option;
+        }
+
+        $signature = array_values(array_unique($details->optionIds));
+        sort($signature);
+        foreach ($this->variations as $other) {
+            if ($other !== $current && $other->isSaved() && $other->signature() === $signature) {
+                throw new CatalogRuleViolation('Another variation already has these options.', 'orillacart_duplicate_variation');
+            }
+        }
+
+        return $options;
+    }
+
+    private function findOption(int $optionId): ?AttributeOption
+    {
+        foreach ($this->attributes() as $attribute) {
+            foreach ($attribute->options() as $option) {
+                if ($option->isSaved() && $option->id() === $optionId) {
+                    return $option;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function isUsedByAVariation(AttributeOption $option): bool
+    {
+        return $this->variations->exists(static fn(int $key, Variation $variation): bool => $variation->uses($option));
+    }
+
+    /**
+     * @param list<int> $optionIds
+     */
+    private function refuseIfVariationsUse(array $optionIds): void
+    {
+        foreach ($this->variations as $variation) {
+            if (array_intersect($variation->signature(), $optionIds) !== []) {
+                throw new CatalogRuleViolation('A variation uses an option this would remove; change or remove the variation first.', 'orillacart_option_in_use');
+            }
+        }
+    }
+
+    private static function trimDecimal(string $value): string
+    {
+        return str_contains($value, '.') ? rtrim(rtrim($value, '0'), '.') : $value;
+    }
+}

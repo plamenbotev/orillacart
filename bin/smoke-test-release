@@ -79,6 +79,7 @@ TAX='http://localhost/?rest_route=/orillacart/v1/tax'
 group="$(docker exec "$WP" curl -s -u "admin:$PASS" -X POST -H 'Content-Type: application/json' -d '{"name":"Standard"}' \
     "$TAX/groups" | sed -n 's/.*"id":\([0-9]*\).*/\1/p')"
 [ -n "$group" ] || fail "the administrator could not create a tax group"
+[ "$(api -u "admin:$PASS" "$TAX/groups")" = 200 ] || fail "the administrator could not list the tax groups"
 [ "$(api -u "admin:$PASS" -X POST -H 'Content-Type: application/json' \
     -d '{"country":"US","state":"CA","percent":"7.25","name":"California"}' "$TAX/groups/$group/rates")" = 201 ] \
     || fail "the administrator could not add a tax rate"
@@ -91,6 +92,28 @@ taxes="$(wp eval '
         ->taxes(new OrillaCart\Tax\Application\Dto\TaxQuery(shipping: new OrillaCart\Tax\Application\Dto\TaxAddress("US", "CA")))->total;
 ')"
 [ "$taxes" = 7.25 ] || fail "the tax calculator answered $taxes for California"
+
+echo "==> Catalog and stock"
+API='http://localhost/?rest_route=/orillacart/v1'
+product="$(wp post create --post_type=orillacart_product --post_title=Mug --post_status=publish --porcelain)"
+[ "$(api -u "admin:$PASS" -X PUT -H 'Content-Type: application/json' \
+    -d '{"price":"9.5","sku":"MUG","attributes":[{"name":"Colour","options":[{"name":"Gold","adjustment":"2"}]}]}' \
+    "$API/products/$product")" = 200 ] || fail "the administrator could not save a product"
+stockroom="$(docker exec "$WP" curl -s -u "admin:$PASS" -X POST -H 'Content-Type: application/json' -d '{"name":"Sofia"}' \
+    "$API/stockrooms" | sed -n 's/.*"id":\([0-9]*\).*/\1/p')"
+[ -n "$stockroom" ] || fail "the administrator could not add a stockroom"
+[ "$(api -u "admin:$PASS" -X PUT -H 'Content-Type: application/json' \
+    -d "{\"levels\":[{\"stockroom_id\":$stockroom,\"quantity\":3}]}" "$API/stock/product/$product")" = 200 ] \
+    || fail "the administrator could not set stock"
+quote="$(wp eval "
+    \$kernel = new OrillaCart\Platform\Kernel(new OrillaCart\Platform\PluginContext(WP_PLUGIN_DIR . '/orillacart/orillacart.php', ORILLACART_VERSION));
+    \$quote = \$kernel->container()->get(OrillaCart\Catalog\Application\ProductQuotes::class)
+        ->quote(new OrillaCart\Catalog\Application\Dto\QuoteRequest($product));
+    echo \$quote->unitPrice, ' ', \$quote->available;
+")"
+[ "$quote" = '9.5 3' ] || fail "the product was quoted as '$quote'"
+[ "$(api -L "$(wp eval "echo get_permalink($product);")")" = 200 ] \
+    || fail "the product page does not open"
 
 echo "==> Upgrade on an admin request"
 wp option update orillacart_version 0.0.1 > /dev/null
@@ -119,6 +142,8 @@ wp option get orillacart_version > /dev/null 2>&1 && fail "version option left a
 wp option get orillacart_settings > /dev/null 2>&1 && fail "settings left after uninstall"
 wp option get orillacart_tax_settings > /dev/null 2>&1 && fail "tax settings left after uninstall"
 wp cap list administrator | grep -qx manage_orillacart && fail "capability left after uninstall"
+[ "$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SELECT COUNT(*) FROM wp_posts WHERE post_type = 'orillacart_product'" 2> /dev/null)" = 0 ] \
+    || fail "product posts left after uninstall"
 
 echo "==> Debug log"
 if docker exec "$WP" test -s /var/www/html/wp-content/debug.log; then

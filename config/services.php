@@ -5,8 +5,18 @@ declare(strict_types=1);
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Nyholm\Psr7\Factory\Psr17Factory;
+use OrillaCart\Catalog\Domain\AttributeSetRepository;
+use OrillaCart\Catalog\Domain\ProductContent;
+use OrillaCart\Catalog\Domain\ProductRepository;
+use OrillaCart\Catalog\Infrastructure\Doctrine\DoctrineAttributeSetRepository;
+use OrillaCart\Catalog\Infrastructure\Doctrine\DoctrineProductRepository;
+use OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductContent;
 use OrillaCart\Geography\Domain\CountryRepository;
 use OrillaCart\Geography\Infrastructure\Doctrine\DoctrineCountryRepository;
+use OrillaCart\Inventory\Domain\StockLevelRepository;
+use OrillaCart\Inventory\Domain\StockroomRepository;
+use OrillaCart\Inventory\Infrastructure\Doctrine\DoctrineStockLevelRepository;
+use OrillaCart\Inventory\Infrastructure\Doctrine\DoctrineStockroomRepository;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\DatabaseMigrator;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
@@ -25,11 +35,13 @@ use OrillaCart\Tax\Domain\TaxGroupRepository;
 use OrillaCart\Tax\Domain\TaxSettingsRepository;
 use OrillaCart\Tax\Infrastructure\Doctrine\DoctrineTaxGroupRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
+use Psr\Clock\ClockInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\UriFactoryInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Serializer\NameConverter\NameConverterInterface;
@@ -83,6 +95,14 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CountryRepository::class, DoctrineCountryRepository::class);
     $services->alias(TaxGroupRepository::class, DoctrineTaxGroupRepository::class);
     $services->alias(TaxSettingsRepository::class, OptionTaxSettingsRepository::class);
+    $services->alias(ProductRepository::class, DoctrineProductRepository::class);
+    $services->alias(AttributeSetRepository::class, DoctrineAttributeSetRepository::class);
+    $services->alias(ProductContent::class, WordPressProductContent::class);
+    $services->alias(StockroomRepository::class, DoctrineStockroomRepository::class);
+    $services->alias(StockLevelRepository::class, DoctrineStockLevelRepository::class);
+
+    // Time (PSR-20): use cases ask the clock, so tests can fix "now".
+    $services->set(ClockInterface::class, NativeClock::class);
 
     // Database
     $services->set(DatabaseConfig::class)

@@ -9,6 +9,9 @@ declare(strict_types=1);
  * Runs without WordPress. Usage: php bin/check-build.php <built-plugin-dir>
  */
 
+use OrillaCart\Catalog\Application\Dto\SaveAttribute;
+use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
 use OrillaCart\Platform\PluginContext;
@@ -81,6 +84,11 @@ try {
         $fail('Invalid input gave status ' . $e->status . ' instead of 422.');
     }
 }
+// Nested lists are typed by docblocks, read with phpdoc-parser, which was prefixed too.
+$product = $mapper->map(['price' => '9.5', 'attributes' => [['name' => 'Size', 'options' => [['name' => 'M', 'adjustment' => '2']]]]], SaveProduct::class);
+if (!($product->attributes[0] ?? null) instanceof SaveAttribute || $product->attributes[0]->options[0]->name !== 'M') {
+    $fail('The serializer did not fill the nested attribute DTOs of a product.');
+}
 echo "Serializer and validator read DTO attributes\n";
 
 // Doctrine reads the entity mapping from attributes, whose class names were prefixed with the library.
@@ -91,4 +99,15 @@ $metadata = $entityManager->getClassMetadata(TaxGroup::class);
 if ($metadata->getTableName() !== 'wp_orillacart_tax_groups' || !$metadata->hasAssociation('rates') || !$metadata->isIdGeneratorIdentity()) {
     $fail('Doctrine did not read the mapping attributes of TaxGroup.');
 }
-echo "Doctrine reads the entity mapping\n";
+$metadata = $entityManager->getClassMetadata(Product::class);
+// Library classes cannot be named here: in the build they carry the prefix.
+$joinTable = $metadata->getAssociationMapping('sets')->toArray()['joinTable'] ?? null;
+if (!isset($metadata->embeddedClasses['pricing']) || !is_array($joinTable) || ($joinTable['name'] ?? null) !== 'wp_orillacart_product_attribute_sets') {
+    $fail('Doctrine did not read the embedded pricing or the attribute sets of Product.');
+}
+// DQL names its token types in strings too; parsing a query proves the lexer finds them.
+$sql = $entityManager->createQuery('SELECT g, r FROM ' . TaxGroup::class . ' g LEFT JOIN g.rates r ORDER BY g.name')->getSQL();
+if (!is_string($sql) || !str_contains($sql, 'wp_orillacart_tax_groups')) {
+    $fail('Doctrine could not turn a DQL query into SQL.');
+}
+echo "Doctrine reads the entity mapping and parses DQL\n";

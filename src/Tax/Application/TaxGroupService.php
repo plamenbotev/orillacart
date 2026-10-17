@@ -48,6 +48,11 @@ final readonly class TaxGroupService
         return TaxGroupView::fromGroup($this->get($id));
     }
 
+    public function exists(int $id): bool
+    {
+        return $this->groups->find($id) !== null;
+    }
+
     public function create(SaveTaxGroup $command): TaxGroupView
     {
         $group = new TaxGroup($command->name);

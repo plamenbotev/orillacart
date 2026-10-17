@@ -62,10 +62,12 @@ if [ "$status" -ne 1 ]; then
     head "$WORK/unprefixed.txt" >&2
     exit 1
 fi
-# Class constants looked up by name keep the library's original namespace unless a patcher fixed them.
-status=0; grep -rnE "(constant|defined)\(\s*['\"](Symfony|Doctrine|Psr|Twig|Nyholm)\\\\" "$OUT/vendor" > "$WORK/unprefixed-constants.txt" || status=$?
+# Strings that are a class name, or a class and constant prefix, keep the library's original namespace unless
+# a patcher fixed them; code that builds a name from one then finds nothing.
+status=0; grep -rnE "['\"](Symfony|Doctrine|Psr|Twig|Nyholm|phpDocumentor|PHPStan)(\\\\{1,2}[A-Za-z_][A-Za-z0-9_]*)+(::[A-Za-z_]*)?['\"]" \
+    "$OUT/vendor" --include='*.php' --exclude-dir=composer > "$WORK/unprefixed-constants.txt" || status=$?
 if [ "$status" -ne 1 ]; then
-    echo "Class constants named with an unprefixed namespace (or grep failed):" >&2
+    echo "Class names in strings with an unprefixed namespace (or grep failed):" >&2
     head "$WORK/unprefixed-constants.txt" >&2
     exit 1
 fi

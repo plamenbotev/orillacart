@@ -57,14 +57,26 @@ return [
     ],
 
     'patchers' => [
-        // Doctrine's mapping drivers check and read class constants by name: defined('Doctrine\ORM\...::FETCH_' . $mode).
-        // PHP-Scoper leaves that string alone, so every entity with an association or a generated id fails to load.
+        // Libraries name classes and class constants in plain strings: defined('Doctrine\ORM\...::FETCH_' . $mode)
+        // in Doctrine's mapping drivers, 'Doctrine\ORM\Query\TokenType::T_' in the DQL lexer, an interface name the
+        // validator compares with. PHP-Scoper leaves strings with "::" or used as values alone, so entities and
+        // DQL queries fail. Prefix every string literal that is nothing but a library class name, with an optional
+        // "::CONSTANT" part; messages that mention a class contain spaces and stay as they are.
         static function (string $filePath, string $prefix, string $contents): string {
-            if (!str_contains($filePath, 'doctrine/orm/src/Mapping/')) {
+            if (str_contains($filePath, '/composer/')) {
                 return $contents;
             }
 
-            return (string) preg_replace("/(constant|defined)\\((['\"])Doctrine\\\\/", '$1($2' . str_replace('\\', '\\\\', $prefix) . '\\\\Doctrine\\\\', $contents);
+            // Keep the string's own separator: single backslashes, or escaped ones inside double quotes.
+            return (string) preg_replace_callback(
+                "/(['\"])((?:Doctrine|Symfony|Psr|Twig|Nyholm|phpDocumentor|PHPStan)(?:\\\\{1,2}[A-Za-z_][A-Za-z0-9_]*)+(?:::[A-Za-z_]*)?)\\1/",
+                static function (array $match) use ($prefix): string {
+                    $separator = str_contains($match[2], '\\\\') ? '\\\\' : '\\';
+
+                    return $match[1] . str_replace('\\', $separator, $prefix) . $separator . $match[2] . $match[1];
+                },
+                $contents,
+            );
         },
         // Libraries probe optional PHP extensions with function_exists('iconv'); PHP-Scoper prefixes those names,
         // so the probe always fails. Put the global names back.

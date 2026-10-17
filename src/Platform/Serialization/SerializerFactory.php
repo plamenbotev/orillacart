@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\Serialization;
 
+use Symfony\Component\PropertyInfo\Extractor\PhpStanExtractor;
 use Symfony\Component\PropertyInfo\Extractor\ReflectionExtractor;
 use Symfony\Component\PropertyInfo\PropertyInfoExtractor;
 use Symfony\Component\Serializer\Encoder\JsonEncoder;
@@ -29,8 +30,9 @@ final class SerializerFactory
 
     public function create(): Serializer
     {
+        // Docblock types first, so a list<SaveOption> parameter is filled with SaveOption objects.
         $reflection = new ReflectionExtractor();
-        $types = new PropertyInfoExtractor([$reflection], [$reflection], [], [$reflection], [$reflection]);
+        $types = new PropertyInfoExtractor([$reflection], [new PhpStanExtractor(), $reflection], [], [$reflection], [$reflection]);
 
         return new Serializer(
             [
