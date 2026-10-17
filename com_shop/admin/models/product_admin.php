@@ -167,9 +167,11 @@ class product_adminModel extends model {
                 $sets = array();
                 $sets = array_map('intval', (array) $input->post['attribute_bank_assoc']);
 
-                $this->db->setQuery("SELECT attribute_set_id  FROM `#_shop_attribute_set` WHERE attribute_set_id IN(" . implode(',', $sets) . ")");
+                if (!empty($sets)) {
+                    $this->db->setQuery("SELECT attribute_set_id  FROM `#_shop_attribute_set` WHERE attribute_set_id IN(" . implode(',', $sets) . ")");
 
-                $sets = (array) $this->db->loadArray();
+                    $sets = (array) $this->db->loadArray();
+                }
 
                 if (!empty($sets)) {
 
@@ -221,17 +223,6 @@ class product_adminModel extends model {
             }
 
 
-
-            if ($input->post['cats']) {
-
-                $cats = array_map('intval', $input->post['cats']);
-                $cats = array_unique($cats);
-
-                wp_set_post_terms($p->pk(), $cats, 'product_cat');
-            } else if (!$in_autosave) {
-
-                wp_set_post_terms($p->pk(), array(), 'product_cat');
-            }
 
             if ($input->post['brand']) {
 
@@ -489,7 +480,7 @@ class product_adminModel extends model {
                         if (!empty($title))
                             $prop_row->property_name = $title;
 
-                        $prop_row->property_price = (double) $input->post['att_price'][$ak]['value'][$k];
+                        $prop_row->property_price = (float) $input->post['att_price'][$ak]['value'][$k];
 
                         if (isset($input->post['oprand'][$ak]['value'][$k]) &&
                                 in_array($input->post['oprand'][$ak]['value'][$k], array('*', '-', '+', '/')))
@@ -674,7 +665,7 @@ class product_adminModel extends model {
         }
 
         $variation_data = Factory::getComponent('shop')->getTable('product')->load($res);
-        $variation_data->price = (double) $input->post['variation_price'];
+        $variation_data->price = (float) $input->post['variation_price'];
         $variation_data->sku = (string) $input->post['variation_sku'];
         $variation_data->store();
 

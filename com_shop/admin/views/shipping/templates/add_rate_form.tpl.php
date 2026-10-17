@@ -12,73 +12,73 @@
                     <label for="shipping_rate_weight_start">
                         <?php _e('Weight Start:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_weight_start; ?>" id="shipping_rate_weight_start" name="shipping_rate_weight_start" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_weight_start; ?>" id="shipping_rate_weight_start" name="shipping_rate_weight_start" />
                 </li>
                 <li>
                     <label for="shipping_rate_weight_end">
                         <?php _e('Weight End:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_weight_end; ?>" id="shipping_rate_weight_end" name="shipping_rate_weight_end" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_weight_end; ?>" id="shipping_rate_weight_end" name="shipping_rate_weight_end" />
                 </li>
                 <li>
                     <label for="shipping_rate_volume_start">
                         <?php _e('Volume Start:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_volume_start; ?>" id="shipping_rate_volume_start" name="shipping_rate_volume_start" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_volume_start; ?>" id="shipping_rate_volume_start" name="shipping_rate_volume_start" />
                 </li>
                 <li>
                     <label for="shipping_rate_volume_end">
                         <?php _e('Volume End:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_volume_end; ?>" id="shipping_rate_volume_end" name="shipping_rate_volume_end" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_volume_end; ?>" id="shipping_rate_volume_end" name="shipping_rate_volume_end" />
                 </li>
                 <li>
                     <label for="shipping_rate_length_start">
                         <?php _e("Shipping Rate Length Start:", 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_length_start; ?>" id="shipping_rate_length_start" name="shipping_rate_length_start" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_length_start; ?>" id="shipping_rate_length_start" name="shipping_rate_length_start" />
                 </li>
                 <li>
                     <label for="shipping_rate_length_end">
                         <?php _e('Shipping Rate Length End:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_length_end; ?>" id="shipping_rate_length_end" name="shipping_rate_length_end" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_length_end; ?>" id="shipping_rate_length_end" name="shipping_rate_length_end" />
                 </li>
                 <li>
                     <label for="shipping_rate_width_start">
                         <?php _e('Shipping Rate Width Start:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_width_start; ?>" id="shipping_rate_width_start" name="shipping_rate_width_start" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_width_start; ?>" id="shipping_rate_width_start" name="shipping_rate_width_start" />
                 </li>
                 <li>
                     <label for="shipping_rate_width_end">
                         <?php _e('Shipping Rate Width End:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_width_end; ?>" id="shipping_rate_width_end" name="shipping_rate_width_end" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_width_end; ?>" id="shipping_rate_width_end" name="shipping_rate_width_end" />
                 </li>
                 <li>
                     <label for="shipping_rate_height_start">
                         <?php _e('Shipping Rate Height Start:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_height_start; ?>" id="shipping_rate_height_start" name="shipping_rate_height_start" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_height_start; ?>" id="shipping_rate_height_start" name="shipping_rate_height_start" />
                 </li>
                 <li>
                     <label for="shipping_rate_height_end">
                         <?php _e('Shipping Rate Height End:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_height_end; ?>" id="shipping_rate_height_end" name="shipping_rate_height_end" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_height_end; ?>" id="shipping_rate_height_end" name="shipping_rate_height_end" />
                 </li>
                 <li>
                     <label for="shipping_rate_ordertotal_start">
                         <?php _e('Order Total Start:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_ordertotal_start; ?>" id="shipping_rate_ordertotal_start" name="shipping_rate_ordertotal_start" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_ordertotal_start; ?>" id="shipping_rate_ordertotal_start" name="shipping_rate_ordertotal_start" />
                 </li>
                 <li>
                     <label for="shipping_rate_ordertotal_end">
                         <?php _e('Order Total End:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_ordertotal_end; ?>" id="shipping_rate_ordertotal_end" name="shipping_rate_ordertotal_end" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_ordertotal_end; ?>" id="shipping_rate_ordertotal_end" name="shipping_rate_ordertotal_end" />
                 </li>
                 <li>
                     <label for="shipping_rate_zip_start">
@@ -119,7 +119,7 @@
                     <label for="shipping_rate_value">
                         <?php _e('Shipping Rate:', 'com_shop'); ?>
                     </label>
-                    <input type="text" value="<?php echo (double) $this->row->shipping_rate_value; ?>" id="shipping_rate_value" name="shipping_rate_value" />
+                    <input type="text" value="<?php echo (float) $this->row->shipping_rate_value; ?>" id="shipping_rate_value" name="shipping_rate_value" />
                 </li>
                 <li>
                     <label for="shipping_rate_priority">

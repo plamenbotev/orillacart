@@ -9,13 +9,7 @@ class Factory {
         global $wpdb;
 
         if ($type == null) {
-
-            if (!isset($wpdb->use_mysqli) || !$wpdb->use_mysqli) {
-                $type = "mysql";
-            } else {
-
-                $type = "mysqliDriver";
-            }
+            $type = "mysqliDriver";
         }
 
         if (class_exists($type))

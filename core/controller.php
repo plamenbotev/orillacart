@@ -19,7 +19,8 @@ abstract class controller extends BObject {
         $thisMethods = get_class_methods(get_class($this));
 
         $baseMethods = get_class_methods(__CLASS__);
-        $methods = array_diff($thisMethods, $baseMethods);
+        // init() is a lifecycle hook called by getInstance(), not a task
+        $methods = array_diff($thisMethods, $baseMethods, array('init'));
    
 
 

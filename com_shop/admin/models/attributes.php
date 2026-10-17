@@ -346,7 +346,7 @@ class attributesModel extends model {
                             if (!empty($title))
                                 $prop_row->property_name = $title;
 
-                            $prop_row->property_price = (double) $post['att_price'][$ak]['value'][$k];
+                            $prop_row->property_price = (float) $post['att_price'][$ak]['value'][$k];
 
                             if (isset($post['oprand'][$ak]['value'][$k]) &&
                                     in_array($post['oprand'][$ak]['value'][$k], array('*', '-', '+', '/')))

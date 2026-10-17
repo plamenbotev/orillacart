@@ -57,10 +57,13 @@ class mysqliDriver extends database {
     }
 
     public function reset() {
-        mysqli_free_result($this->res);
+        if ($this->res instanceof mysqli_result)
+            mysqli_free_result($this->res);
         $this->res = null;
     }
 
+    // a failed query leaves $this->res === false; the fetch methods below then return
+    // an empty result instead of passing false to mysqli (a TypeError since PHP 8)
     public function setquery($que) {
 
         $que = str_replace('#_', $this->getPrefix(), $que);
@@ -157,7 +160,7 @@ class mysqliDriver extends database {
 
     public function secure($data) {
 
-        $data = mysqli_real_escape_string($this->conn, $data);
+        $data = mysqli_real_escape_string($this->conn, (string) $data);
         //$data=addcslashes($data,"%_");
         return $data;
     }
@@ -165,6 +168,9 @@ class mysqliDriver extends database {
     public function loadassoc() {
         $oblist = array();
         $ob = NULL;
+        if (!($this->res instanceof mysqli_result))
+            return $oblist;
+
         if ($this->numRows() == 1) {
 
             return mysqli_fetch_assoc($this->res);
@@ -179,8 +185,11 @@ class mysqliDriver extends database {
     public function loadarray() {
         $oblist = array();
         $ob = NULL;
+        if (!($this->res instanceof mysqli_result))
+            return $oblist;
 
-        while ($ob = mysqli_fetch_array($this->res, MYSQL_NUM)) {
+
+        while ($ob = mysqli_fetch_array($this->res, MYSQLI_NUM)) {
 
             $oblist[] = $ob[0];
         }
@@ -191,7 +200,10 @@ class mysqliDriver extends database {
     public function loadColumnArray($col) {
         $oblist = array();
         $ob = NULL;
-        mysql_data_seek($this->res, 0);
+        if (!($this->res instanceof mysqli_result))
+            return $oblist;
+
+        mysqli_data_seek($this->res, 0);
         while ($ob = mysqli_fetch_assoc($this->res)) {
             $oblist[] = $ob[$col];
         }
@@ -200,6 +212,9 @@ class mysqliDriver extends database {
     }
 
     public function numRows() {
+        if (!($this->res instanceof mysqli_result))
+            return 0;
+
 
         return mysqli_num_rows($this->res);
     }
@@ -214,6 +229,9 @@ class mysqliDriver extends database {
 
         $oblist = array();
         $ob = NULL;
+        if (!($this->res instanceof mysqli_result))
+            return $oblist;
+
 
         if (!$col) {
             while ($ob = mysqli_fetch_object($this->res)) {

@@ -251,7 +251,6 @@ if (!function_exists('paypal_init')) {
                     // Send back post vars to paypal
                     $params = array(
                         'body' => $received_values,
-                        'sslverify' => false,
                         'timeout' => 60,
                         'httpversion' => '1.1',
                         'headers' => array('connection', 'close')
@@ -282,6 +281,13 @@ if (!function_exists('paypal_init')) {
                             return false;
                         }
 
+
+                        $currency = $order->get("currency") ? $order->get("currency") : Factory::getComponent('shop')->getParams()->get('currency');
+
+                        if (!isset($_POST['mc_currency']) || strtoupper(trim($_POST['mc_currency'])) != strtoupper(trim($currency))) {
+
+                            return false;
+                        }
 
                         if ((float) $_POST['mc_gross'] < (float) $order->get("order_total")) {
 

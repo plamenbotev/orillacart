@@ -8,10 +8,6 @@ class shopViewProduct extends view {
         global $post;
         $Head = Factory::getHead();
 
-        $this->assign('rootImage', Factory::getComponent('shop')->getAssetsUrl() . "/images/root.png");
-        $this->assign('folderImage', Factory::getComponent('shop')->getAssetsUrl() . "/images/folder.png");
-
-
         $Head->addScript('jquery');
         /* load tabs */
         $Head->addStyle('jquery-btatbs-css', Factory::getComponent('shop')->getAssetsUrl() . "/btabs.style.css");
@@ -27,12 +23,6 @@ class shopViewProduct extends view {
         Factory::getHead()->addScript('tipsy', Factory::getComponent('shop')->getAssetsUrl() . "/js/tipsy.js");
         Factory::getHead()->addStyle('tipsy', Factory::getComponent('shop')->getAssetsUrl() . "/tipsy.css");
 
-        /* load the tree */
-        $Head->addStyle('jquery-tree-css', Factory::getComponent('shop')->getAssetsUrl() . '/jstree.css');
-        $Head->addScript('jquery-tree-js', Factory::getComponent('shop')->getAssetsUrl() . '/js/jquery.jstree.js');
-        $Head->addScript('jquery-hotkeys-js', Factory::getComponent('shop')->getAssetsUrl() . '/js/jquery.hotkeys.js');
-        $Head->addScript('jquery-cookie-js', Factory::getComponent('shop')->getAssetsUrl() . '/js/jquery.cookie.js');
-
         /* load the ui and the dialog plugin */
         $Head->addScript('jquery-ui-dialog');
 
@@ -46,8 +36,6 @@ class shopViewProduct extends view {
 
         $Head->addCustomHeadTag('product-display', '
             <script type=\'text/javascript\'>
-                 jsShopAdminHelper.data.folderImage = "' . $this->folderImage . '";
-                 jsShopAdminHelper.data.rootImage = "' . $this->rootImage . '";
                  jsShopAdminHelper.data.pid = "' . $this->row->product->id . '";
             </script>');
     }
@@ -55,10 +43,6 @@ class shopViewProduct extends view {
     public function product_meta() {
 
         $this->loadTemplate('form');
-    }
-
-    public function category_meta() {
-        $this->loadTemplate('tree');
     }
 
 }

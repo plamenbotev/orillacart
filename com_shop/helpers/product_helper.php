@@ -99,10 +99,11 @@ class product_helper {
             throw new Exception(__('no such product', 'com_shop'));
         }
 
-        $price = $r->price;
+        // an unset price is stored as '', which PHP 8 refuses in arithmetic
+        $price = (float) $r->price;
 
         if (strtotime($r->discount_start) < time() && strtotime($r->discount_end) > time()) {
-            $price = $r->discount_price;
+            $price = (float) $r->discount_price;
         }
 
         $price = apply_filters("orillacart_raw_price_withouth_attributes", $price, $r);
@@ -170,7 +171,7 @@ class product_helper {
             }
 
             while ($row = $db->nextObject()) {
-                $price += (double) $row->price;
+                $price += (float) $row->price;
             }
         }
 

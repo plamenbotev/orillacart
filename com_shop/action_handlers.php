@@ -119,6 +119,13 @@ final class orillacart_actions {
             //add additional columns to user list in WP admin
             add_filter('manage_users_columns', array($this, 'manage_user_columns'), 10, 1);
             add_action('manage_users_custom_column', array($this, 'manage_user_column_values'), 10, 3);
+            //shop fields on the standard product category screens
+            add_action('product_cat_add_form_fields', array($this, 'category_add_fields'));
+            add_action('product_cat_edit_form_fields', array($this, 'category_edit_fields'), 10, 1);
+            add_action('created_product_cat', array($this, 'category_save_fields'), 10, 1);
+            add_action('edited_product_cat', array($this, 'category_save_fields'), 10, 1);
+            add_filter('manage_edit-product_cat_columns', array($this, 'category_columns'));
+            add_filter('manage_product_cat_custom_column', array($this, 'category_column_values'), 10, 3);
             //add additional meta fields to user edit form
             add_action('show_user_profile', array($this, 'customer_meta_fields'));
             add_action('edit_user_profile', array($this, 'customer_meta_fields'));
@@ -463,7 +470,22 @@ final class orillacart_actions {
 
         register_taxonomy('product_cat', array('product'), array(
             'hierarchical' => true,
-            'show_ui' => false,
+            'labels' => array(
+                'name' => __('Product categories', 'com_shop'),
+                'singular_name' => __('Product category', 'com_shop'),
+                'menu_name' => __('Product categories', 'com_shop'),
+                'search_items' => __('Search product categories', 'com_shop'),
+                'all_items' => __('All product categories', 'com_shop'),
+                'parent_item' => __('Parent product category', 'com_shop'),
+                'parent_item_colon' => __('Parent product category:', 'com_shop'),
+                'edit_item' => __('Edit product category', 'com_shop'),
+                'update_item' => __('Update product category', 'com_shop'),
+                'add_new_item' => __('Add new product category', 'com_shop'),
+                'new_item_name' => __('New product category name', 'com_shop'),
+                'not_found' => __('No product categories found', 'com_shop'),
+            ),
+            'show_ui' => true,
+            'show_admin_column' => true,
             'show_in_nav_menus' => true,
             'show_in_menu' => true,
             'query_var' => true,
@@ -669,7 +691,7 @@ final class orillacart_actions {
         add_submenu_page('component_com_shop-orders', __('List all products', 'com_shop'), __('List all products', 'com_shop'), 'manage_shop', 'edit.php?post_type=product');
         add_submenu_page('component_com_shop-orders', __('Add new product', 'com_shop'), __('Add new Product', 'com_shop'), 'manage_shop', 'post-new.php?post_type=product');
         add_submenu_page('component_com_shop-orders', __('Product tags', 'com_shop'), __('Product tags', 'com_shop'), 'manage_shop', 'edit-tags.php?taxonomy=product_tags&post_type=product');
-        add_submenu_page('component_com_shop-orders', __('Product categories', 'com_shop'), __('Product categories', 'com_shop'), 'manage_shop', 'component_com_shop-category', array(Factory::getApplication(), 'attachTheContent'));
+        add_submenu_page('component_com_shop-orders', __('Product categories', 'com_shop'), __('Product categories', 'com_shop'), 'manage_shop', 'edit-tags.php?taxonomy=product_cat&post_type=product');
         add_submenu_page('component_com_shop-orders', __('Product brands', 'com_shop'), __('Product brands', 'com_shop'), 'manage_shop', 'edit-tags.php?taxonomy=product_brand&post_type=product');
         add_submenu_page('component_com_shop-orders', __('Stockrooms', 'com_shop'), __('Stockrooms', 'com_shop'), 'manage_shop', 'component_com_shop-stockroom', array(Factory::getApplication(), 'attachTheContent'));
         add_submenu_page('component_com_shop-orders', __('Manage Amounts', 'com_shop'), __('Manage Amounts', 'com_shop'), 'manage_shop', 'component_com_shop-stockroom-manage', array(Factory::getApplication(), 'attachTheContent'));
@@ -1134,6 +1156,30 @@ final class orillacart_actions {
 
     public function customer_meta_save($id) {
         Request::execute("component=shop&con=user&task=save&id=" . $id);
+    }
+
+    public function category_add_fields($taxonomy) {
+        echo Request::execute("component=shop&con=category&task=add_fields");
+    }
+
+    public function category_edit_fields($term) {
+        echo Request::execute("component=shop&con=category&task=edit_fields&id=" . (int) $term->term_id);
+    }
+
+    public function category_save_fields($term_id) {
+        Request::execute("component=shop&con=category&task=save&id=" . (int) $term_id);
+    }
+
+    public function category_columns($columns) {
+        $columns['shop_position'] = __('Order', 'com_shop');
+        return $columns;
+    }
+
+    public function category_column_values($value, $column_name, $term_id) {
+        if ($column_name == 'shop_position') {
+            return (int) Factory::getComponent('shop')->getHelper('term_meta')->get($term_id, 'position', true);
+        }
+        return $value;
     }
 
 }

@@ -2,7 +2,7 @@ jQuery(document).ready(function ($) {
 
     jQuery("#billing_country,#shipping_country,select#billing_state,select#shipping_state").chosen();
 
-    if ($('#shiptobilling input').is(':checked') || $('#shiptobilling input').size() == 0) {
+    if ($('#shiptobilling input').is(':checked') || $('#shiptobilling input').length == 0) {
         $(".shipping_field.required").removeClass("required").addClass("not_required");
     }
 
@@ -32,7 +32,7 @@ jQuery(document).ready(function ($) {
 
     });
 
-    $("select#billing_country,select#shipping_country").live('change', function () {
+    $(document).on('change', "select#billing_country,select#shipping_country", function () {
 
         var obj = this.id.substring(0, this.id.indexOf('_country'));
 
@@ -65,7 +65,7 @@ jQuery(document).ready(function ($) {
         var state = $('#billing_state').val();
         var postcode = $('input#billing_zipcode').val();
 
-        if ($('#shiptobilling input').is(':checked') || $('#shiptobilling input').size() == 0) {
+        if ($('#shiptobilling input').is(':checked') || $('#shiptobilling input').length == 0) {
             var s_country = $('#billing_country').val();
             var s_state = $('#billing_state').val();
             var s_postcode = $('input#billing_zipcode').val();
@@ -158,7 +158,7 @@ jQuery(document).ready(function ($) {
 
         }
 
-        $('.payment_methods input.input-radio').live('click', function () {
+        $(document).on('click', '.payment_methods input.input-radio', function () {
             $('div.payment_box').hide();
             if ($(this).is(':checked')) {
                 $('div.payment_box.' + $(this).attr('ID')).slideDown();
@@ -175,18 +175,18 @@ jQuery(document).ready(function ($) {
         });
 
         /* Update totals */
-        $('#shipping_method').live('change', function () {
+        $(document).on('change', '#shipping_method', function () {
             clearTimeout(updateTimer);
             update_checkout();
         }).change();
-        $('input#billing_state, #billing_zipcode, input#shipping_state, #shipping_zipcode').live('keydown', function () {
+        $(document).on('keydown', 'input#billing_state, #billing_zipcode, input#shipping_state, #shipping_zipcode', function () {
             clearTimeout(updateTimer);
 
             updateTimer = setTimeout(function () {
                 update_checkout();
             }, '1000');
         });
-        $('select#billing_country, select#billing_state, select#shipping_country, select#shipping_state, #shiptobilling input, .update_totals_on_change').live('change', function () {
+        $(document).on('change', 'select#billing_country, select#billing_state, select#shipping_country, select#shipping_state, #shiptobilling input, .update_totals_on_change', function () {
             clearTimeout(updateTimer);
             update_checkout();
         });

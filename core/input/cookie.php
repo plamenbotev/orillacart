@@ -7,7 +7,7 @@
  * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE
  */
-defined('JPATH_PLATFORM') or die;
+defined('_VALID_EXEC') or die('access denied');
 
 /**
  * Joomla! Input Cookie Class
@@ -24,7 +24,7 @@ class InputCookie extends Input {
      *
      * @since   11.1
      */
-    public function __construct(array $source = null, array $options = array()) {
+    public function __construct(?array $source = null, array $options = array()) {
         if (isset($options['filter'])) {
             $this->filter = $options['filter'];
         } else {
@@ -76,7 +76,7 @@ class InputCookie extends Input {
      * @see     setcookie()
      * @since   11.1
      */
-    public function set($name, $value, $expire = 0, $path = '', $domain = '', $secure = false, $httpOnly = false) {
+    public function set($name = null, $value = null, $expire = 0, $path = '', $domain = '', $secure = false, $httpOnly = false) {
         setcookie($name, $value, $expire, $path, $domain, $secure, $httpOnly);
 
         $this->data[$name] = $value;

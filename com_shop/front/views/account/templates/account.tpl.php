@@ -104,6 +104,7 @@
 
     <form name="checkout"  method="post" class="checkout" action="<?php echo Route::get("component=shop&con=account"); ?>">
         <input type="hidden" name="task" value="save_account" />
+        <?php wp_nonce_field('orillacart_save_account', '_shopnonce'); ?>
         <div class="container-fluid">
             <div class="row">
                 <div class="col-xs-13 text-right">

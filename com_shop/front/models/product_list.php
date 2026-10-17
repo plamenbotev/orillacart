@@ -86,6 +86,7 @@ class product_listModel extends model {
         if (!$id || !$this->is_category($id))
             $id = 0;
 
+        global $wpdb;
         $db = Factory::getDBO();
 
         $and = '';
@@ -93,10 +94,12 @@ class product_listModel extends model {
             $and = " AND taxonomy.term_id NOT IN(" . implode(',', $exclude) . ")";
         }
 
+        // categories without an order value sort as 0
         $db->setQuery("SELECT terms.*,taxonomy.* FROM #_terms as terms
             INNER JOIN #_term_taxonomy as taxonomy ON taxonomy.term_id = terms.term_id
-            INNER JOIN #_shop_category_xref AS c ON c.category_child_id = terms.term_id
-            where taxonomy.taxonomy = 'product_cat' AND taxonomy.parent = {$id} {$and} ORDER BY c.position ASC");
+            LEFT JOIN `{$wpdb->termmeta}` AS pos ON pos.term_id = terms.term_id AND pos.meta_key = 'position'
+            where taxonomy.taxonomy = 'product_cat' AND taxonomy.parent = {$id} {$and}
+            ORDER BY CAST(COALESCE(pos.meta_value, 0) AS SIGNED) ASC, terms.name ASC");
 
         if (!$db->getResource()) {
             throw new Exception($db->getErrorString());

@@ -15,7 +15,7 @@ class ArrayHelper {
             if ($default === null) {
                 $array = array();
             } elseif (is_array($default)) {
-                self::toInteger($default, null);
+                self::toInt($default, null);
                 $array = $default;
             } else {
                 $array = array((int) $default);

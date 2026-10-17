@@ -166,8 +166,6 @@ class shopControllerProducts extends controller {
             $this->view->assign('parent_title', '');
         }
 
-        $row->cats = array();
-        $row->cats = (array) $model->getProductCatIds($pid);
         $row->brands = (array) $model->get_product_brands_ids($pid);
 
         $row->shipping_groups = (array) $model->get_product_shipping_groups_ids($pid);
@@ -181,7 +179,8 @@ class shopControllerProducts extends controller {
         $this->view->assign('row', $row);
         $this->view->assign('brands', $brands_model->getAllBrands());
         $this->view->assign('shipping_groups', $shipping_model->getAllShippingGroups());
-        $this->view->assignref('settings', Factory::getComponent('shop')->getParams());
+        $settings = Factory::getComponent('shop')->getParams();
+        $this->view->assignref('settings', $settings);
 
         $path = wp_upload_dir();
         $this->view->assign('images_path', $path['baseurl']);
@@ -193,7 +192,6 @@ class shopControllerProducts extends controller {
         $this->view->poduct_meta_js();
 
         add_meta_box('product_data', 'Product information', array($this->view, 'product_meta'), 'product', 'normal', 'high');
-        add_meta_box('product_category', 'Category', array($this->view, 'category_meta'), 'product', 'side');
     }
 
     public function create_variation() {

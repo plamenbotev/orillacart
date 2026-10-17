@@ -393,11 +393,11 @@ class standart_shipping implements SelfRegisterable {
             $row = new stdClass();
 
             if ($rate->qty_multiply == "yes") {
-                $row->rate = (double) $rate->shipping_rate_value * $this->get_total_qty();
-                $row->raw_rate = (double) $rate->shipping_rate_value * $this->get_total_qty();
+                $row->rate = (float) $rate->shipping_rate_value * $this->get_total_qty();
+                $row->raw_rate = (float) $rate->shipping_rate_value * $this->get_total_qty();
             } else {
-                $row->rate = (double) $rate->shipping_rate_value;
-                $row->raw_rate = (double) $rate->shipping_rate_value;
+                $row->rate = (float) $rate->shipping_rate_value;
+                $row->raw_rate = (float) $rate->shipping_rate_value;
             }
 
             $gid = !$rate->shipping_tax_group_id ? $params->get('shop_tax_group') : $rate->shipping_tax_group_id;

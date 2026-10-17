@@ -7,13 +7,13 @@
  * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE
  */
-defined('JPATH_PLATFORM') or die;
+defined('_VALID_EXEC') or die('access denied');
 
 /**
  * Joomla! Input JSON Class
  *
  * This class decodes a JSON string from the raw request data and makes it available via
- * the standard JInput interface.
+ * the standard Input interface.
  *
  * @since  12.2
  */
@@ -33,7 +33,7 @@ class InputJSON extends Input {
      *
      * @since   12.2
      */
-    public function __construct(array $source = null, array $options = array()) {
+    public function __construct(?array $source = null, array $options = array()) {
         if (isset($options['filter'])) {
             $this->filter = $options['filter'];
         } else {

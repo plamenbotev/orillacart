@@ -550,9 +550,10 @@ class shopControllerCart extends controller {
 //validate is that order really belongs to that customer
             $key = $input->get("order_key", "", "STRING");
 
-            if ($key && $key == $row['post_password'])
+            if ($key && $key == $row['post_password']) {
                 $can_pay = true;
-            $_SESSION['last_order_id'] = $oid;
+                $_SESSION['last_order_id'] = $oid;
+            }
         }
 
         if (!$can_pay) {
@@ -719,8 +720,13 @@ class shopControllerCart extends controller {
             exit;
         }
 
+        // only ajax handlers are reachable here, not the gateway's settings or payment methods
+        if (stripos($method, 'ajax') !== 0) {
+            exit;
+        }
+
         $gateway = new $class();
-        if (method_exists($gateway, $method)) {
+        if (is_callable(array($gateway, $method))) {
             $gateway->{$method}();
         }
         exit;

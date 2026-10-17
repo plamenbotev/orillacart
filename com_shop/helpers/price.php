@@ -28,20 +28,20 @@ class price {
         switch (Factory::getComponent('shop')->getParams()->get('currency_place')) {
 
             case "before":
-                return $currency_sign . number_format((double) $price, $params->get('price_decimal'), $params->get('price_separator'), $params->get('thousand_separator'));
+                return $currency_sign . number_format((float) $price, $params->get('price_decimal'), $params->get('price_separator'), $params->get('thousand_separator'));
 
                 break;
             case "before_with_space":
-                return $currency_sign . " " . number_format((double) $price, $params->get('price_decimal'), $params->get('price_separator'), $params->get('thousand_separator'));
+                return $currency_sign . " " . number_format((float) $price, $params->get('price_decimal'), $params->get('price_separator'), $params->get('thousand_separator'));
 
                 break;
             case "after":
-                return number_format((double) $price, $params->get('price_decimal'), $params->get('price_separator'), $params->get('thousand_separator')) . $currency_sign;
+                return number_format((float) $price, $params->get('price_decimal'), $params->get('price_separator'), $params->get('thousand_separator')) . $currency_sign;
 
                 break;
             case "after_with_space":
             default:
-                return number_format((double) $price, $params->get('price_decimal'), $params->get('price_separator'), $params->get('thousand_separator')) . " " . $currency_sign;
+                return number_format((float) $price, $params->get('price_decimal'), $params->get('price_separator'), $params->get('thousand_separator')) . " " . $currency_sign;
 
                 break;
         }
@@ -125,7 +125,7 @@ class price {
     public function convert($amount, $from = null, $to = null) {
 
         static $rates = array();
-        $amount = (double) $amount;
+        $amount = (float) $amount;
         if (empty($rates)) {
             $rates = $this->load_rates();
 

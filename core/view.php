@@ -89,7 +89,7 @@ abstract class view extends BObject {
     }
 
     public function setMessage($msg, $type = 'info') {
-        Factory::getComponent()->setMessage($msg, $type);
+        $this->app()->setMessage($msg, $type);
     }
 
     public function __construct() {

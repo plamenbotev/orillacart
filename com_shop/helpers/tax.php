@@ -252,7 +252,7 @@ class tax {
 
                         if (count($tax_rates) > 1) {
 
-                            $tax_rate = (double) array_sum($tax_rates);
+                            $tax_rate = (float) array_sum($tax_rates);
 
                             return $tax_rate / 100;
                         } else {
@@ -281,7 +281,7 @@ class tax {
 
                             if (count($tax_rates) > 1) {
 
-                                $tax_rate = (double) array_sum($tax_rates);
+                                $tax_rate = (float) array_sum($tax_rates);
 
                                 return $tax_rate / 100;
                             } else {
@@ -307,7 +307,7 @@ class tax {
 
                     if (count($tax_rates) > 1) {
 
-                        $tax_rate = (double) array_sum($tax_rates);
+                        $tax_rate = (float) array_sum($tax_rates);
 
                         return $tax_rate / 100;
                     } else {
@@ -333,7 +333,7 @@ class tax {
 
                     if (count($tax_rates) > 1) {
 
-                        $tax_rate = (double) array_sum($tax_rates);
+                        $tax_rate = (float) array_sum($tax_rates);
 
                         return $tax_rate / 100;
                     } else {

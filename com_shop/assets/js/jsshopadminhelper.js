@@ -295,43 +295,6 @@
 
             }
 
-            this.addProductToCat = function (c) {
-
-                var form = document.getElementById('post');
-
-                switch (c.checked) {
-
-                    case true:
-
-                        if (document.getElementById("#cat_" + c.value))
-                            return true;
-
-                        var el = document.createElement('input');
-                        el.type = 'hidden';
-                        el.name = "cats[" + c.value + "]";
-                        el.id = "cat_" + c.value;
-                        el.value = c.value;
-                        form.appendChild(el);
-                        return true;
-                        break;
-
-                    case false:
-
-                        element = document.getElementById("cat_" + c.value);
-                        element.parentNode.removeChild(element);
-
-                        return true;
-
-                        break;
-
-                    default:
-                        return false;
-                        break;
-
-                }
-
-            }
-
         }
 
         this.changeAttributeSetState = function (id, dom) {

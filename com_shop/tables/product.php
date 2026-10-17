@@ -47,8 +47,8 @@ class productTable extends table {
 
     public function store($safe_insert = false) {
 
-        $this->price = str_replace(',', '.', $this->price);
-        $this->discount_price = str_replace(',', '.', $this->discount_price);
+        $this->price = str_replace(',', '.', (string) $this->price);
+        $this->discount_price = str_replace(',', '.', (string) $this->discount_price);
 
         if (!in_array($this->type, array('regular', 'digital', 'virtual'))) {
             $this->type = 'regular';

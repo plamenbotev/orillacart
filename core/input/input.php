@@ -13,12 +13,12 @@
  *
  * @since  11.1
  *
- * @property-read    JInput        $get
- * @property-read    JInput        $post
- * @property-read    JInput        $request
- * @property-read    JInput        $server
- * @property-read    JInputFiles   $files
- * @property-read    JInputCookie  $cookie
+ * @property-read    Input        $get
+ * @property-read    Input        $post
+ * @property-read    Input        $request
+ * @property-read    Input        $server
+ * @property-read    InputFiles   $files
+ * @property-read    InputCookie  $cookie
  *
  * @method      integer  getInt()       getInt($name, $default = null)    Get a signed integer.
  * @method      integer  getUint()      getUint($name, $default = null)   Get an unsigned integer.
@@ -36,7 +36,7 @@
 class Input implements IteratorAggregate, ArrayAccess, Serializable, Countable {
 
     /**
-     * Options array for the JInput instance.
+     * Options array for the Input instance.
      *
      * @var    array
      * @since  11.1
@@ -46,7 +46,7 @@ class Input implements IteratorAggregate, ArrayAccess, Serializable, Countable {
     /**
      * Filter object to use.
      *
-     * @var    JFilterInput
+     * @var    FilterInput
      * @since  11.1
      */
     protected $filter = null;
@@ -92,6 +92,7 @@ class Input implements IteratorAggregate, ArrayAccess, Serializable, Countable {
         $this->options = $options;
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetSet($offset, $value) {
         if (is_null($offset)) {
             $this->data[] = $value;
@@ -100,18 +101,22 @@ class Input implements IteratorAggregate, ArrayAccess, Serializable, Countable {
         }
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetExists($offset) {
         return isset($this->data[$offset]);
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetUnset($offset) {
         unset($this->data[$offset]);
     }
 
+    #[\ReturnTypeWillChange]
     public function offsetGet($offset) {
         return isset($this->data[$offset]) ? $this->data[$offset] : null;
     }
 
+    #[\ReturnTypeWillChange]
     public function getIterator() {
         return new ArrayIterator($this->data);
     }
@@ -121,7 +126,7 @@ class Input implements IteratorAggregate, ArrayAccess, Serializable, Countable {
      *
      * @param   mixed  $name  Name of the input object to retrieve.
      *
-     * @return  JInput  The request input object
+     * @return  Input  The request input object
      *
      * @since   11.1
      */
@@ -157,6 +162,7 @@ class Input implements IteratorAggregate, ArrayAccess, Serializable, Countable {
      * @since   12.2
      * @see     Countable::count()
      */
+    #[\ReturnTypeWillChange]
     public function count() {
         return count($this->data);
     }
@@ -185,7 +191,7 @@ class Input implements IteratorAggregate, ArrayAccess, Serializable, Countable {
      *
      * @param   array  $vars        Associative array of keys and filter types to apply.
      *                              If empty and datasource is null, all the input data will be returned
-     *                              but filtered using the default case in JFilterInput::clean.
+     *                              but filtered using the default case in FilterInput::clean.
      * @param   mixed  $datasource  Array to retrieve data from, or null
      *
      * @return  mixed  The filtered input data.
@@ -230,7 +236,7 @@ class Input implements IteratorAggregate, ArrayAccess, Serializable, Countable {
      *
      * @since   11.1
      */
-    public function set() {
+    public function set($key = null, $value = null) {
         $args = func_get_args();
 
         if (func_num_args() == 1 && is_array($args[0])) {
@@ -316,6 +322,14 @@ class Input implements IteratorAggregate, ArrayAccess, Serializable, Countable {
      *
      * @since   12.1
      */
+    public function __serialize() {
+        return array('input' => $this->serialize());
+    }
+
+    public function __unserialize(array $data) {
+        $this->unserialize($data['input']);
+    }
+
     public function serialize() {
         // Load all of the inputs.
         $this->loadAllInputs();
@@ -334,7 +348,7 @@ class Input implements IteratorAggregate, ArrayAccess, Serializable, Countable {
      *
      * @param   string  $input  The serialized input.
      *
-     * @return  JInput  The input object.
+     * @return  Input  The input object.
      *
      * @since   12.1
      */

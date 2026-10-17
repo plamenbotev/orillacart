@@ -124,16 +124,7 @@ class stockroomModel extends model {
                     $joins[] = 'INNER JOIN `#_term_relationships` AS productc ON productc.object_id = product.ID';
                     $joins[] = 'INNER JOIN #_term_taxonomy as tt ON tt.term_taxonomy_id = productc.term_taxonomy_id';
 
-                    if ($recursive) {
-
-                        $joins[] = " INNER JOIN `#_shop_category_xref` as recp ON recp.category_child_id IN(" . implode(',', $cats) . ")";
-                        $joins[] = " INNER JOIN `#_shop_category_xref` as recc ON recc.a11 * recp.a21 >= recc.a21 * recp.a11 AND recc.a11 * recp.a22  < recc.a21 * recp.a12";
-                        $where[] = "AND tt.term_id = recc.category_child_id ";
-                    } else {
-
-
-                        $where[] = ' AND tt.term_id IN(' . implode(',', $cats) . ')';
-                    }
+                    $where[] = ' AND tt.term_id IN(' . implode(',', $recursive ? $this->with_descendants($cats) : $cats) . ')';
 
                     $group_by = 'GROUP BY product.ID,sr.id';
                 } else {
@@ -178,16 +169,7 @@ class stockroomModel extends model {
                     $joins[] = 'INNER JOIN `#_term_relationships` AS productc ON productc.object_id = b.ID';
                     $joins[] = 'INNER JOIN #_term_taxonomy as tt ON tt.term_taxonomy_id = productc.term_taxonomy_id';
 
-                    if ($recursive) {
-
-                        $joins[] = " INNER JOIN `#_shop_category_xref` as recp ON recp.category_child_id IN(" . implode(',', $cats) . ")";
-                        $joins[] = " INNER JOIN `#_shop_category_xref` as recc ON recc.a11 * recp.a21 >= recc.a21 * recp.a11 AND recc.a11 * recp.a22  < recc.a21 * recp.a12";
-                        $where[] = "AND tt.term_id = recc.category_child_id ";
-                    } else {
-
-
-                        $where[] = ' AND tt.term_id IN(' . implode(',', $cats) . ')';
-                    }
+                    $where[] = ' AND tt.term_id IN(' . implode(',', $recursive ? $this->with_descendants($cats) : $cats) . ')';
 
                     $group_by = 'GROUP BY b.ID,sr.id';
                 }
@@ -211,6 +193,20 @@ class stockroomModel extends model {
         }
 
         return clone $this->db;
+    }
+
+    /**
+     * The given product categories plus all of their subcategories.
+     */
+    protected function with_descendants(array $cats) {
+        $all = $cats;
+        foreach ($cats as $cid) {
+            $children = get_term_children((int) $cid, 'product_cat');
+            if (!is_wp_error($children)) {
+                $all = array_merge($all, $children);
+            }
+        }
+        return array_unique(array_map('intval', $all));
     }
 
     public function changeState($id) {

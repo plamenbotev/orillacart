@@ -23,7 +23,7 @@ final class Application {
         return $this->input;
     }
 
-    public function setInput(Input $i = null) {
+    public function setInput(?Input $i = null) {
         $this->input_override = $i;
     }
 
@@ -116,7 +116,7 @@ final class Application {
         
     }
 
-    private function __sleep() {
+    public function __sleep() {
         
     }
 
@@ -151,13 +151,16 @@ final class Application {
      */
     public function handle_ajax_admin() {
 
-        if (!current_user_can('manage_options')) {
+        $component = strtolower($this->input->get('component', '', 'CMD'));
+
+        if (!$component || !current_user_can('manage_' . $component)) {
             die("0");
         }
 
+        check_ajax_referer('orillacart_admin', '_shopnonce');
 
         request::ajaxMode();
-        $this->run($this->input->get('component'));
+        $this->run($component);
         die();
     }
 
@@ -184,7 +187,41 @@ final class Application {
             add_filter('template_include', array($this, 'output_content'));
         } else {
             add_action('admin_menu', array($this, 'buildAdmin'));
+            add_action('admin_print_footer_scripts', array($this, 'print_admin_nonce'));
         }
+    }
+
+    /**
+     * Expose the admin nonce and attach it to component forms and admin ajax calls,
+     * so the templates and scripts don't have to carry it themselves.
+     */
+    public function print_admin_nonce() {
+        ?>
+        <script type="text/javascript">
+            (function($) {
+                if (!$) return;
+                var nonce = <?php echo json_encode(wp_create_nonce('orillacart_admin')); ?>;
+                var isAdminCall = function(s) {
+                    return typeof s === 'string' && s.indexOf('ajax-call-admin') !== -1;
+                };
+                $.ajaxPrefilter(function(o) {
+                    if (isAdminCall(o.url) || isAdminCall(o.data)) {
+                        o.url += (o.url.indexOf('?') === -1 ? '?' : '&') + '_shopnonce=' + encodeURIComponent(nonce);
+                    }
+                });
+                var addNonce = function(form) {
+                    var action = form.getAttribute('action') || window.location.search;
+                    if (action.indexOf('page=component_com_') !== -1 && !form.elements['_shopnonce']) {
+                        $('<input type="hidden" name="_shopnonce" />').val(nonce).appendTo(form);
+                    }
+                };
+                $(function() {
+                    $('form').each(function() { addNonce(this); });
+                    $(document).on('submit', 'form', function() { addNonce(this); });
+                });
+            })(window.jQuery);
+        </script>
+        <?php
     }
 
     /**
@@ -390,7 +427,12 @@ final class Application {
             $page = (string) $_GET['page'];
             $com = null;
 
-            if (preg_match("/component_com_[a-z]+/i", $page)) {
+            // admin_menu fires before WP checks access to the page,
+            // so the component capability has to be checked here.
+            if (preg_match("/^component_com_([a-z]+)/i", $page, $m) && current_user_can('manage_' . strtolower($m[1]))) {
+                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                    check_admin_referer('orillacart_admin', '_shopnonce');
+                }
                 $com = $this->input->get('page', null);
                 $com = explode('-', $com);
                 if (isset($com[1])) {

@@ -42,14 +42,13 @@ class JSimpleXML extends BObject {
     public function __construct($options = null) {
         if (!function_exists('xml_parser_create')) {
             // TODO throw warning
-            return false;
+            return;
         }
 
         // Create the parser resource and make sure both versions of PHP autodetect the format.
         $this->_parser = xml_parser_create('');
 
         // Check parser resource
-        xml_set_object($this->_parser, $this);
         xml_parser_set_option($this->_parser, XML_OPTION_CASE_FOLDING, 0);
         if (is_array($options)) {
             foreach ($options as $option => $value) {
@@ -58,8 +57,8 @@ class JSimpleXML extends BObject {
         }
 
         // Set the handlers
-        xml_set_element_handler($this->_parser, '_startElement', '_endElement');
-        xml_set_character_data_handler($this->_parser, '_characterData');
+        xml_set_element_handler($this->_parser, array($this, '_startElement'), array($this, '_endElement'));
+        xml_set_character_data_handler($this->_parser, array($this, '_characterData'));
     }
 
     /**
@@ -155,7 +154,7 @@ class JSimpleXML extends BObject {
         }
 
         //Free the parser
-        xml_parser_free($this->_parser);
+        $this->_parser = null;
     }
 
     /**
@@ -190,7 +189,7 @@ class JSimpleXML extends BObject {
      * @param string $name
      * @param array $attrs
      */
-    protected function _startElement($parser, $name, $attrs = array()) {
+    public function _startElement($parser, $name, $attrs = array()) {
         //  Check to see if tag is root-level
         $count = count($this->_stack);
         if ($count == 0) {
@@ -220,7 +219,7 @@ class JSimpleXML extends BObject {
      * @param resource $parser
      * @param string $name
      */
-    protected function _endElement($parser, $name) {
+    public function _endElement($parser, $name) {
         //Update stack by removing the end value from it as the parent
         array_pop($this->_stack);
     }
@@ -231,7 +230,7 @@ class JSimpleXML extends BObject {
      * @param resource $parser
      * @param string $data
      */
-    protected function _characterData($parser, $data) {
+    public function _characterData($parser, $data) {
         // Get the reference to the current parent object
         $tag = $this->_getStackLocation();
 

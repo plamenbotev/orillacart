@@ -36,7 +36,7 @@ final class Head {
         
     }
 
-    private function __sleep() {
+    public function __sleep() {
         
     }
 
@@ -108,16 +108,29 @@ final class Head {
             $dir .= "/" . $name;
 
             if (file_exists($dir)) {
-                return wp_enqueue_style($id, str_replace(".css", ".min.css", $file));
+                return wp_enqueue_style($id, str_replace(".css", ".min.css", $file), array(), self::assetVersion($file));
             } else {
-                return wp_enqueue_style($id, $file);
+                return wp_enqueue_style($id, $file, array(), self::assetVersion($file));
             }
         } else {
-            return wp_enqueue_style($id, $file);
+            return wp_enqueue_style($id, $file, array(), self::assetVersion($file));
         }
     }
 
+    /**
+     * Plugin assets are versioned with the plugin, so browsers fetch them again after an update;
+     * without it WP appends its own version, which does not change when the plugin does.
+     */
+    protected static function assetVersion($file, $ver = false) {
+        if ($ver === false && !empty($file) && defined('ORILLACART_VERSION') && strings::stripos($file, WP_PLUGIN_URL) !== false) {
+            return ORILLACART_VERSION;
+        }
+        return $ver;
+    }
+
     public function addScript($id, $file = null, $dep = array(), $ver = false, $footer = false) {
+
+        $ver = self::assetVersion($file, $ver);
 
         //check if the file is local before searching for min version.
         if (!empty($file) && strings::stripos($file, WP_PLUGIN_URL) !== false && (!defined("SCRIPT_DEBUG") || SCRIPT_DEBUG == false )) {

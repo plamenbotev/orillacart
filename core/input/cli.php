@@ -7,7 +7,7 @@
  * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE
  */
-defined('JPATH_PLATFORM') or die;
+defined('_VALID_EXEC') or die('access denied');
 
 /**
  * Joomla! Input CLI Class
@@ -41,7 +41,7 @@ class InputCli extends Input {
      *
      * @since   11.1
      */
-    public function __construct(array $source = null, array $options = array()) {
+    public function __construct(?array $source = null, array $options = array()) {
         if (isset($options['filter'])) {
             $this->filter = $options['filter'];
         } else {
@@ -80,7 +80,7 @@ class InputCli extends Input {
      *
      * @param   string  $input  The serialized input.
      *
-     * @return  JInput  The input object.
+     * @return  Input  The input object.
      *
      * @since   12.1
      */

@@ -62,38 +62,6 @@ class taxModel extends model {
         return clone $this->db;
     }
 
-    public function getRateList() {
-
-
-
-        $where = array();
-        $where[] = '1';
-
-
-        if (!$country_id || !$this->is_country($country_id)) {
-
-            throw new Exception(__('A country ID could not be found', 'com_shop'));
-        } else {
-
-            $where[] = " AND country_id = '" . $this->db->secure($country_id) . "'";
-        }
-
-
-        if (!empty($keyword)) {
-
-            $where[] = " AND ( state_name LIKE '{$keyword}%' OR state_3_code LIKE '{$keyword}%' OR state_2_code LIKE '{$keyword}%') ";
-        }
-
-        $this->db->setQuery("SELECT * FROM `#_shop_state` WHERE " . implode(' ', $where) . " ORDER BY state_name ASC");
-
-        if (!$this->db->getResource()) {
-
-            throw new Exception($this->db->getErrorString());
-        }
-
-        return clone $this->db;
-    }
-
     public function deleteGroup() {
 
         $input = Factory::getApplication()->getInput();

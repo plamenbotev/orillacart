@@ -286,7 +286,7 @@ class ordersModel extends Model {
         return (int) $this->db->loadResult();
     }
 
-    public function remove_item($item_id = null, orderTable $order = null) {
+    public function remove_item($item_id = null, ?orderTable $order = null) {
 
         $item_id = (int) $item_id;
         $input = Factory::getApplication()->getInput();
@@ -538,7 +538,7 @@ class ordersModel extends Model {
             if (!$item->pk())
                 continue;
 
-            $price = (double) $prices[$id];
+            $price = (float) $prices[$id];
             $qty = (int) $qtys[$id];
 
             $product = Factory::getComponent('shop')->getTable('product')->load($item->product_id);
@@ -883,11 +883,11 @@ class ordersModel extends Model {
             $order->volume_unit = Factory::getComponent('shop')->getParams()->get('default_volume_unit');
             $order->weight_unit = Factory::getComponent('shop')->getParams()->get('default_weight_unit');
 
-            $order->volume += (double) $qty * $product_row->get('product_volume', 0);
-            $order->length += (double) $qty * $product_row->get('product_length', 0);
-            $order->width += (double) $qty * $product_row->get('product_width', 0);
-            $order->height +=(double) $qty * $product_row->get('product_height', 0);
-            $order->weight += (double) $qty * $product_row->get('product_weight', 0);
+            $order->volume += (float) $qty * $product_row->get('product_volume', 0);
+            $order->length += (float) $qty * $product_row->get('product_length', 0);
+            $order->width += (float) $qty * $product_row->get('product_width', 0);
+            $order->height +=(float) $qty * $product_row->get('product_height', 0);
+            $order->weight += (float) $qty * $product_row->get('product_weight', 0);
 
 
 //store the item

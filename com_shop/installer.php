@@ -66,26 +66,6 @@ class shop_installer extends BObject {
 						KEY `session_id_3` (`session_id`),
 						KEY `last_access` (`last_access`)
 					) ENGINE=InnoDB DEFAULT CHARSET=utf8",
-            "shop_category_xref" =>
-            "CREATE TABLE IF NOT EXISTS `#_shop_category_xref` (
-						`category_parent_id` bigint(20) NOT NULL DEFAULT '0',
-						`category_child_id` bigint(20) NOT NULL DEFAULT '0',
-						`a11` bigint(20) unsigned NOT NULL,
-						`a21` bigint(20) unsigned NOT NULL,
-						`a12` bigint(20) unsigned NOT NULL,
-						`a22` bigint(20) unsigned NOT NULL,
-						`position` int(11) NOT NULL,
-						`type` varchar(255) NOT NULL,
-						PRIMARY KEY (`category_child_id`),
-						UNIQUE KEY `a11_2` (`a11`,`a21`,`a12`,`a22`),
-						KEY `category_xref_category_parent_id` (`category_parent_id`),
-						KEY `a11` (`a11`,`a21`,`a12`,`a22`),
-						KEY `category_parent_id` (`category_parent_id`,`category_child_id`,`a11`,`a21`,`a12`,`a22`,`position`),
-						KEY `a11_3` (`a11`),
-						KEY `a21` (`a21`),
-						KEY `a12` (`a12`),
-						KEY `a22` (`a22`)
-					) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Category child-parent relation list'",
             "shop_country" =>
             "CREATE TABLE IF NOT EXISTS `#_shop_country` (
 						`country_id` int(11) NOT NULL AUTO_INCREMENT,
@@ -306,7 +286,7 @@ class shop_installer extends BObject {
 
                 if (!$db->getResource()) {
 
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
             }
@@ -315,14 +295,14 @@ class shop_installer extends BObject {
 
             if (!$db->getResource()) {
 
-                trigger_error($db->getErrorString(), E_USER_ERROR);
+                trigger_error($db->getErrorString(), E_USER_WARNING);
                 exit;
             }
             $db->setQuery($this->import_states());
 
             if (!$db->getResource()) {
 
-                trigger_error($db->getErrorString(), E_USER_ERROR);
+                trigger_error($db->getErrorString(), E_USER_WARNING);
                 exit;
             }
 
@@ -517,6 +497,8 @@ class shop_installer extends BObject {
         foreach ($tables as $table => $def) {
             $wpdb->query("DROP TABLE IF EXISTS " . $wpdb->prefix . $table);
         }
+        // category tree table of versions before 1.3.0
+        $wpdb->query("DROP TABLE IF EXISTS " . $wpdb->prefix . "shop_category_xref");
 
         // Order Status
         $wpdb->query("DELETE FROM $wpdb->terms WHERE term_id IN (select term_id FROM $wpdb->term_taxonomy WHERE taxonomy IN ('product_type', 'product_cat','product_brand','product_tags','order_status'))");
@@ -562,14 +544,14 @@ class shop_installer extends BObject {
 
                 if (!$db->getResource()) {
 
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
                 $db->setQuery($this->import_states());
 
                 if (!$db->getResource()) {
 
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
             }
@@ -579,7 +561,7 @@ class shop_installer extends BObject {
             if (version_compare($params->get('db_version'), '1.1.3', '<')) {
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` ADD `qty_multiply` ENUM( 'no', 'yes' ) NOT NULL DEFAULT 'no'");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
             }
@@ -590,31 +572,31 @@ class shop_installer extends BObject {
             if (version_compare($params->get('db_version'), '1.1.4', '<')) {
                 $db->setQuery("DROP INDEX tax_state ON `#_shop_tax_rate` ");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD `tax_name` varchar(64) DEFAULT NULL");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD `priority` BIGINT(20) UNSIGNED NOT NULL DEFAULT 1");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_tax_rate` ADD INDEX (`priority`)");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_order_attribute_item` CHANGE `section` `section` ENUM( 'property', 'file', 'tax' ) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
             }
@@ -624,7 +606,7 @@ class shop_installer extends BObject {
 
                 $db->setQuery("ALTER TABLE `#_shop_order_attribute_item` CHANGE COLUMN `order_item_id` `order_item_id` BIGINT(20) UNSIGNED NULL DEFAULT NULL AFTER `order_att_item_id`");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
             }
@@ -731,91 +713,91 @@ class shop_installer extends BObject {
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_weight_start` `shipping_rate_weight_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_weight_end` `shipping_rate_weight_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_start` `shipping_rate_volume_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_start` `shipping_rate_volume_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_volume_end` `shipping_rate_volume_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_ordertotal_start` `shipping_rate_ordertotal_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_ordertotal_end` `shipping_rate_ordertotal_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_value` `shipping_rate_value` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_package_fee` `shipping_rate_package_fee` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_length_start` `shipping_rate_length_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_length_end` `shipping_rate_length_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_width_start` `shipping_rate_width_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_width_end` `shipping_rate_width_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_height_start` `shipping_rate_height_start` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
 
                 $db->setQuery("ALTER TABLE `#_shop_shipping_rate` CHANGE `shipping_rate_height_end` `shipping_rate_height_end` DECIMAL( 10, 4 ) NOT NULL ;");
                 if (!$db->getResource()) {
-                    trigger_error($db->getErrorString(), E_USER_ERROR);
+                    trigger_error($db->getErrorString(), E_USER_WARNING);
                     exit;
                 }
             }
@@ -852,6 +834,41 @@ class shop_installer extends BObject {
                         $wp_roles->add_cap('shop_manager', $cap);
                         $wp_roles->add_cap('administrator', $cap);
                     }
+                }
+            }
+
+            //categories are managed on the standard WP term screens, keep their display order as term meta 1.3.0
+            if (version_compare($params->get('db_version'), '1.3.0', '<')) {
+
+                global $wpdb;
+                $xref = $wpdb->prefix . 'shop_category_xref';
+
+                if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $xref)) == $xref) {
+
+                    $rows = (array) $wpdb->get_results("SELECT category_child_id, position FROM `{$xref}`");
+                    $term_meta = Factory::getComponent('shop')->getHelper('term_meta');
+                    $failed = 0;
+
+                    foreach ($rows as $row) {
+                        if (!term_exists((int) $row->category_child_id, 'product_cat')) {
+                            continue;
+                        }
+                        $term_meta->update((int) $row->category_child_id, 'position', (int) $row->position);
+
+                        if ((int) $term_meta->get((int) $row->category_child_id, 'position', true) !== (int) $row->position) {
+                            $failed++;
+                        }
+                    }
+
+                    if ($failed) {
+                        // keep the old table and stop here, so the next run retries only this step
+                        $params->set('db_version', '1.2.0');
+                        $params->save();
+                        echo "<div>" . sprintf(__('Could not copy the order of %d product categories. The database update was stopped, please try again.', 'com_shop'), $failed) . "</div>";
+                        return;
+                    }
+
+                    $wpdb->query("DROP TABLE IF EXISTS `{$xref}`");
                 }
             }
 

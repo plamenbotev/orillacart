@@ -6,6 +6,7 @@
  * 
  */
 
+#[\AllowDynamicProperties]
 class BObject {
 
     public function __construct($properties = null) {

@@ -204,11 +204,11 @@ class orderModel extends model {
         $order->currency_sign = Factory::getComponent('shop')->getParams()->get('currency_sign');
         $order->volume_unit = Factory::getComponent('shop')->getParams()->get('default_volume_unit');
         $order->weight_unit = Factory::getComponent('shop')->getParams()->get('default_weight_unit');
-        $order->volume = (double) $order_dim['totalvolume'];
-        $order->length = (double) $order_dim['totallength'];
-        $order->width = (double) $order_dim['totalwidth'];
-        $order->height = (double) $order_dim['totalheight'];
-        $order->weight = (double) $order_dim['totalweight'];
+        $order->volume = (float) $order_dim['totalvolume'];
+        $order->length = (float) $order_dim['totallength'];
+        $order->width = (float) $order_dim['totalwidth'];
+        $order->height = (float) $order_dim['totalheight'];
+        $order->weight = (float) $order_dim['totalweight'];
 
         if ($cart->need_shipping()) {
             $s = json_decode($h_order->decryptShipping($order->ship_method_id));

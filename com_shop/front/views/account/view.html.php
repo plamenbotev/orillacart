@@ -8,7 +8,7 @@ class shopViewAccount extends View {
         Factory::getHead()->setPageTitle(__("Your Account", "com_shop"));
         Factory::getHead()->addCustomHeadTag('account-coutry-select-ajax', "<script type='text/javascript'>
             jQuery(document).ready(function($) {
-                $('select#billing_country,select#shipping_country').live('change',function(){
+                $(document).on('change', 'select#billing_country,select#shipping_country', function(){
                     var obj = this.id.substring(0,this.id.indexOf('_country'));
                     $.ajax({
                         type: 'get',

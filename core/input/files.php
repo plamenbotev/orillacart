@@ -7,7 +7,7 @@
  * @copyright   Copyright (C) 2005 - 2015 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE
  */
-defined('JPATH_PLATFORM') or die;
+defined('_VALID_EXEC') or die('access denied');
 
 /**
  * Joomla! Input Files Class
@@ -29,11 +29,11 @@ class InputFiles extends Input {
      *
      * @param   array  $source   The source argument is ignored. $_FILES is always used.
      * @param   array  $options  An optional array of configuration options:
-     *                           filter : a custom JFilterInput object.
+     *                           filter : a custom FilterInput object.
      *
      * @since   12.1
      */
-    public function __construct(array $source = null, array $options = array()) {
+    public function __construct(?array $source = null, array $options = array()) {
         if (isset($options['filter'])) {
             $this->filter = $options['filter'];
         } else {
@@ -46,7 +46,7 @@ class InputFiles extends Input {
         // Scan the files in the array
         if (!empty($this->data)) {
             foreach ($this->data as $name => &$descriptor) {
-                $descriptor['safe'] = JFilterInput::isSafeFile($descriptor);
+                $descriptor['safe'] = FilterInput::isSafeFile($descriptor);
             }
         }
 
@@ -63,7 +63,7 @@ class InputFiles extends Input {
      *
      * @return  mixed  The filtered input value.
      *
-     * @see     JFilterInput::clean()
+     * @see     FilterInput::clean()
      * @since   11.1
      */
     public function get($name, $default = null, $filter = 'cmd') {
@@ -124,7 +124,7 @@ class InputFiles extends Input {
      *
      * @since   11.1
      */
-    public function set($name, $value) {
+    public function set($name = null, $value = null) {
         
     }
 

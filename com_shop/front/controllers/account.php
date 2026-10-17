@@ -136,7 +136,6 @@ class shopControllerAccount extends controller {
                     @apache_setenv('no-gzip', 1);
                 @ini_set('zlib.output_compression', 'Off');
                 @set_time_limit(0);
-                @set_magic_quotes_runtime(0);
                 @ob_end_clean();
                 if (ob_get_level())
                     @ob_end_clean(); // Zip corruption fix
@@ -164,6 +163,11 @@ class shopControllerAccount extends controller {
     protected function save_account() {
         $this->getView('account');
         $model = $this->getModel('account');
+
+        if (!is_user_logged_in() || !isset($_POST['_shopnonce']) || !wp_verify_nonce($_POST['_shopnonce'], 'orillacart_save_account')) {
+            Factory::getComponent('shop')->addError(__('Unable to update account!', 'com_shop'));
+            return $this->execute();
+        }
 
         try {
             if ($model->update_account()) {

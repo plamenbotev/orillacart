@@ -2,127 +2,74 @@
 
 defined('_VALID_EXEC') or die('access denied');
 
-lib::import("tree");
-
+/**
+ * Data source for the category filter tree on the stockroom page.
+ */
 class shopControllerShopTree extends controller {
 
     public function __default() {
 
+        $operation = isset($_REQUEST["operation"]) ? (string) $_REQUEST["operation"] : '';
 
-        $jstree = new treeBase("#_shop_category", "#_shop_category_xref", 'product_cat', 'product');
-
-
-        if ($_REQUEST["operation"] && strpos("_", $_REQUEST["operation"]) !== 0 && method_exists($this, $_REQUEST["operation"])) {
+        if (in_array($operation, array('get_children', 'search'))) {
             header("HTTP/1.0 200 OK");
             header('Content-type: text/json; charset=utf-8');
             header("Cache-Control: no-cache, must-revalidate");
             header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
             header("Pragma: no-cache");
-            echo $this->{$_REQUEST["operation"]}($_REQUEST);
+            echo $this->{$operation}($_REQUEST);
             die();
         }
         header("HTTP/1.0 404 Not Found");
     }
 
-    public function node_editor($data) {
+    /**
+     * Direct subcategories of a product category, in display order.
+     */
+    protected function children_of($parent) {
 
-        $jstree = new treeBase("#_shop_category", "#_shop_category_xref", 'product_cat', 'product');
+        $terms = get_terms(array(
+            'taxonomy' => 'product_cat',
+            'parent' => (int) $parent,
+            'hide_empty' => false,
+            'orderby' => 'name',
+        ));
 
-        $model = $this->getModel('category');
-
-        $id = $data['id'];
-
-        if (!$id || !$model->is_cat($id)) {
-
-            return "{ 'status':1, 'error':1, 'errormsg':'" . __("Invalid category", 'com_shop') . "'}";
+        if (is_wp_error($terms)) {
+            return array();
         }
 
-        $row = $model->loadCat($id);
-
-
-
-
-
-        $ret = new stdClass();
-        $ret->status = 1;
-        $ret->error = 0;
-        $ret->row = $row;
-
-        return json_encode($ret);
-    }
-
-    public function create_node($data) {
-
-        $res = new stdClass();
-
-
-        $jstree = new treeBase("#_shop_category", "#_shop_category_xref", 'product_cat', 'product');
-
-
-        $id = $jstree->_create($data);
-
-        if (is_wp_error($id)) {
-            $res->status = 0;
-            $res->msg = $id->get_error_message();
-            return json_encode($res);
+        $term_meta = Factory::getComponent('shop')->getHelper('term_meta');
+        $position = array();
+        foreach ($terms as $t) {
+            $position[$t->term_id] = (int) $term_meta->get($t->term_id, 'position', true);
         }
 
-        if ($id) {
-            $data["id"] = $id;
-            $res->status = 1;
-            $res->id = (int) $id;
-            return json_encode($res);
-        }
-        $res->status = 0;
-        return json_encode($res);
+        // usort is stable on PHP 8, so the name order from get_terms breaks ties
+        usort($terms, function ($a, $b) use ($position) {
+            if ($position[$a->term_id] != $position[$b->term_id]) {
+                return $position[$a->term_id] < $position[$b->term_id] ? -1 : 1;
+            }
+            return 0;
+        });
+
+        return $terms;
     }
 
-    public function rename_node($data) {
+    protected function has_children($id) {
 
-        $jstree = new treeBase("#_shop_category", "#_shop_category_xref", 'product_cat', 'product');
+        $children = get_terms(array(
+            'taxonomy' => 'product_cat',
+            'parent' => (int) $id,
+            'hide_empty' => false,
+            'fields' => 'ids',
+            'number' => 1,
+        ));
 
-
-        if (!$data['category_child_id'] || empty($data['title'])) {
-            return "{ \"status\" : 0 }";
-        }
-
-        $jstree->rename($data['category_child_id'], $data['title']);
-
-        return "{ \"status\" : 1 }";
-    }
-
-    public function move_node($data) {
-        $jstree = new treeBase("#_shop_category", "#_shop_category_xref", 'product_cat', 'product');
-
-
-        $jstree->moveCat($data);
-
-        return "{ \"status\" : 1}";
-    }
-
-    public function remove_node($data) {
-
-        $jstree = new treeBase("#_shop_category", "#_shop_category_xref", 'product_cat', 'product');
-
-
-        $thumb_path = Factory::getComponent('shop')->getParams()->get('categoryThumbPath');
-        $img_path = Factory::getComponent('shop')->getParams()->get('categoryImagePath');
-
-
-
-
-
-        $id = $jstree->_remove((int) $data["category_child_id"]);
-
-        if (!$id)
-            return "{ \"status\" : 0 }";
-        return "{ \"status\" : 1 }";
+        return !is_wp_error($children) && !empty($children);
     }
 
     public function get_children($data) {
-
-        $jstree = new treeBase("#_shop_category", "#_shop_category_xref", 'product_cat', 'product');
-
 
         $result = array();
 
@@ -131,67 +78,40 @@ class shopControllerShopTree extends controller {
             $result[] = array(
                 "attr" => array("id" => "node_0", "rel" => 'tree'),
                 "data" => 'root',
-                "state" => ($jstree->hasChildrens(0) > 0) ? "closed" : ""
+                "state" => $this->has_children(0) ? "closed" : ""
             );
         } else {
-            $tmp = $jstree->_get_children($data['category_child_id']);
 
-
-
-            $product = $this->getModel('product_admin');
             $selected_cats = array();
 
-            if (isset($data['pid']) && is_numeric($data['pid']) && $product->is_product($data['pid'])) {
+            if (isset($data['pid']) && is_numeric($data['pid']) && $this->getModel('product_admin')->is_product($data['pid'])) {
 
-
-                $selected_cats = $product->getProductCatIds($data['pid']);
-            } else if(isset($_SESSION['filter']['cats'])) {
+                $selected_cats = $this->getModel('product_admin')->getProductCatIds($data['pid']);
+            } else if (isset($_SESSION['filter']['cats'])) {
 
                 $selected_cats = ArrayHelper::toInt($_SESSION['filter']['cats']);
             }
 
-            $c = 0;
+            foreach ($this->children_of($data['category_child_id']) as $o) {
 
-            foreach ($tmp as $k => $o) {
-
-                if ($o->term_id == 0)
-                    continue;
-
-                $result[$c] = array(
-                    "attr" => array("id" => "node_" . $o->term_id, "rel" => $o->type),
+                $node = array(
+                    "attr" => array("id" => "node_" . $o->term_id, "rel" => 'default'),
                     "data" => $o->name,
-                    "state" => ($jstree->hasChildrens($o->term_id) > 0) ? "closed" : "",
+                    "state" => $this->has_children($o->term_id) ? "closed" : "",
                 );
 
-                if (!empty($selected_cats) && in_array($o->term_id, $selected_cats)) {
-
-                    $result[$c]['attr']['class'] = 'checked';
+                if (in_array($o->term_id, $selected_cats)) {
+                    $node['attr']['class'] = 'checked';
                 }
 
-
-
-                $c++;
+                $result[] = $node;
             }
         }
         return json_encode($result);
     }
 
     public function search($data) {
-
-
-        /*
-          $this->db->query("SELECT `".$this->fields["left"]."`, `".$this->fields["right"]."` FROM `".$this->table."` WHERE `".$this->fields["title"]."` LIKE '%".$this->db->escape($data["search_str"])."%'");
-          if($this->db->nf() === 0) return "[]";
-          $q = "SELECT DISTINCT `".$this->fields["id"]."` FROM `".$this->table."` WHERE 0 ";
-          while($this->db->nextr()) {
-          $q .= " OR (`".$this->fields["left"]."` < ".(int)$this->db->f(0)." AND `".$this->fields["right"]."` > ".(int)$this->db->f(1).") ";
-          }
-          $result = array();
-          $this->db->query($q);
-          while($this->db->nextr()) { $result[] = "#node_".$this->db->f(0); }
-          return json_encode($result);
-
-         */
+        return json_encode(array());
     }
 
 }

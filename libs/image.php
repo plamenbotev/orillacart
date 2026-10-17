@@ -107,8 +107,6 @@ final class image {
                 ($b - $this->getHeight()) / 2, // Center the image vertically
                 0, 0, $this->getWidth(), $this->getHeight(), 100);
 
-        imagedestroy($this->image);
-
         $this->image = $image;
     }
 
@@ -156,7 +154,6 @@ final class image {
                 0 - ($new_height - $thumb_height) / 2, // Center the image vertically
                 0, 0, $new_width, $new_height, $width, $height);
 
-        imagedestroy($this->image);
         $this->image = $thumb;
     }
 
@@ -177,13 +174,12 @@ final class image {
 
         $new_image = imagecreatetruecolor($width, $height);
         imagecopyresampled($new_image, $this->image, 0, 0, 0, 0, $width, $height, $this->getWidth(), $this->getHeight());
-        imagedestroy($this->image);
         $this->image = $new_image;
     }
 
     public function __destruct() {
 
-        imagedestroy($this->image);
+        $this->image = null;
     }
 
 }

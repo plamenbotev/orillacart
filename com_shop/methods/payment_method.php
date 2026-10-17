@@ -196,7 +196,7 @@ class pay_card {
     }
 
     public function get_input() {
-        return $this->input;
+        return $this->inputs;
     }
 
     public function __construct($name, $symbol, $pattern, $csc = false, $inputs = array()) {

@@ -89,7 +89,7 @@ abstract class table extends BObject {
     public function __construct($pk, $table, array $fk = array()) {
 
         if (!$pk || !$table)
-            trigger_error("missing pk and/or table name!", E_USER_ERROR);
+            throw new InvalidArgumentException("missing pk and/or table name!");
 
         $this->db = Factory::getDBO();
         $this->fk = $fk;
@@ -230,7 +230,10 @@ abstract class table extends BObject {
 
     protected function getPublicFields() {
 
-        $getPFields = create_function('$obj', 'return get_object_vars($obj);');
+        // unbound closure has no class scope, so only public properties are returned
+        $getPFields = Closure::bind(function ($obj) {
+            return get_object_vars($obj);
+        }, null, null);
 
         return $getPFields($this);
     }

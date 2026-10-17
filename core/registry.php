@@ -45,8 +45,8 @@ class Registry {
 
             // Traverse the registry to find the correct node for the result.
             for ($i = 0, $n = count($nodes); $i < $n; $i++) {
-                if (isset($node->$nodes[$i])) {
-                    $node = $node->$nodes[$i];
+                if (isset($node->{$nodes[$i]})) {
+                    $node = $node->{$nodes[$i]};
                 } else {
                     break;
                 }
@@ -129,7 +129,7 @@ class Registry {
     }
 
     public function merge(&$source) {
-        if ($source instanceof JRegistry) {
+        if ($source instanceof Registry) {
             // Load the variables into the registry's default namespace.
             foreach ($source->toArray() as $k => $v) {
                 if (($v !== null) && ($v !== '')) {
@@ -151,14 +151,14 @@ class Registry {
 
             // Traverse the registry to find the correct node for the result.
             for ($i = 0, $n = count($nodes) - 1; $i < $n; $i++) {
-                if (!isset($node->$nodes[$i]) && ($i != $n)) {
-                    $node->$nodes[$i] = new stdClass;
+                if (!isset($node->{$nodes[$i]}) && ($i != $n)) {
+                    $node->{$nodes[$i]} = new stdClass;
                 }
-                $node = $node->$nodes[$i];
+                $node = $node->{$nodes[$i]};
             }
 
             // Get the old value if exists so we can return it
-            $result = $node->$nodes[$i] = $value;
+            $result = $node->{$nodes[$i]} = $value;
         }
 
         return $result;

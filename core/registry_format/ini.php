@@ -43,7 +43,7 @@ class RegistryFormatINI extends RegistryFormat {
         } else {
             // Backward compatibility for 1.5 usage.
             //@deprecated
-            $sections = (boolean) $options;
+            $sections = (bool) $options;
         }
 
         // Check the memory cache for already processed strings.
@@ -68,7 +68,7 @@ class RegistryFormatINI extends RegistryFormat {
             $line = trim($line);
 
             // Ignore empty lines and comments.
-            if (empty($line) || ($line{0} == ';')) {
+            if (empty($line) || ($line[0] == ';')) {
                 continue;
             }
 
@@ -81,7 +81,7 @@ class RegistryFormatINI extends RegistryFormat {
                     $obj->$section = new stdClass;
                     continue;
                 }
-            } elseif ($line{0} == '[') {
+            } elseif ($line[0] == '[') {
                 continue;
             }
 

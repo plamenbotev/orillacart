@@ -45,9 +45,9 @@ class shopViewProduct_list extends view {
             $tpl = $_SESSION['list_type'];
         }
 
-        if (!in_array(strtolower($tpl), array('list', 'grid')))
+        if (!in_array(strtolower((string) $tpl), array('list', 'grid')))
             $tpl = (string) empty($this->category->view_style) ? '' : $this->category->view_style;
-        if (!in_array(strtolower($tpl), array('list', 'grid')))
+        if (!in_array(strtolower((string) $tpl), array('list', 'grid')))
             $tpl = $app->getParams()->get('list_type');
 
         $this->assign('list_type', $tpl);

@@ -1,9 +1,6 @@
 <?php defined('_VALID_EXEC') or die('access denied'); ?>
 
 <div class="com_shop">
-    <?php foreach ((array) $this->row->cats as $cid): ?>
-        <input type='hidden' name='cats[<?php echo $cid; ?>]' id='cat_<?php echo $cid; ?>' value='<?php echo $cid; ?>' />
-    <?php endforeach; ?>
     <input id="product_parent_id" type="hidden" name="parent_id" value="<?php echo $this->parent_id; ?>" />
 
     <dl class="tabs" id="pane">

@@ -3,7 +3,7 @@ var total_props = parseInt(jQuery("#total_g").val()) | 0;
 
 function new_attribute() {
 
-    var ord = jQuery('div#attributes div.attributeContainer').size();
+    var ord = jQuery('div#attributes div.attributeContainer').length;
     var div = document.createElement('div');
     div.setAttribute('class', 'attributeContainer');
     div.setAttribute('id', 'att-' + total_atts);
@@ -44,7 +44,7 @@ function new_attribute() {
 
 function addproperty(parent, att) {
 
-    var ord = jQuery('.subPropertyContainer', parent).size();
+    var ord = jQuery('.subPropertyContainer', parent).length;
     var div = document.createElement('div');
     div.setAttribute('class', 'subPropertyContainer');
     var html =
@@ -109,13 +109,13 @@ function wireReorderList() {
         "cancel": ':input,button,a'
     });
 
-    jQuery("div#attributes div.boxHeader div.handlediv").live("click", function (event) {
+    jQuery(document).on("click", "div#attributes div.boxHeader div.handlediv", function (event) {
 
         jQuery(">div.boxBody", event.target.parentNode.parentNode).toggle("boxClosed");
 
     });
 
-    jQuery("div#attributes").live("sortstop", function (event, ui) {
+    jQuery(document).on("sortstop", "div#attributes", function (event, ui) {
 
         var dom = ui.item.parent()[0];
 

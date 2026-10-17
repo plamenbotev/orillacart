@@ -30,7 +30,7 @@ class RegistryFormatXML extends RegistryFormat {
         $xml = simplexml_load_string($data);
 
         foreach ($xml->children() as $node) {
-            $obj->$node['name'] = $this->getValueFromNode($node);
+            $obj->{$node['name']} = $this->getValueFromNode($node);
         }
 
         return $obj;
@@ -62,7 +62,7 @@ class RegistryFormatXML extends RegistryFormat {
             default:
                 $value = new stdClass;
                 foreach ($node->children() as $child) {
-                    $value->$child['name'] = $this->getValueFromNode($child);
+                    $value->{$child['name']} = $this->getValueFromNode($child);
                 }
                 break;
         }

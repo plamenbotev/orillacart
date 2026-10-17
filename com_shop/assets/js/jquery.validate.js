@@ -420,7 +420,7 @@
                 this.addWrapper(this.toHide).hide();
             },
             valid: function () {
-                return this.size() === 0;
+                return this.length === 0;
             },
             size: function () {
                 return this.errorList.length;

@@ -1,6 +1,6 @@
 <?php
 
-class session {
+class session implements SessionHandlerInterface {
 
     private $ses_id;
     private $db;
@@ -26,24 +26,23 @@ class session {
             session_destroy();
         }
 
-        register_shutdown_function('session_write_close');
-
-
-        session_set_save_handler(
-                array($this, 'open'), array($this, 'close'), array($this, 'read'), array($this, 'write'), array($this, 'destroy'), array($this, 'gc')
-        );
+        // true registers session_write_close() on shutdown
+        session_set_save_handler($this, true);
     }
 
+    #[\ReturnTypeWillChange]
     public function open($path, $name) {
         $this->ses_life = ini_get('session.gc_maxlifetime');
         return true;
     }
 
+    #[\ReturnTypeWillChange]
     public function close() {
         $this->gc();
         return true;
     }
 
+    #[\ReturnTypeWillChange]
     public function read($ses_id) {
 
         $session_sql = "SELECT ses_value FROM " . $this->table . " WHERE ses_id = '" . $this->db->secure($ses_id) . "' LIMIT 1";
@@ -58,6 +57,7 @@ class session {
         return (string) $this->db->loadResult();
     }
 
+    #[\ReturnTypeWillChange]
     public function write($ses_id, $data) {
 
 
@@ -93,9 +93,10 @@ class session {
         
     }
 
+    #[\ReturnTypeWillChange]
     public function destroy($ses_id) {
 
-        $session_sql = "DELETE FROM " . $this->table . " WHERE ses_is = '" . $this->db->secure($ses_id) . "'";
+        $session_sql = "DELETE FROM " . $this->table . " WHERE ses_id = '" . $this->db->secure($ses_id) . "'";
         $this->db->setQuery($session_sql);
         if (!$this->db->getResource()) {
 
@@ -104,8 +105,9 @@ class session {
             return true;
     }
 
-    public function gc() {
-        $ses_life = time() - $this->ses_life;
+    #[\ReturnTypeWillChange]
+    public function gc($max_lifetime = null) {
+        $ses_life = time() - (int) ($max_lifetime ? $max_lifetime : $this->ses_life);
         $session_sql = "DELETE FROM " . $this->table . " WHERE last_access < $ses_life";
         $this->db->setQuery($session_sql);
         if (!$this->db->getResource()) {
