@@ -80,6 +80,7 @@ final class LegacyCatalog
         }
 
         $productId = 100;
+        $variationId = 5000;
         foreach ($recorded['products'] as $key => $fields) {
             $product = new Product(++$productId, new ProductDetails(ProductType::Physical, $this->pricing($fields), stockMode: self::stockMode($fields, $checkStock)));
             $product->replaceAttributes(self::drafts($fields['own'] ?? []), array_map(fn(string $set): AttributeSet => $this->sets[$set], $fields['sets'] ?? []));
@@ -87,7 +88,7 @@ final class LegacyCatalog
             $this->mapOptions($key, $fields['own'] ?? [], $product->ownAttributes());
 
             foreach ($fields['variations'] ?? [] as $variationKey => $variation) {
-                $created = $product->addVariation(new VariationDetails(
+                $created = $product->addVariation(++$variationId, new VariationDetails(
                     array_map(fn(string $option): int => $this->optionIds[$option], $variation['options']),
                     $this->pricing($variation),
                     stockMode: self::stockMode($variation, $checkStock),

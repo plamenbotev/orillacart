@@ -149,5 +149,34 @@ final class ProductServiceTest extends TestCase
 
         self::assertEquals([new CatalogItemsRemoved([10], [$variation->id], [$optionId])], $this->events->events);
         self::assertFalse($this->products->product(10)->saved);
+        self::assertSame([], $this->content->variations, 'the variation posts went with the product');
+    }
+
+    public function testAVariationHasAPostOfItsOwnUnderTheProduct(): void
+    {
+        $view = $this->products->save(10, new SaveProduct('40', weight: '1.2', attributes: [new SaveAttribute('Size', [new SaveOption('S'), new SaveOption('XL')])]));
+        [$small, $large] = array_map(static fn($option): int => $option->id, $view->attributes[0]->options);
+
+        $variation = $this->products->addVariation(10, new SaveVariation([$large], '48', weight: '1.6'));
+
+        self::assertSame([$variation->id => 10], $this->content->variations, 'its post is a child of the product\'s, and lends it its id');
+        self::assertSame(['1.6', null], [$variation->weight, $variation->length]);
+
+        // A refused variation leaves no post behind.
+        try {
+            $this->products->addVariation(10, new SaveVariation([$large], '50'));
+            self::fail('Two variations had the same options.');
+        } catch (CatalogRuleViolation $e) {
+            self::assertSame('orillacart_duplicate_variation', $e->errorCode);
+        }
+        self::assertCount(1, $this->content->variations);
+
+        // Deleting the post in WordPress forgets the variation; removing the variation deletes its post.
+        $other = $this->products->addVariation(10, new SaveVariation([$small], '38'));
+        $this->products->forgetVariation($other->id);
+        $this->products->forgetVariation($other->id);
+        self::assertSame([$variation->id], array_map(static fn($kept): int => $kept->id, $this->products->product(10)->variations));
+        $this->products->removeVariation(10, $variation->id);
+        self::assertSame([], $this->content->variations);
     }
 }

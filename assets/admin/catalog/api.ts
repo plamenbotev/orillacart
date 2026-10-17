@@ -58,6 +58,11 @@ export interface Variation {
 	sale: Sale | null;
 	sku: string | null;
 	stock_mode: StockMode;
+	/** Its own; null for the product's. Length, width and height likewise. */
+	weight: string | null;
+	length: string | null;
+	width: string | null;
+	height: string | null;
 }
 
 export type VariationInput = Omit< Variation, 'id' | 'label' >;
@@ -277,5 +282,55 @@ export function fetchDownloadStorage(
 ): Promise< DownloadStorage > {
 	return apiFetch< DownloadStorage >( {
 		path: `${ BASE }/download-storage${ fresh ? '?fresh=1' : '' }`,
+	} );
+}
+
+/** A variation's post: what shoppers read and see of it. */
+export interface VariationContent {
+	title: string;
+	/** Shown under the price when the variation is chosen. */
+	description: string;
+	/** Media library id, 0 for none. */
+	image: number;
+	gallery: number[];
+}
+
+type VariationPost = {
+	title: { raw: string };
+	excerpt: { raw: string };
+	featured_media: number;
+	meta: { orillacart_gallery?: number[] };
+};
+
+const VARIATION_POSTS = '/wp/v2/orillacart-variations';
+
+export async function fetchVariationContent(
+	id: number
+): Promise< VariationContent > {
+	const post = await apiFetch< VariationPost >( {
+		path: `${ VARIATION_POSTS }/${ id }?context=edit`,
+	} );
+	return {
+		title: post.title.raw,
+		description: post.excerpt.raw,
+		image: post.featured_media,
+		gallery: post.meta.orillacart_gallery ?? [],
+	};
+}
+
+export async function saveVariationContent(
+	id: number,
+	content: VariationContent
+): Promise< void > {
+	await apiFetch( {
+		path: `${ VARIATION_POSTS }/${ id }`,
+		method: 'POST',
+		data: {
+			// An empty title keeps the one made with the variation: product and options.
+			...( content.title.trim() === '' ? {} : { title: content.title } ),
+			excerpt: content.description,
+			featured_media: content.image,
+			meta: { orillacart_gallery: content.gallery },
+		},
 	} );
 }

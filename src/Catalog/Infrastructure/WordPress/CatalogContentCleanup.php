@@ -8,6 +8,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\VariationPostType;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 
 /**
@@ -30,7 +31,7 @@ final readonly class CatalogContentCleanup implements LifecycleListener
 
     public function uninstall(): void
     {
-        $posts = get_posts(['post_type' => ProductPostType::NAME, 'post_status' => array_keys(get_post_stati()), 'numberposts' => -1, 'fields' => 'ids']);
+        $posts = get_posts(['post_type' => [ProductPostType::NAME, VariationPostType::NAME], 'post_status' => array_keys(get_post_stati()), 'numberposts' => -1, 'fields' => 'ids']);
         foreach ($posts as $postId) {
             wp_delete_post((int) $postId, true);
         }

@@ -1,4 +1,4 @@
-// @wordpress/block-editor ships no type declarations; these are the parts the shop's blocks use.
+// @wordpress/block-editor ships no type declarations; these are the parts the shop's code uses.
 declare module '@wordpress/block-editor' {
 	import type { ReactNode } from 'react';
 
@@ -7,5 +7,20 @@ declare module '@wordpress/block-editor' {
 	): Record< string, unknown >;
 	export function InspectorControls( props: {
 		children?: ReactNode;
+	} ): ReactNode;
+
+	// The media library, opened by the render prop's open(); works inside the block editor.
+	export function MediaUpload( props: {
+		onSelect: ( media: { id: number } | { id: number }[] ) => void;
+		allowedTypes?: string[];
+		multiple?: boolean | 'add';
+		gallery?: boolean;
+		value?: number | number[];
+		title?: string;
+		render: ( props: { open: () => void } ) => ReactNode;
+	} ): ReactNode;
+	export function MediaUploadCheck( props: {
+		children?: ReactNode;
+		fallback?: ReactNode;
 	} ): ReactNode;
 }

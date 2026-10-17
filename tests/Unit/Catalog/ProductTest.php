@@ -110,8 +110,8 @@ final class ProductTest extends TestCase
         $product = $this->product('40', [], [$set]);
         [$small, $medium, $large] = array_map(static fn($option): int => $option->id(), $set->ownAttributes()[0]->options());
         $sale = new Sale(Money::of('35'), $this->now->modify('-1 day'), $this->now->modify('+1 day'));
-        $smallVariation = $product->addVariation(new VariationDetails([$small], new Pricing(Money::of('38'))));
-        $product->addVariation(new VariationDetails([$medium], new Pricing(Money::of('40'), $sale)));
+        $smallVariation = $product->addVariation(901, new VariationDetails([$small], new Pricing(Money::of('38'))));
+        $product->addVariation(902, new VariationDetails([$medium], new Pricing(Money::of('40'), $sale)));
         $this->products->save($product);
 
         $configuration = $product->configure([$small], $this->now);
@@ -134,7 +134,7 @@ final class ProductTest extends TestCase
         ]);
         [$small, $medium] = $this->optionIds($product, 'Size');
         [$red] = $this->optionIds($product, 'Colour');
-        $product->addVariation(new VariationDetails([$small, $red], new Pricing(Money::of('11'))));
+        $product->addVariation(903, new VariationDetails([$small, $red], new Pricing(Money::of('11'))));
         $this->products->save($product);
 
         foreach ([
@@ -143,7 +143,7 @@ final class ProductTest extends TestCase
             'an unknown option' => [[999], 'not one of this product\'s options'],
         ] as $label => [$options, $message]) {
             try {
-                $product->addVariation(new VariationDetails($options, new Pricing(Money::of('1'))));
+                $product->addVariation(904, new VariationDetails($options, new Pricing(Money::of('1'))));
                 self::fail("A variation with {$label} was added.");
             } catch (CatalogRuleViolation $e) {
                 self::assertStringContainsString($message, $e->getMessage(), $label);
@@ -156,7 +156,7 @@ final class ProductTest extends TestCase
         $product = $this->product('10', [new AttributeDraft(null, 'Size', [self::option('S'), self::option('M')])]);
         [$small, $medium] = $this->optionIds($product, 'Size');
         $attributeId = $product->ownAttributes()[0]->id();
-        $product->addVariation(new VariationDetails([$small], new Pricing(Money::of('11'))));
+        $product->addVariation(905, new VariationDetails([$small], new Pricing(Money::of('11'))));
         $this->products->save($product);
 
         // Removing M is fine, renaming S too.

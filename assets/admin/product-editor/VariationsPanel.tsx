@@ -1,21 +1,27 @@
 import {
 	Button,
 	Flex,
+	FlexItem,
 	SelectControl,
 	TextControl,
+	TextareaControl,
 } from '@wordpress/components';
-import { useState } from '@wordpress/element';
+import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 import {
 	deleteVariation,
+	fetchVariationContent,
 	saveVariation,
+	saveVariationContent,
+	type VariationContent,
 	type Attribute,
 	type Variation,
 	type VariationInput,
 } from '../catalog/api';
 import type { Stockroom } from '../inventory/api';
 import { orNull, STOCK_MODES, withSalePrice } from './fields';
+import { GalleryField, ImageField } from '../catalog/MediaFields';
 import { StockLevels } from './StockLevels';
 
 interface Props {
@@ -107,7 +113,30 @@ function VariationRow( {
 		sale: variation?.sale ?? null,
 		sku: variation?.sku ?? null,
 		stock_mode: variation?.stock_mode ?? 'tracked',
+		weight: variation?.weight ?? null,
+		length: variation?.length ?? null,
+		width: variation?.width ?? null,
+		height: variation?.height ?? null,
 	} );
+	const [ content, setContent ] = useState< VariationContent >( {
+		title: '',
+		description: '',
+		image: 0,
+		gallery: [],
+	} );
+	const variationId = variation?.id;
+	useEffect( () => {
+		if ( variationId !== undefined ) {
+			fetchVariationContent( variationId )
+				.then( setContent )
+				.catch( onError );
+		}
+	}, [ variationId, onError ] );
+	const save = () =>
+		saveVariation( productId, variation?.id ?? null, draft )
+			.then( ( saved ) => saveVariationContent( saved.id, content ) )
+			.then( onChanged )
+			.catch( onError );
 
 	const chosen = ( attribute: Attribute ) =>
 		attribute.options.find( ( option ) =>
@@ -127,10 +156,13 @@ function VariationRow( {
 	};
 
 	return (
-		<fieldset className="orillacart-variation">
-			<legend>
-				{ variation?.label ?? __( 'New variation', 'orillacart' ) }
-			</legend>
+		// Saved variations fold to their options and price; the form for a new one stays open.
+		<details className="orillacart-variation" open={ variation === null }>
+			<summary>
+				{ variation === null
+					? __( 'New variation', 'orillacart' )
+					: `${ variation.label } — ${ variation.price }` }
+			</summary>
 			{ attributes.map( ( attribute ) => (
 				<SelectControl
 					key={ attribute.id }
@@ -184,17 +216,76 @@ function VariationRow( {
 					} )
 				}
 			/>
+			<p className="orillacart-variation__hint">
+				{ __(
+					'Weight and size: empty for the product’s.',
+					'orillacart'
+				) }
+			</p>
+			<Flex wrap>
+				{ (
+					[
+						[ 'weight', __( 'Weight', 'orillacart' ) ],
+						[ 'length', __( 'Length', 'orillacart' ) ],
+						[ 'width', __( 'Width', 'orillacart' ) ],
+						[ 'height', __( 'Height', 'orillacart' ) ],
+					] as const
+				 ).map( ( [ field, label ] ) => (
+					<FlexItem key={ field }>
+						<TextControl
+							__next40pxDefaultSize
+							label={ label }
+							value={ draft[ field ] ?? '' }
+							onChange={ ( value ) =>
+								setDraft( {
+									...draft,
+									[ field ]: orNull( value ),
+								} )
+							}
+						/>
+					</FlexItem>
+				) ) }
+			</Flex>
+			<TextControl
+				__next40pxDefaultSize
+				label={ __( 'Name', 'orillacart' ) }
+				help={ __(
+					'Empty: the product’s name with the options.',
+					'orillacart'
+				) }
+				value={ content.title }
+				onChange={ ( title ) => setContent( { ...content, title } ) }
+			/>
+			<TextareaControl
+				label={ __( 'Description', 'orillacart' ) }
+				help={ __(
+					'Shown on the product page when this variation is chosen.',
+					'orillacart'
+				) }
+				value={ content.description }
+				onChange={ ( description ) =>
+					setContent( { ...content, description } )
+				}
+			/>
+			<ImageField
+				label={ __( 'Image', 'orillacart' ) }
+				value={ content.image }
+				onChange={ ( image ) => setContent( { ...content, image } ) }
+			/>
+			<GalleryField
+				label={ __( 'Gallery', 'orillacart' ) }
+				value={ content.gallery }
+				onChange={ ( gallery ) =>
+					setContent( { ...content, gallery } )
+				}
+			/>
 			<Flex justify="flex-start">
 				<Button
 					variant="secondary"
 					disabled={
 						draft.option_ids.length === 0 || draft.price === ''
 					}
-					onClick={ () =>
-						saveVariation( productId, variation?.id ?? null, draft )
-							.then( onChanged )
-							.catch( onError )
-					}
+					onClick={ save }
 				>
 					{ variation === null
 						? __( 'Add variation', 'orillacart' )
@@ -222,6 +313,6 @@ function VariationRow( {
 					onError={ onError }
 				/>
 			) }
-		</fieldset>
+		</details>
 	);
 }

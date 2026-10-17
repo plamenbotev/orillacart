@@ -16,6 +16,12 @@ final class InMemoryProductContent implements ProductContent
      */
     public function __construct(private array $posts = []) {}
 
+    /** Variation posts are numbered from here, apart from the products the tests number themselves. */
+    private int $nextVariation = 1001;
+
+    /** @var array<int, int> variation id => product id */
+    public array $variations = [];
+
     public function add(int $id, string $name, bool $published = true): void
     {
         $this->posts[$id] = [$name, $published];
@@ -34,5 +40,18 @@ final class InMemoryProductContent implements ProductContent
     public function name(int $productId): string
     {
         return $this->posts[$productId][0] ?? '';
+    }
+
+    public function createVariation(int $productId, string $name): int
+    {
+        $id = $this->nextVariation++;
+        $this->variations[$id] = $productId;
+
+        return $id;
+    }
+
+    public function deleteVariation(int $variationId): void
+    {
+        unset($this->variations[$variationId]);
     }
 }

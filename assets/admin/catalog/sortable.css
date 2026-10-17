@@ -41,3 +41,28 @@
 	padding: 8px 12px 12px;
 	border-top: 1px solid #f0f0f1;
 }
+
+.orillacart-media-previews {
+	margin-bottom: 8px;
+}
+
+.orillacart-media-previews img {
+	object-fit: cover;
+	border-radius: 2px;
+}
+
+/* Variations in the product editor's sidebar, folded to one line each. */
+.orillacart-variation {
+	margin-bottom: 12px;
+	padding: 8px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.orillacart-variation > summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.orillacart-variation[open] > summary {
+	margin-bottom: 12px;
+}

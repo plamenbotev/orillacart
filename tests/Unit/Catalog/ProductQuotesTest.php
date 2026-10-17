@@ -72,9 +72,9 @@ final class ProductQuotesTest extends TestCase
 
     public function testAVariationIsQuotedWithItsOwnPriceAndStock(): void
     {
-        $hoodie = $this->products->save(20, new SaveProduct('40', attributes: [new SaveAttribute('Size', [new SaveOption('S'), new SaveOption('M')])]));
+        $hoodie = $this->products->save(20, new SaveProduct('40', weight: '1', length: '30', attributes: [new SaveAttribute('Size', [new SaveOption('S'), new SaveOption('M')])]));
         [$small, $medium] = array_map(static fn($option): int => $option->id, $hoodie->attributes[0]->options);
-        $variation = $this->products->addVariation(20, new SaveVariation([$medium], '42', sku: 'HOOD-M'));
+        $variation = $this->products->addVariation(20, new SaveVariation([$medium], '42', sku: 'HOOD-M', weight: '1.25'));
         $this->products->addVariation(20, new SaveVariation([$small], '38', stockMode: 'unavailable'));
         $this->stock->setLevels(StockItemRef::variation($variation->id), new SetStockLevels([new SetStockLevel($this->stockroom, 0)]));
 
@@ -82,6 +82,7 @@ final class ProductQuotesTest extends TestCase
 
         self::assertSame([$variation->id, 'Hoodie – M', 'HOOD-M', '42', [], 0, false], [$quote->variationId, $quote->name, $quote->sku, $quote->unitPrice, $quote->options, $quote->available, $quote->forSale]);
         self::assertSame(0, $this->quotes->quote(new QuoteRequest(20, [$small]))->available, 'marked unavailable');
+        self::assertSame(['1.25', '30'], [$quote->weight, $quote->length], 'its own weight; the product\'s length, since it has none of its own');
     }
 
     public function testStockModesAndPublishingDecideWhatIsForSale(): void

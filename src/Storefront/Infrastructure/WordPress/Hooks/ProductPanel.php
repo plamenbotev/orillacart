@@ -8,6 +8,7 @@ use OrillaCart\Catalog\Application\Dto\OfferedVariation;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\ProductGallery;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
@@ -43,6 +44,7 @@ final readonly class ProductPanel
 
         return $content . $this->templates->render('storefront/product.html.twig', [
             'offer' => $offer,
+            'gallery' => self::images([(int) get_post_thumbnail_id($id), ...ProductGallery::of($id)]),
             'variations' => array_map(fn(OfferedVariation $variation): array => [
                 'id' => $variation->id,
                 'option_ids' => $variation->optionIds,
@@ -50,9 +52,42 @@ final readonly class ProductPanel
                 'for_sale' => $variation->forSale,
                 'available' => $variation->available,
                 'price' => $this->templates->render('storefront/_variation_price.html.twig', ['variation' => $variation]),
+                'image' => self::images([(int) get_post_thumbnail_id($variation->id)])[0] ?? null,
+                'gallery' => self::images(ProductGallery::of($variation->id)),
+                'description' => wp_strip_all_tags((string) get_post_field('post_excerpt', $variation->id)),
             ], $offer->variations),
             'cart_url' => $this->links->pages()['cart'],
         ]);
+    }
+
+    /**
+     * Media library images as the gallery and the script show them: the large picture and a thumbnail.
+     *
+     * @param list<int> $ids
+     *
+     * @return list<array{id: int, src: string, srcset: string, sizes: string, alt: string, thumb: string}>
+     */
+    private static function images(array $ids): array
+    {
+        $images = [];
+        foreach (array_unique($ids) as $id) {
+            $large = $id > 0 ? wp_get_attachment_image_src($id, 'large') : false;
+            $thumb = $id > 0 ? wp_get_attachment_image_src($id, 'thumbnail') : false;
+            if ($large === false || $thumb === false) {
+                continue;
+            }
+            $alt = get_post_meta($id, '_wp_attachment_image_alt', true);
+            $images[] = [
+                'id' => $id,
+                'src' => $large[0],
+                'srcset' => (string) wp_get_attachment_image_srcset($id, 'large'),
+                'sizes' => (string) wp_get_attachment_image_sizes($id, 'large'),
+                'alt' => \is_string($alt) ? $alt : '',
+                'thumb' => $thumb[0],
+            ];
+        }
+
+        return $images;
     }
 
     public function excerpt(string $excerpt, ?\WP_Post $post = null): string

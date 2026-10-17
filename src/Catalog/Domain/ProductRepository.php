@@ -15,6 +15,9 @@ interface ProductRepository
      */
     public function findMany(array $ids): array;
 
+    /** The product a variation belongs to. */
+    public function findByVariation(int $variationId): ?Product;
+
     /**
      * Saves the product with its attributes and variations; new ones have their ids afterwards.
      */

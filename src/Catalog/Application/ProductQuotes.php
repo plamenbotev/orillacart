@@ -47,6 +47,7 @@ final readonly class ProductQuotes
             $name .= ' – ' . implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $configuration->variation->options()));
         }
         $available = $this->available($configuration);
+        $measures = $configuration->measures();
 
         return new ItemQuote(
             $product->id(),
@@ -57,7 +58,7 @@ final readonly class ProductQuotes
             (string) $configuration->unitPrice,
             $details->taxable,
             $details->taxGroupId,
-            $details->weight,
+            $measures['weight'],
             array_map(static fn(AttributeOption $option): QuotedOption => new QuotedOption(
                 $option->id(),
                 $option->attribute()->name(),
@@ -66,9 +67,9 @@ final readonly class ProductQuotes
             ), $configuration->options),
             $available,
             $this->content->isPublished($product->id()) && $details->purchasable && $available !== 0,
-            $details->length,
-            $details->width,
-            $details->height,
+            $measures['length'],
+            $measures['width'],
+            $measures['height'],
             array_map(static fn(DownloadFile $file): QuotedDownload => new QuotedDownload($file->id(), $file->name(), $file->storageKey(), $file->mimeType()), $product->downloads()),
             $details->downloadLimit,
             $details->downloadExpiryDays,

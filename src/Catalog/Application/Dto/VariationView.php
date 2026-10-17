@@ -11,7 +11,8 @@ final readonly class VariationView
 {
     /**
      * @param list<int> $optionIds
-     * @param string    $label     the option names, such as "M / Blue"
+     * @param string      $label     the option names, such as "M / Blue"
+     * @param string|null $weight    its own; null when it weighs what the product does (as for length, width, height)
      */
     public function __construct(
         public int $id,
@@ -21,6 +22,10 @@ final readonly class VariationView
         public ?SaleView $sale,
         public ?string $sku,
         public string $stockMode,
+        public ?string $weight = null,
+        public ?string $length = null,
+        public ?string $width = null,
+        public ?string $height = null,
     ) {}
 
     public static function fromVariation(Variation $variation): self
@@ -35,6 +40,10 @@ final readonly class VariationView
             SaleView::fromSale($variation->pricing()->sale()),
             $variation->sku(),
             $variation->stockMode()->value,
+            $variation->weight(),
+            $variation->length(),
+            $variation->width(),
+            $variation->height(),
         );
     }
 }

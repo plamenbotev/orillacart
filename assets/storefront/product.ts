@@ -5,6 +5,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { api } from './api';
 import { clearErrors, failure, formBody, showErrors, showMessage } from './dom';
+import { bindGallery, type Gallery, type Picture } from './gallery';
 
 type CartSummary = { items: number };
 
@@ -15,6 +16,9 @@ type Variation = {
 	for_sale: boolean;
 	available: number | null;
 	price: string;
+	image: Picture | null;
+	gallery: Picture[];
+	description: string;
 };
 
 /**
@@ -70,11 +74,13 @@ export function bindAddToCart( form: HTMLFormElement ): void {
 	const variations = JSON.parse(
 		form.dataset.variations ?? '[]'
 	) as Variation[];
+	const product = form.closest( '.orillacart-product' );
+	const gallery = product ? bindGallery( product ) : null;
 	if ( variations.length > 0 ) {
 		form.addEventListener( 'change', () =>
-			showVariation( form, variations )
+			showVariation( form, variations, gallery )
 		);
-		showVariation( form, variations );
+		showVariation( form, variations, gallery );
 	}
 
 	form.addEventListener( 'submit', async ( event ) => {
@@ -122,8 +128,13 @@ export function bindAddToCart( form: HTMLFormElement ): void {
  * Shows the price, SKU and stock of the variation the chosen options make, once every choice is made.
  * @param form       The add-to-cart form.
  * @param variations The product's variations.
+ * @param gallery
  */
-function showVariation( form: HTMLFormElement, variations: Variation[] ): void {
+function showVariation(
+	form: HTMLFormElement,
+	variations: Variation[],
+	gallery: Gallery | null
+): void {
 	const chosen = Array.from(
 		form.querySelectorAll< HTMLSelectElement >( '[data-orillacart-option]' )
 	)
@@ -143,6 +154,24 @@ function showVariation( form: HTMLFormElement, variations: Variation[] ): void {
 	);
 	const stock = product?.querySelector( '[data-orillacart-stock]' );
 	const choices = form.querySelectorAll( '[data-orillacart-option]' ).length;
+
+	const description = product?.querySelector< HTMLElement >(
+		'[data-orillacart-variation-description]'
+	);
+	if ( description ) {
+		description.textContent = variation?.description ?? '';
+		description.hidden = ! variation?.description;
+	}
+	gallery?.use(
+		variation
+			? [
+					...( variation.image ? [ variation.image ] : [] ),
+					...variation.gallery.filter(
+						( picture ) => picture.id !== variation.image?.id
+					),
+				]
+			: null
+	);
 
 	if ( ! variation ) {
 		if ( stock && chosen.length > 0 && chosen.length === choices ) {

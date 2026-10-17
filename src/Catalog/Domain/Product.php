@@ -274,7 +274,7 @@ class Product
     public function variations(): array
     {
         $variations = array_values($this->variations->toArray());
-        usort($variations, static fn(Variation $a, Variation $b): int => ($a->isSaved() ? $a->id() : PHP_INT_MAX) <=> ($b->isSaved() ? $b->id() : PHP_INT_MAX));
+        usort($variations, static fn(Variation $a, Variation $b): int => $a->id() <=> $b->id());
 
         return $variations;
     }
@@ -285,12 +285,14 @@ class Product
     }
 
     /**
+     * @param int $id the id of the variation's post
+     *
      * @throws CatalogRuleViolation for options the product does not have, or a combination another variation has
      */
-    public function addVariation(VariationDetails $details): Variation
+    public function addVariation(int $id, VariationDetails $details): Variation
     {
         $options = $this->variationOptions($details, null);
-        $variation = new Variation($this, $details, $options);
+        $variation = new Variation($id, $this, $details, $options);
         $this->variations->add($variation);
 
         return $variation;
@@ -321,7 +323,7 @@ class Product
      */
     public function variation(int $variationId): Variation
     {
-        return $this->variations->findFirst(static fn(int $key, Variation $variation): bool => $variation->isSaved() && $variation->id() === $variationId)
+        return $this->variations->findFirst(static fn(int $key, Variation $variation): bool => $variation->id() === $variationId)
             ?? throw new VariationNotFound($variationId);
     }
 
@@ -365,7 +367,7 @@ class Product
         if ($this->hasVariations()) {
             sort($optionIds);
             foreach ($this->variations as $variation) {
-                if ($variation->isSaved() && $variation->signature() === $optionIds) {
+                if ($variation->signature() === $optionIds) {
                     return new Configuration($this, $variation, [], $variation->pricing()->priceAt($now));
                 }
             }
@@ -426,7 +428,7 @@ class Product
         $signature = array_values(array_unique($details->optionIds));
         sort($signature);
         foreach ($this->variations as $other) {
-            if ($other !== $current && $other->isSaved() && $other->signature() === $signature) {
+            if ($other !== $current && $other->signature() === $signature) {
                 throw new CatalogRuleViolation('Another variation already has these options.', 'orillacart_duplicate_variation');
             }
         }

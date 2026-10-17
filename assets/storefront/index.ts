@@ -7,9 +7,16 @@ import './storefront.css';
 import { bindAddresses, bindRegister } from './account';
 import { bindCart } from './cart';
 import { bindCheckout } from './checkout';
+import { bindGallery } from './gallery';
 import { bindAddToCart, refreshCartCount } from './product';
 
 function start(): void {
+	// Products that cannot be bought here still have pictures to look through.
+	document.querySelectorAll( '.orillacart-product' ).forEach( ( product ) => {
+		if ( ! product.querySelector( 'form[data-orillacart-add-to-cart]' ) ) {
+			bindGallery( product );
+		}
+	} );
 	document
 		.querySelectorAll< HTMLFormElement >(
 			'form[data-orillacart-add-to-cart]'

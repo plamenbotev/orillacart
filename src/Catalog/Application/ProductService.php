@@ -122,7 +122,11 @@ final readonly class ProductService
             $product->ownOptionIds(),
         );
         $files = $product->downloads();
+        $variationIds = array_map(static fn(Variation $variation): int => $variation->id(), $product->variations());
         $this->products->remove($product);
+        foreach ($variationIds as $variationId) {
+            $this->content->deleteVariation($variationId);
+        }
         $this->events->dispatch($removed);
         foreach ($files as $file) {
             $this->events->dispatch(new DownloadRemoved($file->storageKey()));
@@ -137,8 +141,19 @@ final readonly class ProductService
     {
         $product = $this->get($productId);
         $this->refuseTakenSku($command->sku, $productId, null);
-        $variation = $product->addVariation($this->variationDetails($command));
-        $this->products->save($product);
+        $details = $this->variationDetails($command);
+        $names = $this->optionNames($product, $details->optionIds);
+
+        // The post first: the variation takes its id. Should the variation be refused, the post goes again.
+        $id = $this->content->createVariation($productId, trim($this->content->name($productId) . ' – ' . $names, ' –'));
+        try {
+            $variation = $product->addVariation($id, $details);
+            $this->products->save($product);
+        } catch (\Throwable $e) {
+            $this->content->deleteVariation($id);
+
+            throw $e;
+        }
         $this->events->dispatch(new ProductChanged($productId));
 
         return VariationView::fromVariation($variation);
@@ -169,8 +184,39 @@ final readonly class ProductService
         $product = $this->get($productId);
         $product->removeVariation($variationId);
         $this->products->save($product);
+        $this->content->deleteVariation($variationId);
         $this->events->dispatch(new ProductChanged($productId));
         $this->events->dispatch(new CatalogItemsRemoved(variationIds: [$variationId]));
+    }
+
+    /**
+     * Forgets a variation whose post is being deleted, unless the shop removed it already.
+     */
+    public function forgetVariation(int $variationId): void
+    {
+        $product = $this->products->findByVariation($variationId);
+        if ($product !== null) {
+            $this->removeVariation($product->id(), $variationId);
+        }
+    }
+
+    /**
+     * The names of the chosen options, as a variation's label shows them: "M / Blue".
+     *
+     * @param list<int> $optionIds
+     */
+    private function optionNames(Product $product, array $optionIds): string
+    {
+        $names = [];
+        foreach ($product->offeredOptions() as [, $options]) {
+            foreach ($options as $option) {
+                if (\in_array($option->id(), $optionIds, true)) {
+                    $names[] = $option->name();
+                }
+            }
+        }
+
+        return implode(' / ', $names);
     }
 
     private function get(int $id): Product
@@ -201,6 +247,10 @@ final readonly class ProductService
             CatalogDrafts::pricing($command->price, $command->sale),
             $command->sku,
             StockMode::from($command->stockMode),
+            $command->weight,
+            $command->length,
+            $command->width,
+            $command->height,
         );
     }
 }

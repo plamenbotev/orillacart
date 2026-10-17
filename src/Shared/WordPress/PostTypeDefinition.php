@@ -28,12 +28,14 @@ interface PostTypeDefinition
      * @return array{
      *   labels: array<string, string>,
      *   public: bool,
+     *   show_ui?: bool,
      *   show_in_rest: bool,
+     *   rest_base?: string,
      *   menu_icon?: string,
      *   menu_position?: int,
      *   supports: list<string>,
      *   has_archive: bool|string,
-     *   rewrite: array{slug: string, with_front: bool},
+     *   rewrite: false|array{slug: string, with_front: bool},
      *   map_meta_cap: bool,
      *   capabilities: array<string, string>,
      * }

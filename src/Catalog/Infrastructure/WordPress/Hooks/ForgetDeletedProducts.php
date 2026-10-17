@@ -6,6 +6,7 @@ namespace OrillaCart\Catalog\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\VariationPostType;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
@@ -18,8 +19,10 @@ final readonly class ForgetDeletedProducts
 
     public function __invoke(int $postId, \WP_Post $post): void
     {
-        if ($post->post_type === ProductPostType::NAME) {
-            $this->products->delete($postId);
-        }
+        match ($post->post_type) {
+            ProductPostType::NAME => $this->products->delete($postId),
+            VariationPostType::NAME => $this->products->forgetVariation($postId),
+            default => null,
+        };
     }
 }

@@ -1,12 +1,26 @@
 {#
  # The buying part of a product page, below the product's description.
  #
- # offer: the product (price, sale, stock, choices); variations: each variation with its price already
- # formatted, for the script that shows the chosen one; cart_url: null when the shop has no cart page.
+ # offer: the product (price, sale, stock, choices); gallery: its images, featured first ({src, srcset, sizes,
+ # alt, thumb}); variations: each variation with its price already formatted, image, gallery and description,
+ # for the script that shows the chosen one; cart_url: null when the shop has no cart page.
+ #
+ # The script shows a chosen picture in the theme's featured image (img.wp-post-image), or in the stage here
+ # when the page has none.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <section class="orillacart-product" aria-label="{{ __('Buy') }}">
+    <div class="orillacart-gallery__stage" data-orillacart-stage hidden></div>
+    <div class="orillacart-gallery" data-orillacart-gallery data-images="{{ gallery|json_encode }}"{{ gallery|length < 2 ? ' hidden' }}>
+        {% for image in gallery %}
+            <button type="button" class="orillacart-gallery__thumb" data-orillacart-image="{{ loop.index0 }}" aria-label="{{ __('Show image %d')|format(loop.index) }}">
+                <img src="{{ image.thumb }}" alt="{{ image.alt }}" width="64" height="64" loading="lazy">
+            </button>
+        {% endfor %}
+    </div>
     <p class="orillacart-product__price" data-orillacart-price>{{ shop.price(offer) }}</p>
+
+    <p class="orillacart-product__description" data-orillacart-variation-description hidden></p>
 
     {% if offer.sku %}
         <p class="orillacart-product__sku">{{ __('SKU') }}: <span data-orillacart-sku>{{ offer.sku }}</span></p>

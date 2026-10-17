@@ -10,15 +10,21 @@ namespace OrillaCart\Catalog\Domain;
 final readonly class VariationDetails
 {
     /**
-     * @param list<int> $optionIds one option of each attribute the variation differs in
+     * @param list<int>   $optionIds one option of each attribute the variation differs in
+     * @param string|null $weight    in the shop's weight unit; null for the product's, as for length, width and height
      */
     public function __construct(
         public array $optionIds,
         public Pricing $pricing,
         public ?string $sku = null,
         public StockMode $stockMode = StockMode::Tracked,
+        public ?string $weight = null,
+        public ?string $length = null,
+        public ?string $width = null,
+        public ?string $height = null,
     ) {
         ProductDetails::validSku($sku);
+        ProductDetails::validMeasures(['weight' => $weight, 'length' => $length, 'width' => $width, 'height' => $height]);
         if ($optionIds === []) {
             throw new CatalogRuleViolation('A variation needs at least one option.', 'orillacart_variation_without_options');
         }

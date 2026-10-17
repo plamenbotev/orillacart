@@ -8,7 +8,6 @@ use OrillaCart\Catalog\Domain\Attribute;
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\AttributeSet;
 use OrillaCart\Catalog\Domain\DownloadFile;
-use OrillaCart\Catalog\Domain\Variation;
 
 /**
  * Numbers new catalog entities on save, one sequence per table, as the database does.
@@ -43,13 +42,6 @@ final class CatalogIds
         $this->attributes($set->ownAttributes());
     }
 
-    public function variation(Variation $variation): void
-    {
-        if (!$variation->isSaved()) {
-            $this->assign($variation);
-        }
-    }
-
     public function download(DownloadFile $file): void
     {
         if (!$file->isSaved()) {
@@ -57,7 +49,7 @@ final class CatalogIds
         }
     }
 
-    private function assign(Attribute|AttributeOption|AttributeSet|Variation|DownloadFile $entity): void
+    private function assign(Attribute|AttributeOption|AttributeSet|DownloadFile $entity): void
     {
         $class = $entity::class;
         $this->next[$class] ??= 1;

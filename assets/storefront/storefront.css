@@ -443,3 +443,42 @@ fieldset[aria-invalid="true"] {
 	color: inherit;
 	border: 1px solid currentColor;
 }
+
+/* Product gallery: thumbnails that show their picture in the page's main image */
+.orillacart-gallery {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin: 0 0 1rem;
+}
+
+.orillacart-gallery__thumb {
+	padding: 0;
+	border: 2px solid transparent;
+	border-radius: var(--orillacart-radius);
+	background: none;
+	cursor: pointer;
+	line-height: 0;
+}
+
+.orillacart-gallery__thumb[aria-pressed="true"] {
+	border-color: currentColor;
+}
+
+.orillacart-gallery__thumb img {
+	width: 64px;
+	height: 64px;
+	object-fit: cover;
+	border-radius: var(--orillacart-radius);
+}
+
+.orillacart-gallery__stage img {
+	width: 100%;
+	height: auto;
+	margin-bottom: 1rem;
+	border-radius: var(--orillacart-radius);
+}
+
+.orillacart-product__description {
+	white-space: pre-line;
+}

@@ -10,26 +10,35 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * One combination of a product's options that is sold as its own item, such as the hoodie in size M,
- * with its own price, SKU and stock.
+ * with its own price, SKU, stock, and weight and size where they differ from the product's. Like a product, it
+ * shares its id with a WordPress post (a child of the product's) that holds its name, description and images.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'variations')]
 #[ORM\UniqueConstraint(name: 'variation_sku', columns: ['sku'])]
 class Variation
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
-
     #[ORM\Column(length: ProductDetails::MAX_SKU_LENGTH, nullable: true)]
     private ?string $sku;
+
 
     #[ORM\Embedded(columnPrefix: false)]
     private Pricing $pricing;
 
     #[ORM\Column(length: 20, enumType: StockMode::class)]
     private StockMode $stockMode;
+
+    #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
+    private ?string $weight = null;
+
+    #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
+    private ?string $length = null;
+
+    #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
+    private ?string $width = null;
+
+    #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
+    private ?string $height = null;
 
     /** @var Collection<int, AttributeOption> */
     #[ORM\ManyToMany(targetEntity: AttributeOption::class)]
@@ -41,9 +50,13 @@ class Variation
     /**
      * Created through Product::addVariation().
      *
+     * @param int                   $id      the id of the variation's post
      * @param list<AttributeOption> $options
      */
     public function __construct(
+        #[ORM\Id]
+        #[ORM\Column]
+        private int $id,
         #[ORM\ManyToOne(targetEntity: Product::class, inversedBy: 'variations')]
         #[ORM\JoinColumn(name: 'product_id', nullable: false, onDelete: 'CASCADE')]
         private Product $product,
@@ -56,12 +69,7 @@ class Variation
 
     public function id(): int
     {
-        return $this->id ?? throw new \LogicException('The variation has no id until it is saved.');
-    }
-
-    public function isSaved(): bool
-    {
-        return $this->id !== null;
+        return $this->id;
     }
 
     public function product(): Product
@@ -82,6 +90,27 @@ class Variation
     public function stockMode(): StockMode
     {
         return $this->stockMode;
+    }
+
+    /** Its own weight, or null for the product's. */
+    public function weight(): ?string
+    {
+        return self::trimmed($this->weight);
+    }
+
+    public function length(): ?string
+    {
+        return self::trimmed($this->length);
+    }
+
+    public function width(): ?string
+    {
+        return self::trimmed($this->width);
+    }
+
+    public function height(): ?string
+    {
+        return self::trimmed($this->height);
     }
 
     /**
@@ -123,9 +152,18 @@ class Variation
         $this->sku = $details->sku;
         $this->pricing = $details->pricing;
         $this->stockMode = $details->stockMode;
+        $this->weight = $details->weight;
+        $this->length = $details->length;
+        $this->width = $details->width;
+        $this->height = $details->height;
         $this->options->clear();
         foreach ($options as $option) {
             $this->options->add($option);
         }
+    }
+
+    private static function trimmed(?string $value): ?string
+    {
+        return $value === null || !str_contains($value, '.') ? $value : rtrim(rtrim($value, '0'), '.');
     }
 }

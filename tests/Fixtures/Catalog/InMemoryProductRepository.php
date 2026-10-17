@@ -20,6 +20,19 @@ final class InMemoryProductRepository implements ProductRepository
         return $this->products[$id] ?? null;
     }
 
+    public function findByVariation(int $variationId): ?Product
+    {
+        foreach ($this->products as $product) {
+            foreach ($product->variations() as $variation) {
+                if ($variation->id() === $variationId) {
+                    return $product;
+                }
+            }
+        }
+
+        return null;
+    }
+
     public function findMany(array $ids): array
     {
         return array_values(array_filter(array_map(fn(int $id): ?Product => $this->products[$id] ?? null, $ids)));
@@ -28,9 +41,6 @@ final class InMemoryProductRepository implements ProductRepository
     public function save(Product $product): void
     {
         $this->ids->attributes($product->ownAttributes());
-        foreach ($product->variations() as $variation) {
-            $this->ids->variation($variation);
-        }
         foreach ($product->downloads() as $file) {
             $this->ids->download($file);
         }

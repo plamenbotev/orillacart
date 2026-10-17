@@ -38,7 +38,17 @@ final readonly class ProductDetails
         if (($downloadLimit !== null && $downloadLimit < 1) || ($downloadExpiryDays !== null && $downloadExpiryDays < 1)) {
             throw new CatalogRuleViolation('A download limit and expiry are at least 1, or empty for none.', 'orillacart_invalid_download_terms');
         }
-        foreach (['weight' => $weight, 'length' => $length, 'width' => $width, 'height' => $height] as $name => $value) {
+        self::validMeasures(['weight' => $weight, 'length' => $length, 'width' => $width, 'height' => $height]);
+    }
+
+    /**
+     * @param array<string, ?string> $measures by name; null for none
+     *
+     * @throws CatalogRuleViolation
+     */
+    public static function validMeasures(array $measures): void
+    {
+        foreach ($measures as $name => $value) {
             if ($value !== null && preg_match('/^\d{1,8}(\.\d{1,4})?$/', $value) !== 1) {
                 throw new CatalogRuleViolation(\sprintf('The %s has to be a number of zero or more with up to four decimals.', $name), 'orillacart_invalid_measure');
             }

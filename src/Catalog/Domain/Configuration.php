@@ -31,4 +31,22 @@ final readonly class Configuration
     {
         return $this->variation !== null ? $this->variation->stockMode() : $this->product->details()->stockMode;
     }
+
+    /**
+     * What one item weighs and measures, for shipping: a variation's own values where it has them, else the
+     * product's.
+     *
+     * @return array{weight: ?string, length: ?string, width: ?string, height: ?string}
+     */
+    public function measures(): array
+    {
+        $details = $this->product->details();
+
+        return [
+            'weight' => $this->variation?->weight() ?? $details->weight,
+            'length' => $this->variation?->length() ?? $details->length,
+            'width' => $this->variation?->width() ?? $details->width,
+            'height' => $this->variation?->height() ?? $details->height,
+        ];
+    }
 }

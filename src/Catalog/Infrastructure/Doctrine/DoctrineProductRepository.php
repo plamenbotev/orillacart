@@ -35,6 +35,11 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->getResult();
     }
 
+    public function findByVariation(int $variationId): ?Product
+    {
+        return $this->entityManager->find(Variation::class, $variationId)?->product();
+    }
+
     public function save(Product $product): void
     {
         $this->entityManager->persist($product);
