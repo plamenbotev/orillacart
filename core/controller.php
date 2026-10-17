@@ -113,7 +113,7 @@ abstract class controller extends BObject {
 
     public function execute($task = null, $args = array()) {
 
-        $task = strtolower($task);
+        $task = strtolower((string) $task);
 
         if (!empty($task) && in_array($task, $this->taskMap)) {
             $this->doTask = $task;

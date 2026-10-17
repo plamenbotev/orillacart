@@ -951,7 +951,7 @@ final class orillacart_actions {
 
         $res = array();
         $res['cb'] = $cols['cb'];
-        unset($cols[cb]);
+        unset($cols['cb']);
         $res['image'] = '';
         $res['title'] = $cols['title'];
         unset($cols['title']);
@@ -974,7 +974,7 @@ final class orillacart_actions {
 
         $res = array();
         $res['cb'] = $cols['cb'];
-        unset($cols[cb]);
+        unset($cols['cb']);
 
         $res['id'] = __('Order Id', 'com_shop');
         $res['billing'] = __('Billing', 'com_shop');

@@ -14,22 +14,22 @@ final class strings {
 
     static public function html_entity_decode($string) {
 
-        return html_entity_decode($string, ENT_QUOTES, encoding);
+        return html_entity_decode((string) $string, ENT_QUOTES, encoding);
     }
 
     static public function substr($string, $start, $end) {
 
-        return mb_substr($string, $start, $end, encoding);
+        return mb_substr((string) $string, $start, $end, encoding);
     }
 
     static public function strtolower($string) {
 
-        return mb_strtolower($string, encoding);
+        return mb_strtolower((string) $string, encoding);
     }
 
     static public function strtoupper($string) {
 
-        return mb_strtoupper($string, encoding);
+        return mb_strtoupper((string) $string, encoding);
     }
 
     static public function stristr($haystack, $needle, $before_needle = false) {
@@ -39,12 +39,12 @@ final class strings {
 
     static public function strlen($string) {
 
-        return mb_strlen($string, encoding);
+        return mb_strlen((string) $string, encoding);
     }
 
     static public function stripos($string, $needle, $pos = 0) {
 
-        return mb_stripos($string, $needle, $pos, encoding);
+        return mb_stripos((string) $string, (string) $needle, $pos, encoding);
     }
 
     static public function show($object, $default = null, $strip_slashes = true, $type = false) {
@@ -105,6 +105,7 @@ final class strings {
     }
 
     static public function wordLimit($str, $limit = 100, $end_char = '&#8230;') {
+        $str = (string) $str;
         if (trim($str) == '')
             return $str;
 
@@ -123,6 +124,7 @@ final class strings {
 
     // Character limit
     static public function characterLimit($str, $limit = 150, $end_char = '...') {
+        $str = (string) $str;
         if (trim($str) == '')
             return $str;
 
