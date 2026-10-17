@@ -16,4 +16,6 @@ final class WP_CLI
     }
 
     public static function success(string $message): void {}
+
+    public static function log(string $message): void {}
 }

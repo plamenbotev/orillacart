@@ -5,10 +5,12 @@ declare(strict_types=1);
 /*
  * Fails when the built plugin does not work after prefixing: the autoloader must resolve prefixed library
  * classes and the plugin's own, and the libraries that generate or reflect code at runtime (Twig compiles
- * templates, the serializer and validator read attributes) must still find their prefixed classes.
+ * templates, the serializer, validator and Doctrine read attributes) must still find their prefixed classes.
  * Runs without WordPress. Usage: php bin/check-build.php <built-plugin-dir>
  */
 
+use OrillaCart\Platform\Doctrine\DatabaseConfig;
+use OrillaCart\Platform\Doctrine\EntityManagerFactory;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Serialization\ValidatorFactory;
@@ -17,6 +19,7 @@ use OrillaCart\Platform\Twig\TwigRenderer;
 use OrillaCart\Settings\Application\Dto\UpdateSettings;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Input\RequestMapper;
+use OrillaCart\Tax\Domain\TaxGroup;
 
 $pluginDir = $argv[1] ?? '';
 if ($pluginDir === '' || !is_file($pluginDir . '/vendor/autoload.php')) {
@@ -79,3 +82,13 @@ try {
     }
 }
 echo "Serializer and validator read DTO attributes\n";
+
+// Doctrine reads the entity mapping from attributes, whose class names were prefixed with the library.
+// With the server version given, Doctrine reads the mapping without connecting to a database.
+$database = new DatabaseConfig('127.0.0.1', null, null, 'none', 'none', 'none', 'utf8mb4', '', 'wp_orillacart_', '8.4.0');
+$entityManager = new EntityManagerFactory($database, new PluginContext($pluginDir . '/orillacart.php', 'check'))->create();
+$metadata = $entityManager->getClassMetadata(TaxGroup::class);
+if ($metadata->getTableName() !== 'wp_orillacart_tax_groups' || !$metadata->hasAssociation('rates') || !$metadata->isIdGeneratorIdentity()) {
+    $fail('Doctrine did not read the mapping attributes of TaxGroup.');
+}
+echo "Doctrine reads the entity mapping\n";

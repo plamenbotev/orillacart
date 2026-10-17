@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Integration;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception as DbalException;
+use Doctrine\ORM\Tools\SchemaTool;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\DatabaseMigrator;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
@@ -42,6 +44,7 @@ final class PluginDatabaseTest extends TestCase
     public function testActivationCreatedTheMigrationsTable(): void
     {
         self::assertContains($this->database->tablePrefix . 'migrations', $this->connection->createSchemaManager()->listTableNames());
+        self::assertEquals(249, $this->connection->fetchOne('SELECT COUNT(*) FROM ' . $this->database->tablePrefix . 'countries'));
     }
 
     public function testDoctrineUsesTheWordPressDatabase(): void
@@ -57,6 +60,34 @@ final class PluginDatabaseTest extends TestCase
         foreach ($tables as $table) {
             self::assertStringStartsWith($this->database->tablePrefix, $table);
         }
+    }
+
+    public function testTheMigrationsCreateExactlyTheMappedSchema(): void
+    {
+        $entityManager = new EntityManagerFactory($this->database, new PluginContext(\dirname(__DIR__, 2) . '/orillacart.php', ORILLACART_VERSION))->create();
+        $metadata = $entityManager->getMetadataFactory()->getAllMetadata();
+
+        self::assertNotEmpty($metadata);
+        // Doctrine Migrations keeps its own table, which no entity maps.
+        $differences = array_filter(
+            new SchemaTool($entityManager)->getUpdateSchemaSql($metadata),
+            fn(string $sql): bool => $sql !== 'DROP TABLE ' . $this->database->tablePrefix . 'migrations',
+        );
+        self::assertSame([], array_values($differences), 'run npm run db:diff for a migration');
+    }
+
+    public function testFailedSqlThrowsAlthoughWordPressTurnedMysqliErrorsOff(): void
+    {
+        self::assertSame(MYSQLI_REPORT_OFF, new \mysqli_driver()->report_mode, 'WordPress turns mysqli errors off');
+
+        try {
+            $this->connection->executeStatement('INSERT INTO ' . $this->database->tablePrefix . 'countries (code) VALUES (NULL)');
+            self::fail('A failed insert looked like a success.');
+        } catch (DbalException $e) {
+            self::assertStringContainsString('executing a query', $e->getMessage());
+        }
+
+        self::assertSame(MYSQLI_REPORT_OFF, new \mysqli_driver()->report_mode, 'wpdb still checks return values');
     }
 
     public function testUninstallDropsOnlyThePluginsTables(): void
@@ -78,8 +109,9 @@ final class PluginDatabaseTest extends TestCase
 
     public function testAChangedPluginVersionRunsTheUpgrade(): void
     {
+        // A site whose files are newer than its database: here, one without any of the plugin's tables.
         update_option(PluginLifecycle::VERSION_OPTION, '1.0.0');
-        $this->connection->executeStatement('DROP TABLE ' . $this->database->tablePrefix . 'migrations');
+        $this->migrator()->uninstall();
 
         $lifecycle = $this->kernel->container()->get(PluginLifecycle::class);
         self::assertInstanceOf(PluginLifecycle::class, $lifecycle);
@@ -87,6 +119,7 @@ final class PluginDatabaseTest extends TestCase
 
         self::assertSame(ORILLACART_VERSION, get_option(PluginLifecycle::VERSION_OPTION));
         self::assertContains($this->database->tablePrefix . 'migrations', $this->connection->createSchemaManager()->listTableNames());
+        self::assertEquals(249, $this->connection->fetchOne('SELECT COUNT(*) FROM ' . $this->database->tablePrefix . 'countries'));
     }
 
     private function migrator(): DatabaseMigrator

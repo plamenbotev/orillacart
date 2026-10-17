@@ -1,0 +1,60 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Tax\Application;
+
+use OrillaCart\Geography\Application\Dto\LocationView;
+use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Tax\Application\Dto\AppliedTaxesView;
+use OrillaCart\Tax\Application\Dto\TaxAddress;
+use OrillaCart\Tax\Application\Dto\TaxQuery;
+use OrillaCart\Tax\Domain\AppliedTaxes;
+use OrillaCart\Tax\Domain\TaxGroupRepository;
+use OrillaCart\Tax\Domain\TaxLocation;
+use OrillaCart\Tax\Domain\TaxSettingsRepository;
+
+/**
+ * Which taxes apply to an item: the cart, checkout and orders ask here, never read tax rates themselves.
+ */
+final readonly class TaxCalculator
+{
+    public function __construct(
+        private TaxGroupRepository $groups,
+        private TaxSettingsRepository $settings,
+        private SettingsService $shop,
+        private GeographyService $geography,
+    ) {}
+
+    public function taxes(TaxQuery $query): AppliedTaxesView
+    {
+        return AppliedTaxesView::fromTaxes($this->applied($query));
+    }
+
+    private function applied(TaxQuery $query): AppliedTaxes
+    {
+        $settings = $this->settings->load();
+        $groupId = $query->groupId ?? $settings->defaultGroupId;
+        $group = $groupId === null ? null : $this->groups->find($groupId);
+        if ($group === null) {
+            return AppliedTaxes::none();
+        }
+
+        $shop = $this->shop->current();
+        $location = $settings->basis->location(
+            $this->locate($query->shipping),
+            $this->locate($query->billing),
+            $this->locate(new TaxAddress($shop->shopCountry, $shop->shopState)),
+        );
+
+        return $location === null ? AppliedTaxes::none() : $group->taxesAt($location);
+    }
+
+    private function locate(?TaxAddress $address): ?TaxLocation
+    {
+        $location = $address === null ? null : $this->geography->locate($address->country, $address->state);
+
+        return $location instanceof LocationView ? new TaxLocation($location->country, $location->state, $location->inEu) : null;
+    }
+}

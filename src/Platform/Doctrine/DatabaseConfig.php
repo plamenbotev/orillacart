@@ -25,6 +25,8 @@ final readonly class DatabaseConfig
         public string $collation,
         /** WordPress table prefix plus TABLE_PREFIX_SUFFIX, e.g. "wp_orillacart_"; never empty. */
         public string $tablePrefix,
+        /** As the server reports it, e.g. "8.4.3" or "11.4.2-MariaDB"; null makes DBAL ask the server. */
+        public ?string $serverVersion = null,
     ) {}
 
     public static function fromWordPress(): self
@@ -51,13 +53,15 @@ final readonly class DatabaseConfig
             charset: $charset !== '' ? $charset : 'utf8mb4',
             collation: \defined('DB_COLLATE') ? self::constant('DB_COLLATE') : '',
             tablePrefix: $wpdb->prefix . self::TABLE_PREFIX_SUFFIX,
+            // wpdb already asked when it connected; DBAL would ask again on every request.
+            serverVersion: \is_string($version = $wpdb->db_server_info()) && $version !== '' ? $version : null,
         );
     }
 
     /**
      * DBAL connection parameters for the mysqli driver, which WordPress requires anyway.
      *
-     * @return array{driver: 'mysqli', host: string, user: string, password: string, dbname: string, charset: string, port?: int, unix_socket?: string, defaultTableOptions?: array<string, mixed>}
+     * @return array{driver: 'mysqli', host: string, user: string, password: string, dbname: string, charset: string, port?: int, unix_socket?: string, serverVersion?: string, defaultTableOptions?: array<string, mixed>}
      */
     public function connectionParams(): array
     {
@@ -75,6 +79,9 @@ final readonly class DatabaseConfig
         }
         if ($this->socket !== null) {
             $params['unix_socket'] = $this->socket;
+        }
+        if ($this->serverVersion !== null) {
+            $params['serverVersion'] = $this->serverVersion;
         }
         if ($this->collation !== '') {
             $params['defaultTableOptions'] = ['charset' => $this->charset, 'collation' => $this->collation];

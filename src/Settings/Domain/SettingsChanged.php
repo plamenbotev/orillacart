@@ -22,7 +22,7 @@ final readonly class SettingsChanged implements PublicEvent
     }
 
     /**
-     * @return list<array{currency: string, price_decimals: int, weight_unit: string, dimension_unit: string}> current, then previous values
+     * @return list<array{currency: string, price_decimals: int, weight_unit: string, dimension_unit: string, shop_country: ?string, shop_state: ?string}> current, then previous values
      */
     public function hookArguments(): array
     {
@@ -30,7 +30,7 @@ final readonly class SettingsChanged implements PublicEvent
     }
 
     /**
-     * @return array{currency: string, price_decimals: int, weight_unit: string, dimension_unit: string}
+     * @return array{currency: string, price_decimals: int, weight_unit: string, dimension_unit: string, shop_country: ?string, shop_state: ?string}
      */
     private static function values(StoreSettings $settings): array
     {
@@ -39,6 +39,8 @@ final readonly class SettingsChanged implements PublicEvent
             'price_decimals' => $settings->priceDecimals,
             'weight_unit' => $settings->weightUnit->value,
             'dimension_unit' => $settings->dimensionUnit->value,
+            'shop_country' => $settings->shopCountry,
+            'shop_state' => $settings->shopState,
         ];
     }
 }

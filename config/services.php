@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Nyholm\Psr7\Factory\Psr17Factory;
+use OrillaCart\Geography\Domain\CountryRepository;
+use OrillaCart\Geography\Infrastructure\Doctrine\DoctrineCountryRepository;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\DatabaseMigrator;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
@@ -19,6 +21,10 @@ use OrillaCart\Platform\WordPress\WordPressIntegration;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
+use OrillaCart\Tax\Domain\TaxGroupRepository;
+use OrillaCart\Tax\Domain\TaxSettingsRepository;
+use OrillaCart\Tax\Infrastructure\Doctrine\DoctrineTaxGroupRepository;
+use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
@@ -53,12 +59,18 @@ return static function (ContainerConfigurator $container): void {
             '../src/Platform/DependencyInjection/',
             '../src/Platform/WordPress/Plugin.php',
             '../src/Platform/Doctrine/DatabaseConfig.php',
-            '../src/Platform/Doctrine/TablePrefixListener.php',
+            '../src/Platform/Doctrine/{TablePrefixListener,TablePrefixMigrationFactory}.php',
+            '../src/Platform/Doctrine/StrictMysqli/',
             '../src/Shared/Http/HttpException.php',
             '../src/Shared/Http/Routing/{Route,RouteDefinition}.php',
             '../src/Shared/Security/',
             '../src/Shared/WordPress/AsHook.php',
         ]);
+
+    // Application services are each area's API: other areas, WordPress hooks and WP-CLI commands call them.
+    $services->load('OrillaCart\\', '../src/*/Application/')
+        ->exclude('../src/*/Application/Dto/')
+        ->public();
 
     // Known only at runtime: set by the Kernel after the container is built.
     $services->set(PluginContext::class)->synthetic();
@@ -68,6 +80,9 @@ return static function (ContainerConfigurator $container): void {
 
     // Repositories: the domain declares the interface, infrastructure decides where data lives.
     $services->alias(SettingsRepository::class, OptionSettingsRepository::class);
+    $services->alias(CountryRepository::class, DoctrineCountryRepository::class);
+    $services->alias(TaxGroupRepository::class, DoctrineTaxGroupRepository::class);
+    $services->alias(TaxSettingsRepository::class, OptionTaxSettingsRepository::class);
 
     // Database
     $services->set(DatabaseConfig::class)

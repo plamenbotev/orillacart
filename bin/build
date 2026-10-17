@@ -62,6 +62,13 @@ if [ "$status" -ne 1 ]; then
     head "$WORK/unprefixed.txt" >&2
     exit 1
 fi
+# Class constants looked up by name keep the library's original namespace unless a patcher fixed them.
+status=0; grep -rnE "(constant|defined)\(\s*['\"](Symfony|Doctrine|Psr|Twig|Nyholm)\\\\" "$OUT/vendor" > "$WORK/unprefixed-constants.txt" || status=$?
+if [ "$status" -ne 1 ]; then
+    echo "Class constants named with an unprefixed namespace (or grep failed):" >&2
+    head "$WORK/unprefixed-constants.txt" >&2
+    exit 1
+fi
 grep -rqE '^namespace OrillaCart\\Vendor\\Symfony\\' "$OUT/vendor" || { echo "No prefixed Symfony code found" >&2; exit 1; }
 
 # A prefixed string that still holds a regex back-reference (\1) was a replacement pattern, not a class name.

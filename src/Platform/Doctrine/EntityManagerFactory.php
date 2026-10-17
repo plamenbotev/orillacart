@@ -11,7 +11,9 @@ use Doctrine\DBAL\Schema\AbstractAsset;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
+use Doctrine\ORM\Mapping\UnderscoreNamingStrategy;
 use Doctrine\ORM\ORMSetup;
+use OrillaCart\Platform\Doctrine\StrictMysqli\Middleware;
 use OrillaCart\Platform\PluginContext;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
@@ -39,6 +41,8 @@ final readonly class EntityManagerFactory
             cache: new ArrayAdapter(),
         );
         $config->enableNativeLazyObjects(true);
+        // Properties are camelCase, columns snake_case: inEu is stored as in_eu.
+        $config->setNamingStrategy(new UnderscoreNamingStrategy(CASE_LOWER));
 
         $connection = DriverManager::getConnection($this->database->connectionParams(), $this->dbalConfiguration());
 
@@ -53,6 +57,7 @@ final readonly class EntityManagerFactory
         $prefix = $this->database->tablePrefix;
 
         $configuration = new DbalConfiguration();
+        $configuration->setMiddlewares([new Middleware()]);
         // Schema tools and migrations must never see, diff or drop WordPress' own tables.
         $configuration->setSchemaAssetsFilter(
             static fn(string|AbstractAsset $asset): bool => str_starts_with(

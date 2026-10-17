@@ -10,6 +10,10 @@ parameters:
         - migrations
         - bin/compile-container.php
         - bin/check-build.php
+        - bin/make-migration.php
+    excludePaths:
+        # Runs inside a WordPress with the old plugin, against its classes; see the file.
+        - tests/Fixtures/Tax/record-legacy-tax.php
     tmpDir: var/phpstan
     scanFiles:
         - tools/phpstan/wp-cli.stub.php

@@ -28,7 +28,8 @@ docker run -d --name "$DB" --network "$NET" -e MYSQL_ROOT_PASSWORD=root -e MYSQL
 docker run -d --name "$WP" --network "$NET" -e WORDPRESS_DB_HOST="$DB" -e WORDPRESS_DB_USER=wp \
     -e WORDPRESS_DB_PASSWORD=wp -e WORDPRESS_DB_NAME=wordpress wordpress:php8.4-apache > /dev/null
 for _ in $(seq 1 60); do
-    docker exec "$DB" mysqladmin ping -uroot -proot --silent > /dev/null 2>&1 && break
+    # Over TCP: the temporary server MySQL runs while initialising answers only on its socket.
+    docker exec "$DB" mysqladmin ping -h 127.0.0.1 -uroot -proot --silent > /dev/null 2>&1 && break
     sleep 2
 done
 docker exec "$WP" bash -c 'curl -fsSL -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && chmod +x /usr/local/bin/wp'
@@ -70,9 +71,34 @@ status="$(wp eval --user=admin '
 ')"
 [ "$status" = 403 ] || fail "a save without a nonce answered $status"
 
+echo "==> Geography and tax"
+[ "$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e 'SELECT COUNT(*) FROM wp_orillacart_countries' 2> /dev/null)" = 249 ] \
+    || fail "the countries were not seeded"
+[ "$(api 'http://localhost/?rest_route=/orillacart/v1/countries/US/states')" = 200 ] || fail "a visitor could not list states"
+TAX='http://localhost/?rest_route=/orillacart/v1/tax'
+group="$(docker exec "$WP" curl -s -u "admin:$PASS" -X POST -H 'Content-Type: application/json' -d '{"name":"Standard"}' \
+    "$TAX/groups" | sed -n 's/.*"id":\([0-9]*\).*/\1/p')"
+[ -n "$group" ] || fail "the administrator could not create a tax group"
+[ "$(api -u "admin:$PASS" -X POST -H 'Content-Type: application/json' \
+    -d '{"country":"US","state":"CA","percent":"7.25","name":"California"}' "$TAX/groups/$group/rates")" = 201 ] \
+    || fail "the administrator could not add a tax rate"
+[ "$(api -u "admin:$PASS" -X PUT -H 'Content-Type: application/json' \
+    -d "{\"basis\":\"shipping_address\",\"default_group_id\":$group}" "$TAX/settings")" = 200 ] \
+    || fail "the administrator could not save the tax settings"
+taxes="$(wp eval '
+    $kernel = new OrillaCart\Platform\Kernel(new OrillaCart\Platform\PluginContext(WP_PLUGIN_DIR . "/orillacart/orillacart.php", ORILLACART_VERSION));
+    echo $kernel->container()->get(OrillaCart\Tax\Application\TaxCalculator::class)
+        ->taxes(new OrillaCart\Tax\Application\Dto\TaxQuery(shipping: new OrillaCart\Tax\Application\Dto\TaxAddress("US", "CA")))->total;
+')"
+[ "$taxes" = 7.25 ] || fail "the tax calculator answered $taxes for California"
+
 echo "==> Upgrade on an admin request"
 wp option update orillacart_version 0.0.1 > /dev/null
-docker exec "$DB" mysql -uwp -pwp wordpress -e 'DROP TABLE wp_orillacart_migrations' 2> /dev/null
+# A site whose files are newer than its database: here, one without any of the plugin's tables.
+docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SELECT CONCAT('DROP TABLE ', GROUP_CONCAT(table_name), ';') FROM information_schema.tables
+    WHERE table_schema = 'wordpress' AND table_name LIKE 'wp\\_orillacart\\_%'" 2> /dev/null \
+    | { echo 'SET FOREIGN_KEY_CHECKS = 0;'; cat; } | docker exec -i "$DB" mysql -uwp -pwp wordpress 2> /dev/null
+[ -z "$(plugin_tables)" ] || fail "could not drop the plugin tables before the upgrade"
 docker exec "$WP" bash -c 'cd /var/www/html && php -r "
     define(\"WP_ADMIN\", true);
     require \"wp-load.php\";
@@ -81,6 +107,7 @@ docker exec "$WP" bash -c 'cd /var/www/html && php -r "
 "'
 [ "$(wp option get orillacart_version)" != "0.0.1" ] || fail "admin_init did not run the upgrade"
 plugin_tables | grep -qx 'wp_orillacart_migrations' || fail "the upgrade did not restore the schema"
+plugin_tables | grep -qx 'wp_orillacart_countries' || fail "the upgrade did not create the countries table"
 
 echo "==> Uninstall"
 before="$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e 'SHOW TABLES' 2> /dev/null | grep -vc orillacart)"
@@ -90,6 +117,7 @@ after="$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e 'SHOW TABLES' 2> /dev
 [ "$before" = "$after" ] || fail "uninstall touched WordPress tables ($before before, $after after)"
 wp option get orillacart_version > /dev/null 2>&1 && fail "version option left after uninstall"
 wp option get orillacart_settings > /dev/null 2>&1 && fail "settings left after uninstall"
+wp option get orillacart_tax_settings > /dev/null 2>&1 && fail "tax settings left after uninstall"
 wp cap list administrator | grep -qx manage_orillacart && fail "capability left after uninstall"
 
 echo "==> Debug log"

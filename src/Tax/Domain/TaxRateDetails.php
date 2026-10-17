@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Tax\Domain;
+
+use OrillaCart\Shared\Domain\RuleViolation;
+
+/**
+ * What a tax rate says: where it applies, how much, under which name, and its place among the rates
+ * that apply together.
+ */
+final readonly class TaxRateDetails
+{
+    public const int MAX_NAME_LENGTH = 64;
+
+    /**
+     * @param string      $country  ISO 3166-1 alpha-2
+     * @param string|null $state    ISO 3166-2 subdivision code without the country prefix; null for the whole country
+     * @param int         $priority lower comes first when the rates of one location are listed
+     */
+    public function __construct(
+        public string $country,
+        public ?string $state,
+        public Percentage $percent,
+        public string $name = '',
+        public int $priority = 0,
+    ) {
+        if (preg_match('/^[A-Z]{2}$/', $country) !== 1) {
+            throw new RuleViolation(\sprintf('"%s" is not a country code.', $country), 'orillacart_invalid_country');
+        }
+        if ($state !== null && preg_match('/^[A-Z0-9]{1,3}$/', $state) !== 1) {
+            throw new RuleViolation(\sprintf('"%s" is not a state code.', $state), 'orillacart_invalid_state');
+        }
+        if (mb_strlen($name) > self::MAX_NAME_LENGTH) {
+            throw new RuleViolation(\sprintf('Tax names can have up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_tax_name');
+        }
+        if ($priority < 0) {
+            throw new RuleViolation('The priority cannot be negative.', 'orillacart_invalid_priority');
+        }
+    }
+}

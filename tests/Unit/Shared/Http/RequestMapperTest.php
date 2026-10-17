@@ -20,7 +20,7 @@ final class RequestMapperTest extends TestCase
     {
         $dto = $this->mapper()->body($this->request(self::VALID + ['_wpnonce' => 'abc']), UpdateSettings::class);
 
-        self::assertEquals(new UpdateSettings('USD', 2, 'lb', 'in'), $dto);
+        self::assertEquals(new UpdateSettings('USD', 2, 'lb', 'in', null, null), $dto);
     }
 
     public function testWrongTypesAreReportedPerField(): void

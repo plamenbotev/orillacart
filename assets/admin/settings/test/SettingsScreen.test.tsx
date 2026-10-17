@@ -16,15 +16,46 @@ const stored = {
 	price_decimals: 2,
 	weight_unit: 'kg',
 	dimension_unit: 'cm',
+	shop_country: null,
+	shop_state: null,
 	weight_units: [ 'kg', 'g', 'lb', 'oz' ],
 	dimension_units: [ 'cm', 'm', 'mm', 'in' ],
 };
+
+const countries = [
+	{ code: 'BG', name: 'Bulgaria', in_eu: true, has_states: false },
+	{ code: 'US', name: 'United States', in_eu: false, has_states: true },
+];
+
+/**
+ * Answers GET requests by path; PUT requests get the given answer.
+ *
+ * @param save What PUT /settings resolves or rejects with.
+ */
+function serve( save?: () => Promise< unknown > ) {
+	mockedFetch.mockImplementation( ( options ) => {
+		const { path, method } = options as { path: string; method?: string };
+		if ( method === 'PUT' && save ) {
+			return save();
+		}
+		if ( path === '/orillacart/v1/countries' ) {
+			return Promise.resolve( countries );
+		}
+		if ( path === '/orillacart/v1/countries/US/states' ) {
+			return Promise.resolve( [
+				{ code: 'CA', name: 'California' },
+				{ code: 'NY', name: 'New York' },
+			] );
+		}
+		return Promise.resolve( stored );
+	} );
+}
 
 describe( 'SettingsScreen', () => {
 	afterEach( () => mockedFetch.mockReset() );
 
 	it( 'shows the stored settings', async () => {
-		mockedFetch.mockResolvedValueOnce( stored );
+		serve();
 
 		render( <SettingsScreen /> );
 
@@ -38,9 +69,7 @@ describe( 'SettingsScreen', () => {
 	} );
 
 	it( 'saves every field with PUT', async () => {
-		mockedFetch
-			.mockResolvedValueOnce( stored )
-			.mockResolvedValueOnce( { ...stored, currency: 'USD' } );
+		serve( () => Promise.resolve( { ...stored, currency: 'USD' } ) );
 		const user = userEvent.setup();
 		render( <SettingsScreen /> );
 
@@ -62,25 +91,56 @@ describe( 'SettingsScreen', () => {
 				price_decimals: 2,
 				weight_unit: 'kg',
 				dimension_unit: 'cm',
+				shop_country: null,
+				shop_state: null,
 			},
 		} );
 	} );
 
+	it( 'offers the states of the shop country', async () => {
+		serve( () => Promise.resolve( stored ) );
+		const user = userEvent.setup();
+		render( <SettingsScreen /> );
+
+		await user.selectOptions(
+			await screen.findByLabelText( 'Shop country' ),
+			'US'
+		);
+		// The states load once the country is chosen.
+		await screen.findByRole( 'option', { name: 'New York' } );
+		await user.selectOptions( screen.getByLabelText( 'Shop state' ), 'NY' );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save settings' } )
+		);
+
+		expect( mockedFetch ).toHaveBeenLastCalledWith(
+			expect.objectContaining( {
+				method: 'PUT',
+				data: expect.objectContaining( {
+					shop_country: 'US',
+					shop_state: 'NY',
+				} ),
+			} )
+		);
+	} );
+
 	it( 'shows what the server refused next to the field', async () => {
-		mockedFetch.mockResolvedValueOnce( stored ).mockRejectedValueOnce( {
-			code: 'orillacart_invalid_input',
-			message: 'Some fields are not valid.',
-			data: {
-				status: 422,
-				violations: [
-					{
-						field: 'currency',
-						message:
-							'Use a three-letter currency code such as EUR.',
-					},
-				],
-			},
-		} );
+		serve( () =>
+			Promise.reject( {
+				code: 'orillacart_invalid_input',
+				message: 'Some fields are not valid.',
+				data: {
+					status: 422,
+					violations: [
+						{
+							field: 'currency',
+							message:
+								'Use a three-letter currency code such as EUR.',
+						},
+					],
+				},
+			} )
+		);
 		const user = userEvent.setup();
 		render( <SettingsScreen /> );
 
@@ -98,7 +158,7 @@ describe( 'SettingsScreen', () => {
 	} );
 
 	it( 'reports when the settings cannot be loaded', async () => {
-		mockedFetch.mockRejectedValueOnce( {
+		mockedFetch.mockRejectedValue( {
 			code: 'orillacart_forbidden',
 			message: 'You are not allowed to do this.',
 		} );

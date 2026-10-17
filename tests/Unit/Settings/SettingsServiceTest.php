@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Settings;
 
+use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Settings\Application\Dto\SettingsView;
 use OrillaCart\Settings\Application\Dto\UpdateSettings;
 use OrillaCart\Settings\Application\SettingsService;
@@ -11,6 +12,8 @@ use OrillaCart\Settings\Domain\SettingsChanged;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -52,14 +55,14 @@ final class SettingsServiceTest extends TestCase
     public function testAShopThatNeverSavedRunsOnTheDefaults(): void
     {
         self::assertEquals(
-            new SettingsView('EUR', 2, 'kg', 'cm', ['kg', 'g', 'lb', 'oz'], ['cm', 'm', 'mm', 'in']),
+            new SettingsView('EUR', 2, 'kg', 'cm', null, null, ['kg', 'g', 'lb', 'oz'], ['cm', 'm', 'mm', 'in']),
             $this->service()->current(),
         );
     }
 
     public function testUpdatingSavesAndAnnouncesTheChange(): void
     {
-        $view = $this->service()->update(new UpdateSettings('USD', 3, 'lb', 'in'));
+        $view = $this->service()->update(new UpdateSettings('USD', 3, 'lb', 'in', 'US', 'NY'));
 
         self::assertSame('USD', $view->currency);
         self::assertSame(3, $this->repository->load()->priceDecimals);
@@ -69,8 +72,8 @@ final class SettingsServiceTest extends TestCase
         self::assertSame('settings_changed', $event->hookName());
         self::assertSame(
             [
-                ['currency' => 'USD', 'price_decimals' => 3, 'weight_unit' => 'lb', 'dimension_unit' => 'in'],
-                ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm'],
+                ['currency' => 'USD', 'price_decimals' => 3, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY'],
+                ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null],
             ],
             $event->hookArguments(),
         );
@@ -78,7 +81,7 @@ final class SettingsServiceTest extends TestCase
 
     public function testSavingTheSameValuesAnnouncesNothing(): void
     {
-        $this->service()->update(new UpdateSettings('EUR', 2, 'kg', 'cm'));
+        $this->service()->update(new UpdateSettings('EUR', 2, 'kg', 'cm', null, null));
 
         self::assertSame([], $this->dispatcher->events);
     }
@@ -87,11 +90,40 @@ final class SettingsServiceTest extends TestCase
     {
         $this->expectException(RuleViolation::class);
 
-        $this->service()->update(new UpdateSettings('EUR', 7, 'kg', 'cm'));
+        $this->service()->update(new UpdateSettings('EUR', 7, 'kg', 'cm', null, null));
+    }
+
+    /**
+     * @return iterable<string, array{string, ?string, string}>
+     */
+    public static function badShopAddresses(): iterable
+    {
+        yield 'unknown country' => ['XX', null, 'orillacart_unknown_country'];
+        yield 'state of another country' => ['US', 'ON', 'orillacart_unknown_state'];
+        yield 'state in a country without states' => ['BG', 'CA', 'orillacart_unknown_state'];
+    }
+
+    #[DataProvider('badShopAddresses')]
+    public function testTheShopAddressMustExist(string $country, ?string $state, string $errorCode): void
+    {
+        try {
+            $this->service()->update(new UpdateSettings('EUR', 2, 'kg', 'cm', $country, $state));
+            self::fail('The address was accepted.');
+        } catch (RuleViolation $e) {
+            self::assertSame($errorCode, $e->errorCode);
+        }
+        self::assertNull($this->repository->load()->shopCountry);
+    }
+
+    public function testAStateNeedsACountry(): void
+    {
+        $this->expectException(RuleViolation::class);
+
+        $this->service()->update(new UpdateSettings('EUR', 2, 'kg', 'cm', null, 'CA'));
     }
 
     private function service(): SettingsService
     {
-        return new SettingsService($this->repository, $this->dispatcher);
+        return new SettingsService($this->repository, $this->dispatcher, new GeographyService(new InMemoryCountryRepository()));
     }
 }

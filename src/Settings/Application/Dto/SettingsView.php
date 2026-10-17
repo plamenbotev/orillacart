@@ -22,6 +22,8 @@ final readonly class SettingsView
         public int $priceDecimals,
         public string $weightUnit,
         public string $dimensionUnit,
+        public ?string $shopCountry,
+        public ?string $shopState,
         public array $weightUnits,
         public array $dimensionUnits,
     ) {}
@@ -33,6 +35,8 @@ final readonly class SettingsView
             $settings->priceDecimals,
             $settings->weightUnit->value,
             $settings->dimensionUnit->value,
+            $settings->shopCountry,
+            $settings->shopState,
             WeightUnit::values(),
             DimensionUnit::values(),
         );

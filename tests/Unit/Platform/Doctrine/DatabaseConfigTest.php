@@ -43,6 +43,14 @@ final class DatabaseConfigTest extends TestCase
         );
     }
 
+    public function testTheServerVersionWordPressKnowsSavesDbalAQuery(): void
+    {
+        $config = new DatabaseConfig('db', null, null, 'wp', 'secret', 'wordpress', 'utf8mb4', '', 'wp_orillacart_', '11.4.2-MariaDB');
+
+        self::assertSame('11.4.2-MariaDB', $config->connectionParams()['serverVersion'] ?? null);
+        self::assertArrayNotHasKey('serverVersion', $this->config(host: 'db', port: null, socket: null, collation: '')->connectionParams());
+    }
+
     private function config(string $host, ?int $port, ?string $socket, string $collation): DatabaseConfig
     {
         return new DatabaseConfig(

@@ -7,14 +7,15 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "wp-scripts build settings=./assets/admin/settings/index.tsx --output-path=build/admin",
-    "start": "wp-scripts start settings=./assets/admin/settings/index.tsx --output-path=build/admin",
+    "build": "wp-scripts build settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx --output-path=build/admin",
+    "start": "wp-scripts start settings=./assets/admin/settings/index.tsx tax=./assets/admin/tax/index.tsx --output-path=build/admin",
     "lint:js": "wp-scripts lint-js assets",
     "typecheck": "tsc --noEmit",
     "test:js": "wp-scripts test-unit-js assets",
     "env:start": "wp-env start",
     "env:stop": "wp-env stop",
-    "test:integration": "wp-env run tests-cli --env-cwd=wp-content/plugins/orillacart env ORILLACART_WP_LOAD=/var/www/html/wp-load.php vendor/bin/phpunit --testsuite integration"
+    "test:integration": "wp-env run tests-cli --env-cwd=wp-content/plugins/orillacart env ORILLACART_WP_LOAD=/var/www/html/wp-load.php vendor/bin/phpunit --testsuite integration",
+    "db:diff": "wp-env run cli --env-cwd=wp-content/plugins/orillacart wp eval-file bin/make-migration.php"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

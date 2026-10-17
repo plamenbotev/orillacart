@@ -57,6 +57,15 @@ return [
     ],
 
     'patchers' => [
+        // Doctrine's mapping drivers check and read class constants by name: defined('Doctrine\ORM\...::FETCH_' . $mode).
+        // PHP-Scoper leaves that string alone, so every entity with an association or a generated id fails to load.
+        static function (string $filePath, string $prefix, string $contents): string {
+            if (!str_contains($filePath, 'doctrine/orm/src/Mapping/')) {
+                return $contents;
+            }
+
+            return (string) preg_replace("/(constant|defined)\\((['\"])Doctrine\\\\/", '$1($2' . str_replace('\\', '\\\\', $prefix) . '\\\\Doctrine\\\\', $contents);
+        },
         // Libraries probe optional PHP extensions with function_exists('iconv'); PHP-Scoper prefixes those names,
         // so the probe always fails. Put the global names back.
         static function (string $filePath, string $prefix, string $contents): string {

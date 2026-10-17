@@ -11,13 +11,14 @@ import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
+import { toApiError, violationOf, type Violation } from '../shared/api';
+import { fetchCountries, type Country } from '../shared/geography';
+import { LocationFields } from '../shared/LocationFields';
 import {
 	fetchSettings,
 	saveSettings,
-	toApiError,
 	type Settings,
 	type SettingsInput,
-	type Violation,
 } from './api';
 
 type Status =
@@ -32,6 +33,8 @@ function inputOf( settings: Settings ): SettingsInput {
 		price_decimals: settings.price_decimals,
 		weight_unit: settings.weight_unit,
 		dimension_unit: settings.dimension_unit,
+		shop_country: settings.shop_country,
+		shop_state: settings.shop_state,
 	};
 }
 
@@ -40,14 +43,16 @@ function inputOf( settings: Settings ): SettingsInput {
  */
 export function SettingsScreen() {
 	const [ settings, setSettings ] = useState< Settings | null >( null );
+	const [ countries, setCountries ] = useState< Country[] >( [] );
 	const [ form, setForm ] = useState< SettingsInput | null >( null );
 	const [ violations, setViolations ] = useState< Violation[] >( [] );
 	const [ status, setStatus ] = useState< Status >( { kind: 'idle' } );
 
 	useEffect( () => {
-		fetchSettings()
-			.then( ( loaded ) => {
+		Promise.all( [ fetchSettings(), fetchCountries() ] )
+			.then( ( [ loaded, list ] ) => {
 				setSettings( loaded );
+				setCountries( list );
 				setForm( inputOf( loaded ) );
 			} )
 			.catch( ( error: unknown ) =>
@@ -59,7 +64,7 @@ export function SettingsScreen() {
 	}, [] );
 
 	const fieldError = ( field: keyof SettingsInput ) =>
-		violations.find( ( violation ) => violation.field === field )?.message;
+		violationOf( violations, field );
 
 	const update = < K extends keyof SettingsInput >(
 		field: K,
@@ -159,6 +164,32 @@ export function SettingsScreen() {
 								onChange={ ( value ) =>
 									update( 'dimension_unit', value )
 								}
+							/>
+							<LocationFields
+								countries={ countries }
+								value={ {
+									country: form.shop_country,
+									state: form.shop_state,
+								} }
+								onChange={ ( location ) =>
+									setForm(
+										( current ) =>
+											current && {
+												...current,
+												shop_country: location.country,
+												shop_state: location.state,
+											}
+									)
+								}
+								countryLabel={ __(
+									'Shop country',
+									'orillacart'
+								) }
+								stateLabel={ __( 'Shop state', 'orillacart' ) }
+								anyState={ __( '— Not set —', 'orillacart' ) }
+								optionalCountry
+								countryError={ fieldError( 'shop_country' ) }
+								stateError={ fieldError( 'shop_state' ) }
 							/>
 							<Button
 								variant="primary"

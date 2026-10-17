@@ -1,0 +1,140 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Tax\Application;
+
+use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
+use OrillaCart\Tax\Application\Dto\SaveTaxRate;
+use OrillaCart\Tax\Application\Dto\TaxGroupView;
+use OrillaCart\Tax\Application\Dto\TaxRateView;
+use OrillaCart\Tax\Domain\Event\TaxRatesChanged;
+use OrillaCart\Tax\Domain\Percentage;
+use OrillaCart\Tax\Domain\TaxGroup;
+use OrillaCart\Tax\Domain\TaxGroupNotFound;
+use OrillaCart\Tax\Domain\TaxGroupRepository;
+use OrillaCart\Tax\Domain\TaxRateDetails;
+use OrillaCart\Tax\Domain\TaxRateNotFound;
+use OrillaCart\Tax\Domain\TaxSettingsRepository;
+use Psr\EventDispatcher\EventDispatcherInterface;
+
+/**
+ * Use cases for tax groups and their rates, as the Tax admin screen runs them.
+ */
+final readonly class TaxGroupService
+{
+    public function __construct(
+        private TaxGroupRepository $groups,
+        private TaxSettingsRepository $settings,
+        private GeographyService $geography,
+        private EventDispatcherInterface $events,
+    ) {}
+
+    /**
+     * @return list<TaxGroupView> by name
+     */
+    public function groups(): array
+    {
+        return array_map(TaxGroupView::fromGroup(...), $this->groups->all());
+    }
+
+    /**
+     * @throws TaxGroupNotFound
+     */
+    public function group(int $id): TaxGroupView
+    {
+        return TaxGroupView::fromGroup($this->get($id));
+    }
+
+    public function create(SaveTaxGroup $command): TaxGroupView
+    {
+        $group = new TaxGroup($command->name);
+        $this->groups->save($group);
+
+        return TaxGroupView::fromGroup($group);
+    }
+
+    /**
+     * @throws TaxGroupNotFound
+     */
+    public function rename(int $id, SaveTaxGroup $command): TaxGroupView
+    {
+        $group = $this->get($id);
+        $group->rename($command->name);
+        $this->groups->save($group);
+
+        return TaxGroupView::fromGroup($group);
+    }
+
+    /**
+     * @throws TaxGroupNotFound
+     * @throws RuleViolation   for the shop's default group
+     */
+    public function delete(int $id): void
+    {
+        $group = $this->get($id);
+        if ($this->settings->load()->defaultGroupId === $id) {
+            throw new RuleViolation(
+                \sprintf('"%s" is the default tax group; choose another default before deleting it.', $group->name()),
+                'orillacart_tax_group_in_use',
+            );
+        }
+        $this->groups->remove($group);
+        $this->events->dispatch(new TaxRatesChanged($id));
+    }
+
+    /**
+     * @throws TaxGroupNotFound
+     * @throws RuleViolation    for a location that does not exist
+     */
+    public function addRate(int $groupId, SaveTaxRate $command): TaxRateView
+    {
+        $group = $this->get($groupId);
+        $rate = $group->addRate($this->details($command));
+        $this->groups->save($group);
+        $this->events->dispatch(new TaxRatesChanged($groupId));
+
+        return TaxRateView::fromRate($rate);
+    }
+
+    /**
+     * @throws TaxGroupNotFound
+     * @throws TaxRateNotFound
+     * @throws RuleViolation                         for a location that does not exist
+     */
+    public function changeRate(int $groupId, int $rateId, SaveTaxRate $command): TaxRateView
+    {
+        $group = $this->get($groupId);
+        $rate = $group->changeRate($rateId, $this->details($command));
+        $this->groups->save($group);
+        $this->events->dispatch(new TaxRatesChanged($groupId));
+
+        return TaxRateView::fromRate($rate);
+    }
+
+    /**
+     * @throws TaxGroupNotFound
+     * @throws TaxRateNotFound
+     */
+    public function removeRate(int $groupId, int $rateId): void
+    {
+        $group = $this->get($groupId);
+        $group->removeRate($rateId);
+        $this->groups->save($group);
+        $this->events->dispatch(new TaxRatesChanged($groupId));
+    }
+
+    private function get(int $id): TaxGroup
+    {
+        return $this->groups->find($id) ?? throw new TaxGroupNotFound($id);
+    }
+
+    private function details(SaveTaxRate $command): TaxRateDetails
+    {
+        $location = $this->geography->require($command->country, $command->state);
+
+        return new TaxRateDetails($location->country, $location->state, Percentage::of($command->percent), trim($command->name), $command->priority);
+    }
+}

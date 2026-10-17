@@ -35,6 +35,8 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
                 self::int($stored, 'price_decimals'),
                 WeightUnit::from(self::string($stored, 'weight_unit')),
                 DimensionUnit::from(self::string($stored, 'dimension_unit')),
+                self::optionalString($stored, 'shop_country'),
+                self::optionalString($stored, 'shop_state'),
             );
         } catch (RuleViolation|\ValueError|\UnexpectedValueException $e) {
             $this->logger->warning('Stored shop settings are not valid, using the defaults: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
@@ -50,6 +52,8 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
             'price_decimals' => $settings->priceDecimals,
             'weight_unit' => $settings->weightUnit->value,
             'dimension_unit' => $settings->dimensionUnit->value,
+            'shop_country' => $settings->shopCountry,
+            'shop_state' => $settings->shopState,
         ], true);
     }
 
@@ -70,6 +74,14 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
         $value = $stored[$key] ?? null;
 
         return \is_string($value) ? $value : throw new \UnexpectedValueException(\sprintf('"%s" is missing or not text.', $key));
+    }
+
+    /** @param array<array-key, mixed> $stored */
+    private static function optionalString(array $stored, string $key): ?string
+    {
+        $value = $stored[$key] ?? null;
+
+        return $value === null || \is_string($value) ? $value : throw new \UnexpectedValueException(\sprintf('"%s" is not text.', $key));
     }
 
     /** @param array<array-key, mixed> $stored */

@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Tax\Application\Dto;
+
+use OrillaCart\Tax\Domain\TaxRateDetails;
+use Symfony\Component\Validator\Constraints as Assert;
+
+/**
+ * Command: add a rate to a tax group, or change one. The percentage is a decimal string, such as "7.25",
+ * so it arrives exactly as typed.
+ */
+final readonly class SaveTaxRate
+{
+    public function __construct(
+        #[Assert\Regex('/^[A-Z]{2}$/', message: 'Use a two-letter country code such as DE.')]
+        public string $country,
+        #[Assert\Regex('/^[A-Z0-9]{1,3}$/', message: 'Use the state code, such as CA.')]
+        public ?string $state,
+        #[Assert\Regex('/^\d{1,3}(\.\d{1,4})?$/', message: 'Use a number from 0 to 999.9999 with up to four decimals, such as 7.25.')]
+        public string $percent,
+        #[Assert\Length(max: TaxRateDetails::MAX_NAME_LENGTH)]
+        public string $name = '',
+        #[Assert\Range(min: 0, max: 1000)]
+        public int $priority = 0,
+    ) {}
+}
