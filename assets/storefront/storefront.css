@@ -426,3 +426,20 @@ fieldset[aria-invalid="true"] {
 	clip-path: inset(50%);
 	white-space: nowrap;
 }
+
+/* The mini cart with buttons, for sidebars */
+.orillacart-mini-cart--panel p {
+	margin: 0 0 0.75rem;
+}
+
+.orillacart-mini-cart__buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.orillacart-button--secondary {
+	background: transparent;
+	color: inherit;
+	border: 1px solid currentColor;
+}

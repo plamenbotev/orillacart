@@ -1,10 +1,24 @@
 {#
- # A link to the cart with the number of items, for headers. cart: the cart; cart_url. Pages with it may be
- # cached, so the storefront script corrects the number from the cart API.
+ # The cart at a glance, for headers and sidebars. cart: the cart; cart_url; checkout_url (null without a
+ # checkout page); show_buttons: the panel with buttons instead of the compact link.
+ #
+ # Pages with it may be cached, so the storefront script corrects it from the cart API: it fills every
+ # data-orillacart-cart-count and data-orillacart-cart-items, and shows the empty or the full part.
  #}
-<div class="orillacart-mini-cart" data-orillacart-region="mini-cart">
-    <a href="{{ cart_url }}" class="orillacart-mini-cart__link">
-        <span class="orillacart-mini-cart__label">{{ __('Cart') }}</span>
-        <span class="orillacart-mini-cart__count" data-orillacart-cart-count>{{ cart.items }}</span><span class="screen-reader-text"> {{ __("items") }}</span>
-    </a>
+<div class="orillacart-mini-cart{{ show_buttons ? ' orillacart-mini-cart--panel' }}" data-orillacart-region="mini-cart">
+    {% if show_buttons %}
+        <p class="orillacart-mini-cart__empty" data-orillacart-cart-empty{{ cart.items > 0 ? ' hidden' }}>{{ __('Your cart is empty.') }}</p>
+        <div data-orillacart-cart-full{{ cart.items == 0 ? ' hidden' }}>
+            <p class="orillacart-mini-cart__items" data-orillacart-cart-items>{{ _n('%d item in cart.', '%d items in cart.', cart.items)|format(cart.items) }}</p>
+            <p class="orillacart-mini-cart__buttons">
+                <a class="wp-element-button orillacart-button orillacart-button--secondary" href="{{ cart_url }}">{{ __('View cart') }}</a>
+                {% if checkout_url %}<a class="wp-element-button orillacart-button" href="{{ checkout_url }}">{{ __('Check out') }}</a>{% endif %}
+            </p>
+        </div>
+    {% else %}
+        <a href="{{ cart_url }}" class="orillacart-mini-cart__link">
+            <span class="orillacart-mini-cart__label">{{ __('Cart') }}</span>
+            <span class="orillacart-mini-cart__count" data-orillacart-cart-count>{{ cart.items }}</span><span class="screen-reader-text"> {{ __("items") }}</span>
+        </a>
+    {% endif %}
 </div>

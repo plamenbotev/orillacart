@@ -9,6 +9,7 @@ import {
 	Placeholder,
 	RangeControl,
 	TextControl,
+	ToggleControl,
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
@@ -26,10 +27,6 @@ const notes: Record< string, string > = {
 	),
 	'orillacart/account': __(
 		'Customers log in here and see their orders, files and addresses.',
-		'orillacart'
-	),
-	'orillacart/mini-cart': __(
-		'A link to the cart with the number of items in it.',
 		'orillacart'
 	),
 };
@@ -104,7 +101,53 @@ function ProductsEdit( {
 	);
 }
 
+function MiniCartEdit( {
+	attributes,
+	setAttributes,
+}: {
+	attributes: { showButtons: boolean };
+	setAttributes: ( next: { showButtons: boolean } ) => void;
+} ) {
+	return (
+		<div { ...useBlockProps() }>
+			<InspectorControls>
+				<PanelBody title={ __( 'Mini cart', 'orillacart' ) }>
+					<ToggleControl
+						label={ __( 'Show buttons', 'orillacart' ) }
+						help={ __(
+							'How many items are in the cart, with buttons to the cart and the checkout: for sidebars. Off: a compact link for headers.',
+							'orillacart'
+						) }
+						checked={ attributes.showButtons }
+						onChange={ ( showButtons ) =>
+							setAttributes( { showButtons } )
+						}
+					/>
+				</PanelBody>
+			</InspectorControls>
+			<Placeholder
+				label={ __( 'Mini cart', 'orillacart' ) }
+				instructions={
+					attributes.showButtons
+						? __(
+								'How many items are in the cart, with buttons to the cart and the checkout.',
+								'orillacart'
+							)
+						: __(
+								'A link to the cart with the number of items in it.',
+								'orillacart'
+							)
+				}
+			/>
+		</div>
+	);
+}
+
 // Title, icon and attributes come from the server's registration.
+registerBlockType( 'orillacart/mini-cart', {
+	edit: MiniCartEdit,
+	save: () => null,
+} as never );
 registerBlockType< ProductsAttributes >( 'orillacart/products', {
 	edit: ProductsEdit,
 	save: () => null,

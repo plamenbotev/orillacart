@@ -1,7 +1,7 @@
 /**
  * Add-to-cart forms, on product pages and in the shop's grid, and the mini cart's count.
  */
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { api } from './api';
 import { clearErrors, failure, formBody, showErrors, showMessage } from './dom';
@@ -17,17 +17,47 @@ type Variation = {
 	price: string;
 };
 
+/**
+ * Shows the number of items in every mini cart on the page: the count, the "N items in cart" line, and the
+ * empty or the full part of mini carts with buttons.
+ *
+ * @param items How many items the cart holds.
+ */
 export function setCartCount( items: number ): void {
 	document
 		.querySelectorAll( '[data-orillacart-cart-count]' )
 		.forEach( ( count ) => {
 			count.textContent = String( items );
 		} );
+	document
+		.querySelectorAll( '[data-orillacart-cart-items]' )
+		.forEach( ( line ) => {
+			line.textContent = sprintf(
+				/* translators: %d: how many items the cart holds */
+				_n(
+					'%d item in cart.',
+					'%d items in cart.',
+					items,
+					'orillacart'
+				),
+				items
+			);
+		} );
+	document
+		.querySelectorAll< HTMLElement >( '[data-orillacart-cart-empty]' )
+		.forEach( ( part ) => {
+			part.hidden = items > 0;
+		} );
+	document
+		.querySelectorAll< HTMLElement >( '[data-orillacart-cart-full]' )
+		.forEach( ( part ) => {
+			part.hidden = items === 0;
+		} );
 }
 
-/** Pages with a mini cart may come from a page cache: the count is corrected from the cart itself. */
+/** Pages with a mini cart may come from a page cache: it is corrected from the cart itself. */
 export async function refreshCartCount(): Promise< void > {
-	if ( ! document.querySelector( '[data-orillacart-cart-count]' ) ) {
+	if ( ! document.querySelector( '[data-orillacart-region="mini-cart"]' ) ) {
 		return;
 	}
 	const result = await api< CartSummary >( 'GET', '/cart' );

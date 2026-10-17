@@ -179,6 +179,10 @@ final class StorefrontTest extends RestTestCase
         self::assertStringContainsString('60.00', $cart);
         self::assertStringContainsString('href="' . get_permalink((int) $this->pages()['checkout']) . '"', $cart);
         self::assertStringContainsString('>2<', do_blocks('<!-- wp:orillacart/mini-cart /-->'));
+        $panel = do_blocks('<!-- wp:orillacart/mini-cart {"showButtons":true} /-->');
+        self::assertStringContainsString('2 items in cart.', $panel);
+        self::assertMatchesRegularExpression('#<p[^>]+data-orillacart-cart-empty hidden>#', $panel, 'the empty message waits, hidden');
+        self::assertStringContainsString('href="' . get_permalink((int) $this->pages()['checkout']) . '"', $panel);
 
         $_GET = ['billing_country' => 'BG'];
         $checkout = do_blocks('<!-- wp:orillacart/checkout /-->');
@@ -207,6 +211,7 @@ final class StorefrontTest extends RestTestCase
         self::assertStringContainsString('There is no order at this address.', do_blocks('<!-- wp:orillacart/checkout /-->'));
         $_GET = [];
         self::assertStringContainsString('The cart is empty.', do_blocks('<!-- wp:orillacart/checkout /-->'));
+        self::assertMatchesRegularExpression('#<div[^>]+data-orillacart-cart-full hidden>#', do_blocks('<!-- wp:orillacart/mini-cart {"showButtons":true} /-->'));
     }
 
     public function testVisitorsMakeAccountsUnlessTheShopMakesNone(): void

@@ -21,7 +21,13 @@ final class ShopExtension extends AbstractExtension
 
     public function getFunctions(): array
     {
-        return [new TwigFunction('__', static fn(string $text): string => \function_exists('__') ? __($text, 'orillacart') : $text)];
+        return [
+            new TwigFunction('__', static fn(string $text): string => \function_exists('__') ? __($text, 'orillacart') : $text),
+            // {{ _n('%d item', '%d items', count)|format(count) }}
+            new TwigFunction('_n', static fn(string $single, string $plural, int $number): string => \function_exists('_n')
+                ? _n($single, $plural, $number, 'orillacart')
+                : ($number === 1 ? $single : $plural)),
+        ];
     }
 
     public function getFilters(): array

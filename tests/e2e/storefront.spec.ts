@@ -79,6 +79,37 @@ test.describe( 'A visitor', () => {
 		await expect( page.getByText( 'Your cart is empty.' ) ).toBeVisible();
 	} );
 
+	test( 'sees the mini cart follow the cart', async ( { page } ) => {
+		await page.goto( shop.miniCartUrl );
+		const miniCart = page.locator( '.orillacart-mini-cart--panel' );
+		await expect(
+			miniCart.getByText( 'Your cart is empty.' )
+		).toBeVisible();
+		await expect(
+			miniCart.getByRole( 'link', { name: 'Check out' } )
+		).toBeHidden();
+
+		await page
+			.locator( '.orillacart-product-card', { hasText: 'E2E Lamp' } )
+			.getByRole( 'button', { name: /Add to cart/ } )
+			.click();
+		await expect( miniCart.getByText( '1 item in cart.' ) ).toBeVisible();
+		await expect(
+			miniCart.getByText( 'Your cart is empty.' )
+		).toBeHidden();
+		await miniCart.getByRole( 'link', { name: 'Check out' } ).click();
+		await expect( page ).toHaveURL( shop.urls.checkout );
+
+		// Emptied elsewhere, the mini cart says so on the next page.
+		await page.goto( shop.urls.cart );
+		await page.getByRole( 'button', { name: 'Remove E2E Lamp' } ).click();
+		await expect( page.getByText( 'Your cart is empty.' ) ).toBeVisible();
+		await page.goto( shop.miniCartUrl );
+		await expect(
+			miniCart.getByText( 'Your cart is empty.' )
+		).toBeVisible();
+	} );
+
 	test( 'chooses a variation on the product page', async ( { page } ) => {
 		await page.goto( shop.hoodieUrl );
 		await expect( page.getByText( 'About the E2E Hoodie.' ) ).toBeVisible();

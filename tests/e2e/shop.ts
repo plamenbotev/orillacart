@@ -12,6 +12,7 @@ export type ShopPages = {
 
 export type Shop = {
 	lamp: number;
+	miniCartUrl: string;
 	hoodie: number;
 	rate: number;
 	urls: { shop: string; cart: string; checkout: string; account: string };
@@ -191,6 +192,16 @@ export async function setUpShop( requestUtils: RequestUtils ): Promise< Shop > {
 	} );
 
 	const pages = await ensurePages( requestUtils );
+	const miniCart = await requestUtils.rest< { link: string } >( {
+		method: 'POST',
+		path: '/wp/v2/pages',
+		data: {
+			title: 'E2E Mini cart',
+			status: 'publish',
+			content:
+				'<!-- wp:orillacart/mini-cart {"showButtons":true} /--><!-- wp:orillacart/products /-->',
+		},
+	} );
 	const link = async ( id: number ) =>
 		(
 			await requestUtils.rest< { link: string } >( {
@@ -200,6 +211,7 @@ export async function setUpShop( requestUtils: RequestUtils ): Promise< Shop > {
 
 	return {
 		lamp: lamp.id,
+		miniCartUrl: miniCart.link,
 		hoodie: hoodie.id,
 		rate: carrier.rates[ 0 ]?.id ?? 0,
 		lampUrl: lamp.link,
@@ -227,6 +239,16 @@ export async function tearDownShop(
 		await requestUtils.rest( {
 			method: 'DELETE',
 			path: `/wp/v2/orillacart_product/${ id }`,
+			params: { force: true },
+		} );
+	}
+	const pages = await requestUtils.rest< { id: number }[] >( {
+		path: '/wp/v2/pages?search=E2E&status=any&per_page=100&_fields=id',
+	} );
+	for ( const { id } of pages ) {
+		await requestUtils.rest( {
+			method: 'DELETE',
+			path: `/wp/v2/pages/${ id }`,
 			params: { force: true },
 		} );
 	}

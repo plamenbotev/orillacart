@@ -1,6 +1,6 @@
 import { api, forgetNonce } from '../api';
 import { formBody } from '../dom';
-import { bindAddToCart } from '../product';
+import { bindAddToCart, setCartCount } from '../product';
 
 type Call = { url: string; init: RequestInit };
 
@@ -283,5 +283,35 @@ describe( 'add to cart', () => {
 		expect(
 			form.querySelector( '[data-orillacart-message]' )?.textContent
 		).toBe( 'Added to your cart. View cart' );
+	} );
+} );
+
+describe( 'mini cart', () => {
+	it( 'shows the count, the line and the part that fits the cart', () => {
+		document.body.innerHTML = `
+			<span data-orillacart-cart-count>0</span>
+			<p data-orillacart-cart-empty>Your cart is empty.</p>
+			<div data-orillacart-cart-full hidden><p data-orillacart-cart-items>0 items in cart.</p></div>`;
+		const part = ( name: string ) =>
+			document.querySelector< HTMLElement >(
+				`[data-orillacart-cart-${ name }]`
+			);
+
+		setCartCount( 1 );
+		expect( part( 'count' )?.textContent ).toBe( '1' );
+		expect( part( 'items' )?.textContent ).toBe( '1 item in cart.' );
+		expect( [ part( 'empty' )?.hidden, part( 'full' )?.hidden ] ).toEqual( [
+			true,
+			false,
+		] );
+
+		setCartCount( 3 );
+		expect( part( 'items' )?.textContent ).toBe( '3 items in cart.' );
+
+		setCartCount( 0 );
+		expect( [ part( 'empty' )?.hidden, part( 'full' )?.hidden ] ).toEqual( [
+			false,
+			true,
+		] );
 	} );
 } );
