@@ -57,9 +57,17 @@ final readonly class Discounts
         $email = $request->email ?? '';
         $firstOrder = null;
         $left = array_map(static fn(DiscountItem $item): Money => Money::of($item->total), $request->items);
+        // Order size rules look at the items as they cost, before any discount.
+        $subtotal = array_reduce($left, static fn(Money $sum, Money $total): Money => $sum->add($total), Money::zero());
+        $known = $email !== '' || $request->customerId !== null;
         $applied = [];
         $refused = [];
-        $combinesAll = true;
+        // Automatic discounts always go with codes: a customer never loses one by entering a code. Among
+        // themselves, and codes among themselves, one that does not combine stands alone.
+        $automaticApplied = [];
+        $codesApplied = false;
+        $automaticCombine = true;
+        $codesCombine = true;
 
         $candidates = [];
         foreach ($automatic as $coupon) {
@@ -75,13 +83,18 @@ final readonly class Discounts
                 $refused[$code] = 'This code is not valid.';
                 continue;
             }
-            if ($applied !== [] && (!$coupon->combines() || !$combinesAll)) {
-                if (!$silent) {
-                    $refused[$code] = 'This code cannot be used together with your other codes.';
-                }
+            if ($silent && $automaticApplied !== [] && (!$coupon->combines() || !$automaticCombine)) {
                 continue;
             }
-            $firstOrder ??= $email === '' || !$this->orders->hasOrdered($request->customerId, $email, $request->orderId);
+            if (!$silent && $codesApplied && (!$coupon->combines() || !$codesCombine)) {
+                $refused[$code] = 'This code cannot be used together with your other codes.';
+                continue;
+            }
+            if (!$silent && $automaticApplied !== [] && !$coupon->combines()) {
+                $refused[$code] = \sprintf('This code cannot be combined with %s.', implode(', ', $automaticApplied));
+                continue;
+            }
+            $firstOrder ??= !$known || !$this->orders->hasOrdered($request->customerId, $email, $request->orderId);
             $basket = new Basket(
                 array_map(static fn(DiscountItem $item, Money $total): BasketLine => new BasketLine($item->productId, $item->quantity, $total, $item->onSale, $item->categoryIds, $item->brandIds), $request->items, $left),
                 $request->currency,
@@ -89,8 +102,9 @@ final readonly class Discounts
                 $request->customerId,
                 $request->email,
                 $firstOrder,
+                $subtotal,
             );
-            $refusal = $coupon->refusal($basket, $now, $email === '' ? 0 : $this->redemptions->countByCustomer($coupon->id(), $request->customerId, $email));
+            $refusal = $coupon->refusal($basket, $now, $known ? $this->redemptions->countByCustomer($coupon->id(), $request->customerId, $email) : 0);
             if ($refusal !== null) {
                 if (!$silent) {
                     $refused[$code] = $refusal;
@@ -108,7 +122,13 @@ final readonly class Discounts
                 continue;
             }
             $applied[] = new AppliedCoupon($coupon->code(), $coupon->description(), $sum->toFixed(), $coupon->freeShipping(), $lines, $silent);
-            $combinesAll = $combinesAll && $coupon->combines();
+            if ($silent) {
+                $automaticApplied[] = $coupon->description() === '' ? $coupon->code() : $coupon->description();
+                $automaticCombine = $automaticCombine && $coupon->combines();
+            } else {
+                $codesApplied = true;
+                $codesCombine = $codesCombine && $coupon->combines();
+            }
         }
 
         return new AppliedDiscounts($applied, $refused);

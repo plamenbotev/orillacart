@@ -1,25 +1,97 @@
 /**
- * An ISO 8601 moment as a datetime-local field shows it, in the browser's time zone.
- *
- * @param iso The moment, or null for none.
+ * Dates as the shop enters and reads them: in its own time zone (Settings → General), not the browser's, so
+ * a sale set to start at midnight starts at the shop's midnight wherever the manager sits.
  */
-export const toLocal = ( iso: string | null ): string => {
+declare global {
+	interface Window {
+		/** WordPress's time zone: a name such as "Europe/Sofia", or an offset such as "+02:00". */
+		orillacartTimeZone?: string;
+	}
+}
+
+const OFFSET = /^([+-])(\d{1,2}):?(\d{2})?$/;
+
+/**
+ * How far the shop's clock is ahead of UTC at a moment, in milliseconds.
+ *
+ * @param at       The moment.
+ * @param timeZone The shop's time zone; the browser's when not known.
+ */
+function offsetAt( at: Date, timeZone: string | undefined ): number {
+	if ( timeZone === undefined || timeZone === '' ) {
+		return -at.getTimezoneOffset() * 60000;
+	}
+	const fixed = OFFSET.exec( timeZone );
+	if ( fixed ) {
+		const minutes = Number( fixed[ 2 ] ) * 60 + Number( fixed[ 3 ] ?? '0' );
+		return ( fixed[ 1 ] === '-' ? -minutes : minutes ) * 60000;
+	}
+	try {
+		const parts = Object.fromEntries(
+			new Intl.DateTimeFormat( 'en-US', {
+				timeZone,
+				hourCycle: 'h23',
+				year: 'numeric',
+				month: '2-digit',
+				day: '2-digit',
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit',
+			} )
+				.formatToParts( at )
+				.map( ( part ) => [ part.type, part.value ] )
+		);
+		const wall = Date.UTC(
+			Number( parts.year ),
+			Number( parts.month ) - 1,
+			Number( parts.day ),
+			Number( parts.hour ),
+			Number( parts.minute ),
+			Number( parts.second )
+		);
+		return wall - Math.floor( at.getTime() / 1000 ) * 1000;
+	} catch {
+		return -at.getTimezoneOffset() * 60000;
+	}
+}
+
+const shopZone = (): string | undefined =>
+	typeof window === 'undefined' ? undefined : window.orillacartTimeZone;
+
+/**
+ * An ISO 8601 moment as a datetime-local field shows it, in the shop's time zone.
+ *
+ * @param iso      The moment, or null for none.
+ * @param timeZone The time zone; the shop's when not given.
+ */
+export const toLocal = (
+	iso: string | null,
+	timeZone: string | undefined = shopZone()
+): string => {
 	if ( iso === null ) {
 		return '';
 	}
-	const date = new Date( iso );
-	const pad = ( value: number ) => String( value ).padStart( 2, '0' );
-	return `${ date.getFullYear() }-${ pad( date.getMonth() + 1 ) }-${ pad(
-		date.getDate()
-	) }T${ pad( date.getHours() ) }:${ pad( date.getMinutes() ) }`;
+	const at = new Date( iso );
+	const wall = new Date( at.getTime() + offsetAt( at, timeZone ) );
+	return wall.toISOString().slice( 0, 16 );
 };
 
 /**
- * A datetime-local value as ISO 8601 in UTC, as the API takes it.
+ * A datetime-local value, read in the shop's time zone, as ISO 8601 in UTC, as the API takes it.
  *
- * @param local The field's value; empty for none.
+ * @param local    The field's value; empty for none.
+ * @param timeZone The time zone; the shop's when not given.
  */
-export const fromLocal = ( local: string ): string | null =>
-	local === ''
-		? null
-		: new Date( local ).toISOString().replace( /\.\d{3}Z$/, '+00:00' );
+export const fromLocal = (
+	local: string,
+	timeZone: string | undefined = shopZone()
+): string | null => {
+	if ( local === '' ) {
+		return null;
+	}
+	const wall = new Date( `${ local.slice( 0, 16 ) }:00Z` ).getTime();
+	// The offset of the moment meant, found from a first guess; again once, for a change of clocks between.
+	let at = wall - offsetAt( new Date( wall ), timeZone );
+	at = wall - offsetAt( new Date( at ), timeZone );
+	return new Date( at ).toISOString().replace( /\.\d{3}Z$/, '+00:00' );
+};

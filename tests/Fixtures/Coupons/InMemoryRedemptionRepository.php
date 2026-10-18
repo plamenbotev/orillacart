@@ -20,7 +20,7 @@ final class InMemoryRedemptionRepository implements RedemptionRepository
             $customer = new \ReflectionProperty(CouponRedemption::class, 'customerId');
             $stored = new \ReflectionProperty(CouponRedemption::class, 'email');
 
-            return $redemption->couponId() === $couponId && ($stored->getValue($redemption) === $email || ($customerId !== null && $customer->getValue($redemption) === $customerId));
+            return $redemption->couponId() === $couponId && (($email !== '' && $stored->getValue($redemption) === $email) || ($customerId !== null && $customer->getValue($redemption) === $customerId));
         }));
     }
 

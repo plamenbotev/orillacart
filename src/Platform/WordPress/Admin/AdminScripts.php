@@ -30,6 +30,8 @@ final readonly class AdminScripts
             'position' => $settings->currencyPosition,
             'decimals' => $settings->priceDecimals,
         ]) . ';', 'before');
+        // The shop's time zone, in which dates are entered and shown (shared/dates.ts): a name or an offset.
+        wp_add_inline_script($handle, 'window.orillacartTimeZone = ' . wp_json_encode(wp_timezone_string()) . ';', 'before');
         wp_enqueue_script($handle);
         wp_enqueue_style('wp-components');
         if (wp_style_is($handle, 'registered')) {

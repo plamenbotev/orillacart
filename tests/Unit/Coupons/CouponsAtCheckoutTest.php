@@ -200,6 +200,50 @@ final class CouponsAtCheckoutTest extends TestCase
         self::assertSame(1, $this->shop->coupons->coupon($discount->id)->uses);
     }
 
+    public function testAnAutomaticDiscountGoesWithCodesAndACodeThatStandsAloneSaysWhy(): void
+    {
+        $this->shop->coupons->create(new SaveCoupon('', 'percent', '10', '10 % off orders over 60', minSubtotal: '60', automatic: true));
+        $this->coupon('TEN', 'order_amount', '10', combines: true);
+        $this->coupon('ALONE', 'order_amount', '5');
+        $cart = $this->cart([10, 2]);
+
+        $this->shop->checkout->applyCoupon($cart, new CouponCode('TEN'));
+        self::assertSame(['8', '10'], array_map(static fn($coupon): string => $coupon->amount, $this->shop->checkout->summary($cart, new CheckoutDetails())->coupons), 'an automatic discount that does not combine still goes with a code');
+
+        $this->shop->checkout->removeCoupon($cart, 'TEN');
+        try {
+            $this->shop->checkout->applyCoupon($cart, new CouponCode('ALONE'));
+            self::fail('a code that stands alone');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('This code cannot be combined with 10 % off orders over 60.', $e->getMessage());
+        }
+    }
+
+    public function testTheOrderSizeACodeNeedsIsWhatTheItemsCostBeforeDiscounts(): void
+    {
+        $this->shop->coupons->create(new SaveCoupon('', 'percent', '10', '10 % off orders over 60', minSubtotal: '60', combines: true, automatic: true));
+        $this->coupon('BIG', 'order_amount', '5', minSubtotal: '75', combines: true);
+        $cart = $this->cart([10, 2]);
+
+        $this->shop->checkout->applyCoupon($cart, new CouponCode('BIG'));
+
+        self::assertSame(['8', '5'], array_map(static fn($coupon): string => $coupon->amount, $this->shop->checkout->summary($cart, new CheckoutDetails())->coupons), '80 of items, though 72 is left after the first discount');
+    }
+
+    public function testAPerCustomerLimitCountsTheAccountBeforeTheEmailIsKnown(): void
+    {
+        $ada = $this->shop->accounts->add('ada@example.com', 'Ada');
+        $this->coupon('ONCE', 'order_amount', '5', perCustomerLimit: 1);
+        $first = $this->cart([10, 1]);
+        $first = new CartOwner($first->token, $ada);
+        $this->shop->checkout->applyCoupon($first, new CouponCode('ONCE'));
+        $this->shop->checkout->placeOrder($first, $this->order());
+
+        $again = new CartOwner($this->cart([10, 1])->token, $ada);
+        $this->expectExceptionMessage('You have already used this code.');
+        $this->shop->checkout->applyCoupon($again, new CouponCode('ONCE'));
+    }
+
     public function testAnAutomaticDiscountNeedsADescription(): void
     {
         $this->expectException(CouponRuleViolation::class);

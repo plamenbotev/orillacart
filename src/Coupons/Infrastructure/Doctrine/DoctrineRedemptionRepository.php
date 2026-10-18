@@ -16,12 +16,18 @@ final readonly class DoctrineRedemptionRepository implements RedemptionRepositor
     {
         $builder = $this->entityManager->createQueryBuilder()->select('COUNT(r.id)')->from(CouponRedemption::class, 'r')
             ->where('r.couponId = :coupon')->setParameter('coupon', $couponId);
-        if ($customerId !== null) {
-            $builder->andWhere('r.customerId = :customer OR r.email = :email')->setParameter('customer', $customerId);
+        // An empty email is nobody's: uses of an erased customer keep none.
+        $email = mb_strtolower($email);
+        if ($customerId !== null && $email !== '') {
+            $builder->andWhere('r.customerId = :customer OR r.email = :email')->setParameter('customer', $customerId)->setParameter('email', $email);
+        } elseif ($customerId !== null) {
+            $builder->andWhere('r.customerId = :customer')->setParameter('customer', $customerId);
+        } elseif ($email !== '') {
+            $builder->andWhere('r.email = :email')->setParameter('email', $email);
         } else {
-            $builder->andWhere('r.email = :email');
+            return 0;
         }
-        $count = $builder->setParameter('email', mb_strtolower($email))->getQuery()->getSingleScalarResult();
+        $count = $builder->getQuery()->getSingleScalarResult();
 
         return is_numeric($count) ? (int) $count : 0;
     }
