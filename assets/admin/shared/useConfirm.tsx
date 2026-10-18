@@ -1,4 +1,4 @@
-import { __experimentalConfirmDialog as ConfirmDialog } from '@wordpress/components';
+import { Button, Flex, Modal } from '@wordpress/components';
 import {
 	useCallback,
 	useState,
@@ -31,18 +31,31 @@ export function useConfirm(): [
 	);
 	const dialog =
 		question === null ? null : (
-			<ConfirmDialog
-				isOpen
-				confirmButtonText={ question.confirm }
-				cancelButtonText={ __( 'Cancel', 'orillacart' ) }
-				onConfirm={ () => {
-					setQuestion( null );
-					question.onConfirm();
-				} }
-				onCancel={ () => setQuestion( null ) }
+			<Modal
+				title={ __( 'Are you sure?', 'orillacart' ) }
+				size="small"
+				onRequestClose={ () => setQuestion( null ) }
 			>
-				{ question.message }
-			</ConfirmDialog>
+				<p>{ question.message }</p>
+				<Flex justify="flex-end">
+					<Button
+						variant="tertiary"
+						onClick={ () => setQuestion( null ) }
+					>
+						{ __( 'Cancel', 'orillacart' ) }
+					</Button>
+					<Button
+						variant="primary"
+						isDestructive
+						onClick={ () => {
+							setQuestion( null );
+							question.onConfirm();
+						} }
+					>
+						{ question.confirm }
+					</Button>
+				</Flex>
+			</Modal>
 		);
 
 	return [ dialog, ask ];
