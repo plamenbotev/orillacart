@@ -58,6 +58,13 @@ class OrderLine
     #[ORM\Column(type: 'json')]
     private array $stockTaken;
 
+    /**
+     * @var array<string, int>|null what the line gave back, by item, when its order closed unpaid: taken again
+     *                              if the money comes after all
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $stockReleased = null;
+
     /** @var list<array{file_id: int, name: string, storage_key: string, mime_type: string}> */
     #[ORM\Column(type: 'json')]
     private array $downloads;
@@ -252,6 +259,41 @@ class OrderLine
     public function forgetStock(): void
     {
         $this->stockTaken = [];
+    }
+
+    /**
+     * The order closed unpaid: the stock goes back, and the line remembers how much of each item it held.
+     *
+     * @return list<TakenItem>
+     */
+    public function releaseStock(): array
+    {
+        $taken = $this->stockTaken();
+        $released = [];
+        foreach ($taken as $part) {
+            $released[$part->item] = ($released[$part->item] ?? 0) + $part->quantity;
+        }
+        $this->stockReleased = $released;
+        $this->stockTaken = [];
+
+        return $taken;
+    }
+
+    /** @return array<string, int> what the line gave back when its order closed unpaid, by item */
+    public function stockReleased(): array
+    {
+        return $this->stockReleased ?? [];
+    }
+
+    /**
+     * The stock given back is taken again, as the order opens again.
+     *
+     * @param list<TakenItem> $taken
+     */
+    public function retake(array $taken): void
+    {
+        $this->stockTaken = array_map(static fn(TakenItem $part): array => ['item' => $part->item, 'stockroom_id' => $part->stockroomId, 'quantity' => $part->quantity], $taken);
+        $this->stockReleased = null;
     }
 
     public function refundedQuantity(): int

@@ -12,6 +12,9 @@ namespace OrillaCart\Extension;
  */
 final class Version
 {
-    /** 1: payment gateways, shipping methods. 2: price adjusters, cart rules, checkout fields, order actions, orders. */
-    public const int CURRENT = 2;
+    /**
+     * 1: payment gateways, shipping methods. 2: price adjusters, cart rules, checkout fields, order actions,
+     * orders. 3: gateways naming the payment of a notification (NamesNotifiedPayments).
+     */
+    public const int CURRENT = 3;
 }

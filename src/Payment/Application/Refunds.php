@@ -146,6 +146,40 @@ final readonly class Refunds
     }
 
     /**
+     * Money that came for an order which closed unpaid and could not open again, its items sold since: all of it
+     * goes back through the provider. The order stays closed; its history, and the customer, are told.
+     */
+    public function giveBackUnclaimed(int $paymentId): void
+    {
+        $payment = $this->payments->find($paymentId);
+        if ($payment === null) {
+            return;
+        }
+        $refund = new Refund(
+            $payment->orderId(),
+            $payment->id(),
+            $payment->gateway(),
+            RefundMethod::Provider,
+            $payment->amount(),
+            $payment->currency(),
+            [],
+            false,
+            false,
+            'The order was closed when the money came, and its items were no longer in stock.',
+            null,
+            $this->clock->now(),
+        );
+        try {
+            $this->refunds->save($refund);
+            $this->send($refund, $payment, null);
+        } catch (PaymentRuleViolation $e) {
+            // Refused, unanswered (the shop can try it again from the order) or not refundable through the provider.
+            $this->logger->error('Payment {payment} came for order {order} after it closed and could not be given back: {message}', ['payment' => $payment->id(), 'order' => $payment->orderId(), 'message' => $e->getMessage()]);
+            $this->orders->note($payment->orderId(), \sprintf('%s %s came after the order closed and must be given back: %s', $payment->amount()->toFixed(), $payment->currency(), $e->getMessage()), false);
+        }
+    }
+
+    /**
      * A refund the provider told of. One the shop sent is recognised by its id, or completes a refund of the
      * same amount still waiting for the provider's answer; any other was made at the provider's own site and is
      * recorded as an amount alone.
@@ -236,6 +270,12 @@ final readonly class Refunds
                 $refund->reason(),
             );
             try {
+                if ($this->orders->order($refund->orderId())->paidAt === null) {
+                    // Money that came after the order closed: it stays closed, and says so.
+                    $this->orders->note($refund->orderId(), \sprintf('The payment came after the order closed, and its items were no longer in stock: the %s %s were given back in full through %s.', $refund->amount()->toFixed(), $refund->currency(), $this->name((string) $refund->gateway())), true);
+
+                    return;
+                }
                 $this->orders->refund($refund->orderId(), $command, \sprintf('through %s (refund %s)', $this->name((string) $refund->gateway()), $reference), $userId);
             } catch (OrderNotFound|OrderRuleViolation $e) {
                 // The money went back: the order must learn of it, even if not item by item.

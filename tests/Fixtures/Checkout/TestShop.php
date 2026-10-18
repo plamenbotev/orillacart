@@ -288,7 +288,7 @@ final class TestShop
         $this->events->addListener(OrderNoteAdded::class, $emailing->noteAdded(...));
         $this->events->addListener(OrderRefunded::class, $emailing->refunded(...));
 
-        $settle = new SettleOrdersByPayment($this->orders, $this->logger);
+        $settle = new SettleOrdersByPayment($this->orders, $this->refunds, $this->logger);
         $this->events->addListener(PaymentCompleted::class, $settle->completed(...));
         $this->events->addListener(PaymentHeld::class, $settle->held(...));
         $this->events->addListener(PaymentFailed::class, $settle->failed(...));

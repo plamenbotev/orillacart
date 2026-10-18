@@ -7,6 +7,7 @@ namespace OrillaCart\Payment\Application;
 use OrillaCart\Extension\Payment\HandlesNotifications;
 use OrillaCart\Extension\Payment\HandlesReturns;
 use OrillaCart\Extension\Payment\InvalidNotification;
+use OrillaCart\Extension\Payment\NamesNotifiedPayments;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Extension\Payment\PaymentOutcome;
 use OrillaCart\Extension\Payment\PaymentReturn;
@@ -86,6 +87,13 @@ final readonly class PaymentOutcomes
         $gateway = $this->gateways->get($gatewayId);
         if (!$gateway instanceof HandlesNotifications) {
             throw new PaymentMethodNotFound($gatewayId);
+        }
+        if ($gateway instanceof NamesNotifiedPayments) {
+            $reference = $gateway->paymentReference($notification);
+            if ($reference !== null && $this->payments->findByReference($gatewayId, $reference) === null) {
+                // Another site's payment, or one deleted since: not this shop's to act on.
+                return;
+            }
         }
         try {
             $outcome = $gateway->notified($notification, $this->settings($gatewayId));

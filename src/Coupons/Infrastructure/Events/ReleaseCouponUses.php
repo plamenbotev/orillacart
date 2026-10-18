@@ -21,8 +21,12 @@ final readonly class ReleaseCouponUses
     #[AsEventListener]
     public function statusChanged(OrderStatusChanged $event): void
     {
-        if (\in_array($event->status, [OrderStatus::Cancelled, OrderStatus::Failed], true)) {
+        $closed = [OrderStatus::Cancelled, OrderStatus::Failed];
+        if (\in_array($event->status, $closed, true)) {
             $this->discounts->release($event->orderId);
+        } elseif (\in_array($event->previous, $closed, true)) {
+            // Opened again, paid after all.
+            $this->discounts->reclaim($event->orderId);
         }
     }
 

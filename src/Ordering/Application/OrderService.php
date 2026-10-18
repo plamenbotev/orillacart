@@ -7,6 +7,7 @@ namespace OrillaCart\Ordering\Application;
 use OrillaCart\Catalog\Application\Dto\QuotedDownload;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Inventory\Domain\InsufficientStock;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
@@ -59,7 +60,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 final readonly class OrderService
 {
     /** How long a customer has to finish paying at a provider before the order is cancelled. */
-    public const string PAYMENT_WINDOW = 'PT1H';
+    public const string PAYMENT_WINDOW = 'PT3H';
 
     public function __construct(
         private OrderRepository $orders,
@@ -182,6 +183,48 @@ final readonly class OrderService
             if ($order->markPaid($transactionId, $this->clock->now())) {
                 $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
             }
+        });
+    }
+
+    /**
+     * The money came for an order that was cancelled or failed unpaid, as when the customer approved at the
+     * provider after the payment window closed. It opens again as paid when every item it gave back is still in
+     * stock, and takes them again.
+     *
+     * @return bool false when an item is no longer in stock: the order stays closed and the money must go back
+     *
+     * @throws OrderNotFound
+     * @throws OrderRuleViolation for an order that did not close unpaid
+     */
+    public function paidAfterClosing(int $id, ?string $transactionId, string $note = ''): bool
+    {
+        try {
+            $this->changing($id, function (Order $order) use ($transactionId, $note): void {
+                $previous = $order->status();
+                $order->reopenPaid($transactionId, $this->clock->now(), fn(array $wanted): array => array_map(
+                    static fn(array $taken): array => array_map(static fn(TakenStock $part): TakenItem => new TakenItem($part->item, $part->stockroomId, $part->quantity), $taken),
+                    $this->stock->takeAgain($wanted),
+                ));
+                $this->changed($order, $previous, [], trim(\sprintf('The money came after the order was %s, so it was opened again and its items taken again. %s', strtolower($previous->label()), $note)));
+            });
+        } catch (InsufficientStock) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * A note from the shop's own workings, for the customer to see too when they should.
+     *
+     * @throws OrderNotFound
+     */
+    public function note(int $id, string $text, bool $forCustomer): void
+    {
+        $this->changing($id, function (Order $order) use ($text, $forCustomer): void {
+            $order->addNote($text, NoteAuthor::System, $forCustomer, $this->clock->now());
+            $this->orders->save($order);
+            $this->events->dispatch(new OrderNoteAdded($order->id(), trim($text), $forCustomer));
         });
     }
 
@@ -382,7 +425,7 @@ final readonly class OrderService
                 if ($order->status() !== OrderStatus::PendingPayment) {
                     return 0;
                 }
-                $this->changed($order, OrderStatus::PendingPayment, $order->cancel(), 'The payment was not finished within an hour.');
+                $this->changed($order, OrderStatus::PendingPayment, $order->cancel(), 'The payment was not finished within three hours.');
 
                 return 1;
             });

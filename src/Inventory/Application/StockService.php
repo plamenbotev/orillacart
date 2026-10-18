@@ -225,6 +225,62 @@ final readonly class StockService
     }
 
     /**
+     * Takes again what an order gave back when it closed unpaid, as when its money comes late: for each line,
+     * the quantity of each item, from the fastest stockrooms, never into backorders. All of it, or nothing when
+     * one item falls short. The items are locked in one go.
+     *
+     * @param array<int, array<string, int>> $wanted by line, then by item ("product:12")
+     *
+     * @return array<int, list<TakenStock>> by line
+     *
+     * @throws InsufficientStock
+     */
+    public function takeAgain(array $wanted): array
+    {
+        $items = [];
+        $needed = [];
+        foreach ($wanted as $line) {
+            foreach ($line as $item => $quantity) {
+                $items[$item] = StockItem::fromString($item);
+                $needed[$item] = ($needed[$item] ?? 0) + $quantity;
+            }
+        }
+        if ($items === []) {
+            return array_map(static fn(): array => [], $wanted);
+        }
+        $before = [];
+        $after = [];
+        $taken = $this->levels->lockedStockOf(array_values($items), static function (array $stocks) use ($wanted, $needed, &$before, &$after): array {
+            /** @var list<Stock> $stocks */
+            $before = self::availableOf($stocks);
+            $byItem = [];
+            foreach ($stocks as $stock) {
+                $available = $stock->available();
+                $quantity = $needed[(string) $stock->item] ?? 0;
+                if ($available !== null && $available < $quantity) {
+                    throw new InsufficientStock($stock->item, $quantity, max(0, $available));
+                }
+                $byItem[(string) $stock->item] = $stock;
+            }
+            $taken = [];
+            foreach ($wanted as $index => $line) {
+                $taken[$index] = [];
+                foreach ($line as $item => $quantity) {
+                    foreach ($byItem[$item]->take($quantity, false) as $stockroomId => $amount) {
+                        $taken[$index][] = new TakenStock($item, $stockroomId, $amount);
+                    }
+                }
+            }
+            $after = self::availableOf($stocks);
+
+            return $taken;
+        });
+        $this->announce($before, $after);
+
+        return $taken;
+    }
+
+    /**
      * Puts back stock taken for an order, as when the order is cancelled. Stock of a stockroom that was deleted
      * since, or whose level of the item was removed, is put back as a new level when the stockroom still exists.
      *

@@ -15,7 +15,9 @@ use OrillaCart\Coupons\Domain\CouponRedemption;
 use OrillaCart\Coupons\Domain\CouponRepository;
 use OrillaCart\Coupons\Domain\CouponRuleViolation;
 use OrillaCart\Coupons\Domain\RedemptionRepository;
+use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shared\Domain\Money;
 use Psr\Clock\ClockInterface;
 
@@ -135,6 +137,31 @@ final readonly class Discounts
             $coupon->use();
             $this->coupons->save($coupon);
             $this->redemptions->save(new CouponRedemption($coupon->id(), $orderId, $customerId, $email, Money::of($applied->amount), $this->clock->now()));
+        }
+    }
+
+    /**
+     * Counts again the uses of an order that was cancelled or failed and opened again, paid: the customer paid
+     * the discounted price, so the uses count even past a limit reached in the meantime.
+     *
+     * @throws OrderNotFound
+     */
+    public function reclaim(int $orderId): void
+    {
+        if ($this->redemptions->ofOrder($orderId) !== []) {
+            return;
+        }
+        $order = $this->orders->order($orderId);
+        $locked = $this->coupons->findByCodes(array_map(static fn(OrderDiscountView $discount): string => $discount->code, $order->discounts), true);
+        foreach ($order->discounts as $discount) {
+            $coupon = $locked[$discount->code] ?? null;
+            if ($coupon === null) {
+                // Deleted since: nothing left to count.
+                continue;
+            }
+            $coupon->use();
+            $this->coupons->save($coupon);
+            $this->redemptions->save(new CouponRedemption($coupon->id(), $orderId, $order->customerId, $order->email, Money::of($discount->amount), $this->clock->now()));
         }
     }
 

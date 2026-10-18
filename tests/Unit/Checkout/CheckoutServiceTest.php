@@ -16,7 +16,9 @@ use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
+use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Domain\StoreSettings;
@@ -236,18 +238,60 @@ final class CheckoutServiceTest extends TestCase
         $this->shop->checkout->placeOrder($owner, new PlaceOrder($germanBilling->email, $germanBilling->billing, $this->order(null)->billing, 'rate:' . $this->courier, 'cash_on_delivery'));
     }
 
-    public function testOrdersLeftUnpaidAtPayPalForAnHourAreCancelled(): void
+    public function testOrdersLeftUnpaidAtPayPalForThreeHoursAreCancelled(): void
     {
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 2]), $this->order('paypal'));
         $held = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('bank_transfer'));
 
-        $this->shop->clock->modify('+59 minutes');
+        $this->shop->clock->modify('+179 minutes');
         self::assertSame(0, $this->shop->orders->cancelAbandoned());
         $this->shop->clock->modify('+2 minutes');
         self::assertSame(1, $this->shop->orders->cancelAbandoned());
 
         self::assertSame(['cancelled', 'on_hold'], [$this->shop->orders->byKey($placed->key)->status, $this->shop->orders->byKey($held->key)->status]);
         self::assertSame(2, $this->shop->stock->stock(StockItemRef::product(10))->available);
+    }
+
+    public function testMoneyThatComesAfterTheOrderWasCancelledOpensItAgainWhileTheItemsAreThere(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart([10, 2]), $this->order('paypal'));
+        $this->shop->clock->modify('+181 minutes');
+        $this->shop->orders->cancelAbandoned();
+        self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available);
+
+        // The customer approves at PayPal after all, and comes back.
+        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+
+        $order = $this->shop->orders->byKey($placed->key);
+        self::assertSame('processing', $order->status);
+        self::assertNotNull($order->paidAt);
+        self::assertSame(1, $this->shop->stock->stock(StockItemRef::product(10))->available, 'the items are taken again');
+        self::assertSame([], $this->shop->payPalApi->refunds);
+
+        // The order holds its stock again: refunding its items puts them back, once.
+        $this->shop->refunds->refund($order->number, new MakeRefund($order->total, [new RefundLine(0, 2)], restock: true), null);
+        self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available);
+    }
+
+    public function testMoneyThatComesAfterTheItemsSoldOutGoesBack(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart([10, 2]), $this->order('paypal'));
+        $this->shop->clock->modify('+181 minutes');
+        $this->shop->orders->cancelAbandoned();
+        $this->shop->checkout->placeOrder($this->cart([10, 3]), $this->order('bank_transfer'));
+
+        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+
+        $order = $this->shop->orders->order($this->shop->orders->byKey($placed->key)->number);
+        self::assertSame('cancelled', $order->status);
+        self::assertSame(0, $this->shop->stock->stock(StockItemRef::product(10))->available);
+        self::assertCount(1, $this->shop->payPalApi->refunds, 'the capture went back');
+        self::assertSame($order->total, array_values($this->shop->payPalApi->refunds)[0]['amount']);
+        $notes = $order->notes;
+        $note = array_pop($notes);
+        self::assertNotNull($note);
+        self::assertStringContainsString('given back in full', $note->text);
+        self::assertTrue($note->forCustomer);
     }
 
     public function testTheShopTakesOrdersOnlyFromCountriesItSellsToAndNotAsACatalog(): void

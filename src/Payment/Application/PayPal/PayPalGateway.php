@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application\PayPal;
 
-use OrillaCart\Extension\Payment\HandlesNotifications;
 use OrillaCart\Extension\Payment\HandlesReturns;
 use OrillaCart\Extension\Payment\InvalidNotification;
+use OrillaCart\Extension\Payment\NamesNotifiedPayments;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Payment\PaymentOutcome;
@@ -32,7 +32,7 @@ use OrillaCart\Shared\Domain\Money;
  * approves it at PayPal and comes back, and the shop captures it. A verified webhook settles payments whose
  * customer never came back, and tells of refunds made in PayPal's own dashboard. Refunds go back to the capture. Built on the extension API, as an add-on's gateway would be.
  */
-final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, HandlesNotifications, RefundsPayments
+final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, NamesNotifiedPayments, RefundsPayments
 {
     public const string ID = 'paypal';
 
@@ -132,6 +132,20 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Ha
         }
 
         return $refund->status === 'PENDING' ? RefundResult::pending($refund->id) : RefundResult::done($refund->id);
+    }
+
+    /**
+     * An approved order is captured when its notification comes: only for PayPal orders this shop started.
+     */
+    public function paymentReference(Notification $notification): ?string
+    {
+        $event = json_decode($notification->body, true);
+        if (!\is_array($event) || ($event['event_type'] ?? null) !== 'CHECKOUT.ORDER.APPROVED') {
+            return null;
+        }
+        $resource = \is_array($event['resource'] ?? null) ? $event['resource'] : [];
+
+        return self::text($resource, 'id');
     }
 
     public function notified(Notification $notification, Settings $settings): ?PaymentOutcome

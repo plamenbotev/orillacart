@@ -64,6 +64,11 @@ A gateway whose provider calls back implements `HandlesNotifications`. The admin
 - `notified($notification, $settings)` must first check that the provider sent it (a signature with a shared
   secret, or asking the provider) and throw `InvalidNotification` otherwise. Then it returns the outcome for the
   payment it names, or null for anything else.
+- A gateway whose notifications make it act at the provider (capturing a payment the customer approved, say)
+  also implements `NamesNotifiedPayments` (version 3): `paymentReference($notification)` reads which payment the
+  notification is about, without checking it. The shop calls `notified()` only for payments it started, so a
+  provider account shared with another site never captures that site's money here. Return null for
+  notifications about no payment the shop started, such as refunds made at the provider's site.
 
 The shop settles each payment once; later returns and notifications change nothing. A completed outcome whose
 amount or currency is not the order's is held for the shop to look at instead of completing the order.

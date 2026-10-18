@@ -708,12 +708,41 @@ class Order
         $taken = [];
         foreach ($this->lines as $line) {
             if ($restock) {
-                array_push($taken, ...$line->stockTaken());
+                array_push($taken, ...$line->releaseStock());
+            } else {
+                $line->forgetStock();
             }
-            $line->forgetStock();
         }
 
         return $taken;
+    }
+
+    /**
+     * The money came after the order was cancelled or failed unpaid, as when a customer approves at the provider
+     * after the payment window closed: the order opens again, paid, taking back the stock its lines gave back.
+     *
+     * @param \Closure(array<int, array<string, int>>): array<int, list<TakenItem>> $take takes, for each line by its
+     *                                                                                 index, the quantity of each
+     *                                                                                 item; it throws, taking
+     *                                                                                 nothing, when one is short
+     *
+     * @param-immediately-invoked-callable $take
+     *
+     * @throws OrderRuleViolation for an order that did not close unpaid
+     */
+    public function reopenPaid(?string $transactionId, \DateTimeImmutable $at, \Closure $take): void
+    {
+        if (!\in_array($this->status, [OrderStatus::Cancelled, OrderStatus::Failed], true) || $this->paidAt !== null) {
+            throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot be opened again.', $this->id(), strtolower($this->status->label())), 'orillacart_order_not_reopenable');
+        }
+        $lines = array_values($this->lines->toArray());
+        $taken = $take(array_map(static fn(OrderLine $line): array => $line->stockReleased(), $lines));
+        foreach ($lines as $index => $line) {
+            $line->retake($taken[$index] ?? []);
+        }
+        $this->status = OrderStatus::Processing;
+        $this->transactionId = $transactionId;
+        $this->paidAt = $at;
     }
 
     private function requireOnHold(): void

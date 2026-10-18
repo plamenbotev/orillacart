@@ -39,6 +39,17 @@ final class PayPalGatewayTest extends TestCase
         self::assertSame(['PAYPAL-1'], $this->shop->payPalApi->captured);
     }
 
+    public function testAnApprovalOfAPayPalOrderTheShopDidNotStartCapturesNothing(): void
+    {
+        $placed = $this->place();
+
+        // Another site on the same PayPal account (a staging copy) started PAYPAL-9.
+        $this->shop->outcomes->notified('paypal', $this->notification('CHECKOUT.ORDER.APPROVED', ['id' => 'PAYPAL-9']));
+
+        self::assertSame([], $this->shop->payPalApi->captured);
+        self::assertSame('pending_payment', $this->orderStatus($placed));
+    }
+
     public function testCaptureEventsCompleteFailOrHoldThePayment(): void
     {
         $completed = $this->place();
