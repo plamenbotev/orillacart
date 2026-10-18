@@ -17,6 +17,7 @@ import { toApiError, violationOf, type Violation } from '../shared/api';
 import { fetchCountries, type Country } from '../shared/geography';
 import { LocationFields } from '../shared/LocationFields';
 import { DownloadDeliveryCard } from './DownloadDeliveryCard';
+import { FiltersCard } from './FiltersCard';
 import { ShopPagesCard } from './ShopPagesCard';
 import {
 	fetchSettings,
@@ -331,6 +332,7 @@ export function SettingsScreen() {
 			) }
 			<ShopPagesCard />
 			<DownloadDeliveryCard />
+			<FiltersCard />
 		</>
 	);
 }

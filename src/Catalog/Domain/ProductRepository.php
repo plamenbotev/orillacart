@@ -48,6 +48,11 @@ interface ProductRepository
      */
     public function idsUsingSet(int $setId): array;
 
+    /**
+     * @return list<string> the names attributes of products and sets use, each once, by name
+     */
+    public function attributeNames(): array;
+
     /** The product a variation belongs to. */
     public function findByVariation(int $variationId): ?Product;
 

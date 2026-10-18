@@ -64,6 +64,24 @@ function serve( save?: () => Promise< unknown > ) {
 						}
 			);
 		}
+		if ( path.startsWith( '/orillacart/v1/search-filters' ) ) {
+			if ( path.endsWith( '/attributes' ) ) {
+				return Promise.resolve( [ 'Colour', 'Size' ] );
+			}
+			return Promise.resolve(
+				method === 'POST'
+					? { id: 2, ...( options as { data: object } ).data }
+					: [
+							{
+								id: 1,
+								label: 'Size',
+								key: 'size',
+								attributes: [ 'Size', 'Размер' ],
+								position: 0,
+							},
+						]
+			);
+		}
 		if ( method === 'PUT' && save ) {
 			return save();
 		}
@@ -215,7 +233,7 @@ describe( 'SettingsScreen', () => {
 				'You are not allowed to do this.',
 				NOTICE
 			)
-		).toHaveLength( 3 );
+		).toHaveLength( 4 );
 	} );
 
 	it( 'saves the page each part of the shop is on', async () => {
@@ -277,6 +295,40 @@ describe( 'SettingsScreen', () => {
 			data: {
 				method: 'x_sendfile',
 				internal_prefix: '/orillacart-files/',
+			},
+		} );
+	} );
+
+	it( 'adds a filter over attributes by name, its key made from its label', async () => {
+		serve();
+		const user = userEvent.setup();
+		render( <SettingsScreen /> );
+
+		await screen.findByDisplayValue( 'size' );
+		const labels = screen.getAllByLabelText( 'Label' );
+		await user.type( labels[ labels.length - 1 ] as HTMLElement, 'Colour' );
+		const attributes = screen.getAllByLabelText( 'Attributes it covers' );
+		await user.type(
+			attributes[ attributes.length - 1 ] as HTMLElement,
+			'Colour{Enter}'
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Add filter' } )
+		);
+
+		expect(
+			await screen.findByText( 'Filter added.', {
+				selector: '.components-notice__content',
+			} )
+		).toBeVisible();
+		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+			path: '/orillacart/v1/search-filters',
+			method: 'POST',
+			data: {
+				label: 'Colour',
+				key: 'colour',
+				attributes: [ 'Colour' ],
+				position: 0,
 			},
 		} );
 	} );

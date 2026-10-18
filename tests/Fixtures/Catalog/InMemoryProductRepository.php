@@ -78,6 +78,20 @@ final class InMemoryProductRepository implements ProductRepository
         return $ids;
     }
 
+    public function attributeNames(): array
+    {
+        $names = [];
+        foreach ($this->products as $product) {
+            foreach ($product->attributes() as $attribute) {
+                $names[$attribute->name()] = true;
+            }
+        }
+        $names = array_map(strval(...), array_keys($names));
+        sort($names);
+
+        return $names;
+    }
+
     public function idsUsingSet(int $setId): array
     {
         $ids = [];

@@ -29,7 +29,7 @@ use OrillaCart\Search\Infrastructure\Doctrine\SearchTables;
  */
 final class CatalogSearchTest extends RestTestCase
 {
-    private const array TABLES = ['index_jobs', 'search_values', 'search_variants', 'search_documents', 'stock_levels', 'stockrooms', 'variations', 'products'];
+    private const array TABLES = ['search_filters', 'index_jobs', 'search_values', 'search_variants', 'search_documents', 'stock_levels', 'stockrooms', 'variations', 'products'];
 
     /** @var list<int> */
     private array $posts = [];
@@ -84,6 +84,7 @@ final class CatalogSearchTest extends RestTestCase
         foreach ($this->terms as [$term, $taxonomy]) {
             wp_delete_term($term, $taxonomy);
         }
+        $_GET = [];
         $this->clean();
         parent::tearDown();
     }
@@ -133,6 +134,38 @@ final class CatalogSearchTest extends RestTestCase
         $result = $this->search(new SearchQuery(categoryIds: [$this->deskLamps], facets: true));
         self::assertSame([(string) $this->deskLamps => ['Desk lamps', 1], (string) $this->lighting => ['Lighting', 1]], self::counts($result->facet(Facet::CATEGORIES)));
         self::assertSame([(string) $this->acme => ['Acme', 1]], self::counts($result->facet(Facet::BRANDS)));
+    }
+
+    public function testTheShopPageNarrowsByTheShopsFiltersBrandPriceAndStockAndCountsWhatEachLeaves(): void
+    {
+        $this->actAs('administrator');
+        $size = $this->request('POST', '/search-filters', ['label' => 'Size', 'key' => 'size', 'attributes' => ['Size', 'Размер']], nonce: true);
+        self::assertSame(201, $size->get_status(), (string) wp_json_encode($size->get_data()));
+        self::assertSame(422, $this->request('POST', '/search-filters', ['label' => 'Sizes', 'key' => 'size', 'attributes' => ['Size']], nonce: true)->get_status(), 'keys are unique');
+        $names = array_values(array_filter($this->data($this->request('GET', '/search-filters/attributes')), \is_string(...)));
+        self::assertSame(['Colour', 'Size', 'Размер'], array_values(array_intersect($names, ['Colour', 'Size', 'Размер'])));
+        wp_set_current_user(0);
+
+        $_GET = ['f' => ['size' => ['M']]];
+        $page = do_blocks('<!-- wp:orillacart/products /-->');
+        self::assertSame(['Shirt', 'Hoodie'], self::names($page));
+        self::assertMatchesRegularExpression('#name="f\[size\]\[\]" value="m" checked>\s*M <span class="orillacart-facet__count">\(2\)</span>#', $page, 'the chosen value, counting both');
+        self::assertMatchesRegularExpression('#value="s">\s*S <span class="orillacart-facet__count">\(1\)</span>#', $page, 'S counts though M is chosen');
+
+        $_GET = ['f' => ['size' => ['m']], 'in_stock' => '1'];
+        self::assertSame(['Hoodie'], self::names(do_blocks('<!-- wp:orillacart/products /-->')), 'the shirt\'s M is sold out');
+        $_GET = ['price_min' => '45'];
+        self::assertSame(['TV stand', 'Hoodie'], self::names(do_blocks('<!-- wp:orillacart/products /-->')));
+        $_GET = ['brand' => [(string) $this->acme]];
+        $branded = do_blocks('<!-- wp:orillacart/products /-->');
+        self::assertSame(['Brass desk lamp'], self::names($branded));
+        self::assertStringContainsString('Clear the filters', $branded);
+        $_GET = [];
+        self::assertStringNotContainsString('orillacart-facets', do_blocks('<!-- wp:orillacart/products {"filters":false} /-->'));
+
+        $_GET = ['q' => 'lamp'];
+        self::assertStringContainsString('value="lamp"', do_blocks('<!-- wp:orillacart/product-search /-->'), 'the search box keeps the words');
+        $_GET = [];
     }
 
     public function testUnpublishedAndDeletedProductsLeaveTheIndex(): void
@@ -209,6 +242,16 @@ final class CatalogSearchTest extends RestTestCase
         self::assertSame([900002 => 'Broken'], $queue->status($now)->parked);
         $queue->push([900002], $now);
         self::assertCount(1, $queue->claim(10, $now, $later), 'until it changes again');
+    }
+
+    /**
+     * @return list<string> the products on the page, in order
+     */
+    private static function names(string $html): array
+    {
+        preg_match_all('#class="orillacart-product-card__name">([^<]+)<#', $html, $found);
+
+        return $found[1];
     }
 
     /**

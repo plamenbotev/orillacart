@@ -1,0 +1,9 @@
+{#
+ # A product search box: action (the shop page), search (the words in the address), placeholder.
+ #}
+{% set field_id = 'orillacart-product-search-' ~ random() %}
+<form class="orillacart-product-search" method="get" action="{{ action }}" role="search">
+    <label class="screen-reader-text" for="{{ field_id }}">{{ __('Search products') }}</label>
+    <input id="{{ field_id }}" type="search" name="q" value="{{ search }}" placeholder="{{ placeholder }}">
+    <button type="submit" class="wp-element-button orillacart-button">{{ __('Search') }}</button>
+</form>

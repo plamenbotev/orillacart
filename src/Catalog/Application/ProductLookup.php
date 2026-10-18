@@ -29,6 +29,14 @@ final readonly class ProductLookup
     }
 
     /**
+     * @return list<string> the names attributes of products and sets use, each once, by name
+     */
+    public function attributeNames(): array
+    {
+        return $this->products->attributeNames();
+    }
+
+    /**
      * @return list<int>
      */
     public function idsUsingSet(int $setId): array

@@ -21,7 +21,10 @@ type ProductsAttributes = {
 	sort: 'order' | 'newest' | 'name' | 'price_asc' | 'price_desc';
 	featured: boolean;
 	onSale: boolean;
+	filters: boolean;
 };
+
+type SearchAttributes = { placeholder: string };
 
 const notes: Record< string, string > = {
 	'orillacart/cart': __( 'Shoppers see their cart here.', 'orillacart' ),
@@ -143,6 +146,15 @@ function ProductsEdit( {
 						checked={ attributes.onSale }
 						onChange={ ( onSale ) => setAttributes( { onSale } ) }
 					/>
+					<ToggleControl
+						label={ __( 'Show filters', 'orillacart' ) }
+						help={ __(
+							'Brands, the shop’s filters, price and stock, with how many products each leaves.',
+							'orillacart'
+						) }
+						checked={ attributes.filters }
+						onChange={ ( filters ) => setAttributes( { filters } ) }
+					/>
 				</PanelBody>
 			</InspectorControls>
 			<Placeholder
@@ -198,6 +210,38 @@ function MiniCartEdit( {
 	);
 }
 
+function SearchEdit( {
+	attributes,
+	setAttributes,
+}: {
+	attributes: SearchAttributes;
+	setAttributes: ( next: Partial< SearchAttributes > ) => void;
+} ) {
+	return (
+		<div { ...useBlockProps() }>
+			<InspectorControls>
+				<PanelBody title={ __( 'Product search', 'orillacart' ) }>
+					<TextControl
+						__next40pxDefaultSize
+						label={ __( 'Placeholder', 'orillacart' ) }
+						value={ attributes.placeholder }
+						onChange={ ( placeholder ) =>
+							setAttributes( { placeholder } )
+						}
+					/>
+				</PanelBody>
+			</InspectorControls>
+			<Placeholder
+				label={ __( 'Product search', 'orillacart' ) }
+				instructions={ __(
+					'A search box that lists the matching products on the shop page.',
+					'orillacart'
+				) }
+			/>
+		</div>
+	);
+}
+
 // Title, icon and attributes come from the server's registration.
 registerBlockType( 'orillacart/mini-cart', {
 	edit: MiniCartEdit,
@@ -205,6 +249,10 @@ registerBlockType( 'orillacart/mini-cart', {
 } as never );
 registerBlockType< ProductsAttributes >( 'orillacart/products', {
 	edit: ProductsEdit,
+	save: () => null,
+} as never );
+registerBlockType< SearchAttributes >( 'orillacart/product-search', {
+	edit: SearchEdit,
 	save: () => null,
 } as never );
 for ( const name of Object.keys( notes ) ) {

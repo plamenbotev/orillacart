@@ -31,6 +31,52 @@ async function fillBilling( page: Page, email: string ) {
 }
 
 test.describe( 'A visitor', () => {
+	test( 'narrows the shop by a filter without leaving the page, and goes back', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const filter = await requestUtils.rest< { id: number } >( {
+			method: 'POST',
+			path: '/orillacart/v1/search-filters',
+			data: {
+				label: 'E2E Size',
+				key: 'e2e-size',
+				attributes: [ 'Size' ],
+			},
+		} );
+		try {
+			await page.goto( shop.urls.shop );
+			const cards = page.locator( '.orillacart-product-card__name' );
+			await expect( cards.filter( { hasText: 'E2E Lamp' } ) ).toHaveCount(
+				1
+			);
+
+			await page
+				.getByRole( 'group', { name: 'E2E Size' } )
+				.getByRole( 'checkbox', { name: /^M/ } )
+				.check();
+			await expect( page ).toHaveURL( /f%5Be2e-size%5D%5B%5D=m/ );
+			await expect( cards.filter( { hasText: 'E2E Lamp' } ) ).toHaveCount(
+				0
+			);
+			await expect(
+				cards.filter( { hasText: 'E2E Hoodie' } )
+			).toHaveCount( 1 );
+
+			await page.goBack();
+			await expect( cards.filter( { hasText: 'E2E Lamp' } ) ).toHaveCount(
+				1
+			);
+		} finally {
+			await requestUtils
+				.rest( {
+					method: 'DELETE',
+					path: `/orillacart/v1/search-filters/${ filter.id }`,
+				} )
+				.catch( () => undefined );
+		}
+	} );
+
 	test( 'buys from the shop page and pays by bank transfer', async ( {
 		page,
 	} ) => {

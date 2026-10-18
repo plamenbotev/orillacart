@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Catalog\Infrastructure\Doctrine;
 
 use Doctrine\ORM\EntityManagerInterface;
+use OrillaCart\Catalog\Domain\Attribute;
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\AttributeSet;
 use OrillaCart\Catalog\Domain\Product;
@@ -114,6 +115,18 @@ final readonly class DoctrineProductRepository implements ProductRepository
         $set = $attribute->set();
 
         return $product !== null ? [$product->id()] : ($set !== null ? $this->idsUsingSet($set->id()) : []);
+    }
+
+    public function attributeNames(): array
+    {
+        $names = $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT a.name')
+            ->from(Attribute::class, 'a')
+            ->orderBy('a.name')
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        return array_values(array_filter($names, \is_string(...)));
     }
 
     public function idsUsingSet(int $setId): array
