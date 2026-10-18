@@ -29,6 +29,13 @@ interface OrderRepository
      */
     public function hasStandingOrder(?int $customerId, string $email): bool;
 
+    /**
+     * The ids of the orders after the given id, in order: for going through every order a batch at a time.
+     *
+     * @return list<int>
+     */
+    public function idsAfter(int $afterId, int $limit): array;
+
     public function save(Order $order): void;
 
     public function remove(Order $order): void;

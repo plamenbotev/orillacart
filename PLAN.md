@@ -68,6 +68,7 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 23c | ↳ Bundles and sets: any product can be made of other products or variations, at its own price or its items' sum less a percentage; sold while every item is, taking each item's stock; one line in the cart and order with its contents listed. | ec60250 |
 | ✅ | 23d | ↳ Bundle choices: an item may offer several variations for the customer to choose, and may be optional (a fixed price covers the required items; optional ones add their own). The product page asks the server for the price and stock of the chosen combination; the picks travel with the cart line to the order, and the order editor's picker asks for them | c81cc5c |
 | ✅ | 24 | Refunds through the payment methods: `RefundsPayments` in the extension API (PayPal refunds captures and records refunds made in its dashboard from the webhook); offline methods recorded by hand; full and partial, by items or an amount alone, with restock; the customer is emailed; paid orders leave only by refunding, not by cancelling (raised 2026-10-18) | 82e5059 |
+| ✅ | 29 | Reports (Shop → Reports): sales, products, categories, coupons and customers over any days against the days before or a year before, by day, week or month, with charts and CSV. Fact tables kept per order by background jobs, so reports never read the orders; refunds count on their own day; `wp orillacart reports rebuild` | [design](docs/designs/29-reports.md) |
 
 ## Waiting on others
 

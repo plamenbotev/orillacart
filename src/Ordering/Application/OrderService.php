@@ -23,6 +23,7 @@ use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RefundOrder;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
+use OrillaCart\Ordering\Domain\Event\OrderChanged;
 use OrillaCart\Ordering\Domain\Event\OrderDeleted;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
@@ -216,6 +217,7 @@ final readonly class OrderService
         $order->changeContact($command->email, $command->billing->toAddress(), $command->shippingAddress?->toAddress());
         $order->addNote('The customer\'s details were changed.', NoteAuthor::System, false, $this->clock->now(), $userId);
         $this->orders->save($order);
+        $this->events->dispatch(new OrderChanged($order->id()));
 
         return $this->view($order, true);
     }
@@ -251,6 +253,7 @@ final readonly class OrderService
                 $userId,
             );
             $this->orders->save($order);
+            $this->events->dispatch(new OrderChanged($order->id()));
         }
 
         return $this->view($order, true);
@@ -295,6 +298,7 @@ final readonly class OrderService
         $order = $this->get($id);
         $order->belongTo($customerId);
         $this->orders->save($order);
+        $this->events->dispatch(new OrderChanged($order->id()));
     }
 
     /**
@@ -355,6 +359,16 @@ final readonly class OrderService
         $order->addNote(trim($note) === '' ? $text : $text . ' ' . trim($note), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
         $this->orders->save($order);
         $this->events->dispatch(new OrderStatusChanged($order->id(), $order->status(), $previous, $tellCustomer, $tellShop));
+    }
+
+    /**
+     * The ids of the orders after the given id, in order: for going through every order a batch at a time.
+     *
+     * @return list<int>
+     */
+    public function ids(int $afterId, int $limit): array
+    {
+        return $this->orders->idsAfter($afterId, $limit);
     }
 
     /** Whether the customer, by account or by email, ordered before: an order that stands, not cancelled or failed. */
@@ -450,6 +464,7 @@ final readonly class OrderService
         );
         $order->addNote(\sprintf('The items were changed; the total went from %s to %s %s.', $before, (string) $order->total(), $order->currency()), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
         $this->orders->save($order);
+        $this->events->dispatch(new OrderChanged($order->id()));
 
         return $this->view($order, true);
     }

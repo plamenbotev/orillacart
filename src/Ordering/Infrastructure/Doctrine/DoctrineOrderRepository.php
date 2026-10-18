@@ -90,6 +90,16 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         return $query->getQuery()->getOneOrNullResult() !== null;
     }
 
+    public function idsAfter(int $afterId, int $limit): array
+    {
+        $ids = $this->entityManager->createQueryBuilder()->select('o.id')->from(Order::class, 'o')
+            ->where('o.id > :after')->setParameter('after', $afterId)
+            ->orderBy('o.id')->setMaxResults($limit)
+            ->getQuery()->getSingleColumnResult();
+
+        return array_values(array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $ids));
+    }
+
     public function save(Order $order): void
     {
         $this->entityManager->persist($order);

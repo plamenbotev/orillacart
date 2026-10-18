@@ -32,6 +32,14 @@ final class InMemoryOrderRepository implements OrderRepository
         return null;
     }
 
+    public function idsAfter(int $afterId, int $limit): array
+    {
+        $ids = array_values(array_filter(array_keys($this->orders), static fn(int $id): bool => $id > $afterId));
+        sort($ids);
+
+        return \array_slice($ids, 0, $limit);
+    }
+
     public function pendingPaymentSince(\DateTimeImmutable $before): array
     {
         return array_values(array_filter($this->orders, static fn(Order $order): bool => $order->status() === OrderStatus::PendingPayment && $order->placedAt() < $before));

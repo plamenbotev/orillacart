@@ -1,0 +1,125 @@
+/* The Shop → Reports screen */
+[id^="orillacart-admin-"] .orillacart-reports__toolbar {
+	margin-bottom: 16px;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__toolbar .components-base-control__field {
+	margin-bottom: 0;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__about {
+	color: #50575e;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__loading {
+	display: flex;
+	justify-content: center;
+	padding: 48px 0;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__kpis {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	margin: 16px 0;
+	border-top: 1px solid #dcdcde;
+	border-left: 1px solid #dcdcde;
+	background: #fff;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__kpi {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 16px;
+	border-right: 1px solid #dcdcde;
+	border-bottom: 1px solid #dcdcde;
+	background: #fff;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__kpi-label {
+	color: #50575e;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__kpi-value {
+	font-size: 20px;
+	line-height: 1.3;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__delta {
+	color: #50575e;
+	font-variant-numeric: tabular-nums;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__delta.is-good {
+	color: #008a20;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__delta.is-bad {
+	color: #d63638;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports .components-card {
+	margin-bottom: 16px;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports .components-card__header h2 {
+	margin: 0;
+	font-size: 14px;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__chart {
+	width: 100%;
+	min-height: 120px;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__shares {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 16px;
+	align-items: start;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__shares .components-card {
+	margin: 0;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__share-list {
+	margin: 0;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__share-list li {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 4px 12px;
+	margin-bottom: 12px;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__share-figure {
+	color: #50575e;
+	font-variant-numeric: tabular-nums;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__share-bar {
+	grid-column: 1 / -1;
+	height: 6px;
+	background: #f0f0f1;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__share-bar span {
+	display: block;
+	height: 100%;
+	background: #2271b1;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__table {
+	margin-top: 16px;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__table .is-number {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+[id^="orillacart-admin-"] .orillacart-reports__empty {
+	color: #50575e;
+}
