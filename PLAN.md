@@ -49,8 +49,8 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | | # | Item | Commit |
 |---|---|---|---|
 | 🔄 | 21 | Storefront filtering and search on an index fed by a database queue (`FOR UPDATE SKIP LOCKED`, workers or cron); database or OpenSearch behind one interface ([design](docs/designs/21-catalog-search.md), approved) | |
-| 🔄 | 21a | ↳ Search index, queue and workers (cron, end of request, WP-CLI), MySQL engine; the shop page searches, sorts and filters on it | |
-| ⬜ | 21b | ↳ Filters the shop defines, facet counts, price and stock filters, Search block | |
+| ✅ | 21a | ↳ Search index, queue and workers (cron, end of request, WP-CLI), MySQL engine; the shop page searches, sorts and filters on it | 9ae4f66 |
+| 🔄 | 21b | ↳ Filters the shop defines, facet counts, price and stock filters, Search block | |
 | ⬜ | 21c | ↳ OpenSearch engine, queue status and rebuild in the settings | |
 | ⬜ | 25 | Orders list actions (raised 2026-10-18): create an order by hand in the admin (customer or guest, items with options, addresses, shipping, status; stock taken like checkout), and delete from the list (row and bulk actions; today only from an order's page, and only cancelled, failed or refunded ones) | |
 | 📝 | 26 | Carrier integrations (raised 2026-10-18): a contract a carrier module implements (live rates, pickup points/offices, shipments with labels and tracking), with DPD as the first. The old plugin had none, only its pluggable `methods/` folder holding the standard carrier; design needed (which DPD API and country, what the shop does with labels) | |
