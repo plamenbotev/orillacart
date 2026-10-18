@@ -11,8 +11,12 @@ Status: built (2026-10-18): 23a price rules and customer groups, 23b automatic d
   Shop → Price rules; customers see their description, and they apply before any coupon codes.
 - A bundle is not a product type: any product (physical or virtual) can hold other products or variations, and
   is then sold while every item is, taking each item's stock. A set is a bundle at its own price, so it needs no
-  separate setting. Optional items and choices among variations inside a bundle are not built yet: each item is
-  a product without choices, or one chosen variation. A bundle cannot have variations or hold another bundle.
+  separate setting. A bundle cannot have variations or hold another bundle.
+- Choices (23d): an item lists the variations it offers; several are the customer's choice. An item may be
+  optional. The customer's picks are the ids of the chosen variations and added optional products (post ids, so
+  they never collide), kept on the cart and order line. A fixed price covers the required items; optional items
+  add their own prices (with the discount, when priced as the sum). The product page asks
+  `POST /products/{id}/bundle-quote` for the price and stock of what is chosen.
 - The search index keeps the guest price; logged-in customers see their group's price on the product page, in
   listings, the cart and checkout.
 

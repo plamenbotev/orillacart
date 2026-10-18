@@ -41,5 +41,7 @@ final readonly class LineDraft
         public ?Money $discount = null,
         /** @var list<array{name: string, quantity: int}> what one bundle holds, for a bundle */
         public array $contents = [],
+        /** @var list<int> for a bundle, the variations chosen and the optional products added */
+        public array $bundleChoices = [],
     ) {}
 }

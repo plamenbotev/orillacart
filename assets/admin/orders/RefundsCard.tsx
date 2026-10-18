@@ -30,7 +30,10 @@ interface RefundsCardProps {
 	onError: ( error: unknown ) => void;
 }
 
-/** Four decimals, as the shop keeps money, without trailing zeros. */
+/**
+ * @param value An amount.
+ * @return Four decimals, as the shop keeps money, without trailing zeros.
+ */
 const decimal = ( value: number ) =>
 	String( Math.round( value * 10000 ) / 10000 );
 
@@ -75,6 +78,11 @@ const METHOD_LABELS: Record< Refund[ 'method' ], string > = {
  * The order's refunds, and a form to give money back: chosen items (the amount follows, and the shop can change
  * it), the shipping, or an amount alone. Through the payment provider when it can refund, otherwise recorded as
  * made outside the shop.
+ *
+ * @param props            The card's properties.
+ * @param props.order      The order refunded.
+ * @param props.onRefunded Told of each refund made, with a message for the shop.
+ * @param props.onError    Shows what went wrong.
  */
 export function RefundsCard( {
 	order,

@@ -481,6 +481,7 @@ final readonly class OrderService
             $line->backorderShown,
             Money::of($line->discount),
             $line->contents,
+            $line->bundleChoices,
         ), $lines);
     }
 

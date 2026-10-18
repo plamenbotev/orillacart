@@ -9,6 +9,14 @@ import { bindGallery, type Gallery, type Picture } from './gallery';
 
 type CartSummary = { items: number };
 
+type BundleQuote = {
+	price: string | null;
+	/** Rendered by the shop's own template (escaped there). */
+	price_html: string;
+	for_sale: boolean;
+	available: number | null;
+};
+
 type Variation = {
 	id: number;
 	option_ids: number[];
@@ -84,6 +92,19 @@ export function bindAddToCart( form: HTMLFormElement ): void {
 		);
 		showVariation( form, variations, gallery );
 	}
+	const bundle = Number( form.dataset.bundle ?? 0 );
+	if ( bundle > 0 ) {
+		form.addEventListener( 'change', ( event ) => {
+			if (
+				( event.target as HTMLElement ).matches(
+					'[data-orillacart-bundle-choice]'
+				)
+			) {
+				void showBundle( form, bundle );
+			}
+		} );
+		void showBundle( form, bundle );
+	}
 
 	form.addEventListener( 'submit', async ( event ) => {
 		event.preventDefault();
@@ -95,11 +116,12 @@ export function bindAddToCart( form: HTMLFormElement ): void {
 			button.disabled = true;
 		}
 		const body = formBody( form, {
-			lists: [ 'option_ids' ],
+			lists: [ 'option_ids', 'bundle_choices' ],
 			numbers: [ 'product_id', 'quantity' ],
 		} );
 		const result = await api< CartSummary >( 'POST', '/cart/items', {
 			option_ids: [],
+			bundle_choices: [],
 			...body,
 		} );
 		if ( button ) {
@@ -124,6 +146,73 @@ export function bindAddToCart( form: HTMLFormElement ): void {
 			'error'
 		);
 	} );
+}
+
+/** The latest bundle quote asked for on each form: an older answer arriving late is ignored. */
+const bundleRequests = new WeakMap< HTMLFormElement, number >();
+
+/**
+ * Shows a bundle's price and stock with the items the customer chose, as the shop prices them.
+ * @param form   The add-to-cart form.
+ * @param bundle The bundle's product id.
+ */
+async function showBundle(
+	form: HTMLFormElement,
+	bundle: number
+): Promise< void > {
+	const request = ( bundleRequests.get( form ) ?? 0 ) + 1;
+	bundleRequests.set( form, request );
+	const { bundle_choices: choices = [] } = formBody( form, {
+		lists: [ 'bundle_choices' ],
+	} );
+	const result = await api< BundleQuote >(
+		'POST',
+		`/products/${ bundle }/bundle-quote`,
+		{ bundle_choices: choices }
+	);
+	if ( bundleRequests.get( form ) !== request ) {
+		return;
+	}
+	const button = form.querySelector< HTMLButtonElement >(
+		'button[type="submit"]'
+	);
+	const product = form.closest( '.orillacart-product' );
+	const stock = product?.querySelector( '[data-orillacart-stock]' );
+	if ( ! result.ok ) {
+		if ( button ) {
+			button.disabled = true;
+		}
+		return;
+	}
+	const price = product?.querySelector( '[data-orillacart-price]' );
+	if ( price ) {
+		price.innerHTML = result.data.price_html;
+	}
+	if ( stock ) {
+		if ( ! result.data.for_sale ) {
+			stock.textContent = __( 'Not available', 'orillacart' );
+		} else {
+			stock.textContent =
+				result.data.available === null
+					? ''
+					: sprintf(
+							/* translators: %d: how many are in stock */ __(
+								'%d in stock',
+								'orillacart'
+							),
+							result.data.available
+						);
+		}
+	}
+	const quantity = form.querySelector< HTMLInputElement >(
+		'input[name="quantity"]'
+	);
+	if ( quantity ) {
+		quantity.max = String( result.data.available ?? 999 );
+	}
+	if ( button ) {
+		button.disabled = ! result.data.for_sale;
+	}
 }
 
 /**

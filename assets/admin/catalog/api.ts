@@ -121,11 +121,15 @@ export interface Product {
 
 export interface BundleItem {
 	product_id: number;
-	/** For a product with variations: which one. */
-	variation_id: number | null;
+	/** For a product with variations: the one the bundle holds, or several the customer chooses from. */
+	variation_ids: number[];
 	quantity: number;
+	/** Left out unless the customer adds it. */
+	optional: boolean;
 	/** As the API returns it; not sent back. */
 	name?: string;
+	/** The listed variations' names, as the API returns them; not sent back. */
+	variations?: { id: number; name: string }[];
 }
 
 export interface Bundle {
@@ -227,8 +231,9 @@ export function toBundleInput( bundle: Bundle | null ): Bundle | null {
 				discount: bundle.discount,
 				items: bundle.items.map( ( item ) => ( {
 					product_id: item.product_id,
-					variation_id: item.variation_id,
+					variation_ids: item.variation_ids,
 					quantity: item.quantity,
+					optional: item.optional,
 				} ) ),
 			};
 }

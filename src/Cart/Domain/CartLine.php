@@ -26,8 +26,13 @@ class CartLine
     #[ORM\Column]
     private int $quantity;
 
+    /** @var list<int> sorted: for a bundle, the variations chosen and the optional products added */
+    #[ORM\Column(type: 'json')]
+    private array $bundleChoices;
+
     /**
      * @param list<int> $optionIds
+     * @param list<int> $bundleChoices
      */
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Cart::class, inversedBy: 'lines')]
@@ -39,8 +44,10 @@ class CartLine
         int $quantity,
         #[ORM\Column]
         private int $position,
+        array $bundleChoices = [],
     ) {
         $this->optionIds = self::normalized($optionIds);
+        $this->bundleChoices = self::normalized($bundleChoices);
         $this->setQuantity($quantity);
     }
 
@@ -70,6 +77,12 @@ class CartLine
         return $this->optionIds;
     }
 
+    /** @return list<int> */
+    public function bundleChoices(): array
+    {
+        return $this->bundleChoices;
+    }
+
     public function quantity(): int
     {
         return $this->quantity;
@@ -82,10 +95,11 @@ class CartLine
 
     /**
      * @param list<int> $optionIds
+     * @param list<int> $bundleChoices
      */
-    public function isFor(int $productId, array $optionIds): bool
+    public function isFor(int $productId, array $optionIds, array $bundleChoices = []): bool
     {
-        return $this->productId === $productId && $this->optionIds === self::normalized($optionIds);
+        return $this->productId === $productId && $this->optionIds === self::normalized($optionIds) && $this->bundleChoices === self::normalized($bundleChoices);
     }
 
     /** @internal for Cart */
@@ -98,15 +112,15 @@ class CartLine
     }
 
     /**
-     * @param list<int> $optionIds
+     * @param list<int> $ids
      *
      * @return list<int>
      */
-    private static function normalized(array $optionIds): array
+    private static function normalized(array $ids): array
     {
-        $optionIds = array_values(array_unique($optionIds));
-        sort($optionIds);
+        $ids = array_values(array_unique($ids));
+        sort($ids);
 
-        return $optionIds;
+        return $ids;
     }
 }

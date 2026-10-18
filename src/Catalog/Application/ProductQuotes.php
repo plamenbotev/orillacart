@@ -77,14 +77,18 @@ final readonly class ProductQuotes
         $contents = [];
         $forSale = true;
         $bundle = $product->bundle();
+        if ($bundle === null && ($request->bundleChoices ?? []) !== []) {
+            throw new InvalidSelection('Only a bundle offers choices of its items.');
+        }
         if ($bundle !== null) {
             // A bundle is sold while each item is, as many as its scarcest item allows; its weight is its items'
-            // unless it has its own, and the buyer gets every item's downloads.
+            // unless it has its own (and then the optional items' on top), and the buyer gets every item's downloads.
             $available = $inStock = null;
             $sum = Money::zero();
             $itemsWeight = Money::zero();
-            foreach ($bundle->items as $item) {
-                $quote = $this->quote(new QuoteRequest($item->productId, $this->signature($item->productId, $item->variationId), $item->quantity * max(1, $request->quantity), $request->customerId));
+            $extras = $extrasWeight = Money::zero();
+            foreach ($bundle->select($request->bundleChoices) as [$item, $variationId]) {
+                $quote = $this->quote(new QuoteRequest($item->productId, $this->signature($item->productId, $variationId), $item->quantity * max(1, $request->quantity), $request->customerId));
                 $forSale = $forSale && $quote->forSale;
                 if ($quote->available !== null) {
                     $available = min($available ?? PHP_INT_MAX, intdiv(max(0, $quote->available), $item->quantity));
@@ -92,15 +96,22 @@ final readonly class ProductQuotes
                 if ($quote->inStock !== null) {
                     $inStock = min($inStock ?? PHP_INT_MAX, intdiv(max(0, $quote->inStock), $item->quantity));
                 }
-                $sum = $sum->add(Money::of($quote->unitPrice)->times($item->quantity));
-                $itemsWeight = $itemsWeight->add(Money::of($quote->weight ?? '0')->times($item->quantity));
+                $price = Money::of($quote->unitPrice)->times($item->quantity);
+                $sum = $sum->add($price);
+                if ($item->optional) {
+                    $extras = $extras->add($price);
+                }
+                $itemWeight = Money::of($quote->weight ?? '0')->times($item->quantity);
+                $itemsWeight = $itemsWeight->add($itemWeight);
+                if ($item->optional) {
+                    $extrasWeight = $extrasWeight->add($itemWeight);
+                }
                 array_push($downloads, ...$quote->downloads);
                 $contents[] = new QuotedBundleItem($quote->productId, $quote->variationId, $quote->name, $item->quantity, $quote->available !== null || $quote->inStock !== null, $quote->backorders);
             }
-            if ($bundle->pricing === Bundle::SUM) {
-                $unitPrice = $bundle->priceOf($sum);
-            }
-            $weight ??= $itemsWeight->isZero() ? null : (string) $itemsWeight;
+            // A fixed price covers the items every bundle holds; the optional ones the customer adds cost their own.
+            $unitPrice = $bundle->pricing === Bundle::SUM ? $bundle->priceOf($sum) : $unitPrice->add($extras);
+            $weight = $weight === null ? ($itemsWeight->isZero() ? null : (string) $itemsWeight) : (string) Money::of($weight)->add($extrasWeight);
             $backorders = Backorders::No;
         }
 

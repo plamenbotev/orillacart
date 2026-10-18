@@ -43,5 +43,7 @@ final readonly class NewOrderLine
         public string $discount = '0',
         /** @var list<array{name: string, quantity: int}> what one bundle holds, for a bundle */
         public array $contents = [],
+        /** @var list<int> for a bundle, the variations chosen and the optional products added */
+        public array $bundleChoices = [],
     ) {}
 }

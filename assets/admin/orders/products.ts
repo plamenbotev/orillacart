@@ -12,6 +12,24 @@ export interface ProductChoice {
 	}[];
 	/** Products with variations are sold only as one of them. */
 	variations: { id: number; option_ids: number[]; label: string }[];
+	/** A bundle's items the shop decides about: which variation, or whether to add an optional one. */
+	bundleChoices: BundleDecision[];
+}
+
+export interface BundleDecision {
+	product_id: number;
+	name: string;
+	optional: boolean;
+	/** The ids that pick it: its variations, or the product itself. */
+	choices: { id: number; name: string }[];
+}
+
+interface BundleItemData {
+	product_id: number;
+	variation_ids: number[];
+	optional: boolean;
+	name: string;
+	variations: { id: number; name: string }[];
 }
 
 /**
@@ -46,11 +64,25 @@ export async function fetchProductChoices(
 		name: string;
 		offered: ProductChoice[ 'attributes' ];
 		variations: ProductChoice[ 'variations' ];
+		bundle: { items: BundleItemData[] } | null;
 	} >( { path: `/orillacart/v1/products/${ id }` } );
 	return {
 		id: product.id,
 		name: product.name,
 		attributes: product.variations.length > 0 ? [] : product.offered,
 		variations: product.variations,
+		bundleChoices: ( product.bundle?.items ?? [] )
+			.filter(
+				( item ) => item.optional || item.variation_ids.length > 1
+			)
+			.map( ( item ) => ( {
+				product_id: item.product_id,
+				name: item.name,
+				optional: item.optional,
+				choices:
+					item.variations.length > 0
+						? item.variations
+						: [ { id: item.product_id, name: item.name } ],
+			} ) ),
 	};
 }

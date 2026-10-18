@@ -139,10 +139,10 @@ final readonly class ManualOrders
     /**
      * @param list<EditedItem> $items
      *
-     * @return list<array{product_id: int, option_ids: list<int>, quantity: int, unit_price: ?string}>
+     * @return list<array{product_id: int, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: ?string}>
      */
     private static function items(array $items): array
     {
-        return array_map(static fn(EditedItem $item): array => ['product_id' => $item->productId, 'option_ids' => $item->optionIds, 'quantity' => $item->quantity, 'unit_price' => $item->unitPrice], $items);
+        return array_map(static fn(EditedItem $item): array => ['product_id' => $item->productId, 'option_ids' => $item->optionIds, 'bundle_choices' => $item->bundleChoices, 'quantity' => $item->quantity, 'unit_price' => $item->unitPrice], $items);
     }
 }

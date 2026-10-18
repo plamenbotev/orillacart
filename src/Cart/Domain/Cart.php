@@ -107,16 +107,17 @@ class Cart
     }
 
     /**
-     * Adds items; the same product with the same options adds to its line.
+     * Adds items; the same product with the same options (and bundle choices) adds to its line.
      *
      * @param list<int> $optionIds
+     * @param list<int> $bundleChoices
      *
      * @return CartLine the line now holding them
      */
-    public function add(int $productId, array $optionIds, int $quantity, \DateTimeImmutable $now): CartLine
+    public function add(int $productId, array $optionIds, int $quantity, \DateTimeImmutable $now, array $bundleChoices = []): CartLine
     {
         foreach ($this->lines as $line) {
-            if ($line->isFor($productId, $optionIds)) {
+            if ($line->isFor($productId, $optionIds, $bundleChoices)) {
                 $line->setQuantity($line->quantity() + $quantity);
                 $this->updatedAt = $now;
 
@@ -130,7 +131,7 @@ class Cart
         foreach ($this->lines as $line) {
             $position = max($position, $line->position() + 1);
         }
-        $line = new CartLine($this, $productId, $optionIds, $quantity, $position);
+        $line = new CartLine($this, $productId, $optionIds, $quantity, $position, $bundleChoices);
         $this->lines->add($line);
         $this->updatedAt = $now;
 

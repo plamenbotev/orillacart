@@ -38,7 +38,7 @@ import {
 	withSalePrice,
 } from './fields';
 import { StockLevels } from './StockLevels';
-import { BundlePanel } from './BundlePanel';
+import { BundlePanel, bundleItemKey, bundleItemLabel } from './BundlePanel';
 import { DownloadsPanel } from './DownloadsPanel';
 import { VariationsPanel } from './VariationsPanel';
 
@@ -532,8 +532,11 @@ export function ProductPanels() {
 					bundle={ draft.bundle }
 					names={ Object.fromEntries(
 						( product.bundle?.items ?? [] ).map( ( item ) => [
-							`${ item.product_id }:${ item.variation_id ?? 0 }`,
-							item.name ?? `#${ item.product_id }`,
+							bundleItemKey( item ),
+							bundleItemLabel(
+								item.name ?? `#${ item.product_id }`,
+								( item.variations ?? [] ).map( ( v ) => v.name )
+							),
 						] )
 					) }
 					hasVariations={ product.variations.length > 0 }

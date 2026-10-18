@@ -12,7 +12,9 @@ use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\Backorders;
+use OrillaCart\Catalog\Domain\Bundle;
 use OrillaCart\Catalog\Domain\DownloadFile;
+use OrillaCart\Catalog\Domain\InvalidSelection;
 use OrillaCart\Catalog\Domain\PricedItem;
 use OrillaCart\Catalog\Domain\Pricing;
 use OrillaCart\Catalog\Domain\Product;
@@ -55,6 +57,24 @@ final readonly class ShopCatalog
         $product = $this->products->find($id) ?? throw new ProductNotFound($id);
 
         return $this->toOffer($product, $this->clock->now(), $this->prices->forShopper($customerId), null, $customerId);
+    }
+
+    /**
+     * A bundle with the customer's choices: its price, whether it can be bought, and how many.
+     *
+     * @param list<int> $choices the variations chosen and the optional products added
+     *
+     * @throws ProductNotFound for a product that is not a published bundle
+     * @throws InvalidSelection
+     */
+    public function bundleOffer(int $id, array $choices, ?int $customerId = null): ProductOffer
+    {
+        $product = $this->products->find($id);
+        if ($product === null || !$product->isBundle() || !$this->content->isPublished($id)) {
+            throw new ProductNotFound($id);
+        }
+
+        return $this->toBundleOffer($product, $customerId, $choices);
     }
 
     /**
@@ -131,7 +151,7 @@ final readonly class ShopCatalog
     {
         $details = $product->details();
         if ($product->isBundle()) {
-            return $this->bundleOffer($product, $customerId);
+            return $this->toBundleOffer($product, $customerId);
         }
         $terms = $this->content->termIds($product->id());
         $item = static fn(Pricing $pricing): PricedItem => new PricedItem($product->id(), $pricing->priceAt($now)->compare($pricing->price()) < 0, $terms['categories'], $terms['brands']);
@@ -198,14 +218,24 @@ final readonly class ShopCatalog
     }
 
     /**
-     * A bundle as the cart prices it: from its items, available while each is.
+     * A bundle as the cart prices it: from its items, available while each is. Without choices, as the page first
+     * shows it: the first variation of each choice, without optional items.
+     *
+     * @param list<int>|null $choices
+     *
+     * @throws InvalidSelection only for choices given
      */
-    private function bundleOffer(Product $product, ?int $customerId): ProductOffer
+    private function toBundleOffer(Product $product, ?int $customerId, ?array $choices = null): ProductOffer
     {
         $details = $product->details();
+        $bundle = $product->bundle();
+        \assert($bundle !== null);
         try {
-            $quote = $this->quotes->quote(new QuoteRequest($product->id(), [], 1, $customerId));
-        } catch (NotFound|RuleViolation) {
+            $quote = $this->quotes->quote(new QuoteRequest($product->id(), [], 1, $customerId, $choices));
+        } catch (NotFound|RuleViolation $e) {
+            if ($choices !== null && $e instanceof InvalidSelection) {
+                throw $e;
+            }
             $quote = null;
         }
         $priceHidden = $details->priceVisibility->isHidden($this->settings->current()->hidePrices);
@@ -228,7 +258,74 @@ final readonly class ShopCatalog
             false,
             [],
             array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $quote->contents ?? []),
+            $choices === null ? $this->bundleChoices($bundle, $customerId) : [],
         );
+    }
+
+    /**
+     * What the customer decides about a bundle: which variation of an item, and whether to add an optional one,
+     * with what an optional item adds to the price.
+     *
+     * @return list<array{product_id: int, name: string, quantity: int, optional: bool, choices: list<array{id: int, name: string, for_sale: bool, price: ?string}>}>
+     */
+    private function bundleChoices(Bundle $bundle, ?int $customerId): array
+    {
+        $decisions = [];
+        foreach ($bundle->items as $item) {
+            if (!$item->asksTheCustomer()) {
+                continue;
+            }
+            $choices = [];
+            foreach ($item->pickIds() as $pick) {
+                $variationId = $item->variationIds === [] ? null : $pick;
+                try {
+                    $quote = $this->quotes->quote(new QuoteRequest($item->productId, $this->signature($item->productId, $variationId), $item->quantity, $customerId));
+                } catch (NotFound|RuleViolation) {
+                    continue;
+                }
+                $price = Money::of($quote->unitPrice)->times($item->quantity);
+                $choices[] = [
+                    'id' => $pick,
+                    'name' => $variationId === null ? $quote->name : $this->variationName($item->productId, $variationId),
+                    'for_sale' => $quote->forSale && ($quote->available === null || $quote->available >= $item->quantity),
+                    'price' => $item->optional ? (string) ($bundle->pricing === Bundle::SUM ? $bundle->priceOf($price) : $price) : null,
+                ];
+            }
+            $decisions[] = [
+                'product_id' => $item->productId,
+                'name' => $this->content->name($item->productId),
+                'quantity' => $item->quantity,
+                'optional' => $item->optional,
+                'choices' => $choices,
+            ];
+        }
+
+        return $decisions;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function signature(int $productId, ?int $variationId): array
+    {
+        foreach ($variationId === null ? [] : $this->products->find($productId)?->variations() ?? [] as $variation) {
+            if ($variation->id() === $variationId) {
+                return $variation->signature();
+            }
+        }
+
+        return [];
+    }
+
+    private function variationName(int $productId, int $variationId): string
+    {
+        foreach ($this->products->find($productId)?->variations() ?? [] as $variation) {
+            if ($variation->id() === $variationId) {
+                return implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $variation->options()));
+            }
+        }
+
+        return '#' . $variationId;
     }
 
     /**

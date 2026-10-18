@@ -41,11 +41,13 @@ final readonly class ProductOffer
         public array $tiers = [],
         /** @var list<array{name: string, quantity: int}> what one holds, for a bundle */
         public array $contents = [],
+        /** @var list<array{product_id: int, name: string, quantity: int, optional: bool, choices: list<array{id: int, name: string, for_sale: bool, price: ?string}>}> a bundle's items the customer decides about: which variation, or whether to add it; price is what an optional one adds */
+        public array $bundleChoices = [],
     ) {}
 
     /** Whether the product goes in the cart as it is, with no options to choose. */
     public function isSimple(): bool
     {
-        return $this->attributes === [] && $this->variations === [];
+        return $this->attributes === [] && $this->variations === [] && $this->bundleChoices === [];
     }
 }

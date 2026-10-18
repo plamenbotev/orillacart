@@ -267,7 +267,7 @@ final readonly class Consignments
         foreach ($order->lines as $line) {
             \assert($line instanceof OrderLineView);
             try {
-                $quote = $this->products->quote(new QuoteRequest($line->productId, $line->optionIds));
+                $quote = $this->products->quote(new QuoteRequest($line->productId, $line->optionIds, bundleChoices: $line->bundleChoices));
             } catch (RuleViolation) {
                 $items[] = new ShipmentItem($line->quantity, name: $line->name);
                 continue;

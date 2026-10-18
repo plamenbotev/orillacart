@@ -51,7 +51,7 @@ final readonly class OrderEditing
         $order = $this->orders->order($orderId);
         $billing = new TaxAddress($order->billing->country, $order->billing->state);
         $shippingAddress = $order->shippingAddress ?? $order->billing;
-        $items = array_map(static fn(OrderLineView $line): array => ['product_id' => $line->productId, 'option_ids' => $line->optionIds, 'quantity' => $line->quantity, 'unit_price' => $line->unitPrice], $order->lines);
+        $items = array_map(static fn(OrderLineView $line): array => ['product_id' => $line->productId, 'option_ids' => $line->optionIds, 'bundle_choices' => $line->bundleChoices, 'quantity' => $line->quantity, 'unit_price' => $line->unitPrice], $order->lines);
 
         $codes = array_map(static fn(OrderDiscountView $discount): string => $discount->code, $order->discounts);
 
@@ -87,7 +87,7 @@ final readonly class OrderEditing
         $billing = new TaxAddress($order->billing->country, $order->billing->state);
         $shippingAddress = $order->shippingAddress ?? $order->billing;
         $shipping = new TaxAddress($shippingAddress->country, $shippingAddress->state);
-        $items = array_map(static fn(EditedItem $item): array => ['product_id' => $item->productId, 'option_ids' => $item->optionIds, 'quantity' => $item->quantity, 'unit_price' => $item->unitPrice], $command->items);
+        $items = array_map(static fn(EditedItem $item): array => ['product_id' => $item->productId, 'option_ids' => $item->optionIds, 'bundle_choices' => $item->bundleChoices, 'quantity' => $item->quantity, 'unit_price' => $item->unitPrice], $command->items);
 
         $keptPoint = $order->pickupPointId;
         $codes = array_map(static fn(OrderDiscountView $discount): string => $discount->code, $order->discounts);

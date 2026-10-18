@@ -14,6 +14,7 @@ final readonly class EditedItem
 {
     /**
      * @param list<int> $optionIds
+     * @param list<int> $bundleChoices for a bundle, the variations chosen and the optional products added
      */
     public function __construct(
         #[Assert\Positive]
@@ -24,5 +25,8 @@ final readonly class EditedItem
         public array $optionIds = [],
         #[Assert\Regex(SaveProduct::AMOUNT, message: SaveProduct::AMOUNT_MESSAGE)]
         public ?string $unitPrice = null,
+        #[Assert\Count(max: 100)]
+        #[Assert\All([new Assert\Positive()])]
+        public array $bundleChoices = [],
     ) {}
 }

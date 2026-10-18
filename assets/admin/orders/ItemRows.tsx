@@ -99,6 +99,7 @@ export function ItemRows( {
 							item: {
 								product_id: picked.product_id,
 								option_ids: picked.option_ids,
+								bundle_choices: picked.bundle_choices,
 								quantity: 1,
 								unit_price: null,
 							},

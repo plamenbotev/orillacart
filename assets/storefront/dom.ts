@@ -166,7 +166,12 @@ export function formBody(
 			if ( ! element.checked ) {
 				continue;
 			}
-			value = element.type === 'checkbox' ? true : element.value;
+			// A checked box is a flag, unless it is one of a list's values.
+			value =
+				element.type === 'checkbox' &&
+				! types.lists?.includes( element.name )
+					? true
+					: element.value;
 		}
 		if ( types.flags?.includes( element.name ) ) {
 			value = true;

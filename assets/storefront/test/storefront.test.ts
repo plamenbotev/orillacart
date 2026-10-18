@@ -276,6 +276,7 @@ describe( 'add to cart', () => {
 		expect( JSON.parse( String( calls[ 1 ]?.init.body ) ) ).toEqual( {
 			product_id: 9,
 			option_ids: [ 5, 8 ],
+			bundle_choices: [],
 			quantity: 1,
 		} );
 		expect(

@@ -24,6 +24,12 @@ abstract class Migration extends AbstractMigration
         $this->tablePrefix = $tablePrefix;
     }
 
+    /** A plugin table's name on this site, for reading data while a migration is planned. */
+    protected function table(string $name): string
+    {
+        return ($this->tablePrefix ?? throw new \LogicException(static::class . ' runs without a table prefix.')) . $name;
+    }
+
     /**
      * @param array<array-key, mixed> $params
      * @param array<array-key, mixed> $types

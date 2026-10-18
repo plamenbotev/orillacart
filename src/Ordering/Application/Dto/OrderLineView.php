@@ -31,10 +31,12 @@ final readonly class OrderLineView
         public string $discount = '0',
         /** @var list<array{name: string, quantity: int}> what one bundle holds */
         public array $contents = [],
+        /** @var list<int> for a bundle, the variations chosen and the optional products added */
+        public array $bundleChoices = [],
     ) {}
 
     public static function fromLine(OrderLine $line): self
     {
-        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $line->contents());
+        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $line->contents(), $line->bundleChoices());
     }
 }

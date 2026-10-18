@@ -17,6 +17,7 @@ import {
 export interface PickedItem {
 	product_id: number;
 	option_ids: number[];
+	bundle_choices: number[];
 	name: string;
 }
 
@@ -38,6 +39,8 @@ export function ProductPicker( {
 	const [ product, setProduct ] = useState< ProductChoice | null >( null );
 	const [ chosen, setChosen ] = useState< Record< number, number > >( {} );
 	const [ variation, setVariation ] = useState( '' );
+	/** For a bundle: each decision's pick, by its position. */
+	const [ picks, setPicks ] = useState< Record< number, number > >( {} );
 
 	useEffect( () => {
 		const timer = window.setTimeout( () => {
@@ -51,6 +54,7 @@ export function ProductPicker( {
 	const choose = ( value: string | null | undefined ) => {
 		setChosen( {} );
 		setVariation( '' );
+		setPicks( {} );
 		const id = Number( value );
 		if ( ! id ) {
 			setProduct( null );
@@ -124,12 +128,49 @@ export function ProductPicker( {
 					/>
 				</FlexItem>
 			) ) }
+			{ product?.bundleChoices.map( ( decision, index ) => (
+				<FlexItem key={ index }>
+					<SelectControl
+						__next40pxDefaultSize
+						label={ decision.name }
+						value={ String( picks[ index ] ?? '' ) }
+						options={ [
+							{
+								label: decision.optional
+									? __( '— Leave out —', 'orillacart' )
+									: __( '— Choose —', 'orillacart' ),
+								value: '',
+							},
+							...decision.choices.map( ( choice ) => ( {
+								label: choice.name,
+								value: String( choice.id ),
+							} ) ),
+						] }
+						onChange={ ( value ) =>
+							setPicks( ( current ) => {
+								const next = { ...current };
+								if ( value === '' ) {
+									delete next[ index ];
+								} else {
+									next[ index ] = Number( value );
+								}
+								return next;
+							} )
+						}
+					/>
+				</FlexItem>
+			) ) }
 			<FlexItem>
 				<Button
 					variant="secondary"
 					disabled={
 						product === null ||
-						( product.variations.length > 0 && variation === '' )
+						( product.variations.length > 0 && variation === '' ) ||
+						product.bundleChoices.some(
+							( decision, index ) =>
+								! decision.optional &&
+								picks[ index ] === undefined
+						)
 					}
 					onClick={ () => {
 						if ( product === null ) {
@@ -143,6 +184,7 @@ export function ProductPicker( {
 							option_ids: picked
 								? picked.option_ids
 								: Object.values( chosen ),
+							bundle_choices: Object.values( picks ),
 							name: picked
 								? `${ product.name } – ${ picked.label }`
 								: product.name,
@@ -150,6 +192,7 @@ export function ProductPicker( {
 						setProduct( null );
 						setChosen( {} );
 						setVariation( '' );
+						setPicks( {} );
 					} }
 				>
 					{ __( 'Add', 'orillacart' ) }

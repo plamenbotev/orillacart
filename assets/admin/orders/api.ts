@@ -53,6 +53,8 @@ export interface OrderLine {
 	total: string;
 	tax: string;
 	option_ids: number[];
+	/** For a bundle: the variations chosen and the optional products added. */
+	bundle_choices?: number[];
 	/** How many the shop owes: they were not in stock when the order was placed. */
 	backordered: number;
 	/** Whether the customer was told of the backorder. */
@@ -172,6 +174,8 @@ export interface OrderQuery {
 export interface EditedItem {
 	product_id: number;
 	option_ids: number[];
+	/** For a bundle: the variations chosen and the optional products added. */
+	bundle_choices?: number[];
 	quantity: number;
 	unit_price: string | null;
 }

@@ -72,7 +72,7 @@ class Product
     #[ORM\Column(nullable: true)]
     private ?int $downloadExpiryDays = null;
 
-    /** @var array{items: list<array{product_id: int, variation_id: ?int, quantity: int}>, pricing: string, discount: ?string}|null what it is made of, when it is a bundle */
+    /** @var array{items: list<array{product_id: int, variation_ids: list<int>, quantity: int, optional: bool}>, pricing: string, discount: ?string}|null what it is made of, when it is a bundle */
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $bundle = null;
 

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace OrillaCart\Catalog\Application\Dto;
 
 use OrillaCart\Catalog\Domain\AttributeSet;
-use OrillaCart\Catalog\Domain\BundleItem;
 use OrillaCart\Catalog\Domain\Pricing;
 use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Catalog\Domain\ProductDetails;
@@ -58,7 +57,7 @@ final readonly class ProductView
     ) {}
 
     /**
-     * @param (\Closure(BundleItem): string)|null $itemName names a bundle's items
+     * @param (\Closure(int, ?int): string)|null $itemName names a bundle's products, and their variations by their options
      */
     public static function fromProduct(Product $product, string $name, ?\Closure $itemName = null): self
     {
@@ -92,7 +91,7 @@ final readonly class ProductView
             $details->priceVisibility->value,
             $details->shippingClassId,
             $details->backorders->value,
-            $bundle === null ? null : BundleView::fromBundle($bundle, $itemName ?? static fn(BundleItem $item): string => '#' . $item->productId),
+            $bundle === null ? null : BundleView::fromBundle($bundle, $itemName ?? static fn(int $productId, ?int $variationId): string => '#' . ($variationId ?? $productId)),
         );
     }
 

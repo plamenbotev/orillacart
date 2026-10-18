@@ -57,8 +57,8 @@
         {%- endif -%}
     </p>
 
-    {% if offer.for_sale and cart_url %}
-        <form class="orillacart-add-to-cart" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}" data-variations="{{ variations|json_encode }}">
+    {% if (offer.for_sale or offer.bundle_choices) and cart_url and not offer.price_hidden %}
+        <form class="orillacart-add-to-cart" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}" data-variations="{{ variations|json_encode }}"{% if offer.bundle_choices %} data-bundle="{{ offer.id }}"{% endif %}>
             <input type="hidden" name="product_id" value="{{ offer.id }}">
             {% for attribute in offer.attributes %}
                 <p class="orillacart-field">
@@ -76,12 +76,40 @@
                     </select>
                 </p>
             {% endfor %}
+            {% for item in offer.bundle_choices %}
+                {% set label = item.quantity > 1 ? item.quantity ~ ' × ' ~ item.name : item.name %}
+                {% if item.choices|length == 1 and item.optional %}
+                    {% set choice = item.choices|first %}
+                    <p class="orillacart-field orillacart-field--check">
+                        <label>
+                            <input type="checkbox" name="bundle_choices" value="{{ choice.id }}" data-orillacart-bundle-choice{{ choice.for_sale ? '' : ' disabled' }}>
+                            {{ __('Add %s')|format(label) }}{% if choice.price is not null %} (+{{ choice.price|money }}){% endif %}{% if not choice.for_sale %} – {{ __('Not available') }}{% endif %}
+                        </label>
+                    </p>
+                {% else %}
+                    <p class="orillacart-field">
+                        <label for="orillacart-bundle-{{ offer.id }}-{{ loop.index }}">
+                            {{ label }}{% if not item.optional %} <span aria-hidden="true">*</span>{% endif %}
+                        </label>
+                        <select id="orillacart-bundle-{{ offer.id }}-{{ loop.index }}" name="bundle_choices" data-orillacart-bundle-choice{{ item.optional ? '' : ' required' }}>
+                            {% if item.optional %}<option value="">{{ __('None') }}</option>{% endif %}
+                            {% for choice in item.choices %}
+                                <option value="{{ choice.id }}"{{ choice.for_sale ? '' : ' disabled' }}>
+                                    {{- choice.name -}}
+                                    {%- if choice.price is not null %} (+{{ choice.price|money }}){% endif -%}
+                                    {%- if not choice.for_sale %} – {{ __('Not available') }}{% endif -%}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </p>
+                {% endif %}
+            {% endfor %}
             <div class="orillacart-add-to-cart__buy">
                 <p class="orillacart-field orillacart-field--quantity">
                     <label for="orillacart-quantity-{{ offer.id }}">{{ __('Quantity') }}</label>
                     <input id="orillacart-quantity-{{ offer.id }}" type="number" name="quantity" value="1" min="1" max="{{ offer.available ?? 999 }}" step="1" inputmode="numeric" required>
                 </p>
-                <button type="submit" class="wp-element-button orillacart-button">{{ __('Add to cart') }}</button>
+                <button type="submit" class="wp-element-button orillacart-button"{{ offer.for_sale ? '' : ' disabled' }}>{{ __('Add to cart') }}</button>
             </div>
             <p class="orillacart-message" role="status" data-orillacart-message></p>
         </form>

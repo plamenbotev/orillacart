@@ -82,6 +82,10 @@ class OrderLine
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $contents = null;
 
+    /** @var list<int>|null for a bundle, the variations chosen and the optional products added */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $bundleChoices = null;
+
     /** How many of the items were refunded. */
     #[ORM\Column(options: ['default' => 0])]
     private int $refundedQuantity = 0;
@@ -122,6 +126,7 @@ class OrderLine
         }
         $this->discount = $discount->toFixed();
         $this->contents = $draft->contents === [] ? null : $draft->contents;
+        $this->bundleChoices = $draft->bundleChoices === [] ? null : $draft->bundleChoices;
         $this->stockTaken = array_map(static fn(TakenItem $taken): array => ['item' => $taken->item, 'stockroom_id' => $taken->stockroomId, 'quantity' => $taken->quantity], $draft->taken);
     }
 
@@ -186,6 +191,12 @@ class OrderLine
     public function contents(): array
     {
         return $this->contents ?? [];
+    }
+
+    /** @return list<int> */
+    public function bundleChoices(): array
+    {
+        return $this->bundleChoices ?? [];
     }
 
     public function discount(): Money

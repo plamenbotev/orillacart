@@ -68,7 +68,7 @@ final readonly class CartService
         if ($this->settings->current()->catalogOnly) {
             throw new CartRuleViolation('The shop does not take orders online.', 'orillacart_catalog_only');
         }
-        $quote = $this->quotes->quote(new QuoteRequest($command->productId, $command->optionIds));
+        $quote = $this->quotes->quote(new QuoteRequest($command->productId, $command->optionIds, bundleChoices: $command->bundleChoices));
         if (!$quote->forSale) {
             throw new CartRuleViolation(\sprintf('%s is not for sale right now.', $quote->name), 'orillacart_not_for_sale');
         }
@@ -78,7 +78,7 @@ final readonly class CartService
             $newToken = self::token();
             $cart = new Cart($newToken, $owner->customerId, $this->clock->now());
         }
-        $line = $cart->add($command->productId, $command->optionIds, $command->quantity, $this->clock->now());
+        $line = $cart->add($command->productId, $command->optionIds, $command->quantity, $this->clock->now(), $command->bundleChoices);
         self::checkStock($quote, $line->quantity());
         $this->carts->save($cart);
 
@@ -100,7 +100,7 @@ final readonly class CartService
         } else {
             $line = $cart->line($lineId);
             if ($command->quantity > $line->quantity()) {
-                self::checkStock($this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds())), $command->quantity);
+                self::checkStock($this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), bundleChoices: $line->bundleChoices())), $command->quantity);
             }
             $cart->changeQuantity($lineId, $command->quantity, $this->clock->now());
         }
@@ -131,6 +131,7 @@ final readonly class CartService
             'line' => $line->id(),
             'product_id' => $line->productId(),
             'option_ids' => $line->optionIds(),
+            'bundle_choices' => $line->bundleChoices(),
             'quantity' => $line->quantity(),
         ], $cart->lines()), $cart->coupons());
     }
@@ -203,7 +204,7 @@ final readonly class CartService
         $orderable = !$cart->isEmpty();
         foreach ($cart->lines() as $line) {
             try {
-                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), $line->quantity(), $cart->customerId()));
+                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), $line->quantity(), $cart->customerId(), $line->bundleChoices()));
             } catch (NotFound|RuleViolation) {
                 $lines[] = new CartLineView($line->id(), $line->productId(), null, '', null, [], $line->quantity(), '0', '0', 0, 'unavailable');
                 $orderable = false;

@@ -538,6 +538,7 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 			item: {
 				product_id: line.product_id,
 				option_ids: line.option_ids,
+				bundle_choices: line.bundle_choices ?? [],
 				quantity: line.quantity,
 				unit_price: line.unit_price,
 			},

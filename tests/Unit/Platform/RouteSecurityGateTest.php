@@ -52,6 +52,8 @@ final class RouteSecurityGateTest extends TestCase
         'POST /payments/{gateway}/webhook',
         'GET /countries',
         'GET /countries/{code}/states',
+        // A published bundle's price and stock with the visitor's choices, as its page shows them.
+        'POST /products/{id}/bundle-quote',
     ];
 
     private static ContainerBuilder $container;

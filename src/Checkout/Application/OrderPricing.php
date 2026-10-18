@@ -46,7 +46,7 @@ use OrillaCart\Tax\Application\TaxCalculator;
  *
  * Coupons take money off the items before tax is charged, and free shipping makes every way to ship cost nothing.
  *
- * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money}
+ * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money}
  * @phpstan-type Priced array{lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts}
  */
 final readonly class OrderPricing
@@ -64,7 +64,7 @@ final readonly class OrderPricing
      * Prices items with the customer's addresses: taxes, the shipping rates offered and the chosen one (or the
      * first), and the bill. An item may carry its own unit price, which the shop sets when it edits an order.
      *
-     * @param list<array{product_id: int, option_ids: list<int>, quantity: int, unit_price?: ?string}> $items
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string}> $items
      * @param string|null  $postcode   the shipping address's postcode, for rates that ship to some postcodes only
      * @param list<string> $codes      coupon codes; those that do not hold are left out, with the reason
      * @param string|null  $email      the customer's, for limits per customer, once known
@@ -83,7 +83,7 @@ final readonly class OrderPricing
         $taxesOf = [];
         foreach ($items as $line) {
             try {
-                $quote = $this->quotes->quote(new QuoteRequest($line['product_id'], $line['option_ids'], $line['quantity'], $customerId));
+                $quote = $this->quotes->quote(new QuoteRequest($line['product_id'], $line['option_ids'], $line['quantity'], $customerId, $line['bundle_choices'] ?? []));
             } catch (NotFound|RuleViolation) {
                 throw new CheckoutRuleViolation('An item is no longer sold. Review the items and try again.', 'orillacart_cart_changed');
             }
@@ -93,7 +93,7 @@ final readonly class OrderPricing
             $unitPrice = $line['unit_price'] ?? $quote->unitPrice;
             $total = Money::of($unitPrice)->times($line['quantity']);
             $taxesOf[] = $quote->taxable ? $this->taxes($quote->taxGroupId, $shipping, $billing) : [];
-            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero()];
+            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero()];
             if ($quote->type === 'physical') {
                 $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
             }
@@ -188,6 +188,7 @@ final readonly class OrderPricing
             $backordered > 0 && $line['quote']->backorders === 'notify',
             (string) $line['discount'],
             array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
+            $line['quote']->contents === [] ? [] : $line['bundle_choices'],
         );
     }
 

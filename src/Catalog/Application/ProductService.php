@@ -289,7 +289,7 @@ final readonly class ProductService
 
     /**
      * Checks that every item of a bundle can be sold inside it: a product with commerce details and nothing to
-     * choose, or one variation of a product with variations; never a bundle.
+     * choose, or variations of a product with variations; never a bundle.
      *
      * @throws CatalogRuleViolation
      */
@@ -304,16 +304,14 @@ final readonly class ProductService
                 throw new CatalogRuleViolation(\sprintf('%s is a bundle itself; add its items instead.', $name), 'orillacart_invalid_bundle');
             }
             if ($product->hasVariations()) {
-                $variation = null;
-                foreach ($product->variations() as $candidate) {
-                    if ($candidate->id() === $item->variationId) {
-                        $variation = $candidate;
-                    }
+                $offered = array_map(static fn(Variation $variation): int => $variation->id(), $product->variations());
+                if ($item->variationIds === []) {
+                    throw new CatalogRuleViolation(\sprintf('Choose which variations of %s the bundle offers.', $name), 'orillacart_invalid_bundle');
                 }
-                if ($variation === null) {
-                    throw new CatalogRuleViolation(\sprintf('Choose which variation of %s the bundle holds.', $name), 'orillacart_invalid_bundle');
+                if (array_diff($item->variationIds, $offered) !== []) {
+                    throw new CatalogRuleViolation(\sprintf('%s has no such variation.', $name), 'orillacart_invalid_bundle');
                 }
-            } elseif ($item->variationId !== null) {
+            } elseif ($item->variationIds !== []) {
                 throw new CatalogRuleViolation(\sprintf('%s has no variations.', $name), 'orillacart_invalid_bundle');
             } else {
                 foreach ($product->offeredOptions() as [$attribute]) {
@@ -322,24 +320,26 @@ final readonly class ProductService
                     }
                 }
             }
-            $items[] = new BundleItem($item->productId, $item->variationId, $item->quantity);
+            $items[] = new BundleItem($item->productId, array_values(array_unique($item->variationIds)), $item->quantity, $item->optional);
         }
 
         return new Bundle($items, $command->pricing, $command->discount === null || $command->discount === '' ? null : Money::of($command->discount));
     }
 
-    private function itemName(BundleItem $item): string
+    /**
+     * A bundle item's product name, or one of its variations' options.
+     */
+    private function itemName(int $productId, ?int $variationId): string
     {
-        $name = $this->content->name($item->productId);
-        if ($item->variationId === null) {
-            return $name;
+        if ($variationId === null) {
+            return $this->content->name($productId);
         }
-        foreach ($this->products->find($item->productId)?->variations() ?? [] as $variation) {
-            if ($variation->id() === $item->variationId) {
-                return $name . ' – ' . implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $variation->options()));
+        foreach ($this->products->find($productId)?->variations() ?? [] as $variation) {
+            if ($variation->id() === $variationId) {
+                return implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $variation->options()));
             }
         }
 
-        return $name;
+        return '#' . $variationId;
     }
 }

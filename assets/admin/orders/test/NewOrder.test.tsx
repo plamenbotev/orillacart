@@ -149,6 +149,7 @@ describe( 'NewOrder', () => {
 					{
 						product_id: 10,
 						option_ids: [],
+						bundle_choices: [],
 						quantity: 1,
 						unit_price: null,
 					},
