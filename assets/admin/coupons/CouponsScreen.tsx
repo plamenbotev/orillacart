@@ -294,22 +294,19 @@ export function CouponForm( {
 		value.trim() === ''
 			? null
 			: Math.max( 1, Math.floor( Number( value ) ) );
+	let title: string = __( 'New coupon', 'orillacart' );
+	if ( automatic ) {
+		title =
+			coupon?.description ?? __( 'New automatic discount', 'orillacart' );
+	} else if ( coupon !== null ) {
+		/* translators: %s: coupon code */
+		title = sprintf( __( 'Coupon %s', 'orillacart' ), coupon.code );
+	}
 
 	return (
 		<Card className="orillacart-card">
 			<CardHeader>
-				<h2>
-					{ automatic
-						? ( coupon?.description ??
-							__( 'New automatic discount', 'orillacart' ) )
-						: coupon === null
-							? __( 'New coupon', 'orillacart' )
-							: sprintf(
-									/* translators: %s: coupon code */
-									__( 'Coupon %s', 'orillacart' ),
-									coupon.code
-								) }
-				</h2>
+				<h2>{ title }</h2>
 				<Button variant="tertiary" onClick={ onClose }>
 					{ __( 'Close', 'orillacart' ) }
 				</Button>

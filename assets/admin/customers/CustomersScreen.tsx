@@ -226,6 +226,10 @@ function GroupsCard( {
 	onError: ( error: unknown ) => void;
 } ) {
 	const [ name, setName ] = useState( '' );
+	const [ renaming, setRenaming ] = useState< {
+		id: number;
+		name: string;
+	} | null >( null );
 	const [ confirmation, confirm ] = useConfirm();
 	return (
 		<Card className="orillacart-card">
@@ -250,22 +254,64 @@ function GroupsCard( {
 									group.name,
 									group.members
 								) }{ ' ' }
-								<Button
-									variant="link"
-									onClick={ () => {
-										const renamed = window.prompt(
-											__( 'New name', 'orillacart' ),
-											group.name
-										);
-										if ( renamed ) {
-											saveGroup( group.id, renamed )
-												.then( onChanged )
+								{ renaming?.id === group.id ? (
+									<form
+										className="orillacart-groups__rename"
+										onSubmit={ ( event ) => {
+											event.preventDefault();
+											if ( renaming.name.trim() === '' ) {
+												return;
+											}
+											saveGroup( group.id, renaming.name )
+												.then( () => {
+													setRenaming( null );
+													onChanged();
+												} )
 												.catch( onError );
+										} }
+									>
+										<TextControl
+											__next40pxDefaultSize
+											label={ __(
+												'New name',
+												'orillacart'
+											) }
+											value={ renaming.name }
+											onChange={ ( value ) =>
+												setRenaming( {
+													id: group.id,
+													name: value,
+												} )
+											}
+										/>
+										<Button
+											variant="secondary"
+											type="submit"
+										>
+											{ __( 'Rename', 'orillacart' ) }
+										</Button>{ ' ' }
+										<Button
+											variant="tertiary"
+											onClick={ () =>
+												setRenaming( null )
+											}
+										>
+											{ __( 'Cancel', 'orillacart' ) }
+										</Button>
+									</form>
+								) : (
+									<Button
+										variant="link"
+										onClick={ () =>
+											setRenaming( {
+												id: group.id,
+												name: group.name,
+											} )
 										}
-									} }
-								>
-									{ __( 'Rename', 'orillacart' ) }
-								</Button>{ ' ' }
+									>
+										{ __( 'Rename', 'orillacart' ) }
+									</Button>
+								) }{ ' ' }
 								<Button
 									variant="link"
 									isDestructive

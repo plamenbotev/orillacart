@@ -53,23 +53,27 @@ const KIND_LABELS: Record< TierKind, string > = {
  *
  * @param tiers The rule's tiers, by quantity.
  */
+/**
+ * What one tier gives, such as "10 % off".
+ *
+ * @param tier The tier.
+ */
+function tierWhat( tier: Tier ): string {
+	if ( tier.kind === 'percent' ) {
+		/* translators: %s: percentage */
+		return sprintf( __( '%s %% off', 'orillacart' ), tier.value );
+	}
+	if ( tier.kind === 'amount_off' ) {
+		/* translators: %s: amount */
+		return sprintf( __( '%s off', 'orillacart' ), tier.value );
+	}
+	return tier.value;
+}
+
 export function tiersLabel( tiers: Tier[] ): string {
 	return tiers
 		.map( ( tier ) => {
-			const what =
-				tier.kind === 'percent'
-					? sprintf(
-							/* translators: %s: percentage */
-							__( '%s %% off', 'orillacart' ),
-							tier.value
-						)
-					: tier.kind === 'amount_off'
-						? sprintf(
-								/* translators: %s: amount */
-								__( '%s off', 'orillacart' ),
-								tier.value
-							)
-						: tier.value;
+			const what = tierWhat( tier );
 			return tier.min_quantity === 1
 				? what
 				: sprintf(
@@ -112,6 +116,7 @@ export function PriceRulesScreen() {
 	useEffect( () => {
 		load();
 		fetchGroups().then( setGroups ).catch( fail );
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [] );
 
 	const groupName = ( id: number ) =>
@@ -261,6 +266,10 @@ export function PriceRulesScreen() {
 /**
  * Discounts on the order that need no code, such as "10 % off orders over 100" or free shipping over an amount:
  * coupons that apply by themselves wherever they hold. Customers see their description.
+ *
+ * @param props           What to tell the shop.
+ * @param props.onMessage Receives what was done.
+ * @param props.onError   Receives a failed call.
  */
 function AutomaticDiscounts( {
 	onMessage,

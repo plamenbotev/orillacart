@@ -37,50 +37,46 @@ const REFRESH = 5000;
  * @param at  The moment, ISO 8601.
  * @param now The server's now, ISO 8601, so a wrong clock in the browser does not matter.
  */
+/**
+ * A span of time in its largest whole unit, such as "3 minutes".
+ *
+ * @param span The span in seconds.
+ */
+function spanWords( span: number ): string {
+	if ( span < 60 ) {
+		return sprintf(
+			/* translators: %d: seconds */
+			_n( '%d second', '%d seconds', span, 'orillacart' ),
+			span
+		);
+	}
+	if ( span < 3600 ) {
+		const minutes = Math.floor( span / 60 );
+		return sprintf(
+			/* translators: %d: minutes */
+			_n( '%d minute', '%d minutes', minutes, 'orillacart' ),
+			minutes
+		);
+	}
+	if ( span < 86400 ) {
+		const hours = Math.floor( span / 3600 );
+		return sprintf(
+			/* translators: %d: hours */
+			_n( '%d hour', '%d hours', hours, 'orillacart' ),
+			hours
+		);
+	}
+	const days = Math.floor( span / 86400 );
+	/* translators: %d: days */
+	return sprintf( _n( '%d day', '%d days', days, 'orillacart' ), days );
+}
+
 export function since( at: string, now: string ): string {
 	const seconds = Math.round(
 		( new Date( now ).getTime() - new Date( at ).getTime() ) / 1000
 	);
 	const span = Math.abs( seconds );
-	const words =
-		span < 60
-			? sprintf(
-					/* translators: %d: seconds */
-					_n( '%d second', '%d seconds', span, 'orillacart' ),
-					span
-				)
-			: span < 3600
-				? sprintf(
-						/* translators: %d: minutes */
-						_n(
-							'%d minute',
-							'%d minutes',
-							Math.floor( span / 60 ),
-							'orillacart'
-						),
-						Math.floor( span / 60 )
-					)
-				: span < 86400
-					? sprintf(
-							/* translators: %d: hours */
-							_n(
-								'%d hour',
-								'%d hours',
-								Math.floor( span / 3600 ),
-								'orillacart'
-							),
-							Math.floor( span / 3600 )
-						)
-					: sprintf(
-							/* translators: %d: days */
-							_n(
-								'%d day',
-								'%d days',
-								Math.floor( span / 86400 ),
-								'orillacart'
-							),
-							Math.floor( span / 86400 )
-						);
+	const words = spanWords( span );
 
 	return seconds >= 0
 		? /* translators: %s: a span of time, such as "3 minutes" */

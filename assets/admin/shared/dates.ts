@@ -1,4 +1,8 @@
-/** An ISO 8601 moment as a datetime-local field shows it, in the browser's time zone. */
+/**
+ * An ISO 8601 moment as a datetime-local field shows it, in the browser's time zone.
+ *
+ * @param iso The moment, or null for none.
+ */
 export const toLocal = ( iso: string | null ): string => {
 	if ( iso === null ) {
 		return '';
@@ -10,7 +14,11 @@ export const toLocal = ( iso: string | null ): string => {
 	) }T${ pad( date.getHours() ) }:${ pad( date.getMinutes() ) }`;
 };
 
-/** A datetime-local value as ISO 8601 in UTC, as the API takes it. */
+/**
+ * A datetime-local value as ISO 8601 in UTC, as the API takes it.
+ *
+ * @param local The field's value; empty for none.
+ */
 export const fromLocal = ( local: string ): string | null =>
 	local === ''
 		? null
