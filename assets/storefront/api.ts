@@ -59,7 +59,35 @@ export function forgetNonce(): void {
 	nonce = undefined;
 }
 
+/**
+ * Calls the API. It never throws: a network that fails, or an answer that is not the shop's, comes back as a
+ * result that is not ok, with a message for the customer, so every caller can show it and re-enable its button.
+ * @param method
+ * @param path
+ * @param body
+ */
 export async function api< T >(
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+	path: string,
+	body?: unknown
+): Promise< ApiResult< T > > {
+	try {
+		return await call< T >( method, path, body );
+	} catch {
+		return {
+			ok: false,
+			status: 0,
+			code: 'orillacart_network',
+			message: __(
+				'The shop could not be reached. Check your connection and try again.',
+				'orillacart'
+			),
+			violations: [],
+		};
+	}
+}
+
+async function call< T >(
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
 	path: string,
 	body?: unknown

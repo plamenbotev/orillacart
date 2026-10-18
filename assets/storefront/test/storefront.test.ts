@@ -145,6 +145,24 @@ describe( 'api', () => {
 			violations: [ { field: 'billing.city', message: 'Blank.' } ],
 		} );
 	} );
+
+	it( 'answers a network that fails as a result, never by throwing', async () => {
+		window.orillacartStorefront = {
+			api: 'https://shop.test/wp-json/orillacart/v1',
+			nonce: 'n1',
+		};
+		window.fetch = jest.fn( () =>
+			Promise.reject( new TypeError( 'Failed to fetch' ) )
+		) as typeof fetch;
+
+		const result = await api( 'POST', '/checkout', {} );
+
+		expect( result ).toMatchObject( {
+			ok: false,
+			status: 0,
+			code: 'orillacart_network',
+		} );
+	} );
 } );
 
 describe( 'formBody', () => {
@@ -286,6 +304,36 @@ describe( 'add to cart', () => {
 		expect(
 			form.querySelector( '[data-orillacart-message]' )?.textContent
 		).toBe( 'Added to your cart. View cart' );
+	} );
+} );
+
+describe( 'add to cart without a network', () => {
+	it( 'says so and lets the customer try again', async () => {
+		document.body.innerHTML = `
+			<form data-orillacart-add-to-cart data-variations="[]">
+				<input type="hidden" name="product_id" value="9">
+				<input name="quantity" value="1">
+				<button type="submit">Add</button>
+				<p data-orillacart-message></p>
+			</form>`;
+		const form = document.querySelector( 'form' ) as HTMLFormElement;
+		bindAddToCart( form );
+		window.orillacartStorefront = {
+			api: 'https://shop.test/wp-json/orillacart/v1',
+			nonce: 'n1',
+		};
+		window.fetch = jest.fn( () =>
+			Promise.reject( new TypeError( 'Failed to fetch' ) )
+		) as typeof fetch;
+
+		form.dispatchEvent( new Event( 'submit', { cancelable: true } ) );
+		await flush();
+		await flush();
+
+		expect( form.querySelector( 'button' )?.disabled ).toBe( false );
+		expect(
+			form.querySelector( '[data-orillacart-message]' )?.textContent
+		).toContain( 'could not be reached' );
 	} );
 } );
 

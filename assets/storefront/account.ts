@@ -13,13 +13,45 @@ import {
 	showMessage,
 } from './dom';
 
+/**
+ * Disables the form's button while a request runs, so a second click sends nothing.
+ * @param form The form.
+ * @param work The request.
+ */
+async function busy< T >(
+	form: HTMLFormElement,
+	work: () => Promise< T >
+): Promise< T | null > {
+	const button = form.querySelector< HTMLButtonElement >(
+		'button[type="submit"]'
+	);
+	if ( button?.disabled ) {
+		return null;
+	}
+	if ( button ) {
+		button.disabled = true;
+	}
+	try {
+		return await work();
+	} finally {
+		if ( button ) {
+			button.disabled = false;
+		}
+	}
+}
+
 export function bindRegister( form: HTMLFormElement ): void {
 	form.addEventListener( 'submit', async ( event ) => {
 		event.preventDefault();
 		clearErrors( form );
 		const fields = formBody( form ).register as
 			Record< string, string > | undefined;
-		const result = await api( 'POST', '/accounts', fields ?? {} );
+		const result = await busy( form, () =>
+			api( 'POST', '/accounts', fields ?? {} )
+		);
+		if ( result === null ) {
+			return;
+		}
 		if ( result.ok ) {
 			window.location.reload();
 			return;
@@ -42,11 +74,12 @@ export function bindAddresses( form: HTMLFormElement ): void {
 	form.addEventListener( 'submit', async ( event ) => {
 		event.preventDefault();
 		clearErrors( form );
-		const result = await api(
-			'PUT',
-			'/account/addresses',
-			formBody( form )
+		const result = await busy( form, () =>
+			api( 'PUT', '/account/addresses', formBody( form ) )
 		);
+		if ( result === null ) {
+			return;
+		}
 		if ( result.ok ) {
 			showMessage(
 				form,

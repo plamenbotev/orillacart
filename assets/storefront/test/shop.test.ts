@@ -34,6 +34,7 @@ describe( 'the shop page', () => {
 		window.fetch = jest.fn( ( url: RequestInfo | URL ) => {
 			fetched.push( String( url ) );
 			return Promise.resolve( {
+				ok: true,
 				text: () => Promise.resolve( page( '<li>After</li>' ) ),
 			} as Response );
 		} ) as typeof fetch;

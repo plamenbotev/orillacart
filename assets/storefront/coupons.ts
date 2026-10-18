@@ -11,6 +11,29 @@ import { failure, showMessage } from './dom';
  * @param scope   The cart region's document or the checkout form; the coupon field is inside it.
  * @param refresh Shows the prices anew after a change.
  */
+/**
+ * Shows the prices anew, or says they could not be.
+ * @param box     The coupon box, for the message.
+ * @param refresh Shows the prices anew.
+ */
+async function refreshed(
+	box: Element | null,
+	refresh: () => Promise< void >
+): Promise< void > {
+	try {
+		await refresh();
+	} catch {
+		showMessage(
+			box,
+			__(
+				'The prices could not be shown anew. Reload the page.',
+				'orillacart'
+			),
+			'error'
+		);
+	}
+}
+
 export function bindCoupons(
 	scope: Document | HTMLElement,
 	refresh: () => Promise< void >
@@ -41,7 +64,7 @@ export function bindCoupons(
 			);
 			return;
 		}
-		await refresh();
+		await refreshed( box, refresh );
 	};
 
 	scope.addEventListener( 'click', async ( event ) => {
@@ -57,14 +80,20 @@ export function bindCoupons(
 			'[data-orillacart-remove-coupon]'
 		);
 		if ( removing ) {
+			const box = removing.closest( '[data-orillacart-coupons]' );
 			removing.disabled = true;
-			await api(
+			const result = await api(
 				'DELETE',
 				`/cart/coupons/${ encodeURIComponent(
 					removing.dataset.orillacartRemoveCoupon ?? ''
 				) }`
 			);
-			await refresh();
+			if ( ! result.ok ) {
+				removing.disabled = false;
+				showMessage( box, failure( result ), 'error' );
+				return;
+			}
+			await refreshed( box, refresh );
 		}
 	} );
 

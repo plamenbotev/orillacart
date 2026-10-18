@@ -19,6 +19,10 @@ export async function reloadRegions(
 		credentials: 'same-origin',
 		cache: 'no-store',
 	} );
+	if ( ! response.ok ) {
+		// An error page has none of the regions: say so rather than leave the page as it was.
+		throw new Error( `The page answered ${ response.status }.` );
+	}
 	const fresh = new DOMParser().parseFromString(
 		await response.text(),
 		'text/html'
