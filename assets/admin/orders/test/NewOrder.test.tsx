@@ -34,7 +34,7 @@ const quote = {
 	needs_shipping: true,
 	shipping_options: [
 		{
-			rate_id: 3,
+			id: 'rate:3',
 			carrier: 'Courier',
 			name: 'Bulgaria',
 			price: '5',
@@ -42,7 +42,7 @@ const quote = {
 			total: '6',
 		},
 	],
-	rate_id: 3,
+	shipping_option: 'rate:3',
 	payment_options: [
 		{ gateway: 'bank_transfer', name: 'Bank transfer', instructions: '' },
 	],
@@ -153,10 +153,11 @@ describe( 'NewOrder', () => {
 					},
 				],
 				customer_id: 4,
-				rate_id: 3,
+				shipping_option: 'rate:3',
 				payment: 'bank_transfer',
 				paid: false,
 				note: '',
+				email_customer: false,
 			},
 		} );
 		expect( onCreated ).toHaveBeenCalledWith( 12 );

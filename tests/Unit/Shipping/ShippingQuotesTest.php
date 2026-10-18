@@ -6,6 +6,12 @@ namespace OrillaCart\Tests\Unit\Shipping;
 
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Geography\Domain\UnknownState;
+use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Settings\Domain\DimensionUnit;
+use OrillaCart\Settings\Domain\StoreSettings;
+use OrillaCart\Settings\Domain\WeightUnit;
+use OrillaCart\Shared\Domain\Currency;
+use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shipping\Application\CarrierService;
 use OrillaCart\Shipping\Application\Dto\ParcelItem;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
@@ -15,13 +21,19 @@ use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Shipping\Application\Dto\ShippingOptionView;
 use OrillaCart\Shipping\Application\Dto\ShippingQuery;
 use OrillaCart\Shipping\Application\ShippingClassService;
+use OrillaCart\Shipping\Application\ShippingMethods;
 use OrillaCart\Shipping\Application\ShippingQuotes;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use OrillaCart\Tax\Application\TaxGroupService;
+use OrillaCart\Tests\Fixtures\Extension\TestShipMethod;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
+use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
+use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
+use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
+use OrillaCart\Tests\Fixtures\Shipping\MemoryRateCache;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use PHPUnit\Framework\TestCase;
@@ -32,14 +44,20 @@ final class ShippingQuotesTest extends TestCase
     private ShippingQuotes $quotes;
     private ShippingClassService $classes;
     private RecordingDispatcher $events;
+    private TestShipMethod $method;
+    private MemoryLogger $logger;
 
     protected function setUp(): void
     {
         $records = new InMemoryCarrierRepository();
         $geography = new GeographyService(new InMemoryCountryRepository());
         $classes = new InMemoryShippingClassRepository();
-        $this->carriers = new CarrierService($records, $geography, new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), $geography, new RecordingDispatcher()), $classes);
-        $this->quotes = new ShippingQuotes($records, $classes);
+        $this->method = new TestShipMethod();
+        $methods = new ShippingMethods(new FixedExtensions(methods: [$this->method]));
+        $this->carriers = new CarrierService($records, $geography, new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), $geography, new RecordingDispatcher()), $classes, $methods);
+        $settings = new SettingsService(new InMemorySettingsRepository(new StoreSettings(new Currency('EUR'), 2, WeightUnit::Kilogram, DimensionUnit::Centimetre)), new RecordingDispatcher(), $geography);
+        $this->logger = new MemoryLogger();
+        $this->quotes = new ShippingQuotes($records, $classes, $methods, $settings, new MemoryRateCache(), $this->logger);
         $this->events = new RecordingDispatcher();
         $this->classes = new ShippingClassService($classes, $records, $this->events);
     }
@@ -202,6 +220,56 @@ final class ShippingQuotesTest extends TestCase
         self::assertSame(['Everywhere but Bulgaria'], $offered('US', 'TX', '96813'), 'an excluded postcode');
         self::assertSame(['Lower states', 'Everywhere but Bulgaria'], $offered('US', 'NY', null), 'an excluded postcode needs a postcode to exclude');
         self::assertSame([], $offered('BG', null, '1000'));
+    }
+
+    public function testACarrierPricedByAMethodOffersTheServicesItQuotesAndKeepsThemForAWhile(): void
+    {
+        $carrier = $this->carriers->create(new SaveCarrier('Courier', method: TestShipMethod::ID, methodSettings: ['account' => 'A-1', 'per_kg' => '2'], methodTaxable: false));
+        $parcel = new ShippingQuery('BG', null, [new ParcelItem(2, '1.5')], '30', '1000');
+
+        $options = $this->quotes->options($parcel);
+        self::assertSame(
+            [["carrier:{$carrier->id}:economy", 'Courier', 'Economy', '9', false], ["carrier:{$carrier->id}:express", 'Courier', 'Express', '18', false]],
+            array_map(static fn(ShippingOptionView $option): array => [$option->id, $option->carrier, $option->name, $option->price, $option->taxable], $options),
+            '3 + 2 per kilogram of 3 kg; express twice that',
+        );
+        $this->quotes->options($parcel);
+        self::assertSame(1, $this->method->quotes, 'the same parcel is not quoted again');
+        self::assertSame([], $this->offered('DE', [new ParcelItem(1, '1')]), 'the courier does not go there');
+        self::assertSame([], $this->offered(null, [new ParcelItem(1, '1')]), 'nothing to quote without a country');
+    }
+
+    public function testACourierThatCannotBeReachedIsLeftOutAndLogged(): void
+    {
+        $this->carriers->create(new SaveCarrier('Courier', method: TestShipMethod::ID, methodSettings: ['account' => 'A-1']));
+        $this->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Anywhere', '4')]));
+
+        $options = $this->quotes->options(new ShippingQuery('BG', null, [new ParcelItem(1, '1')], '10', '9999'));
+
+        self::assertSame(['Anywhere'], array_map(static fn(ShippingOptionView $option): string => $option->name, $options));
+        self::assertSame('warning', $this->logger->records[0]['level'] ?? null);
+    }
+
+    public function testAMethodCarrierHasNoRatesItsSettingsAreCheckedAndItNeedsTheRequiredOnesToBeOn(): void
+    {
+        $violations = [
+            'orillacart_method_carrier_rates' => new SaveCarrier('Courier', rates: [new SaveShippingRate('Anywhere', '4')], method: TestShipMethod::ID, methodSettings: ['account' => 'A-1']),
+            'orillacart_unknown_shipping_method' => new SaveCarrier('Courier', method: 'nobody'),
+            'orillacart_shipping_method_incomplete' => new SaveCarrier('Courier', method: TestShipMethod::ID),
+            'orillacart_invalid_setting' => new SaveCarrier('Courier', method: TestShipMethod::ID, methodSettings: ['account' => 'A-1', 'per_kg' => 'two']),
+        ];
+        foreach ($violations as $code => $command) {
+            try {
+                $this->carriers->create($command);
+                self::fail($code);
+            } catch (RuleViolation $e) {
+                self::assertSame($code, $e->errorCode);
+            }
+        }
+
+        $off = $this->carriers->create(new SaveCarrier('Courier', active: false, method: TestShipMethod::ID));
+        $back = $this->carriers->update($off->id, new SaveCarrier('Courier', rates: [new SaveShippingRate('Anywhere', '4')]));
+        self::assertSame([null, ['Anywhere']], [$back->method, array_map(static fn($rate): string => $rate->name, $back->rates)], 'back to its own rates');
     }
 
     public function testShippingClassNamesAreUnique(): void

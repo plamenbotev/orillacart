@@ -56,8 +56,8 @@ final class ManualOrdersTest extends TestCase
         $quote = $this->shop->manualOrders->quote(new QuoteOrder([new EditedItem(10, 2, unitPrice: '25')], 'BG'));
 
         self::assertSame([['Lamp', 2, '25', '50']], array_map(static fn($line): array => [$line->name, $line->quantity, $line->unitPrice, $line->total], $quote->lines));
-        self::assertSame([$this->rate], array_map(static fn($option): int => $option->rateId, $quote->shippingOptions));
-        self::assertSame($this->rate, $quote->rateId, 'the first rate counts in the totals until one is chosen');
+        self::assertSame(['rate:' . $this->rate], array_map(static fn($option): string => $option->id, $quote->shippingOptions));
+        self::assertSame('rate:' . $this->rate, $quote->shippingOption, 'the first rate counts in the totals until one is chosen');
         // 50 + 10 VAT + 5 shipping + 1 VAT on shipping
         self::assertSame('66', $quote->total);
         self::assertSame(['bank_transfer'], array_map(static fn(PaymentOptionView $option): string => $option->gateway, $quote->paymentOptions));
@@ -65,11 +65,21 @@ final class ManualOrdersTest extends TestCase
 
     public function testAnUnpaidOrderWaitsOnHoldWithItsStockTaken(): void
     {
-        $order = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(10, 2, unitPrice: '25')], rateId: $this->rate, payment: 'bank_transfer'), 7);
+        $order = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(10, 2, unitPrice: '25')], shippingOption: 'rate:' . $this->rate, payment: 'bank_transfer'), 7);
 
         self::assertSame(['on_hold', 'Bank transfer', '66'], [$order->status, $order->paymentName, $order->total]);
         self::assertSame(3, $this->available());
         self::assertContains('Taken by the shop.', array_map(static fn($note): string => $note->text, $order->notes));
+    }
+
+    public function testTheCustomerIsEmailedOnlyWhenTheShopAsksAndTheShopNeverIs(): void
+    {
+        $quiet = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 1)], payment: 'bank_transfer'), 7);
+        self::assertSame([], $this->shop->mail->summary(), 'nobody hears of it');
+
+        $told = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 1)], payment: 'bank_transfer', emailCustomer: true), 7);
+        self::assertSame(["ada@example.com: [Lamp Shop] We received your order #{$told->number}"], $this->shop->mail->summary(), 'the customer, not the shop that took it');
+        self::assertSame('on_hold', $quiet->status);
     }
 
     public function testAPaidOrderStartsProcessing(): void

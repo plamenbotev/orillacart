@@ -16,7 +16,7 @@ final readonly class EmailAboutOrders
     #[AsEventListener]
     public function statusChanged(OrderStatusChanged $event): void
     {
-        $this->emails->statusChanged($event->orderId, $event->previous->value, $event->status->value);
+        $this->emails->statusChanged($event->orderId, $event->previous->value, $event->status->value, $event->tellCustomer, $event->tellShop);
     }
 
     #[AsEventListener]

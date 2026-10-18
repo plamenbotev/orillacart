@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Checkout\Application\Dto;
 
+use OrillaCart\Shipping\Application\Dto\ShippingOptionView;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -27,7 +28,7 @@ final readonly class QuoteOrder
         public ?string $shippingState = null,
         #[Assert\Length(max: 20)]
         public ?string $shippingPostcode = null,
-        #[Assert\Positive]
-        public ?int $rateId = null,
+        #[Assert\Regex(pattern: ShippingOptionView::ID_PATTERN)]
+        public ?string $shippingOption = null,
     ) {}
 }

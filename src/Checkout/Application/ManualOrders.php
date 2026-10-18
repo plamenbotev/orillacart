@@ -47,7 +47,7 @@ final readonly class ManualOrders
     {
         $shipping = $query->shippingCountry === null ? null : new TaxAddress($query->shippingCountry, $query->shippingState);
         $billing = $query->billingCountry === null ? $shipping : new TaxAddress($query->billingCountry, $query->billingState);
-        $priced = $this->pricing->price(self::items($query->items), $shipping ?? $billing, $billing, $query->rateId, $query->shippingPostcode);
+        $priced = $this->pricing->price(self::items($query->items), $shipping ?? $billing, $billing, $query->shippingOption, $query->shippingPostcode);
         $bill = $priced['bill'];
         $currency = $this->settings->current()->currency;
 
@@ -63,7 +63,7 @@ final readonly class ManualOrders
             ), $priced['lines']),
             $priced['needs_shipping'],
             $priced['options'],
-            $priced['chosen']?->rateId,
+            $priced['chosen']?->id,
             $this->paymentOptions->available($billing?->country, $currency),
             array_map(static fn(BilledTax $tax): CheckoutTaxView => new CheckoutTaxView($tax->name, $tax->percent, (string) $tax->items, (string) $tax->shipping, (string) $tax->total()), $bill->taxes()),
             (string) $bill->subtotal(),
@@ -97,10 +97,10 @@ final readonly class ManualOrders
                 self::items($command->items),
                 new TaxAddress($shippingAddress->country, $shippingAddress->state),
                 new TaxAddress($billingAddress->country, $billingAddress->state),
-                $command->rateId,
+                $command->shippingOption,
                 $shippingAddress->postcode,
             );
-            if ($priced['needs_shipping'] && $priced['chosen']?->rateId !== $command->rateId) {
+            if ($priced['needs_shipping'] && $priced['chosen']?->id !== $command->shippingOption) {
                 throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to this address.' : 'Choose how the order ships.', 'orillacart_shipping_required');
             }
             $bill = $priced['bill'];
@@ -126,9 +126,9 @@ final readonly class ManualOrders
 
         $this->orders->addNote($order->number, new AddOrderNote('Taken by the shop.'), $userId);
         if ($command->paid || Money::of($order->total)->isZero()) {
-            $this->orders->markPaid($order->number, null, 'Paid when the shop took the order.');
+            $this->orders->markPaid($order->number, null, 'Paid when the shop took the order.', tellCustomer: $command->emailCustomer, tellShop: false);
         } else {
-            $this->orders->hold($order->number, 'Waiting for the payment.');
+            $this->orders->hold($order->number, 'Waiting for the payment.', tellCustomer: $command->emailCustomer, tellShop: false);
         }
 
         return $this->orders->order($order->number);

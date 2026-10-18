@@ -7,7 +7,7 @@ namespace OrillaCart\Ordering\Application\Dto;
 final readonly class NewShipping
 {
     public function __construct(
-        public int $rateId,
+        public string $option,
         public string $carrier,
         public string $rate,
         public string $price,

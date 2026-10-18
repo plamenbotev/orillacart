@@ -15,6 +15,7 @@ use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
+use OrillaCart\Shipping\Application\Dto\ShippingOptionView;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
@@ -144,14 +145,14 @@ final readonly class CheckoutBlock implements BlockDefinition
         $billingCountry = self::code('billing_country', 2);
         $billingState = self::code('billing_state', 3);
         $shippingCountry = self::code('shipping_country', 2);
-        $rate = \is_string($_GET['rate'] ?? null) && ctype_digit($_GET['rate']) ? (int) $_GET['rate'] : 0;
+        $shipping = \is_string($_GET['shipping'] ?? null) && preg_match(ShippingOptionView::ID_PATTERN, $_GET['shipping']) === 1 ? $_GET['shipping'] : null;
 
         return new CheckoutDetails(
             $shippingCountry ?? $billingCountry,
             $shippingCountry === null ? $billingState : self::code('shipping_state', 3),
             $billingCountry,
             $billingState,
-            $rate > 0 ? $rate : null,
+            $shipping,
             self::postcode($shippingCountry === null ? 'billing_postcode' : 'shipping_postcode'),
         );
     }

@@ -10,7 +10,7 @@ namespace OrillaCart\Checkout\Application\Dto;
 final readonly class ShippingChoiceView
 {
     public function __construct(
-        public int $rateId,
+        public string $id,
         public string $carrier,
         public string $name,
         public string $price,

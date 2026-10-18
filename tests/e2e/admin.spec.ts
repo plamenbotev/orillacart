@@ -22,7 +22,7 @@ test.beforeAll( async ( { requestUtils } ) => {
 		data: {
 			email: 'e2e-admin@example.com',
 			billing: { ...BILLING, country: 'BG' },
-			rate_id: shop.rate,
+			shipping_option: `rate:${ shop.rate }`,
 			payment: 'bank_transfer',
 			remember_addresses: false,
 		},
@@ -73,7 +73,7 @@ test.describe( 'The admin', () => {
 			data: {
 				email: 'e2e-admin@example.com',
 				billing: { ...BILLING, country: 'BG' },
-				rate_id: shop.rate,
+				shipping_option: `rate:${ shop.rate }`,
 				payment: 'bank_transfer',
 				remember_addresses: false,
 			},
@@ -130,16 +130,24 @@ test.describe( 'The admin', () => {
 		const heading = page.getByRole( 'heading', { name: /— On hold$/ } );
 		await expect( heading ).toBeVisible();
 		await expect( page.getByText( 'Taken by the shop.' ) ).toBeVisible();
+		const number = /#(\d+)/.exec(
+			( await heading.textContent() ) ?? ''
+		)?.[ 1 ];
 
 		await page.getByRole( 'button', { name: '← All orders' } ).click();
-		await page.getByRole( 'searchbox' ).fill( 'e2e-phone@example.com' );
-		await page.getByRole( 'button', { name: 'Actions' } ).first().click();
+		const row = page.getByRole( 'row' ).filter( {
+			has: page.getByRole( 'button', {
+				name: `#${ number }`,
+				exact: true,
+			} ),
+		} );
+		await row.getByRole( 'button', { name: 'Actions' } ).click();
 		await page.getByRole( 'menuitem', { name: 'Delete' } ).click();
 		await page
 			.getByRole( 'dialog' )
 			.getByRole( 'button', { name: 'Delete' } )
 			.click();
-		await expect( page.getByText( 'No orders found.' ) ).toBeVisible();
+		await expect( row ).toHaveCount( 0 );
 	} );
 
 	test( 'chooses the page the cart is on', async ( { admin, page } ) => {

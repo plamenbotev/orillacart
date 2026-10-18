@@ -84,10 +84,7 @@ export function bindCheckout( form: HTMLFormElement ): void {
 			button.disabled = true;
 		}
 		await summary;
-		const body = formBody( form, {
-			numbers: [ 'rate_id' ],
-			flags: [ 'create_account' ],
-		} );
+		const body = formBody( form, { flags: [ 'create_account' ] } );
 		delete body.ship_elsewhere;
 		body.remember_addresses = body.remember_addresses === true;
 		const result = await api< PlacedOrder >( 'POST', '/checkout', body );
@@ -127,9 +124,10 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 		shipping_country: value( 'shipping_address.country' ),
 		shipping_state: value( 'shipping_address.state' ),
 		shipping_postcode: value( 'shipping_address.postcode' ),
-		rate:
-			form.querySelector< HTMLInputElement >( '[name="rate_id"]:checked' )
-				?.value ?? '',
+		shipping:
+			form.querySelector< HTMLInputElement >(
+				'[name="shipping_option"]:checked'
+			)?.value ?? '',
 	};
 	for ( const [ name, given ] of Object.entries( query ) ) {
 		if ( given ) {

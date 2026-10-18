@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Extension;
 
 use OrillaCart\Extension\Payment\PaymentGateway;
+use OrillaCart\Extension\Shipping\ShippingMethod;
 
 /**
  * Where add-ons register what they bring. The shop passes it once per request, when it first needs its payment
@@ -23,6 +24,8 @@ interface Registry
     public function version(): int;
 
     public function paymentGateway(PaymentGateway $gateway): void;
+
+    public function shippingMethod(ShippingMethod $method): void;
 
     /** Writes to the shop's log, where the shop manager looks when something went wrong. */
     public function log(): Log;

@@ -9,8 +9,9 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * A company or service that ships orders, such as "Courier", with its rates in the order checkout lists them.
- * An inactive carrier keeps its rates but checkout offers none of them.
+ * A company or service that ships orders, such as "Courier". Its prices come from its own rates, in the order
+ * checkout lists them, or from a shipping method an add-on brings (the courier's own services), set up with
+ * the method's settings. An inactive carrier keeps everything but checkout offers none of it.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'carriers')]
@@ -31,6 +32,21 @@ class Carrier
 
     #[ORM\Column]
     private int $position;
+
+    /** The add-on's shipping method that prices the carrier's services; null for its own rates. */
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $method = null;
+
+    /** @var array<string, string|bool> */
+    #[ORM\Column(type: 'json')]
+    private array $methodSettings = [];
+
+    /** Whether the method's prices are taxed, and by which tax group (null: the shop's default). */
+    #[ORM\Column]
+    private bool $methodTaxable = true;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $methodTaxGroupId = null;
 
     /** @var Collection<int, ShippingRate> */
     #[ORM\OneToMany(targetEntity: ShippingRate::class, mappedBy: 'carrier', cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -84,6 +100,49 @@ class Carrier
         $this->position = $position;
     }
 
+    public function method(): ?string
+    {
+        return $this->method;
+    }
+
+    /** @return array<string, string|bool> */
+    public function methodSettings(): array
+    {
+        return $this->methodSettings;
+    }
+
+    public function isMethodTaxable(): bool
+    {
+        return $this->methodTaxable;
+    }
+
+    public function methodTaxGroupId(): ?int
+    {
+        return $this->methodTaxGroupId;
+    }
+
+    /**
+     * Prices the carrier's services with a shipping method, or (null) with its own rates again. A carrier that
+     * uses a method has no rates of its own.
+     *
+     * @param array<string, string|bool> $settings
+     *
+     * @throws ShippingRuleViolation for a malformed method id
+     */
+    public function useMethod(?string $method, array $settings = [], bool $taxable = true, ?int $taxGroupId = null): void
+    {
+        if ($method !== null && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $method) !== 1) {
+            throw new ShippingRuleViolation(\sprintf('"%s" is not a shipping method.', $method), 'orillacart_unknown_shipping_method');
+        }
+        $this->method = $method;
+        $this->methodSettings = $method === null ? [] : $settings;
+        $this->methodTaxable = $taxable;
+        $this->methodTaxGroupId = $method === null ? null : $taxGroupId;
+        if ($method !== null) {
+            $this->rates->clear();
+        }
+    }
+
     /**
      * @return list<ShippingRate> in the order checkout lists them
      */
@@ -101,10 +160,13 @@ class Carrier
      *
      * @param list<RateDraft> $drafts in the order checkout lists them
      *
-     * @throws ShippingRuleViolation for a rate id that is not this carrier's
+     * @throws ShippingRuleViolation for a rate id that is not this carrier's, or rates for a carrier a method prices
      */
     public function replaceRates(array $drafts): void
     {
+        if ($this->method !== null && $drafts !== []) {
+            throw new ShippingRuleViolation('A carrier whose shipping method prices it has no rates of its own.', 'orillacart_method_carrier_rates');
+        }
         $existing = [];
         foreach ($this->rates as $rate) {
             if ($rate->isSaved()) {

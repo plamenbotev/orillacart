@@ -6,6 +6,7 @@ namespace OrillaCart\Checkout\Application\Dto;
 
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Domain\Order;
+use OrillaCart\Shipping\Application\Dto\ShippingOptionView;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -25,8 +26,8 @@ final readonly class PlaceOrder
         public AddressData $billing,
         #[Assert\Valid]
         public ?AddressData $shippingAddress = null,
-        #[Assert\Positive]
-        public ?int $rateId = null,
+        #[Assert\Regex(pattern: ShippingOptionView::ID_PATTERN)]
+        public ?string $shippingOption = null,
         #[Assert\Regex(pattern: '/^[a-z][a-z0-9_]{0,39}$/')]
         public ?string $payment = null,
         #[Assert\Length(max: Order::MAX_NOTE_LENGTH)]

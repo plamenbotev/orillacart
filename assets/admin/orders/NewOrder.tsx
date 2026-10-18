@@ -42,9 +42,12 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 	const [ billing, setBilling ] = useState< Address >( EMPTY_ADDRESS );
 	const [ shipping, setShipping ] = useState< Address | null >( null );
 	const [ rows, setRows ] = useState< ItemRow[] >( [] );
-	const [ rateId, setRateId ] = useState< number | null >( null );
+	const [ shippingOption, setShippingOption ] = useState< string | null >(
+		null
+	);
 	const [ payment, setPayment ] = useState( '' );
 	const [ paid, setPaid ] = useState( false );
+	const [ emailCustomer, setEmailCustomer ] = useState( false );
 	const [ note, setNote ] = useState( '' );
 	const [ quote, setQuote ] = useState< OrderQuote | null >( null );
 	const [ error, setError ] = useState< string | null >( null );
@@ -65,7 +68,12 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 
 	const items = rows.map( ( row ) => row.item );
 	const shipsTo = shipping ?? billing;
-	const quoteKey = JSON.stringify( [ items, billing, shipping, rateId ] );
+	const quoteKey = JSON.stringify( [
+		items,
+		billing,
+		shipping,
+		shippingOption,
+	] );
 	useEffect( () => {
 		if ( items.length === 0 ) {
 			setQuote( null );
@@ -79,7 +87,7 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 				shipping_country: shipsTo.country || null,
 				shipping_state: shipsTo.state,
 				shipping_postcode: shipsTo.postcode || null,
-				rate_id: rateId,
+				shipping_option: shippingOption,
 			} )
 				.then( ( priced ) => {
 					setQuote( priced );
@@ -112,10 +120,13 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 			shipping_address: shipping,
 			items,
 			customer_id: customerId,
-			rate_id: quote?.needs_shipping ? quote.rate_id : null,
+			shipping_option: quote?.needs_shipping
+				? quote.shipping_option
+				: null,
 			payment: payment === '' ? null : payment,
 			paid,
 			note,
+			email_customer: emailCustomer,
 		} )
 			.then( ( order ) => onCreated( order.number ) )
 			.catch( ( reason: unknown ) => {
@@ -218,16 +229,14 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 								<SelectControl
 									__next40pxDefaultSize
 									label={ __( 'Ships by', 'orillacart' ) }
-									value={ String( quote.rate_id ?? '' ) }
+									value={ quote.shipping_option ?? '' }
 									options={ quote.shipping_options.map(
 										( rate ) => ( {
 											label: `${ rate.carrier }: ${ rate.name } (${ money( rate.total, quote.currency ) })`,
-											value: String( rate.rate_id ),
+											value: rate.id,
 										} )
 									) }
-									onChange={ ( value ) =>
-										setRateId( Number( value ) )
-									}
+									onChange={ setShippingOption }
 								/>
 							) ) }
 						<SelectControl
@@ -254,6 +263,15 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 							) }
 							checked={ paid }
 							onChange={ setPaid }
+						/>
+						<CheckboxControl
+							label={ __( 'Email the customer', 'orillacart' ) }
+							help={ __(
+								'They get the order received or confirmed email, as after checkout. You can also send it later from the order.',
+								'orillacart'
+							) }
+							checked={ emailCustomer }
+							onChange={ setEmailCustomer }
 						/>
 						<TextareaControl
 							label={ __(

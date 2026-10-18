@@ -12,7 +12,8 @@ use OrillaCart\Shared\Domain\Money;
 final readonly class ShippingChoice
 {
     public function __construct(
-        public int $rateId,
+        /** How checkout named it: "rate:12", or "carrier:5:express" for a carrier's own service. */
+        public string $option,
         public string $carrier,
         public string $rate,
         public Money $price,

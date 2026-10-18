@@ -8,6 +8,7 @@ use OrillaCart\Payment\Application\Dto\PaymentMethodView;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
+use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
 
@@ -63,8 +64,8 @@ final class PaymentMethodServiceTest extends TestCase
         try {
             $this->shop->paymentMethods->update('cheque', new SavePaymentMethod('Cheque', settings: ['iban' => 'BG00']));
             self::fail('cheques have no settings');
-        } catch (PaymentRuleViolation $e) {
-            self::assertSame('orillacart_unknown_payment_setting', $e->errorCode);
+        } catch (RuleViolation $e) {
+            self::assertSame('orillacart_unknown_setting', $e->errorCode);
         }
 
         $this->expectException(PaymentMethodNotFound::class);

@@ -21,7 +21,7 @@
     <tfoot>
         <tr><th scope="row">{{ __('Subtotal') }}</th><td>{{ summary.subtotal|money(summary.currency) }}</td></tr>
         {% if summary.needs_shipping %}
-            <tr><th scope="row">{{ __('Shipping') }}</th><td>{{ summary.rate_id ? summary.shipping|money(summary.currency) : '—' }}</td></tr>
+            <tr><th scope="row">{{ __('Shipping') }}</th><td>{{ summary.shipping_option ? summary.shipping|money(summary.currency) : '—' }}</td></tr>
         {% endif %}
         {% for tax in summary.taxes %}
             <tr><th scope="row">{{ tax.name }} ({{ tax.percent }}%)</th><td>{{ tax.total|money(summary.currency) }}</td></tr>
@@ -31,12 +31,13 @@
 </table>
 
 {% if summary.needs_shipping %}
-    <fieldset class="orillacart-choices" data-orillacart-field="rate_id">
+    <fieldset class="orillacart-choices" data-orillacart-field="shipping_option">
         <legend>{{ __('Shipping') }}</legend>
         {% for option in summary.shipping_options %}
             <p class="orillacart-choice">
-                <input id="orillacart-rate-{{ option.rate_id }}" type="radio" name="rate_id" value="{{ option.rate_id }}"{{ option.rate_id == summary.rate_id ? ' checked' }} data-orillacart-rate>
-                <label for="orillacart-rate-{{ option.rate_id }}">{{ option.carrier }}: {{ option.name }} <strong>{{ option.total|money(summary.currency) }}</strong></label>
+                {% set field_id = 'orillacart-shipping-' ~ option.id|replace({':': '-'}) %}
+                <input id="{{ field_id }}" type="radio" name="shipping_option" value="{{ option.id }}"{{ option.id == summary.shipping_option ? ' checked' }} data-orillacart-rate>
+                <label for="{{ field_id }}">{{ option.carrier }}: {{ option.name }} <strong>{{ option.total|money(summary.currency) }}</strong></label>
             </p>
         {% else %}
             <p class="orillacart-notice">{{ address_known ? __('We cannot ship your order to this address.') : __('Enter your address to see the ways to ship.') }}</p>

@@ -1,6 +1,6 @@
 # 27 · Public extension API for add-ons
 
-Status: agreed 2026-10-18. 27a (registry and payment gateways) built; the add-on guide is docs/extensions.md.
+Status: agreed 2026-10-18. 27a (registry and payment gateways) and 27b (shipping methods, live rates) built; the add-on guide is docs/extensions.md.
 Order of work: 25, 27, 21b, 21c, then 26 (DPD) and the rest.
 
 ## Why
@@ -40,7 +40,8 @@ implemented from outside at all.
 | `CreatesShipments` | create a shipment for an order (parcels, cash on delivery amount, pickup point), return its number, label (PDF) and tracking link; cancel it | order screen actions: "Create shipment", "Print label", "Cancel"; tracking in the customer's emails and account |
 | `TracksShipments` | the shipment's current status | a scheduled task updates it and can mark the order shipped or completed |
 
-Carriers get a `method` (default `rate_table`, today's behaviour) and that method's settings. A DPD carrier
+Carriers get a `method` (none: the carrier's own rate table, which stays built in because its rates live in
+the shop's tables) and that method's settings, and whether its prices are taxed and by which group. A DPD carrier
 keeps its name and position in checkout, but DPD prices its options. Rates of a live method are not stored;
 checkout keeps the chosen quote with the order (method id, service code, price), as it keeps the rate today.
 

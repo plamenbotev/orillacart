@@ -59,7 +59,7 @@ final readonly class CheckoutService
     {
         $shipping = $details->shippingCountry === null ? null : new TaxAddress($details->shippingCountry, $details->shippingState);
         $billing = $details->billingCountry === null ? $shipping : new TaxAddress($details->billingCountry, $details->billingState);
-        $priced = $this->pricing->price($this->contents($owner)->lines, $shipping, $billing, $details->rateId, $details->shippingPostcode);
+        $priced = $this->pricing->price($this->contents($owner)->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode);
         $bill = $priced['bill'];
         $currency = $this->settings->current()->currency;
 
@@ -75,7 +75,7 @@ final readonly class CheckoutService
             ), $priced['lines']),
             $priced['needs_shipping'],
             $priced['options'],
-            $priced['chosen']?->rateId,
+            $priced['chosen']?->id,
             !$bill->total()->isZero(),
             $bill->total()->isZero() ? [] : $this->paymentOptions->available($billing?->country, $currency),
             array_map(static fn(BilledTax $tax): CheckoutTaxView => new CheckoutTaxView($tax->name, $tax->percent, (string) $tax->items, (string) $tax->shipping, (string) $tax->total()), $bill->taxes()),
@@ -106,10 +106,10 @@ final readonly class CheckoutService
         $billingTax = new TaxAddress($billingAddress->country, $billingAddress->state);
         $shippingTax = new TaxAddress($shippingAddress->country, $shippingAddress->state);
 
-        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->rateId, $shippingAddress->postcode);
+        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode);
         $bill = $priced['bill'];
         $chosen = $priced['chosen'];
-        if ($priced['needs_shipping'] && ($chosen === null || $chosen->rateId !== $command->rateId)) {
+        if ($priced['needs_shipping'] && ($chosen === null || $chosen->id !== $command->shippingOption)) {
             throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to this address.' : 'Choose how to ship the order.', 'orillacart_shipping_required');
         }
         $currency = $this->settings->current()->currency;

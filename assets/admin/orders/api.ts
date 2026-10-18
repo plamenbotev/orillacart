@@ -100,7 +100,8 @@ export interface Order {
 		expires_at: string | null;
 		downloads: number;
 	}[];
-	shipping_rate_id: number | null;
+	/** How it ships: "rate:12", or "carrier:5:express" for a carrier's own service. */
+	shipping_option: string | null;
 }
 
 export interface OrderQuery {
@@ -181,12 +182,12 @@ export function changeContact(
 export function editItems(
 	id: number,
 	items: EditedItem[],
-	rateId: number | null
+	shippingOption: string | null
 ): Promise< Order > {
 	return apiFetch< Order >( {
 		path: `${ BASE }/orders/${ id }/items`,
 		method: 'PUT',
-		data: { items, rate_id: rateId },
+		data: { items, shipping_option: shippingOption },
 	} );
 }
 
@@ -222,7 +223,7 @@ export function assignOrder(
 }
 
 export interface ShippingOption {
-	rate_id: number;
+	id: string;
 	carrier: string;
 	name: string;
 	total: string;
@@ -271,7 +272,7 @@ export interface OrderQuote {
 	}[];
 	needs_shipping: boolean;
 	shipping_options: ( ShippingOption & { price: string; tax: string } )[];
-	rate_id: number | null;
+	shipping_option: string | null;
 	payment_options: { gateway: string; name: string; instructions: string }[];
 	taxes: { name: string; percent: string; total: string }[];
 	subtotal: string;
@@ -289,7 +290,7 @@ export interface QuoteQuery {
 	shipping_country: string | null;
 	shipping_state: string | null;
 	shipping_postcode: string | null;
-	rate_id: number | null;
+	shipping_option: string | null;
 }
 
 /**
@@ -310,10 +311,12 @@ export interface NewOrder {
 	shipping_address: Address | null;
 	items: EditedItem[];
 	customer_id: number | null;
-	rate_id: number | null;
+	shipping_option: string | null;
 	payment: string | null;
 	paid: boolean;
 	note: string;
+	/** Whether the customer gets the order received or confirmed email; the shop never does. */
+	email_customer: boolean;
 }
 
 /**

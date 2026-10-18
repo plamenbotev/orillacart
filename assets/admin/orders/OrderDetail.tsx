@@ -497,15 +497,17 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 		} ) )
 	);
 	const items = rows.map( ( row ) => row.item );
-	const [ rateId, setRateId ] = useState( order.shipping_rate_id );
+	const [ shippingOption, setShippingOption ] = useState(
+		order.shipping_option
+	);
 	const [ rates, setRates ] = useState< ShippingOption[] >( [] );
 	useEffect( () => {
-		if ( order.shipping_rate_id !== null ) {
+		if ( order.shipping_option !== null ) {
 			fetchShippingOptions( order.number )
 				.then( setRates )
 				.catch( () => setRates( [] ) );
 		}
-	}, [ order.number, order.shipping_rate_id ] );
+	}, [ order.number, order.shipping_option ] );
 
 	return (
 		<Card className="orillacart-card">
@@ -524,19 +526,19 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 					<SelectControl
 						__next40pxDefaultSize
 						label={ __( 'Ships by', 'orillacart' ) }
-						value={ String( rateId ?? '' ) }
+						value={ shippingOption ?? '' }
 						options={ rates.map( ( rate ) => ( {
 							label: `${ rate.carrier }: ${ rate.name } (${ money( rate.total, order.currency ) })`,
-							value: String( rate.rate_id ),
+							value: rate.id,
 						} ) ) }
-						onChange={ ( value ) => setRateId( Number( value ) ) }
+						onChange={ setShippingOption }
 					/>
 				) }
 				<Button
 					variant="primary"
 					disabled={ items.length === 0 }
 					onClick={ () =>
-						editItems( order.number, items, rateId )
+						editItems( order.number, items, shippingOption )
 							.then( onSaved )
 							.catch( onError )
 					}

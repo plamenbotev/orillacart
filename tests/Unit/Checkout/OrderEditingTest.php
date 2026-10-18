@@ -55,7 +55,7 @@ final class OrderEditingTest extends TestCase
         $order = $this->place([10, 2]);
         self::assertSame(3, $this->available());
 
-        $edited = $this->shop->editing->edit($order->number, new EditOrderItems([new EditedItem(10, 4, unitPrice: '25'), new EditedItem(20, 1)], $this->rate), 7);
+        $edited = $this->shop->editing->edit($order->number, new EditOrderItems([new EditedItem(10, 4, unitPrice: '25'), new EditedItem(20, 1)], 'rate:' . $this->rate), 7);
 
         self::assertSame([['Lamp', 4, '25', '100'], ['E-book', 1, '10', '10']], array_map(static fn($line): array => [$line->name, $line->quantity, $line->unitPrice, $line->total], $edited->lines));
         // 110 + 22 VAT + 5 shipping + 1 VAT on shipping
@@ -70,7 +70,7 @@ final class OrderEditingTest extends TestCase
         $digital = $this->shop->editing->edit($order->number, new EditOrderItems([new EditedItem(20, 1)]), 7);
         self::assertSame([null, null, '12'], [$digital->shipping, $digital->shippingAddress, $digital->total]);
 
-        $physical = $this->shop->editing->edit($order->number, new EditOrderItems([new EditedItem(10, 1)], $this->rate), 7);
+        $physical = $this->shop->editing->edit($order->number, new EditOrderItems([new EditedItem(10, 1)], 'rate:' . $this->rate), 7);
         self::assertSame(['Courier – Bulgaria', 'Sofia'], [$physical->shipping, $physical->shippingAddress?->city]);
     }
 
@@ -104,6 +104,6 @@ final class OrderEditingTest extends TestCase
     {
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart($line[0], quantity: $line[1]))->newToken);
 
-        return $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), rateId: $line[0] === 10 ? $this->rate : null, payment: 'bank_transfer'));
+        return $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $line[0] === 10 ? 'rate:' . $this->rate : null, payment: 'bank_transfer'));
     }
 }

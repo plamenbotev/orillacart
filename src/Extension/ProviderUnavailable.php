@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Extension\Payment;
+namespace OrillaCart\Extension;
 
 /**
  * The provider could not be reached or refused the request. The message is for the shop's log; customers see a

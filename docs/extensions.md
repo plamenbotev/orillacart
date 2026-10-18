@@ -21,6 +21,8 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   shop's own gateways (`cash_on_delivery`, `bank_transfer`, `cheque`, `paypal`) come first; a second
   registration with a taken id is logged and left out.
 - An add-on that throws while registering is logged; the shop goes on without it.
+- `$registry->shippingMethod(...)` registers a shipping method the same way; method ids are unique among
+  methods.
 - `$registry->log()` writes to the shop's log. Never log secrets or card data.
 - Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
 
@@ -66,3 +68,29 @@ amount or currency is not the order's is held for the shop to look at instead of
 
 `tests/Fixtures/Extension/TestPayGateway.php` is a complete example, and the shop's PayPal gateway
 (`src/Payment/Application/PayPal/PayPalGateway.php`) is built the same way.
+
+## Shipping methods
+
+A shipping method prices a courier's own services, such as DPD's. The shop manager makes a carrier, chooses
+the method under "Prices from" and fills in its settings; the carrier keeps its name and place at checkout,
+and the method's services are its options. Implement `OrillaCart\Extension\Shipping\ShippingMethod`:
+
+| method | |
+|---|---|
+| `id()`, `name()` | |
+| `settings()` | as for gateways; the carrier keeps the values |
+| `isReady($settings)` | whether it can quote; checkout skips the carrier otherwise |
+| `quote($shipment, $settings)` | the services that can ship the parcel: `new Rate($code, $name, $price, $deliveryDays)`, prices before tax in the shipment's currency; none when the courier does not serve the address |
+
+The `Shipment` carries the destination (country, state, postcode), the items with their weight and sizes in
+the shop's units (`weightUnit`, `dimensionUnit`), the subtotal and the currency; `weight()` adds up the
+items. Service codes must stay the same between quotes: checkout names an option "carrier:5:express", prices
+it again when the order is placed, and keeps that name with the order.
+
+- The shop keeps a quote for ten minutes per parcel and settings, so a customer filling in the form does not
+  call the courier on every change.
+- Throw `ProviderUnavailable` when the courier cannot be asked: checkout leaves the carrier out, logs it, and
+  offers the others.
+- Whether the method's prices are taxed, and by which tax group, is the carrier's setting.
+
+`tests/Fixtures/Extension/TestShipMethod.php` is a complete example.

@@ -297,14 +297,14 @@ final class StorefrontTest extends RestTestCase
 
         $_GET = ['billing_country' => 'BG'];
         $checkout = do_blocks('<!-- wp:orillacart/checkout /-->');
-        self::assertStringContainsString('value="' . $this->rate . '" checked', $checkout, 'the one way to ship is chosen');
+        self::assertStringContainsString('value="rate:' . $this->rate . '" checked', $checkout, 'the one way to ship is chosen');
         self::assertStringContainsString('65.00', $checkout, 'items and shipping');
         self::assertStringContainsString('value="bank_transfer"', $checkout);
 
         $placed = $this->request('POST', '/checkout', [
             'email' => 'ada@example.com',
             'billing' => ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Vitosha Blvd', 'city' => 'Sofia', 'postcode' => '1000', 'country' => 'BG', 'phone' => '+359 2 000 0000'],
-            'rate_id' => $this->rate,
+            'shipping_option' => 'rate:' . $this->rate,
             'payment' => 'bank_transfer',
         ], nonce: true);
         self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));

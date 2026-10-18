@@ -6,6 +6,8 @@ namespace OrillaCart\Shipping\Application;
 
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Extension\SettingValues;
 use OrillaCart\Shipping\Application\Dto\CarrierView;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveRange;
@@ -34,6 +36,7 @@ final readonly class CarrierService
         private GeographyService $geography,
         private TaxGroupService $taxGroups,
         private ShippingClassRepository $classes,
+        private ShippingMethods $methods,
     ) {}
 
     /**
@@ -41,7 +44,7 @@ final readonly class CarrierService
      */
     public function carriers(): array
     {
-        return array_map(CarrierView::fromCarrier(...), $this->carriers->all());
+        return array_map($this->view(...), $this->carriers->all());
     }
 
     /**
@@ -49,7 +52,7 @@ final readonly class CarrierService
      */
     public function carrier(int $id): CarrierView
     {
-        return CarrierView::fromCarrier($this->get($id));
+        return $this->view($this->get($id));
     }
 
     /**
@@ -58,10 +61,10 @@ final readonly class CarrierService
     public function create(SaveCarrier $command): CarrierView
     {
         $carrier = new Carrier($command->name, $command->active, $command->position);
-        $carrier->replaceRates($this->drafts($command->rates));
+        $this->price($carrier, $command);
         $this->carriers->save($carrier);
 
-        return CarrierView::fromCarrier($carrier);
+        return $this->view($carrier);
     }
 
     /**
@@ -74,10 +77,10 @@ final readonly class CarrierService
         $carrier->rename($command->name);
         $carrier->activate($command->active);
         $carrier->moveTo($command->position);
-        $carrier->replaceRates($this->drafts($command->rates));
+        $this->price($carrier, $command);
         $this->carriers->save($carrier);
 
-        return CarrierView::fromCarrier($carrier);
+        return $this->view($carrier);
     }
 
     /**
@@ -88,6 +91,40 @@ final readonly class CarrierService
     public function delete(int $id): void
     {
         $this->carriers->remove($this->get($id));
+    }
+
+    /**
+     * The carrier's own rates, or the method that prices it with its settings.
+     *
+     * @throws ShippingRuleViolation
+     * @throws RuleViolation         for settings the method does not declare, or of the wrong kind
+     */
+    private function price(Carrier $carrier, SaveCarrier $command): void
+    {
+        if ($command->method === null) {
+            $carrier->useMethod(null);
+            $carrier->replaceRates($this->drafts($command->rates));
+
+            return;
+        }
+        if ($command->rates !== []) {
+            throw new ShippingRuleViolation('A carrier whose shipping method prices it has no rates of its own.', 'orillacart_method_carrier_rates');
+        }
+        $method = $this->methods->get($command->method);
+        $saved = $carrier->method() === $command->method ? $carrier->methodSettings() : [];
+        $settings = SettingValues::accept($method->settings(), $saved, $command->methodSettings, $method->name());
+        $missing = $command->active ? SettingValues::missing($method->settings(), $settings) : null;
+        if ($missing !== null) {
+            throw new ShippingRuleViolation(\sprintf('%s needs "%s" before the carrier can be turned on.', $method->name(), $missing->label), 'orillacart_shipping_method_incomplete');
+        }
+        $carrier->useMethod($command->method, $settings, $command->methodTaxable, $this->taxGroup($command->methodTaxGroupId));
+    }
+
+    private function view(Carrier $carrier): CarrierView
+    {
+        $method = $carrier->method() === null ? null : $this->methods->find($carrier->method());
+
+        return CarrierView::fromCarrier($carrier, $method?->settings() ?? []);
     }
 
     private function get(int $id): Carrier

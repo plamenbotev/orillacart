@@ -33,10 +33,12 @@ final readonly class OrderEmails
         private LoggerInterface $logger,
     ) {}
 
-    public function statusChanged(int $orderId, string $previous, string $status): void
+    public function statusChanged(int $orderId, string $previous, string $status, bool $tellCustomer = true, bool $tellShop = true): void
     {
         foreach (EmailRules::forStatusChange($previous, $status) as $kind) {
-            $this->send($orderId, $kind);
+            if ($kind->isForShop() ? $tellShop : $tellCustomer) {
+                $this->send($orderId, $kind);
+            }
         }
     }
 

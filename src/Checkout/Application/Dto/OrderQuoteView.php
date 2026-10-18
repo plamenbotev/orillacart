@@ -22,7 +22,7 @@ final readonly class OrderQuoteView
         public array $lines,
         public bool $needsShipping,
         public array $shippingOptions,
-        public ?int $rateId,
+        public ?string $shippingOption,
         public array $paymentOptions,
         public array $taxes,
         public string $subtotal,

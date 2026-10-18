@@ -21,7 +21,7 @@ final readonly class CheckoutView
         public array $lines,
         public bool $needsShipping,
         public array $shippingOptions,
-        public ?int $rateId,
+        public ?string $shippingOption,
         public bool $needsPayment,
         public array $paymentMethods,
         public array $taxes,

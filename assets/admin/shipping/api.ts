@@ -1,5 +1,7 @@
 import apiFetch from '@wordpress/api-fetch';
 
+import type { Setting, SettingValues } from '../shared/SettingFields';
+
 /** From min to max, both included; no max for no end. */
 export interface Range {
 	min: string;
@@ -54,6 +56,13 @@ export interface Carrier {
 	active: boolean;
 	position: number;
 	rates: ShippingRate[];
+	/** The add-on's shipping method that prices it; null for its own rates. */
+	method: string | null;
+	/** Secrets come back empty; secrets_set names the saved ones. */
+	method_settings: SettingValues;
+	secrets_set: string[];
+	method_taxable: boolean;
+	method_tax_group_id: number | null;
 }
 
 export interface CarrierInput {
@@ -61,6 +70,17 @@ export interface CarrierInput {
 	active: boolean;
 	position: number;
 	rates: ShippingRateInput[];
+	method: string | null;
+	method_settings: SettingValues;
+	method_taxable: boolean;
+	method_tax_group_id: number | null;
+}
+
+/** A shipping method an add-on brings. */
+export interface ShippingMethod {
+	id: string;
+	name: string;
+	fields: Setting[];
 }
 
 const BASE = '/orillacart/v1';
@@ -78,6 +98,12 @@ export function saveCarrier(
 			? { path: `${ BASE }/carriers`, method: 'POST', data: input }
 			: { path: `${ BASE }/carriers/${ id }`, method: 'PUT', data: input }
 	);
+}
+
+export function fetchShippingMethods(): Promise< ShippingMethod[] > {
+	return apiFetch< ShippingMethod[] >( {
+		path: `${ BASE }/shipping-methods`,
+	} );
 }
 
 export function fetchShippingClasses(): Promise< ShippingClass[] > {

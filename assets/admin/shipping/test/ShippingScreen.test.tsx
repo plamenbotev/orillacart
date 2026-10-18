@@ -15,6 +15,11 @@ const courier = {
 	name: 'Courier',
 	active: true,
 	position: 1,
+	method: null,
+	method_settings: {},
+	secrets_set: [],
+	method_taxable: true,
+	method_tax_group_id: null,
 	rates: [
 		{
 			id: 7,
@@ -43,6 +48,24 @@ type Request = { path: string; method?: string; data?: unknown };
 function serve() {
 	mockedFetch.mockImplementation( ( options ) => {
 		const request = options as Request;
+		if ( request.path.endsWith( '/shipping-methods' ) ) {
+			return Promise.resolve( [
+				{
+					id: 'test_ship',
+					name: 'Test Ship',
+					fields: [
+						{
+							key: 'account',
+							label: 'Account',
+							type: 'text',
+							required: true,
+							help: '',
+							choices: {},
+						},
+					],
+				},
+			] );
+		}
 		if ( request.path.includes( '/shipping-classes' ) ) {
 			return Promise.resolve(
 				request.method === undefined
@@ -114,6 +137,33 @@ describe( 'ShippingScreen', () => {
 			shipping_classes: [ 0, 4 ],
 			postcodes: [ '1000-1999', 'SW1*' ],
 			excluded_regions: [ 'US-HI' ],
+		} );
+	} );
+
+	it( 'prices a carrier with an add-on’s shipping method', async () => {
+		serve();
+		const user = userEvent.setup();
+		render( <ShippingScreen /> );
+
+		await screen.findByRole( 'heading', { name: 'Courier' } );
+		await user.selectOptions(
+			screen.getAllByLabelText( 'Prices from' )[ 0 ] as HTMLElement,
+			'test_ship'
+		);
+		expect( screen.queryByLabelText( 'Rate name' ) ).toBeNull();
+		await user.type( screen.getByLabelText( 'Account' ), 'A-1' );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save Courier' } )
+		);
+
+		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toMatchObject( {
+			path: '/orillacart/v1/carriers/1',
+			method: 'PUT',
+			data: {
+				rates: [],
+				method: 'test_ship',
+				method_settings: { account: 'A-1' },
+			},
 		} );
 	} );
 

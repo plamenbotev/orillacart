@@ -8,12 +8,14 @@ use OrillaCart\Shipping\Domain\Carrier;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Command: create a carrier, or replace one's name, state, position and whole list of rates.
+ * Command: create a carrier, or replace one's name, state, position and whole list of rates; or set it up with
+ * an add-on's shipping method, which then prices it (and it has no rates of its own).
  */
 final readonly class SaveCarrier
 {
     /**
-     * @param list<SaveShippingRate> $rates in the order checkout lists them
+     * @param list<SaveShippingRate>     $rates          in the order checkout lists them
+     * @param array<string, string|bool> $methodSettings the method's settings; an empty secret keeps the saved one
      */
     public function __construct(
         #[Assert\NotBlank]
@@ -24,5 +26,11 @@ final readonly class SaveCarrier
         public int $position = 0,
         #[Assert\Valid]
         public array $rates = [],
+        #[Assert\Regex(pattern: '/^[a-z][a-z0-9_]{0,39}$/')]
+        public ?string $method = null,
+        public array $methodSettings = [],
+        public bool $methodTaxable = true,
+        #[Assert\Positive]
+        public ?int $methodTaxGroupId = null,
     ) {}
 }

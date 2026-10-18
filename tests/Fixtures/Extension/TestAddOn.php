@@ -11,14 +11,15 @@ use OrillaCart\Extension\Registry;
 use OrillaCart\Extension\Settings;
 
 /**
- * An add-on, registered on orillacart_extensions as another plugin would be: a gateway of its own, and one
- * whose id the shop already uses, which is left out.
+ * An add-on, registered on orillacart_extensions as another plugin would be: a gateway and a shipping method of
+ * its own, and a gateway whose id the shop already uses, which is left out.
  */
 final class TestAddOn
 {
     public static function register(Registry $registry): void
     {
         $registry->paymentGateway(new TestPayGateway());
+        $registry->shippingMethod(new TestShipMethod());
         $registry->paymentGateway(new class implements PaymentGateway {
             public function id(): string
             {

@@ -17,6 +17,7 @@ use OrillaCart\Checkout\Application\ManualOrders;
 use OrillaCart\Checkout\Application\OrderEditing;
 use OrillaCart\Checkout\Application\OrderPricing;
 use OrillaCart\Customers\Application\CustomerService;
+use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Inventory\Application\StockService;
@@ -53,6 +54,7 @@ use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shipping\Application\CarrierService;
 use OrillaCart\Shipping\Application\ShippingClassService;
+use OrillaCart\Shipping\Application\ShippingMethods;
 use OrillaCart\Shipping\Application\ShippingQuotes;
 use OrillaCart\Shipping\Domain\Event\ShippingClassDeleted;
 use OrillaCart\Tax\Application\TaxCalculator;
@@ -85,6 +87,7 @@ use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentRepository;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
+use OrillaCart\Tests\Fixtures\Shipping\MemoryRateCache;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use OrillaCart\Tests\Fixtures\TemporaryPrivateFiles;
@@ -107,6 +110,7 @@ final class TestShop
     public readonly InMemoryTaxSettingsRepository $taxSettings;
     public readonly InMemorySettingsRepository $settings;
     public readonly CarrierService $carriers;
+    public readonly MemoryRateCache $rateCache;
     public readonly ShippingClassService $shippingClasses;
     public readonly PaymentMethodService $paymentMethods;
     public readonly InMemoryPaymentRepository $paymentRecords;
@@ -133,7 +137,10 @@ final class TestShop
     public readonly DownloadService $downloadFiles;
     public readonly Downloads $downloads;
 
-    public function __construct(string $now = '2026-10-17 12:00:00 UTC')
+    /**
+     * @param list<ShippingMethod> $shippingMethods as add-ons would register them
+     */
+    public function __construct(string $now = '2026-10-17 12:00:00 UTC', array $shippingMethods = [])
     {
         $this->clock = new MockClock($now);
         $this->events = new EventDispatcher();
@@ -149,7 +156,11 @@ final class TestShop
 
         $carrierRecords = new InMemoryCarrierRepository();
         $classRecords = new InMemoryShippingClassRepository();
-        $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups, $classRecords);
+        $this->payPalApi = new FakePayPalApi();
+        $extensions = new FixedExtensions([new CashOnDelivery(), new BankTransfer(), new Cheque(), new PayPalGateway($this->payPalApi)], $shippingMethods);
+        $shippingMethodList = new ShippingMethods($extensions);
+        $this->rateCache = new MemoryRateCache();
+        $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups, $classRecords, $shippingMethodList);
         $this->shippingClasses = new ShippingClassService($classRecords, $carrierRecords, $this->events);
 
         $ids = new CatalogIds();
@@ -165,8 +176,7 @@ final class TestShop
 
         $methodRecords = new InMemoryPaymentMethodRepository();
         $this->paymentRecords = new InMemoryPaymentRepository();
-        $this->payPalApi = new FakePayPalApi();
-        $gateways = new Gateways(new FixedExtensions([new CashOnDelivery(), new BankTransfer(), new Cheque(), new PayPalGateway($this->payPalApi)]));
+        $gateways = new Gateways($extensions);
         $urls = new FakePaymentUrls();
         $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls);
         $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock);
@@ -184,7 +194,7 @@ final class TestShop
         $this->accounts = new InMemoryAccounts();
         $this->customerSettings = new InMemoryCustomerSettingsRepository();
         $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders);
-        $this->pricing = new OrderPricing($quotes, $taxes, new ShippingQuotes($carrierRecords, $classRecords), $this->stock, $settings);
+        $this->pricing = new OrderPricing($quotes, $taxes, new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger), $this->stock, $settings);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions);
         $paymentOptions = new PaymentOptions($methodRecords, $gateways);
         $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions);

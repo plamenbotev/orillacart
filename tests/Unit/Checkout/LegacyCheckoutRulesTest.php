@@ -167,7 +167,7 @@ final class LegacyCheckoutRulesTest extends TestCase
             'tax' => $view->itemsTax,
             'taxes' => array_values(array_map(static fn(CheckoutTaxView $tax): array => [$tax->name, $tax->items], array_filter($view->taxes, static fn(CheckoutTaxView $tax): bool => $tax->items !== '0'))),
             'needs_shipping' => $view->needsShipping,
-            'rates' => array_map(static fn(ShippingChoiceView $option): array => [$shop->rateKeys[$option->rateId], $option->price, $option->tax], $view->shippingOptions),
+            'rates' => array_map(static fn(ShippingChoiceView $option): array => [$shop->rateKeys[$option->id], $option->price, $option->tax], $view->shippingOptions),
             'total' => $view->total,
             'payment' => array_map(static fn(PaymentOptionView $method): string => $method->gateway, $view->paymentMethods),
         ];

@@ -83,10 +83,12 @@ use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\Lifecycle\AfterResponse;
 use OrillaCart\Shared\Persistence\LoadedEntities;
 use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Shipping\Application\RateCache;
 use OrillaCart\Shipping\Domain\CarrierRepository;
 use OrillaCart\Shipping\Domain\ShippingClassRepository;
 use OrillaCart\Shipping\Infrastructure\Doctrine\DoctrineCarrierRepository;
 use OrillaCart\Shipping\Infrastructure\Doctrine\DoctrineShippingClassRepository;
+use OrillaCart\Shipping\Infrastructure\WordPress\TransientRateCache;
 use OrillaCart\Storefront\Domain\ShopPagesRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionShopPagesRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
@@ -189,6 +191,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CustomerSettingsRepository::class, OptionCustomerSettingsRepository::class);
     $services->alias(IndexQueue::class, DbalIndexQueue::class);
     $services->alias(ProductTexts::class, WordPressProductTexts::class);
+    $services->alias(RateCache::class, TransientRateCache::class);
 
     // The search engine: the database's own (MySQL FULLTEXT).
     $services->alias(CatalogSearch::class, MysqlCatalogSearch::class);

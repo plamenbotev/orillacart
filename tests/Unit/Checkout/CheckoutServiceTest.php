@@ -66,7 +66,7 @@ final class CheckoutServiceTest extends TestCase
 
         self::assertSame(['74.66', '14.93', '5', '1', '95.59', 'EUR'], [$summary->subtotal, $summary->itemsTax, $summary->shipping, $summary->shippingTax, $summary->total, $summary->currency]);
         self::assertSame([['VAT', '20', '14.93', '1', '15.93']], array_map(static fn($tax): array => [$tax->name, $tax->percent, $tax->items, $tax->shipping, $tax->total], $summary->taxes));
-        self::assertSame([[$this->courier, 'Courier', 'Bulgaria', '5', '1', '6']], array_map(static fn($option): array => [$option->rateId, $option->carrier, $option->name, $option->price, $option->tax, $option->total], $summary->shippingOptions));
+        self::assertSame([['rate:' . $this->courier, 'Courier', 'Bulgaria', '5', '1', '6']], array_map(static fn($option): array => [$option->id, $option->carrier, $option->name, $option->price, $option->tax, $option->total], $summary->shippingOptions));
         self::assertSame(['cash_on_delivery', 'bank_transfer', 'paypal'], array_map(static fn($method): string => $method->gateway, $summary->paymentMethods));
         self::assertSame('Pay the courier.', $summary->paymentMethods[0]->instructions);
         self::assertSame(['bank_transfer', 'paypal'], array_map(static fn($method): string => $method->gateway, $this->shop->checkout->summary($owner, new CheckoutDetails('DE'))->paymentMethods));
@@ -185,7 +185,7 @@ final class CheckoutServiceTest extends TestCase
         // Cash on delivery is for customers billed in Bulgaria only, wherever the order ships.
         $germanBilling = $this->order('cash_on_delivery', country: 'DE');
         $this->expectExceptionMessage('Choose how to pay.');
-        $this->shop->checkout->placeOrder($owner, new PlaceOrder($germanBilling->email, $germanBilling->billing, $this->order(null)->billing, $this->courier, 'cash_on_delivery'));
+        $this->shop->checkout->placeOrder($owner, new PlaceOrder($germanBilling->email, $germanBilling->billing, $this->order(null)->billing, 'rate:' . $this->courier, 'cash_on_delivery'));
     }
 
     public function testOrdersLeftUnpaidAtPayPalForAnHourAreCancelled(): void
@@ -312,7 +312,7 @@ final class CheckoutServiceTest extends TestCase
         return new PlaceOrder(
             'ada@example.com',
             new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', $country, '+359 2 000 0000'),
-            rateId: $rate === -1 ? $this->courier : $rate,
+            shippingOption: $rate === -1 ? 'rate:' . $this->courier : ($rate === null ? null : 'rate:' . $rate),
             payment: $payment,
         );
     }

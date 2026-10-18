@@ -13,7 +13,7 @@ use OrillaCart\Extension\Payment\PaymentOutcome;
 use OrillaCart\Extension\Payment\PaymentReturn;
 use OrillaCart\Extension\Payment\PaymentSession;
 use OrillaCart\Extension\Payment\PaymentStart;
-use OrillaCart\Extension\Payment\ProviderUnavailable;
+use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Setting;
 use OrillaCart\Extension\Settings;
 use OrillaCart\Payment\Application\Dto\PayPalAccount;

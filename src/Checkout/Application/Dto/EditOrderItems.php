@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Checkout\Application\Dto;
 
+use OrillaCart\Shipping\Application\Dto\ShippingOptionView;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -18,7 +19,7 @@ final readonly class EditOrderItems
         #[Assert\Count(min: 1, minMessage: 'An order has at least one item.')]
         #[Assert\Valid]
         public array $items,
-        #[Assert\Positive]
-        public ?int $rateId = null,
+        #[Assert\Regex(pattern: ShippingOptionView::ID_PATTERN)]
+        public ?string $shippingOption = null,
     ) {}
 }

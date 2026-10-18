@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Extension\Payment;
 
+use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Setting;
 use OrillaCart\Extension\Settings;
 

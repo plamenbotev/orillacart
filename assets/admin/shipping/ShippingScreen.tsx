@@ -16,6 +16,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
 import { toApiError } from '../shared/api';
+import { SettingFields } from '../shared/SettingFields';
 import { fetchGroups, type TaxGroup } from '../tax/api';
 import {
 	type Carrier,
@@ -23,11 +24,13 @@ import {
 	deleteCarrier,
 	fetchCarriers,
 	fetchShippingClasses,
+	fetchShippingMethods,
 	type Measure,
 	MEASURES,
 	type Range,
 	saveCarrier,
 	type ShippingClass,
+	type ShippingMethod,
 	type ShippingRateInput,
 	WITHOUT_CLASS,
 } from './api';
@@ -74,6 +77,7 @@ export function ShippingScreen() {
 	const [ carriers, setCarriers ] = useState< Carrier[] | null >( null );
 	const [ groups, setGroups ] = useState< TaxGroup[] >( [] );
 	const [ classes, setClasses ] = useState< ShippingClass[] >( [] );
+	const [ methods, setMethods ] = useState< ShippingMethod[] >( [] );
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) =>
@@ -84,12 +88,16 @@ export function ShippingScreen() {
 			fetchCarriers(),
 			fetchGroups(),
 			fetchShippingClasses(),
+			fetchShippingMethods(),
 		] )
-			.then( ( [ loaded, taxGroups, shippingClasses ] ) => {
-				setCarriers( loaded );
-				setGroups( taxGroups );
-				setClasses( shippingClasses );
-			} )
+			.then(
+				( [ loaded, taxGroups, shippingClasses, shippingMethods ] ) => {
+					setCarriers( loaded );
+					setGroups( taxGroups );
+					setClasses( shippingClasses );
+					setMethods( shippingMethods );
+				}
+			)
 			.catch( fail );
 	}, [] );
 
@@ -135,6 +143,7 @@ export function ShippingScreen() {
 					carrier={ carrier }
 					groups={ groups }
 					classes={ classes }
+					methods={ methods }
 					onSaved={ ( saved ) => {
 						replace( saved );
 						setMessage( {
@@ -157,6 +166,7 @@ export function ShippingScreen() {
 				carrier={ null }
 				groups={ groups }
 				classes={ classes }
+				methods={ methods }
 				onSaved={ ( saved ) => {
 					replace( saved );
 					setMessage( {
@@ -181,6 +191,8 @@ interface CarrierCardProps {
 	carrier: Carrier | null;
 	groups: TaxGroup[];
 	classes: ShippingClass[];
+	/** The shipping methods add-ons bring, which can price a carrier instead of its rates. */
+	methods: ShippingMethod[];
 	onSaved: ( carrier: Carrier ) => void;
 	onDeleted: () => void;
 	onError: ( error: unknown ) => void;
@@ -190,20 +202,39 @@ function CarrierCard( {
 	carrier,
 	groups,
 	classes,
+	methods,
 	onSaved,
 	onDeleted,
 	onError,
 }: CarrierCardProps ) {
 	const [ draft, setDraft ] = useState< CarrierInput >(
-		carrier ?? { name: '', active: true, position: 0, rates: [] }
+		carrier ?? {
+			name: '',
+			active: true,
+			position: 0,
+			rates: [],
+			method: null,
+			method_settings: {},
+			method_taxable: true,
+			method_tax_group_id: null,
+		}
 	);
+	const method = methods.find( ( found ) => found.id === draft.method );
 	const [ confirming, setConfirming ] = useState( false );
 
 	const submit = ( event: FormEvent ) => {
 		event.preventDefault();
 		// Only the fields the API takes: a loaded carrier also has its id.
-		const { name, active, position, rates } = draft;
-		saveCarrier( carrier?.id ?? null, { name, active, position, rates } )
+		saveCarrier( carrier?.id ?? null, {
+			name: draft.name,
+			active: draft.active,
+			position: draft.position,
+			rates: draft.method === null ? draft.rates : [],
+			method: draft.method,
+			method_settings: draft.method === null ? {} : draft.method_settings,
+			method_taxable: draft.method_taxable,
+			method_tax_group_id: draft.method_tax_group_id,
+		} )
 			.then( ( saved ) => {
 				setDraft( saved );
 				onSaved( saved );
@@ -297,37 +328,145 @@ function CarrierCard( {
 							setDraft( { ...draft, active } )
 						}
 					/>
-					{ draft.rates.map( ( rate, index ) => (
-						<RateFields
-							key={ rate.id ?? `new-${ index }` }
-							rate={ rate }
-							groups={ groups }
-							classes={ classes }
-							onChange={ ( changed ) =>
-								setRate( index, changed )
-							}
-							onRemove={ () =>
+					{ ( methods.length > 0 || draft.method !== null ) && (
+						<SelectControl
+							__next40pxDefaultSize
+							label={ __( 'Prices from', 'orillacart' ) }
+							value={ draft.method ?? '' }
+							options={ [
+								{
+									value: '',
+									label: __( 'Its own rates', 'orillacart' ),
+								},
+								...methods.map( ( found ) => ( {
+									value: found.id,
+									label: found.name,
+								} ) ),
+							] }
+							onChange={ ( value ) =>
 								setDraft( {
 									...draft,
-									rates: draft.rates.filter(
-										( _, i ) => i !== index
-									),
+									method: value === '' ? null : value,
+									method_settings: {},
 								} )
 							}
 						/>
-					) ) }
+					) }
+					{ draft.method !== null && (
+						<>
+							{ method === undefined && (
+								<Notice
+									status="warning"
+									isDismissible={ false }
+								>
+									{ __(
+										'The add-on that brings this shipping method is not active, so checkout leaves the carrier out.',
+										'orillacart'
+									) }
+								</Notice>
+							) }
+							<SettingFields
+								fields={ method?.fields ?? [] }
+								values={ draft.method_settings }
+								secretsSet={ carrier?.secrets_set ?? [] }
+								onChange={ ( key, value ) =>
+									setDraft( {
+										...draft,
+										method_settings: {
+											...draft.method_settings,
+											[ key ]: value,
+										},
+									} )
+								}
+							/>
+							<Flex align="flex-end">
+								<FlexItem>
+									<CheckboxControl
+										label={ __( 'Taxed', 'orillacart' ) }
+										checked={ draft.method_taxable }
+										onChange={ ( taxable ) =>
+											setDraft( {
+												...draft,
+												method_taxable: taxable,
+											} )
+										}
+									/>
+								</FlexItem>
+								<FlexItem isBlock>
+									<SelectControl
+										__next40pxDefaultSize
+										label={ __(
+											'Tax group',
+											'orillacart'
+										) }
+										disabled={ ! draft.method_taxable }
+										value={ String(
+											draft.method_tax_group_id ?? ''
+										) }
+										options={ [
+											{
+												value: '',
+												label: __(
+													'The shop’s default',
+													'orillacart'
+												),
+											},
+											...groups.map( ( group ) => ( {
+												value: String( group.id ),
+												label: group.name,
+											} ) ),
+										] }
+										onChange={ ( value ) =>
+											setDraft( {
+												...draft,
+												method_tax_group_id:
+													value === ''
+														? null
+														: Number.parseInt(
+																value,
+																10
+															),
+											} )
+										}
+									/>
+								</FlexItem>
+							</Flex>
+						</>
+					) }
+					{ draft.method === null &&
+						draft.rates.map( ( rate, index ) => (
+							<RateFields
+								key={ rate.id ?? `new-${ index }` }
+								rate={ rate }
+								groups={ groups }
+								classes={ classes }
+								onChange={ ( changed ) =>
+									setRate( index, changed )
+								}
+								onRemove={ () =>
+									setDraft( {
+										...draft,
+										rates: draft.rates.filter(
+											( _, i ) => i !== index
+										),
+									} )
+								}
+							/>
+						) ) }
 					<Flex justify="flex-start">
-						<Button
-							variant="secondary"
-							onClick={ () =>
-								setDraft( {
-									...draft,
-									rates: [ ...draft.rates, EMPTY_RATE ],
-								} )
-							}
-						>
-							{ __( 'Add a rate', 'orillacart' ) }
-						</Button>
+						{ draft.method === null && (
+							<Button
+								variant="secondary"
+								onClick={ () =>
+									setDraft( {
+										...draft,
+										rates: [ ...draft.rates, EMPTY_RATE ],
+									} )
+								}
+							>
+								{ __( 'Add a rate', 'orillacart' ) }
+							</Button>
+						) }
 						<Button
 							variant="primary"
 							type="submit"

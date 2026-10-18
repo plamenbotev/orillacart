@@ -139,12 +139,12 @@ final readonly class OrderService
      * @throws OrderNotFound
      * @throws OrderRuleViolation for an order that is no longer open
      */
-    public function hold(int $id, string $note = ''): void
+    public function hold(int $id, string $note = '', bool $tellCustomer = true, bool $tellShop = true): void
     {
         $order = $this->get($id);
         $previous = $order->status();
         if ($order->hold()) {
-            $this->changed($order, $previous, [], $note);
+            $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
         }
     }
 
@@ -152,12 +152,12 @@ final readonly class OrderService
      * @throws OrderNotFound
      * @throws OrderRuleViolation for an order that was cancelled or failed before the money came
      */
-    public function markPaid(int $id, ?string $transactionId, string $note = ''): void
+    public function markPaid(int $id, ?string $transactionId, string $note = '', bool $tellCustomer = true, bool $tellShop = true): void
     {
         $order = $this->get($id);
         $previous = $order->status();
         if ($order->markPaid($transactionId, $this->clock->now())) {
-            $this->changed($order, $previous, [], $note);
+            $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
         }
     }
 
@@ -330,7 +330,7 @@ final readonly class OrderService
      *
      * @param list<TakenItem> $taken
      */
-    private function changed(Order $order, OrderStatus $previous, array $taken, string $note, ?int $userId = null): void
+    private function changed(Order $order, OrderStatus $previous, array $taken, string $note, ?int $userId = null, bool $tellCustomer = true, bool $tellShop = true): void
     {
         if ($order->status() === $previous) {
             return;
@@ -344,7 +344,7 @@ final readonly class OrderService
         $text = \sprintf('Status changed from %s to %s.', strtolower($previous->label()), strtolower($order->status()->label()));
         $order->addNote(trim($note) === '' ? $text : $text . ' ' . trim($note), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
         $this->orders->save($order);
-        $this->events->dispatch(new OrderStatusChanged($order->id(), $order->status(), $previous));
+        $this->events->dispatch(new OrderStatusChanged($order->id(), $order->status(), $previous, $tellCustomer, $tellShop));
     }
 
     /**
@@ -417,7 +417,7 @@ final readonly class OrderService
 
     private static function shippingChoice(?NewShipping $shipping): ?ShippingChoice
     {
-        return $shipping === null ? null : new ShippingChoice($shipping->rateId, $shipping->carrier, $shipping->rate, Money::of($shipping->price), Money::of($shipping->tax));
+        return $shipping === null ? null : new ShippingChoice($shipping->option, $shipping->carrier, $shipping->rate, Money::of($shipping->price), Money::of($shipping->tax));
     }
 
     /**

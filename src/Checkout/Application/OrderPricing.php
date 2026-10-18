@@ -60,7 +60,7 @@ final readonly class OrderPricing
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?int $rateId, ?string $postcode = null): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null): array
     {
         $decimals = $this->settings->current()->priceDecimals;
         $bill = new Bill($decimals);
@@ -93,11 +93,11 @@ final readonly class OrderPricing
                 $taxes = $option->taxable ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
                 $price = Money::of($option->price);
                 $tax = array_reduce($taxes, static fn(Money $sum, Tax $rate): Money => $sum->add($price->percent($rate->percent)->rounded($decimals)), Money::zero());
-                $view = new ShippingChoiceView($option->rateId, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $price->rounded($decimals)->add($tax));
+                $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $price->rounded($decimals)->add($tax));
                 $options[] = $view;
                 // The customer's choice when it is offered, otherwise the first rate, so the totals include shipping.
-                if ($chosen === null || $option->rateId === $rateId) {
-                    $chosen = $chosen !== null && $chosen['view']->rateId === $rateId ? $chosen : ['view' => $view, 'price' => $price, 'taxes' => $taxes];
+                if ($chosen === null || $option->id === $shippingOption) {
+                    $chosen = $chosen !== null && $chosen['view']->id === $shippingOption ? $chosen : ['view' => $view, 'price' => $price, 'taxes' => $taxes];
                 }
             }
             if ($chosen !== null) {
@@ -170,7 +170,7 @@ final readonly class OrderPricing
         $chosen = $priced['chosen'];
         $bill = $priced['bill'];
 
-        return $chosen === null || !$priced['needs_shipping'] ? null : new NewShipping($chosen->rateId, $chosen->carrier, $chosen->name, (string) $bill->shipping(), (string) $bill->shippingTax());
+        return $chosen === null || !$priced['needs_shipping'] ? null : new NewShipping($chosen->id, $chosen->carrier, $chosen->name, (string) $bill->shipping(), (string) $bill->shippingTax());
     }
 
     /**

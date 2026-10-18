@@ -142,7 +142,7 @@ visitor() { docker exec "$WP" curl -s -b /tmp/cart -c /tmp/cart -H "X-WP-Nonce: 
 visitor -X POST -d "{\"product_id\":$product,\"quantity\":2}" "$API/cart/items" | grep -q '"items":2' \
     || fail "a visitor could not add to the cart"
 docker exec "$WP" grep -q 'orillacart_cart' /tmp/cart || fail "the cart cookie was not set"
-placed="$(visitor -X POST -d "{\"email\":\"ada@example.com\",\"billing\":{\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"street\":\"1 Main St\",\"city\":\"Sofia\",\"postcode\":\"1000\",\"country\":\"BG\",\"phone\":\"+359 2 000 0000\"},\"rate_id\":$rate,\"payment\":\"cash_on_delivery\"}" "$API/checkout")"
+placed="$(visitor -X POST -d "{\"email\":\"ada@example.com\",\"billing\":{\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"street\":\"1 Main St\",\"city\":\"Sofia\",\"postcode\":\"1000\",\"country\":\"BG\",\"phone\":\"+359 2 000 0000\"},\"shipping_option\":\"rate:$rate\",\"payment\":\"cash_on_delivery\"}" "$API/checkout")"
 echo "$placed" | grep -q '"status":"on_hold"' || fail "the order was not placed: $placed"
 key="$(echo "$placed" | sed -n 's/.*"key":"\([a-f0-9]*\)".*/\1/p')"
 [ "$(api "$API/receipts/$key")" = 200 ] || fail "the receipt does not open"

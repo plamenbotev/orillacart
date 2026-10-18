@@ -61,8 +61,8 @@ class Order
     #[ORM\OrderBy(['createdAt' => 'ASC', 'id' => 'ASC'])]
     private Collection $notes;
 
-    #[ORM\Column(nullable: true)]
-    private ?int $shippingRateId;
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $shippingOption;
 
     #[ORM\Column(length: 200, nullable: true)]
     private ?string $shippingName;
@@ -145,7 +145,7 @@ class Order
         foreach ($draft->lines as $position => $line) {
             $this->lines->add(new OrderLine($this, $line, $position));
         }
-        $this->shippingRateId = $draft->shipping?->rateId;
+        $this->shippingOption = $draft->shipping?->option;
         $this->shippingName = $draft->shipping === null ? null : mb_substr("{$draft->shipping->carrier} – {$draft->shipping->rate}", 0, 200);
         $this->shippingTotal = $shippingTotal->toFixed();
         $this->shippingTax = $shippingTax->toFixed();
@@ -416,7 +416,7 @@ class Order
             $this->lines->add(new OrderLine($this, $line, $position));
         }
         $this->shippingAddress = $shippingAddress ?? Address::none();
-        $this->shippingRateId = $shipping?->rateId;
+        $this->shippingOption = $shipping?->option;
         $this->shippingName = $shipping === null ? null : mb_substr("{$shipping->carrier} – {$shipping->rate}", 0, 200);
         $this->shippingTotal = $shippingTotal->toFixed();
         $this->shippingTax = $shippingTax->toFixed();
@@ -426,9 +426,9 @@ class Order
         $this->total = $total->toFixed();
     }
 
-    public function shippingRateId(): ?int
+    public function shippingOption(): ?string
     {
-        return $this->shippingRateId;
+        return $this->shippingOption;
     }
 
     /** The shop waits for an offline payment, or for the provider's review. */

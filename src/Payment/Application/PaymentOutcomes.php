@@ -10,7 +10,7 @@ use OrillaCart\Extension\Payment\InvalidNotification;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Extension\Payment\PaymentOutcome;
 use OrillaCart\Extension\Payment\PaymentReturn;
-use OrillaCart\Extension\Payment\ProviderUnavailable;
+use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Settings;
 use OrillaCart\Payment\Domain\Event\PaymentCancelled;
 use OrillaCart\Payment\Domain\Event\PaymentCompleted;

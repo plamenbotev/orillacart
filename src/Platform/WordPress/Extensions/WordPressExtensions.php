@@ -7,6 +7,7 @@ namespace OrillaCart\Platform\WordPress\Extensions;
 use OrillaCart\Extension\Log;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Registry;
+use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Extension\Version;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Log\LoggerInterface;
@@ -25,6 +26,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
 
     /** @var array<string, PaymentGateway> */
     private array $gateways = [];
+    /** @var array<string, ShippingMethod> */
+    private array $methods = [];
     private bool $collected = false;
     private bool $collecting = false;
 
@@ -44,21 +47,16 @@ final class WordPressExtensions implements Registry, InstalledExtensions
 
     public function paymentGateway(PaymentGateway $gateway): void
     {
-        if (!$this->collecting) {
-            throw new \LogicException('Register payment gateways on the ' . self::ACTION . ' action.');
+        if ($this->accepts('payment gateway', $gateway->id(), $this->gateways[$gateway->id()] ?? null, $gateway)) {
+            $this->gateways[$gateway->id()] = $gateway;
         }
-        $id = $gateway->id();
-        if (preg_match('/^[a-z][a-z0-9_]{0,39}$/', $id) !== 1) {
-            $this->logger->error('An add-on registered a payment gateway with the id "{id}"; ids are lowercase letters, digits and underscores, up to 40. It is left out.', ['id' => $id]);
+    }
 
-            return;
+    public function shippingMethod(ShippingMethod $method): void
+    {
+        if ($this->accepts('shipping method', $method->id(), $this->methods[$method->id()] ?? null, $method)) {
+            $this->methods[$method->id()] = $method;
         }
-        if (isset($this->gateways[$id])) {
-            $this->logger->error('Two payment gateways use the id "{id}": {first} and {second}. The second is left out.', ['id' => $id, 'first' => $this->gateways[$id]::class, 'second' => $gateway::class]);
-
-            return;
-        }
-        $this->gateways[$id] = $gateway;
     }
 
     public function log(): Log
@@ -71,6 +69,35 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->gateways);
+    }
+
+    public function shippingMethods(): array
+    {
+        $this->collect();
+
+        return array_values($this->methods);
+    }
+
+    /**
+     * Whether an add-on's registration can be kept: made on the action, with a well-formed id no one took.
+     */
+    private function accepts(string $kind, string $id, ?object $taken, object $registered): bool
+    {
+        if (!$this->collecting) {
+            throw new \LogicException(\sprintf('Register a %s on the %s action.', $kind, self::ACTION));
+        }
+        if (preg_match('/^[a-z][a-z0-9_]{0,39}$/', $id) !== 1) {
+            $this->logger->error('A {kind} was registered with the id "{id}"; ids are lowercase letters, digits and underscores, up to 40. It is left out.', ['kind' => $kind, 'id' => $id]);
+
+            return false;
+        }
+        if ($taken !== null) {
+            $this->logger->error('Two of the {kind}s use the id "{id}": {first} and {second}. The second is left out.', ['kind' => $kind, 'id' => $id, 'first' => $taken::class, 'second' => $registered::class]);
+
+            return false;
+        }
+
+        return true;
     }
 
     private function collect(): void

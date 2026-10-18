@@ -50,7 +50,7 @@ final readonly class OrderView
         public array $notes,
         public array $nextStatuses,
         public array $downloads = [],
-        public ?int $shippingRateId = null,
+        public ?string $shippingOption = null,
     ) {}
 
     /**
@@ -91,7 +91,7 @@ final readonly class OrderView
                 static fn(DownloadGrant $grant): OrderDownloadView => OrderDownloadView::fromGrant($grant, ($lines[$grant->linePosition()] ?? null)?->name() ?? '', $downloadUrl),
                 $order->grants(),
             ),
-            $order->shippingRateId(),
+            $order->shippingOption(),
         );
     }
 }

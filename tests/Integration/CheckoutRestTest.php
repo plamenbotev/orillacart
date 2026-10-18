@@ -272,6 +272,29 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame(404, rest_do_request(new \WP_REST_Request('GET', self::NAMESPACE . '/payments/nobody/return'))->get_status());
     }
 
+    public function testACarrierPricedByAnAddOnsMethodShipsTheOrder(): void
+    {
+        $this->actAs('administrator');
+        self::assertContains('test_ship', array_column($this->rows($this->data($this->request('GET', '/shipping-methods'))), 'id'));
+        $created = $this->request('POST', '/carriers', ['name' => 'Speedy', 'position' => 5, 'method' => 'test_ship', 'method_settings' => ['account' => 'A-1', 'per_kg' => '2']], nonce: true);
+        self::assertSame(201, $created->get_status(), (string) wp_json_encode($created->get_data()));
+        $carrier = $this->id($created);
+        self::assertSame(422, $this->request('PUT', "/carriers/{$carrier}", ['name' => 'Speedy', 'method' => 'test_ship', 'method_settings' => ['per_kg' => 'two']], nonce: true)->get_status());
+        wp_set_current_user(0);
+
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product, 'quantity' => 2], nonce: true));
+        $summary = $this->data($this->request('POST', '/checkout/summary', ['shipping_country' => 'BG'], nonce: true));
+        $options = array_column($this->rows($summary['shipping_options']), 'name', 'id');
+        // 2 lamps of 2.5 kg: 3 + 2 × 5 kg
+        self::assertSame('Economy', $options["carrier:{$carrier}:economy"] ?? null);
+        self::assertSame('13', array_column($this->rows($summary['shipping_options']), 'price', 'id')["carrier:{$carrier}:economy"] ?? null);
+
+        $placed = $this->request('POST', '/checkout', ['shipping_option' => "carrier:{$carrier}:express"] + $this->order('cash_on_delivery'), nonce: true);
+        self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));
+        $receipt = $this->data($this->request('GET', "/receipts/{$this->key($this->data($placed))}"));
+        self::assertSame(['Speedy – Express', '26'], [$receipt['shipping'], $receipt['shipping_total']]);
+    }
+
     /**
      * Plays PayPal for wp_remote_* calls to its API.
      *
@@ -331,7 +354,7 @@ final class CheckoutRestTest extends RestTestCase
         return [
             'email' => 'ada@example.com',
             'billing' => ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Vitosha Blvd', 'city' => 'Sofia', 'postcode' => '1000', 'country' => 'BG', 'phone' => '+359 2 000 0000'],
-            'rate_id' => $this->rate,
+            'shipping_option' => 'rate:' . $this->rate,
             'payment' => $payment,
         ];
     }

@@ -13,10 +13,16 @@ use OrillaCart\Shared\Domain\Event\PublicEvent;
  */
 final readonly class OrderStatusChanged implements PublicEvent
 {
+    /**
+     * @param bool $tellCustomer whether the customer is emailed about it; not when the shop takes an order itself and chose not to
+     * @param bool $tellShop     whether the shop is emailed about it; not about an order it took itself
+     */
     public function __construct(
         public int $orderId,
         public OrderStatus $status,
         public OrderStatus $previous,
+        public bool $tellCustomer = true,
+        public bool $tellShop = true,
     ) {}
 
     public function hookName(): string

@@ -38,7 +38,7 @@ final class LegacyCheckout
     public const array GATEWAYS = ['payondelivery' => 'cash_on_delivery', 'banktransfer' => 'bank_transfer', 'cheque' => 'cheque', 'paypal' => 'paypal'];
 
     public readonly TestShop $shop;
-    /** @var array<int, string> rate id => recorded key */
+    /** @var array<string, string> shipping option ("rate:12") => recorded key */
     public array $rateKeys = [];
     /** @var array<string, int> */
     private array $productIds = [];
@@ -122,7 +122,7 @@ final class LegacyCheckout
             }
             $carrier = $this->shop->carriers->create(new SaveCarrier($name, position: ++$position, rates: $saves));
             foreach (array_keys($ordered) as $index => $key) {
-                $this->rateKeys[$carrier->rates[$index]->id] = $key;
+                $this->rateKeys['rate:' . $carrier->rates[$index]->id] = $key;
             }
         }
 

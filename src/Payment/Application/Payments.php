@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Payment\Application;
 
 use OrillaCart\Extension\Payment\PaymentSession;
-use OrillaCart\Extension\Payment\ProviderUnavailable;
+use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Settings;
 use OrillaCart\Payment\Application\Dto\PaymentStartView;
 use OrillaCart\Payment\Application\Dto\StartPayment;
