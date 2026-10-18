@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Ordering\Application\Dto;
 
 /**
- * A bought file ready to send: where it is on disk, and the name and type the browser gets.
+ * A bought file ready to send: where it is on disk, its key in the private store, and the name and type the
+ * browser gets.
  */
 final readonly class DownloadFile
 {
@@ -13,5 +14,6 @@ final readonly class DownloadFile
         public string $path,
         public string $filename,
         public string $mimeType,
+        public string $key = '',
     ) {}
 }

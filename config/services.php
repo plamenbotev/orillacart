@@ -61,10 +61,12 @@ use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Serialization\ValidatorFactory;
 use OrillaCart\Platform\Twig\TwigFactory;
 use OrillaCart\Platform\WordPress\Files\LocalPrivateFiles;
+use OrillaCart\Platform\WordPress\Files\WebServerFileDelivery;
 use OrillaCart\Platform\WordPress\Logging\DebugLogLogger;
 use OrillaCart\Platform\WordPress\WordPressIntegration;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
+use OrillaCart\Shared\Files\FileDelivery;
 use OrillaCart\Shared\Files\PrivateFiles;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\Persistence\Transactions;
@@ -174,6 +176,7 @@ return static function (ContainerConfigurator $container): void {
 
     $services->alias(Transactions::class, DoctrineTransactions::class);
     $services->alias(PrivateFiles::class, LocalPrivateFiles::class);
+    $services->alias(FileDelivery::class, WebServerFileDelivery::class);
 
     // Time (PSR-20): use cases ask the clock, so tests can fix "now".
     $services->set(ClockInterface::class, NativeClock::class);

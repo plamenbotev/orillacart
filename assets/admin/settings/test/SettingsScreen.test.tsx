@@ -44,6 +44,26 @@ const countries = [
 function serve( save?: () => Promise< unknown > ) {
 	mockedFetch.mockImplementation( ( options ) => {
 		const { path, method } = options as { path: string; method?: string };
+		if ( path === '/orillacart/v1/download-delivery' ) {
+			return Promise.resolve(
+				method === 'PUT'
+					? {
+							method: 'php',
+							internal_prefix: '/orillacart-files/',
+							works: false,
+							message:
+								'The web server did not send the test file.',
+							server_rule: 'XSendFilePath /srv/downloads',
+						}
+					: {
+							method: 'php',
+							internal_prefix: '/orillacart-files/',
+							works: null,
+							message: '',
+							server_rule: '',
+						}
+			);
+		}
 		if ( method === 'PUT' && save ) {
 			return save();
 		}
@@ -189,13 +209,13 @@ describe( 'SettingsScreen', () => {
 
 		render( <SettingsScreen /> );
 
-		// Both cards say so: the settings and the shop pages.
+		// Every card says so: the settings, the shop pages and the downloads.
 		expect(
 			await screen.findAllByText(
 				'You are not allowed to do this.',
 				NOTICE
 			)
-		).toHaveLength( 2 );
+		).toHaveLength( 3 );
 	} );
 
 	it( 'saves the page each part of the shop is on', async () => {
@@ -224,6 +244,40 @@ describe( 'SettingsScreen', () => {
 			path: '/orillacart/v1/shop-pages',
 			method: 'PUT',
 			data: { shop: 9, cart: null, checkout: 10, account: null },
+		} );
+	} );
+
+	it( 'keeps the way downloads are sent only when the test file went through', async () => {
+		serve();
+		const user = userEvent.setup();
+		render( <SettingsScreen /> );
+
+		await user.selectOptions(
+			await screen.findByRole( 'combobox', {
+				name: 'Who sends the files',
+			} ),
+			'x_sendfile'
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Test and use' } )
+		);
+
+		expect(
+			await screen.findByText(
+				'The web server did not send the test file.',
+				NOTICE
+			)
+		).toBeVisible();
+		expect(
+			screen.getByText( 'XSendFilePath /srv/downloads' )
+		).toBeVisible();
+		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+			path: '/orillacart/v1/download-delivery',
+			method: 'PUT',
+			data: {
+				method: 'x_sendfile',
+				internal_prefix: '/orillacart-files/',
+			},
 		} );
 	} );
 } );

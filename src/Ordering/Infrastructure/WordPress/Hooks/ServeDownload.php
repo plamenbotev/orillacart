@@ -6,18 +6,23 @@ namespace OrillaCart\Ordering\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
+use OrillaCart\Shared\Files\FileDelivery;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
- * Sends a bought file to whoever follows its secret link (?orillacart_download=TOKEN). The file is read by PHP
- * from the private store: the web server never serves it by itself.
+ * Sends a bought file to whoever follows its secret link (?orillacart_download=TOKEN). PHP reads it from the
+ * private store, or hands it to the web server when the shop chose X-Sendfile or X-Accel-Redirect: either way
+ * only after the link was checked, since the web server never serves the folder by itself.
  */
 #[AsHook('template_redirect', priority: 0)]
 final readonly class ServeDownload
 {
     public const string QUERY = 'orillacart_download';
 
-    public function __construct(private Downloads $downloads) {}
+    public function __construct(
+        private Downloads $downloads,
+        private FileDelivery $delivery,
+    ) {}
 
     public function __invoke(): void
     {
@@ -38,9 +43,15 @@ final readonly class ServeDownload
         nocache_headers();
         header('Content-Type: ' . $file->mimeType);
         header('Content-Disposition: attachment; filename="' . str_replace(['"', "\r", "\n"], '', $file->filename) . '"; filename*=UTF-8\'\'' . rawurlencode($file->filename));
-        header('Content-Length: ' . (string) filesize($file->path));
         header('X-Content-Type-Options: nosniff');
         header('X-Robots-Tag: noindex, nofollow');
+        $handOff = $this->delivery->handOff($file->key);
+        if ($handOff !== null) {
+            // The web server sends the file and its length.
+            header($handOff);
+            exit;
+        }
+        header('Content-Length: ' . (string) filesize($file->path));
         readfile($file->path);
         exit;
     }

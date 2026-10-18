@@ -51,7 +51,7 @@ final readonly class Downloads
             throw new DownloadUnavailable('There are no downloads left for this file.');
         }
 
-        return new DownloadFile($path, $grant->name(), $grant->mimeType());
+        return new DownloadFile($path, $grant->name(), $grant->mimeType(), $grant->storageKey());
     }
 
     /**

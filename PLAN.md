@@ -40,9 +40,9 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 15 | Shipping classes: one per product (variations share it); a rate carries every item or only the classes it lists | c3b6566 |
 | ✅ | 16 | Postcodes on shipping rates: exact (1000), start (SW1*) or numeric range (1000-1999); the checkout sends the postcode | 6e2e887 |
 | ✅ | 17 | Regions and postcodes a shipping rate leaves out (replaces the old and/or/not operators) | 612df22 |
-| ✅ | 18 | Option prices as a percentage of the product price (on sale when it is; percentages do not compound) | (this commit) |
-| 🔄 | 19 | Downloads through X-Sendfile / X-Accel-Redirect, optional, with a self-check | |
-| ⬜ | 20 | Backorders: per product and variation; stock may go below zero; order lines record what is owed; optional notice to the customer | |
+| ✅ | 18 | Option prices as a percentage of the product price (on sale when it is; percentages do not compound) | 1ff29eb |
+| ✅ | 19 | Downloads sent by the web server (X-Sendfile, X-Accel-Redirect), kept only after a test file went through; shows the server rule otherwise | (this commit) |
+| 🔄 | 20 | Backorders: per product and variation; stock may go below zero; order lines record what is owed; optional notice to the customer | |
 
 ## After parity
 
