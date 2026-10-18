@@ -78,6 +78,21 @@ return [
                 $contents,
             );
         },
+        // Twig's compiler writes PHP that names its own classes inside longer strings, such as
+        // '$this->env->hasExtension(\Twig\Extension\SandboxExtension::class)' in a sandboxed call; those strings are
+        // neither class names alone nor code PHP-Scoper reads, so templates would name the unprefixed classes.
+        // Prefix every "\Twig\" (or "\\Twig\\" in double quotes) not already preceded by a namespace part.
+        static function (string $filePath, string $prefix, string $contents): string {
+            if (!str_contains($filePath, '/twig/twig/src/')) {
+                return $contents;
+            }
+
+            return (string) preg_replace_callback(
+                '/(?<![A-Za-z0-9_\\\\])(\\\\{1,2})Twig(?=\\\\{1,2}[A-Z])/',
+                static fn(array $match): string => $match[1] . str_replace('\\', $match[1], $prefix) . $match[1] . 'Twig',
+                $contents,
+            );
+        },
         // Libraries probe optional PHP extensions with function_exists('iconv'); PHP-Scoper prefixes those names,
         // so the probe always fails. Put the global names back.
         static function (string $filePath, string $prefix, string $contents): string {
