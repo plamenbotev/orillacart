@@ -6,6 +6,8 @@
 #   bin/smoke-test-release [dist/orillacart-<version>.zip]
 #
 set -euo pipefail
+# Checks read with grep -q from a here-string, not a pipe: grep -q stops at the first match, and under pipefail
+# the writer's SIGPIPE would fail a check that passed.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZIP="${1:-$(ls -t "$ROOT"/dist/orillacart-*.zip | head -1)}"
@@ -143,7 +145,7 @@ visitor -X POST -d "{\"product_id\":$product,\"quantity\":2}" "$API/cart/items" 
     || fail "a visitor could not add to the cart"
 docker exec "$WP" grep -q 'orillacart_cart' /tmp/cart || fail "the cart cookie was not set"
 placed="$(visitor -X POST -d "{\"email\":\"ada@example.com\",\"billing\":{\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"street\":\"1 Main St\",\"city\":\"Sofia\",\"postcode\":\"1000\",\"country\":\"BG\",\"phone\":\"+359 2 000 0000\"},\"shipping_option\":\"rate:$rate\",\"payment\":\"cash_on_delivery\"}" "$API/checkout")"
-echo "$placed" | grep -q '"status":"on_hold"' || fail "the order was not placed: $placed"
+grep -q '"status":"on_hold"' <<< "$placed" || fail "the order was not placed: $placed"
 key="$(echo "$placed" | sed -n 's/.*"key":"\([a-f0-9]*\)".*/\1/p')"
 [ "$(api "$API/receipts/$key")" = 200 ] || fail "the receipt does not open"
 [ "$(wp eval "
@@ -171,9 +173,9 @@ number="$(echo "$placed" | sed -n 's/.*"number":\([0-9]*\).*/\1/p')"
 ")" = 3 ] || fail "cancelling did not put the stock back"
 docker exec "$WP" bash -c 'printf "%%PDF guide" > /tmp/guide.pdf'
 upload="$(docker exec "$WP" curl -s -u "admin:$PASS" -F 'file=@/tmp/guide.pdf;type=application/pdf' "$API/products/$product/downloads")"
-echo "$upload" | grep -q '"name":"guide.pdf"' || fail "the administrator could not upload a download: $upload"
+grep -q '"name":"guide.pdf"' <<< "$upload" || fail "the administrator could not upload a download: $upload"
 storage="$(docker exec "$WP" curl -s -u "admin:$PASS" "$API/download-storage&fresh=1")"
-echo "$storage" | grep -q '"reachable":true' && fail "the web server hands out download files by itself: $storage"
+grep -q '"reachable":true' <<< "$storage" && fail "the web server hands out download files by itself: $storage"
 [ "$(wp post list --post_type=attachment --format=count)" = 0 ] || fail "a download became a media library item"
 
 echo "==> Storefront"
@@ -186,17 +188,17 @@ for asset in build/storefront/storefront.js build/storefront/storefront.css buil
     docker exec "$WP" test -f "/var/www/html/wp-content/plugins/orillacart/$asset" || fail "$asset missing"
 done
 shop_page="$(html "$(page_of shop)")"
-echo "$shop_page" | grep -q 'class="orillacart-product-card"' || fail "the shop page lists no products"
-echo "$shop_page" | grep -q 'build/storefront/storefront.css' \
-    || { echo "$shop_page" | tail -n 30 >&2; fail "the shop page does not load the storefront styles"; }
-echo "$shop_page" | grep -q '"nonce":null' || fail "a visitor's page carries a nonce a page cache would keep"
+grep -q 'class="orillacart-product-card"' <<< "$shop_page" || fail "the shop page lists no products"
+grep -q 'build/storefront/storefront.css' <<< "$shop_page" \
+    || { tail -n 30 <<< "$shop_page" >&2; fail "the shop page does not load the storefront styles"; }
+grep -q '"nonce":null' <<< "$shop_page" || fail "a visitor's page carries a nonce a page cache would keep"
 product_page="$(html "$product")"
-echo "$product_page" | grep -q 'data-orillacart-add-to-cart' \
+grep -q 'data-orillacart-add-to-cart' <<< "$product_page" \
     || fail "the product page has no way to buy: $(echo "$product_page" | grep -o 'orillacart-[a-z-]*' | sort -u | tr '\n' ' ')"
 receipt_page="$(html "$(page_of checkout)" "&orillacart_order=$key")"
-echo "$receipt_page" | grep -q "#$number" || fail "the receipt page does not show the order"
+grep -q "#$number" <<< "$receipt_page" || fail "the receipt page does not show the order"
 cart_headers="$(docker exec "$WP" curl -s -D - -o /dev/null "$(wp eval "echo get_permalink($(page_of cart));")")"
-echo "$cart_headers" | grep -qi '^cache-control:.*no-store' || fail "the cart page may be cached"
+grep -qi '^cache-control:.*no-store' <<< "$cart_headers" || fail "the cart page may be cached"
 
 echo "==> Upgrade on an admin request"
 wp option update orillacart_version 0.0.1 > /dev/null
