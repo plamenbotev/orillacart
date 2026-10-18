@@ -106,12 +106,12 @@ final class CheckoutServiceTest extends TestCase
         $request = $this->shop->payPalApi->created[0];
         self::assertSame(['46.00', 'EUR', 'https://shop.test/payments/paypal/return', 'https://shop.test/payments/paypal/cancel'], [$request->amount, $request->currency, $request->returnUrl, $request->cancelUrl]);
 
-        self::assertSame($placed->receiptUrl, $this->shop->payPal->approve('PAYPAL-1'));
+        self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false));
         $order = $this->shop->orders->byKey($placed->key);
         self::assertSame(['processing', 'CAPTURE-PAYPAL-1'], [$order->status, $this->shop->orderRecords->orders[$order->number]->transactionId()]);
 
         // Coming back twice, or a webhook after the return, changes nothing.
-        $this->shop->payPal->approve('PAYPAL-1');
+        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
         self::assertSame(['PAYPAL-1'], $this->shop->payPalApi->captured);
     }
 
@@ -120,7 +120,7 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 3]), $this->order('paypal'));
         self::assertSame(0, $this->shop->stock->stock(StockItemRef::product(10))->available);
 
-        $this->shop->payPal->cancel('PAYPAL-1');
+        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], true);
 
         self::assertSame('cancelled', $this->shop->orders->byKey($placed->key)->status);
         self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available);
@@ -131,7 +131,7 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('paypal'));
         $this->shop->payPalApi->captureStatus = 'DECLINED';
 
-        $this->shop->payPal->approve('PAYPAL-1');
+        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
 
         self::assertSame('failed', $this->shop->orders->byKey($placed->key)->status);
         self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available);

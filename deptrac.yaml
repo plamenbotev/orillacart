@@ -34,6 +34,12 @@ deptrac:
       collectors:
         - type: directory
           value: 'src/Platform/.*'
+    # The public API for add-ons: plain PHP only, so it means the same in the release build, whose libraries
+    # are renamed (bin/check-build.php checks that too).
+    - name: Extension
+      collectors:
+        - type: directory
+          value: 'src/Extension/.*'
 
     # Libraries the layers are allowed or forbidden to use
     - name: DoctrineMapping
@@ -87,8 +93,10 @@ deptrac:
       - SharedDomain
       - DoctrineMapping
       - DoctrineCollections
+    Extension: ~
     # Use cases and DTOs: the domain, plus validation and serialization attributes on DTOs.
     Application:
+      - Extension
       - Domain
       - SharedDomain
       - SharedKernel
@@ -96,12 +104,14 @@ deptrac:
       - ValidationAttributes
       - Psr
     Http:
+      - Extension
       - Application
       - SharedDomain
       - SharedKernel
       - ValidationAttributes
       - Psr
     Infrastructure:
+      - Extension
       - Domain
       - Application
       - SharedDomain
@@ -116,12 +126,14 @@ deptrac:
     SharedDomain:
       - DoctrineMapping
     SharedKernel:
+      - Extension
       - SharedDomain
       - ValidationAttributes
       - Symfony
       - Psr
       - WordPress
     Platform:
+      - Extension
       - Domain
       - Application
       - Http

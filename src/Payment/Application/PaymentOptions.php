@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application;
 
+use OrillaCart\Extension\Settings;
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
 use OrillaCart\Payment\Domain\PaymentMethod;
 use OrillaCart\Payment\Domain\PaymentMethodRepository;
@@ -61,7 +62,7 @@ final readonly class PaymentOptions
         }
         foreach ($this->gateways->all() as $gateway) {
             if ($gateway->id() === $method->gateway()) {
-                return $gateway->isReady($method->settings(), $currency);
+                return $gateway->isReady(new Settings($method->settings()), $currency);
             }
         }
 

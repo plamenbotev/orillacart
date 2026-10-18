@@ -86,7 +86,7 @@ final class CheckoutRestTest extends RestTestCase
         $this->actAs('administrator');
         $methods = $this->data($this->request('GET', '/payment-methods'));
         // Saved positions first; methods never saved keep the default order. Ties go by gateway id.
-        self::assertSame(['cash_on_delivery', 'bank_transfer', 'paypal', 'cheque'], array_column($methods, 'gateway'));
+        self::assertSame(['cash_on_delivery', 'bank_transfer', 'paypal', 'cheque', 'test_pay'], array_column($methods, 'gateway'), 'the add-on\'s gateway after the shop\'s own');
         self::assertStringNotContainsString('S3cr3t-value', (string) wp_json_encode($methods), 'the PayPal secret never leaves the server');
     }
 
@@ -226,6 +226,50 @@ final class CheckoutRestTest extends RestTestCase
         $forged->set_header('PayPal-Transmission-Sig', 'genuine');
         self::assertSame(200, rest_do_request($forged)->get_status());
         self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($order)}"))['status']);
+    }
+
+    public function testAnAddOnsGatewayTakesPaymentsThroughTheExtensionApi(): void
+    {
+        $this->actAs('administrator');
+        $methods = $this->rows($this->data($this->request('GET', '/payment-methods')));
+        $byGateway = array_column($methods, null, 'gateway');
+        self::assertSame('Cheque', $byGateway['cheque']['name'] ?? null, 'an add-on cannot take the id of the shop\'s own gateway');
+        self::assertSame(['api_key', 'mode', 'fee'], array_column($this->rows($byGateway['test_pay']['fields'] ?? []), 'key'));
+        self::assertNotNull($byGateway['test_pay']['notification_url'] ?? null);
+        foreach ([['mode' => 'weekly'], ['fee' => 'a lot']] as $wrong) {
+            self::assertSame(422, $this->request('PUT', '/payment-methods/test_pay', ['name' => 'Test Pay', 'active' => true, 'settings' => ['api_key' => 'k3y'] + $wrong], nonce: true)->get_status(), (string) wp_json_encode($wrong));
+        }
+        $saved = $this->request('PUT', '/payment-methods/test_pay', ['name' => 'Test Pay', 'active' => true, 'position' => 3, 'settings' => ['api_key' => 'k3y', 'mode' => 'test', 'fee' => '1.5']], nonce: true);
+        self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
+        self::assertStringNotContainsString('k3y', (string) wp_json_encode($saved->get_data()));
+        wp_set_current_user(0);
+
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));
+        $paid = $this->data($this->request('POST', '/checkout', $this->order('test_pay'), nonce: true));
+        self::assertIsString($paid['redirect_url']);
+        self::assertSame(1, preg_match('/ref=(REF-\d+)/', $paid['redirect_url'], $found));
+        $return = new \WP_REST_Request('GET', self::NAMESPACE . '/payments/test_pay/return');
+        $return->set_query_params(['ref' => $found[1]]);
+        $back = rest_do_request($return);
+        self::assertSame([303, $paid['receipt_url']], [$back->get_status(), $back->get_headers()['Location'] ?? null]);
+        self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($paid)}"))['status']);
+
+        unset($_COOKIE[CartCookie::NAME]);
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));
+        $waiting = $this->data($this->request('POST', '/checkout', $this->order('test_pay'), nonce: true));
+        self::assertIsString($waiting['redirect_url']);
+        self::assertSame(1, preg_match('/ref=(REF-\d+)/', $waiting['redirect_url'], $found));
+        $body = (string) wp_json_encode(['ref' => $found[1], 'status' => 'paid', 'amount' => '38.33']);
+        $notification = new \WP_REST_Request('POST', self::NAMESPACE . '/payments/test_pay/webhook');
+        $notification->set_header('Content-Type', 'application/json');
+        $notification->set_body($body);
+        $notification->set_header('X-Test-Signature', 'forged');
+        self::assertSame(422, rest_do_request($notification)->get_status());
+        $notification->set_header('X-Test-Signature', hash_hmac('sha256', $body, 'k3y'));
+        self::assertSame(200, rest_do_request($notification)->get_status());
+        self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($waiting)}"))['status']);
+
+        self::assertSame(404, rest_do_request(new \WP_REST_Request('GET', self::NAMESPACE . '/payments/nobody/return'))->get_status());
     }
 
     /**

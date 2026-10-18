@@ -1,14 +1,8 @@
 import apiFetch from '@wordpress/api-fetch';
 
-export interface GatewaySetting {
-	key: string;
-	label: string;
-	type: 'text' | 'secret' | 'boolean';
-	required: boolean;
-	help: string;
-}
+import type { Setting, SettingValues } from '../shared/SettingFields';
 
-export type Settings = Record< string, string | boolean >;
+export type Settings = SettingValues;
 
 export interface PaymentMethod {
 	gateway: string;
@@ -21,7 +15,7 @@ export interface PaymentMethod {
 	/** Secret settings always come back empty; secrets_set names the saved ones. */
 	settings: Settings;
 	secrets_set: string[];
-	fields: GatewaySetting[];
+	fields: Setting[];
 	/** Whether checkout can offer it with these settings and the shop's currency. */
 	ready: boolean;
 	notification_url: string | null;

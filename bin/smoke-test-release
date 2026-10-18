@@ -187,7 +187,8 @@ for asset in build/storefront/storefront.js build/storefront/storefront.css buil
 done
 shop_page="$(html "$(page_of shop)")"
 echo "$shop_page" | grep -q 'class="orillacart-product-card"' || fail "the shop page lists no products"
-echo "$shop_page" | grep -q 'build/storefront/storefront.css' || fail "the shop page does not load the storefront styles"
+echo "$shop_page" | grep -q 'build/storefront/storefront.css' \
+    || { echo "$shop_page" | tail -n 30 >&2; fail "the shop page does not load the storefront styles"; }
 echo "$shop_page" | grep -q '"nonce":null' || fail "a visitor's page carries a nonce a page cache would keep"
 product_page="$(html "$product")"
 echo "$product_page" | grep -q 'data-orillacart-add-to-cart' \

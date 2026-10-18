@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application\Dto;
 
+use OrillaCart\Extension\Setting;
+
 /**
  * A payment method as the admin screen shows it. Secret settings come back empty; secrets_set names the
  * secrets that are saved.
@@ -14,7 +16,7 @@ final readonly class PaymentMethodView
      * @param list<string>               $countries
      * @param array<string, string|bool> $settings
      * @param list<string>               $secretsSet
-     * @param list<GatewaySetting>       $fields
+     * @param list<Setting>       $fields
      * @param bool                       $ready           whether checkout can offer it with these settings and the shop's currency
      * @param string|null                $notificationUrl where the provider sends notifications; null for gateways without them
      */

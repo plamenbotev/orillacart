@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application;
 
-use OrillaCart\Payment\Application\Dto\PaymentSession;
+use OrillaCart\Extension\Payment\PaymentSession;
+use OrillaCart\Extension\Payment\ProviderUnavailable;
+use OrillaCart\Extension\Settings;
 use OrillaCart\Payment\Application\Dto\PaymentStartView;
 use OrillaCart\Payment\Application\Dto\StartPayment;
 use OrillaCart\Payment\Domain\Payment;
@@ -48,12 +50,13 @@ final readonly class Payments
                 $command->currency,
                 $this->urls->returnUrl($gateway->id()),
                 $this->urls->cancelUrl($gateway->id()),
-            ), $method->settings());
-        } catch (PaymentProviderUnavailable $e) {
+                $this->urls->notificationUrl($gateway->id()),
+            ), new Settings($method->settings()));
+        } catch (ProviderUnavailable $e) {
             $payment->fail(null, $this->clock->now());
             $this->payments->save($payment);
 
-            throw $e;
+            throw new PaymentProviderUnavailable($e->provider, $e->getMessage(), $e);
         }
 
         if ($start->reference !== null) {

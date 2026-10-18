@@ -29,7 +29,7 @@ final class RouteSecurityGateTest extends TestCase
      * Routes a payment provider calls server to server, without a nonce: their action checks the provider's
      * signature with the provider. A new one has to be added here, on purpose.
      */
-    private const array SIGNED = ['POST /payments/paypal/webhook'];
+    private const array SIGNED = ['POST /payments/{gateway}/webhook'];
 
     /**
      * Routes anyone may call, logged in or not: the storefront's and the payment provider's. A new one has to be
@@ -45,9 +45,9 @@ final class RouteSecurityGateTest extends TestCase
         'GET /receipts/{key}',
         'POST /accounts',
         'GET /session',
-        'GET /payments/paypal/return',
-        'GET /payments/paypal/cancel',
-        'POST /payments/paypal/webhook',
+        'GET /payments/{gateway}/return',
+        'GET /payments/{gateway}/cancel',
+        'POST /payments/{gateway}/webhook',
         'GET /countries',
         'GET /countries/{code}/states',
     ];

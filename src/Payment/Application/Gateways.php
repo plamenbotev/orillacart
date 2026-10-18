@@ -4,36 +4,22 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application;
 
-use OrillaCart\Payment\Application\Gateway\PaymentGateway;
+use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Payment\Domain\PaymentMethodNotFound;
+use OrillaCart\Shared\Extension\InstalledExtensions;
 
 /**
- * Every payment gateway the shop has, by id, in the order the admin screen first lists them.
+ * Every payment gateway the shop has, its own and the add-ons', by id, in the order the admin screen first
+ * lists them.
  */
 final readonly class Gateways
 {
-    /** @var array<string, PaymentGateway> */
-    private array $gateways;
-
-    /**
-     * @param iterable<PaymentGateway> $gateways
-     */
-    public function __construct(iterable $gateways)
-    {
-        $byId = [];
-        foreach ($gateways as $gateway) {
-            if (isset($byId[$gateway->id()])) {
-                throw new \LogicException(\sprintf('Two payment gateways use the id "%s".', $gateway->id()));
-            }
-            $byId[$gateway->id()] = $gateway;
-        }
-        $this->gateways = $byId;
-    }
+    public function __construct(private InstalledExtensions $extensions) {}
 
     /** @return list<PaymentGateway> */
     public function all(): array
     {
-        return array_values($this->gateways);
+        return $this->extensions->paymentGateways();
     }
 
     /**
@@ -41,14 +27,21 @@ final readonly class Gateways
      */
     public function get(string $id): PaymentGateway
     {
-        return $this->gateways[$id] ?? throw new PaymentMethodNotFound($id);
+        foreach ($this->all() as $gateway) {
+            if ($gateway->id() === $id) {
+                return $gateway;
+            }
+        }
+
+        throw new PaymentMethodNotFound($id);
     }
 
     /** Its position when the shop never saved the method: as listed. */
     public function defaultPosition(string $id): int
     {
-        $position = array_search($id, array_keys($this->gateways), true);
+        $ids = array_map(static fn(PaymentGateway $gateway): string => $gateway->id(), $this->all());
+        $position = array_search($id, $ids, true);
 
-        return $position === false ? \count($this->gateways) : $position + 1;
+        return $position === false ? \count($ids) : $position + 1;
     }
 }

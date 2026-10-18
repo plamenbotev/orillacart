@@ -61,7 +61,7 @@ final class OrderEmailsTest extends TestCase
         $order = $this->place('paypal');
         self::assertSame([], $this->shop->mail->summary(), 'nothing while the customer is at PayPal');
 
-        $this->shop->payPal->approve('PAYPAL-1');
+        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
 
         self::assertSame([
             "ada@example.com: [Lamp Shop] Your order #{$order->number} is confirmed",
@@ -72,7 +72,7 @@ final class OrderEmailsTest extends TestCase
     public function testGivingUpAtPayPalSendsNothingButTheShopCancellingDoes(): void
     {
         $this->place('paypal');
-        $this->shop->payPal->cancel('PAYPAL-1');
+        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], true);
         self::assertSame([], $this->shop->mail->summary());
 
         $order = $this->place('bank_transfer');

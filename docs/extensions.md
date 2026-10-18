@@ -1,0 +1,68 @@
+# Writing an add-on
+
+An add-on is a WordPress plugin that brings OrillaCart something it does not have, such as a payment provider
+or a courier. It uses only the classes in the `OrillaCart\Extension` namespace: they are the extension API,
+which changes only by adding (see `OrillaCart\Extension\Version`). Every other class of the plugin is internal
+and changes without notice. The release build also renames the libraries the plugin ships (Doctrine, Symfony,
+even the PSR interfaces), so an add-on never sees them.
+
+## Registering
+
+The shop fires `orillacart_extensions` once per request, the first time it needs its payment gateways or
+shipping methods, and passes the registry:
+
+```php
+add_action('orillacart_extensions', static function (OrillaCart\Extension\Registry $registry): void {
+    $registry->paymentGateway(new Acme\Pay\AcmeGateway($registry->log()));
+});
+```
+
+- Ids are lowercase letters, digits and underscores, up to 40 characters, and unique across the shop. The
+  shop's own gateways (`cash_on_delivery`, `bank_transfer`, `cheque`, `paypal`) come first; a second
+  registration with a taken id is logged and left out.
+- An add-on that throws while registering is logged; the shop goes on without it.
+- `$registry->log()` writes to the shop's log. Never log secrets or card data.
+- Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
+
+## Settings
+
+A gateway lists its settings as `OrillaCart\Extension\Setting`s: text, secret, yes/no, number or choice. The
+shop's admin screen shows them, validates their kind, and keeps the values; the gateway receives them as
+`OrillaCart\Extension\Settings` (`text()`, `flag()`). Secrets never go back to the browser: the screen shows
+only that one is saved, and an empty field keeps it. A required setting must be filled before the method can be
+turned on.
+
+## Payment gateways
+
+Implement `OrillaCart\Extension\Payment\PaymentGateway`:
+
+| method | |
+|---|---|
+| `id()`, `defaultName()` | the shop renames the method as it likes |
+| `settings()` | see above |
+| `isReady($settings, $currency)` | whether checkout may offer it: credentials set, currency supported |
+| `start($session, $settings)` | `PaymentStart::offline()` (the order waits on hold for the money), or `PaymentStart::redirect($url, $reference)` to send the customer to the provider; `$reference` is the provider's id of the payment |
+
+Throw `ProviderUnavailable` when the provider cannot be reached or refuses; the customer sees a general message
+and the order is cancelled so they can try again.
+
+A gateway that sends customers away also implements `HandlesReturns`. The session carries the shop's
+`returnUrl` and `cancelUrl`; the provider sends the customer back there.
+
+- `reference($return)` reads which payment the return is about from its query string.
+- `returned($reference, $return, $settings)` says how it stands: `PaymentOutcome::completed()`, `held()`,
+  `failed()`, `cancelled()` or `pending()` when it cannot tell yet. The shop asks only while the payment is open,
+  so a customer coming back twice does not reach the provider twice. The customer then sees the receipt.
+
+A gateway whose provider calls back implements `HandlesNotifications`. The admin screen shows the address
+(`/wp-json/orillacart/v1/payments/{id}/webhook`, also in the session as `notificationUrl`).
+
+- `notified($notification, $settings)` must first check that the provider sent it (a signature with a shared
+  secret, or asking the provider) and throw `InvalidNotification` otherwise. Then it returns the outcome for the
+  payment it names, or null for anything else.
+
+The shop settles each payment once; later returns and notifications change nothing. A completed outcome whose
+amount or currency is not the order's is held for the shop to look at instead of completing the order.
+
+`tests/Fixtures/Extension/TestPayGateway.php` is a complete example, and the shop's PayPal gateway
+(`src/Payment/Application/PayPal/PayPalGateway.php`) is built the same way.

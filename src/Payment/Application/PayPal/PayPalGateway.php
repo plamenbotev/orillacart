@@ -4,21 +4,31 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application\PayPal;
 
-use OrillaCart\Payment\Application\Dto\GatewaySetting;
-use OrillaCart\Payment\Application\Dto\GatewayStart;
-use OrillaCart\Payment\Application\Dto\PaymentSession;
+use OrillaCart\Extension\Payment\HandlesNotifications;
+use OrillaCart\Extension\Payment\HandlesReturns;
+use OrillaCart\Extension\Payment\InvalidNotification;
+use OrillaCart\Extension\Payment\Notification;
+use OrillaCart\Extension\Payment\PaymentGateway;
+use OrillaCart\Extension\Payment\PaymentOutcome;
+use OrillaCart\Extension\Payment\PaymentReturn;
+use OrillaCart\Extension\Payment\PaymentSession;
+use OrillaCart\Extension\Payment\PaymentStart;
+use OrillaCart\Extension\Payment\ProviderUnavailable;
+use OrillaCart\Extension\Setting;
+use OrillaCart\Extension\Settings;
 use OrillaCart\Payment\Application\Dto\PayPalAccount;
+use OrillaCart\Payment\Application\Dto\PayPalCapture;
+use OrillaCart\Payment\Application\Dto\PayPalNotification;
 use OrillaCart\Payment\Application\Dto\PayPalOrderRequest;
-use OrillaCart\Payment\Application\Gateway\PaymentGateway;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Shared\Domain\Money;
 
 /**
  * PayPal Checkout through the Orders API v2: the shop creates a PayPal order for the amount, the customer
  * approves it at PayPal and comes back, and the shop captures it. A verified webhook settles payments whose
- * customer never came back.
+ * customer never came back. Built on the extension API, as an add-on's gateway would be.
  */
-final readonly class PayPalGateway implements PaymentGateway
+final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, HandlesNotifications
 {
     public const string ID = 'paypal';
 
@@ -41,37 +51,32 @@ final readonly class PayPalGateway implements PaymentGateway
         return 'PayPal';
     }
 
-    public function usesNotifications(): bool
-    {
-        return true;
-    }
-
     public function settings(): array
     {
         return [
-            new GatewaySetting('client_id', 'Client ID', required: true, help: 'From your REST app at developer.paypal.com.'),
-            new GatewaySetting('client_secret', 'Secret', GatewaySetting::SECRET, required: true),
-            new GatewaySetting('sandbox', 'Sandbox', GatewaySetting::BOOLEAN, help: 'Take test payments with sandbox credentials.'),
-            new GatewaySetting('webhook_id', 'Webhook ID', help: 'Settles payments of customers who close the window before coming back. Subscribe the webhook to the shop\'s webhook address.'),
+            new Setting('client_id', 'Client ID', required: true, help: 'From your REST app at developer.paypal.com.'),
+            new Setting('client_secret', 'Secret', Setting::SECRET, required: true),
+            new Setting('sandbox', 'Sandbox', Setting::BOOLEAN, help: 'Take test payments with sandbox credentials.'),
+            new Setting('webhook_id', 'Webhook ID', help: 'Settles payments of customers who close the window before coming back. Subscribe the webhook to the shop\'s webhook address.'),
         ];
     }
 
-    public function isReady(array $settings, string $currency): bool
+    public function isReady(Settings $settings, string $currency): bool
     {
         $account = self::account($settings);
 
         return $account->clientId !== '' && $account->clientSecret !== '' && isset(self::CURRENCIES[$currency]);
     }
 
-    public function start(PaymentSession $session, array $settings): GatewayStart
+    public function start(PaymentSession $session, Settings $settings): PaymentStart
     {
         $amount = Money::of($session->amount);
-        $decimals = self::CURRENCIES[$session->currency] ?? throw new PaymentProviderUnavailable('PayPal', "PayPal does not take {$session->currency}.");
+        $decimals = self::CURRENCIES[$session->currency] ?? throw new ProviderUnavailable('PayPal', "PayPal does not take {$session->currency}.");
         if (!$amount->rounded($decimals)->equals($amount)) {
-            throw new PaymentProviderUnavailable('PayPal', "The amount {$amount} has more decimals than PayPal takes in {$session->currency}.");
+            throw new ProviderUnavailable('PayPal', "The amount {$amount} has more decimals than PayPal takes in {$session->currency}.");
         }
 
-        $order = $this->api->createOrder(self::account($settings), new PayPalOrderRequest(
+        $order = $this->call(fn() => $this->api->createOrder(self::account($settings), new PayPalOrderRequest(
             "orillacart-payment-{$session->paymentId}",
             "orillacart-{$session->orderNumber}-{$session->paymentId}",
             "Order #{$session->orderNumber}",
@@ -79,23 +84,113 @@ final readonly class PayPalGateway implements PaymentGateway
             $session->currency,
             $session->returnUrl,
             $session->cancelUrl,
-        ));
+        )));
 
-        return GatewayStart::redirect($order->approveUrl, $order->id);
+        return PaymentStart::redirect($order->approveUrl, $order->id);
+    }
+
+    /** PayPal adds its order id as "token". */
+    public function reference(PaymentReturn $return): ?string
+    {
+        $token = $return->query['token'] ?? '';
+
+        return $token === '' ? null : $token;
     }
 
     /**
-     * @param array<string, string|bool> $settings
+     * A customer who approved is captured now; when PayPal cannot be reached, the webhook settles the payment.
      */
-    public static function account(array $settings): PayPalAccount
+    public function returned(string $token, PaymentReturn $return, Settings $settings): PaymentOutcome
     {
-        $text = static fn(string $key): string => \is_string($settings[$key] ?? null) ? trim($settings[$key]) : '';
+        if ($return->cancelled) {
+            return PaymentOutcome::cancelled($token);
+        }
+        try {
+            return self::outcome($token, $this->api->captureOrder(self::account($settings), $token));
+        } catch (PaymentProviderUnavailable) {
+            return PaymentOutcome::pending($token);
+        }
+    }
 
-        return new PayPalAccount($text('client_id'), $text('client_secret'), ($settings['sandbox'] ?? false) === true, $text('webhook_id'));
+    public function notified(Notification $notification, Settings $settings): ?PaymentOutcome
+    {
+        $account = self::account($settings);
+        $verified = $account->webhookId !== '' && $this->call(fn(): bool => $this->api->verifyNotification($account, new PayPalNotification($notification->headers, $notification->body)));
+        if (!$verified) {
+            throw new InvalidNotification('The notification is not signed by PayPal for this shop.');
+        }
+        $event = json_decode($notification->body, true);
+        $type = \is_array($event) && \is_string($event['event_type'] ?? null) ? $event['event_type'] : '';
+        $resource = \is_array($event) && \is_array($event['resource'] ?? null) ? $event['resource'] : [];
+
+        if ($type === 'CHECKOUT.ORDER.APPROVED') {
+            $orderId = self::text($resource, 'id');
+
+            return $orderId === '' ? null : self::outcome($orderId, $this->call(fn(): PayPalCapture => $this->api->captureOrder($account, $orderId)));
+        }
+        if (str_starts_with($type, 'PAYMENT.CAPTURE.')) {
+            $supplementary = \is_array($resource['supplementary_data'] ?? null) ? $resource['supplementary_data'] : [];
+            $related = \is_array($supplementary['related_ids'] ?? null) ? $supplementary['related_ids'] : [];
+            $orderId = self::text($related, 'order_id');
+            $amount = \is_array($resource['amount'] ?? null) ? $resource['amount'] : [];
+
+            return $orderId === '' ? null : self::outcome($orderId, new PayPalCapture(
+                self::text($resource, 'id'),
+                self::text($resource, 'status'),
+                self::text($amount, 'value'),
+                self::text($amount, 'currency_code'),
+                $orderId,
+            ));
+        }
+
+        return null;
+    }
+
+    public static function account(Settings $settings): PayPalAccount
+    {
+        return new PayPalAccount(trim($settings->text('client_id')), trim($settings->text('client_secret')), $settings->flag('sandbox'), trim($settings->text('webhook_id')));
     }
 
     public static function decimals(string $currency): ?int
     {
         return self::CURRENCIES[$currency] ?? null;
+    }
+
+    private static function outcome(string $orderId, PayPalCapture $capture): PaymentOutcome
+    {
+        return match ($capture->status) {
+            'COMPLETED' => PaymentOutcome::completed($orderId, $capture->id, $capture->amount, $capture->currency),
+            'PENDING' => PaymentOutcome::held($orderId, $capture->id),
+            'DECLINED', 'FAILED' => PaymentOutcome::failed($orderId, $capture->id),
+            default => PaymentOutcome::pending($orderId),
+        };
+    }
+
+    /**
+     * Runs a call to PayPal, reporting its failure as the extension API does.
+     *
+     * @template T
+     *
+     * @param \Closure(): T $call
+     *
+     * @return T
+     *
+     * @throws ProviderUnavailable
+     */
+    private function call(\Closure $call): mixed
+    {
+        try {
+            return $call();
+        } catch (PaymentProviderUnavailable $e) {
+            throw new ProviderUnavailable('PayPal', $e->detail, $e);
+        }
+    }
+
+    /**
+     * @param array<mixed> $data
+     */
+    private static function text(array $data, string $key): string
+    {
+        return \is_string($data[$key] ?? null) ? $data[$key] : '';
     }
 }

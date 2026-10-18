@@ -1,6 +1,6 @@
 # 27 · Public extension API for add-ons
 
-Status: agreed in principle 2026-10-18 ("agree"); details below to be confirmed when building.
+Status: agreed 2026-10-18. 27a (registry and payment gateways) built; the add-on guide is docs/extensions.md.
 Order of work: 25, 27, 21b, 21c, then 26 (DPD) and the rest.
 
 ## Why
@@ -46,9 +46,11 @@ checkout keeps the chosen quote with the order (method id, service code, price),
 
 ## Payment gateways and refunds
 
-The `PaymentGateway` contract moves to `OrillaCart\Extension\Payment` with the same methods, its settings as a
-schema, and webhooks routed by the plugin to `handleNotification(request)` with a plain request DTO (headers,
-body), the plugin verifying nothing it does not know. Item 24's `RefundsPayments` capability joins it, so
+The `PaymentGateway` contract moved to `OrillaCart\Extension\Payment`, its settings as a schema. Customers
+coming back and webhooks go through routes for every gateway (`/payments/{gateway}/return|cancel|webhook`):
+`HandlesReturns` names the payment a return is about and, while it is open, its outcome; `HandlesNotifications`
+checks a notification came from the provider and gives the outcome. The shop settles each payment once and
+holds a completed one whose amount does not match. PayPal is built on these. Item 24's `RefundsPayments` capability joins it, so
 PayPal and premium gateways refund through the same contract.
 
 ## Tests

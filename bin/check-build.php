@@ -161,3 +161,22 @@ if (!is_string($sql) || !str_contains($sql, 'CASE WHEN')) {
     $fail('Doctrine could not turn the download counter into SQL.');
 }
 echo "Doctrine reads the entity mapping and parses DQL\n";
+
+// The extension API is what add-ons compile against: it may name only plain PHP and its own classes, since
+// every library class is renamed in the build and an add-on cannot know the new names.
+$extensionFiles = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($pluginDir . '/src/Extension', FilesystemIterator::SKIP_DOTS));
+$checked = 0;
+foreach ($extensionFiles as $file) {
+    if (!$file instanceof SplFileInfo || $file->getExtension() !== 'php') {
+        continue;
+    }
+    $code = (string) file_get_contents($file->getPathname());
+    if (preg_match('/OrillaCart\\\\{1,2}Vendor|\buse (?!OrillaCart\\\\Extension\\\\)[A-Z]\w*\\\\/', $code, $match) === 1) {
+        $fail(sprintf('%s names %s: the extension API must not use library or plugin-internal classes.', $file->getFilename(), $match[0]));
+    }
+    ++$checked;
+}
+if ($checked === 0) {
+    $fail('The build has no extension API.');
+}
+echo "The extension API names no library classes\n";

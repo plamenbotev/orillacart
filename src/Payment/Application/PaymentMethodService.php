@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application;
 
-use OrillaCart\Payment\Application\Dto\GatewaySetting;
+use OrillaCart\Extension\Payment\HandlesNotifications;
+use OrillaCart\Extension\Payment\PaymentGateway;
+use OrillaCart\Extension\Setting;
+use OrillaCart\Extension\Settings;
 use OrillaCart\Payment\Application\Dto\PaymentMethodView;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
-use OrillaCart\Payment\Application\Gateway\PaymentGateway;
 use OrillaCart\Payment\Domain\PaymentMethod;
 use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentMethodRepository;
@@ -96,23 +98,37 @@ final readonly class PaymentMethodService
 
         $settings = [];
         foreach ($fields as $key => $field) {
-            $value = $submitted[$key] ?? null;
-            if ($field->type === GatewaySetting::BOOLEAN) {
-                if ($value !== null && !\is_bool($value)) {
-                    throw new PaymentRuleViolation(\sprintf('"%s" is on or off.', $field->label), 'orillacart_invalid_payment_setting');
-                }
-                $settings[$key] = $value ?? false;
-                continue;
-            }
-            if ($value !== null && !\is_string($value)) {
-                throw new PaymentRuleViolation(\sprintf('"%s" is text.', $field->label), 'orillacart_invalid_payment_setting');
-            }
-            $value = trim($value ?? '');
-            // An empty secret keeps the saved one: the screen never receives secrets to send back.
-            $settings[$key] = $field->type === GatewaySetting::SECRET && $value === '' ? ($saved[$key] ?? '') : $value;
+            $settings[$key] = self::value($field, $submitted[$key] ?? null, $saved[$key] ?? null);
         }
 
         return $settings;
+    }
+
+    /**
+     * @throws PaymentRuleViolation for a value of the wrong kind
+     */
+    private static function value(Setting $field, string|bool|null $value, string|bool|null $saved): string|bool
+    {
+        if ($field->type === Setting::BOOLEAN) {
+            if ($value !== null && !\is_bool($value)) {
+                throw new PaymentRuleViolation(\sprintf('"%s" is on or off.', $field->label), 'orillacart_invalid_payment_setting');
+            }
+
+            return $value ?? false;
+        }
+        if ($value !== null && !\is_string($value)) {
+            throw new PaymentRuleViolation(\sprintf('"%s" is text.', $field->label), 'orillacart_invalid_payment_setting');
+        }
+        $value = trim($value ?? '');
+        if ($field->type === Setting::NUMBER && $value !== '' && preg_match('/^-?\d{1,12}(\.\d{1,6})?$/', $value) !== 1) {
+            throw new PaymentRuleViolation(\sprintf('"%s" is a number, such as 2.5.', $field->label), 'orillacart_invalid_payment_setting');
+        }
+        if ($field->type === Setting::CHOICE && $value !== '' && !\array_key_exists($value, $field->choices)) {
+            throw new PaymentRuleViolation(\sprintf('"%s" is one of: %s.', $field->label, implode(', ', $field->choices)), 'orillacart_invalid_payment_setting');
+        }
+
+        // An empty secret keeps the saved one: the screen never receives secrets to send back.
+        return $field->type === Setting::SECRET && $value === '' ? (\is_string($saved) ? $saved : '') : $value;
     }
 
     private function view(PaymentGateway $gateway, PaymentMethod $method): PaymentMethodView
@@ -120,8 +136,8 @@ final readonly class PaymentMethodService
         $settings = [];
         $secretsSet = [];
         foreach ($gateway->settings() as $field) {
-            $value = $method->settings()[$field->key] ?? ($field->type === GatewaySetting::BOOLEAN ? false : '');
-            if ($field->type === GatewaySetting::SECRET) {
+            $value = $method->settings()[$field->key] ?? ($field->type === Setting::BOOLEAN ? false : '');
+            if ($field->type === Setting::SECRET) {
                 if ($value !== '') {
                     $secretsSet[] = $field->key;
                 }
@@ -141,8 +157,8 @@ final readonly class PaymentMethodService
             $settings,
             $secretsSet,
             $gateway->settings(),
-            $gateway->isReady($method->settings(), $this->shop->current()->currency),
-            $gateway->usesNotifications() ? $this->urls->notificationUrl($gateway->id()) : null,
+            $gateway->isReady(new Settings($method->settings()), $this->shop->current()->currency),
+            $gateway instanceof HandlesNotifications ? $this->urls->notificationUrl($gateway->id()) : null,
         );
     }
 }

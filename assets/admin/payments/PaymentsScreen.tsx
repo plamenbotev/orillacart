@@ -16,6 +16,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
 import { toApiError } from '../shared/api';
+import { SettingFields } from '../shared/SettingFields';
 import {
 	fetchPaymentMethods,
 	type PaymentMethod,
@@ -210,46 +211,12 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 							setDraft( { ...draft, receipt_note: receiptNote } )
 						}
 					/>
-					{ method.fields.map( ( field ) =>
-						field.type === 'boolean' ? (
-							<CheckboxControl
-								key={ field.key }
-								label={ field.label }
-								help={ field.help }
-								checked={ draft.settings[ field.key ] === true }
-								onChange={ ( checked ) =>
-									setSetting( field.key, checked )
-								}
-							/>
-						) : (
-							<TextControl
-								key={ field.key }
-								__next40pxDefaultSize
-								type={
-									field.type === 'secret'
-										? 'password'
-										: 'text'
-								}
-								autoComplete="off"
-								label={ field.label }
-								help={
-									field.type === 'secret' &&
-									method.secrets_set.includes( field.key )
-										? __(
-												'Saved. Leave empty to keep it.',
-												'orillacart'
-											)
-										: field.help
-								}
-								value={ String(
-									draft.settings[ field.key ] ?? ''
-								) }
-								onChange={ ( value ) =>
-									setSetting( field.key, value )
-								}
-							/>
-						)
-					) }
+					<SettingFields
+						fields={ method.fields }
+						values={ draft.settings }
+						secretsSet={ method.secrets_set }
+						onChange={ setSetting }
+					/>
 					{ method.notification_url !== null && (
 						<p>
 							{ __( 'Webhook address:', 'orillacart' ) }{ ' ' }

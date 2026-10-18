@@ -19,6 +19,7 @@ use OrillaCart\Customers\Application\Accounts;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
 use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
 use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
+use OrillaCart\Extension\Registry;
 use OrillaCart\Geography\Domain\CountryRepository;
 use OrillaCart\Geography\Infrastructure\Doctrine\DoctrineCountryRepository;
 use OrillaCart\Inventory\Domain\StockLevelRepository;
@@ -39,8 +40,6 @@ use OrillaCart\Ordering\Infrastructure\Doctrine\DoctrineOrderRepository;
 use OrillaCart\Payment\Application\Gateway\BankTransfer;
 use OrillaCart\Payment\Application\Gateway\CashOnDelivery;
 use OrillaCart\Payment\Application\Gateway\Cheque;
-use OrillaCart\Payment\Application\Gateway\PaymentGateway;
-use OrillaCart\Payment\Application\Gateways;
 use OrillaCart\Payment\Application\PaymentUrls;
 use OrillaCart\Payment\Application\PayPal\PayPalApi;
 use OrillaCart\Payment\Application\PayPal\PayPalGateway;
@@ -62,6 +61,7 @@ use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Serialization\ValidatorFactory;
 use OrillaCart\Platform\Twig\TwigFactory;
 use OrillaCart\Platform\WordPress\AfterResponse\ShutdownWork;
+use OrillaCart\Platform\WordPress\Extensions\WordPressExtensions;
 use OrillaCart\Platform\WordPress\Files\LocalPrivateFiles;
 use OrillaCart\Platform\WordPress\Files\WebServerFileDelivery;
 use OrillaCart\Platform\WordPress\Logging\DebugLogLogger;
@@ -76,6 +76,7 @@ use OrillaCart\Search\Infrastructure\Doctrine\MysqlSearchIndex;
 use OrillaCart\Search\Infrastructure\WordPress\WordPressProductTexts;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
+use OrillaCart\Shared\Extension\InstalledExtensions;
 use OrillaCart\Shared\Files\FileDelivery;
 use OrillaCart\Shared\Files\PrivateFiles;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
@@ -112,7 +113,6 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Twig\Environment;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
-use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 
 return static function (ContainerConfigurator $container): void {
     $services = $container->services()
@@ -126,6 +126,7 @@ return static function (ContainerConfigurator $container): void {
         ->exclude([
             '../src/*/Domain/',
             '../src/*/Application/Dto/',
+            '../src/Extension/',
             '../src/Platform/Kernel.php',
             '../src/Platform/PluginContext.php',
             '../src/Platform/DependencyInjection/',
@@ -145,13 +146,13 @@ return static function (ContainerConfigurator $container): void {
         ->exclude('../src/*/Application/Dto/')
         ->public();
 
-    // Payment gateways: every implementation is one way to pay; Gateways lists them in this order.
-    $services->instanceof(PaymentGateway::class)->tag(PaymentGateway::TAG);
-    $services->set(Gateways::class)->args([tagged_iterator(PaymentGateway::TAG)])->public();
-    $services->set(CashOnDelivery::class)->tag(PaymentGateway::TAG, ['priority' => 40]);
-    $services->set(BankTransfer::class)->tag(PaymentGateway::TAG, ['priority' => 30]);
-    $services->set(Cheque::class)->tag(PaymentGateway::TAG, ['priority' => 20]);
-    $services->set(PayPalGateway::class)->tag(PaymentGateway::TAG, ['priority' => 10]);
+    // The shop's own payment gateways, in this order; add-ons register theirs after them (WordPressExtensions).
+    $services->set(CashOnDelivery::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 40]);
+    $services->set(BankTransfer::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 30]);
+    $services->set(Cheque::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 20]);
+    $services->set(PayPalGateway::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 10]);
+    $services->alias(InstalledExtensions::class, WordPressExtensions::class);
+    $services->alias(Registry::class, WordPressExtensions::class);
     $services->alias(PayPalApi::class, WordPressPayPalApi::class);
     $services->alias(PaymentUrls::class, RestPaymentUrls::class);
 

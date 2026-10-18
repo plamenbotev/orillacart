@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application\Gateway;
 
-use OrillaCart\Payment\Application\Dto\GatewayStart;
-use OrillaCart\Payment\Application\Dto\PaymentSession;
+use OrillaCart\Extension\Payment\PaymentGateway;
+use OrillaCart\Extension\Payment\PaymentSession;
+use OrillaCart\Extension\Payment\PaymentStart;
+use OrillaCart\Extension\Settings;
 
 /**
  * A payment made outside the shop: the order waits until the shop has the money. What the customer has to do
@@ -13,23 +15,18 @@ use OrillaCart\Payment\Application\Dto\PaymentSession;
  */
 abstract class OfflineGateway implements PaymentGateway
 {
-    public function usesNotifications(): bool
-    {
-        return false;
-    }
-
     public function settings(): array
     {
         return [];
     }
 
-    public function isReady(array $settings, string $currency): bool
+    public function isReady(Settings $settings, string $currency): bool
     {
         return true;
     }
 
-    public function start(PaymentSession $session, array $settings): GatewayStart
+    public function start(PaymentSession $session, Settings $settings): PaymentStart
     {
-        return GatewayStart::offline();
+        return PaymentStart::offline();
     }
 }
