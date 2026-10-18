@@ -13,6 +13,8 @@ final readonly class ShippingRateView
      * @param list<string> $regions
      * @param list<int>    $shippingClasses
      * @param list<string> $postcodes
+     * @param list<string> $excludedRegions
+     * @param list<string> $excludedPostcodes
      */
     public function __construct(
         public int $id,
@@ -30,6 +32,8 @@ final readonly class ShippingRateView
         public ?int $taxGroupId,
         public array $shippingClasses,
         public array $postcodes,
+        public array $excludedRegions,
+        public array $excludedPostcodes,
     ) {}
 
     public static function fromRate(ShippingRate $rate): self
@@ -52,6 +56,8 @@ final readonly class ShippingRateView
             $details->taxGroupId,
             $details->classes,
             array_map(strval(...), $details->postcodes),
+            array_map(strval(...), $details->excludedRegions),
+            array_map(strval(...), $details->excludedPostcodes),
         );
     }
 }

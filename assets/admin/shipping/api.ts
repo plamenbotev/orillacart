@@ -29,6 +29,10 @@ export interface ShippingRate extends Record< Measure, Range | null > {
 	shipping_classes: number[];
 	/** Postcodes ("1000"), starts ("SW1*") or numeric ranges ("1000-1999"); empty for any. */
 	postcodes: string[];
+	/** Countries or states it does not ship to, even within its regions. */
+	excluded_regions: string[];
+	/** Postcode patterns it does not ship to. */
+	excluded_postcodes: string[];
 }
 
 /** A kind of goods that ships its own way, such as "Bulky". */

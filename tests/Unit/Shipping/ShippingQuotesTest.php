@@ -186,6 +186,24 @@ final class ShippingQuotesTest extends TestCase
         $this->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Wrong', '1', postcodes: ['1999-1000'])]));
     }
 
+    public function testARateLeavesOutTheRegionsAndPostcodesItExcludes(): void
+    {
+        $this->carriers->create(new SaveCarrier('Courier', rates: [
+            new SaveShippingRate('Lower states', '5', regions: ['US'], excludedRegions: ['US-CA'], excludedPostcodes: ['967*', '968*']),
+            new SaveShippingRate('Everywhere but Bulgaria', '25', excludedRegions: ['BG']),
+        ]));
+        $offered = fn(string $country, ?string $state, ?string $postcode): array => array_map(
+            static fn(ShippingOptionView $option): string => $option->name,
+            $this->quotes->options(new ShippingQuery($country, $state, [new ParcelItem(1, '1')], '10', $postcode)),
+        );
+
+        self::assertSame(['Lower states', 'Everywhere but Bulgaria'], $offered('US', 'NY', '10001'));
+        self::assertSame(['Everywhere but Bulgaria'], $offered('US', 'CA', '94103'), 'an excluded state');
+        self::assertSame(['Everywhere but Bulgaria'], $offered('US', 'TX', '96813'), 'an excluded postcode');
+        self::assertSame(['Lower states', 'Everywhere but Bulgaria'], $offered('US', 'NY', null), 'an excluded postcode needs a postcode to exclude');
+        self::assertSame([], $offered('BG', null, '1000'));
+    }
+
     public function testShippingClassNamesAreUnique(): void
     {
         $this->classes->create(new SaveShippingClass('Bulky'));

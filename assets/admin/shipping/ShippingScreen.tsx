@@ -33,6 +33,9 @@ import {
 } from './api';
 import { ShippingClassesCard } from './ShippingClassesCard';
 
+type ListField =
+	'regions' | 'postcodes' | 'excluded_regions' | 'excluded_postcodes';
+
 type Message = { status: 'success' | 'error'; text: string } | null;
 
 const EMPTY_RATE: ShippingRateInput = {
@@ -50,6 +53,8 @@ const EMPTY_RATE: ShippingRateInput = {
 	tax_group_id: null,
 	shipping_classes: [],
 	postcodes: [],
+	excluded_regions: [],
+	excluded_postcodes: [],
 };
 
 const MEASURE_LABELS: Record< Measure, string > = {
@@ -365,8 +370,36 @@ function RateFields( {
 				? [ ...rate.shipping_classes, id ]
 				: rate.shipping_classes.filter( ( current ) => current !== id ),
 		} );
-	const [ regions, setRegions ] = useState( rate.regions.join( ', ' ) );
-	const [ postcodes, setPostcodes ] = useState( rate.postcodes.join( ', ' ) );
+	// What the admin typed, kept as typed; the rate gets the parsed list.
+	const [ typed, setTyped ] = useState< Record< ListField, string > >( {
+		regions: rate.regions.join( ', ' ),
+		postcodes: rate.postcodes.join( ', ' ),
+		excluded_regions: rate.excluded_regions.join( ', ' ),
+		excluded_postcodes: rate.excluded_postcodes.join( ', ' ),
+	} );
+	const listField = ( field: ListField, label: string, help: string ) => (
+		<TextControl
+			__next40pxDefaultSize
+			label={ label }
+			help={ help }
+			value={ typed[ field ] }
+			onChange={ ( value ) => {
+				setTyped( { ...typed, [ field ]: value } );
+				onChange( {
+					...rate,
+					[ field ]: value
+						.split( ',' )
+						.map( ( item ) => item.trim() )
+						.map( ( item ) =>
+							field.endsWith( 'regions' )
+								? item.toUpperCase()
+								: item
+						)
+						.filter( ( item ) => item !== '' ),
+				} );
+			} }
+		/>
+	);
 	const setRange = ( measure: Measure, range: Range ) =>
 		onChange( {
 			...rate,
@@ -405,44 +438,38 @@ function RateFields( {
 					onChange( { ...rate, per_item: perItem } )
 				}
 			/>
-			<TextControl
-				__next40pxDefaultSize
-				label={ __( 'Ships to', 'orillacart' ) }
-				help={ __(
+			{ listField(
+				'regions',
+				__( 'Ships to', 'orillacart' ),
+				__(
 					'Country codes such as BG, or states such as US-CA, separated by commas. Empty for everywhere.',
 					'orillacart'
-				) }
-				value={ regions }
-				onChange={ ( value ) => {
-					setRegions( value );
-					onChange( {
-						...rate,
-						regions: value
-							.split( ',' )
-							.map( ( region ) => region.trim().toUpperCase() )
-							.filter( ( region ) => region !== '' ),
-					} );
-				} }
-			/>
-			<TextControl
-				__next40pxDefaultSize
-				label={ __( 'Postcodes', 'orillacart' ) }
-				help={ __(
+				)
+			) }
+			{ listField(
+				'excluded_regions',
+				__( 'Except to', 'orillacart' ),
+				__(
+					'Countries or states it does not ship to, such as US-HI when it ships to US.',
+					'orillacart'
+				)
+			) }
+			{ listField(
+				'postcodes',
+				__( 'Postcodes', 'orillacart' ),
+				__(
 					'Postcodes such as 1000, starts such as SW1*, or ranges such as 1000–1999, separated by commas. Empty for any postcode in the regions.',
 					'orillacart'
-				) }
-				value={ postcodes }
-				onChange={ ( value ) => {
-					setPostcodes( value );
-					onChange( {
-						...rate,
-						postcodes: value
-							.split( ',' )
-							.map( ( postcode ) => postcode.trim() )
-							.filter( ( postcode ) => postcode !== '' ),
-					} );
-				} }
-			/>
+				)
+			) }
+			{ listField(
+				'excluded_postcodes',
+				__( 'Except postcodes', 'orillacart' ),
+				__(
+					'Postcodes, starts or ranges it does not ship to.',
+					'orillacart'
+				)
+			) }
 			{ classes.length > 0 && (
 				<fieldset className="orillacart-rate-classes">
 					<legend>{ __( 'Carries', 'orillacart' ) }</legend>

@@ -9,7 +9,7 @@ use OrillaCart\Shared\Domain\Money;
 
 /**
  * One way a carrier ships: where to, which parcels, and the price. Checkout offers it when the parcel's
- * destination is in one of its regions and matches one of its postcodes, it carries the shipping class of every item, and every measure of the parcel
+ * destination is in one of its regions and matches one of its postcodes but none it excludes, it carries the shipping class of every item, and every measure of the parcel
  * is in its range.
  */
 #[ORM\Entity]
@@ -66,6 +66,14 @@ class ShippingRate
     #[ORM\Column(type: 'json')]
     private array $postcodes = [];
 
+    /** @var list<string> */
+    #[ORM\Column(type: 'json')]
+    private array $excludedRegions = [];
+
+    /** @var list<string> */
+    #[ORM\Column(type: 'json')]
+    private array $excludedPostcodes = [];
+
     /**
      * Created through Carrier::replaceRates().
      */
@@ -115,7 +123,9 @@ class ShippingRate
         $this->taxable = $details->taxable;
         $this->taxGroupId = $details->taxGroupId;
         $this->classes = array_values($details->classes);
-        $this->postcodes = array_values(array_map(static fn(PostcodePattern $pattern): string => (string) $pattern, $details->postcodes));
+        $this->postcodes = array_values(array_map(strval(...), $details->postcodes));
+        $this->excludedRegions = array_values(array_map(strval(...), $details->excludedRegions));
+        $this->excludedPostcodes = array_values(array_map(strval(...), $details->excludedPostcodes));
         $this->position = $position;
     }
 
@@ -136,6 +146,8 @@ class ShippingRate
             $this->taxGroupId,
             $this->classes,
             array_map(PostcodePattern::of(...), $this->postcodes),
+            array_map(Region::of(...), $this->excludedRegions),
+            array_map(PostcodePattern::of(...), $this->excludedPostcodes),
         );
     }
 
@@ -161,8 +173,18 @@ class ShippingRate
             }
         }
 
+        foreach ($this->excludedRegions as $excluded) {
+            if ($destination !== null && Region::of($excluded)->contains($destination)) {
+                return false;
+            }
+        }
+        $postcode = $destination?->postcode;
+        foreach ($this->excludedPostcodes as $excluded) {
+            if ($postcode !== null && $postcode !== '' && PostcodePattern::of($excluded)->matches($postcode)) {
+                return false;
+            }
+        }
         if ($this->postcodes !== []) {
-            $postcode = $destination?->postcode;
             if ($postcode === null || $postcode === '' || array_filter($this->postcodes, static fn(string $pattern): bool => PostcodePattern::of($pattern)->matches($postcode)) === []) {
                 return false;
             }

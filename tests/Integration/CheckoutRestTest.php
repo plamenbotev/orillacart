@@ -119,13 +119,18 @@ final class CheckoutRestTest extends RestTestCase
     public function testARateForSomePostcodesShipsOnlyThere(): void
     {
         $this->actAs('administrator');
-        $this->request('PUT', '/carriers/' . $this->carrierOf($this->rate), ['name' => 'Courier', 'rates' => [['id' => $this->rate, 'name' => 'Sofia', 'price' => '3', 'regions' => ['BG'], 'postcodes' => ['1000-1999']]]], nonce: true);
+        $this->request('PUT', '/carriers/' . $this->carrierOf($this->rate), ['name' => 'Courier', 'rates' => [['id' => $this->rate, 'name' => 'Sofia', 'price' => '3', 'regions' => ['BG'], 'postcodes' => ['1000-1999']],
+            ['name' => 'Outside Sofia', 'price' => '6', 'regions' => ['BG'], 'excluded_postcodes' => ['1000-1999']],
+            ['name' => 'Abroad', 'price' => '20', 'excluded_regions' => ['BG']],
+        ]], nonce: true);
+        self::assertSame(422, $this->request('POST', '/carriers', ['name' => 'Post', 'rates' => [['name' => 'Wrong', 'price' => '1', 'excluded_regions' => ['XX']]]], nonce: true)->get_status(), 'no such country');
         self::assertSame(422, $this->request('POST', '/carriers', ['name' => 'Post', 'rates' => [['name' => 'Wrong', 'price' => '1', 'postcodes' => ['1999-1000']]]], nonce: true)->get_status());
         wp_set_current_user(0);
         $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product, 'quantity' => 1], nonce: true));
 
-        self::assertSame([], $this->shippingNames(['shipping_country' => 'BG']), 'no postcode yet');
-        self::assertSame([], $this->shippingNames(['shipping_country' => 'BG', 'shipping_postcode' => '4000']));
+        self::assertSame(['Outside Sofia'], $this->shippingNames(['shipping_country' => 'BG']), 'no postcode yet');
+        self::assertSame(['Outside Sofia'], $this->shippingNames(['shipping_country' => 'BG', 'shipping_postcode' => '4000']));
+        self::assertSame(['Abroad'], $this->shippingNames(['shipping_country' => 'DE']));
         self::assertSame(['Sofia'], $this->shippingNames(['shipping_country' => 'BG', 'shipping_postcode' => '1404']));
 
         $plovdiv = ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Main St', 'city' => 'Plovdiv', 'postcode' => '4000', 'country' => 'BG', 'phone' => '+359 2 000 0000'];

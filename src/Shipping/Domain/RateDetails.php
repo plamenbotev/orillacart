@@ -20,6 +20,9 @@ final readonly class RateDetails
      * @param list<int>    $classes  the shipping classes it carries (ShippingClass::NONE for items without one);
      *                               empty for every item. A parcel with an item it does not carry gets another rate.
      * @param list<PostcodePattern> $postcodes the postcodes it ships to within its regions; empty for any
+     * @param list<Region>          $excludedRegions   where it does not ship even within its regions, such as
+     *                                                 the islands of a country it ships to
+     * @param list<PostcodePattern> $excludedPostcodes postcodes it does not ship to
      */
     public function __construct(
         public string $name,
@@ -36,6 +39,8 @@ final readonly class RateDetails
         public ?int $taxGroupId = null,
         public array $classes = [],
         public array $postcodes = [],
+        public array $excludedRegions = [],
+        public array $excludedPostcodes = [],
     ) {
         if (trim($name) === '' || mb_strlen(trim($name)) > self::MAX_NAME_LENGTH) {
             throw new ShippingRuleViolation(\sprintf('A shipping rate needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_rate_name');

@@ -32,6 +32,8 @@ const courier = {
 			tax_group_id: null,
 			shipping_classes: [],
 			postcodes: [],
+			excluded_regions: [],
+			excluded_postcodes: [],
 		},
 	],
 };
@@ -82,6 +84,10 @@ describe( 'ShippingScreen', () => {
 			screen.getAllByLabelText( 'Postcodes' )[ 0 ] as HTMLElement,
 			'1000-1999, SW1*'
 		);
+		await user.type(
+			screen.getAllByLabelText( 'Except to' )[ 0 ] as HTMLElement,
+			'us-hi'
+		);
 		const weightTo = screen.getByLabelText( 'Weight to' );
 		await user.clear( weightTo );
 		await user.click(
@@ -107,6 +113,7 @@ describe( 'ShippingScreen', () => {
 			// Items without a class, and bulky ones.
 			shipping_classes: [ 0, 4 ],
 			postcodes: [ '1000-1999', 'SW1*' ],
+			excluded_regions: [ 'US-HI' ],
 		} );
 	} );
 

@@ -117,6 +117,8 @@ final readonly class CarrierService
             $this->taxGroup($rate->taxGroupId),
             array_map($this->shippingClass(...), $rate->shippingClasses),
             array_map(PostcodePattern::of(...), $rate->postcodes),
+            array_map($this->region(...), $rate->excludedRegions),
+            array_map(PostcodePattern::of(...), $rate->excludedPostcodes),
         )), $rates);
     }
 

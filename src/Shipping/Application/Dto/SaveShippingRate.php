@@ -18,6 +18,8 @@ final readonly class SaveShippingRate
      * @param list<string> $regions countries ("BG") or states ("US-CA"); empty for everywhere
      * @param list<int>    $shippingClasses the classes it carries, 0 for items without one; empty for every item
      * @param list<string> $postcodes postcodes ("1000"), starts ("SW1*") or numeric ranges ("1000-1999"); empty for any
+     * @param list<string> $excludedRegions   countries or states it does not ship to, even within its regions
+     * @param list<string> $excludedPostcodes postcode patterns it does not ship to
      */
     public function __construct(
         #[Assert\NotBlank]
@@ -49,5 +51,9 @@ final readonly class SaveShippingRate
         public array $shippingClasses = [],
         #[Assert\All([new Assert\Length(max: 30)])]
         public array $postcodes = [],
+        #[Assert\All([new Assert\Regex(pattern: '/^[A-Z]{2}(-[A-Z0-9]{1,3})?$/', message: 'Use a country code such as "BG" or a state such as "US-CA".')])]
+        public array $excludedRegions = [],
+        #[Assert\All([new Assert\Length(max: 30)])]
+        public array $excludedPostcodes = [],
     ) {}
 }
