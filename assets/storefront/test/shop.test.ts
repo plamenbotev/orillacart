@@ -28,6 +28,8 @@ describe( 'the shop page', () => {
 
 	it( 'shows the matching products when a filter changes, and remembers the address', async () => {
 		document.body.innerHTML = page( '<li>Before</li>' );
+		// The filters change the products on this very page.
+		window.history.replaceState( {}, '', '/shop/' );
 		const fetched: string[] = [];
 		window.fetch = jest.fn( ( url: RequestInfo | URL ) => {
 			fetched.push( String( url ) );

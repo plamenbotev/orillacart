@@ -16,6 +16,7 @@ final readonly class SearchQuery
      * @param list<OptionFilter> $options
      * @param string|null        $priceMin    today's price before tax, from
      * @param string|null        $priceMax    up to and including
+     * @param int                $limit       how many products to list; 0 for the total and the counts only
      * @param bool               $facets      count what each filter would leave
      */
     public function __construct(

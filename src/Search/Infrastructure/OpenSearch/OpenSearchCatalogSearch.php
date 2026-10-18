@@ -52,7 +52,7 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
         $text = $query->text === null ? '' : trim($query->text);
         $body = [
             'from' => max(0, $query->offset),
-            'size' => max(1, $query->limit),
+            'size' => max(0, $query->limit),
             'track_total_hits' => true,
             '_source' => ['product_id'],
             'query' => ['bool' => [

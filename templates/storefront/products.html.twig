@@ -3,8 +3,8 @@
  #
  # products: [{offer, url, image (HTML), simple}]; categories: [{name, url, current, image (HTML or empty)}]; all_url; search; sort;
  # sorts: {value: label}; page; pages; page_urls: {number: url}; columns; cart_url (null without a cart page);
- # show_filters; filters: [{label, name, values: [{value, label, count, checked}]}]; price: {min, max, low, high} or null;
- # in_stock; filtered (anything chosen); clear_url.
+ # show_filters; panel (see _filters.html.twig); hidden: [{name, value}] the choices kept without the panel;
+ # filtered (anything chosen).
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-products" data-orillacart-region="products">
@@ -35,34 +35,9 @@
         </p>
         <button type="submit" class="wp-element-button orillacart-button">{{ __('Show') }}</button>
 
+        {% for field in hidden %}<input type="hidden" name="{{ field.name }}" value="{{ field.value }}">{% endfor %}
         {% if show_filters %}
-            <div class="orillacart-facets">
-                {% for facet in filters %}
-                    <fieldset class="orillacart-facet">
-                        <legend>{{ facet.label }}</legend>
-                        {% for value in facet.values %}
-                            <label class="orillacart-facet__value">
-                                <input type="checkbox" name="{{ facet.name }}" value="{{ value.value }}"{{ value.checked ? ' checked' }}>
-                                {{ value.label }} <span class="orillacart-facet__count">({{ value.count }})</span>
-                            </label>
-                        {% endfor %}
-                    </fieldset>
-                {% endfor %}
-                {% if price %}
-                    <fieldset class="orillacart-facet orillacart-facet--price">
-                        <legend>{{ __('Price') }}</legend>
-                        <label>{{ __('From') }} <input type="number" name="price_min" min="0" step="any" inputmode="decimal" value="{{ price.min }}" placeholder="{{ price.low }}"></label>
-                        <label>{{ __('To') }} <input type="number" name="price_max" min="0" step="any" inputmode="decimal" value="{{ price.max }}" placeholder="{{ price.high }}"></label>
-                    </fieldset>
-                {% endif %}
-                <fieldset class="orillacart-facet">
-                    <legend>{{ __('Availability') }}</legend>
-                    <label class="orillacart-facet__value"><input type="checkbox" name="in_stock" value="1"{{ in_stock ? ' checked' }}> {{ __('In stock only') }}</label>
-                </fieldset>
-                {% if filtered %}
-                    <p><a class="orillacart-facets__clear" href="{{ clear_url }}">{{ __('Clear the filters') }}</a></p>
-                {% endif %}
-            </div>
+            {% include 'storefront/_filters.html.twig' with {panel: panel} %}
         {% endif %}
     </form>
 

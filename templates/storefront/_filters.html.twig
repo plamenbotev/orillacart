@@ -1,0 +1,31 @@
+{#
+ # The filter panel, in the Products block's form or the Product filters block's. panel: {filters: [{label, name,
+ # values: [{value, label, count, checked}]}], price: {min, max, low, high} or null, in_stock, filtered, clear_url}.
+ #}
+<div class="orillacart-facets">
+    {% for facet in panel.filters %}
+        <fieldset class="orillacart-facet">
+            <legend>{{ facet.label }}</legend>
+            {% for value in facet.values %}
+                <label class="orillacart-facet__value">
+                    <input type="checkbox" name="{{ facet.name }}" value="{{ value.value }}"{{ value.checked ? ' checked' }}>
+                    {{ value.label }} <span class="orillacart-facet__count">({{ value.count }})</span>
+                </label>
+            {% endfor %}
+        </fieldset>
+    {% endfor %}
+    {% if panel.price %}
+        <fieldset class="orillacart-facet orillacart-facet--price">
+            <legend>{{ __('Price') }}</legend>
+            <label>{{ __('From') }} <input type="number" name="price_min" min="0" step="any" inputmode="decimal" value="{{ panel.price.min }}" placeholder="{{ panel.price.low }}"></label>
+            <label>{{ __('To') }} <input type="number" name="price_max" min="0" step="any" inputmode="decimal" value="{{ panel.price.max }}" placeholder="{{ panel.price.high }}"></label>
+        </fieldset>
+    {% endif %}
+    <fieldset class="orillacart-facet">
+        <legend>{{ __('Availability') }}</legend>
+        <label class="orillacart-facet__value"><input type="checkbox" name="in_stock" value="1"{{ panel.in_stock ? ' checked' }}> {{ __('In stock only') }}</label>
+    </fieldset>
+    {% if panel.filtered %}
+        <p><a class="orillacart-facets__clear" href="{{ panel.clear_url }}">{{ __('Clear the filters') }}</a></p>
+    {% endif %}
+</div>

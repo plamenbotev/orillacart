@@ -1,12 +1,24 @@
 /**
- * The shop page's search and filters: a plain GET form that works without this script. With it, a change
- * shows the matching products at once: the products region is rendered anew on the server for the new
- * address, which the browser's history keeps.
+ * The shop page's search and filters: plain GET forms that work without this script. With it, a change
+ * shows the matching products at once: the products region, and a Product filters block's, are rendered anew on
+ * the server for the new address, which the browser's history keeps.
  */
 import { reloadRegions } from './dom';
 import { bindAddToCart } from './product';
 
-const REGION = 'products';
+/** The regions a change renders anew: the products, and the filters when they are a block of their own. */
+const REGIONS = [ 'products', 'filters' ];
+
+/** With the script, choices apply as they change: the filters block needs no button. */
+function hideApplyButtons(): void {
+	document
+		.querySelectorAll< HTMLButtonElement >(
+			'.orillacart-product-filters__apply'
+		)
+		.forEach( ( button ) => {
+			button.hidden = true;
+		} );
+}
 
 /**
  * The address the form would go to, leaving out empty fields.
@@ -24,19 +36,19 @@ export function filtersUrl( form: HTMLFormElement ): string {
 }
 
 async function show( url: string ): Promise< void > {
-	const region = document.querySelector(
-		`[data-orillacart-region="${ REGION }"]`
-	);
-	region?.setAttribute( 'aria-busy', 'true' );
+	document
+		.querySelectorAll( '[data-orillacart-region="products"]' )
+		.forEach( ( region ) => region.setAttribute( 'aria-busy', 'true' ) );
 	try {
-		await reloadRegions( [ REGION ], url );
+		await reloadRegions( REGIONS, url );
 	} catch {
 		window.location.assign( url );
 		return;
 	}
+	hideApplyButtons();
 	document
 		.querySelectorAll< HTMLFormElement >(
-			`[data-orillacart-region="${ REGION }"] form[data-orillacart-add-to-cart]`
+			'[data-orillacart-region="products"] form[data-orillacart-add-to-cart]'
 		)
 		.forEach( bindAddToCart );
 }
@@ -48,8 +60,17 @@ export function bindShop(): void {
 	if ( ! document.querySelector( 'form[data-orillacart-filters]' ) ) {
 		return;
 	}
+	hideApplyButtons();
 	const apply = ( form: HTMLFormElement ) => {
 		const url = filtersUrl( form );
+		// A filters block on a page without products sends the shopper to the shop page.
+		if (
+			new URL( url ).pathname !== window.location.pathname ||
+			! document.querySelector( '[data-orillacart-region="products"]' )
+		) {
+			window.location.assign( url );
+			return;
+		}
 		window.history.pushState( { orillacart: true }, '', url );
 		void show( url );
 	};

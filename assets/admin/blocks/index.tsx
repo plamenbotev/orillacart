@@ -36,6 +36,10 @@ const notes: Record< string, string > = {
 		'Customers log in here and see their orders, files and addresses.',
 		'orillacart'
 	),
+	'orillacart/product-filters': __(
+		'Shoppers narrow the products by brand, the shop’s filters, price and stock here, with how many products each choice leaves. Place it beside a Products block whose own filters are off; it counts within that block’s category, featured or sale products.',
+		'orillacart'
+	),
 };
 
 function Note( { name }: { name: string } ) {

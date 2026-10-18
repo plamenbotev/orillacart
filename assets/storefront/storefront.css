@@ -207,6 +207,16 @@ fieldset[aria-invalid="true"] {
 	margin-bottom: 1rem;
 }
 
+.orillacart-product-filters .orillacart-facets {
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.orillacart-product-filters .orillacart-facet {
+	width: 100%;
+	box-sizing: border-box;
+}
+
 .orillacart-facet {
 	min-width: 10rem;
 	margin: 0;

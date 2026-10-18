@@ -168,6 +168,27 @@ abstract class CatalogSearchContract extends RestTestCase
         $_GET = [];
     }
 
+    public function testAFiltersBlockBesideTheProductsCountsWithinWhatTheyShowAndBothKeepEachOthersChoices(): void
+    {
+        $this->actAs('administrator');
+        $this->request('POST', '/search-filters', ['label' => 'Size', 'key' => 'size', 'attributes' => ['Size', 'Размер']], nonce: true);
+        $page = wp_insert_post(['post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Clothes', 'post_content' => '<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column"><!-- wp:orillacart/product-filters /--></div><!-- /wp:column --><!-- wp:column --><div class="wp-block-column"><!-- wp:orillacart/products {"filters":false,"onSale":false,"category":"lighting"} /--></div><!-- /wp:column --></div><!-- /wp:columns -->']);
+        self::assertIsInt($page);
+        $this->posts[] = $page;
+        wp_set_current_user(0);
+        $GLOBALS['post'] = get_post($page);
+
+        $_GET = ['brand' => [(string) $this->acme]];
+        $html = do_blocks((string) get_post_field('post_content', $page));
+        self::assertSame(['Brass desk lamp'], self::names($html));
+        self::assertStringContainsString('data-orillacart-region="filters"', $html);
+        self::assertMatchesRegularExpression('#name="brand\\[\\]" value="' . $this->acme . '" checked>\\s*Acme <span class="orillacart-facet__count">\\(1\\)</span>#', $html);
+        self::assertStringNotContainsString('name="f[size][]"', $html, 'no size within Lighting: the shirts and the hoodie are not there');
+        self::assertStringContainsString('<input type="hidden" name="brand[]" value="' . $this->acme . '">', $html, 'the products\' search keeps the brand');
+        self::assertStringNotContainsString('<input type="hidden" name="category"', $html, 'the block\'s own category is not the address\'s');
+        unset($GLOBALS['post']);
+    }
+
     public function testUnpublishedAndDeletedProductsLeaveTheIndex(): void
     {
         wp_update_post(['ID' => $this->book, 'post_status' => 'draft']);
