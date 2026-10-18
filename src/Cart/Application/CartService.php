@@ -16,6 +16,9 @@ use OrillaCart\Cart\Domain\CartLine;
 use OrillaCart\Cart\Domain\CartLineNotFound;
 use OrillaCart\Cart\Domain\CartRepository;
 use OrillaCart\Cart\Domain\CartRuleViolation;
+use OrillaCart\Cart\Domain\Event\CartItemAdded;
+use OrillaCart\Cart\Domain\Event\CartItemChanged;
+use OrillaCart\Cart\Domain\Event\CartItemRemoved;
 use OrillaCart\Catalog\Application\Dto\ItemQuote;
 use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Catalog\Application\Dto\QuotedOption;
@@ -23,11 +26,16 @@ use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Catalog\Domain\InvalidSelection;
 use OrillaCart\Catalog\Domain\ProductNotFound;
+use OrillaCart\Extension\Cart\CheckedCart;
+use OrillaCart\Extension\Cart\CheckedLine;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Clock\ClockInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * The customer's cart: filling it, and showing it at the catalog's current prices. Stock is checked when
@@ -43,6 +51,9 @@ final readonly class CartService
         private ProductQuotes $quotes,
         private ClockInterface $clock,
         private SettingsService $settings,
+        private InstalledExtensions $extensions,
+        private EventDispatcherInterface $events,
+        private LoggerInterface $logger,
     ) {}
 
     public function cart(CartOwner $owner): CartResult
@@ -61,7 +72,8 @@ final readonly class CartService
     /**
      * @throws ProductNotFound
      * @throws InvalidSelection   for options the product does not offer, or required ones missing
-     * @throws CartRuleViolation  for a product not for sale, more than the stock allows, or a shop that only shows its catalog
+     * @throws CartRuleViolation  for a product not for sale, more than the stock allows, an add-on's cart rule, or a
+     *                            shop that only shows its catalog
      */
     public function add(CartOwner $owner, AddToCart $command): CartResult
     {
@@ -74,20 +86,25 @@ final readonly class CartService
         }
 
         [$cart, $newToken] = $this->find($owner);
+        // Checked before the cart changes, so a refused change is never saved by whatever saves later.
+        $existing = $cart?->lineFor($command->productId, $command->optionIds, $command->bundleChoices);
+        $quantity = ($existing?->quantity() ?? 0) + $command->quantity;
+        self::checkStock($quote, $quantity);
+        $this->checkRules($cart, $owner->customerId, $existing, $quantity, $command->productId, $command->optionIds, $command->bundleChoices);
         if ($cart === null) {
             $newToken = self::token();
             $cart = new Cart($newToken, $owner->customerId, $this->clock->now());
         }
-        $line = $cart->add($command->productId, $command->optionIds, $command->quantity, $this->clock->now(), $command->bundleChoices);
-        self::checkStock($quote, $line->quantity());
+        $cart->add($command->productId, $command->optionIds, $command->quantity, $this->clock->now(), $command->bundleChoices);
         $this->carts->save($cart);
+        $this->events->dispatch(new CartItemAdded($quote->productId, $quote->variationId, $command->quantity, $cart->customerId()));
 
         return new CartResult($this->view($cart), $newToken);
     }
 
     /**
      * @throws CartLineNotFound
-     * @throws CartRuleViolation for more than the stock allows
+     * @throws CartRuleViolation for more than the stock allows, or an add-on's cart rule
      */
     public function changeQuantity(CartOwner $owner, int $lineId, ChangeQuantity $command): CartResult
     {
@@ -95,16 +112,24 @@ final readonly class CartService
         if ($cart === null) {
             throw new CartLineNotFound($lineId);
         }
+        $line = $cart->line($lineId);
+        $previous = $line->quantity();
+        $variationId = $this->variationOf($line);
         if ($command->quantity === 0) {
             $cart->remove($lineId, $this->clock->now());
+            $event = new CartItemRemoved($line->productId(), $variationId, $previous, $cart->customerId());
         } else {
-            $line = $cart->line($lineId);
-            if ($command->quantity > $line->quantity()) {
+            if ($command->quantity > $previous) {
                 self::checkStock($this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), bundleChoices: $line->bundleChoices())), $command->quantity);
+                $this->checkRules($cart, $cart->customerId(), $line, $command->quantity, $line->productId(), $line->optionIds(), $line->bundleChoices());
             }
             $cart->changeQuantity($lineId, $command->quantity, $this->clock->now());
+            $event = new CartItemChanged($line->productId(), $variationId, $command->quantity, $previous, $cart->customerId());
         }
         $this->carts->save($cart);
+        if ($command->quantity !== $previous) {
+            $this->events->dispatch($event);
+        }
 
         return new CartResult($this->view($cart), $newToken);
     }
@@ -126,6 +151,16 @@ final readonly class CartService
         if ($cart === null || $cart->isEmpty()) {
             return null;
         }
+        $refusals = [];
+        if ($this->extensions->cartRules() !== []) {
+            $view = $this->view($cart);
+            foreach ($view->lines as $line) {
+                if ($line->problem === CartLineView::REFUSED && $line->message !== null) {
+                    $refusals[] = $line->message;
+                }
+            }
+            array_push($refusals, ...$view->refusals);
+        }
 
         return new CartContents($cart->id(), array_map(static fn(CartLine $line): array => [
             'line' => $line->id(),
@@ -133,7 +168,7 @@ final readonly class CartService
             'option_ids' => $line->optionIds(),
             'bundle_choices' => $line->bundleChoices(),
             'quantity' => $line->quantity(),
-        ], $cart->lines()), $cart->coupons());
+        ], $cart->lines()), $cart->coupons(), $refusals);
     }
 
     /**
@@ -198,21 +233,36 @@ final readonly class CartService
 
     private function view(Cart $cart): CartView
     {
-        $lines = [];
-        $items = 0;
-        $subtotal = Money::zero();
-        $orderable = !$cart->isEmpty();
+        $quoted = [];
+        $checked = [];
         foreach ($cart->lines() as $line) {
             try {
                 $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), $line->quantity(), $cart->customerId(), $line->bundleChoices()));
             } catch (NotFound|RuleViolation) {
-                $lines[] = new CartLineView($line->id(), $line->productId(), null, '', null, [], $line->quantity(), '0', '0', 0, 'unavailable');
+                $quote = null;
+            }
+            $quoted[] = [$line, $quote];
+            if ($quote !== null) {
+                $checked[] = self::checkedLine($line, $quote);
+            }
+        }
+        [$refusedLines, $refusals] = $this->refusals(new CheckedCart($cart->customerId(), $checked, $this->settings->current()->currency));
+
+        $lines = [];
+        $items = 0;
+        $subtotal = Money::zero();
+        $orderable = !$cart->isEmpty() && $refusals === [];
+        foreach ($quoted as [$line, $quote]) {
+            if ($quote === null) {
+                $lines[] = new CartLineView($line->id(), $line->productId(), null, '', null, [], $line->quantity(), '0', '0', 0, CartLineView::UNAVAILABLE);
                 $orderable = false;
                 continue;
             }
+            $message = $refusedLines[$line->id()] ?? null;
             $problem = match (true) {
-                !$quote->forSale => 'unavailable',
-                $quote->available !== null && $quote->available < $line->quantity() => 'insufficient_stock',
+                !$quote->forSale => CartLineView::UNAVAILABLE,
+                $quote->available !== null && $quote->available < $line->quantity() => CartLineView::INSUFFICIENT_STOCK,
+                $message !== null => CartLineView::REFUSED,
                 default => null,
             };
             $total = Money::of($quote->unitPrice)->times($line->quantity());
@@ -230,13 +280,99 @@ final readonly class CartService
                 $problem,
                 $quote->shownBackorder($line->quantity()),
                 array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $quote->contents),
+                $problem === CartLineView::REFUSED ? $message : null,
             );
             $items += $line->quantity();
             $subtotal = $subtotal->add($total);
             $orderable = $orderable && $problem === null;
         }
 
-        return new CartView($lines, $items, (string) $subtotal, $orderable);
+        return new CartView($lines, $items, (string) $subtotal, $orderable, $refusals);
+    }
+
+    /**
+     * Refuses a change an add-on's cart rule refuses: the cart as it would be, with the target line (or a new one)
+     * at the quantity.
+     *
+     * @param list<int> $optionIds
+     * @param list<int> $bundleChoices
+     *
+     * @throws CartRuleViolation
+     */
+    private function checkRules(?Cart $cart, ?int $customerId, ?CartLine $target, int $quantity, int $productId, array $optionIds, array $bundleChoices): void
+    {
+        if ($this->extensions->cartRules() === []) {
+            return;
+        }
+        $customerId = $cart?->customerId() ?? $customerId;
+        $checked = [];
+        foreach ($cart?->lines() ?? [] as $line) {
+            if ($line === $target) {
+                continue;
+            }
+            try {
+                $checked[] = self::checkedLine($line, $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), $line->quantity(), $customerId, $line->bundleChoices())));
+            } catch (NotFound|RuleViolation) {
+                // A line no longer for sale is the cart's to show, not this change's.
+            }
+        }
+        $key = $target === null ? 0 : self::lineKey($target);
+        $quote = $this->quotes->quote(new QuoteRequest($productId, $optionIds, $quantity, $customerId, $bundleChoices));
+        $checked[] = new CheckedLine($key, $quote->productId, $quote->variationId, $quote->sku, $quote->name, $quantity, $quote->unitPrice);
+        [$refusedLines] = $this->refusals(new CheckedCart($customerId, $checked, $this->settings->current()->currency));
+        $message = $refusedLines[$key] ?? null;
+        if ($message !== null) {
+            throw new CartRuleViolation($message, 'orillacart_cart_refused');
+        }
+    }
+
+    /**
+     * What the add-ons' cart rules refuse: messages by line, and those about the whole cart. A rule that fails is
+     * logged and left out, so one broken add-on does not stop every cart.
+     *
+     * @return array{array<int, string>, list<string>}
+     */
+    private function refusals(CheckedCart $cart): array
+    {
+        $lines = [];
+        $whole = [];
+        foreach ($this->extensions->cartRules() as $rule) {
+            try {
+                $refusals = $rule->check($cart);
+            } catch (\Throwable $e) {
+                $this->logger->error('The cart rule {rule} failed: {message}', ['rule' => $rule->id(), 'message' => $e->getMessage(), 'exception' => $e]);
+                continue;
+            }
+            foreach ($refusals as $refusal) {
+                if ($refusal->lineId === null) {
+                    $whole[] = $refusal->message;
+                } else {
+                    $lines[$refusal->lineId] ??= $refusal->message;
+                }
+            }
+        }
+
+        return [$lines, array_values(array_unique($whole))];
+    }
+
+    private static function checkedLine(CartLine $line, ItemQuote $quote): CheckedLine
+    {
+        return new CheckedLine(self::lineKey($line), $quote->productId, $quote->variationId, $quote->sku, $quote->name, $line->quantity(), $quote->unitPrice);
+    }
+
+    /** A line not saved yet, as one being added, is 0 to the rules. */
+    private static function lineKey(CartLine $line): int
+    {
+        return $line->isSaved() ? $line->id() : 0;
+    }
+
+    private function variationOf(CartLine $line): ?int
+    {
+        try {
+            return $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), bundleChoices: $line->bundleChoices()))->variationId;
+        } catch (NotFound|RuleViolation) {
+            return null;
+        }
     }
 
     private static function checkStock(ItemQuote $quote, int $quantity): void

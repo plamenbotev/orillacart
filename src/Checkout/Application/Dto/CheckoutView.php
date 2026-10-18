@@ -20,6 +20,7 @@ final readonly class CheckoutView
      * @param list<PickupPointView>   $pickupPoints where the chosen service can deliver, when it delivers to offices or lockers
      * @param string                  $subtotal     the items before tax and before the discount
      * @param list<CheckoutCouponView> $coupons     the codes entered, those that hold and those that do not
+     * @param list<CheckoutFieldView> $fields      the questions add-ons ask, for this order
      */
     public function __construct(
         public array $lines,
@@ -42,5 +43,6 @@ final readonly class CheckoutView
         /** What coupons take off the items. */
         public string $discount = '0',
         public array $coupons = [],
+        public array $fields = [],
     ) {}
 }

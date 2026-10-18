@@ -26,11 +26,14 @@ import {
 	editItems,
 	EMAILS,
 	fetchOrder,
+	fetchOrderActions,
 	fetchPickupPoints,
 	fetchShippingOptions,
 	type Order,
 	type PickupPoint,
+	type OrderAction,
 	PAID_STATUSES,
+	runOrderAction,
 	sendEmail,
 	type ShippingOption,
 	type Status,
@@ -132,6 +135,13 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 			{ order.shipping_option?.startsWith( 'carrier:' ) && (
 				<ShipmentsCard order={ order } onError={ fail } />
 			) }
+			<ActionsCard
+				order={ order }
+				onRan={ ( result, label ) =>
+					done( result.message || label )( result.order )
+				}
+				onError={ fail }
+			/>
 			<NotesCard
 				order={ order }
 				onSaved={ done( __( 'The note was added.', 'orillacart' ) ) }
@@ -646,6 +656,11 @@ function ContactCard( { order, onSaved, onError }: CardProps ) {
 	const [ shipping, setShipping ] = useState< Address | null >(
 		order.shipping_address
 	);
+	const [ answers, setAnswers ] = useState< Record< string, string > >(
+		Object.fromEntries(
+			order.fields.map( ( field ) => [ field.id, field.answer ] )
+		)
+	);
 
 	return (
 		<Card className="orillacart-card">
@@ -671,16 +686,105 @@ function ContactCard( { order, onSaved, onError }: CardProps ) {
 						/>
 					</>
 				) }
+				{ order.fields.length > 0 && (
+					<>
+						<h3>{ __( 'Other details', 'orillacart' ) }</h3>
+						{ order.fields.map( ( field ) => (
+							<TextControl
+								key={ field.id }
+								__next40pxDefaultSize
+								label={ field.label }
+								value={ answers[ field.id ] ?? '' }
+								onChange={ ( value ) =>
+									setAnswers( ( current ) => ( {
+										...current,
+										[ field.id ]: value,
+									} ) )
+								}
+							/>
+						) ) }
+					</>
+				) }
 				<Button
 					variant="secondary"
 					onClick={ () =>
-						changeContact( order.number, email, billing, shipping )
+						changeContact(
+							order.number,
+							email,
+							billing,
+							shipping,
+							answers
+						)
 							.then( onSaved )
 							.catch( onError )
 					}
 				>
 					{ __( 'Save the customer’s details', 'orillacart' ) }
 				</Button>
+			</CardBody>
+		</Card>
+	);
+}
+
+/**
+ * The buttons add-ons put on the order screen, such as sending it to an accounting system. Hidden when no add-on
+ * offers one for this order.
+ *
+ * @param props         The order and what to do with an action's result.
+ * @param props.order   The order.
+ * @param props.onRan   Receives the action's answer and the order with it in its history.
+ * @param props.onError Receives a failed call.
+ */
+function ActionsCard( {
+	order,
+	onRan,
+	onError,
+}: {
+	order: Order;
+	onRan: ( result: { message: string; order: Order }, label: string ) => void;
+	onError: ( error: unknown ) => void;
+} ) {
+	const [ actions, setActions ] = useState< OrderAction[] >( [] );
+	const [ running, setRunning ] = useState< string | null >( null );
+
+	useEffect( () => {
+		fetchOrderActions( order.number )
+			.then( setActions )
+			.catch( () => setActions( [] ) );
+	}, [ order.number, order.status ] );
+
+	if ( actions.length === 0 ) {
+		return null;
+	}
+
+	return (
+		<Card className="orillacart-card">
+			<CardHeader>
+				<h2>{ __( 'Actions', 'orillacart' ) }</h2>
+			</CardHeader>
+			<CardBody>
+				<Flex justify="flex-start" wrap>
+					{ actions.map( ( action ) => (
+						<FlexItem key={ action.id }>
+							<Button
+								variant="secondary"
+								isBusy={ running === action.id }
+								disabled={ running !== null }
+								onClick={ () => {
+									setRunning( action.id );
+									runOrderAction( order.number, action.id )
+										.then( ( result ) =>
+											onRan( result, action.label )
+										)
+										.catch( onError )
+										.finally( () => setRunning( null ) );
+								} }
+							>
+								{ action.label }
+							</Button>
+						</FlexItem>
+					) ) }
+				</Flex>
 			</CardBody>
 		</Card>
 	);

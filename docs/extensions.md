@@ -8,8 +8,8 @@ even the PSR interfaces), so an add-on never sees them.
 
 ## Registering
 
-The shop fires `orillacart_extensions` once per request, the first time it needs its payment gateways or
-shipping methods, and passes the registry:
+The shop fires `orillacart_extensions` once per request, the first time it needs something add-ons register
+(a price, a cart, checkout, a payment gateway, a shipping method), and passes the registry:
 
 ```php
 add_action('orillacart_extensions', static function (OrillaCart\Extension\Registry $registry): void {
@@ -22,7 +22,9 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   registration with a taken id is logged and left out.
 - An add-on that throws while registering is logged; the shop goes on without it.
 - `$registry->shippingMethod(...)` registers a shipping method the same way; method ids are unique among
-  methods.
+  methods. Price adjusters, cart rules, checkout fields and order actions follow (version 2).
+- `$registry->version()` is the API's version (`OrillaCart\Extension\Version`): 2 since price adjusters, cart
+  rules, checkout fields, order actions and `orders()` came.
 - `$registry->log()` writes to the shop's log. Never log secrets or card data.
 - Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
 
@@ -133,6 +135,102 @@ A method that implements `TracksShipments` is asked every hour where the shipmen
 words). A delivered shipment completes its order when the order is shipped. The receipt and the emails show
 every shipment with its tracking link.
 
+## Prices
+
+`OrillaCart\Extension\Pricing\PriceAdjuster` changes what a product costs: a wholesale price list, a surcharge,
+prices from an ERP. `adjust(PriceQuery $query)` gets the product (and variation), the quantity, the customer (null
+for a guest), the currency, the regular price and the price so far: after the shop's own price rules and the
+adjusters registered before. Return another unit price as a decimal string, or null to keep it. Option prices,
+bundle pricing and tax apply on top, so the product page, listings, cart, checkout and order editing all show
+and charge it. An answer below zero is zero; one that is not a number, or an adjuster that throws, is logged and
+skipped.
+
+The search index sorts and filters by the price a guest sees (`customerId` null). An adjuster whose answer
+changes with time, not only with the product, quantity and customer, has to have the products reindexed then.
+
+## Cart rules
+
+`OrillaCart\Extension\Cart\CartRule::check(CheckedCart $cart)` sees the cart (the customer, and each line's
+product, variation, SKU, name, quantity and unit price) and returns refusals:
+`CartRefusal::line($line->id, 'At most 3 to an order.')` or `CartRefusal::cart('…')`, worded for the customer.
+
+- Adding an item, or raising its quantity, is refused with the message when a refusal names that line. A line
+  being added has the id 0.
+- The cart shows every refusal, and cannot be checked out until the customer changes it; checkout refuses the
+  order too.
+- A rule that throws is logged and left out.
+
+## Checkout fields
+
+`OrillaCart\Extension\Checkout\CheckoutField` asks the customer something at checkout:
+
+```php
+$registry->checkoutField(new CheckoutField('vat_number', 'VAT number', check: new Acme\Vies\VatCheck()));
+$registry->checkoutField(new CheckoutField('terms', 'I accept the terms', CheckoutField::CHECKBOX, CheckoutField::ORDER, required: true));
+```
+
+- Kinds: `TEXT`, `TEXTAREA`, `CHECKBOX` (required means ticked), `CHOICE` (with `choices`, value => label).
+- Sections: `BILLING` (after the billing address), `SHIPPING` (after the shipping address, only for orders that
+  ship), `ORDER` (after the order's note). `help` shows under the field; `longest` caps its length.
+- The shop checks what the field says; a `FieldCheck` checks the rest (`check($answer, FieldContext)` with the
+  email, the countries and the customer) and returns the message to show next to the field, or null.
+- The order keeps each answer with the label it had: a choice by its label, a ticked box as "Yes". The receipt,
+  the emails and the order screen show them, the order screen corrects them, and `OrderSummary::$fields` gives
+  them to add-ons by field id. Orders the shop makes by hand do not ask them.
+
+## Order actions and reading orders
+
+`OrillaCart\Extension\Order\OrderAction` puts a button on the order screen ("Send to the accounting system").
+`isAvailable(OrderSummary)` says whether the order offers it; `run(OrderSummary)` does it and returns what it did,
+which the order's history records with the button's label. Throw `ProviderUnavailable` when it could not: the
+shop manager sees the message and nothing is recorded.
+
+`$registry->orders()->find($number)` gives an `OrderSummary`: number, status, dates, email, customer,
+addresses, lines, totals, refunds, currency, payment, shipping, the customer's note and the field answers. Use it
+from the `orillacart_order_…` actions listed below, which pass only the number; keep the registry the
+`orillacart_extensions` action gave you.
+
+## Page slots
+
+The templates print what add-ons echo in these actions:
+
+| action | where | arguments |
+|---|---|---|
+| `orillacart_product_before_form`, `orillacart_product_after_form`, `orillacart_product_after_details` | the product's buying panel | product id |
+| `orillacart_cart_before`, `orillacart_cart_after_totals`, `orillacart_cart_after` | the cart | |
+| `orillacart_checkout_before_details`, `orillacart_checkout_after_billing`, `orillacart_checkout_after_shipping`, `orillacart_checkout_after_details` | the checkout form | |
+| `orillacart_checkout_before_place_order` | above the "Place order" button (reloaded with the summary) | |
+| `orillacart_receipt_after` | the receipt, after checkout and in the account | order number |
+| `orillacart_account_after` | the account page | the part shown: `orders`, `order`, `downloads` or `addresses` |
+| `orillacart_email_after_order` | each order email, after the addresses | order number, whether it is the shop's email |
+
+Escape what you print. A theme that overrides a template keeps the slots it copies.
+
+## Emails and templates
+
+- `orillacart_email_attachments` filters the files attached to an order email (paths that exist), with the email's
+  kind (`order_received`, `order_processing`, `order_shipped`, `order_completed`, `order_cancelled`,
+  `order_failed`, `order_refunded`, `customer_note`, `new_order`) and the order number. Emails go out from a
+  background job, so the filter runs there.
+- `orillacart_email_headers` filters the header lines, with the same arguments.
+- `orillacart_template_paths` adds folders of templates: the shop looks in the theme's `orillacart/` folder, then
+  in these, then in its own `templates/`. A file with the same path (`storefront/receipt.html.twig`) replaces the
+  shop's.
+
+## Addresses
+
+Receipts, the account and emails print addresses in their country's layout: name, street, postcode and city,
+region, country by default, and their own for the United States, Canada, Australia, New Zealand, the United
+Kingdom, Ireland, Italy, India, Japan, China and Hong Kong. The filter `orillacart_address_format` (layout,
+country code) changes a country's layout. A layout is lines of `{name}`, `{first_name}`, `{last_name}`,
+`{street}`, `{city}`, `{postcode}`, `{state}`, `{state_code}` and `{country}`; empty parts drop out with their
+separators, and empty lines go:
+
+```php
+add_filter('orillacart_address_format', static fn(string $format, string $country): string =>
+    $country === 'BG' ? "{name}\n{street}\n{city} {postcode}\n{country}" : $format, 10, 2);
+```
+
 ## Actions and filters
 
 Besides the registry, the shop announces what happens as WordPress actions, after the change is saved, and
@@ -152,10 +250,19 @@ lets plugins adjust a few things through filters. Arguments are ids and plain va
 | `orillacart_price_rules_changed` | |
 | `orillacart_tax_rates_changed` | tax group id |
 | `orillacart_settings_changed` | the settings now and before |
+| `orillacart_cart_item_added` | product id, variation id (null for none), how many were added, customer id (null for a guest) |
+| `orillacart_cart_item_changed` | product id, variation id, the new quantity, the previous one, customer id |
+| `orillacart_cart_item_removed` | product id, variation id, the quantity it had, customer id |
 
 | filter | value | arguments |
 |---|---|---|
 | `orillacart_registration_errors` | a `WP_Error`; add an error to refuse a shop sign-up (at checkout or on the account page) with its message | email, first name, last name, the login the shop would give |
+| `orillacart_email_attachments` | file paths | email kind, order number |
+| `orillacart_email_headers` | header lines | email kind, order number |
+| `orillacart_template_paths` | template folders an add-on brings | |
+| `orillacart_address_format` | a country's address layout | country code |
+
+The page slots above are actions too.
 
 WordPress's own `registration_errors` is left to the wp-login.php form: captcha plugins on it expect that form's
 fields and would refuse every shop sign-up.

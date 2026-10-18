@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-18T16:11:18+00:00\n"
+"POT-Creation-Date: 2026-10-18T16:40:13+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: orillacart\n"
@@ -40,7 +40,7 @@ msgid "Image"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:55
-#: var/i18n/templates.php:223
+#: var/i18n/templates.php:228
 #: build/admin/product-editor.js:8
 #: build/admin/stock.js:1
 msgid "SKU"
@@ -49,8 +49,8 @@ msgstr ""
 #: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:56
 #: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:127
 #: var/i18n/templates.php:97
-#: var/i18n/templates.php:164
-#: var/i18n/templates.php:172
+#: var/i18n/templates.php:165
+#: var/i18n/templates.php:177
 #: build/admin/orders.js:16
 #: build/admin/price-rules.js:6
 #: build/admin/price-rules.js:7
@@ -65,9 +65,9 @@ msgstr ""
 #: src/Catalog/Infrastructure/WordPress/Hooks/CategoryOrder.php:61
 #: src/Catalog/Infrastructure/WordPress/Hooks/CategoryOrder.php:88
 #: var/i18n/templates.php:91
-#: var/i18n/templates.php:150
-#: var/i18n/templates.php:154
-#: var/i18n/templates.php:253
+#: var/i18n/templates.php:151
+#: var/i18n/templates.php:155
+#: var/i18n/templates.php:258
 #: build/admin/orders.js:19
 #: build/admin/payments.js:1
 #: build/admin/settings.js:1
@@ -121,7 +121,7 @@ msgid "No brands found"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Content/ProductCategoryTaxonomy.php:19
-#: var/i18n/templates.php:238
+#: var/i18n/templates.php:243
 msgid "Product categories"
 msgstr ""
 
@@ -172,16 +172,16 @@ msgstr ""
 #: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:27
 #: src/Storefront/Infrastructure/WordPress/Hooks/ProductTemplate.php:24
 #: var/i18n/templates.php:69
-#: var/i18n/templates.php:163
-#: var/i18n/templates.php:168
-#: var/i18n/templates.php:261
+#: var/i18n/templates.php:164
+#: var/i18n/templates.php:169
+#: var/i18n/templates.php:266
 #: build/admin/reports.js:7
 #: build/admin/stock.js:1
 msgid "Product"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:28
-#: var/i18n/templates.php:239
+#: var/i18n/templates.php:244
 msgid "All products"
 msgstr ""
 
@@ -203,8 +203,8 @@ msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:33
 #: src/Storefront/Infrastructure/WordPress/Blocks/ProductSearchBlock.php:51
-#: var/i18n/templates.php:212
-#: var/i18n/templates.php:240
+#: var/i18n/templates.php:217
+#: var/i18n/templates.php:245
 msgid "Search products"
 msgstr ""
 
@@ -274,7 +274,7 @@ msgid "Choose a picture"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Hooks/CategoryThumbnail.php:146
-#: var/i18n/templates.php:167
+#: var/i18n/templates.php:168
 #: build/admin/orders.js:2
 #: build/admin/price-rules.js:7
 #: build/admin/product-editor.js:1
@@ -318,7 +318,7 @@ msgid "Emails"
 msgstr ""
 
 #: src/Ordering/Infrastructure/WordPress/Admin/OrdersPage.php:19
-#: var/i18n/templates.php:138
+#: var/i18n/templates.php:139
 #: build/admin/customers.js:1
 #: build/admin/orders.js:20
 #: build/admin/reports.js:5
@@ -376,7 +376,7 @@ msgstr ""
 #: var/i18n/templates.php:14
 #: var/i18n/templates.php:76
 #: var/i18n/templates.php:78
-#: var/i18n/templates.php:271
+#: var/i18n/templates.php:276
 #: build/admin/jobs.js:1
 #: build/admin/reports.js:5
 #: build/admin/shipping.js:4
@@ -393,7 +393,7 @@ msgstr ""
 
 #: src/Storefront/Infrastructure/WordPress/Blocks/CartBlock.php:38
 #: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:51
-#: var/i18n/templates.php:208
+#: var/i18n/templates.php:213
 #: build/admin/settings.js:4
 msgid "Cart"
 msgstr ""
@@ -533,8 +533,8 @@ msgstr ""
 
 #: var/i18n/templates.php:8
 #: var/i18n/templates.php:71
-#: var/i18n/templates.php:171
-#: var/i18n/templates.php:265
+#: var/i18n/templates.php:172
+#: var/i18n/templates.php:270
 #: build/admin/orders.js:16
 msgid "Holds"
 msgstr ""
@@ -542,22 +542,22 @@ msgstr ""
 #. translators: %d: how many are owed, or were refunded
 #. translators: %d: quantity
 #: var/i18n/templates.php:10
-#: var/i18n/templates.php:267
+#: var/i18n/templates.php:272
 #, php-format
 msgid "%d refunded"
 msgstr ""
 
 #: var/i18n/templates.php:11
 #: var/i18n/templates.php:74
-#: var/i18n/templates.php:179
-#: var/i18n/templates.php:268
+#: var/i18n/templates.php:184
+#: var/i18n/templates.php:273
 #: build/admin/orders.js:17
 msgid "Subtotal"
 msgstr ""
 
 #. translators: %s: coupon code
 #: var/i18n/templates.php:12
-#: var/i18n/templates.php:269
+#: var/i18n/templates.php:274
 #: build/admin/coupons.js:6
 #: build/admin/price-rules.js:6
 #, php-format,js-format
@@ -565,7 +565,7 @@ msgid "Coupon %s"
 msgstr ""
 
 #: var/i18n/templates.php:13
-#: var/i18n/templates.php:270
+#: var/i18n/templates.php:275
 #: build/admin/coupons.js:1
 #: build/admin/orders.js:18
 #: build/admin/price-rules.js:1
@@ -575,13 +575,13 @@ msgstr ""
 #: var/i18n/templates.php:15
 #: var/i18n/templates.php:70
 #: var/i18n/templates.php:77
-#: var/i18n/templates.php:153
-#: var/i18n/templates.php:157
-#: var/i18n/templates.php:166
-#: var/i18n/templates.php:176
-#: var/i18n/templates.php:256
-#: var/i18n/templates.php:262
-#: var/i18n/templates.php:272
+#: var/i18n/templates.php:154
+#: var/i18n/templates.php:158
+#: var/i18n/templates.php:167
+#: var/i18n/templates.php:181
+#: var/i18n/templates.php:261
+#: var/i18n/templates.php:267
+#: var/i18n/templates.php:277
 #: build/admin/orders.js:16
 #: build/admin/orders.js:18
 #: build/admin/orders.js:19
@@ -590,8 +590,8 @@ msgstr ""
 
 #: var/i18n/templates.php:16
 #: var/i18n/templates.php:115
-#: var/i18n/templates.php:257
-#: var/i18n/templates.php:273
+#: var/i18n/templates.php:262
+#: var/i18n/templates.php:278
 #: build/admin/emails.js:1
 #: build/admin/orders.js:1
 #: build/admin/reports.js:1
@@ -609,7 +609,7 @@ msgid "follow it"
 msgstr ""
 
 #: var/i18n/templates.php:20
-#: var/i18n/templates.php:281
+#: var/i18n/templates.php:286
 #: build/admin/orders.js:2
 #: build/admin/orders.js:19
 msgid "Pickup point"
@@ -617,15 +617,15 @@ msgstr ""
 
 #: var/i18n/templates.php:21
 #: var/i18n/templates.php:83
-#: var/i18n/templates.php:258
+#: var/i18n/templates.php:263
 #: build/admin/orders.js:19
 msgid "Payment"
 msgstr ""
 
 #: var/i18n/templates.php:22
-#: var/i18n/templates.php:147
-#: var/i18n/templates.php:192
-#: var/i18n/templates.php:276
+#: var/i18n/templates.php:148
+#: var/i18n/templates.php:197
+#: var/i18n/templates.php:281
 #: build/admin/customers.js:4
 #: build/admin/orders.js:2
 #: build/admin/orders.js:19
@@ -633,9 +633,9 @@ msgid "Billing address"
 msgstr ""
 
 #: var/i18n/templates.php:23
-#: var/i18n/templates.php:148
-#: var/i18n/templates.php:195
-#: var/i18n/templates.php:278
+#: var/i18n/templates.php:149
+#: var/i18n/templates.php:200
+#: var/i18n/templates.php:283
 #: build/admin/customers.js:4
 #: build/admin/orders.js:2
 #: build/admin/orders.js:19
@@ -743,7 +743,7 @@ msgid "[%1$s] We received your order #%2$s"
 msgstr ""
 
 #: var/i18n/templates.php:53
-#: var/i18n/templates.php:252
+#: var/i18n/templates.php:257
 msgid "Thank you for your order"
 msgstr ""
 
@@ -801,14 +801,14 @@ msgstr ""
 
 #. translators: %d: how many of the item wait for stock
 #: var/i18n/templates.php:73
-#: var/i18n/templates.php:170
-#: var/i18n/templates.php:264
+#: var/i18n/templates.php:171
+#: var/i18n/templates.php:269
 #, php-format
 msgid "%d on backorder: they ship when back in stock"
 msgstr ""
 
 #: var/i18n/templates.php:75
-#: var/i18n/templates.php:180
+#: var/i18n/templates.php:185
 #: build/admin/coupons.js:1
 #: build/admin/coupons.js:6
 #: build/admin/price-rules.js:6
@@ -913,12 +913,12 @@ msgid "From %s"
 msgstr ""
 
 #: var/i18n/templates.php:106
-#: var/i18n/templates.php:126
+#: var/i18n/templates.php:127
 msgid "Regular price"
 msgstr ""
 
 #: var/i18n/templates.php:107
-#: var/i18n/templates.php:127
+#: var/i18n/templates.php:128
 #: build/admin/product-editor.js:8
 msgid "Sale price"
 msgstr ""
@@ -972,14 +972,14 @@ msgid "Payment failed"
 msgstr ""
 
 #: var/i18n/templates.php:116
-#: var/i18n/templates.php:131
+#: var/i18n/templates.php:132
 #: build/admin/customers.js:1
 #: build/admin/orders.js:1
 msgid "First name"
 msgstr ""
 
 #: var/i18n/templates.php:117
-#: var/i18n/templates.php:132
+#: var/i18n/templates.php:133
 #: build/admin/customers.js:1
 #: build/admin/orders.js:1
 msgid "Last name"
@@ -1025,93 +1025,97 @@ msgstr ""
 msgid "Phone"
 msgstr ""
 
-#: var/i18n/templates.php:128
-#: var/i18n/templates.php:191
-msgid "Log in"
+#: var/i18n/templates.php:126
+msgid "Choose"
 msgstr ""
 
 #: var/i18n/templates.php:129
-msgid "Forgot your password?"
+#: var/i18n/templates.php:196
+msgid "Log in"
 msgstr ""
 
 #: var/i18n/templates.php:130
-#: var/i18n/templates.php:136
+msgid "Forgot your password?"
+msgstr ""
+
+#: var/i18n/templates.php:131
+#: var/i18n/templates.php:137
 msgid "Make an account"
 msgstr ""
 
-#: var/i18n/templates.php:133
-#: var/i18n/templates.php:189
+#: var/i18n/templates.php:134
+#: var/i18n/templates.php:194
 #: build/admin/customers.js:1
 #: build/admin/orders.js:2
 #: build/admin/orders.js:19
 msgid "Email"
 msgstr ""
 
-#: var/i18n/templates.php:134
-#: var/i18n/templates.php:201
+#: var/i18n/templates.php:135
+#: var/i18n/templates.php:206
 #: build/admin/settings.js:2
 msgid "Password"
 msgstr ""
 
-#: var/i18n/templates.php:135
-#: var/i18n/templates.php:202
+#: var/i18n/templates.php:136
+#: var/i18n/templates.php:207
 msgid "At least 8 characters."
 msgstr ""
 
-#: var/i18n/templates.php:137
-#: var/i18n/templates.php:198
+#: var/i18n/templates.php:138
+#: var/i18n/templates.php:203
 #: build/admin/orders.js:2
 #: build/admin/orders.js:3
 #: build/admin/settings.js:4
 msgid "Account"
 msgstr ""
 
-#: var/i18n/templates.php:139
-#: var/i18n/templates.php:259
+#: var/i18n/templates.php:140
+#: var/i18n/templates.php:264
 #: build/admin/orders.js:4
 #: build/admin/product-editor.js:8
 msgid "Downloads"
 msgstr ""
 
-#: var/i18n/templates.php:140
+#: var/i18n/templates.php:141
 msgid "Addresses"
 msgstr ""
 
-#: var/i18n/templates.php:141
+#: var/i18n/templates.php:142
 msgid "Log out"
 msgstr ""
 
-#: var/i18n/templates.php:142
+#: var/i18n/templates.php:143
 msgid "All orders"
 msgstr ""
 
 #. translators: %d: order number
-#: var/i18n/templates.php:144
+#: var/i18n/templates.php:145
 #, php-format
 msgid "Order #%d"
 msgstr ""
 
-#: var/i18n/templates.php:145
+#: var/i18n/templates.php:146
 msgid "There is no such order in your account."
 msgstr ""
 
-#: var/i18n/templates.php:146
+#: var/i18n/templates.php:147
 msgid "You have no files to download yet."
 msgstr ""
 
-#: var/i18n/templates.php:149
+#: var/i18n/templates.php:150
 #: build/admin/customers.js:4
 msgid "Save addresses"
 msgstr ""
 
-#: var/i18n/templates.php:151
-#: var/i18n/templates.php:155
+#: var/i18n/templates.php:152
+#: var/i18n/templates.php:156
 msgid "Date"
 msgstr ""
 
-#: var/i18n/templates.php:152
-#: var/i18n/templates.php:156
-#: var/i18n/templates.php:255
+#: var/i18n/templates.php:153
+#: var/i18n/templates.php:157
+#: var/i18n/templates.php:260
 #: build/admin/coupons.js:5
 #: build/admin/orders.js:19
 #: build/admin/price-rules.js:6
@@ -1119,111 +1123,125 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
-#: var/i18n/templates.php:158
+#: var/i18n/templates.php:159
 msgid "Order pages"
 msgstr ""
 
-#: var/i18n/templates.php:159
+#: var/i18n/templates.php:160
 msgid "You have not ordered anything yet."
 msgstr ""
 
-#: var/i18n/templates.php:160
-#: var/i18n/templates.php:162
-#: var/i18n/templates.php:186
+#: var/i18n/templates.php:161
+#: var/i18n/templates.php:163
+#: var/i18n/templates.php:191
 msgid "Go to the shop"
 msgstr ""
 
-#: var/i18n/templates.php:161
-#: var/i18n/templates.php:203
+#: var/i18n/templates.php:162
+#: var/i18n/templates.php:208
 msgid "Your cart is empty."
 msgstr ""
 
-#: var/i18n/templates.php:165
-#: var/i18n/templates.php:173
-#: var/i18n/templates.php:219
-#: var/i18n/templates.php:235
+#: var/i18n/templates.php:166
+#: var/i18n/templates.php:178
+#: var/i18n/templates.php:224
+#: var/i18n/templates.php:240
 #: build/admin/orders.js:2
 #: build/admin/orders.js:16
 msgid "Quantity"
 msgstr ""
 
-#. translators: %s: product name
+#: var/i18n/templates.php:173
+msgid "This is no longer for sale; remove it to check out."
+msgstr ""
+
+#. translators: %d: how many are in stock
 #: var/i18n/templates.php:175
+#, php-format
+msgid "Only %d in stock; lower the quantity to check out."
+msgstr ""
+
+#: var/i18n/templates.php:176
+msgid "Out of stock; remove it to check out."
+msgstr ""
+
+#. translators: %s: product name
+#: var/i18n/templates.php:180
 #, php-format
 msgid "Quantity of %s"
 msgstr ""
 
 #. translators: %s: product name
 #. translators: %s: attribute name
-#: var/i18n/templates.php:178
+#: var/i18n/templates.php:183
 #: build/admin/attribute-sets.js:2
 #: build/admin/product-editor.js:2
 #, php-format,js-format
 msgid "Remove %s"
 msgstr ""
 
-#: var/i18n/templates.php:181
+#: var/i18n/templates.php:186
 msgid "Taxes and shipping are added at checkout."
 msgstr ""
 
-#: var/i18n/templates.php:182
+#: var/i18n/templates.php:187
 msgid "Continue shopping"
 msgstr ""
 
-#: var/i18n/templates.php:183
-msgid "Change or remove the items marked above to check out."
+#: var/i18n/templates.php:188
+msgid "Change the cart as marked above to check out."
 msgstr ""
 
-#: var/i18n/templates.php:184
-#: var/i18n/templates.php:207
+#: var/i18n/templates.php:189
+#: var/i18n/templates.php:212
 msgid "Check out"
 msgstr ""
 
-#: var/i18n/templates.php:185
+#: var/i18n/templates.php:190
 msgid "The shop does not take orders online."
 msgstr ""
 
-#: var/i18n/templates.php:187
+#: var/i18n/templates.php:192
 msgid "Back to the cart"
 msgstr ""
 
-#: var/i18n/templates.php:188
+#: var/i18n/templates.php:193
 msgid "Contact"
 msgstr ""
 
-#: var/i18n/templates.php:190
+#: var/i18n/templates.php:195
 msgid "Have an account?"
 msgstr ""
 
-#: var/i18n/templates.php:193
-#: var/i18n/templates.php:277
+#: var/i18n/templates.php:198
+#: var/i18n/templates.php:282
 #: build/admin/settings.js:2
 msgid "Address"
 msgstr ""
 
-#: var/i18n/templates.php:194
+#: var/i18n/templates.php:199
 #: build/admin/orders.js:2
 msgid "Ship to a different address"
 msgstr ""
 
-#: var/i18n/templates.php:196
+#: var/i18n/templates.php:201
 msgid "Notes about your order"
 msgstr ""
 
-#: var/i18n/templates.php:197
+#: var/i18n/templates.php:202
 msgid "Save these addresses for next time"
 msgstr ""
 
-#: var/i18n/templates.php:199
+#: var/i18n/templates.php:204
 msgid "An account is made with your order, so you can follow it and download what you buy."
 msgstr ""
 
-#: var/i18n/templates.php:200
+#: var/i18n/templates.php:205
 msgid "Make an account with this order"
 msgstr ""
 
 #. translators: %d: how many items the cart holds
-#: var/i18n/templates.php:205
+#: var/i18n/templates.php:210
 #: build/storefront/storefront.js:2
 #, php-format,js-format
 msgid "%d item in cart."
@@ -1231,166 +1249,171 @@ msgid_plural "%d items in cart."
 msgstr[0] ""
 msgstr[1] ""
 
-#: var/i18n/templates.php:206
+#: var/i18n/templates.php:211
 #: build/storefront/storefront.js:2
 msgid "View cart"
 msgstr ""
 
-#: var/i18n/templates.php:209
+#: var/i18n/templates.php:214
 msgid "items"
 msgstr ""
 
-#: var/i18n/templates.php:210
+#: var/i18n/templates.php:215
 msgid "Filter products"
 msgstr ""
 
-#: var/i18n/templates.php:211
+#: var/i18n/templates.php:216
 msgid "Show products"
 msgstr ""
 
-#: var/i18n/templates.php:213
+#: var/i18n/templates.php:218
 #: build/admin/jobs.js:1
 #: build/admin/settings.js:2
 msgid "Search"
 msgstr ""
 
-#: var/i18n/templates.php:214
+#: var/i18n/templates.php:219
 msgid "Buy"
 msgstr ""
 
 #. translators: %d: image number
-#: var/i18n/templates.php:216
+#: var/i18n/templates.php:221
 #, php-format
 msgid "Show image %d"
 msgstr ""
 
-#: var/i18n/templates.php:217
+#: var/i18n/templates.php:222
 msgid "In the box"
 msgstr ""
 
-#: var/i18n/templates.php:218
+#: var/i18n/templates.php:223
 msgid "Buy more, pay less"
 msgstr ""
 
-#: var/i18n/templates.php:220
+#: var/i18n/templates.php:225
 msgid "Price each"
 msgstr ""
 
 #. translators: %d: quantity
-#: var/i18n/templates.php:222
+#: var/i18n/templates.php:227
 #, php-format
 msgid "%d or more"
 msgstr ""
 
-#: var/i18n/templates.php:224
-#: var/i18n/templates.php:232
-#: var/i18n/templates.php:234
-#: var/i18n/templates.php:244
+#: var/i18n/templates.php:229
+#: var/i18n/templates.php:237
+#: var/i18n/templates.php:239
+#: var/i18n/templates.php:249
 #: build/admin/product-editor.js:3
 #: build/storefront/storefront.js:2
 msgid "Not available"
 msgstr ""
 
-#: var/i18n/templates.php:225
+#: var/i18n/templates.php:230
 #: build/storefront/storefront.js:2
 msgid "On backorder: ships when it is back in stock"
 msgstr ""
 
 #. translators: %d: how many are in stock
-#: var/i18n/templates.php:227
+#: var/i18n/templates.php:232
 #: build/storefront/storefront.js:2
 #, php-format,js-format
 msgid "%d in stock"
 msgstr ""
 
-#: var/i18n/templates.php:228
+#: var/i18n/templates.php:233
 msgid "Choose an option"
 msgstr ""
 
-#: var/i18n/templates.php:229
-#: var/i18n/templates.php:233
+#: var/i18n/templates.php:234
+#: var/i18n/templates.php:238
 #: build/admin/orders.js:2
 #: build/admin/product-editor.js:8
 msgid "None"
 msgstr ""
 
 #. translators: %s: product or option name
-#: var/i18n/templates.php:231
+#: var/i18n/templates.php:236
 #, php-format
 msgid "Add %s"
 msgstr ""
 
-#: var/i18n/templates.php:236
-#: var/i18n/templates.php:245
+#: var/i18n/templates.php:241
+#: var/i18n/templates.php:250
 msgid "Add to cart"
 msgstr ""
 
-#: var/i18n/templates.php:237
+#: var/i18n/templates.php:242
 msgid "Files you get"
 msgstr ""
 
-#: var/i18n/templates.php:241
+#: var/i18n/templates.php:246
 msgid "Sort by"
 msgstr ""
 
-#: var/i18n/templates.php:242
+#: var/i18n/templates.php:247
 #: build/admin/reports.js:6
 #: build/admin/stock.js:1
 msgid "Show"
 msgstr ""
 
-#: var/i18n/templates.php:243
-#: var/i18n/templates.php:247
+#: var/i18n/templates.php:248
+#: var/i18n/templates.php:252
 msgid "Details"
 msgstr ""
 
-#: var/i18n/templates.php:246
+#: var/i18n/templates.php:251
 msgid "Choose options"
 msgstr ""
 
-#: var/i18n/templates.php:248
+#: var/i18n/templates.php:253
 msgid "Product pages"
 msgstr ""
 
-#: var/i18n/templates.php:249
+#: var/i18n/templates.php:254
 msgid "No products match your search."
 msgstr ""
 
-#: var/i18n/templates.php:250
+#: var/i18n/templates.php:255
 msgid "There are no products here yet."
 msgstr ""
 
-#: var/i18n/templates.php:251
+#: var/i18n/templates.php:256
 msgid "Your order was not completed"
 msgstr ""
 
-#: var/i18n/templates.php:254
+#: var/i18n/templates.php:259
 #: build/admin/orders.js:19
 msgid "Placed"
 msgstr ""
 
-#: var/i18n/templates.php:260
+#: var/i18n/templates.php:265
 #: build/admin/orders.js:2
 #: build/admin/orders.js:19
 msgid "Items"
 msgstr ""
 
-#: var/i18n/templates.php:274
+#: var/i18n/templates.php:279
 msgid "Your note"
 msgstr ""
 
-#: var/i18n/templates.php:275
+#: var/i18n/templates.php:280
 msgid "Messages from the shop"
 msgstr ""
 
-#: var/i18n/templates.php:279
+#: var/i18n/templates.php:284
 #: build/admin/orders.js:5
 msgid "Shipments"
 msgstr ""
 
-#: var/i18n/templates.php:280
+#: var/i18n/templates.php:285
 #: build/admin/orders.js:5
 msgid "Follow it"
+msgstr ""
+
+#: var/i18n/templates.php:287
+#: build/admin/orders.js:19
+msgid "Other details"
 msgstr ""
 
 #: build/admin/attribute-sets.js:1
@@ -2820,6 +2843,11 @@ msgstr ""
 
 #: build/admin/orders.js:19
 msgid "Save the customer’s details"
+msgstr ""
+
+#: build/admin/orders.js:19
+#: build/admin/tax.js:1
+msgid "Actions"
 msgstr ""
 
 #: build/admin/orders.js:19
@@ -4303,10 +4331,6 @@ msgstr ""
 
 #: build/admin/tax.js:1
 msgid "Rate"
-msgstr ""
-
-#: build/admin/tax.js:1
-msgid "Actions"
 msgstr ""
 
 #: build/admin/tax.js:1

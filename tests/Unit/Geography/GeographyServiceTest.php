@@ -65,4 +65,18 @@ final class GeographyServiceTest extends TestCase
         $this->expectException(UnknownState::class);
         $this->geography->require('DE', 'BY');
     }
+
+    public function testAddressesAreWrittenAsTheirCountryWritesThem(): void
+    {
+        $us = $this->geography->addressLines('Ada', 'Lovelace', '1 Main St', 'Springfield', '62701', 'US', 'CA');
+        self::assertSame(['Ada Lovelace', '1 Main St', 'Springfield, CA 62701', 'United States'], $us);
+
+        $de = $this->geography->addressLines('Ada', 'Lovelace', 'Hauptstr. 1', 'Berlin', '10115', 'DE', null);
+        self::assertSame(['Ada Lovelace', 'Hauptstr. 1', '10115 Berlin', 'Germany'], $de, 'the default, without the empty state line');
+
+        $ca = $this->geography->addressLines('Ada', '', '1 King St', 'Toronto', 'M5H 1A1', 'CA', 'ON', "{name}\n{street}\n{city}, {state} {postcode}\n{country}");
+        self::assertSame(['Ada', '1 King St', 'Toronto, Ontario M5H 1A1', 'Canada'], $ca, 'a layout given instead, with the state named');
+
+        self::assertSame(['Ada', 'Somewhere', 'XX'], $this->geography->addressLines('Ada', '', 'Somewhere', '', '', 'XX', null), 'an unknown country as given; no dangling separators');
+    }
 }

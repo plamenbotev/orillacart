@@ -15,6 +15,7 @@ final readonly class NewOrder
      * @param string             $subtotal      the items before tax and before the discounts
      * @param string             $discountTotal what the coupons took off the items
      * @param list<OrderDiscountView> $discounts
+     * @param list<OrderFieldView>    $fields    answers to add-ons' checkout fields
      */
     public function __construct(
         public ?int $customerId,
@@ -34,5 +35,6 @@ final readonly class NewOrder
         public string $note,
         public string $discountTotal = '0',
         public array $discounts = [],
+        public array $fields = [],
     ) {}
 }

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
+import { OrderDetail } from '../OrderDetail';
 import { OrdersScreen } from '../OrdersScreen';
 
 jest.mock( '@wordpress/api-fetch' );
@@ -75,6 +76,7 @@ const order = {
 	shipping_refunded: false,
 	discount_total: '0',
 	discounts: [],
+	fields: [ { id: 'vat_number', label: 'VAT number', answer: 'BG123' } ],
 };
 
 type Request = { path: string; method?: string; data?: unknown };
@@ -91,6 +93,15 @@ describe( 'OrdersScreen', () => {
 					total: 0,
 					page: 1,
 					pages: 0,
+				} );
+			}
+			if ( request.path.endsWith( '/actions' ) ) {
+				return Promise.resolve( [ { id: 'export', label: 'Export' } ] );
+			}
+			if ( request.path.endsWith( '/actions/export' ) ) {
+				return Promise.resolve( {
+					message: 'Exported #7.',
+					order,
 				} );
 			}
 			if ( request.path.endsWith( '/refunds' ) ) {
@@ -156,7 +167,10 @@ describe( 'OrdersScreen', () => {
 		expect(
 			await screen.findByText( 'The status was changed.', NOTICE )
 		).toBeVisible();
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+		// The add-ons' actions are asked again for the new status, after the change.
+		expect(
+			mockedFetch.mock.calls.map( ( call ) => call[ 0 ] )
+		).toContainEqual( {
 			path: '/orillacart/v1/orders/7/status',
 			method: 'PUT',
 			data: {
@@ -167,5 +181,43 @@ describe( 'OrdersScreen', () => {
 		expect(
 			screen.getByRole( 'heading', { name: 'Order #7 — Processing' } )
 		).toBeVisible();
+	} );
+
+	it( "shows the answers to add-ons' questions and runs their actions", async () => {
+		mockedFetch.mockImplementation( ( options ) => {
+			const request = options as Request;
+			if ( request.path.endsWith( '/actions' ) ) {
+				return Promise.resolve( [ { id: 'export', label: 'Export' } ] );
+			}
+			if ( request.path.endsWith( '/actions/export' ) ) {
+				return Promise.resolve( { message: 'Exported #7.', order } );
+			}
+			if ( request.path.endsWith( '/refunds' ) ) {
+				return Promise.resolve( {
+					refundable: '0',
+					currency: 'EUR',
+					paid: false,
+					provider: null,
+					refunds: [],
+				} );
+			}
+			return Promise.resolve( order );
+		} );
+		const user = userEvent.setup();
+		render( <OrderDetail id={ 7 } onBack={ () => {} } /> );
+
+		expect( await screen.findByLabelText( 'VAT number' ) ).toHaveValue(
+			'BG123'
+		);
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Export' } )
+		);
+		expect(
+			await screen.findByText( 'Exported #7.', NOTICE )
+		).toBeVisible();
+		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+			path: '/orillacart/v1/orders/7/actions/export',
+			method: 'POST',
+		} );
 	} );
 } );

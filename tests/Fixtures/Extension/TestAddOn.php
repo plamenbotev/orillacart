@@ -4,46 +4,81 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Fixtures\Extension;
 
-use OrillaCart\Extension\Payment\PaymentGateway;
-use OrillaCart\Extension\Payment\PaymentSession;
-use OrillaCart\Extension\Payment\PaymentStart;
+use OrillaCart\Extension\Cart\CartRefusal;
+use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Cart\CheckedCart;
+use OrillaCart\Extension\Cart\CheckedLine;
+use OrillaCart\Extension\Checkout\CheckoutField;
+use OrillaCart\Extension\Order\OrderAction;
+use OrillaCart\Extension\Order\OrderSummary;
+use OrillaCart\Extension\Pricing\PriceAdjuster;
+use OrillaCart\Extension\Pricing\PriceQuery;
 use OrillaCart\Extension\Registry;
-use OrillaCart\Extension\Settings;
 
 /**
  * An add-on, registered on orillacart_extensions as another plugin would be: a gateway and a shipping method of
- * its own, and a gateway whose id the shop already uses, which is left out.
+ * its own, a checkout field, a price adjuster (off until a test
+ * sets a price), a cart rule (at most 50 of an item) and an order action.
  */
 final class TestAddOn
 {
+    /** The price the adjuster gives every product while set. */
+    public static ?string $price = null;
+
     public static function register(Registry $registry): void
     {
         $registry->paymentGateway(new TestPayGateway());
         $registry->shippingMethod(new TestShipMethod());
-        $registry->paymentGateway(new class implements PaymentGateway {
+        $registry->checkoutField(new CheckoutField('gift_note', 'Gift note', CheckoutField::TEXTAREA, CheckoutField::ORDER, help: 'We print it on a card.'));
+        $registry->priceAdjuster(new class implements PriceAdjuster {
             public function id(): string
             {
-                return 'cheque';
+                return 'test_price';
             }
 
-            public function defaultName(): string
+            public function adjust(PriceQuery $query): ?string
             {
-                return 'An impostor';
+                return TestAddOn::$price;
+            }
+        });
+        $registry->cartRule(new class implements CartRule {
+            public function id(): string
+            {
+                return 'test_limit';
             }
 
-            public function settings(): array
+            public function check(CheckedCart $cart): array
             {
-                return [];
+                return array_values(array_map(
+                    static fn(CheckedLine $line): CartRefusal => CartRefusal::line($line->id, 'At most 50 of an item.'),
+                    array_filter($cart->lines, static fn(CheckedLine $line): bool => $line->quantity > 50),
+                ));
+            }
+        });
+        $registry->orderAction(new class ($registry) implements OrderAction {
+            public function __construct(private Registry $registry) {}
+
+            public function id(): string
+            {
+                return 'test_export';
             }
 
-            public function isReady(Settings $settings, string $currency): bool
+            public function label(): string
             {
-                return true;
+                return 'Export';
             }
 
-            public function start(PaymentSession $session, Settings $settings): PaymentStart
+            public function isAvailable(OrderSummary $order): bool
             {
-                return PaymentStart::offline();
+                return $order->status !== 'cancelled';
+            }
+
+            public function run(OrderSummary $order): string
+            {
+                // Reads the order again, as an add-on reacting to orillacart_order_placed would.
+                $again = $this->registry->orders()->find($order->number);
+
+                return \sprintf('Exported #%d for %s.', $order->number, $again?->email);
             }
         });
     }

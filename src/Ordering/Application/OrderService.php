@@ -16,6 +16,7 @@ use OrillaCart\Ordering\Application\Dto\NewOrderItems;
 use OrillaCart\Ordering\Application\Dto\NewOrderLine;
 use OrillaCart\Ordering\Application\Dto\NewShipping;
 use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
+use OrillaCart\Ordering\Application\Dto\OrderFieldView;
 use OrillaCart\Ordering\Application\Dto\OrderPageView;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\Dto\OrderSummaryView;
@@ -29,6 +30,7 @@ use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
+use OrillaCart\Ordering\Domain\FieldAnswer;
 use OrillaCart\Ordering\Domain\LineDownload;
 use OrillaCart\Ordering\Domain\LineDraft;
 use OrillaCart\Ordering\Domain\NoteAuthor;
@@ -86,6 +88,7 @@ final readonly class OrderService
             $this->clock->now(),
             Money::of($command->discountTotal),
             self::discounts($command->discounts),
+            array_map(static fn(OrderFieldView $field): FieldAnswer => $field->toAnswer(), $command->fields),
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);
@@ -215,6 +218,7 @@ final readonly class OrderService
     {
         $order = $this->get($id);
         $order->changeContact($command->email, $command->billing->toAddress(), $command->shippingAddress?->toAddress());
+        $order->answer($command->fields);
         $order->addNote('The customer\'s details were changed.', NoteAuthor::System, false, $this->clock->now(), $userId);
         $this->orders->save($order);
         $this->events->dispatch(new OrderChanged($order->id()));

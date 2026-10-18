@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\Twig;
 
+use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\Geography\Domain\AddressFormat;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use Twig\Extension\AbstractExtension;
@@ -12,13 +14,18 @@ use Twig\TwigFunction;
 
 /**
  * What templates need from WordPress and the shop: translation in the plugin's text domain, amounts in the
- * shop's currency with its decimals, and dates in the site's time zone and format.
+ * shop's currency with its decimals, dates in the site's time zone and format, addresses in their country's
+ * layout, and the slots add-ons print into.
  *
  *     {{ __('Order #%s')|format(order.number) }}   {{ order.total|money(order.currency) }}   {{ order.placed_at|shop_date }}
+ *     {{ order.billing|address_lines|join('<br>') }}   {{ slot('receipt_after', order.number) }}
  */
 final class ShopExtension extends AbstractExtension
 {
-    public function __construct(private readonly SettingsService $settings) {}
+    public function __construct(
+        private readonly SettingsService $settings,
+        private readonly GeographyService $geography,
+    ) {}
 
     public function getFunctions(): array
     {
@@ -28,6 +35,8 @@ final class ShopExtension extends AbstractExtension
             new TwigFunction('_n', static fn(string $single, string $plural, int $number): string => \function_exists('_n')
                 ? _n($single, $plural, $number, 'orillacart')
                 : ($number === 1 ? $single : $plural)),
+            // {{ slot('product_after_form', product.id) }}: what add-ons print there (docs/extensions.md lists them)
+            new TwigFunction('slot', $this->slot(...), ['is_safe' => ['html'], 'is_variadic' => true]),
         ];
     }
 
@@ -36,6 +45,8 @@ final class ShopExtension extends AbstractExtension
         return [
             new TwigFilter('money', $this->money(...)),
             new TwigFilter('shop_date', $this->date(...)),
+            // {% for line in order.billing|address_lines %}
+            new TwigFilter('address_lines', $this->addressLines(...)),
         ];
     }
 
@@ -76,5 +87,73 @@ final class ShopExtension extends AbstractExtension
             : ($settings->currencySign !== '' ? $settings->currencySign : $settings->currency);
 
         return CurrencyPosition::from($settings->currencyPosition)->place($number, $sign);
+    }
+
+    /**
+     * Runs the action orillacart_<name> with the arguments and gives what its callbacks printed. Add-ons are
+     * trusted code, like any plugin hooked into WordPress, so the output is not escaped.
+     *
+     * @param array<array-key, mixed> $arguments
+     */
+    public function slot(string $name, array $arguments = []): string
+    {
+        if (!\function_exists('do_action')) {
+            return '';
+        }
+        ob_start();
+        try {
+            do_action('orillacart_' . $name, ...array_values($arguments));
+        } finally {
+            $printed = (string) ob_get_clean();
+        }
+
+        return $printed;
+    }
+
+    /**
+     * An address (as the API sends it) in the lines its country writes, with the country's and state's names.
+     * The filter orillacart_address_format changes a country's layout.
+     *
+     * @param array<string, mixed>|object|null $address
+     *
+     * @return list<string>
+     */
+    public function addressLines(array|object|null $address): array
+    {
+        $parts = \is_object($address) ? get_object_vars($address) : ($address ?? []);
+        $country = self::part($parts, 'country');
+        $format = AddressFormat::of($country);
+        if (\function_exists('apply_filters')) {
+            $filtered = apply_filters('orillacart_address_format', $format, $country);
+            $format = \is_string($filtered) && $filtered !== '' ? $filtered : $format;
+        }
+        $state = self::part($parts, 'state');
+
+        return $this->geography->addressLines(
+            self::part($parts, 'first_name', 'firstName'),
+            self::part($parts, 'last_name', 'lastName'),
+            self::part($parts, 'street'),
+            self::part($parts, 'city'),
+            self::part($parts, 'postcode'),
+            $country,
+            $state === '' ? null : $state,
+            $format,
+        );
+    }
+
+    /**
+     * The first of the keys the address has, as text.
+     *
+     * @param array<array-key, mixed> $parts
+     */
+    private static function part(array $parts, string ...$keys): string
+    {
+        foreach ($keys as $key) {
+            if (isset($parts[$key]) && \is_scalar($parts[$key])) {
+                return trim((string) $parts[$key]);
+            }
+        }
+
+        return '';
     }
 }

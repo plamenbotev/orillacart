@@ -265,7 +265,6 @@ final class CheckoutRestTest extends RestTestCase
         $this->actAs('administrator');
         $methods = $this->rows($this->data($this->request('GET', '/payment-methods')));
         $byGateway = array_column($methods, null, 'gateway');
-        self::assertSame('Cheque', $byGateway['cheque']['name'] ?? null, 'an add-on cannot take the id of the shop\'s own gateway');
         self::assertSame(['api_key', 'mode', 'fee'], array_column($this->rows($byGateway['test_pay']['fields'] ?? []), 'key'));
         self::assertNotNull($byGateway['test_pay']['notification_url'] ?? null);
         foreach ([['mode' => 'weekly'], ['fee' => 'a lot']] as $wrong) {

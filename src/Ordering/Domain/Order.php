@@ -133,6 +133,10 @@ class Order
     #[ORM\Column(options: ['default' => false])]
     private bool $shippingRefunded = false;
 
+    /** @var list<array{id: string, label: string, answer: string}>|null answers to add-ons' checkout fields, with the labels they had */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $fields = null;
+
     public function __construct(OrderDraft $draft)
     {
         if (preg_match('/^[a-f0-9]{32}$/', $draft->key) !== 1) {
@@ -187,6 +191,7 @@ class Order
         $this->paymentNote = $draft->paymentNote;
         $this->note = trim($draft->note);
         $this->placedAt = $draft->placedAt;
+        $this->fields = self::fieldRows($draft->fields);
     }
 
     public function id(): int
@@ -436,6 +441,37 @@ class Order
      *
      * @throws OrderRuleViolation for an invalid email, or a shipping address on an order that ships nothing
      */
+    /**
+     * @return list<FieldAnswer>
+     */
+    public function fields(): array
+    {
+        return array_map(static fn(array $row): FieldAnswer => new FieldAnswer($row['id'], $row['label'], $row['answer']), $this->fields ?? []);
+    }
+
+    /**
+     * Corrects answers the order has; a field it was never asked is not added.
+     *
+     * @param array<string, string> $answers by field id
+     */
+    public function answer(array $answers): void
+    {
+        $this->fields = self::fieldRows(array_map(
+            static fn(FieldAnswer $field): FieldAnswer => isset($answers[$field->id]) ? new FieldAnswer($field->id, $field->label, trim($answers[$field->id])) : $field,
+            $this->fields(),
+        ));
+    }
+
+    /**
+     * @param list<FieldAnswer> $fields
+     *
+     * @return list<array{id: string, label: string, answer: string}>|null
+     */
+    private static function fieldRows(array $fields): ?array
+    {
+        return $fields === [] ? null : array_map(static fn(FieldAnswer $field): array => ['id' => $field->id, 'label' => $field->label, 'answer' => $field->answer], $fields);
+    }
+
     public function changeContact(string $email, Address $billing, ?Address $shippingAddress): void
     {
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || mb_strlen($email) > 200) {

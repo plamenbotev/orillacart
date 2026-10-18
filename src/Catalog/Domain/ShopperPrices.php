@@ -42,9 +42,11 @@ final readonly class ShopperPrices
      * The price from each quantity where it changes, for the product page: [[1, "10"], [10, "9"]]. Empty when
      * the quantity does not change it.
      *
+     * @param (\Closure(Money, int): Money)|null $then changes each quantity's price further, after the rules
+     *
      * @return list<array{min_quantity: int, price: string}>
      */
-    public function tiers(Money $price, PricedItem $item): array
+    public function tiers(Money $price, PricedItem $item, ?\Closure $then = null): array
     {
         $quantities = [1];
         foreach ($this->rules as $rule) {
@@ -60,6 +62,9 @@ final readonly class ShopperPrices
         $last = null;
         foreach ($quantities as $quantity) {
             $at = $this->price($price, $item, $quantity);
+            if ($then !== null) {
+                $at = $then($at, $quantity);
+            }
             if ($last === null || !$at->equals($last)) {
                 $tiers[] = ['min_quantity' => $quantity, 'price' => (string) $at];
                 $last = $at;

@@ -22,6 +22,7 @@ use OrillaCart\Coupons\Application\Discounts;
 use OrillaCart\Coupons\Application\Dto\AppliedDiscounts;
 use OrillaCart\Coupons\Domain\Coupon;
 use OrillaCart\Customers\Application\CustomerService;
+use OrillaCart\Extension\Checkout\FieldContext;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -59,6 +60,7 @@ final readonly class CheckoutService
         private CustomerService $customers,
         private LoggerInterface $logger,
         private Discounts $discounts,
+        private CheckoutFields $fields,
     ) {}
 
     /**
@@ -112,6 +114,7 @@ final readonly class CheckoutService
             \in_array($details->pickupPoint, array_map(static fn(PickupPointView $point): string => $point->id, $pickupPoints), true) ? $details->pickupPoint : null,
             (string) $bill->discount(),
             $coupons,
+            $this->fields->asked($priced['needs_shipping']),
         );
     }
 
@@ -185,6 +188,7 @@ final readonly class CheckoutService
             $gateway = $command->payment;
         }
 
+        $answers = $this->fields->answers($command->fields, new FieldContext($command->email, $billingAddress->country, $priced['needs_shipping'] ? $shippingAddress->country : null, $owner->customerId), $priced['needs_shipping']);
         $registering = $this->registration($owner, $command);
 
         $order = $this->transactions->run(fn(): OrderView => $this->redeemed($priced, $owner, $command->email, $this->orders->place(new NewOrder(
@@ -205,6 +209,7 @@ final readonly class CheckoutService
             $command->note,
             (string) $bill->discount(),
             $this->pricing->discounts($priced),
+            $answers,
         ))));
         $this->carts->clear($contents->cartId);
         $this->rememberCustomer($owner, $command, $registering, $order->number, $billingAddress, $priced['needs_shipping'] ? $shippingAddress : null);
@@ -287,6 +292,11 @@ final readonly class CheckoutService
 
     private function contents(CartOwner $owner): CartContents
     {
-        return $this->carts->contents($owner) ?? throw new CheckoutRuleViolation('The cart is empty.', 'orillacart_cart_empty');
+        $contents = $this->carts->contents($owner) ?? throw new CheckoutRuleViolation('The cart is empty.', 'orillacart_cart_empty');
+        if ($contents->refusals !== []) {
+            throw new CheckoutRuleViolation(implode(' ', $contents->refusals), 'orillacart_cart_refused');
+        }
+
+        return $contents;
     }
 }

@@ -441,6 +441,15 @@ fieldset[aria-invalid="true"] {
 	font-style: normal;
 }
 
+/* Answers to add-ons' checkout questions: the question, then the answer under it. */
+.orillacart-answers dt {
+	font-weight: 600;
+}
+
+.orillacart-answers dd {
+	margin: 0 0 var(--orillacart-gap);
+}
+
 .orillacart-account #orillacart-login input[type="text"],
 .orillacart-account #orillacart-login input[type="password"] {
 	box-sizing: border-box;

@@ -296,7 +296,18 @@ final class StorefrontTest extends RestTestCase
         self::assertStringContainsString('href="' . get_permalink((int) $this->pages()['checkout']) . '"', $panel);
 
         $_GET = ['billing_country' => 'BG'];
-        $checkout = do_blocks('<!-- wp:orillacart/checkout /-->');
+        $slot = static function (): void {
+            echo '<p class="test-slot">Free gift wrapping</p>';
+        };
+        add_action('orillacart_checkout_before_place_order', $slot);
+        try {
+            $checkout = do_blocks('<!-- wp:orillacart/checkout /-->');
+        } finally {
+            remove_action('orillacart_checkout_before_place_order', $slot);
+        }
+        self::assertStringContainsString('<p class="test-slot">Free gift wrapping</p>', $checkout, 'what an add-on prints in a slot');
+        self::assertMatchesRegularExpression('#<textarea id="orillacart-field-gift_note" name="fields.gift_note"[^>]*>#', $checkout, 'the add-on\'s question');
+        self::assertStringContainsString('We print it on a card.', $checkout);
         self::assertStringContainsString('value="rate:' . $this->rate . '" checked', $checkout, 'the one way to ship is chosen');
         self::assertStringContainsString('65.00', $checkout, 'items and shipping');
         self::assertStringContainsString('value="bank_transfer"', $checkout);
@@ -306,6 +317,7 @@ final class StorefrontTest extends RestTestCase
             'billing' => ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Vitosha Blvd', 'city' => 'Sofia', 'postcode' => '1000', 'country' => 'BG', 'phone' => '+359 2 000 0000'],
             'shipping_option' => 'rate:' . $this->rate,
             'payment' => 'bank_transfer',
+            'fields' => ['gift_note' => 'Happy birthday, Grace!'],
         ], nonce: true);
         self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));
         $order = $this->data($placed);
@@ -317,6 +329,8 @@ final class StorefrontTest extends RestTestCase
         self::assertStringContainsString('Thank you for your order', $receipt);
         self::assertStringContainsString('IBAN BG00 TEST', $receipt, 'how to pay, while the order waits for the money');
         self::assertStringContainsString('Bulgaria', $receipt, 'countries by name');
+        self::assertStringContainsString('<dt>Gift note</dt><dd>Happy birthday, Grace!</dd>', $receipt, 'the answer, with its question');
+        self::assertStringContainsString('1000 Sofia<br>', $receipt, 'the address in its country\'s layout');
 
         $_GET = ['orillacart_order' => str_repeat('0', 32)];
         self::assertStringContainsString('There is no order at this address.', do_blocks('<!-- wp:orillacart/checkout /-->'));

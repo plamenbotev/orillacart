@@ -8,6 +8,7 @@ use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Ordering\Application\Downloads;
+use OrillaCart\Tests\Fixtures\Extension\TestAddOn;
 
 /**
  * The shop works its orders and customers through the REST routes: statuses, notes and emails, editing an order
@@ -64,7 +65,8 @@ final class OrdersAndCustomersRestTest extends RestTestCase
             ['GET', '/price-rules'], ['POST', '/price-rules'], ['PUT', '/price-rules/1'], ['DELETE', '/price-rules/1'],
             ['GET', '/customer-groups'], ['POST', '/customer-groups'], ['PUT', '/customer-groups/1'], ['DELETE', '/customer-groups/1'], ['PUT', '/customers/1/groups'],
             ['GET', '/coupons'], ['POST', '/coupons'], ['GET', '/coupons/1'], ['PUT', '/coupons/1'], ['DELETE', '/coupons/1'],
-            ['GET', '/jobs'], ['GET', '/jobs/failed'], ['POST', '/jobs/failed/retry'], ['POST', '/jobs/failed/delete'], ['POST', '/jobs/workers/restart']];
+            ['GET', '/jobs'], ['GET', '/jobs/failed'], ['POST', '/jobs/failed/retry'], ['POST', '/jobs/failed/delete'], ['POST', '/jobs/workers/restart'],
+            ['GET', '/orders/1/actions'], ['POST', '/orders/1/actions/test_export']];
         $account = [['GET', '/account'], ['PUT', '/account/addresses'], ['GET', '/account/orders'], ['GET', '/account/orders/1'], ['GET', '/account/downloads']];
         foreach ([...$shop, ...$account] as [$method, $route]) {
             self::assertSame(401, $this->request($method, $route)->get_status(), "visitor: {$method} {$route}");
@@ -268,6 +270,55 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $this->actAs('administrator');
         $kept = $this->data($this->request('GET', "/orders/{$order['number']}"));
         self::assertSame([null, 'ada@example.com'], [$kept['customer_id'], $kept['email']], 'a deleted account\'s order stays, as a guest\'s');
+    }
+
+    public function testAddOnsPriceRefuseAndActOnOrders(): void
+    {
+        unset($_COOKIE[CartCookie::NAME]);
+        TestAddOn::$price = '7.5';
+        try {
+            $added = $this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 2], nonce: true);
+        } finally {
+            TestAddOn::$price = null;
+        }
+        self::assertSame('15', $this->data($added)['subtotal'], 'the add-on\'s price');
+        $refused = $this->request('POST', '/cart/items', ['product_id' => $this->guide, 'quantity' => 51], nonce: true);
+        self::assertSame([422, 'At most 50 of an item.'], [$refused->get_status(), $this->data($refused)['message'] ?? null]);
+
+        $order = $this->order([[$this->guide, 1]]);
+        $this->actAs('administrator');
+        self::assertSame([['id' => 'test_export', 'label' => 'Export']], $this->data($this->request('GET', "/orders/{$order['number']}/actions")));
+        $ran = $this->request('POST', "/orders/{$order['number']}/actions/test_export", nonce: true);
+        self::assertSame(200, $ran->get_status(), (string) wp_json_encode($ran->get_data()));
+        self::assertSame("Exported #{$order['number']} for ada@example.com.", $this->data($ran)['message']);
+        self::assertSame(404, $this->request('POST', "/orders/{$order['number']}/actions/nothing", nonce: true)->get_status());
+    }
+
+    public function testAnAddOnAttachesFilesAndHeadersToOrderEmails(): void
+    {
+        $invoice = (string) tempnam(sys_get_temp_dir(), 'invoice');
+        $seen = [];
+        $attach = static function (array $files, ?string $kind, ?int $number) use ($invoice, &$seen): array {
+            $seen[] = [$kind, $number];
+
+            return $kind === 'order_received' ? [...$files, $invoice, '/no/such/file.pdf'] : $files;
+        };
+        $header = static fn(array $headers): array => [...$headers, 'X-Shop: test'];
+        add_filter('orillacart_email_attachments', $attach, 10, 3);
+        add_filter('orillacart_email_headers', $header);
+        try {
+            $order = $this->order([[$this->lamp, 1]]);
+            $mail = $this->sentMail();
+        } finally {
+            remove_filter('orillacart_email_attachments', $attach, 10);
+            remove_filter('orillacart_email_headers', $header);
+            unlink($invoice);
+        }
+        $toCustomer = array_values(array_filter($mail, static fn(array $sent): bool => $sent['to'] === 'ada@example.com'));
+        self::assertSame([$invoice], $toCustomer[0]['attachments'], 'files that exist');
+        self::assertContains('X-Shop: test', $toCustomer[0]['headers']);
+        self::assertContains(['order_received', $order['number']], $seen);
+        self::assertContains(['new_order', $order['number']], $seen, 'the shop\'s email too');
     }
 
     public function testAnAddOnMayRefuseASignUp(): void

@@ -129,6 +129,8 @@ final readonly class OrderEmails
                 $settings->fromName ?? $this->site->name(),
                 $settings->fromAddress ?? $this->site->adminEmail(),
                 $kind->isForShop() ? $order->email : null,
+                $kind->value,
+                $order->number,
             );
         } catch (\Throwable $e) {
             $this->logger->error('The {kind} email of order {order} could not be written: {message}', ['kind' => $kind->value, 'order' => $orderId, 'message' => $e->getMessage(), 'exception' => $e]);

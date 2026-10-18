@@ -16,6 +16,7 @@ final readonly class OrderDraft
      * @param list<TaxLine>   $taxes
      * @param Money           $subtotal      the items before tax and before the discounts
      * @param list<OrderDiscount> $discounts
+     * @param list<FieldAnswer>   $fields    answers to add-ons' checkout fields
      */
     public function __construct(
         public string $key,
@@ -37,5 +38,6 @@ final readonly class OrderDraft
         public \DateTimeImmutable $placedAt,
         public ?Money $discountTotal = null,
         public array $discounts = [],
+        public array $fields = [],
     ) {}
 }

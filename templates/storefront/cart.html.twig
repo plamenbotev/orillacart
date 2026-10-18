@@ -5,6 +5,7 @@
  # coupons and discount: the codes entered and what they take off, as checkout prices them.
  #}
 <div class="orillacart-cart" data-orillacart-region="cart">
+    {{ slot('cart_before') }}
     {% if cart.lines is empty %}
         <p class="orillacart-empty">{{ __('Your cart is empty.') }}</p>
         {% if links.shop %}<p><a class="wp-element-button orillacart-button" href="{{ links.shop }}">{{ __('Go to the shop') }}</a></p>{% endif %}
@@ -30,7 +31,17 @@
                             {# translators: %d: how many of the item wait for stock -#}
                             {% if line.backordered > 0 %}<br><small class="orillacart-backorder">{{ __('%d on backorder: they ship when back in stock')|format(line.backordered) }}</small>{% endif %}
                             {% if line.contents %}<br><small class="orillacart-bundle">{{ __('Holds') }}: {% for item in line.contents %}{{ item.quantity }} × {{ item.name }}{{ not loop.last ? ', ' }}{% endfor %}</small>{% endif %}
-                            {% if line.problem %}<p class="orillacart-notice orillacart-notice--error">{{ line.problem }}</p>{% endif %}
+                            {% if line.problem %}
+                                <p class="orillacart-notice orillacart-notice--error">
+                                    {%- if line.problem == 'unavailable' -%}
+                                        {{ __('This is no longer for sale; remove it to check out.') }}
+                                    {%- elseif line.problem == 'insufficient_stock' -%}
+                                        {% if line.available > 0 %}{# translators: %d: how many are in stock -#}{{ __('Only %d in stock; lower the quantity to check out.')|format(line.available) }}{% else %}{{ __('Out of stock; remove it to check out.') }}{% endif %}
+                                    {%- else -%}
+                                        {{ line.message }}
+                                    {%- endif -%}
+                                </p>
+                            {% endif %}
                         </td>
                         <td data-label="{{ __('Price') }}">{{ line.unit_price|money }}</td>
                         <td data-label="{{ __('Quantity') }}">
@@ -59,16 +70,21 @@
                 {% endif %}
             </tfoot>
         </table>
+        {% for refusal in cart.refusals %}
+            <p class="orillacart-notice orillacart-notice--error">{{ refusal }}</p>
+        {% endfor %}
         {% include 'storefront/_coupons.html.twig' with {coupons: coupons, currency: null} %}
+        {{ slot('cart_after_totals') }}
         <p class="orillacart-cart__note">{{ __('Taxes and shipping are added at checkout.') }}</p>
         <p class="orillacart-message" role="status" data-orillacart-message></p>
         <div class="orillacart-cart__actions">
             {% if links.shop %}<a href="{{ links.shop }}">{{ __('Continue shopping') }}</a>{% endif %}
             {% if not cart.orderable %}
-                <p class="orillacart-notice orillacart-notice--error">{{ __('Change or remove the items marked above to check out.') }}</p>
+                <p class="orillacart-notice orillacart-notice--error">{{ __('Change the cart as marked above to check out.') }}</p>
             {% elseif links.checkout %}
                 <a class="wp-element-button orillacart-button" href="{{ links.checkout }}">{{ __('Check out') }}</a>
             {% endif %}
         </div>
     {% endif %}
+    {{ slot('cart_after') }}
 </div>

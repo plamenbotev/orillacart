@@ -13,7 +13,8 @@ use Symfony\Component\Validator\Constraints as Assert;
  * Command: order what is in the cart. Without a shipping address, the order ships to the billing address.
  * A shipping rate is needed when something ships, a payment method when there is something to pay.
  * A visitor may make an account with the order (create_account and a password); a logged-in customer's
- * addresses are remembered for next time unless remember_addresses is false.
+ * addresses are remembered for next time unless remember_addresses is false. Fields holds the answers to the
+ * questions add-ons ask.
  */
 final readonly class PlaceOrder
 {
@@ -39,5 +40,9 @@ final readonly class PlaceOrder
         /** The office or locker to deliver to, for a service to one (the courier's id). */
         #[Assert\Length(max: 64)]
         public ?string $pickupPoint = null,
+        /** @var array<string, string|bool> answers to add-ons' checkout fields, by field id */
+        #[Assert\Count(max: 100)]
+        #[Assert\All([new Assert\Type(['string', 'bool', 'int'])])]
+        public array $fields = [],
     ) {}
 }

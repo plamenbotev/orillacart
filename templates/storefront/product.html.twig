@@ -60,6 +60,7 @@
         {%- endif -%}
     </p>
 
+    {{ slot('product_before_form', offer.id) }}
     {% if (offer.for_sale or offer.bundle_choices) and cart_url and not offer.price_hidden %}
         <form class="orillacart-add-to-cart" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}" data-variations="{{ variations|json_encode }}"{% if offer.bundle_choices %} data-bundle="{{ offer.id }}"{% endif %}>
             <input type="hidden" name="product_id" value="{{ offer.id }}">
@@ -118,6 +119,7 @@
             <p class="orillacart-message" role="status" data-orillacart-message></p>
         </form>
     {% endif %}
+    {{ slot('product_after_form', offer.id) }}
 
     {% if offer.downloads %}
         <div class="orillacart-product__downloads">
@@ -127,4 +129,5 @@
             </ul>
         </div>
     {% endif %}
+    {{ slot('product_after_details', offer.id) }}
 </section>

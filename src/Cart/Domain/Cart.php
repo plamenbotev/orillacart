@@ -107,6 +107,23 @@ class Cart
     }
 
     /**
+     * The line that holds the product with these options (and bundle choices), if any.
+     *
+     * @param list<int> $optionIds
+     * @param list<int> $bundleChoices
+     */
+    public function lineFor(int $productId, array $optionIds, array $bundleChoices = []): ?CartLine
+    {
+        foreach ($this->lines as $line) {
+            if ($line->isFor($productId, $optionIds, $bundleChoices)) {
+                return $line;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Adds items; the same product with the same options (and bundle choices) adds to its line.
      *
      * @param list<int> $optionIds

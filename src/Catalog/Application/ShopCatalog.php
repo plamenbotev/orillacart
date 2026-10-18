@@ -21,7 +21,6 @@ use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Catalog\Domain\ProductRepository;
-use OrillaCart\Catalog\Domain\ShopperPrices;
 use OrillaCart\Catalog\Domain\StockMode;
 use OrillaCart\Catalog\Domain\Variation;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
@@ -147,7 +146,7 @@ final readonly class ShopCatalog
     /**
      * @param array<string, ?int>|null $stock how many of each item can be sold, when read for many offers at once
      */
-    private function toOffer(Product $product, \DateTimeImmutable $now, ShopperPrices $prices, ?array $stock = null, ?int $customerId = null): ProductOffer
+    private function toOffer(Product $product, \DateTimeImmutable $now, ShopperPricing $prices, ?array $stock = null, ?int $customerId = null): ProductOffer
     {
         $details = $product->details();
         if ($product->isBundle()) {
@@ -195,7 +194,7 @@ final readonly class ShopCatalog
 
         [$available, $onBackorder] = $this->available($details->stockMode, StockItemRef::product($product->id()), $details->backorders, $stock);
         $own = $details->pricing->priceAt($now);
-        $price = $prices->price($own, $item($details->pricing));
+        $price = $prices->price($own, $item($details->pricing), regular: $details->pricing->price());
 
         return new ProductOffer(
             $product->id(),
@@ -213,7 +212,7 @@ final readonly class ShopCatalog
             $downloads,
             $priceHidden,
             $onBackorder,
-            $prices->tiers($own, $item($details->pricing)),
+            $prices->tiers($own, $item($details->pricing), regular: $details->pricing->price()),
         );
     }
 
@@ -331,9 +330,9 @@ final readonly class ShopCatalog
     /**
      * @param array<string, ?int>|null $stock
      */
-    private function toVariation(Variation $variation, Backorders $productBackorders, bool $sellable, \DateTimeImmutable $now, ShopperPrices $prices, PricedItem $item, ?array $stock = null): OfferedVariation
+    private function toVariation(Variation $variation, Backorders $productBackorders, bool $sellable, \DateTimeImmutable $now, ShopperPricing $prices, PricedItem $item, ?array $stock = null): OfferedVariation
     {
-        $price = $prices->price($variation->pricing()->priceAt($now), $item);
+        $price = $prices->price($variation->pricing()->priceAt($now), $item, variationId: $variation->id(), regular: $variation->pricing()->price());
         [$available, $onBackorder] = $this->available($variation->stockMode(), StockItemRef::variation($variation->id()), $variation->backorders() ?? $productBackorders, $stock);
 
         return new OfferedVariation(

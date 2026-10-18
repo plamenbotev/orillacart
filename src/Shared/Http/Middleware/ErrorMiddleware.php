@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Shared\Http\Middleware;
 
+use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Http\HttpException;
@@ -33,6 +34,8 @@ final readonly class ErrorMiddleware implements MiddlewareInterface
             return $this->responder->error($e->status, $e->errorCode, $e->getMessage(), $e->details);
         } catch (NotFound $e) {
             return $this->responder->error(404, $e->errorCode, $e->getMessage());
+        } catch (InvalidFields $e) {
+            return $this->responder->error(422, $e->errorCode, $e->getMessage(), ['violations' => $e->violations]);
         } catch (RuleViolation $e) {
             return $this->responder->error(422, $e->errorCode, $e->getMessage());
         } catch (\Throwable $e) {

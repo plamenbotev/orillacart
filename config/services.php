@@ -8,6 +8,7 @@ use Nyholm\Psr7\Factory\Psr17Factory;
 use OrillaCart\Cart\Domain\CartRepository;
 use OrillaCart\Cart\Infrastructure\Doctrine\DoctrineCartRepository;
 use OrillaCart\Catalog\Application\ShopperGroups;
+use OrillaCart\Catalog\Application\ShopperPricing;
 use OrillaCart\Catalog\Domain\AttributeSetRepository;
 use OrillaCart\Catalog\Domain\PriceRuleRepository;
 use OrillaCart\Catalog\Domain\ProductContent;
@@ -23,7 +24,6 @@ use OrillaCart\Coupons\Domain\RedemptionRepository;
 use OrillaCart\Coupons\Infrastructure\Doctrine\DoctrineCouponRepository;
 use OrillaCart\Coupons\Infrastructure\Doctrine\DoctrineRedemptionRepository;
 use OrillaCart\Customers\Application\Accounts;
-use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Domain\CustomerGroupRepository;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
 use OrillaCart\Customers\Infrastructure\Doctrine\DoctrineCustomerGroupRepository;
@@ -178,6 +178,8 @@ return static function (ContainerConfigurator $container): void {
     $services->load('OrillaCart\\', '../src/*/Application/')
         ->exclude('../src/*/Application/Dto/')
         ->public();
+    // Made per shopper by PriceResolver, not a service.
+    $services->remove(ShopperPricing::class);
 
     // The shop's own payment gateways, in this order; add-ons register theirs after them (WordPressExtensions).
     $services->set(CashOnDelivery::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 40]);
@@ -296,6 +298,4 @@ return static function (ContainerConfigurator $container): void {
     $services->set(WordPressIntegration::class)->public();
     $services->set(PluginLifecycle::class)->public();
     $services->set(DatabaseMigrator::class)->public();
-    // Run for the other sites of a network when a user is deleted from all of it.
-    $services->set(CustomerService::class)->public();
 };

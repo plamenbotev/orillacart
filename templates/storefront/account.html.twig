@@ -4,7 +4,7 @@
  #
  # logged_in; accounts: optional | required | disabled; login_form (HTML); lost_password_url; section: orders |
  # order | downloads | addresses; urls: {orders, downloads, addresses, logout}; orders (a page of them, with
- # order_urls and page_urls); order (null when not theirs); downloads; customer; countries; states; country_names.
+ # order_urls and page_urls); order (null when not theirs); downloads; customer; countries; states.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-account">
@@ -107,4 +107,5 @@
             {% endif %}
         </div>
     {% endif %}
+    {{ slot('account_after', section ?? null) }}
 </div>

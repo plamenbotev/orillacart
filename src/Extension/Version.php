@@ -12,5 +12,6 @@ namespace OrillaCart\Extension;
  */
 final class Version
 {
-    public const int CURRENT = 1;
+    /** 1: payment gateways, shipping methods. 2: price adjusters, cart rules, checkout fields, order actions, orders. */
+    public const int CURRENT = 2;
 }

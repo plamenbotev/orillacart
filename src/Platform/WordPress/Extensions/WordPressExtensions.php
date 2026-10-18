@@ -4,19 +4,26 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Extensions;
 
+use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Log;
+use OrillaCart\Extension\Order\OrderAction;
+use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Payment\PaymentGateway;
+use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Registry;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Extension\Version;
+use OrillaCart\Ordering\Application\OrderSummaries;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
 /**
  * The registry add-ons fill on the orillacart_extensions action. The action runs once, the first time the shop
  * needs what is registered, after the plugin's own gateways are in: so every plugin is loaded by then, and a
- * request that never pays or ships never runs it.
+ * request that never prices, pays or ships never runs it.
  */
 final class WordPressExtensions implements Registry, InstalledExtensions
 {
@@ -28,16 +35,27 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $gateways = [];
     /** @var array<string, ShippingMethod> */
     private array $methods = [];
+    /** @var array<string, PriceAdjuster> */
+    private array $adjusters = [];
+    /** @var array<string, CartRule> */
+    private array $cartRules = [];
+    /** @var array<string, CheckoutField> */
+    private array $fields = [];
+    /** @var array<string, OrderAction> */
+    private array $actions = [];
     private bool $collected = false;
     private bool $collecting = false;
 
     /**
      * @param iterable<PaymentGateway> $builtInGateways
+     * @param \Closure(): Orders        $orders          a closure: reading orders needs services that need this registry
      */
     public function __construct(
         #[AutowireIterator(self::GATEWAY_TAG)]
         private readonly iterable $builtInGateways,
         private readonly LoggerInterface $logger,
+        #[AutowireServiceClosure(OrderSummaries::class)]
+        private readonly \Closure $orders,
     ) {}
 
     public function version(): int
@@ -59,6 +77,39 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         }
     }
 
+    public function priceAdjuster(PriceAdjuster $adjuster): void
+    {
+        if ($this->accepts('price adjuster', $adjuster->id(), $this->adjusters[$adjuster->id()] ?? null, $adjuster)) {
+            $this->adjusters[$adjuster->id()] = $adjuster;
+        }
+    }
+
+    public function cartRule(CartRule $rule): void
+    {
+        if ($this->accepts('cart rule', $rule->id(), $this->cartRules[$rule->id()] ?? null, $rule)) {
+            $this->cartRules[$rule->id()] = $rule;
+        }
+    }
+
+    public function checkoutField(CheckoutField $field): void
+    {
+        if ($this->accepts('checkout field', $field->id, $this->fields[$field->id] ?? null, $field)) {
+            $this->fields[$field->id] = $field;
+        }
+    }
+
+    public function orderAction(OrderAction $action): void
+    {
+        if ($this->accepts('order action', $action->id(), $this->actions[$action->id()] ?? null, $action)) {
+            $this->actions[$action->id()] = $action;
+        }
+    }
+
+    public function orders(): Orders
+    {
+        return ($this->orders)();
+    }
+
     public function log(): Log
     {
         return new ExtensionLog($this->logger);
@@ -76,6 +127,34 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->methods);
+    }
+
+    public function priceAdjusters(): array
+    {
+        $this->collect();
+
+        return array_values($this->adjusters);
+    }
+
+    public function cartRules(): array
+    {
+        $this->collect();
+
+        return array_values($this->cartRules);
+    }
+
+    public function checkoutFields(): array
+    {
+        $this->collect();
+
+        return array_values($this->fields);
+    }
+
+    public function orderActions(): array
+    {
+        $this->collect();
+
+        return array_values($this->actions);
     }
 
     /**

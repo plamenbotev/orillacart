@@ -118,7 +118,7 @@ final readonly class AccountBlock implements BlockDefinition
             $order = null;
         }
 
-        return ['order' => $order, 'country_names' => $this->addresses->all()['country_names']];
+        return ['order' => $order];
     }
 
     /**

@@ -21,16 +21,14 @@ final readonly class AddressChoices
     ) {}
 
     /**
-     * @return array{countries: list<CountryView>, states: array<string, list<StateView>>, country_names: array<string, string>}
+     * @return array{countries: list<CountryView>, states: array<string, list<StateView>>}
      */
     public function all(): array
     {
         $sellTo = $this->settings->current()->sellTo;
         $countries = [];
         $states = [];
-        $names = [];
         foreach ($this->geography->countries() as $country) {
-            $names[$country->code] = $country->name;
             if ($sellTo !== [] && !\in_array($country->code, $sellTo, true)) {
                 continue;
             }
@@ -40,6 +38,6 @@ final readonly class AddressChoices
             }
         }
 
-        return ['countries' => $countries, 'states' => $states, 'country_names' => $names];
+        return ['countries' => $countries, 'states' => $states];
     }
 }

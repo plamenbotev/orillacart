@@ -1,7 +1,7 @@
 {#
  # An order as its customer sees it: after checkout (with the order's key) and in their account.
  #
- # order: the order; country_names: {code: name}; heading: whether to thank the customer for ordering;
+ # order: the order; heading: whether to thank the customer for ordering;
  # links: the shop's pages.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
@@ -84,13 +84,13 @@
     <div class="orillacart-receipt__addresses">
         <div>
             <h3 class="orillacart-heading">{{ order.shipping_address ? __('Billing address') : __('Address') }}</h3>
-            {{ shop.address_text(order.billing, country_names) }}
+            {{ shop.address_text(order.billing) }}
             <p>{{ order.email }}</p>
         </div>
         {% if order.shipping_address %}
             <div>
                 <h3 class="orillacart-heading">{{ __('Shipping address') }}</h3>
-                {{ shop.address_text(order.shipping_address, country_names) }}
+                {{ shop.address_text(order.shipping_address) }}
             </div>
         {% endif %}
         {% if shipments ?? [] %}
@@ -110,4 +110,9 @@
             </div>
         {% endif %}
     </div>
+{% if order.fields %}
+        <h3 class="orillacart-heading">{{ __('Other details') }}</h3>
+        {{ shop.field_answers(order.fields) }}
+    {% endif %}
+    {{ slot('receipt_after', order.number) }}
 </div>

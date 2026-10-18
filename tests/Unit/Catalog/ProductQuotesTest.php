@@ -33,8 +33,10 @@ use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductContent;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductRepository;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryCustomerGroupRepository;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
+use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockLevelRepository;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockroomRepository;
+use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
@@ -66,7 +68,7 @@ final class ProductQuotesTest extends TestCase
         $this->stockroom = new StockroomService($stockrooms)->create(new SaveStockroom('Sofia'))->id;
         $this->settings = new InMemorySettingsRepository(StoreSettings::defaults());
         $clock = new MockClock('2026-10-17 12:00:00 UTC');
-        $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, $clock, new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new PriceResolver(new InMemoryPriceRuleRepository(), new GroupsOfShoppers(new InMemoryCustomerGroupRepository()), $clock));
+        $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, $clock, new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new PriceResolver(new InMemoryPriceRuleRepository(), new GroupsOfShoppers(new InMemoryCustomerGroupRepository()), $clock, new FixedExtensions(), new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new MemoryLogger()));
     }
 
     public function testAQuoteHasTheChosenOptionsTheirPriceAndTheStock(): void

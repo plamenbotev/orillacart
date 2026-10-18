@@ -41,13 +41,25 @@ final readonly class TwigFactory
         return $twig;
     }
 
-    /** @return list<string> existing folders, most specific first */
+    /**
+     * The theme's folders, then those add-ons give on the filter orillacart_template_paths, then the plugin's.
+     *
+     * @return list<string> existing folders, most specific first
+     */
     public function templatePaths(): array
     {
         $paths = [];
         if (\function_exists('get_stylesheet_directory')) {
             $paths[] = get_stylesheet_directory() . '/' . self::THEME_FOLDER;
             $paths[] = get_template_directory() . '/' . self::THEME_FOLDER;
+        }
+        if (\function_exists('apply_filters')) {
+            $added = apply_filters('orillacart_template_paths', []);
+            foreach (\is_array($added) ? $added : [] as $path) {
+                if (\is_string($path) && $path !== '') {
+                    $paths[] = rtrim($path, '/');
+                }
+            }
         }
         $paths[] = $this->context->path(self::PLUGIN_FOLDER);
 

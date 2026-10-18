@@ -25,7 +25,7 @@ abstract class RestTestCase extends TestCase
         $lifecycle->activate();
     }
 
-    /** @var list<array{to: string, subject: string, message: string}> mail the plugin sent during the test */
+    /** @var list<array{to: string, subject: string, message: string, headers: list<string>, attachments: list<string>}> mail the plugin sent during the test */
     protected array $mails = [];
     private ?\Closure $mailCatcher = null;
 
@@ -62,6 +62,8 @@ abstract class RestTestCase extends TestCase
             'to' => \is_array($to) ? implode(', ', array_filter($to, \is_string(...))) : (\is_string($to) ? $to : ''),
             'subject' => \is_string($mail['subject'] ?? null) ? $mail['subject'] : '',
             'message' => \is_string($mail['message'] ?? null) ? $mail['message'] : '',
+            'headers' => array_values(array_filter((array) ($mail['headers'] ?? []), \is_string(...))),
+            'attachments' => array_values(array_filter((array) ($mail['attachments'] ?? []), \is_string(...))),
         ];
 
         return true;
@@ -72,7 +74,7 @@ abstract class RestTestCase extends TestCase
      * command line, which runs nothing after the response). Read through this method: the mail filter fills the
      * list behind static analysis.
      *
-     * @return list<array{to: string, subject: string, message: string}>
+     * @return list<array{to: string, subject: string, message: string, headers: list<string>, attachments: list<string>}>
      */
     protected function sentMail(): array
     {

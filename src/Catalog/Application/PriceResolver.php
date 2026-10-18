@@ -6,10 +6,13 @@ namespace OrillaCart\Catalog\Application;
 
 use OrillaCart\Catalog\Domain\PriceRuleRepository;
 use OrillaCart\Catalog\Domain\ShopperPrices;
+use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 
 /**
- * The shop's price rules for a shopper: what their groups pay now. One per request or task, not per item.
+ * The prices one shopper pays: the shop's price rules for their customer groups, then the add-ons' adjusters.
  */
 final readonly class PriceResolver
 {
@@ -17,10 +20,20 @@ final readonly class PriceResolver
         private PriceRuleRepository $rules,
         private ShopperGroups $groups,
         private ClockInterface $clock,
+        private InstalledExtensions $extensions,
+        private SettingsService $settings,
+        private LoggerInterface $logger,
     ) {}
 
-    public function forShopper(?int $customerId): ShopperPrices
+    /** @param int|null $customerId null for a guest, and for the search index */
+    public function forShopper(?int $customerId): ShopperPricing
     {
-        return new ShopperPrices($this->rules->active(), $this->groups->groupIdsOf($customerId), $this->clock->now());
+        return new ShopperPricing(
+            new ShopperPrices($this->rules->active(), $this->groups->groupIdsOf($customerId), $this->clock->now()),
+            $this->extensions->priceAdjusters(),
+            $customerId,
+            $this->settings->current()->currency,
+            $this->logger,
+        );
     }
 }

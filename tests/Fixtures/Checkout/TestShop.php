@@ -15,6 +15,7 @@ use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
 use OrillaCart\Catalog\Infrastructure\Events\ForgetDeletedShippingClass;
 use OrillaCart\Checkout\Application\AddressRules;
+use OrillaCart\Checkout\Application\CheckoutFields;
 use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\ManualOrders;
 use OrillaCart\Checkout\Application\OrderEditing;
@@ -163,6 +164,8 @@ final class TestShop
     public readonly ManualOrders $manualOrders;
     public readonly ImmediateTransactions $transactions;
     public readonly MemoryLogger $logger;
+    /** What add-ons registered: tests add price adjusters, cart rules, checkout fields and order actions. */
+    public readonly FixedExtensions $extensions;
     public readonly EventDispatcher $events;
     public readonly SentMail $mail;
     public readonly InMemoryEmailSettingsRepository $emailSettings;
@@ -195,7 +198,7 @@ final class TestShop
         $carrierRecords = new InMemoryCarrierRepository();
         $classRecords = new InMemoryShippingClassRepository();
         $this->payPalApi = new FakePayPalApi();
-        $extensions = new FixedExtensions([new CashOnDelivery(), new BankTransfer(), new Cheque(), new PayPalGateway($this->payPalApi)], $shippingMethods);
+        $this->extensions = $extensions = new FixedExtensions([new CashOnDelivery(), new BankTransfer(), new Cheque(), new PayPalGateway($this->payPalApi)], $shippingMethods);
         $shippingMethodList = new ShippingMethods($extensions);
         $this->rateCache = new MemoryRateCache();
         $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups, $classRecords, $shippingMethodList);
@@ -211,7 +214,7 @@ final class TestShop
         $this->stock = new StockService(new InMemoryStockLevelRepository(), $stockroomRecords, $this->events);
         $this->priceRuleRecords = new InMemoryPriceRuleRepository();
         $this->customerGroupRecords = new InMemoryCustomerGroupRepository();
-        $prices = new PriceResolver($this->priceRuleRecords, new GroupsOfShoppers($this->customerGroupRecords), $this->clock);
+        $prices = new PriceResolver($this->priceRuleRecords, new GroupsOfShoppers($this->customerGroupRecords), $this->clock, $extensions, $settings, $this->logger);
         $this->priceRules = new PriceRules($this->priceRuleRecords, $this->events);
         $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices);
         $this->quotes = $quotes;
@@ -225,7 +228,7 @@ final class TestShop
         $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock);
 
         $this->cartRecords = new InMemoryCartRepository();
-        $this->carts = new CartService($this->cartRecords, $quotes, $this->clock, $settings);
+        $this->carts = new CartService($this->cartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger);
         $this->orderRecords = new InMemoryOrderRepository();
         $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, new FakeOrderLinks());
         $this->transactions = new ImmediateTransactions();
@@ -267,12 +270,13 @@ final class TestShop
             $this->customers,
             $this->logger,
             $this->discounts,
+            new CheckoutFields($extensions, $this->logger),
         );
 
         $this->mail = new SentMail();
         $this->emailSettings = new InMemoryEmailSettingsRepository();
         $context = new PluginContext(\dirname(__DIR__, 3) . '/orillacart.php', 'test');
-        $templates = new TwigRenderer(new TwigFactory($context, new ShopExtension($settings))->create(), new SerializerFactory()->create());
+        $templates = new TwigRenderer(new TwigFactory($context, new ShopExtension($settings, $geography))->create(), new SerializerFactory()->create());
         $this->consignmentRecords = new InMemoryConsignmentRepository();
         $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger);
         $this->jobs = new TestJobs($this->clock);

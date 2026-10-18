@@ -70,7 +70,7 @@ final readonly class ProductQuotes
         $onSale = $pricing->priceAt($now)->compare($pricing->price()) < 0;
         // The shop's price rules change the product's (or variation's) price; options keep their adjustments.
         $own = $pricing->priceAt($now);
-        $ruled = $this->prices->forShopper($request->customerId)->price($own, new PricedItem($product->id(), $onSale, $terms['categories'], $terms['brands']), max(1, $request->quantity));
+        $ruled = $this->prices->forShopper($request->customerId)->price($own, new PricedItem($product->id(), $onSale, $terms['categories'], $terms['brands']), max(1, $request->quantity), $configuration->variation?->id(), $pricing->price());
         $unitPrice = $configuration->unitPrice->subtract($own)->add($ruled)->atLeastZero();
         $weight = $measures['weight'];
         $downloads = array_map(static fn(DownloadFile $file): QuotedDownload => new QuotedDownload($file->id(), $file->name(), $file->storageKey(), $file->mimeType()), $product->downloads());

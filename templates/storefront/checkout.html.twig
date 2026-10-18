@@ -14,6 +14,7 @@
     {% else %}
         <form class="orillacart-checkout__form" data-orillacart-checkout novalidate>
             <div class="orillacart-checkout__details">
+                {{ slot('checkout_before_details') }}
                 <fieldset class="orillacart-checkout__contact">
                     <legend>{{ __('Contact') }}</legend>
                     <p class="orillacart-field">
@@ -26,6 +27,8 @@
                 </fieldset>
 
                 {{ shop.address('billing', summary.needs_shipping ? __('Billing address') : __('Address'), billing, countries, states, 'billing') }}
+                {{ shop.extra_fields(summary.fields, 'billing') }}
+                {{ slot('checkout_after_billing') }}
 
                 {% if summary.needs_shipping %}
                     <p class="orillacart-field orillacart-field--check">
@@ -35,12 +38,15 @@
                     <div data-orillacart-shipping-address{{ not ship_elsewhere ? ' hidden' }}>
                         {{ shop.address('shipping_address', __('Shipping address'), shipping, countries, states, 'shipping') }}
                     </div>
+                    {{ shop.extra_fields(summary.fields, 'shipping') }}
+                    {{ slot('checkout_after_shipping') }}
                 {% endif %}
 
                 <p class="orillacart-field">
                     <label for="orillacart-note">{{ __('Notes about your order') }}</label>
                     <textarea id="orillacart-note" name="note" rows="3" data-orillacart-field="note"></textarea>
                 </p>
+                {{ shop.extra_fields(summary.fields, 'order') }}
 
                 {% if logged_in %}
                     <p class="orillacart-field orillacart-field--check">
@@ -66,6 +72,7 @@
                         </p>
                     </fieldset>
                 {% endif %}
+                {{ slot('checkout_after_details') }}
             </div>
 
             <div class="orillacart-checkout__summary" data-orillacart-region="checkout-summary" aria-live="polite">

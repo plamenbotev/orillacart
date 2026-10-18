@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace OrillaCart\Extension;
 
+use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Checkout\CheckoutField;
+use OrillaCart\Extension\Order\OrderAction;
+use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Payment\PaymentGateway;
+use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 
 /**
- * Where add-ons register what they bring. The shop passes it once per request, when it first needs its payment
- * gateways or shipping methods, to the orillacart_extensions action:
+ * Where add-ons register what they bring. The shop passes it once per request, when it first needs something
+ * add-ons register, to the orillacart_extensions action:
  *
  *     add_action('orillacart_extensions', static function (OrillaCart\Extension\Registry $registry): void {
  *         $registry->paymentGateway(new MyGateway($registry->log()));
@@ -26,6 +31,21 @@ interface Registry
     public function paymentGateway(PaymentGateway $gateway): void;
 
     public function shippingMethod(ShippingMethod $method): void;
+
+    /** Since version 2. */
+    public function priceAdjuster(PriceAdjuster $adjuster): void;
+
+    /** Since version 2. */
+    public function cartRule(CartRule $rule): void;
+
+    /** Since version 2. */
+    public function checkoutField(CheckoutField $field): void;
+
+    /** Since version 2. */
+    public function orderAction(OrderAction $action): void;
+
+    /** Reads the shop's orders. Since version 2. */
+    public function orders(): Orders;
 
     /** Writes to the shop's log, where the shop manager looks when something went wrong. */
     public function log(): Log;

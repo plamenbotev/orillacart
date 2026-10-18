@@ -79,12 +79,52 @@
     </p>
 {% endmacro %}
 
-{% macro address_text(address, country_names = {}) %}
+{# An address in its country's layout (the filter orillacart_address_format changes it), then the phone. #}
+{% macro address_text(address) %}
     <address class="orillacart-address-text">
-        {{ address.first_name }} {{ address.last_name }}<br>
-        {{ address.street }}<br>
-        {{ address.postcode }} {{ address.city }}{% if address.state %}, {{ address.state }}{% endif %}<br>
-        {{ country_names[address.country] ?? address.country }}<br>
+        {%- for line in address|address_lines %}{{ line }}<br>{% endfor -%}
         {{ address.phone }}
     </address>
+{% endmacro %}
+
+{#
+ # The questions add-ons ask in one part of checkout (billing, shipping or order), named fields.<id> for the
+ # REST API.
+ #}
+{% macro extra_fields(fields, section) %}
+    {%- for field in fields %}{% if field.section == section %}
+        {%- set id = 'orillacart-field-' ~ field.id -%}
+        {%- set required = field.required ? ' <span aria-hidden="true">*</span>' : '' -%}
+        {% if field.kind == 'checkbox' %}
+            <p class="orillacart-field orillacart-field--check">
+                <input id="{{ id }}" type="checkbox" name="fields.{{ field.id }}" value="1" data-orillacart-field="fields.{{ field.id }}"{{ field.required ? ' required' }}>
+                <label for="{{ id }}">{{ field.label }}{{ required|raw }}</label>
+                {% if field.help %}<small>{{ field.help }}</small>{% endif %}
+            </p>
+        {% else %}
+            <p class="orillacart-field">
+                <label for="{{ id }}">{{ field.label }}{{ required|raw }}</label>
+                {% if field.kind == 'textarea' %}
+                    <textarea id="{{ id }}" name="fields.{{ field.id }}" rows="3" maxlength="{{ field.longest }}" data-orillacart-field="fields.{{ field.id }}"{{ field.required ? ' required' }}></textarea>
+                {% elseif field.kind == 'choice' %}
+                    <select id="{{ id }}" name="fields.{{ field.id }}" data-orillacart-field="fields.{{ field.id }}"{{ field.required ? ' required' }}>
+                        <option value="">{{ __('Choose') }}</option>
+                        {% for choice in field.choices %}<option value="{{ choice.value }}">{{ choice.label }}</option>{% endfor %}
+                    </select>
+                {% else %}
+                    <input id="{{ id }}" type="text" name="fields.{{ field.id }}" maxlength="{{ field.longest }}" data-orillacart-field="fields.{{ field.id }}"{{ field.required ? ' required' }}>
+                {% endif %}
+                {% if field.help %}<small>{{ field.help }}</small>{% endif %}
+            </p>
+        {% endif %}
+    {% endif %}{% endfor -%}
+{% endmacro %}
+
+{# The answers an order keeps to add-ons' questions. #}
+{% macro field_answers(fields) %}
+    {%- if fields %}
+        <dl class="orillacart-answers">
+            {% for field in fields %}<dt>{{ field.label }}</dt><dd>{{ field.answer|nl2br }}</dd>{% endfor %}
+        </dl>
+    {% endif -%}
 {% endmacro %}

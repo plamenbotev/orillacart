@@ -122,7 +122,6 @@ final readonly class CheckoutBlock implements BlockDefinition
             'order' => $order,
             'heading' => true,
             'links' => $links,
-            'country_names' => $this->addresses->all()['country_names'],
             'shipments' => $this->shipments->forOrder($order->number),
         ]);
     }

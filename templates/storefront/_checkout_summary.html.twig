@@ -79,4 +79,5 @@
 {% endif %}
 
 <p class="orillacart-message" role="alert" data-orillacart-message></p>
+{{ slot('checkout_before_place_order') }}
 <button type="submit" class="wp-element-button orillacart-button orillacart-checkout__place">{{ __('Place order') }}</button>

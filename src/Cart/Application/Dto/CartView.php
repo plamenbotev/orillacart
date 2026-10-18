@@ -12,12 +12,14 @@ final readonly class CartView
 {
     /**
      * @param list<CartLineView> $lines
+     * @param list<string>       $refusals why add-ons' cart rules refuse the cart as a whole, for the customer
      */
     public function __construct(
         public array $lines,
         public int $items,
         public string $subtotal,
         public bool $orderable,
+        public array $refusals = [],
     ) {}
 
     public static function empty(): self

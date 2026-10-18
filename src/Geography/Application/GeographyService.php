@@ -7,6 +7,7 @@ namespace OrillaCart\Geography\Application;
 use OrillaCart\Geography\Application\Dto\CountryView;
 use OrillaCart\Geography\Application\Dto\LocationView;
 use OrillaCart\Geography\Application\Dto\StateView;
+use OrillaCart\Geography\Domain\AddressFormat;
 use OrillaCart\Geography\Domain\CountryRepository;
 use OrillaCart\Geography\Domain\UnknownCountry;
 use OrillaCart\Geography\Domain\UnknownState;
@@ -36,6 +37,31 @@ final readonly class GeographyService
             ?? throw new NotFound(\sprintf('There is no country with the code "%s".', $country), 'orillacart_country_not_found');
 
         return array_map(StateView::fromState(...), $found->states());
+    }
+
+    /**
+     * An address's lines as its country writes them, with the country's and state's names.
+     *
+     * @param string|null $format the layout, when it is not the country's own (AddressFormat explains the tokens)
+     *
+     * @return list<string>
+     */
+    public function addressLines(string $firstName, string $lastName, string $street, string $city, string $postcode, string $country, ?string $state, ?string $format = null): array
+    {
+        $found = $country === '' ? null : $this->countries->find($country);
+        $region = $state === null || $state === '' ? null : $found?->state($state);
+
+        return AddressFormat::lines($format ?? AddressFormat::of($country), [
+            'name' => trim("{$firstName} {$lastName}"),
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'street' => $street,
+            'city' => $city,
+            'postcode' => $postcode,
+            'state' => $region === null ? (string) $state : $region->name,
+            'state_code' => (string) $state,
+            'country' => $found === null ? $country : $found->name,
+        ]);
     }
 
     /**

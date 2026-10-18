@@ -125,6 +125,14 @@ export interface Order {
 		/** An automatic discount: shown by its description. */
 		automatic?: boolean;
 	}[];
+	/** Answers to the questions add-ons ask at checkout, with the labels they had. */
+	fields: { id: string; label: string; answer: string }[];
+}
+
+/** A button an add-on puts on the order screen. */
+export interface OrderAction {
+	id: string;
+	label: string;
 }
 
 export interface Refund {
@@ -262,12 +270,35 @@ export function changeContact(
 	id: number,
 	email: string,
 	billing: Address,
-	shippingAddress: Address | null
+	shippingAddress: Address | null,
+	fields: Record< string, string > = {}
 ): Promise< Order > {
 	return apiFetch< Order >( {
 		path: `${ BASE }/orders/${ id }/contact`,
 		method: 'PUT',
-		data: { email, billing, shipping_address: shippingAddress },
+		data: { email, billing, shipping_address: shippingAddress, fields },
+	} );
+}
+
+export function fetchOrderActions( id: number ): Promise< OrderAction[] > {
+	return apiFetch< OrderAction[] >( {
+		path: `${ BASE }/orders/${ id }/actions`,
+	} );
+}
+
+/**
+ * Runs an add-on's action; its answer is recorded in the order's history.
+ *
+ * @param id     The order number.
+ * @param action The action's id.
+ */
+export function runOrderAction(
+	id: number,
+	action: string
+): Promise< { message: string; order: Order } > {
+	return apiFetch< { message: string; order: Order } >( {
+		path: `${ BASE }/orders/${ id }/actions/${ action }`,
+		method: 'POST',
 	} );
 }
 

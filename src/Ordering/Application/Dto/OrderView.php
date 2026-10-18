@@ -62,6 +62,8 @@ final readonly class OrderView
         public string $discountTotal = '0',
         /** @var list<OrderDiscountView> the coupons it used */
         public array $discounts = [],
+        /** @var list<OrderFieldView> answers to add-ons' checkout fields */
+        public array $fields = [],
     ) {}
 
     /**
@@ -109,6 +111,7 @@ final readonly class OrderView
             $order->isShippingRefunded(),
             (string) $order->discountTotal(),
             array_map(static fn(OrderDiscount $discount): OrderDiscountView => new OrderDiscountView($discount->code, $discount->description, (string) $discount->amount, $discount->freeShipping, $discount->automatic), $order->discounts()),
+            array_map(OrderFieldView::fromAnswer(...), $order->fields()),
         );
     }
 }

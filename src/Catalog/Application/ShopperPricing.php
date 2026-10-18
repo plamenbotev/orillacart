@@ -1,0 +1,84 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Catalog\Application;
+
+use OrillaCart\Catalog\Domain\PricedItem;
+use OrillaCart\Catalog\Domain\ShopperPrices;
+use OrillaCart\Extension\Pricing\PriceAdjuster;
+use OrillaCart\Extension\Pricing\PriceQuery;
+use OrillaCart\Shared\Domain\Money;
+use Psr\Log\LoggerInterface;
+
+/**
+ * An item's own price for one shopper: the price rules that hold for them, then each add-on's adjuster in turn.
+ * Options and bundles price on top of it.
+ */
+final readonly class ShopperPricing
+{
+    /**
+     * @param list<PriceAdjuster> $adjusters
+     */
+    public function __construct(
+        private ShopperPrices $rules,
+        private array $adjusters,
+        private ?int $customerId,
+        private string $currency,
+        private LoggerInterface $logger,
+    ) {}
+
+    /**
+     * The price of each of this many items.
+     *
+     * @param Money $price   today's price, on sale or not
+     * @param Money $regular the price without a sale; today's when null
+     */
+    public function price(Money $price, PricedItem $item, int $quantity = 1, ?int $variationId = null, ?Money $regular = null): Money
+    {
+        return $this->adjusted($this->rules->price($price, $item, $quantity), $item->productId, $variationId, $quantity, $regular ?? $price);
+    }
+
+    /**
+     * The price from each quantity where a rule changes it, for the product page.
+     *
+     * @return list<array{min_quantity: int, price: string}>
+     */
+    public function tiers(Money $price, PricedItem $item, ?int $variationId = null, ?Money $regular = null): array
+    {
+        if ($this->adjusters === []) {
+            return $this->rules->tiers($price, $item);
+        }
+
+        return $this->rules->tiers($price, $item, fn(Money $ruled, int $quantity): Money => $this->adjusted($ruled, $item->productId, $variationId, $quantity, $regular ?? $price));
+    }
+
+    public function nextChange(PricedItem $item): ?\DateTimeImmutable
+    {
+        return $this->rules->nextChange($item);
+    }
+
+    private function adjusted(Money $price, int $productId, ?int $variationId, int $quantity, Money $regular): Money
+    {
+        foreach ($this->adjusters as $adjuster) {
+            try {
+                $answer = $adjuster->adjust(new PriceQuery($productId, $variationId, $quantity, $this->customerId, (string) $price, (string) $regular, $this->currency));
+            } catch (\Throwable $e) {
+                $this->logger->error('The price adjuster {adjuster} failed for product {product}: {message}', ['adjuster' => $adjuster->id(), 'product' => $productId, 'message' => $e->getMessage(), 'exception' => $e]);
+
+                continue;
+            }
+            if ($answer === null) {
+                continue;
+            }
+            if (preg_match('/^-?\d{1,11}(\.\d{1,' . Money::DECIMALS . '})?$/', $answer) !== 1) {
+                $this->logger->error('The price adjuster {adjuster} answered "{answer}" for product {product}, which is not a price; it is ignored.', ['adjuster' => $adjuster->id(), 'answer' => $answer, 'product' => $productId]);
+
+                continue;
+            }
+            $price = Money::of($answer)->atLeastZero();
+        }
+
+        return $price;
+    }
+}
