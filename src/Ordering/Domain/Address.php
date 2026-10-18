@@ -67,6 +67,15 @@ final class Address
         return new self(trim($firstName), trim($lastName), trim($street), trim($city), mb_substr(trim($postcode), 0, 20), $country, $state, mb_substr(trim($phone), 0, 40));
     }
 
+    /**
+     * This address with the person gone, as a privacy request asks: the country and state stay, since the books
+     * need them for the tax charged.
+     */
+    public function anonymised(): self
+    {
+        return new self('Anonymised', '', null, null, null, $this->country, $this->state, null);
+    }
+
     /** No address: the columns an order that ships nothing leaves empty. */
     public static function none(): self
     {

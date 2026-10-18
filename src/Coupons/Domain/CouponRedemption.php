@@ -43,6 +43,12 @@ class CouponRedemption
         $this->amount = $amount->toFixed();
     }
 
+    /** The customer was erased, as a privacy request asks. */
+    public function forgetEmail(): void
+    {
+        $this->email = '';
+    }
+
     public function couponId(): int
     {
         return $this->couponId;

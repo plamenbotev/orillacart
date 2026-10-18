@@ -161,6 +161,33 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(422, $this->request('DELETE', "/orders/{$first['number']}", nonce: true)->get_status(), 'it stays for the books');
     }
 
+    public function testWordPressPrivacyToolsExportAndEraseAPersonsOrders(): void
+    {
+        $first = $this->order([[$this->lamp, 1]]);
+        $second = $this->order([[$this->lamp, 1]]);
+        $this->actAs('administrator');
+        $this->request('POST', "/orders/{$first['number']}/paid", [], nonce: true);
+
+        $export = $this->privacyCallback('wp_privacy_personal_data_exporters');
+        $exported = $export('ada@example.com', 1);
+        self::assertIsArray($exported);
+        self::assertTrue($exported['done'] ?? null);
+        self::assertSame(["orillacart-order-{$first['number']}", "orillacart-order-{$second['number']}"], array_column($this->rows($exported['data'] ?? null), 'item_id'));
+
+        $erase = $this->privacyCallback('wp_privacy_personal_data_erasers');
+        $erased = $erase('ada@example.com', 1);
+        self::assertIsArray($erased);
+        self::assertSame([true, true, true], [$erased['items_removed'] ?? null, $erased['items_retained'] ?? null, $erased['done'] ?? null]);
+
+        $order = $this->data($this->request('GET', "/orders/{$first['number']}"));
+        self::assertSame(['anonymised@invalid', 'Anonymised', true, '0'], [$order['email'] ?? null, $this->rows([$order['billing'] ?? null])[0]['first_name'] ?? null, $order['anonymised'] ?? null, $order['refunded_total'] ?? null]);
+        self::assertCount(1, $this->rows($this->data($this->request('GET', "/orders/{$first['number']}/invoices"))), 'the invoice stays');
+        self::assertSame(200, $this->request('POST', "/orders/{$second['number']}/anonymise", [], nonce: true)->get_status(), 'erasing twice changes nothing');
+        $again = $export('ada@example.com', 1);
+        self::assertIsArray($again);
+        self::assertSame([], $this->rows($again['data'] ?? null));
+    }
+
     public function testTheShopRefundsPartOfAPaidOrderAndThenTheRest(): void
     {
         $order = $this->order([[$this->lamp, 2]]);
@@ -404,6 +431,22 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
 
         return $id;
+    }
+
+    /**
+     * The shop's exporter or eraser, as WordPress's privacy tools find it.
+     *
+     * @param non-empty-string $filter
+     */
+    private function privacyCallback(string $filter): callable
+    {
+        $tools = apply_filters($filter, []);
+        self::assertIsArray($tools);
+        $tool = $tools['orillacart'] ?? null;
+        self::assertIsArray($tool);
+        self::assertIsCallable($tool['callback'] ?? null);
+
+        return $tool['callback'];
     }
 
     private function id(\WP_REST_Response $response): int

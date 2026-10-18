@@ -118,6 +118,10 @@ class Order
     #[ORM\Column(options: ['default' => false])]
     private bool $reverseCharge = false;
 
+    /** When the customer's details were erased, as a privacy request asked. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $anonymisedAt = null;
+
     /** Since when it waits for the payment it was last asked to pay: placing it, or paying it again later. */
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $awaitingPaymentSince = null;
@@ -908,6 +912,36 @@ class Order
     public function pricesIncludeTax(): bool
     {
         return $this->pricesIncludeTax;
+    }
+
+    /**
+     * Erases the customer from the order, as a privacy request asks: name, email, phone, street, city, postcode,
+     * their note, their answers to checkout questions and the account it belongs to. What the books must keep
+     * stays: the items, amounts, taxes, the country and a business's VAT number. The downloads go: there is
+     * nobody to give them to.
+     *
+     * @return bool false when it was erased before
+     */
+    public function anonymise(\DateTimeImmutable $at): bool
+    {
+        if ($this->anonymisedAt !== null) {
+            return false;
+        }
+        $this->email = 'anonymised@invalid';
+        $this->billing = $this->billing->anonymised();
+        $this->shippingAddress = $this->shippingAddress->isEmpty() ? $this->shippingAddress : $this->shippingAddress->anonymised();
+        $this->customerId = null;
+        $this->note = '';
+        $this->fields = [];
+        $this->grants->clear();
+        $this->anonymisedAt = $at;
+
+        return true;
+    }
+
+    public function anonymisedAt(): ?\DateTimeImmutable
+    {
+        return $this->anonymisedAt;
     }
 
     public function vatNumber(): ?string

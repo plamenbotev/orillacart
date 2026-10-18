@@ -86,6 +86,16 @@ final readonly class DbalFailedJobs implements FailedJobs
         return (int) $this->tables->connection()->executeStatement("DELETE FROM {$this->tables->failed()}{$where}", $params);
     }
 
+    public function forgetMentioning(string $text): int
+    {
+        if (trim($text) === '') {
+            return 0;
+        }
+        $like = '%' . addcslashes($text, '%_\\') . '%';
+
+        return (int) $this->tables->connection()->executeStatement("DELETE FROM {$this->tables->failed()} WHERE payload LIKE ? OR error LIKE ?", [$like, $like]);
+    }
+
     public function prune(\DateTimeImmutable $before): void
     {
         $this->tables->connection()->executeStatement("DELETE FROM {$this->tables->failed()} WHERE failed_at < ?", [$before->format(self::MOMENT)]);

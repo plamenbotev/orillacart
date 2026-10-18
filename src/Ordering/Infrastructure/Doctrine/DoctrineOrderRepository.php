@@ -80,6 +80,22 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         return [$orders, $total];
     }
 
+    public function ofPerson(string $email, ?int $customerId, int $offset, int $limit): array
+    {
+        $query = $this->entityManager->createQueryBuilder()->select('o')->from(Order::class, 'o')
+            ->where($customerId === null ? 'o.email = :email' : 'o.email = :email OR o.customerId = :customer')
+            ->setParameter('email', $email)
+            ->orderBy('o.id', 'ASC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit);
+        if ($customerId !== null) {
+            $query->setParameter('customer', $customerId);
+        }
+
+        /** @var list<Order> */
+        return $query->getQuery()->getResult();
+    }
+
     public function remove(Order $order): void
     {
         $this->entityManager->remove($order);

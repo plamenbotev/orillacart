@@ -52,6 +52,14 @@ final class InMemoryOrderRepository implements OrderRepository
         return array_values(array_filter($this->orders, static fn(Order $order): bool => $order->status() === OrderStatus::PendingPayment && $order->awaitingPaymentSince() < $before));
     }
 
+    public function ofPerson(string $email, ?int $customerId, int $offset, int $limit): array
+    {
+        $found = array_values(array_filter($this->orders, static fn(Order $order): bool => strcasecmp($order->email(), $email) === 0 || ($customerId !== null && $order->customerId() === $customerId)));
+        usort($found, static fn(Order $a, Order $b): int => $a->id() <=> $b->id());
+
+        return \array_slice($found, $offset, $limit);
+    }
+
     public function hasStandingOrder(?int $customerId, string $email, ?int $exceptOrderId = null): bool
     {
         foreach ($this->orders as $order) {

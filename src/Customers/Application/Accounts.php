@@ -16,6 +16,9 @@ interface Accounts
 
     public function isRegistered(string $email): bool;
 
+    /** The account of the email, if any: a WordPress user may be another role's. */
+    public function idOf(string $email): ?int;
+
     /**
      * @return int the new account's id
      */

@@ -36,4 +36,11 @@ interface FailedJobs
 
     /** Deletes the failed jobs older than $before. */
     public function prune(\DateTimeImmutable $before): void;
+
+    /**
+     * Forgets failed jobs whose payload or error mentions the text, such as an email a privacy request erases.
+     *
+     * @return int how many
+     */
+    public function forgetMentioning(string $text): int;
 }

@@ -19,8 +19,10 @@ import type { Address } from '../shared/address';
 import { AddressFields } from '../shared/AddressFields';
 import { toApiError } from '../shared/api';
 import { useBusy } from '../shared/useBusy';
+import { useConfirm } from '../shared/useConfirm';
 import {
 	addNote,
+	anonymiseOrder,
 	changeContact,
 	changeStatus,
 	deleteOrder,
@@ -262,13 +264,67 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 				}
 				onError={ fail }
 			/>
-			{ order.paid_at === null && (
-				<DeleteButton
-					order={ order }
-					onDeleted={ onBack }
-					onError={ fail }
-				/>
-			) }
+			<Flex justify="flex-start">
+				{ ! order.anonymised && (
+					<AnonymiseButton
+						order={ order }
+						onSaved={ done(
+							__(
+								'The customer’s details were erased from the order.',
+								'orillacart'
+							)
+						) }
+						onError={ fail }
+					/>
+				) }
+				{ order.paid_at === null && (
+					<DeleteButton
+						order={ order }
+						onDeleted={ onBack }
+						onError={ fail }
+					/>
+				) }
+			</Flex>
+		</>
+	);
+}
+
+/**
+ * Erases the customer's details from the order, as a privacy request asks, keeping its sums for the books.
+ * @param props
+ * @param props.order
+ * @param props.onSaved
+ * @param props.onError
+ */
+function AnonymiseButton( { order, onSaved, onError }: CardProps ) {
+	const [ busy, run ] = useBusy();
+	const [ confirmation, confirm ] = useConfirm();
+
+	return (
+		<>
+			{ confirmation }
+			<Button
+				variant="secondary"
+				isBusy={ busy }
+				disabled={ busy }
+				onClick={ () =>
+					confirm(
+						__(
+							'The customer’s name, email, addresses, phone, note and downloads go from this order for good. What was bought and paid stays, for the books.',
+							'orillacart'
+						),
+						() =>
+							run( () =>
+								anonymiseOrder( order.number )
+									.then( onSaved )
+									.catch( onError )
+							),
+						__( 'Erase', 'orillacart' )
+					)
+				}
+			>
+				{ __( 'Erase the customer’s details', 'orillacart' ) }
+			</Button>
 		</>
 	);
 }
@@ -493,6 +549,14 @@ function Summary( { order }: { order: Order } ) {
 								'Reverse charge: sold without VAT.',
 								'orillacart'
 							) }
+					</p>
+				) }
+				{ order.anonymised && (
+					<p>
+						{ __(
+							'The customer’s details were erased, as a privacy request asked.',
+							'orillacart'
+						) }
 					</p>
 				) }
 				{ order.note !== '' && (

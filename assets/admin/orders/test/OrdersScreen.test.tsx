@@ -77,6 +77,7 @@ const order = {
 	discount_total: '0',
 	discounts: [],
 	fields: [ { id: 'vat_number', label: 'VAT number', answer: 'BG123' } ],
+	anonymised: false,
 };
 
 type Request = { path: string; method?: string; data?: unknown };
@@ -219,5 +220,62 @@ describe( 'OrdersScreen', () => {
 			path: '/orillacart/v1/orders/7/actions/export',
 			method: 'POST',
 		} );
+	} );
+
+	it( 'erases the customer’s details once the shop agrees', async () => {
+		const erased = {
+			...order,
+			email: 'anonymised@invalid',
+			billing: { ...address, first_name: 'Anonymised', last_name: '' },
+			anonymised: true,
+		};
+		mockedFetch.mockImplementation( ( options ) => {
+			const request = options as Request;
+			if ( request.path.endsWith( '/anonymise' ) ) {
+				return Promise.resolve( erased );
+			}
+			if ( request.path.endsWith( '/actions' ) ) {
+				return Promise.resolve( [] );
+			}
+			if ( request.path.endsWith( '/refunds' ) ) {
+				return Promise.resolve( {
+					refundable: '0',
+					currency: 'EUR',
+					paid: false,
+					provider: null,
+					refunds: [],
+				} );
+			}
+			return Promise.resolve( order );
+		} );
+		const user = userEvent.setup();
+		render( <OrderDetail id={ 7 } onBack={ () => {} } /> );
+
+		await user.click(
+			await screen.findByRole( 'button', {
+				name: 'Erase the customer’s details',
+			} )
+		);
+		await user.click( screen.getByRole( 'button', { name: 'Erase' } ) );
+
+		expect(
+			await screen.findByText(
+				'The customer’s details were erased from the order.',
+				NOTICE
+			)
+		).toBeVisible();
+		expect(
+			mockedFetch.mock.calls.some(
+				( [ request ] ) =>
+					( request as Request ).path ===
+						'/orillacart/v1/orders/7/anonymise' &&
+					( request as Request ).method === 'POST'
+			)
+		).toBe( true );
+		expect(
+			screen.queryByRole( 'button', {
+				name: 'Erase the customer’s details',
+			} )
+		).not.toBeInTheDocument();
 	} );
 } );

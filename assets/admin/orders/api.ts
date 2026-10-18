@@ -136,6 +136,8 @@ export interface Order {
 	/** The business customer's VAT number, and whether it bought without VAT. */
 	vat_number: string | null;
 	reverse_charge: boolean;
+	/** The customer's details were erased, as a privacy request asked. */
+	anonymised: boolean;
 }
 
 /** A button an add-on puts on the order screen. */
@@ -304,6 +306,13 @@ export function markHandled( id: number ): Promise< Order > {
 	return apiFetch< Order >( {
 		path: `${ BASE }/orders/${ id }/attention`,
 		method: 'DELETE',
+	} );
+}
+
+export function anonymiseOrder( id: number ): Promise< Order > {
+	return apiFetch< Order >( {
+		path: `${ BASE }/orders/${ id }/anonymise`,
+		method: 'POST',
 	} );
 }
 

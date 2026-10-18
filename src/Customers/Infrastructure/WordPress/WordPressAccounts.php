@@ -39,6 +39,13 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener
         return email_exists($email) !== false;
     }
 
+    public function idOf(string $email): ?int
+    {
+        $id = email_exists($email);
+
+        return \is_int($id) ? $id : null;
+    }
+
     public function register(string $email, string $password, string $firstName, string $lastName): int
     {
         $local = strstr($email, '@', true);

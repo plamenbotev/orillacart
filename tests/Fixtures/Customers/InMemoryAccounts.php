@@ -30,6 +30,17 @@ final class InMemoryAccounts implements Accounts
         return $this->accounts[$id] ?? null;
     }
 
+    public function idOf(string $email): ?int
+    {
+        foreach ($this->accounts as $id => $account) {
+            if (strcasecmp($account->email, $email) === 0) {
+                return $id;
+            }
+        }
+
+        return null;
+    }
+
     public function isRegistered(string $email): bool
     {
         foreach ($this->accounts as $account) {

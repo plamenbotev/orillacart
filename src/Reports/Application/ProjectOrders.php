@@ -98,7 +98,12 @@ final readonly class ProjectOrders implements JobHandler
                 $counted,
                 $order->status,
                 $order->currency,
-                $order->customerId !== null ? 'c' . $order->customerId : 'e' . mb_substr(mb_strtolower($order->email), 0, 200),
+                // An erased customer is nobody known again: each such order is a customer of its own.
+                match (true) {
+                    $order->customerId !== null => 'c' . $order->customerId,
+                    $order->anonymised => 'o' . $order->number,
+                    default => 'e' . mb_substr(mb_strtolower($order->email), 0, 200),
+                },
                 $order->customerId,
                 mb_substr(trim($order->billing->firstName . ' ' . $order->billing->lastName), 0, 200),
                 $address->country,

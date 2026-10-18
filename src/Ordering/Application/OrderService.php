@@ -25,6 +25,7 @@ use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RefundOrder;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
+use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
 use OrillaCart\Ordering\Domain\Event\OrderChanged;
 use OrillaCart\Ordering\Domain\Event\OrderDeleted;
 use OrillaCart\Ordering\Domain\Event\OrderNeedsAttention;
@@ -289,6 +290,37 @@ final readonly class OrderService
 
             return $this->view($order);
         });
+    }
+
+    /**
+     * Erases the customer from the order, as a privacy request asks; the books keep what they must (see
+     * Order::anonymise()).
+     *
+     * @throws OrderNotFound
+     */
+    public function anonymise(int $id, ?int $userId): OrderView
+    {
+        return $this->changing($id, function (Order $order) use ($userId): OrderView {
+            $email = $order->email();
+            if ($order->anonymise($this->clock->now())) {
+                $order->addNote('The customer\'s details were erased, as a privacy request asked.', $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
+                $this->orders->save($order);
+                $this->events->dispatch(new OrderAnonymised($order->id(), $email));
+                $this->events->dispatch(new OrderChanged($order->id()));
+            }
+
+            return $this->view($order, true);
+        });
+    }
+
+    /**
+     * A page of a person's orders, by their email or their account, for a privacy export or erasure.
+     *
+     * @return list<OrderView>
+     */
+    public function ofPerson(string $email, ?int $customerId, int $page, int $perPage): array
+    {
+        return array_map(fn(Order $order): OrderView => $this->view($order, true), $this->orders->ofPerson($email, $customerId, ($page - 1) * $perPage, $perPage));
     }
 
     /**

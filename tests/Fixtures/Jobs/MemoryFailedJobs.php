@@ -58,6 +58,15 @@ final class MemoryFailedJobs implements FailedJobs
         return $count;
     }
 
+    public function forgetMentioning(string $text): int
+    {
+        $kept = array_filter($this->jobs, static fn(FailedJobView $job): bool => !str_contains((string) json_encode($job->payload) . $job->error, $text));
+        $forgotten = \count($this->jobs) - \count($kept);
+        $this->jobs = $kept;
+
+        return $forgotten;
+    }
+
     public function prune(\DateTimeImmutable $before): void
     {
         $this->jobs = array_filter($this->jobs, static fn(FailedJobView $job): bool => new \DateTimeImmutable($job->failedAt) >= $before);

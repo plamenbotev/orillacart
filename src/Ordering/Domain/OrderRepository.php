@@ -42,6 +42,13 @@ interface OrderRepository
      */
     public function idsAfter(int $afterId, int $limit): array;
 
+    /**
+     * A page of the orders of a person, by their email or their account, oldest first.
+     *
+     * @return list<Order>
+     */
+    public function ofPerson(string $email, ?int $customerId, int $offset, int $limit): array;
+
     public function save(Order $order): void;
 
     public function remove(Order $order): void;

@@ -18,6 +18,7 @@ use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Customers\Domain\CustomerSettings;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
 use OrillaCart\Customers\Domain\Event\CustomerDeleted;
+use OrillaCart\Customers\Domain\Event\CustomerErased;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -38,6 +39,39 @@ final readonly class CustomerService
         private CustomerGroupRepository $groups,
         private EventDispatcherInterface $events,
     ) {}
+
+    /**
+     * The person of the email erased, as a privacy request asks: their saved addresses go, and they leave their
+     * groups. The WordPress account itself is WordPress's to remove.
+     *
+     * @return bool whether there was anything to erase
+     */
+    public function erase(string $email): bool
+    {
+        $id = $this->accounts->idOf($email);
+        $record = $id === null ? null : $this->accounts->find($id);
+        if ($id === null || $record === null) {
+            return false;
+        }
+        $groupIds = $this->groups->groupIdsOf($id);
+        $this->accounts->saveAddresses($id, null, null);
+        foreach ($groupIds as $groupId) {
+            $group = $this->groups->find($groupId);
+            if ($group !== null) {
+                $group->remove($id);
+                $this->groups->save($group);
+            }
+        }
+        $this->events->dispatch(new CustomerErased($id));
+
+        return $record->billing !== null || $record->shippingAddress !== null || $groupIds !== [];
+    }
+
+    /** The account of the email, if any. */
+    public function customerIdOf(string $email): ?int
+    {
+        return $this->accounts->idOf($email);
+    }
 
     /**
      * A customer's account was deleted: they leave their groups, and the other areas let go of them too (their

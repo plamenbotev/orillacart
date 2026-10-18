@@ -73,6 +73,8 @@ final readonly class OrderView
         public ?string $vatNumber = null,
         /** Sold without VAT: the business customer accounts for it. */
         public bool $reverseCharge = false,
+        /** The customer's details were erased, as a privacy request asked. */
+        public bool $anonymised = false,
     ) {}
 
     /**
@@ -126,6 +128,7 @@ final readonly class OrderView
             $order->pricesIncludeTax(),
             $order->vatNumber(),
             $order->reverseCharge(),
+            $order->anonymisedAt() !== null,
         );
     }
 }
