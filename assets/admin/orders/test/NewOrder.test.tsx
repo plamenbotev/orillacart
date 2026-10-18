@@ -53,6 +53,8 @@ const quote = {
 	shipping: '5',
 	shipping_tax: '1',
 	total: '42',
+	discount: '0',
+	discounts: [],
 	currency: 'EUR',
 };
 
