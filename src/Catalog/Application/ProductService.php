@@ -15,6 +15,7 @@ use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
 use OrillaCart\Catalog\Domain\Event\ProductChanged;
 use OrillaCart\Catalog\Domain\PriceVisibility;
+use OrillaCart\Catalog\Domain\Pricing;
 use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductDetails;
@@ -25,6 +26,7 @@ use OrillaCart\Catalog\Domain\StockMode;
 use OrillaCart\Catalog\Domain\Variation;
 use OrillaCart\Catalog\Domain\VariationDetails;
 use OrillaCart\Catalog\Domain\VariationNotFound;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Tax\Application\TaxGroupService;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -107,6 +109,21 @@ final readonly class ProductService
         }
 
         return ProductView::fromProduct($product, $name);
+    }
+
+    /**
+     * Changes the regular price only, keeping a sale, as the product list's quick edit does.
+     *
+     * @throws ProductNotFound      also when the product's commerce details were never saved
+     * @throws CatalogRuleViolation for a negative price
+     */
+    public function changePrice(int $id, string $price): void
+    {
+        $product = $this->get($id);
+        $details = $product->details();
+        $product->change($details->withPrice(new Pricing(Money::of($price), $details->pricing->sale())));
+        $this->products->save($product);
+        $this->events->dispatch(new ProductChanged($id));
     }
 
     /**

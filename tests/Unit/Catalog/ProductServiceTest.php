@@ -179,4 +179,14 @@ final class ProductServiceTest extends TestCase
         $this->products->removeVariation(10, $variation->id);
         self::assertSame([], $this->content->variations);
     }
+
+    public function testQuickEditChangesThePriceAndKeepsTheSale(): void
+    {
+        $this->products->save(10, new SaveProduct('40', sale: new SaveSale('30'), sku: 'HOOD'));
+
+        $this->products->changePrice(10, '45');
+
+        $product = $this->products->product(10);
+        self::assertSame(['45', '30', 'HOOD'], [$product->price, $product->sale?->price, $product->sku]);
+    }
 }

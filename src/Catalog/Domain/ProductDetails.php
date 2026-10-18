@@ -42,6 +42,28 @@ final readonly class ProductDetails
         self::validMeasures(['weight' => $weight, 'length' => $length, 'width' => $width, 'height' => $height]);
     }
 
+    /** The same details at another price, the sale kept. */
+    public function withPrice(Pricing $pricing): self
+    {
+        return new self(
+            $this->type,
+            $pricing,
+            $this->sku,
+            $this->taxable,
+            $this->taxGroupId,
+            $this->stockMode,
+            $this->purchasable,
+            $this->featured,
+            $this->weight,
+            $this->length,
+            $this->width,
+            $this->height,
+            $this->downloadLimit,
+            $this->downloadExpiryDays,
+            $this->priceVisibility,
+        );
+    }
+
     /**
      * @param array<string, ?string> $measures by name; null for none
      *

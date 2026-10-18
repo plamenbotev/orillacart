@@ -18,7 +18,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
  */
 final readonly class ProductsBlock implements BlockDefinition
 {
-    public const array SORTS = ['newest', 'name'];
+    public const array SORTS = ['order', 'newest', 'name', 'price_asc', 'price_desc'];
 
     public function __construct(
         private ShopCatalog $catalog,
@@ -43,6 +43,9 @@ final readonly class ProductsBlock implements BlockDefinition
                 'perPage' => ['type' => 'integer', 'default' => 12],
                 'columns' => ['type' => 'integer', 'default' => 3],
                 'category' => ['type' => 'string', 'default' => ''],
+                'sort' => ['type' => 'string', 'default' => 'order'],
+                'featured' => ['type' => 'boolean', 'default' => false],
+                'onSale' => ['type' => 'boolean', 'default' => false],
             ],
         ];
     }
@@ -55,7 +58,8 @@ final readonly class ProductsBlock implements BlockDefinition
 
         $category = $fixedCategory !== '' ? $fixedCategory : self::query('category');
         $search = self::query('product-search');
-        $sort = \in_array(self::query('sort'), self::SORTS, true) ? self::query('sort') : 'newest';
+        $defaultSort = \is_string($attributes['sort'] ?? null) && \in_array($attributes['sort'], self::SORTS, true) ? $attributes['sort'] : 'order';
+        $sort = \in_array(self::query('sort'), self::SORTS, true) ? self::query('sort') : $defaultSort;
         $page = max(1, ctype_digit(self::query('product-page')) ? (int) self::query('product-page') : 1);
 
         $arguments = [
@@ -63,8 +67,17 @@ final readonly class ProductsBlock implements BlockDefinition
             'post_status' => 'publish',
             'posts_per_page' => $perPage,
             'paged' => $page,
-            'orderby' => $sort === 'name' ? 'title' : 'date',
-            'order' => $sort === 'name' ? 'ASC' : 'DESC',
+            'orderby' => match ($sort) {
+                'name' => 'title',
+                'newest' => 'date',
+                'order' => ['menu_order' => 'ASC', 'title' => 'ASC'],
+                default => 'none',
+            },
+            'order' => $sort === 'newest' ? 'DESC' : 'ASC',
+            // Price sorts, and the featured and on-sale filters, come from CatalogQueryVars.
+            'orillacart_sort' => $sort,
+            'orillacart_featured' => ($attributes['featured'] ?? false) === true,
+            'orillacart_on_sale' => ($attributes['onSale'] ?? false) === true,
             'ignore_sticky_posts' => true,
             'no_found_rows' => false,
             'fields' => 'ids',
@@ -108,7 +121,13 @@ final readonly class ProductsBlock implements BlockDefinition
             'base_url' => $base,
             'search' => $search,
             'sort' => $sort,
-            'sorts' => ['newest' => __('Newest', 'orillacart'), 'name' => __('Name', 'orillacart')],
+            'sorts' => [
+                'order' => __('Recommended', 'orillacart'),
+                'newest' => __('Newest', 'orillacart'),
+                'name' => __('Name', 'orillacart'),
+                'price_asc' => __('Price: low to high', 'orillacart'),
+                'price_desc' => __('Price: high to low', 'orillacart'),
+            ],
             'page' => $page,
             'pages' => $pages,
             'page_urls' => $pageUrls,

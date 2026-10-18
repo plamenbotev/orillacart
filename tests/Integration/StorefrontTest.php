@@ -147,6 +147,43 @@ final class StorefrontTest extends RestTestCase
         unset($draft);
     }
 
+    public function testShoppersSortByPriceAndTheShopsOrderAndTheBlockCanShowOnlyFeaturedOrSaleProducts(): void
+    {
+        $this->actAs('administrator');
+        // The lamp costs 30 (on sale from 40); the vase 35; the cup 20, featured; the shirt from 25 (its variations).
+        $vase = $this->product('Vase', ['price' => '35', 'stock_mode' => 'always_available']);
+        $cup = $this->product('Cup', ['price' => '20', 'stock_mode' => 'always_available', 'featured' => true]);
+        $shirt = $this->product('Shirt', ['price' => '99', 'attributes' => [['name' => 'Size', 'options' => [['name' => 'S'], ['name' => 'L']]]]]);
+        $offered = $this->data($this->request('GET', "/products/{$shirt}"))['offered'] ?? null;
+        self::assertIsArray($offered);
+        self::assertIsArray($offered[0]);
+        $options = $offered[0]['options'];
+        self::assertIsArray($options);
+        foreach ($options as $index => $option) {
+            self::assertIsArray($option);
+            $this->request('POST', "/products/{$shirt}/variations", ['option_ids' => [$option['id']], 'price' => $index === 0 ? '25' : '45', 'stock_mode' => 'always_available'], nonce: true);
+        }
+        wp_update_post(['ID' => $vase, 'menu_order' => 1]);
+        wp_update_post(['ID' => $cup, 'menu_order' => 2]);
+        wp_update_post(['ID' => $this->lamp, 'menu_order' => 3]);
+        wp_update_post(['ID' => $shirt, 'menu_order' => 4]);
+        wp_set_current_user(0);
+
+        $names = static function (string $html): array {
+            preg_match_all('#class="orillacart-product-card__name">([^<]+)<#', $html, $found);
+
+            return $found[1];
+        };
+        $_GET = ['sort' => 'price_asc'];
+        self::assertSame(['Cup', 'Shirt', 'Brass lamp', 'Vase'], $names(do_blocks('<!-- wp:orillacart/products /-->')), 'today\'s price: the sale and the lowest variation count');
+        $_GET = ['sort' => 'price_desc'];
+        self::assertSame(['Vase', 'Brass lamp', 'Shirt', 'Cup'], $names(do_blocks('<!-- wp:orillacart/products /-->')));
+        $_GET = [];
+        self::assertSame(['Vase', 'Cup', 'Brass lamp', 'Shirt'], $names(do_blocks('<!-- wp:orillacart/products /-->')), 'the shop\'s own order first');
+        self::assertSame(['Cup'], $names(do_blocks('<!-- wp:orillacart/products {"featured":true} /-->')));
+        self::assertSame(['Brass lamp'], $names(do_blocks('<!-- wp:orillacart/products {"onSale":true} /-->')));
+    }
+
     public function testAProductPageOffersItsChoicesAndAddsToTheCart(): void
     {
         $this->actAs('administrator');

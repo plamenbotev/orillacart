@@ -8,6 +8,7 @@ import {
 	PanelBody,
 	Placeholder,
 	RangeControl,
+	SelectControl,
 	TextControl,
 	ToggleControl,
 } from '@wordpress/components';
@@ -17,6 +18,9 @@ type ProductsAttributes = {
 	perPage: number;
 	columns: number;
 	category: string;
+	sort: 'order' | 'newest' | 'name' | 'price_asc' | 'price_desc';
+	featured: boolean;
+	onSale: boolean;
 };
 
 const notes: Record< string, string > = {
@@ -87,6 +91,57 @@ function ProductsEdit( {
 						onChange={ ( category ) =>
 							setAttributes( { category } )
 						}
+					/>
+					<SelectControl
+						__next40pxDefaultSize
+						label={ __( 'First sorted by', 'orillacart' ) }
+						help={ __(
+							'Shoppers can sort differently.',
+							'orillacart'
+						) }
+						value={ attributes.sort }
+						options={ [
+							{
+								label: __(
+									'Recommended (the products’ Order)',
+									'orillacart'
+								),
+								value: 'order',
+							},
+							{
+								label: __( 'Newest', 'orillacart' ),
+								value: 'newest',
+							},
+							{
+								label: __( 'Name', 'orillacart' ),
+								value: 'name',
+							},
+							{
+								label: __( 'Price: low to high', 'orillacart' ),
+								value: 'price_asc',
+							},
+							{
+								label: __( 'Price: high to low', 'orillacart' ),
+								value: 'price_desc',
+							},
+						] }
+						onChange={ ( sort ) =>
+							setAttributes( {
+								sort: sort as ProductsAttributes[ 'sort' ],
+							} )
+						}
+					/>
+					<ToggleControl
+						label={ __( 'Featured products only', 'orillacart' ) }
+						checked={ attributes.featured }
+						onChange={ ( featured ) =>
+							setAttributes( { featured } )
+						}
+					/>
+					<ToggleControl
+						label={ __( 'Products on sale only', 'orillacart' ) }
+						checked={ attributes.onSale }
+						onChange={ ( onSale ) => setAttributes( { onSale } ) }
 					/>
 				</PanelBody>
 			</InspectorControls>
