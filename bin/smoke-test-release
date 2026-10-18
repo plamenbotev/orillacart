@@ -203,7 +203,8 @@ grep -qi '^cache-control:.*no-store' <<< "$cart_headers" || fail "the cart page 
 echo "==> Upgrade on an admin request"
 wp option update orillacart_version 0.0.1 > /dev/null
 # A site whose files are newer than its database: here, one without any of the plugin's tables.
-docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SELECT CONCAT('DROP TABLE ', GROUP_CONCAT(table_name), ';') FROM information_schema.tables
+# GROUP_CONCAT stops at 1024 bytes unless told otherwise; the plugin has more tables than fit.
+docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SET SESSION group_concat_max_len = 65535; SELECT CONCAT('DROP TABLE ', GROUP_CONCAT(table_name), ';') FROM information_schema.tables
     WHERE table_schema = 'wordpress' AND table_name LIKE 'wp\\_orillacart\\_%'" 2> /dev/null \
     | { echo 'SET FOREIGN_KEY_CHECKS = 0;'; cat; } | docker exec -i "$DB" mysql -uwp -pwp wordpress 2> /dev/null
 [ -z "$(plugin_tables)" ] || fail "could not drop the plugin tables before the upgrade"
