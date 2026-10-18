@@ -44,5 +44,7 @@ final readonly class CheckoutView
         public string $discount = '0',
         public array $coupons = [],
         public array $fields = [],
+        /** The amounts include tax: the tax lines say how much of the total is tax, they do not add to it. */
+        public bool $pricesIncludeTax = false,
     ) {}
 }

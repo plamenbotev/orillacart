@@ -73,4 +73,15 @@ final class MoneyTest extends TestCase
 
         Money::of($value);
     }
+
+    public function testTheTaxIncludedInAnAmountComesOutAtEachRate(): void
+    {
+        self::assertSame('2', (string) Money::of('12')->includedPercent('20', ['20']));
+        self::assertSame('10', (string) Money::of('12')->withoutPercents(['20']));
+        // 12.00 at 19 %: 1.9160 of VAT, 10.0840 before it.
+        self::assertSame(['1.916', '10.084'], [(string) Money::of('12')->includedPercent('19', ['19']), (string) Money::of('12')->withoutPercents(['19'])]);
+        // A country's 5 % and a state's 2.5 % add up to 7.5 % of 107.50.
+        self::assertSame(['5', '2.5', '100'], [(string) Money::of('107.5')->includedPercent('5', ['5', '2.5']), (string) Money::of('107.5')->includedPercent('2.5', ['5', '2.5']), (string) Money::of('107.5')->withoutPercents(['5', '2.5'])]);
+        self::assertSame('9', (string) Money::of('9')->withoutPercents([]));
+    }
 }

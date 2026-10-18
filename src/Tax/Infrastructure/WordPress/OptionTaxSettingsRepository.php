@@ -34,12 +34,12 @@ final readonly class OptionTaxSettingsRepository implements TaxSettingsRepositor
             return TaxSettings::defaults();
         }
 
-        return new TaxSettings($basis, $group);
+        return new TaxSettings($basis, $group, ($stored['prices_include_tax'] ?? false) === true);
     }
 
     public function save(TaxSettings $settings): void
     {
-        update_option(self::OPTION, ['basis' => $settings->basis->value, 'default_group_id' => $settings->defaultGroupId], true);
+        update_option(self::OPTION, ['basis' => $settings->basis->value, 'default_group_id' => $settings->defaultGroupId, 'prices_include_tax' => $settings->pricesIncludeTax], true);
     }
 
     public function activate(): void {}

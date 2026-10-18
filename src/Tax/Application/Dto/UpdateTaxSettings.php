@@ -17,5 +17,6 @@ final readonly class UpdateTaxSettings
         public string $basis,
         #[Assert\Positive]
         public ?int $defaultGroupId,
+        public bool $pricesIncludeTax = false,
     ) {}
 }

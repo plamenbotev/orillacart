@@ -28,10 +28,18 @@
         {% if summary.needs_shipping %}
             <tr><th scope="row">{{ __('Shipping') }}</th><td>{{ summary.shipping_option ? summary.shipping|money(summary.currency) : '—' }}</td></tr>
         {% endif %}
-        {% for tax in summary.taxes %}
-            <tr><th scope="row">{{ tax.name }} ({{ tax.percent }}%)</th><td>{{ tax.total|money(summary.currency) }}</td></tr>
-        {% endfor %}
+        {% if not summary.prices_include_tax %}
+            {% for tax in summary.taxes %}
+                <tr><th scope="row">{{ tax.name }} ({{ tax.percent }}%)</th><td>{{ tax.total|money(summary.currency) }}</td></tr>
+            {% endfor %}
+        {% endif %}
         <tr class="orillacart-total"><th scope="row">{{ __('Total') }}</th><td>{{ summary.total|money(summary.currency) }}</td></tr>
+        {% if summary.prices_include_tax %}
+            {% for tax in summary.taxes %}
+                {# translators: 1: tax name, 2: its rate -#}
+                <tr class="orillacart-included-tax"><th scope="row">{{ __('Including %1$s (%2$s%%)')|format(tax.name, tax.percent) }}</th><td>{{ tax.total|money(summary.currency) }}</td></tr>
+            {% endfor %}
+        {% endif %}
     </tfoot>
 </table>
 

@@ -22,6 +22,8 @@ export interface TaxSettings {
 	basis: string;
 	default_group_id: number | null;
 	bases: string[];
+	/** Prices are entered including tax; every customer pays them as entered. */
+	prices_include_tax: boolean;
 }
 
 export type TaxSettingsInput = Omit< TaxSettings, 'bases' >;

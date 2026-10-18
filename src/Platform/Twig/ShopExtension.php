@@ -8,6 +8,7 @@ use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Geography\Domain\AddressFormat;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Settings\Domain\CurrencyPosition;
+use OrillaCart\Tax\Application\TaxCalculator;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
@@ -25,6 +26,7 @@ final class ShopExtension extends AbstractExtension
     public function __construct(
         private readonly SettingsService $settings,
         private readonly GeographyService $geography,
+        private readonly ?TaxCalculator $taxes = null,
     ) {}
 
     public function getFunctions(): array
@@ -36,6 +38,8 @@ final class ShopExtension extends AbstractExtension
                 ? _n($single, $plural, $number, 'orillacart')
                 : ($number === 1 ? $single : $plural)),
             // {{ slot('product_after_form', product.id) }}: what add-ons print there (docs/extensions.md lists them)
+            // Whether shop prices include tax, for the "incl. tax" next to them.
+            new TwigFunction('prices_include_tax', fn(): bool => $this->taxes?->pricesIncludeTax() ?? false),
             new TwigFunction('slot', $this->slot(...), ['is_safe' => ['html'], 'is_variadic' => true]),
         ];
     }

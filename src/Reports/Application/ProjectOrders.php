@@ -87,6 +87,8 @@ final readonly class ProjectOrders implements JobHandler
         $counted = $order->paidAt !== null;
         $address = $order->shippingAddress ?? $order->billing;
         $items = array_sum(array_map(static fn(OrderLineView $line): int => $line->quantity, $order->lines));
+        // Facts are before tax: amounts that include it give it up here.
+        $net = static fn(string $amount, string $tax): string => $order->pricesIncludeTax ? (string) Money::of($amount)->subtract(Money::of($tax)) : $amount;
 
         return new OrderFacts(
             new SoldOrder(
@@ -103,9 +105,9 @@ final readonly class ProjectOrders implements JobHandler
                 mb_substr($order->paymentName, 0, 100),
                 mb_substr($order->shipping ?? '', 0, 255),
                 $items,
-                $order->subtotal,
+                $net($order->subtotal, $order->itemsTax),
                 $order->discountTotal,
-                $order->shippingTotal,
+                $net($order->shippingTotal, $order->shippingTax),
                 (string) Money::of($order->itemsTax)->add(Money::of($order->shippingTax)),
                 $order->total,
             ),
@@ -118,7 +120,7 @@ final readonly class ProjectOrders implements JobHandler
                 $line->variationId,
                 mb_substr($line->name, 0, 255),
                 $line->quantity,
-                (string) Money::of($line->total)->subtract(Money::of($line->discount)),
+                $net((string) Money::of($line->total)->subtract(Money::of($line->discount)), $line->tax),
             ), $order->lines),
             array_map(static fn(OrderDiscountView $discount): UsedCoupon => new UsedCoupon(
                 $order->number,

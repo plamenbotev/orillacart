@@ -36,5 +36,7 @@ final readonly class NewOrder
         public string $discountTotal = '0',
         public array $discounts = [],
         public array $fields = [],
+        /** The amounts include tax: the total is not the subtotal plus tax. */
+        public bool $pricesIncludeTax = false,
     ) {}
 }

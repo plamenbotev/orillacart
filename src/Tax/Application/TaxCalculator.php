@@ -32,6 +32,27 @@ final readonly class TaxCalculator
         return AppliedTaxesView::fromTaxes($this->applied($query));
     }
 
+    /** Whether prices are entered including tax; see TaxSettings. */
+    public function pricesIncludeTax(): bool
+    {
+        return $this->settings->load()->pricesIncludeTax;
+    }
+
+    /**
+     * The taxes of the group at the shop's own address, whoever buys: what a price entered including tax holds
+     * when the customer owes none, as for an export.
+     */
+    public function shopTaxes(?int $groupId): AppliedTaxesView
+    {
+        $settings = $this->settings->load();
+        $groupId ??= $settings->defaultGroupId;
+        $group = $groupId === null ? null : $this->groups->find($groupId);
+        $shop = $this->shop->current();
+        $location = $this->locate(new TaxAddress($shop->shopCountry, $shop->shopState));
+
+        return AppliedTaxesView::fromTaxes($group === null || $location === null ? AppliedTaxes::none() : $group->taxesAt($location));
+    }
+
     private function applied(TaxQuery $query): AppliedTaxes
     {
         $settings = $this->settings->load();

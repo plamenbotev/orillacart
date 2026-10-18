@@ -24,5 +24,6 @@ final readonly class NewOrderItems
         public string $total,
         public string $discountTotal = '0',
         public array $discounts = [],
+        public bool $pricesIncludeTax = false,
     ) {}
 }

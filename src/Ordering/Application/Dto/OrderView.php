@@ -68,6 +68,8 @@ final readonly class OrderView
         public ?string $attention = null,
         /** Unpaid, and waiting for the money or failed to pay: the customer can pay it now. */
         public bool $payable = false,
+        /** The amounts include tax: its lines say how much of the total is tax, they do not add to it. */
+        public bool $pricesIncludeTax = false,
     ) {}
 
     /**
@@ -118,6 +120,7 @@ final readonly class OrderView
             array_map(OrderFieldView::fromAnswer(...), $order->fields()),
             $forShop ? $order->attention() : null,
             $order->isPayable(),
+            $order->pricesIncludeTax(),
         );
     }
 }

@@ -78,7 +78,8 @@ final readonly class OrderPricing
     {
         $settings = $this->settings->current();
         $decimals = $settings->priceDecimals;
-        $bill = new Bill($decimals);
+        $inclusive = $this->tax->pricesIncludeTax();
+        $bill = new Bill($decimals, $inclusive);
         $lines = [];
         $parcel = [];
         $taxesOf = [];
@@ -92,8 +93,13 @@ final readonly class OrderPricing
                 throw new CheckoutRuleViolation(\sprintf('%s is not available in that quantity. Review the items and try again.', $quote->name), 'orillacart_cart_changed');
             }
             $unitPrice = $line['unit_price'] ?? $quote->unitPrice;
+            $taxes = $quote->taxable ? $this->taxes($quote->taxGroupId, $shipping, $billing) : [];
+            if ($inclusive && $quote->taxable && $taxes === []) {
+                // A price including tax, for a customer who owes none (an export): the shop's own tax comes off.
+                $unitPrice = (string) Money::of($unitPrice)->withoutPercents($this->shopPercents($quote->taxGroupId));
+            }
             $total = Money::of($unitPrice)->times($line['quantity']);
-            $taxesOf[] = $quote->taxable ? $this->taxes($quote->taxGroupId, $shipping, $billing) : [];
+            $taxesOf[] = $taxes;
             $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero()];
             if ($quote->type === 'physical') {
                 $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
@@ -121,8 +127,13 @@ final readonly class OrderPricing
             foreach ($offered as $option) {
                 $taxes = $option->taxable && !$free ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
                 $price = $free ? Money::zero() : Money::of($option->price);
-                $tax = array_reduce($taxes, static fn(Money $sum, Tax $rate): Money => $sum->add($price->percent($rate->percent)->rounded($decimals)), Money::zero());
-                $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $price->rounded($decimals)->add($tax), $option->toPickupPoint);
+                if ($inclusive && $option->taxable && $taxes === [] && !$free) {
+                    $price = $price->withoutPercents($this->shopPercents($option->taxGroupId));
+                }
+                $percents = array_map(static fn(Tax $rate): string => $rate->percent, $taxes);
+                $tax = array_reduce($taxes, static fn(Money $sum, Tax $rate): Money => $sum->add(($inclusive ? $price->includedPercent($rate->percent, $percents) : $price->percent($rate->percent))->rounded($decimals)), Money::zero());
+                $total = $inclusive ? $price->rounded($decimals) : $price->rounded($decimals)->add($tax);
+                $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $total, $option->toPickupPoint);
                 $options[] = $view;
                 // The customer's choice when it is offered, otherwise the first rate, so the totals include shipping.
                 if ($chosen === null || $option->id === $shippingOption) {
@@ -273,6 +284,16 @@ final readonly class OrderPricing
             static fn(AppliedTaxView $tax): Tax => new Tax($tax->rateId === null ? "{$tax->name}|{$tax->percent}" : (string) $tax->rateId, $tax->name, $tax->percent),
             $this->tax->taxes(new TaxQuery($groupId, $shipping, $billing))->taxes,
         );
+    }
+
+    /**
+     * The rates a price including tax holds at the shop's own address.
+     *
+     * @return list<string>
+     */
+    private function shopPercents(?int $groupId): array
+    {
+        return array_map(static fn(AppliedTaxView $tax): string => $tax->percent, $this->tax->shopTaxes($groupId)->taxes);
     }
 
     /**

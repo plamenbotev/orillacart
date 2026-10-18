@@ -11,6 +11,9 @@ use OrillaCart\Shared\Domain\Money;
  * and rounded once to the currency, as are the subtotal, the discount and shipping, and the total is the sum of
  * those rounded parts, so an invoice always adds up. Discounts lower what tax is charged on: tax is on what the
  * customer pays.
+ *
+ * With prices that include tax, the amounts are what the customer pays, tax in them: each rate takes its part
+ * of what it applies to, rounded once, and the total is the subtotal less discounts plus shipping, as entered.
  */
 final class Bill
 {
@@ -18,11 +21,16 @@ final class Bill
     private Money $discount;
     private Money $shipping;
 
-    /** @var array<string, array{tax: Tax, items: Money, shipping: Money}> */
+    /**
+     * @var array<string, array{tax: Tax, items: Money, shipping: Money}> what each rate is charged on, or with
+     *                                                                     prices that include tax, its exact part
+     */
     private array $bases = [];
 
-    public function __construct(private readonly int $decimals)
-    {
+    public function __construct(
+        private readonly int $decimals,
+        private readonly bool $includesTax = false,
+    ) {
         $this->subtotal = Money::zero();
         $this->discount = Money::zero();
         $this->shipping = Money::zero();
@@ -40,13 +48,20 @@ final class Bill
         $this->subtotal = $this->subtotal->add($total);
         $this->discount = $this->discount->add($discount);
         $taxed = $total->subtract($discount);
+        $percents = array_map(static fn(Tax $rate): string => $rate->percent, $taxes);
         $tax = Money::zero();
         foreach ($taxes as $rate) {
-            $this->base($rate)['items'] = $this->base($rate)['items']->add($taxed);
-            $tax = $tax->add($taxed->percent($rate->percent));
+            $part = $this->includesTax ? $taxed->includedPercent($rate->percent, $percents) : $taxed->percent($rate->percent);
+            $this->base($rate)['items'] = $this->base($rate)['items']->add($this->includesTax ? $part : $taxed);
+            $tax = $tax->add($part);
         }
 
         return $tax;
+    }
+
+    public function includesTax(): bool
+    {
+        return $this->includesTax;
     }
 
     /**
@@ -55,8 +70,9 @@ final class Bill
     public function ship(Money $price, array $taxes): void
     {
         $this->shipping = $price;
+        $percents = array_map(static fn(Tax $rate): string => $rate->percent, $taxes);
         foreach ($taxes as $rate) {
-            $this->base($rate)['shipping'] = $this->base($rate)['shipping']->add($price);
+            $this->base($rate)['shipping'] = $this->base($rate)['shipping']->add($this->includesTax ? $price->includedPercent($rate->percent, $percents) : $price);
         }
     }
 
@@ -86,8 +102,8 @@ final class Bill
             $billed = new BilledTax(
                 $tax->name,
                 $tax->percent,
-                $items->percent($tax->percent)->rounded($this->decimals),
-                $shipping->percent($tax->percent)->rounded($this->decimals),
+                ($this->includesTax ? $items : $items->percent($tax->percent))->rounded($this->decimals),
+                ($this->includesTax ? $shipping : $shipping->percent($tax->percent))->rounded($this->decimals),
             );
             if (!$billed->total()->isZero()) {
                 $taxes[] = $billed;
@@ -109,7 +125,9 @@ final class Bill
 
     public function total(): Money
     {
-        return $this->subtotal()->subtract($this->discount())->add($this->itemsTax())->add($this->shipping())->add($this->shippingTax());
+        $total = $this->subtotal()->subtract($this->discount())->add($this->shipping());
+
+        return $this->includesTax ? $total : $total->add($this->itemsTax())->add($this->shippingTax());
     }
 
     /**

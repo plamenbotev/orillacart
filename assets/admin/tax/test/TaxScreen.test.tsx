@@ -53,6 +53,7 @@ function serve( write: ( request: Request ) => Promise< unknown > ) {
 				return Promise.resolve( {
 					basis: 'shipping_address',
 					default_group_id: null,
+					prices_include_tax: false,
 					bases: [
 						'shipping_address',
 						'billing_address',
@@ -128,7 +129,11 @@ describe( 'TaxScreen', () => {
 		expect( write ).toHaveBeenCalledWith( {
 			path: '/orillacart/v1/tax/settings',
 			method: 'PUT',
-			data: { basis: 'eu_origin', default_group_id: 1 },
+			data: {
+				basis: 'eu_origin',
+				default_group_id: 1,
+				prices_include_tax: false,
+			},
 		} );
 	} );
 

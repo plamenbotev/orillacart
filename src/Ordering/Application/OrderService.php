@@ -101,6 +101,7 @@ final readonly class OrderService
             Money::of($command->discountTotal),
             self::discounts($command->discounts),
             array_map(static fn(OrderFieldView $field): FieldAnswer => $field->toAnswer(), $command->fields),
+            $command->pricesIncludeTax,
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);
@@ -671,6 +672,7 @@ final readonly class OrderService
             Money::of($command->total),
             Money::of($command->discountTotal),
             self::discounts($command->discounts),
+            $command->pricesIncludeTax,
         );
         $order->addNote(\sprintf('The items were changed; the total went from %s to %s %s.', $before, (string) $order->total(), $order->currency()), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
         $this->orders->save($order);

@@ -119,6 +119,7 @@ final readonly class OrderEditing
                 (string) $bill->total(),
                 (string) $bill->discount(),
                 $this->pricing->discounts($priced),
+                $bill->includesTax(),
             ), $userId);
         });
     }

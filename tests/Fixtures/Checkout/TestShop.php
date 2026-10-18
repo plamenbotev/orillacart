@@ -302,7 +302,7 @@ final class TestShop
         $this->mail = new SentMail();
         $this->emailSettings = new InMemoryEmailSettingsRepository();
         $context = new PluginContext(\dirname(__DIR__, 3) . '/orillacart.php', 'test');
-        $this->templates = $templates = new TwigRenderer(new TwigFactory($context, new ShopExtension($settings, $geography))->create(), new SerializerFactory()->create());
+        $this->templates = $templates = new TwigRenderer(new TwigFactory($context, new ShopExtension($settings, $geography, $taxes))->create(), new SerializerFactory()->create());
         $this->consignmentRecords = new InMemoryConsignmentRepository();
         $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger);
         $this->jobs = new TestJobs($this->clock);

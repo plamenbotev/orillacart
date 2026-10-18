@@ -115,6 +115,7 @@ final readonly class CheckoutService
             (string) $bill->discount(),
             $coupons,
             $this->fields->asked($priced['needs_shipping']),
+            $bill->includesTax(),
         );
     }
 
@@ -210,6 +211,7 @@ final readonly class CheckoutService
             (string) $bill->discount(),
             $this->pricing->discounts($priced),
             $answers,
+            $bill->includesTax(),
         )))));
         $receiptUrl = $this->links->receiptUrl($order->key);
 

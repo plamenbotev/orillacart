@@ -1,5 +1,6 @@
 import {
 	Button,
+	CheckboxControl,
 	Card,
 	CardBody,
 	CardHeader,
@@ -169,12 +170,19 @@ function SettingsCard( {
 	const [ defaultGroup, setDefaultGroup ] = useState(
 		settings.default_group_id
 	);
+	const [ includeTax, setIncludeTax ] = useState(
+		settings.prices_include_tax
+	);
 	const [ saving, setSaving ] = useState( false );
 
 	const submit = ( event: FormEvent ) => {
 		event.preventDefault();
 		setSaving( true );
-		saveTaxSettings( { basis, default_group_id: defaultGroup } )
+		saveTaxSettings( {
+			basis,
+			default_group_id: defaultGroup,
+			prices_include_tax: includeTax,
+		} )
 			.then( onSaved )
 			.catch( onError )
 			.finally( () => setSaving( false ) );
@@ -224,6 +232,15 @@ function SettingsCard( {
 									: Number.parseInt( value, 10 )
 							)
 						}
+					/>
+					<CheckboxControl
+						label={ __( 'Prices include tax', 'orillacart' ) }
+						help={ __(
+							'Prices of products and shipping are entered with tax in them, as EU shops show them. Every customer pays them as entered, and the tax in them is their own country’s; a customer who owes no tax, such as abroad, pays them less your own tax.',
+							'orillacart'
+						) }
+						checked={ includeTax }
+						onChange={ setIncludeTax }
 					/>
 					<Button
 						variant="primary"

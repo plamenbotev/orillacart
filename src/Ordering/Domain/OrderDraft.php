@@ -39,5 +39,6 @@ final readonly class OrderDraft
         public ?Money $discountTotal = null,
         public array $discounts = [],
         public array $fields = [],
+        public bool $pricesIncludeTax = false,
     ) {}
 }

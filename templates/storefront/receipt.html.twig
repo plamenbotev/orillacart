@@ -83,10 +83,18 @@
             {% if order.shipping %}
                 <tr><th scope="row">{{ __('Shipping') }} ({{ order.shipping }})</th><td>{{ order.shipping_total|money(order.currency) }}</td></tr>
             {% endif %}
-            {% for tax in order.taxes %}
-                <tr><th scope="row">{{ tax.name }} ({{ tax.percent }}%)</th><td>{{ tax.amount|money(order.currency) }}</td></tr>
-            {% endfor %}
+            {% if not order.prices_include_tax %}
+                {% for tax in order.taxes %}
+                    <tr><th scope="row">{{ tax.name }} ({{ tax.percent }}%)</th><td>{{ tax.amount|money(order.currency) }}</td></tr>
+                {% endfor %}
+            {% endif %}
             <tr class="orillacart-total"><th scope="row">{{ __('Total') }}</th><td>{{ order.total|money(order.currency) }}</td></tr>
+            {% if order.prices_include_tax %}
+                {% for tax in order.taxes %}
+                    {# translators: 1: tax name, 2: its rate -#}
+                    <tr class="orillacart-included-tax"><th scope="row">{{ __('Including %1$s (%2$s%%)')|format(tax.name, tax.percent) }}</th><td>{{ tax.amount|money(order.currency) }}</td></tr>
+                {% endfor %}
+            {% endif %}
             {% if order.refunded_total > 0 %}
                 <tr><th scope="row">{{ __('Refunded') }}</th><td>−{{ order.refunded_total|money(order.currency) }}</td></tr>
             {% endif %}

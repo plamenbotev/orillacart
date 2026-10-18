@@ -106,6 +106,10 @@ class Order
     #[ORM\Column(type: 'text')]
     private string $paymentNote;
 
+    /** The amounts include tax, as the shop's prices did when it was priced: the total is not subtotal plus tax. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $pricesIncludeTax = false;
+
     /** Since when it waits for the payment it was last asked to pay: placing it, or paying it again later. */
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $awaitingPaymentSince = null;
@@ -165,7 +169,7 @@ class Order
         $shippingTotal = $draft->shipping->price ?? Money::zero();
         $shippingTax = $draft->shipping->tax ?? Money::zero();
         $discountTotal = $draft->discountTotal ?? Money::zero();
-        if (!$draft->subtotal->subtract($discountTotal)->add($draft->itemsTax)->add($shippingTotal)->add($shippingTax)->equals($draft->total)) {
+        if (!self::addsUp($draft->subtotal, $discountTotal, $draft->itemsTax, $shippingTotal, $shippingTax, $draft->total, $draft->pricesIncludeTax)) {
             throw new \LogicException('The order total is not the sum of its parts.');
         }
         if (($draft->shipping === null) !== ($draft->shippingAddress === null)) {
@@ -203,6 +207,7 @@ class Order
         $this->note = trim($draft->note);
         $this->placedAt = $draft->placedAt;
         $this->awaitingPaymentSince = $draft->placedAt;
+        $this->pricesIncludeTax = $draft->pricesIncludeTax;
         $this->fields = self::fieldRows($draft->fields);
     }
 
@@ -623,7 +628,7 @@ class Order
      *
      * @throws OrderRuleViolation for an order not on hold, or one without items
      */
-    public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, array $taxes, Money $subtotal, Money $itemsTax, Money $total, ?Money $discountTotal = null, array $discounts = []): void
+    public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, array $taxes, Money $subtotal, Money $itemsTax, Money $total, ?Money $discountTotal = null, array $discounts = [], bool $pricesIncludeTax = false): void
     {
         $discountTotal ??= Money::zero();
         $this->requireOnHold();
@@ -632,7 +637,7 @@ class Order
         }
         $shippingTotal = $shipping->price ?? Money::zero();
         $shippingTax = $shipping->tax ?? Money::zero();
-        if (!$subtotal->subtract($discountTotal)->add($itemsTax)->add($shippingTotal)->add($shippingTax)->equals($total)) {
+        if (!self::addsUp($subtotal, $discountTotal, $itemsTax, $shippingTotal, $shippingTax, $total, $pricesIncludeTax)) {
             throw new \LogicException('The order total is not the sum of its parts.');
         }
         if (($shipping === null) !== ($shippingAddress === null)) {
@@ -653,6 +658,7 @@ class Order
         $this->subtotal = $subtotal->toFixed();
         $this->itemsTax = $itemsTax->toFixed();
         $this->total = $total->toFixed();
+        $this->pricesIncludeTax = $pricesIncludeTax;
         $this->discountTotal = $discountTotal->toFixed();
         $this->discounts = self::discountRows($discounts);
     }
@@ -887,6 +893,19 @@ class Order
         $this->status = OrderStatus::Processing;
         $this->transactionId = $transactionId;
         $this->paidAt = $at;
+    }
+
+    public function pricesIncludeTax(): bool
+    {
+        return $this->pricesIncludeTax;
+    }
+
+    /** The total is the subtotal less discounts plus shipping, and plus tax unless the amounts include it. */
+    private static function addsUp(Money $subtotal, Money $discount, Money $itemsTax, Money $shipping, Money $shippingTax, Money $total, bool $includesTax): bool
+    {
+        $sum = $subtotal->subtract($discount)->add($shipping);
+
+        return ($includesTax ? $sum : $sum->add($itemsTax)->add($shippingTax))->equals($total);
     }
 
     private function requireOnHold(): void

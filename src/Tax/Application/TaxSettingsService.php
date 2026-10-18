@@ -33,7 +33,7 @@ final readonly class TaxSettingsService
             throw new RuleViolation(\sprintf('There is no tax group %d.', $command->defaultGroupId), 'orillacart_unknown_tax_group');
         }
 
-        $settings = new TaxSettings(TaxBasis::from($command->basis), $command->defaultGroupId);
+        $settings = new TaxSettings(TaxBasis::from($command->basis), $command->defaultGroupId, $command->pricesIncludeTax);
         $this->settings->save($settings);
 
         return TaxSettingsView::fromSettings($settings);
