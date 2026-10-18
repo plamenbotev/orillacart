@@ -177,7 +177,7 @@ export function SearchEngineCard() {
 										state.workers
 									)
 								: __(
-										'WordPress builds the index after each change and every minute. For a busy shop, run workers: wp orillacart index work --loop.',
+										'WordPress builds the index after each change and every minute. For a busy shop, run workers: wp orillacart jobs work --loop.',
 										'orillacart'
 									) }
 						</p>

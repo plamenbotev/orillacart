@@ -9,8 +9,8 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\CategoryOrder;
 use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
+use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
-use OrillaCart\Search\Application\IndexWorker;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionShopPagesRepository;
 
 /**
@@ -429,9 +429,9 @@ final class StorefrontTest extends RestTestCase
      */
     private function shop(string $block): string
     {
-        $worker = self::kernel()->container()->get(IndexWorker::class);
-        self::assertInstanceOf(IndexWorker::class, $worker);
-        while ($worker->work(100)->count() > 0);
+        $runner = self::kernel()->container()->get(JobRunner::class);
+        self::assertInstanceOf(JobRunner::class, $runner);
+        while ($runner->work(['search'], 100, 'test')->count() > 0);
 
         return do_blocks($block);
     }

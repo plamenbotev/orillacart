@@ -6,26 +6,21 @@ namespace OrillaCart\Search\Application;
 
 use OrillaCart\Catalog\Application\ProductLookup;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
+use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Search\Application\Dto\QueueStatus;
-use OrillaCart\Shared\Lifecycle\AfterResponse;
-use Psr\Clock\ClockInterface;
 
 /**
- * Keeps the search index in step with the catalog: queues the products that changed, or all of them.
+ * Keeps the search index in step with the catalog: queues the products that changed, or all of them, as
+ * search.index jobs, one per product however often it changes before it is built.
  */
 final readonly class SearchIndexing
 {
     private const int PAGE = 500;
-    /** How many documents a request builds after its response, so the shop shows its changes at once. */
-    private const int AFTER_RESPONSE = 10;
 
     public function __construct(
-        private IndexQueue $queue,
+        private Jobs $jobs,
         private ProductLookup $products,
-        private ClockInterface $clock,
-        private AfterResponse $afterResponse,
-        private IndexWorker $worker,
-        private IndexWorkers $workers,
+        private IndexProducts $handler,
     ) {}
 
     /**
@@ -33,11 +28,10 @@ final readonly class SearchIndexing
      */
     public function queue(array $productIds): void
     {
-        if ($productIds !== []) {
-            $this->queue->push(array_values(array_unique($productIds)), $this->clock->now());
-            // Unless workers that run all the time have the queue: they take it within seconds.
-            $this->afterResponse->defer(self::class, fn() => $this->workers->running() > 0 ? null : $this->worker->work(self::AFTER_RESPONSE));
-        }
+        $this->jobs->pushMany(IndexProducts::TYPE, array_map(
+            static fn(int $id): array => ['key' => (string) $id, 'payload' => []],
+            array_values(array_unique($productIds)),
+        ));
     }
 
     /** Stock of a product, variation or option changed: "variation:12", as StockChanged names it. */
@@ -61,12 +55,21 @@ final readonly class SearchIndexing
             $count += \count($ids);
             $after = $ids === [] ? $after : $ids[\count($ids) - 1];
         } while (\count($ids) === self::PAGE);
+        if ($count === 0) {
+            $this->handler->markBuilt();
+        }
 
         return $count;
     }
 
     public function status(): QueueStatus
     {
-        return $this->queue->status($this->clock->now());
+        $waiting = $this->jobs->waiting(IndexProducts::TYPE);
+        $failed = [];
+        foreach ($this->jobs->failed(IndexProducts::TYPE) as $job) {
+            $failed[(int) $job->uniqueKey] = $job->error;
+        }
+
+        return new QueueStatus($waiting->due + $waiting->running, $waiting->later, $failed, $waiting->nextAt === null ? null : new \DateTimeImmutable($waiting->nextAt));
     }
 }

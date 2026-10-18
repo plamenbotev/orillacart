@@ -9,7 +9,6 @@ use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Search\Domain\IndexedProduct;
 use OrillaCart\Search\Domain\IndexedValue;
 use OrillaCart\Search\Domain\IndexedVariant;
-use OrillaCart\Search\Domain\IndexJob;
 
 /**
  * The connection and the prefixed names of the search tables, for the SQL the ORM cannot write.
@@ -23,10 +22,6 @@ final readonly class SearchTables
         return $this->entityManager->getConnection();
     }
 
-    public function jobs(): string
-    {
-        return $this->entityManager->getClassMetadata(IndexJob::class)->getTableName();
-    }
 
     public function documents(): string
     {

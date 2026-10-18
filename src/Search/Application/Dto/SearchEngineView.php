@@ -28,7 +28,7 @@ final readonly class SearchEngineView
         public ?string $nextAt,
         public ?bool $works = null,
         public string $message = '',
-        /** Workers that run all the time (wp orillacart index work --loop), seen lately. */
+        /** Workers that run all the time (wp orillacart jobs work --loop), seen lately. */
         public int $workers = 0,
     ) {}
 }

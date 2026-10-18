@@ -26,6 +26,12 @@ use OrillaCart\Inventory\Domain\StockLevelRepository;
 use OrillaCart\Inventory\Domain\StockroomRepository;
 use OrillaCart\Inventory\Infrastructure\Doctrine\DoctrineStockLevelRepository;
 use OrillaCart\Inventory\Infrastructure\Doctrine\DoctrineStockroomRepository;
+use OrillaCart\Jobs\Application\JobHandlers;
+use OrillaCart\Jobs\Application\JobQueue;
+use OrillaCart\Jobs\Application\WorkerRegistry;
+use OrillaCart\Jobs\Infrastructure\Doctrine\DbalJobQueue;
+use OrillaCart\Jobs\Infrastructure\LocatedJobHandlers;
+use OrillaCart\Jobs\Infrastructure\WordPress\TableWorkerRegistry;
 use OrillaCart\Notifications\Application\Mailer;
 use OrillaCart\Notifications\Application\Site;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
@@ -67,20 +73,16 @@ use OrillaCart\Platform\WordPress\Files\WebServerFileDelivery;
 use OrillaCart\Platform\WordPress\Logging\DebugLogLogger;
 use OrillaCart\Platform\WordPress\WordPressIntegration;
 use OrillaCart\Search\Application\CatalogSearch;
-use OrillaCart\Search\Application\IndexQueue;
 use OrillaCart\Search\Application\ProductTexts;
 use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Application\SearchServer;
-use OrillaCart\Search\Application\WorkerSignals;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchFilterRepository;
-use OrillaCart\Search\Infrastructure\Doctrine\DbalIndexQueue;
 use OrillaCart\Search\Infrastructure\Doctrine\DoctrineSearchFilterRepository;
 use OrillaCart\Search\Infrastructure\EngineCatalogSearch;
 use OrillaCart\Search\Infrastructure\EngineSearchIndex;
 use OrillaCart\Search\Infrastructure\OpenSearch\OpenSearchServer;
 use OrillaCart\Search\Infrastructure\WordPress\OptionEngineSettingsRepository;
-use OrillaCart\Search\Infrastructure\WordPress\OptionWorkerSignals;
 use OrillaCart\Search\Infrastructure\WordPress\WordPressProductTexts;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
@@ -199,7 +201,6 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(Site::class, WordPressSite::class);
     $services->alias(Accounts::class, WordPressAccounts::class);
     $services->alias(CustomerSettingsRepository::class, OptionCustomerSettingsRepository::class);
-    $services->alias(IndexQueue::class, DbalIndexQueue::class);
     $services->alias(SearchFilterRepository::class, DoctrineSearchFilterRepository::class);
     $services->alias(ProductTexts::class, WordPressProductTexts::class);
     $services->alias(RateCache::class, TransientRateCache::class);
@@ -209,8 +210,12 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CatalogSearch::class, EngineCatalogSearch::class);
     $services->alias(SearchIndex::class, EngineSearchIndex::class);
     $services->alias(SearchServer::class, OpenSearchServer::class);
-    $services->alias(WorkerSignals::class, OptionWorkerSignals::class);
     $services->alias(EngineSettingsRepository::class, OptionEngineSettingsRepository::class);
+
+    // Background jobs: one queue for every area's work, run by WP-Cron, the end of requests and workers.
+    $services->alias(JobQueue::class, DbalJobQueue::class);
+    $services->alias(JobHandlers::class, LocatedJobHandlers::class);
+    $services->alias(WorkerRegistry::class, TableWorkerRegistry::class);
 
     $services->alias(Transactions::class, DoctrineTransactions::class);
     $services->alias(LoadedEntities::class, DoctrineLoadedEntities::class);

@@ -57,7 +57,10 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 27a | ↳ `OrillaCart\Extension` namespace, registry (`orillacart_extensions`), payment gateways on it (returns and notifications for every gateway, PayPal rebuilt on it), setting types, add-on guide (docs/extensions.md) | 5696987 |
 | ✅ | 27b | ↳ Shipping methods: carriers get a method (rate table or an add-on's), live rates at checkout and in order editing | e1e2461 |
 | ✅ | 27c | ↳ Pickup points at checkout, shipments with labels, tracking and cancelling from the order screen | 930386c |
-| 📝 | 28 | Background jobs with an overview (asked 2026-10-18): one queue for all async work (search indexing first, then emails, tracking, webhooks), lanes, retries, failed jobs to retry or delete, workers with heartbeat, and a Shop → Background jobs screen (waiting, running, failed, workers, history) | [design](docs/designs/28-background-jobs.md) |
+| 🔄 | 28 | Background jobs with an overview (asked 2026-10-18): one queue for all async work (search indexing first, then emails, tracking, webhooks), lanes, retries, failed jobs to retry or delete, workers with heartbeat, and a Shop → Background jobs screen (waiting, running, failed, workers, history) | [design](docs/designs/28-background-jobs.md); emails on jobs now, done jobs kept as hourly counts (decided 2026-10-18) |
+| ✅ | 28a | ↳ The job system (lanes, unique jobs, batches, retries with back-off, failed jobs, hourly counts, workers in a table) with `wp orillacart jobs`; the search index runs on it | 335b127 |
+| ⬜ | 28b | ↳ Order emails and shipment tracking as jobs | |
+| ⬜ | 28c | ↳ Shop → Background jobs screen: lanes, workers, cron health, failed jobs to retry or delete, history | |
 | 📝 | 22 | Coupon codes: by rules (minimum amount, dates, usage limits, per customer) or for specific products and categories | [design](docs/designs/22-coupons.md) |
 | 📝 | 23 | Dynamic prices (quantity tiers, customer groups, scheduled rules), bundles and sets | [design](docs/designs/23-dynamic-prices-bundles.md) |
 | 📝 | 24 | Refunds through the payment methods: a contract the gateways that can refund implement (PayPal's refund API); offline methods recorded by hand; full and partial | [design](docs/designs/24-refunds.md) |

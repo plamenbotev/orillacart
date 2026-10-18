@@ -1,34 +1,55 @@
-# Running index workers
+# Running workers
 
-Changes to products, stock and prices reach the storefront's search index through a queue. Out of the box,
-WordPress empties it: right after a request that changed something, and every minute through WP-Cron. A busy
-shop, or one with a big catalog, runs workers instead: long-running processes that take from the queue as soon as
-something is in it. Run as many as you need; each takes different products (the queue claims with
-`FOR UPDATE SKIP LOCKED`), so adding workers builds more at once.
+The shop does slow work in the background, as jobs in one queue: building the search index as products, stock and
+prices change, and more kinds over time (emails, shipment tracking). Each kind of job waits in a lane: `search`
+for the index, `mail` for emails.
 
-While workers run (they tell the shop every 30 seconds), WP-Cron and the end of requests leave the queue to them.
-`wp orillacart index status` and the Search card in the shop settings show how many are running.
+Out of the box, WordPress runs the jobs: right after a request that pushed some, and every minute through WP-Cron,
+for up to twenty seconds. A busy shop, or one with a big catalog, runs workers instead: long-running processes that
+take jobs as soon as they are due. Run as many as you need; each takes different jobs (the queue claims with
+`FOR UPDATE SKIP LOCKED`), so adding workers does more at once.
+
+While workers serve a lane (each tells the shop every ten seconds), WP-Cron and the end of requests leave that lane
+to them and run only the lanes no worker serves.
 
 ## The command
 
 ```
-wp orillacart index work --loop [--batch=100] [--sleep=3] [--max-jobs=N] [--max-time=SECONDS] [--memory=256]
+wp orillacart jobs work --loop [--queue=search,mail] [--batch=100] [--sleep=3] [--max-jobs=N] [--max-time=SECONDS] [--memory=256]
 ```
 
-- `--loop` keeps it running; it waits `--sleep` seconds when the queue is empty.
-- It stops cleanly when it built `--max-jobs` products, ran `--max-time` seconds, used more than `--memory`
-  megabytes, or was asked to restart; the supervisor then starts a fresh one. Restarting every hour or so keeps
-  memory in check.
+- `--loop` keeps it running; it waits `--sleep` seconds when nothing is due.
+- `--queue` serves some lanes only, so a slow lane cannot hold up another: a worker or two for `mail`, more for
+  `search` while the catalog is rebuilt. Without it, a worker serves every lane.
+- It stops cleanly when it ran `--max-jobs` jobs, ran `--max-time` seconds, used more than `--memory` megabytes,
+  or was asked to restart; the supervisor then starts a fresh one. Restarting every hour or so keeps memory in
+  check.
 - On SIGTERM, SIGINT or SIGQUIT it finishes its batch and stops, where PHP has the `pcntl` extension. Without it,
-  the signal stops it at once: the products it held are taken again by another worker after five minutes.
-- `wp orillacart index restart` asks every worker to finish its batch and stop. Run it after deploying a new
+  the signal stops it at once: the jobs it held are taken again by another worker after five minutes, and count as
+  an attempt.
+- `wp orillacart jobs restart` asks every worker to finish its batch and stop. Run it after deploying a new
   version, so the workers start again on the new code.
+
+## Failures
+
+A job that throws is tried again after a wait that grows with each attempt; its batch is run again job by job, so
+only the bad job waits. After its last attempt (five for the search index) it is **failed**: kept with its error
+for thirty days, until the shop retries or deletes it.
+
+```
+wp orillacart jobs status              # what waits in each lane, the workers, when WP-Cron last ran
+wp orillacart jobs failed [--type=search.index]
+wp orillacart jobs retry <id>... | --all
+wp orillacart jobs forget <id>... | --all
+```
+
+Done jobs leave the queue; their counts per type and hour are kept for ninety days.
 
 ## Supervisor
 
 ```ini
-[program:orillacart-index]
-command=wp orillacart index work --loop --max-time=3600 --path=/var/www/html
+[program:orillacart-jobs]
+command=wp orillacart jobs work --loop --max-time=3600 --path=/var/www/html
 user=www-data
 numprocs=3
 process_name=%(program_name)s_%(process_num)02d
@@ -36,23 +57,23 @@ autostart=true
 autorestart=true
 stopsignal=TERM
 stopwaitsecs=60
-stdout_logfile=/var/log/orillacart-index.log
+stdout_logfile=/var/log/orillacart-jobs.log
 redirect_stderr=true
 ```
 
-`numprocs` is how many workers run.
+`numprocs` is how many workers run. For a lane of its own, add a second program with `--queue=mail`.
 
 ## systemd
 
 ```ini
-# /etc/systemd/system/orillacart-index@.service
+# /etc/systemd/system/orillacart-jobs@.service
 [Unit]
-Description=OrillaCart index worker %i
+Description=OrillaCart worker %i
 After=network.target mysql.service
 
 [Service]
 User=www-data
-ExecStart=/usr/local/bin/wp orillacart index work --loop --max-time=3600 --path=/var/www/html
+ExecStart=/usr/local/bin/wp orillacart jobs work --loop --max-time=3600 --path=/var/www/html
 Restart=always
 KillSignal=SIGTERM
 TimeoutStopSec=60
@@ -61,4 +82,4 @@ TimeoutStopSec=60
 WantedBy=multi-user.target
 ```
 
-Start three with `systemctl enable --now orillacart-index@{1..3}`.
+Start three with `systemctl enable --now orillacart-jobs@{1..3}`.

@@ -19,7 +19,7 @@ export interface SearchEngine {
 	next_at: string | null;
 	works: boolean | null;
 	message: string;
-	/** Workers that run all the time (wp orillacart index work --loop), seen lately. */
+	/** Workers that run all the time (wp orillacart jobs work --loop), seen lately. */
 	workers: number;
 }
 

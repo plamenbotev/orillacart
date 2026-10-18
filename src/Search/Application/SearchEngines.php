@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Search\Application;
 
+use OrillaCart\Jobs\Application\JobWorkers;
 use OrillaCart\Search\Application\Dto\ChangeSearchEngine;
 use OrillaCart\Search\Application\Dto\SearchEngineView;
 use OrillaCart\Search\Domain\EngineSettings;
@@ -20,7 +21,7 @@ final readonly class SearchEngines
         private EngineSettingsRepository $settings,
         private SearchServer $server,
         private SearchIndexing $indexing,
-        private IndexWorkers $workers,
+        private JobWorkers $workers,
     ) {}
 
     public function current(): SearchEngineView
@@ -73,7 +74,7 @@ final readonly class SearchEngines
             $status->nextAt?->format(\DATE_ATOM),
             $works,
             $message,
-            $this->workers->running(),
+            $this->workers->serving(IndexProducts::queue()),
         );
     }
 }

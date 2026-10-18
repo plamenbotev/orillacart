@@ -8,7 +8,7 @@
  *
  *   npx wp-env run cli --env-cwd=wp-content/plugins/orillacart wp eval-file bin/demo-shop.php
  *
- * Then build the search index: wp orillacart index work
+ * Then build the search index: wp orillacart jobs work
  */
 
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
@@ -211,4 +211,4 @@ if ($shop > 0) {
         BLOCKS]);
 }
 
-WP_CLI::success('The demo shop is ready: build its search index with `wp orillacart index work`, then open ' . ($shop > 0 ? get_permalink($shop) : 'the shop page') . '.');
+WP_CLI::success('The demo shop is ready: build its search index with `wp orillacart jobs work`, then open ' . ($shop > 0 ? get_permalink($shop) : 'the shop page') . '.');

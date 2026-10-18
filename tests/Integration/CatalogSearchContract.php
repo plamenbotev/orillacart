@@ -7,21 +7,14 @@ namespace OrillaCart\Tests\Integration;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
-use OrillaCart\Platform\Doctrine\DatabaseConfig;
-use OrillaCart\Platform\Doctrine\EntityManagerFactory;
-use OrillaCart\Platform\PluginContext;
-use OrillaCart\Search\Application\Dto\ClaimedJob;
+use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Search\Application\Dto\Facet;
 use OrillaCart\Search\Application\Dto\FacetCount;
 use OrillaCart\Search\Application\Dto\OptionFilter;
 use OrillaCart\Search\Application\Dto\SearchQuery;
 use OrillaCart\Search\Application\Dto\SearchSort;
-use OrillaCart\Search\Application\IndexWorker;
 use OrillaCart\Search\Application\SearchIndexing;
 use OrillaCart\Search\Application\ShopSearch;
-use OrillaCart\Search\Domain\IndexJob;
-use OrillaCart\Search\Infrastructure\Doctrine\DbalIndexQueue;
-use OrillaCart\Search\Infrastructure\Doctrine\SearchTables;
 
 /**
  * The storefront search, as every engine answers it: products reach the index through the queue as the shop
@@ -29,7 +22,7 @@ use OrillaCart\Search\Infrastructure\Doctrine\SearchTables;
  */
 abstract class CatalogSearchContract extends RestTestCase
 {
-    private const array TABLES = ['search_filters', 'index_jobs', 'search_values', 'search_variants', 'search_documents', 'stock_levels', 'stockrooms', 'variations', 'products'];
+    private const array TABLES = ['search_filters', 'jobs', 'failed_jobs', 'search_values', 'search_variants', 'search_documents', 'stock_levels', 'stockrooms', 'variations', 'products'];
 
     /** @var list<int> */
     private array $posts = [];
@@ -234,40 +227,6 @@ abstract class CatalogSearchContract extends RestTestCase
         self::assertSame(0, $this->indexing()->status()->due, 'still in stock: nothing the index shows changed');
     }
 
-    public function testWorkersTakeDifferentProductsAndAChangeWhileBuildingIsBuiltAgain(): void
-    {
-        $queue = $this->queue();
-        $now = new \DateTimeImmutable('2030-01-01 12:00:00');
-        $later = $now->modify('+5 minutes');
-        $queue->push([900001, 900002], $now);
-
-        $first = $queue->claim(1, $now, $later);
-        $second = $queue->claim(10, $now, $later);
-        self::assertSame([900001], array_map(static fn(ClaimedJob $job): int => $job->productId, $first));
-        self::assertSame([900002], array_map(static fn(ClaimedJob $job): int => $job->productId, $second), 'the first one is taken');
-        self::assertSame([], $queue->claim(10, $now, $later));
-
-        $queue->push([900001], $now);
-        $queue->complete($first[0], null);
-        $again = $queue->claim(10, $now, $later);
-        self::assertSame([[900001, 2]], array_map(static fn(ClaimedJob $job): array => [$job->productId, $job->version], $again), 'it changed while it was built');
-        $queue->complete($again[0], null);
-        $queue->complete($second[0], $now->modify('+1 day'));
-        self::assertSame([0, 1], [$queue->status($now)->due, $queue->status($now)->later], 'one waits for its sale');
-
-        $queue->push([900002], $now);
-        self::assertSame(1, $queue->status($now)->due, 'a change makes it due now');
-        for ($attempt = 1; $attempt <= IndexJob::MAX_ATTEMPTS; ++$attempt) {
-            $job = $queue->claim(10, $now, $later);
-            self::assertCount(1, $job);
-            $queue->fail($job[0], 'Broken', $now);
-        }
-        self::assertSame([], $queue->claim(10, $now, $later), 'it failed too often');
-        self::assertSame([900002 => 'Broken'], $queue->status($now)->parked);
-        $queue->push([900002], $now);
-        self::assertCount(1, $queue->claim(10, $now, $later), 'until it changes again');
-    }
-
     /**
      * @return list<string> the products on the page, in order
      */
@@ -319,11 +278,9 @@ abstract class CatalogSearchContract extends RestTestCase
 
     protected function work(): void
     {
-        $worker = self::kernel()->container()->get(IndexWorker::class);
-        self::assertInstanceOf(IndexWorker::class, $worker);
-        while ($worker->work(100)->count() > 0);
-        // A run with nothing left marks a new engine's index built.
-        $worker->work(100);
+        $runner = self::kernel()->container()->get(JobRunner::class);
+        self::assertInstanceOf(JobRunner::class, $runner);
+        while ($runner->work(['search'], 100, 'test')->count() > 0);
     }
 
     private function indexing(): SearchIndexing
@@ -332,13 +289,6 @@ abstract class CatalogSearchContract extends RestTestCase
         self::assertInstanceOf(SearchIndexing::class, $indexing);
 
         return $indexing;
-    }
-
-    private function queue(): DbalIndexQueue
-    {
-        $entityManager = new EntityManagerFactory(DatabaseConfig::fromWordPress(), new PluginContext(\dirname(__DIR__, 2) . '/orillacart.php', ORILLACART_VERSION))->create();
-
-        return new DbalIndexQueue(new SearchTables($entityManager));
     }
 
     /**

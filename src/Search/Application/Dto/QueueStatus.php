@@ -12,7 +12,7 @@ final readonly class QueueStatus
     /**
      * @param int                       $due     products to build now
      * @param int                       $later   products to build when a sale starts or ends
-     * @param array<int, string>        $parked  products that failed too often, with the last error, by product id
+     * @param array<int, string>        $parked  products whose build failed too often, with the error, by product id
      */
     public function __construct(
         public int $due,

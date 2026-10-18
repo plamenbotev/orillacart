@@ -1,6 +1,7 @@
 # 28 · Background jobs, with an overview for the shop
 
-Status: proposed 2026-10-18, waiting for approval.
+Status: building (2026-10-18). Decided without answers to the questions below, to keep going: emails move onto jobs
+now (28b), and done jobs are kept only as hourly counts; failed jobs keep their details.
 
 ## Why
 
