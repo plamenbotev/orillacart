@@ -72,6 +72,10 @@ class Product
     #[ORM\Column(nullable: true)]
     private ?int $downloadExpiryDays = null;
 
+    /** @var array{items: list<array{product_id: int, variation_id: ?int, quantity: int}>, pricing: string, discount: ?string}|null what it is made of, when it is a bundle */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $bundle = null;
+
     /** @var Collection<int, DownloadFile> */
     #[ORM\OneToMany(targetEntity: DownloadFile::class, mappedBy: 'product', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['id' => 'ASC'])]
@@ -312,6 +316,9 @@ class Product
      */
     public function addVariation(int $id, VariationDetails $details): Variation
     {
+        if ($this->bundle !== null) {
+            throw new CatalogRuleViolation('A bundle has no variations: its items have theirs.', 'orillacart_invalid_bundle');
+        }
         $options = $this->variationOptions($details, null);
         $variation = new Variation($id, $this, $details, $options);
         $this->variations->add($variation);
@@ -408,6 +415,35 @@ class Product
         }
 
         return new Configuration($this, null, array_values($chosen), $price->atLeastZero());
+    }
+
+    /** What it is made of, when it is a bundle. */
+    public function bundle(): ?Bundle
+    {
+        return $this->bundle === null ? null : Bundle::fromArray($this->bundle);
+    }
+
+    public function isBundle(): bool
+    {
+        return $this->bundle !== null;
+    }
+
+    /**
+     * Makes the product a bundle of other products, or a product of its own again.
+     *
+     * @throws CatalogRuleViolation for a product with variations, or one that holds itself
+     */
+    public function makeBundle(?Bundle $bundle): void
+    {
+        if ($bundle !== null && !$this->variations->isEmpty()) {
+            throw new CatalogRuleViolation('A product with variations cannot be a bundle.', 'orillacart_invalid_bundle');
+        }
+        foreach ($bundle->items ?? [] as $item) {
+            if ($item->productId === $this->id) {
+                throw new CatalogRuleViolation('A bundle cannot hold itself.', 'orillacart_invalid_bundle');
+            }
+        }
+        $this->bundle = $bundle?->toArray();
     }
 
     public function priceAt(\DateTimeImmutable $now): Money

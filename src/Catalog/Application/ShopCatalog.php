@@ -8,6 +8,8 @@ use OrillaCart\Catalog\Application\Dto\AttributeView;
 use OrillaCart\Catalog\Application\Dto\OfferedVariation;
 use OrillaCart\Catalog\Application\Dto\OptionView;
 use OrillaCart\Catalog\Application\Dto\ProductOffer;
+use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
+use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\Backorders;
 use OrillaCart\Catalog\Domain\DownloadFile;
@@ -24,6 +26,8 @@ use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\NotFound;
+use OrillaCart\Shared\Domain\RuleViolation;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -38,6 +42,7 @@ final readonly class ShopCatalog
         private ClockInterface $clock,
         private SettingsService $settings,
         private PriceResolver $prices,
+        private ProductQuotes $quotes,
     ) {}
 
     /**
@@ -49,7 +54,7 @@ final readonly class ShopCatalog
     {
         $product = $this->products->find($id) ?? throw new ProductNotFound($id);
 
-        return $this->toOffer($product, $this->clock->now(), $this->prices->forShopper($customerId));
+        return $this->toOffer($product, $this->clock->now(), $this->prices->forShopper($customerId), null, $customerId);
     }
 
     /**
@@ -84,7 +89,7 @@ final readonly class ShopCatalog
         $offers = [];
         foreach ($ids as $id) {
             if (isset($found[$id])) {
-                $offers[$id] = $this->toOffer($found[$id], $now, $prices, $stock);
+                $offers[$id] = $this->toOffer($found[$id], $now, $prices, $stock, $customerId);
             }
         }
 
@@ -122,9 +127,12 @@ final readonly class ShopCatalog
     /**
      * @param array<string, ?int>|null $stock how many of each item can be sold, when read for many offers at once
      */
-    private function toOffer(Product $product, \DateTimeImmutable $now, ShopperPrices $prices, ?array $stock = null): ProductOffer
+    private function toOffer(Product $product, \DateTimeImmutable $now, ShopperPrices $prices, ?array $stock = null, ?int $customerId = null): ProductOffer
     {
         $details = $product->details();
+        if ($product->isBundle()) {
+            return $this->bundleOffer($product, $customerId);
+        }
         $terms = $this->content->termIds($product->id());
         $item = static fn(Pricing $pricing): PricedItem => new PricedItem($product->id(), $pricing->priceAt($now)->compare($pricing->price()) < 0, $terms['categories'], $terms['brands']);
         $priceHidden = $details->priceVisibility->isHidden($this->settings->current()->hidePrices);
@@ -186,6 +194,40 @@ final readonly class ShopCatalog
             $priceHidden,
             $onBackorder,
             $prices->tiers($own, $item($details->pricing)),
+        );
+    }
+
+    /**
+     * A bundle as the cart prices it: from its items, available while each is.
+     */
+    private function bundleOffer(Product $product, ?int $customerId): ProductOffer
+    {
+        $details = $product->details();
+        try {
+            $quote = $this->quotes->quote(new QuoteRequest($product->id(), [], 1, $customerId));
+        } catch (NotFound|RuleViolation) {
+            $quote = null;
+        }
+        $priceHidden = $details->priceVisibility->isHidden($this->settings->current()->hidePrices);
+
+        return new ProductOffer(
+            $product->id(),
+            $this->content->name($product->id()),
+            $details->type->value,
+            $details->sku,
+            $quote->unitPrice ?? '0',
+            null,
+            null,
+            $quote !== null && $quote->forSale,
+            $quote?->available,
+            $details->featured,
+            [],
+            [],
+            array_map(static fn(DownloadFile $file): string => $file->name(), $product->downloads()),
+            $priceHidden,
+            false,
+            [],
+            array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $quote->contents ?? []),
         );
     }
 

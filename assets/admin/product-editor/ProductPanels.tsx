@@ -38,6 +38,7 @@ import {
 	withSalePrice,
 } from './fields';
 import { StockLevels } from './StockLevels';
+import { BundlePanel } from './BundlePanel';
 import { DownloadsPanel } from './DownloadsPanel';
 import { VariationsPanel } from './VariationsPanel';
 
@@ -520,6 +521,25 @@ export function ProductPanels() {
 						) }
 					</p>
 				) }
+			</PluginDocumentSettingPanel>
+
+			<PluginDocumentSettingPanel
+				name="orillacart-bundle"
+				title={ __( 'Bundle', 'orillacart' ) }
+			>
+				<BundlePanel
+					productId={ postId }
+					bundle={ draft.bundle }
+					names={ Object.fromEntries(
+						( product.bundle?.items ?? [] ).map( ( item ) => [
+							`${ item.product_id }:${ item.variation_id ?? 0 }`,
+							item.name ?? `#${ item.product_id }`,
+						] )
+					) }
+					hasVariations={ product.variations.length > 0 }
+					onChange={ ( bundle ) => change( { bundle } ) }
+					onError={ fail }
+				/>
 			</PluginDocumentSettingPanel>
 
 			<PluginDocumentSettingPanel

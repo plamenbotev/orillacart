@@ -60,6 +60,8 @@ export interface OrderLine {
 	refunded_quantity: number;
 	/** What coupons took off the total; the tax is on what is left. */
 	discount: string;
+	/** What one bundle holds, for a bundle. */
+	contents?: { name: string; quantity: number }[];
 }
 
 export interface OrderNote {

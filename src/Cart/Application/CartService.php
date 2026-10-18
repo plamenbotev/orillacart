@@ -17,6 +17,7 @@ use OrillaCart\Cart\Domain\CartLineNotFound;
 use OrillaCart\Cart\Domain\CartRepository;
 use OrillaCart\Cart\Domain\CartRuleViolation;
 use OrillaCart\Catalog\Application\Dto\ItemQuote;
+use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Catalog\Application\Dto\QuotedOption;
 use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Application\ProductQuotes;
@@ -227,6 +228,7 @@ final readonly class CartService
                 $quote->available,
                 $problem,
                 $quote->shownBackorder($line->quantity()),
+                array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $quote->contents),
             );
             $items += $line->quantity();
             $subtotal = $subtotal->add($total);

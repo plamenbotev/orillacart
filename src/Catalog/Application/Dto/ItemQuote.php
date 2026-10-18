@@ -46,6 +46,8 @@ final readonly class ItemQuote
         public array $categoryIds = [],
         /** @var list<int> its brands, each with those above it */
         public array $brandIds = [],
+        /** @var list<QuotedBundleItem> what one of it holds, when it is a bundle */
+        public array $contents = [],
     ) {}
 
     /** How many of this quantity the customer is told are on backorder: none unless the product says so. */

@@ -67,6 +67,9 @@ final readonly class SaveProduct
         /** no, yes, or notify: sell on when counted stock runs out, telling the customer */
         #[Assert\Choice(callback: [Backorders::class, 'values'])]
         public string $backorders = 'no',
+        /** What it is made of when it is a bundle; null for a product of its own. */
+        #[Assert\Valid]
+        public ?SaveBundle $bundle = null,
     ) {}
 
     /** @return list<string> */

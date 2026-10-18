@@ -1,7 +1,6 @@
 # 23 · Dynamic prices, bundles and sets
 
-Status: building (2026-10-18): 23a price rules and customer groups and 23b automatic discounts are built; 23c
-bundles and sets follows. Changes from the draft below:
+Status: built (2026-10-18): 23a price rules and customer groups, 23b automatic discounts, 23c bundles and sets. Changes from the draft below:
 
 - One kind of price rule covers groups, quantity tiers and dates: a rule has tiers (from 1 item, from 10…),
   optional groups, products, categories and brands, and optional dates. Where several rules hold, the lowest
@@ -10,6 +9,10 @@ bundles and sets follows. Changes from the draft below:
 - Customer groups are the shop's own (Shop → Customers), not WordPress roles.
 - Automatic discounts (23b) are order-level rules on the coupon engine with no code to enter, managed under
   Shop → Price rules; customers see their description, and they apply before any coupon codes.
+- A bundle is not a product type: any product (physical or virtual) can hold other products or variations, and
+  is then sold while every item is, taking each item's stock. A set is a bundle at its own price, so it needs no
+  separate setting. Optional items and choices among variations inside a bundle are not built yet: each item is
+  a product without choices, or one chosen variation. A bundle cannot have variations or hold another bundle.
 - The search index keeps the guest price; logged-in customers see their group's price on the product page, in
   listings, the cart and checkout.
 

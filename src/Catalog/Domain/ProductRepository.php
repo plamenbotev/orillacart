@@ -56,6 +56,9 @@ interface ProductRepository
     /** The product a variation belongs to. */
     public function findByVariation(int $variationId): ?Product;
 
+    /** @return list<Product> the products that are bundles */
+    public function bundles(): array;
+
     /**
      * Saves the product with its attributes and variations; new ones have their ids afterwards.
      */

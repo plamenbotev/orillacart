@@ -212,7 +212,7 @@ final class TestShop
         $this->priceRules = new PriceRules($this->priceRuleRecords, $this->events);
         $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices);
         $this->quotes = $quotes;
-        $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices);
+        $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $quotes);
 
         $methodRecords = new InMemoryPaymentMethodRepository();
         $this->paymentRecords = new InMemoryPaymentRepository();

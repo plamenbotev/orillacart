@@ -115,6 +115,25 @@ export interface Product {
 	/** How many days after payment the downloads work; null for always. */
 	download_expiry_days: number | null;
 	downloads: Download[];
+	/** What it is made of when it is a bundle; null for a product of its own. */
+	bundle: Bundle | null;
+}
+
+export interface BundleItem {
+	product_id: number;
+	/** For a product with variations: which one. */
+	variation_id: number | null;
+	quantity: number;
+	/** As the API returns it; not sent back. */
+	name?: string;
+}
+
+export interface Bundle {
+	items: BundleItem[];
+	/** Its own price, or its items' prices added up with the discount off. */
+	pricing: 'fixed' | 'sum';
+	/** A percentage, for sum pricing. */
+	discount: string | null;
 }
 
 export interface Download {
@@ -192,7 +211,26 @@ export function toProductInput( product: Product ): ProductInput {
 		attributes: product.attributes.map( toAttributeInput ),
 		download_limit: product.download_limit,
 		download_expiry_days: product.download_expiry_days,
+		bundle: toBundleInput( product.bundle ?? null ),
 	};
+}
+
+/**
+ * @param bundle A bundle as the API returns it.
+ * @return The same bundle as it is sent back: without its items' names.
+ */
+export function toBundleInput( bundle: Bundle | null ): Bundle | null {
+	return bundle === null
+		? null
+		: {
+				pricing: bundle.pricing,
+				discount: bundle.discount,
+				items: bundle.items.map( ( item ) => ( {
+					product_id: item.product_id,
+					variation_id: item.variation_id,
+					quantity: item.quantity,
+				} ) ),
+			};
 }
 
 export function fetchProduct( id: number ): Promise< Product > {

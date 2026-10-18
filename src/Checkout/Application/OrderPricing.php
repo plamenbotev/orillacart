@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Checkout\Application;
 
 use OrillaCart\Catalog\Application\Dto\ItemQuote;
+use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Catalog\Application\Dto\QuotedOption;
 use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Application\ProductQuotes;
@@ -186,6 +187,7 @@ final readonly class OrderPricing
             $backordered,
             $backordered > 0 && $line['quote']->backorders === 'notify',
             (string) $line['discount'],
+            array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
         );
     }
 
@@ -273,6 +275,23 @@ final readonly class OrderPricing
      */
     private function take(ItemQuote $quote, int $quantity): array
     {
+        if ($quote->contents !== []) {
+            // A bundle takes each item's stock; all in the order's transaction, so all or none.
+            $taken = [];
+            foreach ($quote->contents as $item) {
+                if (!$item->countsStock) {
+                    continue;
+                }
+                $refs = [$item->variationId !== null ? StockItemRef::variation($item->variationId) : StockItemRef::product($item->productId)];
+                try {
+                    array_push($taken, ...$this->stock->take($refs, $item->quantity * $quantity, $item->backorders !== 'no'));
+                } catch (InsufficientStock) {
+                    throw new CheckoutRuleViolation(\sprintf('%s sold out in the meantime. Review the items and try again.', $quote->name), 'orillacart_out_of_stock');
+                }
+            }
+
+            return $taken;
+        }
         $refs = $quote->variationId !== null
             ? [StockItemRef::variation($quote->variationId)]
             : [StockItemRef::product($quote->productId), ...array_map(static fn(QuotedOption $option): StockItemRef => StockItemRef::option($option->id), $quote->options)];

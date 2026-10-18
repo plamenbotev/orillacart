@@ -7,6 +7,7 @@ namespace OrillaCart\Checkout\Application;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\CartContents;
 use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Checkout\Application\Dto\CheckoutCouponView;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\CheckoutLineView;
@@ -92,6 +93,7 @@ final readonly class CheckoutService
                 (string) $line['tax'],
                 $line['quote']->shownBackorder($line['quantity']),
                 (string) $line['discount'],
+                array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
             ), $priced['lines']),
             $priced['needs_shipping'],
             $priced['options'],

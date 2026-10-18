@@ -142,6 +142,13 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->getSingleColumnResult());
     }
 
+    public function bundles(): array
+    {
+        /** @var list<Product> */
+        return $this->entityManager->createQueryBuilder()->select('p')->from(Product::class, 'p')
+            ->where('p.bundle IS NOT NULL')->orderBy('p.id')->getQuery()->getResult();
+    }
+
     public function findByVariation(int $variationId): ?Product
     {
         return $this->entityManager->find(Variation::class, $variationId)?->product();

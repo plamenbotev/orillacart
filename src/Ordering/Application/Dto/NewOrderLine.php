@@ -41,5 +41,7 @@ final readonly class NewOrderLine
         public bool $backorderShown = false,
         /** What coupons took off the total; the tax is on what is left. */
         public string $discount = '0',
+        /** @var list<array{name: string, quantity: int}> what one bundle holds, for a bundle */
+        public array $contents = [],
     ) {}
 }

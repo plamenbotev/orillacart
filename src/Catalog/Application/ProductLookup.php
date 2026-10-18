@@ -29,6 +29,28 @@ final readonly class ProductLookup
     }
 
     /**
+     * The bundles that hold any of the products: their prices and stock follow their items'.
+     *
+     * @param list<int> $productIds
+     *
+     * @return list<int>
+     */
+    public function bundlesHolding(array $productIds): array
+    {
+        $ids = [];
+        foreach ($this->products->bundles() as $bundle) {
+            foreach ($bundle->bundle()->items ?? [] as $item) {
+                if (\in_array($item->productId, $productIds, true)) {
+                    $ids[] = $bundle->id();
+                    break;
+                }
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * @return list<string> the names attributes of products and sets use, each once, by name
      */
     public function attributeNames(): array

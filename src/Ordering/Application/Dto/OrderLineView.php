@@ -29,10 +29,12 @@ final readonly class OrderLineView
         public int $refundedQuantity = 0,
         /** What coupons took off the total; the tax is on what is left. */
         public string $discount = '0',
+        /** @var list<array{name: string, quantity: int}> what one bundle holds */
+        public array $contents = [],
     ) {}
 
     public static function fromLine(OrderLine $line): self
     {
-        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount());
+        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $line->contents());
     }
 }

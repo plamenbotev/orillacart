@@ -78,6 +78,10 @@ class OrderLine
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
     private string $discount = '0';
 
+    /** @var list<array{name: string, quantity: int}> what one bundle held, for a bundle */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $contents = null;
+
     /** How many of the items were refunded. */
     #[ORM\Column(options: ['default' => 0])]
     private int $refundedQuantity = 0;
@@ -117,6 +121,7 @@ class OrderLine
             throw new OrderRuleViolation('A discount takes off no more than the line costs.', 'orillacart_invalid_discount');
         }
         $this->discount = $discount->toFixed();
+        $this->contents = $draft->contents === [] ? null : $draft->contents;
         $this->stockTaken = array_map(static fn(TakenItem $taken): array => ['item' => $taken->item, 'stockroom_id' => $taken->stockroomId, 'quantity' => $taken->quantity], $draft->taken);
     }
 
@@ -175,6 +180,12 @@ class OrderLine
     public function total(): Money
     {
         return Money::of($this->total);
+    }
+
+    /** @return list<array{name: string, quantity: int}> what one bundle held; empty for a product of its own */
+    public function contents(): array
+    {
+        return $this->contents ?? [];
     }
 
     public function discount(): Money

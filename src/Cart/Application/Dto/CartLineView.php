@@ -27,5 +27,7 @@ final readonly class CartLineView
         public ?int $available,
         public ?string $problem,
         public int $backordered = 0,
+        /** @var list<array{name: string, quantity: int}> what one bundle holds */
+        public array $contents = [],
     ) {}
 }

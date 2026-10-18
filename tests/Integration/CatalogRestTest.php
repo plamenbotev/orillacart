@@ -172,6 +172,27 @@ final class CatalogRestTest extends RestTestCase
         }
     }
 
+    public function testABundleIsSavedWithItsItemsNamedAndHoldsNoBundle(): void
+    {
+        $this->actAs('administrator');
+        $camera = $this->post('Camera');
+        $battery = $this->post('Battery');
+        $kit = $this->post('Camera kit');
+        $this->request('PUT', "/products/{$camera}", ['price' => '300'], nonce: true);
+        $this->request('PUT', "/products/{$battery}", ['price' => '20'], nonce: true);
+
+        $saved = $this->request('PUT', "/products/{$kit}", ['price' => '0', 'bundle' => ['items' => [['product_id' => $camera, 'quantity' => 1], ['product_id' => $battery, 'quantity' => 2]], 'pricing' => 'sum', 'discount' => '10']], nonce: true);
+        self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
+        $bundle = $this->data($saved)['bundle'];
+        self::assertIsArray($bundle);
+        self::assertIsArray($bundle['items']);
+        self::assertSame([['Camera', 1], ['Battery', 2]], array_map(static fn(mixed $item): array => \is_array($item) ? [$item['name'], $item['quantity']] : [], $bundle['items']));
+
+        $nested = $this->request('PUT', "/products/{$camera}", ['price' => '300', 'bundle' => ['items' => [['product_id' => $kit, 'quantity' => 1]]]], nonce: true);
+        self::assertSame(422, $nested->get_status(), 'a bundle holds no bundle');
+        self::assertSame(422, $this->request('PUT', "/products/{$kit}", ['price' => '0', 'bundle' => ['items' => []]], nonce: true)->get_status(), 'a bundle holds something');
+    }
+
     public function testTheCatalogScreensAreInTheShopMenu(): void
     {
         global $submenu;

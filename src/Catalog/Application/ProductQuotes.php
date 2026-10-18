@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace OrillaCart\Catalog\Application;
 
 use OrillaCart\Catalog\Application\Dto\ItemQuote;
+use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Catalog\Application\Dto\QuotedDownload;
 use OrillaCart\Catalog\Application\Dto\QuotedOption;
 use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Domain\AttributeOption;
+use OrillaCart\Catalog\Domain\Backorders;
+use OrillaCart\Catalog\Domain\Bundle;
 use OrillaCart\Catalog\Domain\Configuration;
 use OrillaCart\Catalog\Domain\DownloadFile;
 use OrillaCart\Catalog\Domain\InvalidSelection;
@@ -20,6 +23,7 @@ use OrillaCart\Catalog\Domain\StockMode;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\Domain\Money;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -68,6 +72,37 @@ final readonly class ProductQuotes
         $own = $pricing->priceAt($now);
         $ruled = $this->prices->forShopper($request->customerId)->price($own, new PricedItem($product->id(), $onSale, $terms['categories'], $terms['brands']), max(1, $request->quantity));
         $unitPrice = $configuration->unitPrice->subtract($own)->add($ruled)->atLeastZero();
+        $weight = $measures['weight'];
+        $downloads = array_map(static fn(DownloadFile $file): QuotedDownload => new QuotedDownload($file->id(), $file->name(), $file->storageKey(), $file->mimeType()), $product->downloads());
+        $contents = [];
+        $forSale = true;
+        $bundle = $product->bundle();
+        if ($bundle !== null) {
+            // A bundle is sold while each item is, as many as its scarcest item allows; its weight is its items'
+            // unless it has its own, and the buyer gets every item's downloads.
+            $available = $inStock = null;
+            $sum = Money::zero();
+            $itemsWeight = Money::zero();
+            foreach ($bundle->items as $item) {
+                $quote = $this->quote(new QuoteRequest($item->productId, $this->signature($item->productId, $item->variationId), $item->quantity * max(1, $request->quantity), $request->customerId));
+                $forSale = $forSale && $quote->forSale;
+                if ($quote->available !== null) {
+                    $available = min($available ?? PHP_INT_MAX, intdiv(max(0, $quote->available), $item->quantity));
+                }
+                if ($quote->inStock !== null) {
+                    $inStock = min($inStock ?? PHP_INT_MAX, intdiv(max(0, $quote->inStock), $item->quantity));
+                }
+                $sum = $sum->add(Money::of($quote->unitPrice)->times($item->quantity));
+                $itemsWeight = $itemsWeight->add(Money::of($quote->weight ?? '0')->times($item->quantity));
+                array_push($downloads, ...$quote->downloads);
+                $contents[] = new QuotedBundleItem($quote->productId, $quote->variationId, $quote->name, $item->quantity, $quote->available !== null || $quote->inStock !== null, $quote->backorders);
+            }
+            if ($bundle->pricing === Bundle::SUM) {
+                $unitPrice = $bundle->priceOf($sum);
+            }
+            $weight ??= $itemsWeight->isZero() ? null : (string) $itemsWeight;
+            $backorders = Backorders::No;
+        }
 
         return new ItemQuote(
             $product->id(),
@@ -78,7 +113,7 @@ final readonly class ProductQuotes
             (string) $unitPrice,
             $details->taxable,
             $details->taxGroupId,
-            $measures['weight'],
+            $weight,
             array_map(static fn(AttributeOption $option): QuotedOption => new QuotedOption(
                 $option->id(),
                 $option->attribute()->name(),
@@ -86,12 +121,12 @@ final readonly class ProductQuotes
                 (string) $option->adjustmentOn($base),
             ), $configuration->options),
             $available,
-            $this->content->isPublished($product->id()) && $details->purchasable && $available !== 0
+            $forSale && $this->content->isPublished($product->id()) && $details->purchasable && $available !== 0
                 && !$details->priceVisibility->isHidden($this->settings->current()->hidePrices),
             $measures['length'],
             $measures['width'],
             $measures['height'],
-            array_map(static fn(DownloadFile $file): QuotedDownload => new QuotedDownload($file->id(), $file->name(), $file->storageKey(), $file->mimeType()), $product->downloads()),
+            $downloads,
             $details->downloadLimit,
             $details->downloadExpiryDays,
             $details->shippingClassId,
@@ -100,7 +135,27 @@ final readonly class ProductQuotes
             $onSale,
             $terms['categories'],
             $terms['brands'],
+            $contents,
         );
+    }
+
+    /**
+     * The options that pick a variation, for quoting it as a bundle's item.
+     *
+     * @return list<int>
+     */
+    private function signature(int $productId, ?int $variationId): array
+    {
+        if ($variationId === null) {
+            return [];
+        }
+        foreach ($this->products->find($productId)?->variations() ?? [] as $variation) {
+            if ($variation->id() === $variationId) {
+                return $variation->signature();
+            }
+        }
+
+        throw new ProductNotFound($productId);
     }
 
     private function available(Configuration $configuration): ?int

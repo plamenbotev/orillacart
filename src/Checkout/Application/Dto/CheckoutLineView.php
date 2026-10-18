@@ -23,5 +23,7 @@ final readonly class CheckoutLineView
         public int $backordered = 0,
         /** What coupons take off the total; the tax is on what is left. */
         public string $discount = '0',
+        /** @var list<array{name: string, quantity: int}> what one bundle holds */
+        public array $contents = [],
     ) {}
 }

@@ -39,5 +39,7 @@ final readonly class LineDraft
         public bool $backorderShown = false,
         /** What coupons took off the total. */
         public ?Money $discount = null,
+        /** @var list<array{name: string, quantity: int}> what one bundle holds, for a bundle */
+        public array $contents = [],
     ) {}
 }

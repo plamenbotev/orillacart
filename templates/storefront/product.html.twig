@@ -19,6 +19,12 @@
         {% endfor %}
     </div>
     <p class="orillacart-product__price" data-orillacart-price>{{ shop.price(offer) }}</p>
+    {% if offer.contents %}
+        <div class="orillacart-product__contents">
+            <p class="orillacart-heading">{{ __('In the box') }}</p>
+            <ul>{% for item in offer.contents %}<li>{{ item.quantity }} × {{ item.name }}</li>{% endfor %}</ul>
+        </div>
+    {% endif %}
     {% if offer.tiers and not offer.price_hidden %}
         <table class="orillacart-table orillacart-product__tiers">
             <caption>{{ __('Buy more, pay less') }}</caption>

@@ -39,6 +39,8 @@ final readonly class ProductOffer
         public bool $onBackorder = false,
         /** @var list<array{min_quantity: int, price: string}> the price from each quantity where the shop's rules change it */
         public array $tiers = [],
+        /** @var list<array{name: string, quantity: int}> what one holds, for a bundle */
+        public array $contents = [],
     ) {}
 
     /** Whether the product goes in the cart as it is, with no options to choose. */

@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace OrillaCart\Catalog\Application;
 
 use OrillaCart\Catalog\Application\Dto\ProductView;
+use OrillaCart\Catalog\Application\Dto\SaveBundle;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Catalog\Application\Dto\VariationView;
+use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\AttributeSet;
 use OrillaCart\Catalog\Domain\AttributeSetRepository;
 use OrillaCart\Catalog\Domain\Backorders;
+use OrillaCart\Catalog\Domain\Bundle;
+use OrillaCart\Catalog\Domain\BundleItem;
 use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
@@ -54,7 +58,7 @@ final readonly class ProductService
         $name = $this->name($id);
         $product = $this->products->find($id);
 
-        return $product === null ? ProductView::unsaved($id, $name) : ProductView::fromProduct($product, $name);
+        return $product === null ? ProductView::unsaved($id, $name) : ProductView::fromProduct($product, $name, $this->itemName(...));
     }
 
     /**
@@ -109,6 +113,7 @@ final readonly class ProductService
         $drafts = CatalogDrafts::attributes($command->attributes);
         $removedOptions = $product->optionIdsRemovedBy($drafts);
         $product->replaceAttributes($drafts, $sets);
+        $product->makeBundle($command->bundle === null ? null : $this->bundle($command->bundle));
         $this->products->save($product);
 
         $this->events->dispatch(new ProductChanged($id));
@@ -116,7 +121,7 @@ final readonly class ProductService
             $this->events->dispatch(new CatalogItemsRemoved(optionIds: $removedOptions));
         }
 
-        return ProductView::fromProduct($product, $name);
+        return ProductView::fromProduct($product, $name, $this->itemName(...));
     }
 
     /**
@@ -280,5 +285,61 @@ final readonly class ProductService
             $command->height,
             $command->backorders === null ? null : Backorders::from($command->backorders),
         );
+    }
+
+    /**
+     * Checks that every item of a bundle can be sold inside it: a product with commerce details and nothing to
+     * choose, or one variation of a product with variations; never a bundle.
+     *
+     * @throws CatalogRuleViolation
+     */
+    private function bundle(SaveBundle $command): Bundle
+    {
+        $items = [];
+        foreach ($command->items as $item) {
+            $product = $this->products->find($item->productId)
+                ?? throw new CatalogRuleViolation(\sprintf('Product %d has no commerce details to sell in a bundle.', $item->productId), 'orillacart_invalid_bundle');
+            $name = $this->content->name($item->productId);
+            if ($product->isBundle()) {
+                throw new CatalogRuleViolation(\sprintf('%s is a bundle itself; add its items instead.', $name), 'orillacart_invalid_bundle');
+            }
+            if ($product->hasVariations()) {
+                $variation = null;
+                foreach ($product->variations() as $candidate) {
+                    if ($candidate->id() === $item->variationId) {
+                        $variation = $candidate;
+                    }
+                }
+                if ($variation === null) {
+                    throw new CatalogRuleViolation(\sprintf('Choose which variation of %s the bundle holds.', $name), 'orillacart_invalid_bundle');
+                }
+            } elseif ($item->variationId !== null) {
+                throw new CatalogRuleViolation(\sprintf('%s has no variations.', $name), 'orillacart_invalid_bundle');
+            } else {
+                foreach ($product->offeredOptions() as [$attribute]) {
+                    if ($attribute->isRequired()) {
+                        throw new CatalogRuleViolation(\sprintf('%s asks the customer to choose %s, which a bundle cannot.', $name, strtolower($attribute->name())), 'orillacart_invalid_bundle');
+                    }
+                }
+            }
+            $items[] = new BundleItem($item->productId, $item->variationId, $item->quantity);
+        }
+
+        return new Bundle($items, $command->pricing, $command->discount === null || $command->discount === '' ? null : Money::of($command->discount));
+    }
+
+    private function itemName(BundleItem $item): string
+    {
+        $name = $this->content->name($item->productId);
+        if ($item->variationId === null) {
+            return $name;
+        }
+        foreach ($this->products->find($item->productId)?->variations() ?? [] as $variation) {
+            if ($variation->id() === $item->variationId) {
+                return $name . ' – ' . implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $variation->options()));
+            }
+        }
+
+        return $name;
     }
 }

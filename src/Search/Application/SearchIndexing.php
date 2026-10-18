@@ -30,7 +30,8 @@ final readonly class SearchIndexing
     {
         $this->jobs->pushMany(IndexProducts::TYPE, array_map(
             static fn(int $id): array => ['key' => (string) $id, 'payload' => []],
-            array_values(array_unique($productIds)),
+            // A bundle's price and stock follow its items'.
+            array_values(array_unique([...$productIds, ...$this->products->bundlesHolding($productIds)])),
         ));
     }
 
