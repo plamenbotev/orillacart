@@ -27,6 +27,7 @@ use OrillaCart\Catalog\Domain\Variation;
 use OrillaCart\Catalog\Domain\VariationDetails;
 use OrillaCart\Catalog\Domain\VariationNotFound;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Tax\Application\TaxGroupService;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -40,6 +41,7 @@ final readonly class ProductService
         private AttributeSetRepository $sets,
         private ProductContent $content,
         private TaxGroupService $taxGroups,
+        private ShippingClassService $shippingClasses,
         private EventDispatcherInterface $events,
     ) {}
 
@@ -69,6 +71,9 @@ final readonly class ProductService
         if ($command->taxGroupId !== null && !$this->taxGroups->exists($command->taxGroupId)) {
             throw new CatalogRuleViolation(\sprintf('There is no tax group %d.', $command->taxGroupId), 'orillacart_unknown_tax_group');
         }
+        if ($command->shippingClassId !== null && !$this->shippingClasses->exists($command->shippingClassId)) {
+            throw new CatalogRuleViolation(\sprintf('There is no shipping class %d.', $command->shippingClassId), 'orillacart_unknown_shipping_class');
+        }
         $sets = array_map(
             fn(int $setId): AttributeSet => $this->sets->find($setId)
                 ?? throw new CatalogRuleViolation(\sprintf('There is no attribute set %d.', $setId), 'orillacart_unknown_attribute_set'),
@@ -91,6 +96,7 @@ final readonly class ProductService
             $command->downloadLimit,
             $command->downloadExpiryDays,
             PriceVisibility::from($command->priceVisibility),
+            $command->shippingClassId,
         );
         $product = $this->products->find($id);
         if ($product === null) {

@@ -9,7 +9,8 @@ use OrillaCart\Shared\Domain\Money;
 
 /**
  * One way a carrier ships: where to, which parcels, and the price. Checkout offers it when the parcel's
- * destination is one of its regions and every measure of the parcel is in its range.
+ * destination is one of its regions, it carries the shipping class of every item, and every measure of the parcel
+ * is in its range.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'shipping_rates')]
@@ -56,6 +57,10 @@ class ShippingRate
 
     #[ORM\Column(nullable: true)]
     private ?int $taxGroupId;
+
+    /** @var list<int> */
+    #[ORM\Column(type: 'json')]
+    private array $classes = [];
 
     /**
      * Created through Carrier::replaceRates().
@@ -105,6 +110,7 @@ class ShippingRate
         $this->subtotal = $details->subtotal;
         $this->taxable = $details->taxable;
         $this->taxGroupId = $details->taxGroupId;
+        $this->classes = array_values($details->classes);
         $this->position = $position;
     }
 
@@ -123,6 +129,7 @@ class ShippingRate
             $this->subtotal,
             $this->taxable,
             $this->taxGroupId,
+            $this->classes,
         );
     }
 
@@ -146,6 +153,10 @@ class ShippingRate
             if (!$reached) {
                 return false;
             }
+        }
+
+        if ($this->classes !== [] && array_diff($parcel->classes, $this->classes) !== []) {
+            return false;
         }
 
         return $this->weight->contains($parcel->weight)

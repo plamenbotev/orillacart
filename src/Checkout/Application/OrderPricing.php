@@ -79,7 +79,7 @@ final readonly class OrderPricing
             $taxes = $quote->taxable ? $this->taxes($quote->taxGroupId, $shipping, $billing) : [];
             $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'tax' => $bill->addItem($total, $taxes)];
             if ($quote->type === 'physical') {
-                $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height);
+                $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
             }
         }
 

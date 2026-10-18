@@ -69,7 +69,9 @@ use OrillaCart\Shared\Files\PrivateFiles;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Domain\CarrierRepository;
+use OrillaCart\Shipping\Domain\ShippingClassRepository;
 use OrillaCart\Shipping\Infrastructure\Doctrine\DoctrineCarrierRepository;
+use OrillaCart\Shipping\Infrastructure\Doctrine\DoctrineShippingClassRepository;
 use OrillaCart\Storefront\Domain\ShopPagesRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionShopPagesRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
@@ -156,6 +158,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(StockroomRepository::class, DoctrineStockroomRepository::class);
     $services->alias(StockLevelRepository::class, DoctrineStockLevelRepository::class);
     $services->alias(CarrierRepository::class, DoctrineCarrierRepository::class);
+    $services->alias(ShippingClassRepository::class, DoctrineShippingClassRepository::class);
     $services->alias(PaymentMethodRepository::class, DoctrinePaymentMethodRepository::class);
     $services->alias(PaymentRepository::class, DoctrinePaymentRepository::class);
     $services->alias(OrderRepository::class, DoctrineOrderRepository::class);

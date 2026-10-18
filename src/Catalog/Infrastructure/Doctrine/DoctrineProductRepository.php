@@ -107,6 +107,14 @@ final readonly class DoctrineProductRepository implements ProductRepository
         $this->entityManager->flush();
     }
 
+    public function forgetShippingClass(int $shippingClassId): void
+    {
+        foreach ($this->entityManager->getRepository(Product::class)->findBy(['shippingClassId' => $shippingClassId]) as $product) {
+            $product->leaveShippingClass();
+        }
+        $this->entityManager->flush();
+    }
+
     public function isSkuTaken(string $sku, ?int $exceptProductId = null, ?int $exceptVariationId = null): bool
     {
         $products = $this->entityManager->createQueryBuilder()

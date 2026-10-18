@@ -27,6 +27,7 @@ import {
 } from '../catalog/api';
 import { fetchStockrooms, type Stockroom } from '../inventory/api';
 import { toApiError } from '../shared/api';
+import { fetchShippingClasses, type ShippingClass } from '../shipping/api';
 import { fetchGroups, type TaxGroup } from '../tax/api';
 import {
 	fromDateField,
@@ -63,6 +64,9 @@ export function ProductPanels() {
 	const [ draft, setDraft ] = useState< ProductInput | null >( null );
 	const [ sets, setSets ] = useState< AttributeSet[] >( [] );
 	const [ taxGroups, setTaxGroups ] = useState< TaxGroup[] >( [] );
+	const [ shippingClasses, setShippingClasses ] = useState< ShippingClass[] >(
+		[]
+	);
 	const [ stockrooms, setStockrooms ] = useState< Stockroom[] >( [] );
 	const [ loadError, setLoadError ] = useState< string | null >( null );
 	const [ saving, setSaving ] = useState( false );
@@ -100,13 +104,23 @@ export function ProductPanels() {
 			fetchAttributeSets(),
 			fetchGroups(),
 			fetchStockrooms(),
+			fetchShippingClasses(),
 		] )
-			.then( ( [ loaded, loadedSets, groups, loadedStockrooms ] ) => {
-				show( loaded );
-				setSets( loadedSets );
-				setTaxGroups( groups );
-				setStockrooms( loadedStockrooms );
-			} )
+			.then(
+				( [
+					loaded,
+					loadedSets,
+					groups,
+					loadedStockrooms,
+					classes,
+				] ) => {
+					show( loaded );
+					setSets( loadedSets );
+					setTaxGroups( groups );
+					setStockrooms( loadedStockrooms );
+					setShippingClasses( classes );
+				}
+			)
 			.catch( ( error: unknown ) =>
 				setLoadError( toApiError( error ).message )
 			);
@@ -349,6 +363,32 @@ export function ProductPanels() {
 				name="orillacart-shipping"
 				title={ __( 'Weight and size', 'orillacart' ) }
 			>
+				{ shippingClasses.length > 0 && (
+					<SelectControl
+						__next40pxDefaultSize
+						label={ __( 'Shipping class', 'orillacart' ) }
+						help={ __(
+							'Only rates that carry this class ship it. Variations ship in the product’s class.',
+							'orillacart'
+						) }
+						value={ String( draft.shipping_class_id ?? '' ) }
+						options={ [
+							{ value: '', label: __( 'None', 'orillacart' ) },
+							...shippingClasses.map( ( shippingClass ) => ( {
+								value: String( shippingClass.id ),
+								label: shippingClass.name,
+							} ) ),
+						] }
+						onChange={ ( value ) =>
+							change( {
+								shipping_class_id:
+									value === ''
+										? null
+										: Number.parseInt( value, 10 ),
+							} )
+						}
+					/>
+				) }
 				{ (
 					[
 						[ 'weight', __( 'Weight', 'orillacart' ) ],

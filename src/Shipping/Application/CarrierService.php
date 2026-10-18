@@ -18,6 +18,8 @@ use OrillaCart\Shipping\Domain\Range;
 use OrillaCart\Shipping\Domain\RateDetails;
 use OrillaCart\Shipping\Domain\RateDraft;
 use OrillaCart\Shipping\Domain\Region;
+use OrillaCart\Shipping\Domain\ShippingClass;
+use OrillaCart\Shipping\Domain\ShippingClassRepository;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use OrillaCart\Tax\Application\TaxGroupService;
 
@@ -30,6 +32,7 @@ final readonly class CarrierService
         private CarrierRepository $carriers,
         private GeographyService $geography,
         private TaxGroupService $taxGroups,
+        private ShippingClassRepository $classes,
     ) {}
 
     /**
@@ -111,6 +114,7 @@ final readonly class CarrierService
             self::range($rate->subtotal),
             $rate->taxable,
             $this->taxGroup($rate->taxGroupId),
+            array_map($this->shippingClass(...), $rate->shippingClasses),
         )), $rates);
     }
 
@@ -126,6 +130,15 @@ final readonly class CarrierService
     {
         if ($id !== null && !$this->taxGroups->exists($id)) {
             throw new ShippingRuleViolation(\sprintf('There is no tax group %d.', $id), 'orillacart_unknown_tax_group');
+        }
+
+        return $id;
+    }
+
+    private function shippingClass(int $id): int
+    {
+        if ($id !== ShippingClass::NONE && $this->classes->find($id) === null) {
+            throw new ShippingRuleViolation(\sprintf('There is no shipping class %d.', $id), 'orillacart_unknown_shipping_class');
         }
 
         return $id;

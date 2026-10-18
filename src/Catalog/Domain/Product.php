@@ -61,6 +61,9 @@ class Product
     private PriceVisibility $priceVisibility = PriceVisibility::Shop;
 
     #[ORM\Column(nullable: true)]
+    private ?int $shippingClassId = null;
+
+    #[ORM\Column(nullable: true)]
     private ?int $downloadLimit = null;
 
     #[ORM\Column(nullable: true)]
@@ -127,6 +130,7 @@ class Product
             $this->downloadLimit,
             $this->downloadExpiryDays,
             $this->priceVisibility,
+            $this->shippingClassId,
         );
     }
 
@@ -147,6 +151,13 @@ class Product
         $this->downloadLimit = $details->downloadLimit;
         $this->downloadExpiryDays = $details->downloadExpiryDays;
         $this->priceVisibility = $details->priceVisibility;
+        $this->shippingClassId = $details->shippingClassId;
+    }
+
+    /** Its shipping class is gone; it ships as an item without one. */
+    public function leaveShippingClass(): void
+    {
+        $this->shippingClassId = null;
     }
 
     // ------------------------------------------------------------------------------------------ downloads

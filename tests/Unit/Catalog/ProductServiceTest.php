@@ -17,6 +17,7 @@ use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
 use OrillaCart\Catalog\Domain\Event\ProductChanged;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tests\Fixtures\Catalog\CatalogIds;
@@ -25,6 +26,8 @@ use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductContent;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductRepository;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
+use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
+use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use PHPUnit\Framework\TestCase;
@@ -45,7 +48,7 @@ final class ProductServiceTest extends TestCase
         $this->events = new RecordingDispatcher();
         $this->content = new InMemoryProductContent([10 => ['Hoodie', true], 11 => ['Mug', true]]);
         $this->taxGroups = new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), new GeographyService(new InMemoryCountryRepository()), $this->events);
-        $this->products = new ProductService($productRepository, $setRepository, $this->content, $this->taxGroups, $this->events);
+        $this->products = new ProductService($productRepository, $setRepository, $this->content, $this->taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $this->events), $this->events);
         $this->sets = new AttributeSetService($setRepository, $productRepository, $this->events);
     }
 

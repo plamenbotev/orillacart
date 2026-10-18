@@ -17,6 +17,7 @@ final readonly class ProductDetails
      * @param int|null    $taxGroupId          null for the shop's default tax group
      * @param int|null    $downloadLimit       how many times a buyer may download each file; null for no limit
      * @param int|null    $downloadExpiryDays  how many days after payment the downloads work; null for always
+     * @param int|null    $shippingClassId     the shipping class of the product and its variations; null for none
      */
     public function __construct(
         public ProductType $type,
@@ -34,6 +35,7 @@ final readonly class ProductDetails
         public ?int $downloadLimit = null,
         public ?int $downloadExpiryDays = null,
         public PriceVisibility $priceVisibility = PriceVisibility::Shop,
+        public ?int $shippingClassId = null,
     ) {
         self::validSku($sku);
         if (($downloadLimit !== null && $downloadLimit < 1) || ($downloadExpiryDays !== null && $downloadExpiryDays < 1)) {
@@ -61,6 +63,7 @@ final readonly class ProductDetails
             $this->downloadLimit,
             $this->downloadExpiryDays,
             $this->priceVisibility,
+            $this->shippingClassId,
         );
     }
 

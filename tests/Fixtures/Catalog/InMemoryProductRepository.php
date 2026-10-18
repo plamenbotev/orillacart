@@ -85,6 +85,15 @@ final class InMemoryProductRepository implements ProductRepository
         unset($this->products[$product->id()]);
     }
 
+    public function forgetShippingClass(int $shippingClassId): void
+    {
+        foreach ($this->products as $product) {
+            if ($product->details()->shippingClassId === $shippingClassId) {
+                $product->leaveShippingClass();
+            }
+        }
+    }
+
     public function isSkuTaken(string $sku, ?int $exceptProductId = null, ?int $exceptVariationId = null): bool
     {
         foreach ($this->products as $product) {

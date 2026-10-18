@@ -73,7 +73,8 @@ final class CheckoutRestTest extends RestTestCase
     public function testOnlyShopManagersSetUpShippingAndPayments(): void
     {
         $routes = [['GET', '/carriers'], ['POST', '/carriers'], ['GET', '/carriers/1'], ['PUT', '/carriers/1'], ['DELETE', '/carriers/1'],
-            ['GET', '/payment-methods'], ['PUT', '/payment-methods/paypal']];
+            ['GET', '/payment-methods'], ['PUT', '/payment-methods/paypal'],
+            ['GET', '/shipping-classes'], ['POST', '/shipping-classes'], ['PUT', '/shipping-classes/1'], ['DELETE', '/shipping-classes/1']];
         foreach ($routes as [$method, $route]) {
             self::assertSame(401, $this->request($method, $route)->get_status(), "visitor: {$method} {$route}");
         }
@@ -87,6 +88,32 @@ final class CheckoutRestTest extends RestTestCase
         // Saved positions first; methods never saved keep the default order. Ties go by gateway id.
         self::assertSame(['cash_on_delivery', 'bank_transfer', 'paypal', 'cheque'], array_column($methods, 'gateway'));
         self::assertStringNotContainsString('S3cr3t-value', (string) wp_json_encode($methods), 'the PayPal secret never leaves the server');
+    }
+
+    public function testRatesCarryOnlyTheShippingClassesTheyList(): void
+    {
+        $this->actAs('administrator');
+        $bulky = $this->id($this->request('POST', '/shipping-classes', ['name' => 'Bulky'], nonce: true));
+        self::assertSame(422, $this->request('POST', '/shipping-classes', ['name' => 'Bulky'], nonce: true)->get_status(), 'names are unique');
+        self::assertSame(200, $this->request('PUT', "/products/{$this->product}", ['price' => '33.33', 'weight' => '2.5', 'shipping_class_id' => $bulky], nonce: true)->get_status());
+        self::assertSame($bulky, $this->data($this->request('GET', "/products/{$this->product}"))['shipping_class_id']);
+        self::assertSame(422, $this->request('PUT', "/products/{$this->product}", ['price' => '1', 'shipping_class_id' => 999999], nonce: true)->get_status());
+        $freight = $this->request('POST', '/carriers', ['name' => 'Freight', 'rates' => [['name' => 'Pallet', 'price' => '40', 'shipping_classes' => [$bulky]]]], nonce: true);
+        self::assertSame(201, $freight->get_status(), (string) wp_json_encode($freight->get_data()));
+        self::assertSame([$bulky], $this->rows($this->data($freight)['rates'])[0]['shipping_classes']);
+        $carrier = $this->id($freight);
+        wp_set_current_user(0);
+
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product, 'quantity' => 1], nonce: true));
+        $summary = $this->data($this->request('POST', '/checkout/summary', ['shipping_country' => 'BG'], nonce: true));
+        self::assertSame(['Bulgaria', 'Pallet'], array_column($this->rows($summary['shipping_options']), 'name'));
+
+        $this->actAs('administrator');
+        $inUse = $this->request('DELETE', "/shipping-classes/{$bulky}", nonce: true);
+        self::assertSame([422, 'orillacart_shipping_class_in_use'], [$inUse->get_status(), $this->data($inUse)['code']]);
+        $this->request('PUT', "/carriers/{$carrier}", ['name' => 'Freight', 'rates' => [['name' => 'Pallet', 'price' => '40', 'shipping_classes' => [0]]]], nonce: true);
+        self::assertSame(204, $this->request('DELETE', "/shipping-classes/{$bulky}", nonce: true)->get_status());
+        self::assertNull($this->data($this->request('GET', "/products/{$this->product}"))['shipping_class_id'], 'the product left the class');
     }
 
     public function testAVisitorOrdersAndPaysOnDelivery(): void
@@ -307,7 +334,7 @@ final class CheckoutRestTest extends RestTestCase
     private function clean(): void
     {
         $wpdb = $this->wpdb();
-        foreach (['payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'shipping_classes', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
         foreach (array_keys(wp_load_alloptions()) as $option) {

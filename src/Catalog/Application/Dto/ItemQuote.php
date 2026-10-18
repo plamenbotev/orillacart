@@ -36,5 +36,6 @@ final readonly class ItemQuote
         public array $downloads = [],
         public ?int $downloadLimit = null,
         public ?int $downloadExpiryDays = null,
+        public ?int $shippingClassId = null,
     ) {}
 }

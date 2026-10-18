@@ -76,6 +76,7 @@ final readonly class ProductQuotes
             array_map(static fn(DownloadFile $file): QuotedDownload => new QuotedDownload($file->id(), $file->name(), $file->storageKey(), $file->mimeType()), $product->downloads()),
             $details->downloadLimit,
             $details->downloadExpiryDays,
+            $details->shippingClassId,
         );
     }
 

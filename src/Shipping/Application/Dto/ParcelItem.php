@@ -6,7 +6,8 @@ namespace OrillaCart\Shipping\Application\Dto;
 
 /**
  * An item that ships, as its product page measures one unit: weight in the shop's weight unit, length,
- * width and height in its dimension unit. A missing measure counts as zero.
+ * width and height in its dimension unit. A missing measure counts as zero, and a shipping class that no longer
+ * exists as none.
  */
 final readonly class ParcelItem
 {
@@ -16,5 +17,6 @@ final readonly class ParcelItem
         public ?string $length = null,
         public ?string $width = null,
         public ?string $height = null,
+        public ?int $shippingClassId = null,
     ) {}
 }

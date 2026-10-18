@@ -61,6 +61,8 @@ final readonly class SaveProduct
         public ?int $downloadExpiryDays = null,
         #[Assert\Choice(callback: [PriceVisibility::class, 'values'])]
         public string $priceVisibility = 'shop',
+        #[Assert\Positive]
+        public ?int $shippingClassId = null,
     ) {}
 
     /** @return list<string> */

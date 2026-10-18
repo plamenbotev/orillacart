@@ -30,6 +30,7 @@ const courier = {
 			subtotal: null,
 			taxable: true,
 			tax_group_id: null,
+			shipping_classes: [],
 		},
 	],
 };
@@ -39,6 +40,13 @@ type Request = { path: string; method?: string; data?: unknown };
 function serve() {
 	mockedFetch.mockImplementation( ( options ) => {
 		const request = options as Request;
+		if ( request.path.includes( '/shipping-classes' ) ) {
+			return Promise.resolve(
+				request.method === undefined
+					? [ { id: 4, name: 'Bulky' } ]
+					: { id: 5, ...( request.data as object ) }
+			);
+		}
 		if ( request.method === undefined ) {
 			return Promise.resolve(
 				request.path.endsWith( '/carriers' )
@@ -65,6 +73,10 @@ describe( 'ShippingScreen', () => {
 		}
 		await user.clear( shipsTo );
 		await user.type( shipsTo, 'bg, us-ca' );
+		await user.click(
+			screen.getAllByLabelText( 'Every item' )[ 0 ] as HTMLElement
+		);
+		await user.click( screen.getByLabelText( 'Bulky' ) );
 		const weightTo = screen.getByLabelText( 'Weight to' );
 		await user.clear( weightTo );
 		await user.click(
@@ -87,6 +99,27 @@ describe( 'ShippingScreen', () => {
 			regions: [ 'BG', 'US-CA' ],
 			// From 0 with no end is no limit at all.
 			weight: null,
+			// Items without a class, and bulky ones.
+			shipping_classes: [ 0, 4 ],
+		} );
+	} );
+
+	it( 'adds a shipping class', async () => {
+		serve();
+		const user = userEvent.setup();
+		render( <ShippingScreen /> );
+
+		await user.type(
+			await screen.findByLabelText( 'New class' ),
+			'Fragile'
+		);
+		await user.click( screen.getByRole( 'button', { name: 'Add class' } ) );
+
+		expect( await screen.findByDisplayValue( 'Fragile' ) ).toBeVisible();
+		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+			path: '/orillacart/v1/shipping-classes',
+			method: 'POST',
+			data: { name: 'Fragile' },
 		} );
 	} );
 

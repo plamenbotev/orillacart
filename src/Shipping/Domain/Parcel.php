@@ -16,13 +16,16 @@ final readonly class Parcel
      * Measures units as one parcel: weights add up, and so do volumes (length × width × height of each unit)
      * and each of the three sides, as if every unit were laid next to the others.
      *
-     * @param list<array{quantity: int, weight: Measure, length: Measure, width: Measure, height: Measure}> $units
+     * @param list<array{quantity: int, weight: Measure, length: Measure, width: Measure, height: Measure, class?: int}> $units
+     *        class: the unit's shipping class, ShippingClass::NONE for none
      */
     public static function of(array $units, Money $subtotal): self
     {
         $weight = $volume = $length = $width = $height = Measure::zero();
         $count = 0;
+        $classes = [];
         foreach ($units as $unit) {
+            $classes[$unit['class'] ?? ShippingClass::NONE] = true;
             $quantity = $unit['quantity'];
             $weight = $weight->add($unit['weight']->times($quantity));
             $volume = $volume->add($unit['length']->multiply($unit['width'])->multiply($unit['height'])->times($quantity));
@@ -32,9 +35,12 @@ final readonly class Parcel
             $count += $quantity;
         }
 
-        return new self($weight, $volume, $length, $width, $height, $count, $subtotal);
+        return new self($weight, $volume, $length, $width, $height, $count, $subtotal, array_keys($classes));
     }
 
+    /**
+     * @param list<int> $classes the shipping classes of the items, each once
+     */
     public function __construct(
         public Measure $weight,
         public Measure $volume,
@@ -43,5 +49,6 @@ final readonly class Parcel
         public Measure $height,
         public int $items,
         public Money $subtotal,
+        public array $classes = [],
     ) {}
 }

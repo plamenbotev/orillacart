@@ -11,6 +11,7 @@ final readonly class ShippingRateView
 {
     /**
      * @param list<string> $regions
+     * @param list<int>    $shippingClasses
      */
     public function __construct(
         public int $id,
@@ -26,6 +27,7 @@ final readonly class ShippingRateView
         public ?RangeView $subtotal,
         public bool $taxable,
         public ?int $taxGroupId,
+        public array $shippingClasses,
     ) {}
 
     public static function fromRate(ShippingRate $rate): self
@@ -46,6 +48,7 @@ final readonly class ShippingRateView
             RangeView::fromRange($details->subtotal),
             $details->taxable,
             $details->taxGroupId,
+            $details->classes,
         );
     }
 }

@@ -16,6 +16,7 @@ final readonly class SaveShippingRate
 {
     /**
      * @param list<string> $regions countries ("BG") or states ("US-CA"); empty for everywhere
+     * @param list<int>    $shippingClasses the classes it carries, 0 for items without one; empty for every item
      */
     public function __construct(
         #[Assert\NotBlank]
@@ -43,5 +44,7 @@ final readonly class SaveShippingRate
         public bool $taxable = true,
         #[Assert\Positive]
         public ?int $taxGroupId = null,
+        #[Assert\All([new Assert\PositiveOrZero()])]
+        public array $shippingClasses = [],
     ) {}
 }

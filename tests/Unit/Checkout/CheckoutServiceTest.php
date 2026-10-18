@@ -21,6 +21,7 @@ use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
+use OrillaCart\Shipping\Application\Dto\SaveShippingClass;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
@@ -240,6 +241,22 @@ final class CheckoutServiceTest extends TestCase
         $order = $this->shop->checkout->placeOrder($this->cart([20, 1]), $this->order('bank_transfer', rate: null));
 
         self::assertSame([$order->number], $placed);
+    }
+
+    public function testAProductsShippingClassChoosesTheRatesUntilTheClassIsDeleted(): void
+    {
+        $bulky = $this->shop->shippingClasses->create(new SaveShippingClass('Bulky'))->id;
+        $this->shop->products->save(10, new SaveProduct('33.33', weight: '2.5', shippingClassId: $bulky));
+        $freight = $this->shop->carriers->create(new SaveCarrier('Freight', rates: [new SaveShippingRate('Pallet', '40', shippingClasses: [$bulky])]))->id;
+        $names = fn(): array => array_map(static fn($option): string => $option->name, $this->shop->checkout->summary($this->cart([10, 1]), new CheckoutDetails('BG'))->shippingOptions);
+
+        self::assertSame(['Bulgaria', 'Pallet'], $names());
+        $this->shop->carriers->update($freight, new SaveCarrier('Freight', rates: [new SaveShippingRate('Pallet', '40', shippingClasses: [0])]));
+        self::assertSame(['Bulgaria'], $names());
+
+        $this->shop->shippingClasses->delete($bulky);
+        self::assertNull($this->shop->products->product(10)->shippingClassId);
+        self::assertSame(['Bulgaria', 'Pallet'], $names(), 'now an item without a class');
     }
 
     /**

@@ -10,6 +10,7 @@ use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
+use OrillaCart\Catalog\Infrastructure\Events\ForgetDeletedShippingClass;
 use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\OrderEditing;
 use OrillaCart\Checkout\Application\OrderPricing;
@@ -49,7 +50,9 @@ use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shipping\Application\CarrierService;
+use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Shipping\Application\ShippingQuotes;
+use OrillaCart\Shipping\Domain\Event\ShippingClassDeleted;
 use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tax\Domain\TaxBasis;
@@ -78,6 +81,7 @@ use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentMethodRepository;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentRepository;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
+use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use OrillaCart\Tests\Fixtures\TemporaryPrivateFiles;
@@ -100,6 +104,7 @@ final class TestShop
     public readonly InMemoryTaxSettingsRepository $taxSettings;
     public readonly InMemorySettingsRepository $settings;
     public readonly CarrierService $carriers;
+    public readonly ShippingClassService $shippingClasses;
     public readonly PaymentMethodService $paymentMethods;
     public readonly InMemoryPaymentRepository $paymentRecords;
     public readonly FakePayPalApi $payPalApi;
@@ -138,18 +143,21 @@ final class TestShop
         $this->taxGroups = new TaxGroupService($taxGroupRecords, $this->taxSettings, $geography, $this->events);
         $taxes = new TaxCalculator($taxGroupRecords, $this->taxSettings, $settings, $geography);
 
+        $carrierRecords = new InMemoryCarrierRepository();
+        $classRecords = new InMemoryShippingClassRepository();
+        $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups, $classRecords);
+        $this->shippingClasses = new ShippingClassService($classRecords, $carrierRecords, $this->events);
+
         $ids = new CatalogIds();
         $productRecords = new InMemoryProductRepository($ids);
+        $this->events->addListener(ShippingClassDeleted::class, new ForgetDeletedShippingClass($productRecords)(...));
         $this->content = new InMemoryProductContent();
-        $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->events);
+        $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->shippingClasses, $this->events);
         $stockroomRecords = new InMemoryStockroomRepository();
         $this->stockrooms = new StockroomService($stockroomRecords);
         $this->stock = new StockService(new InMemoryStockLevelRepository(), $stockroomRecords, $this->events);
         $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock, $settings);
         $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings);
-
-        $carrierRecords = new InMemoryCarrierRepository();
-        $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups);
 
         $methodRecords = new InMemoryPaymentMethodRepository();
         $this->paymentRecords = new InMemoryPaymentRepository();
@@ -172,7 +180,7 @@ final class TestShop
         $this->accounts = new InMemoryAccounts();
         $this->customerSettings = new InMemoryCustomerSettingsRepository();
         $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders);
-        $this->pricing = new OrderPricing($quotes, $taxes, new ShippingQuotes($carrierRecords), $this->stock, $settings);
+        $this->pricing = new OrderPricing($quotes, $taxes, new ShippingQuotes($carrierRecords, $classRecords), $this->stock, $settings);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions);
         $this->checkout = new CheckoutService(
             $this->carts,

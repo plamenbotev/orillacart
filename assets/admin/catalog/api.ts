@@ -83,6 +83,8 @@ export interface Product {
 	featured: boolean;
 	/** shop: as the shop's setting says; shown; hidden (not sold online). */
 	price_visibility: 'shop' | 'shown' | 'hidden';
+	/** The product's and its variations' shipping class; null for none. */
+	shipping_class_id: number | null;
 	weight: string | null;
 	length: string | null;
 	width: string | null;
@@ -162,6 +164,7 @@ export function toProductInput( product: Product ): ProductInput {
 		purchasable: product.purchasable,
 		featured: product.featured,
 		price_visibility: product.price_visibility,
+		shipping_class_id: product.shipping_class_id,
 		weight: product.weight,
 		length: product.length,
 		width: product.width,

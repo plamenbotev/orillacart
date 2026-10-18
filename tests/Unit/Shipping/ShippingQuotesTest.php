@@ -10,15 +10,18 @@ use OrillaCart\Shipping\Application\CarrierService;
 use OrillaCart\Shipping\Application\Dto\ParcelItem;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveRange;
+use OrillaCart\Shipping\Application\Dto\SaveShippingClass;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Shipping\Application\Dto\ShippingOptionView;
 use OrillaCart\Shipping\Application\Dto\ShippingQuery;
+use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Shipping\Application\ShippingQuotes;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
+use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use PHPUnit\Framework\TestCase;
@@ -27,13 +30,18 @@ final class ShippingQuotesTest extends TestCase
 {
     private CarrierService $carriers;
     private ShippingQuotes $quotes;
+    private ShippingClassService $classes;
+    private RecordingDispatcher $events;
 
     protected function setUp(): void
     {
         $records = new InMemoryCarrierRepository();
         $geography = new GeographyService(new InMemoryCountryRepository());
-        $this->carriers = new CarrierService($records, $geography, new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), $geography, new RecordingDispatcher()));
-        $this->quotes = new ShippingQuotes($records);
+        $classes = new InMemoryShippingClassRepository();
+        $this->carriers = new CarrierService($records, $geography, new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), $geography, new RecordingDispatcher()), $classes);
+        $this->quotes = new ShippingQuotes($records, $classes);
+        $this->events = new RecordingDispatcher();
+        $this->classes = new ShippingClassService($classes, $records, $this->events);
     }
 
     public function testRangesIncludeBothEnds(): void
@@ -120,6 +128,50 @@ final class ShippingQuotesTest extends TestCase
         $this->expectException(ShippingRuleViolation::class);
 
         $this->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Odd', '1', weight: new SaveRange('5', '2'))]));
+    }
+
+    public function testARateCarriesOnlyItsShippingClasses(): void
+    {
+        $bulky = $this->classes->create(new SaveShippingClass('Bulky'))->id;
+        $fragile = $this->classes->create(new SaveShippingClass('Fragile'))->id;
+        $this->carriers->create(new SaveCarrier('Courier', rates: [
+            new SaveShippingRate('Standard', '5', shippingClasses: [0, $fragile]),
+            new SaveShippingRate('Freight', '40', shippingClasses: [$bulky]),
+            new SaveShippingRate('Anything', '60'),
+        ]));
+
+        self::assertSame(['Standard', 'Anything'], $this->offered('BG', [new ParcelItem(1, '1')]), 'no class');
+        self::assertSame(['Standard', 'Anything'], $this->offered('BG', [new ParcelItem(1, '1'), new ParcelItem(1, '1', shippingClassId: $fragile)]));
+        self::assertSame(['Freight', 'Anything'], $this->offered('BG', [new ParcelItem(1, '1', shippingClassId: $bulky)]));
+        self::assertSame(['Anything'], $this->offered('BG', [new ParcelItem(1, '1'), new ParcelItem(1, '1', shippingClassId: $bulky)]), 'one rate must carry every item');
+        self::assertSame(['Standard', 'Anything'], $this->offered('BG', [new ParcelItem(1, '1', shippingClassId: 99)]), 'a class that is gone counts as none');
+    }
+
+    public function testAClassARateCarriesStaysUntilTheRateLetsGo(): void
+    {
+        $bulky = $this->classes->create(new SaveShippingClass('Bulky'))->id;
+        $carrier = $this->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Freight', '40', shippingClasses: [$bulky])]));
+
+        try {
+            $this->classes->delete($bulky);
+            self::fail('The class is in use.');
+        } catch (ShippingRuleViolation $violation) {
+            self::assertSame('orillacart_shipping_class_in_use', $violation->errorCode);
+        }
+        $this->carriers->update($carrier->id, new SaveCarrier('Courier', rates: [new SaveShippingRate('Freight', '40')]));
+        $this->classes->delete($bulky);
+        self::assertSame([], $this->classes->classes());
+        self::assertCount(1, $this->events->events, 'products forget it');
+
+        $this->expectException(ShippingRuleViolation::class);
+        $this->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Freight', '40', shippingClasses: [$bulky])]));
+    }
+
+    public function testShippingClassNamesAreUnique(): void
+    {
+        $this->classes->create(new SaveShippingClass('Bulky'));
+        $this->expectException(ShippingRuleViolation::class);
+        $this->classes->create(new SaveShippingClass(' Bulky '));
     }
 
     /**

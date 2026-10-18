@@ -36,9 +36,9 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 11 | Category thumbnail | dfa3397 |
 | ✅ | 12 | Stockroom delivery time in days or weeks | 0ebf7d1 |
 | ✅ | 13 | Orders: move to another customer or to guest; change the shipping method; edit download allowances | 01e6eb2 |
-| ✅ | 14 | Shop manager role: an editor plus the shop; no user, plugin or site settings access | (this commit) |
-| 🔄 | 15 | Shipping classes on products and rates | |
-| ⬜ | 16 | Postcode patterns on shipping rates | |
+| ✅ | 14 | Shop manager role: an editor plus the shop; no user, plugin or site settings access | 6460dc8 |
+| ✅ | 15 | Shipping classes: one per product (variations share it); a rate carries every item or only the classes it lists | (this commit) |
+| 🔄 | 16 | Postcode patterns on shipping rates | |
 | ⬜ | 17 | Regions excluded from a shipping rate | |
 | ⬜ | 18 | Option prices as a percentage | |
 | ⬜ | 19 | Downloads through X-Sendfile / X-Accel-Redirect, optional, with a self-check | |

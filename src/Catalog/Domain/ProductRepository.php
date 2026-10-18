@@ -39,6 +39,9 @@ interface ProductRepository
 
     public function remove(Product $product): void;
 
+    /** The products in this shipping class leave it. */
+    public function forgetShippingClass(int $shippingClassId): void;
+
     /**
      * Whether a product or variation other than the given ones has this SKU.
      */

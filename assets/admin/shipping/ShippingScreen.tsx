@@ -22,12 +22,16 @@ import {
 	type CarrierInput,
 	deleteCarrier,
 	fetchCarriers,
+	fetchShippingClasses,
 	type Measure,
 	MEASURES,
 	type Range,
 	saveCarrier,
+	type ShippingClass,
 	type ShippingRateInput,
+	WITHOUT_CLASS,
 } from './api';
+import { ShippingClassesCard } from './ShippingClassesCard';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -44,6 +48,7 @@ const EMPTY_RATE: ShippingRateInput = {
 	subtotal: null,
 	taxable: true,
 	tax_group_id: null,
+	shipping_classes: [],
 };
 
 const MEASURE_LABELS: Record< Measure, string > = {
@@ -62,16 +67,22 @@ const MEASURE_LABELS: Record< Measure, string > = {
 export function ShippingScreen() {
 	const [ carriers, setCarriers ] = useState< Carrier[] | null >( null );
 	const [ groups, setGroups ] = useState< TaxGroup[] >( [] );
+	const [ classes, setClasses ] = useState< ShippingClass[] >( [] );
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) =>
 		setMessage( { status: 'error', text: toApiError( error ).message } );
 
 	useEffect( () => {
-		Promise.all( [ fetchCarriers(), fetchGroups() ] )
-			.then( ( [ loaded, taxGroups ] ) => {
+		Promise.all( [
+			fetchCarriers(),
+			fetchGroups(),
+			fetchShippingClasses(),
+		] )
+			.then( ( [ loaded, taxGroups, shippingClasses ] ) => {
 				setCarriers( loaded );
 				setGroups( taxGroups );
+				setClasses( shippingClasses );
 			} )
 			.catch( fail );
 	}, [] );
@@ -117,6 +128,7 @@ export function ShippingScreen() {
 					key={ carrier.id }
 					carrier={ carrier }
 					groups={ groups }
+					classes={ classes }
 					onSaved={ ( saved ) => {
 						replace( saved );
 						setMessage( {
@@ -138,6 +150,7 @@ export function ShippingScreen() {
 				key={ `new-${ carriers.length }` }
 				carrier={ null }
 				groups={ groups }
+				classes={ classes }
 				onSaved={ ( saved ) => {
 					replace( saved );
 					setMessage( {
@@ -148,6 +161,11 @@ export function ShippingScreen() {
 				onDeleted={ () => undefined }
 				onError={ fail }
 			/>
+			<ShippingClassesCard
+				classes={ classes }
+				onChange={ setClasses }
+				onError={ fail }
+			/>
 		</>
 	);
 }
@@ -156,6 +174,7 @@ interface CarrierCardProps {
 	/** Null for the form that adds a carrier. */
 	carrier: Carrier | null;
 	groups: TaxGroup[];
+	classes: ShippingClass[];
 	onSaved: ( carrier: Carrier ) => void;
 	onDeleted: () => void;
 	onError: ( error: unknown ) => void;
@@ -164,6 +183,7 @@ interface CarrierCardProps {
 function CarrierCard( {
 	carrier,
 	groups,
+	classes,
 	onSaved,
 	onDeleted,
 	onError,
@@ -276,6 +296,7 @@ function CarrierCard( {
 							key={ rate.id ?? `new-${ index }` }
 							rate={ rate }
 							groups={ groups }
+							classes={ classes }
 							onChange={ ( changed ) =>
 								setRate( index, changed )
 							}
@@ -324,11 +345,25 @@ function CarrierCard( {
 interface RateFieldsProps {
 	rate: ShippingRateInput;
 	groups: TaxGroup[];
+	classes: ShippingClass[];
 	onChange: ( rate: ShippingRateInput ) => void;
 	onRemove: () => void;
 }
 
-function RateFields( { rate, groups, onChange, onRemove }: RateFieldsProps ) {
+function RateFields( {
+	rate,
+	groups,
+	classes,
+	onChange,
+	onRemove,
+}: RateFieldsProps ) {
+	const carries = ( id: number, carried: boolean ) =>
+		onChange( {
+			...rate,
+			shipping_classes: carried
+				? [ ...rate.shipping_classes, id ]
+				: rate.shipping_classes.filter( ( current ) => current !== id ),
+		} );
 	const [ regions, setRegions ] = useState( rate.regions.join( ', ' ) );
 	const setRange = ( measure: Measure, range: Range ) =>
 		onChange( {
@@ -387,6 +422,51 @@ function RateFields( { rate, groups, onChange, onRemove }: RateFieldsProps ) {
 					} );
 				} }
 			/>
+			{ classes.length > 0 && (
+				<fieldset className="orillacart-rate-classes">
+					<legend>{ __( 'Carries', 'orillacart' ) }</legend>
+					<CheckboxControl
+						label={ __( 'Every item', 'orillacart' ) }
+						checked={ rate.shipping_classes.length === 0 }
+						onChange={ ( every ) =>
+							onChange( {
+								...rate,
+								shipping_classes: every
+									? []
+									: [ WITHOUT_CLASS ],
+							} )
+						}
+					/>
+					{ rate.shipping_classes.length > 0 &&
+						[
+							{
+								id: WITHOUT_CLASS,
+								name: __(
+									'Items without a class',
+									'orillacart'
+								),
+							},
+							...classes,
+						].map( ( shippingClass ) => (
+							<CheckboxControl
+								key={ shippingClass.id }
+								label={ shippingClass.name }
+								checked={ rate.shipping_classes.includes(
+									shippingClass.id
+								) }
+								onChange={ ( carried ) =>
+									carries( shippingClass.id, carried )
+								}
+							/>
+						) ) }
+					<p className="description">
+						{ __(
+							'An order gets this rate only when the rate carries every item in it.',
+							'orillacart'
+						) }
+					</p>
+				</fieldset>
+			) }
 			<table className="orillacart-limits">
 				<thead>
 					<tr>
