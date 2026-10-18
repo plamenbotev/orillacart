@@ -1,0 +1,130 @@
+{#
+ # An invoice or a credit note, as a page of its own laid out for printing; the browser prints it or saves it
+ # as a PDF.
+ #
+ # document: {invoice: {number, kind, amount, currency, issued_at}, seller: {legal_name, address, vat_number,
+ # company_number, bank_details, footer}, order (as on the receipt), lines (the order lines a credit note gives
+ # back: {line, quantity}), corrects (the invoice a credit note corrects)}; locale.
+ #}
+{% set invoice = document.invoice %}
+{% set seller = document.seller %}
+{% set order = document.order %}
+{% set credit = invoice.kind == 'credit_note' %}
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    {# translators: %s: invoice number -#}
+    <title>{{ (credit ? __('Credit note %s') : __('Invoice %s'))|format(invoice.number) }}</title>
+    <style>
+        :root { color-scheme: light; }
+        body { margin: 0; background: #f0f0f1; color: #1d2327; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .sheet { box-sizing: border-box; max-width: 210mm; margin: 24px auto; padding: 16mm; background: #fff; }
+        .actions { max-width: 210mm; margin: 16px auto 0; text-align: right; }
+        .actions button { padding: 8px 16px; font: inherit; cursor: pointer; }
+        header { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 32px; }
+        h1 { margin: 0 0 4px; font-size: 24px; }
+        .parties { display: flex; gap: 48px; margin-bottom: 32px; }
+        .parties > div { flex: 1; }
+        .label { color: #646970; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 6px 8px; border-bottom: 1px solid #dcdcde; text-align: left; vertical-align: top; }
+        th.amount, td.amount { text-align: right; white-space: nowrap; }
+        tfoot th { text-align: right; font-weight: normal; }
+        tfoot tr.total th, tfoot tr.total td { font-weight: bold; border-bottom: 2px solid #1d2327; }
+        .note { white-space: pre-line; }
+        footer { margin-top: 40px; color: #646970; font-size: 12px; white-space: pre-line; }
+        @media (max-width: 600px) { .sheet { margin: 0; padding: 16px; } header, .parties { flex-direction: column; gap: 16px; } }
+        @media print { body { background: #fff; } .sheet { margin: 0; max-width: none; padding: 0; } .actions { display: none; } }
+        @page { size: A4; margin: 16mm; }
+    </style>
+</head>
+<body>
+    <p class="actions"><button type="button" onclick="window.print()">{{ __('Print or save as PDF') }}</button></p>
+    <main class="sheet">
+        <header>
+            <div>
+                <h1>{{ credit ? __('Credit note') : __('Invoice') }}</h1>
+                <div>{{ __('Number') }}: <strong>{{ invoice.number }}</strong></div>
+                <div>{{ __('Date') }}: {{ invoice.issued_at|shop_date }}</div>
+                {% if credit and document.corrects %}<div>{{ __('Corrects invoice') }}: {{ document.corrects }}</div>{% endif %}
+                <div>{{ __('Order') }}: #{{ order.number }} ({{ order.placed_at|shop_date }})</div>
+            </div>
+            <div>
+                <strong>{{ seller.legal_name }}</strong>
+                {% if seller.address %}<div class="note">{{ seller.address }}</div>{% endif %}
+                {% if seller.vat_number %}<div>{{ __('VAT number') }}: {{ seller.vat_number }}</div>{% endif %}
+                {% if seller.company_number %}<div>{{ __('Company number') }}: {{ seller.company_number }}</div>{% endif %}
+            </div>
+        </header>
+
+        <div class="parties">
+            <div>
+                <div class="label">{{ __('Billed to') }}</div>
+                {% for line in order.billing|address_lines %}{{ not loop.first ? '<br>' }}{{ line }}{% endfor %}
+                <br>{{ order.email }}
+            </div>
+            {% if order.shipping_address %}
+                <div>
+                    <div class="label">{{ __('Shipped to') }}</div>
+                    {% for line in order.shipping_address|address_lines %}{{ not loop.first ? '<br>' }}{{ line }}{% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        {% if credit %}
+            <table>
+                <thead><tr><th scope="col">{{ __('Given back') }}</th><th scope="col" class="amount">{{ __('Amount') }}</th></tr></thead>
+                <tbody>
+                    {% for given in document.lines %}
+                        {% set line = order.lines[given.line] ?? null %}
+                        {% if line %}<tr><td>{{ line.name }} &times; {{ given.quantity }}</td><td class="amount"></td></tr>{% endif %}
+                    {% endfor %}
+                    <tr><td>{{ __('Refund of order #%s')|format(order.number) }}</td><td class="amount">−{{ invoice.amount|money(invoice.currency) }}</td></tr>
+                </tbody>
+                <tfoot><tr class="total"><th scope="row">{{ __('Total') }}</th><td class="amount">−{{ invoice.amount|money(invoice.currency) }}</td></tr></tfoot>
+            </table>
+        {% else %}
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">{{ __('Item') }}</th>
+                        <th scope="col" class="amount">{{ __('Quantity') }}</th>
+                        <th scope="col" class="amount">{{ __('Unit price') }}</th>
+                        <th scope="col" class="amount">{{ __('Total') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in order.lines %}
+                        <tr>
+                            <td>{{ line.name }}{% if line.sku %} <small>({{ line.sku }})</small>{% endif %}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}</td>
+                            <td class="amount">{{ line.quantity }}</td>
+                            <td class="amount">{{ line.unit_price|money(order.currency) }}</td>
+                            <td class="amount">{{ line.total|money(order.currency) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr><th scope="row" colspan="3">{{ __('Subtotal') }}</th><td class="amount">{{ order.subtotal|money(order.currency) }}</td></tr>
+                    {% for discount in order.discounts %}
+                        <tr><th scope="row" colspan="3">{{ discount.automatic ? discount.description : __('Coupon %s')|format(discount.code) }}</th><td class="amount">{{ discount.free_shipping ? __('Free shipping') : '−' ~ discount.amount|money(order.currency) }}</td></tr>
+                    {% endfor %}
+                    {% if order.shipping %}
+                        <tr><th scope="row" colspan="3">{{ __('Shipping') }} ({{ order.shipping }})</th><td class="amount">{{ order.shipping_total|money(order.currency) }}</td></tr>
+                    {% endif %}
+                    {% for tax in order.taxes %}
+                        <tr><th scope="row" colspan="3">{{ tax.name }} {{ tax.percent }}%</th><td class="amount">{{ tax.amount|money(order.currency) }}</td></tr>
+                    {% endfor %}
+                    <tr class="total"><th scope="row" colspan="3">{{ __('Total') }}</th><td class="amount">{{ invoice.amount|money(invoice.currency) }}</td></tr>
+                </tfoot>
+            </table>
+            {% if order.paid_at %}<p>{{ __('Paid %1$s by %2$s.')|format(order.paid_at|shop_date, order.payment_name ?: __('nothing (free)')) }}</p>{% endif %}
+        {% endif %}
+
+        {% if seller.bank_details %}<p class="note"><span class="label">{{ __('Bank details') }}</span><br>{{ seller.bank_details }}</p>{% endif %}
+        {% if seller.footer %}<footer>{{ seller.footer }}</footer>{% endif %}
+    </main>
+</body>
+</html>

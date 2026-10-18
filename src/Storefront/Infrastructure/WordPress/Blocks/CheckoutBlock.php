@@ -11,6 +11,7 @@ use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Application\Dto\CustomerView;
 use OrillaCart\Customers\Domain\CustomerNotFound;
+use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Settings\Application\SettingsService;
@@ -43,6 +44,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         private TemplateRenderer $templates,
         private ShipmentTracking $shipments,
         private PayNow $payNow,
+        private Invoices $invoices,
     ) {}
 
     public static function name(): string
@@ -126,6 +128,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'links' => $links,
             'shipments' => $this->shipments->forOrder($order->number),
             'pay_methods' => $this->payNow->methods($order),
+            'invoices' => $this->invoices->ofOrder($order->number),
         ]);
     }
 

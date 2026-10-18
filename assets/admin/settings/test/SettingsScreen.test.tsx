@@ -111,6 +111,19 @@ function serve( save?: () => Promise< unknown > ) {
 		if ( path === '/orillacart/v1/shop-pages' ) {
 			return Promise.resolve( pages );
 		}
+		if ( path === '/orillacart/v1/invoice-settings' ) {
+			return Promise.resolve( {
+				legal_name: '',
+				address: '',
+				vat_number: '',
+				company_number: '',
+				bank_details: '',
+				footer: '',
+				invoice_prefix: 'INV-',
+				credit_note_prefix: 'CN-',
+				yearly: true,
+			} );
+		}
 		if ( path.startsWith( '/wp/v2/pages' ) ) {
 			return Promise.resolve( [
 				{ id: 9, title: { rendered: 'Shop' } },
@@ -247,13 +260,13 @@ describe( 'SettingsScreen', () => {
 
 		render( <SettingsScreen /> );
 
-		// Every card says so: the settings, the shop pages and the downloads.
+		// Every card says so: the settings, the shop pages, the invoices, the downloads, filters and search.
 		expect(
 			await screen.findAllByText(
 				'You are not allowed to do this.',
 				NOTICE
 			)
-		).toHaveLength( 5 );
+		).toHaveLength( 6 );
 	} );
 
 	it( 'saves the page each part of the shop is on', async () => {

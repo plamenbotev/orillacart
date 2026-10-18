@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Notifications\Application;
 
+use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
@@ -37,6 +38,7 @@ final readonly class OrderEmails
         private LoggerInterface $logger,
         private ShipmentTracking $shipments,
         private Jobs $jobs,
+        private Invoices $invoices,
     ) {}
 
     public function statusChanged(int $orderId, string $previous, string $status, bool $tellCustomer = true, bool $tellShop = true): void
@@ -125,6 +127,7 @@ final readonly class OrderEmails
             'site_url' => $this->site->url(),
             'for_shop' => $kind->isForShop(),
             'shipments' => $this->shipments->forOrder($orderId),
+            'invoices' => $kind->isForShop() ? [] : $this->invoices->ofOrder($orderId),
         ] + $extra;
 
         try {

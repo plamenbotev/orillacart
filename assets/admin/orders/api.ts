@@ -35,7 +35,7 @@ export interface OrderSummary {
 	placed_at: string;
 	/** The shop has to look at it, such as a payment disputed after it was paid. */
 	needs_attention: boolean;
-	/** The money came and was not given back in full: it is refunded before it can be deleted. */
+	/** The money came, given back since or not: the order stays, with its invoice, for the books. */
 	paid: boolean;
 }
 
@@ -261,6 +261,22 @@ export function giveUpRefund( id: number ): Promise< OrderRefunds > {
 	return apiFetch< OrderRefunds >( {
 		path: `${ BASE }/refunds/${ id }/give-up`,
 		method: 'POST',
+	} );
+}
+
+/** An invoice or credit note of an order, with its printable page. */
+export interface Invoice {
+	number: string;
+	kind: 'invoice' | 'credit_note';
+	amount: string;
+	currency: string;
+	issued_at: string;
+	url: string;
+}
+
+export function fetchInvoices( id: number ): Promise< Invoice[] > {
+	return apiFetch< Invoice[] >( {
+		path: `${ BASE }/orders/${ id }/invoices`,
 	} );
 }
 

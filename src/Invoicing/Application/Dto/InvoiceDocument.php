@@ -1,0 +1,26 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Invoicing\Application\Dto;
+
+use OrillaCart\Ordering\Application\Dto\OrderView;
+
+/**
+ * What a printable invoice or credit note shows: the document, the seller as it was when issued, and the order.
+ */
+final readonly class InvoiceDocument
+{
+    /**
+     * @param array<string, string>                 $seller
+     * @param list<array{line: int, quantity: int}> $lines  the order lines a credit note gives back
+     */
+    public function __construct(
+        public InvoiceView $invoice,
+        public array $seller,
+        public OrderView $order,
+        public array $lines,
+        /** For a credit note: the invoice it corrects. */
+        public ?string $corrects,
+    ) {}
+}

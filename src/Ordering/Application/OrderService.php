@@ -29,6 +29,7 @@ use OrillaCart\Ordering\Domain\Event\OrderChanged;
 use OrillaCart\Ordering\Domain\Event\OrderDeleted;
 use OrillaCart\Ordering\Domain\Event\OrderNeedsAttention;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
+use OrillaCart\Ordering\Domain\Event\OrderPaid;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
@@ -501,17 +502,17 @@ final readonly class OrderService
     }
 
     /**
-     * Deletes an order for good. An order waiting for its payment gives its stock back first; a paid one has to
-     * be refunded in full before, so its money and stock are settled in its history and not just lost.
+     * Deletes an order for good. An order waiting for its payment gives its stock back first; one that was ever
+     * paid stays, since it has an invoice the books must keep.
      *
      * @throws OrderNotFound
-     * @throws OrderRuleViolation for a paid order
+     * @throws OrderRuleViolation for an order that was paid
      */
     public function delete(int $id): void
     {
         $this->changing($id, function (Order $order) use ($id): void {
-            if ($order->isPaid()) {
-                throw new OrderRuleViolation(\sprintf('Order #%d is %s; refund it in full before deleting it.', $id, strtolower($order->status()->label())), 'orillacart_order_paid');
+            if ($order->paidAt() !== null) {
+                throw new OrderRuleViolation(\sprintf('Order #%d was paid: it stays, with its invoice, for the books.', $id), 'orillacart_order_paid');
             }
             $this->giveBack($order->cancel());
             $this->orders->remove($order);
@@ -761,7 +762,17 @@ final readonly class OrderService
      */
     private function changing(int $id, \Closure $work): mixed
     {
-        return $this->transactions->run(fn(): mixed => $work($this->orders->find($id, true) ?? throw new OrderNotFound()));
+        return $this->transactions->run(function () use ($id, $work): mixed {
+            $order = $this->orders->find($id, true) ?? throw new OrderNotFound();
+            $unpaid = $order->paidAt() === null;
+            $result = $work($order);
+            // However the money came, this is where the order learnt of it.
+            if ($unpaid && $order->paidAt() !== null) {
+                $this->events->dispatch(new OrderPaid($order->id()));
+            }
+
+            return $result;
+        });
     }
 
     /**

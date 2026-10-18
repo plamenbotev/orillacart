@@ -2,7 +2,8 @@
  # An order as its customer sees it: after checkout (with the order's key) and in their account.
  #
  # order: the order; heading: whether to thank the customer for ordering;
- # links: the shop's pages; pay_methods: the ways an unpaid order can be paid now, if any.
+ # links: the shop's pages; pay_methods: the ways an unpaid order can be paid now, if any; invoices: its
+ # invoices and credit notes, if any.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-receipt">
@@ -17,6 +18,9 @@
         <li>{{ __('Total') }}: <strong>{{ order.total|money(order.currency) }}</strong></li>
         {% if order.refunded_total > 0 %}<li>{{ __('Refunded') }}: <strong>{{ order.refunded_total|money(order.currency) }}</strong></li>{% endif %}
         {% if order.payment_name %}<li>{{ __('Payment') }}: <strong>{{ order.payment_name }}</strong></li>{% endif %}
+        {% for invoice in invoices ?? [] %}
+            <li>{{ invoice.kind == 'credit_note' ? __('Credit note') : __('Invoice') }}: <a href="{{ invoice.url }}" target="_blank" rel="noopener">{{ invoice.number }}</a></li>
+        {% endfor %}
     </ul>
 
     {% if order.payment_note and order.status in ['pending_payment', 'on_hold'] %}

@@ -28,4 +28,4 @@
 </tr></table>
 {% if order.fields %}<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:16px;font-size:14px;">{% for field in order.fields %}<tr><td valign="top" style="padding-right:16px;"><strong>{{ field.label }}</strong></td><td>{{ field.answer|nl2br }}</td></tr>{% endfor %}</table>{% endif %}
 {{ slot('email_after_order', order.number, for_shop) }}
-{% if not for_shop %}<p style="margin:24px 0 0;"><a href="{{ receipt_url }}" style="color:#2271b1;">{{ __('See your order online') }}</a></p>{% endif %}
+{% if not for_shop %}<p style="margin:24px 0 0;"><a href="{{ receipt_url }}" style="color:#2271b1;">{{ __('See your order online') }}</a>{% for invoice in invoices ?? [] %} · <a href="{{ invoice.url }}" style="color:#2271b1;">{{ (invoice.kind == 'credit_note' ? __('Credit note %s') : __('Invoice %s'))|format(invoice.number) }}</a>{% endfor %}</p>{% endif %}

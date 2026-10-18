@@ -133,6 +133,30 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(204, $this->request('DELETE', "/customer-groups/{$groupId}", nonce: true)->get_status());
     }
 
+    public function testAPaidOrderGetsTheNextInvoiceNumberAndARefundACreditNote(): void
+    {
+        $this->actAs('administrator');
+        $settings = $this->request('PUT', '/invoice-settings', ['legal_name' => 'Lamps Ltd', 'vat_number' => 'BG123', 'invoice_prefix' => 'T', 'credit_note_prefix' => 'TC', 'yearly' => false], nonce: true);
+        self::assertSame(200, $settings->get_status(), (string) wp_json_encode($settings->get_data()));
+        self::assertSame(422, $this->request('PUT', '/invoice-settings', ['invoice_prefix' => 'X', 'credit_note_prefix' => 'X'], nonce: true)->get_status(), 'one prefix for both');
+        $first = $this->order([[$this->lamp, 1]]);
+        $second = $this->order([[$this->lamp, 1]]);
+        $this->actAs('administrator');
+
+        $this->request('POST', "/orders/{$first['number']}/paid", [], nonce: true);
+        $this->request('POST', "/orders/{$second['number']}/paid", [], nonce: true);
+        $this->request('POST', "/orders/{$first['number']}/refunds", ['amount' => '5', 'outside' => true], nonce: true);
+
+        $numbers = static fn(array $invoices): array => array_column($invoices, 'number');
+        $firstInvoices = $this->rows($this->data($this->request('GET', "/orders/{$first['number']}/invoices")));
+        $secondInvoices = $this->rows($this->data($this->request('GET', "/orders/{$second['number']}/invoices")));
+        self::assertMatchesRegularExpression('/^T\d{5}$/', $numbers($firstInvoices)[0] ?? '');
+        self::assertSame((int) substr($numbers($firstInvoices)[0], 1) + 1, (int) substr($numbers($secondInvoices)[0] ?? '', 1), 'the next number');
+        self::assertMatchesRegularExpression('/^TC\d{5}$/', $numbers($firstInvoices)[1] ?? '');
+        self::assertStringContainsString('orillacart_invoice=', (string) ($firstInvoices[0]['url'] ?? ''));
+        self::assertSame(422, $this->request('DELETE', "/orders/{$first['number']}", nonce: true)->get_status(), 'it stays for the books');
+    }
+
     public function testTheShopRefundsPartOfAPaidOrderAndThenTheRest(): void
     {
         $order = $this->order([[$this->lamp, 2]]);

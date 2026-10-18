@@ -127,7 +127,7 @@ final class OrderAdministrationTest extends TestCase
         self::assertSame(9, $this->available(), 'the refund without restock keeps its item out of stock');
     }
 
-    public function testAnUnpaidOrderIsDeletedWithItsStockBackAndAPaidOneOnlyOnceSettled(): void
+    public function testAnUnpaidOrderIsDeletedWithItsStockBackAndAPaidOneStaysForTheBooks(): void
     {
         $waiting = $this->place(3);
         $paid = $this->place(2);
@@ -145,9 +145,13 @@ final class OrderAdministrationTest extends TestCase
         }
 
         $this->shop->refunds->refund($paid->number, new MakeRefund('16'), 7);
-        $this->shop->orders->delete($paid->number);
-        self::assertSame([], $this->shop->orderRecords->orders);
-        self::assertSame(8, $this->available(), 'the refund kept its items out, and deleting does not change that');
+        try {
+            $this->shop->orders->delete($paid->number);
+            self::fail('refunded, but it has an invoice');
+        } catch (OrderRuleViolation $e) {
+            self::assertSame('orillacart_order_paid', $e->errorCode);
+        }
+        self::assertCount(1, $this->shop->orderRecords->orders);
     }
 
     public function testTheShopFindsOrdersByStatusNumberOrCustomer(): void

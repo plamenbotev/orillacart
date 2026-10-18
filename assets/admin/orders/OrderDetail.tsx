@@ -29,7 +29,9 @@ import {
 	fetchOrder,
 	fetchOrderActions,
 	fetchPickupPoints,
+	fetchInvoices,
 	fetchShippingOptions,
+	type Invoice,
 	markHandled,
 	markPaid,
 	type Order,
@@ -161,6 +163,7 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 				/>
 			) }
 			<Summary order={ order } />
+			<InvoicesList order={ order } />
 			{ order.status === 'on_hold' && (
 				<ItemsCard
 					order={ order }
@@ -259,7 +262,7 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 				}
 				onError={ fail }
 			/>
-			{ ( order.paid_at === null || order.status === 'refunded' ) && (
+			{ order.paid_at === null && (
 				<DeleteButton
 					order={ order }
 					onDeleted={ onBack }
@@ -488,6 +491,56 @@ function Summary( { order }: { order: Order } ) {
 				) }
 			</CardBody>
 		</Card>
+	);
+}
+
+/**
+ * The order's invoice and credit notes, each opening its printable page.
+ * @param props
+ * @param props.order
+ */
+function InvoicesList( { order }: { order: Order } ) {
+	const [ invoices, setInvoices ] = useState< Invoice[] >( [] );
+
+	useEffect( () => {
+		let current = true;
+		fetchInvoices( order.number )
+			.then(
+				( loaded ) =>
+					current &&
+					setInvoices( Array.isArray( loaded ) ? loaded : [] )
+			)
+			.catch( () => current && setInvoices( [] ) );
+		return () => {
+			current = false;
+		};
+	}, [ order.number, order.paid_at, order.refunded_total ] );
+
+	if ( invoices.length === 0 ) {
+		return null;
+	}
+
+	return (
+		<p className="orillacart-orders__invoices">
+			{ invoices.map( ( invoice, index ) => (
+				<span key={ invoice.number }>
+					{ index > 0 && ' · ' }
+					<a href={ invoice.url } target="_blank" rel="noreferrer">
+						{ invoice.kind === 'credit_note'
+							? sprintf(
+									/* translators: %s: credit note number */
+									__( 'Credit note %s', 'orillacart' ),
+									invoice.number
+								)
+							: sprintf(
+									/* translators: %s: invoice number */
+									__( 'Invoice %s', 'orillacart' ),
+									invoice.number
+								) }
+					</a>
+				</span>
+			) ) }
+		</p>
 	);
 }
 

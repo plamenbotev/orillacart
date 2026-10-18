@@ -32,6 +32,13 @@ The first request after the update brings the shop's tables up to date; one requ
 on. On a large shop, run `wp orillacart migrate` right after updating instead, so no visitor's request does the
 work. If the update fails, the admin screens say why and offer to try again; `wp orillacart migrate` does too.
 
+= Does the shop issue invoices? =
+
+Yes. A paid order gets an invoice with the next number of its series, and money given back a credit note; the
+numbers never skip one. Customers open them from their receipt, their account and their emails, and print them
+or save them as PDF. Set the seller's details and the number prefixes under Shop → Settings → Invoices. Orders
+that were paid are kept for the books, with their invoices: they cannot be deleted.
+
 = How do I change how the shop looks? =
 
 The storefront is rendered from Twig templates in the plugin's templates/ folder. Copy one to an orillacart/
