@@ -225,11 +225,6 @@ final readonly class OrderService
     }
 
     /**
-     * A customer who made an account after ordering gets the order in their account.
-     *
-     * @throws OrderNotFound
-     */
-    /**
      * Moves the order to a customer's account, or makes it a guest's order; the history says so.
      *
      * @throws OrderNotFound
@@ -281,6 +276,11 @@ final readonly class OrderService
         throw new OrderNotFound();
     }
 
+    /**
+     * A customer who made an account after ordering gets the order in their account.
+     *
+     * @throws OrderNotFound
+     */
     public function giveTo(int $id, int $customerId): void
     {
         $order = $this->get($id);
@@ -289,17 +289,21 @@ final readonly class OrderService
     }
 
     /**
-     * Deletes an order for good. Only closed orders can be deleted: cancelled, failed or refunded ones, whose
-     * stock is settled.
+     * Deletes an order for good. An order waiting for its payment gives its stock back first; a paid one has to
+     * be cancelled or refunded before, so its money and stock are settled in its history and not just lost.
      *
      * @throws OrderNotFound
-     * @throws OrderRuleViolation for any other order
+     * @throws OrderRuleViolation for a paid order
      */
     public function delete(int $id): void
     {
         $order = $this->get($id);
-        if (!\in_array($order->status(), [OrderStatus::Cancelled, OrderStatus::Failed, OrderStatus::Refunded], true)) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is %s; only cancelled, failed or refunded orders can be deleted.', $id, strtolower($order->status()->label())), 'orillacart_order_not_closed');
+        if ($order->status()->isPaid()) {
+            throw new OrderRuleViolation(\sprintf('Order #%d is %s; cancel or refund it before deleting it.', $id, strtolower($order->status()->label())), 'orillacart_order_paid');
+        }
+        $taken = $order->cancel();
+        if ($taken !== []) {
+            $this->stock->giveBack(array_map(static fn(TakenItem $item): TakenStock => new TakenStock($item->item, $item->stockroomId, $item->quantity), $taken));
         }
         $this->orders->remove($order);
     }

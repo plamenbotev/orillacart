@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Checkout\Application\Dto;
+
+use Symfony\Component\Validator\Constraints as Assert;
+
+/**
+ * Query: what an order the shop is taking would cost (countries are ISO 3166-1 codes), and how it could ship and be paid, before it is created.
+ */
+final readonly class QuoteOrder
+{
+    /**
+     * @param list<EditedItem> $items
+     */
+    public function __construct(
+        #[Assert\Valid]
+        public array $items = [],
+        #[Assert\Regex(pattern: '/^[A-Z]{2}$/')]
+        public ?string $billingCountry = null,
+        #[Assert\Regex(pattern: '/^[A-Z0-9]{1,3}$/')]
+        public ?string $billingState = null,
+        #[Assert\Regex(pattern: '/^[A-Z]{2}$/')]
+        public ?string $shippingCountry = null,
+        #[Assert\Regex(pattern: '/^[A-Z0-9]{1,3}$/')]
+        public ?string $shippingState = null,
+        #[Assert\Length(max: 20)]
+        public ?string $shippingPostcode = null,
+        #[Assert\Positive]
+        public ?int $rateId = null,
+    ) {}
+}

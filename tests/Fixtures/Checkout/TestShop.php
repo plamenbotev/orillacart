@@ -11,7 +11,9 @@ use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
 use OrillaCart\Catalog\Infrastructure\Events\ForgetDeletedShippingClass;
+use OrillaCart\Checkout\Application\AddressRules;
 use OrillaCart\Checkout\Application\CheckoutService;
+use OrillaCart\Checkout\Application\ManualOrders;
 use OrillaCart\Checkout\Application\OrderEditing;
 use OrillaCart\Checkout\Application\OrderPricing;
 use OrillaCart\Customers\Application\CustomerService;
@@ -116,6 +118,7 @@ final class TestShop
     public readonly CheckoutService $checkout;
     public readonly OrderPricing $pricing;
     public readonly OrderEditing $editing;
+    public readonly ManualOrders $manualOrders;
     public readonly ImmediateTransactions $transactions;
     public readonly MemoryLogger $logger;
     public readonly EventDispatcher $events;
@@ -182,15 +185,17 @@ final class TestShop
         $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders);
         $this->pricing = new OrderPricing($quotes, $taxes, new ShippingQuotes($carrierRecords, $classRecords), $this->stock, $settings);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions);
+        $paymentOptions = new PaymentOptions($methodRecords, $gateways);
+        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions);
         $this->checkout = new CheckoutService(
             $this->carts,
             $this->pricing,
-            new PaymentOptions($methodRecords, $gateways),
+            $paymentOptions,
             $payments,
             $this->orders,
             new FakeOrderLinks(),
             $settings,
-            $geography,
+            new AddressRules($settings, $geography),
             $this->transactions,
             $this->customers,
             $this->logger,

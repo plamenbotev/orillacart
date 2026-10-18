@@ -31,11 +31,6 @@ final readonly class OrderEditing
     ) {}
 
     /**
-     * @throws OrderNotFound
-     * @throws OrderRuleViolation    for an order not on hold
-     * @throws CheckoutRuleViolation for items not sold or not in stock, or a shipping rate that is not offered
-     */
-    /**
      * The ways an order on hold can ship to its address, with its items as they are: the choices the shop has
      * when it changes how the order ships.
      *
@@ -53,6 +48,11 @@ final readonly class OrderEditing
         return $this->pricing->price($items, new TaxAddress($shippingAddress->country, $shippingAddress->state), $billing, $order->shippingRateId, $shippingAddress->postcode)['options'];
     }
 
+    /**
+     * @throws OrderNotFound
+     * @throws OrderRuleViolation    for an order not on hold
+     * @throws CheckoutRuleViolation for items not sold or not in stock, or a shipping rate that is not offered
+     */
     public function edit(int $orderId, EditOrderItems $command, ?int $userId): OrderView
     {
         $order = $this->orders->order($orderId);

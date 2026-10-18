@@ -1,0 +1,115 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Tests\Unit\Checkout;
+
+use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Checkout\Application\Dto\CreateOrder;
+use OrillaCart\Checkout\Application\Dto\EditedItem;
+use OrillaCart\Checkout\Application\Dto\QuoteOrder;
+use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Customers\Domain\CustomerNotFound;
+use OrillaCart\Inventory\Application\Dto\SaveStockroom;
+use OrillaCart\Inventory\Application\Dto\SetStockLevel;
+use OrillaCart\Inventory\Application\Dto\SetStockLevels;
+use OrillaCart\Inventory\Application\Dto\StockItemRef;
+use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Payment\Application\Dto\PaymentOptionView;
+use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Settings\Domain\DimensionUnit;
+use OrillaCart\Settings\Domain\StoreSettings;
+use OrillaCart\Settings\Domain\WeightUnit;
+use OrillaCart\Shared\Domain\Currency;
+use OrillaCart\Shipping\Application\Dto\SaveCarrier;
+use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
+use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
+use OrillaCart\Tax\Application\Dto\SaveTaxRate;
+use OrillaCart\Tax\Domain\TaxBasis;
+use OrillaCart\Tax\Domain\TaxSettings;
+use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use PHPUnit\Framework\TestCase;
+
+final class ManualOrdersTest extends TestCase
+{
+    private TestShop $shop;
+    private int $rate;
+
+    protected function setUp(): void
+    {
+        $this->shop = new TestShop();
+        $vat = $this->shop->taxGroups->create(new SaveTaxGroup('Standard'))->id;
+        $this->shop->taxGroups->addRate($vat, new SaveTaxRate('BG', null, '20', 'VAT'));
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::ShippingAddress, $vat));
+        $this->shop->content->add(10, 'Lamp');
+        $this->shop->products->save(10, new SaveProduct('30', weight: '2'));
+        $this->shop->content->add(20, 'E-book');
+        $this->shop->products->save(20, new SaveProduct('10', 'virtual'));
+        $room = $this->shop->stockrooms->create(new SaveStockroom('Sofia'))->id;
+        $this->shop->stock->setLevels(StockItemRef::product(10), new SetStockLevels([new SetStockLevel($room, 5)]));
+        $this->rate = $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Bulgaria', '5', regions: ['BG'])]))->rates[0]->id;
+        $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
+    }
+
+    public function testTheShopPricesAnOrderBeforeTakingIt(): void
+    {
+        $quote = $this->shop->manualOrders->quote(new QuoteOrder([new EditedItem(10, 2, unitPrice: '25')], 'BG'));
+
+        self::assertSame([['Lamp', 2, '25', '50']], array_map(static fn($line): array => [$line->name, $line->quantity, $line->unitPrice, $line->total], $quote->lines));
+        self::assertSame([$this->rate], array_map(static fn($option): int => $option->rateId, $quote->shippingOptions));
+        self::assertSame($this->rate, $quote->rateId, 'the first rate counts in the totals until one is chosen');
+        // 50 + 10 VAT + 5 shipping + 1 VAT on shipping
+        self::assertSame('66', $quote->total);
+        self::assertSame(['bank_transfer'], array_map(static fn(PaymentOptionView $option): string => $option->gateway, $quote->paymentOptions));
+    }
+
+    public function testAnUnpaidOrderWaitsOnHoldWithItsStockTaken(): void
+    {
+        $order = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(10, 2, unitPrice: '25')], rateId: $this->rate, payment: 'bank_transfer'), 7);
+
+        self::assertSame(['on_hold', 'Bank transfer', '66'], [$order->status, $order->paymentName, $order->total]);
+        self::assertSame(3, $this->available());
+        self::assertContains('Taken by the shop.', array_map(static fn($note): string => $note->text, $order->notes));
+    }
+
+    public function testAPaidOrderStartsProcessing(): void
+    {
+        $order = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 1)], paid: true), 7);
+
+        self::assertSame('processing', $order->status);
+        self::assertNotNull($order->paidAt);
+    }
+
+    public function testTheShopMayTakeOrdersFromCountriesCustomersCannotOrderFrom(): void
+    {
+        $this->shop->settings->save(new StoreSettings(new Currency('EUR'), 2, WeightUnit::Kilogram, DimensionUnit::Centimetre, 'BG', sellTo: ['BG']));
+
+        $order = $this->shop->manualOrders->create(new CreateOrder('max@example.com', self::address('DE'), [new EditedItem(20, 1)]), 7);
+
+        self::assertSame(['on_hold', 'DE'], [$order->status, $order->billing->country]);
+    }
+
+    public function testAnOrderThatShipsNeedsARateAndAnAccountMustExist(): void
+    {
+        try {
+            $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(10, 1)]), 7);
+            self::fail('no rate');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('orillacart_shipping_required', $e->errorCode);
+        }
+        self::assertSame(5, $this->available(), 'nothing was taken');
+
+        $this->expectException(CustomerNotFound::class);
+        $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 1)], customerId: 99), 7);
+    }
+
+    private function available(): ?int
+    {
+        return $this->shop->stock->stock(StockItemRef::product(10))->available;
+    }
+
+    private static function address(string $country): AddressData
+    {
+        return new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', $country, '+359 2 000 0000');
+    }
+}

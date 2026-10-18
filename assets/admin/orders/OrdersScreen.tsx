@@ -1,17 +1,20 @@
-import { Notice } from '@wordpress/components';
+import { Button, Notice } from '@wordpress/components';
 import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useCallback, useEffect, useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 import { toApiError } from '../shared/api';
 import {
+	deleteOrder,
 	fetchOrders,
 	type OrderPage,
 	type OrderSummary,
+	PAID_STATUSES,
 	type Status,
 	STATUSES,
 } from './api';
 import { STATUS_LABELS, money, when } from './labels';
+import { NewOrder } from './NewOrder';
 import { OrderDetail } from './OrderDetail';
 
 const FIELDS: Field< OrderSummary >[] = [
@@ -82,6 +85,7 @@ export function OrdersScreen() {
 	const [ view, setView ] = useState< View >( DEFAULT_VIEW );
 	const [ page, setPage ] = useState< OrderPage | null >( null );
 	const [ selected, setSelected ] = useState< number | null >( null );
+	const [ creating, setCreating ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
 
 	const load = useCallback( () => {
@@ -107,6 +111,18 @@ export function OrdersScreen() {
 
 	useEffect( load, [ load ] );
 
+	if ( creating ) {
+		return (
+			<NewOrder
+				onCreated={ ( id ) => {
+					setCreating( false );
+					setSelected( id );
+				} }
+				onBack={ () => setCreating( false ) }
+			/>
+		);
+	}
+
 	if ( selected !== null ) {
 		return (
 			<OrderDetail
@@ -121,7 +137,12 @@ export function OrdersScreen() {
 
 	return (
 		<>
-			<h1>{ __( 'Orders', 'orillacart' ) }</h1>
+			<h1 className="wp-heading-inline">
+				{ __( 'Orders', 'orillacart' ) }
+			</h1>{ ' ' }
+			<Button variant="secondary" onClick={ () => setCreating( true ) }>
+				{ __( 'Add order', 'orillacart' ) }
+			</Button>
 			{ error !== null && (
 				<Notice status="error" onRemove={ () => setError( null ) }>
 					{ error }
@@ -156,9 +177,82 @@ export function OrdersScreen() {
 							}
 						},
 					},
+					{
+						id: 'delete',
+						label: __( 'Delete', 'orillacart' ),
+						supportsBulk: true,
+						isEligible: ( item ) =>
+							! PAID_STATUSES.includes( item.status ),
+						modalHeader: __( 'Delete orders', 'orillacart' ),
+						RenderModal: ( { items, closeModal } ) => (
+							<DeleteOrders
+								orders={ items }
+								onDone={ ( failure ) => {
+									closeModal?.();
+									if ( failure !== null ) {
+										setError( failure );
+									}
+									load();
+								} }
+							/>
+						),
+					},
 				] }
 				empty={ <p>{ __( 'No orders found.', 'orillacart' ) }</p> }
 			/>
+		</>
+	);
+}
+
+/**
+ * Confirms and deletes orders that are not paid; those waiting for payment give their stock back.
+ *
+ * @param props        The orders and what to do afterwards.
+ * @param props.orders The orders chosen.
+ * @param props.onDone Receives the first failure, or null.
+ */
+function DeleteOrders( {
+	orders,
+	onDone,
+}: {
+	orders: OrderSummary[];
+	onDone: ( failure: string | null ) => void;
+} ) {
+	const [ busy, setBusy ] = useState( false );
+	const remove = async () => {
+		setBusy( true );
+		let failure: string | null = null;
+		for ( const order of orders ) {
+			try {
+				await deleteOrder( order.number );
+			} catch ( reason ) {
+				failure ??= toApiError( reason ).message;
+			}
+		}
+		onDone( failure );
+	};
+
+	return (
+		<>
+			<p>
+				{ sprintf(
+					/* translators: %s: order numbers */
+					__(
+						'Delete %s for good? Orders waiting for their payment give their items back to stock.',
+						'orillacart'
+					),
+					orders.map( ( order ) => `#${ order.number }` ).join( ', ' )
+				) }
+			</p>
+			<Button
+				variant="primary"
+				isDestructive
+				isBusy={ busy }
+				disabled={ busy }
+				onClick={ () => void remove() }
+			>
+				{ __( 'Delete', 'orillacart' ) }
+			</Button>
 		</>
 	);
 }

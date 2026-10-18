@@ -15,6 +15,13 @@ export const STATUSES = [
 ] as const;
 export type Status = ( typeof STATUSES )[ number ];
 
+/** Paid orders are cancelled or refunded before they can be deleted. */
+export const PAID_STATUSES: readonly Status[] = [
+	'processing',
+	'shipped',
+	'completed',
+];
+
 export interface OrderSummary {
 	number: number;
 	status: Status;
@@ -249,5 +256,74 @@ export function changeDownloadAllowance(
 		path: `${ BASE }/orders/${ id }/downloads/${ grantId }`,
 		method: 'PUT',
 		data: { remaining, expires_at: expiresAt },
+	} );
+}
+
+export interface OrderQuote {
+	lines: {
+		name: string;
+		options: { attribute: string; option: string }[];
+		quantity: number;
+		unit_price: string;
+		total: string;
+		tax: string;
+		backordered: number;
+	}[];
+	needs_shipping: boolean;
+	shipping_options: ( ShippingOption & { price: string; tax: string } )[];
+	rate_id: number | null;
+	payment_options: { gateway: string; name: string; instructions: string }[];
+	taxes: { name: string; percent: string; total: string }[];
+	subtotal: string;
+	items_tax: string;
+	shipping: string;
+	shipping_tax: string;
+	total: string;
+	currency: string;
+}
+
+export interface QuoteQuery {
+	items: EditedItem[];
+	billing_country: string | null;
+	billing_state: string | null;
+	shipping_country: string | null;
+	shipping_state: string | null;
+	shipping_postcode: string | null;
+	rate_id: number | null;
+}
+
+/**
+ * Prices an order the shop is taking, before it is created.
+ * @param query
+ */
+export function quoteOrder( query: QuoteQuery ): Promise< OrderQuote > {
+	return apiFetch< OrderQuote >( {
+		path: `${ BASE }/orders/quote`,
+		method: 'POST',
+		data: query,
+	} );
+}
+
+export interface NewOrder {
+	email: string;
+	billing: Address;
+	shipping_address: Address | null;
+	items: EditedItem[];
+	customer_id: number | null;
+	rate_id: number | null;
+	payment: string | null;
+	paid: boolean;
+	note: string;
+}
+
+/**
+ * Takes an order for the shop: paid, it starts processing; otherwise it waits on hold for the payment.
+ * @param order
+ */
+export function createOrder( order: NewOrder ): Promise< Order > {
+	return apiFetch< Order >( {
+		path: `${ BASE }/orders`,
+		method: 'POST',
+		data: order,
 	} );
 }

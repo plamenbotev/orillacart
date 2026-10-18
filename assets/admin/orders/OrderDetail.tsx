@@ -24,18 +24,18 @@ import {
 	changeStatus,
 	deleteOrder,
 	editItems,
-	type EditedItem,
 	EMAILS,
 	fetchOrder,
 	fetchShippingOptions,
 	type Order,
+	PAID_STATUSES,
 	sendEmail,
 	type ShippingOption,
 	type Status,
 } from './api';
 import { EMAIL_LABELS, STATUS_LABELS, money, when } from './labels';
 import { AccountCard, DownloadsCard } from './OrderCards';
-import { ProductPicker } from './ProductPicker';
+import { type ItemRow, ItemRows } from './ItemRows';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -168,20 +168,69 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 				}
 				onError={ fail }
 			/>
-			{ [ 'cancelled', 'failed', 'refunded' ].includes(
-				order.status
-			) && (
-				<Button
-					variant="secondary"
-					isDestructive
-					onClick={ () =>
-						deleteOrder( order.number ).then( onBack ).catch( fail )
-					}
-				>
-					{ __( 'Delete this order for good', 'orillacart' ) }
-				</Button>
+			{ ! PAID_STATUSES.includes( order.status ) && (
+				<DeleteButton
+					order={ order }
+					onDeleted={ onBack }
+					onError={ fail }
+				/>
 			) }
 		</>
+	);
+}
+
+function DeleteButton( {
+	order,
+	onDeleted,
+	onError,
+}: {
+	order: Order;
+	onDeleted: () => void;
+	onError: ( error: unknown ) => void;
+} ) {
+	const [ confirming, setConfirming ] = useState( false );
+
+	if ( ! confirming ) {
+		return (
+			<Button
+				variant="secondary"
+				isDestructive
+				onClick={ () => setConfirming( true ) }
+			>
+				{ __( 'Delete this order for good', 'orillacart' ) }
+			</Button>
+		);
+	}
+
+	return (
+		<Notice status="warning" isDismissible={ false }>
+			<p>
+				{ order.status === 'pending_payment' ||
+				order.status === 'on_hold'
+					? __(
+							'The order and its history go for good; its items go back in stock.',
+							'orillacart'
+						)
+					: __(
+							'The order and its history go for good.',
+							'orillacart'
+						) }
+			</p>
+			<Button
+				variant="primary"
+				isDestructive
+				onClick={ () =>
+					deleteOrder( order.number )
+						.then( onDeleted )
+						.catch( onError )
+				}
+			>
+				{ __( 'Delete', 'orillacart' ) }
+			</Button>
+			<Button variant="tertiary" onClick={ () => setConfirming( false ) }>
+				{ __( 'Keep it', 'orillacart' ) }
+			</Button>
+		</Notice>
 	);
 }
 
@@ -436,8 +485,7 @@ function NotesCard( { order, onSaved, onError }: CardProps ) {
 }
 
 function ItemsCard( { order, onSaved, onError }: CardProps ) {
-	// Each item with the name to show: the order's lines have one, picked products bring theirs.
-	const [ rows, setRows ] = useState< { item: EditedItem; name: string }[] >(
+	const [ rows, setRows ] = useState< ItemRow[] >(
 		order.lines.map( ( line ) => ( {
 			item: {
 				product_id: line.product_id,
@@ -458,10 +506,6 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 				.catch( () => setRates( [] ) );
 		}
 	}, [ order.number, order.shipping_rate_id ] );
-	const change = ( index: number, item: EditedItem ) =>
-		setRows(
-			rows.map( ( row, i ) => ( i === index ? { ...row, item } : row ) )
-		);
 
 	return (
 		<Card className="orillacart-card">
@@ -475,66 +519,7 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 						'orillacart'
 					) }
 				</p>
-				{ items.map( ( item, index ) => (
-					<Flex key={ index } align="flex-end">
-						<FlexItem isBlock>
-							{ rows[ index ]?.name ??
-								sprintf(
-									/* translators: %d: product id */
-									__( 'Product %d', 'orillacart' ),
-									item.product_id
-								) }
-						</FlexItem>
-						<FlexItem>
-							<TextControl
-								__next40pxDefaultSize
-								type="number"
-								min={ 1 }
-								label={ __( 'Quantity', 'orillacart' ) }
-								value={ String( item.quantity ) }
-								onChange={ ( value ) =>
-									change( index, {
-										...item,
-										quantity: Math.max(
-											1,
-											Number.parseInt( value, 10 ) || 1
-										),
-									} )
-								}
-							/>
-						</FlexItem>
-						<FlexItem>
-							<TextControl
-								__next40pxDefaultSize
-								label={ __( 'Unit price', 'orillacart' ) }
-								help={ __(
-									'Empty for the catalog price',
-									'orillacart'
-								) }
-								value={ item.unit_price ?? '' }
-								onChange={ ( value ) =>
-									change( index, {
-										...item,
-										unit_price: value === '' ? null : value,
-									} )
-								}
-							/>
-						</FlexItem>
-						<FlexItem>
-							<Button
-								variant="tertiary"
-								isDestructive
-								onClick={ () =>
-									setRows(
-										rows.filter( ( _, i ) => i !== index )
-									)
-								}
-							>
-								{ __( 'Remove', 'orillacart' ) }
-							</Button>
-						</FlexItem>
-					</Flex>
-				) ) }
+				<ItemRows rows={ rows } onChange={ setRows } />
 				{ rates.length > 0 && (
 					<SelectControl
 						__next40pxDefaultSize
@@ -547,22 +532,6 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 						onChange={ ( value ) => setRateId( Number( value ) ) }
 					/>
 				) }
-				<ProductPicker
-					onPick={ ( picked ) =>
-						setRows( [
-							...rows,
-							{
-								item: {
-									product_id: picked.product_id,
-									option_ids: picked.option_ids,
-									quantity: 1,
-									unit_price: null,
-								},
-								name: picked.name,
-							},
-						] )
-					}
-				/>
 				<Button
 					variant="primary"
 					disabled={ items.length === 0 }

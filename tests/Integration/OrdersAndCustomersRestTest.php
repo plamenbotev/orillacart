@@ -56,7 +56,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
             ['PUT', '/orders/1/items'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['GET', '/customers/1'],
             ['PUT', '/customers/1/addresses'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/email-settings'],
             ['PUT', '/email-settings'], ['POST', '/products/1/downloads'], ['DELETE', '/products/1/downloads/1'], ['GET', '/download-storage'],
-            ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1']];
+            ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1'], ['POST', '/orders'], ['POST', '/orders/quote']];
         $account = [['GET', '/account'], ['PUT', '/account/addresses'], ['GET', '/account/orders'], ['GET', '/account/orders/1'], ['GET', '/account/downloads']];
         foreach ([...$shop, ...$account] as [$method, $route]) {
             self::assertSame(401, $this->request($method, $route)->get_status(), "visitor: {$method} {$route}");
@@ -89,10 +89,33 @@ final class OrdersAndCustomersRestTest extends RestTestCase
 
         $bad = $this->request('PUT', "/orders/{$order['number']}/status", ['status' => 'pending_payment'], nonce: true);
         self::assertSame(422, $bad->get_status());
-        self::assertSame(422, $this->request('DELETE', "/orders/{$order['number']}", nonce: true)->get_status(), 'only closed orders are deleted');
+        self::assertSame(422, $this->request('DELETE', "/orders/{$order['number']}", nonce: true)->get_status(), 'a paid order is cancelled or refunded first');
 
         $receipt = $this->data($this->request('GET', "/receipts/{$order['key']}"));
         self::assertSame(['It leaves tomorrow.'], array_column($this->rows($receipt['notes']), 'text'), 'the customer sees only their notes');
+    }
+
+    public function testTheShopTakesAnOrderItselfAndDeletesItWithItsStockBack(): void
+    {
+        $this->actAs('administrator');
+        $billing = ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Vitosha Blvd', 'city' => 'Sofia', 'postcode' => '1000', 'country' => 'BG', 'phone' => '+359 2 000 0000'];
+        $items = [['product_id' => $this->lamp, 'quantity' => 2, 'unit_price' => '25']];
+
+        $quote = $this->request('POST', '/orders/quote', ['items' => $items, 'billing_country' => 'BG'], nonce: true);
+        self::assertSame(200, $quote->get_status(), (string) wp_json_encode($quote->get_data()));
+        self::assertSame(['50', ['bank_transfer']], [$this->data($quote)['total'], array_column($this->rows($this->data($quote)['payment_options']), 'gateway')]);
+
+        $created = $this->request('POST', '/orders', ['email' => 'ada@example.com', 'billing' => $billing, 'items' => $items, 'payment' => 'bank_transfer'], nonce: true);
+        self::assertSame(201, $created->get_status(), (string) wp_json_encode($created->get_data()));
+        $order = $this->data($created);
+        self::assertIsInt($order['number']);
+        self::assertSame(['on_hold', '50', 'Bank transfer'], [$order['status'], $order['total'], $order['payment_name']]);
+        self::assertSame(1, $this->data($this->request('GET', "/stock/product/{$this->lamp}"))['available']);
+
+        self::assertSame(422, $this->request('POST', '/orders', ['email' => 'ada@example.com', 'billing' => $billing, 'items' => []], nonce: true)->get_status(), 'an order has items');
+        $deleted = $this->request('DELETE', "/orders/{$order['number']}", nonce: true);
+        self::assertSame(204, $deleted->get_status(), (string) wp_json_encode($deleted->get_data()));
+        self::assertSame(3, $this->data($this->request('GET', "/stock/product/{$this->lamp}"))['available'], 'the order on hold gave its stock back');
     }
 
     public function testEditingAnOrderThatRunsOutOfStockChangesNothing(): void

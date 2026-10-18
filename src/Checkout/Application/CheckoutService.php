@@ -16,7 +16,6 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\BilledTax;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Customers\Application\CustomerService;
-use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -47,7 +46,7 @@ final readonly class CheckoutService
         private OrderService $orders,
         private OrderLinks $links,
         private SettingsService $settings,
-        private GeographyService $geography,
+        private AddressRules $addresses,
         private Transactions $transactions,
         private CustomerService $customers,
         private LoggerInterface $logger,
@@ -102,8 +101,8 @@ final readonly class CheckoutService
             throw new CheckoutRuleViolation('The shop does not take orders online.', 'orillacart_catalog_only');
         }
         $contents = $this->contents($owner);
-        $billingAddress = $this->requireAddress($command->billing, 'billing');
-        $shippingAddress = $command->shippingAddress === null ? $billingAddress : $this->requireAddress($command->shippingAddress, 'shipping');
+        $billingAddress = $this->addresses->require($command->billing, 'billing');
+        $shippingAddress = $command->shippingAddress === null ? $billingAddress : $this->addresses->require($command->shippingAddress, 'shipping');
         $billingTax = new TaxAddress($billingAddress->country, $billingAddress->state);
         $shippingTax = new TaxAddress($shippingAddress->country, $shippingAddress->state);
 
@@ -213,32 +212,4 @@ final readonly class CheckoutService
     {
         return $this->carts->contents($owner) ?? throw new CheckoutRuleViolation('The cart is empty.', 'orillacart_cart_empty');
     }
-
-
-
-
-    /**
-     * The address with a known country the shop sells to, and a state exactly when the country has states.
-     */
-    private function requireAddress(AddressData $address, string $kind): AddressData
-    {
-        $sellTo = $this->settings->current()->sellTo;
-        if ($sellTo !== [] && !\in_array($address->country, $sellTo, true)) {
-            throw new CheckoutRuleViolation(\sprintf('The shop does not sell to the country of the %s address.', $kind), 'orillacart_country_not_served');
-        }
-        try {
-            $states = $this->geography->states($address->country);
-            $this->geography->require($address->country, $states === [] ? null : $address->state);
-        } catch (RuleViolation) {
-            throw new CheckoutRuleViolation(\sprintf('The %s address has an unknown country or state.', $kind), 'orillacart_invalid_address');
-        }
-        if ($states !== [] && $address->state === null) {
-            throw new CheckoutRuleViolation(\sprintf('Choose the state of the %s address.', $kind), 'orillacart_invalid_address');
-        }
-
-        return $states === [] && $address->state !== null
-            ? new AddressData($address->firstName, $address->lastName, $address->street, $address->city, $address->postcode, $address->country, $address->phone)
-            : $address;
-    }
-
 }

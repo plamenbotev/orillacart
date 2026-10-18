@@ -86,19 +86,27 @@ final class OrderAdministrationTest extends TestCase
         self::assertSame(9, $this->available(), 'the refund without restock keeps its item out of stock');
     }
 
-    public function testOnlyClosedOrdersCanBeDeleted(): void
+    public function testAnUnpaidOrderIsDeletedWithItsStockBackAndAPaidOneOnlyOnceSettled(): void
     {
-        $order = $this->place();
+        $waiting = $this->place(3);
+        $paid = $this->place(2);
+        self::assertSame(5, $this->available());
+
+        $this->shop->orders->delete($waiting->number);
+        self::assertSame(8, $this->available(), 'an order on hold gives its stock back');
+
+        $this->shop->orders->changeStatus($paid->number, new ChangeOrderStatus('processing'), 7);
         try {
-            $this->shop->orders->delete($order->number);
-            self::fail('an order on hold');
+            $this->shop->orders->delete($paid->number);
+            self::fail('a paid order');
         } catch (OrderRuleViolation $e) {
-            self::assertSame('orillacart_order_not_closed', $e->errorCode);
+            self::assertSame('orillacart_order_paid', $e->errorCode);
         }
 
-        $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('cancelled'), 7);
-        $this->shop->orders->delete($order->number);
+        $this->shop->orders->changeStatus($paid->number, new ChangeOrderStatus('refunded'), 7);
+        $this->shop->orders->delete($paid->number);
         self::assertSame([], $this->shop->orderRecords->orders);
+        self::assertSame(8, $this->available(), 'the refund kept its items out, and deleting does not change that');
     }
 
     public function testTheShopFindsOrdersByStatusNumberOrCustomer(): void

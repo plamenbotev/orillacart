@@ -102,6 +102,46 @@ test.describe( 'The admin', () => {
 		).toBeVisible();
 	} );
 
+	test( 'takes an order by hand, then deletes it from the list', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( 'admin.php', 'page=orillacart' );
+		await page.getByRole( 'button', { name: 'Add order' } ).click();
+		await page.getByLabel( 'Email' ).fill( 'e2e-phone@example.com' );
+		await page.getByLabel( 'First name' ).fill( BILLING.first_name );
+		await page.getByLabel( 'Last name' ).fill( BILLING.last_name );
+		await page.getByLabel( 'Street' ).fill( BILLING.street );
+		await page.getByLabel( 'Postcode' ).fill( BILLING.postcode );
+		await page.getByLabel( 'City' ).fill( BILLING.city );
+		await page.getByLabel( 'Country code' ).fill( 'BG' );
+		await page.getByLabel( 'Phone' ).fill( BILLING.phone );
+		await page
+			.getByRole( 'combobox', { name: 'Add a product' } )
+			.pressSequentially( 'E2E Lam' );
+		await page.getByRole( 'option', { name: 'E2E Lamp' } ).click();
+		await page.getByRole( 'button', { name: 'Add', exact: true } ).click();
+		await page
+			.getByLabel( 'Payment method' )
+			.selectOption( { label: 'Bank transfer' } );
+		await expect( page.getByLabel( 'Ships by' ) ).toBeVisible();
+		await page.getByRole( 'button', { name: 'Create the order' } ).click();
+
+		const heading = page.getByRole( 'heading', { name: /— On hold$/ } );
+		await expect( heading ).toBeVisible();
+		await expect( page.getByText( 'Taken by the shop.' ) ).toBeVisible();
+
+		await page.getByRole( 'button', { name: '← All orders' } ).click();
+		await page.getByRole( 'searchbox' ).fill( 'e2e-phone@example.com' );
+		await page.getByRole( 'button', { name: 'Actions' } ).first().click();
+		await page.getByRole( 'menuitem', { name: 'Delete' } ).click();
+		await page
+			.getByRole( 'dialog' )
+			.getByRole( 'button', { name: 'Delete' } )
+			.click();
+		await expect( page.getByText( 'No orders found.' ) ).toBeVisible();
+	} );
+
 	test( 'chooses the page the cart is on', async ( { admin, page } ) => {
 		await admin.visitAdminPage( 'admin.php', 'page=orillacart-settings' );
 		const cart = page.getByRole( 'combobox', {
