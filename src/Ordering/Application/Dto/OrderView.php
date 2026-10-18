@@ -51,6 +51,9 @@ final readonly class OrderView
         public array $nextStatuses,
         public array $downloads = [],
         public ?string $shippingOption = null,
+        public ?string $pickupPointId = null,
+        /** The office or locker it goes to: its name and address. */
+        public ?string $pickupPoint = null,
     ) {}
 
     /**
@@ -92,6 +95,8 @@ final readonly class OrderView
                 $order->grants(),
             ),
             $order->shippingOption(),
+            $order->pickupPointId(),
+            $order->pickupPoint(),
         );
     }
 }

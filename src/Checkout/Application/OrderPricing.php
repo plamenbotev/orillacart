@@ -25,6 +25,7 @@ use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shipping\Application\Dto\ParcelItem;
+use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Shipping\Application\Dto\ShippingQuery;
 use OrillaCart\Shipping\Application\ShippingQuotes;
 use OrillaCart\Tax\Application\Dto\AppliedTaxView;
@@ -93,7 +94,7 @@ final readonly class OrderPricing
                 $taxes = $option->taxable ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
                 $price = Money::of($option->price);
                 $tax = array_reduce($taxes, static fn(Money $sum, Tax $rate): Money => $sum->add($price->percent($rate->percent)->rounded($decimals)), Money::zero());
-                $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $price->rounded($decimals)->add($tax));
+                $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $price->rounded($decimals)->add($tax), $option->toPickupPoint);
                 $options[] = $view;
                 // The customer's choice when it is offered, otherwise the first rate, so the totals include shipping.
                 if ($chosen === null || $option->id === $shippingOption) {
@@ -165,12 +166,47 @@ final readonly class OrderPricing
     /**
      * @param Priced $priced
      */
-    public function shipping(array $priced): ?NewShipping
+    public function shipping(array $priced, ?PickupPointView $pickupPoint = null): ?NewShipping
     {
         $chosen = $priced['chosen'];
         $bill = $priced['bill'];
 
-        return $chosen === null || !$priced['needs_shipping'] ? null : new NewShipping($chosen->id, $chosen->carrier, $chosen->name, (string) $bill->shipping(), (string) $bill->shippingTax());
+        return $chosen === null || !$priced['needs_shipping'] ? null : new NewShipping($chosen->id, $chosen->carrier, $chosen->name, (string) $bill->shipping(), (string) $bill->shippingTax(), $pickupPoint?->id, $pickupPoint?->label());
+    }
+
+    /**
+     * The offices and lockers the chosen service delivers to near the address; none for a service to the door.
+     *
+     * @param Priced $priced
+     *
+     * @return list<PickupPointView>
+     */
+    public function pickupPoints(array $priced, ?string $country, ?string $postcode): array
+    {
+        $chosen = $priced['chosen'];
+
+        return $chosen === null || !$chosen->toPickupPoint || $country === null ? [] : $this->shipping->pickupPoints($chosen->id, $country, $postcode, null);
+    }
+
+    /**
+     * The point the customer chose, when the chosen service delivers to one; null for a service to the door.
+     *
+     * @param Priced $priced
+     *
+     * @throws CheckoutRuleViolation when the service needs a point and none, or an unknown one, was chosen
+     */
+    public function pickupPoint(array $priced, string $country, ?string $postcode, ?string $pointId): ?PickupPointView
+    {
+        if ($priced['chosen'] === null || !$priced['chosen']->toPickupPoint || !$priced['needs_shipping']) {
+            return null;
+        }
+        foreach ($this->pickupPoints($priced, $country, $postcode) as $point) {
+            if ($point->id === $pointId) {
+                return $point;
+            }
+        }
+
+        throw new CheckoutRuleViolation('Choose the office or locker to pick the order up from.', 'orillacart_pickup_point_required');
     }
 
     /**

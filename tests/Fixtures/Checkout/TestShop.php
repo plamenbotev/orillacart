@@ -53,6 +53,8 @@ use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shipping\Application\CarrierService;
+use OrillaCart\Shipping\Application\Consignments;
+use OrillaCart\Shipping\Application\ShipmentTracking;
 use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Shipping\Application\ShippingMethods;
 use OrillaCart\Shipping\Application\ShippingQuotes;
@@ -86,6 +88,7 @@ use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentMethodRepository;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentRepository;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
+use OrillaCart\Tests\Fixtures\Shipping\InMemoryConsignmentRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
 use OrillaCart\Tests\Fixtures\Shipping\MemoryRateCache;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
@@ -111,6 +114,8 @@ final class TestShop
     public readonly InMemorySettingsRepository $settings;
     public readonly CarrierService $carriers;
     public readonly MemoryRateCache $rateCache;
+    public readonly InMemoryConsignmentRepository $consignmentRecords;
+    public readonly Consignments $consignments;
     public readonly ShippingClassService $shippingClasses;
     public readonly PaymentMethodService $paymentMethods;
     public readonly InMemoryPaymentRepository $paymentRecords;
@@ -194,8 +199,9 @@ final class TestShop
         $this->accounts = new InMemoryAccounts();
         $this->customerSettings = new InMemoryCustomerSettingsRepository();
         $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders);
-        $this->pricing = new OrderPricing($quotes, $taxes, new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger), $this->stock, $settings);
-        $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions);
+        $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger);
+        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings);
+        $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes);
         $paymentOptions = new PaymentOptions($methodRecords, $gateways);
         $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions);
         $this->checkout = new CheckoutService(
@@ -216,7 +222,9 @@ final class TestShop
         $this->emailSettings = new InMemoryEmailSettingsRepository();
         $context = new PluginContext(\dirname(__DIR__, 3) . '/orillacart.php', 'test');
         $templates = new TwigRenderer(new TwigFactory($context, new ShopExtension($settings))->create(), new SerializerFactory()->create());
-        $this->emails = new OrderEmails($this->orders, new FakeOrderLinks(), $this->emailSettings, $templates, $this->mail, new FakeSite(), $this->logger);
+        $this->consignmentRecords = new InMemoryConsignmentRepository();
+        $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger);
+        $this->emails = new OrderEmails($this->orders, new FakeOrderLinks(), $this->emailSettings, $templates, $this->mail, new FakeSite(), $this->logger, new ShipmentTracking($this->consignmentRecords));
         $emailing = new EmailAboutOrders($this->emails);
         $this->events->addListener(OrderStatusChanged::class, $emailing->statusChanged(...));
         $this->events->addListener(OrderNoteAdded::class, $emailing->noteAdded(...));

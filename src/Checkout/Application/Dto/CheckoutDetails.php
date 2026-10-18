@@ -26,5 +26,8 @@ final readonly class CheckoutDetails
         public ?string $shippingOption = null,
         #[Assert\Length(max: 20)]
         public ?string $shippingPostcode = null,
+        /** The office or locker to deliver to, for a service to one (the courier's id). */
+        #[Assert\Length(max: 64)]
+        public ?string $pickupPoint = null,
     ) {}
 }

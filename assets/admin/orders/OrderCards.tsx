@@ -6,13 +6,23 @@ import {
 	ComboboxControl,
 	Flex,
 	FlexItem,
+	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { fetchCustomers, type Customer } from '../customers/api';
-import { assignOrder, changeDownloadAllowance, type Order } from './api';
+import {
+	assignOrder,
+	bookShipment,
+	cancelShipment,
+	changeDownloadAllowance,
+	fetchLabel,
+	fetchShipments,
+	type Order,
+	type OrderShipments,
+} from './api';
 
 interface CardProps {
 	order: Order;
@@ -219,5 +229,162 @@ function DownloadRow( {
 				</Button>
 			</FlexItem>
 		</Flex>
+	);
+}
+
+const SHIPMENT_STATUS: Record< string, string > = {
+	booked: __( 'Booked', 'orillacart' ),
+	on_the_way: __( 'On the way', 'orillacart' ),
+	delivered: __( 'Delivered', 'orillacart' ),
+	returned: __( 'Coming back', 'orillacart' ),
+	cancelled: __( 'Cancelled', 'orillacart' ),
+};
+
+/**
+ * Shipments booked with the courier of the order's carrier: book one, print its label, cancel it before the
+ * courier picks it up. Shown only for orders whose carrier's shipping method books shipments, or that have some.
+ *
+ * @param props         The card's properties.
+ * @param props.order   The order.
+ * @param props.onError Receives what went wrong.
+ */
+export function ShipmentsCard( {
+	order,
+	onError,
+}: {
+	order: Order;
+	onError: ( error: unknown ) => void;
+} ) {
+	const [ state, setState ] = useState< OrderShipments | null >( null );
+	const [ parcels, setParcels ] = useState( 1 );
+	const [ busy, setBusy ] = useState( false );
+	const load = () =>
+		fetchShipments( order.number ).then( setState ).catch( onError );
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	useEffect( () => void load(), [ order.number ] );
+
+	if ( state === null ) {
+		return <Spinner />;
+	}
+	if ( ! state.bookable && state.shipments.length === 0 ) {
+		return null;
+	}
+	const run = ( work: Promise< unknown > ) => {
+		setBusy( true );
+		work.then( load )
+			.catch( onError )
+			.finally( () => setBusy( false ) );
+	};
+	const open = state.shipments.some(
+		( shipment ) =>
+			shipment.status === 'booked' || shipment.status === 'on_the_way'
+	);
+
+	return (
+		<Card className="orillacart-card">
+			<CardHeader>
+				<h2>{ __( 'Shipments', 'orillacart' ) }</h2>
+			</CardHeader>
+			<CardBody>
+				{ state.shipments.map( ( shipment ) => (
+					<Flex key={ shipment.id } align="center" wrap>
+						<FlexItem isBlock>
+							<strong>
+								{ shipment.carrier } { shipment.number }
+							</strong>{ ' ' }
+							— { SHIPMENT_STATUS[ shipment.status ] }
+							{ shipment.tracking !== '' &&
+								`: ${ shipment.tracking }` }
+							{ shipment.tracking_url !== null && (
+								<>
+									{ ' ' }
+									<a
+										href={ shipment.tracking_url }
+										target="_blank"
+										rel="noreferrer"
+									>
+										{ __( 'Follow it', 'orillacart' ) }
+									</a>
+								</>
+							) }
+						</FlexItem>
+						{ shipment.status !== 'cancelled' && (
+							<FlexItem>
+								<Button
+									variant="secondary"
+									disabled={ busy }
+									onClick={ () =>
+										fetchLabel( shipment.id )
+											.then( ( file ) =>
+												window.open(
+													URL.createObjectURL( file ),
+													'_blank'
+												)
+											)
+											.catch( onError )
+									}
+								>
+									{ __( 'Print the label', 'orillacart' ) }
+								</Button>
+							</FlexItem>
+						) }
+						{ shipment.status === 'booked' && (
+							<FlexItem>
+								<Button
+									variant="tertiary"
+									isDestructive
+									disabled={ busy }
+									onClick={ () =>
+										run( cancelShipment( shipment.id ) )
+									}
+								>
+									{ __(
+										'Cancel the shipment',
+										'orillacart'
+									) }
+								</Button>
+							</FlexItem>
+						) }
+					</Flex>
+				) ) }
+				{ state.bookable && ! open && (
+					<Flex align="flex-end">
+						<FlexItem>
+							<TextControl
+								__next40pxDefaultSize
+								type="number"
+								min={ 1 }
+								label={ __( 'Parcels', 'orillacart' ) }
+								value={ String( parcels ) }
+								onChange={ ( value ) =>
+									setParcels(
+										Math.max(
+											1,
+											Number.parseInt( value, 10 ) || 1
+										)
+									)
+								}
+							/>
+						</FlexItem>
+						<FlexItem>
+							<Button
+								variant="primary"
+								isBusy={ busy }
+								disabled={ busy }
+								onClick={ () =>
+									run( bookShipment( order.number, parcels ) )
+								}
+							>
+								{ sprintf(
+									/* translators: %s: carrier name */
+									__( 'Book with %s', 'orillacart' ),
+									state.carrier ?? ''
+								) }
+							</Button>
+						</FlexItem>
+					</Flex>
+				) }
+			</CardBody>
+		</Card>
 	);
 }

@@ -67,6 +67,14 @@ class Order
     #[ORM\Column(length: 200, nullable: true)]
     private ?string $shippingName;
 
+    /** The courier's id of the office or locker the order goes to, for a service to one. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $pickupPointId = null;
+
+    /** Its name and address. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $pickupPoint = null;
+
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
     private string $shippingTotal;
 
@@ -147,6 +155,8 @@ class Order
         }
         $this->shippingOption = $draft->shipping?->option;
         $this->shippingName = $draft->shipping === null ? null : mb_substr("{$draft->shipping->carrier} – {$draft->shipping->rate}", 0, 200);
+        $this->pickupPointId = $draft->shipping?->pickupPointId;
+        $this->pickupPoint = $draft->shipping?->pickupPoint === null ? null : mb_substr($draft->shipping->pickupPoint, 0, 255);
         $this->shippingTotal = $shippingTotal->toFixed();
         $this->shippingTax = $shippingTax->toFixed();
         $this->taxes = array_map(static fn(TaxLine $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount->toFixed()], $draft->taxes);
@@ -208,6 +218,17 @@ class Order
     public function shippingName(): ?string
     {
         return $this->shippingName;
+    }
+
+    public function pickupPointId(): ?string
+    {
+        return $this->pickupPointId;
+    }
+
+    /** The office or locker the order goes to: its name and address. */
+    public function pickupPoint(): ?string
+    {
+        return $this->pickupPoint;
     }
 
     public function shippingTotal(): Money
@@ -418,6 +439,8 @@ class Order
         $this->shippingAddress = $shippingAddress ?? Address::none();
         $this->shippingOption = $shipping?->option;
         $this->shippingName = $shipping === null ? null : mb_substr("{$shipping->carrier} – {$shipping->rate}", 0, 200);
+        $this->pickupPointId = $shipping?->pickupPointId;
+        $this->pickupPoint = $shipping?->pickupPoint === null ? null : mb_substr($shipping->pickupPoint, 0, 255);
         $this->shippingTotal = $shippingTotal->toFixed();
         $this->shippingTax = $shippingTax->toFixed();
         $this->taxes = array_map(static fn(TaxLine $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount->toFixed()], $taxes);

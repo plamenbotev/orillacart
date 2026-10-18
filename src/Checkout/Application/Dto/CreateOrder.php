@@ -42,5 +42,8 @@ final readonly class CreateOrder
         #[Assert\Length(max: Order::MAX_NOTE_LENGTH)]
         public string $note = '',
         public bool $emailCustomer = false,
+        /** The office or locker to deliver to, for a service to one (the courier's id). */
+        #[Assert\Length(max: 64)]
+        public ?string $pickupPoint = null,
     ) {}
 }

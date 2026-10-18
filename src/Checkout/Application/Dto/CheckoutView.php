@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Checkout\Application\Dto;
 
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
+use OrillaCart\Shipping\Application\Dto\PickupPointView;
 
 /**
  * Checkout as the customer sees it: the lines, the ways to ship and pay, and totals for the chosen shipping.
@@ -16,6 +17,7 @@ final readonly class CheckoutView
      * @param list<ShippingChoiceView> $shippingOptions
      * @param list<PaymentOptionView> $paymentMethods
      * @param list<CheckoutTaxView>   $taxes
+     * @param list<PickupPointView>   $pickupPoints where the chosen service can deliver, when it delivers to offices or lockers
      */
     public function __construct(
         public array $lines,
@@ -33,5 +35,7 @@ final readonly class CheckoutView
         public string $currency,
         /** Whether visitors may (optional), must (required) or cannot (disabled) make an account. */
         public string $accounts,
+        public array $pickupPoints = [],
+        public ?string $pickupPoint = null,
     ) {}
 }

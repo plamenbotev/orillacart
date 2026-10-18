@@ -28,6 +28,7 @@ use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
 use Psr\Log\LoggerInterface;
 
@@ -86,6 +87,8 @@ final readonly class CheckoutService
             (string) $bill->total(),
             $currency,
             $this->customers->accountMode(),
+            $pickupPoints = $this->pricing->pickupPoints($priced, $details->shippingCountry, $details->shippingPostcode),
+            \in_array($details->pickupPoint, array_map(static fn(PickupPointView $point): string => $point->id, $pickupPoints), true) ? $details->pickupPoint : null,
         );
     }
 
@@ -112,6 +115,7 @@ final readonly class CheckoutService
         if ($priced['needs_shipping'] && ($chosen === null || $chosen->id !== $command->shippingOption)) {
             throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to this address.' : 'Choose how to ship the order.', 'orillacart_shipping_required');
         }
+        $pickupPoint = $this->pricing->pickupPoint($priced, $shippingAddress->country, $shippingAddress->postcode, $command->pickupPoint);
         $currency = $this->settings->current()->currency;
         $needsPayment = !$bill->total()->isZero();
         $gateway = null;
@@ -130,7 +134,7 @@ final readonly class CheckoutService
             $billingAddress,
             $priced['needs_shipping'] ? $shippingAddress : null,
             $this->pricing->lines($priced),
-            $this->pricing->shipping($priced),
+            $this->pricing->shipping($priced, $pickupPoint),
             $this->pricing->taxLines($priced),
             (string) $bill->subtotal(),
             (string) $bill->itemsTax(),

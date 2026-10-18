@@ -8,16 +8,16 @@ use OrillaCart\Shipping\Application\RateCache;
 
 final class MemoryRateCache implements RateCache
 {
-    /** @var array<string, list<array{code: string, name: string, price: string, days: ?int}>> */
-    public array $rates = [];
+    /** @var array<string, list<array<string, string|int|bool|null>>> */
+    public array $rows = [];
 
     public function get(string $key): ?array
     {
-        return $this->rates[$key] ?? null;
+        return $this->rows[$key] ?? null;
     }
 
-    public function put(string $key, array $rates, int $seconds): void
+    public function put(string $key, array $rows, int $seconds): void
     {
-        $this->rates[$key] = $rates;
+        $this->rows[$key] = $rows;
     }
 }

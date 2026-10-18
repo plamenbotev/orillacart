@@ -26,15 +26,17 @@ import {
 	editItems,
 	EMAILS,
 	fetchOrder,
+	fetchPickupPoints,
 	fetchShippingOptions,
 	type Order,
+	type PickupPoint,
 	PAID_STATUSES,
 	sendEmail,
 	type ShippingOption,
 	type Status,
 } from './api';
 import { EMAIL_LABELS, STATUS_LABELS, money, when } from './labels';
-import { AccountCard, DownloadsCard } from './OrderCards';
+import { AccountCard, DownloadsCard, ShipmentsCard } from './OrderCards';
 import { type ItemRow, ItemRows } from './ItemRows';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
@@ -116,6 +118,9 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 					) }
 					onError={ fail }
 				/>
+			) }
+			{ order.shipping_option?.startsWith( 'carrier:' ) && (
+				<ShipmentsCard order={ order } onError={ fail } />
 			) }
 			<NotesCard
 				order={ order }
@@ -294,7 +299,15 @@ function Summary( { order }: { order: Order } ) {
 					<dd>{ money( order.subtotal, order.currency ) }</dd>
 					{ order.shipping !== null && (
 						<>
-							<dt>{ order.shipping }</dt>
+							<dt>
+								{ order.shipping }
+								{ order.pickup_point !== null && (
+									<>
+										<br />
+										<small>{ order.pickup_point }</small>
+									</>
+								) }
+							</dt>
 							<dd>
 								{ money(
 									order.shipping_total,
@@ -501,6 +514,22 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 		order.shipping_option
 	);
 	const [ rates, setRates ] = useState< ShippingOption[] >( [] );
+	const [ points, setPoints ] = useState< PickupPoint[] >( [] );
+	const [ pickupPoint, setPickupPoint ] = useState(
+		order.pickup_point_id ?? ''
+	);
+	const toPickupPoint =
+		rates.find( ( rate ) => rate.id === shippingOption )
+			?.to_pickup_point === true;
+	useEffect( () => {
+		if ( toPickupPoint && shippingOption !== null ) {
+			fetchPickupPoints( order.number, shippingOption )
+				.then( setPoints )
+				.catch( () => setPoints( [] ) );
+		} else {
+			setPoints( [] );
+		}
+	}, [ order.number, shippingOption, toPickupPoint ] );
 	useEffect( () => {
 		if ( order.shipping_option !== null ) {
 			fetchShippingOptions( order.number )
@@ -534,11 +563,36 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 						onChange={ setShippingOption }
 					/>
 				) }
+				{ points.length > 0 && (
+					<SelectControl
+						__next40pxDefaultSize
+						label={ __( 'Pickup point', 'orillacart' ) }
+						value={ pickupPoint }
+						options={ [
+							{
+								label: __( '— Choose —', 'orillacart' ),
+								value: '',
+							},
+							...points.map( ( point ) => ( {
+								label: `${ point.name }, ${ point.address }`,
+								value: point.id,
+							} ) ),
+						] }
+						onChange={ setPickupPoint }
+					/>
+				) }
 				<Button
 					variant="primary"
 					disabled={ items.length === 0 }
 					onClick={ () =>
-						editItems( order.number, items, shippingOption )
+						editItems(
+							order.number,
+							items,
+							shippingOption,
+							toPickupPoint && pickupPoint !== ''
+								? pickupPoint
+								: null
+						)
 							.then( onSaved )
 							.catch( onError )
 					}

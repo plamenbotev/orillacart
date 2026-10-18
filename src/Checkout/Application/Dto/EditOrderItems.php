@@ -21,5 +21,8 @@ final readonly class EditOrderItems
         public array $items,
         #[Assert\Regex(pattern: ShippingOptionView::ID_PATTERN)]
         public ?string $shippingOption = null,
+        /** The office or locker to deliver to, for a service to one (the courier's id). */
+        #[Assert\Length(max: 64)]
+        public ?string $pickupPoint = null,
     ) {}
 }

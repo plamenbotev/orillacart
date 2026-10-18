@@ -94,3 +94,29 @@ it again when the order is placed, and keeps that name with the order.
 - Whether the method's prices are taxed, and by which tax group, is the carrier's setting.
 
 `tests/Fixtures/Extension/TestShipMethod.php` is a complete example.
+
+### Pickup points
+
+A service that delivers to an office or locker returns its rate with `toPickupPoint: true`, and the method
+implements `OffersPickupPoints`: `pickupPoints($query, $settings)` lists the points for the service near the
+address (`PickupQuery`: service, country, postcode, city), as `PickupPoint`s with a stable id, a name, an
+address and opening hours. Checkout lists them under the service and will not place the order without one; the
+order keeps the point's id, name and address, and its shipment goes there. The shop keeps the list for an hour.
+
+### Shipments, labels and tracking
+
+A method that books shipments implements `CreatesShipments`. The order screen then offers "Book with …" for
+orders shipped by the carrier's services:
+
+- `createShipment($request, $settings)` books it. The `ShipmentRequest` has the reference ("Order #1042"),
+  the service, the recipient and address, the pickup point, the contents as a `Shipment`, the number of
+  parcels, the declared value and, for an unpaid cash-on-delivery order, the amount the courier collects.
+  Return a `BookedShipment` with the courier's number and the tracking link; throw `ProviderUnavailable` with
+  the courier's reason when it refuses: the shop manager sees it.
+- `label($number, $settings)` returns the `Label` (a PDF, usually) the shop prints.
+- `cancelShipment($number, $settings)` cancels one the courier has not picked up; throw when it cannot.
+
+A method that implements `TracksShipments` is asked every hour where the shipments on their way are:
+`track($number, $settings)` returns a `Tracking` (on the way, delivered or returned, with the courier's
+words). A delivered shipment completes its order when the order is shipped. The receipt and the emails show
+every shipment with its tracking link.

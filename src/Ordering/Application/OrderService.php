@@ -417,7 +417,7 @@ final readonly class OrderService
 
     private static function shippingChoice(?NewShipping $shipping): ?ShippingChoice
     {
-        return $shipping === null ? null : new ShippingChoice($shipping->option, $shipping->carrier, $shipping->rate, Money::of($shipping->price), Money::of($shipping->tax));
+        return $shipping === null ? null : new ShippingChoice($shipping->option, $shipping->carrier, $shipping->rate, Money::of($shipping->price), Money::of($shipping->tax), $shipping->pickupPointId, $shipping->pickupPoint);
     }
 
     /**

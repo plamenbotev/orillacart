@@ -293,6 +293,30 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));
         $receipt = $this->data($this->request('GET', "/receipts/{$this->key($this->data($placed))}"));
         self::assertSame(['Speedy – Express', '26'], [$receipt['shipping'], $receipt['shipping_total']]);
+
+        // To an office: the customer chooses one, and the shop books the shipment there.
+        unset($_COOKIE[CartCookie::NAME]);
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));
+        $office = "carrier:{$carrier}:office";
+        $points = $this->data($this->request('POST', '/checkout/summary', ['shipping_country' => 'BG', 'shipping_option' => $office], nonce: true))['pickup_points'];
+        self::assertSame(['SOF-1', 'SOF-2'], array_column($this->rows($points), 'id'));
+        self::assertSame(422, $this->request('POST', '/checkout', ['shipping_option' => $office] + $this->order('cash_on_delivery'), nonce: true)->get_status(), 'no office chosen');
+        $toOffice = $this->data($this->request('POST', '/checkout', ['shipping_option' => $office, 'pickup_point' => 'SOF-1'] + $this->order('cash_on_delivery'), nonce: true));
+        self::assertIsInt($toOffice['number']);
+
+        $this->actAs('administrator');
+        self::assertTrue($this->data($this->request('GET', "/orders/{$toOffice['number']}/shipments"))['bookable']);
+        $booked = $this->request('POST', "/orders/{$toOffice['number']}/shipments", ['parcels' => 1], nonce: true);
+        self::assertSame(201, $booked->get_status(), (string) wp_json_encode($booked->get_data()));
+        $shipment = $this->data($booked);
+        self::assertIsInt($shipment['id']);
+        self::assertIsString($shipment['number']);
+        self::assertSame(['booked', 'https://track.test/' . $shipment['number']], [$shipment['status'], $shipment['tracking_url']]);
+        $label = $this->data($this->request('GET', "/shipments/{$shipment['id']}/label"));
+        self::assertIsString($label['content']);
+        self::assertStringStartsWith('%PDF', (string) base64_decode($label['content'], true));
+        self::assertSame('cancelled', $this->data($this->request('POST', "/shipments/{$shipment['id']}/cancel", nonce: true))['status']);
+        self::assertSame('Office Vitosha, 12 Vitosha Blvd, 1000 Sofia', $this->data($this->request('GET', "/orders/{$toOffice['number']}"))['pickup_point']);
     }
 
     /**
@@ -447,7 +471,7 @@ final class CheckoutRestTest extends RestTestCase
     private function clean(): void
     {
         $wpdb = $this->wpdb();
-        foreach (['payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'shipping_classes', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['consignments', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'shipping_classes', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
         foreach (array_keys(wp_load_alloptions()) as $option) {

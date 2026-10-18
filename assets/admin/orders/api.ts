@@ -102,6 +102,9 @@ export interface Order {
 	}[];
 	/** How it ships: "rate:12", or "carrier:5:express" for a carrier's own service. */
 	shipping_option: string | null;
+	pickup_point_id: string | null;
+	/** The office or locker it goes to: its name and address. */
+	pickup_point: string | null;
 }
 
 export interface OrderQuery {
@@ -182,12 +185,17 @@ export function changeContact(
 export function editItems(
 	id: number,
 	items: EditedItem[],
-	shippingOption: string | null
+	shippingOption: string | null,
+	pickupPoint: string | null = null
 ): Promise< Order > {
 	return apiFetch< Order >( {
 		path: `${ BASE }/orders/${ id }/items`,
 		method: 'PUT',
-		data: { items, shipping_option: shippingOption },
+		data: {
+			items,
+			shipping_option: shippingOption,
+			pickup_point: pickupPoint,
+		},
 	} );
 }
 
@@ -224,6 +232,8 @@ export function assignOrder(
 
 export interface ShippingOption {
 	id: string;
+	/** The service delivers to an office or locker the customer chooses. */
+	to_pickup_point?: boolean;
 	carrier: string;
 	name: string;
 	total: string;
@@ -274,6 +284,8 @@ export interface OrderQuote {
 	shipping_options: ( ShippingOption & { price: string; tax: string } )[];
 	shipping_option: string | null;
 	payment_options: { gateway: string; name: string; instructions: string }[];
+	/** Where the chosen service can deliver, when it delivers to offices or lockers. */
+	pickup_points: PickupPoint[];
 	taxes: { name: string; percent: string; total: string }[];
 	subtotal: string;
 	items_tax: string;
@@ -317,6 +329,7 @@ export interface NewOrder {
 	note: string;
 	/** Whether the customer gets the order received or confirmed email; the shop never does. */
 	email_customer: boolean;
+	pickup_point: string | null;
 }
 
 /**
@@ -328,5 +341,86 @@ export function createOrder( order: NewOrder ): Promise< Order > {
 		path: `${ BASE }/orders`,
 		method: 'POST',
 		data: order,
+	} );
+}
+
+export interface PickupPoint {
+	id: string;
+	name: string;
+	address: string;
+	hours: string;
+}
+
+export interface Shipment {
+	id: number;
+	number: string;
+	carrier: string;
+	tracking_url: string | null;
+	status: 'booked' | 'on_the_way' | 'delivered' | 'returned' | 'cancelled';
+	/** The courier's last words about it. */
+	tracking: string;
+	booked_at: string;
+}
+
+export interface OrderShipments {
+	/** Whether the order's carrier books shipments with its courier. */
+	bookable: boolean;
+	carrier: string | null;
+	shipments: Shipment[];
+}
+
+export function fetchShipments( orderId: number ): Promise< OrderShipments > {
+	return apiFetch< OrderShipments >( {
+		path: `${ BASE }/orders/${ orderId }/shipments`,
+	} );
+}
+
+export function bookShipment(
+	orderId: number,
+	parcels: number
+): Promise< Shipment > {
+	return apiFetch< Shipment >( {
+		path: `${ BASE }/orders/${ orderId }/shipments`,
+		method: 'POST',
+		data: { parcels },
+	} );
+}
+
+export function cancelShipment( id: number ): Promise< Shipment > {
+	return apiFetch< Shipment >( {
+		path: `${ BASE }/shipments/${ id }/cancel`,
+		method: 'POST',
+	} );
+}
+
+/**
+ * The shipment's label as a file: the API sends it base64 in JSON.
+ * @param id
+ */
+export async function fetchLabel( id: number ): Promise< File > {
+	const label = await apiFetch< {
+		filename: string;
+		mime_type: string;
+		content: string;
+	} >( { path: `${ BASE }/shipments/${ id }/label` } );
+	const bytes = Uint8Array.from( window.atob( label.content ), ( char ) =>
+		char.charCodeAt( 0 )
+	);
+	return new File( [ bytes ], label.filename, { type: label.mime_type } );
+}
+
+/**
+ * The offices or lockers a service delivers the order to near its address.
+ * @param orderId
+ * @param shippingOption
+ */
+export function fetchPickupPoints(
+	orderId: number,
+	shippingOption: string
+): Promise< PickupPoint[] > {
+	return apiFetch< PickupPoint[] >( {
+		path: addQueryArgs( `${ BASE }/orders/${ orderId }/pickup-points`, {
+			shipping_option: shippingOption,
+		} ),
 	} );
 }

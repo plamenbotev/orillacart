@@ -56,7 +56,8 @@ final class OrdersAndCustomersRestTest extends RestTestCase
             ['PUT', '/orders/1/items'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['GET', '/customers/1'],
             ['PUT', '/customers/1/addresses'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/email-settings'],
             ['PUT', '/email-settings'], ['POST', '/products/1/downloads'], ['DELETE', '/products/1/downloads/1'], ['GET', '/download-storage'],
-            ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1'], ['POST', '/orders'], ['POST', '/orders/quote']];
+            ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1'], ['POST', '/orders'], ['POST', '/orders/quote'],
+            ['GET', '/orders/1/shipments'], ['POST', '/orders/1/shipments'], ['GET', '/shipments/1/label'], ['POST', '/shipments/1/cancel'], ['GET', '/shipping-methods'], ['GET', '/orders/1/pickup-points']];
         $account = [['GET', '/account'], ['PUT', '/account/addresses'], ['GET', '/account/orders'], ['GET', '/account/orders/1'], ['GET', '/account/downloads']];
         foreach ([...$shop, ...$account] as [$method, $route]) {
             self::assertSame(401, $this->request($method, $route)->get_status(), "visitor: {$method} {$route}");

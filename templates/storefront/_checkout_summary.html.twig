@@ -42,6 +42,17 @@
         {% else %}
             <p class="orillacart-notice">{{ address_known ? __('We cannot ship your order to this address.') : __('Enter your address to see the ways to ship.') }}</p>
         {% endfor %}
+        {% if summary.pickup_points %}
+            <p class="orillacart-field">
+                <label for="orillacart-pickup-point">{{ __('Pick it up from') }} <span aria-hidden="true">*</span></label>
+                <select id="orillacart-pickup-point" name="pickup_point" required data-orillacart-field="pickup_point">
+                    <option value="">{{ __('Choose an office or locker') }}</option>
+                    {% for point in summary.pickup_points %}
+                        <option value="{{ point.id }}"{{ point.id == summary.pickup_point ? ' selected' }}>{{ point.name }}, {{ point.address }}{{ point.hours ? ' (' ~ point.hours ~ ')' }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+        {% endif %}
     </fieldset>
 {% endif %}
 

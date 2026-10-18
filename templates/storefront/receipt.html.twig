@@ -82,5 +82,21 @@
                 {{ shop.address_text(order.shipping_address, country_names) }}
             </div>
         {% endif %}
+        {% if shipments ?? [] %}
+            <div>
+                <h3 class="orillacart-heading">{{ __('Shipments') }}</h3>
+                <ul>
+                    {% for shipment in shipments %}
+                        <li>{{ shipment.carrier }} {{ shipment.number }}{% if shipment.tracking %}: {{ shipment.tracking }}{% endif %}{% if shipment.tracking_url %} — <a href="{{ shipment.tracking_url }}">{{ __('Follow it') }}</a>{% endif %}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        {% if order.pickup_point %}
+            <div>
+                <h3 class="orillacart-heading">{{ __('Pickup point') }}</h3>
+                <p>{{ order.pickup_point }}</p>
+            </div>
+        {% endif %}
     </div>
 </div>

@@ -15,6 +15,8 @@ use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
 use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Shipping\Application\Dto\PickupPointView;
+use OrillaCart\Shipping\Application\ShippingQuotes;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
 
 /**
@@ -28,6 +30,7 @@ final readonly class OrderEditing
         private OrderService $orders,
         private OrderPricing $pricing,
         private Transactions $transactions,
+        private ShippingQuotes $shipping,
     ) {}
 
     /**
@@ -49,6 +52,21 @@ final readonly class OrderEditing
     }
 
     /**
+     * The offices or lockers a service delivers the order to near its address, for changing how it ships.
+     *
+     * @return list<PickupPointView>
+     *
+     * @throws OrderNotFound
+     */
+    public function pickupPoints(int $orderId, string $shippingOption): array
+    {
+        $order = $this->orders->order($orderId);
+        $address = $order->shippingAddress ?? $order->billing;
+
+        return $this->shipping->pickupPoints($shippingOption, $address->country, $address->postcode, $address->city);
+    }
+
+    /**
      * @throws OrderNotFound
      * @throws OrderRuleViolation    for an order not on hold
      * @throws CheckoutRuleViolation for items not sold or not in stock, or a shipping rate that is not offered
@@ -64,17 +82,21 @@ final readonly class OrderEditing
         $shipping = new TaxAddress($shippingAddress->country, $shippingAddress->state);
         $items = array_map(static fn(EditedItem $item): array => ['product_id' => $item->productId, 'option_ids' => $item->optionIds, 'quantity' => $item->quantity, 'unit_price' => $item->unitPrice], $command->items);
 
-        return $this->transactions->run(function () use ($orderId, $items, $shipping, $billing, $command, $shippingAddress, $userId): OrderView {
+        $keptPoint = $order->pickupPointId;
+
+        return $this->transactions->run(function () use ($orderId, $items, $shipping, $billing, $command, $shippingAddress, $userId, $keptPoint): OrderView {
             $this->orders->releaseStock($orderId);
             $priced = $this->pricing->price($items, $shipping, $billing, $command->shippingOption, $shippingAddress->postcode);
             if ($priced['needs_shipping'] && $priced['chosen']?->id !== $command->shippingOption) {
                 throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to its address.' : 'Choose how the order ships.', 'orillacart_shipping_required');
             }
             $bill = $priced['bill'];
+            // The order keeps its office or locker unless the shop chose another.
+            $pickupPoint = $this->pricing->pickupPoint($priced, $shippingAddress->country, $shippingAddress->postcode, $command->pickupPoint ?? $keptPoint);
 
             return $this->orders->replaceItems($orderId, new NewOrderItems(
                 $this->pricing->lines($priced),
-                $this->pricing->shipping($priced),
+                $this->pricing->shipping($priced, $pickupPoint),
                 $priced['needs_shipping'] ? $shippingAddress : null,
                 $this->pricing->taxLines($priced),
                 (string) $bill->subtotal(),

@@ -48,6 +48,7 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 	const [ payment, setPayment ] = useState( '' );
 	const [ paid, setPaid ] = useState( false );
 	const [ emailCustomer, setEmailCustomer ] = useState( false );
+	const [ pickupPoint, setPickupPoint ] = useState( '' );
 	const [ note, setNote ] = useState( '' );
 	const [ quote, setQuote ] = useState< OrderQuote | null >( null );
 	const [ error, setError ] = useState< string | null >( null );
@@ -127,6 +128,10 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 			paid,
 			note,
 			email_customer: emailCustomer,
+			pickup_point:
+				( quote?.pickup_points.length ?? 0 ) > 0 && pickupPoint !== ''
+					? pickupPoint
+					: null,
 		} )
 			.then( ( order ) => onCreated( order.number ) )
 			.catch( ( reason: unknown ) => {
@@ -239,6 +244,24 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 									onChange={ setShippingOption }
 								/>
 							) ) }
+						{ quote.pickup_points.length > 0 && (
+							<SelectControl
+								__next40pxDefaultSize
+								label={ __( 'Pickup point', 'orillacart' ) }
+								value={ pickupPoint }
+								options={ [
+									{
+										label: __( '— Choose —', 'orillacart' ),
+										value: '',
+									},
+									...quote.pickup_points.map( ( point ) => ( {
+										label: `${ point.name }, ${ point.address }`,
+										value: point.id,
+									} ) ),
+								] }
+								onChange={ setPickupPoint }
+							/>
+						) }
 						<SelectControl
 							__next40pxDefaultSize
 							label={ __( 'Payment method', 'orillacart' ) }

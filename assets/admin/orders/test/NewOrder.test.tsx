@@ -43,6 +43,7 @@ const quote = {
 		},
 	],
 	shipping_option: 'rate:3',
+	pickup_points: [],
 	payment_options: [
 		{ gateway: 'bank_transfer', name: 'Bank transfer', instructions: '' },
 	],
@@ -158,6 +159,7 @@ describe( 'NewOrder', () => {
 				paid: false,
 				note: '',
 				email_customer: false,
+				pickup_point: null,
 			},
 		} );
 		expect( onCreated ).toHaveBeenCalledWith( 12 );

@@ -1,6 +1,6 @@
 # 27 · Public extension API for add-ons
 
-Status: agreed 2026-10-18. 27a (registry and payment gateways) and 27b (shipping methods, live rates) built; the add-on guide is docs/extensions.md.
+Status: agreed 2026-10-18. 27a (registry and payment gateways), 27b (shipping methods, live rates) and 27c (pickup points, shipments, labels, tracking) built; the add-on guide is docs/extensions.md.
 Order of work: 25, 27, 21b, 21c, then 26 (DPD) and the rest.
 
 ## Why

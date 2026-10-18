@@ -69,6 +69,8 @@ const order = {
 	next_statuses: [ 'processing', 'cancelled' ],
 	downloads: [],
 	shipping_option: null,
+	pickup_point_id: null,
+	pickup_point: null,
 };
 
 type Request = { path: string; method?: string; data?: unknown };

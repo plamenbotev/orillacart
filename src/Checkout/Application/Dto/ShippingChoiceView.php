@@ -16,5 +16,7 @@ final readonly class ShippingChoiceView
         public string $price,
         public string $tax,
         public string $total,
+        /** The service delivers to a pickup point the customer chooses. */
+        public bool $toPickupPoint = false,
     ) {}
 }

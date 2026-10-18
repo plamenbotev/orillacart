@@ -128,6 +128,7 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 			form.querySelector< HTMLInputElement >(
 				'[name="shipping_option"]:checked'
 			)?.value ?? '',
+		pickup_point: value( 'pickup_point' ),
 	};
 	for ( const [ name, given ] of Object.entries( query ) ) {
 		if ( given ) {

@@ -13,6 +13,7 @@ use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shipping\Application\ShipmentTracking;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -31,6 +32,7 @@ final readonly class OrderEmails
         private Mailer $mailer,
         private Site $site,
         private LoggerInterface $logger,
+        private ShipmentTracking $shipments,
     ) {}
 
     public function statusChanged(int $orderId, string $previous, string $status, bool $tellCustomer = true, bool $tellShop = true): void
@@ -77,6 +79,7 @@ final readonly class OrderEmails
             'site_name' => $this->site->name(),
             'site_url' => $this->site->url(),
             'for_shop' => $kind->isForShop(),
+            'shipments' => $this->shipments->forOrder($orderId),
         ] + $extra;
 
         try {

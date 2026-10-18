@@ -36,5 +36,8 @@ final readonly class PlaceOrder
         #[Assert\Length(max: 200)]
         public ?string $password = null,
         public bool $rememberAddresses = true,
+        /** The office or locker to deliver to, for a service to one (the courier's id). */
+        #[Assert\Length(max: 64)]
+        public ?string $pickupPoint = null,
     ) {}
 }

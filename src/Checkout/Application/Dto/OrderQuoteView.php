@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Checkout\Application\Dto;
 
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
+use OrillaCart\Shipping\Application\Dto\PickupPointView;
 
 /**
  * An order the shop is taking, priced: its lines, the ways it can ship (the chosen one, or the first, counted in
@@ -17,6 +18,7 @@ final readonly class OrderQuoteView
      * @param list<ShippingChoiceView> $shippingOptions
      * @param list<PaymentOptionView>  $paymentOptions
      * @param list<CheckoutTaxView>    $taxes
+     * @param list<PickupPointView>    $pickupPoints where the chosen service can deliver, when it delivers to offices or lockers
      */
     public function __construct(
         public array $lines,
@@ -31,5 +33,6 @@ final readonly class OrderQuoteView
         public string $shippingTax,
         public string $total,
         public string $currency,
+        public array $pickupPoints = [],
     ) {}
 }

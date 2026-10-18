@@ -16,6 +16,7 @@ use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Shipping\Application\Dto\ShippingOptionView;
+use OrillaCart\Shipping\Application\ShipmentTracking;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
@@ -39,6 +40,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         private Shopper $shopper,
         private ShopLinks $links,
         private TemplateRenderer $templates,
+        private ShipmentTracking $shipments,
     ) {}
 
     public static function name(): string
@@ -121,6 +123,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'heading' => true,
             'links' => $links,
             'country_names' => $this->addresses->all()['country_names'],
+            'shipments' => $this->shipments->forOrder($order->number),
         ]);
     }
 
@@ -154,6 +157,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             $billingState,
             $shipping,
             self::postcode($shippingCountry === null ? 'billing_postcode' : 'shipping_postcode'),
+            \is_string($_GET['pickup_point'] ?? null) ? mb_substr(sanitize_text_field(wp_unslash($_GET['pickup_point'])), 0, 64) : null,
         );
     }
 

@@ -72,6 +72,7 @@ final readonly class ManualOrders
             (string) $bill->shippingTax(),
             (string) $bill->total(),
             $currency,
+            $this->pricing->pickupPoints($priced, $query->shippingCountry ?? $query->billingCountry, $query->shippingPostcode),
         );
     }
 
@@ -104,6 +105,7 @@ final readonly class ManualOrders
                 throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to this address.' : 'Choose how the order ships.', 'orillacart_shipping_required');
             }
             $bill = $priced['bill'];
+            $pickupPoint = $this->pricing->pickupPoint($priced, $shippingAddress->country, $shippingAddress->postcode, $command->pickupPoint);
 
             return $this->orders->place(new NewOrder(
                 $command->customerId,
@@ -111,7 +113,7 @@ final readonly class ManualOrders
                 $billingAddress,
                 $priced['needs_shipping'] ? $shippingAddress : null,
                 $this->pricing->lines($priced),
-                $this->pricing->shipping($priced),
+                $this->pricing->shipping($priced, $pickupPoint),
                 $this->pricing->taxLines($priced),
                 (string) $bill->subtotal(),
                 (string) $bill->itemsTax(),

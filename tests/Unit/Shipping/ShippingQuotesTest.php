@@ -229,9 +229,13 @@ final class ShippingQuotesTest extends TestCase
 
         $options = $this->quotes->options($parcel);
         self::assertSame(
-            [["carrier:{$carrier->id}:economy", 'Courier', 'Economy', '9', false], ["carrier:{$carrier->id}:express", 'Courier', 'Express', '18', false]],
-            array_map(static fn(ShippingOptionView $option): array => [$option->id, $option->carrier, $option->name, $option->price, $option->taxable], $options),
-            '3 + 2 per kilogram of 3 kg; express twice that',
+            [
+                ["carrier:{$carrier->id}:economy", 'Courier', 'Economy', '9', false, false],
+                ["carrier:{$carrier->id}:express", 'Courier', 'Express', '18', false, false],
+                ["carrier:{$carrier->id}:office", 'Courier', 'To an office', '8', false, true],
+            ],
+            array_map(static fn(ShippingOptionView $option): array => [$option->id, $option->carrier, $option->name, $option->price, $option->taxable, $option->toPickupPoint], $options),
+            '3 + 2 per kilogram of 3 kg; express twice that; an office one less',
         );
         $this->quotes->options($parcel);
         self::assertSame(1, $this->method->quotes, 'the same parcel is not quoted again');

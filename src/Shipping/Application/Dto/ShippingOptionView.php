@@ -21,5 +21,7 @@ final readonly class ShippingOptionView
         public string $price,
         public bool $taxable,
         public ?int $taxGroupId,
+        /** The service delivers to a pickup point the customer chooses. */
+        public bool $toPickupPoint = false,
     ) {}
 }

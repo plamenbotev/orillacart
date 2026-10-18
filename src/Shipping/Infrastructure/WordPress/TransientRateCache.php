@@ -7,33 +7,40 @@ namespace OrillaCart\Shipping\Infrastructure\WordPress;
 use OrillaCart\Shipping\Application\RateCache;
 
 /**
- * Quoted rates in WordPress transients: in the object cache where the site has one, in the options table
- * otherwise, gone after a few minutes either way.
+ * Shipping methods' answers in WordPress transients: in the object cache where the site has one, in the options
+ * table otherwise, gone after their time either way.
  */
 final readonly class TransientRateCache implements RateCache
 {
-    private const string PREFIX = 'orillacart_rates_';
+    private const string PREFIX = 'orillacart_shipping_';
 
     public function get(string $key): ?array
     {
         $rows = get_transient(self::name($key));
-        if (!\is_array($rows)) {
+        if (!\is_array($rows) || !array_is_list($rows)) {
             return null;
         }
-        $rates = [];
+        $kept = [];
         foreach ($rows as $row) {
-            if (!\is_array($row) || !\is_string($row['code'] ?? null) || !\is_string($row['name'] ?? null) || !\is_string($row['price'] ?? null)) {
+            if (!\is_array($row)) {
                 return null;
             }
-            $rates[] = ['code' => $row['code'], 'name' => $row['name'], 'price' => $row['price'], 'days' => \is_int($row['days'] ?? null) ? $row['days'] : null];
+            $values = [];
+            foreach ($row as $name => $value) {
+                if (!\is_string($name) || !(\is_string($value) || \is_int($value) || \is_bool($value) || $value === null)) {
+                    return null;
+                }
+                $values[$name] = $value;
+            }
+            $kept[] = $values;
         }
 
-        return $rates;
+        return $kept;
     }
 
-    public function put(string $key, array $rates, int $seconds): void
+    public function put(string $key, array $rows, int $seconds): void
     {
-        set_transient(self::name($key), $rates, $seconds);
+        set_transient(self::name($key), $rows, $seconds);
     }
 
     /** Transient names are at most 172 characters. */
