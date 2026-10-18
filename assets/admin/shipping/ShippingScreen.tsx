@@ -49,6 +49,7 @@ const EMPTY_RATE: ShippingRateInput = {
 	taxable: true,
 	tax_group_id: null,
 	shipping_classes: [],
+	postcodes: [],
 };
 
 const MEASURE_LABELS: Record< Measure, string > = {
@@ -365,6 +366,7 @@ function RateFields( {
 				: rate.shipping_classes.filter( ( current ) => current !== id ),
 		} );
 	const [ regions, setRegions ] = useState( rate.regions.join( ', ' ) );
+	const [ postcodes, setPostcodes ] = useState( rate.postcodes.join( ', ' ) );
 	const setRange = ( measure: Measure, range: Range ) =>
 		onChange( {
 			...rate,
@@ -419,6 +421,25 @@ function RateFields( {
 							.split( ',' )
 							.map( ( region ) => region.trim().toUpperCase() )
 							.filter( ( region ) => region !== '' ),
+					} );
+				} }
+			/>
+			<TextControl
+				__next40pxDefaultSize
+				label={ __( 'Postcodes', 'orillacart' ) }
+				help={ __(
+					'Postcodes such as 1000, starts such as SW1*, or ranges such as 1000–1999, separated by commas. Empty for any postcode in the regions.',
+					'orillacart'
+				) }
+				value={ postcodes }
+				onChange={ ( value ) => {
+					setPostcodes( value );
+					onChange( {
+						...rate,
+						postcodes: value
+							.split( ',' )
+							.map( ( postcode ) => postcode.trim() )
+							.filter( ( postcode ) => postcode !== '' ),
 					} );
 				} }
 			/>

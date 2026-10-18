@@ -14,6 +14,7 @@ use OrillaCart\Shipping\Domain\Carrier;
 use OrillaCart\Shipping\Domain\CarrierNotFound;
 use OrillaCart\Shipping\Domain\CarrierRepository;
 use OrillaCart\Shipping\Domain\Measure;
+use OrillaCart\Shipping\Domain\PostcodePattern;
 use OrillaCart\Shipping\Domain\Range;
 use OrillaCart\Shipping\Domain\RateDetails;
 use OrillaCart\Shipping\Domain\RateDraft;
@@ -115,6 +116,7 @@ final readonly class CarrierService
             $rate->taxable,
             $this->taxGroup($rate->taxGroupId),
             array_map($this->shippingClass(...), $rate->shippingClasses),
+            array_map(PostcodePattern::of(...), $rate->postcodes),
         )), $rates);
     }
 

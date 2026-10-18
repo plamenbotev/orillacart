@@ -23,5 +23,7 @@ final readonly class CheckoutDetails
         public ?string $billingState = null,
         #[Assert\Positive]
         public ?int $rateId = null,
+        #[Assert\Length(max: 20)]
+        public ?string $shippingPostcode = null,
     ) {}
 }

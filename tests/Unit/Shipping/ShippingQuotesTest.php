@@ -167,6 +167,25 @@ final class ShippingQuotesTest extends TestCase
         $this->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Freight', '40', shippingClasses: [$bulky])]));
     }
 
+    public function testARateWithPostcodesWaitsForAPostcodeThatMatches(): void
+    {
+        $this->carriers->create(new SaveCarrier('Courier', rates: [
+            new SaveShippingRate('Sofia', '3', regions: ['BG'], postcodes: ['1000-1999']),
+            new SaveShippingRate('Bulgaria', '5', regions: ['BG']),
+        ]));
+        $offered = fn(?string $postcode): array => array_map(
+            static fn(ShippingOptionView $option): string => $option->name,
+            $this->quotes->options(new ShippingQuery('BG', null, [new ParcelItem(1, '1')], '10', $postcode)),
+        );
+
+        self::assertSame(['Bulgaria'], $offered(null), 'no postcode yet');
+        self::assertSame(['Sofia', 'Bulgaria'], $offered('1404'));
+        self::assertSame(['Bulgaria'], $offered('4000'));
+
+        $this->expectException(ShippingRuleViolation::class);
+        $this->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Wrong', '1', postcodes: ['1999-1000'])]));
+    }
+
     public function testShippingClassNamesAreUnique(): void
     {
         $this->classes->create(new SaveShippingClass('Bulky'));

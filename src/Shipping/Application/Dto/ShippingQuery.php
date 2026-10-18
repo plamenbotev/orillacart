@@ -18,5 +18,6 @@ final readonly class ShippingQuery
         public ?string $state,
         public array $items,
         public string $subtotal,
+        public ?string $postcode = null,
     ) {}
 }

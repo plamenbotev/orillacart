@@ -54,12 +54,13 @@ final readonly class OrderPricing
      * first), and the bill. An item may carry its own unit price, which the shop sets when it edits an order.
      *
      * @param list<array{product_id: int, option_ids: list<int>, quantity: int, unit_price?: ?string}> $items
+     * @param string|null $postcode the shipping address's postcode, for rates that ship to some postcodes only
      *
      * @return Priced
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?int $rateId): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?int $rateId, ?string $postcode = null): array
     {
         $decimals = $this->settings->current()->priceDecimals;
         $bill = new Bill($decimals);
@@ -87,7 +88,7 @@ final readonly class OrderPricing
         $options = [];
         $chosen = null;
         if ($needsShipping) {
-            $offered = $this->shipping->options(new ShippingQuery($shipping?->country, $shipping?->state, $parcel, (string) $bill->subtotal()));
+            $offered = $this->shipping->options(new ShippingQuery($shipping?->country, $shipping?->state, $parcel, (string) $bill->subtotal(), $postcode));
             foreach ($offered as $option) {
                 $taxes = $option->taxable ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
                 $price = Money::of($option->price);

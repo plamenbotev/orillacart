@@ -60,7 +60,7 @@ final readonly class CheckoutService
     {
         $shipping = $details->shippingCountry === null ? null : new TaxAddress($details->shippingCountry, $details->shippingState);
         $billing = $details->billingCountry === null ? $shipping : new TaxAddress($details->billingCountry, $details->billingState);
-        $priced = $this->pricing->price($this->contents($owner)->lines, $shipping, $billing, $details->rateId);
+        $priced = $this->pricing->price($this->contents($owner)->lines, $shipping, $billing, $details->rateId, $details->shippingPostcode);
         $bill = $priced['bill'];
         $currency = $this->settings->current()->currency;
 
@@ -106,7 +106,7 @@ final readonly class CheckoutService
         $billingTax = new TaxAddress($billingAddress->country, $billingAddress->state);
         $shippingTax = new TaxAddress($shippingAddress->country, $shippingAddress->state);
 
-        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->rateId);
+        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->rateId, $shippingAddress->postcode);
         $bill = $priced['bill'];
         $chosen = $priced['chosen'];
         if ($priced['needs_shipping'] && ($chosen === null || $chosen->rateId !== $command->rateId)) {

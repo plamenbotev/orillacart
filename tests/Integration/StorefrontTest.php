@@ -204,6 +204,20 @@ final class StorefrontTest extends RestTestCase
         self::assertStringNotContainsString('data-orillacart-add-to-cart', $this->productPage($shirt, ''));
     }
 
+    public function testTheCheckoutSummaryOffersRatesForThePostcodeOnTheForm(): void
+    {
+        $this->actAs('administrator');
+        $sofia = $this->request('POST', '/carriers', ['name' => 'City courier', 'rates' => [['name' => 'Sofia only', 'price' => '2', 'regions' => ['BG'], 'postcodes' => ['1000-1999']]]], nonce: true);
+        self::assertSame(201, $sofia->get_status(), (string) wp_json_encode($sofia->get_data()));
+        wp_set_current_user(0);
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 1], nonce: true));
+
+        $_GET = ['billing_country' => 'BG', 'billing_postcode' => '1404'];
+        self::assertStringContainsString('Sofia only', do_blocks('<!-- wp:orillacart/checkout /-->'));
+        $_GET = ['billing_country' => 'BG', 'billing_postcode' => '1404', 'shipping_country' => 'BG', 'shipping_postcode' => '4000'];
+        self::assertStringNotContainsString('Sofia only', do_blocks('<!-- wp:orillacart/checkout /-->'), 'the shipping address counts');
+    }
+
     public function testAVisitorSeesTheCartChecksOutAndGetsTheReceiptOnTheCheckoutPage(): void
     {
         $added = $this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 2], nonce: true);

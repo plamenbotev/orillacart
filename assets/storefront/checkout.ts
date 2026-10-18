@@ -62,7 +62,7 @@ export function bindCheckout( form: HTMLFormElement ): void {
 		}
 		if (
 			target.matches(
-				'[data-orillacart-country], [data-orillacart-state], [data-orillacart-ship-elsewhere], [data-orillacart-rate]'
+				'[data-orillacart-country], [data-orillacart-state], [name$=".postcode"], [data-orillacart-ship-elsewhere], [data-orillacart-rate]'
 			)
 		) {
 			// After this change's other listeners: the state list follows a new country first.
@@ -123,8 +123,10 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 	const query: Record< string, string > = {
 		billing_country: value( 'billing.country' ),
 		billing_state: value( 'billing.state' ),
+		billing_postcode: value( 'billing.postcode' ),
 		shipping_country: value( 'shipping_address.country' ),
 		shipping_state: value( 'shipping_address.state' ),
+		shipping_postcode: value( 'shipping_address.postcode' ),
 		rate:
 			form.querySelector< HTMLInputElement >( '[name="rate_id"]:checked' )
 				?.value ?? '',

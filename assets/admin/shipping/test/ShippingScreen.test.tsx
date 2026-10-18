@@ -31,6 +31,7 @@ const courier = {
 			taxable: true,
 			tax_group_id: null,
 			shipping_classes: [],
+			postcodes: [],
 		},
 	],
 };
@@ -77,6 +78,10 @@ describe( 'ShippingScreen', () => {
 			screen.getAllByLabelText( 'Every item' )[ 0 ] as HTMLElement
 		);
 		await user.click( screen.getByLabelText( 'Bulky' ) );
+		await user.type(
+			screen.getAllByLabelText( 'Postcodes' )[ 0 ] as HTMLElement,
+			'1000-1999, SW1*'
+		);
 		const weightTo = screen.getByLabelText( 'Weight to' );
 		await user.clear( weightTo );
 		await user.click(
@@ -101,6 +106,7 @@ describe( 'ShippingScreen', () => {
 			weight: null,
 			// Items without a class, and bulky ones.
 			shipping_classes: [ 0, 4 ],
+			postcodes: [ '1000-1999', 'SW1*' ],
 		} );
 	} );
 

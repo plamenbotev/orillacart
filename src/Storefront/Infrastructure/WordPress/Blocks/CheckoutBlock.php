@@ -24,7 +24,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
  * The checkout page, and the receipt customers come back to after ordering (?orillacart_order=KEY).
  *
  * The summary is priced for the addresses in the query string (shipping_country, shipping_state,
- * billing_country, billing_state, rate), which the storefront script sends when the customer changes them;
+ * shipping_postcode, billing_country, billing_state, billing_postcode, rate), which the storefront script sends when the customer changes them;
  * the first view uses the customer's saved addresses, or the shop's country.
  */
 final readonly class CheckoutBlock implements BlockDefinition
@@ -77,6 +77,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             $shipping !== null ? $shipping->state : $billingState,
             $billingCountry,
             $billingState,
+            shippingPostcode: $shipping?->postcode,
         );
         try {
             $summary = $this->checkout->summary($this->shopper->cart(), $details);
@@ -151,7 +152,15 @@ final readonly class CheckoutBlock implements BlockDefinition
             $billingCountry,
             $billingState,
             $rate > 0 ? $rate : null,
+            self::postcode($shippingCountry === null ? 'billing_postcode' : 'shipping_postcode'),
         );
+    }
+
+    private static function postcode(string $name): ?string
+    {
+        $value = $_GET[$name] ?? null;
+
+        return \is_string($value) && preg_match('/^[A-Za-z0-9 -]{1,20}$/', $value) === 1 ? $value : null;
     }
 
     private static function code(string $name, int $length): ?string

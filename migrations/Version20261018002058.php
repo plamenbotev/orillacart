@@ -14,7 +14,7 @@ final class Version20261018002058 extends Migration
 {
     public function getDescription(): string
     {
-        return '';
+        return 'Shipping classes on products, and the classes a shipping rate carries';
     }
 
     public function up(Schema $schema): void

@@ -19,6 +19,7 @@ final readonly class RateDetails
      * @param int|null     $taxGroupId null for the shop's default tax group
      * @param list<int>    $classes  the shipping classes it carries (ShippingClass::NONE for items without one);
      *                               empty for every item. A parcel with an item it does not carry gets another rate.
+     * @param list<PostcodePattern> $postcodes the postcodes it ships to within its regions; empty for any
      */
     public function __construct(
         public string $name,
@@ -34,6 +35,7 @@ final readonly class RateDetails
         public bool $taxable = true,
         public ?int $taxGroupId = null,
         public array $classes = [],
+        public array $postcodes = [],
     ) {
         if (trim($name) === '' || mb_strlen(trim($name)) > self::MAX_NAME_LENGTH) {
             throw new ShippingRuleViolation(\sprintf('A shipping rate needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_rate_name');

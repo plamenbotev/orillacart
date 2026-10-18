@@ -9,7 +9,7 @@ use OrillaCart\Shared\Domain\Money;
 
 /**
  * One way a carrier ships: where to, which parcels, and the price. Checkout offers it when the parcel's
- * destination is one of its regions, it carries the shipping class of every item, and every measure of the parcel
+ * destination is in one of its regions and matches one of its postcodes, it carries the shipping class of every item, and every measure of the parcel
  * is in its range.
  */
 #[ORM\Entity]
@@ -62,6 +62,10 @@ class ShippingRate
     #[ORM\Column(type: 'json')]
     private array $classes = [];
 
+    /** @var list<string> */
+    #[ORM\Column(type: 'json')]
+    private array $postcodes = [];
+
     /**
      * Created through Carrier::replaceRates().
      */
@@ -111,6 +115,7 @@ class ShippingRate
         $this->taxable = $details->taxable;
         $this->taxGroupId = $details->taxGroupId;
         $this->classes = array_values($details->classes);
+        $this->postcodes = array_values(array_map(static fn(PostcodePattern $pattern): string => (string) $pattern, $details->postcodes));
         $this->position = $position;
     }
 
@@ -130,6 +135,7 @@ class ShippingRate
             $this->taxable,
             $this->taxGroupId,
             $this->classes,
+            array_map(PostcodePattern::of(...), $this->postcodes),
         );
     }
 
@@ -155,6 +161,12 @@ class ShippingRate
             }
         }
 
+        if ($this->postcodes !== []) {
+            $postcode = $destination?->postcode;
+            if ($postcode === null || $postcode === '' || array_filter($this->postcodes, static fn(string $pattern): bool => PostcodePattern::of($pattern)->matches($postcode)) === []) {
+                return false;
+            }
+        }
         if ($this->classes !== [] && array_diff($parcel->classes, $this->classes) !== []) {
             return false;
         }

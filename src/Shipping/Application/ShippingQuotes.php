@@ -30,7 +30,7 @@ final readonly class ShippingQuotes
      */
     public function options(ShippingQuery $query): array
     {
-        $destination = $query->country === null ? null : new Destination($query->country, $query->state);
+        $destination = $query->country === null ? null : new Destination($query->country, $query->state, $query->postcode);
         $measure = static fn(?string $value): Measure => $value === null || $value === '' ? Measure::zero() : Measure::of($value);
         $known = array_map(static fn(ShippingClass $class): int => $class->id(), $this->classes->all());
         $parcel = Parcel::of(array_map(static fn(ParcelItem $item): array => [

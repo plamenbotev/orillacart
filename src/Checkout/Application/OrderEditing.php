@@ -50,7 +50,7 @@ final readonly class OrderEditing
         $shippingAddress = $order->shippingAddress ?? $order->billing;
         $items = array_map(static fn(OrderLineView $line): array => ['product_id' => $line->productId, 'option_ids' => $line->optionIds, 'quantity' => $line->quantity, 'unit_price' => $line->unitPrice], $order->lines);
 
-        return $this->pricing->price($items, new TaxAddress($shippingAddress->country, $shippingAddress->state), $billing, $order->shippingRateId)['options'];
+        return $this->pricing->price($items, new TaxAddress($shippingAddress->country, $shippingAddress->state), $billing, $order->shippingRateId, $shippingAddress->postcode)['options'];
     }
 
     public function edit(int $orderId, EditOrderItems $command, ?int $userId): OrderView
@@ -66,7 +66,7 @@ final readonly class OrderEditing
 
         return $this->transactions->run(function () use ($orderId, $items, $shipping, $billing, $command, $shippingAddress, $userId): OrderView {
             $this->orders->releaseStock($orderId);
-            $priced = $this->pricing->price($items, $shipping, $billing, $command->rateId);
+            $priced = $this->pricing->price($items, $shipping, $billing, $command->rateId, $shippingAddress->postcode);
             if ($priced['needs_shipping'] && $priced['chosen']?->rateId !== $command->rateId) {
                 throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to its address.' : 'Choose how the order ships.', 'orillacart_shipping_required');
             }

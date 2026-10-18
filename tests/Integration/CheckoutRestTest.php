@@ -116,6 +116,25 @@ final class CheckoutRestTest extends RestTestCase
         self::assertNull($this->data($this->request('GET', "/products/{$this->product}"))['shipping_class_id'], 'the product left the class');
     }
 
+    public function testARateForSomePostcodesShipsOnlyThere(): void
+    {
+        $this->actAs('administrator');
+        $this->request('PUT', '/carriers/' . $this->carrierOf($this->rate), ['name' => 'Courier', 'rates' => [['id' => $this->rate, 'name' => 'Sofia', 'price' => '3', 'regions' => ['BG'], 'postcodes' => ['1000-1999']]]], nonce: true);
+        self::assertSame(422, $this->request('POST', '/carriers', ['name' => 'Post', 'rates' => [['name' => 'Wrong', 'price' => '1', 'postcodes' => ['1999-1000']]]], nonce: true)->get_status());
+        wp_set_current_user(0);
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product, 'quantity' => 1], nonce: true));
+
+        self::assertSame([], $this->shippingNames(['shipping_country' => 'BG']), 'no postcode yet');
+        self::assertSame([], $this->shippingNames(['shipping_country' => 'BG', 'shipping_postcode' => '4000']));
+        self::assertSame(['Sofia'], $this->shippingNames(['shipping_country' => 'BG', 'shipping_postcode' => '1404']));
+
+        $plovdiv = ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Main St', 'city' => 'Plovdiv', 'postcode' => '4000', 'country' => 'BG', 'phone' => '+359 2 000 0000'];
+        $refused = $this->request('POST', '/checkout', $this->order('cash_on_delivery') + ['shipping_address' => $plovdiv], nonce: true);
+        self::assertSame([422, 'orillacart_shipping_required'], [$refused->get_status(), $this->data($refused)['code']]);
+        $placed = $this->request('POST', '/checkout', $this->order('cash_on_delivery'), nonce: true);
+        self::assertSame(201, $placed->get_status(), 'the billing address in Sofia (1000) is the shipping address');
+    }
+
     public function testAVisitorOrdersAndPaysOnDelivery(): void
     {
         $added = $this->request('POST', '/cart/items', ['product_id' => $this->product, 'quantity' => 2], nonce: true);
@@ -231,6 +250,28 @@ final class CheckoutRestTest extends RestTestCase
         };
 
         return ['headers' => [], 'body' => (string) wp_json_encode($answer ?? ['name' => 'NOT_FOUND']), 'response' => ['code' => $answer === null ? 404 : 200, 'message' => ''], 'cookies' => [], 'filename' => null];
+    }
+
+    /**
+     * @param array<string, string> $details
+     *
+     * @return list<mixed> the names of the rates the checkout summary offers
+     */
+    private function shippingNames(array $details): array
+    {
+        return array_column($this->rows($this->data($this->request('POST', '/checkout/summary', $details, nonce: true))['shipping_options']), 'name');
+    }
+
+    private function carrierOf(int $rate): int
+    {
+        foreach ($this->rows($this->data($this->request('GET', '/carriers'))) as $carrier) {
+            if (\in_array($rate, array_column($this->rows($carrier['rates']), 'id'), true)) {
+                self::assertIsInt($carrier['id']);
+
+                return $carrier['id'];
+            }
+        }
+        self::fail("No carrier has rate {$rate}.");
     }
 
     /**

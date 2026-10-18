@@ -27,6 +27,8 @@ export interface ShippingRate extends Record< Measure, Range | null > {
 	tax_group_id: number | null;
 	/** The shipping classes it carries, 0 for items without one; empty for every item. */
 	shipping_classes: number[];
+	/** Postcodes ("1000"), starts ("SW1*") or numeric ranges ("1000-1999"); empty for any. */
+	postcodes: string[];
 }
 
 /** A kind of goods that ships its own way, such as "Bulky". */
