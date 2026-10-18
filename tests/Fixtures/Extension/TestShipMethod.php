@@ -90,6 +90,9 @@ final class TestShipMethod implements ShippingMethod, OffersPickupPoints, Create
 
     public function createShipment(ShipmentRequest $request, Settings $settings): BookedShipment
     {
+        if ($request->street === 'Bug Street') {
+            throw new \TypeError('An add-on bug.');
+        }
         if ($request->street === 'Nowhere') {
             throw new ProviderUnavailable('Test Ship', 'The address is not served.');
         }

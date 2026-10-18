@@ -111,6 +111,8 @@ final readonly class Consignments
             ), $booking['settings']);
         } catch (ProviderUnavailable $e) {
             throw new ShippingRuleViolation(\sprintf('The courier did not book the shipment: %s', $e->getMessage()), 'orillacart_courier_refused', $e);
+        } catch (\Throwable $e) {
+            throw $this->broken('booking', $e);
         }
 
         $consignment = new Consignment($orderId, $booking['carrier']->id(), $booking['carrier']->name(), $booking['method']->id(), $booked->number, $booked->trackingUrl, $this->clock->now());
@@ -132,6 +134,8 @@ final readonly class Consignments
             $label = $method->label($consignment->number(), $settings);
         } catch (ProviderUnavailable $e) {
             throw new ShippingRuleViolation(\sprintf('The courier did not give the label: %s', $e->getMessage()), 'orillacart_courier_refused', $e);
+        } catch (\Throwable $e) {
+            throw $this->broken('a label', $e);
         }
         $extension = $label->mimeType === 'application/pdf' ? 'pdf' : (str_starts_with($label->mimeType, 'image/') ? substr($label->mimeType, 6) : 'bin');
 
@@ -153,6 +157,8 @@ final readonly class Consignments
             $method->cancelShipment($consignment->number(), $settings);
         } catch (ProviderUnavailable $e) {
             throw new ShippingRuleViolation(\sprintf('The courier did not cancel the shipment: %s', $e->getMessage()), 'orillacart_courier_refused', $e);
+        } catch (\Throwable $e) {
+            throw $this->broken('cancelling', $e);
         }
         $consignment->cancel($this->clock->now());
         $this->consignments->save($consignment);
@@ -238,6 +244,16 @@ final readonly class Consignments
         }
 
         return ['carrier' => $carrier, 'method' => $method, 'service' => $parts[2], 'settings' => new Settings($carrier->methodSettings())];
+    }
+
+    /**
+     * The shipping method of an add-on broke: logged, and told to the shop as the courier failing.
+     */
+    private function broken(string $doing, \Throwable $e): ShippingRuleViolation
+    {
+        $this->logger->error('The shipping method failed {doing}: {message}', ['doing' => $doing, 'message' => $e->getMessage(), 'exception' => $e]);
+
+        return new ShippingRuleViolation(\sprintf('The shipping method failed: %s', $e->getMessage()), 'orillacart_courier_failed', $e);
     }
 
     /**

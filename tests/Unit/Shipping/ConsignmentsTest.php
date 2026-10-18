@@ -107,6 +107,20 @@ final class ConsignmentsTest extends TestCase
         $this->shop->consignments->cancel($again->id, 7);
     }
 
+    public function testAShippingMethodThatBreaksIsAReadableRefusal(): void
+    {
+        $order = $this->order('office', 'cash_on_delivery', 'SOF-1');
+        $placed = $this->shop->checkout->placeOrder($this->cart(), new PlaceOrder($order->email, new AddressData('Ada', 'Lovelace', 'Bug Street', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $order->shippingOption, payment: $order->payment, pickupPoint: $order->pickupPoint));
+
+        try {
+            $this->shop->consignments->book($placed->number, new BookShipment(), 7);
+            self::fail('the method broke');
+        } catch (ShippingRuleViolation $e) {
+            self::assertSame(['orillacart_courier_failed', 'The shipping method failed: An add-on bug.'], [$e->errorCode, $e->getMessage()]);
+        }
+        self::assertTrue($this->shop->consignments->forOrder($placed->number)->bookable, 'nothing was booked');
+    }
+
     public function testTrackingFollowsTheShipmentAndADeliveryCompletesTheShippedOrder(): void
     {
         $placed = $this->shop->checkout->placeOrder($this->cart(), $this->order('express', 'bank_transfer'));

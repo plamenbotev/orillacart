@@ -229,7 +229,7 @@ final class TestShop
         $gateways = new Gateways($extensions);
         $urls = new FakePaymentUrls();
         $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls);
-        $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock);
+        $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock, $this->logger);
 
         $this->cartRecords = new InMemoryCartRepository($this->transactions);
         $this->carts = new CartService($this->cartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger);

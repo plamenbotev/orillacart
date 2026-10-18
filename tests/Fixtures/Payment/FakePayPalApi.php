@@ -24,6 +24,8 @@ final class FakePayPalApi implements PayPalApi
     /** @var list<string> */
     public array $captured = [];
     public bool $reachable = true;
+    /** What PayPal's library throws next, as a bug would: not the unavailable provider a gateway expects. */
+    public ?\Throwable $breaks = null;
     public string $captureStatus = 'COMPLETED';
     public ?string $capturedAmount = null;
     public bool $signed = true;
@@ -82,6 +84,9 @@ final class FakePayPalApi implements PayPalApi
 
     private function reach(): void
     {
+        if ($this->breaks !== null) {
+            throw $this->breaks;
+        }
         if (!$this->reachable) {
             throw new PaymentProviderUnavailable('PayPal', 'connection refused');
         }

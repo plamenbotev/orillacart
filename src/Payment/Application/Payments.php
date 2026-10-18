@@ -16,6 +16,7 @@ use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Payment\Domain\PaymentRepository;
 use OrillaCart\Shared\Domain\Money;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Starting payments for placed orders. How they end arrives later, from the provider, as payment events.
@@ -28,6 +29,7 @@ final readonly class Payments
         private Gateways $gateways,
         private PaymentUrls $urls,
         private ClockInterface $clock,
+        private LoggerInterface $logger,
     ) {}
 
     /**
@@ -57,6 +59,13 @@ final readonly class Payments
             $this->payments->save($payment);
 
             throw new PaymentProviderUnavailable($e->provider, $e->getMessage(), $e);
+        } catch (\Throwable $e) {
+            // An add-on's gateway that broke: to the customer, as a provider that is not there.
+            $this->logger->error('Payment method {gateway} failed to start the payment of order {order}: {message}', ['gateway' => $gateway->id(), 'order' => $command->orderId, 'message' => $e->getMessage(), 'exception' => $e]);
+            $payment->fail(null, $this->clock->now());
+            $this->payments->save($payment);
+
+            throw new PaymentProviderUnavailable($method->name(), $e->getMessage(), $e);
         }
 
         if ($start->reference !== null) {

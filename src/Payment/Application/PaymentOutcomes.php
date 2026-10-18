@@ -73,7 +73,16 @@ final readonly class PaymentOutcomes
             throw new PaymentNotFound();
         }
         if (!$payment->isSettled()) {
-            $this->settle($payment, $gateway->returned($reference, $return, $this->settings($gatewayId)));
+            try {
+                $outcome = $gateway->returned($reference, $return, $this->settings($gatewayId));
+            } catch (\Throwable $e) {
+                // The provider did not answer, or the gateway broke: the customer sees the receipt, and the
+                // provider's notification settles the payment later.
+                $this->logger->warning('Payment {payment} could not be looked up at {gateway} when the customer came back: {message}', ['payment' => $payment->id(), 'gateway' => $gatewayId, 'message' => $e->getMessage(), 'exception' => $e]);
+
+                return $payment->receiptUrl();
+            }
+            $this->settle($payment, $outcome);
         }
 
         return $payment->receiptUrl();
@@ -105,6 +114,11 @@ final readonly class PaymentOutcomes
             throw new PaymentRuleViolation('The notification is not from the payment provider.', 'orillacart_invalid_notification', $e);
         } catch (ProviderUnavailable $e) {
             throw new PaymentProviderUnavailable($e->provider, $e->getMessage(), $e);
+        } catch (\Throwable $e) {
+            // A gateway that broke: the provider sends the notification again later.
+            $this->logger->error('Payment method {gateway} failed on a notification: {message}', ['gateway' => $gatewayId, 'message' => $e->getMessage(), 'exception' => $e]);
+
+            throw new PaymentProviderUnavailable($this->methods->findByGateway($gatewayId)?->name() ?? $gateway->defaultName(), $e->getMessage(), $e);
         }
         if ($outcome === null) {
             return;

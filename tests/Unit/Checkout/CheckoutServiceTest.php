@@ -163,6 +163,33 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame(0, $this->shop->carts->cart($owner)->cart->items, 'emptied once the payment started');
     }
 
+    public function testAGatewayThatBreaksIsShownAsUnavailableAndTheCustomerKeepsTheCart(): void
+    {
+        $this->shop->payPalApi->breaks = new \TypeError('A bug in the gateway.');
+        $owner = $this->cart([10, 1]);
+
+        try {
+            $this->shop->checkout->placeOrder($owner, $this->order('paypal'));
+            self::fail('the gateway broke');
+        } catch (PaymentProviderUnavailable $e) {
+            self::assertSame('orillacart_payment_provider_unavailable', $e->errorCode);
+        }
+
+        self::assertSame('cancelled', array_values($this->shop->orderRecords->orders)[0]->status()->value);
+        self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available);
+        self::assertSame(1, $this->shop->carts->cart($owner)->cart->items);
+        self::assertSame('error', $this->shop->logger->records[0]['level'] ?? null);
+    }
+
+    public function testACustomerComingBackWhilePayPalIsDownSeesTheReceipt(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('paypal'));
+        $this->shop->payPalApi->reachable = false;
+
+        self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false));
+        self::assertSame('pending_payment', $this->shop->orders->byKey($placed->key)->status, 'the webhook settles it later');
+    }
+
     public function testASecondSubmitWhileTheOrderIsBeingPlacedPlacesNoSecondOrder(): void
     {
         $owner = $this->cart([10, 1]);

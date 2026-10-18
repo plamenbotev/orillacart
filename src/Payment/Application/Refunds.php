@@ -254,6 +254,14 @@ final readonly class Refunds
             $this->logger->warning('Refund {refund} of order {order}: {message}', ['refund' => $refund->id(), 'order' => $order->number, 'message' => $e->getMessage()]);
 
             throw new PaymentRuleViolation(\sprintf('%s did not answer, so the refund waits. Try it again: it is never sent twice.', $this->name($payment->gateway())), 'orillacart_refund_unanswered', $e);
+        } catch (\Throwable $e) {
+            // The gateway broke; whether the money moved is not known. The refund waits with the error, to be
+            // tried again under the same id (never refunding twice) or given up.
+            $refund->unanswered($e->getMessage());
+            $this->refunds->save($refund);
+            $this->logger->error('Refund {refund} of order {order} failed in {gateway}: {message}', ['refund' => $refund->id(), 'order' => $order->number, 'gateway' => $payment->gateway(), 'message' => $e->getMessage(), 'exception' => $e]);
+
+            throw new PaymentRuleViolation(\sprintf('%s failed: %s The refund waits: try it again, or give it up.', $this->name($payment->gateway()), $e->getMessage()), 'orillacart_refund_unanswered', $e);
         }
         $this->completed($refund, $result->reference, $result->pending, $userId);
     }

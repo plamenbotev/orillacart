@@ -106,6 +106,25 @@ final class RefundsTest extends TestCase
         self::assertSame(['done', '8'], [$view->refunds[0]->status, $this->shop->orders->order($order)->refundedTotal]);
     }
 
+    public function testARefundWhoseGatewayBreaksWaitsWithTheErrorToBeTriedAgain(): void
+    {
+        $order = $this->paidWithPayPal(2);
+        $this->shop->payPalApi->breaks = new \TypeError('A bug in the gateway.');
+
+        try {
+            $this->shop->refunds->refund($order, new MakeRefund('8'), 7);
+            self::fail('the gateway broke');
+        } catch (PaymentRuleViolation $e) {
+            self::assertSame('orillacart_refund_unanswered', $e->errorCode);
+        }
+        $pending = $this->shop->refunds->forOrder($order)->refunds[0];
+        self::assertSame('pending', $pending->status);
+        self::assertStringContainsString('A bug in the gateway.', (string) $pending->error);
+
+        $this->shop->payPalApi->breaks = null;
+        self::assertSame('done', $this->shop->refunds->retry($pending->id, 7)->refunds[0]->status);
+    }
+
     public function testPayPalsWebhookCompletesARefundWhoseAnswerWasLost(): void
     {
         $order = $this->paidWithPayPal(2);
