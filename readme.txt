@@ -26,6 +26,12 @@ The Mini cart block puts a link to the cart, with the number of items, in a head
 
 == Frequently Asked Questions ==
 
+= What happens to the database when the plugin is updated? =
+
+The first request after the update brings the shop's tables up to date; one request does it while the others go
+on. On a large shop, run `wp orillacart migrate` right after updating instead, so no visitor's request does the
+work. If the update fails, the admin screens say why and offer to try again; `wp orillacart migrate` does too.
+
 = How do I change how the shop looks? =
 
 The storefront is rendered from Twig templates in the plugin's templates/ folder. Copy one to an orillacart/

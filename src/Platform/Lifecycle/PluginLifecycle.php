@@ -14,6 +14,8 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 final readonly class PluginLifecycle
 {
     public const string VERSION_OPTION = 'orillacart_version';
+    /** Why the last upgrade failed, to which version and when: {version, message, at}. */
+    public const string UPGRADE_FAILED_OPTION = 'orillacart_upgrade_failed';
 
     /**
      * @param iterable<LifecycleListener> $listeners
@@ -60,5 +62,6 @@ final readonly class PluginLifecycle
             $listener->uninstall();
         }
         delete_option(self::VERSION_OPTION);
+        delete_option(self::UPGRADE_FAILED_OPTION);
     }
 }
