@@ -145,7 +145,7 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 | | # | P | Item | Commit |
 |---|---|---|---|---|
 | ✅ | 83 | P1 | Pay now: pending, failed and manual orders get a payment page (choose a method, pay) linked from the receipt, the account and the emails; replaces "place a new order" as the only recovery Any unpaid order, any method offered (decided 2026-10-18) | 2a4c21e |
-| ⬜ | 84 | P1 | Invoices: a gapless invoice number taken at payment under a lock (order ids have gaps), a PDF invoice and credit notes with tax lines, attached to emails and downloadable from the account and the order screen | |
+| ✅ | 84 | P1 | Invoices: a gapless invoice number taken at payment under a lock (order ids have gaps), a PDF invoice and credit notes with tax lines, attached to emails and downloadable from the account and the order screen Printable HTML pages, seller details in Shop → Settings → Invoices (decided 2026-10-18); paid orders cannot be deleted | b5e63b4 |
 | ⬜ | 85 | P1 | Tax for the EU: prices entered and shown including tax (setting and "incl./excl." display), VAT number validation (VIES) with reverse charge, OSS destination VAT for digital goods, the lowest price of the last 30 days on sale displays (Omnibus) | |
 | ⬜ | 86 | P1 | GDPR: WordPress personal-data exporters and erasers, an "anonymise order" action, privacy policy content, erasable report facts and job payloads | |
 | ➖ | 87 | P1 | Not now (decided 2026-10-18: left to an add-on on the extension API). Card payments: Stripe (or a hosted-checkout gateway with 3DS/SCA) on the extension API, with dispute and chargeback webhooks; saved payment methods | |
