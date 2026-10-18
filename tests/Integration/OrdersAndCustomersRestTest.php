@@ -61,6 +61,8 @@ final class OrdersAndCustomersRestTest extends RestTestCase
             ['GET', '/search-filters'], ['POST', '/search-filters'], ['PUT', '/search-filters/1'], ['DELETE', '/search-filters/1'], ['GET', '/search-filters/attributes'],
             ['GET', '/search-engine'], ['PUT', '/search-engine'], ['POST', '/search-engine/rebuild'],
             ['GET', '/orders/1/refunds'], ['POST', '/orders/1/refunds'], ['POST', '/refunds/1/retry'], ['POST', '/refunds/1/give-up'],
+            ['GET', '/price-rules'], ['POST', '/price-rules'], ['PUT', '/price-rules/1'], ['DELETE', '/price-rules/1'],
+            ['GET', '/customer-groups'], ['POST', '/customer-groups'], ['PUT', '/customer-groups/1'], ['DELETE', '/customer-groups/1'], ['PUT', '/customers/1/groups'],
             ['GET', '/coupons'], ['POST', '/coupons'], ['GET', '/coupons/1'], ['PUT', '/coupons/1'], ['DELETE', '/coupons/1'],
             ['GET', '/jobs'], ['GET', '/jobs/failed'], ['POST', '/jobs/failed/retry'], ['POST', '/jobs/failed/delete'], ['POST', '/jobs/workers/restart']];
         $account = [['GET', '/account'], ['PUT', '/account/addresses'], ['GET', '/account/orders'], ['GET', '/account/orders/1'], ['GET', '/account/downloads']];
@@ -100,6 +102,33 @@ final class OrdersAndCustomersRestTest extends RestTestCase
 
         $receipt = $this->data($this->request('GET', "/receipts/{$order['key']}"));
         self::assertSame(['It leaves tomorrow.'], array_column($this->rows($receipt['notes']), 'text'), 'the customer sees only their notes');
+    }
+
+    public function testACustomerGroupGetsItsPriceInTheCartAndGuestsPayTheRegularOne(): void
+    {
+        $this->actAs('administrator');
+        $group = $this->request('POST', '/customer-groups', ['name' => 'Wholesale'], nonce: true);
+        self::assertSame(201, $group->get_status(), (string) wp_json_encode($group->get_data()));
+        $groupId = $this->data($group)['id'];
+        self::assertIsInt($groupId);
+        $rule = $this->request('POST', '/price-rules', ['name' => 'Trade', 'tiers' => [['min_quantity' => 1, 'kind' => 'percent', 'value' => '20']], 'group_ids' => [$groupId]], nonce: true);
+        self::assertSame(201, $rule->get_status(), (string) wp_json_encode($rule->get_data()));
+        self::assertSame(422, $this->request('POST', '/price-rules', ['name' => 'Empty', 'tiers' => []], nonce: true)->get_status(), 'a rule has a price');
+
+        $customer = $this->actAs('customer');
+        $this->actAs('administrator');
+        $set = $this->request('PUT', "/customers/{$customer}/groups", ['group_ids' => [$groupId]], nonce: true);
+        self::assertSame([$groupId], $this->data($set)['group_ids']);
+        self::assertSame([$groupId], $this->data($this->request('GET', "/customers/{$customer}"))['group_ids']);
+
+        wp_set_current_user(0);
+        unset($_COOKIE[CartCookie::NAME]);
+        self::assertSame('30', $this->data($this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 1], nonce: true))['subtotal']);
+        wp_set_current_user($customer);
+        unset($_COOKIE[CartCookie::NAME]);
+        self::assertSame('24', $this->data($this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 1], nonce: true))['subtotal']);
+        $this->actAs('administrator');
+        self::assertSame(204, $this->request('DELETE', "/customer-groups/{$groupId}", nonce: true)->get_status());
     }
 
     public function testTheShopRefundsPartOfAPaidOrderAndThenTheRest(): void
@@ -308,7 +337,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     {
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }

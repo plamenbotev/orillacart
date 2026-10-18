@@ -9,10 +9,12 @@ use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
+use OrillaCart\Catalog\Application\PriceResolver;
 use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Domain\InvalidSelection;
 use OrillaCart\Catalog\Domain\ProductNotFound;
+use OrillaCart\Customers\Infrastructure\GroupsOfShoppers;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
@@ -26,8 +28,10 @@ use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tests\Fixtures\Catalog\CatalogIds;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryAttributeSetRepository;
+use OrillaCart\Tests\Fixtures\Catalog\InMemoryPriceRuleRepository;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductContent;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductRepository;
+use OrillaCart\Tests\Fixtures\Customers\InMemoryCustomerGroupRepository;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockLevelRepository;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockroomRepository;
@@ -61,7 +65,8 @@ final class ProductQuotesTest extends TestCase
         $this->stock = new StockService(new InMemoryStockLevelRepository(), $stockrooms, $events);
         $this->stockroom = new StockroomService($stockrooms)->create(new SaveStockroom('Sofia'))->id;
         $this->settings = new InMemorySettingsRepository(StoreSettings::defaults());
-        $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, new MockClock('2026-10-17 12:00:00 UTC'), new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())));
+        $clock = new MockClock('2026-10-17 12:00:00 UTC');
+        $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, $clock, new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new PriceResolver(new InMemoryPriceRuleRepository(), new GroupsOfShoppers(new InMemoryCustomerGroupRepository()), $clock));
     }
 
     public function testAQuoteHasTheChosenOptionsTheirPriceAndTheStock(): void

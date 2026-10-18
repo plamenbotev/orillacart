@@ -37,6 +37,8 @@ final readonly class ProductOffer
         public array $downloads,
         public bool $priceHidden = false,
         public bool $onBackorder = false,
+        /** @var list<array{min_quantity: int, price: string}> the price from each quantity where the shop's rules change it */
+        public array $tiers = [],
     ) {}
 
     /** Whether the product goes in the cart as it is, with no options to choose. */

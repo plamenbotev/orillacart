@@ -12,6 +12,7 @@ use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\Configuration;
 use OrillaCart\Catalog\Domain\DownloadFile;
 use OrillaCart\Catalog\Domain\InvalidSelection;
+use OrillaCart\Catalog\Domain\PricedItem;
 use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Catalog\Domain\ProductRepository;
@@ -32,6 +33,7 @@ final readonly class ProductQuotes
         private StockService $stock,
         private ClockInterface $clock,
         private SettingsService $settings,
+        private PriceResolver $prices,
     ) {}
 
     /**
@@ -61,6 +63,11 @@ final readonly class ProductQuotes
         $measures = $configuration->measures();
         $pricing = $configuration->variation?->pricing() ?? $details->pricing;
         $terms = $this->content->termIds($product->id());
+        $onSale = $pricing->priceAt($now)->compare($pricing->price()) < 0;
+        // The shop's price rules change the product's (or variation's) price; options keep their adjustments.
+        $own = $pricing->priceAt($now);
+        $ruled = $this->prices->forShopper($request->customerId)->price($own, new PricedItem($product->id(), $onSale, $terms['categories'], $terms['brands']), max(1, $request->quantity));
+        $unitPrice = $configuration->unitPrice->subtract($own)->add($ruled)->atLeastZero();
 
         return new ItemQuote(
             $product->id(),
@@ -68,7 +75,7 @@ final readonly class ProductQuotes
             $name,
             $configuration->sku(),
             $details->type->value,
-            (string) $configuration->unitPrice,
+            (string) $unitPrice,
             $details->taxable,
             $details->taxGroupId,
             $measures['weight'],
@@ -90,7 +97,7 @@ final readonly class ProductQuotes
             $details->shippingClassId,
             $backorders->value,
             $inStock,
-            $pricing->priceAt($now)->compare($pricing->price()) < 0,
+            $onSale,
             $terms['categories'],
             $terms['brands'],
         );

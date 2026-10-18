@@ -19,6 +19,20 @@
         {% endfor %}
     </div>
     <p class="orillacart-product__price" data-orillacart-price>{{ shop.price(offer) }}</p>
+    {% if offer.tiers and not offer.price_hidden %}
+        <table class="orillacart-table orillacart-product__tiers">
+            <caption>{{ __('Buy more, pay less') }}</caption>
+            <thead><tr><th scope="col">{{ __('Quantity') }}</th><th scope="col">{{ __('Price each') }}</th></tr></thead>
+            <tbody>
+                {% for tier in offer.tiers %}
+                    <tr>
+                        <td>{{ loop.last ? __('%d or more')|format(tier.min_quantity) : (tier.min_quantity == offer.tiers[loop.index].min_quantity - 1 ? tier.min_quantity : tier.min_quantity ~ '–' ~ (offer.tiers[loop.index].min_quantity - 1)) }}</td>
+                        <td>{{ tier.price|money }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
 
     <p class="orillacart-product__description" data-orillacart-variation-description hidden></p>
 

@@ -13,6 +13,7 @@ use OrillaCart\Customers\Application\Dto\SaveAddresses;
 use OrillaCart\Customers\Application\Dto\UpdateCustomerSettings;
 use OrillaCart\Customers\Domain\AccountExists;
 use OrillaCart\Customers\Domain\AccountMode;
+use OrillaCart\Customers\Domain\CustomerGroupRepository;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Customers\Domain\CustomerSettings;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
@@ -32,6 +33,7 @@ final readonly class CustomerService
         private Accounts $accounts,
         private CustomerSettingsRepository $settings,
         private OrderService $orders,
+        private CustomerGroupRepository $groups,
     ) {}
 
     public function settings(): CustomerSettingsView
@@ -69,7 +71,7 @@ final readonly class CustomerService
     {
         $record = $this->accounts->find($id) ?? throw new CustomerNotFound($id);
 
-        return CustomerView::fromRecord($record, $this->orders->orders(new OrderQuery(customerId: $id, perPage: 1))->total);
+        return CustomerView::fromRecord($record, $this->orders->orders(new OrderQuery(customerId: $id, perPage: 1))->total, $this->groups->groupIdsOf($id));
     }
 
     public function customers(CustomerQuery $query): CustomerPageView
@@ -78,7 +80,7 @@ final readonly class CustomerService
         [$records, $total] = $this->accounts->search($search, ($query->page - 1) * $query->perPage, $query->perPage);
 
         return new CustomerPageView(
-            array_map(fn($record): CustomerView => CustomerView::fromRecord($record, $this->orders->orders(new OrderQuery(customerId: $record->id, perPage: 1))->total), $records),
+            array_map(fn($record): CustomerView => CustomerView::fromRecord($record, $this->orders->orders(new OrderQuery(customerId: $record->id, perPage: 1))->total, $this->groups->groupIdsOf($record->id)), $records),
             $total,
             $query->page,
             max(1, (int) ceil($total / $query->perPage)),

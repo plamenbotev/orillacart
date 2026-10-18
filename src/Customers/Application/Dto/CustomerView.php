@@ -17,10 +17,15 @@ final readonly class CustomerView
         public ?AddressData $billing,
         public ?AddressData $shippingAddress,
         public int $orders,
+        /** @var list<int> the customer groups they are in */
+        public array $groupIds = [],
     ) {}
 
-    public static function fromRecord(CustomerRecord $record, int $orders): self
+    /**
+     * @param list<int> $groupIds
+     */
+    public static function fromRecord(CustomerRecord $record, int $orders, array $groupIds = []): self
     {
-        return new self($record->id, $record->email, $record->firstName, $record->lastName, $record->registeredAt, $record->billing, $record->shippingAddress, $orders);
+        return new self($record->id, $record->email, $record->firstName, $record->lastName, $record->registeredAt, $record->billing, $record->shippingAddress, $orders, $groupIds);
     }
 }

@@ -11,11 +11,13 @@ use OrillaCart\Catalog\Application\Dto\ProductOffer;
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\Backorders;
 use OrillaCart\Catalog\Domain\DownloadFile;
+use OrillaCart\Catalog\Domain\PricedItem;
 use OrillaCart\Catalog\Domain\Pricing;
 use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Catalog\Domain\ProductRepository;
+use OrillaCart\Catalog\Domain\ShopperPrices;
 use OrillaCart\Catalog\Domain\StockMode;
 use OrillaCart\Catalog\Domain\Variation;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
@@ -35,28 +37,33 @@ final readonly class ShopCatalog
         private StockService $stock,
         private ClockInterface $clock,
         private SettingsService $settings,
+        private PriceResolver $prices,
     ) {}
 
     /**
+     * @param int|null $customerId who looks, for the prices of their customer groups
+     *
      * @throws ProductNotFound also for a product post whose commerce details were never saved
      */
-    public function offer(int $id): ProductOffer
+    public function offer(int $id, ?int $customerId = null): ProductOffer
     {
         $product = $this->products->find($id) ?? throw new ProductNotFound($id);
 
-        return $this->toOffer($product, $this->clock->now());
+        return $this->toOffer($product, $this->clock->now(), $this->prices->forShopper($customerId));
     }
 
     /**
      * The offers of the products that have commerce details, keyed by id, in the order asked for.
      *
      * @param list<int> $ids
+     * @param int|null  $customerId who looks, for the prices of their customer groups
      *
      * @return array<int, ProductOffer>
      */
-    public function offers(array $ids): array
+    public function offers(array $ids, ?int $customerId = null): array
     {
         $now = $this->clock->now();
+        $prices = $this->prices->forShopper($customerId);
         $found = [];
         foreach ($this->products->findMany($ids) as $product) {
             $found[$product->id()] = $product;
@@ -77,7 +84,7 @@ final readonly class ShopCatalog
         $offers = [];
         foreach ($ids as $id) {
             if (isset($found[$id])) {
-                $offers[$id] = $this->toOffer($found[$id], $now, $stock);
+                $offers[$id] = $this->toOffer($found[$id], $now, $prices, $stock);
             }
         }
 
@@ -95,7 +102,10 @@ final readonly class ShopCatalog
             return null;
         }
         $now = $this->clock->now();
-        $next = null;
+        $terms = $this->content->termIds($id);
+        // The guest's price changes when a rule for everyone starts or ends, too.
+        $next = $this->prices->forShopper(null)->nextChange(new PricedItem($id, false, $terms['categories'], $terms['brands']))
+            ?? $this->prices->forShopper(null)->nextChange(new PricedItem($id, true, $terms['categories'], $terms['brands']));
         $pricings = [$product->details()->pricing, ...array_map(static fn(Variation $variation): Pricing => $variation->pricing(), $product->variations())];
         foreach ($pricings as $pricing) {
             $sale = $pricing->sale();
@@ -112,9 +122,11 @@ final readonly class ShopCatalog
     /**
      * @param array<string, ?int>|null $stock how many of each item can be sold, when read for many offers at once
      */
-    private function toOffer(Product $product, \DateTimeImmutable $now, ?array $stock = null): ProductOffer
+    private function toOffer(Product $product, \DateTimeImmutable $now, ShopperPrices $prices, ?array $stock = null): ProductOffer
     {
         $details = $product->details();
+        $terms = $this->content->termIds($product->id());
+        $item = static fn(Pricing $pricing): PricedItem => new PricedItem($product->id(), $pricing->priceAt($now)->compare($pricing->price()) < 0, $terms['categories'], $terms['brands']);
         $priceHidden = $details->priceVisibility->isHidden($this->settings->current()->hidePrices);
         $sellable = $this->content->isPublished($product->id()) && $details->purchasable && !$priceHidden;
 
@@ -129,7 +141,7 @@ final readonly class ShopCatalog
         $downloads = array_map(static fn(DownloadFile $file): string => $file->name(), $product->downloads());
 
         if ($product->hasVariations()) {
-            $variations = array_map(fn(Variation $variation): OfferedVariation => $this->toVariation($variation, $details->backorders, $sellable, $now, $stock), $product->variations());
+            $variations = array_map(fn(Variation $variation): OfferedVariation => $this->toVariation($variation, $details->backorders, $sellable, $now, $prices, $item($variation->pricing()), $stock), $product->variations());
             $prices = array_map(static fn(OfferedVariation $variation): Money => Money::of($variation->price), $variations);
             usort($prices, static fn(Money $a, Money $b): int => $a->compare($b));
             $lowest = $prices[0] ?? $product->priceAt($now);
@@ -154,14 +166,16 @@ final readonly class ShopCatalog
         }
 
         [$available, $onBackorder] = $this->available($details->stockMode, StockItemRef::product($product->id()), $details->backorders, $stock);
+        $own = $details->pricing->priceAt($now);
+        $price = $prices->price($own, $item($details->pricing));
 
         return new ProductOffer(
             $product->id(),
             $this->content->name($product->id()),
             $details->type->value,
             $details->sku,
-            (string) $details->pricing->priceAt($now),
-            self::regularPrice($details->pricing, $now),
+            (string) $price,
+            self::regularPrice($details->pricing, $price),
             null,
             $sellable && $available !== 0,
             $available,
@@ -171,14 +185,16 @@ final readonly class ShopCatalog
             $downloads,
             $priceHidden,
             $onBackorder,
+            $prices->tiers($own, $item($details->pricing)),
         );
     }
 
     /**
      * @param array<string, ?int>|null $stock
      */
-    private function toVariation(Variation $variation, Backorders $productBackorders, bool $sellable, \DateTimeImmutable $now, ?array $stock = null): OfferedVariation
+    private function toVariation(Variation $variation, Backorders $productBackorders, bool $sellable, \DateTimeImmutable $now, ShopperPrices $prices, PricedItem $item, ?array $stock = null): OfferedVariation
     {
+        $price = $prices->price($variation->pricing()->priceAt($now), $item);
         [$available, $onBackorder] = $this->available($variation->stockMode(), StockItemRef::variation($variation->id()), $variation->backorders() ?? $productBackorders, $stock);
 
         return new OfferedVariation(
@@ -186,8 +202,8 @@ final readonly class ShopCatalog
             $variation->signature(),
             implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $variation->options())),
             $variation->sku(),
-            (string) $variation->pricing()->priceAt($now),
-            self::regularPrice($variation->pricing(), $now),
+            (string) $price,
+            self::regularPrice($variation->pricing(), $price),
             $sellable && $available !== 0,
             $available,
             $onBackorder,
@@ -216,10 +232,9 @@ final readonly class ShopCatalog
         return [null, $backorders === Backorders::Notify && $inStock === 0];
     }
 
-    private static function regularPrice(Pricing $pricing, \DateTimeImmutable $now): ?string
+    /** The regular price, shown struck through, when a sale or a price rule makes it less. */
+    private static function regularPrice(Pricing $pricing, Money $price): ?string
     {
-        $price = $pricing->priceAt($now);
-
         return $price->compare($pricing->price()) < 0 ? (string) $pricing->price() : null;
     }
 }

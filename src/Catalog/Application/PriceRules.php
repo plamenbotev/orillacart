@@ -1,0 +1,97 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Catalog\Application;
+
+use OrillaCart\Catalog\Application\Dto\PriceRuleView;
+use OrillaCart\Catalog\Application\Dto\PriceTierData;
+use OrillaCart\Catalog\Application\Dto\SavePriceRule;
+use OrillaCart\Catalog\Domain\CatalogRuleViolation;
+use OrillaCart\Catalog\Domain\Event\PriceRulesChanged;
+use OrillaCart\Catalog\Domain\PriceRule;
+use OrillaCart\Catalog\Domain\PriceRuleNotFound;
+use OrillaCart\Catalog\Domain\PriceRuleRepository;
+use OrillaCart\Catalog\Domain\PriceTier;
+use OrillaCart\Shared\Domain\Money;
+use Psr\EventDispatcher\EventDispatcherInterface;
+
+/**
+ * The price rules the shop sets up: prices for customer groups, by quantity, between dates. Placed orders keep
+ * the prices they were placed at.
+ */
+final readonly class PriceRules
+{
+    public function __construct(
+        private PriceRuleRepository $rules,
+        private EventDispatcherInterface $events,
+    ) {}
+
+    /** @return list<PriceRuleView> by name */
+    public function rules(): array
+    {
+        return array_map(PriceRuleView::fromRule(...), $this->rules->all());
+    }
+
+    /**
+     * @throws CatalogRuleViolation
+     */
+    public function create(SavePriceRule $command): PriceRuleView
+    {
+        $rule = new PriceRule(...self::arguments($command));
+        $this->rules->save($rule);
+        $this->events->dispatch(new PriceRulesChanged());
+
+        return PriceRuleView::fromRule($rule);
+    }
+
+    /**
+     * @throws PriceRuleNotFound
+     * @throws CatalogRuleViolation
+     */
+    public function update(int $id, SavePriceRule $command): PriceRuleView
+    {
+        $rule = $this->get($id);
+        $rule->change(...self::arguments($command));
+        $this->rules->save($rule);
+        $this->events->dispatch(new PriceRulesChanged());
+
+        return PriceRuleView::fromRule($rule);
+    }
+
+    /**
+     * @throws PriceRuleNotFound
+     */
+    public function delete(int $id): void
+    {
+        $this->rules->delete($this->get($id));
+        $this->events->dispatch(new PriceRulesChanged());
+    }
+
+    private function get(int $id): PriceRule
+    {
+        return $this->rules->find($id) ?? throw new PriceRuleNotFound($id);
+    }
+
+    /**
+     * @return array{string, list<PriceTier>, list<int>, list<int>, list<int>, list<int>, ?\DateTimeImmutable, ?\DateTimeImmutable, bool, bool}
+     */
+    private static function arguments(SavePriceRule $command): array
+    {
+        $moment = static fn(?string $at): ?\DateTimeImmutable => $at === null || $at === '' ? null : new \DateTimeImmutable($at)->setTimezone(new \DateTimeZone('UTC'));
+        $ids = static fn(array $ids): array => array_values(array_map(intval(...), array_filter($ids, is_numeric(...))));
+
+        return [
+            $command->name,
+            array_map(static fn(PriceTierData $tier): PriceTier => new PriceTier($tier->minQuantity, $tier->kind, Money::of($tier->value)), $command->tiers),
+            $ids($command->groupIds),
+            $ids($command->productIds),
+            $ids($command->categoryIds),
+            $ids($command->brandIds),
+            $moment($command->startsAt),
+            $moment($command->endsAt),
+            $command->withSales,
+            $command->active,
+        ];
+    }
+}

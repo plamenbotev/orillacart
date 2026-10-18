@@ -603,3 +603,14 @@ fieldset[aria-invalid="true"] {
 .orillacart-discount td {
 	white-space: nowrap;
 }
+
+/* Prices by quantity on the product page */
+.orillacart-product__tiers {
+	max-width: 20rem;
+	margin: 0 0 1em;
+}
+
+.orillacart-product__tiers caption {
+	text-align: left;
+	font-weight: 600;
+}

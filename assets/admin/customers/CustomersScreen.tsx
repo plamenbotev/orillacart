@@ -3,8 +3,10 @@ import {
 	Card,
 	CardBody,
 	CardHeader,
+	CheckboxControl,
 	Notice,
 	RadioControl,
+	TextControl,
 } from '@wordpress/components';
 import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useCallback, useEffect, useState } from '@wordpress/element';
@@ -15,12 +17,17 @@ import { AddressFields } from '../shared/AddressFields';
 import { toApiError } from '../shared/api';
 import {
 	type Customer,
+	type CustomerGroup,
 	type CustomerPage,
 	type CustomerSettings,
+	deleteGroup,
 	fetchCustomers,
 	fetchCustomerSettings,
+	fetchGroups,
 	saveAddresses,
 	saveCustomerSettings,
+	saveGroup,
+	setCustomerGroups,
 } from './api';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
@@ -83,6 +90,7 @@ export function CustomersScreen() {
 	} );
 	const [ page, setPage ] = useState< CustomerPage | null >( null );
 	const [ selected, setSelected ] = useState< Customer | null >( null );
+	const [ groups, setGroups ] = useState< CustomerGroup[] >( [] );
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) =>
@@ -90,7 +98,9 @@ export function CustomersScreen() {
 
 	useEffect( () => {
 		fetchCustomerSettings().then( setSettings ).catch( fail );
+		fetchGroups().then( setGroups ).catch( fail );
 	}, [] );
+	const reloadGroups = () => fetchGroups().then( setGroups ).catch( fail );
 	const load = useCallback( () => {
 		fetchCustomers( {
 			search: view.search === '' ? undefined : view.search,
@@ -141,10 +151,19 @@ export function CustomersScreen() {
 					</CardBody>
 				</Card>
 			) }
+			<GroupsCard
+				groups={ groups }
+				onChanged={ () => {
+					reloadGroups();
+					load();
+				} }
+				onError={ fail }
+			/>
 			{ selected !== null && (
 				<CustomerCard
 					key={ selected.id }
 					customer={ selected }
+					groups={ groups }
 					onClose={ () => setSelected( null ) }
 					onSaved={ ( saved ) => {
 						setSelected( saved );
@@ -196,7 +215,110 @@ export function CustomersScreen() {
 	);
 }
 
+function GroupsCard( {
+	groups,
+	onChanged,
+	onError,
+}: {
+	groups: CustomerGroup[];
+	onChanged: () => void;
+	onError: ( error: unknown ) => void;
+} ) {
+	const [ name, setName ] = useState( '' );
+	return (
+		<Card className="orillacart-card">
+			<CardHeader>
+				<h2>{ __( 'Customer groups', 'orillacart' ) }</h2>
+			</CardHeader>
+			<CardBody>
+				<p>
+					{ __(
+						'Groups such as Wholesale or VIP; price rules give them their own prices. Put customers in groups from their details below.',
+						'orillacart'
+					) }
+				</p>
+				{ groups.length > 0 && (
+					<ul className="orillacart-groups">
+						{ groups.map( ( group ) => (
+							<li key={ group.id }>
+								{ sprintf(
+									/* translators: 1: group name, 2: number of customers */
+									__( '%1$s (%2$d)', 'orillacart' ),
+									group.name,
+									group.members
+								) }{ ' ' }
+								<Button
+									variant="link"
+									onClick={ () => {
+										const renamed = window.prompt(
+											__( 'New name', 'orillacart' ),
+											group.name
+										);
+										if ( renamed ) {
+											saveGroup( group.id, renamed )
+												.then( onChanged )
+												.catch( onError );
+										}
+									} }
+								>
+									{ __( 'Rename', 'orillacart' ) }
+								</Button>{ ' ' }
+								<Button
+									variant="link"
+									isDestructive
+									onClick={ () => {
+										if (
+											window.confirm(
+												sprintf(
+													/* translators: %s: group name */
+													__(
+														'Delete the group %s? Its customers leave it, and its price rules apply to no one.',
+														'orillacart'
+													),
+													group.name
+												)
+											)
+										) {
+											deleteGroup( group.id )
+												.then( onChanged )
+												.catch( onError );
+										}
+									} }
+								>
+									{ __( 'Delete', 'orillacart' ) }
+								</Button>
+							</li>
+						) ) }
+					</ul>
+				) }
+				<form
+					onSubmit={ ( event ) => {
+						event.preventDefault();
+						saveGroup( null, name )
+							.then( () => {
+								setName( '' );
+								onChanged();
+							} )
+							.catch( onError );
+					} }
+				>
+					<TextControl
+						__next40pxDefaultSize
+						label={ __( 'New group', 'orillacart' ) }
+						value={ name }
+						onChange={ setName }
+					/>
+					<Button variant="secondary" type="submit">
+						{ __( 'Add the group', 'orillacart' ) }
+					</Button>
+				</form>
+			</CardBody>
+		</Card>
+	);
+}
+
 interface CustomerCardProps {
+	groups: CustomerGroup[];
 	customer: Customer;
 	onClose: () => void;
 	onSaved: ( customer: Customer ) => void;
@@ -204,6 +326,7 @@ interface CustomerCardProps {
 }
 
 function CustomerCard( {
+	groups,
 	customer,
 	onClose,
 	onSaved,
@@ -214,6 +337,9 @@ function CustomerCard( {
 	);
 	const [ shipping, setShipping ] = useState< Address >(
 		customer.shipping_address ?? EMPTY_ADDRESS
+	);
+	const [ member, setMember ] = useState< number[] >(
+		customer.group_ids ?? []
 	);
 	const filled = ( address: Address ) =>
 		address.street.trim() === '' ? null : address;
@@ -240,6 +366,30 @@ function CustomerCard( {
 						'orillacart'
 					) }
 				</p>
+				{ groups.length > 0 && (
+					<>
+						<h3>{ __( 'Customer groups', 'orillacart' ) }</h3>
+						{ groups.map( ( group ) => (
+							<CheckboxControl
+								key={ group.id }
+								label={ group.name }
+								checked={ member.includes( group.id ) }
+								onChange={ ( on ) => {
+									const next = on
+										? [ ...member, group.id ]
+										: member.filter(
+												( id ) => id !== group.id
+											);
+									setCustomerGroups( customer.id, next )
+										.then( ( saved ) =>
+											setMember( saved.group_ids )
+										)
+										.catch( onError );
+								} }
+							/>
+						) ) }
+					</>
+				) }
 				<h3>{ __( 'Billing address', 'orillacart' ) }</h3>
 				<AddressFields address={ billing } onChange={ setBilling } />
 				<h3>{ __( 'Shipping address', 'orillacart' ) }</h3>

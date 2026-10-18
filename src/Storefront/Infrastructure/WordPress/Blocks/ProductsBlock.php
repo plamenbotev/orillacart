@@ -10,6 +10,7 @@ use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopListing;
+use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
 /**
  * The shop: published products in a grid, which visitors narrow by category, words, brand, the shop's filters,
@@ -27,6 +28,7 @@ final readonly class ProductsBlock implements BlockDefinition
         private ProductCategories $categories,
         private ShopLinks $links,
         private TemplateRenderer $templates,
+        private Shopper $shopper,
     ) {}
 
     public static function name(): string
@@ -71,7 +73,7 @@ final readonly class ProductsBlock implements BlockDefinition
         );
         $panel = $this->listing->panel($choices, $result);
         $ids = $result->ids;
-        $offers = $this->catalog->offers($ids);
+        $offers = $this->catalog->offers($ids, $this->shopper->customerId());
         $urls = $this->links->products($ids);
 
         $products = [];

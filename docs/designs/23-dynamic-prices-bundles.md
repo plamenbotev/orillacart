@@ -1,6 +1,15 @@
 # 23 · Dynamic prices, bundles and sets
 
-Status: proposed, waiting for approval.
+Status: building (2026-10-18): 23a price rules and customer groups are built; 23b automatic discounts and 23c
+bundles and sets follow. Changes from the draft below:
+
+- One kind of price rule covers groups, quantity tiers and dates: a rule has tiers (from 1 item, from 10…),
+  optional groups, products, categories and brands, and optional dates. Where several rules hold, the lowest
+  price wins, never below what a rule gives, so rules do not stack.
+- Rules change the product's or variation's own price; option adjustments stay on top.
+- Customer groups are the shop's own (Shop → Customers), not WordPress roles.
+- The search index keeps the guest price; logged-in customers see their group's price on the product page, in
+  listings, the cart and checkout.
 
 ## Dynamic prices
 

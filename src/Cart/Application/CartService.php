@@ -202,7 +202,7 @@ final readonly class CartService
         $orderable = !$cart->isEmpty();
         foreach ($cart->lines() as $line) {
             try {
-                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds()));
+                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), $line->quantity(), $cart->customerId()));
             } catch (NotFound|RuleViolation) {
                 $lines[] = new CartLineView($line->id(), $line->productId(), null, '', null, [], $line->quantity(), '0', '0', 0, 'unavailable');
                 $orderable = false;

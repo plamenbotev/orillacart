@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Search\Infrastructure\Events;
 
 use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
+use OrillaCart\Catalog\Domain\Event\PriceRulesChanged;
 use OrillaCart\Catalog\Domain\Event\ProductChanged;
 use OrillaCart\Inventory\Domain\Event\StockChanged;
 use OrillaCart\Search\Application\SearchIndexing;
@@ -18,6 +19,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 #[AsEventListener(event: StockChanged::class, method: 'stockChanged')]
 #[AsEventListener(event: CatalogItemsRemoved::class, method: 'itemsRemoved')]
 #[AsEventListener(event: SettingsChanged::class, method: 'settingsChanged')]
+#[AsEventListener(event: PriceRulesChanged::class, method: 'priceRulesChanged')]
 final readonly class QueueChangedProducts
 {
     public function __construct(private SearchIndexing $indexing) {}
@@ -39,6 +41,12 @@ final readonly class QueueChangedProducts
     public function itemsRemoved(CatalogItemsRemoved $event): void
     {
         $this->indexing->queue($event->productIds);
+    }
+
+    /** A price rule may change the guest's price of any product. */
+    public function priceRulesChanged(PriceRulesChanged $event): void
+    {
+        $this->indexing->queueEverything();
     }
 
     /** Hiding or showing prices changes every product's price in the index. */

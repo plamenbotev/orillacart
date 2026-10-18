@@ -15,18 +15,18 @@ import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { type Named, ProductTokens, TermTokens } from '../shared/CatalogTokens';
 import { toApiError } from '../shared/api';
+import { fromLocal, toLocal } from '../shared/dates';
 import {
 	type Coupon,
 	type CouponFields,
 	type CouponPage,
 	deleteCoupon,
 	fetchCoupons,
-	fetchProducts,
 	fetchTerms,
 	type Kind,
 	KINDS,
-	type Named,
 	NEW_COUPON,
 	saveCoupon,
 } from './api';
@@ -76,24 +76,6 @@ export function discountLabel( coupon: CouponFields ): string {
 			return KIND_LABELS.free_shipping;
 	}
 }
-
-/** An ISO 8601 moment as a datetime-local field shows it, in the browser's time zone. */
-const toLocal = ( iso: string | null ): string => {
-	if ( iso === null ) {
-		return '';
-	}
-	const date = new Date( iso );
-	const pad = ( value: number ) => String( value ).padStart( 2, '0' );
-	return `${ date.getFullYear() }-${ pad( date.getMonth() + 1 ) }-${ pad(
-		date.getDate()
-	) }T${ pad( date.getHours() ) }:${ pad( date.getMinutes() ) }`;
-};
-
-/** A datetime-local value as ISO 8601 in UTC, as the API takes it. */
-const fromLocal = ( local: string ): string | null =>
-	local === ''
-		? null
-		: new Date( local ).toISOString().replace( /\.\d{3}Z$/, '+00:00' );
 
 const FIELDS: Field< Coupon >[] = [
 	{
@@ -629,100 +611,5 @@ function CouponForm( { coupon, onClose, onSaved, onError }: CouponFormProps ) {
 				</form>
 			</CardBody>
 		</Card>
-	);
-}
-
-function TermTokens( {
-	label,
-	terms,
-	ids,
-	onChange,
-}: {
-	label: string;
-	terms: Named[];
-	ids: number[];
-	onChange: ( ids: number[] ) => void;
-} ) {
-	const name = ( id: number ) =>
-		terms.find( ( term ) => term.id === id )?.name ?? `#${ id }`;
-	return (
-		<FormTokenField
-			__next40pxDefaultSize
-			label={ label }
-			value={ ids.map( name ) }
-			suggestions={ terms.map( ( term ) => term.name ) }
-			__experimentalExpandOnFocus
-			onChange={ ( tokens ) =>
-				onChange(
-					tokens
-						.map( ( token ) => {
-							const text =
-								typeof token === 'string' ? token : token.value;
-							return (
-								terms.find( ( term ) => term.name === text )
-									?.id ??
-								ids.find( ( id ) => name( id ) === text ) ??
-								0
-							);
-						} )
-						.filter( ( id ) => id > 0 )
-				)
-			}
-		/>
-	);
-}
-
-function ProductTokens( {
-	label,
-	ids,
-	onChange,
-	onError,
-}: {
-	label: string;
-	ids: number[];
-	onChange: ( ids: number[] ) => void;
-	onError: ( error: unknown ) => void;
-} ) {
-	const [ known, setKnown ] = useState< Named[] >( [] );
-	const [ found, setFound ] = useState< Named[] >( [] );
-
-	useEffect( () => {
-		fetchProducts( { include: ids } ).then( setKnown ).catch( onError );
-		// Only the ids the coupon had when the form opened; picked ones join from the search.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [] );
-
-	const all = [ ...known, ...found ];
-	const name = ( id: number ) =>
-		all.find( ( product ) => product.id === id )?.name ?? `#${ id }`;
-	return (
-		<FormTokenField
-			__next40pxDefaultSize
-			label={ label }
-			value={ ids.map( name ) }
-			suggestions={ found.map( ( product ) => product.name ) }
-			onInputChange={ ( search ) => {
-				if ( search.trim().length >= 2 ) {
-					fetchProducts( { search } )
-						.then( setFound )
-						.catch( onError );
-				}
-			} }
-			onChange={ ( tokens ) => {
-				setKnown( all );
-				onChange(
-					tokens
-						.map( ( token ) => {
-							const text =
-								typeof token === 'string' ? token : token.value;
-							return (
-								all.find( ( product ) => product.name === text )
-									?.id ?? 0
-							);
-						} )
-						.filter( ( id ) => id > 0 )
-				);
-			} }
-		/>
 	);
 }

@@ -82,7 +82,7 @@ final readonly class OrderPricing
         $taxesOf = [];
         foreach ($items as $line) {
             try {
-                $quote = $this->quotes->quote(new QuoteRequest($line['product_id'], $line['option_ids']));
+                $quote = $this->quotes->quote(new QuoteRequest($line['product_id'], $line['option_ids'], $line['quantity'], $customerId));
             } catch (NotFound|RuleViolation) {
                 throw new CheckoutRuleViolation('An item is no longer sold. Review the items and try again.', 'orillacart_cart_changed');
             }

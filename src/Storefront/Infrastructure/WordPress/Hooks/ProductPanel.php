@@ -12,6 +12,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\ProductGallery;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
+use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
 /**
  * Puts the buying form under a product's description on its page, and its price under it in lists of posts,
@@ -25,6 +26,7 @@ final readonly class ProductPanel
         private ShopCatalog $catalog,
         private ShopLinks $links,
         private TemplateRenderer $templates,
+        private Shopper $shopper,
     ) {}
 
     public function content(string $content): string
@@ -37,7 +39,7 @@ final readonly class ProductPanel
             return $content . $this->price($id);
         }
         try {
-            $offer = $this->catalog->offer($id);
+            $offer = $this->catalog->offer($id, $this->shopper->customerId());
         } catch (ProductNotFound) {
             return $content;
         }
@@ -102,7 +104,7 @@ final readonly class ProductPanel
 
     private function price(int $id): string
     {
-        $offers = $this->catalog->offers([$id]);
+        $offers = $this->catalog->offers([$id], $this->shopper->customerId());
 
         return isset($offers[$id]) ? $this->templates->render('storefront/_list_price.html.twig', ['offer' => $offers[$id]]) : '';
     }

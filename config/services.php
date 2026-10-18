@@ -7,11 +7,14 @@ use Doctrine\ORM\EntityManagerInterface;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use OrillaCart\Cart\Domain\CartRepository;
 use OrillaCart\Cart\Infrastructure\Doctrine\DoctrineCartRepository;
+use OrillaCart\Catalog\Application\ShopperGroups;
 use OrillaCart\Catalog\Domain\AttributeSetRepository;
+use OrillaCart\Catalog\Domain\PriceRuleRepository;
 use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductRepository;
 use OrillaCart\Catalog\Domain\ProductSearch;
 use OrillaCart\Catalog\Infrastructure\Doctrine\DoctrineAttributeSetRepository;
+use OrillaCart\Catalog\Infrastructure\Doctrine\DoctrinePriceRuleRepository;
 use OrillaCart\Catalog\Infrastructure\Doctrine\DoctrineProductRepository;
 use OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductContent;
 use OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductSearch;
@@ -20,7 +23,10 @@ use OrillaCart\Coupons\Domain\RedemptionRepository;
 use OrillaCart\Coupons\Infrastructure\Doctrine\DoctrineCouponRepository;
 use OrillaCart\Coupons\Infrastructure\Doctrine\DoctrineRedemptionRepository;
 use OrillaCart\Customers\Application\Accounts;
+use OrillaCart\Customers\Domain\CustomerGroupRepository;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
+use OrillaCart\Customers\Infrastructure\Doctrine\DoctrineCustomerGroupRepository;
+use OrillaCart\Customers\Infrastructure\GroupsOfShoppers;
 use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
 use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Extension\Registry;
@@ -213,6 +219,9 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(RateCache::class, TransientRateCache::class);
     $services->alias(ConsignmentRepository::class, DoctrineConsignmentRepository::class);
     $services->alias(CouponRepository::class, DoctrineCouponRepository::class);
+    $services->alias(CustomerGroupRepository::class, DoctrineCustomerGroupRepository::class);
+    $services->alias(PriceRuleRepository::class, DoctrinePriceRuleRepository::class);
+    $services->alias(ShopperGroups::class, GroupsOfShoppers::class);
     $services->alias(RedemptionRepository::class, DoctrineRedemptionRepository::class);
 
     // The search engine the shop chose: its database (MySQL FULLTEXT) or OpenSearch.

@@ -12,6 +12,14 @@ export interface Customer {
 	billing: Address | null;
 	shipping_address: Address | null;
 	orders: number;
+	/** The customer groups they are in. */
+	group_ids: number[];
+}
+
+export interface CustomerGroup {
+	id: number;
+	name: string;
+	members: number;
 }
 
 export interface CustomerPage {
@@ -47,6 +55,42 @@ export function saveAddresses(
 		path: `${ BASE }/customers/${ id }/addresses`,
 		method: 'PUT',
 		data: { billing, shipping_address: shippingAddress },
+	} );
+}
+
+export function fetchGroups(): Promise< CustomerGroup[] > {
+	return apiFetch< CustomerGroup[] >( { path: `${ BASE }/customer-groups` } );
+}
+
+export function saveGroup(
+	id: number | null,
+	name: string
+): Promise< CustomerGroup > {
+	return apiFetch< CustomerGroup >( {
+		path:
+			id === null
+				? `${ BASE }/customer-groups`
+				: `${ BASE }/customer-groups/${ id }`,
+		method: id === null ? 'POST' : 'PUT',
+		data: { name },
+	} );
+}
+
+export function deleteGroup( id: number ): Promise< unknown > {
+	return apiFetch( {
+		path: `${ BASE }/customer-groups/${ id }`,
+		method: 'DELETE',
+	} );
+}
+
+export function setCustomerGroups(
+	id: number,
+	groupIds: number[]
+): Promise< { group_ids: number[] } > {
+	return apiFetch< { group_ids: number[] } >( {
+		path: `${ BASE }/customers/${ id }/groups`,
+		method: 'PUT',
+		data: { group_ids: groupIds },
 	} );
 }
 
