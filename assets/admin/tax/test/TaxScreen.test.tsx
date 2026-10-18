@@ -60,6 +60,7 @@ function serve( write: ( request: Request ) => Promise< unknown > ) {
 						'billing_address',
 						'shop_address',
 						'eu_origin',
+						'eu_destination',
 					],
 				} );
 			case '/orillacart/v1/countries':

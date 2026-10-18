@@ -16,9 +16,11 @@ import { __ } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
 import { toApiError } from '../shared/api';
+import { useBusy } from '../shared/useBusy';
 import { fetchCountries, type Country } from '../shared/geography';
 import {
 	createGroup,
+	addEuStandardRates,
 	deleteGroup,
 	deleteRate,
 	fetchGroups,
@@ -39,6 +41,10 @@ const BASIS_LABELS: Record< string, string > = {
 	shop_address: __( "Shop's address", 'orillacart' ),
 	eu_origin: __(
 		"Shop's address for EU customers, no tax outside the EU",
+		'orillacart'
+	),
+	eu_destination: __(
+		"EU customers' own country (OSS), no tax outside the EU",
 		'orillacart'
 	),
 };
@@ -367,6 +373,7 @@ function GroupCard( {
 	const [ name, setName ] = useState( group.name );
 	const [ editing, setEditing ] = useState< TaxRate | 'new' | null >( null );
 	const [ confirming, setConfirming ] = useState( false );
+	const [ busy, run ] = useBusy();
 	const countryName = ( code: string ) =>
 		countries.find( ( country ) => country.code === code )?.name ?? code;
 
@@ -492,12 +499,34 @@ function GroupCard( {
 						) ) }
 					</tbody>
 				</table>
-				<Button
-					variant="secondary"
-					onClick={ () => setEditing( 'new' ) }
-				>
-					{ __( 'Add rate', 'orillacart' ) }
-				</Button>
+				<Flex justify="flex-start">
+					<Button
+						variant="secondary"
+						onClick={ () => setEditing( 'new' ) }
+					>
+						{ __( 'Add rate', 'orillacart' ) }
+					</Button>
+					<Button
+						variant="tertiary"
+						isBusy={ busy }
+						disabled={ busy }
+						onClick={ () =>
+							run( () =>
+								addEuStandardRates( group.id )
+									.then( onChanged )
+									.catch( onError )
+							)
+						}
+					>
+						{ __( 'Add the EU’s standard rates', 'orillacart' ) }
+					</Button>
+				</Flex>
+				<p className="description">
+					{ __(
+						'The standard rate of each EU country without one yet, as known in October 2026. Check them against the EU’s list before you rely on them.',
+						'orillacart'
+					) }
+				</p>
 			</CardBody>
 			{ editing !== null && (
 				<RateModal

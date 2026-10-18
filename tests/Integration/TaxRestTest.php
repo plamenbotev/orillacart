@@ -67,7 +67,7 @@ final class TaxRestTest extends RestTestCase
 
         $settings = $this->request('PUT', '/tax/settings', ['basis' => 'shipping_address', 'default_group_id' => $group], nonce: true);
         self::assertSame(200, $settings->get_status());
-        self::assertSame(['basis' => 'shipping_address', 'default_group_id' => $group, 'bases' => ['shipping_address', 'billing_address', 'shop_address', 'eu_origin'], 'prices_include_tax' => false, 'reverse_charge' => false], $this->data($settings));
+        self::assertSame(['basis' => 'shipping_address', 'default_group_id' => $group, 'bases' => ['shipping_address', 'billing_address', 'shop_address', 'eu_origin', 'eu_destination'], 'prices_include_tax' => false, 'reverse_charge' => false], $this->data($settings));
 
         $calculator = self::kernel()->container()->get(TaxCalculator::class);
         self::assertInstanceOf(TaxCalculator::class, $calculator);

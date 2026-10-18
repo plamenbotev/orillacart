@@ -174,6 +174,8 @@ final class LegacyTaxRulesTest extends TestCase
             TaxBasis::BillingAddress => self::locate($billing),
             TaxBasis::ShopAddress => self::locate($shop),
             TaxBasis::EuOrigin => $shipping[0] === null || \in_array($shipping[0], $this->legacyEu, true) ? self::locate($shop) : null,
+            // New since the old plugin, which had no OSS basis.
+            TaxBasis::EuDestination => $shipping[0] === null ? self::locate($shop) : (\in_array($shipping[0], $this->legacyEu, true) ? self::locate($shipping) : null),
         };
     }
 

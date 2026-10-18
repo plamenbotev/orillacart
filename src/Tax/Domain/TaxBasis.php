@@ -20,6 +20,11 @@ enum TaxBasis: string
      * no tax for customers shipping outside the EU.
      */
     case EuOrigin = 'eu_origin';
+    /**
+     * The customer's own EU country, as the One-Stop-Shop (OSS) asks of shops selling across the EU: their
+     * shipping address inside the EU, no tax outside it, and the shop's address while the address is not known.
+     */
+    case EuDestination = 'eu_destination';
 
     /**
      * @return list<string>
@@ -39,6 +44,7 @@ enum TaxBasis: string
             self::BillingAddress => $billing,
             self::ShopAddress => $shop,
             self::EuOrigin => $shipping === null || $shipping->inEu ? $shop : null,
+            self::EuDestination => $shipping === null ? $shop : ($shipping->inEu ? $shipping : null),
         };
     }
 }

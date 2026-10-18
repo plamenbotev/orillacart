@@ -10,6 +10,7 @@ use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tax\Application\Dto\TaxGroupView;
 use OrillaCart\Tax\Application\Dto\TaxRateView;
+use OrillaCart\Tax\Domain\EuStandardRates;
 use OrillaCart\Tax\Domain\Event\TaxRatesChanged;
 use OrillaCart\Tax\Domain\Percentage;
 use OrillaCart\Tax\Domain\TaxGroup;
@@ -102,6 +103,40 @@ final readonly class TaxGroupService
         $this->events->dispatch(new TaxRatesChanged($groupId));
 
         return TaxRateView::fromRate($rate);
+    }
+
+    /**
+     * Adds the standard VAT rate of every EU country the group has no rate for yet, to charge EU customers
+     * their own rate (OSS). Rates the group has are kept.
+     *
+     * @return int how many were added
+     *
+     * @throws TaxGroupNotFound
+     */
+    public function addEuStandardRates(int $groupId): int
+    {
+        $group = $this->get($groupId);
+        $covered = [];
+        foreach ($group->rates() as $rate) {
+            $details = $rate->details();
+            if ($details->state === null) {
+                $covered[$details->country] = true;
+            }
+        }
+        $added = 0;
+        foreach (EuStandardRates::RATES as $country => $percent) {
+            if (isset($covered[$country]) || $this->geography->locate($country, null) === null) {
+                continue;
+            }
+            $group->addRate(new TaxRateDetails($country, null, Percentage::of($percent), 'VAT', 0));
+            ++$added;
+        }
+        if ($added > 0) {
+            $this->groups->save($group);
+            $this->events->dispatch(new TaxRatesChanged($groupId));
+        }
+
+        return $added;
     }
 
     /**

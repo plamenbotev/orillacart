@@ -86,6 +86,17 @@ export function deleteRate(
 	} );
 }
 
+/**
+ * Adds the standard VAT rate of every EU country the group has none for, to charge EU customers their own rate.
+ * @param id
+ */
+export function addEuStandardRates( id: number ): Promise< TaxGroup > {
+	return apiFetch< TaxGroup >( {
+		path: `${ BASE }/groups/${ id }/eu-standard-rates`,
+		method: 'POST',
+	} );
+}
+
 export function fetchTaxSettings(): Promise< TaxSettings > {
 	return apiFetch< TaxSettings >( { path: `${ BASE }/settings` } );
 }

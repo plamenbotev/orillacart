@@ -27,6 +27,7 @@ use PHPUnit\Framework\TestCase;
 
 final class TaxCalculatorTest extends TestCase
 {
+    private TaxGroupService $service;
     private TaxCalculator $calculator;
     private TaxSettingsService $settings;
     private int $standard;
@@ -39,7 +40,7 @@ final class TaxCalculatorTest extends TestCase
         $geography = new GeographyService(new InMemoryCountryRepository());
         $shop = new InMemorySettingsRepository(new StoreSettings(StoreSettings::defaults()->currency, 2, StoreSettings::defaults()->weightUnit, StoreSettings::defaults()->dimensionUnit, 'BG'));
 
-        $service = new TaxGroupService($groups, $taxSettings, $geography, new RecordingDispatcher());
+        $this->service = $service = new TaxGroupService($groups, $taxSettings, $geography, new RecordingDispatcher());
         $this->standard = $service->create(new SaveTaxGroup('Standard'))->id;
         $this->reduced = $service->create(new SaveTaxGroup('Reduced'))->id;
         $service->addRate($this->standard, new SaveTaxRate('BG', null, '20', 'VAT'));
@@ -80,6 +81,25 @@ final class TaxCalculatorTest extends TestCase
         self::assertSame('20', $this->calculator->taxes(new TaxQuery($this->standard))->total, 'address not known yet');
         self::assertSame('0', $this->calculator->taxes(new TaxQuery($this->standard, new TaxAddress('GB')))->total);
         self::assertSame('0', $this->calculator->taxes(new TaxQuery($this->standard, new TaxAddress('US', 'CA')))->total);
+    }
+
+    public function testEuDestinationTaxesEuCustomersAtTheirOwnRate(): void
+    {
+        $this->settings->update(new UpdateTaxSettings('eu_destination', null));
+
+        self::assertSame('19', $this->calculator->taxes(new TaxQuery($this->standard, new TaxAddress('DE')))->total, 'their country');
+        self::assertSame('20', $this->calculator->taxes(new TaxQuery($this->standard))->total, 'the shop’s while the address is not known');
+        self::assertSame('0', $this->calculator->taxes(new TaxQuery($this->standard, new TaxAddress('US', 'CA')))->total, 'none outside the EU');
+    }
+
+    public function testAGroupGetsTheStandardRateOfEveryEuCountryItHasNoneFor(): void
+    {
+        // The test geography knows Bulgaria, Germany, Greece and Italy in the EU; BG and DE have rates already.
+        self::assertSame(2, $this->service->addEuStandardRates($this->standard));
+        self::assertSame(0, $this->service->addEuStandardRates($this->standard), 'once');
+
+        $this->settings->update(new UpdateTaxSettings('eu_destination', $this->standard));
+        self::assertSame(['19', '22', '24'], [$this->calculator->taxes(new TaxQuery($this->standard, new TaxAddress('DE')))->total, $this->calculator->taxes(new TaxQuery($this->standard, new TaxAddress('IT')))->total, $this->calculator->taxes(new TaxQuery($this->standard, new TaxAddress('GR')))->total], 'its own rates kept');
     }
 
     public function testADeletedGroupTaxesNothing(): void
