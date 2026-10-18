@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application\PayPal;
 
+use OrillaCart\Extension\Payment\ChecksPayments;
+use OrillaCart\Extension\Payment\ChecksRefunds;
 use OrillaCart\Extension\Payment\HandlesReturns;
 use OrillaCart\Extension\Payment\InvalidNotification;
 use OrillaCart\Extension\Payment\NamesNotifiedPayments;
@@ -16,7 +18,6 @@ use OrillaCart\Extension\Payment\PaymentStart;
 use OrillaCart\Extension\Payment\RefundRefused;
 use OrillaCart\Extension\Payment\RefundRequest;
 use OrillaCart\Extension\Payment\RefundResult;
-use OrillaCart\Extension\Payment\RefundsPayments;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Setting;
 use OrillaCart\Extension\Settings;
@@ -24,6 +25,7 @@ use OrillaCart\Payment\Application\Dto\PayPalAccount;
 use OrillaCart\Payment\Application\Dto\PayPalCapture;
 use OrillaCart\Payment\Application\Dto\PayPalNotification;
 use OrillaCart\Payment\Application\Dto\PayPalOrderRequest;
+use OrillaCart\Payment\Application\Dto\PayPalRefund;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Shared\Domain\Money;
 
@@ -32,7 +34,7 @@ use OrillaCart\Shared\Domain\Money;
  * approves it at PayPal and comes back, and the shop captures it. A verified webhook settles payments whose
  * customer never came back, and tells of refunds made in PayPal's own dashboard. Refunds go back to the capture. Built on the extension API, as an add-on's gateway would be.
  */
-final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, NamesNotifiedPayments, RefundsPayments
+final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, NamesNotifiedPayments, ChecksPayments, ChecksRefunds
 {
     public const string ID = 'paypal';
 
@@ -61,7 +63,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
             new Setting('client_id', 'Client ID', required: true, help: 'From your REST app at developer.paypal.com.'),
             new Setting('client_secret', 'Secret', Setting::SECRET, required: true),
             new Setting('sandbox', 'Sandbox', Setting::BOOLEAN, help: 'Take test payments with sandbox credentials.'),
-            new Setting('webhook_id', 'Webhook ID', help: 'Settles payments of customers who close the window before coming back. Subscribe the webhook to the shop\'s webhook address.'),
+            new Setting('webhook_id', 'Webhook ID', help: 'Needed for live payments. PayPal tells the shop of payments of customers who close the window before coming back, of reviews, refunds made at PayPal, reversals and disputes. Subscribe the webhook to the shop\'s webhook address with all events.'),
         ];
     }
 
@@ -69,7 +71,8 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
     {
         $account = self::account($settings);
 
-        return $account->clientId !== '' && $account->clientSecret !== '' && isset(self::CURRENCIES[$currency]);
+        // Live payments need the webhook: without it the shop hears of reversals and disputes from nobody.
+        return $account->clientId !== '' && $account->clientSecret !== '' && ($account->sandbox || $account->webhookId !== '') && isset(self::CURRENCIES[$currency]);
     }
 
     public function start(PaymentSession $session, Settings $settings): PaymentStart
@@ -134,6 +137,33 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
         return $refund->status === 'PENDING' ? RefundResult::pending($refund->id) : RefundResult::done($refund->id);
     }
 
+    public function check(string $reference, ?string $transactionId, Settings $settings): PaymentOutcome
+    {
+        $account = self::account($settings);
+        if ($transactionId !== null && $transactionId !== '') {
+            return self::outcome($reference, $this->call(fn(): PayPalCapture => $this->api->capture($account, $transactionId)));
+        }
+        $order = $this->call(fn(): ?array => $this->api->order($account, $reference));
+
+        return match (true) {
+            // Never approved, and expired since.
+            $order === null, $order['status'] === 'VOIDED' => PaymentOutcome::cancelled($reference),
+            $order['status'] === 'APPROVED' => self::outcome($reference, $this->call(fn(): PayPalCapture => $this->api->captureOrder($account, $reference))),
+            $order['capture'] !== null => self::outcome($reference, $order['capture']),
+            default => PaymentOutcome::pending($reference),
+        };
+    }
+
+    public function checkRefund(string $reference, Settings $settings): RefundResult
+    {
+        $refund = $this->call(fn(): PayPalRefund => $this->api->refund(self::account($settings), $reference));
+        if (\in_array($refund->status, ['CANCELLED', 'FAILED'], true)) {
+            throw new RefundRefused("PayPal gave up on the refund: {$refund->status}.");
+        }
+
+        return $refund->status === 'COMPLETED' ? RefundResult::done($refund->id) : RefundResult::pending($refund->id);
+    }
+
     /**
      * An approved order is captured when its notification comes: only for PayPal orders this shop started.
      */
@@ -164,6 +194,25 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
 
             return $orderId === '' ? null : self::outcome($orderId, $this->call(fn(): PayPalCapture => $this->api->captureOrder($account, $orderId)));
         }
+        if ($type === 'PAYMENT.CAPTURE.REVERSED') {
+            $supplementary = \is_array($resource['supplementary_data'] ?? null) ? $resource['supplementary_data'] : [];
+            $related = \is_array($supplementary['related_ids'] ?? null) ? $supplementary['related_ids'] : [];
+            $captureId = self::text($resource, 'id');
+
+            return $captureId === '' ? null : PaymentOutcome::disputed(self::text($related, 'order_id'), 'PayPal reversed the payment, as for a chargeback the customer\'s bank made.', $captureId);
+        }
+        if (str_starts_with($type, 'CUSTOMER.DISPUTE.')) {
+            $disputed = \is_array($resource['disputed_transactions'] ?? null) && \is_array($resource['disputed_transactions'][0] ?? null) ? $resource['disputed_transactions'][0] : [];
+            $captureId = self::text($disputed, 'seller_transaction_id');
+            $what = match ($type) {
+                'CUSTOMER.DISPUTE.CREATED' => 'The customer opened a dispute at PayPal',
+                'CUSTOMER.DISPUTE.RESOLVED' => 'The dispute at PayPal was resolved',
+                default => 'The dispute at PayPal changed',
+            };
+            $reason = trim(self::text($resource, 'reason') . ' ' . self::text($resource, 'status'));
+
+            return $captureId === '' ? null : PaymentOutcome::disputed('', $reason === '' ? "{$what}." : "{$what} ({$reason}).", $captureId);
+        }
         if ($type === 'PAYMENT.CAPTURE.REFUNDED') {
             // The resource is the refund; it links up to the capture it gave money back from.
             $captureId = '';
@@ -176,6 +225,10 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
             $related = \is_array($supplementary['related_ids'] ?? null) ? $supplementary['related_ids'] : [];
             $amount = \is_array($resource['amount'] ?? null) ? $resource['amount'] : [];
             $refundId = self::text($resource, 'id');
+            if (!\in_array(self::text($resource, 'status'), ['', 'COMPLETED'], true)) {
+                // Not done yet: the shop asks again later, and records it once it is.
+                return null;
+            }
 
             return $refundId === '' || ($captureId === '' && self::text($related, 'order_id') === '') ? null : PaymentOutcome::refunded(
                 self::text($related, 'order_id'),

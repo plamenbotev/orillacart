@@ -27,6 +27,7 @@ use OrillaCart\Ordering\Application\Dto\RefundOrder;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
 use OrillaCart\Ordering\Domain\Event\OrderChanged;
 use OrillaCart\Ordering\Domain\Event\OrderDeleted;
+use OrillaCart\Ordering\Domain\Event\OrderNeedsAttention;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
@@ -142,7 +143,10 @@ final readonly class OrderService
         return $this->view($order);
     }
 
-    public function orders(OrderQuery $query): OrderPageView
+    /**
+     * @param bool $forShop the shop's list, which marks orders it has to look at
+     */
+    public function orders(OrderQuery $query, bool $forShop = false): OrderPageView
     {
         $search = $query->search === null || trim($query->search) === '' ? null : trim($query->search);
         [$orders, $total] = $this->orders->search(
@@ -151,9 +155,10 @@ final readonly class OrderService
             $query->customerId,
             ($query->page - 1) * $query->perPage,
             $query->perPage,
+            $forShop && $query->attention,
         );
 
-        return new OrderPageView(array_map(OrderSummaryView::fromOrder(...), $orders), $total, $query->page, max(1, (int) ceil($total / $query->perPage)));
+        return new OrderPageView(array_map(static fn(Order $order): OrderSummaryView => OrderSummaryView::fromOrder($order, $forShop), $orders), $total, $query->page, max(1, (int) ceil($total / $query->perPage)));
     }
 
     /**
@@ -218,6 +223,42 @@ final readonly class OrderService
         }
 
         return true;
+    }
+
+    /**
+     * Flags the order for the shop to look at, whatever its status, and tells the shop.
+     *
+     * @throws OrderNotFound
+     */
+    public function needsAttention(int $id, string $reason): void
+    {
+        $this->changing($id, function (Order $order) use ($reason): void {
+            if (!$order->needsAttention($reason, $this->clock->now())) {
+                return;
+            }
+            $order->addNote($reason, NoteAuthor::System, false, $this->clock->now());
+            $this->orders->save($order);
+            $this->events->dispatch(new OrderNeedsAttention($order->id(), trim($reason)));
+        });
+    }
+
+    /**
+     * The shop looked at what the order needed attention for.
+     *
+     * @throws OrderNotFound
+     */
+    public function attended(int $id, ?int $userId): OrderView
+    {
+        return $this->changing($id, function (Order $order) use ($userId): OrderView {
+            $reason = $order->attention();
+            if ($order->attended()) {
+                $order->addNote(\sprintf('Marked as handled: %s', str_replace("\n", ' ', (string) $reason)), NoteAuthor::Shop, false, $this->clock->now(), $userId);
+                $this->orders->save($order);
+                $this->events->dispatch(new OrderChanged($order->id()));
+            }
+
+            return $this->view($order, true);
+        });
     }
 
     /**

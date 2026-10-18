@@ -17,5 +17,8 @@ interface RefundRepository
     /** @return list<Refund> oldest first */
     public function ofOrder(int $orderId): array;
 
+    /** @return list<Refund> refunds a provider accepted to finish later, oldest first */
+    public function accepted(int $limit): array;
+
     public function save(Refund $refund): void;
 }

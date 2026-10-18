@@ -47,7 +47,6 @@ const refunds: OrderRefunds = {
 			restock: true,
 			reason: 'Arrived broken.',
 			provider_reference: 'REFUND-1',
-			provider_pending: false,
 			error: null,
 			created_at: '2026-10-17T12:00:00+00:00',
 			settled_at: '2026-10-17T12:00:00+00:00',

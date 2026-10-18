@@ -12,6 +12,7 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
+use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentNotFound;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
@@ -64,6 +65,53 @@ final class PayPalGatewayTest extends TestCase
         self::assertSame('CAPTURE-PAYPAL-1', $order->transactionId);
         $notes = $order->notes;
         self::assertStringContainsString('already marked paid', array_pop($notes)->text ?? '');
+    }
+
+    public function testAReversedOrDisputedPaymentFlagsItsOrderForTheShop(): void
+    {
+        $placed = $this->place();
+        $this->shop->outcomes->notified('paypal', $this->notification('CHECKOUT.ORDER.APPROVED', ['id' => 'PAYPAL-1']));
+        $number = $this->shop->orders->byKey($placed->key)->number;
+
+        $this->shop->outcomes->notified('paypal', $this->notification('CUSTOMER.DISPUTE.CREATED', ['reason' => 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED', 'status' => 'OPEN', 'disputed_transactions' => [['seller_transaction_id' => 'CAPTURE-PAYPAL-1']]]));
+        $this->shop->outcomes->notified('paypal', $this->capture('PAYMENT.CAPTURE.REVERSED', 'REVERSED', 'PAYPAL-1', '8.00'));
+        // PayPal sends a notification again when it is not sure it arrived.
+        $this->shop->outcomes->notified('paypal', $this->capture('PAYMENT.CAPTURE.REVERSED', 'REVERSED', 'PAYPAL-1', '8.00'));
+
+        $order = $this->shop->orders->order($number);
+        self::assertSame('processing', $order->status, 'the status stays');
+        self::assertSame("The customer opened a dispute at PayPal (MERCHANDISE_OR_SERVICE_NOT_RECEIVED OPEN).\nPayPal reversed the payment, as for a chargeback the customer's bank made.", $order->attention);
+        self::assertTrue($this->shop->orders->orders(new OrderQuery(attention: true), forShop: true)->orders[0]->needsAttention ?? false);
+        self::assertFalse($this->shop->orders->orders(new OrderQuery(attention: true))->orders[0]->needsAttention ?? true, 'a customer\'s list does not show it');
+        self::assertCount(2, array_filter($this->shop->mail->summary(), static fn(string $mail): bool => str_contains($mail, 'needs your attention')));
+    }
+
+    public function testPaymentsNobodyToldTheShopOfAreAskedAboutEveryHour(): void
+    {
+        $approved = $this->place();
+        $held = $this->place();
+        $this->shop->payPalApi->captureStatus = 'PENDING';
+        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-2'], false);
+        self::assertSame('on_hold', $this->orderStatus($held));
+        $this->shop->payPalApi->captureStatus = 'COMPLETED';
+        // The customer of PAYPAL-1 approved and closed the window; no webhook came.
+        $this->shop->payPalApi->orderStatus['PAYPAL-1'] = 'APPROVED';
+
+        self::assertSame(0, $this->shop->outcomes->reconcile(), 'not before a quarter of an hour');
+        $this->shop->clock->modify('+16 minutes');
+        self::assertSame(2, $this->shop->outcomes->reconcile());
+
+        self::assertSame(['processing', 'processing'], [$this->orderStatus($approved), $this->orderStatus($held)]);
+        self::assertSame(0, $this->shop->outcomes->reconcile(), 'settled ones are not asked again');
+    }
+
+    public function testLivePaymentsNeedTheWebhook(): void
+    {
+        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret']));
+        self::assertFalse($this->shop->paymentMethods->show('paypal')->ready);
+
+        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret', 'sandbox' => true]));
+        self::assertTrue($this->shop->paymentMethods->show('paypal')->ready, 'test payments do without it');
     }
 
     public function testCaptureEventsCompleteFailOrHoldThePayment(): void

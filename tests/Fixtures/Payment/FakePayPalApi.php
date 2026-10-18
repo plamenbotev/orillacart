@@ -35,6 +35,10 @@ final class FakePayPalApi implements PayPalApi
     public ?string $refuses = null;
     /** PayPal takes the refund but the answer is lost on the way. */
     public bool $answerLost = false;
+    /** PayPal's status of the refunds it takes, and as it later tells of them: COMPLETED, PENDING, FAILED. */
+    public string $refundStatus = 'COMPLETED';
+    /** @var array<string, string> what PayPal tells of an order when asked, by order id: CREATED, APPROVED... */
+    public array $orderStatus = [];
     /** @var (\Closure(): void)|null what else happens while PayPal makes the order, such as a second submit */
     public ?\Closure $whileCreating = null;
 
@@ -72,7 +76,34 @@ final class FakePayPalApi implements PayPalApi
             throw new PaymentProviderUnavailable('PayPal', 'timed out');
         }
 
-        return new PayPalRefund('REFUND-' . ((int) array_search($requestId, array_keys($this->refunds), true) + 1), 'COMPLETED');
+        return new PayPalRefund('REFUND-' . ((int) array_search($requestId, array_keys($this->refunds), true) + 1), $this->refundStatus);
+    }
+
+    public function capture(PayPalAccount $account, string $captureId): PayPalCapture
+    {
+        $this->reach();
+        $orderId = substr($captureId, \strlen('CAPTURE-'));
+        $request = $this->created[(int) substr($orderId, \strlen('PAYPAL-')) - 1] ?? throw new PaymentProviderUnavailable('PayPal', 'unknown capture');
+
+        return new PayPalCapture($captureId, $this->captureStatus, $this->capturedAmount ?? $request->amount, $request->currency, $orderId);
+    }
+
+    public function order(PayPalAccount $account, string $orderId): ?array
+    {
+        $this->reach();
+        $status = $this->orderStatus[$orderId] ?? null;
+        if ($status === null) {
+            return null;
+        }
+
+        return ['status' => $status, 'capture' => \in_array($orderId, $this->captured, true) ? $this->capture($account, "CAPTURE-{$orderId}") : null];
+    }
+
+    public function refund(PayPalAccount $account, string $refundId): PayPalRefund
+    {
+        $this->reach();
+
+        return new PayPalRefund($refundId, $this->refundStatus);
     }
 
     public function verifyNotification(PayPalAccount $account, PayPalNotification $notification): bool

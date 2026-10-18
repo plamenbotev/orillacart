@@ -64,6 +64,8 @@ final readonly class OrderView
         public array $discounts = [],
         /** @var list<OrderFieldView> answers to add-ons' checkout fields */
         public array $fields = [],
+        /** Why the shop has to look at it, such as a disputed payment; for the shop only. */
+        public ?string $attention = null,
     ) {}
 
     /**
@@ -112,6 +114,7 @@ final readonly class OrderView
             (string) $order->discountTotal(),
             array_map(static fn(OrderDiscount $discount): OrderDiscountView => new OrderDiscountView($discount->code, $discount->description, (string) $discount->amount, $discount->freeShipping, $discount->automatic), $order->discounts()),
             array_map(OrderFieldView::fromAnswer(...), $order->fields()),
+            $forShop ? $order->attention() : null,
         );
     }
 }

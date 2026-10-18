@@ -26,7 +26,7 @@ interface OrderRepository
      *
      * @return array{list<Order>, int}
      */
-    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit): array;
+    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit, bool $attentionOnly = false): array;
 
     /**
      * Whether the customer, by account or by email, has an order that was not cancelled or did not fail.

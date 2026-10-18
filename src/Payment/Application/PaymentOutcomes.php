@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application;
 
+use OrillaCart\Extension\Payment\ChecksPayments;
 use OrillaCart\Extension\Payment\HandlesNotifications;
 use OrillaCart\Extension\Payment\HandlesReturns;
 use OrillaCart\Extension\Payment\InvalidNotification;
@@ -17,6 +18,7 @@ use OrillaCart\Payment\Domain\Event\PaymentCancelled;
 use OrillaCart\Payment\Domain\Event\PaymentCompleted;
 use OrillaCart\Payment\Domain\Event\PaymentFailed;
 use OrillaCart\Payment\Domain\Event\PaymentHeld;
+use OrillaCart\Payment\Domain\Event\PaymentInQuestion;
 use OrillaCart\Payment\Domain\Payment;
 use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentMethodRepository;
@@ -39,6 +41,11 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class PaymentOutcomes
 {
+    /** A payment is checked once nothing final came for this long */
+    private const string CHECK_AFTER = 'PT15M';
+    /** and for this long after it started: a provider forgets sessions nobody finished. */
+    private const string CHECK_FOR = 'P30D';
+
     public function __construct(
         private PaymentRepository $payments,
         private PaymentMethodRepository $methods,
@@ -124,10 +131,15 @@ final readonly class PaymentOutcomes
             return;
         }
         $payment = $outcome->reference === '' ? null : $this->payments->findByReference($gatewayId, $outcome->reference);
-        if ($payment === null && $outcome->transactionId !== null && $outcome->status === PaymentOutcome::REFUNDED) {
+        if ($payment === null && $outcome->transactionId !== null && \in_array($outcome->status, [PaymentOutcome::REFUNDED, PaymentOutcome::DISPUTED], true)) {
             $payment = $this->payments->findByTransaction($gatewayId, $outcome->transactionId);
         }
         if ($payment === null) {
+            return;
+        }
+        if ($outcome->status === PaymentOutcome::DISPUTED) {
+            $this->events->dispatch(new PaymentInQuestion($payment->orderId(), $gatewayId, $outcome->reason ?? 'The provider says the payment is in question.'));
+
             return;
         }
         if ($outcome->status === PaymentOutcome::REFUNDED) {
@@ -136,6 +148,42 @@ final readonly class PaymentOutcomes
             return;
         }
         $this->settle($payment, $outcome);
+    }
+
+    /**
+     * Asks the providers how payments stand that the shop heard nothing final of for a quarter of an hour: one
+     * the provider holds for review, one whose customer never came back while no notification came. Settles
+     * what changed, as a return or a notification would.
+     *
+     * @return int how many were asked about
+     */
+    public function reconcile(int $limit = 50): int
+    {
+        $now = $this->clock->now();
+        $asked = 0;
+        foreach ($this->payments->openBetween($now->sub(new \DateInterval(self::CHECK_FOR)), $now->sub(new \DateInterval(self::CHECK_AFTER)), $limit) as $payment) {
+            $reference = $payment->reference();
+            try {
+                $gateway = $this->gateways->get($payment->gateway());
+            } catch (PaymentMethodNotFound) {
+                continue;
+            }
+            if (!$gateway instanceof ChecksPayments || $reference === null) {
+                continue;
+            }
+            ++$asked;
+            $payment->checked($now);
+            $this->payments->save($payment);
+            try {
+                $outcome = $gateway->check($reference, $payment->transactionId(), $this->settings($payment->gateway()));
+            } catch (\Throwable $e) {
+                $this->logger->warning('Payment {payment} could not be checked at {gateway}: {message}', ['payment' => $payment->id(), 'gateway' => $payment->gateway(), 'message' => $e->getMessage()]);
+                continue;
+            }
+            $this->settle($payment, $outcome);
+        }
+
+        return $asked;
     }
 
     private function settle(Payment $found, PaymentOutcome $outcome): void

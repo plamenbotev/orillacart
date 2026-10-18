@@ -31,7 +31,7 @@ final class OrderEmailsTest extends TestCase
         $this->shop->content->add(20, 'E-book');
         $this->shop->products->save(20, new SaveProduct('8', 'virtual'));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true, receiptNote: 'IBAN BG00 0000 0000'));
-        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 's']));
+        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 's', 'webhook_id' => 'WH-1']));
     }
 
     public function testAnOfflineOrderIsReceivedThenConfirmedWhenTheMoneyArrives(): void

@@ -64,9 +64,10 @@ final class InMemoryOrderRepository implements OrderRepository
         return false;
     }
 
-    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit): array
+    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit, bool $attentionOnly = false): array
     {
         $found = array_values(array_filter($this->orders, static fn(Order $order): bool => ($status === null || $order->status() === $status)
+            && (!$attentionOnly || $order->attention() !== null)
             && ($customerId === null || $order->customerId() === $customerId)
             && ($text === null || str_contains(strtolower($order->email() . ' ' . $order->billing()->firstName() . ' ' . $order->billing()->lastName()), strtolower($text)) || ltrim($text, '#') === (string) $order->id())));
         usort($found, static fn(Order $a, Order $b): int => $b->id() <=> $a->id());

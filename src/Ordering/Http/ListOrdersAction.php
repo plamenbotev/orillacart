@@ -25,6 +25,6 @@ final readonly class ListOrdersAction implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->orders->orders($this->input->query($request, OrderQuery::class)));
+        return $this->responder->ok($this->orders->orders($this->input->query($request, OrderQuery::class), forShop: true));
     }
 }

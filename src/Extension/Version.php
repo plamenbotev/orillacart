@@ -14,7 +14,8 @@ final class Version
 {
     /**
      * 1: payment gateways, shipping methods. 2: price adjusters, cart rules, checkout fields, order actions,
-     * orders. 3: gateways naming the payment of a notification (NamesNotifiedPayments).
+     * orders. 3: gateways naming the payment of a notification (NamesNotifiedPayments), checking payments and
+     * refunds at the provider (ChecksPayments, ChecksRefunds).
      */
     public const int CURRENT = 3;
 }

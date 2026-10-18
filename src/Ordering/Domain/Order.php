@@ -118,6 +118,13 @@ class Order
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $paidAt = null;
 
+    /** Why the shop has to look at the order, such as a payment disputed after it was paid; null when nothing. */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $attention = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $attentionSince = null;
+
     /** What coupons took off the items, in all. */
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
     private string $discountTotal = '0';
@@ -315,6 +322,45 @@ class Order
     public function paymentNote(): string
     {
         return $this->paymentNote;
+    }
+
+    public function attention(): ?string
+    {
+        return $this->attention;
+    }
+
+    public function attentionSince(): ?\DateTimeImmutable
+    {
+        return $this->attentionSince;
+    }
+
+    /**
+     * Something the shop has to look at, whatever the status: the reasons add up until the shop marks it handled.
+     *
+     * @return bool false for a reason already waiting, as when a provider sends the same notification again
+     */
+    public function needsAttention(string $reason, \DateTimeImmutable $at): bool
+    {
+        $reason = trim($reason);
+        if ($this->attention !== null && \in_array($reason, explode("\n", $this->attention), true)) {
+            return false;
+        }
+        $this->attention = $this->attention === null ? $reason : $this->attention . "\n" . $reason;
+        $this->attentionSince ??= $at;
+
+        return true;
+    }
+
+    /** @return bool false when nothing needed attention */
+    public function attended(): bool
+    {
+        if ($this->attention === null) {
+            return false;
+        }
+        $this->attention = null;
+        $this->attentionSince = null;
+
+        return true;
     }
 
     public function transactionId(): ?string

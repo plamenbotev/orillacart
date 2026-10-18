@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Fixtures\Payment;
 
 use OrillaCart\Payment\Domain\Refund;
 use OrillaCart\Payment\Domain\RefundRepository;
+use OrillaCart\Payment\Domain\RefundStatus;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 
 final class InMemoryRefundRepository implements RefundRepository
@@ -39,6 +40,11 @@ final class InMemoryRefundRepository implements RefundRepository
     public function ofOrder(int $orderId): array
     {
         return array_values(array_filter($this->refunds, static fn(Refund $refund): bool => $refund->orderId() === $orderId));
+    }
+
+    public function accepted(int $limit): array
+    {
+        return \array_slice(array_values(array_filter($this->refunds, static fn(Refund $refund): bool => $refund->status() === RefundStatus::Accepted)), 0, $limit);
     }
 
     public function save(Refund $refund): void

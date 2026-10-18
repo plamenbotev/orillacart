@@ -8,6 +8,7 @@ use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Payment\Domain\Refund;
 use OrillaCart\Payment\Domain\RefundRepository;
+use OrillaCart\Payment\Domain\RefundStatus;
 
 final readonly class DoctrineRefundRepository implements RefundRepository
 {
@@ -33,6 +34,12 @@ final readonly class DoctrineRefundRepository implements RefundRepository
     {
         /** @var list<Refund> */
         return $this->entityManager->getRepository(Refund::class)->findBy(['orderId' => $orderId], ['id' => 'ASC']);
+    }
+
+    public function accepted(int $limit): array
+    {
+        /** @var list<Refund> */
+        return $this->entityManager->getRepository(Refund::class)->findBy(['status' => RefundStatus::Accepted], ['id' => 'ASC'], $limit);
     }
 
     public function save(Refund $refund): void

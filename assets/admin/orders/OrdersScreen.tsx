@@ -55,6 +55,21 @@ const FIELDS: Field< OrderSummary >[] = [
 		render: ( { item } ) => STATUS_LABELS[ item.status ],
 	},
 	{
+		id: 'attention',
+		label: __( 'Attention', 'orillacart' ),
+		enableSorting: false,
+		elements: [
+			{ value: 'yes', label: __( 'Needs attention', 'orillacart' ) },
+		],
+		filterBy: { operators: [ 'is' ] },
+		render: ( { item } ) =>
+			item.needs_attention ? (
+				<strong className="orillacart-orders__attention">
+					{ __( 'Needs attention', 'orillacart' ) }
+				</strong>
+			) : null,
+	},
+	{
 		id: 'total',
 		label: __( 'Total', 'orillacart' ),
 		enableSorting: false,
@@ -73,7 +88,14 @@ const DEFAULT_VIEW: View = {
 	perPage: 20,
 	search: '',
 	filters: [],
-	fields: [ 'placed_at', 'customer', 'status', 'total', 'payment_name' ],
+	fields: [
+		'placed_at',
+		'customer',
+		'status',
+		'attention',
+		'total',
+		'payment_name',
+	],
 	titleField: 'number',
 	layout: {},
 };
@@ -97,8 +119,12 @@ export function OrdersScreen() {
 			( STATUSES as readonly string[] ).includes( filter.value )
 				? ( filter.value as Status )
 				: undefined;
+		const attention =
+			view.filters?.find( ( item ) => item.field === 'attention' )
+				?.value === 'yes';
 		fetchOrders( {
 			status,
+			attention: attention ? true : undefined,
 			search: view.search === '' ? undefined : view.search,
 			page: view.page ?? 1,
 			per_page: view.perPage ?? 20,

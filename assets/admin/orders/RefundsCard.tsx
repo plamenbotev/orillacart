@@ -447,14 +447,14 @@ function RefundRow( {
 						{ __( '— not refunded', 'orillacart' ) }
 					</strong>
 				) }
-				{ refund.provider_pending && (
-					<>
+				{ refund.status === 'accepted' && (
+					<strong className="orillacart-refunds__pending">
 						{ ' ' }
 						{ __(
-							'(the provider is still sending it)',
+							'— the provider is still sending the money',
 							'orillacart'
 						) }
-					</>
+					</strong>
 				) }
 				<br />
 				<small>

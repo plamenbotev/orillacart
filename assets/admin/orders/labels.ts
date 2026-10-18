@@ -23,6 +23,10 @@ export const EMAIL_LABELS: Record< string, string > = {
 	order_refunded: __( 'Order refunded', 'orillacart' ),
 	customer_note: __( 'Note to the customer', 'orillacart' ),
 	new_order: __( 'New order (to the shop)', 'orillacart' ),
+	order_attention: __(
+		'An order needs attention (to the shop)',
+		'orillacart'
+	),
 };
 
 declare global {

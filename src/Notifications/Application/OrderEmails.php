@@ -53,6 +53,12 @@ final readonly class OrderEmails
         $this->queue($orderId, EmailKind::CustomerNote, $text);
     }
 
+    /** The shop hears why an order needs attention. */
+    public function needsAttention(int $orderId, string $reason): void
+    {
+        $this->queue($orderId, EmailKind::OrderAttention, $reason);
+    }
+
     /**
      * Money went back: the customer hears how much, and for which items.
      *
@@ -156,7 +162,7 @@ final readonly class OrderEmails
         $this->jobs->push(
             SendOrderEmails::TYPE,
             ['order' => $orderId, 'kind' => $kind->value] + ($note === '' ? [] : ['note' => $note]) + ($refund === null ? [] : ['refund' => $refund]),
-            $kind === EmailKind::CustomerNote || $refund !== null ? null : "{$orderId}:{$kind->value}",
+            $kind === EmailKind::CustomerNote || $kind === EmailKind::OrderAttention || $refund !== null ? null : "{$orderId}:{$kind->value}",
         );
     }
 }

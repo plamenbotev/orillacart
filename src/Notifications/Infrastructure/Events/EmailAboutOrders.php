@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Notifications\Infrastructure\Events;
 
 use OrillaCart\Notifications\Application\OrderEmails;
+use OrillaCart\Ordering\Domain\Event\OrderNeedsAttention;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
@@ -26,6 +27,12 @@ final readonly class EmailAboutOrders
         if ($event->forCustomer) {
             $this->emails->noteAdded($event->orderId, $event->text);
         }
+    }
+
+    #[AsEventListener]
+    public function needsAttention(OrderNeedsAttention $event): void
+    {
+        $this->emails->needsAttention($event->orderId, $event->reason);
     }
 
     #[AsEventListener]

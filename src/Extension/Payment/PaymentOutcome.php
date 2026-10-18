@@ -19,6 +19,8 @@ final readonly class PaymentOutcome
     public const string PENDING = 'pending';
     /** Money went back to the customer, perhaps by the shop at the provider's own site. */
     public const string REFUNDED = 'refunded';
+    /** The money of a completed payment is in question: reversed, or disputed by the customer. Since version 3. */
+    public const string DISPUTED = 'disputed';
 
     /**
      * @param string      $reference     the provider's id of the payment, as PaymentStart::redirect() gave it
@@ -33,6 +35,8 @@ final readonly class PaymentOutcome
         public ?string $amount = null,
         public ?string $currency = null,
         public ?string $refundId = null,
+        /** What the provider said, for an outcome the shop has to look at. */
+        public ?string $reason = null,
     ) {}
 
     public static function completed(string $reference, string $transactionId, ?string $amount = null, ?string $currency = null): self
@@ -67,6 +71,18 @@ final readonly class PaymentOutcome
      * @param string      $reference     the payment's reference; empty when the provider names only the transaction
      * @param string|null $transactionId the payment's transaction, to find it by when the reference is empty
      */
+    /**
+     * The money of a completed payment is in question: the provider reversed it, or the customer opened a
+     * dispute or chargeback. The order keeps its status; the shop is asked to look.
+     *
+     * @param string      $reference     the payment's reference; empty when the provider names only the transaction
+     * @param string|null $transactionId the payment's transaction, to find it by when the reference is empty
+     */
+    public static function disputed(string $reference, string $reason, ?string $transactionId = null): self
+    {
+        return new self($reference, self::DISPUTED, $transactionId, reason: $reason);
+    }
+
     public static function refunded(string $reference, string $refundId, string $amount, ?string $currency = null, ?string $transactionId = null): self
     {
         return new self($reference, self::REFUNDED, $transactionId, $amount, $currency, $refundId);

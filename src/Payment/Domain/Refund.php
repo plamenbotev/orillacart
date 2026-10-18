@@ -36,10 +36,6 @@ class Refund
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $error = null;
 
-    /** The provider is still sending the money. */
-    #[ORM\Column]
-    private bool $providerPending = false;
-
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $settledAt = null;
 
@@ -157,11 +153,6 @@ class Refund
         return $this->providerReference;
     }
 
-    public function isProviderPending(): bool
-    {
-        return $this->providerPending;
-    }
-
     public function error(): ?string
     {
         return $this->error;
@@ -186,18 +177,40 @@ class Refund
     /**
      * @return bool false when it was settled before
      */
-    public function complete(string $providerReference, bool $providerPending, \DateTimeImmutable $at): bool
+    public function complete(string $providerReference, \DateTimeImmutable $at): bool
     {
-        if ($this->status !== RefundStatus::Pending) {
+        if (!$this->isOpen()) {
             return false;
         }
         $this->status = RefundStatus::Done;
         $this->providerReference = mb_substr($providerReference, 0, 100);
-        $this->providerPending = $providerPending;
         $this->error = null;
         $this->settledAt = $at;
 
         return true;
+    }
+
+    /**
+     * The provider took it, to finish later.
+     *
+     * @return bool false when it was accepted or settled before
+     */
+    public function accept(string $providerReference): bool
+    {
+        if ($this->status !== RefundStatus::Pending) {
+            return false;
+        }
+        $this->status = RefundStatus::Accepted;
+        $this->providerReference = mb_substr($providerReference, 0, 100);
+        $this->error = null;
+
+        return true;
+    }
+
+    /** Sent and not finished: waiting for the provider's answer, or for the money it accepted to send. */
+    public function isOpen(): bool
+    {
+        return \in_array($this->status, [RefundStatus::Pending, RefundStatus::Accepted], true);
     }
 
     /** The provider could not be reached: it stays pending, to try again. */
@@ -210,7 +223,7 @@ class Refund
 
     public function fail(string $error, \DateTimeImmutable $at): bool
     {
-        if ($this->status !== RefundStatus::Pending) {
+        if (!$this->isOpen()) {
             return false;
         }
         $this->status = RefundStatus::Failed;

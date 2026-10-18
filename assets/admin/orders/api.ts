@@ -33,6 +33,8 @@ export interface OrderSummary {
 	currency: string;
 	payment_name: string;
 	placed_at: string;
+	/** The shop has to look at it, such as a payment disputed after it was paid. */
+	needs_attention: boolean;
 }
 
 export interface OrderPage {
@@ -127,6 +129,8 @@ export interface Order {
 	}[];
 	/** Answers to the questions add-ons ask at checkout, with the labels they had. */
 	fields: { id: string; label: string; answer: string }[];
+	/** Why the shop has to look at it, one reason a line; null when nothing. */
+	attention: string | null;
 }
 
 /** A button an add-on puts on the order screen. */
@@ -139,8 +143,11 @@ export interface Refund {
 	id: number;
 	/** Through the gateway, recorded as made outside the shop, or made at the provider's own site. */
 	method: 'provider' | 'manual' | 'external';
-	/** Pending: the provider did not answer; trying again never refunds twice. */
-	status: 'pending' | 'done' | 'failed';
+	/**
+	 * Pending: the provider did not answer; trying again never refunds twice. Accepted: the provider sends the
+	 * money later; the order learns of it once it is done.
+	 */
+	status: 'pending' | 'accepted' | 'done' | 'failed';
 	amount: string;
 	currency: string;
 	lines: { line: number; quantity: number }[];
@@ -148,7 +155,6 @@ export interface Refund {
 	restock: boolean;
 	reason: string;
 	provider_reference: string | null;
-	provider_pending: boolean;
 	error: string | null;
 	created_at: string;
 	settled_at: string | null;
@@ -175,6 +181,8 @@ export interface NewRefund {
 export interface OrderQuery {
 	status?: Status | undefined;
 	search?: string | undefined;
+	/** Only orders the shop has to look at. */
+	attention?: boolean | undefined;
 	page: number;
 	per_page: number;
 }
@@ -251,6 +259,17 @@ export function giveUpRefund( id: number ): Promise< OrderRefunds > {
 	return apiFetch< OrderRefunds >( {
 		path: `${ BASE }/refunds/${ id }/give-up`,
 		method: 'POST',
+	} );
+}
+
+/**
+ * The shop looked at what the order needed attention for.
+ * @param id
+ */
+export function markHandled( id: number ): Promise< Order > {
+	return apiFetch< Order >( {
+		path: `${ BASE }/orders/${ id }/attention`,
+		method: 'DELETE',
 	} );
 }
 

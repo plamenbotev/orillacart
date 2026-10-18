@@ -29,6 +29,7 @@ import {
 	fetchOrderActions,
 	fetchPickupPoints,
 	fetchShippingOptions,
+	markHandled,
 	type Order,
 	type PickupPoint,
 	type OrderAction,
@@ -57,6 +58,50 @@ interface OrderDetailProps {
  * @param props.id     The order number.
  * @param props.onBack Goes back to the list.
  */
+/**
+ * Why the shop has to look at the order, such as a payment disputed after it was paid, and a way to say it did.
+ * @param props
+ * @param props.order
+ * @param props.onHandled
+ * @param props.onError
+ */
+function AttentionNotice( {
+	order,
+	onHandled,
+	onError,
+}: {
+	order: Order;
+	onHandled: ( saved: Order ) => void;
+	onError: ( error: unknown ) => void;
+} ) {
+	const [ busy, setBusy ] = useState( false );
+
+	return (
+		<Notice status="warning" isDismissible={ false }>
+			<strong>
+				{ __( 'This order needs your attention.', 'orillacart' ) }
+			</strong>
+			<p className="orillacart-orders__attention-reason">
+				{ order.attention }
+			</p>
+			<Button
+				variant="secondary"
+				isBusy={ busy }
+				disabled={ busy }
+				onClick={ () => {
+					setBusy( true );
+					markHandled( order.number )
+						.then( onHandled )
+						.catch( onError )
+						.finally( () => setBusy( false ) );
+				} }
+			>
+				{ __( 'Mark as handled', 'orillacart' ) }
+			</Button>
+		</Notice>
+	);
+}
+
 export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 	const [ order, setOrder ] = useState< Order | null >( null );
 	const [ message, setMessage ] = useState< Message >( null );
@@ -104,6 +149,15 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 				) }
 			</h1>
 			{ notice }
+			{ order.attention !== null && (
+				<AttentionNotice
+					order={ order }
+					onHandled={ done(
+						__( 'The order is marked as handled.', 'orillacart' )
+					) }
+					onError={ fail }
+				/>
+			) }
 			<Summary order={ order } />
 			{ order.status === 'on_hold' && (
 				<ItemsCard

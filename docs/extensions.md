@@ -83,7 +83,21 @@ A gateway whose provider can give money back implements `RefundsPayments`; the o
   `$request->id`. Pass that id to the provider as its idempotency key, so a retry never refunds twice.
 - A refund made at the provider's own site reaches the shop as a notification: return
   `PaymentOutcome::refunded($reference, $refundId, $amount, $currency, $transactionId)`. The shop records it once
-  per `$refundId`, and recognises its own refunds by that id.
+  per `$refundId`, and recognises its own refunds by that id. A refund the provider accepted with `pending()` is
+  recorded on the order (stock back, the customer's email) only once it is done: return the same `refunded()`
+  outcome when the provider tells of it.
+- When the money of a paid order is in question (reversed, disputed, a chargeback), return
+  `PaymentOutcome::disputed($reference, $reason, $transactionId)` (version 3): the order keeps its status, is
+  flagged "Needs attention" with the reason, and the shop is emailed.
+
+Version 3 lets the shop ask the provider itself, every hour, so payments settle even when a notification is lost:
+
+- `ChecksPayments::check($reference, $transactionId, $settings)` says how a payment stands that the shop heard
+  nothing final of for a quarter of an hour (held for review, or a customer who never came back). Take the
+  money of an approved payment here as on its notification.
+- `ChecksRefunds::checkRefund($reference, $settings)` says how a refund accepted with `pending()` stands:
+  `RefundResult::done()`, `pending()` while it waits, or throw `RefundRefused` when the provider gave up on it
+  (the refund fails and the order is flagged for the shop).
 
 `tests/Fixtures/Extension/TestPayGateway.php` is a complete example, and the shop's PayPal gateway
 (`src/Payment/Application/PayPal/PayPalGateway.php`) is built the same way.

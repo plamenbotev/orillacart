@@ -41,6 +41,30 @@ interface PayPalApi
     public function refundCapture(PayPalAccount $account, string $captureId, string $requestId, string $amount, string $currency, string $note): PayPalRefund;
 
     /**
+     * How a capture stands now.
+     *
+     * @throws PaymentProviderUnavailable
+     */
+    public function capture(PayPalAccount $account, string $captureId): PayPalCapture;
+
+    /**
+     * How an order stands now: its status, and its capture once captured; null for an order PayPal no longer
+     * knows (one never approved expires).
+     *
+     * @return array{status: string, capture: ?PayPalCapture}|null
+     *
+     * @throws PaymentProviderUnavailable
+     */
+    public function order(PayPalAccount $account, string $orderId): ?array;
+
+    /**
+     * How a refund stands now.
+     *
+     * @throws PaymentProviderUnavailable
+     */
+    public function refund(PayPalAccount $account, string $refundId): PayPalRefund;
+
+    /**
      * Whether PayPal signed this webhook call for the account's webhook.
      *
      * @throws PaymentProviderUnavailable

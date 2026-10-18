@@ -37,9 +37,11 @@ use OrillaCart\Notifications\Infrastructure\Events\EmailAboutOrders;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\Event\OrderDeleted;
+use OrillaCart\Ordering\Domain\Event\OrderNeedsAttention;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
+use OrillaCart\Ordering\Infrastructure\Events\FlagOrdersInQuestion;
 use OrillaCart\Ordering\Infrastructure\Events\ForgetDeletedCustomers;
 use OrillaCart\Ordering\Infrastructure\Events\ForgetRemovedDownloads;
 use OrillaCart\Ordering\Infrastructure\Events\SettleOrdersByPayment;
@@ -58,6 +60,7 @@ use OrillaCart\Payment\Domain\Event\PaymentCancelled;
 use OrillaCart\Payment\Domain\Event\PaymentCompleted;
 use OrillaCart\Payment\Domain\Event\PaymentFailed;
 use OrillaCart\Payment\Domain\Event\PaymentHeld;
+use OrillaCart\Payment\Domain\Event\PaymentInQuestion;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Twig\ShopExtension;
@@ -236,7 +239,7 @@ final class TestShop
         $this->orderRecords = new InMemoryOrderRepository($this->transactions);
         $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, new FakeOrderLinks(), $this->transactions);
         $this->refundRecords = new InMemoryRefundRepository($this->transactions);
-        $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions);
+        $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions, $this->events);
         $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds, $this->transactions);
         $this->files = new TemporaryPrivateFiles();
         $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events);
@@ -291,6 +294,8 @@ final class TestShop
         $this->events->addListener(OrderStatusChanged::class, $emailing->statusChanged(...));
         $this->events->addListener(OrderNoteAdded::class, $emailing->noteAdded(...));
         $this->events->addListener(OrderRefunded::class, $emailing->refunded(...));
+        $this->events->addListener(OrderNeedsAttention::class, $emailing->needsAttention(...));
+        $this->events->addListener(PaymentInQuestion::class, new FlagOrdersInQuestion($this->orders, $this->logger)->inQuestion(...));
 
         $settle = new SettleOrdersByPayment($this->orders, $this->jobs->jobs, $this->logger);
         $this->events->addListener(PaymentCompleted::class, $settle->completed(...));

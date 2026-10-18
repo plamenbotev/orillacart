@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application;
 
+use OrillaCart\Extension\Payment\ChecksRefunds;
 use OrillaCart\Extension\Payment\PaymentOutcome;
 use OrillaCart\Extension\Payment\RefundRefused;
 use OrillaCart\Extension\Payment\RefundRequest;
@@ -18,6 +19,7 @@ use OrillaCart\Ordering\Domain\OrderRuleViolation;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\OrderRefundsView;
 use OrillaCart\Payment\Application\Dto\RefundView;
+use OrillaCart\Payment\Domain\Event\PaymentInQuestion;
 use OrillaCart\Payment\Domain\Payment;
 use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentMethodRepository;
@@ -31,6 +33,7 @@ use OrillaCart\Payment\Domain\RefundStatus;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Persistence\Transactions;
 use Psr\Clock\ClockInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -50,6 +53,7 @@ final readonly class Refunds
         private ClockInterface $clock,
         private LoggerInterface $logger,
         private Transactions $transactions,
+        private EventDispatcherInterface $events,
     ) {}
 
     /**
@@ -82,6 +86,9 @@ final readonly class Refunds
         foreach ($this->refunds->ofOrder($orderId) as $earlier) {
             if ($earlier->status() === RefundStatus::Pending) {
                 throw new PaymentRuleViolation('A refund of this order is still waiting for the provider: try it again or give it up first.', 'orillacart_refund_pending');
+            }
+            if ($earlier->status() === RefundStatus::Accepted) {
+                throw new PaymentRuleViolation('The provider is still sending the money of a refund of this order; refund more once it is done.', 'orillacart_refund_pending');
             }
         }
         $payment = $command->outside ? null : $this->refundablePayment($orderId);
@@ -193,13 +200,22 @@ final readonly class Refunds
     public function notified(Payment $payment, PaymentOutcome $outcome): void
     {
         $refundId = $outcome->refundId ?? '';
-        if ($refundId === '' || $this->refunds->findByProviderReference($payment->gateway(), $refundId) !== null) {
+        if ($refundId === '') {
+            return;
+        }
+        $known = $this->refunds->findByProviderReference($payment->gateway(), $refundId);
+        if ($known !== null) {
+            // One the provider accepted to finish later, now done; any other was recorded before.
+            if ($known->status() === RefundStatus::Accepted) {
+                $this->completed($known, $refundId, null);
+            }
+
             return;
         }
         $amount = preg_match('/^\d{1,11}(\.\d{1,4})?$/', $outcome->amount ?? '') === 1 ? Money::of($outcome->amount ?? '0') : Money::zero();
         foreach ($this->refunds->ofOrder($payment->orderId()) as $refund) {
             if ($refund->status() === RefundStatus::Pending && $refund->paymentId() === $payment->id() && $refund->amount()->equals($amount)) {
-                $this->completed($refund, $refundId, false, null);
+                $this->completed($refund, $refundId, null);
 
                 return;
             }
@@ -263,18 +279,92 @@ final readonly class Refunds
 
             throw new PaymentRuleViolation(\sprintf('%s failed: %s The refund waits: try it again, or give it up.', $this->name($payment->gateway()), $e->getMessage()), 'orillacart_refund_unanswered', $e);
         }
-        $this->completed($refund, $result->reference, $result->pending, $userId);
+        if ($result->pending) {
+            $this->accepted($refund, $result->reference);
+
+            return;
+        }
+        $this->completed($refund, $result->reference, $userId);
+    }
+
+    /**
+     * The provider took the refund and sends the money later: the order learns of it once it is done, so no
+     * stock goes back and no email goes out for money that may never move.
+     */
+    private function accepted(Refund $refund, string $reference): void
+    {
+        $this->transactions->run(function () use ($refund, $reference): void {
+            $refund = $this->refunds->find($refund->id(), true);
+            if ($refund === null || !$refund->accept($reference)) {
+                return;
+            }
+            $this->refunds->save($refund);
+            $this->orders->note($refund->orderId(), \sprintf('A refund of %s %s was sent through %s, which sends the money later (refund %s).', $refund->amount()->toFixed(), $refund->currency(), $this->name((string) $refund->gateway()), $reference), false);
+        });
+    }
+
+    /**
+     * Asks the providers how the refunds they accepted to finish later stand: a done one is recorded on its
+     * order, one the provider gave up on is failed and its order flagged for the shop.
+     *
+     * @return int how many were settled
+     */
+    public function reconcile(int $limit = 50): int
+    {
+        $settled = 0;
+        foreach ($this->refunds->accepted($limit) as $refund) {
+            $reference = $refund->providerReference();
+            try {
+                $gateway = $this->gateways->get((string) $refund->gateway());
+            } catch (PaymentMethodNotFound) {
+                continue;
+            }
+            if (!$gateway instanceof ChecksRefunds || $reference === null) {
+                continue;
+            }
+            try {
+                $result = $gateway->checkRefund($reference, new Settings($this->methods->findByGateway((string) $refund->gateway())?->settings() ?? []));
+            } catch (RefundRefused $e) {
+                $this->givenUp($refund, $e->getMessage());
+                ++$settled;
+                continue;
+            } catch (\Throwable $e) {
+                $this->logger->warning('Refund {refund} could not be checked at {gateway}: {message}', ['refund' => $refund->id(), 'gateway' => $refund->gateway(), 'message' => $e->getMessage()]);
+                continue;
+            }
+            if (!$result->pending) {
+                $this->completed($refund, $result->reference, null);
+                ++$settled;
+            }
+        }
+
+        return $settled;
+    }
+
+    /**
+     * The provider gave up on a refund it had accepted: the money did not go back.
+     */
+    private function givenUp(Refund $refund, string $why): void
+    {
+        $this->transactions->run(function () use ($refund, $why): void {
+            $refund = $this->refunds->find($refund->id(), true);
+            if ($refund === null || !$refund->fail($why, $this->clock->now())) {
+                return;
+            }
+            $this->refunds->save($refund);
+            $this->events->dispatch(new PaymentInQuestion($refund->orderId(), (string) $refund->gateway(), \sprintf('The refund of %s %s did not go through: %s', $refund->amount()->toFixed(), $refund->currency(), $why)));
+        });
     }
 
     /**
      * The refund row and the order learn of the money together, in one transaction.
      */
-    private function completed(Refund $refund, string $reference, bool $providerPending, ?int $userId): void
+    private function completed(Refund $refund, string $reference, ?int $userId): void
     {
-        $this->transactions->run(function () use ($refund, $reference, $providerPending, $userId): void {
+        $this->transactions->run(function () use ($refund, $reference, $userId): void {
             // Read again under the lock: the provider's notification and its answer may both complete it.
             $refund = $this->refunds->find($refund->id(), true);
-            if ($refund === null || !$refund->complete($reference, $providerPending, $this->clock->now())) {
+            if ($refund === null || !$refund->complete($reference, $this->clock->now())) {
                 return;
             }
             $this->refunds->save($refund);

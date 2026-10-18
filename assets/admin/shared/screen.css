@@ -93,3 +93,11 @@
 [id^="orillacart-admin-"] .orillacart-refunds__failed {
 	color: #cc1818;
 }
+
+[id^="orillacart-admin-"] .orillacart-orders__attention {
+	color: #cc1818;
+}
+
+[id^="orillacart-admin-"] .orillacart-orders__attention-reason {
+	white-space: pre-line;
+}

@@ -1,0 +1,6 @@
+{% extends 'emails/layout.html.twig' %}
+{# translators: 1: site name, 2: order number -#}
+{% block subject %}{{ __('[%1$s] Order #%2$s needs your attention')|format(site_name, order.number) }}{% endblock %}
+{# translators: %s: order number -#}
+{% block heading %}{{ __('Order #%s needs your attention')|format(order.number) }}{% endblock %}
+{% block intro %}<blockquote style="margin:0;padding:12px 16px;background:#fcf0f1;border-left:3px solid #d63638;white-space:pre-line;">{{ note }}</blockquote><p>{{ __('Look at the order, then mark it as handled on its page.') }}</p>{% endblock %}

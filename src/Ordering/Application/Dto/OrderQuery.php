@@ -25,5 +25,7 @@ final readonly class OrderQuery
         public int $page = 1,
         #[Assert\Range(min: 1, max: self::MAX_PER_PAGE)]
         public int $perPage = 20,
+        /** Only orders the shop has to look at. */
+        public bool $attention = false,
     ) {}
 }

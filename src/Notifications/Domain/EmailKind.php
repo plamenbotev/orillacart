@@ -24,6 +24,8 @@ enum EmailKind: string
     case CustomerNote = 'customer_note';
     /** To the shop: a new order to look at. */
     case NewOrder = 'new_order';
+    /** To the shop: an order needs attention, such as a payment disputed after it was paid. */
+    case OrderAttention = 'order_attention';
 
     public function template(): string
     {
@@ -32,7 +34,7 @@ enum EmailKind: string
 
     public function isForShop(): bool
     {
-        return $this === self::NewOrder;
+        return $this === self::NewOrder || $this === self::OrderAttention;
     }
 
     /** @return list<string> */

@@ -71,9 +71,29 @@ final readonly class WordPressPayPalApi implements PayPalApi
         if (!\is_array($capture)) {
             throw $this->unavailable("PayPal order {$orderId} has no capture.", $response['body']);
         }
+
+        return self::captureOf($capture, $orderId);
+    }
+
+    /**
+     * @param array<mixed> $capture
+     */
+    private static function captureOf(array $capture, string $orderId): PayPalCapture
+    {
         $amount = \is_array($capture['amount'] ?? null) ? $capture['amount'] : [];
 
         return new PayPalCapture(self::text($capture, 'id'), self::text($capture, 'status'), self::text($amount, 'value'), self::text($amount, 'currency_code'), $orderId);
+    }
+
+    /**
+     * @param array<mixed> $capture
+     */
+    private static function relatedOrder(array $capture): string
+    {
+        $supplementary = \is_array($capture['supplementary_data'] ?? null) ? $capture['supplementary_data'] : [];
+        $related = \is_array($supplementary['related_ids'] ?? null) ? $supplementary['related_ids'] : [];
+
+        return self::text($related, 'order_id');
     }
 
     public function refundCapture(PayPalAccount $account, string $captureId, string $requestId, string $amount, string $currency, string $note): PayPalRefund
@@ -104,6 +124,34 @@ final readonly class WordPressPayPalApi implements PayPalApi
         return new PayPalRefund(self::text($response['body'], 'id'), self::text($response['body'], 'status'));
     }
 
+    public function capture(PayPalAccount $account, string $captureId): PayPalCapture
+    {
+        $capture = $this->call($account, 'GET', '/v2/payments/captures/' . rawurlencode($captureId));
+
+        return self::captureOf($capture, self::relatedOrder($capture));
+    }
+
+    public function order(PayPalAccount $account, string $orderId): ?array
+    {
+        $response = $this->send($account, 'GET', '/v2/checkout/orders/' . rawurlencode($orderId));
+        if ($response['status'] === 404) {
+            return null;
+        }
+        if ($response['status'] >= 300) {
+            throw $this->unavailable("PayPal could not tell how order {$orderId} stands ({$response['status']}).", $response['body']);
+        }
+        $capture = self::firstCapture($response['body']);
+
+        return ['status' => self::text($response['body'], 'status'), 'capture' => $capture === null ? null : self::captureOf($capture, $orderId)];
+    }
+
+    public function refund(PayPalAccount $account, string $refundId): PayPalRefund
+    {
+        $refund = $this->call($account, 'GET', '/v2/payments/refunds/' . rawurlencode($refundId));
+
+        return new PayPalRefund(self::text($refund, 'id'), self::text($refund, 'status'));
+    }
+
     public function verifyNotification(PayPalAccount $account, PayPalNotification $notification): bool
     {
         try {
@@ -132,12 +180,12 @@ final readonly class WordPressPayPalApi implements PayPalApi
     }
 
     /**
-     * @param array<string, mixed>|\stdClass $body
-     * @param array<string, string>          $headers
+     * @param array<string, mixed>|\stdClass|null $body
+     * @param array<string, string>               $headers
      *
      * @return array<mixed>
      */
-    private function call(PayPalAccount $account, string $method, string $path, array|\stdClass $body, array $headers = []): array
+    private function call(PayPalAccount $account, string $method, string $path, array|\stdClass|null $body = null, array $headers = []): array
     {
         $response = $this->send($account, $method, $path, $body, $headers);
         if ($response['status'] >= 300) {

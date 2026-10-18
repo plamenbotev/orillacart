@@ -45,9 +45,12 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             ->getResult();
     }
 
-    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit): array
+    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit, bool $attentionOnly = false): array
     {
         $query = $this->entityManager->createQueryBuilder()->from(Order::class, 'o');
+        if ($attentionOnly) {
+            $query->andWhere('o.attention IS NOT NULL');
+        }
         if ($status !== null) {
             $query->andWhere('o.status = :status')->setParameter('status', $status);
         }

@@ -8,6 +8,7 @@ use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Payment\Domain\Payment;
 use OrillaCart\Payment\Domain\PaymentRepository;
+use OrillaCart\Payment\Domain\PaymentStatus;
 
 final readonly class DoctrinePaymentRepository implements PaymentRepository
 {
@@ -32,6 +33,20 @@ final readonly class DoctrinePaymentRepository implements PaymentRepository
     public function findByTransaction(string $gateway, string $transactionId): ?Payment
     {
         return $this->entityManager->getRepository(Payment::class)->findOneBy(['gateway' => $gateway, 'transactionId' => $transactionId]);
+    }
+
+    public function openBetween(\DateTimeImmutable $from, \DateTimeImmutable $until, int $limit): array
+    {
+        /** @var list<Payment> */
+        return $this->entityManager->createQueryBuilder()->select('p')->from(Payment::class, 'p')
+            ->where('p.status = :pending')->setParameter('pending', PaymentStatus::Pending)
+            ->andWhere('p.reference IS NOT NULL')
+            ->andWhere('p.createdAt >= :from AND p.createdAt <= :until')->setParameter('from', $from)->setParameter('until', $until)
+            // Never checked first (NULL sorts first ascending), then the longest ago.
+            ->orderBy('p.checkedAt', 'ASC')->addOrderBy('p.id', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
     }
 
     public function ofOrder(int $orderId): array

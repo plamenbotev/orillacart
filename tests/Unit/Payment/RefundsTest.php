@@ -125,6 +125,53 @@ final class RefundsTest extends TestCase
         self::assertSame('done', $this->shop->refunds->retry($pending->id, 7)->refunds[0]->status);
     }
 
+    public function testARefundPayPalFinishesLaterTouchesTheOrderOnlyOnceItIsDone(): void
+    {
+        $order = $this->paidWithPayPal(2);
+        $this->shop->payPalApi->refundStatus = 'PENDING';
+        $sent = \count($this->shop->mail->emails);
+
+        $view = $this->shop->refunds->refund($order, new MakeRefund('8', [new RefundLine(0, 1)], restock: true), 7);
+
+        self::assertSame('accepted', $view->refunds[0]->status);
+        self::assertSame('0', $this->shop->orders->order($order)->refundedTotal, 'nothing went back yet');
+        self::assertCount($sent, $this->shop->mail->emails, 'nor is the customer told');
+        try {
+            $this->shop->refunds->refund($order, new MakeRefund('4'), 7);
+            self::fail('one refund at a time');
+        } catch (PaymentRuleViolation $e) {
+            self::assertSame('orillacart_refund_pending', $e->errorCode);
+        }
+
+        self::assertSame(0, $this->shop->refunds->reconcile(), 'still on its way');
+        $this->shop->payPalApi->refundStatus = 'COMPLETED';
+        self::assertSame(1, $this->shop->refunds->reconcile());
+
+        self::assertSame('done', $this->shop->refunds->forOrder($order)->refunds[0]->status);
+        self::assertSame('8', $this->shop->orders->order($order)->refundedTotal);
+        self::assertCount($sent + 1, $this->shop->mail->emails, 'the customer hears of it now');
+    }
+
+    public function testARefundPayPalGivesUpOnFlagsTheOrderForTheShop(): void
+    {
+        $order = $this->paidWithPayPal(2);
+        $this->shop->payPalApi->refundStatus = 'PENDING';
+        $this->shop->refunds->refund($order, new MakeRefund('8'), 7);
+
+        $this->shop->payPalApi->refundStatus = 'FAILED';
+        $this->shop->refunds->reconcile();
+
+        $view = $this->shop->orders->order($order);
+        self::assertSame('failed', $this->shop->refunds->forOrder($order)->refunds[0]->status);
+        self::assertSame(['processing', '0'], [$view->status, $view->refundedTotal]);
+        self::assertStringContainsString('did not go through', (string) $view->attention);
+        self::assertStringContainsString('needs your attention', $this->shop->mail->summary()[\count($this->shop->mail->emails) - 1]);
+
+        $handled = $this->shop->orders->attended($order, 7);
+        self::assertNull($handled->attention);
+        self::assertStringStartsWith('Marked as handled', $handled->notes[\count($handled->notes) - 1]->text);
+    }
+
     public function testPayPalsWebhookCompletesARefundWhoseAnswerWasLost(): void
     {
         $order = $this->paidWithPayPal(2);

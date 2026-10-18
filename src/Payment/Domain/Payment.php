@@ -15,6 +15,7 @@ use OrillaCart\Shared\Domain\Money;
 #[ORM\Table(name: 'payments')]
 #[ORM\UniqueConstraint(name: 'payment_reference', columns: ['gateway', 'reference'])]
 #[ORM\Index(name: 'payment_order', columns: ['order_id'])]
+#[ORM\Index(name: 'payment_open', columns: ['status', 'checked_at'])]
 class Payment
 {
     #[ORM\Id]
@@ -38,6 +39,10 @@ class Payment
 
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $settledAt = null;
+
+    /** When the shop last asked the provider how it stands, for payments it heard nothing final of. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $checkedAt = null;
 
     public function __construct(
         #[ORM\Column]
@@ -107,6 +112,16 @@ class Payment
     public function isSettled(): bool
     {
         return $this->status !== PaymentStatus::Pending;
+    }
+
+    public function createdAt(): \DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function checked(\DateTimeImmutable $at): void
+    {
+        $this->checkedAt = $at;
     }
 
     /** The provider opened a session for it, such as a PayPal order. */

@@ -22,9 +22,11 @@ final readonly class OrderSummaryView
         public string $currency,
         public string $paymentName,
         public string $placedAt,
+        /** The shop has to look at it; for the shop only. */
+        public bool $needsAttention = false,
     ) {}
 
-    public static function fromOrder(Order $order): self
+    public static function fromOrder(Order $order, bool $forShop = false): self
     {
         return new self(
             $order->id(),
@@ -37,6 +39,7 @@ final readonly class OrderSummaryView
             $order->currency(),
             $order->paymentName(),
             $order->placedAt()->format(\DATE_ATOM),
+            $forShop && $order->attention() !== null,
         );
     }
 }

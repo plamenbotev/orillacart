@@ -19,5 +19,12 @@ interface PaymentRepository
     /** @return list<Payment> */
     public function ofOrder(int $orderId): array;
 
+    /**
+     * Payments still pending at a provider, started between the two moments: the least recently checked first.
+     *
+     * @return list<Payment>
+     */
+    public function openBetween(\DateTimeImmutable $from, \DateTimeImmutable $until, int $limit): array;
+
     public function save(Payment $payment): void;
 }

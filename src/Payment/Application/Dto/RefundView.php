@@ -10,7 +10,7 @@ final readonly class RefundView
 {
     /**
      * @param 'provider'|'manual'|'external' $method
-     * @param 'pending'|'done'|'failed'      $status
+     * @param 'pending'|'accepted'|'done'|'failed'      $status
      * @param list<array{line: int, quantity: int}> $lines
      */
     public function __construct(
@@ -24,7 +24,6 @@ final readonly class RefundView
         public bool $restock,
         public string $reason,
         public ?string $providerReference,
-        public bool $providerPending,
         public ?string $error,
         public string $createdAt,
         public ?string $settledAt,
@@ -48,7 +47,6 @@ final readonly class RefundView
             $refund->restocks(),
             $refund->reason(),
             $refund->providerReference(),
-            $refund->isProviderPending(),
             $refund->error(),
             $refund->createdAt()->format(\DATE_ATOM),
             $refund->settledAt()?->format(\DATE_ATOM),

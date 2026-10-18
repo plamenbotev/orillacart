@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Fixtures\Payment;
 
 use OrillaCart\Payment\Domain\Payment;
 use OrillaCart\Payment\Domain\PaymentRepository;
+use OrillaCart\Payment\Domain\PaymentStatus;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 
 final class InMemoryPaymentRepository implements PaymentRepository
@@ -50,6 +51,11 @@ final class InMemoryPaymentRepository implements PaymentRepository
     public function ofOrder(int $orderId): array
     {
         return array_values(array_filter($this->payments, static fn(Payment $payment): bool => $payment->orderId() === $orderId));
+    }
+
+    public function openBetween(\DateTimeImmutable $from, \DateTimeImmutable $until, int $limit): array
+    {
+        return \array_slice(array_values(array_filter($this->payments, static fn(Payment $payment): bool => $payment->status() === PaymentStatus::Pending && $payment->reference() !== null && $payment->createdAt() >= $from && $payment->createdAt() <= $until)), 0, $limit);
     }
 
     public function save(Payment $payment): void
