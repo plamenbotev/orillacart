@@ -106,6 +106,20 @@ class DownloadGrant
         return $this->downloads;
     }
 
+    /**
+     * Sets how many downloads are left and until when, as the shop decides; null for no limit or no end.
+     *
+     * @throws OrderRuleViolation for a negative number of downloads
+     */
+    public function allow(?int $remaining, ?\DateTimeImmutable $expiresAt): void
+    {
+        if ($remaining !== null && $remaining < 0) {
+            throw new OrderRuleViolation('The downloads left are 0 or more.', 'orillacart_invalid_download_allowance');
+        }
+        $this->remaining = $remaining;
+        $this->expiresAt = $expiresAt;
+    }
+
     /** Why the link does not work now; null when it does. */
     public function refusal(\DateTimeImmutable $now): ?string
     {

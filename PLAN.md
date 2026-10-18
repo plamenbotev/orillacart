@@ -33,10 +33,10 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 8 | Product list: image, SKU, price, order columns; category and brand filters; quick edit of price | f4d31e3 |
 | ✅ | 9 | Product order field, and the shop page listing by it | f4d31e3 |
 | ✅ | 10 | Price sorts; Products block for featured or sale products only | f4d31e3 |
-| ✅ | 11 | Category thumbnail | (this commit) |
+| ✅ | 11 | Category thumbnail | dfa3397 |
 | ✅ | 12 | Stockroom delivery time in days or weeks | 0ebf7d1 |
-| ⬜ | 13 | Orders: move to another customer or to guest; change the shipping method; edit download allowances | |
-| ⬜ | 14 | Shop manager role | |
+| ✅ | 13 | Orders: move to another customer or to guest; change the shipping method; edit download allowances | (this commit) |
+| 🔄 | 14 | Shop manager role | |
 | ⬜ | 15 | Shipping classes on products and rates | |
 | ⬜ | 16 | Postcode patterns on shipping rates | |
 | ⬜ | 17 | Regions excluded from a shipping rate | |

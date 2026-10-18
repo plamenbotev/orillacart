@@ -27,11 +27,14 @@ import {
 	type EditedItem,
 	EMAILS,
 	fetchOrder,
+	fetchShippingOptions,
 	type Order,
 	sendEmail,
+	type ShippingOption,
 	type Status,
 } from './api';
 import { EMAIL_LABELS, STATUS_LABELS, money, when } from './labels';
+import { AccountCard, DownloadsCard } from './OrderCards';
 import { ProductPicker } from './ProductPicker';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
@@ -126,6 +129,22 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 				) }
 				onError={ fail }
 			/>
+			<AccountCard
+				order={ order }
+				onSaved={ done(
+					__( 'The order’s account was changed.', 'orillacart' )
+				) }
+				onError={ fail }
+			/>
+			{ order.downloads.length > 0 && (
+				<DownloadsCard
+					order={ order }
+					onSaved={ done(
+						__( 'The downloads were changed.', 'orillacart' )
+					) }
+					onError={ fail }
+				/>
+			) }
 			<EmailCard
 				order={ order }
 				onSent={ ( sent ) =>
@@ -416,6 +435,15 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 		} ) )
 	);
 	const items = rows.map( ( row ) => row.item );
+	const [ rateId, setRateId ] = useState( order.shipping_rate_id );
+	const [ rates, setRates ] = useState< ShippingOption[] >( [] );
+	useEffect( () => {
+		if ( order.shipping_rate_id !== null ) {
+			fetchShippingOptions( order.number )
+				.then( setRates )
+				.catch( () => setRates( [] ) );
+		}
+	}, [ order.number, order.shipping_rate_id ] );
 	const change = ( index: number, item: EditedItem ) =>
 		setRows(
 			rows.map( ( row, i ) => ( i === index ? { ...row, item } : row ) )
@@ -493,6 +521,18 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 						</FlexItem>
 					</Flex>
 				) ) }
+				{ rates.length > 0 && (
+					<SelectControl
+						__next40pxDefaultSize
+						label={ __( 'Ships by', 'orillacart' ) }
+						value={ String( rateId ?? '' ) }
+						options={ rates.map( ( rate ) => ( {
+							label: `${ rate.carrier }: ${ rate.name } (${ money( rate.total, order.currency ) })`,
+							value: String( rate.rate_id ),
+						} ) ) }
+						onChange={ ( value ) => setRateId( Number( value ) ) }
+					/>
+				) }
 				<ProductPicker
 					onPick={ ( picked ) =>
 						setRows( [
@@ -513,7 +553,7 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 					variant="primary"
 					disabled={ items.length === 0 }
 					onClick={ () =>
-						editItems( order.number, items, order.shipping_rate_id )
+						editItems( order.number, items, rateId )
 							.then( onSaved )
 							.catch( onError )
 					}

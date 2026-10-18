@@ -363,6 +363,12 @@ class Order
         $this->customerId ??= $customerId;
     }
 
+    /** Moves the order to another customer's account, or to none: a guest's order. */
+    public function changeCustomer(?int $customerId): void
+    {
+        $this->customerId = $customerId;
+    }
+
     /**
      * Frees the stock of an order on hold whose items the shop is about to change.
      *

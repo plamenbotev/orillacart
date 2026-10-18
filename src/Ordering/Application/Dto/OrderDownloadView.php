@@ -19,6 +19,7 @@ final readonly class OrderDownloadView
         public ?int $remaining,
         public ?string $expiresAt,
         public int $downloads,
+        public int $id = 0,
     ) {}
 
     /**
@@ -26,6 +27,6 @@ final readonly class OrderDownloadView
      */
     public static function fromGrant(DownloadGrant $grant, string $product, \Closure $url): self
     {
-        return new self($grant->order()->id(), $product, $grant->name(), $url($grant->token()), $grant->remaining(), $grant->expiresAt()?->format(\DATE_ATOM), $grant->downloads());
+        return new self($grant->order()->id(), $product, $grant->name(), $url($grant->token()), $grant->remaining(), $grant->expiresAt()?->format(\DATE_ATOM), $grant->downloads(), $grant->id());
     }
 }

@@ -6,8 +6,10 @@ namespace OrillaCart\Checkout\Application;
 
 use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\EditOrderItems;
+use OrillaCart\Checkout\Application\Dto\ShippingChoiceView;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Ordering\Application\Dto\NewOrderItems;
+use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
@@ -33,6 +35,24 @@ final readonly class OrderEditing
      * @throws OrderRuleViolation    for an order not on hold
      * @throws CheckoutRuleViolation for items not sold or not in stock, or a shipping rate that is not offered
      */
+    /**
+     * The ways an order on hold can ship to its address, with its items as they are: the choices the shop has
+     * when it changes how the order ships.
+     *
+     * @return list<ShippingChoiceView>
+     *
+     * @throws OrderNotFound
+     */
+    public function shippingOptions(int $orderId): array
+    {
+        $order = $this->orders->order($orderId);
+        $billing = new TaxAddress($order->billing->country, $order->billing->state);
+        $shippingAddress = $order->shippingAddress ?? $order->billing;
+        $items = array_map(static fn(OrderLineView $line): array => ['product_id' => $line->productId, 'option_ids' => $line->optionIds, 'quantity' => $line->quantity, 'unit_price' => $line->unitPrice], $order->lines);
+
+        return $this->pricing->price($items, new TaxAddress($shippingAddress->country, $shippingAddress->state), $billing, $order->shippingRateId)['options'];
+    }
+
     public function edit(int $orderId, EditOrderItems $command, ?int $userId): OrderView
     {
         $order = $this->orders->order($orderId);

@@ -10,6 +10,8 @@ use OrillaCart\Ordering\Domain\OrderStatus;
 
 final class InMemoryOrderRepository implements OrderRepository
 {
+    private int $lastGrantId = 0;
+
     /** @var array<int, Order> */
     public array $orders = [];
     private int $nextId = 1;
@@ -52,6 +54,13 @@ final class InMemoryOrderRepository implements OrderRepository
 
     public function save(Order $order): void
     {
+        // Grants get ids on save, as the database gives them.
+        foreach ($order->grants() as $grant) {
+            $id = new \ReflectionProperty($grant, 'id');
+            if ($id->getValue($grant) === null) {
+                $id->setValue($grant, ++$this->lastGrantId);
+            }
+        }
         $id = new \ReflectionProperty(Order::class, 'id');
         if ($id->getValue($order) === null) {
             $id->setValue($order, $this->nextId++);

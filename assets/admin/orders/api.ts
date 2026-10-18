@@ -82,7 +82,9 @@ export interface Order {
 	notes: OrderNote[];
 	next_statuses: Status[];
 	downloads: {
+		id: number;
 		name: string;
+		product: string;
 		remaining: number | null;
 		expires_at: string | null;
 		downloads: number;
@@ -190,4 +192,58 @@ export function sendEmail(
 
 export function deleteOrder( id: number ): Promise< unknown > {
 	return apiFetch( { path: `${ BASE }/orders/${ id }`, method: 'DELETE' } );
+}
+
+/**
+ * Moves the order to a customer's account; null makes it a guest's order.
+ * @param id
+ * @param customerId
+ */
+export function assignOrder(
+	id: number,
+	customerId: number | null
+): Promise< Order > {
+	return apiFetch< Order >( {
+		path: `${ BASE }/orders/${ id }/customer`,
+		method: 'PUT',
+		data: { customer_id: customerId },
+	} );
+}
+
+export interface ShippingOption {
+	rate_id: number;
+	carrier: string;
+	name: string;
+	total: string;
+}
+
+/**
+ * The ways the order can ship to its address, with its items as they are.
+ * @param id
+ */
+export function fetchShippingOptions(
+	id: number
+): Promise< ShippingOption[] > {
+	return apiFetch< ShippingOption[] >( {
+		path: `${ BASE }/orders/${ id }/shipping-options`,
+	} );
+}
+
+/**
+ * @param id        The order.
+ * @param grantId   The bought file.
+ * @param remaining Downloads left; null for no limit.
+ * @param expiresAt The last day (YYYY-MM-DD); null for no end.
+ */
+export function changeDownloadAllowance(
+	id: number,
+	grantId: number,
+	remaining: number | null,
+	expiresAt: string | null
+): Promise< Order > {
+	return apiFetch< Order >( {
+		path: `${ BASE }/orders/${ id }/downloads/${ grantId }`,
+		method: 'PUT',
+		data: { remaining, expires_at: expiresAt },
+	} );
 }

@@ -79,6 +79,14 @@ describe( 'OrdersScreen', () => {
 	it( 'lists orders and moves one along', async () => {
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
+			if ( request.path.startsWith( '/orillacart/v1/customers' ) ) {
+				return Promise.resolve( {
+					customers: [],
+					total: 0,
+					page: 1,
+					pages: 0,
+				} );
+			}
 			if ( request.method === undefined ) {
 				return Promise.resolve(
 					request.path.startsWith( '/orillacart/v1/orders?' )

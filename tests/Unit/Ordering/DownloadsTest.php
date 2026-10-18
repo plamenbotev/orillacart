@@ -10,9 +10,12 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\UploadDownload;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
+use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\TemporaryPrivateFiles;
@@ -103,6 +106,38 @@ final class DownloadsTest extends TestCase
     private function token(string $url): string
     {
         return substr($url, -64);
+    }
+
+    public function testTheShopGivesMoreDownloadsOrTime(): void
+    {
+        $order = $this->paid();
+        $grant = $this->shop->orders->byKey($order->key)->downloads[0];
+        $url = $grant->url;
+        $this->shop->downloads->open($this->token($url));
+        $this->shop->downloads->open($this->token($url));
+
+        $changed = $this->shop->orders->changeDownloadAllowance($order->number, $grant->id, new ChangeDownloadAllowance(1, '2027-01-31'), 1);
+
+        self::assertSame([1, '2027-01-31T23:59:59+00:00'], [$changed->downloads[0]->remaining, $changed->downloads[0]->expiresAt]);
+        self::assertContains('Downloads of guide.pdf: 1 left, until 2027-01-31.', array_column($changed->notes, 'text'));
+        $this->shop->downloads->open($this->token($url));
+
+        $this->expectException(OrderNotFound::class);
+        $this->shop->orders->changeDownloadAllowance($order->number, 999, new ChangeDownloadAllowance(null, null), 1);
+    }
+
+    public function testAnOrderMovesToAnotherAccountOrBecomesAGuestOrder(): void
+    {
+        $customer = $this->shop->accounts->add('grace@example.com');
+        $order = $this->paid();
+
+        $moved = $this->shop->customers->assignOrder($order->number, $customer, 1);
+        self::assertSame($customer, $moved->customerId);
+        self::assertCount(1, $this->shop->downloads->ofCustomer($customer), 'the files come with the order');
+
+        self::assertNull($this->shop->customers->assignOrder($order->number, null, 1)->customerId);
+        $this->expectException(CustomerNotFound::class);
+        $this->shop->customers->assignOrder($order->number, 999, 1);
     }
 
     private function paid(CartOwner $owner = new CartOwner(null)): PlacedOrderView

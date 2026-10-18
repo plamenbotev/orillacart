@@ -18,7 +18,9 @@ use OrillaCart\Customers\Domain\CustomerSettings;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
+use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
 
 /**
@@ -143,6 +145,21 @@ final readonly class CustomerService
         $this->accounts->logIn($id);
 
         return $id;
+    }
+
+    /**
+     * Moves an order to a customer's account, or makes it a guest's order.
+     *
+     * @throws CustomerNotFound for an account that does not exist
+     * @throws OrderNotFound
+     */
+    public function assignOrder(int $orderId, ?int $customerId, ?int $userId): OrderView
+    {
+        if ($customerId !== null) {
+            $this->accounts->find($customerId) ?? throw new CustomerNotFound($customerId);
+        }
+
+        return $this->orders->changeCustomer($orderId, $customerId, $userId);
     }
 
     /**

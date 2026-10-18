@@ -8,6 +8,7 @@ use OrillaCart\Catalog\Application\Dto\QuotedDownload;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
+use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
@@ -228,6 +229,58 @@ final readonly class OrderService
      *
      * @throws OrderNotFound
      */
+    /**
+     * Moves the order to a customer's account, or makes it a guest's order; the history says so.
+     *
+     * @throws OrderNotFound
+     */
+    public function changeCustomer(int $id, ?int $customerId, ?int $userId): OrderView
+    {
+        $order = $this->get($id);
+        if ($order->customerId() !== $customerId) {
+            $order->changeCustomer($customerId);
+            $order->addNote(
+                $customerId === null ? 'Made a guest order.' : \sprintf('Moved to the account of customer #%d.', $customerId),
+                NoteAuthor::Shop,
+                false,
+                $this->clock->now(),
+                $userId,
+            );
+            $this->orders->save($order);
+        }
+
+        return $this->view($order, true);
+    }
+
+    /**
+     * Changes how many times, and until when, the buyer may download one of the order's files.
+     *
+     * @throws OrderNotFound   also for a download the order does not have
+     * @throws OrderRuleViolation
+     */
+    public function changeDownloadAllowance(int $id, int $grantId, ChangeDownloadAllowance $command, ?int $userId): OrderView
+    {
+        $order = $this->get($id);
+        foreach ($order->grants() as $grant) {
+            if ($grant->id() === $grantId) {
+                $expires = $command->expiresAt === null ? null : new \DateTimeImmutable($command->expiresAt . ' 23:59:59', new \DateTimeZone('UTC'));
+                $grant->allow($command->remaining, $expires);
+                $order->addNote(
+                    \sprintf('Downloads of %s: %s left, %s.', $grant->name(), $command->remaining ?? 'no limit', $command->expiresAt === null ? 'no end' : 'until ' . $command->expiresAt),
+                    NoteAuthor::Shop,
+                    false,
+                    $this->clock->now(),
+                    $userId,
+                );
+                $this->orders->save($order);
+
+                return $this->view($order, true);
+            }
+        }
+
+        throw new OrderNotFound();
+    }
+
     public function giveTo(int $id, int $customerId): void
     {
         $order = $this->get($id);

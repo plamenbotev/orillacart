@@ -55,7 +55,8 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $shop = [['GET', '/orders'], ['GET', '/orders/1'], ['PUT', '/orders/1/status'], ['PUT', '/orders/1/contact'], ['POST', '/orders/1/notes'],
             ['PUT', '/orders/1/items'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['GET', '/customers/1'],
             ['PUT', '/customers/1/addresses'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/email-settings'],
-            ['PUT', '/email-settings'], ['POST', '/products/1/downloads'], ['DELETE', '/products/1/downloads/1'], ['GET', '/download-storage']];
+            ['PUT', '/email-settings'], ['POST', '/products/1/downloads'], ['DELETE', '/products/1/downloads/1'], ['GET', '/download-storage'],
+            ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1']];
         $account = [['GET', '/account'], ['PUT', '/account/addresses'], ['GET', '/account/orders'], ['GET', '/account/orders/1'], ['GET', '/account/downloads']];
         foreach ([...$shop, ...$account] as [$method, $route]) {
             self::assertSame(401, $this->request($method, $route)->get_status(), "visitor: {$method} {$route}");
@@ -150,6 +151,28 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame('%PDF guide', file_get_contents($opened->path));
         self::assertStringStartsWith(rtrim($this->text($storage['directory']), '/') . '/', $opened->path);
         self::assertStringStartsNotWith(rtrim(ABSPATH, '/') . '/wp-content/uploads/' . basename($opened->path), $opened->path);
+
+        $this->actAs('administrator');
+        self::assertSame([], $this->data($this->request('GET', "/orders/{$order['number']}/shipping-options")), 'nothing to ship');
+        $grant = $this->rows($this->data($this->request('GET', "/orders/{$order['number']}"))['downloads'])[0]['id'];
+        self::assertIsInt($grant);
+        $more = $this->request('PUT', "/orders/{$order['number']}/downloads/{$grant}", ['remaining' => 5, 'expires_at' => '2030-01-31'], nonce: true);
+        self::assertSame(200, $more->get_status(), (string) wp_json_encode($more->get_data()));
+        self::assertSame(422, $this->request('PUT', "/orders/{$order['number']}/downloads/{$grant}", ['remaining' => -1], nonce: true)->get_status());
+        self::assertSame(404, $this->request('PUT', "/orders/{$order['number']}/downloads/999999", ['remaining' => 1], nonce: true)->get_status());
+
+        $guest = $this->request('PUT', "/orders/{$order['number']}/customer", ['customer_id' => null], nonce: true);
+        self::assertSame(200, $guest->get_status(), (string) wp_json_encode($guest->get_data()));
+        self::assertNull($this->data($guest)['customer_id']);
+        self::assertSame(404, $this->request('PUT', "/orders/{$order['number']}/customer", ['customer_id' => 999999], nonce: true)->get_status(), 'no such account');
+        wp_set_current_user($user->ID);
+        self::assertSame([], $this->data($this->request('GET', '/account/orders'))['orders'], 'a guest\'s order now');
+
+        $this->actAs('administrator');
+        $this->request('PUT', "/orders/{$order['number']}/customer", ['customer_id' => $user->ID], nonce: true);
+        wp_set_current_user($user->ID);
+        $downloads = $this->rows($this->data($this->request('GET', '/account/downloads')));
+        self::assertSame([5, '2030-01-31'], [$downloads[0]['remaining'], substr($this->text($downloads[0]['expires_at']), 0, 10)]);
     }
 
     /**
