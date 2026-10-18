@@ -18,6 +18,7 @@ import { fetchCountries, type Country } from '../shared/geography';
 import { LocationFields } from '../shared/LocationFields';
 import { DownloadDeliveryCard } from './DownloadDeliveryCard';
 import { FiltersCard } from './FiltersCard';
+import { SearchEngineCard } from './SearchEngineCard';
 import { ShopPagesCard } from './ShopPagesCard';
 import {
 	fetchSettings,
@@ -333,6 +334,7 @@ export function SettingsScreen() {
 			<ShopPagesCard />
 			<DownloadDeliveryCard />
 			<FiltersCard />
+			<SearchEngineCard />
 		</>
 	);
 }

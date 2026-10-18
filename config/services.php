@@ -70,11 +70,15 @@ use OrillaCart\Search\Application\CatalogSearch;
 use OrillaCart\Search\Application\IndexQueue;
 use OrillaCart\Search\Application\ProductTexts;
 use OrillaCart\Search\Application\SearchIndex;
+use OrillaCart\Search\Application\SearchServer;
+use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchFilterRepository;
 use OrillaCart\Search\Infrastructure\Doctrine\DbalIndexQueue;
 use OrillaCart\Search\Infrastructure\Doctrine\DoctrineSearchFilterRepository;
-use OrillaCart\Search\Infrastructure\Doctrine\MysqlCatalogSearch;
-use OrillaCart\Search\Infrastructure\Doctrine\MysqlSearchIndex;
+use OrillaCart\Search\Infrastructure\EngineCatalogSearch;
+use OrillaCart\Search\Infrastructure\EngineSearchIndex;
+use OrillaCart\Search\Infrastructure\OpenSearch\OpenSearchServer;
+use OrillaCart\Search\Infrastructure\WordPress\OptionEngineSettingsRepository;
 use OrillaCart\Search\Infrastructure\WordPress\WordPressProductTexts;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
@@ -199,9 +203,11 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(RateCache::class, TransientRateCache::class);
     $services->alias(ConsignmentRepository::class, DoctrineConsignmentRepository::class);
 
-    // The search engine: the database's own (MySQL FULLTEXT).
-    $services->alias(CatalogSearch::class, MysqlCatalogSearch::class);
-    $services->alias(SearchIndex::class, MysqlSearchIndex::class);
+    // The search engine the shop chose: its database (MySQL FULLTEXT) or OpenSearch.
+    $services->alias(CatalogSearch::class, EngineCatalogSearch::class);
+    $services->alias(SearchIndex::class, EngineSearchIndex::class);
+    $services->alias(SearchServer::class, OpenSearchServer::class);
+    $services->alias(EngineSettingsRepository::class, OptionEngineSettingsRepository::class);
 
     $services->alias(Transactions::class, DoctrineTransactions::class);
     $services->alias(LoadedEntities::class, DoctrineLoadedEntities::class);

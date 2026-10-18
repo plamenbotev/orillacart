@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Search\Application;
 
 use OrillaCart\Search\Application\Dto\IndexRun;
+use OrillaCart\Search\Domain\EngineSettingsRepository;
+use OrillaCart\Search\Domain\SearchEngine;
 use OrillaCart\Shared\Persistence\LoadedEntities;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -27,6 +29,7 @@ final readonly class IndexWorker
         private LoadedEntities $entities,
         private ClockInterface $clock,
         private LoggerInterface $logger,
+        private EngineSettingsRepository $engine,
     ) {}
 
     public function work(int $limit = 50): IndexRun
@@ -34,6 +37,8 @@ final readonly class IndexWorker
         $now = $this->clock->now();
         $jobs = $this->queue->claim($limit, $now, $now->modify(\sprintf('+%d seconds', self::LOCK_SECONDS)));
         if ($jobs === []) {
+            $this->markBuilt();
+
             return new IndexRun();
         }
         // Read the products as they are now, not as this process loaded them before.
@@ -60,5 +65,16 @@ final readonly class IndexWorker
         }
 
         return new IndexRun($built, $removed, $failed);
+    }
+
+    /**
+     * OpenSearch answers shoppers once nothing is left to build after switching to it.
+     */
+    private function markBuilt(): void
+    {
+        $settings = $this->engine->load();
+        if ($settings->engine === SearchEngine::OpenSearch && !$settings->ready && $this->queue->status($this->clock->now())->due === 0) {
+            $this->engine->save($settings->built());
+        }
     }
 }

@@ -64,6 +64,25 @@ function serve( save?: () => Promise< unknown > ) {
 						}
 			);
 		}
+		if ( path.startsWith( '/orillacart/v1/search-engine' ) ) {
+			return Promise.resolve( {
+				engine: method === 'PUT' ? 'opensearch' : 'database',
+				host: method === 'PUT' ? 'https://search.test:9200' : '',
+				username: '',
+				password_set: false,
+				index: 'orillacart',
+				ready: false,
+				due: method === 'PUT' ? 12 : 0,
+				later: 1,
+				parked: {},
+				next_at: null,
+				works: method === 'PUT' ? true : null,
+				message:
+					method === 'PUT'
+						? 'OpenSearch answered. 12 products are being indexed there.'
+						: '',
+			} );
+		}
 		if ( path.startsWith( '/orillacart/v1/search-filters' ) ) {
 			if ( path.endsWith( '/attributes' ) ) {
 				return Promise.resolve( [ 'Colour', 'Size' ] );
@@ -233,7 +252,7 @@ describe( 'SettingsScreen', () => {
 				'You are not allowed to do this.',
 				NOTICE
 			)
-		).toHaveLength( 4 );
+		).toHaveLength( 5 );
 	} );
 
 	it( 'saves the page each part of the shop is on', async () => {
@@ -331,5 +350,46 @@ describe( 'SettingsScreen', () => {
 				position: 0,
 			},
 		} );
+	} );
+
+	it( 'checks OpenSearch before switching to it', async () => {
+		serve();
+		const user = userEvent.setup();
+		render( <SettingsScreen /> );
+
+		await user.selectOptions(
+			await screen.findByLabelText( 'Search with' ),
+			'opensearch'
+		);
+		await user.type(
+			screen.getByLabelText( 'Address' ),
+			'https://search.test:9200'
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Check and switch' } )
+		);
+
+		expect(
+			await screen.findByText(
+				'OpenSearch answered. 12 products are being indexed there.',
+				NOTICE
+			)
+		).toBeVisible();
+		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+			path: '/orillacart/v1/search-engine',
+			method: 'PUT',
+			data: {
+				engine: 'opensearch',
+				host: 'https://search.test:9200',
+				username: '',
+				password: '',
+				index: 'orillacart',
+			},
+		} );
+		expect(
+			screen.getByText(
+				'OpenSearch’s index is being built; the shop searches its database until it is.'
+			)
+		).toBeVisible();
 	} );
 } );

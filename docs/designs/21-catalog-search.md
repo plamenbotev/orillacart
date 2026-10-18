@@ -1,6 +1,6 @@
 # 21 · Storefront filtering and search
 
-Status: approved 2026-10-18. Built in three steps: 21a (index, queue, MySQL engine, shop on the index),
+Status: built 2026-10-18, in three steps: 21a (index, queue, MySQL engine, shop on the index),
 21b (filters the shop defines, facets, price and stock filters, Search block), 21c (OpenSearch, queue status).
 
 Decisions:
@@ -83,9 +83,16 @@ labels the facets.
 
 ## OpenSearch (21c)
 
-Behind the same ports: documents with a nested `variants` field for variant-accurate filters, aggregations for
-facets, the analyser for the site's language. Settings test the connection before switching, as download
-delivery does; switching queues a rebuild. One contract test suite runs against both engines.
+Behind the same ports: one document per product with its variants nested, each variant carrying its own
+options and the whole product's ("attr:size␟m"), so one nested query asks for a variant with all the chosen
+ones; facets are global aggregations with every other choice applied, option values counted per product with
+reverse_nested whichever attribute name holds them. Words match title (weighted) and text with typos forgiven,
+English stopwords dropped as InnoDB drops them, and SKUs by prefix. The database's tables are always written
+too: they answer while OpenSearch's index is being built (the worker marks it ready once nothing is due), when
+OpenSearch does not answer, and they give the facets their labels. Settings check OpenSearch (reach it, make
+the index) before switching, and switching queues every product. One contract test suite
+(tests/Integration/CatalogSearchContract.php) runs against both engines; the OpenSearch run needs
+ORILLACART_OPENSEARCH.
 
 ## Not in scope
 
