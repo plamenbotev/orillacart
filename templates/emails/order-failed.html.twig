@@ -2,4 +2,4 @@
 {# translators: 1: site name, 2: order number -#}
 {% block subject %}{{ __('[%1$s] The payment for order #%2$s failed')|format(site_name, order.number) }}{% endblock %}
 {% block heading %}{{ __('Your payment did not go through') }}{% endblock %}
-{% block intro %}<p>{{ __('The payment for your order failed, so the order was not placed. You can order again at any time.') }}</p>{% endblock %}
+{% block intro %}<p>{{ __('The payment for your order failed. You can try again, with the same or another way to pay, as long as the items are in stock.') }}</p><p style="margin:16px 0;"><a href="{{ receipt_url }}#pay" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;text-decoration:none;border-radius:3px;">{{ __('Pay now') }}</a></p>{% endblock %}

@@ -49,7 +49,7 @@ final class InMemoryOrderRepository implements OrderRepository
 
     public function pendingPaymentSince(\DateTimeImmutable $before): array
     {
-        return array_values(array_filter($this->orders, static fn(Order $order): bool => $order->status() === OrderStatus::PendingPayment && $order->placedAt() < $before));
+        return array_values(array_filter($this->orders, static fn(Order $order): bool => $order->status() === OrderStatus::PendingPayment && $order->awaitingPaymentSince() < $before));
     }
 
     public function hasStandingOrder(?int $customerId, string $email, ?int $exceptOrderId = null): bool

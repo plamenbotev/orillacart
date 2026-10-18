@@ -120,6 +120,16 @@ test.describe( 'A visitor', () => {
 			page.locator( '.orillacart-receipt__facts' )
 		).toContainText( 'On hold' );
 
+		// The receipt offers to pay it now; paying the same way leaves it waiting for the transfer.
+		const pay = page.locator( 'form[data-orillacart-pay-now]' );
+		await expect(
+			pay.getByRole( 'heading', { name: 'Pay now' } )
+		).toBeVisible();
+		await pay.getByRole( 'button', { name: /Pay 65\.00/ } ).click();
+		await expect(
+			page.locator( '.orillacart-receipt__facts' )
+		).toContainText( 'On hold' );
+
 		// The cart is empty after ordering.
 		await page.goto( shop.urls.cart );
 		await expect( page.getByText( 'Your cart is empty.' ) ).toBeVisible();

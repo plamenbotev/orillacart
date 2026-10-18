@@ -259,6 +259,35 @@ final readonly class OrderService
     }
 
     /**
+     * The customer pays the order now, with the method chosen: the order waits for that payment from now. A
+     * failed order takes its stock again.
+     *
+     * @throws OrderNotFound
+     * @throws OrderRuleViolation for an order that cannot be paid now
+     * @throws InsufficientStock  when a failed order's items sold out since
+     */
+    public function awaitPayment(int $id, string $gateway, string $name, string $note): OrderView
+    {
+        return $this->changing($id, function (Order $order) use ($gateway, $name, $note): OrderView {
+            $previous = $order->status();
+            $order->awaitPayment($gateway, $name, $note, $this->clock->now(), fn(array $wanted): array => array_map(
+                static fn(array $taken): array => array_map(static fn(TakenStock $part): TakenItem => new TakenItem($part->item, $part->stockroomId, $part->quantity), $taken),
+                $this->stock->takeAgain($wanted),
+            ));
+            $text = \sprintf('The customer chose to pay by %s.', $name);
+            if ($order->status() !== $previous) {
+                $this->changed($order, $previous, [], $text);
+            } else {
+                $order->addNote($text, NoteAuthor::System, false, $this->clock->now());
+                $this->orders->save($order);
+                $this->events->dispatch(new OrderChanged($order->id()));
+            }
+
+            return $this->view($order);
+        });
+    }
+
+    /**
      * Flags the order for the shop to look at, whatever its status, and tells the shop.
      *
      * @throws OrderNotFound

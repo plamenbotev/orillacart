@@ -66,6 +66,8 @@ final readonly class OrderView
         public array $fields = [],
         /** Why the shop has to look at it, such as a disputed payment; for the shop only. */
         public ?string $attention = null,
+        /** Unpaid, and waiting for the money or failed to pay: the customer can pay it now. */
+        public bool $payable = false,
     ) {}
 
     /**
@@ -115,6 +117,7 @@ final readonly class OrderView
             array_map(static fn(OrderDiscount $discount): OrderDiscountView => new OrderDiscountView($discount->code, $discount->description, (string) $discount->amount, $discount->freeShipping, $discount->automatic), $order->discounts()),
             array_map(OrderFieldView::fromAnswer(...), $order->fields()),
             $forShop ? $order->attention() : null,
+            $order->isPayable(),
         );
     }
 }

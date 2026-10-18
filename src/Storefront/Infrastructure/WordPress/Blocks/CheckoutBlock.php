@@ -6,6 +6,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
+use OrillaCart\Checkout\Application\PayNow;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Application\Dto\CustomerView;
@@ -41,6 +42,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         private ShopLinks $links,
         private TemplateRenderer $templates,
         private ShipmentTracking $shipments,
+        private PayNow $payNow,
     ) {}
 
     public static function name(): string
@@ -123,6 +125,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'heading' => true,
             'links' => $links,
             'shipments' => $this->shipments->forOrder($order->number),
+            'pay_methods' => $this->payNow->methods($order),
         ]);
     }
 

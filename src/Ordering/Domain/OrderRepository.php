@@ -15,7 +15,7 @@ interface OrderRepository
     public function findByKey(string $key): ?Order;
 
     /**
-     * Orders still waiting for a provider payment that were placed before the moment.
+     * Orders still waiting for a provider payment since before the moment (placed then, or asked to pay again).
      *
      * @return list<Order>
      */

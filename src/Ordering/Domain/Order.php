@@ -106,6 +106,10 @@ class Order
     #[ORM\Column(type: 'text')]
     private string $paymentNote;
 
+    /** Since when it waits for the payment it was last asked to pay: placing it, or paying it again later. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $awaitingPaymentSince = null;
+
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $transactionId = null;
 
@@ -198,6 +202,7 @@ class Order
         $this->paymentNote = $draft->paymentNote;
         $this->note = trim($draft->note);
         $this->placedAt = $draft->placedAt;
+        $this->awaitingPaymentSince = $draft->placedAt;
         $this->fields = self::fieldRows($draft->fields);
     }
 
@@ -371,6 +376,11 @@ class Order
     public function note(): string
     {
         return $this->note;
+    }
+
+    public function awaitingPaymentSince(): \DateTimeImmutable
+    {
+        return $this->awaitingPaymentSince ?? $this->placedAt;
     }
 
     public function placedAt(): \DateTimeImmutable
@@ -811,6 +821,44 @@ class Order
         }
 
         return $this->transactionId !== $transactionId;
+    }
+
+    /** Whether the customer can pay it now: unpaid, and waiting for the money or failed to pay. */
+    public function isPayable(): bool
+    {
+        return $this->paidAt === null && \in_array($this->status, [OrderStatus::PendingPayment, OrderStatus::OnHold, OrderStatus::Failed], true);
+    }
+
+    /**
+     * The customer pays the order now, with the method chosen: it waits for that payment from now. A failed
+     * order takes again the stock it gave back.
+     *
+     * @param \Closure(array<int, array<string, int>>): array<int, list<TakenItem>> $take takes, for each line by its
+     *                                                                                 index, the quantity of each
+     *                                                                                 item; it throws, taking
+     *                                                                                 nothing, when one is short
+     *
+     * @param-immediately-invoked-callable $take
+     *
+     * @throws OrderRuleViolation for an order that cannot be paid now
+     */
+    public function awaitPayment(string $gateway, string $name, string $note, \DateTimeImmutable $at, \Closure $take): void
+    {
+        if (!$this->isPayable()) {
+            throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot be paid now.', $this->id(), strtolower($this->status->label())), 'orillacart_order_not_payable');
+        }
+        if ($this->status === OrderStatus::Failed) {
+            $lines = array_values($this->lines->toArray());
+            $taken = $take(array_map(static fn(OrderLine $line): array => $line->stockReleased(), $lines));
+            foreach ($lines as $index => $line) {
+                $line->retake($taken[$index] ?? []);
+            }
+        }
+        $this->status = OrderStatus::PendingPayment;
+        $this->paymentGateway = $gateway;
+        $this->paymentName = mb_substr($name, 0, 100);
+        $this->paymentNote = $note;
+        $this->awaitingPaymentSince = $at;
     }
 
     /**

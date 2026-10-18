@@ -20,6 +20,7 @@ use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\ManualOrders;
 use OrillaCart\Checkout\Application\OrderEditing;
 use OrillaCart\Checkout\Application\OrderPricing;
+use OrillaCart\Checkout\Application\PayNow;
 use OrillaCart\Coupons\Application\CouponService;
 use OrillaCart\Coupons\Application\Discounts;
 use OrillaCart\Coupons\Infrastructure\Events\ReleaseCouponUses;
@@ -164,6 +165,7 @@ final class TestShop
     public readonly InMemoryOrderRepository $orderRecords;
     public readonly OrderService $orders;
     public readonly CheckoutService $checkout;
+    public readonly PayNow $payNow;
     public readonly OrderPricing $pricing;
     public readonly OrderEditing $editing;
     public readonly ManualOrders $manualOrders;
@@ -278,6 +280,7 @@ final class TestShop
             $this->discounts,
             new CheckoutFields($extensions, $this->logger),
         );
+        $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, new FakeOrderLinks());
 
         $this->mail = new SentMail();
         $this->emailSettings = new InMemoryEmailSettingsRepository();

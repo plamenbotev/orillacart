@@ -9,6 +9,7 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Cart\Domain\CartRuleViolation;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
+use OrillaCart\Checkout\Application\Dto\PayOrder;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
@@ -188,6 +189,59 @@ final class CheckoutServiceTest extends TestCase
 
         self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false));
         self::assertSame('pending_payment', $this->shop->orders->byKey($placed->key)->status, 'the webhook settles it later');
+    }
+
+    public function testAFailedPaymentIsTriedAgainLaterWithAnotherWay(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart([10, 2]), $this->order('paypal'));
+        $this->shop->payPalApi->captureStatus = 'DECLINED';
+        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+        self::assertSame(['failed', 3], [$this->shop->orders->byKey($placed->key)->status, $this->shop->stock->stock(StockItemRef::product(10))->available]);
+        self::assertSame(['cash_on_delivery', 'bank_transfer', 'paypal'], array_map(static fn($method): string => $method->gateway, $this->shop->payNow->methods($this->shop->orders->byKey($placed->key))));
+
+        $again = $this->shop->payNow->pay($placed->key, new PayOrder('bank_transfer'));
+
+        self::assertSame(['on_hold', null], [$again->status, $again->redirectUrl]);
+        $order = $this->shop->orders->byKey($placed->key);
+        self::assertSame(['Bank transfer', 'IBAN BG00 0000'], [$order->paymentName, $order->paymentNote]);
+        self::assertSame(1, $this->shop->stock->stock(StockItemRef::product(10))->available, 'its items are taken again');
+    }
+
+    public function testAnOrderWaitingForItsMoneyIsPaidAnotherWayAndWaitsAnew(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('bank_transfer'));
+        $this->shop->clock->modify('+5 hours');
+
+        $paying = $this->shop->payNow->pay($placed->key, new PayOrder('paypal'));
+
+        self::assertSame('pending_payment', $paying->status);
+        self::assertNotNull($paying->redirectUrl);
+        self::assertSame(0, $this->shop->orders->cancelAbandoned(), 'the payment window starts again');
+        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+        self::assertSame('processing', $this->shop->orders->byKey($placed->key)->status);
+        self::assertSame([], $this->shop->payNow->methods($this->shop->orders->byKey($placed->key)), 'a paid order is not paid again');
+        try {
+            $this->shop->payNow->pay($placed->key, new PayOrder('paypal'));
+            self::fail('paid already');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('orillacart_order_not_payable', $e->errorCode);
+        }
+    }
+
+    public function testAFailedOrderWhoseItemsSoldOutCannotBePaid(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart([10, 2]), $this->order('paypal'));
+        $this->shop->payPalApi->captureStatus = 'DECLINED';
+        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+        $this->shop->checkout->placeOrder($this->cart([10, 3]), $this->order('bank_transfer'));
+
+        try {
+            $this->shop->payNow->pay($placed->key, new PayOrder('bank_transfer'));
+            self::fail('sold out');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('orillacart_out_of_stock', $e->errorCode);
+        }
+        self::assertSame('failed', $this->shop->orders->byKey($placed->key)->status);
     }
 
     public function testASecondSubmitWhileTheOrderIsBeingPlacedPlacesNoSecondOrder(): void

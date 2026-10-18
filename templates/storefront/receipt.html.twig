@@ -2,7 +2,7 @@
  # An order as its customer sees it: after checkout (with the order's key) and in their account.
  #
  # order: the order; heading: whether to thank the customer for ordering;
- # links: the shop's pages.
+ # links: the shop's pages; pay_methods: the ways an unpaid order can be paid now, if any.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-receipt">
@@ -21,6 +21,28 @@
 
     {% if order.payment_note and order.status in ['pending_payment', 'on_hold'] %}
         <div class="orillacart-notice">{{ order.payment_note|nl2br }}</div>
+    {% endif %}
+
+    {% if pay_methods is defined and pay_methods %}
+        <form class="orillacart-pay-now" id="pay" data-orillacart-pay-now="{{ order.key }}">
+            <h3 class="orillacart-heading">{{ __('Pay now') }}</h3>
+            <p>{{ order.status == 'failed' ? __('The payment did not go through. Try again, with the same or another way to pay.') : __('The order waits for its payment. Pay it now, or choose another way to pay.') }}</p>
+            <fieldset class="orillacart-choices" data-orillacart-field="payment">
+                <legend>{{ __('Payment') }}</legend>
+                {% set gateways = pay_methods|map(method => method.gateway) %}
+                {% set chosen = order.payment_gateway in gateways ? order.payment_gateway : gateways|first %}
+                {% for method in pay_methods %}
+                    <div class="orillacart-choice">
+                        <input id="orillacart-pay-{{ method.gateway }}" type="radio" name="payment" value="{{ method.gateway }}"{{ method.gateway == chosen ? ' checked' }}>
+                        <label for="orillacart-pay-{{ method.gateway }}">{{ method.name }}</label>
+                        {% if method.instructions %}<p class="orillacart-choice__note">{{ method.instructions|nl2br }}</p>{% endif %}
+                    </div>
+                {% endfor %}
+            </fieldset>
+            <p class="orillacart-message" role="alert" data-orillacart-message></p>
+            {# translators: %s: the order's total -#}
+            <button type="submit" class="wp-element-button orillacart-button">{{ __('Pay %s')|format(order.total|money(order.currency)) }}</button>
+        </form>
     {% endif %}
 
     {% if order.downloads %}

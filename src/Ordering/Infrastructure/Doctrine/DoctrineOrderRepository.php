@@ -37,7 +37,7 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             ->select('o')
             ->from(Order::class, 'o')
             ->where('o.status = :status')
-            ->andWhere('o.placedAt < :before')
+            ->andWhere('COALESCE(o.awaitingPaymentSince, o.placedAt) < :before')
             ->setParameter('status', OrderStatus::PendingPayment)
             ->setParameter('before', $before)
             ->orderBy('o.id')

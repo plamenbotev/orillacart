@@ -2,4 +2,4 @@
 {# translators: 1: site name, 2: order number -#}
 {% block subject %}{{ __('[%1$s] We received your order #%2$s')|format(site_name, order.number) }}{% endblock %}
 {% block heading %}{{ __('Thank you for your order') }}{% endblock %}
-{% block intro %}<p>{{ __('We have your order and will start on it as soon as your payment arrives.') }}</p>{% endblock %}
+{% block intro %}<p>{{ __('We have your order and will start on it as soon as your payment arrives.') }}</p><p>{{ __('Would you rather pay another way?') }} <a href="{{ receipt_url }}#pay" style="color:#2271b1;">{{ __('Pay now') }}</a></p>{% endblock %}

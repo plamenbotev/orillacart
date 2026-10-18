@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
+use OrillaCart\Checkout\Application\PayNow;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Ordering\Application\Downloads;
@@ -33,6 +34,7 @@ final readonly class AccountBlock implements BlockDefinition
         private Shopper $shopper,
         private ShopLinks $links,
         private TemplateRenderer $templates,
+        private PayNow $payNow,
     ) {}
 
     public static function name(): string
@@ -118,7 +120,7 @@ final readonly class AccountBlock implements BlockDefinition
             $order = null;
         }
 
-        return ['order' => $order];
+        return ['order' => $order, 'pay_methods' => $order === null ? [] : $this->payNow->methods($order)];
     }
 
     /**

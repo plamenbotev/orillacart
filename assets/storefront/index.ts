@@ -8,6 +8,7 @@ import { bindAddresses, bindRegister } from './account';
 import { bindCart } from './cart';
 import { bindCheckout } from './checkout';
 import { bindGallery } from './gallery';
+import { bindPayNow } from './paynow';
 import { bindAddToCart, refreshCartCount } from './product';
 import { bindShop } from './shop';
 
@@ -26,6 +27,9 @@ function start(): void {
 	document
 		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-checkout]' )
 		.forEach( bindCheckout );
+	document
+		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-pay-now]' )
+		.forEach( bindPayNow );
 	document
 		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-register]' )
 		.forEach( bindRegister );
