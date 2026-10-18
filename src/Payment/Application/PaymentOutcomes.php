@@ -42,6 +42,7 @@ final readonly class PaymentOutcomes
         private EventDispatcherInterface $events,
         private ClockInterface $clock,
         private LoggerInterface $logger,
+        private Refunds $refunds,
     ) {}
 
     /**
@@ -93,10 +94,22 @@ final readonly class PaymentOutcomes
         } catch (ProviderUnavailable $e) {
             throw new PaymentProviderUnavailable($e->provider, $e->getMessage(), $e);
         }
-        $payment = $outcome === null ? null : $this->payments->findByReference($gatewayId, $outcome->reference);
-        if ($payment !== null && $outcome !== null) {
-            $this->settle($payment, $outcome);
+        if ($outcome === null) {
+            return;
         }
+        $payment = $outcome->reference === '' ? null : $this->payments->findByReference($gatewayId, $outcome->reference);
+        if ($payment === null && $outcome->transactionId !== null && $outcome->status === PaymentOutcome::REFUNDED) {
+            $payment = $this->payments->findByTransaction($gatewayId, $outcome->transactionId);
+        }
+        if ($payment === null) {
+            return;
+        }
+        if ($outcome->status === PaymentOutcome::REFUNDED) {
+            $this->refunds->notified($payment, $outcome);
+
+            return;
+        }
+        $this->settle($payment, $outcome);
     }
 
     private function settle(Payment $payment, PaymentOutcome $outcome): void

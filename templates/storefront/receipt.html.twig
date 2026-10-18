@@ -15,6 +15,7 @@
         <li>{{ __('Placed') }}: <strong>{{ order.placed_at|shop_date }}</strong></li>
         <li>{{ __('Status') }}: <strong>{{ shop.status(order.status) }}</strong></li>
         <li>{{ __('Total') }}: <strong>{{ order.total|money(order.currency) }}</strong></li>
+        {% if order.refunded_total > 0 %}<li>{{ __('Refunded') }}: <strong>{{ order.refunded_total|money(order.currency) }}</strong></li>{% endif %}
         {% if order.payment_name %}<li>{{ __('Payment') }}: <strong>{{ order.payment_name }}</strong></li>{% endif %}
     </ul>
 
@@ -39,6 +40,7 @@
                         {{ line.name }} &times; {{ line.quantity }}
                         {% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}
                         {% if line.backorder_shown and line.backordered > 0 %}<br><small class="orillacart-backorder">{{ __('%d on backorder: they ship when back in stock')|format(line.backordered) }}</small>{% endif %}
+                        {% if line.refunded_quantity > 0 %}<br><small>{{ __('%d refunded')|format(line.refunded_quantity) }}</small>{% endif %}
                     </td>
                     <td>{{ line.total|money(order.currency) }}</td>
                 </tr>
@@ -53,6 +55,9 @@
                 <tr><th scope="row">{{ tax.name }} ({{ tax.percent }}%)</th><td>{{ tax.amount|money(order.currency) }}</td></tr>
             {% endfor %}
             <tr class="orillacart-total"><th scope="row">{{ __('Total') }}</th><td>{{ order.total|money(order.currency) }}</td></tr>
+            {% if order.refunded_total > 0 %}
+                <tr><th scope="row">{{ __('Refunded') }}</th><td>−{{ order.refunded_total|money(order.currency) }}</td></tr>
+            {% endif %}
         </tfoot>
     </table>
 

@@ -29,6 +29,17 @@ final class InMemoryPaymentRepository implements PaymentRepository
         return null;
     }
 
+    public function findByTransaction(string $gateway, string $transactionId): ?Payment
+    {
+        foreach ($this->payments as $payment) {
+            if ($payment->gateway() === $gateway && $payment->transactionId() === $transactionId) {
+                return $payment;
+            }
+        }
+
+        return null;
+    }
+
     public function ofOrder(int $orderId): array
     {
         return array_values(array_filter($this->payments, static fn(Payment $payment): bool => $payment->orderId() === $orderId));

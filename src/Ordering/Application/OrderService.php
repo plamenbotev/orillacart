@@ -19,9 +19,12 @@ use OrillaCart\Ordering\Application\Dto\OrderPageView;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\Dto\OrderSummaryView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
+use OrillaCart\Ordering\Application\Dto\RefundLine;
+use OrillaCart\Ordering\Application\Dto\RefundOrder;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
+use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
 use OrillaCart\Ordering\Domain\LineDownload;
 use OrillaCart\Ordering\Domain\LineDraft;
@@ -29,6 +32,7 @@ use OrillaCart\Ordering\Domain\NoteAuthor;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderDraft;
 use OrillaCart\Ordering\Domain\OrderNotFound;
+use OrillaCart\Ordering\Domain\OrderRefund;
 use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
 use OrillaCart\Ordering\Domain\OrderStatus;
@@ -191,7 +195,7 @@ final readonly class OrderService
     {
         $order = $this->get($id);
         $previous = $order->status();
-        $taken = $order->moveTo(OrderStatus::from($command->status), $command->restock, $this->clock->now());
+        $taken = $order->moveTo(OrderStatus::from($command->status), $this->clock->now());
         $this->changed($order, $previous, $taken, $command->note, $userId);
 
         return $this->view($order, true);
@@ -290,7 +294,7 @@ final readonly class OrderService
 
     /**
      * Deletes an order for good. An order waiting for its payment gives its stock back first; a paid one has to
-     * be cancelled or refunded before, so its money and stock are settled in its history and not just lost.
+     * be refunded in full before, so its money and stock are settled in its history and not just lost.
      *
      * @throws OrderNotFound
      * @throws OrderRuleViolation for a paid order
@@ -299,7 +303,7 @@ final readonly class OrderService
     {
         $order = $this->get($id);
         if ($order->status()->isPaid()) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is %s; cancel or refund it before deleting it.', $id, strtolower($order->status()->label())), 'orillacart_order_paid');
+            throw new OrderRuleViolation(\sprintf('Order #%d is %s; refund it in full before deleting it.', $id, strtolower($order->status()->label())), 'orillacart_order_paid');
         }
         $taken = $order->cancel();
         if ($taken !== []) {
@@ -345,6 +349,55 @@ final readonly class OrderService
         $order->addNote(trim($note) === '' ? $text : $text . ' ' . trim($note), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
         $this->orders->save($order);
         $this->events->dispatch(new OrderStatusChanged($order->id(), $order->status(), $previous, $tellCustomer, $tellShop));
+    }
+
+    /**
+     * Whether the refund fits the order, before any money moves.
+     *
+     * @throws OrderNotFound
+     * @throws OrderRuleViolation
+     */
+    public function checkRefund(int $id, RefundOrder $command): void
+    {
+        $this->get($id)->checkRefund(self::orderRefund($command));
+    }
+
+    /**
+     * Records money given back, once it went: puts the refunded items back in stock if asked, notes it in the
+     * order's history and tells the customer. An order refunded in full becomes Refunded.
+     *
+     * @param string $how how the money went back, for the history: "through PayPal (refund 5TY…)"
+     *
+     * @throws OrderNotFound
+     * @throws OrderRuleViolation
+     */
+    public function refund(int $id, RefundOrder $command, string $how, ?int $userId, bool $tellCustomer = true): OrderView
+    {
+        $order = $this->get($id);
+        $previous = $order->status();
+        $refund = self::orderRefund($command);
+        $taken = $order->refund($refund);
+        if ($taken !== []) {
+            $this->stock->giveBack(array_map(static fn(TakenItem $item): TakenStock => new TakenStock($item->item, $item->stockroomId, $item->quantity), $taken));
+        }
+        $text = \sprintf('Refunded %s %s %s.', $refund->amount, $order->currency(), $how);
+        if ($refund->restock && $refund->quantities !== []) {
+            $text .= ' The items went back in stock.';
+        }
+        $now = $this->clock->now();
+        $order->addNote(trim($command->reason) === '' ? $text : $text . ' ' . trim($command->reason), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $now, $userId);
+        if ($order->status() !== $previous) {
+            $order->addNote(\sprintf('Status changed from %s to %s.', strtolower($previous->label()), strtolower($order->status()->label())), NoteAuthor::System, false, $now);
+        }
+        $this->orders->save($order);
+        $full = $order->status() === OrderStatus::Refunded;
+        $this->events->dispatch(new OrderRefunded($order->id(), (string) $refund->amount, $full, $refund->quantities, $tellCustomer));
+        if ($order->status() !== $previous) {
+            // The refund's own email tells the customer.
+            $this->events->dispatch(new OrderStatusChanged($order->id(), $order->status(), $previous, false, false));
+        }
+
+        return $this->view($order, true);
     }
 
     /**
@@ -428,6 +481,18 @@ final readonly class OrderService
     private static function taxLines(array $taxes): array
     {
         return array_map(static fn(TaxLineView $tax): TaxLine => new TaxLine($tax->name, $tax->percent, Money::of($tax->amount)), $taxes);
+    }
+
+    private static function orderRefund(RefundOrder $command): OrderRefund
+    {
+        $quantities = [];
+        foreach ($command->lines as $line) {
+            if ($line instanceof RefundLine) {
+                $quantities[$line->line] = ($quantities[$line->line] ?? 0) + $line->quantity;
+            }
+        }
+
+        return new OrderRefund(Money::of($command->amount), $quantities, $command->shipping, $command->restock);
     }
 
     private function view(Order $order, bool $forShop = false): OrderView

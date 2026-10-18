@@ -89,6 +89,15 @@ describe( 'OrdersScreen', () => {
 					pages: 0,
 				} );
 			}
+			if ( request.path.endsWith( '/refunds' ) ) {
+				return Promise.resolve( {
+					refundable: '0',
+					currency: 'EUR',
+					paid: false,
+					provider: null,
+					refunds: [],
+				} );
+			}
 			if ( request.method === undefined ) {
 				return Promise.resolve(
 					request.path.startsWith( '/orillacart/v1/orders?' )
@@ -117,12 +126,7 @@ describe( 'OrdersScreen', () => {
 			return Promise.resolve( {
 				...order,
 				status: 'processing',
-				next_statuses: [
-					'shipped',
-					'completed',
-					'cancelled',
-					'refunded',
-				],
+				next_statuses: [ 'shipped', 'completed' ],
 			} );
 		} );
 		const user = userEvent.setup();
@@ -153,7 +157,6 @@ describe( 'OrdersScreen', () => {
 			method: 'PUT',
 			data: {
 				status: 'processing',
-				restock: false,
 				note: 'Paid at the bank.',
 			},
 		} );

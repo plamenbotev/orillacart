@@ -27,6 +27,7 @@ use OrillaCart\Notifications\Infrastructure\Events\EmailAboutOrders;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
+use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
 use OrillaCart\Ordering\Infrastructure\Events\ForgetRemovedDownloads;
 use OrillaCart\Ordering\Infrastructure\Events\SettleOrdersByPayment;
@@ -39,6 +40,7 @@ use OrillaCart\Payment\Application\PaymentOptions;
 use OrillaCart\Payment\Application\PaymentOutcomes;
 use OrillaCart\Payment\Application\Payments;
 use OrillaCart\Payment\Application\PayPal\PayPalGateway;
+use OrillaCart\Payment\Application\Refunds;
 use OrillaCart\Payment\Domain\Event\PaymentCancelled;
 use OrillaCart\Payment\Domain\Event\PaymentCompleted;
 use OrillaCart\Payment\Domain\Event\PaymentFailed;
@@ -89,6 +91,7 @@ use OrillaCart\Tests\Fixtures\Payment\FakePayPalApi;
 use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentMethodRepository;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentRepository;
+use OrillaCart\Tests\Fixtures\Payment\InMemoryRefundRepository;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryConsignmentRepository;
@@ -124,6 +127,8 @@ final class TestShop
     public readonly InMemoryPaymentRepository $paymentRecords;
     public readonly FakePayPalApi $payPalApi;
     public readonly PaymentOutcomes $outcomes;
+    public readonly Refunds $refunds;
+    public readonly InMemoryRefundRepository $refundRecords;
     public readonly CartService $carts;
     public readonly InMemoryCartRepository $cartRecords;
     public readonly InMemoryOrderRepository $orderRecords;
@@ -189,13 +194,15 @@ final class TestShop
         $urls = new FakePaymentUrls();
         $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls);
         $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock);
-        $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger);
 
         $this->cartRecords = new InMemoryCartRepository();
         $this->carts = new CartService($this->cartRecords, $quotes, $this->clock, $settings);
         $this->orderRecords = new InMemoryOrderRepository();
         $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, new FakeOrderLinks());
         $this->transactions = new ImmediateTransactions();
+        $this->refundRecords = new InMemoryRefundRepository();
+        $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions);
+        $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds);
         $this->files = new TemporaryPrivateFiles();
         $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events);
         $this->downloads = new Downloads(new InMemoryDownloadGrantRepository($this->orderRecords), $this->files, new FakeOrderLinks(), $this->clock, $this->logger);
@@ -235,6 +242,7 @@ final class TestShop
         $emailing = new EmailAboutOrders($this->emails);
         $this->events->addListener(OrderStatusChanged::class, $emailing->statusChanged(...));
         $this->events->addListener(OrderNoteAdded::class, $emailing->noteAdded(...));
+        $this->events->addListener(OrderRefunded::class, $emailing->refunded(...));
 
         $settle = new SettleOrdersByPayment($this->orders, $this->logger);
         $this->events->addListener(PaymentCompleted::class, $settle->completed(...));

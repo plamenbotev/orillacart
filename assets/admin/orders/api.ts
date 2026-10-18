@@ -15,7 +15,7 @@ export const STATUSES = [
 ] as const;
 export type Status = ( typeof STATUSES )[ number ];
 
-/** Paid orders are cancelled or refunded before they can be deleted. */
+/** Paid orders are refunded in full before they can be deleted. */
 export const PAID_STATUSES: readonly Status[] = [
 	'processing',
 	'shipped',
@@ -57,6 +57,7 @@ export interface OrderLine {
 	backordered: number;
 	/** Whether the customer was told of the backorder. */
 	backorder_shown: boolean;
+	refunded_quantity: number;
 }
 
 export interface OrderNote {
@@ -105,6 +106,46 @@ export interface Order {
 	pickup_point_id: string | null;
 	/** The office or locker it goes to: its name and address. */
 	pickup_point: string | null;
+	/** What was given back, in all. */
+	refunded_total: string;
+	shipping_refunded: boolean;
+}
+
+export interface Refund {
+	id: number;
+	/** Through the gateway, recorded as made outside the shop, or made at the provider's own site. */
+	method: 'provider' | 'manual' | 'external';
+	/** Pending: the provider did not answer; trying again never refunds twice. */
+	status: 'pending' | 'done' | 'failed';
+	amount: string;
+	currency: string;
+	lines: { line: number; quantity: number }[];
+	shipping: boolean;
+	restock: boolean;
+	reason: string;
+	provider_reference: string | null;
+	provider_pending: boolean;
+	error: string | null;
+	created_at: string;
+	settled_at: string | null;
+}
+
+export interface OrderRefunds {
+	refundable: string;
+	currency: string;
+	paid: boolean;
+	/** The payment method's name when it gives money back through its provider. */
+	provider: string | null;
+	refunds: Refund[];
+}
+
+export interface NewRefund {
+	amount: string;
+	lines: { line: number; quantity: number }[];
+	shipping: boolean;
+	restock: boolean;
+	reason: string;
+	outside: boolean;
 }
 
 export interface OrderQuery {
@@ -147,13 +188,43 @@ export function fetchOrder( id: number ): Promise< Order > {
 export function changeStatus(
 	id: number,
 	status: Status,
-	restock: boolean,
 	note: string
 ): Promise< Order > {
 	return apiFetch< Order >( {
 		path: `${ BASE }/orders/${ id }/status`,
 		method: 'PUT',
-		data: { status, restock, note },
+		data: { status, note },
+	} );
+}
+
+export function fetchRefunds( id: number ): Promise< OrderRefunds > {
+	return apiFetch< OrderRefunds >( {
+		path: `${ BASE }/orders/${ id }/refunds`,
+	} );
+}
+
+export function refundOrder(
+	id: number,
+	refund: NewRefund
+): Promise< OrderRefunds > {
+	return apiFetch< OrderRefunds >( {
+		path: `${ BASE }/orders/${ id }/refunds`,
+		method: 'POST',
+		data: refund,
+	} );
+}
+
+export function retryRefund( id: number ): Promise< OrderRefunds > {
+	return apiFetch< OrderRefunds >( {
+		path: `${ BASE }/refunds/${ id }/retry`,
+		method: 'POST',
+	} );
+}
+
+export function giveUpRefund( id: number ): Promise< OrderRefunds > {
+	return apiFetch< OrderRefunds >( {
+		path: `${ BASE }/refunds/${ id }/give-up`,
+		method: 'POST',
 	} );
 }
 

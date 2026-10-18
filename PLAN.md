@@ -63,7 +63,7 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 28c | ↳ Shop → Background jobs screen, refreshed every 5 seconds: lanes, workers (restart), whether anything runs the queue, failed jobs to retry or delete (one, chosen or all, with payload), 24-hour chart and 30-day totals, scheduled jobs | f7eac24 |
 | 📝 | 22 | Coupon codes: by rules (minimum amount, dates, usage limits, per customer) or for specific products and categories | [design](docs/designs/22-coupons.md); questions answered 2026-10-18 |
 | 📝 | 23 | Dynamic prices (quantity tiers, customer groups, scheduled rules), bundles and sets | [design](docs/designs/23-dynamic-prices-bundles.md); questions answered 2026-10-18 |
-| 📝 | 24 | Refunds through the payment methods: a contract the gateways that can refund implement (PayPal's refund API); offline methods recorded by hand; full and partial | [design](docs/designs/24-refunds.md); questions answered 2026-10-18 |
+| ✅ | 24 | Refunds through the payment methods: `RefundsPayments` in the extension API (PayPal refunds captures and records refunds made in its dashboard from the webhook); offline methods recorded by hand; full and partial, by items or an amount alone, with restock; the customer is emailed; paid orders leave only by refunding, not by cancelling (raised 2026-10-18) | (this commit) |
 
 ## Waiting on others
 

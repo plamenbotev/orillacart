@@ -54,6 +54,9 @@ final readonly class OrderView
         public ?string $pickupPointId = null,
         /** The office or locker it goes to: its name and address. */
         public ?string $pickupPoint = null,
+        /** What was given back, in all. */
+        public string $refundedTotal = '0',
+        public bool $shippingRefunded = false,
     ) {}
 
     /**
@@ -97,6 +100,8 @@ final readonly class OrderView
             $order->shippingOption(),
             $order->pickupPointId(),
             $order->pickupPoint(),
+            (string) $order->refundedTotal(),
+            $order->isShippingRefunded(),
         );
     }
 }

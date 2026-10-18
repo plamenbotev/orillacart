@@ -54,6 +54,17 @@ final readonly class OrderEmails
     }
 
     /**
+     * Money went back: the customer hears how much, and for which items.
+     *
+     * @param array<int, int> $quantities items refunded by line position
+     */
+    public function refunded(int $orderId, string $amount, bool $full, array $quantities): void
+    {
+        $refund = ['amount' => $amount, 'full' => $full, 'quantities' => array_map(static fn(int $line, int $quantity): array => ['line' => $line, 'quantity' => $quantity], array_keys($quantities), array_values($quantities))];
+        $this->queue($orderId, EmailKind::OrderRefunded, refund: $refund);
+    }
+
+    /**
      * Sends an order's email again; the shop asks from the order's screen.
      *
      * @throws OrderNotFound
@@ -83,12 +94,24 @@ final readonly class OrderEmails
      * @throws OrderNotFound
      * @throws EmailNotWritten its template failed: trying again would fail the same way
      * @throws EmailNotSent    the mail system refused it, perhaps for a while
+     *
+     * @param array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>}|null $refund for the refund email: the refund it tells of
      */
-    public function send(int $orderId, EmailKind $kind, string $note = ''): void
+    public function send(int $orderId, EmailKind $kind, string $note = '', ?array $refund = null): void
     {
         $settings = $this->settings->load();
         $order = $this->orders->order($orderId);
-        $extra = ['note' => $note];
+        $extra = ['note' => $note, 'refund' => null];
+        if ($refund !== null) {
+            $lines = [];
+            foreach ($refund['quantities'] as $refunded) {
+                $line = $order->lines[$refunded['line']] ?? null;
+                if ($line !== null) {
+                    $lines[] = ['name' => $line->name, 'quantity' => $refunded['quantity']];
+                }
+            }
+            $extra['refund'] = ['amount' => $refund['amount'], 'full' => $refund['full'], 'lines' => $lines];
+        }
         $context = [
             'order' => $order,
             'receipt_url' => $this->links->receiptUrl($order->key),
@@ -119,17 +142,19 @@ final readonly class OrderEmails
     }
 
     /**
-     * One job per order and kind while it waits; customer notes each get their own.
+     * One job per order and kind while it waits; customer notes and refunds each get their own.
+     *
+     * @param array<string, mixed>|null $refund
      */
-    private function queue(int $orderId, EmailKind $kind, string $note = ''): void
+    private function queue(int $orderId, EmailKind $kind, string $note = '', ?array $refund = null): void
     {
         if (!$this->settings->load()->sends($kind)) {
             return;
         }
         $this->jobs->push(
             SendOrderEmails::TYPE,
-            ['order' => $orderId, 'kind' => $kind->value] + ($note === '' ? [] : ['note' => $note]),
-            $kind === EmailKind::CustomerNote ? null : "{$orderId}:{$kind->value}",
+            ['order' => $orderId, 'kind' => $kind->value] + ($note === '' ? [] : ['note' => $note]) + ($refund === null ? [] : ['refund' => $refund]),
+            $kind === EmailKind::CustomerNote || $refund !== null ? null : "{$orderId}:{$kind->value}",
         );
     }
 }

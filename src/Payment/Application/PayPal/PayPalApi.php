@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application\PayPal;
 
+use OrillaCart\Extension\Payment\RefundRefused;
 use OrillaCart\Payment\Application\Dto\PayPalAccount;
 use OrillaCart\Payment\Application\Dto\PayPalCapture;
 use OrillaCart\Payment\Application\Dto\PayPalNotification;
 use OrillaCart\Payment\Application\Dto\PayPalOrder;
 use OrillaCart\Payment\Application\Dto\PayPalOrderRequest;
+use OrillaCart\Payment\Application\Dto\PayPalRefund;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 
 /**
@@ -27,6 +29,16 @@ interface PayPalApi
      * @throws PaymentProviderUnavailable also when the order is not approved
      */
     public function captureOrder(PayPalAccount $account, string $orderId): PayPalCapture;
+
+    /**
+     * Refunds part or all of a capture. PayPal refunds once per request id, however often it is sent.
+     *
+     * @param string $amount formatted with the currency's decimals
+     *
+     * @throws RefundRefused              PayPal said no, such as for more than is left
+     * @throws PaymentProviderUnavailable
+     */
+    public function refundCapture(PayPalAccount $account, string $captureId, string $requestId, string $amount, string $currency, string $note): PayPalRefund;
 
     /**
      * Whether PayPal signed this webhook call for the account's webhook.

@@ -3,7 +3,7 @@
 <table role="presentation" width="100%" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
 {% for line in order.lines %}
 <tr style="border-bottom:1px solid #e4e4e7;">
-<td>{{ line.name }}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}{% if line.backordered > 0 and (line.backorder_shown or for_shop) %}<br><small>{{ __('%d on backorder')|format(line.backordered) }}</small>{% endif %}</td>
+<td>{{ line.name }}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}{% if line.backordered > 0 and (line.backorder_shown or for_shop) %}<br><small>{{ __('%d on backorder')|format(line.backordered) }}</small>{% endif %}{% if line.refunded_quantity > 0 %}<br><small>{{ __('%d refunded')|format(line.refunded_quantity) }}</small>{% endif %}</td>
 <td style="text-align:right;white-space:nowrap;">× {{ line.quantity }}</td>
 <td style="text-align:right;white-space:nowrap;">{{ line.total|money(order.currency) }}</td>
 </tr>
@@ -12,6 +12,7 @@
 {% if order.shipping %}<tr><td colspan="2">{{ __('Shipping') }}: {{ order.shipping }}</td><td style="text-align:right;">{{ order.shipping_total|money(order.currency) }}</td></tr>{% endif %}
 {% for tax in order.taxes %}<tr><td colspan="2">{{ tax.name }} ({{ tax.percent }} %)</td><td style="text-align:right;">{{ tax.amount|money(order.currency) }}</td></tr>{% endfor %}
 <tr style="font-weight:600;"><td colspan="2">{{ __('Total') }}</td><td style="text-align:right;">{{ order.total|money(order.currency) }}</td></tr>
+{% if order.refunded_total > 0 %}<tr><td colspan="2">{{ __('Refunded') }}</td><td style="text-align:right;">−{{ order.refunded_total|money(order.currency) }}</td></tr>{% endif %}
 </table>
 {% for shipment in shipments ?? [] %}<p style="margin:16px 0 0;">{{ __('Shipment %s with %s')|format(shipment.number, shipment.carrier) }}{% if shipment.tracking_url %}: <a href="{{ shipment.tracking_url }}" style="color:#2271b1;">{{ __('follow it') }}</a>{% endif %}</p>{% endfor %}
 {% if order.pickup_point %}<p style="margin:16px 0 0;">{{ __('Pickup point') }}: {{ order.pickup_point }}</p>{% endif %}

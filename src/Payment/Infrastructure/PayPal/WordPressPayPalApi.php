@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Infrastructure\PayPal;
 
+use OrillaCart\Extension\Payment\RefundRefused;
 use OrillaCart\Payment\Application\Dto\PayPalAccount;
 use OrillaCart\Payment\Application\Dto\PayPalCapture;
 use OrillaCart\Payment\Application\Dto\PayPalNotification;
 use OrillaCart\Payment\Application\Dto\PayPalOrder;
 use OrillaCart\Payment\Application\Dto\PayPalOrderRequest;
+use OrillaCart\Payment\Application\Dto\PayPalRefund;
 use OrillaCart\Payment\Application\PayPal\PayPalApi;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use Psr\Log\LoggerInterface;
@@ -72,6 +74,34 @@ final readonly class WordPressPayPalApi implements PayPalApi
         $amount = \is_array($capture['amount'] ?? null) ? $capture['amount'] : [];
 
         return new PayPalCapture(self::text($capture, 'id'), self::text($capture, 'status'), self::text($amount, 'value'), self::text($amount, 'currency_code'), $orderId);
+    }
+
+    public function refundCapture(PayPalAccount $account, string $captureId, string $requestId, string $amount, string $currency, string $note): PayPalRefund
+    {
+        $body = ['amount' => ['value' => $amount, 'currency_code' => $currency]];
+        if (trim($note) !== '') {
+            $body['note_to_payer'] = mb_substr(trim($note), 0, 255);
+        }
+        $response = $this->send($account, 'POST', '/v2/payments/captures/' . rawurlencode($captureId) . '/refund', $body, ['PayPal-Request-Id' => $requestId]);
+        $status = $response['status'];
+        if ($status >= 400 && $status < 500 && !\in_array($status, [401, 408, 429], true)) {
+            $issue = self::issue($response['body']);
+            $description = self::text($response['body'], 'message');
+            $this->logger->warning('PayPal refused refund {request} of capture {capture} ({status}): {issue}', ['request' => $requestId, 'capture' => $captureId, 'status' => $status, 'issue' => $issue === '' ? $description : $issue]);
+
+            throw new RefundRefused(match ($issue) {
+                'CAPTURE_FULLY_REFUNDED' => 'The payment was refunded in full already.',
+                'REFUND_AMOUNT_EXCEEDED' => 'The amount is more than is left of the payment.',
+                'REFUND_TIME_LIMIT_EXCEEDED' => 'The payment is too old to refund through PayPal.',
+                'INSUFFICIENT_FUNDS' => 'The PayPal account does not have the money to refund.',
+                default => $issue === '' ? ($description === '' ? "PayPal answered {$status}." : $description) : $issue,
+            });
+        }
+        if ($status >= 300) {
+            throw $this->unavailable("PayPal could not refund capture {$captureId} ({$status}).", $response['body']);
+        }
+
+        return new PayPalRefund(self::text($response['body'], 'id'), self::text($response['body'], 'status'));
     }
 
     public function verifyNotification(PayPalAccount $account, PayPalNotification $notification): bool

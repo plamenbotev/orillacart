@@ -17,7 +17,9 @@ use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
+use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
+use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
@@ -41,9 +43,15 @@ final class OrderAdministrationTest extends TestCase
         $order = $this->place();
 
         $view = $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('processing', note: 'Money arrived.'), 7);
-        self::assertSame(['shipped', 'completed', 'cancelled', 'refunded'], $view->nextStatuses);
+        self::assertSame(['shipped', 'completed'], $view->nextStatuses, 'a paid order is refunded, not cancelled');
+        try {
+            $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('cancelled'), 7);
+            self::fail('cancelling a paid order would keep the money');
+        } catch (OrderRuleViolation $e) {
+            self::assertSame('orillacart_invalid_status_change', $e->errorCode);
+        }
         $view = $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('shipped'), 7);
-        self::assertSame(['completed', 'refunded'], $view->nextStatuses);
+        self::assertSame(['completed'], $view->nextStatuses, 'refunding is a refund, not a status');
 
         $notes = $this->shop->orders->order($order->number)->notes;
         self::assertSame(['system', 'system', 'shop', 'shop'], array_column($notes, 'author'));
@@ -81,8 +89,9 @@ final class OrderAdministrationTest extends TestCase
         foreach ([$refunded, $kept] as $order) {
             $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('processing'), 7);
         }
-        $this->shop->orders->changeStatus($refunded->number, new ChangeOrderStatus('refunded', restock: true), 7);
-        $this->shop->orders->changeStatus($kept->number, new ChangeOrderStatus('refunded'), 7);
+        $this->shop->refunds->refund($refunded->number, new MakeRefund('16', [new RefundLine(0, 2)], restock: true), 7);
+        $this->shop->refunds->refund($kept->number, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
+        self::assertSame('refunded', $this->shop->orders->order($kept->number)->status);
         self::assertSame(9, $this->available(), 'the refund without restock keeps its item out of stock');
     }
 
@@ -103,7 +112,7 @@ final class OrderAdministrationTest extends TestCase
             self::assertSame('orillacart_order_paid', $e->errorCode);
         }
 
-        $this->shop->orders->changeStatus($paid->number, new ChangeOrderStatus('refunded'), 7);
+        $this->shop->refunds->refund($paid->number, new MakeRefund('16'), 7);
         $this->shop->orders->delete($paid->number);
         self::assertSame([], $this->shop->orderRecords->orders);
         self::assertSame(8, $this->available(), 'the refund kept its items out, and deleting does not change that');

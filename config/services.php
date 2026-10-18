@@ -51,8 +51,10 @@ use OrillaCart\Payment\Application\PayPal\PayPalApi;
 use OrillaCart\Payment\Application\PayPal\PayPalGateway;
 use OrillaCart\Payment\Domain\PaymentMethodRepository;
 use OrillaCart\Payment\Domain\PaymentRepository;
+use OrillaCart\Payment\Domain\RefundRepository;
 use OrillaCart\Payment\Infrastructure\Doctrine\DoctrinePaymentMethodRepository;
 use OrillaCart\Payment\Infrastructure\Doctrine\DoctrinePaymentRepository;
+use OrillaCart\Payment\Infrastructure\Doctrine\DoctrineRefundRepository;
 use OrillaCart\Payment\Infrastructure\PayPal\WordPressPayPalApi;
 use OrillaCart\Payment\Infrastructure\WordPress\RestPaymentUrls;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
@@ -191,6 +193,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ShippingClassRepository::class, DoctrineShippingClassRepository::class);
     $services->alias(PaymentMethodRepository::class, DoctrinePaymentMethodRepository::class);
     $services->alias(PaymentRepository::class, DoctrinePaymentRepository::class);
+    $services->alias(RefundRepository::class, DoctrineRefundRepository::class);
     $services->alias(OrderRepository::class, DoctrineOrderRepository::class);
     $services->alias(CartRepository::class, DoctrineCartRepository::class);
     $services->alias(OrderLinks::class, StorefrontOrderLinks::class);

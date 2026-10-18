@@ -74,6 +74,10 @@ class OrderLine
     #[ORM\Column(options: ['default' => false])]
     private bool $backorderShown = false;
 
+    /** How many of the items were refunded. */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $refundedQuantity = 0;
+
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Order::class, inversedBy: 'lines')]
         #[ORM\JoinColumn(name: 'order_id', nullable: false, onDelete: 'CASCADE')]
@@ -212,5 +216,58 @@ class OrderLine
     public function forgetStock(): void
     {
         $this->stockTaken = [];
+    }
+
+    public function refundedQuantity(): int
+    {
+        return $this->refundedQuantity;
+    }
+
+    /** Items not refunded yet. */
+    public function refundableQuantity(): int
+    {
+        return $this->quantity - $this->refundedQuantity;
+    }
+
+    /**
+     * @internal for Order: some of the items were refunded. Owed items are refunded first, as they never left;
+     * the stock the rest took is given up, in the share each item took, from the last stockroom first.
+     *
+     * @return list<TakenItem> the stock to put back, when $restock
+     */
+    public function refund(int $quantity, bool $restock): array
+    {
+        if ($quantity < 1 || $quantity > $this->refundableQuantity()) {
+            throw new OrderRuleViolation(\sprintf('Line "%s" has %d items left to refund.', $this->name, $this->refundableQuantity()), 'orillacart_invalid_refund_quantity');
+        }
+        $remaining = $this->refundableQuantity();
+        $this->refundedQuantity += $quantity;
+        $this->backordered = max(0, $this->backordered - $quantity);
+
+        // Each item's stock was taken for the units not refunded yet: give up its share for the refunded ones.
+        $byItem = [];
+        foreach ($this->stockTaken as $index => $taken) {
+            $byItem[$taken['item']][] = $index;
+        }
+        $kept = $this->stockTaken;
+        $returned = [];
+        foreach ($byItem as $item => $indexes) {
+            $total = array_sum(array_map(static fn(int $index): int => $kept[$index]['quantity'], $indexes));
+            $give = intdiv($total * $quantity, $remaining);
+            foreach (array_reverse($indexes) as $index) {
+                $part = min($give, $kept[$index]['quantity']);
+                if ($part <= 0) {
+                    continue;
+                }
+                $give -= $part;
+                $kept[$index] = ['item' => $kept[$index]['item'], 'stockroom_id' => $kept[$index]['stockroom_id'], 'quantity' => $kept[$index]['quantity'] - $part];
+                if ($restock) {
+                    $returned[] = new TakenItem((string) $item, $kept[$index]['stockroom_id'], $part);
+                }
+            }
+        }
+        $this->stockTaken = array_values(array_filter($kept, static fn(array $taken): bool => $taken['quantity'] > 0));
+
+        return $returned;
     }
 }

@@ -75,3 +75,21 @@
 [id^="orillacart-admin-"] .orillacart-stock__id {
 	width: 5em;
 }
+
+/* An order's refunds */
+[id^="orillacart-admin-"] .orillacart-refunds {
+	margin: 0 0 16px;
+}
+
+[id^="orillacart-admin-"] .orillacart-refunds > li {
+	padding: 8px 0;
+	border-bottom: 1px solid #e0e0e0;
+}
+
+[id^="orillacart-admin-"] .orillacart-refunds__pending {
+	color: #996800;
+}
+
+[id^="orillacart-admin-"] .orillacart-refunds__failed {
+	color: #cc1818;
+}

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Fixtures\Payment;
 
+use OrillaCart\Extension\Payment\RefundRefused;
 use OrillaCart\Payment\Application\Dto\PayPalAccount;
 use OrillaCart\Payment\Application\Dto\PayPalCapture;
 use OrillaCart\Payment\Application\Dto\PayPalNotification;
 use OrillaCart\Payment\Application\Dto\PayPalOrder;
 use OrillaCart\Payment\Application\Dto\PayPalOrderRequest;
+use OrillaCart\Payment\Application\Dto\PayPalRefund;
 use OrillaCart\Payment\Application\PayPal\PayPalApi;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 
@@ -25,6 +27,12 @@ final class FakePayPalApi implements PayPalApi
     public string $captureStatus = 'COMPLETED';
     public ?string $capturedAmount = null;
     public bool $signed = true;
+    /** @var array<string, array{capture: string, amount: string, currency: string}> refunds taken, by request id */
+    public array $refunds = [];
+    /** Why PayPal refuses the next refunds; null: it takes them. */
+    public ?string $refuses = null;
+    /** PayPal takes the refund but the answer is lost on the way. */
+    public bool $answerLost = false;
 
     public function createOrder(PayPalAccount $account, PayPalOrderRequest $request): PayPalOrder
     {
@@ -43,6 +51,21 @@ final class FakePayPalApi implements PayPalApi
         $request = $this->created[$index] ?? throw new PaymentProviderUnavailable('PayPal', 'unknown order');
 
         return new PayPalCapture("CAPTURE-{$orderId}", $this->captureStatus, $this->capturedAmount ?? $request->amount, $request->currency, $orderId);
+    }
+
+    public function refundCapture(PayPalAccount $account, string $captureId, string $requestId, string $amount, string $currency, string $note): PayPalRefund
+    {
+        $this->reach();
+        if ($this->refuses !== null) {
+            throw new RefundRefused($this->refuses);
+        }
+        // PayPal refunds once per request id.
+        $this->refunds[$requestId] ??= ['capture' => $captureId, 'amount' => $amount, 'currency' => $currency];
+        if ($this->answerLost) {
+            throw new PaymentProviderUnavailable('PayPal', 'timed out');
+        }
+
+        return new PayPalRefund('REFUND-' . ((int) array_search($requestId, array_keys($this->refunds), true) + 1), 'COMPLETED');
     }
 
     public function verifyNotification(PayPalAccount $account, PayPalNotification $notification): bool

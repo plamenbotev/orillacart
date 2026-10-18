@@ -50,7 +50,7 @@ final readonly class SendOrderEmails implements JobHandler
                 continue;
             }
             try {
-                $this->emails->send($order, $kind, \is_string($job->payload['note'] ?? null) ? $job->payload['note'] : '');
+                $this->emails->send($order, $kind, \is_string($job->payload['note'] ?? null) ? $job->payload['note'] : '', self::refund($job->payload['refund'] ?? null));
             } catch (OrderNotFound) {
                 // Deleted since: nobody to write to about it.
             } catch (EmailNotWritten $e) {
@@ -68,5 +68,23 @@ final readonly class SendOrderEmails implements JobHandler
         $kind = EmailKind::tryFrom(\is_string($payload['kind'] ?? null) ? $payload['kind'] : '');
 
         return \sprintf('Order #%s: %s email', \is_int($payload['order'] ?? null) ? $payload['order'] : '?', $kind === null ? 'unknown' : str_replace('_', ' ', $kind->value));
+    }
+
+    /**
+     * @return array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>}|null
+     */
+    private static function refund(mixed $refund): ?array
+    {
+        if (!\is_array($refund) || !\is_string($refund['amount'] ?? null)) {
+            return null;
+        }
+        $quantities = [];
+        foreach (\is_array($refund['quantities'] ?? null) ? $refund['quantities'] : [] as $line) {
+            if (\is_array($line) && \is_int($line['line'] ?? null) && \is_int($line['quantity'] ?? null)) {
+                $quantities[] = ['line' => $line['line'], 'quantity' => $line['quantity']];
+            }
+        }
+
+        return ['amount' => $refund['amount'], 'full' => ($refund['full'] ?? false) === true, 'quantities' => $quantities];
     }
 }

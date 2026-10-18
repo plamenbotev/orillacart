@@ -1,6 +1,16 @@
 # 24 · Refunds
 
-Status: proposed, waiting for approval.
+Status: built (2026-10-18). Fitted to the extension API (27): the contract is `RefundsPayments` in
+`OrillaCart\Extension\Payment`, described in docs/extensions.md. Changes from the draft below:
+
+- No `refundable()` on the gateway: the shop knows what is left (paid total minus refunds) and the provider
+  refuses anything more.
+- Refunds are recorded in Payment (`refunds`: method provider, manual or external; pending, done or failed) and
+  the order records what they covered (`refunded_total`, `shipping_refunded`, `refunded_quantity` per line).
+- A pending refund is not checked automatically; the shop tries it again (same idempotency key) or gives it up,
+  and PayPal's webhook completes it when it arrives.
+- Paid orders are no longer cancelled or moved to Refunded from the status list: they leave by refunding, so the
+  shop never keeps money for an order it called off (raised 2026-10-18).
 
 ## The contract
 

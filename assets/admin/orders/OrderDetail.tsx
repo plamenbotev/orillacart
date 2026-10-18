@@ -38,6 +38,7 @@ import {
 import { EMAIL_LABELS, STATUS_LABELS, money, when } from './labels';
 import { AccountCard, DownloadsCard, ShipmentsCard } from './OrderCards';
 import { type ItemRow, ItemRows } from './ItemRows';
+import { RefundsCard } from './RefundsCard';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -119,6 +120,15 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 					onError={ fail }
 				/>
 			) }
+			<RefundsCard
+				order={ order }
+				onRefunded={ ( text ) =>
+					fetchOrder( order.number )
+						.then( done( text ) )
+						.catch( fail )
+				}
+				onError={ fail }
+			/>
 			{ order.shipping_option?.startsWith( 'carrier:' ) && (
 				<ShipmentsCard order={ order } onError={ fail } />
 			) }
@@ -376,7 +386,6 @@ function StatusCard( { order, onSaved, onError }: CardProps ) {
 	const [ status, setStatus ] = useState< Status >(
 		order.next_statuses[ 0 ] ?? order.status
 	);
-	const [ restock, setRestock ] = useState( false );
 	const [ note, setNote ] = useState( '' );
 
 	return (
@@ -395,16 +404,6 @@ function StatusCard( { order, onSaved, onError }: CardProps ) {
 					} ) ) }
 					onChange={ ( value ) => setStatus( value as Status ) }
 				/>
-				{ status === 'refunded' && (
-					<CheckboxControl
-						label={ __(
-							'Put the items back in stock',
-							'orillacart'
-						) }
-						checked={ restock }
-						onChange={ setRestock }
-					/>
-				) }
 				{ status === 'cancelled' && (
 					<p>
 						{ __(
@@ -425,7 +424,7 @@ function StatusCard( { order, onSaved, onError }: CardProps ) {
 				<Button
 					variant="primary"
 					onClick={ () =>
-						changeStatus( order.number, status, restock, note )
+						changeStatus( order.number, status, note )
 							.then( ( saved ) => {
 								setNote( '' );
 								setStatus(

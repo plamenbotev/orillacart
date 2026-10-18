@@ -118,6 +118,13 @@ class Order
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $paidAt = null;
 
+    /** What was given back, in all. */
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+    private string $refundedTotal = '0';
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $shippingRefunded = false;
+
     public function __construct(OrderDraft $draft)
     {
         if (preg_match('/^[a-f0-9]{32}$/', $draft->key) !== 1) {
@@ -300,6 +307,88 @@ class Order
     public function paidAt(): ?\DateTimeImmutable
     {
         return $this->paidAt;
+    }
+
+    public function refundedTotal(): Money
+    {
+        return Money::of($this->refundedTotal);
+    }
+
+    /** What is left to give back. */
+    public function refundable(): Money
+    {
+        return $this->total()->subtract($this->refundedTotal())->atLeastZero();
+    }
+
+    public function isShippingRefunded(): bool
+    {
+        return $this->shippingRefunded;
+    }
+
+    /**
+     * Whether the refund fits the order: it is paid, the amount is no more than is left, and the items and the
+     * shipping were not refunded before. Checked before any money moves.
+     *
+     * @throws OrderRuleViolation
+     */
+    public function checkRefund(OrderRefund $refund): void
+    {
+        if (!$this->status->isPaid()) {
+            throw new OrderRuleViolation(\sprintf('Order #%d is %s; only paid orders are refunded.', $this->id(), strtolower($this->status->label())), 'orillacart_order_not_refundable');
+        }
+        if ($refund->amount->isNegative() || $refund->amount->isZero()) {
+            throw new OrderRuleViolation('A refund is for more than nothing.', 'orillacart_invalid_refund_amount');
+        }
+        if ($refund->amount->compare($this->refundable()) > 0) {
+            throw new OrderRuleViolation(\sprintf('At most %s %s is left to refund.', $this->refundable(), $this->currency), 'orillacart_invalid_refund_amount');
+        }
+        $lines = [];
+        foreach ($this->lines as $line) {
+            $lines[$line->position()] = $line;
+        }
+        foreach ($refund->quantities as $position => $quantity) {
+            $line = $lines[$position] ?? throw new OrderRuleViolation(\sprintf('Order #%d has no line %d.', $this->id(), $position + 1), 'orillacart_invalid_refund_line');
+            if ($quantity < 1 || $quantity > $line->refundableQuantity()) {
+                throw new OrderRuleViolation(\sprintf('Line "%s" has %d items left to refund.', $line->name(), $line->refundableQuantity()), 'orillacart_invalid_refund_quantity');
+            }
+        }
+        if ($refund->shipping && ($this->shippingRefunded || $this->shippingName === null)) {
+            throw new OrderRuleViolation('The shipping was refunded before, or the order ships nothing.', 'orillacart_invalid_refund_shipping');
+        }
+    }
+
+    /**
+     * Records money given back. Refunded items stop their downloads once none of the line is left; an order
+     * refunded in full becomes Refunded, and the stock of what was not refunded item by item stays sold.
+     *
+     * @return list<TakenItem> the stock to put back: the refunded items', when the refund restocks
+     *
+     * @throws OrderRuleViolation as checkRefund()
+     */
+    public function refund(OrderRefund $refund): array
+    {
+        $this->checkRefund($refund);
+        $taken = [];
+        foreach ($this->lines as $line) {
+            $quantity = $refund->quantities[$line->position()] ?? 0;
+            if ($quantity > 0) {
+                array_push($taken, ...$line->refund($quantity, $refund->restock));
+                if ($line->refundableQuantity() === 0) {
+                    foreach ($this->grants as $grant) {
+                        if ($grant->linePosition() === $line->position()) {
+                            $this->grants->removeElement($grant);
+                        }
+                    }
+                }
+            }
+        }
+        $this->shippingRefunded = $this->shippingRefunded || $refund->shipping;
+        $this->refundedTotal = $this->refundedTotal()->add($refund->amount)->toFixed();
+        if ($this->refundable()->isZero()) {
+            array_push($taken, ...$this->close(OrderStatus::Refunded, false));
+        }
+
+        return $taken;
     }
 
     /**
@@ -506,13 +595,13 @@ class Order
 
     /**
      * The shop moves the order along, as its admin screen allows: see OrderStatus::next(). Cancelling puts the
-     * stock back; refunding does when the shop takes the items back.
+     * stock back. An order becomes Refunded only by refunding it (refund()), so the money goes back with it.
      *
      * @return list<TakenItem> the stock to put back
      *
      * @throws OrderRuleViolation for a move the order's status does not allow
      */
-    public function moveTo(OrderStatus $status, bool $restock, \DateTimeImmutable $at): array
+    public function moveTo(OrderStatus $status, \DateTimeImmutable $at): array
     {
         if (!\in_array($status, $this->status->next(), true)) {
             throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot become %s.', $this->id(), strtolower($this->status->label()), strtolower($status->label())), 'orillacart_invalid_status_change');
@@ -529,8 +618,6 @@ class Order
                 return [];
             case OrderStatus::Cancelled:
                 return $this->close(OrderStatus::Cancelled);
-            case OrderStatus::Refunded:
-                return $this->close(OrderStatus::Refunded, $restock);
             default:
                 $this->status = $status;
 

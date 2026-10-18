@@ -13,6 +13,10 @@ use OrillaCart\Extension\Payment\PaymentOutcome;
 use OrillaCart\Extension\Payment\PaymentReturn;
 use OrillaCart\Extension\Payment\PaymentSession;
 use OrillaCart\Extension\Payment\PaymentStart;
+use OrillaCart\Extension\Payment\RefundRefused;
+use OrillaCart\Extension\Payment\RefundRequest;
+use OrillaCart\Extension\Payment\RefundResult;
+use OrillaCart\Extension\Payment\RefundsPayments;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Setting;
 use OrillaCart\Extension\Settings;
@@ -26,9 +30,9 @@ use OrillaCart\Shared\Domain\Money;
 /**
  * PayPal Checkout through the Orders API v2: the shop creates a PayPal order for the amount, the customer
  * approves it at PayPal and comes back, and the shop captures it. A verified webhook settles payments whose
- * customer never came back. Built on the extension API, as an add-on's gateway would be.
+ * customer never came back, and tells of refunds made in PayPal's own dashboard. Refunds go back to the capture. Built on the extension API, as an add-on's gateway would be.
  */
-final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, HandlesNotifications
+final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, HandlesNotifications, RefundsPayments
 {
     public const string ID = 'paypal';
 
@@ -112,6 +116,24 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Ha
         }
     }
 
+    public function refund(RefundRequest $request, Settings $settings): RefundResult
+    {
+        if ($request->transactionId === null || $request->transactionId === '') {
+            throw new RefundRefused('PayPal has no capture for this payment to refund.');
+        }
+        $decimals = self::CURRENCIES[$request->currency] ?? throw new RefundRefused("PayPal does not take {$request->currency}.");
+        $amount = Money::of($request->amount);
+        if (!$amount->rounded($decimals)->equals($amount)) {
+            throw new RefundRefused("The amount {$amount} has more decimals than PayPal takes in {$request->currency}.");
+        }
+        $refund = $this->call(fn() => $this->api->refundCapture(self::account($settings), $request->transactionId, $request->id, $amount->format($decimals), $request->currency, $request->reason));
+        if (\in_array($refund->status, ['CANCELLED', 'FAILED'], true)) {
+            throw new RefundRefused("PayPal answered the refund with {$refund->status}.");
+        }
+
+        return $refund->status === 'PENDING' ? RefundResult::pending($refund->id) : RefundResult::done($refund->id);
+    }
+
     public function notified(Notification $notification, Settings $settings): ?PaymentOutcome
     {
         $account = self::account($settings);
@@ -127,6 +149,27 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Ha
             $orderId = self::text($resource, 'id');
 
             return $orderId === '' ? null : self::outcome($orderId, $this->call(fn(): PayPalCapture => $this->api->captureOrder($account, $orderId)));
+        }
+        if ($type === 'PAYMENT.CAPTURE.REFUNDED') {
+            // The resource is the refund; it links up to the capture it gave money back from.
+            $captureId = '';
+            foreach (\is_array($resource['links'] ?? null) ? $resource['links'] : [] as $link) {
+                if (\is_array($link) && ($link['rel'] ?? null) === 'up' && \is_string($link['href'] ?? null) && preg_match('#/captures/([^/?]+)#', $link['href'], $match) === 1) {
+                    $captureId = $match[1];
+                }
+            }
+            $supplementary = \is_array($resource['supplementary_data'] ?? null) ? $resource['supplementary_data'] : [];
+            $related = \is_array($supplementary['related_ids'] ?? null) ? $supplementary['related_ids'] : [];
+            $amount = \is_array($resource['amount'] ?? null) ? $resource['amount'] : [];
+            $refundId = self::text($resource, 'id');
+
+            return $refundId === '' || ($captureId === '' && self::text($related, 'order_id') === '') ? null : PaymentOutcome::refunded(
+                self::text($related, 'order_id'),
+                $refundId,
+                self::text($amount, 'value'),
+                self::text($amount, 'currency_code'),
+                $captureId === '' ? null : $captureId,
+            );
         }
         if (str_starts_with($type, 'PAYMENT.CAPTURE.')) {
             $supplementary = \is_array($resource['supplementary_data'] ?? null) ? $resource['supplementary_data'] : [];

@@ -10,6 +10,8 @@ interface PaymentRepository
 
     public function findByReference(string $gateway, string $reference): ?Payment;
 
+    public function findByTransaction(string $gateway, string $transactionId): ?Payment;
+
     /** @return list<Payment> */
     public function ofOrder(int $orderId): array;
 

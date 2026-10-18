@@ -6,6 +6,7 @@ namespace OrillaCart\Notifications\Infrastructure\Events;
 
 use OrillaCart\Notifications\Application\OrderEmails;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
+use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
@@ -24,6 +25,14 @@ final readonly class EmailAboutOrders
     {
         if ($event->forCustomer) {
             $this->emails->noteAdded($event->orderId, $event->text);
+        }
+    }
+
+    #[AsEventListener]
+    public function refunded(OrderRefunded $event): void
+    {
+        if ($event->tellCustomer) {
+            $this->emails->refunded($event->orderId, $event->amount, $event->full, $event->quantities);
         }
     }
 }

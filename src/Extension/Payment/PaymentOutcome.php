@@ -17,11 +17,14 @@ final readonly class PaymentOutcome
     public const string CANCELLED = 'cancelled';
     /** Nothing is known yet. */
     public const string PENDING = 'pending';
+    /** Money went back to the customer, perhaps by the shop at the provider's own site. */
+    public const string REFUNDED = 'refunded';
 
     /**
      * @param string      $reference     the provider's id of the payment, as PaymentStart::redirect() gave it
      * @param string|null $transactionId the provider's id of the money moved, kept with the payment
-     * @param string|null $amount        what was paid, when the provider says
+     * @param string|null $amount        what was paid, or refunded, when the provider says
+     * @param string|null $refundId      the provider's id of a refund
      */
     private function __construct(
         public string $reference,
@@ -29,6 +32,7 @@ final readonly class PaymentOutcome
         public ?string $transactionId = null,
         public ?string $amount = null,
         public ?string $currency = null,
+        public ?string $refundId = null,
     ) {}
 
     public static function completed(string $reference, string $transactionId, ?string $amount = null, ?string $currency = null): self
@@ -54,5 +58,17 @@ final readonly class PaymentOutcome
     public static function pending(string $reference): self
     {
         return new self($reference, self::PENDING);
+    }
+
+    /**
+     * Part or all of a completed payment went back. The shop records a refund it did not make itself, once per
+     * $refundId; one it made is recognised by that id.
+     *
+     * @param string      $reference     the payment's reference; empty when the provider names only the transaction
+     * @param string|null $transactionId the payment's transaction, to find it by when the reference is empty
+     */
+    public static function refunded(string $reference, string $refundId, string $amount, ?string $currency = null, ?string $transactionId = null): self
+    {
+        return new self($reference, self::REFUNDED, $transactionId, $amount, $currency, $refundId);
     }
 }

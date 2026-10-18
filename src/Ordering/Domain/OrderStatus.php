@@ -37,6 +37,8 @@ enum OrderStatus: string
 
     /**
      * The statuses the shop may move an order to from this one. Cancelled, failed and refunded orders are final.
+     * Only unpaid orders are cancelled: a paid one leaves by refunding it, which gives the money back and makes it
+     * Refunded once all of it went, so the shop never keeps money for an order it called off.
      *
      * @return list<self>
      */
@@ -45,9 +47,9 @@ enum OrderStatus: string
         return match ($this) {
             self::PendingPayment => [self::OnHold, self::Processing, self::Cancelled],
             self::OnHold => [self::Processing, self::Cancelled],
-            self::Processing => [self::Shipped, self::Completed, self::Cancelled, self::Refunded],
-            self::Shipped => [self::Completed, self::Refunded],
-            self::Completed => [self::Refunded],
+            self::Processing => [self::Shipped, self::Completed],
+            self::Shipped => [self::Completed],
+            self::Completed => [],
             self::Cancelled, self::Failed, self::Refunded => [],
         };
     }

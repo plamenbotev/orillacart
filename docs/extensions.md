@@ -66,6 +66,18 @@ A gateway whose provider calls back implements `HandlesNotifications`. The admin
 The shop settles each payment once; later returns and notifications change nothing. A completed outcome whose
 amount or currency is not the order's is held for the shop to look at instead of completing the order.
 
+A gateway whose provider can give money back implements `RefundsPayments`; the order screen then offers
+"Refund through …" on paid orders. For other gateways the shop records refunds it made itself.
+
+- `refund($request, $settings)` refunds `$request->amount` of the payment, found by its `reference` or
+  `transactionId` (as the outcome gave them). Return `RefundResult::done($providerId)`, or `pending()` when the
+  provider finishes it later. Throw `RefundRefused` with the reason when the provider says no, and
+  `ProviderUnavailable` when it does not answer: the refund then waits, and the shop tries it again with the same
+  `$request->id`. Pass that id to the provider as its idempotency key, so a retry never refunds twice.
+- A refund made at the provider's own site reaches the shop as a notification: return
+  `PaymentOutcome::refunded($reference, $refundId, $amount, $currency, $transactionId)`. The shop records it once
+  per `$refundId`, and recognises its own refunds by that id.
+
 `tests/Fixtures/Extension/TestPayGateway.php` is a complete example, and the shop's PayPal gateway
 (`src/Payment/Application/PayPal/PayPalGateway.php`) is built the same way.
 

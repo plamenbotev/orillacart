@@ -22,6 +22,11 @@ final readonly class DoctrinePaymentRepository implements PaymentRepository
         return $this->entityManager->getRepository(Payment::class)->findOneBy(['gateway' => $gateway, 'reference' => $reference]);
     }
 
+    public function findByTransaction(string $gateway, string $transactionId): ?Payment
+    {
+        return $this->entityManager->getRepository(Payment::class)->findOneBy(['gateway' => $gateway, 'transactionId' => $transactionId]);
+    }
+
     public function ofOrder(int $orderId): array
     {
         /** @var list<Payment> */

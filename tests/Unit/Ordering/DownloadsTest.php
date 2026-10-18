@@ -16,6 +16,7 @@ use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
 use OrillaCart\Ordering\Domain\OrderNotFound;
+use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\TemporaryPrivateFiles;
@@ -59,7 +60,7 @@ final class DownloadsTest extends TestCase
     {
         $expiring = $this->paid();
         $refunded = $this->paid();
-        $this->shop->orders->changeStatus($refunded->number, new ChangeOrderStatus('refunded'), 1);
+        $this->shop->refunds->refund($refunded->number, new MakeRefund($this->shop->orders->order($refunded->number)->total), 1);
         self::assertSame([], $this->shop->orders->byKey($refunded->key)->downloads);
 
         $this->shop->clock->modify('+31 days');

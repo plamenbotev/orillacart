@@ -60,6 +60,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
             ['GET', '/orders/1/shipments'], ['POST', '/orders/1/shipments'], ['GET', '/shipments/1/label'], ['POST', '/shipments/1/cancel'], ['GET', '/shipping-methods'], ['GET', '/orders/1/pickup-points'],
             ['GET', '/search-filters'], ['POST', '/search-filters'], ['PUT', '/search-filters/1'], ['DELETE', '/search-filters/1'], ['GET', '/search-filters/attributes'],
             ['GET', '/search-engine'], ['PUT', '/search-engine'], ['POST', '/search-engine/rebuild'],
+            ['GET', '/orders/1/refunds'], ['POST', '/orders/1/refunds'], ['POST', '/refunds/1/retry'], ['POST', '/refunds/1/give-up'],
             ['GET', '/jobs'], ['GET', '/jobs/failed'], ['POST', '/jobs/failed/retry'], ['POST', '/jobs/failed/delete'], ['POST', '/jobs/workers/restart']];
         $account = [['GET', '/account'], ['PUT', '/account/addresses'], ['GET', '/account/orders'], ['GET', '/account/orders/1'], ['GET', '/account/downloads']];
         foreach ([...$shop, ...$account] as [$method, $route]) {
@@ -84,7 +85,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $this->mails = [];
         $changed = $this->request('PUT', "/orders/{$order['number']}/status", ['status' => 'processing', 'note' => 'Paid at the bank.'], nonce: true);
         self::assertSame(200, $changed->get_status(), (string) wp_json_encode($changed->get_data()));
-        self::assertSame(['shipped', 'completed', 'cancelled', 'refunded'], $this->data($changed)['next_statuses']);
+        self::assertSame(['shipped', 'completed'], $this->data($changed)['next_statuses']);
         $this->request('POST', "/orders/{$order['number']}/notes", ['text' => 'It leaves tomorrow.', 'for_customer' => true], nonce: true);
         $sent = [];
         foreach ($this->sentMail() as $mail) {
@@ -98,6 +99,36 @@ final class OrdersAndCustomersRestTest extends RestTestCase
 
         $receipt = $this->data($this->request('GET', "/receipts/{$order['key']}"));
         self::assertSame(['It leaves tomorrow.'], array_column($this->rows($receipt['notes']), 'text'), 'the customer sees only their notes');
+    }
+
+    public function testTheShopRefundsPartOfAPaidOrderAndThenTheRest(): void
+    {
+        $order = $this->order([[$this->lamp, 2]]);
+        $this->actAs('administrator');
+        self::assertSame(422, $this->request('POST', "/orders/{$order['number']}/refunds", ['amount' => '1'], nonce: true)->get_status(), 'not paid yet');
+        $this->request('PUT', "/orders/{$order['number']}/status", ['status' => 'processing'], nonce: true);
+        $total = $this->data($this->request('GET', "/orders/{$order['number']}"))['total'];
+        self::assertIsString($total);
+        $this->sentMail();
+        $this->mails = [];
+
+        $state = $this->data($this->request('GET', "/orders/{$order['number']}/refunds"));
+        self::assertSame([$total, true, null, []], [$state['refundable'], $state['paid'], $state['provider'], $state['refunds']], 'bank transfers are refunded outside the shop');
+        $made = $this->request('POST', "/orders/{$order['number']}/refunds", ['amount' => '25', 'lines' => [['line' => 0, 'quantity' => 1]], 'restock' => true, 'reason' => 'Returned.'], nonce: true);
+        self::assertSame(201, $made->get_status(), (string) wp_json_encode($made->get_data()));
+        $refund = $this->rows($this->data($made)['refunds'])[0];
+        self::assertSame(['manual', 'done', '25'], [$refund['method'], $refund['status'], $refund['amount']]);
+        self::assertSame(2, $this->data($this->request('GET', "/stock/product/{$this->lamp}"))['available'], 'the returned lamp is back in stock');
+        $sent = $this->sentMail();
+        self::assertStringContainsString("We refunded part of your order #{$order['number']}", $sent[0]['subject'] ?? '');
+
+        $receipt = $this->data($this->request('GET', "/receipts/{$order['key']}"));
+        self::assertSame(['processing', '25', 1], [$receipt['status'], $receipt['refunded_total'], $this->rows($receipt['lines'])[0]['refunded_quantity']]);
+        self::assertSame(422, $this->request('POST', "/orders/{$order['number']}/refunds", ['amount' => '1000'], nonce: true)->get_status(), 'more than is left');
+
+        $rest = $this->data($this->request('GET', "/orders/{$order['number']}/refunds"))['refundable'];
+        $this->request('POST', "/orders/{$order['number']}/refunds", ['amount' => $rest], nonce: true);
+        self::assertSame('refunded', $this->data($this->request('GET', "/orders/{$order['number']}"))['status']);
     }
 
     public function testTheShopTakesAnOrderItselfAndDeletesItWithItsStockBack(): void
@@ -276,7 +307,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     {
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['download_grants', 'order_notes', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }
