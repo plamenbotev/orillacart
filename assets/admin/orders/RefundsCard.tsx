@@ -23,6 +23,7 @@ import {
 	retryRefund,
 } from './api';
 import { money, when } from './labels';
+import { useConfirm } from '../shared/useConfirm';
 
 interface RefundsCardProps {
 	order: Order;
@@ -99,6 +100,7 @@ export function RefundsCard( {
 	const [ restock, setRestock ] = useState( true );
 	const [ outside, setOutside ] = useState( false );
 	const [ busy, setBusy ] = useState( false );
+	const [ confirmation, confirm ] = useConfirm();
 
 	useEffect( () => {
 		fetchRefunds( order.number ).then( setState ).catch( onError );
@@ -162,6 +164,7 @@ export function RefundsCard( {
 
 	return (
 		<Card className="orillacart-card">
+			{ confirmation }
 			<CardHeader>
 				<h2>{ __( 'Refunds', 'orillacart' ) }</h2>
 			</CardHeader>
@@ -374,7 +377,23 @@ export function RefundsCard( {
 								! ( Number( value ) > 0 ) ||
 								Number( value ) > refundable
 							}
-							onClick={ submit }
+							onClick={ () =>
+								throughProvider
+									? confirm(
+											sprintf(
+												/* translators: 1: amount, 2: payment method */
+												__(
+													'Give %1$s back to the customer through %2$s? The money leaves at once.',
+													'orillacart'
+												),
+												money( value, order.currency ),
+												state.provider ?? ''
+											),
+											submit,
+											__( 'Refund', 'orillacart' )
+										)
+									: submit()
+							}
 						>
 							{ throughProvider
 								? sprintf(

@@ -99,6 +99,13 @@ describe( 'RefundsCard', () => {
 		await user.click(
 			screen.getByRole( 'button', { name: /Refund .* through PayPal/ } )
 		);
+		// The money leaves at once: the shop is asked first.
+		expect(
+			screen.getByText(
+				/Give 24\.00 EUR back to the customer through PayPal/
+			)
+		).toBeVisible();
+		await user.click( screen.getByRole( 'button', { name: 'Refund' } ) );
 
 		expect( requests ).toContainEqual( {
 			path: '/orillacart/v1/orders/7/refunds',

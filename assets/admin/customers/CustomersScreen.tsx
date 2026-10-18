@@ -15,6 +15,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { type Address, EMPTY_ADDRESS } from '../shared/address';
 import { AddressFields } from '../shared/AddressFields';
 import { toApiError } from '../shared/api';
+import { useConfirm } from '../shared/useConfirm';
 import {
 	type Customer,
 	type CustomerGroup,
@@ -225,8 +226,10 @@ function GroupsCard( {
 	onError: ( error: unknown ) => void;
 } ) {
 	const [ name, setName ] = useState( '' );
+	const [ confirmation, confirm ] = useConfirm();
 	return (
 		<Card className="orillacart-card">
+			{ confirmation }
 			<CardHeader>
 				<h2>{ __( 'Customer groups', 'orillacart' ) }</h2>
 			</CardHeader>
@@ -266,24 +269,22 @@ function GroupsCard( {
 								<Button
 									variant="link"
 									isDestructive
-									onClick={ () => {
-										if (
-											window.confirm(
-												sprintf(
-													/* translators: %s: group name */
-													__(
-														'Delete the group %s? Its customers leave it, and its price rules apply to no one.',
-														'orillacart'
-													),
-													group.name
-												)
-											)
-										) {
-											deleteGroup( group.id )
-												.then( onChanged )
-												.catch( onError );
-										}
-									} }
+									onClick={ () =>
+										confirm(
+											sprintf(
+												/* translators: %s: group name */
+												__(
+													'Delete the group %s? Its customers leave it, and its price rules apply to no one.',
+													'orillacart'
+												),
+												group.name
+											),
+											() =>
+												deleteGroup( group.id )
+													.then( onChanged )
+													.catch( onError )
+										)
+									}
 								>
 									{ __( 'Delete', 'orillacart' ) }
 								</Button>

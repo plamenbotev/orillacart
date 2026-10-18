@@ -18,6 +18,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { type Named, ProductTokens, TermTokens } from '../shared/CatalogTokens';
 import { toApiError } from '../shared/api';
 import { fromLocal, toLocal } from '../shared/dates';
+import { useConfirm } from '../shared/useConfirm';
 import {
 	type Coupon,
 	type CouponFields,
@@ -129,6 +130,7 @@ const FIELDS: Field< Coupon >[] = [
  * items, when and for whom it holds, and how often it may be used.
  */
 export function CouponsScreen() {
+	const [ confirmation, confirm ] = useConfirm();
 	const [ view, setView ] = useState< View >( {
 		type: 'table',
 		page: 1,
@@ -157,6 +159,7 @@ export function CouponsScreen() {
 
 	return (
 		<>
+			{ confirmation }
 			<h1>
 				{ __( 'Coupons', 'orillacart' ) }{ ' ' }
 				{ editing === null && (
@@ -222,9 +225,8 @@ export function CouponsScreen() {
 						id: 'delete',
 						label: __( 'Delete', 'orillacart' ),
 						callback: ( [ item ] ) => {
-							if (
-								item &&
-								window.confirm(
+							if ( item ) {
+								confirm(
 									sprintf(
 										/* translators: %s: coupon code */
 										__(
@@ -232,12 +234,12 @@ export function CouponsScreen() {
 											'orillacart'
 										),
 										item.code
-									)
-								)
-							) {
-								deleteCoupon( item.id )
-									.then( load )
-									.catch( fail );
+									),
+									() =>
+										deleteCoupon( item.id )
+											.then( load )
+											.catch( fail )
+								);
 							}
 						},
 					},

@@ -18,6 +18,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import type { Address } from '../shared/address';
 import { AddressFields } from '../shared/AddressFields';
 import { toApiError } from '../shared/api';
+import { useBusy } from '../shared/useBusy';
 import {
 	addNote,
 	changeContact,
@@ -279,6 +280,7 @@ function DeleteButton( {
 	onError: ( error: unknown ) => void;
 } ) {
 	const [ confirming, setConfirming ] = useState( false );
+	const [ busy, run ] = useBusy();
 
 	if ( ! confirming ) {
 		return (
@@ -309,10 +311,14 @@ function DeleteButton( {
 			<Button
 				variant="primary"
 				isDestructive
+				isBusy={ busy }
+				disabled={ busy }
 				onClick={ () =>
-					deleteOrder( order.number )
-						.then( onDeleted )
-						.catch( onError )
+					run( () =>
+						deleteOrder( order.number )
+							.then( onDeleted )
+							.catch( onError )
+					)
 				}
 			>
 				{ __( 'Delete', 'orillacart' ) }
@@ -505,6 +511,7 @@ function StatusCard( { order, onSaved, onError }: CardProps ) {
 		order.next_statuses[ 0 ] ?? order.status
 	);
 	const [ note, setNote ] = useState( '' );
+	const [ busy, run ] = useBusy();
 
 	return (
 		<Card className="orillacart-card">
@@ -549,16 +556,20 @@ function StatusCard( { order, onSaved, onError }: CardProps ) {
 				/>
 				<Button
 					variant="primary"
+					isBusy={ busy }
+					disabled={ busy }
 					onClick={ () =>
-						changeStatus( order.number, status, note )
-							.then( ( saved ) => {
-								setNote( '' );
-								setStatus(
-									saved.next_statuses[ 0 ] ?? saved.status
-								);
-								onSaved( saved );
-							} )
-							.catch( onError )
+						run( () =>
+							changeStatus( order.number, status, note )
+								.then( ( saved ) => {
+									setNote( '' );
+									setStatus(
+										saved.next_statuses[ 0 ] ?? saved.status
+									);
+									onSaved( saved );
+								} )
+								.catch( onError )
+						)
 					}
 				>
 					{ __( 'Change status', 'orillacart' ) }
@@ -629,6 +640,7 @@ function PaymentCard( { order, onSaved, onError }: CardProps ) {
 }
 
 function NotesCard( { order, onSaved, onError }: CardProps ) {
+	const [ busy, run ] = useBusy();
 	const [ text, setText ] = useState( '' );
 	const [ forCustomer, setForCustomer ] = useState( false );
 
@@ -664,15 +676,18 @@ function NotesCard( { order, onSaved, onError }: CardProps ) {
 				/>
 				<Button
 					variant="secondary"
-					disabled={ text.trim() === '' }
+					isBusy={ busy }
+					disabled={ busy || text.trim() === '' }
 					onClick={ () =>
-						addNote( order.number, text, forCustomer )
-							.then( ( saved ) => {
-								setText( '' );
-								setForCustomer( false );
-								onSaved( saved );
-							} )
-							.catch( onError )
+						run( () =>
+							addNote( order.number, text, forCustomer )
+								.then( ( saved ) => {
+									setText( '' );
+									setForCustomer( false );
+									onSaved( saved );
+								} )
+								.catch( onError )
+						)
 					}
 				>
 					{ __( 'Add note', 'orillacart' ) }
@@ -683,6 +698,7 @@ function NotesCard( { order, onSaved, onError }: CardProps ) {
 }
 
 function ItemsCard( { order, onSaved, onError }: CardProps ) {
+	const [ busy, run ] = useBusy();
 	const [ rows, setRows ] = useState< ItemRow[] >(
 		order.lines.map( ( line ) => ( {
 			item: {
@@ -769,18 +785,21 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 				) }
 				<Button
 					variant="primary"
-					disabled={ items.length === 0 }
+					isBusy={ busy }
+					disabled={ busy || items.length === 0 }
 					onClick={ () =>
-						editItems(
-							order.number,
-							items,
-							shippingOption,
-							toPickupPoint && pickupPoint !== ''
-								? pickupPoint
-								: null
+						run( () =>
+							editItems(
+								order.number,
+								items,
+								shippingOption,
+								toPickupPoint && pickupPoint !== ''
+									? pickupPoint
+									: null
+							)
+								.then( onSaved )
+								.catch( onError )
 						)
-							.then( onSaved )
-							.catch( onError )
 					}
 				>
 					{ __( 'Save the items', 'orillacart' ) }
@@ -791,6 +810,7 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 }
 
 function ContactCard( { order, onSaved, onError }: CardProps ) {
+	const [ busy, run ] = useBusy();
 	const [ email, setEmail ] = useState( order.email );
 	const [ billing, setBilling ] = useState< Address >( order.billing );
 	const [ shipping, setShipping ] = useState< Address | null >(
@@ -847,16 +867,20 @@ function ContactCard( { order, onSaved, onError }: CardProps ) {
 				) }
 				<Button
 					variant="secondary"
+					isBusy={ busy }
+					disabled={ busy }
 					onClick={ () =>
-						changeContact(
-							order.number,
-							email,
-							billing,
-							shipping,
-							answers
+						run( () =>
+							changeContact(
+								order.number,
+								email,
+								billing,
+								shipping,
+								answers
+							)
+								.then( onSaved )
+								.catch( onError )
 						)
-							.then( onSaved )
-							.catch( onError )
 					}
 				>
 					{ __( 'Save the customer’s details', 'orillacart' ) }
@@ -942,6 +966,7 @@ function EmailCard( {
 	const [ kind, setKind ] = useState< ( typeof EMAILS )[ number ] >(
 		EMAILS[ 0 ]
 	);
+	const [ busy, run ] = useBusy();
 
 	return (
 		<Card className="orillacart-card">
@@ -965,10 +990,16 @@ function EmailCard( {
 					<FlexItem>
 						<Button
 							variant="secondary"
+							isBusy={ busy }
+							disabled={ busy }
 							onClick={ () =>
-								sendEmail( order.number, kind )
-									.then( ( result ) => onSent( result.sent ) )
-									.catch( onError )
+								run( () =>
+									sendEmail( order.number, kind )
+										.then( ( result ) =>
+											onSent( result.sent )
+										)
+										.catch( onError )
+								)
 							}
 						>
 							{ __( 'Send', 'orillacart' ) }

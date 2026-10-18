@@ -25,6 +25,7 @@ import {
 	TermTokens,
 } from '../shared/CatalogTokens';
 import { fromLocal, toLocal } from '../shared/dates';
+import { useConfirm } from '../shared/useConfirm';
 import {
 	type CustomerGroup,
 	deleteRule,
@@ -87,6 +88,7 @@ export function tiersLabel( tiers: Tier[] ): string {
  * shopper gets the lowest price.
  */
 export function PriceRulesScreen() {
+	const [ confirmation, confirm ] = useConfirm();
 	const [ rules, setRules ] = useState< PriceRule[] | null >( null );
 	const [ groups, setGroups ] = useState< CustomerGroup[] >( [] );
 	const [ editing, setEditing ] = useState< PriceRule | 'new' | null >(
@@ -149,6 +151,7 @@ export function PriceRulesScreen() {
 
 	return (
 		<>
+			{ confirmation }
 			<h1>
 				{ __( 'Price rules', 'orillacart' ) }{ ' ' }
 				{ editing === null && (
@@ -224,9 +227,8 @@ export function PriceRulesScreen() {
 						id: 'delete',
 						label: __( 'Delete', 'orillacart' ),
 						callback: ( [ item ] ) => {
-							if (
-								item &&
-								window.confirm(
+							if ( item ) {
+								confirm(
 									sprintf(
 										/* translators: %s: rule name */
 										__(
@@ -234,12 +236,12 @@ export function PriceRulesScreen() {
 											'orillacart'
 										),
 										item.name
-									)
-								)
-							) {
-								deleteRule( item.id )
-									.then( load )
-									.catch( fail );
+									),
+									() =>
+										deleteRule( item.id )
+											.then( load )
+											.catch( fail )
+								);
 							}
 						},
 					},
