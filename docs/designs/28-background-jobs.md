@@ -1,6 +1,6 @@
 # 28 · Background jobs, with an overview for the shop
 
-Status: building (2026-10-18). Decided without answers to the questions below, to keep going: emails move onto jobs
+Status: built (2026-10-18), 28a–28c. Decided without answers to the questions below, to keep going: emails move onto jobs
 now (28b), and done jobs are kept only as hourly counts; failed jobs keep their details.
 
 ## Why

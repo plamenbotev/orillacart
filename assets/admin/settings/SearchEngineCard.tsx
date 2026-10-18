@@ -179,12 +179,18 @@ export function SearchEngineCard() {
 								: __(
 										'WordPress builds the index after each change and every minute. For a busy shop, run workers: wp orillacart jobs work --loop.',
 										'orillacart'
-									) }
+									) }{ ' ' }
+							<a href="admin.php?page=orillacart-jobs">
+								{ __(
+									'See the background jobs',
+									'orillacart'
+								) }
+							</a>
 						</p>
 						{ parked.length > 0 && (
 							<Notice status="warning" isDismissible={ false }>
 								{ __(
-									'These products could not be indexed; they are tried again when they change:',
+									'These products could not be indexed; they are tried again when they change, or when you retry them under Background jobs:',
 									'orillacart'
 								) }
 								<ul>

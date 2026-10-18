@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Fixtures\Jobs;
 
 use OrillaCart\Jobs\Application\Dto\FailedJobView;
+use OrillaCart\Jobs\Application\Dto\JobCounts;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
+use OrillaCart\Jobs\Application\Dto\ScheduledJobView;
 use OrillaCart\Jobs\Application\Dto\WaitingJobs;
 use OrillaCart\Jobs\Application\JobQueue;
 
@@ -113,6 +115,36 @@ final class MemoryJobQueue implements JobQueue
     public function waitingByType(\DateTimeImmutable $now): array
     {
         return $this->waiting('type', $now);
+    }
+
+    public function scheduled(\DateTimeImmutable $now, int $limit): array
+    {
+        $later = array_filter($this->jobs, static fn(array $job): bool => $job['at'] > $now && ($job['lockedUntil'] === null || $job['lockedUntil'] <= $now));
+        uasort($later, static fn(array $a, array $b): int => $a['at'] <=> $b['at']);
+        $scheduled = [];
+        foreach (\array_slice($later, 0, $limit, true) as $id => $job) {
+            $scheduled[] = new ScheduledJobView((string) $id, $job['type'], $job['key'], $job['payload'], $job['at']->format(\DATE_ATOM));
+        }
+
+        return $scheduled;
+    }
+
+    public function history(\DateTimeImmutable $since): array
+    {
+        $history = [];
+        ksort($this->stats);
+        foreach ($this->stats as $hour => $types) {
+            if (new \DateTimeImmutable($hour) < $since) {
+                continue;
+            }
+            ksort($types);
+            foreach ($types as $type => $counts) {
+                $jobs = $counts['done'] + $counts['retried'] + $counts['failed'];
+                $history[] = new JobCounts($hour, $type, $counts['done'], $counts['retried'], $counts['failed'], $jobs === 0 ? 0 : intdiv($counts['ms'], $jobs));
+            }
+        }
+
+        return $history;
     }
 
     public function pruneStats(\DateTimeImmutable $before): void

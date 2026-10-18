@@ -1,0 +1,82 @@
+/* The Shop → Background jobs screen */
+[id^="orillacart-admin-"] .orillacart-jobs__table td,
+[id^="orillacart-admin-"] .orillacart-jobs__table th {
+	vertical-align: top;
+}
+
+[id^="orillacart-admin-"] .orillacart-jobs__muted {
+	color: #757575;
+}
+
+[id^="orillacart-admin-"] .orillacart-jobs__error {
+	color: #cc1818;
+	overflow-wrap: anywhere;
+}
+
+[id^="orillacart-admin-"] .orillacart-jobs__details {
+	margin-bottom: 16px;
+	padding: 12px 16px;
+	border: 1px solid #ddd;
+	background: #f6f7f7;
+}
+
+[id^="orillacart-admin-"] .orillacart-jobs__details pre {
+	max-height: 240px;
+	overflow: auto;
+	white-space: pre-wrap;
+}
+
+[id^="orillacart-admin-"] .orillacart-jobs__chart {
+	display: flex;
+	gap: 3px;
+	align-items: flex-end;
+	height: 120px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid #ddd;
+}
+
+/* Each hour stacks done, then retried, then failed, from the bottom. */
+[id^="orillacart-admin-"] .orillacart-jobs__hour {
+	display: flex;
+	flex: 1;
+	flex-direction: column-reverse;
+	height: 100%;
+}
+
+[id^="orillacart-admin-"] .orillacart-jobs__bar {
+	display: block;
+	width: 100%;
+}
+
+[id^="orillacart-admin-"] .is-done {
+	--orillacart-jobs-color: #2271b1;
+}
+
+[id^="orillacart-admin-"] .is-retried {
+	--orillacart-jobs-color: #dba617;
+}
+
+[id^="orillacart-admin-"] .is-failed {
+	--orillacart-jobs-color: #d63638;
+}
+
+[id^="orillacart-admin-"] .orillacart-jobs__bar {
+	background: var(--orillacart-jobs-color);
+}
+
+[id^="orillacart-admin-"] .orillacart-jobs__legend span {
+	margin-right: 16px;
+}
+
+[id^="orillacart-admin-"] .orillacart-jobs__legend span::before {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin-right: 4px;
+	background: var(--orillacart-jobs-color);
+	content: "";
+}
+
+[id^="orillacart-admin-"] .dataviews-wrapper + .components-card {
+	margin-top: 24px;
+}

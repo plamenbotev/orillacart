@@ -107,6 +107,47 @@ final class JobQueueTest extends RestTestCase
         self::assertSame(['done' => '5', 'retried' => '1', 'failed' => '1', 'runtime_ms' => '50'], $row);
     }
 
+    public function testTheShopSeesTheLanesAndRetriesOrDeletesFailedJobs(): void
+    {
+        global $wpdb;
+        self::assertInstanceOf(\wpdb::class, $wpdb);
+        $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_failed_jobs");
+        $now = new \DateTimeImmutable();
+        foreach (['41', '42'] as $order) {
+            $this->queue->push([new NewJob('mail', 'mail.order', ['order' => (int) $order, 'kind' => 'order_received'], "{$order}:order_received", $now)], $now);
+            $job = $this->queue->claim(['mail'], 1, 'one', $now, $now->modify('+5 minutes'))[0];
+            $this->queue->fail($job, 'The mail system refused it.', $now);
+        }
+        $this->actAs('administrator');
+
+        $overview = $this->data($this->request('GET', '/jobs'));
+        self::assertSame(['mail', 'search', 'shipping'], array_column(self::list($overview['lanes']), 'queue'));
+        self::assertSame(2, $overview['failed']);
+        self::assertContains($overview['runner'], ['workers', 'cron', 'none']);
+
+        $failed = $this->data($this->request('GET', '/jobs/failed?type=mail.order&per_page=1'));
+        self::assertSame([2, 2], [$failed['total'], $failed['pages']]);
+        $job = self::list($failed['jobs'])[0];
+        self::assertIsArray($job);
+        self::assertSame(['Order #42: order received email', 'The mail system refused it.', ['order' => 42, 'kind' => 'order_received']], [$job['about'], $job['error'], $job['payload']]);
+
+        self::assertSame(422, $this->request('POST', '/jobs/failed/retry', ['ids' => ['x']], nonce: true)->get_status());
+        self::assertSame(['retried' => 1], $this->data($this->request('POST', '/jobs/failed/retry', ['ids' => [$job['id']]], nonce: true)));
+        self::assertSame(1, $this->queue->pending('mail.order'));
+        self::assertSame(['deleted' => 1], $this->data($this->request('POST', '/jobs/failed/delete', ['all' => true], nonce: true)));
+        $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_jobs WHERE type = 'mail.order'");
+    }
+
+    /**
+     * @return list<mixed>
+     */
+    private static function list(mixed $value): array
+    {
+        self::assertIsList($value);
+
+        return $value;
+    }
+
     /**
      * @param array<string, mixed> $payload
      */

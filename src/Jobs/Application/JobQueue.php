@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace OrillaCart\Jobs\Application;
 
+use OrillaCart\Jobs\Application\Dto\JobCounts;
 use OrillaCart\Jobs\Application\Dto\NewJob;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
+use OrillaCart\Jobs\Application\Dto\ScheduledJobView;
 use OrillaCart\Jobs\Application\Dto\WaitingJobs;
 
 /**
@@ -73,6 +75,20 @@ interface JobQueue
      * @return array<string, WaitingJobs> by type
      */
     public function waitingByType(\DateTimeImmutable $now): array;
+
+    /**
+     * The jobs scheduled ahead, soonest first.
+     *
+     * @return list<ScheduledJobView>
+     */
+    public function scheduled(\DateTimeImmutable $now, int $limit): array;
+
+    /**
+     * The hourly counts since $since, per type, oldest first.
+     *
+     * @return list<JobCounts>
+     */
+    public function history(\DateTimeImmutable $since): array;
 
     /**
      * Deletes the hourly counts before $before.

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace OrillaCart\Jobs\Infrastructure\Doctrine;
 
 use Doctrine\DBAL\Connection;
+use OrillaCart\Jobs\Application\Dto\JobCounts;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
+use OrillaCart\Jobs\Application\Dto\ScheduledJobView;
 use OrillaCart\Jobs\Application\Dto\WaitingJobs;
 use OrillaCart\Jobs\Application\JobQueue;
 
@@ -177,6 +179,48 @@ final readonly class DbalJobQueue implements JobQueue
     public function waitingByType(\DateTimeImmutable $now): array
     {
         return $this->waiting('type', $now);
+    }
+
+    public function scheduled(\DateTimeImmutable $now, int $limit): array
+    {
+        $moment = $now->format(self::MOMENT);
+        $rows = $this->tables->connection()->fetchAllAssociative(
+            \sprintf(
+                'SELECT id, type, unique_key, payload, available_at FROM %s WHERE available_at > ? AND (locked_until IS NULL OR locked_until <= ?) ORDER BY available_at, id LIMIT %d',
+                $this->tables->jobs(),
+                max(1, $limit),
+            ),
+            [$moment, $moment],
+        );
+
+        return array_map(static fn(array $row): ScheduledJobView => new ScheduledJobView(
+            (string) self::int($row['id']),
+            \is_string($row['type']) ? $row['type'] : '',
+            \is_string($row['unique_key']) ? $row['unique_key'] : null,
+            self::payload($row['payload']),
+            self::moment($row['available_at']) ?? '',
+        ), $rows);
+    }
+
+    public function history(\DateTimeImmutable $since): array
+    {
+        $rows = $this->tables->connection()->fetchAllAssociative(
+            "SELECT hour, type, done, retried, failed, runtime_ms FROM {$this->tables->stats()} WHERE hour >= ? ORDER BY hour, type",
+            [$since->format(self::MOMENT)],
+        );
+
+        return array_map(static function (array $row): JobCounts {
+            $jobs = self::int($row['done']) + self::int($row['retried']) + self::int($row['failed']);
+
+            return new JobCounts(
+                self::moment($row['hour']) ?? '',
+                \is_string($row['type']) ? $row['type'] : '',
+                self::int($row['done']),
+                self::int($row['retried']),
+                self::int($row['failed']),
+                $jobs === 0 ? 0 : intdiv(self::int($row['runtime_ms']), $jobs),
+            );
+        }, $rows);
     }
 
     public function pruneStats(\DateTimeImmutable $before): void
