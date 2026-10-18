@@ -1,7 +1,7 @@
 {#
  # The shop: products in a grid, with categories, search, sorting and pages.
  #
- # products: [{offer, url, image (HTML), simple}]; categories: [{name, url, current}]; all_url; search; sort;
+ # products: [{offer, url, image (HTML), simple}]; categories: [{name, url, current, image (HTML or empty)}]; all_url; search; sort;
  # sorts: {value: label}; page; pages; page_urls: {number: url}; columns; cart_url (null without a cart page).
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
@@ -11,7 +11,7 @@
             <ul>
                 <li><a href="{{ all_url }}"{{ current_category is empty ? ' aria-current="page"' }}>{{ __('All products') }}</a></li>
                 {% for category in categories %}
-                    <li><a href="{{ category.url }}"{{ category.current ? ' aria-current="page"' }}>{{ category.name }}</a></li>
+                    <li><a href="{{ category.url }}"{{ category.current ? ' aria-current="page"' }}>{{ category.image|raw }}{{ category.name }}</a></li>
                 {% endfor %}
             </ul>
         </nav>

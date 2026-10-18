@@ -6,6 +6,7 @@ namespace OrillaCart\Catalog\Infrastructure\WordPress;
 
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\CategoryOrder;
+use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\CategoryThumbnail;
 
 /**
  * The product categories the storefront lists, in the shop's order.
@@ -15,7 +16,7 @@ final readonly class ProductCategories
     /**
      * The top-level categories that have products, by their Order field, then by name.
      *
-     * @return list<array{id: int, name: string, slug: string}>
+     * @return list<array{id: int, name: string, slug: string, image: string}> image: the picture's HTML, or empty
      */
     public function ordered(): array
     {
@@ -31,6 +32,13 @@ final readonly class ProductCategories
         }
         usort($categories, static fn(array $a, array $b): int => [$a['position'], $a['name']] <=> [$b['position'], $b['name']]);
 
-        return array_map(static fn(array $category): array => ['id' => $category['id'], 'name' => html_entity_decode($category['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'), 'slug' => $category['slug']], $categories);
+        return array_map(static fn(array $category): array => [
+            'id' => $category['id'],
+            'name' => html_entity_decode($category['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            'slug' => $category['slug'],
+            'image' => CategoryThumbnail::of($category['id']) > 0
+                ? (string) wp_get_attachment_image(CategoryThumbnail::of($category['id']), 'thumbnail', false, ['class' => 'orillacart-categories__image', 'loading' => 'lazy'])
+                : '',
+        ], $categories);
     }
 }

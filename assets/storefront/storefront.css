@@ -482,3 +482,16 @@ fieldset[aria-invalid="true"] {
 .orillacart-product__description {
 	white-space: pre-line;
 }
+
+.orillacart-categories a {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.orillacart-categories__image {
+	width: 2rem;
+	height: 2rem;
+	object-fit: cover;
+	border-radius: var(--orillacart-radius);
+}
