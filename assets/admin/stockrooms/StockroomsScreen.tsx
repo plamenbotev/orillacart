@@ -8,6 +8,7 @@ import {
 	FlexItem,
 	Notice,
 	Spinner,
+	SelectControl,
 	TextControl,
 	TextareaControl,
 } from '@wordpress/components';
@@ -31,6 +32,7 @@ const EMPTY: StockroomInput = {
 	description: '',
 	min_delivery_days: 0,
 	max_delivery_days: 0,
+	delivery_unit: 'days',
 	active: true,
 };
 
@@ -148,6 +150,7 @@ function StockroomCard( {
 	const [ confirming, setConfirming ] = useState( false );
 	const days = ( value: string ) =>
 		Math.max( 0, Number.parseInt( value, 10 ) || 0 );
+	const perUnit = draft.delivery_unit === 'weeks' ? 7 : 1;
 
 	const submit = ( event: FormEvent ) => {
 		event.preventDefault();
@@ -204,43 +207,70 @@ function StockroomCard( {
 						value={ draft.name }
 						onChange={ ( name ) => setDraft( { ...draft, name } ) }
 					/>
-					<Flex>
-						<FlexItem isBlock>
-							<TextControl
+					<Flex align="flex-end">
+						<FlexItem>
+							<SelectControl
 								__next40pxDefaultSize
-								type="number"
-								min={ 0 }
-								label={ __(
-									'Delivery takes at least (days)',
-									'orillacart'
-								) }
-								value={ String( draft.min_delivery_days ) }
-								onChange={ ( value ) =>
+								label={ __( 'Delivery time in', 'orillacart' ) }
+								value={ draft.delivery_unit }
+								options={ [
+									{
+										label: __( 'Days', 'orillacart' ),
+										value: 'days',
+									},
+									{
+										label: __( 'Weeks', 'orillacart' ),
+										value: 'weeks',
+									},
+								] }
+								onChange={ ( unit ) => {
+									const weeks = unit === 'weeks';
+									// Times in weeks are whole weeks: round up to the next one.
+									const round = ( value: number ) =>
+										weeks
+											? Math.ceil( value / 7 ) * 7
+											: value;
 									setDraft( {
 										...draft,
-										min_delivery_days: days( value ),
-									} )
-								}
+										delivery_unit: weeks ? 'weeks' : 'days',
+										min_delivery_days: round(
+											draft.min_delivery_days
+										),
+										max_delivery_days: round(
+											draft.max_delivery_days
+										),
+									} );
+								} }
 							/>
 						</FlexItem>
-						<FlexItem isBlock>
-							<TextControl
-								__next40pxDefaultSize
-								type="number"
-								min={ 0 }
-								label={ __(
-									'and at most (days)',
-									'orillacart'
-								) }
-								value={ String( draft.max_delivery_days ) }
-								onChange={ ( value ) =>
-									setDraft( {
-										...draft,
-										max_delivery_days: days( value ),
-									} )
-								}
-							/>
-						</FlexItem>
+						{ (
+							[
+								[
+									'min_delivery_days',
+									__( 'At least', 'orillacart' ),
+								],
+								[
+									'max_delivery_days',
+									__( 'At most', 'orillacart' ),
+								],
+							] as const
+						 ).map( ( [ field, label ] ) => (
+							<FlexItem isBlock key={ field }>
+								<TextControl
+									__next40pxDefaultSize
+									type="number"
+									min={ 0 }
+									label={ label }
+									value={ String( draft[ field ] / perUnit ) }
+									onChange={ ( value ) =>
+										setDraft( {
+											...draft,
+											[ field ]: days( value ) * perUnit,
+										} )
+									}
+								/>
+							</FlexItem>
+						) ) }
 					</Flex>
 					<TextareaControl
 						label={ __( 'Description', 'orillacart' ) }

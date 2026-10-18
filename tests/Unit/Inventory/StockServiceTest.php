@@ -76,6 +76,15 @@ final class StockServiceTest extends TestCase
         self::assertSame(['product:10' => [$this->sofia => 4]], $this->stock->levelsOf([StockItemRef::product(10)]));
     }
 
+    public function testDeliveryTimesInWeeksAreWholeWeeksKeptInDays(): void
+    {
+        $saved = $this->stockrooms->create(new SaveStockroom('Warehouse', 7, 21, deliveryUnit: 'weeks'));
+        self::assertSame([7, 21, 'weeks'], [$saved->minDeliveryDays, $saved->maxDeliveryDays, $saved->deliveryUnit]);
+
+        $this->expectException(InventoryRuleViolation::class);
+        $this->stockrooms->create(new SaveStockroom('Warehouse', 7, 10, deliveryUnit: 'weeks'));
+    }
+
     public function testSettingLevelsReplacesThemAll(): void
     {
         $mug = StockItemRef::product(5);

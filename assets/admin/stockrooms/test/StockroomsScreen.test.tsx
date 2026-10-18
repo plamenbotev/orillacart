@@ -49,7 +49,7 @@ function serve( write: ( request: Request ) => Promise< unknown > ) {
 describe( 'StockroomsScreen', () => {
 	afterEach( () => mockedFetch.mockReset() );
 
-	it( 'adds a stockroom with its delivery time', async () => {
+	it( 'adds a stockroom with its delivery time, given in weeks and kept in days', async () => {
 		serve( ( request ) =>
 			Promise.resolve( { id: 2, ...( request.data as object ) } )
 		);
@@ -58,11 +58,13 @@ describe( 'StockroomsScreen', () => {
 
 		await screen.findByRole( 'heading', { name: 'Sofia' } );
 		await user.type( last( screen.getAllByLabelText( 'Name' ) ), 'Berlin' );
-		const longest = last(
-			screen.getAllByLabelText( 'and at most (days)' )
+		await user.selectOptions(
+			last( screen.getAllByLabelText( 'Delivery time in' ) ),
+			'weeks'
 		);
+		const longest = last( screen.getAllByLabelText( 'At most' ) );
 		await user.clear( longest );
-		await user.type( longest, '7' );
+		await user.type( longest, '2' );
 		await user.click(
 			screen.getByRole( 'button', { name: 'Add stockroom' } )
 		);
@@ -77,8 +79,9 @@ describe( 'StockroomsScreen', () => {
 				name: 'Berlin',
 				description: '',
 				min_delivery_days: 0,
-				max_delivery_days: 7,
+				max_delivery_days: 14,
 				active: true,
+				delivery_unit: 'weeks',
 			},
 		} );
 		expect(

@@ -1,0 +1,65 @@
+# OrillaCart 2 — plan
+
+The rebuild of OrillaCart on branch `rebuild`. Nothing is pushed until all of it is done.
+
+Status: ✅ done · 🔄 in progress · ⬜ to do · 📝 needs a design approved before building
+
+## Phases of the rebuild
+
+| | Phase | Commit |
+|---|---|---|
+| ✅ | 0. Foundation: PHP 8.4, Symfony DI, Doctrine, release build | 3a2309c |
+| ✅ | 1. HTTP kernel, REST routes, settings, events, logging, Twig | f81c7d9 |
+| ✅ | 2. Geography and tax | d3d12b3 |
+| ✅ | 3. Catalog and inventory | 4191c97 |
+| ✅ | 4. Cart, checkout, shipping and payments (cash on delivery, bank transfer, cheque, PayPal REST) | 86f6aeb |
+| ✅ | 5. Orders admin, customers, emails, downloads | 4569fd5 |
+| ✅ | 6. Storefront (Twig blocks), admin polish, Playwright tests | 7a13d95 |
+| ✅ | Mini cart with buttons, like the old cart widget | 7a44166 |
+
+## Parity with the old plugin, and what came up on the way
+
+Agreed on 2026-10-18 after comparing every screen and setting of the old plugin with the rebuild.
+
+| | # | Item | Commit |
+|---|---|---|---|
+| ✅ | 1 | Attributes and options: drag into order, fold away (saved ones start folded) | 2d1ecde |
+| ✅ | 2 | Variations as private child posts of their product: own name, description, image, gallery, weight and size | 26bc195 |
+| ✅ | 3 | Stock page: products, variations and options by stockroom; ID, SKU, filters, search by name/SKU/ID; bulk save | 0bad6c2 |
+| ✅ | 4 | Currency sign and where it goes | be47876 |
+| ✅ | 5 | Catalog only; hidden prices, shop-wide or per product ("ask for the price") | be47876 |
+| ✅ | 6 | Countries the shop sells to | be47876 |
+| ✅ | 7 | Shop postcode | be47876 |
+| ✅ | 8 | Product list: image, SKU, price, order columns; category and brand filters; quick edit of price | f4d31e3 |
+| ✅ | 9 | Product order field, and the shop page listing by it | f4d31e3 |
+| ✅ | 10 | Price sorts; Products block for featured or sale products only | f4d31e3 |
+| ⬜ | 11 | Category thumbnail | |
+| ✅ | 12 | Stockroom delivery time in days or weeks | (this commit) |
+| ⬜ | 13 | Orders: move to another customer or to guest; change the shipping method; edit download allowances | |
+| ⬜ | 14 | Shop manager role | |
+| ⬜ | 15 | Shipping classes on products and rates | |
+| ⬜ | 16 | Postcode patterns on shipping rates | |
+| ⬜ | 17 | Regions excluded from a shipping rate | |
+| ⬜ | 18 | Option prices as a percentage | |
+| ⬜ | 19 | Downloads through X-Sendfile / X-Accel-Redirect, optional, with a self-check | |
+| ⬜ | 20 | Backorders: per product and variation; stock may go below zero; order lines record what is owed; optional notice to the customer | |
+
+## After parity
+
+| | # | Item | Commit |
+|---|---|---|---|
+| 📝 | 21 | Storefront filtering and search on an index fed by a database queue (`FOR UPDATE SKIP LOCKED`, workers or cron); database or OpenSearch behind one interface | |
+| 📝 | 22 | Coupon codes: by rules (minimum amount, dates, usage limits, per customer) or for specific products and categories | |
+| 📝 | 23 | Dynamic prices (quantity tiers, customer groups, scheduled rules), bundles and sets | |
+| 📝 | 24 | Refunds through the payment methods: a contract the gateways that can refund implement (PayPal's refund API); offline methods recorded by hand; full and partial | |
+
+## Waiting on others
+
+- PayPal against the real sandbox: needs sandbox credentials.
+
+## Deliberately not carried over
+
+Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO
+3166 comes complete); SEO fields (SEO plugins do this); image size and template settings (WordPress image sizes and
+theme templates); the old and/or/not shipping operators (replaced by item 17); shipping groups that affected nothing
+(replaced by item 15).

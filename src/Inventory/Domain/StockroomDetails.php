@@ -21,6 +21,7 @@ final readonly class StockroomDetails
         public int $maxDeliveryDays = 0,
         public bool $active = true,
         public string $description = '',
+        public DeliveryUnit $deliveryUnit = DeliveryUnit::Days,
     ) {
         if (trim($name) === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
             throw new InventoryRuleViolation(\sprintf('A stockroom needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_stockroom_name');
@@ -30,6 +31,9 @@ final readonly class StockroomDetails
                 \sprintf('Delivery takes from 0 to %d days, and the shortest time cannot be longer than the longest.', self::MAX_DELIVERY_DAYS),
                 'orillacart_invalid_delivery_time',
             );
+        }
+        if ($minDeliveryDays % $deliveryUnit->days() !== 0 || $maxDeliveryDays % $deliveryUnit->days() !== 0) {
+            throw new InventoryRuleViolation('Delivery times in weeks are whole weeks.', 'orillacart_invalid_delivery_time');
         }
     }
 }

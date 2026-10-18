@@ -6,6 +6,7 @@ namespace OrillaCart\Inventory\Application;
 
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\StockroomView;
+use OrillaCart\Inventory\Domain\DeliveryUnit;
 use OrillaCart\Inventory\Domain\Stockroom;
 use OrillaCart\Inventory\Domain\StockroomDetails;
 use OrillaCart\Inventory\Domain\StockroomNotFound;
@@ -63,6 +64,6 @@ final readonly class StockroomService
 
     private static function details(SaveStockroom $command): StockroomDetails
     {
-        return new StockroomDetails($command->name, $command->minDeliveryDays, $command->maxDeliveryDays, $command->active, $command->description);
+        return new StockroomDetails($command->name, $command->minDeliveryDays, $command->maxDeliveryDays, $command->active, $command->description, DeliveryUnit::from($command->deliveryUnit));
     }
 }

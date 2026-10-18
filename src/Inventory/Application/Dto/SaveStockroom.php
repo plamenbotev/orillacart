@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Inventory\Application\Dto;
 
+use OrillaCart\Inventory\Domain\DeliveryUnit;
 use OrillaCart\Inventory\Domain\StockroomDetails;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -12,6 +13,9 @@ use Symfony\Component\Validator\Constraints as Assert;
  */
 final readonly class SaveStockroom
 {
+    /**
+     * @param string $deliveryUnit how the times are spoken of (days or weeks); they are always given in days
+     */
     public function __construct(
         #[Assert\NotBlank]
         #[Assert\Length(max: StockroomDetails::MAX_NAME_LENGTH)]
@@ -23,5 +27,7 @@ final readonly class SaveStockroom
         public bool $active = true,
         #[Assert\Length(max: 2000)]
         public string $description = '',
+        #[Assert\Choice(callback: [DeliveryUnit::class, 'values'])]
+        public string $deliveryUnit = 'days',
     ) {}
 }

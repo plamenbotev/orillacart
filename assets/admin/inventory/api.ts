@@ -7,6 +7,8 @@ export interface Stockroom {
 	min_delivery_days: number;
 	max_delivery_days: number;
 	active: boolean;
+	/** How the times are shown and entered; they are kept in days. */
+	delivery_unit: 'days' | 'weeks';
 }
 
 export type StockroomInput = Omit< Stockroom, 'id' >;
