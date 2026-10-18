@@ -81,7 +81,9 @@ final readonly class StockService
                 ?? throw new InventoryRuleViolation(\sprintf('There is no stockroom %d.', $change->stockroomId), 'orillacart_unknown_stockroom');
         }
 
-        foreach ($this->levels->stockOf(array_map(StockItem::fromString(...), array_keys($byItem))) as $stock) {
+        $items = array_map(StockItem::fromString(...), array_keys($byItem));
+        $before = self::availableOf($this->levels->stockOf($items));
+        foreach ($this->levels->stockOf($items) as $stock) {
             $wanted = $byItem[(string) $stock->item];
             foreach ($stock->levels() as $level) {
                 $stockroomId = $level->stockroom()->id();
@@ -102,9 +104,7 @@ final readonly class StockService
             }
         }
         $this->levels->flush();
-        foreach (array_keys($byItem) as $item) {
-            $this->events->dispatch(new StockChanged($item));
-        }
+        $this->announce($before, self::availableOf($this->levels->stockOf($items)));
     }
 
     /**
@@ -122,6 +122,7 @@ final readonly class StockService
         }
 
         $stock = $this->levels->stockOf([$item])[0];
+        $before = self::availableOf([$stock]);
         foreach ($stock->levels() as $level) {
             $stockroomId = $level->stockroom()->id();
             if (\array_key_exists($stockroomId, $wanted)) {
@@ -137,7 +138,7 @@ final readonly class StockService
             $this->levels->add(new StockLevel($stockroom, $item, $quantity));
         }
         $this->levels->flush();
-        $this->events->dispatch(new StockChanged((string) $item));
+        $this->announce($before, self::availableOf($this->levels->stockOf([$item])));
 
         return $this->stock($ref);
     }
@@ -177,8 +178,11 @@ final readonly class StockService
     {
         $items = array_map(static fn(StockItemRef $ref): StockItem => $ref->toItem(), $refs);
 
-        $taken = $this->levels->lockedStockOf($items, static function (array $stocks) use ($quantity, $backorders): array {
+        $before = [];
+        $after = [];
+        $taken = $this->levels->lockedStockOf($items, static function (array $stocks) use ($quantity, $backorders, &$before, &$after): array {
             /** @var list<Stock> $stocks */
+            $before = self::availableOf($stocks);
             foreach ($stocks as $stock) {
                 $available = $stock->available();
                 if (!$backorders && $available !== null && $available < $quantity) {
@@ -193,12 +197,11 @@ final readonly class StockService
                     $taken[] = new TakenStock((string) $stock->item, $stockroomId, $amount, $stockroomId === $owing ? $owed : 0);
                 }
             }
+            $after = self::availableOf($stocks);
 
             return $taken;
         });
-        foreach ($items as $item) {
-            $this->events->dispatch(new StockChanged((string) $item));
-        }
+        $this->announce($before, $after);
 
         return $taken;
     }
@@ -218,8 +221,10 @@ final readonly class StockService
         if ($items === []) {
             return;
         }
-        $this->levels->lockedStockOf(array_values($items), function (array $stocks) use ($taken): void {
+        $before = [];
+        $this->levels->lockedStockOf(array_values($items), function (array $stocks) use ($taken, &$before): void {
             /** @var list<Stock> $stocks */
+            $before = self::availableOf($stocks);
             $byItem = [];
             foreach ($stocks as $stock) {
                 $byItem[(string) $stock->item] = $stock;
@@ -234,8 +239,33 @@ final readonly class StockService
                 }
             }
         });
-        foreach ($items as $item) {
-            $this->events->dispatch(new StockChanged((string) $item));
+        // Levels made anew are not in the locked copies: ask again.
+        $this->announce($before, self::availableOf($this->levels->stockOf(array_values($items))));
+    }
+
+    /**
+     * @param list<Stock> $stocks
+     *
+     * @return array<string, ?int> how many can be sold, by item
+     */
+    private static function availableOf(array $stocks): array
+    {
+        $available = [];
+        foreach ($stocks as $stock) {
+            $available[(string) $stock->item] = $stock->available();
+        }
+
+        return $available;
+    }
+
+    /**
+     * @param array<string, ?int> $before
+     * @param array<string, ?int> $after
+     */
+    private function announce(array $before, array $after): void
+    {
+        foreach ($after as $item => $available) {
+            $this->events->dispatch(new StockChanged((string) $item, $before[$item] ?? null, $available));
         }
     }
 

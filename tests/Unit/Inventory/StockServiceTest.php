@@ -97,7 +97,21 @@ final class StockServiceTest extends TestCase
         self::assertCount(1, $view->levels);
         self::assertSame([$this->berlin, 3], [$view->levels[0]->stockroomId, $view->levels[0]->quantity]);
         self::assertNull($this->stock->setLevels($mug, new SetStockLevels([]))->available, 'no levels: not limited');
-        self::assertEquals(new StockChanged('product:5'), $this->events->events[0]);
+        self::assertEquals(
+            [new StockChanged('product:5', null, 6), new StockChanged('product:5', 6, 3), new StockChanged('product:5', 3, null)],
+            $this->events->events,
+            'how many could be sold before and after each change',
+        );
+    }
+
+    public function testOnlyRunningOutOrComingBackChangesAvailability(): void
+    {
+        self::assertFalse(new StockChanged('product:5', 10, 8)->changedAvailability(), 'selling some');
+        self::assertTrue(new StockChanged('product:5', 1, 0)->changedAvailability(), 'selling the last');
+        self::assertTrue(new StockChanged('product:5', 0, 2)->changedAvailability(), 'restocked');
+        self::assertFalse(new StockChanged('product:5', null, 4)->changedAvailability(), 'counted from now on, still for sale');
+        self::assertTrue(new StockChanged('product:5', null, 0)->changedAvailability(), 'counted from now on, none');
+        self::assertFalse(new StockChanged('product:5', -2, -3)->changedAvailability(), 'owed more on backorder');
     }
 
     public function testLevelsNeedAnExistingStockroomEach(): void

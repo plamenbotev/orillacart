@@ -225,10 +225,13 @@ abstract class CatalogSearchContract extends RestTestCase
         self::assertNotContains($this->tv, $this->ids(new SearchQuery(inStockOnly: true)));
 
         $this->request('PUT', "/stock/product/{$this->tv}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 3]]], nonce: true);
-        wp_set_current_user(0);
         self::assertSame(1, $this->indexing()->status()->due);
         $this->work();
         self::assertContains($this->tv, $this->ids(new SearchQuery(inStockOnly: true)));
+
+        $this->request('PUT', "/stock/product/{$this->tv}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 5]]], nonce: true);
+        wp_set_current_user(0);
+        self::assertSame(0, $this->indexing()->status()->due, 'still in stock: nothing the index shows changed');
     }
 
     public function testWorkersTakeDifferentProductsAndAChangeWhileBuildingIsBuiltAgain(): void

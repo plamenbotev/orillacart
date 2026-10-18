@@ -27,9 +27,12 @@ final readonly class QueueChangedProducts
         $this->indexing->queue([$event->productId]);
     }
 
+    /** The index knows whether a variant is in stock, not how many: only running out or coming back counts. */
     public function stockChanged(StockChanged $event): void
     {
-        $this->indexing->queueStockItem($event->item);
+        if ($event->changedAvailability()) {
+            $this->indexing->queueStockItem($event->item);
+        }
     }
 
     /** Removed products leave the index; removed variations and options come with a ProductChanged. */
