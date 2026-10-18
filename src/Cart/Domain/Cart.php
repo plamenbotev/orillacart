@@ -205,6 +205,23 @@ class Cart
         $this->notPlacing();
     }
 
+    /**
+     * Adds what another cart holds, as far as this one has room: the same item adds to its line, up to
+     * MAX_QUANTITY; new lines up to MAX_LINES. Codes join, up to ten.
+     */
+    public function takeFrom(self $other, \DateTimeImmutable $now): void
+    {
+        foreach ($other->lines() as $line) {
+            $mine = $this->lineFor($line->productId(), $line->optionIds(), $line->bundleChoices());
+            if ($mine !== null) {
+                $mine->setQuantity(min(self::MAX_QUANTITY, $mine->quantity() + $line->quantity()));
+            } elseif ($this->lines->count() < self::MAX_LINES) {
+                $this->add($line->productId(), $line->optionIds(), $line->quantity(), $now, $line->bundleChoices());
+            }
+        }
+        $this->useCoupons([...$this->coupons, ...$other->coupons()], $now);
+    }
+
     /** An order was saved from the cart; its payment is about to start. */
     public function placing(int $orderId, \DateTimeImmutable $now): void
     {

@@ -240,6 +240,30 @@ final readonly class CartService
     }
 
     /**
+     * A visitor with a cart logged in: the cart becomes theirs, joined with what their account's cart held, under
+     * a new token, so whoever knew the visitor's cookie does not reach the account's cart.
+     *
+     * @return array{Cart, string}
+     */
+    private function loggedIn(Cart $visitors, int $customerId): array
+    {
+        $now = $this->clock->now();
+        $cart = $this->carts->findByCustomer($customerId);
+        if ($cart !== null && $cart->id() !== $visitors->id()) {
+            $cart->takeFrom($visitors, $now);
+            $this->carts->remove($visitors);
+        } else {
+            $cart = $visitors;
+            $cart->belongTo($customerId);
+        }
+        $token = self::token();
+        $cart->rekey($token);
+        $this->carts->save($cart);
+
+        return [$cart, $token];
+    }
+
+    /**
      * The owner's cart, and a new token when the browser has to be given one.
      *
      * @return array{?Cart, ?string}
@@ -247,13 +271,16 @@ final readonly class CartService
     private function find(CartOwner $owner): array
     {
         $cart = $owner->token === null || $owner->token === '' ? null : $this->carts->findByToken($owner->token);
+        if ($cart !== null && $cart->customerId() !== null && $cart->customerId() !== $owner->customerId) {
+            // Another customer's cart, left in a shared browser: not this one's to see or order from.
+            $cart = null;
+        }
         if ($cart !== null) {
-            if ($owner->customerId !== null && $cart->customerId() === null) {
-                $cart->belongTo($owner->customerId);
-                $this->carts->save($cart);
+            if ($owner->customerId === null || $cart->customerId() !== null) {
+                return [$cart, null];
             }
 
-            return [$cart, null];
+            return $this->loggedIn($cart, $owner->customerId);
         }
         $cart = $owner->customerId === null ? null : $this->carts->findByCustomer($owner->customerId);
         if ($cart === null) {

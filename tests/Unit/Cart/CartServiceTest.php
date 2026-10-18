@@ -113,6 +113,34 @@ final class CartServiceTest extends TestCase
         self::assertSame(2, $this->shop->carts->cart(new CartOwner(null, 8))->cart->items);
     }
 
+    public function testAnotherCustomersCartIsNotServedByItsCookie(): void
+    {
+        // Ada fills a cart, logs out; the cookie stays in the shared browser.
+        $ada = $this->shop->carts->add(new CartOwner(null, 7), new AddToCart(10, quantity: 2));
+        self::assertNotNull($ada->newToken);
+
+        self::assertSame(0, $this->shop->carts->cart(new CartOwner($ada->newToken))->cart->items, 'a visitor does not see it');
+        self::assertSame(0, $this->shop->carts->cart(new CartOwner($ada->newToken, 8))->cart->items, 'nor does Ben once he logs in');
+        self::assertNull($this->shop->carts->contents(new CartOwner($ada->newToken, 8)), 'and he cannot order from it');
+        self::assertSame(2, $this->shop->carts->cart(new CartOwner(null, 7))->cart->items, 'Ada still has hers');
+    }
+
+    public function testLoggingInJoinsTheVisitorsCartToTheAccountsUnderANewToken(): void
+    {
+        $this->shop->carts->add(new CartOwner(null, 7), new AddToCart(10, [$this->gold], 1));
+        $visitor = $this->shop->carts->add(new CartOwner(null), new AddToCart(10, [$this->gold], 2));
+        self::assertNotNull($visitor->newToken);
+        $this->shop->carts->add(new CartOwner($visitor->newToken), new AddToCart(10));
+
+        $joined = $this->shop->carts->cart(new CartOwner($visitor->newToken, 7));
+
+        self::assertNotNull($joined->newToken, 'the browser gets a new token');
+        self::assertNotSame($visitor->newToken, $joined->newToken);
+        self::assertSame([3, 1], array_map(static fn($line): int => $line->quantity, $joined->cart->lines), 'the same item adds up');
+        self::assertCount(1, $this->shop->cartRecords->carts, 'the visitor\'s cart is gone');
+        self::assertSame(0, $this->shop->carts->cart(new CartOwner($visitor->newToken))->cart->items, 'the visitor\'s token opens nothing');
+    }
+
     public function testCartsNobodyTouchedForAMonthAreForgotten(): void
     {
         $this->shop->carts->add(new CartOwner(null), new AddToCart(10));

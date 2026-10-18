@@ -40,6 +40,12 @@ final readonly class DoctrineCartRepository implements CartRepository
         $this->entityManager->flush();
     }
 
+    public function remove(Cart $cart): void
+    {
+        $this->entityManager->remove($cart);
+        $this->entityManager->flush();
+    }
+
     public function removeOfCustomer(int $customerId): void
     {
         // Lines go with their cart (ON DELETE CASCADE).

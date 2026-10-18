@@ -66,6 +66,11 @@ final class InMemoryCartRepository implements CartRepository
         $this->carts[$cart->id()] = $cart;
     }
 
+    public function remove(Cart $cart): void
+    {
+        unset($this->carts[$cart->id()]);
+    }
+
     public function removeOfCustomer(int $customerId): void
     {
         $this->carts = array_filter($this->carts, static fn(Cart $cart): bool => $cart->customerId() !== $customerId);

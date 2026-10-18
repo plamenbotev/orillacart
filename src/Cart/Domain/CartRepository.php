@@ -19,6 +19,8 @@ interface CartRepository
 
     public function save(Cart $cart): void;
 
+    public function remove(Cart $cart): void;
+
     /** Removes the carts of a customer whose account is gone. */
     public function removeOfCustomer(int $customerId): void;
 
