@@ -15,5 +15,7 @@ final readonly class CouponQuery
         public int $page = 1,
         #[Assert\Range(min: 1, max: 100)]
         public int $perPage = 20,
+        /** Automatic discounts instead of codes. */
+        public bool $automatic = false,
     ) {}
 }

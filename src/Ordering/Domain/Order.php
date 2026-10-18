@@ -122,7 +122,7 @@ class Order
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
     private string $discountTotal = '0';
 
-    /** @var list<array{code: string, description: string, amount: string, free_shipping: bool}> the coupons it used */
+    /** @var list<array{code: string, description: string, amount: string, free_shipping: bool, automatic?: bool}> the coupons it used */
     #[ORM\Column(type: 'json')]
     private array $discounts = [];
 
@@ -289,7 +289,7 @@ class Order
     /** @return list<OrderDiscount> */
     public function discounts(): array
     {
-        return array_map(static fn(array $row): OrderDiscount => new OrderDiscount($row['code'], $row['description'], Money::of($row['amount']), $row['free_shipping']), $this->discounts);
+        return array_map(static fn(array $row): OrderDiscount => new OrderDiscount($row['code'], $row['description'], Money::of($row['amount']), $row['free_shipping'], $row['automatic'] ?? false), $this->discounts);
     }
 
     public function currency(): string
@@ -568,11 +568,11 @@ class Order
     /**
      * @param list<OrderDiscount> $discounts
      *
-     * @return list<array{code: string, description: string, amount: string, free_shipping: bool}>
+     * @return list<array{code: string, description: string, amount: string, free_shipping: bool, automatic: bool}>
      */
     private static function discountRows(array $discounts): array
     {
-        return array_map(static fn(OrderDiscount $discount): array => ['code' => $discount->code, 'description' => $discount->description, 'amount' => $discount->amount->toFixed(), 'free_shipping' => $discount->freeShipping], $discounts);
+        return array_map(static fn(OrderDiscount $discount): array => ['code' => $discount->code, 'description' => $discount->description, 'amount' => $discount->amount->toFixed(), 'free_shipping' => $discount->freeShipping, 'automatic' => $discount->automatic], $discounts);
     }
 
     public function shippingOption(): ?string

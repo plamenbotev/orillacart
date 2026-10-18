@@ -40,17 +40,24 @@ final readonly class DoctrineCouponRepository implements CouponRepository
         return $found;
     }
 
-    public function search(?string $search, int $page, int $perPage): array
+    public function search(?string $search, int $page, int $perPage, bool $automatic = false): array
     {
-        $builder = $this->entityManager->createQueryBuilder()->select('c')->from(Coupon::class, 'c');
+        $builder = $this->entityManager->createQueryBuilder()->select('c')->from(Coupon::class, 'c')
+            ->where('c.automatic = :automatic')->setParameter('automatic', $automatic);
         if ($search !== null && trim($search) !== '') {
-            $builder->where('c.code LIKE :search OR c.description LIKE :search')->setParameter('search', '%' . addcslashes(trim($search), '%_\\') . '%');
+            $builder->andWhere('c.code LIKE :search OR c.description LIKE :search')->setParameter('search', '%' . addcslashes(trim($search), '%_\\') . '%');
         }
         $count = (clone $builder)->select('COUNT(c.id)')->getQuery()->getSingleScalarResult();
         /** @var list<Coupon> $coupons */
         $coupons = $builder->orderBy('c.id', 'DESC')->setFirstResult(($page - 1) * $perPage)->setMaxResults($perPage)->getQuery()->getResult();
 
         return [$coupons, is_numeric($count) ? (int) $count : 0];
+    }
+
+    public function automatic(): array
+    {
+        /** @var list<Coupon> */
+        return $this->entityManager->getRepository(Coupon::class)->findBy(['automatic' => true, 'active' => true], ['id' => 'ASC']);
     }
 
     public function save(Coupon $coupon): void

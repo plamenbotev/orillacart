@@ -9,7 +9,8 @@ use OrillaCart\Coupons\Domain\CouponKind;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Command: a coupon as the shop sets it up. Amounts are decimals; dates ISO 8601; empty means no rule.
+ * Command: a coupon as the shop sets it up. Amounts are decimals; dates ISO 8601; empty means no rule. An
+ * automatic discount needs no code: the shop gives it one of its own.
  */
 final readonly class SaveCoupon
 {
@@ -25,7 +26,6 @@ final readonly class SaveCoupon
      * @param list<int>    $excludedCategoryIds
      */
     public function __construct(
-        #[Assert\NotBlank(message: 'Enter a code.')]
         #[Assert\Length(max: Coupon::MAX_CODE_LENGTH)]
         public string $code,
         #[Assert\Choice(callback: [CouponKind::class, 'values'])]
@@ -67,5 +67,6 @@ final readonly class SaveCoupon
         #[Assert\Positive]
         public ?int $perCustomerLimit = null,
         public bool $firstOrderOnly = false,
+        public bool $automatic = false,
     ) {}
 }

@@ -118,6 +118,8 @@ export interface Order {
 		description: string;
 		amount: string;
 		free_shipping: boolean;
+		/** An automatic discount: shown by its description. */
+		automatic?: boolean;
 	}[];
 }
 

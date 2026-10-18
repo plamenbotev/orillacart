@@ -14,5 +14,7 @@ final readonly class OrderDiscountView
         public string $description,
         public string $amount,
         public bool $freeShipping = false,
+        /** An automatic discount: shown by its description, not its code. */
+        public bool $automatic = false,
     ) {}
 }

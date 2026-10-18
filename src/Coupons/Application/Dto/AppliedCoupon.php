@@ -19,5 +19,7 @@ final readonly class AppliedCoupon
         public string $amount,
         public bool $freeShipping,
         public array $lines,
+        /** An automatic discount: customers see the description, not the code. */
+        public bool $automatic = false,
     ) {}
 }

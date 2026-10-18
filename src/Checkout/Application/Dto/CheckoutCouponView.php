@@ -18,5 +18,7 @@ final readonly class CheckoutCouponView
         public string $amount,
         public bool $freeShipping,
         public ?string $refused = null,
+        /** An automatic discount: shown by its description, and not removed. */
+        public bool $automatic = false,
     ) {}
 }

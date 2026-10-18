@@ -20,7 +20,10 @@ interface CouponRepository
     /**
      * @return array{list<Coupon>, int} the page, newest first, and how many match
      */
-    public function search(?string $search, int $page, int $perPage): array;
+    public function search(?string $search, int $page, int $perPage, bool $automatic = false): array;
+
+    /** @return list<Coupon> the automatic discounts switched on, oldest first */
+    public function automatic(): array;
 
     public function save(Coupon $coupon): void;
 

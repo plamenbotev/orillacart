@@ -108,7 +108,7 @@ final readonly class OrderView
             (string) $order->refundedTotal(),
             $order->isShippingRefunded(),
             (string) $order->discountTotal(),
-            array_map(static fn(OrderDiscount $discount): OrderDiscountView => new OrderDiscountView($discount->code, $discount->description, (string) $discount->amount, $discount->freeShipping), $order->discounts()),
+            array_map(static fn(OrderDiscount $discount): OrderDiscountView => new OrderDiscountView($discount->code, $discount->description, (string) $discount->amount, $discount->freeShipping, $discount->automatic), $order->discounts()),
         );
     }
 }

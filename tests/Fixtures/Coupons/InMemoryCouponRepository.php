@@ -30,11 +30,16 @@ final class InMemoryCouponRepository implements CouponRepository
         return $found;
     }
 
-    public function search(?string $search, int $page, int $perPage): array
+    public function search(?string $search, int $page, int $perPage, bool $automatic = false): array
     {
-        $found = array_values(array_filter(array_reverse($this->coupons), static fn(Coupon $coupon): bool => $search === null || str_contains($coupon->code(), strtoupper($search))));
+        $found = array_values(array_filter(array_reverse($this->coupons), static fn(Coupon $coupon): bool => $coupon->isAutomatic() === $automatic && ($search === null || str_contains($coupon->code(), strtoupper($search)))));
 
         return [\array_slice($found, ($page - 1) * $perPage, $perPage), \count($found)];
+    }
+
+    public function automatic(): array
+    {
+        return array_values(array_filter($this->coupons, static fn(Coupon $coupon): bool => $coupon->isAutomatic() && $coupon->terms()->active));
     }
 
     public function save(Coupon $coupon): void

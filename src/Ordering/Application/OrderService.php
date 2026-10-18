@@ -505,7 +505,7 @@ final readonly class OrderService
      */
     private static function discounts(array $discounts): array
     {
-        return array_map(static fn(OrderDiscountView $discount): OrderDiscount => new OrderDiscount($discount->code, $discount->description, Money::of($discount->amount), $discount->freeShipping), $discounts);
+        return array_map(static fn(OrderDiscountView $discount): OrderDiscount => new OrderDiscount($discount->code, $discount->description, Money::of($discount->amount), $discount->freeShipping, $discount->automatic), $discounts);
     }
 
     private static function orderRefund(RefundOrder $command): OrderRefund

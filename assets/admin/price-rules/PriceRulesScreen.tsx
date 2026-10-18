@@ -15,6 +15,8 @@ import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { type Coupon, deleteCoupon, fetchCoupons } from '../coupons/api';
+import { CouponForm, discountLabel } from '../coupons/CouponsScreen';
 import { toApiError } from '../shared/api';
 import {
 	fetchTerms,
@@ -244,7 +246,114 @@ export function PriceRulesScreen() {
 				] }
 				empty={ <p>{ __( 'No price rules yet.', 'orillacart' ) }</p> }
 			/>
+			<AutomaticDiscounts
+				onMessage={ ( text ) =>
+					setMessage( { status: 'success', text } )
+				}
+				onError={ fail }
+			/>
 		</>
+	);
+}
+
+/**
+ * Discounts on the order that need no code, such as "10 % off orders over 100" or free shipping over an amount:
+ * coupons that apply by themselves wherever they hold. Customers see their description.
+ */
+function AutomaticDiscounts( {
+	onMessage,
+	onError,
+}: {
+	onMessage: ( text: string ) => void;
+	onError: ( error: unknown ) => void;
+} ) {
+	const [ discounts, setDiscounts ] = useState< Coupon[] | null >( null );
+	const [ editing, setEditing ] = useState< Coupon | 'new' | null >( null );
+	const load = () =>
+		fetchCoupons( { page: 1, per_page: 100, automatic: true } )
+			.then( ( page ) => setDiscounts( page.coupons ) )
+			.catch( onError );
+	useEffect( () => {
+		load();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [] );
+
+	return (
+		<Card className="orillacart-card">
+			<CardHeader>
+				<h2>{ __( 'Automatic discounts', 'orillacart' ) }</h2>
+				{ editing === null && (
+					<Button
+						variant="secondary"
+						onClick={ () => setEditing( 'new' ) }
+					>
+						{ __( 'Add an automatic discount', 'orillacart' ) }
+					</Button>
+				) }
+			</CardHeader>
+			<CardBody>
+				<p>
+					{ __(
+						'Discounts on the whole order that need no code, such as 10 % off orders over 100 or free shipping over 50. They apply wherever they hold, before coupon codes.',
+						'orillacart'
+					) }
+				</p>
+				{ editing !== null && (
+					<CouponForm
+						key={ editing === 'new' ? 'new' : editing.id }
+						automatic
+						coupon={ editing === 'new' ? null : editing }
+						onClose={ () => setEditing( null ) }
+						onSaved={ ( saved ) => {
+							setEditing( null );
+							void load();
+							onMessage(
+								sprintf(
+									/* translators: %s: discount description */
+									__(
+										'The discount "%s" was saved.',
+										'orillacart'
+									),
+									saved.description
+								)
+							);
+						} }
+						onError={ onError }
+					/>
+				) }
+				{ discounts !== null && discounts.length === 0 && (
+					<p>{ __( 'No automatic discounts yet.', 'orillacart' ) }</p>
+				) }
+				<ul className="orillacart-automatic-discounts">
+					{ ( discounts ?? [] ).map( ( discount ) => (
+						<li key={ discount.id }>
+							<strong>{ discount.description }</strong>
+							{ ' · ' }
+							{ discountLabel( discount ) }
+							{ ! discount.active &&
+								` · ${ __( 'Off', 'orillacart' ) }` }{ ' ' }
+							<Button
+								variant="link"
+								onClick={ () => setEditing( discount ) }
+							>
+								{ __( 'Edit', 'orillacart' ) }
+							</Button>{ ' ' }
+							<Button
+								variant="link"
+								isDestructive
+								onClick={ () =>
+									deleteCoupon( discount.id )
+										.then( load )
+										.catch( onError )
+								}
+							>
+								{ __( 'Delete', 'orillacart' ) }
+							</Button>
+						</li>
+					) ) }
+				</ul>
+			</CardBody>
+		</Card>
 	);
 }
 

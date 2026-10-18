@@ -32,6 +32,8 @@ export interface CouponFields {
 	usage_limit: number | null;
 	per_customer_limit: number | null;
 	first_order_only: boolean;
+	/** No code to enter: it applies wherever it holds. */
+	automatic?: boolean;
 }
 
 export interface Coupon extends CouponFields {
@@ -78,6 +80,7 @@ export function fetchCoupons( query: {
 	search?: string | undefined;
 	page: number;
 	per_page: number;
+	automatic?: boolean;
 } ): Promise< CouponPage > {
 	return apiFetch< CouponPage >( {
 		path: addQueryArgs( `${ BASE }/coupons`, { ...query } ),

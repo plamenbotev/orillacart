@@ -26,7 +26,7 @@ final readonly class CouponService
 
     public function coupons(CouponQuery $query): CouponPageView
     {
-        [$coupons, $total] = $this->coupons->search($query->search, $query->page, $query->perPage);
+        [$coupons, $total] = $this->coupons->search($query->search, $query->page, $query->perPage, $query->automatic);
 
         return new CouponPageView(array_map(CouponView::fromCoupon(...), $coupons), $total, $query->page, max(1, (int) ceil($total / $query->perPage)));
     }
@@ -44,9 +44,9 @@ final readonly class CouponService
      */
     public function create(SaveCoupon $command): CouponView
     {
-        $terms = self::terms($command);
+        $terms = self::terms($command, $command->automatic && trim($command->code) === '' ? 'AUTO-' . strtoupper(bin2hex(random_bytes(4))) : null);
         $this->requireFreeCode($terms->code, null);
-        $coupon = new Coupon($terms);
+        $coupon = new Coupon($terms, $command->automatic);
         $this->coupons->save($coupon);
 
         return CouponView::fromCoupon($coupon);
@@ -59,7 +59,7 @@ final readonly class CouponService
     public function update(int $id, SaveCoupon $command): CouponView
     {
         $coupon = $this->get($id);
-        $terms = self::terms($command);
+        $terms = self::terms($command, $coupon->isAutomatic() && trim($command->code) === '' ? $coupon->code() : null);
         $this->requireFreeCode($terms->code, $id);
         $coupon->change($terms);
         $this->coupons->save($coupon);
@@ -88,14 +88,14 @@ final readonly class CouponService
         }
     }
 
-    private static function terms(SaveCoupon $command): CouponTerms
+    private static function terms(SaveCoupon $command, ?string $code = null): CouponTerms
     {
         $money = static fn(?string $amount): ?Money => $amount === null || $amount === '' ? null : Money::of($amount);
         $moment = static fn(?string $at): ?\DateTimeImmutable => $at === null || $at === '' ? null : new \DateTimeImmutable($at)->setTimezone(new \DateTimeZone('UTC'));
         $ids = static fn(array $ids): array => array_values(array_map(intval(...), array_filter($ids, is_numeric(...))));
 
         return new CouponTerms(
-            $command->code,
+            $code ?? $command->code,
             CouponKind::from($command->kind),
             Money::of($command->amount),
             $command->description,

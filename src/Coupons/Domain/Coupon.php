@@ -9,7 +9,8 @@ use OrillaCart\Shared\Domain\Money;
 
 /**
  * A code customers enter for a discount: what it takes off, on which items, when and for whom it holds, and
- * how often it may be used. Codes are compared without case.
+ * how often it may be used. Codes are compared without case. An automatic discount is one with no code to enter:
+ * it applies wherever it holds, and customers see its description.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'coupons')]
@@ -101,9 +102,22 @@ class Coupon
     #[ORM\Column]
     private int $uses = 0;
 
-    public function __construct(CouponTerms $terms)
+    /** It applies by itself; its code is the shop's own and is never entered. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $automatic;
+
+    public function __construct(CouponTerms $terms, bool $automatic = false)
     {
+        $this->automatic = $automatic;
         $this->change($terms);
+        if ($automatic && $this->description === '') {
+            throw new CouponRuleViolation('An automatic discount has a description: customers see it instead of a code.', 'orillacart_invalid_coupon_description');
+        }
+    }
+
+    public function isAutomatic(): bool
+    {
+        return $this->automatic;
     }
 
     public static function normalize(string $code): string

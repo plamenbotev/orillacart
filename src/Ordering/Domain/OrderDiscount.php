@@ -16,5 +16,6 @@ final readonly class OrderDiscount
         public string $description,
         public Money $amount,
         public bool $freeShipping = false,
+        public bool $automatic = false,
     ) {}
 }

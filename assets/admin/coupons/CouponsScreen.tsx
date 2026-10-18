@@ -249,15 +249,26 @@ export function CouponsScreen() {
 }
 
 interface CouponFormProps {
+	/** An automatic discount: no code, a description customers see. */
+	automatic?: boolean;
 	coupon: Coupon | null;
 	onClose: () => void;
 	onSaved: ( coupon: Coupon ) => void;
 	onError: ( error: unknown ) => void;
 }
 
-function CouponForm( { coupon, onClose, onSaved, onError }: CouponFormProps ) {
+export function CouponForm( {
+	automatic = false,
+	coupon,
+	onClose,
+	onSaved,
+	onError,
+}: CouponFormProps ) {
 	const [ fields, setFields ] = useState< CouponFields >(
-		coupon ?? NEW_COUPON
+		coupon ??
+			( automatic
+				? { ...NEW_COUPON, combines: true, automatic: true }
+				: NEW_COUPON )
 	);
 	const [ categories, setCategories ] = useState< Named[] >( [] );
 	const [ brands, setBrands ] = useState< Named[] >( [] );
@@ -286,13 +297,16 @@ function CouponForm( { coupon, onClose, onSaved, onError }: CouponFormProps ) {
 		<Card className="orillacart-card">
 			<CardHeader>
 				<h2>
-					{ coupon === null
-						? __( 'New coupon', 'orillacart' )
-						: sprintf(
-								/* translators: %s: coupon code */
-								__( 'Coupon %s', 'orillacart' ),
-								coupon.code
-							) }
+					{ automatic
+						? ( coupon?.description ??
+							__( 'New automatic discount', 'orillacart' ) )
+						: coupon === null
+							? __( 'New coupon', 'orillacart' )
+							: sprintf(
+									/* translators: %s: coupon code */
+									__( 'Coupon %s', 'orillacart' ),
+									coupon.code
+								) }
 				</h2>
 				<Button variant="tertiary" onClick={ onClose }>
 					{ __( 'Close', 'orillacart' ) }
@@ -310,29 +324,39 @@ function CouponForm( { coupon, onClose, onSaved, onError }: CouponFormProps ) {
 					} }
 				>
 					<Flex align="flex-start" wrap>
-						<FlexItem isBlock>
-							<TextControl
-								__next40pxDefaultSize
-								label={ __( 'Code', 'orillacart' ) }
-								help={ __(
-									'What customers enter; capitals and small letters are the same.',
-									'orillacart'
-								) }
-								value={ fields.code }
-								onChange={ ( value ) =>
-									set( 'code', value.toUpperCase() )
-								}
-								required
-							/>
-						</FlexItem>
+						{ ! automatic && (
+							<FlexItem isBlock>
+								<TextControl
+									__next40pxDefaultSize
+									label={ __( 'Code', 'orillacart' ) }
+									help={ __(
+										'What customers enter; capitals and small letters are the same.',
+										'orillacart'
+									) }
+									value={ fields.code }
+									onChange={ ( value ) =>
+										set( 'code', value.toUpperCase() )
+									}
+									required
+								/>
+							</FlexItem>
+						) }
 						<FlexItem isBlock>
 							<TextControl
 								__next40pxDefaultSize
 								label={ __( 'Description', 'orillacart' ) }
-								help={ __(
-									'Shown next to the code on the cart, the receipt and the emails.',
-									'orillacart'
-								) }
+								help={
+									automatic
+										? __(
+												'What customers see on the cart, the receipt and the emails, such as "10 % off orders over 100".',
+												'orillacart'
+											)
+										: __(
+												'Shown next to the code on the cart, the receipt and the emails.',
+												'orillacart'
+											)
+								}
+								required={ automatic }
 								value={ fields.description }
 								onChange={ ( value ) =>
 									set( 'description', value )
@@ -593,10 +617,17 @@ function CouponForm( { coupon, onClose, onSaved, onError }: CouponFormProps ) {
 						}
 					/>
 					<CheckboxControl
-						label={ __(
-							'Can be used with other codes that allow it',
-							'orillacart'
-						) }
+						label={
+							automatic
+								? __(
+										'Goes with coupon codes and other discounts that allow it',
+										'orillacart'
+									)
+								: __(
+										'Can be used with other codes that allow it',
+										'orillacart'
+									)
+						}
 						checked={ fields.combines }
 						onChange={ ( value ) => set( 'combines', value ) }
 					/>

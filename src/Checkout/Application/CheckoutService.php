@@ -73,12 +73,14 @@ final readonly class CheckoutService
         $currency = $this->settings->current()->currency;
         $applied = [];
         foreach ($priced['discounts']->coupons as $coupon) {
-            $applied[$coupon->code] = new CheckoutCouponView($coupon->code, $coupon->description, (string) Money::of($coupon->amount), $coupon->freeShipping);
+            $applied[$coupon->code] = new CheckoutCouponView($coupon->code, $coupon->description, (string) Money::of($coupon->amount), $coupon->freeShipping, null, $coupon->automatic);
         }
+        $automatic = array_values(array_filter($applied, static fn(CheckoutCouponView $coupon): bool => $coupon->automatic));
         $coupons = array_map(
             static fn(string $code): CheckoutCouponView => $applied[Coupon::normalize($code)] ?? new CheckoutCouponView(Coupon::normalize($code), '', '0', false, $priced['discounts']->refused[Coupon::normalize($code)] ?? 'This code is not valid.'),
             $contents->coupons,
         );
+        $coupons = [...$automatic, ...$coupons];
 
         return new CheckoutView(
             array_map(static fn(array $line): CheckoutLineView => new CheckoutLineView(

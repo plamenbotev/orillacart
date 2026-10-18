@@ -21,7 +21,7 @@ use Psr\Clock\ClockInterface;
 
 /**
  * Coupon codes as checkout uses them: which hold for an order and what they take off each item, and the uses
- * an order makes of them. Each coupon takes off what the ones before it left, so items never go below zero.
+ * an order makes of them. Automatic discounts come first, wherever they hold, and need no code. Each coupon takes off what the ones before it left, so items never go below zero.
  * Uses are counted when the order is placed, under a lock on the coupons, so a limit holds for orders placed at
  * the same moment; an order that is cancelled or fails gives its uses back.
  */
@@ -43,10 +43,14 @@ final readonly class Discounts
     public function apply(array $codes, DiscountRequest $request): AppliedDiscounts
     {
         $codes = \array_slice(array_values(array_unique(array_filter(array_map(Coupon::normalize(...), $codes), static fn(string $code): bool => $code !== ''))), 0, self::MAX_CODES);
-        if ($codes === [] || $request->items === []) {
-            return new AppliedDiscounts([], $codes === [] ? [] : array_fill_keys($codes, 'Add items first.'));
+        if ($request->items === []) {
+            return new AppliedDiscounts([], array_fill_keys($codes, 'Add items first.'));
         }
-        $found = $this->coupons->findByCodes($codes);
+        $automatic = $this->coupons->automatic();
+        $found = $codes === [] ? [] : $this->coupons->findByCodes($codes);
+        if ($automatic === [] && $found === [] && $codes === []) {
+            return new AppliedDiscounts();
+        }
         $now = $this->clock->now();
         $email = $request->email ?? '';
         $firstOrder = null;
@@ -55,14 +59,24 @@ final readonly class Discounts
         $refused = [];
         $combinesAll = true;
 
+        $candidates = [];
+        foreach ($automatic as $coupon) {
+            $candidates[] = [$coupon->code(), $coupon];
+        }
         foreach ($codes as $code) {
-            $coupon = $found[$code] ?? null;
+            // An automatic discount has no code to enter.
+            $candidates[] = [$code, ($found[$code] ?? null)?->isAutomatic() === false ? $found[$code] : null];
+        }
+        foreach ($candidates as [$code, $coupon]) {
+            $silent = $coupon?->isAutomatic() === true;
             if ($coupon === null) {
                 $refused[$code] = 'This code is not valid.';
                 continue;
             }
             if ($applied !== [] && (!$coupon->combines() || !$combinesAll)) {
-                $refused[$code] = 'This code cannot be used together with your other codes.';
+                if (!$silent) {
+                    $refused[$code] = 'This code cannot be used together with your other codes.';
+                }
                 continue;
             }
             $firstOrder ??= $email === '' || !$this->orders->hasOrdered($request->customerId, $email);
@@ -76,7 +90,9 @@ final readonly class Discounts
             );
             $refusal = $coupon->refusal($basket, $now, $email === '' ? 0 : $this->redemptions->countByCustomer($coupon->id(), $request->customerId, $email));
             if ($refusal !== null) {
-                $refused[$code] = $refusal;
+                if (!$silent) {
+                    $refused[$code] = $refusal;
+                }
                 continue;
             }
             $lines = [];
@@ -86,7 +102,10 @@ final readonly class Discounts
                 $lines[$index] = $discount->toFixed();
                 $sum = $sum->add($discount);
             }
-            $applied[] = new AppliedCoupon($coupon->code(), $coupon->description(), $sum->toFixed(), $coupon->freeShipping(), $lines);
+            if ($silent && $sum->isZero() && !$coupon->freeShipping()) {
+                continue;
+            }
+            $applied[] = new AppliedCoupon($coupon->code(), $coupon->description(), $sum->toFixed(), $coupon->freeShipping(), $lines, $silent);
             $combinesAll = $combinesAll && $coupon->combines();
         }
 

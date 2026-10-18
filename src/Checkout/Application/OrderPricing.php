@@ -97,7 +97,7 @@ final readonly class OrderPricing
                 $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
             }
         }
-        $discounts = $codes === [] ? new AppliedDiscounts() : $this->discounts->apply($codes, new DiscountRequest(
+        $discounts = $lines === [] ? new AppliedDiscounts() : $this->discounts->apply($codes, new DiscountRequest(
             array_map(static fn(array $line): DiscountItem => new DiscountItem($line['quote']->productId, $line['quantity'], $line['total']->toFixed(), $line['quote']->onSale, $line['quote']->categoryIds, $line['quote']->brandIds), $lines),
             $settings->currency,
             $shipping?->country,
@@ -198,7 +198,7 @@ final readonly class OrderPricing
      */
     public function discounts(array $priced): array
     {
-        return array_map(static fn(AppliedCoupon $coupon): OrderDiscountView => new OrderDiscountView($coupon->code, $coupon->description, (string) Money::of($coupon->amount), $coupon->freeShipping), $priced['discounts']->coupons);
+        return array_map(static fn(AppliedCoupon $coupon): OrderDiscountView => new OrderDiscountView($coupon->code, $coupon->description, (string) Money::of($coupon->amount), $coupon->freeShipping, $coupon->automatic), $priced['discounts']->coupons);
     }
 
     /**

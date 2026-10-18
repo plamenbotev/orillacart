@@ -310,12 +310,19 @@ function Summary( { order }: { order: Order } ) {
 					{ order.discounts.map( ( discount ) => (
 						<FragmentRow
 							key={ discount.code }
-							label={ sprintf(
-								/* translators: 1: coupon code, 2: its description */
-								__( 'Coupon %1$s %2$s', 'orillacart' ),
-								discount.code,
-								discount.description
-							).trim() }
+							label={
+								discount.automatic
+									? discount.description
+									: sprintf(
+											/* translators: 1: coupon code, 2: its description */
+											__(
+												'Coupon %1$s %2$s',
+												'orillacart'
+											),
+											discount.code,
+											discount.description
+										).trim()
+							}
 							value={
 								discount.free_shipping
 									? __( 'Free shipping', 'orillacart' )

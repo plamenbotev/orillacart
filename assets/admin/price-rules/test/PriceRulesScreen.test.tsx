@@ -31,6 +31,14 @@ describe( 'PriceRulesScreen', () => {
 			if ( request.path.startsWith( '/wp/v2/' ) ) {
 				return Promise.resolve( [] );
 			}
+			if ( request.path.startsWith( '/orillacart/v1/coupons' ) ) {
+				return Promise.resolve( {
+					coupons: [],
+					total: 0,
+					page: 1,
+					pages: 1,
+				} );
+			}
 			if ( request.path === '/orillacart/v1/customer-groups' ) {
 				return Promise.resolve( [
 					{ id: 2, name: 'Wholesale', members: 3 },

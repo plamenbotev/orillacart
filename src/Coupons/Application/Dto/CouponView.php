@@ -41,6 +41,7 @@ final readonly class CouponView
         public ?int $perCustomerLimit,
         public bool $firstOrderOnly,
         public int $uses,
+        public bool $automatic = false,
     ) {}
 
     public static function fromCoupon(Coupon $coupon): self
@@ -72,6 +73,7 @@ final readonly class CouponView
             $terms->perCustomerLimit,
             $terms->firstOrderOnly,
             $coupon->uses(),
+            $coupon->isAutomatic(),
         );
     }
 }

@@ -162,6 +162,38 @@ final class CouponsAtCheckoutTest extends TestCase
         self::assertSame(1, $this->shop->coupons->coupon(1)->uses, 'still one use');
     }
 
+    public function testAnAutomaticDiscountAppliesWhereItHoldsWithoutACode(): void
+    {
+        $discount = $this->shop->coupons->create(new SaveCoupon('', 'percent', '10', '10 % off orders over 60', minSubtotal: '60', combines: true, automatic: true));
+        self::assertStringStartsWith('AUTO-', $discount->code);
+
+        $small = $this->cart([10, 1]);
+        self::assertSame('0', $this->shop->checkout->summary($small, new CheckoutDetails())->discount, 'under 60');
+
+        $large = $this->cart([10, 2]);
+        $summary = $this->shop->checkout->summary($large, new CheckoutDetails());
+        self::assertSame([['10 % off orders over 60', '8', true]], array_map(static fn($coupon): array => [$coupon->description, $coupon->amount, $coupon->automatic], $summary->coupons));
+        try {
+            $this->shop->checkout->applyCoupon($large, new CouponCode($discount->code));
+            self::fail('its code is not for entering');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('This code is not valid.', $e->getMessage());
+        }
+
+        $this->coupon('TEN', 'order_amount', '10', combines: true);
+        $this->shop->checkout->applyCoupon($large, new CouponCode('TEN'));
+        $placed = $this->shop->checkout->placeOrder($large, $this->order());
+        $order = $this->shop->orders->byKey($placed->key);
+        self::assertSame([[true, '8'], [false, '10']], array_map(static fn($used): array => [$used->automatic, $used->amount], $order->discounts), 'the code takes off what the automatic discount left');
+        self::assertSame(1, $this->shop->coupons->coupon($discount->id)->uses);
+    }
+
+    public function testAnAutomaticDiscountNeedsADescription(): void
+    {
+        $this->expectException(CouponRuleViolation::class);
+        $this->shop->coupons->create(new SaveCoupon('', 'percent', '10', automatic: true));
+    }
+
     public function testTheShopCannotGiveTwoCouponsOneCode(): void
     {
         $this->coupon('SPRING', 'percent', '10');

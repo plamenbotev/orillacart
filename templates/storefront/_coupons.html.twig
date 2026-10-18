@@ -7,9 +7,15 @@
 <div class="orillacart-coupons" data-orillacart-coupons>
     {% for coupon in coupons %}
         <p class="orillacart-coupon{{ coupon.refused ? ' orillacart-coupon--refused' }}">
-            <strong>{{ coupon.code }}</strong>{% if coupon.description %} · {{ coupon.description }}{% endif %}:
+            {% if coupon.automatic %}
+                <strong>{{ coupon.description }}</strong>:
+            {% else %}
+                <strong>{{ coupon.code }}</strong>{% if coupon.description %} · {{ coupon.description }}{% endif %}:
+            {% endif %}
             {% if coupon.refused %}{{ coupon.refused }}{% elseif coupon.free_shipping %}{{ __('free shipping') }}{% else %}−{{ coupon.amount|money(currency) }}{% endif %}
-            <button type="button" class="orillacart-remove" data-orillacart-remove-coupon="{{ coupon.code }}" aria-label="{{ __('Remove the code %s')|format(coupon.code) }}">&times;</button>
+            {% if not coupon.automatic %}
+                <button type="button" class="orillacart-remove" data-orillacart-remove-coupon="{{ coupon.code }}" aria-label="{{ __('Remove the code %s')|format(coupon.code) }}">&times;</button>
+            {% endif %}
         </p>
     {% endfor %}
     <p class="orillacart-coupons__field">
