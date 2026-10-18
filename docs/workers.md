@@ -1,8 +1,8 @@
 # Running workers
 
 The shop does slow work in the background, as jobs in one queue: building the search index as products, stock and
-prices change, and more kinds over time (emails, shipment tracking). Each kind of job waits in a lane: `search`
-for the index, `mail` for emails.
+prices change, sending order emails, and asking couriers where shipments are. Each kind of job waits in a lane:
+`search` for the index, `mail` for emails, `shipping` for tracking.
 
 Out of the box, WordPress runs the jobs: right after a request that pushed some, and every minute through WP-Cron,
 for up to twenty seconds. A busy shop, or one with a big catalog, runs workers instead: long-running processes that
@@ -33,7 +33,8 @@ wp orillacart jobs work --loop [--queue=search,mail] [--batch=100] [--sleep=3] [
 ## Failures
 
 A job that throws is tried again after a wait that grows with each attempt; its batch is run again job by job, so
-only the bad job waits. After its last attempt (five for the search index) it is **failed**: kept with its error
+only the bad job waits. An email the mail server refused is tried again after 1, 4, 16 and 64 minutes. After its
+last attempt (five for the search index and emails) it is **failed**: kept with its error
 for thirty days, until the shop retries or deletes it.
 
 ```

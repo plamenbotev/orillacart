@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Platform\Kernel;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\PluginContext;
@@ -32,6 +33,10 @@ abstract class RestTestCase extends TestCase
     {
         wp_set_current_user(0);
         $this->mails = [];
+        // Emails other tests queued and never sent.
+        global $wpdb;
+        self::assertInstanceOf(\wpdb::class, $wpdb);
+        $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_jobs WHERE queue = 'mail'");
         // One closure, kept, so remove_filter() finds the same one.
         $this->mailCatcher = $this->catchMail(...);
         add_filter('pre_wp_mail', $this->mailCatcher, 10, 2);
@@ -63,12 +68,18 @@ abstract class RestTestCase extends TestCase
     }
 
     /**
-     * The mail caught so far. Read through this method: the mail filter fills the list behind static analysis.
+     * The mail sent so far, once the queued emails went out as a worker sends them (requests here run under the
+     * command line, which runs nothing after the response). Read through this method: the mail filter fills the
+     * list behind static analysis.
      *
      * @return list<array{to: string, subject: string, message: string}>
      */
     protected function sentMail(): array
     {
+        $runner = self::kernel()->container()->get(JobRunner::class);
+        self::assertInstanceOf(JobRunner::class, $runner);
+        while ($runner->work(['mail'], 100, 'test')->count() > 0);
+
         return $this->mails;
     }
 

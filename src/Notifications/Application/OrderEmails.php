@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Notifications\Application;
 
+use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
 use OrillaCart\Notifications\Domain\EmailKind;
@@ -17,7 +18,9 @@ use OrillaCart\Shipping\Application\ShipmentTracking;
 use Psr\Log\LoggerInterface;
 
 /**
- * Sends the emails about orders. A mail that cannot be sent is logged: it never stops the order.
+ * Sends the emails about orders, as mail.order jobs in the mail lane: a slow or failing mail server never slows
+ * or stops the order, and a mail it refused is tried again (SendOrderEmails). Sending again from the order's
+ * screen is immediate, so the shop sees whether it went.
  *
  * A template renders the body and has a "subject" block; a theme overrides it by placing a file of the same
  * name in its orillacart/emails/ folder.
@@ -33,20 +36,21 @@ final readonly class OrderEmails
         private Site $site,
         private LoggerInterface $logger,
         private ShipmentTracking $shipments,
+        private Jobs $jobs,
     ) {}
 
     public function statusChanged(int $orderId, string $previous, string $status, bool $tellCustomer = true, bool $tellShop = true): void
     {
         foreach (EmailRules::forStatusChange($previous, $status) as $kind) {
             if ($kind->isForShop() ? $tellShop : $tellCustomer) {
-                $this->send($orderId, $kind);
+                $this->queue($orderId, $kind);
             }
         }
     }
 
     public function noteAdded(int $orderId, string $text): void
     {
-        $this->send($orderId, EmailKind::CustomerNote, ['note' => $text]);
+        $this->queue($orderId, EmailKind::CustomerNote, $text);
     }
 
     /**
@@ -60,19 +64,31 @@ final readonly class OrderEmails
     {
         $this->orders->order($orderId);
 
-        return $this->send($orderId, EmailKind::from($command->kind), ['note' => ''], force: true);
+        try {
+            $this->send($orderId, EmailKind::from($command->kind));
+        } catch (EmailNotWritten) {
+            return false;
+        } catch (EmailNotSent $e) {
+            $this->logger->warning($e->getMessage());
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
-     * @param array<string, mixed> $extra
+     * Writes and sends an email now; SendOrderEmails runs it for each job.
+     *
+     * @throws OrderNotFound
+     * @throws EmailNotWritten its template failed: trying again would fail the same way
+     * @throws EmailNotSent    the mail system refused it, perhaps for a while
      */
-    private function send(int $orderId, EmailKind $kind, array $extra = [], bool $force = false): bool
+    public function send(int $orderId, EmailKind $kind, string $note = ''): void
     {
         $settings = $this->settings->load();
-        if (!$force && !$settings->sends($kind)) {
-            return false;
-        }
         $order = $this->orders->order($orderId);
+        $extra = ['note' => $note];
         $context = [
             'order' => $order,
             'receipt_url' => $this->links->receiptUrl($order->key),
@@ -94,14 +110,26 @@ final readonly class OrderEmails
         } catch (\Throwable $e) {
             $this->logger->error('The {kind} email of order {order} could not be written: {message}', ['kind' => $kind->value, 'order' => $orderId, 'message' => $e->getMessage(), 'exception' => $e]);
 
-            return false;
+            throw new EmailNotWritten(\sprintf('The %s email could not be written: %s', $kind->value, $e->getMessage()), previous: $e);
         }
 
-        $sent = $this->mailer->send($email);
-        if (!$sent) {
-            $this->logger->warning('The {kind} email of order {order} to {to} was not sent: the mail system refused it.', ['kind' => $kind->value, 'order' => $orderId, 'to' => $email->to]);
+        if (!$this->mailer->send($email)) {
+            throw new EmailNotSent(\sprintf('The %s email of order %d to %s was not sent: the mail system refused it.', $kind->value, $orderId, $email->to));
         }
+    }
 
-        return $sent;
+    /**
+     * One job per order and kind while it waits; customer notes each get their own.
+     */
+    private function queue(int $orderId, EmailKind $kind, string $note = ''): void
+    {
+        if (!$this->settings->load()->sends($kind)) {
+            return;
+        }
+        $this->jobs->push(
+            SendOrderEmails::TYPE,
+            ['order' => $orderId, 'kind' => $kind->value] + ($note === '' ? [] : ['note' => $note]),
+            $kind === EmailKind::CustomerNote ? null : "{$orderId}:{$kind->value}",
+        );
     }
 }

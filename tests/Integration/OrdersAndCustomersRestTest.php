@@ -79,6 +79,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $list = $this->data($this->request('GET', '/orders?status=on_hold&search=ada'));
         self::assertSame([[$order['number']], 1], [array_column($this->rows($list['orders']), 'number'), $list['total']]);
 
+        $this->sentMail();
         $this->mails = [];
         $changed = $this->request('PUT', "/orders/{$order['number']}/status", ['status' => 'processing', 'note' => 'Paid at the bank.'], nonce: true);
         self::assertSame(200, $changed->get_status(), (string) wp_json_encode($changed->get_data()));

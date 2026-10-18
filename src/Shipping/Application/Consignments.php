@@ -45,7 +45,7 @@ use Psr\Log\LoggerInterface;
 final readonly class Consignments
 {
     private const string CASH_ON_DELIVERY = 'cash_on_delivery';
-    private const int TRACKED_PER_RUN = 100;
+    private const int TRACKED_PER_RUN = 1000;
 
     public function __construct(
         private ConsignmentRepository $consignments,
@@ -162,40 +162,52 @@ final readonly class Consignments
     }
 
     /**
-     * Asks the couriers where the shipments on their way are. A delivered one completes its shipped order.
+     * The shipments on their way, for TrackConsignments to ask their couriers about.
      *
-     * @return int how many changed
+     * @return list<int>
      */
-    public function track(): int
+    public function onTheWay(): array
     {
-        $changed = 0;
-        foreach ($this->consignments->open(self::TRACKED_PER_RUN) as $consignment) {
-            try {
-                [$method, $settings] = $this->methodOf($consignment);
-                if (!$method instanceof TracksShipments) {
-                    continue;
-                }
-                $tracking = $method->track($consignment->number(), $settings);
-            } catch (\Throwable $e) {
-                $this->logger->warning('Shipment {number} could not be tracked: {message}', ['number' => $consignment->number(), 'message' => $e->getMessage()]);
-                continue;
-            }
-            $status = match ($tracking->status) {
-                Tracking::DELIVERED => ConsignmentStatus::Delivered,
-                Tracking::RETURNED => ConsignmentStatus::Returned,
-                default => ConsignmentStatus::OnTheWay,
-            };
-            if (!$consignment->track($status, $tracking->description, $this->clock->now())) {
-                continue;
-            }
-            $this->consignments->save($consignment);
-            ++$changed;
-            if ($status === ConsignmentStatus::Delivered) {
-                $this->complete($consignment);
-            }
+        return array_map(static fn(Consignment $consignment): int => $consignment->id(), $this->consignments->open(self::TRACKED_PER_RUN));
+    }
+
+    /**
+     * Asks the courier where the shipment is. A delivered one completes its shipped order.
+     *
+     * @throws \Throwable when the courier cannot answer now: ask again later
+     *
+     * @return bool whether it changed
+     */
+    public function track(int $consignmentId): bool
+    {
+        $consignment = $this->consignments->find($consignmentId);
+        if ($consignment === null) {
+            return false;
+        }
+        try {
+            [$method, $settings] = $this->methodOf($consignment);
+        } catch (ShippingRuleViolation) {
+            // Its add-on is gone: nobody to ask.
+            return false;
+        }
+        if (!$method instanceof TracksShipments) {
+            return false;
+        }
+        $tracking = $method->track($consignment->number(), $settings);
+        $status = match ($tracking->status) {
+            Tracking::DELIVERED => ConsignmentStatus::Delivered,
+            Tracking::RETURNED => ConsignmentStatus::Returned,
+            default => ConsignmentStatus::OnTheWay,
+        };
+        if (!$consignment->track($status, $tracking->description, $this->clock->now())) {
+            return false;
+        }
+        $this->consignments->save($consignment);
+        if ($status === ConsignmentStatus::Delivered) {
+            $this->complete($consignment);
         }
 
-        return $changed;
+        return true;
     }
 
     private function complete(Consignment $consignment): void

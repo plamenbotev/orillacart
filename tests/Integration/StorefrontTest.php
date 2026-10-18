@@ -499,7 +499,7 @@ final class StorefrontTest extends RestTestCase
     {
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['index_jobs', 'search_values', 'search_variants', 'search_documents', 'download_grants', 'payments', 'payment_methods', 'order_notes', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['jobs', 'failed_jobs', 'search_values', 'search_variants', 'search_documents', 'download_grants', 'payments', 'payment_methods', 'order_notes', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }

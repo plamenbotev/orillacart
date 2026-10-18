@@ -10,6 +10,7 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
+use OrillaCart\Notifications\Application\SendOrderEmails;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailSettings;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
@@ -105,14 +106,37 @@ final class OrderEmailsTest extends TestCase
         self::assertStringContainsString('We received your order', $this->shop->mail->summary()[1]);
     }
 
-    public function testAMailThatCannotBeSentIsLoggedAndTheOrderGoesOn(): void
+    public function testAMailThatCannotBeSentIsTriedAgainLaterAndTheOrderGoesOn(): void
     {
         $this->shop->mail->accepts = false;
 
         $order = $this->place('bank_transfer');
 
         self::assertSame('on_hold', $order->status);
-        self::assertSame('warning', $this->shop->logger->records[0]['level']);
+        self::assertSame([], $this->shop->mail->emails);
+        $waiting = $this->shop->jobs->jobs->waiting(SendOrderEmails::TYPE);
+        self::assertSame([0, 2], [$waiting->due, $waiting->later], 'both wait a minute');
+
+        $this->shop->mail->accepts = true;
+        $this->shop->clock->sleep(60);
+        $this->shop->jobs->runAll();
+        self::assertCount(2, $this->shop->mail->emails);
+    }
+
+    public function testAMailRefusedEveryTimeIsFailedForTheShopToSee(): void
+    {
+        $this->shop->mail->accepts = false;
+        $order = $this->place('bank_transfer');
+
+        for ($attempt = 1; $attempt < 5; ++$attempt) {
+            $this->shop->clock->sleep(60 * 4 ** ($attempt - 1));
+            $this->shop->jobs->runAll();
+        }
+
+        $failed = $this->shop->jobs->jobs->failed(SendOrderEmails::TYPE);
+        self::assertCount(2, $failed);
+        self::assertSame(["Order #{$order->number}: order received email", 5], [$failed[1]->about, $failed[1]->attempts]);
+        self::assertStringContainsString('the mail system refused it', $failed[0]->error);
     }
 
     private function place(string $payment): PlacedOrderView

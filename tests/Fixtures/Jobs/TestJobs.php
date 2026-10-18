@@ -28,6 +28,8 @@ final class TestJobs implements JobHandlers, AfterResponse
     public readonly Jobs $jobs;
     /** @var array<string, \Closure> */
     public array $deferred = [];
+    /** Runs deferred work at once, as if every request ended right after pushing: for tests of other areas. */
+    public bool $immediate = false;
     /** @var array<string, JobHandler> */
     private array $handlers = [];
 
@@ -75,6 +77,11 @@ final class TestJobs implements JobHandlers, AfterResponse
 
     public function defer(string $key, \Closure $work): void
     {
+        if ($this->immediate) {
+            $work();
+
+            return;
+        }
         $this->deferred[$key] ??= $work;
     }
 

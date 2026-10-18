@@ -61,7 +61,7 @@ labels the facets.
 
 ## Keeping it fresh: a queue in the database
 
-`index_jobs (product_id PK, version, available_at, attempts, locked_until, last_error)`
+`index_jobs (product_id PK, version, available_at, attempts, locked_until, last_error)` (since 28a, `search.index` jobs in the shared `jobs` queue)
 
 - **Producers** upsert one row per product:
   `INSERT … ON DUPLICATE KEY UPDATE version = version + 1, available_at = LEAST(available_at, ?), attempts = 0`.

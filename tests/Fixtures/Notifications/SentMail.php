@@ -14,11 +14,14 @@ final class SentMail implements Mailer
 {
     /** @var list<Email> */
     public array $emails = [];
+    /** Whether the mail system takes emails; one it refuses is not kept. */
     public bool $accepts = true;
 
     public function send(Email $email): bool
     {
-        $this->emails[] = $email;
+        if ($this->accepts) {
+            $this->emails[] = $email;
+        }
 
         return $this->accepts;
     }

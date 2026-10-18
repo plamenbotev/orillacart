@@ -19,6 +19,7 @@ use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shipping\Application\Dto\BookShipment;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
+use OrillaCart\Shipping\Application\TrackConsignments;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Extension\TestShipMethod;
@@ -114,12 +115,13 @@ final class ConsignmentsTest extends TestCase
         $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('shipped'), 7);
         self::assertStringContainsString('https://track.test/TS1', $this->shop->mail->emails[\count($this->shop->mail->emails) - 1]->html, 'the shipped email links the tracking');
 
-        self::assertSame(1, $this->shop->consignments->track());
-        self::assertSame(0, $this->shop->consignments->track(), 'nothing new');
+        self::assertSame([$booked->id], $this->shop->consignments->onTheWay());
+        self::assertTrue($this->shop->consignments->track($booked->id));
+        self::assertFalse($this->shop->consignments->track($booked->id), 'nothing new');
         self::assertSame(['on_the_way', 'At the depot'], [$this->shop->consignments->forOrder($placed->number)->shipments[0]->status, $this->shop->consignments->forOrder($placed->number)->shipments[0]->tracking]);
 
         $this->courier->tracking[$booked->number] = new Tracking(Tracking::DELIVERED, 'Delivered to the customer');
-        $this->shop->consignments->track();
+        $this->shop->jobs->jobs->push(TrackConsignments::TYPE, [], (string) $booked->id);
         self::assertSame('completed', $this->shop->orders->order($placed->number)->status);
     }
 

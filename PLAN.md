@@ -58,8 +58,8 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 27b | ↳ Shipping methods: carriers get a method (rate table or an add-on's), live rates at checkout and in order editing | e1e2461 |
 | ✅ | 27c | ↳ Pickup points at checkout, shipments with labels, tracking and cancelling from the order screen | 930386c |
 | 🔄 | 28 | Background jobs with an overview (asked 2026-10-18): one queue for all async work (search indexing first, then emails, tracking, webhooks), lanes, retries, failed jobs to retry or delete, workers with heartbeat, and a Shop → Background jobs screen (waiting, running, failed, workers, history) | [design](docs/designs/28-background-jobs.md); emails on jobs now, done jobs kept as hourly counts (decided 2026-10-18) |
-| ✅ | 28a | ↳ The job system (lanes, unique jobs, batches, retries with back-off, failed jobs, hourly counts, workers in a table) with `wp orillacart jobs`; the search index runs on it | 335b127 |
-| ⬜ | 28b | ↳ Order emails and shipment tracking as jobs | |
+| ✅ | 28a | ↳ The job system (lanes, unique jobs, batches, retries with back-off, failed jobs, hourly counts, workers in a table) with `wp orillacart jobs`; the search index runs on it | 0a68945 |
+| ✅ | 28b | ↳ Order emails as `mail.order` jobs (retried after 1, 4, 16, 64 minutes, then failed; resending from the order stays immediate) and shipment tracking as `shipping.track` jobs, one per shipment | (this commit) |
 | ⬜ | 28c | ↳ Shop → Background jobs screen: lanes, workers, cron health, failed jobs to retry or delete, history | |
 | 📝 | 22 | Coupon codes: by rules (minimum amount, dates, usage limits, per customer) or for specific products and categories | [design](docs/designs/22-coupons.md) |
 | 📝 | 23 | Dynamic prices (quantity tiers, customer groups, scheduled rules), bundles and sets | [design](docs/designs/23-dynamic-prices-bundles.md) |
