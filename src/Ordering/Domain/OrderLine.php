@@ -316,6 +316,12 @@ class OrderLine
         $this->refundedAmount = $this->refundedAmount()->add($amount)->toFixed();
     }
 
+    /** Items not refunded yet that hold stock, so they can go back in stock. */
+    public function restockable(): int
+    {
+        return $this->stockTaken === [] ? 0 : $this->refundableQuantity();
+    }
+
     /** Items not refunded yet. */
     public function refundableQuantity(): int
     {

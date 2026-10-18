@@ -11,6 +11,7 @@ use OrillaCart\Extension\Payment\RefundRequest;
 use OrillaCart\Extension\Payment\RefundsPayments;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Settings;
+use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\RefundedView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RefundOrder;
@@ -244,6 +245,11 @@ final readonly class Refunds
             $this->transactions->run(function () use ($refund, $payment, $command, $refundId): void {
                 $this->refunds->save($refund);
                 $this->taxed($refund, $this->orders->refund($payment->orderId(), $command, \sprintf('through %s (refund %s)', $this->name($payment->gateway()), $refundId), null));
+                // Made at the provider, the refund names no items: whether they came back is the shop's to say.
+                $order = $this->orders->order($payment->orderId());
+                if (array_filter($order->lines, static fn(OrderLineView $line): bool => $line->restockable > 0) !== []) {
+                    $this->orders->needsAttention($payment->orderId(), \sprintf('%s refunded the order in full from its own dashboard: if the items came back, put them back in stock from the order.', $this->name($payment->gateway())));
+                }
             });
         } catch (OrderNotFound|OrderRuleViolation $e) {
             $this->logger->warning('{gateway} refunded {amount} of order {order}, which the shop could not record: {message}', ['gateway' => $payment->gateway(), 'amount' => (string) $amount, 'order' => $payment->orderId(), 'message' => $e->getMessage()]);

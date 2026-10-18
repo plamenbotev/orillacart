@@ -15,6 +15,7 @@ use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
+use OrillaCart\Ordering\Application\Dto\RestockItems;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
@@ -199,6 +200,24 @@ final class RefundsTest extends TestCase
         self::assertSame([['external', 'done', 'DASH-1']], array_map(static fn($refund): array => [$refund->method, $refund->status, $refund->providerReference], $view->refunds));
         self::assertSame('refunded', $this->shop->orders->order($order)->status);
         self::assertSame([], $this->shop->payPalApi->refunds, 'nothing sent to PayPal');
+        self::assertStringContainsString('if the items came back, put them back in stock', (string) $this->shop->orders->order($order)->attention, 'the shop is asked about the items');
+    }
+
+    public function testItemsOfAnOrderRefundedByAmountGoBackInStockWhenTheyComeBack(): void
+    {
+        $order = $this->paidWithPayPal(3);
+        $this->shop->refunds->refund($order, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
+        $this->shop->refunds->refund($order, new MakeRefund('16'), 7);
+        self::assertSame(['refunded', 2], [$this->shop->orders->order($order)->status, $this->shop->orders->order($order)->lines[0]->restockable]);
+        self::assertSame(7, $this->available(), 'refunded by amount: the stock waits for the items');
+
+        $view = $this->shop->orders->restock($order, new RestockItems([new RefundLine(0, 2)]), 7);
+
+        self::assertSame(9, $this->available());
+        self::assertSame([3, 0], [$view->lines[0]->refundedQuantity, $view->lines[0]->restockable]);
+        self::assertSame('2 items came back and went back in stock.', $view->notes[\count($view->notes) - 1]->text);
+        $this->expectException(OrderRuleViolation::class);
+        $this->shop->orders->restock($order, new RestockItems([new RefundLine(0, 1)]), 7);
     }
 
     public function testAnOfflinePaymentIsRefundedAsARecordOfMoneySentOutside(): void

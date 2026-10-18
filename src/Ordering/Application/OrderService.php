@@ -25,6 +25,7 @@ use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\RefundedView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RefundOrder;
+use OrillaCart\Ordering\Application\Dto\RestockItems;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
 use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
 use OrillaCart\Ordering\Domain\Event\OrderChanged;
@@ -687,6 +688,28 @@ final readonly class OrderService
         }
 
         return new RefundedView((string) $share->tax, $taxes);
+    }
+
+    /**
+     * Items of a refunded order came back after its money went: they go back in stock, and the history says so.
+     *
+     * @throws OrderNotFound
+     * @throws OrderRuleViolation for an order not refunded, or items that hold no stock
+     */
+    public function restock(int $id, RestockItems $command, ?int $userId): OrderView
+    {
+        return $this->changing($id, function (Order $order) use ($command, $userId): OrderView {
+            $quantities = [];
+            foreach ($command->lines as $line) {
+                $quantities[$line->line] = ($quantities[$line->line] ?? 0) + $line->quantity;
+            }
+            $this->giveBack($order->restock($quantities));
+            $order->addNote(\sprintf('%d items came back and went back in stock.', array_sum($quantities)), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
+            $this->orders->save($order);
+            $this->events->dispatch(new OrderChanged($order->id()));
+
+            return $this->view($order, true);
+        });
     }
 
     /**

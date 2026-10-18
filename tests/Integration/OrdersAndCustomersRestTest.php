@@ -216,6 +216,13 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $rest = $this->data($this->request('GET', "/orders/{$order['number']}/refunds"))['refundable'];
         $this->request('POST', "/orders/{$order['number']}/refunds", ['amount' => $rest], nonce: true);
         self::assertSame('refunded', $this->data($this->request('GET', "/orders/{$order['number']}"))['status']);
+
+        $before = $this->data($this->request('GET', "/stock/product/{$this->lamp}"))['available'];
+        self::assertIsInt($before);
+        $restocked = $this->request('POST', "/orders/{$order['number']}/restock", ['lines' => [['line' => 0, 'quantity' => 1]]], nonce: true);
+        self::assertSame(200, $restocked->get_status(), (string) wp_json_encode($restocked->get_data()));
+        self::assertSame($before + 1, $this->data($this->request('GET', "/stock/product/{$this->lamp}"))['available'], 'the lamp refunded by amount came back');
+        self::assertSame(422, $this->request('POST', "/orders/{$order['number']}/restock", ['lines' => []], nonce: true)->get_status());
     }
 
     public function testTheShopTakesAnOrderItselfAndDeletesItOnceCancelled(): void

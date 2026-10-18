@@ -36,6 +36,7 @@ import {
 	type Invoice,
 	markHandled,
 	markPaid,
+	restockOrder,
 	type Order,
 	type PickupPoint,
 	type OrderAction,
@@ -190,6 +191,15 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 					order={ order }
 					onSaved={ done(
 						__( 'The status was changed.', 'orillacart' )
+					) }
+					onError={ fail }
+				/>
+			) }
+			{ order.lines.some( ( line ) => line.restockable > 0 ) && (
+				<RestockCard
+					order={ order }
+					onSaved={ done(
+						__( 'The items went back in stock.', 'orillacart' )
 					) }
 					onError={ fail }
 				/>
@@ -756,6 +766,86 @@ function PaymentCard( { order, onSaved, onError }: CardProps ) {
 					} }
 				>
 					{ __( 'Mark as paid', 'orillacart' ) }
+				</Button>
+			</CardBody>
+		</Card>
+	);
+}
+
+/**
+ * Items of an order refunded by amount, which kept their stock: once they come back, they go back in stock.
+ * @param props
+ * @param props.order
+ * @param props.onSaved
+ * @param props.onError
+ */
+function RestockCard( { order, onSaved, onError }: CardProps ) {
+	const [ busy, run ] = useBusy();
+	const [ quantities, setQuantities ] = useState< Record< number, string > >(
+		{}
+	);
+	const lines = order.lines
+		.map( ( line, index ) => ( { line, index } ) )
+		.filter( ( { line } ) => line.restockable > 0 );
+	const chosen = lines
+		.map( ( { index } ) => ( {
+			line: index,
+			quantity: Number( quantities[ index ] ?? '0' ),
+		} ) )
+		.filter(
+			( item ) => Number.isInteger( item.quantity ) && item.quantity > 0
+		);
+
+	return (
+		<Card className="orillacart-card">
+			<CardHeader>
+				<h2>{ __( 'Items that came back', 'orillacart' ) }</h2>
+			</CardHeader>
+			<CardBody>
+				<p>
+					{ __(
+						'The money went back without these items. Once they come back, put them back in stock.',
+						'orillacart'
+					) }
+				</p>
+				{ lines.map( ( { line, index } ) => (
+					<TextControl
+						key={ index }
+						__next40pxDefaultSize
+						type="number"
+						min={ 0 }
+						max={ line.restockable }
+						label={ sprintf(
+							/* translators: 1: item name, 2: how many can go back */
+							__( '%1$s (up to %2$d)', 'orillacart' ),
+							line.name,
+							line.restockable
+						) }
+						value={ quantities[ index ] ?? '' }
+						onChange={ ( value ) =>
+							setQuantities( ( current ) => ( {
+								...current,
+								[ index ]: value,
+							} ) )
+						}
+					/>
+				) ) }
+				<Button
+					variant="secondary"
+					isBusy={ busy }
+					disabled={ busy || chosen.length === 0 }
+					onClick={ () =>
+						run( () =>
+							restockOrder( order.number, chosen )
+								.then( ( saved ) => {
+									setQuantities( {} );
+									onSaved( saved );
+								} )
+								.catch( onError )
+						)
+					}
+				>
+					{ __( 'Put back in stock', 'orillacart' ) }
 				</Button>
 			</CardBody>
 		</Card>

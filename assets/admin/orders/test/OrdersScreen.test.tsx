@@ -278,4 +278,64 @@ describe( 'OrdersScreen', () => {
 			} )
 		).not.toBeInTheDocument();
 	} );
+
+	it( 'puts the items of an order refunded by amount back in stock', async () => {
+		const refunded = {
+			...order,
+			status: 'refunded',
+			paid_at: '2026-10-17T12:00:00+00:00',
+			next_statuses: [],
+			lines: [ { ...order.lines[ 0 ], quantity: 2, restockable: 2 } ],
+		};
+		mockedFetch.mockImplementation( ( options ) => {
+			const request = options as Request;
+			if ( request.path.endsWith( '/restock' ) ) {
+				return Promise.resolve( {
+					...refunded,
+					lines: [ { ...refunded.lines[ 0 ], restockable: 1 } ],
+				} );
+			}
+			if ( request.path.endsWith( '/actions' ) ) {
+				return Promise.resolve( [] );
+			}
+			if ( request.path.endsWith( '/refunds' ) ) {
+				return Promise.resolve( {
+					refundable: '0',
+					currency: 'EUR',
+					paid: false,
+					provider: null,
+					refunds: [],
+				} );
+			}
+			if ( request.path.endsWith( '/invoices' ) ) {
+				return Promise.resolve( [] );
+			}
+			return Promise.resolve( refunded );
+		} );
+		const user = userEvent.setup();
+		render( <OrderDetail id={ 7 } onBack={ () => {} } /> );
+
+		await user.type(
+			await screen.findByLabelText( 'Guide (up to 2)' ),
+			'1'
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Put back in stock' } )
+		);
+
+		expect(
+			await screen.findByText( 'The items went back in stock.', NOTICE )
+		).toBeVisible();
+		expect(
+			mockedFetch.mock.calls.find(
+				( [ request ] ) =>
+					( request as Request ).path ===
+					'/orillacart/v1/orders/7/restock'
+			)?.[ 0 ]
+		).toEqual( {
+			path: '/orillacart/v1/orders/7/restock',
+			method: 'POST',
+			data: { lines: [ { line: 0, quantity: 1 } ] },
+		} );
+	} );
 } );

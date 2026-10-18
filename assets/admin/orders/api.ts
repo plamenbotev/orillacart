@@ -64,6 +64,8 @@ export interface OrderLine {
 	/** Whether the customer was told of the backorder. */
 	backorder_shown: boolean;
 	refunded_quantity: number;
+	/** Items of a refunded order that can still go back in stock. */
+	restockable: number;
 	/** What coupons took off the total; the tax is on what is left. */
 	discount: string;
 	/** What one bundle holds, for a bundle. */
@@ -295,6 +297,22 @@ export function markPaid( id: number, note: string ): Promise< Order > {
 		path: `${ BASE }/orders/${ id }/paid`,
 		method: 'POST',
 		data: { note },
+	} );
+}
+
+/**
+ * Items of a refunded order came back: they go back in stock.
+ * @param id
+ * @param lines
+ */
+export function restockOrder(
+	id: number,
+	lines: { line: number; quantity: number }[]
+): Promise< Order > {
+	return apiFetch< Order >( {
+		path: `${ BASE }/orders/${ id }/restock`,
+		method: 'POST',
+		data: { lines },
 	} );
 }
 

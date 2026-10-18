@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Ordering\Application\Dto;
 
 use OrillaCart\Ordering\Domain\OrderLine;
+use OrillaCart\Ordering\Domain\OrderStatus;
 
 final readonly class OrderLineView
 {
@@ -35,10 +36,12 @@ final readonly class OrderLineView
         public array $bundleChoices = [],
         /** The money given back for the line, with its tax. */
         public string $refundedAmount = '0',
+        /** Items of a refunded order that can still go back in stock. */
+        public int $restockable = 0,
     ) {}
 
     public static function fromLine(OrderLine $line): self
     {
-        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount());
+        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount(), $line->order()->status() === OrderStatus::Refunded ? $line->restockable() : 0);
     }
 }

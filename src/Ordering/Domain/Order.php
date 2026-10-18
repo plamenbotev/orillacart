@@ -510,7 +510,9 @@ class Order
         $this->refundedTotal = $this->refundedTotal()->add($refund->amount)->toFixed();
         $this->refundedTax = $this->refundedTax()->add($tax)->toFixed();
         if ($this->refundable()->isZero()) {
-            array_push($taken, ...$this->close(OrderStatus::Refunded, false));
+            // The items not refunded one by one keep their stock: they may come back, and be restocked then.
+            $this->status = OrderStatus::Refunded;
+            $this->grants->clear();
         }
 
         return new RefundShare($tax, $this->taxShares($tax), $taken);
@@ -592,6 +594,49 @@ class Order
         }
 
         return $shares;
+    }
+
+    /**
+     * Items of a refunded order came back after the money went, as after a refund of an amount alone: they go back
+     * in stock, and count as refunded.
+     *
+     * @param array<int, int> $quantities by line position
+     *
+     * @return list<TakenItem> the stock to put back
+     *
+     * @throws OrderRuleViolation for an order not refunded, or more items than the line still holds in stock
+     */
+    public function restock(array $quantities): array
+    {
+        if ($this->status !== OrderStatus::Refunded) {
+            throw new OrderRuleViolation(\sprintf('Order #%d is not refunded; its items go back in stock with a refund.', $this->id()), 'orillacart_order_not_refunded');
+        }
+        $lines = [];
+        foreach ($this->lines as $line) {
+            $lines[$line->position()] = $line;
+        }
+        $taken = [];
+        foreach ($quantities as $position => $quantity) {
+            $line = $lines[$position] ?? throw new OrderRuleViolation(\sprintf('Order #%d has no line %d.', $this->id(), $position + 1), 'orillacart_invalid_refund_line');
+            if ($quantity < 1 || $quantity > $line->restockable()) {
+                throw new OrderRuleViolation(\sprintf('Line "%s" has %d items to put back in stock.', $line->name(), $line->restockable()), 'orillacart_invalid_refund_quantity');
+            }
+            array_push($taken, ...$line->refund($quantity, true));
+        }
+
+        return $taken;
+    }
+
+    /** Whether some of its items still hold stock that could be put back. */
+    public function isRestockable(): bool
+    {
+        foreach ($this->lines as $line) {
+            if ($line->restockable() > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -910,17 +955,13 @@ class Order
     /**
      * @return list<TakenItem>
      */
-    private function close(OrderStatus $status, bool $restock = true): array
+    private function close(OrderStatus $status): array
     {
         $this->status = $status;
         $this->grants->clear();
         $taken = [];
         foreach ($this->lines as $line) {
-            if ($restock) {
-                array_push($taken, ...$line->releaseStock());
-            } else {
-                $line->forgetStock();
-            }
+            array_push($taken, ...$line->releaseStock());
         }
 
         return $taken;
