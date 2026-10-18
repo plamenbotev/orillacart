@@ -119,7 +119,28 @@ final readonly class OrderPricing
      */
     public function lines(array $priced): array
     {
-        return array_map(fn(array $line): NewOrderLine => new NewOrderLine(
+        return array_map(function (array $line): NewOrderLine {
+            $quote = $line['quote'];
+            $taken = $this->take($quote, $line['quantity']);
+
+            return $this->line($line, $taken);
+        }, $priced['lines']);
+    }
+
+    /**
+     * @param PricedLine       $line
+     * @param list<TakenStock> $taken
+     */
+    private function line(array $line, array $taken): NewOrderLine
+    {
+        // An item owes as many as its scarcest part: the product, or one of its options.
+        $owed = [];
+        foreach ($taken as $part) {
+            $owed[$part->item] = ($owed[$part->item] ?? 0) + $part->owed;
+        }
+        $backordered = $owed === [] ? 0 : max($owed);
+
+        return new NewOrderLine(
             $line['quote']->productId,
             $line['quote']->variationId,
             // The options asked for: a variation's, or the chosen options of a product without variations.
@@ -132,11 +153,13 @@ final readonly class OrderPricing
             (string) $line['total'],
             (string) $line['tax'],
             $line['quote']->type === 'physical',
-            $this->take($line['quote'], $line['quantity']),
+            $taken,
             $line['quote']->downloads,
             $line['quote']->downloadLimit,
             $line['quote']->downloadExpiryDays,
-        ), $priced['lines']);
+            $backordered,
+            $backordered > 0 && $line['quote']->backorders === 'notify',
+        );
     }
 
     /**
@@ -180,8 +203,9 @@ final readonly class OrderPricing
             ? [StockItemRef::variation($quote->variationId)]
             : [StockItemRef::product($quote->productId), ...array_map(static fn(QuotedOption $option): StockItemRef => StockItemRef::option($option->id), $quote->options)];
         // Stock that does not limit the item takes nothing; items always available or never sold were checked above.
+        // Backorders lift the limit, but the stock is still taken and the shortfall owed.
         try {
-            return $quote->available === null ? [] : $this->stock->take($refs, $quantity);
+            return $quote->available === null && $quote->inStock === null ? [] : $this->stock->take($refs, $quantity, $quote->backorders !== 'no');
         } catch (InsufficientStock) {
             throw new CheckoutRuleViolation(\sprintf('%s sold out in the meantime. Review the items and try again.', $quote->name), 'orillacart_out_of_stock');
         }

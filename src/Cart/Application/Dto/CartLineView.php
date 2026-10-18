@@ -12,6 +12,7 @@ final readonly class CartLineView
 {
     /**
      * @param list<array{attribute: string, option: string}> $options
+     * @param int $backordered how many of the quantity are on backorder, when the customer is to be told
      */
     public function __construct(
         public int $id,
@@ -25,5 +26,6 @@ final readonly class CartLineView
         public string $total,
         public ?int $available,
         public ?string $problem,
+        public int $backordered = 0,
     ) {}
 }

@@ -26,6 +26,7 @@
                             {% for option in line.options %}
                                 <br><small>{{ option.attribute }}: {{ option.option }}</small>
                             {% endfor %}
+                            {% if line.backordered > 0 %}<br><small class="orillacart-backorder">{{ __('%d on backorder: they ship when back in stock')|format(line.backordered) }}</small>{% endif %}
                             {% if line.problem %}<p class="orillacart-notice orillacart-notice--error">{{ line.problem }}</p>{% endif %}
                         </td>
                         <td data-label="{{ __('Price') }}">{{ line.unit_price|money }}</td>

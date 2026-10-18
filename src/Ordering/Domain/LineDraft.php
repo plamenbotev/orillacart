@@ -16,6 +16,8 @@ final readonly class LineDraft
      * @param list<array{attribute: string, option: string}> $options   the chosen options as the customer saw them
      * @param list<TakenItem>                              $taken
      * @param list<LineDownload>                           $downloads what the buyer may download once paid
+     * @param int  $backordered    how many of the quantity were not in stock: the shop owes them
+     * @param bool $backorderShown whether the customer is told of the backorder
      */
     public function __construct(
         public int $productId,
@@ -33,5 +35,7 @@ final readonly class LineDraft
         public array $downloads = [],
         public ?int $downloadLimit = null,
         public ?int $downloadExpiryDays = null,
+        public int $backordered = 0,
+        public bool $backorderShown = false,
     ) {}
 }

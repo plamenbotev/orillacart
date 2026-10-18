@@ -74,6 +74,34 @@ final class StockTest extends TestCase
         self::assertSame(5, $sofia->quantity());
     }
 
+    public function testWithBackordersTheFastestStockroomOwesTheShortfall(): void
+    {
+        $sofia = $this->level('Sofia', 2, 1);
+        $plovdiv = $this->level('Plovdiv', 1, 0);
+        $berlin = $this->level('Berlin', 7, 3);
+        $stock = new Stock($this->item, [$berlin, $sofia, $plovdiv, $this->level('Archive', 0, 0, active: false)]);
+
+        $taken = $stock->take(6, backorders: true);
+
+        self::assertSame([$sofia->stockroom()->id() => 1, $berlin->stockroom()->id() => 3, $plovdiv->stockroom()->id() => 2], $taken);
+        self::assertSame([0, -2, 0], [$sofia->quantity(), $plovdiv->quantity(), $berlin->quantity()], 'Plovdiv delivers fastest, so it owes');
+        self::assertSame(-2, $stock->available());
+        self::assertSame($plovdiv->stockroom()->id(), $stock->owingStockroomId());
+
+        self::assertSame([$plovdiv->stockroom()->id() => 1], $stock->take(1, backorders: true), 'owing more');
+        self::assertSame(-3, $plovdiv->quantity());
+        self::assertTrue($stock->putBack($plovdiv->stockroom()->id(), 1), 'one backorder cancelled, the other still owed');
+        self::assertSame(-2, $plovdiv->quantity());
+    }
+
+    public function testBackordersNeedAnActiveStockroomToOweFrom(): void
+    {
+        $stock = new Stock($this->item, [$this->level('Archive', 1, 10, active: false)]);
+
+        $this->expectException(InsufficientStock::class);
+        $stock->take(1, backorders: true);
+    }
+
     public function testLevelsAreNeverBelowZero(): void
     {
         $this->expectException(InventoryRuleViolation::class);

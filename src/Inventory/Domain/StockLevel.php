@@ -7,7 +7,8 @@ namespace OrillaCart\Inventory\Domain;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * How many of one item a stockroom holds.
+ * How many of one item a stockroom holds. Below zero when orders took more than it held, as backorders: the shop
+ * owes that many.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'stock_levels')]
@@ -70,5 +71,25 @@ class StockLevel
     public function take(int $quantity): void
     {
         $this->set($this->quantity - $quantity);
+    }
+
+    /**
+     * Takes more than the stockroom holds; the level goes below zero by what is owed.
+     *
+     * @internal for Stock::take()
+     */
+    public function owe(int $quantity): void
+    {
+        $this->quantity -= $quantity;
+    }
+
+    /**
+     * Puts back what an order took; a level below zero owes that much less.
+     *
+     * @internal for Stock::putBack()
+     */
+    public function putBack(int $quantity): void
+    {
+        $this->quantity += $quantity;
     }
 }

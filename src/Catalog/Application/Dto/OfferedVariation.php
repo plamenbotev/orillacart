@@ -12,7 +12,8 @@ final readonly class OfferedVariation
     /**
      * @param list<int> $optionIds   in ascending order
      * @param string    $label       the option names, such as "M / Blue"
-     * @param int|null  $available   null when stock does not limit it
+     * @param int|null  $available   null when stock does not limit it, as with backorders
+     * @param bool      $onBackorder out of stock but sold on backorder, and the customer is to be told
      */
     public function __construct(
         public int $id,
@@ -23,5 +24,6 @@ final readonly class OfferedVariation
         public ?string $regularPrice,
         public bool $forSale,
         public ?int $available,
+        public bool $onBackorder = false,
     ) {}
 }

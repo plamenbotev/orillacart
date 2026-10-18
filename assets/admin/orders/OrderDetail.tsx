@@ -216,6 +216,20 @@ function Summary( { order }: { order: Order } ) {
 											<small>SKU { line.sku }</small>
 										</div>
 									) }
+									{ line.backordered > 0 && (
+										<div className="orillacart-backorder">
+											<small>
+												{ sprintf(
+													/* translators: %d: how many are owed */
+													__(
+														'%d on backorder',
+														'orillacart'
+													),
+													line.backordered
+												) }
+											</small>
+										</div>
+									) }
 								</td>
 								<td>{ line.quantity }</td>
 								<td>

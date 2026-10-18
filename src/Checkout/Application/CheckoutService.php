@@ -72,6 +72,7 @@ final readonly class CheckoutService
                 $line['quote']->unitPrice,
                 (string) $line['total'],
                 (string) $line['tax'],
+                $line['quote']->shownBackorder($line['quantity']),
             ), $priced['lines']),
             $priced['needs_shipping'],
             $priced['options'],

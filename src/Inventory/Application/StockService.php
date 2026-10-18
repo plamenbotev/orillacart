@@ -164,7 +164,8 @@ final readonly class StockService
     }
 
     /**
-     * Takes the quantity of each item for a placed order: all of it or, when one item falls short, nothing.
+     * Takes the quantity of each item for a placed order: all of it or, when one item falls short, nothing. With
+     * backorders, what is not in stock is owed instead (see Stock::take()).
      *
      * @param list<StockItemRef> $refs
      *
@@ -172,22 +173,24 @@ final readonly class StockService
      *
      * @throws InsufficientStock
      */
-    public function take(array $refs, int $quantity): array
+    public function take(array $refs, int $quantity, bool $backorders = false): array
     {
         $items = array_map(static fn(StockItemRef $ref): StockItem => $ref->toItem(), $refs);
 
-        $taken = $this->levels->lockedStockOf($items, static function (array $stocks) use ($quantity): array {
+        $taken = $this->levels->lockedStockOf($items, static function (array $stocks) use ($quantity, $backorders): array {
             /** @var list<Stock> $stocks */
             foreach ($stocks as $stock) {
                 $available = $stock->available();
-                if ($available !== null && $available < $quantity) {
-                    throw new InsufficientStock($stock->item, $quantity, $available);
+                if (!$backorders && $available !== null && $available < $quantity) {
+                    throw new InsufficientStock($stock->item, $quantity, max(0, $available));
                 }
             }
             $taken = [];
             foreach ($stocks as $stock) {
-                foreach ($stock->take($quantity) as $stockroomId => $amount) {
-                    $taken[] = new TakenStock((string) $stock->item, $stockroomId, $amount);
+                $owed = max(0, $quantity - max(0, $stock->available() ?? $quantity));
+                $owing = $stock->owingStockroomId();
+                foreach ($stock->take($quantity, $backorders) as $stockroomId => $amount) {
+                    $taken[] = new TakenStock((string) $stock->item, $stockroomId, $amount, $stockroomId === $owing ? $owed : 0);
                 }
             }
 

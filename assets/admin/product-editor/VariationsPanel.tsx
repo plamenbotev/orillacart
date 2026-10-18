@@ -20,7 +20,7 @@ import {
 	type VariationInput,
 } from '../catalog/api';
 import type { Stockroom } from '../inventory/api';
-import { orNull, STOCK_MODES, withSalePrice } from './fields';
+import { BACKORDERS, orNull, STOCK_MODES, withSalePrice } from './fields';
 import { GalleryField, ImageField } from '../catalog/MediaFields';
 import { StockLevels } from './StockLevels';
 
@@ -113,6 +113,7 @@ function VariationRow( {
 		sale: variation?.sale ?? null,
 		sku: variation?.sku ?? null,
 		stock_mode: variation?.stock_mode ?? 'tracked',
+		backorders: variation?.backorders ?? null,
 		weight: variation?.weight ?? null,
 		length: variation?.length ?? null,
 		width: variation?.width ?? null,
@@ -216,6 +217,29 @@ function VariationRow( {
 					} )
 				}
 			/>
+			{ draft.stock_mode === 'tracked' && (
+				<SelectControl
+					__next40pxDefaultSize
+					label={ __( 'When out of stock', 'orillacart' ) }
+					value={ draft.backorders ?? '' }
+					options={ [
+						{
+							label: __( 'As the product', 'orillacart' ),
+							value: '',
+						},
+						...BACKORDERS,
+					] }
+					onChange={ ( value ) =>
+						setDraft( {
+							...draft,
+							backorders:
+								value === ''
+									? null
+									: ( value as VariationInput[ 'backorders' ] ),
+						} )
+					}
+				/>
+			) }
 			<p className="orillacart-variation__hint">
 				{ __(
 					'Weight and size: empty for the product’s.',

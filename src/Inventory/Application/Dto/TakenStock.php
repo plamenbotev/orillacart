@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Inventory\Application\Dto;
 
 /**
- * Stock taken for an order from one stockroom, so it can be put back if the order is cancelled.
+ * Stock taken for an order from one stockroom, so it can be put back if the order is cancelled. The owed part is
+ * what the stockroom did not hold: a backorder.
  */
 final readonly class TakenStock
 {
@@ -13,5 +14,6 @@ final readonly class TakenStock
         public string $item,
         public int $stockroomId,
         public int $quantity,
+        public int $owed = 0,
     ) {}
 }

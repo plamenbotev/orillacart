@@ -15,6 +15,8 @@ type Variation = {
 	sku: string | null;
 	for_sale: boolean;
 	available: number | null;
+	/** Out of stock, sold on backorder, and the customer is told. */
+	on_backorder: boolean;
 	price: string;
 	image: Picture | null;
 	gallery: Picture[];
@@ -200,6 +202,11 @@ function showVariation(
 	if ( stock ) {
 		if ( ! variation.for_sale ) {
 			stock.textContent = __( 'Not available', 'orillacart' );
+		} else if ( variation.on_backorder ) {
+			stock.textContent = __(
+				'On backorder: ships when it is back in stock',
+				'orillacart'
+			);
 		} else {
 			stock.textContent =
 				variation.available === null

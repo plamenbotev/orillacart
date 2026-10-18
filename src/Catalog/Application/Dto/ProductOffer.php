@@ -19,6 +19,7 @@ final readonly class ProductOffer
      * @param list<OfferedVariation> $variations
      * @param list<string>         $downloads    the names of the files the buyer gets
      * @param bool                 $priceHidden  shoppers ask for the price: it is not shown, and the product is not sold online
+     * @param bool                 $onBackorder  out of stock but sold on backorder, and the customer is to be told
      */
     public function __construct(
         public int $id,
@@ -35,6 +36,7 @@ final readonly class ProductOffer
         public array $variations,
         public array $downloads,
         public bool $priceHidden = false,
+        public bool $onBackorder = false,
     ) {}
 
     /** Whether the product goes in the cart as it is, with no options to choose. */

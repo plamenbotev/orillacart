@@ -406,6 +406,8 @@ final readonly class OrderService
             array_map(static fn(QuotedDownload $file): LineDownload => new LineDownload($file->fileId, $file->name, $file->storageKey, $file->mimeType), $line->downloads),
             $line->downloadLimit,
             $line->downloadExpiryDays,
+            $line->backordered,
+            $line->backorderShown,
         ), $lines);
     }
 

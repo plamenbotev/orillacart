@@ -172,6 +172,40 @@ final class StorefrontTest extends RestTestCase
         self::assertSame('92', $this->data($this->request('GET', '/cart'))['subtotal']);
     }
 
+    public function testAnOutOfStockProductOnBackorderSaysSoAndAVariationMayDifferFromItsProduct(): void
+    {
+        $this->actAs('administrator');
+        $stockroom = $this->data($this->request('POST', '/stockrooms', ['name' => 'Sofia'], nonce: true))['id'];
+        $guide = $this->product('Field guide', ['price' => '10', 'backorders' => 'notify']);
+        $this->request('PUT', "/stock/product/{$guide}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 0]]], nonce: true);
+        self::assertSame('notify', $this->data($this->request('GET', "/products/{$guide}"))['backorders']);
+
+        $hoodie = $this->product('Hoodie', ['price' => '40', 'backorders' => 'notify', 'attributes' => [['name' => 'Size', 'options' => [['name' => 'S'], ['name' => 'M']]]]]);
+        $offered = $this->data($this->request('GET', "/products/{$hoodie}"))['offered'];
+        self::assertIsArray($offered);
+        self::assertIsArray($offered[0]);
+        self::assertIsArray($offered[0]['options']);
+        $sizes = array_column($offered[0]['options'], 'id');
+        $small = $this->data($this->request('POST', "/products/{$hoodie}/variations", ['option_ids' => [$sizes[0]], 'price' => '40', 'backorders' => 'no'], nonce: true))['id'];
+        $medium = $this->data($this->request('POST', "/products/{$hoodie}/variations", ['option_ids' => [$sizes[1]], 'price' => '40'], nonce: true))['id'];
+        self::assertIsInt($small);
+        self::assertIsInt($medium);
+        foreach ([$small, $medium] as $variation) {
+            $this->request('PUT', "/stock/variation/{$variation}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 0]]], nonce: true);
+        }
+        wp_set_current_user(0);
+
+        self::assertStringContainsString('On backorder', $this->productPage($guide, ''));
+        $page = $this->productPage($hoodie, '');
+        self::assertMatchesRegularExpression('/&quot;id&quot;:' . $small . ',[^}]*&quot;for_sale&quot;:false/', $page, 'S stops selling');
+        self::assertMatchesRegularExpression('/&quot;id&quot;:' . $medium . ',[^}]*&quot;for_sale&quot;:true,&quot;available&quot;:null,&quot;on_backorder&quot;:true/', $page, 'M follows the product');
+
+        $added = $this->request('POST', '/cart/items', ['product_id' => $guide, 'quantity' => 2], nonce: true);
+        self::assertSame(201, $added->get_status(), (string) wp_json_encode($added->get_data()));
+        $this->keepCookie($added);
+        self::assertStringContainsString('2 on backorder', do_blocks('<!-- wp:orillacart/cart /-->'));
+    }
+
     public function testShoppersSortByPriceAndTheShopsOrderAndTheBlockCanShowOnlyFeaturedOrSaleProducts(): void
     {
         $this->actAs('administrator');
@@ -452,7 +486,7 @@ final class StorefrontTest extends RestTestCase
     {
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['download_grants', 'payments', 'payment_methods', 'order_notes', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'variations', 'products'] as $table) {
+        foreach (['download_grants', 'payments', 'payment_methods', 'order_notes', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }

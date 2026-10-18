@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Catalog\Application\Dto;
 
+use OrillaCart\Catalog\Domain\Backorders;
 use OrillaCart\Catalog\Domain\PriceVisibility;
 use OrillaCart\Catalog\Domain\ProductDetails;
 use OrillaCart\Catalog\Domain\ProductType;
@@ -63,6 +64,9 @@ final readonly class SaveProduct
         public string $priceVisibility = 'shop',
         #[Assert\Positive]
         public ?int $shippingClassId = null,
+        /** no, yes, or notify: sell on when counted stock runs out, telling the customer */
+        #[Assert\Choice(callback: [Backorders::class, 'values'])]
+        public string $backorders = 'no',
     ) {}
 
     /** @return list<string> */

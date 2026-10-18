@@ -63,6 +63,9 @@ class Product
     #[ORM\Column(nullable: true)]
     private ?int $shippingClassId = null;
 
+    #[ORM\Column(length: 10, enumType: Backorders::class, options: ['default' => 'no'])]
+    private Backorders $backorders = Backorders::No;
+
     #[ORM\Column(nullable: true)]
     private ?int $downloadLimit = null;
 
@@ -131,6 +134,7 @@ class Product
             $this->downloadExpiryDays,
             $this->priceVisibility,
             $this->shippingClassId,
+            $this->backorders,
         );
     }
 
@@ -152,6 +156,7 @@ class Product
         $this->downloadExpiryDays = $details->downloadExpiryDays;
         $this->priceVisibility = $details->priceVisibility;
         $this->shippingClassId = $details->shippingClassId;
+        $this->backorders = $details->backorders;
     }
 
     /** Its shipping class is gone; it ships as an item without one. */

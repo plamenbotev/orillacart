@@ -243,6 +243,41 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame([$order->number], $placed);
     }
 
+    public function testABackorderSellsMoreThanIsInStockAndOwesTheRest(): void
+    {
+        $this->shop->products->save(10, new SaveProduct('33.33', weight: '2.5', backorders: 'notify'));
+        $owner = $this->cart([10, 5]);
+
+        $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG'));
+        self::assertSame([5, 2], [$summary->lines[0]->quantity, $summary->lines[0]->backordered], 'three in stock, two on backorder');
+        self::assertSame(2, $this->shop->carts->cart($owner)->cart->lines[0]->backordered);
+
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
+        $line = $this->shop->orders->byKey($placed->key)->lines[0];
+        self::assertSame([5, 2, true], [$line->quantity, $line->backordered, $line->backorderShown]);
+        self::assertSame([[$this->room, -2]], array_map(static fn($level): array => [$level->stockroomId, $level->quantity], $this->shop->stock->stock(StockItemRef::product(10))->levels));
+        self::assertSame(0, $this->shop->stock->available([StockItemRef::product(10)]));
+
+        $this->shop->orders->cancel($placed->number);
+        self::assertSame(3, $this->shop->stock->available([StockItemRef::product(10)]), 'cancelled: nothing owed, the three back');
+    }
+
+    public function testABackorderTheCustomerIsNotToldOfIsStillRecordedForTheShop(): void
+    {
+        $this->shop->products->save(10, new SaveProduct('33.33', weight: '2.5', backorders: 'yes'));
+        $owner = $this->cart([10, 4]);
+
+        self::assertSame(0, $this->shop->checkout->summary($owner, new CheckoutDetails('BG'))->lines[0]->backordered);
+        $line = $this->shop->orders->byKey($this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'))->key)->lines[0];
+        self::assertSame([1, false], [$line->backordered, $line->backorderShown]);
+    }
+
+    public function testWithoutBackordersTheCartStopsAtTheStock(): void
+    {
+        $this->expectException(CartRuleViolation::class);
+        $this->cart([10, 4]);
+    }
+
     public function testAProductsShippingClassChoosesTheRatesUntilTheClassIsDeleted(): void
     {
         $bulky = $this->shop->shippingClasses->create(new SaveShippingClass('Bulky'))->id;

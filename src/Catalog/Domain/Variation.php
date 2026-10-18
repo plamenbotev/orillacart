@@ -28,6 +28,10 @@ class Variation
     #[ORM\Column(length: 20, enumType: StockMode::class)]
     private StockMode $stockMode;
 
+    /** Null when it follows its product. */
+    #[ORM\Column(length: 10, nullable: true, enumType: Backorders::class)]
+    private ?Backorders $backorders = null;
+
     #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
     private ?string $weight = null;
 
@@ -92,6 +96,12 @@ class Variation
         return $this->stockMode;
     }
 
+    /** Its own setting; null when it follows its product. */
+    public function backorders(): ?Backorders
+    {
+        return $this->backorders;
+    }
+
     /** Its own weight, or null for the product's. */
     public function weight(): ?string
     {
@@ -152,6 +162,7 @@ class Variation
         $this->sku = $details->sku;
         $this->pricing = $details->pricing;
         $this->stockMode = $details->stockMode;
+        $this->backorders = $details->backorders;
         $this->weight = $details->weight;
         $this->length = $details->length;
         $this->width = $details->width;

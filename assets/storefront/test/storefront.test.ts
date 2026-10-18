@@ -190,6 +190,7 @@ describe( 'add to cart', () => {
 			sku: 'H-S-RED',
 			for_sale: true,
 			available: 3,
+			on_backorder: false,
 			price: '<span>38.00 EUR</span>',
 		},
 		{
@@ -198,6 +199,7 @@ describe( 'add to cart', () => {
 			sku: null,
 			for_sale: false,
 			available: 0,
+			on_backorder: false,
 			price: '<span>42.00 EUR</span>',
 		},
 	];

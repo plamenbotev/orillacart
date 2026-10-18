@@ -30,6 +30,8 @@
         {%- if offer.price_hidden -%}
         {%- elseif not offer.for_sale -%}
             <span class="orillacart-stock--out">{{ __('Not available') }}</span>
+        {%- elseif offer.on_backorder -%}
+            <span class="orillacart-stock--backorder">{{ __('On backorder: ships when it is back in stock') }}</span>
         {%- elseif offer.available is not null -%}
             {{ __('%d in stock')|format(offer.available) }}
         {%- endif -%}

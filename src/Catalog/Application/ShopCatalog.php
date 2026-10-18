@@ -9,6 +9,7 @@ use OrillaCart\Catalog\Application\Dto\OfferedVariation;
 use OrillaCart\Catalog\Application\Dto\OptionView;
 use OrillaCart\Catalog\Application\Dto\ProductOffer;
 use OrillaCart\Catalog\Domain\AttributeOption;
+use OrillaCart\Catalog\Domain\Backorders;
 use OrillaCart\Catalog\Domain\DownloadFile;
 use OrillaCart\Catalog\Domain\Pricing;
 use OrillaCart\Catalog\Domain\Product;
@@ -87,7 +88,7 @@ final readonly class ShopCatalog
         $downloads = array_map(static fn(DownloadFile $file): string => $file->name(), $product->downloads());
 
         if ($product->hasVariations()) {
-            $variations = array_map(fn(Variation $variation): OfferedVariation => $this->toVariation($variation, $sellable, $now), $product->variations());
+            $variations = array_map(fn(Variation $variation): OfferedVariation => $this->toVariation($variation, $details->backorders, $sellable, $now), $product->variations());
             $prices = array_map(static fn(OfferedVariation $variation): Money => Money::of($variation->price), $variations);
             usort($prices, static fn(Money $a, Money $b): int => $a->compare($b));
             $lowest = $prices[0] ?? $product->priceAt($now);
@@ -111,7 +112,7 @@ final readonly class ShopCatalog
             );
         }
 
-        $available = $this->available($details->stockMode, StockItemRef::product($product->id()));
+        [$available, $onBackorder] = $this->available($details->stockMode, StockItemRef::product($product->id()), $details->backorders);
 
         return new ProductOffer(
             $product->id(),
@@ -128,12 +129,13 @@ final readonly class ShopCatalog
             [],
             $downloads,
             $priceHidden,
+            $onBackorder,
         );
     }
 
-    private function toVariation(Variation $variation, bool $sellable, \DateTimeImmutable $now): OfferedVariation
+    private function toVariation(Variation $variation, Backorders $productBackorders, bool $sellable, \DateTimeImmutable $now): OfferedVariation
     {
-        $available = $this->available($variation->stockMode(), StockItemRef::variation($variation->id()));
+        [$available, $onBackorder] = $this->available($variation->stockMode(), StockItemRef::variation($variation->id()), $variation->backorders() ?? $productBackorders);
 
         return new OfferedVariation(
             $variation->id(),
@@ -144,16 +146,27 @@ final readonly class ShopCatalog
             self::regularPrice($variation->pricing(), $now),
             $sellable && $available !== 0,
             $available,
+            $onBackorder,
         );
     }
 
-    private function available(StockMode $mode, StockItemRef $ref): ?int
+    /**
+     * How many can be sold, null when stock does not limit it (as with backorders); and whether it is out of
+     * stock on a backorder the customer is told of.
+     *
+     * @return array{?int, bool}
+     */
+    private function available(StockMode $mode, StockItemRef $ref, Backorders $backorders): array
     {
-        return match ($mode) {
-            StockMode::AlwaysAvailable => null,
-            StockMode::Unavailable => 0,
-            StockMode::Tracked => $this->stock->available([$ref]),
-        };
+        if ($mode !== StockMode::Tracked) {
+            return [$mode === StockMode::Unavailable ? 0 : null, false];
+        }
+        $inStock = $this->stock->available([$ref]);
+        if ($inStock === null || !$backorders->allowed()) {
+            return [$inStock, false];
+        }
+
+        return [null, $backorders === Backorders::Notify && $inStock === 0];
     }
 
     private static function regularPrice(Pricing $pricing, \DateTimeImmutable $now): ?string

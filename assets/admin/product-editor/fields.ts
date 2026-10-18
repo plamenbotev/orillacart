@@ -1,6 +1,6 @@
 import { __ } from '@wordpress/i18n';
 
-import type { Sale, StockMode } from '../catalog/api';
+import type { Backorders, Sale, StockMode } from '../catalog/api';
 
 export const STOCK_MODES: { label: string; value: StockMode }[] = [
 	{ label: __( 'Count stock', 'orillacart' ), value: 'tracked' },
@@ -9,6 +9,15 @@ export const STOCK_MODES: { label: string; value: StockMode }[] = [
 		value: 'always_available',
 	},
 	{ label: __( 'Not available', 'orillacart' ), value: 'unavailable' },
+];
+
+export const BACKORDERS: { label: string; value: Backorders }[] = [
+	{ label: __( 'Stop selling', 'orillacart' ), value: 'no' },
+	{ label: __( 'Take backorders', 'orillacart' ), value: 'yes' },
+	{
+		label: __( 'Take backorders and tell the customer', 'orillacart' ),
+		value: 'notify',
+	},
 ];
 
 /**

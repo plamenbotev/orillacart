@@ -32,6 +32,7 @@ import { fetchGroups, type TaxGroup } from '../tax/api';
 import {
 	fromDateField,
 	orNull,
+	BACKORDERS,
 	STOCK_MODES,
 	toDateField,
 	withSalePrice,
@@ -424,6 +425,28 @@ export function ProductPanels() {
 						} )
 					}
 				/>
+				{ ( draft.stock_mode === 'tracked' || hasVariations ) && (
+					<SelectControl
+						__next40pxDefaultSize
+						label={ __( 'When out of stock', 'orillacart' ) }
+						help={
+							hasVariations
+								? __(
+										'Variations follow this unless they say otherwise.',
+										'orillacart'
+									)
+								: undefined
+						}
+						value={ draft.backorders }
+						options={ BACKORDERS }
+						onChange={ ( value ) =>
+							change( {
+								backorders:
+									value as ProductInput[ 'backorders' ],
+							} )
+						}
+					/>
+				) }
 				{ hasVariations && (
 					<p>
 						{ __(

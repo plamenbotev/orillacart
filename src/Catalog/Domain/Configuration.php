@@ -32,6 +32,11 @@ final readonly class Configuration
         return $this->variation !== null ? $this->variation->stockMode() : $this->product->details()->stockMode;
     }
 
+    public function backorders(): Backorders
+    {
+        return $this->variation?->backorders() ?? $this->product->details()->backorders;
+    }
+
     /**
      * What one item weighs and measures, for shipping: a variation's own values where it has them, else the
      * product's.

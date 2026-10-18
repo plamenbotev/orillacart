@@ -10,6 +10,7 @@ use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Catalog\Application\Dto\VariationView;
 use OrillaCart\Catalog\Domain\AttributeSet;
 use OrillaCart\Catalog\Domain\AttributeSetRepository;
+use OrillaCart\Catalog\Domain\Backorders;
 use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
@@ -97,6 +98,7 @@ final readonly class ProductService
             $command->downloadExpiryDays,
             PriceVisibility::from($command->priceVisibility),
             $command->shippingClassId,
+            Backorders::from($command->backorders),
         );
         $product = $this->products->find($id);
         if ($product === null) {
@@ -276,6 +278,7 @@ final readonly class ProductService
             $command->length,
             $command->width,
             $command->height,
+            $command->backorders === null ? null : Backorders::from($command->backorders),
         );
     }
 }

@@ -51,6 +51,13 @@ final readonly class ProductQuotes
             $name .= ' – ' . implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $configuration->variation->options()));
         }
         $available = $this->available($configuration);
+        $backorders = $configuration->backorders();
+        $inStock = null;
+        if ($backorders->allowed() && $configuration->stockMode() === StockMode::Tracked && $available !== null) {
+            // Backorders lift the limit; how many are in stock tells what will be owed.
+            $inStock = $available;
+            $available = null;
+        }
         $measures = $configuration->measures();
 
         return new ItemQuote(
@@ -79,6 +86,8 @@ final readonly class ProductQuotes
             $details->downloadLimit,
             $details->downloadExpiryDays,
             $details->shippingClassId,
+            $backorders->value,
+            $inStock,
         );
     }
 

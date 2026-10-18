@@ -68,6 +68,12 @@ class OrderLine
     #[ORM\Column(nullable: true)]
     private ?int $downloadExpiryDays;
 
+    #[ORM\Column(options: ['default' => 0])]
+    private int $backordered = 0;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $backorderShown = false;
+
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Order::class, inversedBy: 'lines')]
         #[ORM\JoinColumn(name: 'order_id', nullable: false, onDelete: 'CASCADE')]
@@ -93,6 +99,11 @@ class OrderLine
         $this->downloads = array_map(static fn(LineDownload $file): array => ['file_id' => $file->fileId, 'name' => $file->name, 'storage_key' => $file->storageKey, 'mime_type' => $file->mimeType], $draft->downloads);
         $this->downloadLimit = $draft->downloadLimit;
         $this->downloadExpiryDays = $draft->downloadExpiryDays;
+        if ($draft->backordered < 0 || $draft->backordered > $draft->quantity) {
+            throw new OrderRuleViolation('A line cannot owe more than its quantity.', 'orillacart_invalid_backorder');
+        }
+        $this->backordered = $draft->backordered;
+        $this->backorderShown = $draft->backorderShown;
         $this->stockTaken = array_map(static fn(TakenItem $taken): array => ['item' => $taken->item, 'stockroom_id' => $taken->stockroomId, 'quantity' => $taken->quantity], $draft->taken);
     }
 
@@ -156,6 +167,18 @@ class OrderLine
     public function tax(): Money
     {
         return Money::of($this->tax);
+    }
+
+    /** How many of the quantity the shop owes: they were not in stock when the order was placed. */
+    public function backordered(): int
+    {
+        return $this->backordered;
+    }
+
+    /** Whether the customer was told of the backorder. */
+    public function isBackorderShown(): bool
+    {
+        return $this->backorderShown;
     }
 
     public function ships(): bool

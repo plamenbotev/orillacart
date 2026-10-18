@@ -56,13 +56,16 @@ final readonly class Stock
 
     /**
      * Takes stock for a placed order: from the active stockroom that delivers fastest first and, between equally
-     * fast ones, from the one with the least of the item, so small remainders are used up.
+     * fast ones, from the one with the least of the item, so small remainders are used up. With backorders, what
+     * the stockrooms do not hold is owed by the fastest active stockroom, whose level goes below zero.
      *
-     * @return array<int, int> stockroom id => quantity taken; empty when stock does not limit the item
+     * @return array<int, int> stockroom id => quantity taken, owed part included; empty when stock does not limit
+     *                         the item
      *
-     * @throws InsufficientStock and takes nothing when the active stockrooms hold too few
+     * @throws InsufficientStock and takes nothing when the active stockrooms hold too few and the item takes no
+     *                           backorders, or no active stockroom has a level of it to owe from
      */
-    public function take(int $quantity): array
+    public function take(int $quantity, bool $backorders = false): array
     {
         if ($quantity < 1) {
             throw new InventoryRuleViolation('Take at least one.', 'orillacart_invalid_quantity');
@@ -71,8 +74,9 @@ final readonly class Stock
         if ($available === null) {
             return [];
         }
-        if ($available < $quantity) {
-            throw new InsufficientStock($this->item, $quantity, $available);
+        $owing = $this->owingLevel();
+        if ($available < $quantity && (!$backorders || $owing === null)) {
+            throw new InsufficientStock($this->item, $quantity, max(0, $available));
         }
 
         $levels = array_values(array_filter($this->levels, static fn(StockLevel $level): bool => $level->stockroom()->isActive() && $level->quantity() > 0));
@@ -89,8 +93,27 @@ final readonly class Stock
                 break;
             }
         }
+        if ($quantity > 0 && $owing !== null) {
+            $owing->owe($quantity);
+            $id = $owing->stockroom()->id();
+            $taken[$id] = ($taken[$id] ?? 0) + $quantity;
+        }
 
         return $taken;
+    }
+
+    /** The stockroom that owes what is backordered: the active one that delivers fastest. */
+    public function owingStockroomId(): ?int
+    {
+        return $this->owingLevel()?->stockroom()->id();
+    }
+
+    private function owingLevel(): ?StockLevel
+    {
+        $active = array_values(array_filter($this->levels, static fn(StockLevel $level): bool => $level->stockroom()->isActive()));
+        usort($active, static fn(StockLevel $a, StockLevel $b): int => [$a->stockroom()->maxDeliveryDays(), $a->stockroom()->id()] <=> [$b->stockroom()->maxDeliveryDays(), $b->stockroom()->id()]);
+
+        return $active[0] ?? null;
     }
 
     /**
@@ -102,7 +125,7 @@ final readonly class Stock
     {
         foreach ($this->levels as $level) {
             if ($level->stockroom()->id() === $stockroomId) {
-                $level->set($level->quantity() + $quantity);
+                $level->putBack($quantity);
 
                 return true;
             }

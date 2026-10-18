@@ -11,6 +11,7 @@ final readonly class CheckoutLineView
 {
     /**
      * @param list<array{attribute: string, option: string}> $options
+     * @param int $backordered how many of the quantity are on backorder, when the customer is to be told
      */
     public function __construct(
         public string $name,
@@ -19,5 +20,6 @@ final readonly class CheckoutLineView
         public string $unitPrice,
         public string $total,
         public string $tax,
+        public int $backordered = 0,
     ) {}
 }

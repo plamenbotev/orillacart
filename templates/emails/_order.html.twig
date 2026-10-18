@@ -3,7 +3,7 @@
 <table role="presentation" width="100%" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
 {% for line in order.lines %}
 <tr style="border-bottom:1px solid #e4e4e7;">
-<td>{{ line.name }}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}</td>
+<td>{{ line.name }}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}{% if line.backordered > 0 and (line.backorder_shown or for_shop) %}<br><small>{{ __('%d on backorder')|format(line.backordered) }}</small>{% endif %}</td>
 <td style="text-align:right;white-space:nowrap;">× {{ line.quantity }}</td>
 <td style="text-align:right;white-space:nowrap;">{{ line.total|money(order.currency) }}</td>
 </tr>

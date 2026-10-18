@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Catalog\Application\Dto;
 
+use OrillaCart\Catalog\Domain\Backorders;
 use OrillaCart\Catalog\Domain\ProductDetails;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -36,5 +37,8 @@ final readonly class SaveVariation
         public ?string $width = null,
         #[Assert\Regex(SaveProduct::MEASURE, message: SaveProduct::MEASURE_MESSAGE)]
         public ?string $height = null,
+        /** null to follow the product; no, yes or notify */
+        #[Assert\Choice(callback: [Backorders::class, 'values'])]
+        public ?string $backorders = null,
     ) {}
 }

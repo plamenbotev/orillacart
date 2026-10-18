@@ -38,6 +38,7 @@
                     <td>
                         {{ line.name }} &times; {{ line.quantity }}
                         {% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}
+                        {% if line.backorder_shown and line.backordered > 0 %}<br><small class="orillacart-backorder">{{ __('%d on backorder: they ship when back in stock')|format(line.backordered) }}</small>{% endif %}
                     </td>
                     <td>{{ line.total|money(order.currency) }}</td>
                 </tr>

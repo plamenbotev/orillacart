@@ -23,10 +23,13 @@ final readonly class OrderLineView
         public string $total,
         public string $tax,
         public array $optionIds = [],
+        /** How many the shop owes; customer views show it only when backorderShown. */
+        public int $backordered = 0,
+        public bool $backorderShown = false,
     ) {}
 
     public static function fromLine(OrderLine $line): self
     {
-        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds());
+        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown());
     }
 }

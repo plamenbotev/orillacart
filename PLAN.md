@@ -41,8 +41,8 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 16 | Postcodes on shipping rates: exact (1000), start (SW1*) or numeric range (1000-1999); the checkout sends the postcode | 6e2e887 |
 | ✅ | 17 | Regions and postcodes a shipping rate leaves out (replaces the old and/or/not operators) | 612df22 |
 | ✅ | 18 | Option prices as a percentage of the product price (on sale when it is; percentages do not compound) | 1ff29eb |
-| ✅ | 19 | Downloads sent by the web server (X-Sendfile, X-Accel-Redirect), kept only after a test file went through; shows the server rule otherwise | (this commit) |
-| 🔄 | 20 | Backorders: per product and variation; stock may go below zero; order lines record what is owed; optional notice to the customer | |
+| ✅ | 19 | Downloads sent by the web server (X-Sendfile, X-Accel-Redirect), kept only after a test file went through; shows the server rule otherwise | d22a0d9 |
+| ✅ | 20 | Backorders: per product, variations may differ; the fastest stockroom goes below zero; order lines record what is owed; optional notice on the product page, cart, checkout, receipt and emails | (this commit) |
 
 ## After parity
 

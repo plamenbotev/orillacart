@@ -46,6 +46,10 @@ export interface OrderLine {
 	total: string;
 	tax: string;
 	option_ids: number[];
+	/** How many the shop owes: they were not in stock when the order was placed. */
+	backordered: number;
+	/** Whether the customer was told of the backorder. */
+	backorder_shown: boolean;
 }
 
 export interface OrderNote {

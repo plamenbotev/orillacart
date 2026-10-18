@@ -51,6 +51,7 @@ final readonly class ProductPanel
                 'sku' => $variation->sku,
                 'for_sale' => $variation->forSale,
                 'available' => $variation->available,
+                'on_backorder' => $variation->onBackorder,
                 'price' => $this->templates->render('storefront/_variation_price.html.twig', ['variation' => $variation]),
                 'image' => self::images([(int) get_post_thumbnail_id($variation->id)])[0] ?? null,
                 'gallery' => self::images(ProductGallery::of($variation->id)),

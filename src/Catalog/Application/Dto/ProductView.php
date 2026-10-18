@@ -51,6 +51,7 @@ final readonly class ProductView
         public array $downloads = [],
         public string $priceVisibility = 'shop',
         public ?int $shippingClassId = null,
+        public string $backorders = 'no',
     ) {}
 
     public static function fromProduct(Product $product, string $name): self
@@ -83,6 +84,7 @@ final readonly class ProductView
             array_map(DownloadView::fromFile(...), $product->downloads()),
             $details->priceVisibility->value,
             $details->shippingClassId,
+            $details->backorders->value,
         );
     }
 

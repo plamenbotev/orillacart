@@ -18,6 +18,8 @@ final readonly class NewOrderLine
      * @param list<array{attribute: string, option: string}> $options
      * @param list<TakenStock>                             $taken
      * @param list<QuotedDownload>                         $downloads
+     * @param int  $backordered    how many of the quantity were not in stock
+     * @param bool $backorderShown whether the customer is told
      */
     public function __construct(
         public int $productId,
@@ -35,5 +37,7 @@ final readonly class NewOrderLine
         public array $downloads = [],
         public ?int $downloadLimit = null,
         public ?int $downloadExpiryDays = null,
+        public int $backordered = 0,
+        public bool $backorderShown = false,
     ) {}
 }

@@ -58,6 +58,9 @@ export interface Sale {
 
 export type StockMode = 'tracked' | 'always_available' | 'unavailable';
 
+/** When counted stock runs out: stop selling, sell on, or sell on and tell the customer. */
+export type Backorders = 'no' | 'yes' | 'notify';
+
 export interface Variation {
 	id: number;
 	option_ids: number[];
@@ -67,6 +70,8 @@ export interface Variation {
 	sale: Sale | null;
 	sku: string | null;
 	stock_mode: StockMode;
+	/** Its own; null to follow the product. */
+	backorders: Backorders | null;
 	/** Its own; null for the product's. Length, width and height likewise. */
 	weight: string | null;
 	length: string | null;
@@ -88,6 +93,7 @@ export interface Product {
 	taxable: boolean;
 	tax_group_id: number | null;
 	stock_mode: StockMode;
+	backorders: Backorders;
 	purchasable: boolean;
 	featured: boolean;
 	/** shop: as the shop's setting says; shown; hidden (not sold online). */
@@ -173,6 +179,7 @@ export function toProductInput( product: Product ): ProductInput {
 		taxable: product.taxable,
 		tax_group_id: product.tax_group_id,
 		stock_mode: product.stock_mode,
+		backorders: product.backorders,
 		purchasable: product.purchasable,
 		featured: product.featured,
 		price_visibility: product.price_visibility,

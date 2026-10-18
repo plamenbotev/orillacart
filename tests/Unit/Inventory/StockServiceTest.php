@@ -141,6 +141,21 @@ final class StockServiceTest extends TestCase
         self::assertSame(0, $this->stock->available([StockItemRef::option(3)]));
     }
 
+    public function testBackordersTakeWhatIsInStockAndOweTheRest(): void
+    {
+        $this->stock->setLevels(StockItemRef::product(5), new SetStockLevels([new SetStockLevel($this->sofia, 1)]));
+        $this->stock->setLevels(StockItemRef::option(3), new SetStockLevels([new SetStockLevel($this->berlin, 5)]));
+
+        $taken = $this->stock->take([StockItemRef::product(5), StockItemRef::option(3)], 3, backorders: true);
+
+        self::assertEquals([new TakenStock('product:5', $this->sofia, 3, 2), new TakenStock('option:3', $this->berlin, 3, 0)], $taken);
+        self::assertSame(0, $this->stock->available([StockItemRef::product(5)]), 'nothing to sell, two owed');
+        self::assertSame([[$this->sofia, -2]], array_map(static fn($level): array => [$level->stockroomId, $level->quantity], $this->stock->stock(StockItemRef::product(5))->levels));
+
+        $this->stock->giveBack($taken);
+        self::assertSame(1, $this->stock->available([StockItemRef::product(5)]), 'a cancelled backorder owes nothing');
+    }
+
     public function testDeletingAStockroomDeletesItsStock(): void
     {
         $this->stock->setLevels(StockItemRef::product(5), new SetStockLevels([new SetStockLevel($this->sofia, 9), new SetStockLevel($this->berlin, 1)]));

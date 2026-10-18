@@ -212,6 +212,7 @@ final readonly class CartService
                 (string) $total,
                 $quote->available,
                 $problem,
+                $quote->shownBackorder($line->quantity()),
             );
             $items += $line->quantity();
             $subtotal = $subtotal->add($total);
