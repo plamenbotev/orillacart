@@ -183,6 +183,27 @@ final readonly class StockService
     }
 
     /**
+     * Locks the stock of all the items an order is about to take, in one statement, until the transaction ends.
+     * An order that takes its items one by one then never waits for another order that locked them in another
+     * order: two such orders would wait for each other forever (a deadlock). Run it in the order's transaction.
+     *
+     * @param list<StockItemRef> $refs
+     */
+    public function lock(array $refs): void
+    {
+        $items = [];
+        foreach ($refs as $ref) {
+            $item = $ref->toItem();
+            $items[(string) $item] = $item;
+        }
+        if ($items === []) {
+            return;
+        }
+        ksort($items);
+        $this->levels->lockedStockOf(array_values($items), static fn(): null => null);
+    }
+
+    /**
      * Takes the quantity of each item for a placed order: all of it or, when one item falls short, nothing. With
      * backorders, what is not in stock is owed instead (see Stock::take()).
      *

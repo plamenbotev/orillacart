@@ -146,6 +146,8 @@ final readonly class OrderPricing
      */
     public function lines(array $priced): array
     {
+        $this->stock->lock(array_merge(...array_map(static fn(array $line): array => self::stockRefs($line['quote']), $priced['lines'])));
+
         return array_map(function (array $line): NewOrderLine {
             $quote = $line['quote'];
             $taken = $this->take($quote, $line['quantity']);
@@ -272,6 +274,29 @@ final readonly class OrderPricing
     }
 
     /**
+     * The stock items an item takes from: a bundle's items, or the variation, or the product and its options.
+     *
+     * @return list<StockItemRef>
+     */
+    private static function stockRefs(ItemQuote $quote): array
+    {
+        if ($quote->contents !== []) {
+            $refs = [];
+            foreach ($quote->contents as $item) {
+                if ($item->countsStock) {
+                    $refs[] = $item->variationId !== null ? StockItemRef::variation($item->variationId) : StockItemRef::product($item->productId);
+                }
+            }
+
+            return $refs;
+        }
+
+        return $quote->variationId !== null
+            ? [StockItemRef::variation($quote->variationId)]
+            : [StockItemRef::product($quote->productId), ...array_map(static fn(QuotedOption $option): StockItemRef => StockItemRef::option($option->id), $quote->options)];
+    }
+
+    /**
      * @return list<TakenStock>
      */
     private function take(ItemQuote $quote, int $quantity): array
@@ -293,9 +318,7 @@ final readonly class OrderPricing
 
             return $taken;
         }
-        $refs = $quote->variationId !== null
-            ? [StockItemRef::variation($quote->variationId)]
-            : [StockItemRef::product($quote->productId), ...array_map(static fn(QuotedOption $option): StockItemRef => StockItemRef::option($option->id), $quote->options)];
+        $refs = self::stockRefs($quote);
         // Stock that does not limit the item takes nothing; items always available or never sold were checked above.
         // Backorders lift the limit, but the stock is still taken and the shortfall owed.
         try {

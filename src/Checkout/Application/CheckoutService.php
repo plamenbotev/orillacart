@@ -191,7 +191,7 @@ final readonly class CheckoutService
         $answers = $this->fields->answers($command->fields, new FieldContext($command->email, $billingAddress->country, $priced['needs_shipping'] ? $shippingAddress->country : null, $owner->customerId), $priced['needs_shipping']);
         $registering = $this->registration($owner, $command);
 
-        $order = $this->transactions->run(fn(): OrderView => $this->claimed($contents->cartId, fn(): OrderView => $this->redeemed($priced, $owner, $command->email, $this->orders->place(new NewOrder(
+        $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents->cartId, fn(): OrderView => $this->redeemed($priced, $owner, $command->email, $this->orders->place(new NewOrder(
             $owner->customerId,
             $command->email,
             $billingAddress,

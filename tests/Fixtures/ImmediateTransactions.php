@@ -31,6 +31,11 @@ final class ImmediateTransactions implements Transactions
         }
     }
 
+    public function runRetrying(callable $work): mixed
+    {
+        return $this->run($work);
+    }
+
     /**
      * What Doctrine does for a pessimistic lock with no transaction open.
      */
