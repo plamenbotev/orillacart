@@ -88,6 +88,9 @@ describe( 'OrdersScreen', () => {
 	it( 'lists orders and moves one along', async () => {
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
+			if ( request.path.includes( '/customers' ) ) {
+				return Promise.resolve( { customers: [], total: 0 } );
+			}
 			if ( request.path.startsWith( '/orillacart/v1/customers' ) ) {
 				return Promise.resolve( {
 					customers: [],
@@ -187,6 +190,9 @@ describe( 'OrdersScreen', () => {
 	it( "shows the answers to add-ons' questions and runs their actions", async () => {
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
+			if ( request.path.includes( '/customers' ) ) {
+				return Promise.resolve( { customers: [], total: 0 } );
+			}
 			if ( request.path.endsWith( '/actions' ) ) {
 				return Promise.resolve( [ { id: 'export', label: 'Export' } ] );
 			}
@@ -231,6 +237,9 @@ describe( 'OrdersScreen', () => {
 		};
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
+			if ( request.path.includes( '/customers' ) ) {
+				return Promise.resolve( { customers: [], total: 0 } );
+			}
 			if ( request.path.endsWith( '/anonymise' ) ) {
 				return Promise.resolve( erased );
 			}
@@ -289,6 +298,9 @@ describe( 'OrdersScreen', () => {
 		};
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
+			if ( request.path.includes( '/customers' ) ) {
+				return Promise.resolve( { customers: [], total: 0 } );
+			}
 			if ( request.path.endsWith( '/restock' ) ) {
 				return Promise.resolve( {
 					...refunded,
