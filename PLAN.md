@@ -48,10 +48,10 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 
 | | # | Item | Commit |
 |---|---|---|---|
-| 🔄 | 21 | Storefront filtering and search on an index fed by a database queue (`FOR UPDATE SKIP LOCKED`, workers or cron); database or OpenSearch behind one interface ([design](docs/designs/21-catalog-search.md), approved) | |
+| ✅ | 21 | Storefront filtering and search on an index fed by a database queue (`FOR UPDATE SKIP LOCKED`, workers or cron); database or OpenSearch behind one interface ([design](docs/designs/21-catalog-search.md), approved) | a259cf4 |
 | ✅ | 21a | ↳ Search index, queue and workers (cron, end of request, WP-CLI), MySQL engine; the shop page searches, sorts and filters on it | 9ae4f66 |
 | ✅ | 21b | ↳ Filters the shop defines, facet counts, price and stock filters, Search block | 739feb1 |
-| 🔄 | 21c | ↳ OpenSearch engine, queue status and rebuild in the settings | |
+| ✅ | 21c | ↳ OpenSearch engine, queue status and rebuild in the settings | a259cf4 |
 | ✅ | 25 | Orders list actions (raised 2026-10-18): create an order by hand in the admin (customer or guest, items with options, addresses, shipping, status; stock taken like checkout), and delete from the list (row and bulk actions; today only from an order's page, and only cancelled, failed or refunded ones); the customer is emailed only when the shop ticks "Email the customer" (asked 2026-10-18, in 27b's commit) | e634242 |
 | 📝 | 26 | Carrier integrations (raised 2026-10-18): a contract a carrier module implements (live rates, pickup points/offices, shipments with labels and tracking), with DPD as the first. The old plugin had none, only its pluggable `methods/` folder holding the standard carrier; design needed (which DPD API and country, what the shop does with labels) | |
 | ✅ | 27 | Public extension API for add-ons (agreed 2026-10-18): stable contracts in `OrillaCart\Extension`, an `orillacart_extensions` registry; shipping methods (rates, pickup points, shipments with labels and tracking), payment gateways and refunds on it; built-in methods use it too. Order of work: 25, 27, 21b, 21c, then 26 and the rest | [design](docs/designs/27-extension-api.md) |
