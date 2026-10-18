@@ -25,6 +25,7 @@ final readonly class SearchIndexing
         private ClockInterface $clock,
         private AfterResponse $afterResponse,
         private IndexWorker $worker,
+        private IndexWorkers $workers,
     ) {}
 
     /**
@@ -34,7 +35,8 @@ final readonly class SearchIndexing
     {
         if ($productIds !== []) {
             $this->queue->push(array_values(array_unique($productIds)), $this->clock->now());
-            $this->afterResponse->defer(self::class, fn() => $this->worker->work(self::AFTER_RESPONSE));
+            // Unless workers that run all the time have the queue: they take it within seconds.
+            $this->afterResponse->defer(self::class, fn() => $this->workers->running() > 0 ? null : $this->worker->work(self::AFTER_RESPONSE));
         }
     }
 

@@ -166,6 +166,21 @@ export function SearchEngineCard() {
 										state.later
 									) }
 						</p>
+						<p>
+							{ state.workers > 0
+								? sprintf(
+										/* translators: %d: number of workers */
+										__(
+											'%d workers build the index as products change.',
+											'orillacart'
+										),
+										state.workers
+									)
+								: __(
+										'WordPress builds the index after each change and every minute. For a busy shop, run workers: wp orillacart index work --loop.',
+										'orillacart'
+									) }
+						</p>
 						{ parked.length > 0 && (
 							<Notice status="warning" isDismissible={ false }>
 								{ __(

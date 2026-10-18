@@ -20,6 +20,7 @@ final readonly class SearchEngines
         private EngineSettingsRepository $settings,
         private SearchServer $server,
         private SearchIndexing $indexing,
+        private IndexWorkers $workers,
     ) {}
 
     public function current(): SearchEngineView
@@ -72,6 +73,7 @@ final readonly class SearchEngines
             $status->nextAt?->format(\DATE_ATOM),
             $works,
             $message,
+            $this->workers->running(),
         );
     }
 }

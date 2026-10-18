@@ -81,6 +81,7 @@ function serve( save?: () => Promise< unknown > ) {
 					method === 'PUT'
 						? 'OpenSearch answered. 12 products are being indexed there.'
 						: '',
+				workers: 0,
 			} );
 		}
 		if ( path.startsWith( '/orillacart/v1/search-filters' ) ) {

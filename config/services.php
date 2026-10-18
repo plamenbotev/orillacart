@@ -71,6 +71,7 @@ use OrillaCart\Search\Application\IndexQueue;
 use OrillaCart\Search\Application\ProductTexts;
 use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Application\SearchServer;
+use OrillaCart\Search\Application\WorkerSignals;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchFilterRepository;
 use OrillaCart\Search\Infrastructure\Doctrine\DbalIndexQueue;
@@ -79,6 +80,7 @@ use OrillaCart\Search\Infrastructure\EngineCatalogSearch;
 use OrillaCart\Search\Infrastructure\EngineSearchIndex;
 use OrillaCart\Search\Infrastructure\OpenSearch\OpenSearchServer;
 use OrillaCart\Search\Infrastructure\WordPress\OptionEngineSettingsRepository;
+use OrillaCart\Search\Infrastructure\WordPress\OptionWorkerSignals;
 use OrillaCart\Search\Infrastructure\WordPress\WordPressProductTexts;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
@@ -207,6 +209,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CatalogSearch::class, EngineCatalogSearch::class);
     $services->alias(SearchIndex::class, EngineSearchIndex::class);
     $services->alias(SearchServer::class, OpenSearchServer::class);
+    $services->alias(WorkerSignals::class, OptionWorkerSignals::class);
     $services->alias(EngineSettingsRepository::class, OptionEngineSettingsRepository::class);
 
     $services->alias(Transactions::class, DoctrineTransactions::class);
