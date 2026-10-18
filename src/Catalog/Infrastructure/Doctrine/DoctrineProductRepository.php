@@ -90,6 +90,45 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return [$options, $total];
     }
 
+    public function ids(int $afterId, int $limit): array
+    {
+        return self::intList($this->entityManager->createQueryBuilder()
+            ->select('p.id')
+            ->from(Product::class, 'p')
+            ->where('p.id > :after')
+            ->setParameter('after', $afterId)
+            ->orderBy('p.id')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getSingleColumnResult());
+    }
+
+    public function idsOfferingOption(int $optionId): array
+    {
+        $option = $this->entityManager->find(AttributeOption::class, $optionId);
+        if ($option === null) {
+            return [];
+        }
+        $attribute = $option->attribute();
+        $product = $attribute->product();
+        $set = $attribute->set();
+
+        return $product !== null ? [$product->id()] : ($set !== null ? $this->idsUsingSet($set->id()) : []);
+    }
+
+    public function idsUsingSet(int $setId): array
+    {
+        return self::intList($this->entityManager->createQueryBuilder()
+            ->select('p.id')
+            ->from(Product::class, 'p')
+            ->join('p.sets', 's')
+            ->where('s.id = :set')
+            ->setParameter('set', $setId)
+            ->orderBy('p.id')
+            ->getQuery()
+            ->getSingleColumnResult());
+    }
+
     public function findByVariation(int $variationId): ?Product
     {
         return $this->entityManager->find(Variation::class, $variationId)?->product();
@@ -164,5 +203,15 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->setParameter('set', $set)
             ->getQuery()
             ->getSingleScalarResult() > 0;
+    }
+
+    /**
+     * @param array<mixed> $column
+     *
+     * @return list<int>
+     */
+    private static function intList(array $column): array
+    {
+        return array_values(array_map(intval(...), array_filter($column, is_numeric(...))));
     }
 }

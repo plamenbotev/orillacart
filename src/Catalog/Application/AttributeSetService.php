@@ -12,6 +12,7 @@ use OrillaCart\Catalog\Domain\AttributeSetNotFound;
 use OrillaCart\Catalog\Domain\AttributeSetRepository;
 use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
+use OrillaCart\Catalog\Domain\Event\ProductChanged;
 use OrillaCart\Catalog\Domain\ProductRepository;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -70,6 +71,10 @@ final readonly class AttributeSetService
         if ($removed !== []) {
             $this->events->dispatch(new CatalogItemsRemoved(optionIds: $removed));
         }
+        // What the products using the set offer changed with it.
+        foreach ($this->products->idsUsingSet($id) as $productId) {
+            $this->events->dispatch(new ProductChanged($productId));
+        }
 
         return AttributeSetView::fromSet($set);
     }
@@ -85,9 +90,13 @@ final readonly class AttributeSetService
             throw new CatalogRuleViolation(\sprintf('Product variations use options of "%s"; change or remove them first.', $set->name()), 'orillacart_attribute_set_in_use');
         }
         $optionIds = array_merge(...array_map(static fn(Attribute $attribute): array => $attribute->savedOptionIds(), [...$set->ownAttributes()]));
+        $users = $this->products->idsUsingSet($id);
         $this->sets->remove($set);
         if ($optionIds !== []) {
             $this->events->dispatch(new CatalogItemsRemoved(optionIds: array_values($optionIds)));
+        }
+        foreach ($users as $productId) {
+            $this->events->dispatch(new ProductChanged($productId));
         }
     }
 

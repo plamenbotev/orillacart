@@ -15,10 +15,13 @@ interface ScheduledTask
 {
     public const string TAG = 'orillacart.scheduled_task';
 
+    /** The plugin's own recurrence, for work that should not wait: once a minute, as often as WP-Cron runs. */
+    public const string EVERY_MINUTE = 'orillacart_every_minute';
+
     /** The cron hook, unique: "orillacart_forget_abandoned_carts". */
     public static function hook(): string;
 
-    /** A WordPress recurrence: "hourly", "twicedaily", "daily" or "weekly". */
+    /** A WordPress recurrence ("hourly", "twicedaily", "daily", "weekly") or self::EVERY_MINUTE. */
     public static function recurrence(): string;
 
     public function run(): void;

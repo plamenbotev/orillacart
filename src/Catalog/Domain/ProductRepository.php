@@ -29,6 +29,25 @@ interface ProductRepository
      */
     public function options(?string $text, int $offset, int $limit): array;
 
+    /**
+     * Ids of products with commerce details, in ascending order, from after the given id.
+     *
+     * @return list<int>
+     */
+    public function ids(int $afterId, int $limit): array;
+
+    /**
+     * Ids of the products that offer this attribute option: its product's, or those of the products using its set.
+     *
+     * @return list<int>
+     */
+    public function idsOfferingOption(int $optionId): array;
+
+    /**
+     * @return list<int> ids of the products the attribute set is assigned to
+     */
+    public function idsUsingSet(int $setId): array;
+
     /** The product a variation belongs to. */
     public function findByVariation(int $variationId): ?Product;
 

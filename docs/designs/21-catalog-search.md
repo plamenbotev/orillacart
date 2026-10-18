@@ -1,72 +1,92 @@
 # 21 · Storefront filtering and search
 
-Status: proposed, waiting for approval.
+Status: approved 2026-10-18. Built in three steps: 21a (index, queue, MySQL engine, shop on the index),
+21b (filters the shop defines, facets, price and stock filters, Search block), 21c (OpenSearch, queue status).
+
+Decisions:
+
+- MySQL is the default engine, with facets; OpenSearch is optional, for big catalogs and typo tolerance.
+- Only filters the shop defines get facets. A filter has a label and the attribute names it covers ("Size",
+  "Размер"), because attributes and their options belong to one product or one attribute set, so the same
+  "M" on two products is two unrelated options.
+- Filtering is variant-accurate: options, price and stock must all hold for the same variant.
+- The plugin requires MySQL 8.0 or MariaDB 10.6 (`FOR UPDATE SKIP LOCKED`); there is no single-worker fallback.
 
 ## What shoppers get
 
-- A **search box** and a **filter panel** on the shop page (the Products block), and a Search block for themes.
-- Filters: category (with subcategories), brand, price range, attribute options (Size: M, L), in stock only,
-  on sale, featured. Each shows how many products it would leave (facet counts).
-- Sorts stay as they are (order, newest, name, price), plus "best match" when searching.
-- Results reload the product list region over HTML, like the rest of the storefront, and the URL keeps the
-  query (`?q=lamp&size=m&price=10-50`) so results can be shared and cached.
+- A search box and filters on the shop page (the Products block), and a Search block for themes.
+- Filters: category (with subcategories), brand, the shop's attribute filters (Size: M, L), price range, in stock
+  only; the block can also be fixed to featured or on-sale products. Each value shows how many products it
+  would leave; values within one filter are OR, filters are AND, and a filter's own counts ignore its own choice.
+- Sorts: the shop's order, newest, name, price both ways, and best match when searching.
+- The form is a plain GET form, so it works without JavaScript; the script swaps the list region over HTML and
+  keeps the URL (`?q=lamp&category=lamps&f[size][]=m&price_min=10&price_max=50`), so results can be shared.
 
 ## Why an index
 
-Filtering by options, price today (sales start and end) and stock across stockrooms means joining five tables
-per request and computing prices in SQL. The shop's numbers change rarely compared with how often shoppers
-browse, so each product is flattened once into a search document and the storefront reads only that.
+Filtering by options, today's price (sales start and end) and stock across stockrooms means joining many tables
+per request and computing prices in SQL. The catalog changes rarely compared with how often shoppers browse, so
+each product is flattened once into a search document and the storefront reads only that.
+
+The index supplies ids, totals and facet counts only. The cards render through `ShopCatalog::offers()` as now,
+so the price and stock a shopper sees are always live; a queue delay only affects for a few seconds whether a
+product matches.
 
 ## The index
 
-One row per sellable product (variations folded into their product), in `orillacart_search_documents`:
+`SearchDocument` (Application DTO) is built by `DocumentBuilder` from the catalog's application services and
+the product's WordPress content: title, text (excerpt and content without tags), SKUs, categories (with their
+ancestors), brands, option values per variant, today's price per variant (before tax, as the cards show it;
+none when the price is hidden), stock per variant, featured, on sale, menu order, published date, and when the
+price next changes (a sale starting or ending). A product with variations has one variant per variation; one
+without has a single variant with its own id, and its options are values of the whole product.
 
-| column | |
+The MySQL engine keeps it in four tables:
+
+| table | rows |
 |---|---|
-| product_id | key |
-| title, sku, text | title, every SKU (product and variations), excerpt and content stripped of tags; FULLTEXT on title+sku+text |
-| categories, brands, options | JSON arrays of term and option ids (and generated columns for MySQL multi-valued indexes where available) |
-| price_min, price_max | today's lowest and highest price, sale included, before tax |
-| sale_until | when the running sale ends, so the price is refreshed then |
-| in_stock, featured, on_sale, menu_order, published_at | |
+| `search_documents` | one per indexed product: title, text, price_min/max, in_stock, featured, on_sale, menu_order, published_at; FULLTEXT on title and on title+text |
+| `search_variants` | one per variant: price, in_stock |
+| `search_values` | product, variant (null: the whole product), facet, value, label; index (facet, value, product_id). Facets: `category`, `brand`, `sku`, `attr:<attribute name>` |
+| `index_jobs` | the queue (below) |
 
-Behind one port, `CatalogSearch` (Application): `search(SearchQuery): SearchResult` with ids, total and facet
-counts. Two adapters:
+Text search splits the query into words. Words of three letters or more that are not InnoDB stopwords are
+required in `MATCH … AGAINST` in boolean mode, as prefixes; shorter words must appear in the title; stopwords
+are dropped (InnoDB returns nothing for a required stopword or a short word). A query that starts a SKU also
+matches it. Best match weighs the title above the text.
 
-- **MySQL** (default, no setup): FULLTEXT `MATCH … AGAINST` in boolean mode for text, `JSON_OVERLAPS`/
-  `MEMBER OF` for filters, `GROUP BY` queries for facet counts. Good to tens of thousands of products.
-- **OpenSearch** (optional, a host and credentials in settings): the same documents in an index, with
-  aggregations for facets, typo tolerance and stemming per language. Settings test the connection before
-  switching, as downloads do.
-
-Both read the same documents, built by one `SearchDocuments` builder from the catalog's application services.
+Ports (Search\Application): `CatalogSearch::search(SearchQuery): SearchResult` and `SearchIndex::put/remove`.
+`ShopSearch` turns what the storefront asks into a `SearchQuery` (category slugs, the shop's filters) and
+labels the facets.
 
 ## Keeping it fresh: a queue in the database
 
-`orillacart_index_queue (id, product_id, reason, available_at, attempts, locked_until)`.
+`index_jobs (product_id PK, version, available_at, attempts, locked_until, last_error)`
 
-- **Producers** are the events the catalog already raises: `ProductChanged`, `StockChanged`, `CatalogItemsRemoved`,
-  post status and term changes (WordPress hooks), settings that change prices (hidden prices, catalog only).
-  Each inserts a row; a unique key on `product_id` where not yet taken keeps one pending row per product.
-- **Sale boundaries**: when a document is built with `sale_until`, a row is queued with `available_at` then.
-- **Workers** claim a batch with `SELECT … FOR UPDATE SKIP LOCKED` inside a short transaction, set
-  `locked_until`, commit, build the documents, then delete the rows. A worker that dies leaves `locked_until`
-  to expire and the rows are claimed again; `attempts` stops a product that keeps failing after five tries and
-  logs it.
-- **Runners**: WP-Cron every minute (always on), `wp orillacart index work` for a system cron or a supervisor
-  (`--loop` to keep running), and a full rebuild with `wp orillacart index rebuild`. MySQL 8.0 and MariaDB
-  10.6 have SKIP LOCKED; on older servers the claim falls back to `UPDATE … SET locked_until … LIMIT n` with a
-  random token, which is safe with one worker.
+- **Producers** upsert one row per product:
+  `INSERT … ON DUPLICATE KEY UPDATE version = version + 1, available_at = LEAST(available_at, ?), attempts = 0`.
+  Events: `ProductChanged`, `StockChanged` (variation and option stock map to their products),
+  `CatalogItemsRemoved`, `AttributeSetChanged` (products using the set), `SettingsChanged` (hidden prices:
+  every product); WordPress hooks: a product post saved, its status or terms changed, deleted; a category
+  moved under another parent (its products).
+- **Sale boundaries**: a built document that knows when the price next changes leaves its job due then.
+- **Workers** claim a batch in a short transaction:
+  `SELECT … WHERE available_at <= now AND (locked_until IS NULL OR locked_until < now) AND attempts < 5
+  ORDER BY available_at LIMIT n FOR UPDATE SKIP LOCKED`, set `locked_until`, commit; then build outside it.
+  Completing deletes the row `WHERE version = claimed` (or moves `available_at` to the next price change);
+  when the version moved, a change arrived while building, so the row is only unlocked and built again.
+  A failure counts an attempt and retries later; after five the job is parked, logged and shown in the admin
+  until the product changes again.
+- **Runners**: WP-Cron every minute; at the end of a request that queued jobs (after the response is sent
+  where PHP-FPM allows), a small batch, so the admin's changes show at once; `wp orillacart index work`
+  (`--loop` for a supervisor), `wp orillacart index rebuild` (queues every product), `wp orillacart index status`.
 
-The admin sees the queue length and the last run on the settings screen, with a "Rebuild the index" button.
+## OpenSearch (21c)
+
+Behind the same ports: documents with a nested `variants` field for variant-accurate filters, aggregations for
+facets, the analyser for the site's language. Settings test the connection before switching, as download
+delivery does; switching queues a rebuild. One contract test suite runs against both engines.
 
 ## Not in scope
 
-Search analytics, synonyms management, and searching orders or customers in the admin (they keep their own
-queries).
-
-## Questions for you
-
-1. Is MySQL FULLTEXT the default, with OpenSearch as an option, the split you want, or should OpenSearch be
-   the only engine and MySQL a plain fallback without facets?
-2. Should attribute filters be offered for every attribute, or only for attributes the shop marks "filterable"?
+Search analytics, synonyms, and searching orders or customers in the admin (they keep their own queries).

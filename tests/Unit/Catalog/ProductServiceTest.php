@@ -52,6 +52,22 @@ final class ProductServiceTest extends TestCase
         $this->sets = new AttributeSetService($setRepository, $productRepository, $this->events);
     }
 
+    public function testChangingOrDeletingASetChangesTheProductsUsingIt(): void
+    {
+        $set = $this->sets->create(new SaveAttributeSet('Clothing', attributes: [new SaveAttribute('Size', [new SaveOption('S')])]));
+        $this->products->save(10, new SaveProduct('40', setIds: [$set->id]));
+        $this->products->save(11, new SaveProduct('8'));
+        $changed = fn(): array => array_values(array_map(static fn(ProductChanged $event): int => $event->productId, array_filter($this->events->events, static fn(object $event): bool => $event instanceof ProductChanged)));
+
+        $this->events->events = [];
+        $this->sets->update($set->id, new SaveAttributeSet('Clothes', attributes: [new SaveAttribute('Size', [new SaveOption('S', id: $set->attributes[0]->options[0]->id)], id: $set->attributes[0]->id)]));
+        self::assertSame([10], $changed());
+
+        $this->events->events = [];
+        $this->sets->delete($set->id);
+        self::assertSame([10], $changed());
+    }
+
     public function testAProductPostStartsWithDefaultsUntilSaved(): void
     {
         $view = $this->products->product(10);

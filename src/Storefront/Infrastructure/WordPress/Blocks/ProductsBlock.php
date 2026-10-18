@@ -6,15 +6,18 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
-use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\ProductCategories;
+use OrillaCart\Search\Application\Dto\SearchQuery;
+use OrillaCart\Search\Application\Dto\SearchSort;
+use OrillaCart\Search\Application\ShopSearch;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 
 /**
- * The shop: published products in a grid, which visitors narrow by category and search, and sort.
- * The query string carries the choices (category, product-search, sort, product-page), so pages can be linked.
+ * The shop: published products in a grid, which visitors narrow by category and search, and sort. The products
+ * come from the search index; their cards show the catalog's offers as they are now.
+ * The query string carries the choices (q, category, sort, product-page), so pages can be linked.
  */
 final readonly class ProductsBlock implements BlockDefinition
 {
@@ -22,6 +25,7 @@ final readonly class ProductsBlock implements BlockDefinition
 
     public function __construct(
         private ShopCatalog $catalog,
+        private ShopSearch $search,
         private ProductCategories $categories,
         private ShopLinks $links,
         private TemplateRenderer $templates,
@@ -57,39 +61,29 @@ final readonly class ProductsBlock implements BlockDefinition
         $fixedCategory = \is_string($attributes['category'] ?? null) ? sanitize_title($attributes['category']) : '';
 
         $category = $fixedCategory !== '' ? $fixedCategory : self::query('category');
-        $search = self::query('product-search');
+        $search = self::query('q');
         $defaultSort = \is_string($attributes['sort'] ?? null) && \in_array($attributes['sort'], self::SORTS, true) ? $attributes['sort'] : 'order';
-        $sort = \in_array(self::query('sort'), self::SORTS, true) ? self::query('sort') : $defaultSort;
+        $sorts = $search === '' ? self::SORTS : ['relevance', ...self::SORTS];
+        // Searching sorts by best match unless the shopper chose otherwise.
+        $sort = \in_array(self::query('sort'), $sorts, true) ? self::query('sort') : ($search === '' ? $defaultSort : 'relevance');
         $page = max(1, ctype_digit(self::query('product-page')) ? (int) self::query('product-page') : 1);
 
-        $arguments = [
-            'post_type' => ProductPostType::NAME,
-            'post_status' => 'publish',
-            'posts_per_page' => $perPage,
-            'paged' => $page,
-            'orderby' => match ($sort) {
-                'name' => 'title',
-                'newest' => 'date',
-                'order' => ['menu_order' => 'ASC', 'title' => 'ASC'],
-                default => 'none',
-            },
-            'order' => $sort === 'newest' ? 'DESC' : 'ASC',
-            // Price sorts, and the featured and on-sale filters, come from CatalogQueryVars.
-            'orillacart_sort' => $sort,
-            'orillacart_featured' => ($attributes['featured'] ?? false) === true,
-            'orillacart_on_sale' => ($attributes['onSale'] ?? false) === true,
-            'ignore_sticky_posts' => true,
-            'no_found_rows' => false,
-            'fields' => 'ids',
-        ];
-        if ($search !== '') {
-            $arguments['s'] = $search;
-        }
+        $categoryId = null;
         if ($category !== '') {
-            $arguments['tax_query'] = [['taxonomy' => ProductCategoryTaxonomy::NAME, 'field' => 'slug', 'terms' => $category, 'include_children' => true]];
+            $term = get_term_by('slug', $category, ProductCategoryTaxonomy::NAME);
+            $categoryId = $term instanceof \WP_Term ? $term->term_id : 0;
         }
-        $query = new \WP_Query($arguments);
-        $ids = array_values(array_filter($query->posts ?? [], \is_int(...)));
+        $result = $this->search->search(new SearchQuery(
+            text: $search === '' ? null : $search,
+            // An unknown category finds nothing rather than everything.
+            categoryIds: $categoryId === null ? [] : [$categoryId],
+            featuredOnly: ($attributes['featured'] ?? false) === true,
+            onSaleOnly: ($attributes['onSale'] ?? false) === true,
+            sort: SearchSort::from($sort),
+            offset: ($page - 1) * $perPage,
+            limit: $perPage,
+        ));
+        $ids = $result->ids;
         $offers = $this->catalog->offers($ids);
         $urls = $this->links->products($ids);
 
@@ -104,7 +98,7 @@ final readonly class ProductsBlock implements BlockDefinition
         }
 
         $base = self::baseUrl();
-        $pages = (int) $query->max_num_pages;
+        $pages = (int) ceil($result->total / $perPage);
         $pageUrls = [];
         for ($number = 1; $number <= $pages; ++$number) {
             $pageUrls[$number] = $number === 1 ? remove_query_arg('product-page') : add_query_arg('product-page', $number);
@@ -121,7 +115,7 @@ final readonly class ProductsBlock implements BlockDefinition
             'base_url' => $base,
             'search' => $search,
             'sort' => $sort,
-            'sorts' => [
+            'sorts' => ($search === '' ? [] : ['relevance' => __('Best match', 'orillacart')]) + [
                 'order' => __('Recommended', 'orillacart'),
                 'newest' => __('Newest', 'orillacart'),
                 'name' => __('Name', 'orillacart'),
@@ -146,6 +140,6 @@ final readonly class ProductsBlock implements BlockDefinition
     /** This page without the shop's query arguments. */
     private static function baseUrl(): string
     {
-        return remove_query_arg(['category', 'product-search', 'sort', 'product-page']);
+        return remove_query_arg(['category', 'q', 'sort', 'product-page']);
     }
 }

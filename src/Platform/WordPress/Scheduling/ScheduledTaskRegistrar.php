@@ -10,7 +10,8 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
 /**
- * Hooks every scheduled task to its cron hook; TaskSchedule puts the hooks on the schedule.
+ * Hooks every scheduled task to its cron hook, and adds the plugin's recurrence; TaskSchedule puts the hooks on
+ * the schedule.
  */
 final readonly class ScheduledTaskRegistrar implements Registrar
 {
@@ -24,6 +25,13 @@ final readonly class ScheduledTaskRegistrar implements Registrar
 
     public function register(): void
     {
+        add_filter('cron_schedules', static function (mixed $schedules): mixed {
+            if (\is_array($schedules)) {
+                $schedules[ScheduledTask::EVERY_MINUTE] = ['interval' => MINUTE_IN_SECONDS, 'display' => __('Every minute', 'orillacart')];
+            }
+
+            return $schedules;
+        });
         foreach (array_keys($this->tasks->getProvidedServices()) as $hook) {
             add_action($hook, function () use ($hook): void {
                 $this->tasks->get($hook)->run();

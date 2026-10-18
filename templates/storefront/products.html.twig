@@ -21,7 +21,7 @@
         {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
         <p class="orillacart-field">
             <label for="orillacart-product-search">{{ __('Search products') }}</label>
-            <input id="orillacart-product-search" type="search" name="product-search" value="{{ search }}">
+            <input id="orillacart-product-search" type="search" name="q" value="{{ search }}">
         </p>
         <p class="orillacart-field">
             <label for="orillacart-product-sort">{{ __('Sort by') }}</label>

@@ -10,6 +10,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\CategoryOrder;
 use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
+use OrillaCart\Search\Application\IndexWorker;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionShopPagesRepository;
 
 /**
@@ -131,7 +132,7 @@ final class StorefrontTest extends RestTestCase
         wp_set_object_terms($mug, [$kitchen], ProductCategoryTaxonomy::NAME);
         wp_set_current_user(0);
 
-        $shop = do_blocks('<!-- wp:orillacart/products /-->');
+        $shop = $this->shop('<!-- wp:orillacart/products /-->');
         self::assertStringContainsString('Brass lamp', $shop);
         self::assertStringContainsString('Mug', $shop);
         self::assertStringNotContainsString('Secret', $shop, 'drafts are not for sale');
@@ -141,7 +142,7 @@ final class StorefrontTest extends RestTestCase
         self::assertLessThan(strpos($shop, '>Lamps<'), strpos($shop, '>Kitchen<'), 'categories by their Order field');
 
         $_GET['category'] = 'kitchen';
-        $kitchenShop = do_blocks('<!-- wp:orillacart/products /-->');
+        $kitchenShop = $this->shop('<!-- wp:orillacart/products /-->');
         self::assertStringContainsString('Mug', $kitchenShop);
         self::assertStringNotContainsString('Brass lamp', $kitchenShop);
         unset($draft);
@@ -234,13 +235,13 @@ final class StorefrontTest extends RestTestCase
             return $found[1];
         };
         $_GET = ['sort' => 'price_asc'];
-        self::assertSame(['Cup', 'Shirt', 'Brass lamp', 'Vase'], $names(do_blocks('<!-- wp:orillacart/products /-->')), 'today\'s price: the sale and the lowest variation count');
+        self::assertSame(['Cup', 'Shirt', 'Brass lamp', 'Vase'], $names($this->shop('<!-- wp:orillacart/products /-->')), 'today\'s price: the sale and the lowest variation count');
         $_GET = ['sort' => 'price_desc'];
-        self::assertSame(['Vase', 'Brass lamp', 'Shirt', 'Cup'], $names(do_blocks('<!-- wp:orillacart/products /-->')));
+        self::assertSame(['Vase', 'Brass lamp', 'Shirt', 'Cup'], $names($this->shop('<!-- wp:orillacart/products /-->')));
         $_GET = [];
-        self::assertSame(['Vase', 'Cup', 'Brass lamp', 'Shirt'], $names(do_blocks('<!-- wp:orillacart/products /-->')), 'the shop\'s own order first');
-        self::assertSame(['Cup'], $names(do_blocks('<!-- wp:orillacart/products {"featured":true} /-->')));
-        self::assertSame(['Brass lamp'], $names(do_blocks('<!-- wp:orillacart/products {"onSale":true} /-->')));
+        self::assertSame(['Vase', 'Cup', 'Brass lamp', 'Shirt'], $names($this->shop('<!-- wp:orillacart/products /-->')), 'the shop\'s own order first');
+        self::assertSame(['Cup'], $names($this->shop('<!-- wp:orillacart/products {"featured":true} /-->')));
+        self::assertSame(['Brass lamp'], $names($this->shop('<!-- wp:orillacart/products {"onSale":true} /-->')));
     }
 
     public function testAProductPageOffersItsChoicesAndAddsToTheCart(): void
@@ -365,7 +366,7 @@ final class StorefrontTest extends RestTestCase
             $mug = $this->product('Mug', ['price' => '9', 'stock_mode' => 'always_available', 'price_visibility' => 'hidden']);
             wp_set_current_user(0);
 
-            $shop = do_blocks('<!-- wp:orillacart/products /-->');
+            $shop = $this->shop('<!-- wp:orillacart/products /-->');
             self::assertStringContainsString('<ins aria-label="Sale price">$30.00</ins>', $shop, 'the sign before the amount');
             self::assertStringContainsString('Ask us for the price', $shop);
             self::assertStringNotContainsString('name="product_id" value="' . $mug . '"', $shop, 'a hidden price is not sold');
@@ -385,7 +386,7 @@ final class StorefrontTest extends RestTestCase
             wp_set_current_user(0);
             self::assertStringContainsString('The shop does not take orders online.', do_blocks('<!-- wp:orillacart/cart /-->'));
             self::assertSame('', do_blocks('<!-- wp:orillacart/mini-cart /-->'));
-            self::assertStringNotContainsString('data-orillacart-add-to-cart', do_blocks('<!-- wp:orillacart/products /-->'));
+            self::assertStringNotContainsString('data-orillacart-add-to-cart', $this->shop('<!-- wp:orillacart/products /-->'));
             self::assertSame('orillacart_catalog_only', $this->data($this->request('POST', '/cart/items', ['product_id' => $this->lamp], nonce: true))['code']);
         } finally {
             update_option('orillacart_settings', $stored);
@@ -421,6 +422,18 @@ final class StorefrontTest extends RestTestCase
         $lifecycle = self::kernel()->container()->get(PluginLifecycle::class);
         self::assertInstanceOf(PluginLifecycle::class, $lifecycle);
         $lifecycle->activate();
+    }
+
+    /**
+     * The products block as a shopper sees it, once the search index caught up with the changes.
+     */
+    private function shop(string $block): string
+    {
+        $worker = self::kernel()->container()->get(IndexWorker::class);
+        self::assertInstanceOf(IndexWorker::class, $worker);
+        while ($worker->work(100)->count() > 0);
+
+        return do_blocks($block);
     }
 
     /**
@@ -486,7 +499,7 @@ final class StorefrontTest extends RestTestCase
     {
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['download_grants', 'payments', 'payment_methods', 'order_notes', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['index_jobs', 'search_values', 'search_variants', 'search_documents', 'download_grants', 'payments', 'payment_methods', 'order_notes', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }

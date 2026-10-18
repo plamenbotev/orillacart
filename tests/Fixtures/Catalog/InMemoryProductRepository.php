@@ -53,6 +53,45 @@ final class InMemoryProductRepository implements ProductRepository
         return [\array_slice(array_values($options), $offset, $limit), \count($options)];
     }
 
+    public function ids(int $afterId, int $limit): array
+    {
+        $ids = array_filter(array_keys($this->products), static fn(int $id): bool => $id > $afterId);
+        sort($ids);
+
+        return \array_slice($ids, 0, $limit);
+    }
+
+    public function idsOfferingOption(int $optionId): array
+    {
+        $ids = [];
+        foreach ($this->products as $product) {
+            foreach ($product->attributes() as $attribute) {
+                foreach ($attribute->options() as $option) {
+                    if ($option->isSaved() && $option->id() === $optionId) {
+                        $ids[] = $product->id();
+                        continue 3;
+                    }
+                }
+            }
+        }
+
+        return $ids;
+    }
+
+    public function idsUsingSet(int $setId): array
+    {
+        $ids = [];
+        foreach ($this->products as $product) {
+            foreach ($product->sets() as $set) {
+                if ($set->id() === $setId) {
+                    $ids[] = $product->id();
+                }
+            }
+        }
+
+        return $ids;
+    }
+
     public function findByVariation(int $variationId): ?Product
     {
         foreach ($this->products as $product) {

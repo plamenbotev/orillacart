@@ -52,6 +52,7 @@ use OrillaCart\Payment\Infrastructure\PayPal\WordPressPayPalApi;
 use OrillaCart\Payment\Infrastructure\WordPress\RestPaymentUrls;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\DatabaseMigrator;
+use OrillaCart\Platform\Doctrine\DoctrineLoadedEntities;
 use OrillaCart\Platform\Doctrine\DoctrineTransactions;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
 use OrillaCart\Platform\Doctrine\MigrationsFactory;
@@ -60,15 +61,26 @@ use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Serialization\ValidatorFactory;
 use OrillaCart\Platform\Twig\TwigFactory;
+use OrillaCart\Platform\WordPress\AfterResponse\ShutdownWork;
 use OrillaCart\Platform\WordPress\Files\LocalPrivateFiles;
 use OrillaCart\Platform\WordPress\Files\WebServerFileDelivery;
 use OrillaCart\Platform\WordPress\Logging\DebugLogLogger;
 use OrillaCart\Platform\WordPress\WordPressIntegration;
+use OrillaCart\Search\Application\CatalogSearch;
+use OrillaCart\Search\Application\IndexQueue;
+use OrillaCart\Search\Application\ProductTexts;
+use OrillaCart\Search\Application\SearchIndex;
+use OrillaCart\Search\Infrastructure\Doctrine\DbalIndexQueue;
+use OrillaCart\Search\Infrastructure\Doctrine\MysqlCatalogSearch;
+use OrillaCart\Search\Infrastructure\Doctrine\MysqlSearchIndex;
+use OrillaCart\Search\Infrastructure\WordPress\WordPressProductTexts;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Shared\Files\FileDelivery;
 use OrillaCart\Shared\Files\PrivateFiles;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
+use OrillaCart\Shared\Lifecycle\AfterResponse;
+use OrillaCart\Shared\Persistence\LoadedEntities;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Domain\CarrierRepository;
 use OrillaCart\Shipping\Domain\ShippingClassRepository;
@@ -125,6 +137,7 @@ return static function (ContainerConfigurator $container): void {
             '../src/Shared/Http/Routing/{Route,RouteDefinition}.php',
             '../src/Shared/Security/',
             '../src/Shared/WordPress/AsHook.php',
+            '../src/Search/Infrastructure/Doctrine/{FullTextQuery,SqlParams}.php',
         ]);
 
     // Application services are each area's API: other areas, WordPress hooks and WP-CLI commands call them.
@@ -173,8 +186,16 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(Site::class, WordPressSite::class);
     $services->alias(Accounts::class, WordPressAccounts::class);
     $services->alias(CustomerSettingsRepository::class, OptionCustomerSettingsRepository::class);
+    $services->alias(IndexQueue::class, DbalIndexQueue::class);
+    $services->alias(ProductTexts::class, WordPressProductTexts::class);
+
+    // The search engine: the database's own (MySQL FULLTEXT).
+    $services->alias(CatalogSearch::class, MysqlCatalogSearch::class);
+    $services->alias(SearchIndex::class, MysqlSearchIndex::class);
 
     $services->alias(Transactions::class, DoctrineTransactions::class);
+    $services->alias(LoadedEntities::class, DoctrineLoadedEntities::class);
+    $services->alias(AfterResponse::class, ShutdownWork::class);
     $services->alias(PrivateFiles::class, LocalPrivateFiles::class);
     $services->alias(FileDelivery::class, WebServerFileDelivery::class);
 

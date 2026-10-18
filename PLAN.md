@@ -48,7 +48,12 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 
 | | # | Item | Commit |
 |---|---|---|---|
-| 📝 | 21 | Storefront filtering and search on an index fed by a database queue (`FOR UPDATE SKIP LOCKED`, workers or cron); database or OpenSearch behind one interface | [design](docs/designs/21-catalog-search.md) |
+| 🔄 | 21 | Storefront filtering and search on an index fed by a database queue (`FOR UPDATE SKIP LOCKED`, workers or cron); database or OpenSearch behind one interface ([design](docs/designs/21-catalog-search.md), approved) | |
+| 🔄 | 21a | ↳ Search index, queue and workers (cron, end of request, WP-CLI), MySQL engine; the shop page searches, sorts and filters on it | |
+| ⬜ | 21b | ↳ Filters the shop defines, facet counts, price and stock filters, Search block | |
+| ⬜ | 21c | ↳ OpenSearch engine, queue status and rebuild in the settings | |
+| ⬜ | 25 | Orders list actions (raised 2026-10-18): create an order by hand in the admin (customer or guest, items with options, addresses, shipping, status; stock taken like checkout), and delete from the list (row and bulk actions; today only from an order's page, and only cancelled, failed or refunded ones) | |
+| 📝 | 26 | Carrier integrations (raised 2026-10-18): a contract a carrier module implements (live rates, pickup points/offices, shipments with labels and tracking), with DPD as the first. The old plugin had none, only its pluggable `methods/` folder holding the standard carrier; design needed (which DPD API and country, what the shop does with labels) | |
 | 📝 | 22 | Coupon codes: by rules (minimum amount, dates, usage limits, per customer) or for specific products and categories | [design](docs/designs/22-coupons.md) |
 | 📝 | 23 | Dynamic prices (quantity tiers, customer groups, scheduled rules), bundles and sets | [design](docs/designs/23-dynamic-prices-bundles.md) |
 | 📝 | 24 | Refunds through the payment methods: a contract the gateways that can refund implement (PayPal's refund API); offline methods recorded by hand; full and partial | [design](docs/designs/24-refunds.md) |

@@ -71,6 +71,31 @@ final readonly class ShopCatalog
         return $offers;
     }
 
+    /**
+     * When today's price of the product or one of its variations next changes, as a sale starts or ends; null
+     * when no change is scheduled or the product has no commerce details.
+     */
+    public function nextPriceChange(int $id): ?\DateTimeImmutable
+    {
+        $product = $this->products->find($id);
+        if ($product === null) {
+            return null;
+        }
+        $now = $this->clock->now();
+        $next = null;
+        $pricings = [$product->details()->pricing, ...array_map(static fn(Variation $variation): Pricing => $variation->pricing(), $product->variations())];
+        foreach ($pricings as $pricing) {
+            $sale = $pricing->sale();
+            foreach ([$sale?->from, $sale?->until] as $moment) {
+                if ($moment !== null && $moment > $now && ($next === null || $moment < $next)) {
+                    $next = $moment;
+                }
+            }
+        }
+
+        return $next;
+    }
+
     private function toOffer(Product $product, \DateTimeImmutable $now): ProductOffer
     {
         $details = $product->details();
