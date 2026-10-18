@@ -155,6 +155,12 @@ final readonly class Refunds
         if ($payment === null) {
             return;
         }
+        foreach ($this->refunds->ofOrder($payment->orderId()) as $earlier) {
+            if ($earlier->paymentId() === $payment->id() && $earlier->status() !== RefundStatus::Failed) {
+                // Asked for already (the job ran twice): a second refund would give the money back twice.
+                return;
+            }
+        }
         $refund = new Refund(
             $payment->orderId(),
             $payment->id(),
@@ -258,7 +264,9 @@ final readonly class Refunds
     private function completed(Refund $refund, string $reference, bool $providerPending, ?int $userId): void
     {
         $this->transactions->run(function () use ($refund, $reference, $providerPending, $userId): void {
-            if (!$refund->complete($reference, $providerPending, $this->clock->now())) {
+            // Read again under the lock: the provider's notification and its answer may both complete it.
+            $refund = $this->refunds->find($refund->id(), true);
+            if ($refund === null || !$refund->complete($reference, $providerPending, $this->clock->now())) {
                 return;
             }
             $this->refunds->save($refund);

@@ -25,13 +25,16 @@ use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Payment\Domain\PaymentRepository;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Persistence\Transactions;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
  * How payments at providers end, whichever gateway took them: the customer coming back, and the provider's
- * notifications for customers who never did. Each payment settles once; what arrives after changes nothing.
+ * notifications for customers who never did. Each payment settles once; what arrives after changes nothing. The
+ * provider is asked first, with nothing locked; the payment then settles in one transaction with its row locked,
+ * so the customer's return and the provider's notification arriving together do not both settle it.
  * A completed payment whose amount or currency is not the order's is held for the shop to look at.
  */
 final readonly class PaymentOutcomes
@@ -44,6 +47,7 @@ final readonly class PaymentOutcomes
         private ClockInterface $clock,
         private LoggerInterface $logger,
         private Refunds $refunds,
+        private Transactions $transactions,
     ) {}
 
     /**
@@ -120,7 +124,17 @@ final readonly class PaymentOutcomes
         $this->settle($payment, $outcome);
     }
 
-    private function settle(Payment $payment, PaymentOutcome $outcome): void
+    private function settle(Payment $found, PaymentOutcome $outcome): void
+    {
+        $this->transactions->run(function () use ($found, $outcome): void {
+            $payment = $this->payments->find($found->id(), true);
+            if ($payment !== null) {
+                $this->settleLocked($payment, $outcome);
+            }
+        });
+    }
+
+    private function settleLocked(Payment $payment, PaymentOutcome $outcome): void
     {
         $now = $this->clock->now();
         $event = match ($outcome->status) {

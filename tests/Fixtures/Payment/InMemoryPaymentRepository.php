@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Fixtures\Payment;
 
 use OrillaCart\Payment\Domain\Payment;
 use OrillaCart\Payment\Domain\PaymentRepository;
+use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 
 final class InMemoryPaymentRepository implements PaymentRepository
 {
@@ -13,8 +14,14 @@ final class InMemoryPaymentRepository implements PaymentRepository
     public array $payments = [];
     private int $nextId = 1;
 
-    public function find(int $id): ?Payment
+    public function __construct(private readonly ?ImmediateTransactions $transactions = null) {}
+
+    public function find(int $id, bool $lock = false): ?Payment
     {
+        if ($lock) {
+            $this->transactions?->requireOpen();
+        }
+
         return $this->payments[$id] ?? null;
     }
 

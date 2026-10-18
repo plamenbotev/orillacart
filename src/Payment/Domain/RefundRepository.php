@@ -6,7 +6,11 @@ namespace OrillaCart\Payment\Domain;
 
 interface RefundRepository
 {
-    public function find(int $id): ?Refund;
+    /**
+     * @param bool $lock whether to lock the row until the transaction ends (SELECT … FOR UPDATE); only inside a
+     *                   transaction
+     */
+    public function find(int $id, bool $lock = false): ?Refund;
 
     public function findByProviderReference(string $gateway, string $reference): ?Refund;
 

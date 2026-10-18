@@ -6,7 +6,11 @@ namespace OrillaCart\Payment\Domain;
 
 interface PaymentRepository
 {
-    public function find(int $id): ?Payment;
+    /**
+     * @param bool $lock whether to lock the row until the transaction ends (SELECT … FOR UPDATE); only inside a
+     *                   transaction
+     */
+    public function find(int $id, bool $lock = false): ?Payment;
 
     public function findByReference(string $gateway, string $reference): ?Payment;
 

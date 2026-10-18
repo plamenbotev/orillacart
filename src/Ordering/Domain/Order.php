@@ -718,6 +718,24 @@ class Order
     }
 
     /**
+     * A payment came for an order that was already paid: the shop marked it paid by hand before the provider's
+     * payment arrived, or a second payment went through. The provider's transaction is kept when the order had
+     * none.
+     *
+     * @return bool whether the order already had another transaction: two payments, one of them to give back
+     */
+    public function paidAgain(string $transactionId): bool
+    {
+        if ($this->transactionId === null) {
+            $this->transactionId = $transactionId;
+
+            return false;
+        }
+
+        return $this->transactionId !== $transactionId;
+    }
+
+    /**
      * The money came after the order was cancelled or failed unpaid, as when a customer approves at the provider
      * after the payment window closed: the order opens again, paid, taking back the stock its lines gave back.
      *

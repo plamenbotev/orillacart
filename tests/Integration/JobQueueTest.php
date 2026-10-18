@@ -121,7 +121,7 @@ final class JobQueueTest extends RestTestCase
         $this->actAs('administrator');
 
         $overview = $this->data($this->request('GET', '/jobs'));
-        self::assertSame(['mail', 'reports', 'search', 'shipping'], array_column(self::list($overview['lanes']), 'queue'));
+        self::assertSame(['mail', 'payments', 'reports', 'search', 'shipping'], array_column(self::list($overview['lanes']), 'queue'));
         self::assertSame(2, $overview['failed']);
         self::assertContains($overview['runner'], ['workers', 'cron', 'none']);
 

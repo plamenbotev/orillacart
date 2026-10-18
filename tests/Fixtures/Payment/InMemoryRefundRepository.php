@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Fixtures\Payment;
 
 use OrillaCart\Payment\Domain\Refund;
 use OrillaCart\Payment\Domain\RefundRepository;
+use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 
 final class InMemoryRefundRepository implements RefundRepository
 {
@@ -13,8 +14,14 @@ final class InMemoryRefundRepository implements RefundRepository
     public array $refunds = [];
     private int $nextId = 1;
 
-    public function find(int $id): ?Refund
+    public function __construct(private readonly ?ImmediateTransactions $transactions = null) {}
+
+    public function find(int $id, bool $lock = false): ?Refund
     {
+        if ($lock) {
+            $this->transactions?->requireOpen();
+        }
+
         return $this->refunds[$id] ?? null;
     }
 

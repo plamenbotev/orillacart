@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Infrastructure\Doctrine;
 
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Payment\Domain\Payment;
 use OrillaCart\Payment\Domain\PaymentRepository;
@@ -12,9 +13,15 @@ final readonly class DoctrinePaymentRepository implements PaymentRepository
 {
     public function __construct(private EntityManagerInterface $entityManager) {}
 
-    public function find(int $id): ?Payment
+    public function find(int $id, bool $lock = false): ?Payment
     {
-        return $this->entityManager->find(Payment::class, $id);
+        $payment = $this->entityManager->find(Payment::class, $id);
+        if ($payment !== null && $lock) {
+            // Read again under the lock: a copy loaded earlier in the request may be older than the row.
+            $this->entityManager->refresh($payment, LockMode::PESSIMISTIC_WRITE);
+        }
+
+        return $payment;
     }
 
     public function findByReference(string $gateway, string $reference): ?Payment

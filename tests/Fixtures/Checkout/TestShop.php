@@ -47,6 +47,7 @@ use OrillaCart\Payment\Application\Gateway\BankTransfer;
 use OrillaCart\Payment\Application\Gateway\CashOnDelivery;
 use OrillaCart\Payment\Application\Gateway\Cheque;
 use OrillaCart\Payment\Application\Gateways;
+use OrillaCart\Payment\Application\GiveBackLatePayments;
 use OrillaCart\Payment\Application\PaymentMethodService;
 use OrillaCart\Payment\Application\PaymentOptions;
 use OrillaCart\Payment\Application\PaymentOutcomes;
@@ -184,6 +185,7 @@ final class TestShop
     public function __construct(string $now = '2026-10-17 12:00:00 UTC', array $shippingMethods = [])
     {
         $this->clock = new MockClock($now);
+        $this->transactions = new ImmediateTransactions();
         $this->events = new EventDispatcher();
         $this->logger = new MemoryLogger();
         $geography = new GeographyService(new InMemoryCountryRepository());
@@ -221,20 +223,19 @@ final class TestShop
         $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $quotes);
 
         $methodRecords = new InMemoryPaymentMethodRepository();
-        $this->paymentRecords = new InMemoryPaymentRepository();
+        $this->paymentRecords = new InMemoryPaymentRepository($this->transactions);
         $gateways = new Gateways($extensions);
         $urls = new FakePaymentUrls();
         $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls);
         $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock);
 
-        $this->transactions = new ImmediateTransactions();
         $this->cartRecords = new InMemoryCartRepository($this->transactions);
         $this->carts = new CartService($this->cartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger);
         $this->orderRecords = new InMemoryOrderRepository($this->transactions);
         $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, new FakeOrderLinks(), $this->transactions);
-        $this->refundRecords = new InMemoryRefundRepository();
+        $this->refundRecords = new InMemoryRefundRepository($this->transactions);
         $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions);
-        $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds);
+        $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds, $this->transactions);
         $this->files = new TemporaryPrivateFiles();
         $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events);
         $this->downloads = new Downloads(new InMemoryDownloadGrantRepository($this->orderRecords), $this->files, new FakeOrderLinks(), $this->clock, $this->logger);
@@ -282,13 +283,13 @@ final class TestShop
         $this->jobs = new TestJobs($this->clock);
         $this->jobs->immediate = true;
         $this->emails = new OrderEmails($this->orders, new FakeOrderLinks(), $this->emailSettings, $templates, $this->mail, new FakeSite(), $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs);
-        $this->jobs->with(new SendOrderEmails($this->emails), new TrackConsignments($this->consignments));
+        $this->jobs->with(new SendOrderEmails($this->emails), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));
         $emailing = new EmailAboutOrders($this->emails);
         $this->events->addListener(OrderStatusChanged::class, $emailing->statusChanged(...));
         $this->events->addListener(OrderNoteAdded::class, $emailing->noteAdded(...));
         $this->events->addListener(OrderRefunded::class, $emailing->refunded(...));
 
-        $settle = new SettleOrdersByPayment($this->orders, $this->refunds, $this->logger);
+        $settle = new SettleOrdersByPayment($this->orders, $this->jobs->jobs, $this->logger);
         $this->events->addListener(PaymentCompleted::class, $settle->completed(...));
         $this->events->addListener(PaymentHeld::class, $settle->held(...));
         $this->events->addListener(PaymentFailed::class, $settle->failed(...));

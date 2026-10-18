@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Infrastructure\Events;
 
+use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
-use OrillaCart\Payment\Application\Refunds;
+use OrillaCart\Payment\Application\GiveBackLatePayments;
 use OrillaCart\Payment\Domain\Event\PaymentCancelled;
 use OrillaCart\Payment\Domain\Event\PaymentCompleted;
 use OrillaCart\Payment\Domain\Event\PaymentFailed;
@@ -22,7 +23,7 @@ final readonly class SettleOrdersByPayment
 {
     public function __construct(
         private OrderService $orders,
-        private Refunds $refunds,
+        private Jobs $jobs,
         private LoggerInterface $logger,
     ) {}
 
@@ -47,7 +48,8 @@ final readonly class SettleOrdersByPayment
 
             return;
         }
-        $this->refunds->giveBackUnclaimed($event->paymentId);
+        // Given back by a job, once this transaction committed: the provider is not asked while rows are locked.
+        $this->jobs->push(GiveBackLatePayments::TYPE, ['payment' => $event->paymentId], (string) $event->paymentId);
     }
 
     #[AsEventListener]

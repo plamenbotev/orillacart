@@ -182,6 +182,12 @@ final readonly class OrderService
             $previous = $order->status();
             if ($order->markPaid($transactionId, $this->clock->now())) {
                 $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
+            } elseif ($transactionId !== null && $transactionId !== $order->transactionId()) {
+                $text = $order->paidAgain($transactionId)
+                    ? \sprintf('Another payment came for this order, which was already paid (transaction %s): check whether to give one back.', $transactionId)
+                    : \sprintf('The payment came for this order, which was already marked paid. %s', trim($note));
+                $order->addNote(trim($text), NoteAuthor::System, false, $this->clock->now());
+                $this->orders->save($order);
             }
         });
     }

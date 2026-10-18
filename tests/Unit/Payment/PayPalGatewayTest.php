@@ -11,6 +11,7 @@ use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentNotFound;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
@@ -48,6 +49,21 @@ final class PayPalGatewayTest extends TestCase
 
         self::assertSame([], $this->shop->payPalApi->captured);
         self::assertSame('pending_payment', $this->orderStatus($placed));
+    }
+
+    public function testAPaymentForAnOrderTheShopMarkedPaidIsKeptAndNoted(): void
+    {
+        $placed = $this->place();
+        $number = $this->shop->orders->byKey($placed->key)->number;
+        $this->shop->orders->changeStatus($number, new ChangeOrderStatus('processing'), 7);
+
+        $this->shop->outcomes->notified('paypal', $this->notification('CHECKOUT.ORDER.APPROVED', ['id' => 'PAYPAL-1']));
+
+        $order = $this->shop->orders->order($number);
+        self::assertSame('processing', $order->status);
+        self::assertSame('CAPTURE-PAYPAL-1', $order->transactionId);
+        $notes = $order->notes;
+        self::assertStringContainsString('already marked paid', array_pop($notes)->text ?? '');
     }
 
     public function testCaptureEventsCompleteFailOrHoldThePayment(): void
