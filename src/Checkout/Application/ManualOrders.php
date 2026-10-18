@@ -12,6 +12,7 @@ use OrillaCart\Checkout\Application\Dto\OrderQuoteView;
 use OrillaCart\Checkout\Application\Dto\QuoteOrder;
 use OrillaCart\Checkout\Domain\BilledTax;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Coupons\Application\Discounts;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
@@ -38,6 +39,7 @@ final readonly class ManualOrders
         private CustomerService $customers,
         private SettingsService $settings,
         private Transactions $transactions,
+        private Discounts $discounts,
     ) {}
 
     /**
@@ -47,7 +49,7 @@ final readonly class ManualOrders
     {
         $shipping = $query->shippingCountry === null ? null : new TaxAddress($query->shippingCountry, $query->shippingState);
         $billing = $query->billingCountry === null ? $shipping : new TaxAddress($query->billingCountry, $query->billingState);
-        $priced = $this->pricing->price(self::items($query->items), $shipping ?? $billing, $billing, $query->shippingOption, $query->shippingPostcode);
+        $priced = $this->pricing->price(self::items($query->items), $shipping ?? $billing, $billing, $query->shippingOption, $query->shippingPostcode, [], $query->customerId, $query->email);
         $bill = $priced['bill'];
         $currency = $this->settings->current()->currency;
 
@@ -73,6 +75,8 @@ final readonly class ManualOrders
             (string) $bill->total(),
             $currency,
             $this->pricing->pickupPoints($priced, $query->shippingCountry ?? $query->billingCountry, $query->shippingPostcode),
+            (string) $bill->discount(),
+            $this->pricing->discounts($priced),
         );
     }
 
@@ -100,6 +104,9 @@ final readonly class ManualOrders
                 new TaxAddress($billingAddress->country, $billingAddress->state),
                 $command->shippingOption,
                 $shippingAddress->postcode,
+                [],
+                $command->customerId,
+                $command->email,
             );
             if ($priced['needs_shipping'] && $priced['chosen']?->id !== $command->shippingOption) {
                 throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to this address.' : 'Choose how the order ships.', 'orillacart_shipping_required');
@@ -107,7 +114,7 @@ final readonly class ManualOrders
             $bill = $priced['bill'];
             $pickupPoint = $this->pricing->pickupPoint($priced, $shippingAddress->country, $shippingAddress->postcode, $command->pickupPoint);
 
-            return $this->orders->place(new NewOrder(
+            $order = $this->orders->place(new NewOrder(
                 $command->customerId,
                 $command->email,
                 $billingAddress,
@@ -123,7 +130,13 @@ final readonly class ManualOrders
                 $command->payment === null ? '' : $this->paymentOptions->name($command->payment),
                 $command->payment === null ? '' : $this->paymentOptions->receiptNote($command->payment),
                 $command->note,
+                (string) $bill->discount(),
+                $this->pricing->discounts($priced),
             ));
+            // The shop's automatic discounts count their uses as at checkout; the shop enters no codes.
+            $this->discounts->redeem($order->number, $priced['discounts']->coupons, $command->customerId, $command->email);
+
+            return $order;
         });
 
         $this->orders->addNote($order->number, new AddOrderNote('Taken by the shop.'), $userId);

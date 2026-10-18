@@ -413,6 +413,9 @@ export interface OrderQuote {
 	shipping_tax: string;
 	total: string;
 	currency: string;
+	/** The shop's automatic discounts that hold for the order. */
+	discount: string;
+	discounts: { code: string; description: string; amount: string }[];
 }
 
 export interface QuoteQuery {
@@ -423,6 +426,9 @@ export interface QuoteQuery {
 	shipping_state: string | null;
 	shipping_postcode: string | null;
 	shipping_option: string | null;
+	/** Whose order: automatic discounts for groups or first orders depend on it. */
+	customer_id: number | null;
+	email: string | null;
 }
 
 /**

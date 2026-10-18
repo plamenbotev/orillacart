@@ -9,6 +9,7 @@ use OrillaCart\Checkout\Application\Dto\CreateOrder;
 use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\QuoteOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
@@ -61,6 +62,21 @@ final class ManualOrdersTest extends TestCase
         // 50 + 10 VAT + 5 shipping + 1 VAT on shipping
         self::assertSame('66', $quote->total);
         self::assertSame(['bank_transfer'], array_map(static fn(PaymentOptionView $option): string => $option->gateway, $quote->paymentOptions));
+    }
+
+    public function testTheShopsAutomaticDiscountsHoldForOrdersItTakes(): void
+    {
+        $discount = $this->shop->coupons->create(new SaveCoupon('', 'percent', '10', '10 % off orders over 40', minSubtotal: '40', automatic: true));
+
+        $quote = $this->shop->manualOrders->quote(new QuoteOrder([new EditedItem(10, 2, unitPrice: '25')], 'BG'));
+        self::assertSame(['5', '10 % off orders over 40'], [$quote->discount, $quote->discounts[0]->description ?? null]);
+        // 45 + 9 VAT + 5 shipping + 1 VAT on shipping
+        self::assertSame('60', $quote->total);
+
+        $order = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(10, 2, unitPrice: '25')], shippingOption: 'rate:' . $this->rate, payment: 'bank_transfer'), 7);
+
+        self::assertSame(['60', '5'], [$order->total, $order->discountTotal]);
+        self::assertSame(1, $this->shop->coupons->coupon($discount->id)->uses, 'its use is counted');
     }
 
     public function testAnUnpaidOrderWaitsOnHoldWithItsStockTaken(): void

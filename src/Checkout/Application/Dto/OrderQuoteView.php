@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Checkout\Application\Dto;
 
+use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 
@@ -19,6 +20,7 @@ final readonly class OrderQuoteView
      * @param list<PaymentOptionView>  $paymentOptions
      * @param list<CheckoutTaxView>    $taxes
      * @param list<PickupPointView>    $pickupPoints where the chosen service can deliver, when it delivers to offices or lockers
+     * @param list<OrderDiscountView>  $discounts    the shop's automatic discounts that hold for the order
      */
     public function __construct(
         public array $lines,
@@ -34,5 +36,7 @@ final readonly class OrderQuoteView
         public string $total,
         public string $currency,
         public array $pickupPoints = [],
+        public string $discount = '0',
+        public array $discounts = [],
     ) {}
 }

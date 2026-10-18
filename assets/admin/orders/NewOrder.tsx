@@ -74,6 +74,8 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 		billing,
 		shipping,
 		shippingOption,
+		customerId,
+		email,
 	] );
 	useEffect( () => {
 		if ( items.length === 0 ) {
@@ -89,6 +91,8 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 				shipping_state: shipsTo.state,
 				shipping_postcode: shipsTo.postcode || null,
 				shipping_option: shippingOption,
+				customer_id: customerId,
+				email: email || null,
 			} )
 				.then( ( priced ) => {
 					setQuote( priced );
@@ -323,6 +327,16 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 								money( quote.total, quote.currency )
 							) }
 						</p>
+						{ quote.discounts.map( ( discount ) => (
+							<p key={ discount.code }>
+								{ sprintf(
+									/* translators: 1: what the discount is, 2: how much it takes off */
+									__( '%1$s: %2$s off.', 'orillacart' ),
+									discount.description,
+									money( discount.amount, quote.currency )
+								) }
+							</p>
+						) ) }
 						<Button
 							variant="primary"
 							isBusy={ saving }
