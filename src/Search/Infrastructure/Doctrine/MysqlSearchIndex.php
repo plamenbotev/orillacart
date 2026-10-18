@@ -23,29 +23,39 @@ final readonly class MysqlSearchIndex implements SearchIndex
 
     public function __construct(private SearchTables $tables) {}
 
-    public function put(SearchDocument $document): void
+    public function put(array $documents): void
     {
-        [$priceMin, $priceMax] = $document->priceRange();
-        $this->tables->connection()->transactional(function (Connection $connection) use ($document, $priceMin, $priceMax): void {
-            $this->delete($connection, [$document->productId]);
-            $connection->insert($this->tables->documents(), [
-                'product_id' => $document->productId,
-                'title' => mb_substr($document->title, 0, 255),
-                'text' => mb_strcut($document->text, 0, self::MAX_TEXT_BYTES),
-                'price_min' => $priceMin,
-                'price_max' => $priceMax,
-                'in_stock' => (int) $document->inStock(),
-                'featured' => (int) $document->featured,
-                'on_sale' => (int) $document->onSale,
-                'menu_order' => $document->menuOrder,
-                'published_at' => $document->publishedAt->format('Y-m-d H:i:s'),
-            ]);
-            $variants = [];
+        if ($documents === []) {
+            return;
+        }
+        $products = [];
+        $variants = [];
+        $values = [];
+        foreach ($documents as $document) {
+            [$priceMin, $priceMax] = $document->priceRange();
+            $products[] = [
+                $document->productId,
+                mb_substr($document->title, 0, 255),
+                mb_strcut($document->text, 0, self::MAX_TEXT_BYTES),
+                $priceMin,
+                $priceMax,
+                (int) $document->inStock(),
+                (int) $document->featured,
+                (int) $document->onSale,
+                $document->menuOrder,
+                $document->publishedAt->format('Y-m-d H:i:s'),
+            ];
             foreach ($document->variants as $variant) {
                 $variants[] = [$variant->id, $document->productId, $variant->price, (int) $variant->inStock];
             }
+            array_push($values, ...self::values($document));
+        }
+        // The batch's rows go in a few statements, in one transaction.
+        $this->tables->connection()->transactional(function (Connection $connection) use ($documents, $products, $variants, $values): void {
+            $this->delete($connection, array_map(static fn(SearchDocument $document): int => $document->productId, $documents));
+            $this->insert($connection, $this->tables->documents(), ['product_id', 'title', 'text', 'price_min', 'price_max', 'in_stock', 'featured', 'on_sale', 'menu_order', 'published_at'], $products);
             $this->insert($connection, $this->tables->variants(), ['variant_id', 'product_id', 'price', 'in_stock'], $variants);
-            $this->insert($connection, $this->tables->values(), ['product_id', 'variant_id', 'facet', 'value', 'label'], self::values($document));
+            $this->insert($connection, $this->tables->values(), ['product_id', 'variant_id', 'facet', 'value', 'label'], $values);
         });
     }
 

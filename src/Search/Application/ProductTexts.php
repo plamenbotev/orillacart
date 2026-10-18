@@ -11,6 +11,12 @@ use OrillaCart\Search\Application\Dto\ProductText;
  */
 interface ProductTexts
 {
-    /** Null unless the product is published. */
-    public function describe(int $productId): ?ProductText;
+    /**
+     * The published products among these, read together.
+     *
+     * @param list<int> $productIds
+     *
+     * @return array<int, ProductText> by product id; unpublished ones are left out
+     */
+    public function describe(array $productIds): array;
 }

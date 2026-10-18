@@ -17,7 +17,26 @@ use OrillaCart\Search\Application\ProductTexts;
  */
 final readonly class WordPressProductTexts implements ProductTexts
 {
-    public function describe(int $productId): ?ProductText
+    public function describe(array $productIds): array
+    {
+        if ($productIds === []) {
+            return [];
+        }
+        // The posts and their terms in a few queries, not a few each.
+        _prime_post_caches($productIds, false, false);
+        update_object_term_cache($productIds, ProductPostType::NAME);
+        $texts = [];
+        foreach ($productIds as $productId) {
+            $text = self::text($productId);
+            if ($text !== null) {
+                $texts[$productId] = $text;
+            }
+        }
+
+        return $texts;
+    }
+
+    private static function text(int $productId): ?ProductText
     {
         $post = get_post($productId);
         if (!$post instanceof \WP_Post || $post->post_type !== ProductPostType::NAME || $post->post_status !== 'publish') {

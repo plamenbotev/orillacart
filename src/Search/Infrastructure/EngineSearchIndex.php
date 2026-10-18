@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace OrillaCart\Search\Infrastructure;
 
-use OrillaCart\Search\Application\Dto\SearchDocument;
 use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Infrastructure\Doctrine\MysqlSearchIndex;
@@ -22,11 +21,11 @@ final readonly class EngineSearchIndex implements SearchIndex
         private OpenSearchIndex $openSearch,
     ) {}
 
-    public function put(SearchDocument $document): void
+    public function put(array $documents): void
     {
-        $this->database->put($document);
+        $this->database->put($documents);
         if ($this->settings->load()->indexesOpenSearch()) {
-            $this->openSearch->put($document);
+            $this->openSearch->put($documents);
         }
     }
 

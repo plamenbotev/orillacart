@@ -61,10 +61,23 @@ final readonly class ShopCatalog
         foreach ($this->products->findMany($ids) as $product) {
             $found[$product->id()] = $product;
         }
+        // The stock of every product and variation that counts it, in one query rather than one each.
+        $refs = [];
+        foreach ($found as $product) {
+            if ($product->details()->stockMode === StockMode::Tracked) {
+                $refs[] = StockItemRef::product($product->id());
+            }
+            foreach ($product->variations() as $variation) {
+                if ($variation->stockMode() === StockMode::Tracked) {
+                    $refs[] = StockItemRef::variation($variation->id());
+                }
+            }
+        }
+        $stock = $refs === [] ? [] : $this->stock->availableEach($refs);
         $offers = [];
         foreach ($ids as $id) {
             if (isset($found[$id])) {
-                $offers[$id] = $this->toOffer($found[$id], $now);
+                $offers[$id] = $this->toOffer($found[$id], $now, $stock);
             }
         }
 
@@ -96,7 +109,10 @@ final readonly class ShopCatalog
         return $next;
     }
 
-    private function toOffer(Product $product, \DateTimeImmutable $now): ProductOffer
+    /**
+     * @param array<string, ?int>|null $stock how many of each item can be sold, when read for many offers at once
+     */
+    private function toOffer(Product $product, \DateTimeImmutable $now, ?array $stock = null): ProductOffer
     {
         $details = $product->details();
         $priceHidden = $details->priceVisibility->isHidden($this->settings->current()->hidePrices);
@@ -113,7 +129,7 @@ final readonly class ShopCatalog
         $downloads = array_map(static fn(DownloadFile $file): string => $file->name(), $product->downloads());
 
         if ($product->hasVariations()) {
-            $variations = array_map(fn(Variation $variation): OfferedVariation => $this->toVariation($variation, $details->backorders, $sellable, $now), $product->variations());
+            $variations = array_map(fn(Variation $variation): OfferedVariation => $this->toVariation($variation, $details->backorders, $sellable, $now, $stock), $product->variations());
             $prices = array_map(static fn(OfferedVariation $variation): Money => Money::of($variation->price), $variations);
             usort($prices, static fn(Money $a, Money $b): int => $a->compare($b));
             $lowest = $prices[0] ?? $product->priceAt($now);
@@ -137,7 +153,7 @@ final readonly class ShopCatalog
             );
         }
 
-        [$available, $onBackorder] = $this->available($details->stockMode, StockItemRef::product($product->id()), $details->backorders);
+        [$available, $onBackorder] = $this->available($details->stockMode, StockItemRef::product($product->id()), $details->backorders, $stock);
 
         return new ProductOffer(
             $product->id(),
@@ -158,9 +174,12 @@ final readonly class ShopCatalog
         );
     }
 
-    private function toVariation(Variation $variation, Backorders $productBackorders, bool $sellable, \DateTimeImmutable $now): OfferedVariation
+    /**
+     * @param array<string, ?int>|null $stock
+     */
+    private function toVariation(Variation $variation, Backorders $productBackorders, bool $sellable, \DateTimeImmutable $now, ?array $stock = null): OfferedVariation
     {
-        [$available, $onBackorder] = $this->available($variation->stockMode(), StockItemRef::variation($variation->id()), $variation->backorders() ?? $productBackorders);
+        [$available, $onBackorder] = $this->available($variation->stockMode(), StockItemRef::variation($variation->id()), $variation->backorders() ?? $productBackorders, $stock);
 
         return new OfferedVariation(
             $variation->id(),
@@ -179,14 +198,17 @@ final readonly class ShopCatalog
      * How many can be sold, null when stock does not limit it (as with backorders); and whether it is out of
      * stock on a backorder the customer is told of.
      *
+     * @param array<string, ?int>|null $stock read for many offers at once; otherwise the item's is read now
+     *
      * @return array{?int, bool}
      */
-    private function available(StockMode $mode, StockItemRef $ref, Backorders $backorders): array
+    private function available(StockMode $mode, StockItemRef $ref, Backorders $backorders, ?array $stock = null): array
     {
         if ($mode !== StockMode::Tracked) {
             return [$mode === StockMode::Unavailable ? 0 : null, false];
         }
-        $inStock = $this->stock->available([$ref]);
+        $key = "{$ref->kind}:{$ref->id}";
+        $inStock = $stock !== null && \array_key_exists($key, $stock) ? $stock[$key] : $this->stock->available([$ref]);
         if ($inStock === null || !$backorders->allowed()) {
             return [$inStock, false];
         }

@@ -144,6 +144,24 @@ final readonly class StockService
     }
 
     /**
+     * How many of each item can be sold, for many items at once: one query, not one each.
+     *
+     * @param list<StockItemRef> $refs
+     *
+     * @return array<string, ?int> by item ("variation:12"); null when stock does not limit it
+     */
+    public function availableEach(array $refs): array
+    {
+        $available = [];
+        foreach ($this->levels->stockOf(array_map(static fn(StockItemRef $ref): StockItem => $ref->toItem(), $refs)) as $stock) {
+            $count = $stock->available();
+            $available[(string) $stock->item] = $count === null ? null : max(0, $count);
+        }
+
+        return $available;
+    }
+
+    /**
      * How many of the items can be sold together, such as a product with the options the customer chose:
      * the smallest number any of them allows.
      *

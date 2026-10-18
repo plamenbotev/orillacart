@@ -11,8 +11,12 @@ use OrillaCart\Search\Application\Dto\SearchDocument;
  */
 interface SearchIndex
 {
-    /** Adds the product's document, or replaces the one it had. */
-    public function put(SearchDocument $document): void;
+    /**
+     * Adds the products' documents, or replaces the ones they had, all together.
+     *
+     * @param list<SearchDocument> $documents
+     */
+    public function put(array $documents): void;
 
     /**
      * @param list<int> $productIds products no longer listed

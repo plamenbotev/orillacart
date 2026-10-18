@@ -8,9 +8,9 @@ use OrillaCart\Catalog\Application\Dto\AttributeView;
 use OrillaCart\Catalog\Application\Dto\OfferedVariation;
 use OrillaCart\Catalog\Application\Dto\ProductOffer;
 use OrillaCart\Catalog\Application\ShopCatalog;
-use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Search\Application\Dto\DocumentOption;
 use OrillaCart\Search\Application\Dto\DocumentVariant;
+use OrillaCart\Search\Application\Dto\ProductText;
 use OrillaCart\Search\Application\Dto\SearchDocument;
 
 /**
@@ -26,15 +26,32 @@ final readonly class DocumentBuilder
 
     public function build(int $productId): ?SearchDocument
     {
-        $text = $this->texts->describe($productId);
-        if ($text === null) {
-            return null;
+        return $this->buildMany([$productId])[$productId];
+    }
+
+    /**
+     * The documents of many products, read together: the catalog's offers and the site's content in a few
+     * queries for the batch rather than a few for each product.
+     *
+     * @param list<int> $productIds
+     *
+     * @return array<int, ?SearchDocument> by product id; null for one that has none
+     */
+    public function buildMany(array $productIds): array
+    {
+        $texts = $this->texts->describe($productIds);
+        $offers = $this->catalog->offers(array_keys($texts));
+        $documents = [];
+        foreach ($productIds as $productId) {
+            $documents[$productId] = isset($texts[$productId], $offers[$productId]) ? $this->document($offers[$productId], $texts[$productId]) : null;
         }
-        try {
-            $offer = $this->catalog->offer($productId);
-        } catch (ProductNotFound) {
-            return null;
-        }
+
+        return $documents;
+    }
+
+    private function document(ProductOffer $offer, ProductText $text): SearchDocument
+    {
+        $productId = $offer->id;
 
         $price = static fn(string $price): ?string => $offer->priceHidden ? null : $price;
         if ($offer->variations === []) {

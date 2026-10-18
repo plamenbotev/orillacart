@@ -26,12 +26,35 @@ final readonly class OpenSearchIndex implements SearchIndex
         private EngineSettingsRepository $settings,
     ) {}
 
-    public function put(SearchDocument $document): void
+    /**
+     * One bulk request for the batch; when OpenSearch refuses any document, the batch fails, and the worker
+     * builds its products one by one to find the one.
+     */
+    public function put(array $documents): void
     {
+        if ($documents === []) {
+            return;
+        }
         $settings = $this->settings->load();
+        $lines = '';
+        foreach ($documents as $document) {
+            $lines .= wp_json_encode(['index' => ['_index' => $settings->index, '_id' => (string) $document->productId]]) . "\n" . wp_json_encode(self::source($document)) . "\n";
+        }
+        $answer = $this->client->request($settings, 'POST', '/_bulk', $lines);
+        if (($answer['errors'] ?? false) === true) {
+            throw new OpenSearchUnavailable('OpenSearch refused a document of the batch: ' . self::firstError($answer));
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function source(SearchDocument $document): array
+    {
         [$priceMin, $priceMax] = $document->priceRange();
         $productOptions = self::options($document->options);
-        $this->client->request($settings, 'PUT', "/{$settings->index}/_doc/{$document->productId}", [
+
+        return [
             'product_id' => $document->productId,
             'title' => $document->title,
             'text' => $document->text,
@@ -51,15 +74,35 @@ final readonly class OpenSearchIndex implements SearchIndex
             'on_sale' => $document->onSale,
             'menu_order' => $document->menuOrder,
             'published_at' => $document->publishedAt->format(\DATE_ATOM),
-        ]);
+        ];
+    }
+
+    /**
+     * @param array<mixed> $answer
+     */
+    private static function firstError(array $answer): string
+    {
+        foreach (\is_array($answer['items'] ?? null) ? $answer['items'] : [] as $item) {
+            $reason = \is_array($item) && \is_array($item['index'] ?? null) && \is_array($item['index']['error'] ?? null) ? ($item['index']['error']['reason'] ?? null) : null;
+            if (\is_string($reason)) {
+                return $reason;
+            }
+        }
+
+        return 'no reason given';
     }
 
     public function remove(array $productIds): void
     {
         $settings = $this->settings->load();
-        foreach ($productIds as $productId) {
-            $this->client->request($settings, 'DELETE', "/{$settings->index}/_doc/{$productId}", missingOk: true);
+        if ($productIds === []) {
+            return;
         }
+        $lines = '';
+        foreach ($productIds as $productId) {
+            $lines .= wp_json_encode(['delete' => ['_index' => $settings->index, '_id' => (string) $productId]]) . "\n";
+        }
+        $this->client->request($settings, 'POST', '/_bulk', $lines);
     }
 
     /**
