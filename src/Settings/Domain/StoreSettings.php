@@ -37,6 +37,8 @@ final readonly class StoreSettings
         public bool $catalogOnly = false,
         public bool $hidePrices = false,
         public array $sellTo = [],
+        /** Sales show the lowest price of the 30 days before them, as the EU's Omnibus directive asks. */
+        public bool $showLowestPrice = false,
     ) {
         if ($priceDecimals < 0 || $priceDecimals > self::MAX_PRICE_DECIMALS) {
             throw new RuleViolation(
@@ -87,6 +89,7 @@ final readonly class StoreSettings
             && $this->currencyPosition === $other->currencyPosition
             && $this->catalogOnly === $other->catalogOnly
             && $this->hidePrices === $other->hidePrices
-            && $this->sellTo === $other->sellTo;
+            && $this->sellTo === $other->sellTo
+            && $this->showLowestPrice === $other->showLowestPrice;
     }
 }

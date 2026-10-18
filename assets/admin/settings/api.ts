@@ -18,6 +18,8 @@ export interface Settings {
 	hide_prices: boolean;
 	/** Countries the shop sells to; empty for everywhere. */
 	sell_to: string[];
+	/** Sales show the lowest price of the 30 days before them (EU Omnibus). */
+	show_lowest_price: boolean;
 	weight_units: string[];
 	dimension_units: string[];
 	currency_positions: string[];
@@ -38,6 +40,7 @@ export type SettingsInput = Pick<
 	| 'catalog_only'
 	| 'hide_prices'
 	| 'sell_to'
+	| 'show_lowest_price'
 >;
 
 const PATH = '/orillacart/v1/settings';

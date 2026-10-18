@@ -44,6 +44,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
                 ($stored['catalog_only'] ?? false) === true,
                 ($stored['hide_prices'] ?? false) === true,
                 array_values(array_filter(\is_array($stored['sell_to'] ?? null) ? $stored['sell_to'] : [], \is_string(...))),
+                ($stored['show_lowest_price'] ?? false) === true,
             );
         } catch (RuleViolation|\ValueError|\UnexpectedValueException $e) {
             $this->logger->warning('Stored shop settings are not valid, using the defaults: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
@@ -67,6 +68,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
             'catalog_only' => $settings->catalogOnly,
             'hide_prices' => $settings->hidePrices,
             'sell_to' => $settings->sellTo,
+            'show_lowest_price' => $settings->showLowestPrice,
         ], true);
     }
 

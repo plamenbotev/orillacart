@@ -23,6 +23,7 @@ const stored = {
 	currency_position: 'after_space',
 	catalog_only: false,
 	hide_prices: false,
+	show_lowest_price: false,
 	sell_to: [ 'BG' ],
 	weight_units: [ 'kg', 'g', 'lb', 'oz' ],
 	dimension_units: [ 'cm', 'm', 'mm', 'in' ],
@@ -187,6 +188,7 @@ describe( 'SettingsScreen', () => {
 				currency_position: 'after_space',
 				catalog_only: false,
 				hide_prices: false,
+				show_lowest_price: false,
 				sell_to: [ 'BG' ],
 			},
 		} );

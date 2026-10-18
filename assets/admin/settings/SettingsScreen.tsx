@@ -47,6 +47,7 @@ function inputOf( settings: Settings ): SettingsInput {
 		currency_position: settings.currency_position,
 		catalog_only: settings.catalog_only,
 		hide_prices: settings.hide_prices,
+		show_lowest_price: settings.show_lowest_price,
 		sell_to: settings.sell_to,
 	};
 }
@@ -318,6 +319,20 @@ export function SettingsScreen() {
 								checked={ form.hide_prices }
 								onChange={ ( value ) =>
 									update( 'hide_prices', value )
+								}
+							/>
+							<CheckboxControl
+								label={ __(
+									'Show the lowest price of the last 30 days on sales',
+									'orillacart'
+								) }
+								help={ __(
+									'Next to a sale price, as the EU’s Omnibus directive asks of shops announcing a price reduction. The shop keeps each product’s prices from now on to know it.',
+									'orillacart'
+								) }
+								checked={ form.show_lowest_price }
+								onChange={ ( value ) =>
+									update( 'show_lowest_price', value )
 								}
 							/>
 							<Button

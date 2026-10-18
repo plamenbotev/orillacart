@@ -7,6 +7,7 @@ namespace OrillaCart\Search\Application;
 use OrillaCart\Catalog\Application\Dto\AttributeView;
 use OrillaCart\Catalog\Application\Dto\OfferedVariation;
 use OrillaCart\Catalog\Application\Dto\ProductOffer;
+use OrillaCart\Catalog\Application\PriceHistory;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Search\Application\Dto\DocumentOption;
 use OrillaCart\Search\Application\Dto\DocumentVariant;
@@ -22,6 +23,7 @@ final readonly class DocumentBuilder
     public function __construct(
         private ShopCatalog $catalog,
         private ProductTexts $texts,
+        private PriceHistory $history,
     ) {}
 
     public function build(int $productId): ?SearchDocument
@@ -41,6 +43,8 @@ final readonly class DocumentBuilder
     {
         $texts = $this->texts->describe($productIds);
         $offers = $this->catalog->offers(array_keys($texts));
+        // The index sees every change of a price, sales starting and ending too: the history keeps them.
+        $this->history->record(array_values($offers));
         $documents = [];
         foreach ($productIds as $productId) {
             $documents[$productId] = isset($texts[$productId], $offers[$productId]) ? $this->document($offers[$productId], $texts[$productId]) : null;

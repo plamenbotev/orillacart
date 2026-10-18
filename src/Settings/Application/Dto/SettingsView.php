@@ -36,6 +36,7 @@ final readonly class SettingsView
         public bool $hidePrices = false,
         public array $sellTo = [],
         public array $currencyPositions = [],
+        public bool $showLowestPrice = false,
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -56,6 +57,7 @@ final readonly class SettingsView
             $settings->hidePrices,
             $settings->sellTo,
             CurrencyPosition::values(),
+            $settings->showLowestPrice,
         );
     }
 }

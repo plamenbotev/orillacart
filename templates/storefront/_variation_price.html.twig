@@ -1,6 +1,7 @@
 {# The price of one variation, which the product form shows once the customer chose it. #}
 {%- if variation.regular_price -%}
     <span class="orillacart-price orillacart-price--sale"><del aria-label="{{ __('Regular price') }}">{{ variation.regular_price|money }}</del> <ins aria-label="{{ __('Sale price') }}">{{ variation.price|money }}</ins></span>
+    {%- if variation.lowest_price %} <small class="orillacart-price__lowest">{{ __('Lowest price in the last 30 days: %s')|format(variation.lowest_price|money) }}</small>{% endif -%}
 {%- else -%}
     <span class="orillacart-price">{{ variation.price|money }}</span>
 {%- endif -%}

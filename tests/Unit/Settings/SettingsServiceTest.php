@@ -20,7 +20,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 final class SettingsServiceTest extends TestCase
 {
     /** The values of the settings a shop leaves alone. */
-    private const array UNSAID = ['shop_postcode' => null, 'currency_sign' => '', 'currency_position' => 'after_space', 'catalog_only' => false, 'hide_prices' => false, 'sell_to' => []];
+    private const array UNSAID = ['shop_postcode' => null, 'currency_sign' => '', 'currency_position' => 'after_space', 'catalog_only' => false, 'hide_prices' => false, 'sell_to' => [], 'show_lowest_price' => false];
 
     private SettingsRepository $repository;
 

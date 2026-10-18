@@ -47,6 +47,7 @@ final readonly class SettingsChanged implements PublicEvent
             'catalog_only' => $settings->catalogOnly,
             'hide_prices' => $settings->hidePrices,
             'sell_to' => $settings->sellTo,
+            'show_lowest_price' => $settings->showLowestPrice,
         ];
     }
 }

@@ -18,7 +18,7 @@ final class SettingsRestTest extends RestTestCase
     private const string ROUTE = '/settings';
     private const array VALID = ['currency' => 'USD', 'price_decimals' => 3, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY'];
     /** What the shop has without saying otherwise, besides the fields above. */
-    private const array UNSAID = ['shop_postcode' => null, 'currency_sign' => '', 'currency_position' => 'after_space', 'catalog_only' => false, 'hide_prices' => false, 'sell_to' => []];
+    private const array UNSAID = ['shop_postcode' => null, 'currency_sign' => '', 'currency_position' => 'after_space', 'catalog_only' => false, 'hide_prices' => false, 'sell_to' => [], 'show_lowest_price' => false];
 
     /** @var list<array<array-key, mixed>> arguments of each orillacart_settings_changed action */
     private array $announced = [];
@@ -90,7 +90,7 @@ final class SettingsRestTest extends RestTestCase
         self::assertSame(200, $response->get_status());
         self::assertSame(
             ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null, 'weight_units' => ['kg', 'g', 'lb', 'oz'], 'dimension_units' => ['cm', 'm', 'mm', 'in']]
-                + self::UNSAID + ['currency_positions' => ['before', 'before_space', 'after', 'after_space']],
+                + array_diff_key(self::UNSAID, ['show_lowest_price' => true]) + ['currency_positions' => ['before', 'before_space', 'after', 'after_space'], 'show_lowest_price' => false],
             $this->data($response),
         );
     }

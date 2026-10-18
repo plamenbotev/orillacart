@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Fixtures\Checkout;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Infrastructure\Events\ForgetDeletedCustomers as ForgetDeletedCarts;
 use OrillaCart\Catalog\Application\DownloadService;
+use OrillaCart\Catalog\Application\PriceHistory;
 use OrillaCart\Catalog\Application\PriceResolver;
 use OrillaCart\Catalog\Application\PriceRules;
 use OrillaCart\Catalog\Application\ProductQuotes;
@@ -91,6 +92,7 @@ use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tests\Fixtures\Cart\InMemoryCartRepository;
 use OrillaCart\Tests\Fixtures\Catalog\CatalogIds;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryAttributeSetRepository;
+use OrillaCart\Tests\Fixtures\Catalog\InMemoryPriceHistory;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryPriceRuleRepository;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductContent;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductRepository;
@@ -175,6 +177,8 @@ final class TestShop
     public readonly OrderService $orders;
     public readonly CheckoutService $checkout;
     public readonly PayNow $payNow;
+    public readonly PriceHistory $priceHistory;
+    public readonly InMemoryPriceHistory $pricePoints;
     public readonly FakeVatRegistry $vies;
     public readonly TwigRenderer $templates;
     public readonly Invoices $invoices;
@@ -241,7 +245,8 @@ final class TestShop
         $this->priceRules = new PriceRules($this->priceRuleRecords, $this->events);
         $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices);
         $this->quotes = $quotes;
-        $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $quotes);
+        $this->priceHistory = new PriceHistory($this->pricePoints = new InMemoryPriceHistory(), $this->clock);
+        $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $quotes, $this->priceHistory);
 
         $methodRecords = new InMemoryPaymentMethodRepository();
         $this->paymentRecords = new InMemoryPaymentRepository($this->transactions);

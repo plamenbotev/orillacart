@@ -60,6 +60,7 @@ final readonly class SettingsService
             $command->catalogOnly,
             $command->hidePrices,
             $sellTo,
+            $command->showLowestPrice,
         );
 
         if (!$current->equals($previous)) {

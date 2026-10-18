@@ -44,6 +44,7 @@ final readonly class ShopCatalog
         private SettingsService $settings,
         private PriceResolver $prices,
         private ProductQuotes $quotes,
+        private PriceHistory $history,
     ) {}
 
     /**
@@ -55,7 +56,7 @@ final readonly class ShopCatalog
     {
         $product = $this->products->find($id) ?? throw new ProductNotFound($id);
 
-        return $this->toOffer($product, $this->clock->now(), $this->prices->forShopper($customerId), null, $customerId);
+        return $this->toOffer($product, $this->clock->now(), $this->prices->forShopper($customerId), null, $customerId, $this->lowestPrices([$product]));
     }
 
     /**
@@ -105,10 +106,11 @@ final readonly class ShopCatalog
             }
         }
         $stock = $refs === [] ? [] : $this->stock->availableEach($refs);
+        $lowest = $this->lowestPrices(array_values($found));
         $offers = [];
         foreach ($ids as $id) {
             if (isset($found[$id])) {
-                $offers[$id] = $this->toOffer($found[$id], $now, $prices, $stock, $customerId);
+                $offers[$id] = $this->toOffer($found[$id], $now, $prices, $stock, $customerId, $lowest);
             }
         }
 
@@ -144,9 +146,33 @@ final readonly class ShopCatalog
     }
 
     /**
-     * @param array<string, ?int>|null $stock how many of each item can be sold, when read for many offers at once
+     * The lowest prices of the 30 days before today's, when the shop shows them on sales.
+     *
+     * @param list<Product> $products
+     *
+     * @return array<string, string> by item: "product:12", "variation:5"
      */
-    private function toOffer(Product $product, \DateTimeImmutable $now, ShopperPricing $prices, ?array $stock = null, ?int $customerId = null): ProductOffer
+    private function lowestPrices(array $products): array
+    {
+        if (!$this->settings->current()->showLowestPrice || $products === []) {
+            return [];
+        }
+        $items = [];
+        foreach ($products as $product) {
+            $items[] = "product:{$product->id()}";
+            foreach ($product->variations() as $variation) {
+                $items[] = "variation:{$variation->id()}";
+            }
+        }
+
+        return $this->history->lowestBefore($items);
+    }
+
+    /**
+     * @param array<string, ?int>|null $stock  how many of each item can be sold, when read for many offers at once
+     * @param array<string, string>    $lowest the lowest prices of the 30 days before, by item
+     */
+    private function toOffer(Product $product, \DateTimeImmutable $now, ShopperPricing $prices, ?array $stock = null, ?int $customerId = null, array $lowest = []): ProductOffer
     {
         $details = $product->details();
         if ($product->isBundle()) {
@@ -168,7 +194,7 @@ final readonly class ShopCatalog
         $downloads = array_map(static fn(DownloadFile $file): string => $file->name(), $product->downloads());
 
         if ($product->hasVariations()) {
-            $variations = array_map(fn(Variation $variation): OfferedVariation => $this->toVariation($variation, $details->backorders, $sellable, $now, $prices, $item($variation->pricing()), $stock), $product->variations());
+            $variations = array_map(fn(Variation $variation): OfferedVariation => $this->toVariation($variation, $details->backorders, $sellable, $now, $prices, $item($variation->pricing()), $stock, $lowest), $product->variations());
             $prices = array_map(static fn(OfferedVariation $variation): Money => Money::of($variation->price), $variations);
             usort($prices, static fn(Money $a, Money $b): int => $a->compare($b));
             $lowest = $prices[0] ?? $product->priceAt($now);
@@ -195,6 +221,7 @@ final readonly class ShopCatalog
         [$available, $onBackorder] = $this->available($details->stockMode, StockItemRef::product($product->id()), $details->backorders, $stock);
         $own = $details->pricing->priceAt($now);
         $price = $prices->price($own, $item($details->pricing), regular: $details->pricing->price());
+        $regular = self::regularPrice($details->pricing, $price);
 
         return new ProductOffer(
             $product->id(),
@@ -202,7 +229,7 @@ final readonly class ShopCatalog
             $details->type->value,
             $details->sku,
             (string) $price,
-            self::regularPrice($details->pricing, $price),
+            $regular,
             null,
             $sellable && $available !== 0,
             $available,
@@ -213,6 +240,7 @@ final readonly class ShopCatalog
             $priceHidden,
             $onBackorder,
             $prices->tiers($own, $item($details->pricing), regular: $details->pricing->price()),
+            lowestPrice: $regular === null ? null : ($lowest["product:{$product->id()}"] ?? null),
         );
     }
 
@@ -329,8 +357,9 @@ final readonly class ShopCatalog
 
     /**
      * @param array<string, ?int>|null $stock
+     * @param array<string, string>    $lowest
      */
-    private function toVariation(Variation $variation, Backorders $productBackorders, bool $sellable, \DateTimeImmutable $now, ShopperPricing $prices, PricedItem $item, ?array $stock = null): OfferedVariation
+    private function toVariation(Variation $variation, Backorders $productBackorders, bool $sellable, \DateTimeImmutable $now, ShopperPricing $prices, PricedItem $item, ?array $stock = null, array $lowest = []): OfferedVariation
     {
         $price = $prices->price($variation->pricing()->priceAt($now), $item, variationId: $variation->id(), regular: $variation->pricing()->price());
         [$available, $onBackorder] = $this->available($variation->stockMode(), StockItemRef::variation($variation->id()), $variation->backorders() ?? $productBackorders, $stock);
@@ -341,10 +370,11 @@ final readonly class ShopCatalog
             implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $variation->options())),
             $variation->sku(),
             (string) $price,
-            self::regularPrice($variation->pricing(), $price),
+            $regular = self::regularPrice($variation->pricing(), $price),
             $sellable && $available !== 0,
             $available,
             $onBackorder,
+            $regular === null ? null : ($lowest["variation:{$variation->id()}"] ?? null),
         );
     }
 

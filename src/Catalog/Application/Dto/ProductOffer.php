@@ -43,6 +43,8 @@ final readonly class ProductOffer
         public array $contents = [],
         /** @var list<array{product_id: int, name: string, quantity: int, optional: bool, choices: list<array{id: int, name: string, for_sale: bool, price: ?string}>}> a bundle's items the customer decides about: which variation, or whether to add it; price is what an optional one adds */
         public array $bundleChoices = [],
+        /** On sale: the lowest price of the 30 days before the sale price began (EU Omnibus), when known. */
+        public ?string $lowestPrice = null,
     ) {}
 
     /** Whether the product goes in the cart as it is, with no options to choose. */
