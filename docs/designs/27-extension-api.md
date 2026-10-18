@@ -1,0 +1,65 @@
+# 27 · Public extension API for add-ons
+
+Status: agreed in principle 2026-10-18 ("agree"); details below to be confirmed when building.
+Order of work: 25, 27, 21b, 21c, then 26 (DPD) and the rest.
+
+## Why
+
+The old plugin let add-ons (the premium shipping and payment integrations) extend `standart_shipping` and the
+payment base class, register through filters such as `register_shipping_class`, and bind a carrier row to its
+class. The rebuild has contracts (`PaymentGateway`) but only inside its compiled container, and the release
+build prefixes every library (Doctrine, Symfony, even `Psr\…` become `OrillaCart\Vendor\…`). So today no other
+plugin can add a payment gateway or a shipping method, and a contract that names a library type could not be
+implemented from outside at all.
+
+## Shape
+
+- **Contracts in `OrillaCart\Extension\…`**: interfaces and readonly DTOs using plain PHP types and the plugin's
+  own classes, never a library type. This namespace is the only one add-ons may depend on; it is versioned
+  (`OrillaCart\Extension\Version::CURRENT`) and changes only by adding. Everything else stays internal.
+- **Registration**: once the plugin has loaded, it fires `do_action('orillacart_extensions', $registry)`.
+  An add-on calls `$registry->shippingMethod(new DpdMethod(...))`, `$registry->paymentGateway(...)`.
+  Ids are unique; a clash is logged and the later one is skipped, so one broken add-on does not break the shop.
+- **What add-ons get from the plugin**, through the registry: a logger, an HTTP client (WordPress HTTP API
+  behind a small interface), the clock, money and address DTOs, and a key-value store for their own data
+  (tokens, label references) kept with the plugin's tables.
+- **Settings**: a method declares its settings as a schema (text, secret, choice, yes/no, number). The React
+  admin renders it by itself, as the payment screen does for gateways now; secrets are never sent back to the
+  browser. A "Test the connection" button calls `check(settings)` when the method offers one.
+- **Built-in methods use the API too**: the rate table, cash on delivery, bank transfer, cheque and PayPal
+  register through the same registry, so the API is exercised by every test.
+
+## Shipping methods
+
+`ShippingMethod`: `id()`, `name()`, `settings()`, `isReady(settings)`, and the capabilities it implements:
+
+| capability | what it does | where the shop uses it |
+|---|---|---|
+| `QuotesRates` (required) | a shipment request (items with weight and size, destination, subtotal, currency) to rates (name, price, taxable, delivery estimate) | checkout and order editing, through `ShippingQuotes` |
+| `OffersPickupPoints` | offices and lockers near an address, by id, name, address and hours | a picker at checkout; the choice is stored on the order and sent with the shipment |
+| `CreatesShipments` | create a shipment for an order (parcels, cash on delivery amount, pickup point), return its number, label (PDF) and tracking link; cancel it | order screen actions: "Create shipment", "Print label", "Cancel"; tracking in the customer's emails and account |
+| `TracksShipments` | the shipment's current status | a scheduled task updates it and can mark the order shipped or completed |
+
+Carriers get a `method` (default `rate_table`, today's behaviour) and that method's settings. A DPD carrier
+keeps its name and position in checkout, but DPD prices its options. Rates of a live method are not stored;
+checkout keeps the chosen quote with the order (method id, service code, price), as it keeps the rate today.
+
+## Payment gateways and refunds
+
+The `PaymentGateway` contract moves to `OrillaCart\Extension\Payment` with the same methods, its settings as a
+schema, and webhooks routed by the plugin to `handleNotification(request)` with a plain request DTO (headers,
+body), the plugin verifying nothing it does not know. Item 24's `RefundsPayments` capability joins it, so
+PayPal and premium gateways refund through the same contract.
+
+## Tests
+
+- A contract test suite per capability that an add-on can run against its own implementation.
+- A fixture add-on in the integration tests that registers a shipping method with every capability, to prove
+  the checkout, order screen and emails use them without knowing the add-on.
+- `bin/check-build.php` checks that nothing in `OrillaCart\Extension` names a prefixed library class.
+
+## Questions for later
+
+- Which premium add-ons there were (DPD, Speedy, Econt, others), to check the contract against what they did,
+  especially labels and cash on delivery collected by the courier.
+- Licensing and updates of premium add-ons are their own business; the API does not handle them.
