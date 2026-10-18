@@ -6,6 +6,7 @@ namespace OrillaCart\Payment\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\References;
 
 /**
  * One attempt to pay for an order through a gateway, with what the provider calls it. A payment ends once:
@@ -46,6 +47,7 @@ class Payment
 
     public function __construct(
         #[ORM\Column]
+        #[References('orders')]
         private int $orderId,
         #[ORM\Column(length: 40)]
         private string $gateway,

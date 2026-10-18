@@ -21,6 +21,13 @@ use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Payment\Domain\Event\PaymentCancelled;
+use OrillaCart\Payment\Domain\Event\PaymentCompleted;
+use OrillaCart\Payment\Domain\Event\PaymentFailed;
+use OrillaCart\Payment\Domain\Payment;
+use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shipping\Domain\Consignment;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
 
@@ -127,14 +134,21 @@ final class OrderAdministrationTest extends TestCase
         self::assertSame(9, $this->available(), 'the refund without restock keeps its item out of stock');
     }
 
-    public function testAnUnpaidOrderIsDeletedWithItsStockBackAndAPaidOneStaysForTheBooks(): void
+    public function testOnlyACancelledOrFailedOrderIsDeletedAndAPaidOneStaysForTheBooks(): void
     {
         $waiting = $this->place(3);
         $paid = $this->place(2);
         self::assertSame(5, $this->available());
 
+        try {
+            $this->shop->orders->delete($waiting->number);
+            self::fail('an open order');
+        } catch (OrderRuleViolation $e) {
+            self::assertSame('orillacart_order_open', $e->errorCode);
+        }
+        $this->shop->orders->cancel($waiting->number);
         $this->shop->orders->delete($waiting->number);
-        self::assertSame(8, $this->available(), 'an order on hold gives its stock back');
+        self::assertSame(8, $this->available(), 'cancelling gave the stock back; deleting leaves it');
 
         $this->shop->orders->markPaidByShop($paid->number, '', 7);
         try {
@@ -152,6 +166,40 @@ final class OrderAdministrationTest extends TestCase
             self::assertSame('orillacart_order_paid', $e->errorCode);
         }
         self::assertCount(1, $this->shop->orderRecords->orders);
+    }
+
+    public function testAProvidersLateWordAboutADeletedOrderIsLogged(): void
+    {
+        foreach ([new PaymentFailed(99, 5, 'paypal'), new PaymentCancelled(99, 5, 'paypal'), new PaymentCompleted(99, 5, 'paypal', 'TX-1')] as $event) {
+            $this->shop->events->dispatch($event);
+        }
+
+        self::assertCount(3, array_filter($this->shop->logger->records, static fn(array $record): bool => $record['level'] === 'error' && str_contains($record['message'], 'no longer exists')));
+    }
+
+    public function testAnOrderAPaymentOrAShipmentStillHoldsStays(): void
+    {
+        $order = $this->place();
+        $this->shop->orders->cancel($order->number);
+        $payment = new Payment($order->number, 'paypal', Money::of('8'), 'EUR', 'https://shop.test/receipt', $this->shop->clock->now());
+        $payment->refer('PAYPAL-1');
+        $this->shop->paymentRecords->save($payment);
+        $consignment = new Consignment($order->number, 1, 'Speedy', 'standard', 'SP1', null, $this->shop->clock->now());
+        $this->shop->consignmentRecords->save($consignment);
+
+        foreach ([['orillacart_order_shipped', static fn() => $consignment->cancel(new \DateTimeImmutable())], ['orillacart_order_payment_open', static fn() => $payment->cancel(new \DateTimeImmutable())]] as [$code, $let]) {
+            try {
+                $this->shop->orders->delete($order->number);
+                self::fail($code);
+            } catch (RuleViolation $e) {
+                self::assertSame($code, $e->errorCode);
+            }
+            $let();
+        }
+        $this->shop->orders->delete($order->number);
+
+        self::assertSame([], $this->shop->orderRecords->orders);
+        self::assertSame([], $this->shop->paymentRecords->payments, 'the given-up payment and the bank transfer that never came go along');
     }
 
     public function testTheShopFindsOrdersByStatusNumberOrCustomer(): void

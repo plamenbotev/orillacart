@@ -218,7 +218,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame('refunded', $this->data($this->request('GET', "/orders/{$order['number']}"))['status']);
     }
 
-    public function testTheShopTakesAnOrderItselfAndDeletesItWithItsStockBack(): void
+    public function testTheShopTakesAnOrderItselfAndDeletesItOnceCancelled(): void
     {
         $this->actAs('administrator');
         $billing = ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Vitosha Blvd', 'city' => 'Sofia', 'postcode' => '1000', 'country' => 'BG', 'phone' => '+359 2 000 0000'];
@@ -236,9 +236,14 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(1, $this->data($this->request('GET', "/stock/product/{$this->lamp}"))['available']);
 
         self::assertSame(422, $this->request('POST', '/orders', ['email' => 'ada@example.com', 'billing' => $billing, 'items' => []], nonce: true)->get_status(), 'an order has items');
+        self::assertSame(422, $this->request('DELETE', "/orders/{$order['number']}", nonce: true)->get_status(), 'still open');
+        $this->request('PUT', "/orders/{$order['number']}/status", ['status' => 'cancelled'], nonce: true);
+        self::assertSame(3, $this->data($this->request('GET', "/stock/product/{$this->lamp}"))['available'], 'cancelling gave the stock back');
         $deleted = $this->request('DELETE', "/orders/{$order['number']}", nonce: true);
         self::assertSame(204, $deleted->get_status(), (string) wp_json_encode($deleted->get_data()));
-        self::assertSame(3, $this->data($this->request('GET', "/stock/product/{$this->lamp}"))['available'], 'the order on hold gave its stock back');
+        global $wpdb;
+        self::assertInstanceOf(\wpdb::class, $wpdb);
+        self::assertSame('0', $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}orillacart_payments WHERE order_id = {$order['number']}"), 'the bank transfer that never came went along');
     }
 
     public function testEditingAnOrderThatRunsOutOfStockChangesNothing(): void

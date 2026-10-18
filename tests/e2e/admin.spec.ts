@@ -102,7 +102,7 @@ test.describe( 'The admin', () => {
 		).toBeVisible();
 	} );
 
-	test( 'takes an order by hand, then deletes it from the list', async ( {
+	test( 'takes an order by hand, cancels it, then deletes it from the list', async ( {
 		admin,
 		page,
 	} ) => {
@@ -133,6 +133,13 @@ test.describe( 'The admin', () => {
 		const number = /#(\d+)/.exec(
 			( await heading.textContent() ) ?? ''
 		)?.[ 1 ];
+		await page
+			.getByLabel( 'Move the order to' )
+			.selectOption( { label: 'Cancelled' } );
+		await page.getByRole( 'button', { name: 'Change status' } ).click();
+		await expect(
+			page.getByRole( 'heading', { name: /— Cancelled$/ } )
+		).toBeVisible();
 
 		await page.getByRole( 'button', { name: '← All orders' } ).click();
 		const row = page.getByRole( 'row' ).filter( {

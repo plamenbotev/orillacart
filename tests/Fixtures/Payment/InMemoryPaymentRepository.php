@@ -66,4 +66,9 @@ final class InMemoryPaymentRepository implements PaymentRepository
         }
         $this->payments[$payment->id()] = $payment;
     }
+
+    public function remove(Payment $payment): void
+    {
+        unset($this->payments[$payment->id()]);
+    }
 }

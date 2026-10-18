@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Shipping\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
+use OrillaCart\Shared\Domain\References;
 
 /**
  * A shipment the shop booked with a courier for an order, through the carrier's shipping method: its number,
@@ -33,6 +34,7 @@ class Consignment
 
     public function __construct(
         #[ORM\Column]
+        #[References('orders', onDelete: 'CASCADE')]
         private int $orderId,
         #[ORM\Column]
         private int $carrierId,

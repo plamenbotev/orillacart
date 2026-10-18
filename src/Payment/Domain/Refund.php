@@ -6,6 +6,7 @@ namespace OrillaCart\Payment\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\References;
 
 /**
  * Money given back for an order: how, how much, for which items, and what the provider called it. A refund
@@ -44,6 +45,7 @@ class Refund
      */
     public function __construct(
         #[ORM\Column]
+        #[References('orders')]
         private int $orderId,
         #[ORM\Column(nullable: true)]
         private ?int $paymentId,

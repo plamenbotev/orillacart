@@ -206,7 +206,9 @@ export function OrdersScreen() {
 						id: 'delete',
 						label: __( 'Delete', 'orillacart' ),
 						supportsBulk: true,
-						isEligible: ( item ) => ! item.paid,
+						isEligible: ( item ) =>
+							! item.paid &&
+							[ 'cancelled', 'failed' ].includes( item.status ),
 						modalHeader: __( 'Delete orders', 'orillacart' ),
 						RenderModal: ( { items, closeModal } ) => (
 							<DeleteOrders
@@ -261,10 +263,7 @@ function DeleteOrders( {
 			<p>
 				{ sprintf(
 					/* translators: %s: order numbers */
-					__(
-						'Delete %s for good? Orders waiting for their payment give their items back to stock.',
-						'orillacart'
-					),
+					__( 'Delete %s for good?', 'orillacart' ),
 					orders.map( ( order ) => `#${ order.number }` ).join( ', ' )
 				) }
 			</p>

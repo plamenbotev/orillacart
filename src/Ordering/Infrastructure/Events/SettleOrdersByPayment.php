@@ -6,6 +6,7 @@ namespace OrillaCart\Ordering\Infrastructure\Events;
 
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
 use OrillaCart\Payment\Application\GiveBackLatePayments;
 use OrillaCart\Payment\Domain\Event\PaymentCancelled;
@@ -36,6 +37,10 @@ final readonly class SettleOrdersByPayment
             return;
         } catch (OrderRuleViolation) {
             // Closed before the money came.
+        } catch (OrderNotFound) {
+            $this->gone($event, 'completed: refund it at the provider');
+
+            return;
         }
         try {
             if ($this->orders->paidAfterClosing($event->orderId, $event->transactionId, self::note('Paid', $event))) {
@@ -57,6 +62,8 @@ final readonly class SettleOrdersByPayment
     {
         try {
             $this->orders->hold($event->orderId, self::note('The provider holds the payment for review', $event));
+        } catch (OrderNotFound) {
+            $this->gone($event, 'is held for review');
         } catch (OrderRuleViolation $e) {
             $this->logger->warning('Payment {payment} of order {order} is held by {gateway}, but the order is closed. {reason}', [
                 'payment' => $event->paymentId, 'order' => $event->orderId, 'gateway' => $event->gateway, 'reason' => $e->getMessage(),
@@ -67,13 +74,29 @@ final readonly class SettleOrdersByPayment
     #[AsEventListener]
     public function failed(PaymentFailed $event): void
     {
-        $this->orders->fail($event->orderId, self::note('The payment failed', $event));
+        try {
+            $this->orders->fail($event->orderId, self::note('The payment failed', $event));
+        } catch (OrderNotFound) {
+            $this->gone($event, 'failed');
+        }
     }
 
     #[AsEventListener]
     public function cancelled(PaymentCancelled $event): void
     {
-        $this->orders->cancel($event->orderId, self::note('The customer gave up paying', $event));
+        try {
+            $this->orders->cancel($event->orderId, self::note('The customer gave up paying', $event));
+        } catch (OrderNotFound) {
+            $this->gone($event, 'was given up');
+        }
+    }
+
+    /** A provider's late word about an order that no longer exists: nothing to move, but the shop should know. */
+    private function gone(PaymentCompleted|PaymentHeld|PaymentFailed|PaymentCancelled $event, string $what): void
+    {
+        $this->logger->error('Payment {payment} ({gateway}) of order {order}, which no longer exists, {what}.', [
+            'payment' => $event->paymentId, 'gateway' => $event->gateway, 'order' => $event->orderId, 'what' => $what,
+        ]);
     }
 
     private static function note(string $what, PaymentCompleted|PaymentHeld|PaymentFailed|PaymentCancelled $event): string

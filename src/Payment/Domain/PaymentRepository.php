@@ -27,4 +27,6 @@ interface PaymentRepository
     public function openBetween(\DateTimeImmutable $from, \DateTimeImmutable $until, int $limit): array;
 
     public function save(Payment $payment): void;
+
+    public function remove(Payment $payment): void;
 }

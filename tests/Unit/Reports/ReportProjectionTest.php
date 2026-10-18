@@ -82,6 +82,7 @@ final class ReportProjectionTest extends TestCase
     {
         $kept = $this->place(1);
         $deleted = $this->place(1);
+        $this->shop->orders->cancel($deleted->number);
         $this->shop->orders->delete($deleted->number);
         self::assertSame([$kept->number], array_keys($this->store->facts));
 

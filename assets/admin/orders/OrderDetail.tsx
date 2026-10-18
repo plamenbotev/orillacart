@@ -277,13 +277,14 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 						onError={ fail }
 					/>
 				) }
-				{ order.paid_at === null && (
-					<DeleteButton
-						order={ order }
-						onDeleted={ onBack }
-						onError={ fail }
-					/>
-				) }
+				{ order.paid_at === null &&
+					[ 'cancelled', 'failed' ].includes( order.status ) && (
+						<DeleteButton
+							order={ order }
+							onDeleted={ onBack }
+							onError={ fail }
+						/>
+					) }
 			</Flex>
 		</>
 	);
@@ -356,16 +357,7 @@ function DeleteButton( {
 	return (
 		<Notice status="warning" isDismissible={ false }>
 			<p>
-				{ order.status === 'pending_payment' ||
-				order.status === 'on_hold'
-					? __(
-							'The order and its history go for good; its items go back in stock.',
-							'orillacart'
-						)
-					: __(
-							'The order and its history go for good.',
-							'orillacart'
-						) }
+				{ __( 'The order and its history go for good.', 'orillacart' ) }
 			</p>
 			<Button
 				variant="primary"

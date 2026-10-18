@@ -7,7 +7,7 @@ namespace OrillaCart\Ordering\Domain\Event;
 use OrillaCart\Shared\Domain\Event\PublicEvent;
 
 /**
- * The shop deleted an order that was not paid, or was refunded. Announced as the action
+ * The shop deleted an order that was cancelled or failed, never paid. Announced as the action
  * orillacart_order_deleted with the order number.
  */
 final readonly class OrderDeleted implements PublicEvent

@@ -60,4 +60,10 @@ final readonly class DoctrinePaymentRepository implements PaymentRepository
         $this->entityManager->persist($payment);
         $this->entityManager->flush();
     }
+
+    public function remove(Payment $payment): void
+    {
+        $this->entityManager->remove($payment);
+        $this->entityManager->flush();
+    }
 }

@@ -28,6 +28,7 @@ use OrillaCart\Ordering\Application\Dto\TaxLineView;
 use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
 use OrillaCart\Ordering\Domain\Event\OrderChanged;
 use OrillaCart\Ordering\Domain\Event\OrderDeleted;
+use OrillaCart\Ordering\Domain\Event\OrderDeleting;
 use OrillaCart\Ordering\Domain\Event\OrderNeedsAttention;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderPaid;
@@ -50,6 +51,7 @@ use OrillaCart\Ordering\Domain\ShippingChoice;
 use OrillaCart\Ordering\Domain\TakenItem;
 use OrillaCart\Ordering\Domain\TaxLine;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Persistence\Transactions;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -537,11 +539,12 @@ final readonly class OrderService
     }
 
     /**
-     * Deletes an order for good. An order waiting for its payment gives its stock back first; one that was ever
-     * paid stays, since it has an invoice the books must keep.
+     * Deletes an order for good: only one that was cancelled or failed, so its stock is back already. One that was
+     * ever paid stays, since it has an invoice the books must keep; so does one another area still holds, such as
+     * a payment open at its provider or a shipment booked (see OrderDeleting).
      *
      * @throws OrderNotFound
-     * @throws OrderRuleViolation for an order that was paid
+     * @throws RuleViolation for an order that must stay
      */
     public function delete(int $id): void
     {
@@ -549,7 +552,10 @@ final readonly class OrderService
             if ($order->paidAt() !== null) {
                 throw new OrderRuleViolation(\sprintf('Order #%d was paid: it stays, with its invoice, for the books.', $id), 'orillacart_order_paid');
             }
-            $this->giveBack($order->cancel());
+            if (!\in_array($order->status(), [OrderStatus::Cancelled, OrderStatus::Failed], true)) {
+                throw new OrderRuleViolation(\sprintf('Order #%d is still open: cancel it first, then delete it.', $id), 'orillacart_order_open');
+            }
+            $this->events->dispatch(new OrderDeleting($id));
             $this->orders->remove($order);
             $this->events->dispatch(new OrderDeleted($id));
         });

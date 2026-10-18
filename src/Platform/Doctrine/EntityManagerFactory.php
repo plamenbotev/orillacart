@@ -13,6 +13,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
 use Doctrine\ORM\Mapping\UnderscoreNamingStrategy;
 use Doctrine\ORM\ORMSetup;
+use Doctrine\ORM\Tools\ToolEvents;
 use OrillaCart\Platform\Doctrine\StrictMysqli\Middleware;
 use OrillaCart\Platform\PluginContext;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
@@ -48,6 +49,7 @@ final readonly class EntityManagerFactory
 
         $events = new EventManager();
         $events->addEventListener(Events::loadClassMetadata, new TablePrefixListener($this->database->tablePrefix));
+        $events->addEventListener(ToolEvents::postGenerateSchema, new ReferencesListener($this->database->tablePrefix));
 
         return new EntityManager($connection, $config, $events);
     }
