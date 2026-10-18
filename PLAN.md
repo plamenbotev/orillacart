@@ -75,7 +75,7 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 
 | | # | Item | Commit |
 |---|---|---|---|
-| ✅ | 31 | Small gaps: product reviews (comments on products); translations (`.pot` with the templates' strings, `languages/` loaded for PHP and scripts); multisite (network activation sets up every site, new sites are set up, a deleted site's tables go); shop sign-ups checked by add-ons (`orillacart_registration_errors`); a deleted WordPress user's orders become guest orders, their carts and group places go. Found on the way: foreign key names are unique per database, so each site prefix gets its own; the cart printed problem codes (fixed in 30) | |
+| ✅ | 31 | Small gaps: product reviews (comments on products); translations (`.pot` with the templates' strings, `languages/` loaded for PHP and scripts); multisite (network activation sets up every site, new sites are set up, a deleted site's tables go); shop sign-ups checked by add-ons (`orillacart_registration_errors`); a deleted WordPress user's orders become guest orders, their carts and group places go. Found on the way: foreign key names are unique per database, so each site prefix gets its own; the cart printed problem codes (fixed in 30) | f8b37b5 |
 | ⬜ | 30 | Add-on hooks the old plugin had and the rebuild lacks: prices add-ons adjust, cart checks and cart events, checkout fields add-ons add (kept with the order, shown in emails and the admin), page slots (product, cart, checkout), email attachments, order screen actions, address layout by country ([design](docs/designs/30-addon-hooks.md)) | |
 
 ## Waiting on others
