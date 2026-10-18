@@ -50,14 +50,14 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 |---|---|---|---|
 | 🔄 | 21 | Storefront filtering and search on an index fed by a database queue (`FOR UPDATE SKIP LOCKED`, workers or cron); database or OpenSearch behind one interface ([design](docs/designs/21-catalog-search.md), approved) | |
 | ✅ | 21a | ↳ Search index, queue and workers (cron, end of request, WP-CLI), MySQL engine; the shop page searches, sorts and filters on it | 9ae4f66 |
-| ⬜ | 21b | ↳ Filters the shop defines, facet counts, price and stock filters, Search block | |
+| 🔄 | 21b | ↳ Filters the shop defines, facet counts, price and stock filters, Search block | |
 | ⬜ | 21c | ↳ OpenSearch engine, queue status and rebuild in the settings | |
 | ✅ | 25 | Orders list actions (raised 2026-10-18): create an order by hand in the admin (customer or guest, items with options, addresses, shipping, status; stock taken like checkout), and delete from the list (row and bulk actions; today only from an order's page, and only cancelled, failed or refunded ones); the customer is emailed only when the shop ticks "Email the customer" (asked 2026-10-18, in 27b's commit) | e634242 |
 | 📝 | 26 | Carrier integrations (raised 2026-10-18): a contract a carrier module implements (live rates, pickup points/offices, shipments with labels and tracking), with DPD as the first. The old plugin had none, only its pluggable `methods/` folder holding the standard carrier; design needed (which DPD API and country, what the shop does with labels) | |
-| 🔄 | 27 | Public extension API for add-ons (agreed 2026-10-18): stable contracts in `OrillaCart\Extension`, an `orillacart_extensions` registry; shipping methods (rates, pickup points, shipments with labels and tracking), payment gateways and refunds on it; built-in methods use it too. Order of work: 25, 27, 21b, 21c, then 26 and the rest | [design](docs/designs/27-extension-api.md) |
+| ✅ | 27 | Public extension API for add-ons (agreed 2026-10-18): stable contracts in `OrillaCart\Extension`, an `orillacart_extensions` registry; shipping methods (rates, pickup points, shipments with labels and tracking), payment gateways and refunds on it; built-in methods use it too. Order of work: 25, 27, 21b, 21c, then 26 and the rest | [design](docs/designs/27-extension-api.md) |
 | ✅ | 27a | ↳ `OrillaCart\Extension` namespace, registry (`orillacart_extensions`), payment gateways on it (returns and notifications for every gateway, PayPal rebuilt on it), setting types, add-on guide (docs/extensions.md) | 5696987 |
 | ✅ | 27b | ↳ Shipping methods: carriers get a method (rate table or an add-on's), live rates at checkout and in order editing | e1e2461 |
-| 🔄 | 27c | ↳ Pickup points at checkout, shipments with labels, tracking and cancelling from the order screen | |
+| ✅ | 27c | ↳ Pickup points at checkout, shipments with labels, tracking and cancelling from the order screen | 930386c |
 | 📝 | 22 | Coupon codes: by rules (minimum amount, dates, usage limits, per customer) or for specific products and categories | [design](docs/designs/22-coupons.md) |
 | 📝 | 23 | Dynamic prices (quantity tiers, customer groups, scheduled rules), bundles and sets | [design](docs/designs/23-dynamic-prices-bundles.md) |
 | 📝 | 24 | Refunds through the payment methods: a contract the gateways that can refund implement (PayPal's refund API); offline methods recorded by hand; full and partial | [design](docs/designs/24-refunds.md) |
