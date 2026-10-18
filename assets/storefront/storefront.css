@@ -2,7 +2,7 @@
  * Storefront styles: layout only. Fonts, colours and buttons come from the theme (buttons use the theme's
  * .wp-element-button style). Themes adjust the shop through these custom properties.
  */
-:where(.orillacart-products, .orillacart-product, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart) {
+:where(.orillacart-products, .orillacart-product, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart, .orillacart-product-filters, .orillacart-product-search) {
 	--orillacart-gap: 1.5rem;
 	--orillacart-border: color-mix(in srgb, currentColor 18%, transparent);
 	--orillacart-muted: color-mix(in srgb, currentColor 65%, transparent);

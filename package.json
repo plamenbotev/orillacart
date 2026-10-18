@@ -15,6 +15,7 @@
 		"env:start": "wp-env start",
 		"env:stop": "wp-env stop",
 		"test:integration": "wp-env run tests-cli --env-cwd=wp-content/plugins/orillacart env ORILLACART_WP_LOAD=/var/www/html/wp-load.php vendor/bin/phpunit --testsuite integration",
+		"demo": "wp-env run cli --env-cwd=wp-content/plugins/orillacart wp eval-file bin/demo-shop.php && wp-env run cli --env-cwd=wp-content/plugins/orillacart wp orillacart index work",
 		"db:diff": "wp-env run cli --env-cwd=wp-content/plugins/orillacart wp eval-file bin/make-migration.php",
 		"start:storefront": "wp-scripts start storefront=./assets/storefront/index.ts --output-path=build/storefront",
 		"test:e2e": "wp-scripts test-playwright"
