@@ -124,7 +124,7 @@ class DownloadGrant
     public function refusal(\DateTimeImmutable $now): ?string
     {
         return match (true) {
-            !$this->order->status()->isPaid() => 'The order is not paid.',
+            !$this->order->isPaid() => 'The order is not paid.',
             $this->expiresAt !== null && $this->expiresAt < $now => 'The download link has expired.',
             $this->remaining !== null && $this->remaining < 1 => 'There are no downloads left for this file.',
             default => null,

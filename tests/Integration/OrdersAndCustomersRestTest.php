@@ -88,7 +88,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
 
         $this->sentMail();
         $this->mails = [];
-        $changed = $this->request('PUT', "/orders/{$order['number']}/status", ['status' => 'processing', 'note' => 'Paid at the bank.'], nonce: true);
+        $changed = $this->request('POST', "/orders/{$order['number']}/paid", ['note' => 'Paid at the bank.'], nonce: true);
         self::assertSame(200, $changed->get_status(), (string) wp_json_encode($changed->get_data()));
         self::assertSame(['shipped', 'completed'], $this->data($changed)['next_statuses']);
         $this->request('POST', "/orders/{$order['number']}/notes", ['text' => 'It leaves tomorrow.', 'for_customer' => true], nonce: true);
@@ -138,7 +138,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $order = $this->order([[$this->lamp, 2]]);
         $this->actAs('administrator');
         self::assertSame(422, $this->request('POST', "/orders/{$order['number']}/refunds", ['amount' => '1'], nonce: true)->get_status(), 'not paid yet');
-        $this->request('PUT', "/orders/{$order['number']}/status", ['status' => 'processing'], nonce: true);
+        self::assertSame(200, $this->request('POST', "/orders/{$order['number']}/paid", [], nonce: true)->get_status());
         $total = $this->data($this->request('GET', "/orders/{$order['number']}"))['total'];
         self::assertIsString($total);
         $this->sentMail();
@@ -229,7 +229,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame([], $this->data($this->request('GET', '/account/downloads')), 'not paid yet');
 
         $this->actAs('administrator');
-        $this->request('PUT', "/orders/{$order['number']}/status", ['status' => 'processing'], nonce: true);
+        $this->request('POST', "/orders/{$order['number']}/paid", [], nonce: true);
         wp_set_current_user($user->ID);
         $downloads = $this->rows($this->data($this->request('GET', '/account/downloads')));
         self::assertSame(['guide.pdf', 2], [$downloads[0]['name'], $downloads[0]['remaining']]);

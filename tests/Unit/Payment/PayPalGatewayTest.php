@@ -11,7 +11,6 @@ use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Ordering\Application\Dto\AddressData;
-use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentNotFound;
@@ -56,7 +55,7 @@ final class PayPalGatewayTest extends TestCase
     {
         $placed = $this->place();
         $number = $this->shop->orders->byKey($placed->key)->number;
-        $this->shop->orders->changeStatus($number, new ChangeOrderStatus('processing'), 7);
+        $this->shop->orders->markPaidByShop($number, '', 7);
 
         $this->shop->outcomes->notified('paypal', $this->notification('CHECKOUT.ORDER.APPROVED', ['id' => 'PAYPAL-1']));
 

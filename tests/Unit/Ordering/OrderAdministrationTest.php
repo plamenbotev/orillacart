@@ -42,8 +42,8 @@ final class OrderAdministrationTest extends TestCase
     {
         $order = $this->place();
 
-        $view = $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('processing', note: 'Money arrived.'), 7);
-        self::assertSame(['shipped', 'completed'], $view->nextStatuses, 'a paid order is refunded, not cancelled');
+        $view = $this->shop->orders->markPaidByShop($order->number, 'Money arrived.', 7);
+        self::assertSame(['processing', ['shipped', 'completed']], [$view->status, $view->nextStatuses], 'a paid order is refunded, not cancelled');
         try {
             $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('cancelled'), 7);
             self::fail('cancelling a paid order would keep the money');
@@ -57,6 +57,38 @@ final class OrderAdministrationTest extends TestCase
         self::assertSame(['system', 'system', 'shop', 'shop'], array_column($notes, 'author'));
         self::assertSame('Status changed from on hold to processing. Money arrived.', $notes[2]->text);
         self::assertNotNull($this->shop->orderRecords->orders[$order->number]->paidAt());
+    }
+
+    public function testAnOrderPaidOnDeliveryShipsUnpaidAndIsPaidWhenCompleted(): void
+    {
+        $order = $this->place();
+
+        $view = $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('processing'), 7);
+        self::assertSame(['processing', null], [$view->status, $view->paidAt], 'fulfilled before the money comes');
+        $view = $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('shipped'), 7);
+        self::assertSame(['completed', 'cancelled'], $view->nextStatuses, 'the customer may refuse it, unpaid');
+        try {
+            $this->shop->refunds->refund($order->number, new MakeRefund('8'), 7);
+            self::fail('nothing was paid');
+        } catch (OrderRuleViolation $e) {
+            self::assertSame('orillacart_order_not_refundable', $e->errorCode);
+        }
+
+        $view = $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('completed'), 7);
+        self::assertSame('completed', $view->status);
+        self::assertNotNull($view->paidAt, 'the courier handed over the cash');
+    }
+
+    public function testAnUnpaidOrderRefusedAtTheDoorIsCancelledWithItsStockBack(): void
+    {
+        $order = $this->place(2);
+        $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('processing'), 7);
+        $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('shipped'), 7);
+        self::assertSame(8, $this->available());
+
+        $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('cancelled', note: 'Refused at the door.'), 7);
+
+        self::assertSame(10, $this->available());
     }
 
     public function testOnlyTheAllowedMovesAreAccepted(): void
@@ -87,7 +119,7 @@ final class OrderAdministrationTest extends TestCase
         self::assertSame(7, $this->available());
 
         foreach ([$refunded, $kept] as $order) {
-            $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('processing'), 7);
+            $this->shop->orders->markPaidByShop($order->number, '', 7);
         }
         $this->shop->refunds->refund($refunded->number, new MakeRefund('16', [new RefundLine(0, 2)], restock: true), 7);
         $this->shop->refunds->refund($kept->number, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
@@ -104,7 +136,7 @@ final class OrderAdministrationTest extends TestCase
         $this->shop->orders->delete($waiting->number);
         self::assertSame(8, $this->available(), 'an order on hold gives its stock back');
 
-        $this->shop->orders->changeStatus($paid->number, new ChangeOrderStatus('processing'), 7);
+        $this->shop->orders->markPaidByShop($paid->number, '', 7);
         try {
             $this->shop->orders->delete($paid->number);
             self::fail('a paid order');

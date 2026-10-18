@@ -11,7 +11,6 @@ use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
-use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Domain\Event\OrderChanged;
 use OrillaCart\Ordering\Domain\Event\OrderDeleted;
@@ -65,7 +64,7 @@ final class ReportProjectionTest extends TestCase
         $facts = $this->store->facts[$order->number];
         self::assertSame([false, '2029-12-31', '16', 2], [$facts->order->counted, $facts->order->day->format('Y-m-d'), $facts->order->gross, $facts->order->items], 'three in the morning in UTC is the evening before in New York; on hold is not a sale yet');
 
-        $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('processing'), 7);
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
         self::assertTrue($this->store->facts[$order->number]->order->counted);
         self::assertSame([[20, 2, '16']], array_map(static fn($line): array => [$line->productId, $line->quantity, $line->net], $this->store->facts[$order->number]->lines));
 

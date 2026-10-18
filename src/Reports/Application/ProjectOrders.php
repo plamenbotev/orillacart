@@ -29,8 +29,6 @@ final readonly class ProjectOrders implements JobHandler
 {
     public const string TYPE = 'reports.order';
 
-    /** The statuses of orders that count as sales: paid, including those refunded since (refunds count on their own). */
-    public const array COUNTED = ['processing', 'shipped', 'completed', 'refunded'];
 
     public function __construct(
         private OrderService $orders,
@@ -84,7 +82,9 @@ final readonly class ProjectOrders implements JobHandler
     {
         $zone = $this->calendar->timezone();
         $day = new \DateTimeImmutable($order->placedAt)->setTimezone($zone)->setTime(0, 0);
-        $counted = \in_array($order->status, self::COUNTED, true);
+        // Sales are paid orders, those refunded since included (refunds count on their own); an order paid on
+        // delivery counts once its cash came.
+        $counted = $order->paidAt !== null;
         $address = $order->shippingAddress ?? $order->billing;
         $items = array_sum(array_map(static fn(OrderLineView $line): int => $line->quantity, $order->lines));
 

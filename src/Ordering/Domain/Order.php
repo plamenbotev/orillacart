@@ -407,8 +407,8 @@ class Order
      */
     public function checkRefund(OrderRefund $refund): void
     {
-        if (!$this->status->isPaid()) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is %s; only paid orders are refunded.', $this->id(), strtolower($this->status->label())), 'orillacart_order_not_refundable');
+        if (!$this->isPaid()) {
+            throw new OrderRuleViolation(\sprintf('Order #%d is not paid; only paid orders are refunded.', $this->id()), 'orillacart_order_not_refundable');
         }
         if ($refund->amount->isNegative() || $refund->amount->isZero()) {
             throw new OrderRuleViolation('A refund is for more than nothing.', 'orillacart_invalid_refund_amount');
@@ -549,7 +549,7 @@ class Order
      */
     public function grantDownloads(\Closure $token, \DateTimeImmutable $now): bool
     {
-        if (!$this->status->isPaid() || !$this->grants->isEmpty()) {
+        if (!$this->isPaid() || !$this->grants->isEmpty()) {
             return false;
         }
         foreach ($this->lines as $line) {
@@ -675,21 +675,51 @@ class Order
     }
 
     /**
-     * Paid in full, or nothing to pay: the shop fulfils it.
+     * Paid in full, or nothing to pay. An order that waited for the payment is fulfilled now; one already being
+     * fulfilled unpaid, such as cash on delivery, keeps its status.
      *
      * @return bool false when the order was already paid
+     *
+     * @throws OrderRuleViolation for a cancelled, failed or refunded order
      */
     public function markPaid(?string $transactionId, \DateTimeImmutable $at): bool
     {
         if ($this->paidAt !== null) {
             return false;
         }
-        $this->requireOpen('marked paid');
-        $this->status = OrderStatus::Processing;
+        if ($this->status->isClosed()) {
+            throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot be marked paid.', $this->id(), strtolower($this->status->label())), 'orillacart_order_closed');
+        }
+        if ($this->status->isOpen()) {
+            $this->status = OrderStatus::Processing;
+        }
         $this->transactionId = $transactionId;
         $this->paidAt = $at;
 
         return true;
+    }
+
+    /** The money came, and was not given back in full: what the customer bought is theirs, downloads included. */
+    public function isPaid(): bool
+    {
+        return $this->paidAt !== null && $this->status !== OrderStatus::Refunded;
+    }
+
+    /**
+     * The statuses the shop may move the order to: those of its status, and cancelling an unpaid order being
+     * fulfilled (cash on delivery the customer did not take). A paid order is never cancelled: it leaves by
+     * refunding it, so the shop never keeps money for an order it called off.
+     *
+     * @return list<OrderStatus>
+     */
+    public function nextStatuses(): array
+    {
+        $next = $this->status->next();
+        if ($this->paidAt === null && \in_array($this->status, [OrderStatus::Processing, OrderStatus::Shipped], true)) {
+            $next[] = OrderStatus::Cancelled;
+        }
+
+        return $this->paidAt === null ? $next : array_values(array_filter($next, static fn(OrderStatus $status): bool => $status !== OrderStatus::Cancelled));
     }
 
     /**
@@ -709,7 +739,7 @@ class Order
      */
     public function cancel(): array
     {
-        return $this->status->isOpen() ? $this->close(OrderStatus::Cancelled) : [];
+        return $this->status->isOpen() || ($this->paidAt === null && $this->status->isFulfilling() && $this->status !== OrderStatus::Completed) ? $this->close(OrderStatus::Cancelled) : [];
     }
 
     /**
@@ -722,7 +752,7 @@ class Order
      */
     public function moveTo(OrderStatus $status, \DateTimeImmutable $at): array
     {
-        if (!\in_array($status, $this->status->next(), true)) {
+        if (!\in_array($status, $this->nextStatuses(), true)) {
             throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot become %s.', $this->id(), strtolower($this->status->label()), strtolower($status->label())), 'orillacart_invalid_status_change');
         }
 
@@ -731,8 +761,10 @@ class Order
                 $this->hold();
 
                 return [];
-            case OrderStatus::Processing:
-                $this->markPaid($this->transactionId, $at);
+            case OrderStatus::Completed:
+                // Done: the courier handed over the cash of an order paid on delivery, if nothing came before.
+                $this->status = OrderStatus::Completed;
+                $this->paidAt ??= $at;
 
                 return [];
             case OrderStatus::Cancelled:

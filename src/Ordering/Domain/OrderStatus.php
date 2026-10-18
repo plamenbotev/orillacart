@@ -23,22 +23,28 @@ enum OrderStatus: string
     /** The shop gave the money back. */
     case Refunded = 'refunded';
 
-    /** Placed but not paid: the stock is held for it. */
+    /** Placed, and the shop waits for the payment before fulfilling it: the stock is held for it. */
     public function isOpen(): bool
     {
         return $this === self::PendingPayment || $this === self::OnHold;
     }
 
-    /** Paid (or free) and not refunded: what the customer bought is theirs, downloads included. */
-    public function isPaid(): bool
+    /** Being fulfilled or fulfilled. Whether it is paid is another matter: see Order::isPaid(). */
+    public function isFulfilling(): bool
     {
         return \in_array($this, [self::Processing, self::Shipped, self::Completed], true);
     }
 
+    /** Over: cancelled, failed or refunded. */
+    public function isClosed(): bool
+    {
+        return \in_array($this, [self::Cancelled, self::Failed, self::Refunded], true);
+    }
+
     /**
-     * The statuses the shop may move an order to from this one. Cancelled, failed and refunded orders are final.
-     * Only unpaid orders are cancelled: a paid one leaves by refunding it, which gives the money back and makes it
-     * Refunded once all of it went, so the shop never keeps money for an order it called off.
+     * The statuses the shop may move an order to from this one, whatever its payment. Cancelled, failed and
+     * refunded orders are final. Order::nextStatuses() adds cancelling an unpaid order being fulfilled, such as
+     * cash on delivery the customer did not take.
      *
      * @return list<self>
      */

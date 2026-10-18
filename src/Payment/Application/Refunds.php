@@ -67,7 +67,7 @@ final readonly class Refunds
         return new OrderRefundsView(
             (string) Money::of($order->total)->subtract(Money::of($order->refundedTotal))->atLeastZero(),
             $order->currency,
-            \in_array($order->status, ['processing', 'shipped', 'completed'], true),
+            $order->paidAt !== null && $order->status !== 'refunded',
             $payment === null ? null : $this->name($payment->gateway()),
             array_map(RefundView::fromRefund(...), $this->refunds->ofOrder($orderId)),
         );

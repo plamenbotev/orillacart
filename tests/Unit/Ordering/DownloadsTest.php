@@ -13,7 +13,6 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
-use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
@@ -42,7 +41,7 @@ final class DownloadsTest extends TestCase
         $unpaid = $this->shop->orders->byKey($order->key);
         self::assertSame([], $unpaid->downloads, 'nothing before the money arrives');
 
-        $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('processing'), 1);
+        $this->shop->orders->markPaidByShop($order->number, '', 1);
 
         $downloads = $this->shop->orders->byKey($order->key)->downloads;
         self::assertCount(1, $downloads);
@@ -144,7 +143,7 @@ final class DownloadsTest extends TestCase
     private function paid(CartOwner $owner = new CartOwner(null)): PlacedOrderView
     {
         $order = $this->place($owner);
-        $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('processing'), 1);
+        $this->shop->orders->markPaidByShop($order->number, '', 1);
 
         return $order;
     }

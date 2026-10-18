@@ -15,11 +15,11 @@ export const STATUSES = [
 ] as const;
 export type Status = ( typeof STATUSES )[ number ];
 
-/** Paid orders are refunded in full before they can be deleted. */
-export const PAID_STATUSES: readonly Status[] = [
-	'processing',
-	'shipped',
-	'completed',
+/** Cancelled, failed and refunded orders are over. */
+export const CLOSED_STATUSES: readonly Status[] = [
+	'cancelled',
+	'failed',
+	'refunded',
 ];
 
 export interface OrderSummary {
@@ -35,6 +35,8 @@ export interface OrderSummary {
 	placed_at: string;
 	/** The shop has to look at it, such as a payment disputed after it was paid. */
 	needs_attention: boolean;
+	/** The money came and was not given back in full: it is refunded before it can be deleted. */
+	paid: boolean;
 }
 
 export interface OrderPage {
@@ -259,6 +261,19 @@ export function giveUpRefund( id: number ): Promise< OrderRefunds > {
 	return apiFetch< OrderRefunds >( {
 		path: `${ BASE }/refunds/${ id }/give-up`,
 		method: 'POST',
+	} );
+}
+
+/**
+ * The shop says the money came: an order waiting for it is fulfilled, one being fulfilled keeps its status.
+ * @param id
+ * @param note
+ */
+export function markPaid( id: number, note: string ): Promise< Order > {
+	return apiFetch< Order >( {
+		path: `${ BASE }/orders/${ id }/paid`,
+		method: 'POST',
+		data: { note },
 	} );
 }
 

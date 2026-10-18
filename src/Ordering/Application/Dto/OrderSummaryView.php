@@ -24,6 +24,8 @@ final readonly class OrderSummaryView
         public string $placedAt,
         /** The shop has to look at it; for the shop only. */
         public bool $needsAttention = false,
+        /** The money came and was not given back in full. */
+        public bool $paid = false,
     ) {}
 
     public static function fromOrder(Order $order, bool $forShop = false): self
@@ -40,6 +42,7 @@ final readonly class OrderSummaryView
             $order->paymentName(),
             $order->placedAt()->format(\DATE_ATOM),
             $forShop && $order->attention() !== null,
+            $order->isPaid(),
         );
     }
 }

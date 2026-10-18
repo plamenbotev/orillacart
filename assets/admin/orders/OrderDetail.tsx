@@ -30,10 +30,11 @@ import {
 	fetchPickupPoints,
 	fetchShippingOptions,
 	markHandled,
+	markPaid,
 	type Order,
 	type PickupPoint,
 	type OrderAction,
-	PAID_STATUSES,
+	CLOSED_STATUSES,
 	runOrderAction,
 	sendEmail,
 	type ShippingOption,
@@ -168,6 +169,16 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 					onError={ fail }
 				/>
 			) }
+			{ order.paid_at === null &&
+				! CLOSED_STATUSES.includes( order.status ) && (
+					<PaymentCard
+						order={ order }
+						onSaved={ done(
+							__( 'The order is marked as paid.', 'orillacart' )
+						) }
+						onError={ fail }
+					/>
+				) }
 			{ order.next_statuses.length > 0 && (
 				<StatusCard
 					order={ order }
@@ -247,7 +258,7 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 				}
 				onError={ fail }
 			/>
-			{ ! PAID_STATUSES.includes( order.status ) && (
+			{ ( order.paid_at === null || order.status === 'refunded' ) && (
 				<DeleteButton
 					order={ order }
 					onDeleted={ onBack }
@@ -452,7 +463,14 @@ function Summary( { order }: { order: Order } ) {
 							: order.payment_name
 					) }
 					{ order.transaction_id !== null &&
-						` ${ __( 'Transaction', 'orillacart' ) } ${ order.transaction_id }.` }
+						` ${ __( 'Transaction', 'orillacart' ) } ${ order.transaction_id }.` }{ ' ' }
+					{ order.paid_at === null
+						? __( 'Not paid yet.', 'orillacart' )
+						: sprintf(
+								/* translators: %s: date */
+								__( 'Paid %s.', 'orillacart' ),
+								when( order.paid_at )
+							) }
 				</p>
 				{ order.note !== '' && (
 					<p>
@@ -512,6 +530,14 @@ function StatusCard( { order, onSaved, onError }: CardProps ) {
 						) }
 					</p>
 				) }
+				{ status === 'completed' && order.paid_at === null && (
+					<p>
+						{ __(
+							'Completing it records the payment, as when the courier hands over the cash.',
+							'orillacart'
+						) }
+					</p>
+				) }
 				<TextControl
 					__next40pxDefaultSize
 					label={ __(
@@ -536,6 +562,66 @@ function StatusCard( { order, onSaved, onError }: CardProps ) {
 					}
 				>
 					{ __( 'Change status', 'orillacart' ) }
+				</Button>
+			</CardBody>
+		</Card>
+	);
+}
+
+/**
+ * The shop says the money came, apart from moving the order along: a bank transfer that arrived, or the cash of
+ * an order paid on delivery.
+ * @param props
+ * @param props.order
+ * @param props.onSaved
+ * @param props.onError
+ */
+function PaymentCard( { order, onSaved, onError }: CardProps ) {
+	const [ note, setNote ] = useState( '' );
+	const [ busy, setBusy ] = useState( false );
+
+	return (
+		<Card className="orillacart-card">
+			<CardHeader>
+				<h2>{ __( 'Payment', 'orillacart' ) }</h2>
+			</CardHeader>
+			<CardBody>
+				<p>
+					{ [ 'pending_payment', 'on_hold' ].includes( order.status )
+						? __(
+								'The order waits for its payment. Once the money came, mark it as paid: it is then fulfilled.',
+								'orillacart'
+							)
+						: __(
+								'The order is being fulfilled before its payment, as for cash on delivery.',
+								'orillacart'
+							) }
+				</p>
+				<TextControl
+					__next40pxDefaultSize
+					label={ __(
+						'How the money came (optional)',
+						'orillacart'
+					) }
+					value={ note }
+					onChange={ setNote }
+				/>
+				<Button
+					variant="secondary"
+					isBusy={ busy }
+					disabled={ busy }
+					onClick={ () => {
+						setBusy( true );
+						markPaid( order.number, note )
+							.then( ( saved ) => {
+								setNote( '' );
+								onSaved( saved );
+							} )
+							.catch( onError )
+							.finally( () => setBusy( false ) );
+					} }
+				>
+					{ __( 'Mark as paid', 'orillacart' ) }
 				</Button>
 			</CardBody>
 		</Card>

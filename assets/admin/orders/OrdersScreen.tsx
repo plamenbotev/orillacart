@@ -9,7 +9,6 @@ import {
 	fetchOrders,
 	type OrderPage,
 	type OrderSummary,
-	PAID_STATUSES,
 	type Status,
 	STATUSES,
 } from './api';
@@ -207,8 +206,7 @@ export function OrdersScreen() {
 						id: 'delete',
 						label: __( 'Delete', 'orillacart' ),
 						supportsBulk: true,
-						isEligible: ( item ) =>
-							! PAID_STATUSES.includes( item.status ),
+						isEligible: ( item ) => ! item.paid,
 						modalHeader: __( 'Delete orders', 'orillacart' ),
 						RenderModal: ( { items, closeModal } ) => (
 							<DeleteOrders

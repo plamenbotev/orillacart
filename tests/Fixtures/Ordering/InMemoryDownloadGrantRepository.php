@@ -42,7 +42,7 @@ final class InMemoryDownloadGrantRepository implements DownloadGrantRepository
 
     public function ofCustomer(int $customerId): array
     {
-        return array_values(array_filter($this->all(), static fn(DownloadGrant $grant): bool => $grant->order()->customerId() === $customerId && $grant->order()->status()->isPaid()));
+        return array_values(array_filter($this->all(), static fn(DownloadGrant $grant): bool => $grant->order()->customerId() === $customerId && $grant->order()->isPaid()));
     }
 
     public function isStorageKeyUsed(string $storageKey): bool

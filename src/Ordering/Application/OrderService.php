@@ -186,7 +186,7 @@ final readonly class OrderService
         $this->changing($id, function (Order $order) use ($transactionId, $note, $tellCustomer, $tellShop): void {
             $previous = $order->status();
             if ($order->markPaid($transactionId, $this->clock->now())) {
-                $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
+                $order->status() === $previous ? $this->paidWhileFulfilled($order, $note, null) : $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
             } elseif ($transactionId !== null && $transactionId !== $order->transactionId()) {
                 $text = $order->paidAgain($transactionId)
                     ? \sprintf('Another payment came for this order, which was already paid (transaction %s): check whether to give one back.', $transactionId)
@@ -195,6 +195,39 @@ final readonly class OrderService
                 $this->orders->save($order);
             }
         });
+    }
+
+    /**
+     * The shop says the money came, such as the cash of an order paid on delivery or a bank transfer. An order
+     * that waited for it is fulfilled now; one being fulfilled keeps its status.
+     *
+     * @throws OrderNotFound
+     * @throws OrderRuleViolation for an order that is paid, cancelled, failed or refunded
+     */
+    public function markPaidByShop(int $id, string $note, ?int $userId): OrderView
+    {
+        return $this->changing($id, function (Order $order) use ($note, $userId): OrderView {
+            $previous = $order->status();
+            if (!$order->markPaid($order->transactionId(), $this->clock->now())) {
+                throw new OrderRuleViolation(\sprintf('Order #%d is paid already.', $order->id()), 'orillacart_order_paid');
+            }
+            $order->status() === $previous ? $this->paidWhileFulfilled($order, $note, $userId) : $this->changed($order, $previous, [], $note, $userId);
+
+            return $this->view($order, true);
+        });
+    }
+
+    /**
+     * Paid while it was being fulfilled: its status stays, its downloads come, its history says so.
+     */
+    private function paidWhileFulfilled(Order $order, string $note, ?int $userId): void
+    {
+        if ($order->grantDownloads(static fn(): string => bin2hex(random_bytes(32)), $this->clock->now())) {
+            $order->addNote('The downloads were granted.', NoteAuthor::System, false, $this->clock->now());
+        }
+        $order->addNote(trim('Paid. ' . trim($note)), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
+        $this->orders->save($order);
+        $this->events->dispatch(new OrderChanged($order->id()));
     }
 
     /**
@@ -448,7 +481,7 @@ final readonly class OrderService
     public function delete(int $id): void
     {
         $this->changing($id, function (Order $order) use ($id): void {
-            if ($order->status()->isPaid()) {
+            if ($order->isPaid()) {
                 throw new OrderRuleViolation(\sprintf('Order #%d is %s; refund it in full before deleting it.', $id, strtolower($order->status()->label())), 'orillacart_order_paid');
             }
             $this->giveBack($order->cancel());

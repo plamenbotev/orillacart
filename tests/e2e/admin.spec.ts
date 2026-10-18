@@ -43,10 +43,7 @@ test.describe( 'The admin', () => {
 		await expect(
 			page.getByRole( 'heading', { name: `Order #${ order } — On hold` } )
 		).toBeVisible();
-		await page
-			.getByLabel( 'Move the order to' )
-			.selectOption( 'processing' );
-		await page.getByRole( 'button', { name: 'Change status' } ).click();
+		await page.getByRole( 'button', { name: 'Mark as paid' } ).click();
 		await expect(
 			page.getByRole( 'heading', {
 				name: `Order #${ order } — Processing`,
@@ -55,6 +52,9 @@ test.describe( 'The admin', () => {
 		await expect(
 			page.getByText( 'Status changed from on hold to processing.' )
 		).toBeVisible();
+		await expect(
+			page.getByRole( 'button', { name: 'Mark as paid' } )
+		).toHaveCount( 0 );
 	} );
 
 	test( 'adds a product to an order on hold with the product picker', async ( {

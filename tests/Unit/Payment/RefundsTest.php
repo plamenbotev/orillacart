@@ -14,7 +14,6 @@ use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Ordering\Application\Dto\AddressData;
-use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
@@ -212,7 +211,7 @@ final class RefundsTest extends TestCase
         } catch (OrderRuleViolation $e) {
             self::assertSame('orillacart_order_not_refundable', $e->errorCode);
         }
-        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('processing'), 7);
+        $this->shop->orders->markPaidByShop($placed->number, '', 7);
         self::assertNull($this->shop->refunds->forOrder($placed->number)->provider);
 
         try {

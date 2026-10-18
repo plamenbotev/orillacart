@@ -101,7 +101,7 @@ final readonly class OrderView
             $order->customerId(),
             $forShop ? $order->transactionId() : null,
             array_values(array_map(OrderNoteView::fromNote(...), array_filter($order->notes(), static fn(OrderNote $note): bool => $forShop || $note->isForCustomer()))),
-            $forShop ? array_map(static fn(OrderStatus $status): string => $status->value, $order->status()->next()) : [],
+            $forShop ? array_map(static fn(OrderStatus $status): string => $status->value, $order->nextStatuses()) : [],
             $downloadUrl === null ? [] : array_map(
                 static fn(DownloadGrant $grant): OrderDownloadView => OrderDownloadView::fromGrant($grant, ($lines[$grant->linePosition()] ?? null)?->name() ?? '', $downloadUrl),
                 $order->grants(),
