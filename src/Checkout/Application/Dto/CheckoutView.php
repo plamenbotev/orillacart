@@ -46,5 +46,11 @@ final readonly class CheckoutView
         public array $fields = [],
         /** The amounts include tax: the tax lines say how much of the total is tax, they do not add to it. */
         public bool $pricesIncludeTax = false,
+        /** Checkout asks business customers for their VAT number. */
+        public bool $vatAsked = false,
+        /** The order goes without VAT: the business customer accounts for it (reverse charge). */
+        public bool $reverseCharge = false,
+        /** Why VAT is charged although a VAT number was given. */
+        public ?string $vatMessage = null,
     ) {}
 }

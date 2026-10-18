@@ -38,6 +38,7 @@ use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
+use OrillaCart\Tax\Application\VatNumbers;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -61,6 +62,7 @@ final readonly class CheckoutService
         private LoggerInterface $logger,
         private Discounts $discounts,
         private CheckoutFields $fields,
+        private VatNumbers $vatNumbers,
     ) {}
 
     /**
@@ -71,7 +73,8 @@ final readonly class CheckoutService
         $shipping = $details->shippingCountry === null ? null : new TaxAddress($details->shippingCountry, $details->shippingState);
         $billing = $details->billingCountry === null ? $shipping : new TaxAddress($details->billingCountry, $details->billingState);
         $contents = $this->contents($owner);
-        $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId);
+        $reverse = $this->vatNumbers->reverseCharge($details->billingCountry, $details->vatNumber);
+        $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies);
         $bill = $priced['bill'];
         $currency = $this->settings->current()->currency;
         $applied = [];
@@ -116,6 +119,9 @@ final readonly class CheckoutService
             $coupons,
             $this->fields->asked($priced['needs_shipping']),
             $bill->includesTax(),
+            $this->vatNumbers->asked(),
+            $reverse->applies,
+            $reverse->message,
         );
     }
 
@@ -169,7 +175,8 @@ final readonly class CheckoutService
         $billingTax = new TaxAddress($billingAddress->country, $billingAddress->state);
         $shippingTax = new TaxAddress($shippingAddress->country, $shippingAddress->state);
 
-        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email);
+        $reverse = $this->vatNumbers->reverseCharge($billingAddress->country, $command->vatNumber);
+        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies);
         foreach ($priced['discounts']->refused as $code => $reason) {
             throw new CheckoutRuleViolation(\sprintf('The code %s does not apply: %s Remove it to order.', $code, $reason), 'orillacart_coupon_refused');
         }
@@ -212,6 +219,8 @@ final readonly class CheckoutService
             $this->pricing->discounts($priced),
             $answers,
             $bill->includesTax(),
+            $reverse->number,
+            $reverse->applies,
         )))));
         $receiptUrl = $this->links->receiptUrl($order->key);
 

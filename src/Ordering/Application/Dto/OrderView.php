@@ -70,6 +70,9 @@ final readonly class OrderView
         public bool $payable = false,
         /** The amounts include tax: its lines say how much of the total is tax, they do not add to it. */
         public bool $pricesIncludeTax = false,
+        public ?string $vatNumber = null,
+        /** Sold without VAT: the business customer accounts for it. */
+        public bool $reverseCharge = false,
     ) {}
 
     /**
@@ -121,6 +124,8 @@ final readonly class OrderView
             $forShop ? $order->attention() : null,
             $order->isPayable(),
             $order->pricesIncludeTax(),
+            $order->vatNumber(),
+            $order->reverseCharge(),
         );
     }
 }

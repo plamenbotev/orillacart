@@ -85,6 +85,7 @@ use OrillaCart\Shipping\Application\TrackConsignments;
 use OrillaCart\Shipping\Domain\Event\ShippingClassDeleted;
 use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Application\TaxGroupService;
+use OrillaCart\Tax\Application\VatNumbers;
 use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tests\Fixtures\Cart\InMemoryCartRepository;
@@ -126,6 +127,7 @@ use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryConsignmentRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
 use OrillaCart\Tests\Fixtures\Shipping\MemoryRateCache;
+use OrillaCart\Tests\Fixtures\Tax\FakeVatRegistry;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use OrillaCart\Tests\Fixtures\TemporaryPrivateFiles;
@@ -173,6 +175,7 @@ final class TestShop
     public readonly OrderService $orders;
     public readonly CheckoutService $checkout;
     public readonly PayNow $payNow;
+    public readonly FakeVatRegistry $vies;
     public readonly TwigRenderer $templates;
     public readonly Invoices $invoices;
     public readonly InMemoryInvoices $invoiceRecords;
@@ -290,6 +293,7 @@ final class TestShop
             $this->logger,
             $this->discounts,
             new CheckoutFields($extensions, $this->logger),
+            new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography),
         );
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, new FakeOrderLinks());
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);

@@ -65,6 +65,7 @@
                 <div class="label">{{ __('Billed to') }}</div>
                 {% for line in order.billing|address_lines %}{{ not loop.first ? '<br>' }}{{ line }}{% endfor %}
                 <br>{{ order.email }}
+                {% if order.vat_number %}<br>{{ __('VAT number') }}: {{ order.vat_number }}{% endif %}
             </div>
             {% if order.shipping_address %}
                 <div>
@@ -131,6 +132,7 @@
             {% if order.paid_at %}<p>{{ __('Paid %1$s by %2$s.')|format(order.paid_at|shop_date, order.payment_name ?: __('nothing (free)')) }}</p>{% endif %}
         {% endif %}
 
+        {% if order.reverse_charge %}<p><strong>{{ __('Reverse charge: VAT to be accounted for by the customer (Article 196 of Directive 2006/112/EC).') }}</strong></p>{% endif %}
         {% if seller.bank_details %}<p class="note"><span class="label">{{ __('Bank details') }}</span><br>{{ seller.bank_details }}</p>{% endif %}
         {% if seller.footer %}<footer>{{ seller.footer }}</footer>{% endif %}
     </main>

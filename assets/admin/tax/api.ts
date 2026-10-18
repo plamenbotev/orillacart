@@ -24,6 +24,8 @@ export interface TaxSettings {
 	bases: string[];
 	/** Prices are entered including tax; every customer pays them as entered. */
 	prices_include_tax: boolean;
+	/** Checkout asks business customers for their EU VAT number (reverse charge). */
+	reverse_charge: boolean;
 }
 
 export type TaxSettingsInput = Omit< TaxSettings, 'bases' >;

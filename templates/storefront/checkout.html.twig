@@ -27,6 +27,13 @@
                 </fieldset>
 
                 {{ shop.address('billing', summary.needs_shipping ? __('Billing address') : __('Address'), billing, countries, states, 'billing') }}
+                {% if summary.vat_asked %}
+                    <p class="orillacart-field">
+                        <label for="orillacart-vat-number">{{ __('VAT number (businesses)') }}</label>
+                        <input id="orillacart-vat-number" type="text" name="vat_number" maxlength="20" autocomplete="off" data-orillacart-field="vat_number" aria-describedby="orillacart-vat-help">
+                        <small id="orillacart-vat-help">{{ __('Businesses in another EU country with a valid VAT number buy without VAT.') }}</small>
+                    </p>
+                {% endif %}
                 {{ shop.extra_fields(summary.fields, 'billing') }}
                 {{ slot('checkout_after_billing') }}
 

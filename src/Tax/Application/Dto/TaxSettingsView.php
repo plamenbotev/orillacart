@@ -17,10 +17,11 @@ final readonly class TaxSettingsView
         public ?int $defaultGroupId,
         public array $bases,
         public bool $pricesIncludeTax = false,
+        public bool $reverseCharge = false,
     ) {}
 
     public static function fromSettings(TaxSettings $settings): self
     {
-        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax);
+        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge);
     }
 }

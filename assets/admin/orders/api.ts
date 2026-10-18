@@ -133,6 +133,9 @@ export interface Order {
 	fields: { id: string; label: string; answer: string }[];
 	/** Why the shop has to look at it, one reason a line; null when nothing. */
 	attention: string | null;
+	/** The business customer's VAT number, and whether it bought without VAT. */
+	vat_number: string | null;
+	reverse_charge: boolean;
 }
 
 /** A button an add-on puts on the order screen. */

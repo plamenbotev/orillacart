@@ -28,7 +28,7 @@ final class GeographyServiceTest extends TestCase
         $countries = $this->geography->countries();
 
         self::assertSame('Bulgaria', $countries[0]->name);
-        self::assertEquals(new CountryView('US', 'United States', false, true), $countries[6]);
+        self::assertEquals(new CountryView('US', 'United States', false, true), $countries[\count($countries) - 1]);
         self::assertEquals(new CountryView('DE', 'Germany', true, false), $countries[2]);
     }
 

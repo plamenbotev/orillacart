@@ -18,5 +18,6 @@ final readonly class UpdateTaxSettings
         #[Assert\Positive]
         public ?int $defaultGroupId,
         public bool $pricesIncludeTax = false,
+        public bool $reverseCharge = false,
     ) {}
 }

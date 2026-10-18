@@ -86,6 +86,12 @@
     </fieldset>
 {% endif %}
 
+{% if summary.reverse_charge %}
+    <p class="orillacart-notice">{{ __('Reverse charge: your business accounts for the VAT, so none is charged.') }}</p>
+{% elseif summary.vat_message %}
+    <p class="orillacart-notice">{{ summary.vat_message }}</p>
+{% endif %}
+
 <p class="orillacart-message" role="alert" data-orillacart-message></p>
 {{ slot('checkout_before_place_order') }}
 <button type="submit" class="wp-element-button orillacart-button orillacart-checkout__place">{{ __('Place order') }}</button>

@@ -110,6 +110,14 @@ class Order
     #[ORM\Column(options: ['default' => false])]
     private bool $pricesIncludeTax = false;
 
+    /** The business customer's VAT number, prefix first: DE123456789. */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $vatNumber = null;
+
+    /** Sold without VAT, the business customer accounting for it (reverse charge). */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $reverseCharge = false;
+
     /** Since when it waits for the payment it was last asked to pay: placing it, or paying it again later. */
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $awaitingPaymentSince = null;
@@ -208,6 +216,8 @@ class Order
         $this->placedAt = $draft->placedAt;
         $this->awaitingPaymentSince = $draft->placedAt;
         $this->pricesIncludeTax = $draft->pricesIncludeTax;
+        $this->vatNumber = $draft->vatNumber === null ? null : mb_substr($draft->vatNumber, 0, 20);
+        $this->reverseCharge = $draft->reverseCharge;
         $this->fields = self::fieldRows($draft->fields);
     }
 
@@ -898,6 +908,16 @@ class Order
     public function pricesIncludeTax(): bool
     {
         return $this->pricesIncludeTax;
+    }
+
+    public function vatNumber(): ?string
+    {
+        return $this->vatNumber;
+    }
+
+    public function reverseCharge(): bool
+    {
+        return $this->reverseCharge;
     }
 
     /** The total is the subtotal less discounts plus shipping, and plus tax unless the amounts include it. */

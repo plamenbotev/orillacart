@@ -23,6 +23,7 @@
 {% for shipment in shipments ?? [] %}<p style="margin:16px 0 0;">{{ __('Shipment %1$s with %2$s')|format(shipment.number, shipment.carrier) }}{% if shipment.tracking_url %}: <a href="{{ shipment.tracking_url }}" style="color:#2271b1;">{{ __('follow it') }}</a>{% endif %}</p>{% endfor %}
 {% if order.pickup_point %}<p style="margin:16px 0 0;">{{ __('Pickup point') }}: {{ order.pickup_point }}</p>{% endif %}
 {% if order.payment_name %}<p style="margin:16px 0 0;">{{ __('Payment') }}: {{ order.payment_name }}</p>{% endif %}
+{% if order.vat_number %}<p style="margin:8px 0 0;">{{ __('VAT number') }}: {{ order.vat_number }}{% if order.reverse_charge %} ({{ __('reverse charge: no VAT') }}){% endif %}</p>{% endif %}
 {% if order.payment_note and order.status == 'on_hold' %}<p style="margin:8px 0 0;white-space:pre-line;">{{ order.payment_note }}</p>{% endif %}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;font-size:14px;"><tr>
 <td valign="top" style="padding-right:16px;"><strong>{{ __('Billing address') }}</strong>{% include 'emails/_address.html.twig' with {address: order.billing} %}<br>{{ order.email }}</td>

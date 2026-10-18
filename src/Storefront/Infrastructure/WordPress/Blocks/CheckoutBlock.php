@@ -163,6 +163,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             $shipping,
             self::postcode($shippingCountry === null ? 'billing_postcode' : 'shipping_postcode'),
             \is_string($_GET['pickup_point'] ?? null) ? mb_substr(sanitize_text_field(wp_unslash($_GET['pickup_point'])), 0, 64) : null,
+            \is_string($_GET['vat_number'] ?? null) ? mb_substr(sanitize_text_field(wp_unslash($_GET['vat_number'])), 0, 20) : null,
         );
     }
 

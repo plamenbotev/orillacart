@@ -173,6 +173,9 @@ function SettingsCard( {
 	const [ includeTax, setIncludeTax ] = useState(
 		settings.prices_include_tax
 	);
+	const [ reverseCharge, setReverseCharge ] = useState(
+		settings.reverse_charge
+	);
 	const [ saving, setSaving ] = useState( false );
 
 	const submit = ( event: FormEvent ) => {
@@ -182,6 +185,7 @@ function SettingsCard( {
 			basis,
 			default_group_id: defaultGroup,
 			prices_include_tax: includeTax,
+			reverse_charge: reverseCharge,
 		} )
 			.then( onSaved )
 			.catch( onError )
@@ -241,6 +245,18 @@ function SettingsCard( {
 						) }
 						checked={ includeTax }
 						onChange={ setIncludeTax }
+					/>
+					<CheckboxControl
+						label={ __(
+							'Ask businesses for their EU VAT number',
+							'orillacart'
+						) }
+						help={ __(
+							'Businesses in another EU country than yours, with a VAT number the EU’s VIES service confirms, buy without VAT and account for it themselves (reverse charge). When VIES cannot be asked, VAT is charged.',
+							'orillacart'
+						) }
+						checked={ reverseCharge }
+						onChange={ setReverseCharge }
 					/>
 					<Button
 						variant="primary"

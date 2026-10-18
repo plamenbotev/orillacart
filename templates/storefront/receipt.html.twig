@@ -18,6 +18,7 @@
         <li>{{ __('Total') }}: <strong>{{ order.total|money(order.currency) }}</strong></li>
         {% if order.refunded_total > 0 %}<li>{{ __('Refunded') }}: <strong>{{ order.refunded_total|money(order.currency) }}</strong></li>{% endif %}
         {% if order.payment_name %}<li>{{ __('Payment') }}: <strong>{{ order.payment_name }}</strong></li>{% endif %}
+        {% if order.vat_number %}<li>{{ __('VAT number') }}: <strong>{{ order.vat_number }}</strong>{% if order.reverse_charge %} ({{ __('reverse charge: no VAT') }}){% endif %}</li>{% endif %}
         {% for invoice in invoices ?? [] %}
             <li>{{ invoice.kind == 'credit_note' ? __('Credit note') : __('Invoice') }}: <a href="{{ invoice.url }}" target="_blank" rel="noopener">{{ invoice.number }}</a></li>
         {% endfor %}

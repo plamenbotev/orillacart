@@ -38,5 +38,9 @@ final readonly class NewOrder
         public array $fields = [],
         /** The amounts include tax: the total is not the subtotal plus tax. */
         public bool $pricesIncludeTax = false,
+        /** The business customer's VAT number, as checked. */
+        public ?string $vatNumber = null,
+        /** Sold without VAT: the customer accounts for it (reverse charge). */
+        public bool $reverseCharge = false,
     ) {}
 }

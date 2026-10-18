@@ -40,5 +40,7 @@ final readonly class OrderDraft
         public array $discounts = [],
         public array $fields = [],
         public bool $pricesIncludeTax = false,
+        public ?string $vatNumber = null,
+        public bool $reverseCharge = false,
     ) {}
 }

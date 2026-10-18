@@ -102,6 +102,8 @@ final readonly class OrderService
             self::discounts($command->discounts),
             array_map(static fn(OrderFieldView $field): FieldAnswer => $field->toAnswer(), $command->fields),
             $command->pricesIncludeTax,
+            $command->vatNumber,
+            $command->reverseCharge,
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);

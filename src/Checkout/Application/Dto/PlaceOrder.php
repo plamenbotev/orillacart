@@ -44,5 +44,8 @@ final readonly class PlaceOrder
         #[Assert\Count(max: 100)]
         #[Assert\All([new Assert\Type(['string', 'bool', 'int'])])]
         public array $fields = [],
+        /** A business customer's VAT number, for the reverse charge. */
+        #[Assert\Length(max: 20)]
+        public ?string $vatNumber = null,
     ) {}
 }

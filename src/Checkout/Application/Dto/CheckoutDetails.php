@@ -29,5 +29,8 @@ final readonly class CheckoutDetails
         /** The office or locker to deliver to, for a service to one (the courier's id). */
         #[Assert\Length(max: 64)]
         public ?string $pickupPoint = null,
+        /** A business customer's VAT number, for the reverse charge. */
+        #[Assert\Length(max: 20)]
+        public ?string $vatNumber = null,
     ) {}
 }

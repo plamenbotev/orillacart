@@ -16,6 +16,8 @@ final readonly class TaxSettings
         public TaxBasis $basis,
         public ?int $defaultGroupId,
         public bool $pricesIncludeTax = false,
+        /** Checkout asks business customers for their VAT number: those of other EU countries buy without VAT. */
+        public bool $reverseCharge = false,
     ) {}
 
     public static function defaults(): self
@@ -25,6 +27,6 @@ final readonly class TaxSettings
 
     public function equals(self $other): bool
     {
-        return $this->basis === $other->basis && $this->defaultGroupId === $other->defaultGroupId && $this->pricesIncludeTax === $other->pricesIncludeTax;
+        return $this->basis === $other->basis && $this->defaultGroupId === $other->defaultGroupId && $this->pricesIncludeTax === $other->pricesIncludeTax && $this->reverseCharge === $other->reverseCharge;
     }
 }

@@ -21,6 +21,7 @@ final class InMemoryCountryRepository implements CountryRepository
             ['BG', 'BGR', 'Bulgaria', true, []],
             ['CA', 'CAN', 'Canada', false, ['ON' => 'Ontario', 'QC' => 'Quebec']],
             ['DE', 'DEU', 'Germany', true, []],
+            ['GR', 'GRC', 'Greece', true, []],
             ['GB', 'GBR', 'United Kingdom', false, []],
             ['IT', 'ITA', 'Italy', true, ['MI' => 'Milano', 'RM' => 'Roma']],
             ['JP', 'JPN', 'Japan', false, []],

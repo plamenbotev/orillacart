@@ -69,12 +69,13 @@ final readonly class OrderPricing
      * @param list<string> $codes      coupon codes; those that do not hold are left out, with the reason
      * @param string|null  $email      the customer's, for limits per customer, once known
      * @param int|null     $orderId    the order being priced again, when the shop edits it
+     * @param bool         $reverseCharge a business in another EU country buys without VAT
      *
      * @return Priced
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false): array
     {
         $settings = $this->settings->current();
         $decimals = $settings->priceDecimals;
@@ -93,7 +94,7 @@ final readonly class OrderPricing
                 throw new CheckoutRuleViolation(\sprintf('%s is not available in that quantity. Review the items and try again.', $quote->name), 'orillacart_cart_changed');
             }
             $unitPrice = $line['unit_price'] ?? $quote->unitPrice;
-            $taxes = $quote->taxable ? $this->taxes($quote->taxGroupId, $shipping, $billing) : [];
+            $taxes = $quote->taxable && !$reverseCharge ? $this->taxes($quote->taxGroupId, $shipping, $billing) : [];
             if ($inclusive && $quote->taxable && $taxes === []) {
                 // A price including tax, for a customer who owes none (an export): the shop's own tax comes off.
                 $unitPrice = (string) Money::of($unitPrice)->withoutPercents($this->shopPercents($quote->taxGroupId));
@@ -125,7 +126,7 @@ final readonly class OrderPricing
         if ($needsShipping) {
             $offered = $this->shipping->options(new ShippingQuery($shipping?->country, $shipping?->state, $parcel, (string) $bill->subtotal()->subtract($bill->discount()), $postcode));
             foreach ($offered as $option) {
-                $taxes = $option->taxable && !$free ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
+                $taxes = $option->taxable && !$free && !$reverseCharge ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
                 $price = $free ? Money::zero() : Money::of($option->price);
                 if ($inclusive && $option->taxable && $taxes === [] && !$free) {
                     $price = $price->withoutPercents($this->shopPercents($option->taxGroupId));

@@ -481,6 +481,20 @@ function Summary( { order }: { order: Order } ) {
 								when( order.paid_at )
 							) }
 				</p>
+				{ order.vat_number !== null && (
+					<p>
+						{ sprintf(
+							/* translators: %s: VAT number */
+							__( 'VAT number %s.', 'orillacart' ),
+							order.vat_number
+						) }{ ' ' }
+						{ order.reverse_charge &&
+							__(
+								'Reverse charge: sold without VAT.',
+								'orillacart'
+							) }
+					</p>
+				) }
 				{ order.note !== '' && (
 					<p>
 						<strong>

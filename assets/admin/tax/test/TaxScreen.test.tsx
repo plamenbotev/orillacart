@@ -54,6 +54,7 @@ function serve( write: ( request: Request ) => Promise< unknown > ) {
 					basis: 'shipping_address',
 					default_group_id: null,
 					prices_include_tax: false,
+					reverse_charge: false,
 					bases: [
 						'shipping_address',
 						'billing_address',
@@ -133,6 +134,7 @@ describe( 'TaxScreen', () => {
 				basis: 'eu_origin',
 				default_group_id: 1,
 				prices_include_tax: false,
+				reverse_charge: false,
 			},
 		} );
 	} );
