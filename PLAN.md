@@ -42,16 +42,16 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 17 | Regions and postcodes a shipping rate leaves out (replaces the old and/or/not operators) | 612df22 |
 | ✅ | 18 | Option prices as a percentage of the product price (on sale when it is; percentages do not compound) | 1ff29eb |
 | ✅ | 19 | Downloads sent by the web server (X-Sendfile, X-Accel-Redirect), kept only after a test file went through; shows the server rule otherwise | d22a0d9 |
-| ✅ | 20 | Backorders: per product, variations may differ; the fastest stockroom goes below zero; order lines record what is owed; optional notice on the product page, cart, checkout, receipt and emails | (this commit) |
+| ✅ | 20 | Backorders: per product, variations may differ; the fastest stockroom goes below zero; order lines record what is owed; optional notice on the product page, cart, checkout, receipt and emails | 0dc7455 |
 
 ## After parity
 
 | | # | Item | Commit |
 |---|---|---|---|
-| 📝 | 21 | Storefront filtering and search on an index fed by a database queue (`FOR UPDATE SKIP LOCKED`, workers or cron); database or OpenSearch behind one interface | |
-| 📝 | 22 | Coupon codes: by rules (minimum amount, dates, usage limits, per customer) or for specific products and categories | |
-| 📝 | 23 | Dynamic prices (quantity tiers, customer groups, scheduled rules), bundles and sets | |
-| 📝 | 24 | Refunds through the payment methods: a contract the gateways that can refund implement (PayPal's refund API); offline methods recorded by hand; full and partial | |
+| 📝 | 21 | Storefront filtering and search on an index fed by a database queue (`FOR UPDATE SKIP LOCKED`, workers or cron); database or OpenSearch behind one interface | [design](docs/designs/21-catalog-search.md) |
+| 📝 | 22 | Coupon codes: by rules (minimum amount, dates, usage limits, per customer) or for specific products and categories | [design](docs/designs/22-coupons.md) |
+| 📝 | 23 | Dynamic prices (quantity tiers, customer groups, scheduled rules), bundles and sets | [design](docs/designs/23-dynamic-prices-bundles.md) |
+| 📝 | 24 | Refunds through the payment methods: a contract the gateways that can refund implement (PayPal's refund API); offline methods recorded by hand; full and partial | [design](docs/designs/24-refunds.md) |
 
 ## Waiting on others
 

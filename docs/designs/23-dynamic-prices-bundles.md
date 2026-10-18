@@ -1,0 +1,46 @@
+# 23 · Dynamic prices, bundles and sets
+
+Status: proposed, waiting for approval.
+
+## Dynamic prices
+
+**Price rules** (Shop → Price rules) change the unit price before the cart and checkout see it:
+
+- **Quantity tiers** on a product or variation: 1–9 at the price, 10–49 at 9 €, 50+ at 8 € (or −10 %, −20 %).
+  The product page shows the table; the cart prices each line by its quantity.
+- **Customer groups**: a group (Wholesale, VIP) is a WordPress role or a list of customers; a rule gives the
+  group a percentage or a fixed price on chosen products, categories or the whole shop. Logged-in customers in
+  the group see their price everywhere, including the shop listing.
+- **Scheduled rules**: any rule may have start and end dates, like sales, for seasonal pricing.
+- **Order of rules**: a product's sale, then the best matching group price, then quantity tiers on that price.
+  Rules never compound by surprise: each rule says whether it applies on top of a sale.
+
+Pricing moves from `Pricing::priceAt($now)` to a `PriceResolver` in the Catalog application layer that takes
+the product, quantity, customer groups and time. `ProductQuotes` and `ShopCatalog` call it, so carts,
+checkout, the storefront and the search index (item 21: `price_min` for the guest price) agree.
+
+## Bundles (a product made of products)
+
+A **bundle** is a product type whose items are other products or variations with quantities ("Camera kit:
+1 camera, 2 batteries, 1 bag").
+
+- **Price**: fixed, or the sum of the items with a discount (−10 %).
+- **Stock**: a bundle has no stock of its own; it is available while every item is, and selling one takes each
+  item's stock (one `StockService::take` for all, all or nothing, backorders as each item says).
+- **Choices**: an item may be optional, or a choice among variations ("bag: black or brown"), chosen on the
+  product page like options.
+- **Orders** record the bundle line and its items as child lines, so packing lists, stock returns on
+  cancellation and refunds (item 24) see what was in it.
+- **Shipping** weighs the items, or the bundle's own weight when it is shipped as one package.
+
+## Sets (kits sold as one item)
+
+A **set** is the simple case: a fixed bundle without choices, shown and sold as one item, its stock taken
+from its items. It is a bundle with every item required, so it needs no separate model; the admin offers
+"Set" as a shortcut that hides the bundle options.
+
+## Questions for you
+
+1. Customer groups: WordPress roles only, or a separate group list the shop manages?
+2. Should bundle items show as separate lines in the cart (with the bundle as a heading), or as one line with
+   the contents listed underneath?
