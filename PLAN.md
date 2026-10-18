@@ -2,7 +2,7 @@
 
 The rebuild of OrillaCart on branch `rebuild`. Nothing is pushed until all of it is done.
 
-Status: ✅ done · 🔄 in progress · ⬜ to do · 📝 needs a design approved before building
+Status: ✅ done · 🔄 in progress · ⬜ to do · 📝 needs a design approved before building · ➖ not now
 
 ## Phases of the rebuild
 
@@ -148,7 +148,7 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 | ⬜ | 84 | P1 | Invoices: a gapless invoice number taken at payment under a lock (order ids have gaps), a PDF invoice and credit notes with tax lines, attached to emails and downloadable from the account and the order screen | |
 | ⬜ | 85 | P1 | Tax for the EU: prices entered and shown including tax (setting and "incl./excl." display), VAT number validation (VIES) with reverse charge, OSS destination VAT for digital goods, the lowest price of the last 30 days on sale displays (Omnibus) | |
 | ⬜ | 86 | P1 | GDPR: WordPress personal-data exporters and erasers, an "anonymise order" action, privacy policy content, erasable report facts and job payloads | |
-| ⬜ | 87 | P1 | Card payments: Stripe (or a hosted-checkout gateway with 3DS/SCA) on the extension API, with dispute and chargeback webhooks; saved payment methods | |
+| ➖ | 87 | P1 | Not now (decided 2026-10-18: left to an add-on on the extension API). Card payments: Stripe (or a hosted-checkout gateway with 3DS/SCA) on the extension API, with dispute and chargeback webhooks; saved payment methods | |
 | ⬜ | 88 | P2 | Emails the shop controls: subject and body per kind edited in the admin, preview and test send, an account/welcome email (none is sent today), an on-hold payment reminder, a backorder notice, tracking-number-added, admin alerts for failed payments and refunds and low stock, the invoice attached | |
 | ⬜ | 89 | P2 | Import and export: products from and to CSV; orders exported (CSV/JSON) from the list; bulk price and stock editing and product duplication in the product list | |
 | ⬜ | 90 | P2 | Stock: a `stock_movements` ledger (item, stockroom, delta, order, reason, time) feeding per-stockroom history and reports; low-stock thresholds with alerts; "tell me when it is back"; unpaid on-hold orders expire after N days (setting) | |
