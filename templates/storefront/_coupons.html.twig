@@ -1,0 +1,21 @@
+{#
+ # Coupon codes on the cart and checkout: the codes entered, what each takes off or why it does not hold, and a
+ # field for another. The storefront script sends them to the REST API and reloads the region.
+ #
+ # coupons: list of {code, description, amount, free_shipping, refused}; currency: for the amounts.
+ #}
+<div class="orillacart-coupons" data-orillacart-coupons>
+    {% for coupon in coupons %}
+        <p class="orillacart-coupon{{ coupon.refused ? ' orillacart-coupon--refused' }}">
+            <strong>{{ coupon.code }}</strong>{% if coupon.description %} · {{ coupon.description }}{% endif %}:
+            {% if coupon.refused %}{{ coupon.refused }}{% elseif coupon.free_shipping %}{{ __('free shipping') }}{% else %}−{{ coupon.amount|money(currency) }}{% endif %}
+            <button type="button" class="orillacart-remove" data-orillacart-remove-coupon="{{ coupon.code }}" aria-label="{{ __('Remove the code %s')|format(coupon.code) }}">&times;</button>
+        </p>
+    {% endfor %}
+    <p class="orillacart-coupons__field">
+        <label for="orillacart-coupon-code">{{ __('Coupon code') }}</label>
+        <input id="orillacart-coupon-code" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" data-orillacart-coupon-code>
+        <button type="button" class="wp-element-button orillacart-button" data-orillacart-apply-coupon>{{ __('Apply') }}</button>
+    </p>
+    <p class="orillacart-message" role="alert" data-orillacart-message></p>
+</div>

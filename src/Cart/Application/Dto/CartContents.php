@@ -11,9 +11,11 @@ final readonly class CartContents
 {
     /**
      * @param list<array{line: int, product_id: int, option_ids: list<int>, quantity: int}> $lines
+     * @param list<string> $coupons the codes entered, checked or not
      */
     public function __construct(
         public int $cartId,
         public array $lines,
+        public array $coupons = [],
     ) {}
 }

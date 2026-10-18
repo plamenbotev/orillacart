@@ -1,6 +1,16 @@
 # 22 · Coupon codes
 
-Status: proposed, waiting for approval.
+Status: built (2026-10-18). Changes from the draft below:
+
+- Targets are JSON lists on the coupon (products, categories, brands, excluded products and categories) rather
+  than a `coupon_targets` table; a product covers its variations, and a category its subcategories.
+- Each coupon takes off what the ones before it left, so an item never goes below nothing. Codes combine only
+  when every one of them is marked "combines with others".
+- The order's subtotal stays the items before the discount; `discount_total` is taken off before tax, and each
+  line keeps its own `discount`, so refunds suggest what the customer paid.
+- Rules about the address or the customer (countries, first order, uses per customer) wait for checkout; the
+  cart checks the rest when a code is entered.
+- Orders the shop creates by hand take no codes yet.
 
 ## What the shop sets up
 

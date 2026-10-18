@@ -22,6 +22,9 @@ final class InMemoryProductContent implements ProductContent
     /** @var array<int, int> variation id => product id */
     public array $variations = [];
 
+    /** @var array<int, array{categories: list<int>, brands: list<int>}> by product id */
+    public array $terms = [];
+
     public function add(int $id, string $name, bool $published = true): void
     {
         $this->posts[$id] = [$name, $published];
@@ -40,6 +43,11 @@ final class InMemoryProductContent implements ProductContent
     public function name(int $productId): string
     {
         return $this->posts[$productId][0] ?? '';
+    }
+
+    public function termIds(int $productId): array
+    {
+        return $this->terms[$productId] ?? ['categories' => [], 'brands' => []];
     }
 
     public function createVariation(int $productId, string $name): int

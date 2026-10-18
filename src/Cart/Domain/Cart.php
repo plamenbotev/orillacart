@@ -39,6 +39,10 @@ class Cart
     #[ORM\Column]
     private \DateTimeImmutable $updatedAt;
 
+    /** @var list<string> coupon codes, as entered; checkout decides which hold */
+    #[ORM\Column(type: 'json')]
+    private array $coupons = [];
+
     public function __construct(
         string $token,
         #[ORM\Column(nullable: true)]
@@ -151,8 +155,24 @@ class Cart
         $this->updatedAt = $now;
     }
 
+    /** @return list<string> */
+    public function coupons(): array
+    {
+        return $this->coupons;
+    }
+
+    /**
+     * @param list<string> $codes
+     */
+    public function useCoupons(array $codes, \DateTimeImmutable $now): void
+    {
+        $this->coupons = \array_slice(array_values(array_unique($codes)), 0, 10);
+        $this->updatedAt = $now;
+    }
+
     public function clear(\DateTimeImmutable $now): void
     {
+        $this->coupons = [];
         $this->lines->clear();
         $this->updatedAt = $now;
     }

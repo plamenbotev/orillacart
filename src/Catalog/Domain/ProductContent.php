@@ -18,6 +18,14 @@ interface ProductContent
     public function name(int $productId): string;
 
     /**
+     * The product's category and brand ids, each with every term above it, so a rule about a category holds
+     * for its subcategories.
+     *
+     * @return array{categories: list<int>, brands: list<int>}
+     */
+    public function termIds(int $productId): array;
+
+    /**
      * Makes the post of a new variation of the product.
      *
      * @return int its id, which the variation shares

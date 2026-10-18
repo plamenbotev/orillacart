@@ -15,6 +15,7 @@ use OrillaCart\Ordering\Application\Dto\NewOrder;
 use OrillaCart\Ordering\Application\Dto\NewOrderItems;
 use OrillaCart\Ordering\Application\Dto\NewOrderLine;
 use OrillaCart\Ordering\Application\Dto\NewShipping;
+use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\Dto\OrderPageView;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\Dto\OrderSummaryView;
@@ -22,6 +23,7 @@ use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RefundOrder;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
+use OrillaCart\Ordering\Domain\Event\OrderDeleted;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
@@ -30,6 +32,7 @@ use OrillaCart\Ordering\Domain\LineDownload;
 use OrillaCart\Ordering\Domain\LineDraft;
 use OrillaCart\Ordering\Domain\NoteAuthor;
 use OrillaCart\Ordering\Domain\Order;
+use OrillaCart\Ordering\Domain\OrderDiscount;
 use OrillaCart\Ordering\Domain\OrderDraft;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRefund;
@@ -80,6 +83,8 @@ final readonly class OrderService
             $command->paymentNote,
             $command->note,
             $this->clock->now(),
+            Money::of($command->discountTotal),
+            self::discounts($command->discounts),
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);
@@ -310,6 +315,7 @@ final readonly class OrderService
             $this->stock->giveBack(array_map(static fn(TakenItem $item): TakenStock => new TakenStock($item->item, $item->stockroomId, $item->quantity), $taken));
         }
         $this->orders->remove($order);
+        $this->events->dispatch(new OrderDeleted($id));
     }
 
     /**
@@ -349,6 +355,12 @@ final readonly class OrderService
         $order->addNote(trim($note) === '' ? $text : $text . ' ' . trim($note), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
         $this->orders->save($order);
         $this->events->dispatch(new OrderStatusChanged($order->id(), $order->status(), $previous, $tellCustomer, $tellShop));
+    }
+
+    /** Whether the customer, by account or by email, ordered before: an order that stands, not cancelled or failed. */
+    public function hasOrdered(?int $customerId, string $email): bool
+    {
+        return $this->orders->hasStandingOrder($customerId, $email);
     }
 
     /**
@@ -433,6 +445,8 @@ final readonly class OrderService
             Money::of($command->subtotal),
             Money::of($command->itemsTax),
             Money::of($command->total),
+            Money::of($command->discountTotal),
+            self::discounts($command->discounts),
         );
         $order->addNote(\sprintf('The items were changed; the total went from %s to %s %s.', $before, (string) $order->total(), $order->currency()), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
         $this->orders->save($order);
@@ -465,6 +479,7 @@ final readonly class OrderService
             $line->downloadExpiryDays,
             $line->backordered,
             $line->backorderShown,
+            Money::of($line->discount),
         ), $lines);
     }
 
@@ -481,6 +496,16 @@ final readonly class OrderService
     private static function taxLines(array $taxes): array
     {
         return array_map(static fn(TaxLineView $tax): TaxLine => new TaxLine($tax->name, $tax->percent, Money::of($tax->amount)), $taxes);
+    }
+
+    /**
+     * @param list<OrderDiscountView> $discounts
+     *
+     * @return list<OrderDiscount>
+     */
+    private static function discounts(array $discounts): array
+    {
+        return array_map(static fn(OrderDiscountView $discount): OrderDiscount => new OrderDiscount($discount->code, $discount->description, Money::of($discount->amount), $discount->freeShipping), $discounts);
     }
 
     private static function orderRefund(RefundOrder $command): OrderRefund

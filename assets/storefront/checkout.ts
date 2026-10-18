@@ -4,6 +4,7 @@
 import { __ } from '@wordpress/i18n';
 
 import { api } from './api';
+import { bindCoupons } from './coupons';
 import {
 	bindStates,
 	clearErrors,
@@ -50,6 +51,11 @@ export function bindCheckout( form: HTMLFormElement ): void {
 				.querySelector( 'input' )
 				?.toggleAttribute( 'required', account.checked );
 		}
+	} );
+
+	bindCoupons( form, () => {
+		summary = summary.then( () => refreshSummary( form ) );
+		return summary;
 	} );
 
 	// Refreshes run one after another, so the last change wins; placing the order waits for them, since

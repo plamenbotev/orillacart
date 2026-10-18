@@ -13,12 +13,18 @@ use OrillaCart\Checkout\Domain\Bill;
 use OrillaCart\Checkout\Domain\BilledTax;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Checkout\Domain\Tax;
+use OrillaCart\Coupons\Application\Discounts;
+use OrillaCart\Coupons\Application\Dto\AppliedCoupon;
+use OrillaCart\Coupons\Application\Dto\AppliedDiscounts;
+use OrillaCart\Coupons\Application\Dto\DiscountItem;
+use OrillaCart\Coupons\Application\Dto\DiscountRequest;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Inventory\Domain\InsufficientStock;
 use OrillaCart\Ordering\Application\Dto\NewOrderLine;
 use OrillaCart\Ordering\Application\Dto\NewShipping;
+use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
@@ -37,8 +43,10 @@ use OrillaCart\Tax\Application\TaxCalculator;
  * Prices items as an order: catalog prices, taxes at the customer's address, shipping and the bill; and turns
  * a priced order into order lines, taking their stock. Checkout and order editing price the same way.
  *
- * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, quantity: int, unit_price: string, total: Money, tax: Money}
- * @phpstan-type Priced array{lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView}
+ * Coupons take money off the items before tax is charged, and free shipping makes every way to ship cost nothing.
+ *
+ * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money}
+ * @phpstan-type Priced array{lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts}
  */
 final readonly class OrderPricing
 {
@@ -48,6 +56,7 @@ final readonly class OrderPricing
         private ShippingQuotes $shipping,
         private StockService $stock,
         private SettingsService $settings,
+        private Discounts $discounts,
     ) {}
 
     /**
@@ -55,18 +64,22 @@ final readonly class OrderPricing
      * first), and the bill. An item may carry its own unit price, which the shop sets when it edits an order.
      *
      * @param list<array{product_id: int, option_ids: list<int>, quantity: int, unit_price?: ?string}> $items
-     * @param string|null $postcode the shipping address's postcode, for rates that ship to some postcodes only
+     * @param string|null  $postcode   the shipping address's postcode, for rates that ship to some postcodes only
+     * @param list<string> $codes      coupon codes; those that do not hold are left out, with the reason
+     * @param string|null  $email      the customer's, for limits per customer, once known
      *
      * @return Priced
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null): array
     {
-        $decimals = $this->settings->current()->priceDecimals;
+        $settings = $this->settings->current();
+        $decimals = $settings->priceDecimals;
         $bill = new Bill($decimals);
         $lines = [];
         $parcel = [];
+        $taxesOf = [];
         foreach ($items as $line) {
             try {
                 $quote = $this->quotes->quote(new QuoteRequest($line['product_id'], $line['option_ids']));
@@ -78,21 +91,33 @@ final readonly class OrderPricing
             }
             $unitPrice = $line['unit_price'] ?? $quote->unitPrice;
             $total = Money::of($unitPrice)->times($line['quantity']);
-            $taxes = $quote->taxable ? $this->taxes($quote->taxGroupId, $shipping, $billing) : [];
-            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'tax' => $bill->addItem($total, $taxes)];
+            $taxesOf[] = $quote->taxable ? $this->taxes($quote->taxGroupId, $shipping, $billing) : [];
+            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero()];
             if ($quote->type === 'physical') {
                 $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
             }
         }
+        $discounts = $codes === [] ? new AppliedDiscounts() : $this->discounts->apply($codes, new DiscountRequest(
+            array_map(static fn(array $line): DiscountItem => new DiscountItem($line['quote']->productId, $line['quantity'], $line['total']->toFixed(), $line['quote']->onSale, $line['quote']->categoryIds, $line['quote']->brandIds), $lines),
+            $settings->currency,
+            $shipping?->country,
+            $customerId,
+            $email,
+        ));
+        foreach ($lines as $index => $line) {
+            $lines[$index]['discount'] = $discounts->forLine($index);
+            $lines[$index]['tax'] = $bill->addItem($line['total'], $taxesOf[$index], $lines[$index]['discount']);
+        }
+        $free = $discounts->freeShipping();
 
         $needsShipping = $parcel !== [];
         $options = [];
         $chosen = null;
         if ($needsShipping) {
-            $offered = $this->shipping->options(new ShippingQuery($shipping?->country, $shipping?->state, $parcel, (string) $bill->subtotal(), $postcode));
+            $offered = $this->shipping->options(new ShippingQuery($shipping?->country, $shipping?->state, $parcel, (string) $bill->subtotal()->subtract($bill->discount()), $postcode));
             foreach ($offered as $option) {
-                $taxes = $option->taxable ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
-                $price = Money::of($option->price);
+                $taxes = $option->taxable && !$free ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
+                $price = $free ? Money::zero() : Money::of($option->price);
                 $tax = array_reduce($taxes, static fn(Money $sum, Tax $rate): Money => $sum->add($price->percent($rate->percent)->rounded($decimals)), Money::zero());
                 $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $price->rounded($decimals)->add($tax), $option->toPickupPoint);
                 $options[] = $view;
@@ -106,7 +131,7 @@ final readonly class OrderPricing
             }
         }
 
-        return ['lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null];
+        return ['lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts];
     }
 
     /**
@@ -160,7 +185,20 @@ final readonly class OrderPricing
             $line['quote']->downloadExpiryDays,
             $backordered,
             $backordered > 0 && $line['quote']->backorders === 'notify',
+            (string) $line['discount'],
         );
+    }
+
+    /**
+     * The coupons the order uses, as it records them.
+     *
+     * @param Priced $priced
+     *
+     * @return list<OrderDiscountView>
+     */
+    public function discounts(array $priced): array
+    {
+        return array_map(static fn(AppliedCoupon $coupon): OrderDiscountView => new OrderDiscountView($coupon->code, $coupon->description, (string) Money::of($coupon->amount), $coupon->freeShipping), $priced['discounts']->coupons);
     }
 
     /**

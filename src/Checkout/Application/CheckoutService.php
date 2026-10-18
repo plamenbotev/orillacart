@@ -7,14 +7,19 @@ namespace OrillaCart\Checkout\Application;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\CartContents;
 use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Checkout\Application\Dto\CheckoutCouponView;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\CheckoutLineView;
 use OrillaCart\Checkout\Application\Dto\CheckoutTaxView;
 use OrillaCart\Checkout\Application\Dto\CheckoutView;
+use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\BilledTax;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Coupons\Application\Discounts;
+use OrillaCart\Coupons\Application\Dto\AppliedDiscounts;
+use OrillaCart\Coupons\Domain\Coupon;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
@@ -26,6 +31,7 @@ use OrillaCart\Payment\Application\PaymentOptions;
 use OrillaCart\Payment\Application\Payments;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
@@ -51,6 +57,7 @@ final readonly class CheckoutService
         private Transactions $transactions,
         private CustomerService $customers,
         private LoggerInterface $logger,
+        private Discounts $discounts,
     ) {}
 
     /**
@@ -60,9 +67,18 @@ final readonly class CheckoutService
     {
         $shipping = $details->shippingCountry === null ? null : new TaxAddress($details->shippingCountry, $details->shippingState);
         $billing = $details->billingCountry === null ? $shipping : new TaxAddress($details->billingCountry, $details->billingState);
-        $priced = $this->pricing->price($this->contents($owner)->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode);
+        $contents = $this->contents($owner);
+        $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId);
         $bill = $priced['bill'];
         $currency = $this->settings->current()->currency;
+        $applied = [];
+        foreach ($priced['discounts']->coupons as $coupon) {
+            $applied[$coupon->code] = new CheckoutCouponView($coupon->code, $coupon->description, (string) Money::of($coupon->amount), $coupon->freeShipping);
+        }
+        $coupons = array_map(
+            static fn(string $code): CheckoutCouponView => $applied[Coupon::normalize($code)] ?? new CheckoutCouponView(Coupon::normalize($code), '', '0', false, $priced['discounts']->refused[Coupon::normalize($code)] ?? 'This code is not valid.'),
+            $contents->coupons,
+        );
 
         return new CheckoutView(
             array_map(static fn(array $line): CheckoutLineView => new CheckoutLineView(
@@ -73,6 +89,7 @@ final readonly class CheckoutService
                 (string) $line['total'],
                 (string) $line['tax'],
                 $line['quote']->shownBackorder($line['quantity']),
+                (string) $line['discount'],
             ), $priced['lines']),
             $priced['needs_shipping'],
             $priced['options'],
@@ -89,7 +106,42 @@ final readonly class CheckoutService
             $this->customers->accountMode(),
             $pickupPoints = $this->pricing->pickupPoints($priced, $details->shippingCountry, $details->shippingPostcode),
             \in_array($details->pickupPoint, array_map(static fn(PickupPointView $point): string => $point->id, $pickupPoints), true) ? $details->pickupPoint : null,
+            (string) $bill->discount(),
+            $coupons,
         );
+    }
+
+    /**
+     * Adds a coupon code to the cart when it holds for what the cart has; rules about the address or the customer
+     * wait for checkout.
+     *
+     * @throws CheckoutRuleViolation for an empty cart, or a code that does not hold, saying why
+     */
+    public function applyCoupon(CartOwner $owner, CouponCode $command): CheckoutView
+    {
+        $contents = $this->contents($owner);
+        $code = Coupon::normalize($command->code);
+        $codes = array_values(array_unique([...array_map(Coupon::normalize(...), $contents->coupons), $code]));
+        $priced = $this->pricing->price($contents->lines, null, null, null, null, $codes, $owner->customerId);
+        $refused = $priced['discounts']->refused[$code] ?? null;
+        if ($refused !== null) {
+            throw new CheckoutRuleViolation($refused, 'orillacart_coupon_refused');
+        }
+        $this->carts->useCoupons($contents->cartId, $codes);
+
+        return $this->summary($owner, new CheckoutDetails());
+    }
+
+    /**
+     * @throws CheckoutRuleViolation for an empty cart
+     */
+    public function removeCoupon(CartOwner $owner, string $code): CheckoutView
+    {
+        $contents = $this->contents($owner);
+        $code = Coupon::normalize($code);
+        $this->carts->useCoupons($contents->cartId, array_values(array_filter(array_map(Coupon::normalize(...), $contents->coupons), static fn(string $kept): bool => $kept !== $code)));
+
+        return $this->summary($owner, new CheckoutDetails());
     }
 
     /**
@@ -109,7 +161,10 @@ final readonly class CheckoutService
         $billingTax = new TaxAddress($billingAddress->country, $billingAddress->state);
         $shippingTax = new TaxAddress($shippingAddress->country, $shippingAddress->state);
 
-        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode);
+        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email);
+        foreach ($priced['discounts']->refused as $code => $reason) {
+            throw new CheckoutRuleViolation(\sprintf('The code %s does not apply: %s Remove it to order.', $code, $reason), 'orillacart_coupon_refused');
+        }
         $bill = $priced['bill'];
         $chosen = $priced['chosen'];
         if ($priced['needs_shipping'] && ($chosen === null || $chosen->id !== $command->shippingOption)) {
@@ -128,7 +183,7 @@ final readonly class CheckoutService
 
         $registering = $this->registration($owner, $command);
 
-        $order = $this->transactions->run(fn(): OrderView => $this->orders->place(new NewOrder(
+        $order = $this->transactions->run(fn(): OrderView => $this->redeemed($priced, $owner, $command->email, $this->orders->place(new NewOrder(
             $owner->customerId,
             $command->email,
             $billingAddress,
@@ -144,7 +199,9 @@ final readonly class CheckoutService
             $gateway === null ? '' : $this->paymentOptions->name($gateway),
             $gateway === null ? '' : $this->paymentOptions->receiptNote($gateway),
             $command->note,
-        )));
+            (string) $bill->discount(),
+            $this->pricing->discounts($priced),
+        ))));
         $this->carts->clear($contents->cartId);
         $this->rememberCustomer($owner, $command, $registering, $order->number, $billingAddress, $priced['needs_shipping'] ? $shippingAddress : null);
         $receiptUrl = $this->links->receiptUrl($order->key);
@@ -203,6 +260,18 @@ final readonly class CheckoutService
         } elseif ($owner->customerId !== null && $command->rememberAddresses) {
             $this->customers->rememberAddresses($owner->customerId, $billing, $shippingAddress);
         }
+    }
+
+    /**
+     * Counts the coupons' uses for the order, in its transaction.
+     *
+     * @param array{discounts: AppliedDiscounts} $priced
+     */
+    private function redeemed(array $priced, CartOwner $owner, string $email, OrderView $order): OrderView
+    {
+        $this->discounts->redeem($order->number, $priced['discounts']->coupons, $owner->customerId, $email);
+
+        return $order;
     }
 
     private function placed(string $key, string $receiptUrl, ?string $redirectUrl): PlacedOrderView

@@ -24,6 +24,11 @@ interface OrderRepository
      */
     public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit): array;
 
+    /**
+     * Whether the customer, by account or by email, has an order that was not cancelled or did not fail.
+     */
+    public function hasStandingOrder(?int $customerId, string $email): bool;
+
     public function save(Order $order): void;
 
     public function remove(Order $order): void;

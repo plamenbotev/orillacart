@@ -37,5 +37,7 @@ final readonly class LineDraft
         public ?int $downloadExpiryDays = null,
         public int $backordered = 0,
         public bool $backorderShown = false,
+        /** What coupons took off the total. */
+        public ?Money $discount = null,
     ) {}
 }

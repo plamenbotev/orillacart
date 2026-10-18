@@ -6,6 +6,7 @@ namespace OrillaCart\Ordering\Application\Dto;
 
 use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\Order;
+use OrillaCart\Ordering\Domain\OrderDiscount;
 use OrillaCart\Ordering\Domain\OrderNote;
 use OrillaCart\Ordering\Domain\OrderStatus;
 use OrillaCart\Ordering\Domain\TaxLine;
@@ -57,6 +58,10 @@ final readonly class OrderView
         /** What was given back, in all. */
         public string $refundedTotal = '0',
         public bool $shippingRefunded = false,
+        /** What coupons took off the items; the subtotal is before it. */
+        public string $discountTotal = '0',
+        /** @var list<OrderDiscountView> the coupons it used */
+        public array $discounts = [],
     ) {}
 
     /**
@@ -102,6 +107,8 @@ final readonly class OrderView
             $order->pickupPoint(),
             (string) $order->refundedTotal(),
             $order->isShippingRefunded(),
+            (string) $order->discountTotal(),
+            array_map(static fn(OrderDiscount $discount): OrderDiscountView => new OrderDiscountView($discount->code, $discount->description, (string) $discount->amount, $discount->freeShipping), $order->discounts()),
         );
     }
 }

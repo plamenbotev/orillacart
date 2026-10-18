@@ -39,5 +39,7 @@ final readonly class NewOrderLine
         public ?int $downloadExpiryDays = null,
         public int $backordered = 0,
         public bool $backorderShown = false,
+        /** What coupons took off the total; the tax is on what is left. */
+        public string $discount = '0',
     ) {}
 }

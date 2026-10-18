@@ -74,6 +74,10 @@ class OrderLine
     #[ORM\Column(options: ['default' => false])]
     private bool $backorderShown = false;
 
+    /** What coupons took off the total; the tax is on what is left. */
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+    private string $discount = '0';
+
     /** How many of the items were refunded. */
     #[ORM\Column(options: ['default' => 0])]
     private int $refundedQuantity = 0;
@@ -108,6 +112,11 @@ class OrderLine
         }
         $this->backordered = $draft->backordered;
         $this->backorderShown = $draft->backorderShown;
+        $discount = $draft->discount ?? Money::zero();
+        if ($discount->isNegative() || $discount->compare($draft->total) > 0) {
+            throw new OrderRuleViolation('A discount takes off no more than the line costs.', 'orillacart_invalid_discount');
+        }
+        $this->discount = $discount->toFixed();
         $this->stockTaken = array_map(static fn(TakenItem $taken): array => ['item' => $taken->item, 'stockroom_id' => $taken->stockroomId, 'quantity' => $taken->quantity], $draft->taken);
     }
 
@@ -166,6 +175,11 @@ class OrderLine
     public function total(): Money
     {
         return Money::of($this->total);
+    }
+
+    public function discount(): Money
+    {
+        return Money::of($this->discount);
     }
 
     public function tax(): Money

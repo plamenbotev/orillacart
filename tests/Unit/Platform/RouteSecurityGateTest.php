@@ -40,6 +40,8 @@ final class RouteSecurityGateTest extends TestCase
         'POST /cart/items',
         'PUT /cart/items/{id}',
         'DELETE /cart/items/{id}',
+        'POST /cart/coupons',
+        'DELETE /cart/coupons/{code}',
         'POST /checkout',
         'POST /checkout/summary',
         'GET /receipts/{key}',

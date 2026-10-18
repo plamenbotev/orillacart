@@ -168,6 +168,38 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame(404, $this->request('GET', '/receipts/' . str_repeat('0', 32))->get_status());
     }
 
+    public function testAVisitorUsesACouponAndTheOrderKeepsIt(): void
+    {
+        $this->actAs('administrator');
+        $made = $this->request('POST', '/coupons', ['code' => 'spring', 'kind' => 'percent', 'amount' => '10', 'description' => 'Spring sale', 'usage_limit' => 1], nonce: true);
+        self::assertSame(201, $made->get_status(), (string) wp_json_encode($made->get_data()));
+        self::assertSame(422, $this->request('POST', '/coupons', ['code' => 'SPRING', 'kind' => 'percent', 'amount' => '5'], nonce: true)->get_status(), 'one coupon per code');
+        wp_set_current_user(0);
+
+        $added = $this->request('POST', '/cart/items', ['product_id' => $this->product, 'quantity' => 2], nonce: true);
+        $this->keepCookie($added);
+        $refused = $this->request('POST', '/cart/coupons', ['code' => 'NOPE'], nonce: true);
+        self::assertSame([422, 'This code is not valid.'], [$refused->get_status(), $this->data($refused)['message']]);
+        $applied = $this->request('POST', '/cart/coupons', ['code' => 'spring'], nonce: true);
+        self::assertSame(200, $applied->get_status(), (string) wp_json_encode($applied->get_data()));
+
+        $summary = $this->data($this->request('POST', '/checkout/summary', ['shipping_country' => 'BG'], nonce: true));
+        self::assertSame(['66.66', '6.67', '64.99'], [$summary['subtotal'], $summary['discount'], $summary['total']]);
+
+        $placed = $this->request('POST', '/checkout', $this->order('cash_on_delivery'), nonce: true);
+        self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));
+        $receipt = $this->data($this->request('GET', "/receipts/{$this->key($this->data($placed))}"));
+        self::assertSame(['6.67', 'SPRING'], [$receipt['discount_total'], $this->rows($receipt['discounts'])[0]['code']]);
+        self::assertStringContainsString('Coupon SPRING', $this->sentMail()[0]['message'] ?? '');
+
+        $this->actAs('administrator');
+        $coupon = $this->rows($this->data($this->request('GET', '/coupons'))['coupons'])[0];
+        self::assertSame(['SPRING', 1], [$coupon['code'], $coupon['uses']]);
+        self::assertIsInt($coupon['id']);
+        self::assertSame(204, $this->request('DELETE', "/coupons/{$coupon['id']}", nonce: true)->get_status());
+        self::assertSame('SPRING', $this->rows($this->data($this->request('GET', "/receipts/{$this->key($this->data($placed))}"))['discounts'])[0]['code'], 'the order keeps it');
+    }
+
     public function testAnOrderThatRunsOutOfStockWhilePlacedTakesNothing(): void
     {
         $this->actAs('administrator');
@@ -471,7 +503,7 @@ final class CheckoutRestTest extends RestTestCase
     private function clean(): void
     {
         $wpdb = $this->wpdb();
-        foreach (['consignments', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'shipping_classes', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['coupon_redemptions', 'coupons', 'consignments', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'shipping_classes', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
         foreach (array_keys(wp_load_alloptions()) as $option) {

@@ -35,7 +35,8 @@ const decimal = ( value: number ) =>
 	String( Math.round( value * 10000 ) / 10000 );
 
 /**
- * What the chosen items and shipping cost the customer, tax included: the amount the form suggests.
+ * What the chosen items and shipping cost the customer, tax included and discounts taken off: the amount the
+ * form suggests.
  *
  * @param order      The order.
  * @param quantities Items to refund by line position.
@@ -51,7 +52,10 @@ export function suggestedAmount(
 		const quantity = quantities[ position ] ?? 0;
 		if ( quantity > 0 ) {
 			amount +=
-				( ( Number( line.total ) + Number( line.tax ) ) * quantity ) /
+				( ( Number( line.total ) -
+					Number( line.discount ?? 0 ) +
+					Number( line.tax ) ) *
+					quantity ) /
 				line.quantity;
 		}
 	} );

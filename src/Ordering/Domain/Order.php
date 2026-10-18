@@ -118,6 +118,14 @@ class Order
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $paidAt = null;
 
+    /** What coupons took off the items, in all. */
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+    private string $discountTotal = '0';
+
+    /** @var list<array{code: string, description: string, amount: string, free_shipping: bool}> the coupons it used */
+    #[ORM\Column(type: 'json')]
+    private array $discounts = [];
+
     /** What was given back, in all. */
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
     private string $refundedTotal = '0';
@@ -141,7 +149,8 @@ class Order
         }
         $shippingTotal = $draft->shipping->price ?? Money::zero();
         $shippingTax = $draft->shipping->tax ?? Money::zero();
-        if (!$draft->subtotal->add($draft->itemsTax)->add($shippingTotal)->add($shippingTax)->equals($draft->total)) {
+        $discountTotal = $draft->discountTotal ?? Money::zero();
+        if (!$draft->subtotal->subtract($discountTotal)->add($draft->itemsTax)->add($shippingTotal)->add($shippingTax)->equals($draft->total)) {
             throw new \LogicException('The order total is not the sum of its parts.');
         }
         if (($draft->shipping === null) !== ($draft->shippingAddress === null)) {
@@ -170,6 +179,8 @@ class Order
         $this->subtotal = $draft->subtotal->toFixed();
         $this->itemsTax = $draft->itemsTax->toFixed();
         $this->total = $draft->total->toFixed();
+        $this->discountTotal = $discountTotal->toFixed();
+        $this->discounts = self::discountRows($draft->discounts);
         $this->currency = $draft->currency;
         $this->paymentGateway = $draft->paymentGateway;
         $this->paymentName = mb_substr($draft->paymentName, 0, 100);
@@ -267,6 +278,18 @@ class Order
     public function total(): Money
     {
         return Money::of($this->total);
+    }
+
+    /** What coupons took off the items, in all. */
+    public function discountTotal(): Money
+    {
+        return Money::of($this->discountTotal);
+    }
+
+    /** @return list<OrderDiscount> */
+    public function discounts(): array
+    {
+        return array_map(static fn(array $row): OrderDiscount => new OrderDiscount($row['code'], $row['description'], Money::of($row['amount']), $row['free_shipping']), $this->discounts);
     }
 
     public function currency(): string
@@ -502,20 +525,22 @@ class Order
      * Replaces what an order on hold contains, as the shop repriced it. Only orders waiting for an offline
      * payment change: a paid order, or one being paid at a provider, keeps what was paid for.
      *
-     * @param list<LineDraft> $lines
-     * @param list<TaxLine>   $taxes
+     * @param list<LineDraft>     $lines
+     * @param list<TaxLine>       $taxes
+     * @param list<OrderDiscount> $discounts the coupons, priced again
      *
      * @throws OrderRuleViolation for an order not on hold, or one without items
      */
-    public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, array $taxes, Money $subtotal, Money $itemsTax, Money $total): void
+    public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, array $taxes, Money $subtotal, Money $itemsTax, Money $total, ?Money $discountTotal = null, array $discounts = []): void
     {
+        $discountTotal ??= Money::zero();
         $this->requireOnHold();
         if ($lines === []) {
             throw new OrderRuleViolation('An order has at least one item.', 'orillacart_empty_order');
         }
         $shippingTotal = $shipping->price ?? Money::zero();
         $shippingTax = $shipping->tax ?? Money::zero();
-        if (!$subtotal->add($itemsTax)->add($shippingTotal)->add($shippingTax)->equals($total)) {
+        if (!$subtotal->subtract($discountTotal)->add($itemsTax)->add($shippingTotal)->add($shippingTax)->equals($total)) {
             throw new \LogicException('The order total is not the sum of its parts.');
         }
         if (($shipping === null) !== ($shippingAddress === null)) {
@@ -536,6 +561,18 @@ class Order
         $this->subtotal = $subtotal->toFixed();
         $this->itemsTax = $itemsTax->toFixed();
         $this->total = $total->toFixed();
+        $this->discountTotal = $discountTotal->toFixed();
+        $this->discounts = self::discountRows($discounts);
+    }
+
+    /**
+     * @param list<OrderDiscount> $discounts
+     *
+     * @return list<array{code: string, description: string, amount: string, free_shipping: bool}>
+     */
+    private static function discountRows(array $discounts): array
+    {
+        return array_map(static fn(OrderDiscount $discount): array => ['code' => $discount->code, 'description' => $discount->description, 'amount' => $discount->amount->toFixed(), 'free_shipping' => $discount->freeShipping], $discounts);
     }
 
     public function shippingOption(): ?string

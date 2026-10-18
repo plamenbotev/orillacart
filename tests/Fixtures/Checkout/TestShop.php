@@ -16,6 +16,9 @@ use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\ManualOrders;
 use OrillaCart\Checkout\Application\OrderEditing;
 use OrillaCart\Checkout\Application\OrderPricing;
+use OrillaCart\Coupons\Application\CouponService;
+use OrillaCart\Coupons\Application\Discounts;
+use OrillaCart\Coupons\Infrastructure\Events\ReleaseCouponUses;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Geography\Application\GeographyService;
@@ -26,6 +29,7 @@ use OrillaCart\Notifications\Application\SendOrderEmails;
 use OrillaCart\Notifications\Infrastructure\Events\EmailAboutOrders;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Domain\Event\OrderDeleted;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
@@ -72,6 +76,8 @@ use OrillaCart\Tests\Fixtures\Catalog\CatalogIds;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryAttributeSetRepository;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductContent;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductRepository;
+use OrillaCart\Tests\Fixtures\Coupons\InMemoryCouponRepository;
+use OrillaCart\Tests\Fixtures\Coupons\InMemoryRedemptionRepository;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryAccounts;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryCustomerSettingsRepository;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
@@ -127,6 +133,10 @@ final class TestShop
     public readonly InMemoryPaymentRepository $paymentRecords;
     public readonly FakePayPalApi $payPalApi;
     public readonly PaymentOutcomes $outcomes;
+    public readonly CouponService $coupons;
+    public readonly Discounts $discounts;
+    public readonly InMemoryCouponRepository $couponRecords;
+    public readonly InMemoryRedemptionRepository $redemptions;
     public readonly Refunds $refunds;
     public readonly InMemoryRefundRepository $refundRecords;
     public readonly CartService $carts;
@@ -211,8 +221,15 @@ final class TestShop
         $this->customerSettings = new InMemoryCustomerSettingsRepository();
         $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders);
         $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger);
-        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings);
-        $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes);
+        $this->couponRecords = new InMemoryCouponRepository();
+        $this->redemptions = new InMemoryRedemptionRepository();
+        $this->coupons = new CouponService($this->couponRecords);
+        $this->discounts = new Discounts($this->couponRecords, $this->redemptions, $this->orders, $this->clock);
+        $releasing = new ReleaseCouponUses($this->discounts);
+        $this->events->addListener(OrderStatusChanged::class, $releasing->statusChanged(...));
+        $this->events->addListener(OrderDeleted::class, $releasing->deleted(...));
+        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts);
+        $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts);
         $paymentOptions = new PaymentOptions($methodRecords, $gateways);
         $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions);
         $this->checkout = new CheckoutService(
@@ -227,6 +244,7 @@ final class TestShop
             $this->transactions,
             $this->customers,
             $this->logger,
+            $this->discounts,
         );
 
         $this->mail = new SentMail();

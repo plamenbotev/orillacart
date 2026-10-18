@@ -21,5 +21,7 @@ final readonly class CheckoutLineView
         public string $total,
         public string $tax,
         public int $backordered = 0,
+        /** What coupons take off the total; the tax is on what is left. */
+        public string $discount = '0',
     ) {}
 }

@@ -35,7 +35,8 @@
 .orillacart-field input:not([type="checkbox"], [type="radio"]),
 .orillacart-field select,
 .orillacart-field textarea,
-.orillacart-quantity {
+.orillacart-quantity,
+.orillacart-coupons__field input {
 	box-sizing: border-box;
 	width: 100%;
 	padding: 0.5rem 0.625rem;
@@ -568,4 +569,37 @@ fieldset[aria-invalid="true"] {
 	border: 1px solid var(--orillacart-border);
 	border-radius: var(--orillacart-radius);
 	font: inherit;
+}
+
+/* Coupon codes on the cart and checkout */
+.orillacart-coupons {
+	margin: 1em 0;
+}
+
+.orillacart-coupon {
+	display: flex;
+	gap: 0.5em;
+	align-items: center;
+	margin: 0 0 0.5em;
+}
+
+.orillacart-coupon--refused {
+	color: var(--orillacart-error);
+}
+
+.orillacart-coupons__field {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em;
+	align-items: center;
+	margin: 0;
+}
+
+.orillacart-coupons__field input {
+	flex: 1 1 10em;
+	max-width: 16em;
+}
+
+.orillacart-discount td {
+	white-space: nowrap;
 }

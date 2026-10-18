@@ -15,6 +15,10 @@ use OrillaCart\Catalog\Infrastructure\Doctrine\DoctrineAttributeSetRepository;
 use OrillaCart\Catalog\Infrastructure\Doctrine\DoctrineProductRepository;
 use OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductContent;
 use OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductSearch;
+use OrillaCart\Coupons\Domain\CouponRepository;
+use OrillaCart\Coupons\Domain\RedemptionRepository;
+use OrillaCart\Coupons\Infrastructure\Doctrine\DoctrineCouponRepository;
+use OrillaCart\Coupons\Infrastructure\Doctrine\DoctrineRedemptionRepository;
 use OrillaCart\Customers\Application\Accounts;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
 use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
@@ -208,6 +212,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ProductTexts::class, WordPressProductTexts::class);
     $services->alias(RateCache::class, TransientRateCache::class);
     $services->alias(ConsignmentRepository::class, DoctrineConsignmentRepository::class);
+    $services->alias(CouponRepository::class, DoctrineCouponRepository::class);
+    $services->alias(RedemptionRepository::class, DoctrineRedemptionRepository::class);
 
     // The search engine the shop chose: its database (MySQL FULLTEXT) or OpenSearch.
     $services->alias(CatalogSearch::class, EngineCatalogSearch::class);

@@ -40,6 +40,12 @@ final readonly class ItemQuote
         public string $backorders = 'no',
         /** How many are in stock when backorders lift the limit; null otherwise. */
         public ?int $inStock = null,
+        /** Its sale price applies now. */
+        public bool $onSale = false,
+        /** @var list<int> its categories, each with those above it */
+        public array $categoryIds = [],
+        /** @var list<int> its brands, each with those above it */
+        public array $brandIds = [],
     ) {}
 
     /** How many of this quantity the customer is told are on backorder: none unless the product says so. */

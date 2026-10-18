@@ -2,9 +2,12 @@
  * The cart page: quantities and removals go to the API, then the cart is shown anew from the server.
  */
 import { api } from './api';
+import { bindCoupons } from './coupons';
 import { failure, reloadRegions, showMessage } from './dom';
 
 export function bindCart( root: Document ): void {
+	bindCoupons( root, () => reloadRegions( [ 'cart', 'mini-cart' ] ) );
+
 	root.addEventListener( 'change', async ( event ) => {
 		const input = event.target;
 		if (

@@ -8,12 +8,14 @@ use OrillaCart\Shared\Domain\Money;
 
 /**
  * The totals of an order. Line amounts stay exact; each tax rate is charged on the sum of what it applies to
- * and rounded once to the currency, as are the subtotal and shipping, and the total is the sum of those
- * rounded parts, so an invoice always adds up.
+ * and rounded once to the currency, as are the subtotal, the discount and shipping, and the total is the sum of
+ * those rounded parts, so an invoice always adds up. Discounts lower what tax is charged on: tax is on what the
+ * customer pays.
  */
 final class Bill
 {
     private Money $subtotal;
+    private Money $discount;
     private Money $shipping;
 
     /** @var array<string, array{tax: Tax, items: Money, shipping: Money}> */
@@ -22,21 +24,26 @@ final class Bill
     public function __construct(private readonly int $decimals)
     {
         $this->subtotal = Money::zero();
+        $this->discount = Money::zero();
         $this->shipping = Money::zero();
     }
 
     /**
-     * @param list<Tax> $taxes the rates charged on the line
+     * @param list<Tax> $taxes    the rates charged on the line
+     * @param Money|null $discount what coupons take off the line's total
      *
      * @return Money the line's tax, exact: what it shows, not what is billed
      */
-    public function addItem(Money $total, array $taxes): Money
+    public function addItem(Money $total, array $taxes, ?Money $discount = null): Money
     {
+        $discount ??= Money::zero();
         $this->subtotal = $this->subtotal->add($total);
+        $this->discount = $this->discount->add($discount);
+        $taxed = $total->subtract($discount);
         $tax = Money::zero();
         foreach ($taxes as $rate) {
-            $this->base($rate)['items'] = $this->base($rate)['items']->add($total);
-            $tax = $tax->add($total->percent($rate->percent));
+            $this->base($rate)['items'] = $this->base($rate)['items']->add($taxed);
+            $tax = $tax->add($taxed->percent($rate->percent));
         }
 
         return $tax;
@@ -56,6 +63,12 @@ final class Bill
     public function subtotal(): Money
     {
         return $this->subtotal->rounded($this->decimals);
+    }
+
+    /** What coupons take off the items, in all. */
+    public function discount(): Money
+    {
+        return $this->discount->rounded($this->decimals);
     }
 
     public function shipping(): Money
@@ -96,7 +109,7 @@ final class Bill
 
     public function total(): Money
     {
-        return $this->subtotal()->add($this->itemsTax())->add($this->shipping())->add($this->shippingTax());
+        return $this->subtotal()->subtract($this->discount())->add($this->itemsTax())->add($this->shipping())->add($this->shippingTax());
     }
 
     /**

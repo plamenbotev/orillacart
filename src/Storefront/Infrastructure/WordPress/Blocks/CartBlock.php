@@ -6,6 +6,9 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\CartLineView;
+use OrillaCart\Checkout\Application\CheckoutService;
+use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
+use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
@@ -21,6 +24,7 @@ final readonly class CartBlock implements BlockDefinition
         private Shopper $shopper,
         private ShopLinks $links,
         private TemplateRenderer $templates,
+        private CheckoutService $checkout,
     ) {}
 
     public static function name(): string
@@ -43,10 +47,21 @@ final readonly class CartBlock implements BlockDefinition
         if ($links['cart'] === null) {
             return $this->templates->render('storefront/catalog-only.html.twig', ['links' => $links]);
         }
-        $cart = $this->carts->cart($this->shopper->cart())->cart;
+        $owner = $this->shopper->cart();
+        $cart = $this->carts->cart($owner)->cart;
+        $priced = null;
+        if ($cart->lines !== [] && $cart->orderable) {
+            try {
+                // Priced as checkout prices it, without an address yet, for what the codes take off.
+                $priced = $this->checkout->summary($owner, new CheckoutDetails());
+            } catch (CheckoutRuleViolation) {
+            }
+        }
 
         return $this->templates->render('storefront/cart.html.twig', [
             'cart' => $cart,
+            'coupons' => $priced->coupons ?? [],
+            'discount' => $priced->discount ?? '0',
             'product_urls' => $this->links->products(array_map(static fn(CartLineView $line): int => $line->productId, $cart->lines)),
             'links' => $links,
         ]);

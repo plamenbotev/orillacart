@@ -131,7 +131,21 @@ final readonly class CartService
             'product_id' => $line->productId(),
             'option_ids' => $line->optionIds(),
             'quantity' => $line->quantity(),
-        ], $cart->lines()));
+        ], $cart->lines()), $cart->coupons());
+    }
+
+    /**
+     * Keeps the coupon codes checkout accepted for the cart.
+     *
+     * @param list<string> $codes
+     */
+    public function useCoupons(int $cartId, array $codes): void
+    {
+        $cart = $this->carts->find($cartId);
+        if ($cart !== null) {
+            $cart->useCoupons($codes, $this->clock->now());
+            $this->carts->save($cart);
+        }
     }
 
     /**

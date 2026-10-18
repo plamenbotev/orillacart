@@ -59,6 +59,8 @@ final readonly class ProductQuotes
             $available = null;
         }
         $measures = $configuration->measures();
+        $pricing = $configuration->variation?->pricing() ?? $details->pricing;
+        $terms = $this->content->termIds($product->id());
 
         return new ItemQuote(
             $product->id(),
@@ -88,6 +90,9 @@ final readonly class ProductQuotes
             $details->shippingClassId,
             $backorders->value,
             $inStock,
+            $pricing->priceAt($now)->compare($pricing->price()) < 0,
+            $terms['categories'],
+            $terms['brands'],
         );
     }
 

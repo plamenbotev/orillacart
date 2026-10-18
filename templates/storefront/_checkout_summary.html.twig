@@ -20,6 +20,9 @@
     </tbody>
     <tfoot>
         <tr><th scope="row">{{ __('Subtotal') }}</th><td>{{ summary.subtotal|money(summary.currency) }}</td></tr>
+        {% if summary.discount > 0 %}
+            <tr class="orillacart-discount"><th scope="row">{{ __('Discount') }}</th><td>−{{ summary.discount|money(summary.currency) }}</td></tr>
+        {% endif %}
         {% if summary.needs_shipping %}
             <tr><th scope="row">{{ __('Shipping') }}</th><td>{{ summary.shipping_option ? summary.shipping|money(summary.currency) : '—' }}</td></tr>
         {% endif %}
@@ -29,6 +32,8 @@
         <tr class="orillacart-total"><th scope="row">{{ __('Total') }}</th><td>{{ summary.total|money(summary.currency) }}</td></tr>
     </tfoot>
 </table>
+
+{% include 'storefront/_coupons.html.twig' with {coupons: summary.coupons, currency: summary.currency} %}
 
 {% if summary.needs_shipping %}
     <fieldset class="orillacart-choices" data-orillacart-field="shipping_option">

@@ -48,6 +48,9 @@
         </tbody>
         <tfoot>
             <tr><th scope="row">{{ __('Subtotal') }}</th><td>{{ order.subtotal|money(order.currency) }}</td></tr>
+            {% for discount in order.discounts %}
+                <tr class="orillacart-discount"><th scope="row">{{ __('Coupon %s')|format(discount.code) }}</th><td>{{ discount.free_shipping ? __('Free shipping') : '−' ~ discount.amount|money(order.currency) }}</td></tr>
+            {% endfor %}
             {% if order.shipping %}
                 <tr><th scope="row">{{ __('Shipping') }} ({{ order.shipping }})</th><td>{{ order.shipping_total|money(order.currency) }}</td></tr>
             {% endif %}

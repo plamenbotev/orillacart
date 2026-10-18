@@ -14,6 +14,8 @@ final readonly class OrderDraft
     /**
      * @param list<LineDraft> $lines
      * @param list<TaxLine>   $taxes
+     * @param Money           $subtotal      the items before tax and before the discounts
+     * @param list<OrderDiscount> $discounts
      */
     public function __construct(
         public string $key,
@@ -33,5 +35,7 @@ final readonly class OrderDraft
         public string $paymentNote,
         public string $note,
         public \DateTimeImmutable $placedAt,
+        public ?Money $discountTotal = null,
+        public array $discounts = [],
     ) {}
 }

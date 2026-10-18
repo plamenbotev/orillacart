@@ -1,0 +1,148 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Coupons\Application;
+
+use OrillaCart\Coupons\Application\Dto\AppliedCoupon;
+use OrillaCart\Coupons\Application\Dto\AppliedDiscounts;
+use OrillaCart\Coupons\Application\Dto\DiscountItem;
+use OrillaCart\Coupons\Application\Dto\DiscountRequest;
+use OrillaCart\Coupons\Domain\Basket;
+use OrillaCart\Coupons\Domain\BasketLine;
+use OrillaCart\Coupons\Domain\Coupon;
+use OrillaCart\Coupons\Domain\CouponRedemption;
+use OrillaCart\Coupons\Domain\CouponRepository;
+use OrillaCart\Coupons\Domain\CouponRuleViolation;
+use OrillaCart\Coupons\Domain\RedemptionRepository;
+use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Shared\Domain\Money;
+use Psr\Clock\ClockInterface;
+
+/**
+ * Coupon codes as checkout uses them: which hold for an order and what they take off each item, and the uses
+ * an order makes of them. Each coupon takes off what the ones before it left, so items never go below zero.
+ * Uses are counted when the order is placed, under a lock on the coupons, so a limit holds for orders placed at
+ * the same moment; an order that is cancelled or fails gives its uses back.
+ */
+final readonly class Discounts
+{
+    /** Codes an order carries at most. */
+    public const int MAX_CODES = 10;
+
+    public function __construct(
+        private CouponRepository $coupons,
+        private RedemptionRepository $redemptions,
+        private OrderService $orders,
+        private ClockInterface $clock,
+    ) {}
+
+    /**
+     * @param list<string> $codes as the customer entered them
+     */
+    public function apply(array $codes, DiscountRequest $request): AppliedDiscounts
+    {
+        $codes = \array_slice(array_values(array_unique(array_filter(array_map(Coupon::normalize(...), $codes), static fn(string $code): bool => $code !== ''))), 0, self::MAX_CODES);
+        if ($codes === [] || $request->items === []) {
+            return new AppliedDiscounts([], $codes === [] ? [] : array_fill_keys($codes, 'Add items first.'));
+        }
+        $found = $this->coupons->findByCodes($codes);
+        $now = $this->clock->now();
+        $email = $request->email ?? '';
+        $firstOrder = null;
+        $left = array_map(static fn(DiscountItem $item): Money => Money::of($item->total), $request->items);
+        $applied = [];
+        $refused = [];
+        $combinesAll = true;
+
+        foreach ($codes as $code) {
+            $coupon = $found[$code] ?? null;
+            if ($coupon === null) {
+                $refused[$code] = 'This code is not valid.';
+                continue;
+            }
+            if ($applied !== [] && (!$coupon->combines() || !$combinesAll)) {
+                $refused[$code] = 'This code cannot be used together with your other codes.';
+                continue;
+            }
+            $firstOrder ??= $email === '' || !$this->orders->hasOrdered($request->customerId, $email);
+            $basket = new Basket(
+                array_map(static fn(DiscountItem $item, Money $total): BasketLine => new BasketLine($item->productId, $item->quantity, $total, $item->onSale, $item->categoryIds, $item->brandIds), $request->items, $left),
+                $request->currency,
+                $request->country,
+                $request->customerId,
+                $request->email,
+                $firstOrder,
+            );
+            $refusal = $coupon->refusal($basket, $now, $email === '' ? 0 : $this->redemptions->countByCustomer($coupon->id(), $request->customerId, $email));
+            if ($refusal !== null) {
+                $refused[$code] = $refusal;
+                continue;
+            }
+            $lines = [];
+            $sum = Money::zero();
+            foreach ($coupon->discounts($basket) as $index => $discount) {
+                $left[$index] = $left[$index]->subtract($discount);
+                $lines[$index] = $discount->toFixed();
+                $sum = $sum->add($discount);
+            }
+            $applied[] = new AppliedCoupon($coupon->code(), $coupon->description(), $sum->toFixed(), $coupon->freeShipping(), $lines);
+            $combinesAll = $combinesAll && $coupon->combines();
+        }
+
+        return new AppliedDiscounts($applied, $refused);
+    }
+
+    /**
+     * Counts the order's uses of its coupons. Run it in the transaction that saves the order.
+     *
+     * @param list<AppliedCoupon> $coupons
+     *
+     * @throws CouponRuleViolation when a coupon was used up by another order in the meantime
+     */
+    public function redeem(int $orderId, array $coupons, ?int $customerId, string $email): void
+    {
+        if ($coupons === []) {
+            return;
+        }
+        $locked = $this->coupons->findByCodes(array_map(static fn(AppliedCoupon $coupon): string => $coupon->code, $coupons), true);
+        foreach ($coupons as $applied) {
+            $coupon = $locked[$applied->code] ?? throw new CouponRuleViolation(\sprintf('The code %s is no longer valid.', $applied->code), 'orillacart_coupon_refused');
+            $terms = $coupon->terms();
+            if ($terms->usageLimit !== null && $coupon->uses() >= $terms->usageLimit
+                || $terms->perCustomerLimit !== null && $this->redemptions->countByCustomer($coupon->id(), $customerId, $email) >= $terms->perCustomerLimit) {
+                throw new CouponRuleViolation(\sprintf('The code %s was just used up. Remove it and try again.', $coupon->code()), 'orillacart_coupon_used_up');
+            }
+            $coupon->use();
+            $this->coupons->save($coupon);
+            $this->redemptions->save(new CouponRedemption($coupon->id(), $orderId, $customerId, $email, Money::of($applied->amount), $this->clock->now()));
+        }
+    }
+
+    /**
+     * Gives back the uses an order made: it was cancelled, failed, or is priced again.
+     */
+    public function release(int $orderId): void
+    {
+        $redemptions = $this->redemptions->ofOrder($orderId);
+        if ($redemptions === []) {
+            return;
+        }
+        $codes = [];
+        foreach ($redemptions as $redemption) {
+            $coupon = $this->coupons->find($redemption->couponId());
+            if ($coupon !== null) {
+                $codes[$coupon->id()] = $coupon->code();
+            }
+        }
+        // Locked, as redeem() locks them, so a use counted at the same moment is not lost.
+        $locked = $this->coupons->findByCodes(array_values($codes), true);
+        foreach ($redemptions as $redemption) {
+            $locked[$codes[$redemption->couponId()] ?? '']?->release();
+            $this->redemptions->delete($redemption);
+        }
+        foreach ($locked as $coupon) {
+            $this->coupons->save($coupon);
+        }
+    }
+}

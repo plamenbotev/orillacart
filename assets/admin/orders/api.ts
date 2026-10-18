@@ -58,6 +58,8 @@ export interface OrderLine {
 	/** Whether the customer was told of the backorder. */
 	backorder_shown: boolean;
 	refunded_quantity: number;
+	/** What coupons took off the total; the tax is on what is left. */
+	discount: string;
 }
 
 export interface OrderNote {
@@ -109,6 +111,14 @@ export interface Order {
 	/** What was given back, in all. */
 	refunded_total: string;
 	shipping_refunded: boolean;
+	/** What coupons took off the items; the subtotal is before it. */
+	discount_total: string;
+	discounts: {
+		code: string;
+		description: string;
+		amount: string;
+		free_shipping: boolean;
+	}[];
 }
 
 export interface Refund {

@@ -76,6 +76,20 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         $this->entityManager->flush();
     }
 
+    public function hasStandingOrder(?int $customerId, string $email): bool
+    {
+        $query = $this->entityManager->createQueryBuilder()->select('o.id')->from(Order::class, 'o')
+            ->where('o.status NOT IN (:closed)')->setParameter('closed', [OrderStatus::Cancelled, OrderStatus::Failed])
+            ->andWhere($customerId === null ? 'o.email = :email' : 'o.email = :email OR o.customerId = :customer')
+            ->setParameter('email', $email)
+            ->setMaxResults(1);
+        if ($customerId !== null) {
+            $query->setParameter('customer', $customerId);
+        }
+
+        return $query->getQuery()->getOneOrNullResult() !== null;
+    }
+
     public function save(Order $order): void
     {
         $this->entityManager->persist($order);

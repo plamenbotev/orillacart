@@ -307,6 +307,22 @@ function Summary( { order }: { order: Order } ) {
 				<dl className="orillacart-totals">
 					<dt>{ __( 'Subtotal', 'orillacart' ) }</dt>
 					<dd>{ money( order.subtotal, order.currency ) }</dd>
+					{ order.discounts.map( ( discount ) => (
+						<FragmentRow
+							key={ discount.code }
+							label={ sprintf(
+								/* translators: 1: coupon code, 2: its description */
+								__( 'Coupon %1$s %2$s', 'orillacart' ),
+								discount.code,
+								discount.description
+							).trim() }
+							value={
+								discount.free_shipping
+									? __( 'Free shipping', 'orillacart' )
+									: `−${ money( discount.amount, order.currency ) }`
+							}
+						/>
+					) ) }
 					{ order.shipping !== null && (
 						<>
 							<dt>

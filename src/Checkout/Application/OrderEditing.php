@@ -8,7 +8,10 @@ use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\EditOrderItems;
 use OrillaCart\Checkout\Application\Dto\ShippingChoiceView;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Coupons\Application\Discounts;
+use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\NewOrderItems;
+use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderService;
@@ -22,7 +25,8 @@ use OrillaCart\Tax\Application\Dto\TaxAddress;
 /**
  * The shop changes the items of an order that waits for an offline payment, as when the customer calls:
  * the order's stock is put back, the new items are priced as checkout prices them (with the shop's own unit
- * prices where it set them) and their stock is taken, all at once or not at all.
+ * prices where it set them) and their stock is taken, all at once or not at all. The order keeps its coupons,
+ * priced again; one that no longer holds is dropped, and the history says why.
  */
 final readonly class OrderEditing
 {
@@ -31,6 +35,7 @@ final readonly class OrderEditing
         private OrderPricing $pricing,
         private Transactions $transactions,
         private ShippingQuotes $shipping,
+        private Discounts $discounts,
     ) {}
 
     /**
@@ -48,7 +53,9 @@ final readonly class OrderEditing
         $shippingAddress = $order->shippingAddress ?? $order->billing;
         $items = array_map(static fn(OrderLineView $line): array => ['product_id' => $line->productId, 'option_ids' => $line->optionIds, 'quantity' => $line->quantity, 'unit_price' => $line->unitPrice], $order->lines);
 
-        return $this->pricing->price($items, new TaxAddress($shippingAddress->country, $shippingAddress->state), $billing, $order->shippingOption, $shippingAddress->postcode)['options'];
+        $codes = array_map(static fn(OrderDiscountView $discount): string => $discount->code, $order->discounts);
+
+        return $this->pricing->price($items, new TaxAddress($shippingAddress->country, $shippingAddress->state), $billing, $order->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email)['options'];
     }
 
     /**
@@ -83,16 +90,24 @@ final readonly class OrderEditing
         $items = array_map(static fn(EditedItem $item): array => ['product_id' => $item->productId, 'option_ids' => $item->optionIds, 'quantity' => $item->quantity, 'unit_price' => $item->unitPrice], $command->items);
 
         $keptPoint = $order->pickupPointId;
+        $codes = array_map(static fn(OrderDiscountView $discount): string => $discount->code, $order->discounts);
 
-        return $this->transactions->run(function () use ($orderId, $items, $shipping, $billing, $command, $shippingAddress, $userId, $keptPoint): OrderView {
+        return $this->transactions->run(function () use ($order, $orderId, $items, $shipping, $billing, $command, $shippingAddress, $userId, $keptPoint, $codes): OrderView {
             $this->orders->releaseStock($orderId);
-            $priced = $this->pricing->price($items, $shipping, $billing, $command->shippingOption, $shippingAddress->postcode);
+            // Its own uses do not count against the limits while it is priced again.
+            $this->discounts->release($orderId);
+            $priced = $this->pricing->price($items, $shipping, $billing, $command->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email);
             if ($priced['needs_shipping'] && $priced['chosen']?->id !== $command->shippingOption) {
                 throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to its address.' : 'Choose how the order ships.', 'orillacart_shipping_required');
             }
             $bill = $priced['bill'];
             // The order keeps its office or locker unless the shop chose another.
             $pickupPoint = $this->pricing->pickupPoint($priced, $shippingAddress->country, $shippingAddress->postcode, $command->pickupPoint ?? $keptPoint);
+
+            $this->discounts->redeem($orderId, $priced['discounts']->coupons, $order->customerId, $order->email);
+            foreach ($priced['discounts']->refused as $code => $reason) {
+                $this->orders->addNote($orderId, new AddOrderNote(\sprintf('The code %s no longer applies, so the order lost it: %s', $code, $reason)), $userId);
+            }
 
             return $this->orders->replaceItems($orderId, new NewOrderItems(
                 $this->pricing->lines($priced),
@@ -102,6 +117,8 @@ final readonly class OrderEditing
                 (string) $bill->subtotal(),
                 (string) $bill->itemsTax(),
                 (string) $bill->total(),
+                (string) $bill->discount(),
+                $this->pricing->discounts($priced),
             ), $userId);
         });
     }

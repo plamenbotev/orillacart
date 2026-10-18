@@ -12,6 +12,9 @@ final readonly class NewOrder
     /**
      * @param list<NewOrderLine> $lines
      * @param list<TaxLineView>  $taxes
+     * @param string             $subtotal      the items before tax and before the discounts
+     * @param string             $discountTotal what the coupons took off the items
+     * @param list<OrderDiscountView> $discounts
      */
     public function __construct(
         public ?int $customerId,
@@ -29,5 +32,7 @@ final readonly class NewOrder
         public string $paymentName,
         public string $paymentNote,
         public string $note,
+        public string $discountTotal = '0',
+        public array $discounts = [],
     ) {}
 }

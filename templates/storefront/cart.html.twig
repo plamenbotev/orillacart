@@ -1,7 +1,8 @@
 {#
  # The cart page. Quantities and removals go to the REST API; the storefront script then reloads this region.
  #
- # cart: the cart (lines, items, subtotal, orderable); product_urls: {product id: url}; links: the shop's pages.
+ # cart: the cart (lines, items, subtotal, orderable); product_urls: {product id: url}; links: the shop's pages;
+ # coupons and discount: the codes entered and what they take off, as checkout prices them.
  #}
 <div class="orillacart-cart" data-orillacart-region="cart">
     {% if cart.lines is empty %}
@@ -46,8 +47,15 @@
                     <th scope="row" colspan="3">{{ __('Subtotal') }}</th>
                     <td colspan="2">{{ cart.subtotal|money }}</td>
                 </tr>
+                {% if discount > 0 %}
+                    <tr class="orillacart-discount">
+                        <th scope="row" colspan="3">{{ __('Discount') }}</th>
+                        <td colspan="2">−{{ discount|money }}</td>
+                    </tr>
+                {% endif %}
             </tfoot>
         </table>
+        {% include 'storefront/_coupons.html.twig' with {coupons: coupons, currency: null} %}
         <p class="orillacart-cart__note">{{ __('Taxes and shipping are added at checkout.') }}</p>
         <p class="orillacart-message" role="status" data-orillacart-message></p>
         <div class="orillacart-cart__actions">

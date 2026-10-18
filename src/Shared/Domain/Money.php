@@ -57,6 +57,18 @@ final readonly class Money implements \Stringable
     }
 
     /**
+     * The part of this amount that $part is of $whole, rounded half away from zero: 10 spread by 1 of 3 is 3.3333.
+     */
+    public function proportion(self $part, self $whole): self
+    {
+        if ($whole->tenThousandths === 0) {
+            return self::zero();
+        }
+
+        return new self((int) round($this->tenThousandths * ($part->tenThousandths / $whole->tenThousandths)));
+    }
+
+    /**
      * This share of the amount, such as the tax at a rate: 19 % of 15 is 2.85. Exact to four decimals,
      * rounded half away from zero.
      *

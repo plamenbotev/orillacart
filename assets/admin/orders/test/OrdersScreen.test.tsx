@@ -71,6 +71,10 @@ const order = {
 	shipping_option: null,
 	pickup_point_id: null,
 	pickup_point: null,
+	refunded_total: '0',
+	shipping_refunded: false,
+	discount_total: '0',
+	discounts: [],
 };
 
 type Request = { path: string; method?: string; data?: unknown };

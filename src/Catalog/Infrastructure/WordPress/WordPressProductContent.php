@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Catalog\Infrastructure\WordPress;
 
 use OrillaCart\Catalog\Domain\ProductContent;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\VariationPostType;
 
@@ -24,6 +26,27 @@ final readonly class WordPressProductContent implements ProductContent
     {
         // Plain text: the title filters add HTML entities, and templates and emails escape names themselves.
         return $this->exists($productId) ? wp_strip_all_tags(html_entity_decode(get_the_title($productId), ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '';
+    }
+
+    public function termIds(int $productId): array
+    {
+        return ['categories' => self::terms($productId, ProductCategoryTaxonomy::NAME), 'brands' => self::terms($productId, ProductBrandTaxonomy::NAME)];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private static function terms(int $productId, string $taxonomy): array
+    {
+        $terms = get_the_terms($productId, $taxonomy);
+        $ids = [];
+        foreach (\is_array($terms) ? $terms : [] as $term) {
+            foreach ([$term->term_id, ...get_ancestors($term->term_id, $taxonomy, 'taxonomy')] as $id) {
+                $ids[$id] = true;
+            }
+        }
+
+        return array_keys($ids);
     }
 
     public function createVariation(int $productId, string $name): int
