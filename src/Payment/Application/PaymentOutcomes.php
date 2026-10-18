@@ -201,7 +201,7 @@ final readonly class PaymentOutcomes
         $now = $this->clock->now();
         $event = match ($outcome->status) {
             PaymentOutcome::COMPLETED => $this->paysInFull($payment, $outcome)
-                ? ($payment->complete($outcome->transactionId, $now) ? new PaymentCompleted($payment->orderId(), $payment->id(), $payment->gateway(), $outcome->transactionId ?? '') : null)
+                ? ($payment->complete($outcome->transactionId, $now) ? new PaymentCompleted($payment->orderId(), $payment->id(), $payment->gateway(), $outcome->transactionId ?? '', (string) $payment->amount()) : null)
                 : $this->hold($payment, $outcome),
             PaymentOutcome::HELD => $this->hold($payment, $outcome),
             PaymentOutcome::FAILED => $payment->fail($outcome->transactionId, $now) ? new PaymentFailed($payment->orderId(), $payment->id(), $payment->gateway(), $outcome->transactionId ?? '') : null,

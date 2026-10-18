@@ -4,7 +4,8 @@
  #
  # document: {invoice: {number, kind, amount, currency, issued_at}, seller: {legal_name, address, vat_number,
  # company_number, bank_details, footer}, order (as on the receipt), lines (the order lines a credit note gives
- # back: {line, quantity}), corrects (the invoice a credit note corrects)}; locale.
+ # back: {line, quantity}), corrects (the invoice a credit note corrects), taxes (the tax a credit note gives
+ # back: {name, percent, amount})}; locale.
  #}
 {% set invoice = document.invoice %}
 {% set seller = document.seller %}
@@ -85,7 +86,13 @@
                     {% endfor %}
                     <tr><td>{{ __('Refund of order #%s')|format(order.number) }}</td><td class="amount">−{{ invoice.amount|money(invoice.currency) }}</td></tr>
                 </tbody>
-                <tfoot><tr class="total"><th scope="row">{{ __('Total') }}</th><td class="amount">−{{ invoice.amount|money(invoice.currency) }}</td></tr></tfoot>
+                <tfoot>
+                    <tr class="total"><th scope="row">{{ __('Total') }}</th><td class="amount">−{{ invoice.amount|money(invoice.currency) }}</td></tr>
+                    {% for tax in document.taxes %}
+                        {# translators: 1: tax name, 2: its rate -#}
+                        <tr><th scope="row">{{ __('Including %1$s (%2$s%%)')|format(tax.name, tax.percent) }}</th><td class="amount">−{{ tax.amount|money(invoice.currency) }}</td></tr>
+                    {% endfor %}
+                </tfoot>
             </table>
         {% else %}
             <table>

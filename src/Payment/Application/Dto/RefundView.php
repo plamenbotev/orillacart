@@ -27,6 +27,10 @@ final readonly class RefundView
         public ?string $error,
         public string $createdAt,
         public ?string $settledAt,
+        /** The tax inside the amount. */
+        public string $tax = '0',
+        /** @var list<array{name: string, percent: string, amount: string}> */
+        public array $taxes = [],
     ) {}
 
     public static function fromRefund(Refund $refund): self
@@ -50,6 +54,8 @@ final readonly class RefundView
             $refund->error(),
             $refund->createdAt()->format(\DATE_ATOM),
             $refund->settledAt()?->format(\DATE_ATOM),
+            (string) $refund->tax(),
+            $refund->taxes(),
         );
     }
 }

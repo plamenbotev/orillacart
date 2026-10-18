@@ -13,7 +13,8 @@ final readonly class InvoiceDocument
 {
     /**
      * @param array<string, string>                 $seller
-     * @param list<array{line: int, quantity: int}> $lines  the order lines a credit note gives back
+     * @param list<array{line: int, quantity: int}>                       $lines  the order lines a credit note gives back
+     * @param list<array{name: string, percent: string, amount: string}> $taxes  the tax a credit note gives back, by rate
      */
     public function __construct(
         public InvoiceView $invoice,
@@ -22,5 +23,6 @@ final readonly class InvoiceDocument
         public array $lines,
         /** For a credit note: the invoice it corrects. */
         public ?string $corrects,
+        public array $taxes = [],
     ) {}
 }

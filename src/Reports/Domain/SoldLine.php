@@ -44,5 +44,8 @@ class SoldLine
         public readonly int $quantity,
         #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
         public readonly string $net,
+        /** The line's share of the refunds, before tax. */
+        #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+        public readonly string $refunded = '0',
     ) {}
 }

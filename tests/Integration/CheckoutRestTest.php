@@ -509,7 +509,7 @@ final class CheckoutRestTest extends RestTestCase
     private function clean(): void
     {
         $wpdb = $this->wpdb();
-        foreach (['coupon_redemptions', 'coupons', 'consignments', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'shipping_classes', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['invoices', 'refunds', 'coupon_redemptions', 'coupons', 'consignments', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'shipping_classes', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
         foreach (array_keys(wp_load_alloptions()) as $option) {

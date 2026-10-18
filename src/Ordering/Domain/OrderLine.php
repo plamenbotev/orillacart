@@ -97,6 +97,10 @@ class OrderLine
     #[ORM\Column(options: ['default' => 0])]
     private int $refundedQuantity = 0;
 
+    /** The money given back for this line, with its tax: its share of each refund that covered it. */
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+    private string $refundedAmount = '0';
+
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Order::class, inversedBy: 'lines')]
         #[ORM\JoinColumn(name: 'order_id', nullable: false, onDelete: 'CASCADE')]
@@ -299,6 +303,17 @@ class OrderLine
     public function refundedQuantity(): int
     {
         return $this->refundedQuantity;
+    }
+
+    public function refundedAmount(): Money
+    {
+        return Money::of($this->refundedAmount);
+    }
+
+    /** @internal for Order: this line's share of a refund. */
+    public function refunded(Money $amount): void
+    {
+        $this->refundedAmount = $this->refundedAmount()->add($amount)->toFixed();
     }
 
     /** Items not refunded yet. */

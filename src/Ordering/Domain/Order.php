@@ -157,6 +157,14 @@ class Order
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
     private string $refundedTotal = '0';
 
+    /** The tax inside what was given back. */
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+    private string $refundedTax = '0';
+
+    /** What the customer paid: the total, unless a provider took another amount. Refunds give back no more. */
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, nullable: true)]
+    private ?string $paidAmount = null;
+
     #[ORM\Column(options: ['default' => false])]
     private bool $shippingRefunded = false;
 
@@ -417,10 +425,21 @@ class Order
         return Money::of($this->refundedTotal);
     }
 
-    /** What is left to give back. */
+    public function refundedTax(): Money
+    {
+        return Money::of($this->refundedTax);
+    }
+
+    /** What the customer paid; nothing before the payment. */
+    public function paidAmount(): Money
+    {
+        return $this->paidAmount === null ? Money::zero() : Money::of($this->paidAmount);
+    }
+
+    /** What is left to give back: what was paid, less what went back. */
     public function refundable(): Money
     {
-        return $this->total()->subtract($this->refundedTotal())->atLeastZero();
+        return $this->paidAmount()->subtract($this->refundedTotal())->atLeastZero();
     }
 
     public function isShippingRefunded(): bool
@@ -464,13 +483,15 @@ class Order
      * Records money given back. Refunded items stop their downloads once none of the line is left; an order
      * refunded in full becomes Refunded, and the stock of what was not refunded item by item stays sold.
      *
-     * @return list<TakenItem> the stock to put back: the refunded items', when the refund restocks
+     * @return RefundShare the tax given back, and the stock to put back: the refunded items', when the refund
+     *                     restocks
      *
      * @throws OrderRuleViolation as checkRefund()
      */
-    public function refund(OrderRefund $refund): array
+    public function refund(OrderRefund $refund): RefundShare
     {
         $this->checkRefund($refund);
+        $tax = $this->refundTax($refund);
         $taken = [];
         foreach ($this->lines as $line) {
             $quantity = $refund->quantities[$line->position()] ?? 0;
@@ -487,11 +508,90 @@ class Order
         }
         $this->shippingRefunded = $this->shippingRefunded || $refund->shipping;
         $this->refundedTotal = $this->refundedTotal()->add($refund->amount)->toFixed();
+        $this->refundedTax = $this->refundedTax()->add($tax)->toFixed();
         if ($this->refundable()->isZero()) {
             array_push($taken, ...$this->close(OrderStatus::Refunded, false));
         }
 
-        return $taken;
+        return new RefundShare($tax, $this->taxShares($tax), $taken);
+    }
+
+    /**
+     * The tax inside a refund's amount, and the amount spread over the lines: the share the tax is of what the
+     * refund covers, the refunded items (by quantity) and shipping, or the whole order when it names neither.
+     * Never more than is left of the order's tax; the refund that empties the order gives back all of it.
+     */
+    private function refundTax(OrderRefund $refund): Money
+    {
+        $gross = Money::zero();
+        $tax = Money::zero();
+        $covered = [];
+        foreach ($this->lines as $line) {
+            $quantity = $refund->quantities[$line->position()] ?? 0;
+            if ($quantity > 0) {
+                [$lineGross, $lineTax] = $this->lineShare($line, $quantity);
+                $covered[] = [$line, $lineGross];
+                $gross = $gross->add($lineGross);
+                $tax = $tax->add($lineTax);
+            }
+        }
+        if ($refund->shipping) {
+            $gross = $gross->add($this->shippingTotal())->add($this->pricesIncludeTax ? Money::zero() : $this->shippingTax());
+            $tax = $tax->add($this->shippingTax());
+        }
+        if ($gross->isZero()) {
+            foreach ($this->lines as $line) {
+                $covered[] = [$line, $this->lineShare($line, $line->quantity())[0]];
+            }
+            [$gross, $tax] = [$this->total(), $this->itemsTax()->add($this->shippingTax())];
+        }
+        foreach ($covered as [$line, $lineGross]) {
+            $line->refunded($refund->amount->proportion($lineGross, $gross));
+        }
+
+        $taxLeft = $this->itemsTax()->add($this->shippingTax())->subtract($this->refundedTax())->atLeastZero();
+        $share = $refund->amount->compare($this->refundable()) >= 0 ? $taxLeft : $tax->proportion($refund->amount, $gross);
+
+        return $share->compare($taxLeft) > 0 ? $taxLeft : $share;
+    }
+
+    /**
+     * What the customer paid for some of a line's items, and the tax inside it.
+     *
+     * @return array{Money, Money}
+     */
+    private function lineShare(OrderLine $line, int $quantity): array
+    {
+        $lineTax = $line->tax();
+        $lineGross = $line->total()->subtract($line->discount())->add($this->pricesIncludeTax ? Money::zero() : $lineTax);
+        $part = Money::of((string) $quantity);
+        $whole = Money::of((string) $line->quantity());
+
+        return [$lineGross->proportion($part, $whole), $lineTax->proportion($part, $whole)];
+    }
+
+    /**
+     * A refund's tax spread over the order's tax lines, in the share each holds of the order's tax; the last takes
+     * what rounding leaves.
+     *
+     * @return list<TaxLine>
+     */
+    private function taxShares(Money $tax): array
+    {
+        $lines = array_values(array_filter($this->taxes(), static fn(TaxLine $line): bool => !$line->amount->isZero()));
+        if ($tax->isZero() || $lines === []) {
+            return [];
+        }
+        $whole = array_reduce($lines, static fn(Money $sum, TaxLine $line): Money => $sum->add($line->amount), Money::zero());
+        $shares = [];
+        $left = $tax;
+        foreach ($lines as $index => $line) {
+            $amount = $index === \count($lines) - 1 ? $left : $tax->proportion($line->amount, $whole);
+            $left = $left->subtract($amount);
+            $shares[] = new TaxLine($line->name, $line->percent, $amount);
+        }
+
+        return $shares;
     }
 
     /**
@@ -712,7 +812,7 @@ class Order
      *
      * @throws OrderRuleViolation for a cancelled, failed or refunded order
      */
-    public function markPaid(?string $transactionId, \DateTimeImmutable $at): bool
+    public function markPaid(?string $transactionId, \DateTimeImmutable $at, ?Money $amount = null): bool
     {
         if ($this->paidAt !== null) {
             return false;
@@ -725,6 +825,7 @@ class Order
         }
         $this->transactionId = $transactionId;
         $this->paidAt = $at;
+        $this->paidAmount = ($amount ?? $this->total())->toFixed();
 
         return true;
     }
@@ -894,7 +995,7 @@ class Order
      *
      * @throws OrderRuleViolation for an order that did not close unpaid
      */
-    public function reopenPaid(?string $transactionId, \DateTimeImmutable $at, \Closure $take): void
+    public function reopenPaid(?string $transactionId, \DateTimeImmutable $at, \Closure $take, ?Money $amount = null): void
     {
         if (!\in_array($this->status, [OrderStatus::Cancelled, OrderStatus::Failed], true) || $this->paidAt !== null) {
             throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot be opened again.', $this->id(), strtolower($this->status->label())), 'orillacart_order_not_reopenable');
@@ -907,6 +1008,7 @@ class Order
         $this->status = OrderStatus::Processing;
         $this->transactionId = $transactionId;
         $this->paidAt = $at;
+        $this->paidAmount = ($amount ?? $this->total())->toFixed();
     }
 
     public function pricesIncludeTax(): bool

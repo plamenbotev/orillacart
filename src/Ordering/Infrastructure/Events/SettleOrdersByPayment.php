@@ -32,7 +32,7 @@ final readonly class SettleOrdersByPayment
     public function completed(PaymentCompleted $event): void
     {
         try {
-            $this->orders->markPaid($event->orderId, $event->transactionId, self::note('Paid', $event));
+            $this->orders->markPaid($event->orderId, $event->transactionId, self::note('Paid', $event), amount: $event->amount);
 
             return;
         } catch (OrderRuleViolation) {
@@ -43,7 +43,7 @@ final readonly class SettleOrdersByPayment
             return;
         }
         try {
-            if ($this->orders->paidAfterClosing($event->orderId, $event->transactionId, self::note('Paid', $event))) {
+            if ($this->orders->paidAfterClosing($event->orderId, $event->transactionId, self::note('Paid', $event), $event->amount)) {
                 return;
             }
         } catch (OrderRuleViolation $e) {

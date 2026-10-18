@@ -11,8 +11,10 @@ use OrillaCart\Extension\Payment\RefundRequest;
 use OrillaCart\Extension\Payment\RefundsPayments;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Settings;
+use OrillaCart\Ordering\Application\Dto\RefundedView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RefundOrder;
+use OrillaCart\Ordering\Application\Dto\TaxLineView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
@@ -65,7 +67,7 @@ final readonly class Refunds
         $payment = $this->refundablePayment($orderId);
 
         return new OrderRefundsView(
-            (string) Money::of($order->total)->subtract(Money::of($order->refundedTotal))->atLeastZero(),
+            $order->refundable,
             $order->currency,
             $order->paidAt !== null && $order->status !== 'refunded',
             $payment === null ? null : $this->name($payment->gateway()),
@@ -92,6 +94,12 @@ final readonly class Refunds
             }
         }
         $payment = $command->outside ? null : $this->refundablePayment($orderId);
+        if ($payment !== null) {
+            $left = $this->leftOf($payment);
+            if (Money::of($command->amount)->compare($left) > 0) {
+                throw new PaymentRuleViolation(\sprintf('The payment through %s has %s %s left to give back; refund the rest outside the shop.', $this->name($payment->gateway()), $left, $payment->currency()), 'orillacart_refund_over_payment');
+            }
+        }
         $refund = new Refund(
             $orderId,
             $payment?->id(),
@@ -109,7 +117,7 @@ final readonly class Refunds
         if ($payment === null) {
             $this->transactions->run(function () use ($refund, $orderId, $command, $userId): void {
                 $this->refunds->save($refund);
-                $this->orders->refund($orderId, $command->forOrder(), 'outside the shop', $userId);
+                $this->taxed($refund, $this->orders->refund($orderId, $command->forOrder(), 'outside the shop', $userId));
             });
         } else {
             // Saved before the provider is asked: an answer lost on the way leaves it pending, never forgotten.
@@ -223,7 +231,7 @@ final readonly class Refunds
 
         try {
             $order = $this->orders->order($payment->orderId());
-            $left = Money::of($order->total)->subtract(Money::of($order->refundedTotal));
+            $left = Money::of($order->refundable);
             if ($amount->isZero() || $amount->compare($left) > 0) {
                 $this->logger->warning('{gateway} refunded {amount} of order {order}, which has {left} left to refund; record it by hand.', ['gateway' => $payment->gateway(), 'amount' => (string) $amount, 'order' => $payment->orderId(), 'left' => (string) $left]);
 
@@ -235,7 +243,7 @@ final readonly class Refunds
             $this->orders->checkRefund($payment->orderId(), $command);
             $this->transactions->run(function () use ($refund, $payment, $command, $refundId): void {
                 $this->refunds->save($refund);
-                $this->orders->refund($payment->orderId(), $command, \sprintf('through %s (refund %s)', $this->name($payment->gateway()), $refundId), null);
+                $this->taxed($refund, $this->orders->refund($payment->orderId(), $command, \sprintf('through %s (refund %s)', $this->name($payment->gateway()), $refundId), null));
             });
         } catch (OrderNotFound|OrderRuleViolation $e) {
             $this->logger->warning('{gateway} refunded {amount} of order {order}, which the shop could not record: {message}', ['gateway' => $payment->gateway(), 'amount' => (string) $amount, 'order' => $payment->orderId(), 'message' => $e->getMessage()]);
@@ -382,7 +390,7 @@ final readonly class Refunds
 
                     return;
                 }
-                $this->orders->refund($refund->orderId(), $command, \sprintf('through %s (refund %s)', $this->name((string) $refund->gateway()), $reference), $userId);
+                $this->taxed($refund, $this->orders->refund($refund->orderId(), $command, \sprintf('through %s (refund %s)', $this->name((string) $refund->gateway()), $reference), $userId));
             } catch (OrderNotFound|OrderRuleViolation $e) {
                 // The money went back: the order must learn of it, even if not item by item.
                 $this->logger->error('Refund {refund} went through but order {order} could not record it: {message}', ['refund' => $refund->id(), 'order' => $refund->orderId(), 'message' => $e->getMessage()]);
@@ -398,6 +406,26 @@ final readonly class Refunds
         }
 
         return $refund;
+    }
+
+    /** What a payment has left to give back: its amount, less the refunds through it that went or are on the way. */
+    private function leftOf(Payment $payment): Money
+    {
+        $left = $payment->amount();
+        foreach ($this->refunds->ofOrder($payment->orderId()) as $refund) {
+            if ($refund->paymentId() === $payment->id() && $refund->status() !== RefundStatus::Failed) {
+                $left = $left->subtract($refund->amount());
+            }
+        }
+
+        return $left->atLeastZero();
+    }
+
+    /** The order recorded the refund: the refund keeps the tax it gave back, for the credit note and the books. */
+    private function taxed(Refund $refund, RefundedView $recorded): void
+    {
+        $refund->taxed(Money::of($recorded->tax), array_map(static fn(TaxLineView $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount], $recorded->taxes));
+        $this->refunds->save($refund);
     }
 
     /** The order's completed payment, when its gateway can refund it. */

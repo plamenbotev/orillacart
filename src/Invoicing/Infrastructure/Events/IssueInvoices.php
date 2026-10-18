@@ -25,6 +25,6 @@ final readonly class IssueInvoices
     #[AsEventListener]
     public function refunded(OrderRefunded $event): void
     {
-        $this->invoices->creditNote($event->orderId, $event->amount, array_map(static fn(int $line, int $quantity): array => ['line' => $line, 'quantity' => $quantity], array_keys($event->quantities), array_values($event->quantities)));
+        $this->invoices->creditNote($event->orderId, $event->amount, array_map(static fn(int $line, int $quantity): array => ['line' => $line, 'quantity' => $quantity], array_keys($event->quantities), array_values($event->quantities)), $event->taxes);
     }
 }

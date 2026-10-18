@@ -13,7 +13,8 @@ use OrillaCart\Shared\Domain\Event\PublicEvent;
 final readonly class OrderRefunded implements PublicEvent
 {
     /**
-     * @param array<int, int> $quantities items refunded by line position
+     * @param array<int, int>                                             $quantities items refunded by line position
+     * @param list<array{name: string, percent: string, amount: string}> $taxes      the tax inside the amount, by rate
      */
     public function __construct(
         public int $orderId,
@@ -21,6 +22,8 @@ final readonly class OrderRefunded implements PublicEvent
         public bool $full,
         public array $quantities = [],
         public bool $tellCustomer = true,
+        public string $tax = '0',
+        public array $taxes = [],
     ) {}
 
     public function hookName(): string

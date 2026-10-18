@@ -107,7 +107,7 @@ final readonly class DbalReportQueries implements ReportQueries
         $order = $sort === 'quantity' ? 'quantity DESC, net DESC' : 'net DESC, quantity DESC';
         $filter = $only === null ? '' : ' AND l.product_id IN (' . implode(', ', array_fill(0, \count($only), '?')) . ')';
         $rows = $this->tables->connection()->fetchAllAssociative(
-            "SELECT l.product_id, MAX(l.name) AS line_name, SUM(l.quantity) AS quantity, SUM(l.net) AS net, COUNT(DISTINCT l.order_id) AS orders
+            "SELECT l.product_id, MAX(l.name) AS line_name, SUM(l.quantity) AS quantity, SUM(l.net - l.refunded) AS net, COUNT(DISTINCT l.order_id) AS orders
              FROM {$this->tables->lines()} l
              WHERE l.counted = 1 AND l.currency = ? AND l.day BETWEEN ? AND ?{$filter}
              GROUP BY l.product_id
@@ -141,7 +141,7 @@ final readonly class DbalReportQueries implements ReportQueries
             'net' => self::money($row['net']),
             'orders' => self::int($row['orders']),
         ], $this->tables->connection()->fetchAllAssociative(
-            "SELECT tt.term_id AS category_id, MAX(t.name) AS name, SUM(l.quantity) AS quantity, SUM(l.net) AS net, COUNT(DISTINCT l.order_id) AS orders
+            "SELECT tt.term_id AS category_id, MAX(t.name) AS name, SUM(l.quantity) AS quantity, SUM(l.net - l.refunded) AS net, COUNT(DISTINCT l.order_id) AS orders
              FROM {$this->tables->lines()} l
              JOIN {$this->tables->wordpress('term_relationships')} tr ON tr.object_id = l.product_id
              JOIN {$this->tables->wordpress('term_taxonomy')} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy = ?

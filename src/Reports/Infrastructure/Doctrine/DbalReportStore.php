@@ -55,14 +55,14 @@ final readonly class DbalReportStore implements ReportStore
                 $facts->order->tax,
                 $facts->order->total,
             ], $facts));
-            $this->insert($this->tables->lines(), ['order_id', 'day', 'counted', 'currency', 'product_id', 'variation_id', 'name', 'quantity', 'net'], array_map(static fn(SoldLine $line): array => [
-                $line->orderId, $line->day->format(self::DAY), (int) $line->counted, $line->currency, $line->productId, $line->variationId, $line->name, $line->quantity, $line->net,
+            $this->insert($this->tables->lines(), ['order_id', 'day', 'counted', 'currency', 'product_id', 'variation_id', 'name', 'quantity', 'net', 'refunded'], array_map(static fn(SoldLine $line): array => [
+                $line->orderId, $line->day->format(self::DAY), (int) $line->counted, $line->currency, $line->productId, $line->variationId, $line->name, $line->quantity, $line->net, $line->refunded,
             ], array_merge(...array_map(static fn(OrderFacts $facts): array => $facts->lines, $facts))));
             $this->insert($this->tables->coupons(), ['order_id', 'day', 'counted', 'currency', 'code', 'amount'], array_map(static fn(UsedCoupon $coupon): array => [
                 $coupon->orderId, $coupon->day->format(self::DAY), (int) $coupon->counted, $coupon->currency, $coupon->code, $coupon->amount,
             ], array_merge(...array_map(static fn(OrderFacts $facts): array => $facts->coupons, $facts))));
-            $this->insert($this->tables->refunds(), ['refund_id', 'order_id', 'day', 'currency', 'amount'], array_map(static fn(GivenRefund $refund): array => [
-                $refund->refundId, $refund->orderId, $refund->day->format(self::DAY), $refund->currency, $refund->amount,
+            $this->insert($this->tables->refunds(), ['refund_id', 'order_id', 'day', 'currency', 'amount', 'tax'], array_map(static fn(GivenRefund $refund): array => [
+                $refund->refundId, $refund->orderId, $refund->day->format(self::DAY), $refund->currency, $refund->amount, $refund->tax,
             ], array_merge(...array_map(static fn(OrderFacts $facts): array => $facts->refunds, $facts))));
         });
     }

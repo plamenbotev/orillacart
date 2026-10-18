@@ -22,6 +22,7 @@ use OrillaCart\Ordering\Application\Dto\OrderPageView;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\Dto\OrderSummaryView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
+use OrillaCart\Ordering\Application\Dto\RefundedView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RefundOrder;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
@@ -34,6 +35,7 @@ use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderPaid;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
+use OrillaCart\Ordering\Domain\Event\OrderRepricing;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
 use OrillaCart\Ordering\Domain\FieldAnswer;
 use OrillaCart\Ordering\Domain\LineDownload;
@@ -188,11 +190,12 @@ final readonly class OrderService
      * @throws OrderNotFound
      * @throws OrderRuleViolation for an order that was cancelled or failed before the money came
      */
-    public function markPaid(int $id, ?string $transactionId, string $note = '', bool $tellCustomer = true, bool $tellShop = true): void
+    public function markPaid(int $id, ?string $transactionId, string $note = '', bool $tellCustomer = true, bool $tellShop = true, ?string $amount = null): void
     {
-        $this->changing($id, function (Order $order) use ($transactionId, $note, $tellCustomer, $tellShop): void {
+        $this->changing($id, function (Order $order) use ($transactionId, $note, $tellCustomer, $tellShop, $amount): void {
             $previous = $order->status();
-            if ($order->markPaid($transactionId, $this->clock->now())) {
+            if ($order->markPaid($transactionId, $this->clock->now(), $amount === null ? null : Money::of($amount))) {
+                $this->paidOtherThanTotal($order);
                 $order->status() === $previous ? $this->paidWhileFulfilled($order, $note, null) : $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
             } elseif ($transactionId !== null && $transactionId !== $order->transactionId()) {
                 $text = $order->paidAgain($transactionId)
@@ -227,6 +230,14 @@ final readonly class OrderService
     /**
      * Paid while it was being fulfilled: its status stays, its downloads come, its history says so.
      */
+    /** A payment for another amount than the order's total, as when the order changed after it began: the shop looks. */
+    private function paidOtherThanTotal(Order $order): void
+    {
+        if (!$order->paidAmount()->equals($order->total())) {
+            $order->needsAttention(\sprintf('The payment was %s %s, but the order totals %s %s: ask for the difference or give it back.', $order->paidAmount(), $order->currency(), $order->total(), $order->currency()), $this->clock->now());
+        }
+    }
+
     private function paidWhileFulfilled(Order $order, string $note, ?int $userId): void
     {
         if ($order->grantDownloads(static fn(): string => bin2hex(random_bytes(32)), $this->clock->now())) {
@@ -247,15 +258,16 @@ final readonly class OrderService
      * @throws OrderNotFound
      * @throws OrderRuleViolation for an order that did not close unpaid
      */
-    public function paidAfterClosing(int $id, ?string $transactionId, string $note = ''): bool
+    public function paidAfterClosing(int $id, ?string $transactionId, string $note = '', ?string $amount = null): bool
     {
         try {
-            $this->changing($id, function (Order $order) use ($transactionId, $note): void {
+            $this->changing($id, function (Order $order) use ($transactionId, $note, $amount): void {
                 $previous = $order->status();
                 $order->reopenPaid($transactionId, $this->clock->now(), fn(array $wanted): array => array_map(
                     static fn(array $taken): array => array_map(static fn(TakenStock $part): TakenItem => new TakenItem($part->item, $part->stockroomId, $part->quantity), $taken),
                     $this->stock->takeAgain($wanted),
-                ));
+                ), $amount === null ? null : Money::of($amount));
+                $this->paidOtherThanTotal($order);
                 $this->changed($order, $previous, [], trim(\sprintf('The money came after the order was %s, so it was opened again and its items taken again. %s', strtolower($previous->label()), $note)));
             });
         } catch (InsufficientStock) {
@@ -645,16 +657,18 @@ final readonly class OrderService
      * @throws OrderNotFound
      * @throws OrderRuleViolation
      */
-    public function refund(int $id, RefundOrder $command, string $how, ?int $userId, bool $tellCustomer = true): OrderView
+    public function refund(int $id, RefundOrder $command, string $how, ?int $userId, bool $tellCustomer = true): RefundedView
     {
-        return $this->changing($id, fn(Order $order): OrderView => $this->refunded($order, $command, $how, $userId, $tellCustomer));
+        return $this->changing($id, fn(Order $order): RefundedView => $this->refunded($order, $command, $how, $userId, $tellCustomer));
     }
 
-    private function refunded(Order $order, RefundOrder $command, string $how, ?int $userId, bool $tellCustomer): OrderView
+    private function refunded(Order $order, RefundOrder $command, string $how, ?int $userId, bool $tellCustomer): RefundedView
     {
         $previous = $order->status();
         $refund = self::orderRefund($command);
-        $this->giveBack($order->refund($refund));
+        $share = $order->refund($refund);
+        $this->giveBack($share->taken);
+        $taxes = array_map(static fn(TaxLine $tax): TaxLineView => new TaxLineView($tax->name, $tax->percent, (string) $tax->amount), $share->taxes);
         $text = \sprintf('Refunded %s %s %s.', $refund->amount, $order->currency(), $how);
         if ($refund->restock && $refund->quantities !== []) {
             $text .= ' The items went back in stock.';
@@ -666,13 +680,13 @@ final readonly class OrderService
         }
         $this->orders->save($order);
         $full = $order->status() === OrderStatus::Refunded;
-        $this->events->dispatch(new OrderRefunded($order->id(), (string) $refund->amount, $full, $refund->quantities, $tellCustomer));
+        $this->events->dispatch(new OrderRefunded($order->id(), (string) $refund->amount, $full, $refund->quantities, $tellCustomer, (string) $share->tax, array_map(static fn(TaxLineView $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount], $taxes)));
         if ($order->status() !== $previous) {
             // The refund's own email tells the customer.
             $this->events->dispatch(new OrderStatusChanged($order->id(), $order->status(), $previous, false, false));
         }
 
-        return $this->view($order, true);
+        return new RefundedView((string) $share->tax, $taxes);
     }
 
     /**
@@ -701,6 +715,7 @@ final readonly class OrderService
 
     private function itemsReplaced(Order $order, NewOrderItems $command, ?int $userId): OrderView
     {
+        $this->events->dispatch(new OrderRepricing($order->id()));
         $before = (string) $order->total();
         $order->replaceItems(
             self::lineDrafts($command->lines),

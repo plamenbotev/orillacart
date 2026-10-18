@@ -16,5 +16,7 @@ final readonly class PaymentCompleted implements DomainEvent
         public int $paymentId,
         public string $gateway,
         public ?string $transactionId = null,
+        /** What the payment took, which the order may no longer total. */
+        public ?string $amount = null,
     ) {}
 }

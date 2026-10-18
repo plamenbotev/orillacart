@@ -27,7 +27,11 @@ class GivenRefund
         public readonly \DateTimeImmutable $day,
         #[ORM\Column(length: 3)]
         public readonly string $currency,
+        /** Before tax, as the sales are. */
         #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
         public readonly string $amount,
+        /** The tax given back with it. */
+        #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+        public readonly string $tax = '0',
     ) {}
 }

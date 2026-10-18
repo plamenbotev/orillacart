@@ -75,6 +75,8 @@ final readonly class OrderView
         public bool $reverseCharge = false,
         /** The customer's details were erased, as a privacy request asked. */
         public bool $anonymised = false,
+        /** What is left to give back: what was paid, less the refunds. */
+        public string $refundable = '0',
     ) {}
 
     /**
@@ -129,6 +131,7 @@ final readonly class OrderView
             $order->vatNumber(),
             $order->reverseCharge(),
             $order->anonymisedAt() !== null,
+            (string) $order->refundable(),
         );
     }
 }

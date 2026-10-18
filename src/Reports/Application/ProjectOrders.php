@@ -126,6 +126,7 @@ final readonly class ProjectOrders implements JobHandler
                 mb_substr($line->name, 0, 255),
                 $line->quantity,
                 $net((string) Money::of($line->total)->subtract(Money::of($line->discount)), $line->tax),
+                self::refundedNet($line, $order->pricesIncludeTax),
             ), $order->lines),
             array_map(static fn(OrderDiscountView $discount): UsedCoupon => new UsedCoupon(
                 $order->number,
@@ -141,8 +142,22 @@ final readonly class ProjectOrders implements JobHandler
                 $order->number,
                 new \DateTimeImmutable($refund->settledAt ?? $refund->createdAt)->setTimezone($zone)->setTime(0, 0),
                 $refund->currency,
-                $refund->amount,
+                (string) Money::of($refund->amount)->subtract(Money::of($refund->tax)),
+                $refund->tax,
             ), array_filter($this->refunds->forOrder($order->number)->refunds, static fn(RefundView $refund): bool => $refund->status === 'done'))),
         );
+    }
+
+    /** A line's share of the refunds before tax: its refunded money less the tax in it, as the line's net is of its gross. */
+    private static function refundedNet(OrderLineView $line, bool $pricesIncludeTax): string
+    {
+        $refunded = Money::of($line->refundedAmount);
+        $net = Money::of($line->total)->subtract(Money::of($line->discount));
+        if ($pricesIncludeTax) {
+            $net = $net->subtract(Money::of($line->tax));
+        }
+        $gross = $net->add(Money::of($line->tax));
+
+        return (string) $refunded->proportion($net, $gross);
     }
 }

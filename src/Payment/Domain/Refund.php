@@ -40,6 +40,14 @@ class Refund
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $settledAt = null;
 
+    /** The tax inside the amount, once the order recorded the refund. */
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+    private string $tax = '0';
+
+    /** @var list<array{name: string, percent: string, amount: string}> the tax by the order's rates */
+    #[ORM\Column(type: 'json')]
+    private array $taxes = [];
+
     /**
      * @param array<int, int> $quantities items it covers, by order line position
      */
@@ -107,6 +115,28 @@ class Refund
     public function amount(): Money
     {
         return Money::of($this->amount);
+    }
+
+    public function tax(): Money
+    {
+        return Money::of($this->tax);
+    }
+
+    /** @return list<array{name: string, percent: string, amount: string}> */
+    public function taxes(): array
+    {
+        return $this->taxes;
+    }
+
+    /**
+     * The order recorded the refund and says what tax it gave back.
+     *
+     * @param list<array{name: string, percent: string, amount: string}> $taxes
+     */
+    public function taxed(Money $tax, array $taxes): void
+    {
+        $this->tax = $tax->toFixed();
+        $this->taxes = $taxes;
     }
 
     public function currency(): string

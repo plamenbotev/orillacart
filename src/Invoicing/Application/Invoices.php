@@ -54,14 +54,15 @@ final readonly class Invoices
     /**
      * The credit note of money given back. Run it in the refund's transaction.
      *
-     * @param list<array{line: int, quantity: int}> $lines
+     * @param list<array{line: int, quantity: int}>                       $lines
+     * @param list<array{name: string, percent: string, amount: string}> $taxes the tax inside the amount, by rate
      *
      * @throws OrderNotFound
      */
-    public function creditNote(int $orderId, string $amount, array $lines): void
+    public function creditNote(int $orderId, string $amount, array $lines, array $taxes = []): void
     {
         $order = $this->orders->order($orderId);
-        $this->issue($orderId, InvoiceKind::CreditNote, Money::of($amount), $order->currency, $lines);
+        $this->issue($orderId, InvoiceKind::CreditNote, Money::of($amount), $order->currency, $lines, $taxes);
     }
 
     /**
@@ -101,7 +102,7 @@ final readonly class Invoices
             }
         }
 
-        return new InvoiceDocument($this->view($invoice, $orderKey), $invoice->seller(), $order, $invoice->lines(), $corrects);
+        return new InvoiceDocument($this->view($invoice, $orderKey), $invoice->seller(), $order, $invoice->lines(), $corrects, $invoice->taxes());
     }
 
     public function settings(): InvoiceSettingsView
@@ -128,9 +129,10 @@ final readonly class Invoices
     }
 
     /**
-     * @param list<array{line: int, quantity: int}> $lines
+     * @param list<array{line: int, quantity: int}>                       $lines
+     * @param list<array{name: string, percent: string, amount: string}> $taxes
      */
-    private function issue(int $orderId, InvoiceKind $kind, Money $amount, string $currency, array $lines): void
+    private function issue(int $orderId, InvoiceKind $kind, Money $amount, string $currency, array $lines, array $taxes = []): void
     {
         $settings = $this->settings->load();
         $now = $this->clock->now();
@@ -139,7 +141,7 @@ final readonly class Invoices
         $sequence = $counter->take();
         $this->invoices->saveCounter($counter);
         $number = $settings->prefix($kind) . ($settings->yearly ? $year . '-' : '') . str_pad((string) $sequence, 5, '0', \STR_PAD_LEFT);
-        $this->invoices->save(new Invoice($orderId, $kind, $number, $amount, $currency, $settings->seller(), $now, $lines));
+        $this->invoices->save(new Invoice($orderId, $kind, $number, $amount, $currency, $settings->seller(), $now, $lines, $taxes));
     }
 
     private function view(Invoice $invoice, string $orderKey): InvoiceView
