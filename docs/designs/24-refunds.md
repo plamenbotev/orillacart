@@ -46,6 +46,11 @@ interface RefundingGateway
   `done` or `failed` with the provider's message; a pending row left by a crash is checked against the provider
   on the next view.
 
+## Answers (2026-10-18)
+
+1. A partial refund may be an amount only, with a reason and no lines, for goodwill gestures; no stock goes back.
+2. Refunds are the shop's action only for now; customer requests (returns) can be a later item.
+
 ## Questions for you
 
 1. Should a partial refund be allowed by amount only (no lines), for goodwill gestures?

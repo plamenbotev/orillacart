@@ -36,6 +36,11 @@ A **Coupons** screen (Shop → Coupons, DataViews list) where each coupon has:
 variation / category / brand, id, excluded), `coupon_redemptions` (coupon, order, customer or email, amount,
 at). Order lines gain `discount`; orders gain `discounts` (JSON: code, description, amount).
 
+## Answers (2026-10-18)
+
+1. Several coupons per order, when each is marked "combines with others"; a coupon without the mark is used alone.
+2. Coupons stay code-only; automatic discounts belong to item 23's dynamic prices.
+
 ## Questions for you
 
 1. Should several coupons be allowed on one order (each marked "combines with others"), or one per order?

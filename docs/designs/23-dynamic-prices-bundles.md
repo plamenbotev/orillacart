@@ -39,6 +39,14 @@ A **set** is the simple case: a fixed bundle without choices, shown and sold as 
 from its items. It is a bundle with every item required, so it needs no separate model; the admin offers
 "Set" as a shortcut that hides the bundle options.
 
+## Answers (2026-10-18)
+
+1. Customer groups are a list the shop manages (Shop → Customers), not WordPress roles; a customer can be in
+   several.
+2. A bundle is one line in the cart and on the order, with its contents listed underneath; stock is still taken
+   per item.
+3. Automatic discounts without a code live here, not in coupons (answered with item 22).
+
 ## Questions for you
 
 1. Customer groups: WordPress roles only, or a separate group list the shop manages?

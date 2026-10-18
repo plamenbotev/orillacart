@@ -60,10 +60,10 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 28 | Background jobs with an overview (asked 2026-10-18): one queue for all async work (search indexing first, then emails, tracking, webhooks), lanes, retries, failed jobs to retry or delete, workers with heartbeat, and a Shop → Background jobs screen (waiting, running, failed, workers, history) | [design](docs/designs/28-background-jobs.md); emails on jobs now, done jobs kept as hourly counts (decided 2026-10-18) |
 | ✅ | 28a | ↳ The job system (lanes, unique jobs, batches, retries with back-off, failed jobs, hourly counts, workers in a table) with `wp orillacart jobs`; the search index runs on it | 0a68945 |
 | ✅ | 28b | ↳ Order emails as `mail.order` jobs (retried after 1, 4, 16, 64 minutes, then failed; resending from the order stays immediate) and shipment tracking as `shipping.track` jobs, one per shipment | e9bf28c |
-| ✅ | 28c | ↳ Shop → Background jobs screen, refreshed every 5 seconds: lanes, workers (restart), whether anything runs the queue, failed jobs to retry or delete (one, chosen or all, with payload), 24-hour chart and 30-day totals, scheduled jobs | (this commit) |
-| 📝 | 22 | Coupon codes: by rules (minimum amount, dates, usage limits, per customer) or for specific products and categories | [design](docs/designs/22-coupons.md) |
-| 📝 | 23 | Dynamic prices (quantity tiers, customer groups, scheduled rules), bundles and sets | [design](docs/designs/23-dynamic-prices-bundles.md) |
-| 📝 | 24 | Refunds through the payment methods: a contract the gateways that can refund implement (PayPal's refund API); offline methods recorded by hand; full and partial | [design](docs/designs/24-refunds.md) |
+| ✅ | 28c | ↳ Shop → Background jobs screen, refreshed every 5 seconds: lanes, workers (restart), whether anything runs the queue, failed jobs to retry or delete (one, chosen or all, with payload), 24-hour chart and 30-day totals, scheduled jobs | f7eac24 |
+| 📝 | 22 | Coupon codes: by rules (minimum amount, dates, usage limits, per customer) or for specific products and categories | [design](docs/designs/22-coupons.md); questions answered 2026-10-18 |
+| 📝 | 23 | Dynamic prices (quantity tiers, customer groups, scheduled rules), bundles and sets | [design](docs/designs/23-dynamic-prices-bundles.md); questions answered 2026-10-18 |
+| 📝 | 24 | Refunds through the payment methods: a contract the gateways that can refund implement (PayPal's refund API); offline methods recorded by hand; full and partial | [design](docs/designs/24-refunds.md); questions answered 2026-10-18 |
 
 ## Waiting on others
 
