@@ -99,8 +99,9 @@ final readonly class JobRunner
 
         try {
             $outcomes = $handler->handle($runnable);
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
             // One job spoiled the batch: run them one by one, so only that one is retried.
+            $this->logger->warning('A batch of {type} jobs failed, so each runs on its own: {message}', ['type' => $type, 'message' => $e->getMessage(), 'exception' => $e]);
             $outcomes = [];
             foreach ($runnable as $job) {
                 try {

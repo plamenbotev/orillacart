@@ -9,6 +9,7 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
 use OrillaCart\Notifications\Application\SendOrderEmails;
 use OrillaCart\Notifications\Domain\EmailKind;
@@ -121,6 +122,35 @@ final class OrderEmailsTest extends TestCase
         $this->shop->clock->sleep(60);
         $this->shop->jobs->runAll();
         self::assertCount(2, $this->shop->mail->emails);
+    }
+
+    public function testAJobRunAgainDoesNotSendItsMailTwice(): void
+    {
+        $order = $this->place('bank_transfer');
+        $sent = \count($this->shop->mail->emails);
+        $job = new QueuedJob('142', 'mail', SendOrderEmails::TYPE, null, ['order' => $order->number, 'kind' => 'order_received'], 1, 1);
+        $handler = $this->shop->jobs->get(SendOrderEmails::TYPE);
+
+        // Its worker stopped after the mail went out, so another worker claims it again.
+        $handler->handle([$job]);
+        $handler->handle([$job]);
+
+        self::assertCount($sent + 1, $this->shop->mail->emails);
+    }
+
+    public function testAnEmailThatBreaksStaysWithItsJobAndTheOthersGoOutOnce(): void
+    {
+        $order = $this->place('bank_transfer');
+        $sent = \count($this->shop->mail->emails);
+        $this->shop->mail->breaksFor = 'owner@shop.test';
+        $customer = new QueuedJob('101', 'mail', SendOrderEmails::TYPE, null, ['order' => $order->number, 'kind' => 'order_received'], 1, 1);
+        $shop = new QueuedJob('102', 'mail', SendOrderEmails::TYPE, null, ['order' => $order->number, 'kind' => 'new_order'], 1, 1);
+
+        $outcomes = $this->shop->jobs->get(SendOrderEmails::TYPE)->handle([$customer, $shop]);
+
+        self::assertCount(1, $outcomes, 'only the broken one is tried again');
+        self::assertTrue(($outcomes[$shop->id] ?? null)?->isRetry());
+        self::assertCount($sent + 1, $this->shop->mail->emails);
     }
 
     public function testAMailRefusedEveryTimeIsFailedForTheShopToSee(): void

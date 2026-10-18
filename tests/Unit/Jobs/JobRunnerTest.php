@@ -51,7 +51,7 @@ final class JobRunnerTest extends TestCase
         $left = array_values($this->test->queue->jobs);
         self::assertSame(['b', 'B is broken.'], [$left[0]['key'], $left[0]['error']]);
         self::assertEquals($this->test->clock->now()->modify('+10 seconds'), $left[0]['at']);
-        self::assertSame('error', $this->test->logger->records[0]['level'] ?? null);
+        self::assertSame(['warning', 'error'], array_column($this->test->logger->records, 'level'), 'the batch failing, then the job');
     }
 
     public function testAJobThatKeepsFailingIsGivenUpForTheShopToRetry(): void

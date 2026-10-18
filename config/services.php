@@ -46,6 +46,8 @@ use OrillaCart\Jobs\Infrastructure\WordPress\TableWorkerRegistry;
 use OrillaCart\Notifications\Application\Mailer;
 use OrillaCart\Notifications\Application\Site;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
+use OrillaCart\Notifications\Domain\SentEmails;
+use OrillaCart\Notifications\Infrastructure\Doctrine\DoctrineSentEmails;
 use OrillaCart\Notifications\Infrastructure\WordPress\OptionEmailSettingsRepository;
 use OrillaCart\Notifications\Infrastructure\WordPress\WordPressMailer;
 use OrillaCart\Notifications\Infrastructure\WordPress\WordPressSite;
@@ -222,6 +224,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ShopPagesRepository::class, OptionShopPagesRepository::class);
     $services->alias(DownloadGrantRepository::class, DoctrineDownloadGrantRepository::class);
     $services->alias(EmailSettingsRepository::class, OptionEmailSettingsRepository::class);
+    $services->alias(SentEmails::class, DoctrineSentEmails::class);
     $services->alias(Mailer::class, WordPressMailer::class);
     $services->alias(Site::class, WordPressSite::class);
     $services->alias(Accounts::class, WordPressAccounts::class);

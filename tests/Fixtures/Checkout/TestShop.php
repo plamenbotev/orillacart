@@ -99,6 +99,7 @@ use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockroomRepository;
 use OrillaCart\Tests\Fixtures\Jobs\TestJobs;
 use OrillaCart\Tests\Fixtures\Notifications\FakeSite;
 use OrillaCart\Tests\Fixtures\Notifications\InMemoryEmailSettingsRepository;
+use OrillaCart\Tests\Fixtures\Notifications\InMemorySentEmails;
 use OrillaCart\Tests\Fixtures\Notifications\SentMail;
 use OrillaCart\Tests\Fixtures\Ordering\FakeOrderLinks;
 use OrillaCart\Tests\Fixtures\Ordering\InMemoryDownloadGrantRepository;
@@ -172,6 +173,7 @@ final class TestShop
     public readonly InMemoryEmailSettingsRepository $emailSettings;
     public readonly OrderEmails $emails;
     public readonly TestJobs $jobs;
+    public readonly InMemorySentEmails $sentEmails;
     public readonly InMemoryAccounts $accounts;
     public readonly InMemoryCustomerSettingsRepository $customerSettings;
     public readonly CustomerService $customers;
@@ -281,9 +283,10 @@ final class TestShop
         $this->consignmentRecords = new InMemoryConsignmentRepository();
         $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger);
         $this->jobs = new TestJobs($this->clock);
+        $this->sentEmails = new InMemorySentEmails();
         $this->jobs->immediate = true;
         $this->emails = new OrderEmails($this->orders, new FakeOrderLinks(), $this->emailSettings, $templates, $this->mail, new FakeSite(), $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs);
-        $this->jobs->with(new SendOrderEmails($this->emails), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));
+        $this->jobs->with(new SendOrderEmails($this->emails, $this->sentEmails, $this->clock, $this->logger), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));
         $emailing = new EmailAboutOrders($this->emails);
         $this->events->addListener(OrderStatusChanged::class, $emailing->statusChanged(...));
         $this->events->addListener(OrderNoteAdded::class, $emailing->noteAdded(...));
