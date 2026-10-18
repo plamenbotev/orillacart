@@ -35,9 +35,9 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 10 | Price sorts; Products block for featured or sale products only | f4d31e3 |
 | ✅ | 11 | Category thumbnail | dfa3397 |
 | ✅ | 12 | Stockroom delivery time in days or weeks | 0ebf7d1 |
-| ✅ | 13 | Orders: move to another customer or to guest; change the shipping method; edit download allowances | (this commit) |
-| 🔄 | 14 | Shop manager role | |
-| ⬜ | 15 | Shipping classes on products and rates | |
+| ✅ | 13 | Orders: move to another customer or to guest; change the shipping method; edit download allowances | 01e6eb2 |
+| ✅ | 14 | Shop manager role: an editor plus the shop; no user, plugin or site settings access | (this commit) |
+| 🔄 | 15 | Shipping classes on products and rates | |
 | ⬜ | 16 | Postcode patterns on shipping rates | |
 | ⬜ | 17 | Regions excluded from a shipping rate | |
 | ⬜ | 18 | Option prices as a percentage | |
