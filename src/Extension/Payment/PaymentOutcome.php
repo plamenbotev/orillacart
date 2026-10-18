@@ -65,13 +65,6 @@ final readonly class PaymentOutcome
     }
 
     /**
-     * Part or all of a completed payment went back. The shop records a refund it did not make itself, once per
-     * $refundId; one it made is recognised by that id.
-     *
-     * @param string      $reference     the payment's reference; empty when the provider names only the transaction
-     * @param string|null $transactionId the payment's transaction, to find it by when the reference is empty
-     */
-    /**
      * The money of a completed payment is in question: the provider reversed it, or the customer opened a
      * dispute or chargeback. The order keeps its status; the shop is asked to look.
      *
@@ -83,6 +76,13 @@ final readonly class PaymentOutcome
         return new self($reference, self::DISPUTED, $transactionId, reason: $reason);
     }
 
+    /**
+     * Part or all of a completed payment went back. The shop records a refund it did not make itself, once per
+     * $refundId; one it made is recognised by that id.
+     *
+     * @param string      $reference     the payment's reference; empty when the provider names only the transaction
+     * @param string|null $transactionId the payment's transaction, to find it by when the reference is empty
+     */
     public static function refunded(string $reference, string $refundId, string $amount, ?string $currency = null, ?string $transactionId = null): self
     {
         return new self($reference, self::REFUNDED, $transactionId, $amount, $currency, $refundId);

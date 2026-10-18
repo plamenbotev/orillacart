@@ -227,9 +227,6 @@ final readonly class OrderService
         });
     }
 
-    /**
-     * Paid while it was being fulfilled: its status stays, its downloads come, its history says so.
-     */
     /** A payment for another amount than the order's total, as when the order changed after it began: the shop looks. */
     private function paidOtherThanTotal(Order $order): void
     {
@@ -238,6 +235,9 @@ final readonly class OrderService
         }
     }
 
+    /**
+     * Paid while it was being fulfilled: its status stays, its downloads come, its history says so.
+     */
     private function paidWhileFulfilled(Order $order, string $note, ?int $userId): void
     {
         if ($order->grantDownloads(static fn(): string => bin2hex(random_bytes(32)), $this->clock->now())) {

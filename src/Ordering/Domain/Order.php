@@ -612,11 +612,6 @@ class Order
     }
 
     /**
-     * The customer's details as the shop corrected them. The shipping address stays only on orders that ship.
-     *
-     * @throws OrderRuleViolation for an invalid email, or a shipping address on an order that ships nothing
-     */
-    /**
      * @return list<FieldAnswer>
      */
     public function fields(): array
@@ -647,6 +642,11 @@ class Order
         return $fields === [] ? null : array_map(static fn(FieldAnswer $field): array => ['id' => $field->id, 'label' => $field->label, 'answer' => $field->answer], $fields);
     }
 
+    /**
+     * The customer's details as the shop corrected them. The shipping address stays only on orders that ship.
+     *
+     * @throws OrderRuleViolation for an invalid email, or a shipping address on an order that ships nothing
+     */
     public function changeContact(string $email, Address $billing, ?Address $shippingAddress): void
     {
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || mb_strlen($email) > 200) {
