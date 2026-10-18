@@ -132,3 +132,37 @@ A method that implements `TracksShipments` is asked every hour where the shipmen
 `track($number, $settings)` returns a `Tracking` (on the way, delivered or returned, with the courier's
 words). A delivered shipment completes its order when the order is shipped. The receipt and the emails show
 every shipment with its tracking link.
+
+## Actions and filters
+
+Besides the registry, the shop announces what happens as WordPress actions, after the change is saved, and
+lets plugins adjust a few things through filters. Arguments are ids and plain values.
+
+| action | arguments |
+|---|---|
+| `orillacart_order_placed` | order number |
+| `orillacart_order_status_changed` | order number, new status, previous status |
+| `orillacart_order_changed` | order number (its items, its customer's details or whose order it is) |
+| `orillacart_order_refunded` | order number, amount, whether it is now refunded in full |
+| `orillacart_order_note_added` | order number, the note, whether it is for the customer |
+| `orillacart_order_deleted` | order number |
+| `orillacart_product_changed` | product id |
+| `orillacart_catalog_items_removed` | product ids, variation ids, option ids |
+| `orillacart_stock_changed` | item (`product:12`, `variation:30`, `option:7`), how many could be sold before and after (null: unlimited) |
+| `orillacart_price_rules_changed` | |
+| `orillacart_tax_rates_changed` | tax group id |
+| `orillacart_settings_changed` | the settings now and before |
+
+| filter | value | arguments |
+|---|---|---|
+| `orillacart_registration_errors` | a `WP_Error`; add an error to refuse a shop sign-up (at checkout or on the account page) with its message | email, first name, last name, the login the shop would give |
+
+WordPress's own `registration_errors` is left to the wp-login.php form: captcha plugins on it expect that form's
+fields and would refuse every shop sign-up.
+
+## Translations
+
+The plugin's text domain is `orillacart`. `npm run i18n:pot` writes `languages/orillacart.pot` from the PHP
+code, the built scripts and the Twig templates (a `{# translators: … #}` comment on the line before a string
+reaches the translators). Translations shipped with the plugin go in `languages/` as `orillacart-<locale>.mo`
+and, for the scripts, the JSON files `wp i18n make-json` writes next to the `.po`.

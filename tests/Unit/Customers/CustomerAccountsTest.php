@@ -13,6 +13,8 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Customers\Application\Dto\CustomerQuery;
 use OrillaCart\Customers\Application\Dto\SaveAddresses;
+use OrillaCart\Customers\Application\Dto\SaveCustomerGroup;
+use OrillaCart\Customers\Application\Dto\SetCustomerGroups;
 use OrillaCart\Customers\Application\Dto\UpdateCustomerSettings;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
@@ -113,6 +115,33 @@ final class CustomerAccountsTest extends TestCase
 
         $saved = $this->shop->customers->saveAddresses($ada, new SaveAddresses($this->address, $this->address));
         self::assertEquals($this->address, $saved->shippingAddress);
+    }
+
+    public function testADeletedAccountsOrdersBecomeGuestOrdersAndItsCartAndGroupsGo(): void
+    {
+        $ada = $this->shop->accounts->add('ada@example.com');
+        $grace = $this->shop->accounts->add('grace@example.com');
+        $group = $this->shop->customerGroups->create(new SaveCustomerGroup('Wholesale'));
+        $this->shop->customerGroups->setGroupsOf($ada, new SetCustomerGroups([$group->id]));
+        $this->shop->customerGroups->setGroupsOf($grace, new SetCustomerGroups([$group->id]));
+        $first = $this->place(new CartOwner(null, $ada));
+        $second = $this->place(new CartOwner(null, $ada));
+        $this->cart(new CartOwner(null, $ada));
+        $this->place(new CartOwner(null, $grace), 'grace@example.com');
+
+        $this->shop->customers->forget($ada);
+
+        foreach ([$first, $second] as $placed) {
+            $order = $this->shop->orderRecords->orders[$placed->number];
+            self::assertNull($order->customerId());
+            self::assertSame('ada@example.com', $order->email(), 'kept under the email given');
+            $notes = $this->shop->orders->order($placed->number)->notes;
+            self::assertStringContainsString('account of customer #' . $ada . ' was deleted', $notes[\count($notes) - 1]->text);
+        }
+        self::assertSame(1, $this->shop->orders->orders(new OrderQuery(customerId: $grace))->total, 'other customers keep theirs');
+        self::assertNull($this->shop->cartRecords->findByCustomer($ada));
+        self::assertSame([], $this->shop->customerGroups->groupIdsOf($ada));
+        self::assertSame([$group->id], $this->shop->customerGroups->groupIdsOf($grace));
     }
 
     private function cart(CartOwner $owner): CartOwner

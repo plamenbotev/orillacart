@@ -15,6 +15,9 @@ interface CartRepository
 
     public function save(Cart $cart): void;
 
+    /** Removes the carts of a customer whose account is gone. */
+    public function removeOfCustomer(int $customerId): void;
+
     /** @return int how many carts not changed since the moment were removed */
     public function removeUnchangedSince(\DateTimeImmutable $before): int;
 }

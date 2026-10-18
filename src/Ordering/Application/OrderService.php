@@ -260,6 +260,28 @@ final readonly class OrderService
     }
 
     /**
+     * The customer's account was deleted: their orders stay, as guest orders under the email they gave.
+     *
+     * @return int how many orders changed
+     */
+    public function forgetCustomer(int $customerId): int
+    {
+        $changed = 0;
+        do {
+            [$orders] = $this->orders->search(null, null, $customerId, 0, 100);
+            foreach ($orders as $order) {
+                $order->changeCustomer(null);
+                $order->addNote(\sprintf('Made a guest order: the account of customer #%d was deleted.', $customerId), NoteAuthor::System, false, $this->clock->now());
+                $this->orders->save($order);
+                $this->events->dispatch(new OrderChanged($order->id()));
+                ++$changed;
+            }
+        } while ($orders !== []);
+
+        return $changed;
+    }
+
+    /**
      * Changes how many times, and until when, the buyer may download one of the order's files.
      *
      * @throws OrderNotFound   also for a download the order does not have

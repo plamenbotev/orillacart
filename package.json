@@ -18,7 +18,8 @@
 		"demo": "wp-env run cli --env-cwd=wp-content/plugins/orillacart wp eval-file bin/demo-shop.php && wp-env run cli --env-cwd=wp-content/plugins/orillacart wp orillacart jobs work",
 		"db:diff": "wp-env run cli --env-cwd=wp-content/plugins/orillacart wp eval-file bin/make-migration.php",
 		"start:storefront": "wp-scripts start storefront=./assets/storefront/index.ts --output-path=build/storefront",
-		"test:e2e": "wp-scripts test-playwright"
+		"test:e2e": "wp-scripts test-playwright",
+		"i18n:pot": "bin/make-pot"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.64.1",

@@ -262,6 +262,26 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         wp_set_current_user($user->ID);
         $downloads = $this->rows($this->data($this->request('GET', '/account/downloads')));
         self::assertSame([5, '2030-01-31'], [$downloads[0]['remaining'], substr($this->text($downloads[0]['expires_at']), 0, 10)]);
+
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+        wp_delete_user($user->ID);
+        $this->actAs('administrator');
+        $kept = $this->data($this->request('GET', "/orders/{$order['number']}"));
+        self::assertSame([null, 'ada@example.com'], [$kept['customer_id'], $kept['email']], 'a deleted account\'s order stays, as a guest\'s');
+    }
+
+    public function testAnAddOnMayRefuseASignUp(): void
+    {
+        $refuse = static fn(\WP_Error $errors, string $email): \WP_Error => str_ends_with($email, '@example.com') ? new \WP_Error('spam', '<strong>Error</strong>: Looks like spam.') : $errors;
+        add_filter('orillacart_registration_errors', $refuse, 10, 2);
+        try {
+            $refused = $this->request('POST', '/accounts', ['email' => 'bot@example.com', 'password' => 'correct horse battery', 'first_name' => 'Bot', 'last_name' => 'Bot'], nonce: true);
+        } finally {
+            remove_filter('orillacart_registration_errors', $refuse, 10);
+        }
+        self::assertSame(422, $refused->get_status(), (string) wp_json_encode($refused->get_data()));
+        self::assertSame('Error: Looks like spam.', $this->data($refused)['message'] ?? null);
+        self::assertFalse(get_user_by('email', 'bot@example.com'));
     }
 
     /**

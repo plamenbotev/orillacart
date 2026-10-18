@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\WordPress\Admin;
 
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Platform\WordPress\Translations;
 use OrillaCart\Settings\Application\SettingsService;
 
 /**
@@ -65,7 +66,7 @@ final readonly class AdminScripts
 
         $url = plugins_url('build/admin/' . $script . '.js', $this->context->pluginFile);
         wp_register_script($handle, $url === '' ? false : $url, $dependencies, $version, ['in_footer' => true]);
-        wp_set_script_translations($handle, 'orillacart');
+        wp_set_script_translations($handle, Translations::DOMAIN, $this->context->path(Translations::FOLDER));
         // Styles the script imports are built next to it.
         if (is_file($this->context->path('build/admin/' . $script . '.css'))) {
             wp_register_style($handle, plugins_url('build/admin/' . $script . '.css', $this->context->pluginFile), $styles, $version);

@@ -1,4 +1,5 @@
 {% extends 'emails/layout.html.twig' %}
-{% block subject %}{{ __('[%s] Your order #%s is on its way')|format(site_name, order.number) }}{% endblock %}
+{# translators: 1: site name, 2: order number -#}
+{% block subject %}{{ __('[%1$s] Your order #%2$s is on its way')|format(site_name, order.number) }}{% endblock %}
 {% block heading %}{{ __('Your order is on its way') }}{% endblock %}
 {% block intro %}<p>{{ __('We have sent your order.') }}</p>{% endblock %}

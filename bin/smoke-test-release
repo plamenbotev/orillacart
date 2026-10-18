@@ -65,6 +65,35 @@ wp plugin install /tmp/orillacart.zip --activate > /dev/null
 plugin_tables | grep -qx 'wp_orillacart_migrations' || fail "activation did not create the migrations table"
 wp orillacart migrate | grep -q 'up to date' || fail "wp orillacart migrate"
 
+echo "==> Translations from the plugin's languages folder"
+LANGS=/var/www/html/wp-content/plugins/orillacart/languages
+docker exec "$WP" test -f "$LANGS/orillacart.pot" || fail "the release has no languages/orillacart.pot"
+docker exec -i "$WP" bash -c "cat > $LANGS/orillacart-bg_BG.po" <<'PO'
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: bg_BG\n"
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php
+msgid "Products"
+msgstr "Продукти"
+
+#: build/admin/settings.js:1
+msgid "Save settings"
+msgstr "Запази настройките"
+PO
+wp i18n make-mo "$LANGS/orillacart-bg_BG.po" > /dev/null
+wp i18n make-json "$LANGS/orillacart-bg_BG.po" --no-purge > /dev/null
+# WordPress takes only an installed language as the site's; a filter sets one without installing it.
+docker exec "$WP" bash -c "echo '<?php add_filter(\"locale\", static fn() => \"bg_BG\");' > /var/www/html/wp-content/mu-plugins/locale.php"
+[ "$(wp eval 'echo __("Products", "orillacart");')" = 'Продукти' ] || fail "the PHP translations in languages/ were not loaded"
+# As AdminScripts registers the settings screen's script: the JSON is named after the script's path in the plugin.
+wp eval 'wp_register_script("orillacart-settings", plugins_url("build/admin/settings.js", WP_PLUGIN_DIR . "/orillacart/orillacart.php"));
+    $json = json_decode((string) load_script_textdomain("orillacart-settings", "orillacart", WP_PLUGIN_DIR . "/orillacart/languages"), true);
+    echo $json["locale_data"]["messages"]["Save settings"][0] ?? "";' \
+    | grep -qx 'Запази настройките' || fail "the script translations in languages/ were not found"
+docker exec "$WP" bash -c "rm $LANGS/orillacart-bg_BG* /var/www/html/wp-content/mu-plugins/locale.php"
+
 echo "==> REST API over HTTP"
 api() { docker exec "$WP" curl -s -o /dev/null -w '%{http_code}' "$@"; }
 URL='http://localhost/?rest_route=/orillacart/v1/settings'
@@ -236,6 +265,26 @@ docker exec "$WP" bash -c 'ls -d /var/www/orillacart-downloads /var/www/html/wp-
 wp role exists orillacart_customer > /dev/null 2>&1 && fail "customer role left after uninstall"
 wp option get orillacart_shop_pages > /dev/null 2>&1 && fail "shop pages option left after uninstall"
 [ "$(wp post list --post_type=page --post_status=any --s='orillacart/' --format=count)" = 0 ] || fail "shop pages left after uninstall"
+
+echo "==> Multisite"
+# The same install as a network: activating for the network sets up every site, a site added later is set up,
+# a deleted site's tables go with it, and uninstalling clears every site.
+site_tables() { docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SHOW TABLES LIKE 'wp\_$1orillacart\_%'" 2> /dev/null; }
+wp core multisite-convert --title=Network > /dev/null
+wp site create --slug=second --porcelain > /dev/null
+wp plugin install /tmp/orillacart.zip --activate-network > /dev/null
+site_tables '' | grep -qx 'wp_orillacart_migrations' || fail "network activation did not set up the main site"
+site_tables '2\_' | grep -qx 'wp_2_orillacart_countries' || fail "network activation did not set up the second site"
+[ "$(wp --url=http://localhost/second/ post get "$(wp --url=http://localhost/second/ option pluck orillacart_shop_pages shop)" --field=post_status)" = publish ] \
+    || fail "network activation made no shop page on the second site"
+third="$(wp site create --slug=third --porcelain)"
+site_tables "${third}\\_" | grep -qx "wp_${third}_orillacart_migrations" || fail "a site added to the network was not set up"
+wp site delete "$third" --yes > /dev/null
+[ -z "$(site_tables "${third}\\_")" ] || fail "a deleted site's tables were left"
+wp plugin deactivate orillacart --network > /dev/null
+wp plugin uninstall orillacart > /dev/null
+[ -z "$(site_tables '')$(site_tables '2\_')" ] || fail "plugin tables left after uninstalling from the network"
+wp --url=http://localhost/second/ option get orillacart_version > /dev/null 2>&1 && fail "the second site's options left after uninstall"
 
 echo "==> Debug log"
 if docker exec "$WP" test -s /var/www/html/wp-content/debug.log; then

@@ -17,7 +17,7 @@ final readonly class RewriteRules implements LifecycleListener
     public function activate(): void
     {
         $this->content->registerContent();
-        flush_rewrite_rules();
+        self::flush();
     }
 
     public function upgrade(?string $fromVersion): void
@@ -28,8 +28,20 @@ final readonly class RewriteRules implements LifecycleListener
     public function deactivate(): void
     {
         $this->content->unregisterPostTypes();
-        flush_rewrite_rules();
+        self::flush();
     }
 
     public function uninstall(): void {}
+
+    private static function flush(): void
+    {
+        // Switched to another site of a network, the rewrite object still holds the first site's permalink
+        // settings: the site builds its rules again on its next request instead.
+        if (is_multisite() && ms_is_switched()) {
+            delete_option('rewrite_rules');
+
+            return;
+        }
+        flush_rewrite_rules();
+    }
 }

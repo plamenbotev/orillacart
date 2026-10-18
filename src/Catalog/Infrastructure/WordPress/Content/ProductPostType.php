@@ -38,8 +38,9 @@ final readonly class ProductPostType implements PostTypeDefinition
             'show_in_rest' => true,
             'menu_icon' => 'dashicons-products',
             'menu_position' => 57,
-            // page-attributes: the Order field, by which the shop page can list products.
-            'supports' => ['title', 'editor', 'thumbnail', 'excerpt', 'custom-fields', 'revisions', 'page-attributes'],
+            // page-attributes: the Order field, by which the shop page can list products. comments: reviews, which
+            // the theme shows under the product as for any post, and which follow the site's discussion settings.
+            'supports' => ['title', 'editor', 'thumbnail', 'excerpt', 'comments', 'custom-fields', 'revisions', 'page-attributes'],
             // The shop page lists products, with prices and choices; a theme's archive would not.
             'has_archive' => false,
             'rewrite' => ['slug' => 'product', 'with_front' => false],

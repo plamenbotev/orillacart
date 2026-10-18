@@ -70,6 +70,14 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 24 | Refunds through the payment methods: `RefundsPayments` in the extension API (PayPal refunds captures and records refunds made in its dashboard from the webhook); offline methods recorded by hand; full and partial, by items or an amount alone, with restock; the customer is emailed; paid orders leave only by refunding, not by cancelling (raised 2026-10-18) | 82e5059 |
 | ✅ | 29 | Reports (Shop → Reports): sales, products, categories, coupons and customers over any days against the days before or a year before, by day, week or month, with charts and CSV. Fact tables kept per order by background jobs, so reports never read the orders; refunds count on their own day; `wp orillacart reports rebuild` | [design](docs/designs/29-reports.md); b288d39 |
 
+
+## Found by comparing the old plugin's hooks and features (2026-10-18)
+
+| | # | Item | Commit |
+|---|---|---|---|
+| ✅ | 31 | Small gaps: product reviews (comments on products); translations (`.pot` with the templates' strings, `languages/` loaded for PHP and scripts); multisite (network activation sets up every site, new sites are set up, a deleted site's tables go); shop sign-ups checked by add-ons (`orillacart_registration_errors`); a deleted WordPress user's orders become guest orders, their carts and group places go. Found on the way: foreign key names are unique per database, so each site prefix gets its own; the cart printed problem codes (fixed in 30) | |
+| ⬜ | 30 | Add-on hooks the old plugin had and the rebuild lacks: prices add-ons adjust, cart checks and cart events, checkout fields add-ons add (kept with the order, shown in emails and the admin), page slots (product, cart, checkout), email attachments, order screen actions, address layout by country ([design](docs/designs/30-addon-hooks.md)) | |
+
 ## Waiting on others
 
 - 26 Carrier integrations such as DPD (2026-10-18): not now. DPD was the example that shaped the extension API (27); couriers' add-ons come later, on that API.

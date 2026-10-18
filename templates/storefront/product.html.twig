@@ -13,6 +13,7 @@
     <div class="orillacart-gallery__stage" data-orillacart-stage hidden></div>
     <div class="orillacart-gallery" data-orillacart-gallery data-images="{{ gallery|json_encode }}"{{ gallery|length < 2 ? ' hidden' }}>
         {% for image in gallery %}
+            {# translators: %d: image number -#}
             <button type="button" class="orillacart-gallery__thumb" data-orillacart-image="{{ loop.index0 }}" aria-label="{{ __('Show image %d')|format(loop.index) }}">
                 <img src="{{ image.thumb }}" alt="{{ image.alt }}" width="64" height="64" loading="lazy">
             </button>
@@ -32,6 +33,7 @@
             <tbody>
                 {% for tier in offer.tiers %}
                     <tr>
+                        {# translators: %d: quantity -#}
                         <td>{{ loop.last ? __('%d or more')|format(tier.min_quantity) : (tier.min_quantity == offer.tiers[loop.index].min_quantity - 1 ? tier.min_quantity : tier.min_quantity ~ '–' ~ (offer.tiers[loop.index].min_quantity - 1)) }}</td>
                         <td>{{ tier.price|money }}</td>
                     </tr>
@@ -53,6 +55,7 @@
         {%- elseif offer.on_backorder -%}
             <span class="orillacart-stock--backorder">{{ __('On backorder: ships when it is back in stock') }}</span>
         {%- elseif offer.available is not null -%}
+            {# translators: %d: how many are in stock -#}
             {{ __('%d in stock')|format(offer.available) }}
         {%- endif -%}
     </p>
@@ -83,6 +86,7 @@
                     <p class="orillacart-field orillacart-field--check">
                         <label>
                             <input type="checkbox" name="bundle_choices" value="{{ choice.id }}" data-orillacart-bundle-choice{{ choice.for_sale ? '' : ' disabled' }}>
+                            {# translators: %s: product or option name -#}
                             {{ __('Add %s')|format(label) }}{% if choice.price is not null %} (+{{ choice.price|money }}){% endif %}{% if not choice.for_sale %} – {{ __('Not available') }}{% endif %}
                         </label>
                     </p>

@@ -1,4 +1,6 @@
 {% extends 'emails/layout.html.twig' %}
-{% block subject %}{{ __('[%s] New order #%s from %s %s')|format(site_name, order.number, order.billing.first_name, order.billing.last_name) }}{% endblock %}
+{# translators: 1: site name, 2: order number, 3: customer's first name, 4: last name -#}
+{% block subject %}{{ __('[%1$s] New order #%2$s from %3$s %4$s')|format(site_name, order.number, order.billing.first_name, order.billing.last_name) }}{% endblock %}
+{# translators: %s: order number -#}
 {% block heading %}{{ __('New order #%s')|format(order.number) }}{% endblock %}
 {% block intro %}<p>{{ order.status == 'on_hold' ? __('The customer will pay offline; the order is on hold until the money arrives.') : __('The order is paid and waits for you.') }}</p>{% if order.note %}<p><strong>{{ __('Customer note') }}:</strong> {{ order.note }}</p>{% endif %}{% endblock %}

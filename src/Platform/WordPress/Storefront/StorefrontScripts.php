@@ -7,6 +7,7 @@ namespace OrillaCart\Platform\WordPress\Storefront;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\WordPress\Registrar;
+use OrillaCart\Platform\WordPress\Translations;
 use OrillaCart\Shared\Http\Routing\Route;
 
 /**
@@ -31,13 +32,13 @@ final readonly class StorefrontScripts implements Registrar
     {
         $storefront = $this->asset('build/storefront/storefront');
         wp_register_script(self::HANDLE, $this->url('build/storefront/storefront.js'), $storefront['dependencies'], $storefront['version'], ['in_footer' => true, 'strategy' => 'defer']);
-        wp_set_script_translations(self::HANDLE, 'orillacart');
+        wp_set_script_translations(self::HANDLE, Translations::DOMAIN, $this->context->path(Translations::FOLDER));
         wp_register_style(self::HANDLE, plugins_url('build/storefront/storefront.css', $this->context->pluginFile), [], $storefront['version']);
         wp_style_add_data(self::HANDLE, 'rtl', 'replace');
 
         $editor = $this->asset('build/admin/blocks');
         wp_register_script(self::EDITOR, $this->url('build/admin/blocks.js'), $editor['dependencies'], $editor['version'], ['in_footer' => true]);
-        wp_set_script_translations(self::EDITOR, 'orillacart');
+        wp_set_script_translations(self::EDITOR, Translations::DOMAIN, $this->context->path(Translations::FOLDER));
     }
 
     /**

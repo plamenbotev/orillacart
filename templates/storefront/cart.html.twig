@@ -27,6 +27,7 @@
                             {% for option in line.options %}
                                 <br><small>{{ option.attribute }}: {{ option.option }}</small>
                             {% endfor %}
+                            {# translators: %d: how many of the item wait for stock -#}
                             {% if line.backordered > 0 %}<br><small class="orillacart-backorder">{{ __('%d on backorder: they ship when back in stock')|format(line.backordered) }}</small>{% endif %}
                             {% if line.contents %}<br><small class="orillacart-bundle">{{ __('Holds') }}: {% for item in line.contents %}{{ item.quantity }} × {{ item.name }}{{ not loop.last ? ', ' }}{% endfor %}</small>{% endif %}
                             {% if line.problem %}<p class="orillacart-notice orillacart-notice--error">{{ line.problem }}</p>{% endif %}
@@ -34,10 +35,12 @@
                         <td data-label="{{ __('Price') }}">{{ line.unit_price|money }}</td>
                         <td data-label="{{ __('Quantity') }}">
                             <input class="orillacart-quantity" type="number" min="1" max="{{ line.available ?? 999 }}" step="1" inputmode="numeric" value="{{ line.quantity }}"
+                                {# translators: %s: product name -#}
                                 aria-label="{{ __('Quantity of %s')|format(line.name) }}" data-orillacart-quantity="{{ line.id }}">
                         </td>
                         <td data-label="{{ __('Total') }}">{{ line.total|money }}</td>
                         <td>
+                            {# translators: %s: product name -#}
                             <button type="button" class="orillacart-remove" data-orillacart-remove="{{ line.id }}" aria-label="{{ __('Remove %s')|format(line.name) }}">&times;</button>
                         </td>
                     </tr>

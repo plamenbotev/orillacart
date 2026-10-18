@@ -14,6 +14,7 @@
             {% endif %}
             {% if coupon.refused %}{{ coupon.refused }}{% elseif coupon.free_shipping %}{{ __('free shipping') }}{% else %}−{{ coupon.amount|money(currency) }}{% endif %}
             {% if not coupon.automatic %}
+                {# translators: %s: coupon code -#}
                 <button type="button" class="orillacart-remove" data-orillacart-remove-coupon="{{ coupon.code }}" aria-label="{{ __('Remove the code %s')|format(coupon.code) }}">&times;</button>
             {% endif %}
         </p>

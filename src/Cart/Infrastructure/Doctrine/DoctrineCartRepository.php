@@ -33,6 +33,17 @@ final readonly class DoctrineCartRepository implements CartRepository
         $this->entityManager->flush();
     }
 
+    public function removeOfCustomer(int $customerId): void
+    {
+        // Lines go with their cart (ON DELETE CASCADE).
+        $this->entityManager->createQueryBuilder()
+            ->delete(Cart::class, 'c')
+            ->where('c.customerId = :customer')
+            ->setParameter('customer', $customerId)
+            ->getQuery()
+            ->execute();
+    }
+
     public function removeUnchangedSince(\DateTimeImmutable $before): int
     {
         // Lines go with their cart (ON DELETE CASCADE).

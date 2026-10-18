@@ -46,6 +46,7 @@
             {% if section == 'order' %}
                 <p><a href="{{ urls.orders }}">&larr; {{ __('All orders') }}</a></p>
                 {% if order %}
+                    {# translators: %d: order number -#}
                     <h2 class="orillacart-heading">{{ __('Order #%d')|format(order.number) }}</h2>
                     {% include 'storefront/receipt.html.twig' with {heading: false} %}
                 {% else %}

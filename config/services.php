@@ -23,6 +23,7 @@ use OrillaCart\Coupons\Domain\RedemptionRepository;
 use OrillaCart\Coupons\Infrastructure\Doctrine\DoctrineCouponRepository;
 use OrillaCart\Coupons\Infrastructure\Doctrine\DoctrineRedemptionRepository;
 use OrillaCart\Customers\Application\Accounts;
+use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Domain\CustomerGroupRepository;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
 use OrillaCart\Customers\Infrastructure\Doctrine\DoctrineCustomerGroupRepository;
@@ -295,4 +296,6 @@ return static function (ContainerConfigurator $container): void {
     $services->set(WordPressIntegration::class)->public();
     $services->set(PluginLifecycle::class)->public();
     $services->set(DatabaseMigrator::class)->public();
+    // Run for the other sites of a network when a user is deleted from all of it.
+    $services->set(CustomerService::class)->public();
 };

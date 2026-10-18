@@ -17,12 +17,14 @@ use OrillaCart\Customers\Domain\CustomerGroupRepository;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Customers\Domain\CustomerSettings;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
+use OrillaCart\Customers\Domain\Event\CustomerDeleted;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Customer accounts: whether the shop has them, making one at checkout, and the addresses checkout fills in.
@@ -34,7 +36,24 @@ final readonly class CustomerService
         private CustomerSettingsRepository $settings,
         private OrderService $orders,
         private CustomerGroupRepository $groups,
+        private EventDispatcherInterface $events,
     ) {}
+
+    /**
+     * A customer's account was deleted: they leave their groups, and the other areas let go of them too (their
+     * orders become guest orders, their carts go).
+     */
+    public function forget(int $customerId): void
+    {
+        foreach ($this->groups->groupIdsOf($customerId) as $groupId) {
+            $group = $this->groups->find($groupId);
+            if ($group !== null) {
+                $group->remove($customerId);
+                $this->groups->save($group);
+            }
+        }
+        $this->events->dispatch(new CustomerDeleted($customerId));
+    }
 
     public function settings(): CustomerSettingsView
     {

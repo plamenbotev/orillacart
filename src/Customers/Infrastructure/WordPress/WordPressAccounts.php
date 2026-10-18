@@ -47,6 +47,7 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener
         for ($suffix = 2; username_exists($login) !== false; ++$suffix) {
             $login = $base . $suffix;
         }
+        $this->check($login, $email, $firstName, $lastName);
         $id = wp_insert_user([
             'user_login' => $login,
             'user_email' => $email,
@@ -61,6 +62,19 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener
         }
 
         return $id;
+    }
+
+    /**
+     * Lets add-ons refuse a sign-up, as anti-spam ones do. WordPress's own registration_errors is left alone: it
+     * belongs to the wp-login.php form, and captcha plugins on it expect that form's fields, so they would refuse
+     * every shop sign-up.
+     */
+    private function check(string $login, string $email, string $firstName, string $lastName): void
+    {
+        $errors = apply_filters('orillacart_registration_errors', new \WP_Error(), $email, $firstName, $lastName, $login);
+        if ($errors instanceof \WP_Error && $errors->has_errors()) {
+            throw new RuleViolation(wp_strip_all_tags($errors->get_error_message()), 'orillacart_registration_refused');
+        }
     }
 
     public function logIn(int $id): void

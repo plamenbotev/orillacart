@@ -1,0 +1,4354 @@
+# Copyright (C) 2026 
+# This file is distributed under the GPL-3.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: OrillaCart 2.0.0-dev\n"
+"Report-Msgid-Bugs-To: https://github.com/plamenbotev/orillacart/issues\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-10-18T16:11:18+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: orillacart\n"
+
+#. Plugin Name of the plugin
+#: orillacart.php
+msgid "OrillaCart"
+msgstr ""
+
+#. Description of the plugin
+#: orillacart.php
+msgid "E-commerce for WordPress."
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Admin/AttributeSetsPage.php:19
+#: build/admin/attribute-sets.js:3
+msgid "Attribute sets"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Admin/PriceRulesPage.php:19
+#: build/admin/price-rules.js:10
+msgid "Price rules"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:51
+#: build/admin/product-editor.js:8
+msgid "Image"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:55
+#: var/i18n/templates.php:223
+#: build/admin/product-editor.js:8
+#: build/admin/stock.js:1
+msgid "SKU"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:56
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:127
+#: var/i18n/templates.php:97
+#: var/i18n/templates.php:164
+#: var/i18n/templates.php:172
+#: build/admin/orders.js:16
+#: build/admin/price-rules.js:6
+#: build/admin/price-rules.js:7
+#: build/admin/product-editor.js:7
+#: build/admin/product-editor.js:8
+#: build/admin/shipping.js:2
+msgid "Price"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:57
+#: src/Catalog/Infrastructure/WordPress/Hooks/CategoryOrder.php:51
+#: src/Catalog/Infrastructure/WordPress/Hooks/CategoryOrder.php:61
+#: src/Catalog/Infrastructure/WordPress/Hooks/CategoryOrder.php:88
+#: var/i18n/templates.php:91
+#: var/i18n/templates.php:150
+#: var/i18n/templates.php:154
+#: var/i18n/templates.php:253
+#: build/admin/orders.js:19
+#: build/admin/payments.js:1
+#: build/admin/settings.js:1
+#: build/admin/shipping.js:1
+msgid "Order"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:104
+#: src/Catalog/Infrastructure/WordPress/Content/ProductCategoryTaxonomy.php:22
+#: build/admin/stock.js:1
+msgid "All categories"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:104
+#: src/Catalog/Infrastructure/WordPress/Content/ProductBrandTaxonomy.php:21
+msgid "All brands"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Admin/StockPage.php:19
+#: build/admin/product-editor.js:8
+#: build/admin/stock.js:1
+msgid "Stock"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductBrandTaxonomy.php:19
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+#: build/admin/price-rules.js:7
+msgid "Brands"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductBrandTaxonomy.php:20
+#: src/Storefront/Infrastructure/WordPress/ShopListing.php:107
+msgid "Brand"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductBrandTaxonomy.php:22
+msgid "Edit brand"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductBrandTaxonomy.php:23
+msgid "Add new brand"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductBrandTaxonomy.php:24
+msgid "Search brands"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductBrandTaxonomy.php:25
+msgid "No brands found"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductCategoryTaxonomy.php:19
+#: var/i18n/templates.php:238
+msgid "Product categories"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductCategoryTaxonomy.php:20
+msgid "Product category"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductCategoryTaxonomy.php:21
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+#: build/admin/price-rules.js:7
+#: build/admin/reports.js:1
+#: build/admin/reports.js:7
+msgid "Categories"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductCategoryTaxonomy.php:23
+msgid "Edit category"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductCategoryTaxonomy.php:24
+msgid "Add new category"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductCategoryTaxonomy.php:25
+msgid "Parent category"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductCategoryTaxonomy.php:26
+msgid "Search categories"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductCategoryTaxonomy.php:27
+msgid "No categories found"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:26
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:42
+#: build/admin/blocks.js:1
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+#: build/admin/price-rules.js:7
+#: build/admin/reports.js:1
+#: build/admin/reports.js:7
+msgid "Products"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:27
+#: src/Storefront/Infrastructure/WordPress/Hooks/ProductTemplate.php:24
+#: var/i18n/templates.php:69
+#: var/i18n/templates.php:163
+#: var/i18n/templates.php:168
+#: var/i18n/templates.php:261
+#: build/admin/reports.js:7
+#: build/admin/stock.js:1
+msgid "Product"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:28
+#: var/i18n/templates.php:239
+msgid "All products"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:29
+msgid "Add new product"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:30
+msgid "Edit product"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:31
+msgid "New product"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:32
+msgid "View product"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:33
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductSearchBlock.php:51
+#: var/i18n/templates.php:212
+#: var/i18n/templates.php:240
+msgid "Search products"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:34
+msgid "No products found"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductPostType.php:35
+msgid "No products found in the trash"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductTagTaxonomy.php:19
+msgid "Product tags"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductTagTaxonomy.php:20
+msgid "Product tag"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductTagTaxonomy.php:21
+msgid "Tags"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductTagTaxonomy.php:22
+msgid "All tags"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductTagTaxonomy.php:23
+msgid "Edit tag"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductTagTaxonomy.php:24
+msgid "Add new tag"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductTagTaxonomy.php:25
+msgid "Search tags"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/ProductTagTaxonomy.php:26
+msgid "No tags found"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/VariationPostType.php:27
+#: build/admin/product-editor.js:8
+msgid "Variations"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Content/VariationPostType.php:28
+#: build/admin/orders.js:1
+msgid "Variation"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Hooks/CategoryOrder.php:52
+#: src/Catalog/Infrastructure/WordPress/Hooks/CategoryOrder.php:63
+msgid "The shop lists categories by this number, lowest first, then by name."
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Hooks/CategoryThumbnail.php:54
+#: src/Catalog/Infrastructure/WordPress/Hooks/CategoryThumbnail.php:84
+#: src/Catalog/Infrastructure/WordPress/Hooks/CategoryThumbnail.php:140
+msgid "Picture"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Hooks/CategoryThumbnail.php:145
+msgid "Choose a picture"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Hooks/CategoryThumbnail.php:146
+#: var/i18n/templates.php:167
+#: build/admin/orders.js:2
+#: build/admin/price-rules.js:7
+#: build/admin/product-editor.js:1
+#: build/admin/product-editor.js:6
+#: build/admin/product-editor.js:8
+#: build/admin/settings.js:2
+msgid "Remove"
+msgstr ""
+
+#: src/Catalog/Infrastructure/WordPress/Hooks/CategoryThumbnail.php:147
+msgid "Shown beside the category on the shop page."
+msgstr ""
+
+#: src/Coupons/Infrastructure/WordPress/Admin/CouponsPage.php:19
+#: build/admin/coupons.js:6
+#: build/admin/reports.js:1
+msgid "Coupons"
+msgstr ""
+
+#: src/Customers/Infrastructure/WordPress/Admin/CustomersPage.php:19
+#: build/admin/customers.js:4
+#: build/admin/reports.js:1
+#: build/admin/reports.js:7
+msgid "Customers"
+msgstr ""
+
+#: src/Inventory/Infrastructure/WordPress/Admin/StockroomsPage.php:19
+#: build/admin/stockrooms.js:2
+msgid "Stockrooms"
+msgstr ""
+
+#: src/Jobs/Infrastructure/WordPress/Admin/JobsPage.php:19
+#: build/admin/jobs.js:15
+msgid "Background jobs"
+msgstr ""
+
+#: src/Notifications/Infrastructure/WordPress/Admin/EmailsPage.php:19
+#: build/admin/emails.js:1
+#: build/admin/orders.js:19
+msgid "Emails"
+msgstr ""
+
+#: src/Ordering/Infrastructure/WordPress/Admin/OrdersPage.php:19
+#: var/i18n/templates.php:138
+#: build/admin/customers.js:1
+#: build/admin/orders.js:20
+#: build/admin/reports.js:5
+#: build/admin/reports.js:7
+msgid "Orders"
+msgstr ""
+
+#: src/Ordering/Infrastructure/WordPress/Hooks/ServeDownload.php:37
+msgid "Download not available"
+msgstr ""
+
+#: src/Payment/Infrastructure/WordPress/Admin/PaymentsPage.php:19
+#: build/admin/payments.js:2
+msgid "Payments"
+msgstr ""
+
+#: src/Platform/WordPress/Admin/AdminPageRegistrar.php:55
+#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:50
+#: build/admin/settings.js:4
+msgid "Shop"
+msgstr ""
+
+#: src/Platform/WordPress/Files/WebServerFileDelivery.php:44
+msgid "PHP sends the files."
+msgstr ""
+
+#. translators: %s: the error
+#: src/Platform/WordPress/Files/WebServerFileDelivery.php:103
+#, php-format
+msgid "The site could not reach itself to test the method: %s"
+msgstr ""
+
+#: src/Platform/WordPress/Files/WebServerFileDelivery.php:108
+msgid "The web server sent the test file."
+msgstr ""
+
+#: src/Platform/WordPress/Files/WebServerFileDelivery.php:111
+msgid "The web server did not send the test file. Add the setting below to its configuration, reload it, and try again."
+msgstr ""
+
+#: src/Platform/WordPress/Scheduling/ScheduledTaskRegistrar.php:30
+msgid "Every minute"
+msgstr ""
+
+#: src/Reports/Infrastructure/WordPress/Admin/ReportsPage.php:19
+#: build/admin/jobs.js:1
+msgid "Reports"
+msgstr ""
+
+#: src/Settings/Infrastructure/WordPress/Admin/SettingsPage.php:19
+msgid "Settings"
+msgstr ""
+
+#: src/Shipping/Infrastructure/WordPress/Admin/ShippingPage.php:19
+#: var/i18n/templates.php:14
+#: var/i18n/templates.php:76
+#: var/i18n/templates.php:78
+#: var/i18n/templates.php:271
+#: build/admin/jobs.js:1
+#: build/admin/reports.js:5
+#: build/admin/shipping.js:4
+msgid "Shipping"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/AccountBlock.php:46
+msgid "Customer account"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/AccountBlock.php:47
+msgid "Logging in, making an account, and the customer's orders, files and addresses."
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/CartBlock.php:38
+#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:51
+#: var/i18n/templates.php:208
+#: build/admin/settings.js:4
+msgid "Cart"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/CartBlock.php:39
+msgid "What the shopper put in the cart, with quantities and the way to the checkout."
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/CheckoutBlock.php:54
+#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:52
+#: build/admin/settings.js:4
+msgid "Checkout"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/CheckoutBlock.php:55
+msgid "Addresses, shipping and payment for the cart, then the receipt."
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/CheckoutBlock.php:118
+msgid "There is no order at this address."
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/MiniCartBlock.php:34
+#: build/admin/blocks.js:1
+msgid "Mini cart"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/MiniCartBlock.php:35
+msgid "The number of items in the cart, with a link or buttons to the cart and the checkout."
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductFiltersBlock.php:35
+msgid "Product filters"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductFiltersBlock.php:36
+msgid "Brands, the shop’s filters, price and stock, with how many products each leaves. Place it beside a Products block."
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductFiltersBlock.php:38
+msgid "filter"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductFiltersBlock.php:38
+msgid "facets"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductFiltersBlock.php:38
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:45
+msgid "shop"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:43
+msgid "The shop: products with their prices, by category, with search."
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:45
+msgid "catalog"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:107
+msgid "Best match"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:108
+msgid "Recommended"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:109
+#: build/admin/blocks.js:1
+msgid "Newest"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:110
+#: build/admin/blocks.js:1
+#: build/admin/price-rules.js:7
+#: build/admin/product-editor.js:8
+#: build/admin/shipping.js:1
+#: build/admin/stockrooms.js:1
+#: build/admin/tax.js:1
+msgid "Name"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:111
+#: build/admin/blocks.js:1
+msgid "Price: low to high"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:112
+#: build/admin/blocks.js:1
+msgid "Price: high to low"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductSearchBlock.php:30
+#: build/admin/blocks.js:1
+msgid "Product search"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductSearchBlock.php:31
+msgid "A search box that finds products in the shop."
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductSearchBlock.php:33
+msgid "search"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductSearchBlock.php:33
+msgid "find"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Hooks/ProductTemplate.php:25
+msgid "A product page: its image, name, description and buying form."
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:53
+msgid "My account"
+msgstr ""
+
+#: src/Tax/Infrastructure/WordPress/Admin/TaxPage.php:19
+#: build/admin/tax.js:1
+msgid "Tax"
+msgstr ""
+
+#. translators: %s: order number
+#: var/i18n/templates.php:5
+#, php-format
+msgid "Order #%s"
+msgstr ""
+
+#. translators: %d: how many are owed, or were refunded
+#. translators: %d: how many are owed
+#: var/i18n/templates.php:7
+#: build/admin/orders.js:17
+#, php-format,js-format
+msgid "%d on backorder"
+msgstr ""
+
+#: var/i18n/templates.php:8
+#: var/i18n/templates.php:71
+#: var/i18n/templates.php:171
+#: var/i18n/templates.php:265
+#: build/admin/orders.js:16
+msgid "Holds"
+msgstr ""
+
+#. translators: %d: how many are owed, or were refunded
+#. translators: %d: quantity
+#: var/i18n/templates.php:10
+#: var/i18n/templates.php:267
+#, php-format
+msgid "%d refunded"
+msgstr ""
+
+#: var/i18n/templates.php:11
+#: var/i18n/templates.php:74
+#: var/i18n/templates.php:179
+#: var/i18n/templates.php:268
+#: build/admin/orders.js:17
+msgid "Subtotal"
+msgstr ""
+
+#. translators: %s: coupon code
+#: var/i18n/templates.php:12
+#: var/i18n/templates.php:269
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+#, php-format,js-format
+msgid "Coupon %s"
+msgstr ""
+
+#: var/i18n/templates.php:13
+#: var/i18n/templates.php:270
+#: build/admin/coupons.js:1
+#: build/admin/orders.js:18
+#: build/admin/price-rules.js:1
+msgid "Free shipping"
+msgstr ""
+
+#: var/i18n/templates.php:15
+#: var/i18n/templates.php:70
+#: var/i18n/templates.php:77
+#: var/i18n/templates.php:153
+#: var/i18n/templates.php:157
+#: var/i18n/templates.php:166
+#: var/i18n/templates.php:176
+#: var/i18n/templates.php:256
+#: var/i18n/templates.php:262
+#: var/i18n/templates.php:272
+#: build/admin/orders.js:16
+#: build/admin/orders.js:18
+#: build/admin/orders.js:19
+msgid "Total"
+msgstr ""
+
+#: var/i18n/templates.php:16
+#: var/i18n/templates.php:115
+#: var/i18n/templates.php:257
+#: var/i18n/templates.php:273
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Refunded"
+msgstr ""
+
+#. translators: 1: shipment number, 2: carrier name
+#: var/i18n/templates.php:18
+#, php-format
+msgid "Shipment %1$s with %2$s"
+msgstr ""
+
+#: var/i18n/templates.php:19
+msgid "follow it"
+msgstr ""
+
+#: var/i18n/templates.php:20
+#: var/i18n/templates.php:281
+#: build/admin/orders.js:2
+#: build/admin/orders.js:19
+msgid "Pickup point"
+msgstr ""
+
+#: var/i18n/templates.php:21
+#: var/i18n/templates.php:83
+#: var/i18n/templates.php:258
+#: build/admin/orders.js:19
+msgid "Payment"
+msgstr ""
+
+#: var/i18n/templates.php:22
+#: var/i18n/templates.php:147
+#: var/i18n/templates.php:192
+#: var/i18n/templates.php:276
+#: build/admin/customers.js:4
+#: build/admin/orders.js:2
+#: build/admin/orders.js:19
+msgid "Billing address"
+msgstr ""
+
+#: var/i18n/templates.php:23
+#: var/i18n/templates.php:148
+#: var/i18n/templates.php:195
+#: var/i18n/templates.php:278
+#: build/admin/customers.js:4
+#: build/admin/orders.js:2
+#: build/admin/orders.js:19
+msgid "Shipping address"
+msgstr ""
+
+#: var/i18n/templates.php:24
+msgid "See your order online"
+msgstr ""
+
+#. translators: 1: site name, 2: order number
+#: var/i18n/templates.php:26
+#, php-format
+msgid "[%1$s] A note about your order #%2$s"
+msgstr ""
+
+#: var/i18n/templates.php:27
+msgid "A note about your order"
+msgstr ""
+
+#. translators: 1: site name, 2: order number, 3: customer's first name, 4: last name
+#: var/i18n/templates.php:29
+#, php-format
+msgid "[%1$s] New order #%2$s from %3$s %4$s"
+msgstr ""
+
+#. translators: %s: order number
+#: var/i18n/templates.php:31
+#, php-format
+msgid "New order #%s"
+msgstr ""
+
+#: var/i18n/templates.php:32
+msgid "The customer will pay offline; the order is on hold until the money arrives."
+msgstr ""
+
+#: var/i18n/templates.php:33
+msgid "The order is paid and waits for you."
+msgstr ""
+
+#: var/i18n/templates.php:34
+msgid "Customer note"
+msgstr ""
+
+#. translators: 1: site name, 2: order number
+#: var/i18n/templates.php:36
+#, php-format
+msgid "[%1$s] Your order #%2$s was cancelled"
+msgstr ""
+
+#: var/i18n/templates.php:37
+msgid "Your order was cancelled"
+msgstr ""
+
+#: var/i18n/templates.php:38
+msgid "Your order was cancelled. If you did not expect this, please reply to this email."
+msgstr ""
+
+#. translators: 1: site name, 2: order number
+#: var/i18n/templates.php:40
+#, php-format
+msgid "[%1$s] Your order #%2$s is complete"
+msgstr ""
+
+#: var/i18n/templates.php:41
+msgid "Your order is complete"
+msgstr ""
+
+#: var/i18n/templates.php:42
+msgid "Thank you for shopping with us."
+msgstr ""
+
+#. translators: 1: site name, 2: order number
+#: var/i18n/templates.php:44
+#, php-format
+msgid "[%1$s] The payment for order #%2$s failed"
+msgstr ""
+
+#: var/i18n/templates.php:45
+msgid "Your payment did not go through"
+msgstr ""
+
+#: var/i18n/templates.php:46
+msgid "The payment for your order failed, so the order was not placed. You can order again at any time."
+msgstr ""
+
+#. translators: 1: site name, 2: order number
+#: var/i18n/templates.php:48
+#, php-format
+msgid "[%1$s] Your order #%2$s is confirmed"
+msgstr ""
+
+#: var/i18n/templates.php:49
+msgid "Your order is confirmed"
+msgstr ""
+
+#: var/i18n/templates.php:50
+msgid "Thank you. We are preparing your order now."
+msgstr ""
+
+#. translators: 1: site name, 2: order number
+#: var/i18n/templates.php:52
+#, php-format
+msgid "[%1$s] We received your order #%2$s"
+msgstr ""
+
+#: var/i18n/templates.php:53
+#: var/i18n/templates.php:252
+msgid "Thank you for your order"
+msgstr ""
+
+#: var/i18n/templates.php:54
+msgid "We have your order and will start on it as soon as your payment arrives."
+msgstr ""
+
+#. translators: 1: site name, 2: order number
+#: var/i18n/templates.php:56
+#, php-format
+msgid "[%1$s] We refunded part of your order #%2$s"
+msgstr ""
+
+#. translators: 1: site name, 2: order number
+#: var/i18n/templates.php:58
+#, php-format
+msgid "[%1$s] Your order #%2$s was refunded"
+msgstr ""
+
+#: var/i18n/templates.php:59
+msgid "Part of your order was refunded"
+msgstr ""
+
+#: var/i18n/templates.php:60
+msgid "Your order was refunded"
+msgstr ""
+
+#. translators: %s: amount
+#: var/i18n/templates.php:62
+#, php-format
+msgid "We refunded %s to you."
+msgstr ""
+
+#: var/i18n/templates.php:63
+msgid "We have refunded your order."
+msgstr ""
+
+#. translators: 1: site name, 2: order number
+#: var/i18n/templates.php:65
+#, php-format
+msgid "[%1$s] Your order #%2$s is on its way"
+msgstr ""
+
+#: var/i18n/templates.php:66
+msgid "Your order is on its way"
+msgstr ""
+
+#: var/i18n/templates.php:67
+msgid "We have sent your order."
+msgstr ""
+
+#: var/i18n/templates.php:68
+msgid "Your order"
+msgstr ""
+
+#. translators: %d: how many of the item wait for stock
+#: var/i18n/templates.php:73
+#: var/i18n/templates.php:170
+#: var/i18n/templates.php:264
+#, php-format
+msgid "%d on backorder: they ship when back in stock"
+msgstr ""
+
+#: var/i18n/templates.php:75
+#: var/i18n/templates.php:180
+#: build/admin/coupons.js:1
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Discount"
+msgstr ""
+
+#: var/i18n/templates.php:79
+msgid "We cannot ship your order to this address."
+msgstr ""
+
+#: var/i18n/templates.php:80
+msgid "Enter your address to see the ways to ship."
+msgstr ""
+
+#: var/i18n/templates.php:81
+msgid "Pick it up from"
+msgstr ""
+
+#: var/i18n/templates.php:82
+msgid "Choose an office or locker"
+msgstr ""
+
+#: var/i18n/templates.php:84
+msgid "There is no way to pay for an order to this address."
+msgstr ""
+
+#: var/i18n/templates.php:85
+msgid "Place order"
+msgstr ""
+
+#: var/i18n/templates.php:86
+msgid "free shipping"
+msgstr ""
+
+#. translators: %s: coupon code
+#: var/i18n/templates.php:88
+#, php-format
+msgid "Remove the code %s"
+msgstr ""
+
+#: var/i18n/templates.php:89
+msgid "Coupon code"
+msgstr ""
+
+#: var/i18n/templates.php:90
+msgid "Apply"
+msgstr ""
+
+#: var/i18n/templates.php:92
+msgid "File"
+msgstr ""
+
+#: var/i18n/templates.php:93
+#: build/admin/orders.js:5
+msgid "Downloads left"
+msgstr ""
+
+#: var/i18n/templates.php:94
+msgid "Available until"
+msgstr ""
+
+#: var/i18n/templates.php:95
+msgid "No limit"
+msgstr ""
+
+#: var/i18n/templates.php:96
+msgid "No end"
+msgstr ""
+
+#: var/i18n/templates.php:98
+#: build/admin/reports.js:7
+#: build/admin/shipping.js:2
+msgid "From"
+msgstr ""
+
+#: var/i18n/templates.php:99
+#: build/admin/reports.js:7
+#: build/admin/shipping.js:2
+msgid "To"
+msgstr ""
+
+#: var/i18n/templates.php:100
+msgid "Availability"
+msgstr ""
+
+#: var/i18n/templates.php:101
+msgid "In stock only"
+msgstr ""
+
+#: var/i18n/templates.php:102
+msgid "Clear the filters"
+msgstr ""
+
+#: var/i18n/templates.php:103
+msgid "Ask us for the price"
+msgstr ""
+
+#. translators: %s: the lowest price
+#: var/i18n/templates.php:105
+#, php-format
+msgid "From %s"
+msgstr ""
+
+#: var/i18n/templates.php:106
+#: var/i18n/templates.php:126
+msgid "Regular price"
+msgstr ""
+
+#: var/i18n/templates.php:107
+#: var/i18n/templates.php:127
+#: build/admin/product-editor.js:8
+msgid "Sale price"
+msgstr ""
+
+#: var/i18n/templates.php:108
+msgid "Waiting for payment"
+msgstr ""
+
+#: var/i18n/templates.php:109
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "On hold"
+msgstr ""
+
+#: var/i18n/templates.php:110
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Processing"
+msgstr ""
+
+#: var/i18n/templates.php:111
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/product-editor.js:8
+#: build/admin/reports.js:1
+msgid "Shipped"
+msgstr ""
+
+#: var/i18n/templates.php:112
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Completed"
+msgstr ""
+
+#: var/i18n/templates.php:113
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/orders.js:5
+#: build/admin/reports.js:1
+msgid "Cancelled"
+msgstr ""
+
+#: var/i18n/templates.php:114
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Payment failed"
+msgstr ""
+
+#: var/i18n/templates.php:116
+#: var/i18n/templates.php:131
+#: build/admin/customers.js:1
+#: build/admin/orders.js:1
+msgid "First name"
+msgstr ""
+
+#: var/i18n/templates.php:117
+#: var/i18n/templates.php:132
+#: build/admin/customers.js:1
+#: build/admin/orders.js:1
+msgid "Last name"
+msgstr ""
+
+#: var/i18n/templates.php:118
+msgid "Street address"
+msgstr ""
+
+#: var/i18n/templates.php:119
+#: build/admin/customers.js:1
+#: build/admin/orders.js:1
+msgid "City"
+msgstr ""
+
+#: var/i18n/templates.php:120
+#: build/admin/customers.js:1
+#: build/admin/orders.js:1
+msgid "Postcode"
+msgstr ""
+
+#: var/i18n/templates.php:121
+#: build/admin/tax.js:1
+msgid "Country"
+msgstr ""
+
+#: var/i18n/templates.php:122
+msgid "Choose a country"
+msgstr ""
+
+#: var/i18n/templates.php:123
+#: build/admin/tax.js:1
+msgid "State"
+msgstr ""
+
+#: var/i18n/templates.php:124
+msgid "Choose a state"
+msgstr ""
+
+#: var/i18n/templates.php:125
+#: build/admin/customers.js:1
+#: build/admin/orders.js:1
+msgid "Phone"
+msgstr ""
+
+#: var/i18n/templates.php:128
+#: var/i18n/templates.php:191
+msgid "Log in"
+msgstr ""
+
+#: var/i18n/templates.php:129
+msgid "Forgot your password?"
+msgstr ""
+
+#: var/i18n/templates.php:130
+#: var/i18n/templates.php:136
+msgid "Make an account"
+msgstr ""
+
+#: var/i18n/templates.php:133
+#: var/i18n/templates.php:189
+#: build/admin/customers.js:1
+#: build/admin/orders.js:2
+#: build/admin/orders.js:19
+msgid "Email"
+msgstr ""
+
+#: var/i18n/templates.php:134
+#: var/i18n/templates.php:201
+#: build/admin/settings.js:2
+msgid "Password"
+msgstr ""
+
+#: var/i18n/templates.php:135
+#: var/i18n/templates.php:202
+msgid "At least 8 characters."
+msgstr ""
+
+#: var/i18n/templates.php:137
+#: var/i18n/templates.php:198
+#: build/admin/orders.js:2
+#: build/admin/orders.js:3
+#: build/admin/settings.js:4
+msgid "Account"
+msgstr ""
+
+#: var/i18n/templates.php:139
+#: var/i18n/templates.php:259
+#: build/admin/orders.js:4
+#: build/admin/product-editor.js:8
+msgid "Downloads"
+msgstr ""
+
+#: var/i18n/templates.php:140
+msgid "Addresses"
+msgstr ""
+
+#: var/i18n/templates.php:141
+msgid "Log out"
+msgstr ""
+
+#: var/i18n/templates.php:142
+msgid "All orders"
+msgstr ""
+
+#. translators: %d: order number
+#: var/i18n/templates.php:144
+#, php-format
+msgid "Order #%d"
+msgstr ""
+
+#: var/i18n/templates.php:145
+msgid "There is no such order in your account."
+msgstr ""
+
+#: var/i18n/templates.php:146
+msgid "You have no files to download yet."
+msgstr ""
+
+#: var/i18n/templates.php:149
+#: build/admin/customers.js:4
+msgid "Save addresses"
+msgstr ""
+
+#: var/i18n/templates.php:151
+#: var/i18n/templates.php:155
+msgid "Date"
+msgstr ""
+
+#: var/i18n/templates.php:152
+#: var/i18n/templates.php:156
+#: var/i18n/templates.php:255
+#: build/admin/coupons.js:5
+#: build/admin/orders.js:19
+#: build/admin/price-rules.js:6
+#: build/admin/price-rules.js:10
+msgid "Status"
+msgstr ""
+
+#: var/i18n/templates.php:158
+msgid "Order pages"
+msgstr ""
+
+#: var/i18n/templates.php:159
+msgid "You have not ordered anything yet."
+msgstr ""
+
+#: var/i18n/templates.php:160
+#: var/i18n/templates.php:162
+#: var/i18n/templates.php:186
+msgid "Go to the shop"
+msgstr ""
+
+#: var/i18n/templates.php:161
+#: var/i18n/templates.php:203
+msgid "Your cart is empty."
+msgstr ""
+
+#: var/i18n/templates.php:165
+#: var/i18n/templates.php:173
+#: var/i18n/templates.php:219
+#: var/i18n/templates.php:235
+#: build/admin/orders.js:2
+#: build/admin/orders.js:16
+msgid "Quantity"
+msgstr ""
+
+#. translators: %s: product name
+#: var/i18n/templates.php:175
+#, php-format
+msgid "Quantity of %s"
+msgstr ""
+
+#. translators: %s: product name
+#. translators: %s: attribute name
+#: var/i18n/templates.php:178
+#: build/admin/attribute-sets.js:2
+#: build/admin/product-editor.js:2
+#, php-format,js-format
+msgid "Remove %s"
+msgstr ""
+
+#: var/i18n/templates.php:181
+msgid "Taxes and shipping are added at checkout."
+msgstr ""
+
+#: var/i18n/templates.php:182
+msgid "Continue shopping"
+msgstr ""
+
+#: var/i18n/templates.php:183
+msgid "Change or remove the items marked above to check out."
+msgstr ""
+
+#: var/i18n/templates.php:184
+#: var/i18n/templates.php:207
+msgid "Check out"
+msgstr ""
+
+#: var/i18n/templates.php:185
+msgid "The shop does not take orders online."
+msgstr ""
+
+#: var/i18n/templates.php:187
+msgid "Back to the cart"
+msgstr ""
+
+#: var/i18n/templates.php:188
+msgid "Contact"
+msgstr ""
+
+#: var/i18n/templates.php:190
+msgid "Have an account?"
+msgstr ""
+
+#: var/i18n/templates.php:193
+#: var/i18n/templates.php:277
+#: build/admin/settings.js:2
+msgid "Address"
+msgstr ""
+
+#: var/i18n/templates.php:194
+#: build/admin/orders.js:2
+msgid "Ship to a different address"
+msgstr ""
+
+#: var/i18n/templates.php:196
+msgid "Notes about your order"
+msgstr ""
+
+#: var/i18n/templates.php:197
+msgid "Save these addresses for next time"
+msgstr ""
+
+#: var/i18n/templates.php:199
+msgid "An account is made with your order, so you can follow it and download what you buy."
+msgstr ""
+
+#: var/i18n/templates.php:200
+msgid "Make an account with this order"
+msgstr ""
+
+#. translators: %d: how many items the cart holds
+#: var/i18n/templates.php:205
+#: build/storefront/storefront.js:2
+#, php-format,js-format
+msgid "%d item in cart."
+msgid_plural "%d items in cart."
+msgstr[0] ""
+msgstr[1] ""
+
+#: var/i18n/templates.php:206
+#: build/storefront/storefront.js:2
+msgid "View cart"
+msgstr ""
+
+#: var/i18n/templates.php:209
+msgid "items"
+msgstr ""
+
+#: var/i18n/templates.php:210
+msgid "Filter products"
+msgstr ""
+
+#: var/i18n/templates.php:211
+msgid "Show products"
+msgstr ""
+
+#: var/i18n/templates.php:213
+#: build/admin/jobs.js:1
+#: build/admin/settings.js:2
+msgid "Search"
+msgstr ""
+
+#: var/i18n/templates.php:214
+msgid "Buy"
+msgstr ""
+
+#. translators: %d: image number
+#: var/i18n/templates.php:216
+#, php-format
+msgid "Show image %d"
+msgstr ""
+
+#: var/i18n/templates.php:217
+msgid "In the box"
+msgstr ""
+
+#: var/i18n/templates.php:218
+msgid "Buy more, pay less"
+msgstr ""
+
+#: var/i18n/templates.php:220
+msgid "Price each"
+msgstr ""
+
+#. translators: %d: quantity
+#: var/i18n/templates.php:222
+#, php-format
+msgid "%d or more"
+msgstr ""
+
+#: var/i18n/templates.php:224
+#: var/i18n/templates.php:232
+#: var/i18n/templates.php:234
+#: var/i18n/templates.php:244
+#: build/admin/product-editor.js:3
+#: build/storefront/storefront.js:2
+msgid "Not available"
+msgstr ""
+
+#: var/i18n/templates.php:225
+#: build/storefront/storefront.js:2
+msgid "On backorder: ships when it is back in stock"
+msgstr ""
+
+#. translators: %d: how many are in stock
+#: var/i18n/templates.php:227
+#: build/storefront/storefront.js:2
+#, php-format,js-format
+msgid "%d in stock"
+msgstr ""
+
+#: var/i18n/templates.php:228
+msgid "Choose an option"
+msgstr ""
+
+#: var/i18n/templates.php:229
+#: var/i18n/templates.php:233
+#: build/admin/orders.js:2
+#: build/admin/product-editor.js:8
+msgid "None"
+msgstr ""
+
+#. translators: %s: product or option name
+#: var/i18n/templates.php:231
+#, php-format
+msgid "Add %s"
+msgstr ""
+
+#: var/i18n/templates.php:236
+#: var/i18n/templates.php:245
+msgid "Add to cart"
+msgstr ""
+
+#: var/i18n/templates.php:237
+msgid "Files you get"
+msgstr ""
+
+#: var/i18n/templates.php:241
+msgid "Sort by"
+msgstr ""
+
+#: var/i18n/templates.php:242
+#: build/admin/reports.js:6
+#: build/admin/stock.js:1
+msgid "Show"
+msgstr ""
+
+#: var/i18n/templates.php:243
+#: var/i18n/templates.php:247
+msgid "Details"
+msgstr ""
+
+#: var/i18n/templates.php:246
+msgid "Choose options"
+msgstr ""
+
+#: var/i18n/templates.php:248
+msgid "Product pages"
+msgstr ""
+
+#: var/i18n/templates.php:249
+msgid "No products match your search."
+msgstr ""
+
+#: var/i18n/templates.php:250
+msgid "There are no products here yet."
+msgstr ""
+
+#: var/i18n/templates.php:251
+msgid "Your order was not completed"
+msgstr ""
+
+#: var/i18n/templates.php:254
+#: build/admin/orders.js:19
+msgid "Placed"
+msgstr ""
+
+#: var/i18n/templates.php:260
+#: build/admin/orders.js:2
+#: build/admin/orders.js:19
+msgid "Items"
+msgstr ""
+
+#: var/i18n/templates.php:274
+msgid "Your note"
+msgstr ""
+
+#: var/i18n/templates.php:275
+msgid "Messages from the shop"
+msgstr ""
+
+#: var/i18n/templates.php:279
+#: build/admin/orders.js:5
+msgid "Shipments"
+msgstr ""
+
+#: var/i18n/templates.php:280
+#: build/admin/orders.js:5
+msgid "Follow it"
+msgstr ""
+
+#: build/admin/attribute-sets.js:1
+#: build/admin/product-editor.js:1
+msgid "(no name)"
+msgstr ""
+
+#: build/admin/attribute-sets.js:1
+#: build/admin/product-editor.js:1
+msgid "Drag to reorder"
+msgstr ""
+
+#. translators: %s: name
+#: build/admin/attribute-sets.js:1
+#: build/admin/product-editor.js:1
+#, js-format
+msgid "Move %s up"
+msgstr ""
+
+#. translators: %s: name
+#: build/admin/attribute-sets.js:1
+#: build/admin/product-editor.js:1
+#, js-format
+msgid "Move %s down"
+msgstr ""
+
+#: build/admin/attribute-sets.js:2
+#: build/admin/product-editor.js:2
+msgid "attribute"
+msgstr ""
+
+#: build/admin/attribute-sets.js:2
+#: build/admin/product-editor.js:2
+msgid "Attribute"
+msgstr ""
+
+#: build/admin/attribute-sets.js:2
+#: build/admin/product-editor.js:2
+msgid "Customers must choose one"
+msgstr ""
+
+#: build/admin/attribute-sets.js:2
+#: build/admin/product-editor.js:2
+msgid "Hide the option prices"
+msgstr ""
+
+#. translators: %s: option name
+#: build/admin/attribute-sets.js:3
+#: build/admin/product-editor.js:3
+#, js-format
+msgid "Remove option %s"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/product-editor.js:3
+#: build/admin/stock.js:1
+msgid "Option"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/product-editor.js:3
+msgid "Price change"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/product-editor.js:3
+msgid "As"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+#: build/admin/price-rules.js:7
+#: build/admin/product-editor.js:3
+msgid "Amount"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/product-editor.js:3
+msgid "% of the price"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/product-editor.js:3
+msgid "Add option"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/product-editor.js:3
+msgid "Add attribute"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+msgid "New attribute set"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+msgid "Delete the set"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/orders.js:16
+#: build/admin/shipping.js:1
+#: build/admin/stockrooms.js:1
+#: build/admin/tax.js:1
+msgid "Keep it"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+msgid "Delete set"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+msgid "Set name"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/coupons.js:5
+#: build/admin/payments.js:1
+#: build/admin/price-rules.js:7
+#: build/admin/price-rules.js:10
+#: build/admin/shipping.js:1
+#: build/admin/stockrooms.js:1
+msgid "Active"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+msgid "Products offer the attributes of active sets only."
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+msgid "Save attribute set"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+msgid "Attributes that several products share, such as size for clothing. A product offers the attributes of the sets you choose for it, while they are active."
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+msgid "New set"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+msgid "Attribute set saved."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Shoppers see their cart here."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Shoppers enter their addresses and pay here, and see their receipt after ordering."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Customers log in here and see their orders, files and addresses."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Shoppers narrow the products by brand, the shop’s filters, price and stock here, with how many products each choice leaves. Place it beside a Products block whose own filters are off; it counts within that block’s category, featured or sale products."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Show buttons"
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "How many items are in the cart, with buttons to the cart and the checkout: for sidebars. Off: a compact link for headers."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "How many items are in the cart, with buttons to the cart and the checkout."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "A link to the cart with the number of items in it."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Products per page"
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Columns"
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Only this category (slug)"
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Empty: every category, with links to choose one."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "First sorted by"
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Shoppers can sort differently."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Recommended (the products’ Order)"
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Featured products only"
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Products on sale only"
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Show filters"
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Brands, the shop’s filters, price and stock, with how many products each leaves."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "The shop: published products with their prices, by category, with search and sorting."
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "Placeholder"
+msgstr ""
+
+#: build/admin/blocks.js:1
+msgid "A search box that lists the matching products on the shop page."
+msgstr ""
+
+#: build/admin/coupons.js:1
+#: build/admin/price-rules.js:1
+#: build/admin/price-rules.js:6
+msgid "Percentage off"
+msgstr ""
+
+#: build/admin/coupons.js:1
+#: build/admin/price-rules.js:1
+msgid "Amount off the order"
+msgstr ""
+
+#: build/admin/coupons.js:1
+#: build/admin/price-rules.js:1
+msgid "Amount off each item"
+msgstr ""
+
+#: build/admin/coupons.js:1
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Code"
+msgstr ""
+
+#. translators: %s: percentage
+#: build/admin/coupons.js:2
+#: build/admin/price-rules.js:2
+#, js-format
+msgid "%s %%"
+msgstr ""
+
+#. translators: 1: percentage, 2: cap
+#: build/admin/coupons.js:3
+#: build/admin/price-rules.js:3
+#, js-format
+msgid "%1$s %%, at most %2$s"
+msgstr ""
+
+#. translators: %s: amount
+#: build/admin/coupons.js:4
+#: build/admin/price-rules.js:4
+#, js-format
+msgid "%s off the order"
+msgstr ""
+
+#. translators: %s: amount
+#: build/admin/coupons.js:5
+#: build/admin/price-rules.js:5
+#, js-format
+msgid "%s off each item"
+msgstr ""
+
+#: build/admin/coupons.js:5
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+#: build/admin/product-editor.js:8
+#: build/admin/stockrooms.js:1
+msgid "Description"
+msgstr ""
+
+#: build/admin/coupons.js:5
+#: build/admin/price-rules.js:6
+msgid "Used"
+msgstr ""
+
+#: build/admin/coupons.js:5
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+#: build/admin/price-rules.js:7
+msgid "Ends"
+msgstr ""
+
+#: build/admin/coupons.js:5
+#: build/admin/price-rules.js:7
+#: build/admin/price-rules.js:10
+msgid "Off"
+msgstr ""
+
+#: build/admin/coupons.js:5
+#: build/admin/price-rules.js:5
+msgid "New automatic discount"
+msgstr ""
+
+#: build/admin/coupons.js:5
+#: build/admin/price-rules.js:5
+msgid "New coupon"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/customers.js:4
+#: build/admin/jobs.js:13
+#: build/admin/price-rules.js:6
+#: build/admin/price-rules.js:7
+msgid "Close"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "What customers enter; capitals and small letters are the same."
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "What customers see on the cart, the receipt and the emails, such as \"10 % off orders over 100\"."
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Shown next to the code on the cart, the receipt and the emails."
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+#: build/admin/price-rules.js:7
+msgid "Percentage"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "At most (optional)"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Active: customers can use it"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "What it applies to"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Leave these empty for the whole order. A category includes its subcategories."
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Never for these products"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Never for these categories"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Not for items on sale"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "When it holds"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+#: build/admin/price-rules.js:7
+msgid "Starts"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Smallest order (before tax)"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Largest order"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Items it applies to, at least"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Only for orders shipped to (country codes, such as BG)"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Limits"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Uses in all (optional)"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Uses per customer (optional)"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "By account, or by email for guests."
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "First orders only"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Goes with coupon codes and other discounts that allow it"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Can be used with other codes that allow it"
+msgstr ""
+
+#: build/admin/coupons.js:6
+#: build/admin/price-rules.js:6
+msgid "Save the coupon"
+msgstr ""
+
+#: build/admin/coupons.js:6
+msgid "Add a coupon"
+msgstr ""
+
+#. translators: %s: coupon code
+#: build/admin/coupons.js:7
+#, js-format
+msgid "The coupon %s was saved."
+msgstr ""
+
+#: build/admin/coupons.js:7
+msgid "Search codes"
+msgstr ""
+
+#: build/admin/coupons.js:7
+#: build/admin/price-rules.js:7
+#: build/admin/price-rules.js:11
+#: build/admin/tax.js:1
+msgid "Edit"
+msgstr ""
+
+#: build/admin/coupons.js:7
+#: build/admin/customers.js:3
+#: build/admin/jobs.js:13
+#: build/admin/orders.js:16
+#: build/admin/orders.js:20
+#: build/admin/price-rules.js:7
+#: build/admin/price-rules.js:11
+#: build/admin/product-editor.js:8
+#: build/admin/shipping.js:1
+#: build/admin/tax.js:1
+msgid "Delete"
+msgstr ""
+
+#. translators: %s: coupon code
+#: build/admin/coupons.js:8
+#, js-format
+msgid "Delete the coupon %s? Orders that used it keep their discount."
+msgstr ""
+
+#: build/admin/coupons.js:8
+msgid "No coupons yet."
+msgstr ""
+
+#: build/admin/customers.js:1
+#: build/admin/orders.js:1
+msgid "Street"
+msgstr ""
+
+#: build/admin/customers.js:1
+#: build/admin/orders.js:1
+msgid "Country code"
+msgstr ""
+
+#: build/admin/customers.js:1
+#: build/admin/orders.js:1
+msgid "State code"
+msgstr ""
+
+#: build/admin/customers.js:1
+#: build/admin/orders.js:2
+#: build/admin/orders.js:19
+#: build/admin/reports.js:7
+msgid "Customer"
+msgstr ""
+
+#: build/admin/customers.js:1
+msgid "Since"
+msgstr ""
+
+#: build/admin/customers.js:1
+msgid "Customers may make an account when they order"
+msgstr ""
+
+#: build/admin/customers.js:1
+msgid "Customers must log in or make an account to order"
+msgstr ""
+
+#: build/admin/customers.js:1
+msgid "Everyone orders as a guest"
+msgstr ""
+
+#: build/admin/customers.js:1
+#: build/admin/customers.js:4
+msgid "Customer groups"
+msgstr ""
+
+#: build/admin/customers.js:1
+msgid "Groups such as Wholesale or VIP; price rules give them their own prices. Put customers in groups from their details below."
+msgstr ""
+
+#. translators: 1: group name, 2: number of customers
+#: build/admin/customers.js:2
+#, js-format
+msgid "%1$s (%2$d)"
+msgstr ""
+
+#: build/admin/customers.js:2
+msgid "New name"
+msgstr ""
+
+#: build/admin/customers.js:2
+#: build/admin/shipping.js:1
+#: build/admin/tax.js:1
+msgid "Rename"
+msgstr ""
+
+#. translators: %s: group name
+#: build/admin/customers.js:3
+#, js-format
+msgid "Delete the group %s? Its customers leave it, and its price rules apply to no one."
+msgstr ""
+
+#: build/admin/customers.js:3
+#: build/admin/tax.js:1
+msgid "New group"
+msgstr ""
+
+#: build/admin/customers.js:3
+msgid "Add the group"
+msgstr ""
+
+#. translators: 1: name, 2: email
+#: build/admin/customers.js:4
+#, js-format
+msgid "%1$s (%2$s)"
+msgstr ""
+
+#: build/admin/customers.js:4
+msgid "Checkout fills these in for the customer. Leave the street empty to forget an address."
+msgstr ""
+
+#: build/admin/customers.js:4
+msgid "Accounts"
+msgstr ""
+
+#: build/admin/customers.js:4
+msgid "Customer accounts"
+msgstr ""
+
+#: build/admin/customers.js:4
+msgid "Saved."
+msgstr ""
+
+#: build/admin/customers.js:4
+msgid "The addresses were saved."
+msgstr ""
+
+#: build/admin/customers.js:4
+msgid "Search by email or name"
+msgstr ""
+
+#: build/admin/customers.js:4
+msgid "Edit addresses"
+msgstr ""
+
+#: build/admin/customers.js:4
+msgid "No customers have made an account yet."
+msgstr ""
+
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Pending payment"
+msgstr ""
+
+#: build/admin/emails.js:1
+#: build/admin/jobs.js:12
+#: build/admin/jobs.js:14
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Failed"
+msgstr ""
+
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Order received (awaiting payment)"
+msgstr ""
+
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Order confirmed"
+msgstr ""
+
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Order shipped"
+msgstr ""
+
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Order completed"
+msgstr ""
+
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Order cancelled"
+msgstr ""
+
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Order refunded"
+msgstr ""
+
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "Note to the customer"
+msgstr ""
+
+#: build/admin/emails.js:1
+#: build/admin/orders.js:1
+#: build/admin/reports.js:1
+msgid "New order (to the shop)"
+msgstr ""
+
+#: build/admin/emails.js:1
+msgid "Email settings saved."
+msgstr ""
+
+#: build/admin/emails.js:1
+msgid "Sender"
+msgstr ""
+
+#: build/admin/emails.js:1
+msgid "From name"
+msgstr ""
+
+#: build/admin/emails.js:1
+msgid "From address"
+msgstr ""
+
+#: build/admin/emails.js:1
+msgid "The shop’s own emails go to"
+msgstr ""
+
+#: build/admin/emails.js:1
+msgid "Emails sent"
+msgstr ""
+
+#: build/admin/emails.js:1
+#: build/admin/orders.js:5
+#: build/admin/settings.js:4
+msgid "Save"
+msgstr ""
+
+#: build/admin/jobs.js:1
+msgid "Search index"
+msgstr ""
+
+#: build/admin/jobs.js:1
+msgid "Order emails"
+msgstr ""
+
+#: build/admin/jobs.js:1
+msgid "Shipment tracking"
+msgstr ""
+
+#: build/admin/jobs.js:1
+msgid "Report figures"
+msgstr ""
+
+#: build/admin/jobs.js:1
+msgid "Counting every order again"
+msgstr ""
+
+#: build/admin/jobs.js:1
+msgid "Mail"
+msgstr ""
+
+#. translators: %d: seconds
+#: build/admin/jobs.js:2
+#, js-format
+msgid "%d second"
+msgid_plural "%d seconds"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %d: minutes
+#: build/admin/jobs.js:3
+#, js-format
+msgid "%d minute"
+msgid_plural "%d minutes"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %d: hours
+#: build/admin/jobs.js:4
+#, js-format
+msgid "%d hour"
+msgid_plural "%d hours"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %d: days
+#: build/admin/jobs.js:5
+#, js-format
+msgid "%d day"
+msgid_plural "%d days"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a span of time, such as "3 minutes"
+#: build/admin/jobs.js:6
+#, js-format
+msgid "%s ago"
+msgstr ""
+
+#. translators: %s: a span of time, such as "3 minutes"
+#: build/admin/jobs.js:7
+#, js-format
+msgid "in %s"
+msgstr ""
+
+#: build/admin/jobs.js:7
+msgid "Nothing has run the jobs yet: no worker is running and WP-Cron has not run. Run workers (wp orillacart jobs work --loop), or make sure WP-Cron runs every minute."
+msgstr ""
+
+#. translators: %s: how long ago, such as "12 minutes ago"
+#: build/admin/jobs.js:8
+#, js-format
+msgid "Nothing runs the jobs: no worker is running and WP-Cron last ran %s. Run workers (wp orillacart jobs work --loop), or make sure WP-Cron runs every minute."
+msgstr ""
+
+#: build/admin/jobs.js:8
+msgid "WordPress runs the jobs after each request and every minute. For a busy shop, run workers: wp orillacart jobs work --loop."
+msgstr ""
+
+#: build/admin/jobs.js:8
+msgid "Now"
+msgstr ""
+
+#: build/admin/jobs.js:8
+msgid "Lane"
+msgstr ""
+
+#: build/admin/jobs.js:8
+#: build/admin/jobs.js:9
+msgid "Waiting"
+msgstr ""
+
+#: build/admin/jobs.js:8
+msgid "Running"
+msgstr ""
+
+#: build/admin/jobs.js:8
+#: build/admin/jobs.js:15
+msgid "Scheduled"
+msgstr ""
+
+#: build/admin/jobs.js:8
+msgid "Longest wait"
+msgstr ""
+
+#: build/admin/jobs.js:8
+msgid "Workers"
+msgstr ""
+
+#: build/admin/jobs.js:8
+msgid "Restart workers"
+msgstr ""
+
+#: build/admin/jobs.js:8
+msgid "No worker is running."
+msgstr ""
+
+#. translators: %s: how long ago
+#: build/admin/jobs.js:9
+#, js-format
+msgid "No worker is running. WP-Cron last ran the jobs %s."
+msgstr ""
+
+#: build/admin/jobs.js:9
+msgid "Worker"
+msgstr ""
+
+#: build/admin/jobs.js:9
+msgid "Lanes"
+msgstr ""
+
+#: build/admin/jobs.js:9
+msgid "Now on"
+msgstr ""
+
+#: build/admin/jobs.js:9
+msgid "Jobs done"
+msgstr ""
+
+#: build/admin/jobs.js:9
+msgid "Memory"
+msgstr ""
+
+#: build/admin/jobs.js:9
+msgid "Started"
+msgstr ""
+
+#: build/admin/jobs.js:9
+msgid "Last seen"
+msgstr ""
+
+#: build/admin/jobs.js:9
+msgid "All"
+msgstr ""
+
+#. translators: %d: megabytes
+#: build/admin/jobs.js:10
+#, js-format
+msgid "%d MB"
+msgstr ""
+
+#. translators: %d: number of jobs
+#: build/admin/jobs.js:11
+#, js-format
+msgid "%d job is queued again."
+msgid_plural "%d jobs are queued again."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %d: number of jobs
+#: build/admin/jobs.js:12
+#, js-format
+msgid "%d failed job deleted."
+msgid_plural "%d failed jobs deleted."
+msgstr[0] ""
+msgstr[1] ""
+
+#: build/admin/jobs.js:12
+#: build/admin/jobs.js:15
+msgid "Job"
+msgstr ""
+
+#: build/admin/jobs.js:12
+#: build/admin/jobs.js:13
+#: build/admin/jobs.js:14
+#: build/admin/jobs.js:15
+msgid "Type"
+msgstr ""
+
+#: build/admin/jobs.js:12
+msgid "Error"
+msgstr ""
+
+#: build/admin/jobs.js:12
+msgid "Attempts"
+msgstr ""
+
+#. translators: %d: number of failed jobs
+#: build/admin/jobs.js:13
+#, js-format
+msgid "Failed (%d)"
+msgstr ""
+
+#: build/admin/jobs.js:13
+msgid "Retry all"
+msgstr ""
+
+#: build/admin/jobs.js:13
+msgid "Delete all"
+msgstr ""
+
+#: build/admin/jobs.js:13
+msgid "A job that failed every attempt waits here, with its error, for 30 days. Retry it once the cause is fixed, such as the mail server."
+msgstr ""
+
+#: build/admin/jobs.js:13
+msgid "All types"
+msgstr ""
+
+#: build/admin/jobs.js:13
+msgid "Retry"
+msgstr ""
+
+#: build/admin/jobs.js:13
+msgid "No job failed."
+msgstr ""
+
+#: build/admin/jobs.js:13
+#: build/admin/orders.js:19
+msgid "History"
+msgstr ""
+
+#: build/admin/jobs.js:13
+msgid "The last 24 hours"
+msgstr ""
+
+#: build/admin/jobs.js:13
+msgid "Jobs per hour"
+msgstr ""
+
+#. translators: 1: hour, 2: done, 3: retried, 4: failed
+#: build/admin/jobs.js:14
+#, js-format
+msgid "%1$s: %2$d done, %3$d to retry, %4$d failed"
+msgstr ""
+
+#: build/admin/jobs.js:14
+msgid "Done"
+msgstr ""
+
+#: build/admin/jobs.js:14
+msgid "To retry"
+msgstr ""
+
+#: build/admin/jobs.js:14
+msgid "The last 30 days"
+msgstr ""
+
+#: build/admin/jobs.js:14
+msgid "No job ran yet."
+msgstr ""
+
+#: build/admin/jobs.js:14
+msgid "Retried"
+msgstr ""
+
+#: build/admin/jobs.js:14
+msgid "Average time"
+msgstr ""
+
+#. translators: %d: milliseconds
+#: build/admin/jobs.js:15
+#, js-format
+msgid "%d ms"
+msgstr ""
+
+#: build/admin/jobs.js:15
+msgid "Jobs that wait for their time, such as a product to index again when its sale starts, and jobs to retry."
+msgstr ""
+
+#: build/admin/jobs.js:15
+msgid "Runs"
+msgstr ""
+
+#: build/admin/jobs.js:15
+msgid "The workers stop after their batch; their supervisor starts them again."
+msgstr ""
+
+#: build/admin/orders.js:1
+#: build/admin/product-editor.js:6
+msgid "Add a product"
+msgstr ""
+
+#: build/admin/orders.js:1
+#: build/admin/orders.js:2
+#: build/admin/orders.js:19
+#: build/admin/payments.js:1
+#: build/admin/shipping.js:1
+msgid "— Choose —"
+msgstr ""
+
+#: build/admin/orders.js:1
+#: build/admin/settings.js:4
+#: build/admin/tax.js:1
+msgid "— None —"
+msgstr ""
+
+#: build/admin/orders.js:1
+msgid "— Leave out —"
+msgstr ""
+
+#: build/admin/orders.js:1
+#: build/admin/product-editor.js:7
+msgid "Add"
+msgstr ""
+
+#. translators: %d: product id
+#: build/admin/orders.js:2
+#, js-format
+msgid "Product %d"
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "Unit price"
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "Empty for the catalog price"
+msgstr ""
+
+#: build/admin/orders.js:2
+#: build/admin/orders.js:15
+msgid "← All orders"
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "New order"
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "Empty for a guest’s order. Choosing an account fills in its email and addresses."
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "Shipping and payment"
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "No rate ships these items to this address."
+msgstr ""
+
+#: build/admin/orders.js:2
+#: build/admin/orders.js:19
+msgid "Ships by"
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "Payment method"
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "Already paid"
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "A paid order starts processing; otherwise it waits on hold for the payment."
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "Email the customer"
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "They get the order received or confirmed email, as after checkout. You can also send it later from the order."
+msgstr ""
+
+#: build/admin/orders.js:2
+msgid "Note from the customer"
+msgstr ""
+
+#. translators: 1: items, 2: their tax, 3: shipping with its tax, 4: total
+#: build/admin/orders.js:3
+#, js-format
+msgid "Items %1$s, their tax %2$s, shipping %3$s with its tax. Total %4$s."
+msgstr ""
+
+#: build/admin/orders.js:3
+msgid "Create the order"
+msgstr ""
+
+#: build/admin/orders.js:3
+msgid "A guest’s order: it is in no customer’s account."
+msgstr ""
+
+#. translators: %d: customer id
+#: build/admin/orders.js:4
+#, js-format
+msgid "In the account of customer #%d."
+msgstr ""
+
+#: build/admin/orders.js:4
+msgid "Move it to the account of"
+msgstr ""
+
+#: build/admin/orders.js:4
+msgid "Move"
+msgstr ""
+
+#: build/admin/orders.js:4
+msgid "Make it a guest’s order"
+msgstr ""
+
+#. translators: 1: product, 2: how many times it was downloaded
+#: build/admin/orders.js:5
+#, js-format
+msgid "%1$s · downloaded %2$d times"
+msgstr ""
+
+#: build/admin/orders.js:5
+msgid "Empty: no limit"
+msgstr ""
+
+#: build/admin/orders.js:5
+msgid "Last day"
+msgstr ""
+
+#: build/admin/orders.js:5
+msgid "Empty: no end"
+msgstr ""
+
+#: build/admin/orders.js:5
+msgid "Booked"
+msgstr ""
+
+#: build/admin/orders.js:5
+msgid "On the way"
+msgstr ""
+
+#: build/admin/orders.js:5
+msgid "Delivered"
+msgstr ""
+
+#: build/admin/orders.js:5
+msgid "Coming back"
+msgstr ""
+
+#: build/admin/orders.js:5
+msgid "Print the label"
+msgstr ""
+
+#: build/admin/orders.js:5
+msgid "Cancel the shipment"
+msgstr ""
+
+#: build/admin/orders.js:5
+msgid "Parcels"
+msgstr ""
+
+#. translators: %s: carrier name
+#: build/admin/orders.js:6
+#, js-format
+msgid "Book with %s"
+msgstr ""
+
+#: build/admin/orders.js:6
+msgid "through the payment provider"
+msgstr ""
+
+#: build/admin/orders.js:6
+msgid "made outside the shop"
+msgstr ""
+
+#: build/admin/orders.js:6
+msgid "made at the payment provider’s site"
+msgstr ""
+
+#: build/admin/orders.js:6
+#: build/admin/reports.js:5
+msgid "Refunds"
+msgstr ""
+
+#: build/admin/orders.js:6
+msgid "The refund went through."
+msgstr ""
+
+#: build/admin/orders.js:6
+msgid "Try again"
+msgstr ""
+
+#: build/admin/orders.js:6
+msgid "The refund was given up."
+msgstr ""
+
+#: build/admin/orders.js:6
+msgid "Give up (it did not go through)"
+msgstr ""
+
+#. translators: %s: amount
+#: build/admin/orders.js:7
+#, js-format
+msgid "%s is left to refund."
+msgstr ""
+
+#. translators: 1: product, 2: items left to refund
+#: build/admin/orders.js:8
+#, js-format
+msgid "%1$s: items to refund (of %2$d)"
+msgstr ""
+
+#. translators: %s: shipping charge
+#: build/admin/orders.js:9
+#, js-format
+msgid "Refund the shipping (%s)"
+msgstr ""
+
+#: build/admin/orders.js:9
+msgid "Amount to refund"
+msgstr ""
+
+#: build/admin/orders.js:9
+msgid "Follows the items and shipping you chose, tax included. Change it to keep a fee, or refund an amount alone as a goodwill gesture."
+msgstr ""
+
+#: build/admin/orders.js:9
+msgid "Reason (for the history)"
+msgstr ""
+
+#: build/admin/orders.js:9
+msgid "Put the refunded items back in stock"
+msgstr ""
+
+#: build/admin/orders.js:9
+msgid "How the money goes back"
+msgstr ""
+
+#. translators: %s: payment method, such as PayPal
+#: build/admin/orders.js:10
+#, js-format
+msgid "Through %s"
+msgstr ""
+
+#: build/admin/orders.js:10
+msgid "I gave it back outside the shop: only record it"
+msgstr ""
+
+#. translators: %s: payment method
+#: build/admin/orders.js:11
+#, js-format
+msgid "%s cannot give money back from here. Give it back yourself, such as by bank transfer, and record it here."
+msgstr ""
+
+#: build/admin/orders.js:11
+msgid "This payment method"
+msgstr ""
+
+#. translators: %s: amount
+#: build/admin/orders.js:12
+#, js-format
+msgid "%s was refunded."
+msgstr ""
+
+#. translators: 1: amount, 2: payment method
+#: build/admin/orders.js:13
+#, js-format
+msgid "Refund %1$s through %2$s"
+msgstr ""
+
+#. translators: %s: amount
+#: build/admin/orders.js:14
+#, js-format
+msgid "Record a refund of %s"
+msgstr ""
+
+#: build/admin/orders.js:14
+msgid "shipping"
+msgstr ""
+
+#. translators: %s: payment method
+#: build/admin/orders.js:15
+#, js-format
+msgid "through %s"
+msgstr ""
+
+#: build/admin/orders.js:15
+msgid "— waiting for the provider"
+msgstr ""
+
+#: build/admin/orders.js:15
+msgid "— not refunded"
+msgstr ""
+
+#: build/admin/orders.js:15
+msgid "(the provider is still sending it)"
+msgstr ""
+
+#: build/admin/orders.js:15
+msgid "back in stock"
+msgstr ""
+
+#. translators: 1: order number, 2: status
+#: build/admin/orders.js:16
+#, js-format
+msgid "Order #%1$d — %2$s"
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "The items were changed."
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "The status was changed."
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "The note was added."
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "The customer’s details were saved."
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "The order’s account was changed."
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "The downloads were changed."
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "The email was sent."
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "The email could not be sent; see the site’s error log."
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "The order and its history go for good; its items go back in stock."
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "The order and its history go for good."
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "Delete this order for good"
+msgstr ""
+
+#: build/admin/orders.js:16
+msgid "Item"
+msgstr ""
+
+#. translators: 1: coupon code, 2: its description
+#: build/admin/orders.js:18
+#, js-format
+msgid "Coupon %1$s %2$s"
+msgstr ""
+
+#. translators: 1: date, 2: payment method
+#: build/admin/orders.js:19
+#, js-format
+msgid "Placed %1$s, paying by %2$s."
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "nothing (free)"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Transaction"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Customer’s note:"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Move the order to"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Cancelling puts the items back in stock."
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Note for the history (optional)"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Change status"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "to the customer"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Add a note"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Email it to the customer"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Add note"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "The order waits for its payment, so its items can still change. Taxes, shipping and stock follow; the customer is not emailed — send the \"order received\" email again if they should know."
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Save the items"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Save the customer’s details"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Send again"
+msgstr ""
+
+#: build/admin/orders.js:19
+msgid "Send"
+msgstr ""
+
+#. translators: %s: order numbers
+#: build/admin/orders.js:20
+#, js-format
+msgid "Delete %s for good? Orders waiting for their payment give their items back to stock."
+msgstr ""
+
+#: build/admin/orders.js:20
+msgid "Add order"
+msgstr ""
+
+#: build/admin/orders.js:20
+msgid "Search by number, email or name"
+msgstr ""
+
+#: build/admin/orders.js:20
+msgid "Open"
+msgstr ""
+
+#: build/admin/orders.js:20
+msgid "Delete orders"
+msgstr ""
+
+#: build/admin/orders.js:20
+msgid "No orders found."
+msgstr ""
+
+#: build/admin/payments.js:1
+#: build/admin/settings.js:2
+#: build/admin/shipping.js:1
+msgid "Saved. Leave empty to keep it."
+msgstr ""
+
+#: build/admin/payments.js:1
+msgid "Checkout does not offer it: its settings are incomplete or it does not take the shop’s currency."
+msgstr ""
+
+#: build/admin/payments.js:1
+msgid "Name at checkout"
+msgstr ""
+
+#: build/admin/payments.js:1
+msgid "Billing countries"
+msgstr ""
+
+#: build/admin/payments.js:1
+msgid "Country codes such as BG, separated by commas. Empty for every country."
+msgstr ""
+
+#: build/admin/payments.js:1
+msgid "Instructions at checkout"
+msgstr ""
+
+#: build/admin/payments.js:1
+msgid "Note on the receipt"
+msgstr ""
+
+#: build/admin/payments.js:1
+msgid "Such as your bank details for a bank transfer."
+msgstr ""
+
+#: build/admin/payments.js:1
+msgid "Webhook address:"
+msgstr ""
+
+#. translators: %s: payment method name
+#. translators: %s: filter label
+#. translators: %s: carrier name
+#. translators: %s: stockroom name
+#: build/admin/payments.js:2
+#: build/admin/settings.js:2
+#: build/admin/shipping.js:2
+#: build/admin/stockrooms.js:2
+#, js-format
+msgid "Save %s"
+msgstr ""
+
+#: build/admin/payments.js:2
+msgid "Checkout offers the active methods that serve the customer’s billing country, in their order. Orders paid offline wait on hold until you have the money."
+msgstr ""
+
+#. translators: %s: payment method name
+#: build/admin/payments.js:3
+#, js-format
+msgid "%s saved."
+msgstr ""
+
+#: build/admin/price-rules.js:6
+msgid "Amount off"
+msgstr ""
+
+#: build/admin/price-rules.js:6
+msgid "Automatic discounts"
+msgstr ""
+
+#: build/admin/price-rules.js:6
+msgid "Add an automatic discount"
+msgstr ""
+
+#: build/admin/price-rules.js:6
+msgid "Discounts on the whole order that need no code, such as 10 % off orders over 100 or free shipping over 50. They apply wherever they hold, before coupon codes."
+msgstr ""
+
+#. translators: %s: discount description
+#: build/admin/price-rules.js:7
+#, js-format
+msgid "The discount \"%s\" was saved."
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "No automatic discounts yet."
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "New price rule"
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "For you, such as \"Wholesale\" or \"Buy 10, save 10 %\"."
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "Prices"
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "From items"
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "Add a price for more items"
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "Who gets it"
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "Customer groups (empty: everyone, guests too)"
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "Make customer groups under Shop → Customers."
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "What it prices"
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "Leave these empty for the whole catalog. A category includes its subcategories."
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "Also for items on sale (from their sale price)"
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "When"
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "Save the rule"
+msgstr ""
+
+#: build/admin/price-rules.js:7
+msgid "Rule"
+msgstr ""
+
+#. translators: %s: percentage
+#: build/admin/price-rules.js:8
+#, js-format
+msgid "%s %% off"
+msgstr ""
+
+#. translators: %s: amount
+#: build/admin/price-rules.js:9
+#, js-format
+msgid "%s off"
+msgstr ""
+
+#. translators: 1: quantity, 2: price
+#: build/admin/price-rules.js:10
+#, js-format
+msgid "from %1$d: %2$s"
+msgstr ""
+
+#: build/admin/price-rules.js:10
+msgid "For"
+msgstr ""
+
+#: build/admin/price-rules.js:10
+msgid "Everyone"
+msgstr ""
+
+#: build/admin/price-rules.js:10
+msgid "Add a rule"
+msgstr ""
+
+#: build/admin/price-rules.js:10
+msgid "Where several rules hold for an item, the shopper gets the lowest price. A rule leaves items on sale alone unless it says it goes with sales."
+msgstr ""
+
+#. translators: %s: rule name
+#: build/admin/price-rules.js:11
+#, js-format
+msgid "The rule %s was saved. The shop prices with it now."
+msgstr ""
+
+#. translators: %s: rule name
+#: build/admin/price-rules.js:12
+#, js-format
+msgid "Delete the rule %s? Placed orders keep their prices."
+msgstr ""
+
+#: build/admin/price-rules.js:12
+msgid "No price rules yet."
+msgstr ""
+
+#: build/admin/product-editor.js:1
+msgid "Replace image"
+msgstr ""
+
+#: build/admin/product-editor.js:1
+msgid "Choose an image"
+msgstr ""
+
+#: build/admin/product-editor.js:1
+msgid "Edit gallery"
+msgstr ""
+
+#: build/admin/product-editor.js:1
+msgid "Choose images"
+msgstr ""
+
+#: build/admin/product-editor.js:1
+msgid "Clear"
+msgstr ""
+
+#: build/admin/product-editor.js:3
+msgid "Count stock"
+msgstr ""
+
+#: build/admin/product-editor.js:3
+#: build/admin/stock.js:1
+msgid "Always available"
+msgstr ""
+
+#: build/admin/product-editor.js:3
+msgid "Stop selling"
+msgstr ""
+
+#: build/admin/product-editor.js:3
+msgid "Take backorders"
+msgstr ""
+
+#: build/admin/product-editor.js:3
+msgid "Take backorders and tell the customer"
+msgstr ""
+
+#: build/admin/product-editor.js:3
+msgid "Add a stockroom under Shop → Stockrooms to count stock."
+msgstr ""
+
+#. translators: %s: stockroom name
+#: build/admin/product-editor.js:4
+#, js-format
+msgid "%s (inactive)"
+msgstr ""
+
+#: build/admin/product-editor.js:4
+msgid "Not limited by stock"
+msgstr ""
+
+#. translators: %d: number of items
+#: build/admin/product-editor.js:5
+#, js-format
+msgid "%d available"
+msgstr ""
+
+#: build/admin/product-editor.js:5
+msgid "Save stock"
+msgstr ""
+
+#. translators: 1: product name, 2: its variations, separated by commas
+#: build/admin/product-editor.js:6
+#, js-format
+msgid "%1$s – the customer chooses: %2$s"
+msgstr ""
+
+#: build/admin/product-editor.js:6
+msgid "A product with variations cannot be a bundle: make a separate product for the bundle, and put one of the variations in it."
+msgstr ""
+
+#: build/admin/product-editor.js:6
+msgid "This product is a bundle of others"
+msgstr ""
+
+#: build/admin/product-editor.js:6
+msgid "It has no stock of its own: it sells while every item does, and each sale takes the items’ stock."
+msgstr ""
+
+#: build/admin/product-editor.js:6
+msgid "Optional"
+msgstr ""
+
+#: build/admin/product-editor.js:6
+msgid "The customer may add it."
+msgstr ""
+
+#. translators: %s: product name
+#: build/admin/product-editor.js:7
+#, js-format
+msgid "Which %s: one is the bundle’s, several are the customer’s choice"
+msgstr ""
+
+#: build/admin/product-editor.js:7
+msgid "Its own price, set above"
+msgstr ""
+
+#: build/admin/product-editor.js:7
+msgid "Its items’ prices added up"
+msgstr ""
+
+#: build/admin/product-editor.js:7
+msgid "Percentage off the sum"
+msgstr ""
+
+#: build/admin/product-editor.js:7
+msgid "Your web server hands out files from the downloads folder by itself, so anyone with the address could get them without buying. Add this rule to the site’s Nginx configuration, then check again:"
+msgstr ""
+
+#: build/admin/product-editor.js:7
+msgid "Check again"
+msgstr ""
+
+#. translators: %s: file size in kilobytes
+#: build/admin/product-editor.js:8
+#, js-format
+msgid "(%s KB)"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Uploading…"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Add a file"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Downloads per file"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Empty for no limit."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Downloads work for (days)"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Counted from payment. Empty for always."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Add attributes and save the product first; variations combine their options."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "New variation"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "— Any —"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "When out of stock"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "As the product"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Weight and size: empty for the product’s."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+#: build/admin/shipping.js:1
+msgid "Weight"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+#: build/admin/shipping.js:1
+msgid "Length"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+#: build/admin/shipping.js:1
+msgid "Width"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+#: build/admin/shipping.js:1
+msgid "Height"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Empty: the product’s name with the options."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Shown on the product page when this variation is chosen."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Gallery"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Add variation"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Save variation"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Product details saved."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Price and tax"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Product type"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+#: build/admin/reports.js:5
+msgid "Not shipped"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Variations have their own prices."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Sale starts"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Sale ends"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Taxable"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+#: build/admin/shipping.js:1
+#: build/admin/shipping.js:4
+msgid "Tax group"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "The default group"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Can be bought"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Featured"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Show the price"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "A hidden price is not shown; shoppers ask for it, and the product is not sold online."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "As the shop’s setting says"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Always show it"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Hide it"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Save product details"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Weight and size"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Shipping class"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Only rates that carry this class ship it. Variations ship in the product’s class."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Variations follow this unless they say otherwise."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Each variation has its own stock."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Attributes"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Inactive set"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Save the product details first."
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Bundle"
+msgstr ""
+
+#: build/admin/product-editor.js:8
+msgid "Images besides the featured one"
+msgstr ""
+
+#: build/admin/reports.js:1
+#: build/admin/reports.js:7
+msgid "Orders by new and returning customers"
+msgstr ""
+
+#: build/admin/reports.js:1
+#: build/admin/reports.js:7
+msgid "New customers"
+msgstr ""
+
+#: build/admin/reports.js:1
+#: build/admin/reports.js:7
+msgid "Returning customers"
+msgstr ""
+
+#: build/admin/reports.js:1
+msgid "Today"
+msgstr ""
+
+#: build/admin/reports.js:1
+msgid "Yesterday"
+msgstr ""
+
+#: build/admin/reports.js:1
+msgid "Last 7 days"
+msgstr ""
+
+#: build/admin/reports.js:1
+msgid "Last 30 days"
+msgstr ""
+
+#: build/admin/reports.js:1
+msgid "This month"
+msgstr ""
+
+#: build/admin/reports.js:1
+msgid "Last month"
+msgstr ""
+
+#: build/admin/reports.js:1
+msgid "This quarter"
+msgstr ""
+
+#: build/admin/reports.js:1
+msgid "This year"
+msgstr ""
+
+#: build/admin/reports.js:1
+msgid "Last 12 months"
+msgstr ""
+
+#: build/admin/reports.js:1
+msgid "Overview"
+msgstr ""
+
+#: build/admin/reports.js:1
+msgid "Refresh"
+msgstr ""
+
+#. translators: %d: how many orders wait to be counted
+#: build/admin/reports.js:2
+#, js-format
+msgid "%d order is still being counted; the figures will follow."
+msgid_plural "%d orders are still being counted; the figures will follow."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: the shop's currency, 2: other currencies
+#: build/admin/reports.js:3
+#, js-format
+msgid "The figures are in %1$s. Orders paid in %2$s are left out."
+msgstr ""
+
+#. translators: 1, 2: first and last day; 3, 4: first and last day compared with
+#: build/admin/reports.js:4
+#, js-format
+msgid "%1$s to %2$s, compared with %3$s to %4$s."
+msgstr ""
+
+#. translators: 1, 2: first and last day
+#: build/admin/reports.js:5
+#, js-format
+msgid "%1$s to %2$s."
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "Paid orders count on the day they were placed; refunds on the day the money went back."
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "Count every order again"
+msgstr ""
+
+#: build/admin/reports.js:5
+#: build/admin/reports.js:6
+msgid "new"
+msgstr ""
+
+#: build/admin/reports.js:5
+#: build/admin/reports.js:7
+msgid "Net sales"
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "Average order"
+msgstr ""
+
+#: build/admin/reports.js:5
+#: build/admin/reports.js:7
+msgid "Items sold"
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "Total sales"
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "Gross sales"
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "Discounts"
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "Taxes"
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "Figure"
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "Compared period"
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "Payment methods"
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "Countries"
+msgstr ""
+
+#: build/admin/reports.js:5
+msgid "No paid orders in these days."
+msgstr ""
+
+#. translators: %d: number of orders
+#: build/admin/reports.js:6
+#, js-format
+msgid "%d order"
+msgid_plural "%d orders"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %d: how many rows
+#: build/admin/reports.js:7
+#, js-format
+msgid "The best %d"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Rank by"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Change"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "A product in two categories counts in both."
+msgstr ""
+
+#: build/admin/reports.js:7
+#: build/admin/stock.js:1
+msgid "Category"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Coupons and automatic discounts"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Discount given"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Coupon"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Change in orders"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Spent per customer"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Who spent the most"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Spent"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "guest"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Nothing was sold in these days."
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Period"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Chosen days"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Compare with"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "The days before"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "The same days a year before"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Nothing"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Show by"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "What suits the period"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Day"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Week"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Month"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Download CSV"
+msgstr ""
+
+#: build/admin/reports.js:7
+msgid "Every order is being counted again in the background."
+msgstr ""
+
+#: build/admin/settings.js:1
+#: build/admin/settings.js:4
+#: build/admin/tax.js:1
+msgid "— Not set —"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "PHP reads the file (works everywhere)"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "X-Sendfile (Apache with mod_xsendfile, LiteSpeed)"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "X-Accel-Redirect (Nginx)"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Sending downloads"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "The web server can send bought files once the shop has checked the link, which frees PHP during long downloads. A way is kept only after a test file went through it."
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Who sends the files"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Internal location"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "The path Nginx maps to the downloads folder, such as /orillacart-files/."
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Test and use"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Shop filters"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Shoppers narrow the shop page by these, with how many products each choice leaves. A filter covers attributes by name, such as Size and Размер, so products and attribute sets that name an attribute differently still share it."
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Filter saved."
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Filter added."
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Label"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Key in the address"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Attributes it covers"
+msgstr ""
+
+#: build/admin/settings.js:1
+msgid "Add filter"
+msgstr ""
+
+#: build/admin/settings.js:2
+msgid "Search with"
+msgstr ""
+
+#: build/admin/settings.js:2
+msgid "The shop’s database (no setup)"
+msgstr ""
+
+#: build/admin/settings.js:2
+msgid "OpenSearch (typos forgiven, for big catalogs)"
+msgstr ""
+
+#: build/admin/settings.js:2
+msgid "Such as https://search.example.com:9200"
+msgstr ""
+
+#: build/admin/settings.js:2
+msgid "User name"
+msgstr ""
+
+#: build/admin/settings.js:2
+msgid "Index"
+msgstr ""
+
+#. translators: 1: products to index now, 2: products waiting for a sale to start or end
+#: build/admin/settings.js:3
+#, js-format
+msgid "%1$d products are waiting to be indexed; %2$d wait for a sale to start or end."
+msgstr ""
+
+#: build/admin/settings.js:3
+msgid "OpenSearch’s index is being built; the shop searches its database until it is."
+msgstr ""
+
+#. translators: %d: number of workers
+#: build/admin/settings.js:4
+#, js-format
+msgid "%d workers build the index as products change."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "WordPress builds the index after each change and every minute. For a busy shop, run workers: wp orillacart jobs work --loop."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "See the background jobs"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "These products could not be indexed; they are tried again when they change, or when you retry them under Background jobs:"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Check and switch"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Rebuild the index"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Lists the products. Holds the Products block."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Holds the Cart block. Without it, products cannot be bought."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Holds the Checkout block; receipts are shown there too."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Holds the Customer account block."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Shop pages"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Shop pages saved."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Save shop pages"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Before the amount: $100"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Before, with a space: $ 100"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "After the amount: 100$"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "After, with a space: 100 $"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Shop settings"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Settings saved."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Currency"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Three-letter ISO code, such as EUR or USD."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Currency sign"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Such as $ or лв. Empty: the currency code is shown."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Where the sign goes"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Price decimals"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Weight unit"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Dimension unit"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Shop country"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Shop state"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Shop postcode"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Sell to"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Checkout offers only these countries. Empty: every country."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Catalog only: show products, take no orders"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Hide prices; shoppers ask for them"
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Products with a hidden price are not sold online. A product can show its price anyway."
+msgstr ""
+
+#: build/admin/settings.js:4
+msgid "Save settings"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Shipping classes"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Give bulky or fragile goods a class in the product editor, then choose which classes each rate carries."
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "New class"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Add class"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Class name"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Volume"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Order value"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Add a carrier"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Delete the carrier and its rates"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Delete carrier"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Prices from"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Its own rates"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "The add-on that brings this shipping method is not active, so checkout leaves the carrier out."
+msgstr ""
+
+#: build/admin/shipping.js:1
+#: build/admin/shipping.js:4
+msgid "Taxed"
+msgstr ""
+
+#: build/admin/shipping.js:1
+#: build/admin/shipping.js:4
+msgid "The shop’s default"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Add a rate"
+msgstr ""
+
+#: build/admin/shipping.js:1
+msgid "Add carrier"
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "New rate"
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Rate name"
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Price is for each item shipped"
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Ships to"
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Country codes such as BG, or states such as US-CA, separated by commas. Empty for everywhere."
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Except to"
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Countries or states it does not ship to, such as US-HI when it ships to US."
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Postcodes"
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Postcodes such as 1000, starts such as SW1*, or ranges such as 1000–1999, separated by commas. Empty for any postcode in the regions."
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Except postcodes"
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Postcodes, starts or ranges it does not ship to."
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Carries"
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Every item"
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Items without a class"
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "An order gets this rate only when the rate carries every item in it."
+msgstr ""
+
+#: build/admin/shipping.js:2
+msgid "Limit"
+msgstr ""
+
+#. translators: %s: weight, volume, length...
+#: build/admin/shipping.js:3
+#, js-format
+msgid "%s from"
+msgstr ""
+
+#. translators: %s: weight, volume, length...
+#: build/admin/shipping.js:4
+#, js-format
+msgid "%s to"
+msgstr ""
+
+#: build/admin/shipping.js:4
+msgid "Remove rate"
+msgstr ""
+
+#: build/admin/shipping.js:4
+msgid "Checkout offers every rate whose regions include the address and whose limits the order fits, carriers in their order. Limits include both ends; leave the highest value empty for no end. Weight, volume and sizes add up over every item that ships."
+msgstr ""
+
+#: build/admin/shipping.js:4
+msgid "Carrier saved."
+msgstr ""
+
+#: build/admin/shipping.js:4
+msgid "Carrier added."
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "Counted"
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "Not for sale"
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "How many of each item every stockroom holds. An empty field means the stockroom holds none and keeps no count; an item no stockroom counts is not limited by stock."
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "Stock saved."
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "Products and variations"
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "Attribute options"
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "Stockroom"
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "All stockrooms"
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "One product"
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "Search by name, SKU or ID"
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "Search by option, attribute or set"
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "ID"
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "Belongs to"
+msgstr ""
+
+#: build/admin/stock.js:1
+msgid "Nothing matches."
+msgstr ""
+
+#. translators: 1: item name, 2: stockroom name
+#: build/admin/stock.js:2
+#, js-format
+msgid "%1$s in %2$s"
+msgstr ""
+
+#: build/admin/stock.js:2
+msgid "Save changes"
+msgstr ""
+
+#. translators: %d: number of changed amounts
+#: build/admin/stock.js:3
+#, js-format
+msgid "Save %d change"
+msgid_plural "Save %d changes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: build/admin/stock.js:3
+msgid "Undo changes"
+msgstr ""
+
+#: build/admin/stock.js:3
+msgid "Amounts are whole numbers of 0 or more."
+msgstr ""
+
+#: build/admin/stock.js:3
+msgid "Previous"
+msgstr ""
+
+#. translators: 1: page, 2: number of pages
+#: build/admin/stock.js:4
+#, js-format
+msgid "Page %1$d of %2$d"
+msgstr ""
+
+#: build/admin/stock.js:4
+msgid "Next"
+msgstr ""
+
+#: build/admin/stockrooms.js:1
+msgid "Add a stockroom"
+msgstr ""
+
+#: build/admin/stockrooms.js:1
+msgid "Delete the stockroom and its stock"
+msgstr ""
+
+#: build/admin/stockrooms.js:1
+msgid "Delete stockroom"
+msgstr ""
+
+#: build/admin/stockrooms.js:1
+msgid "Delivery time in"
+msgstr ""
+
+#: build/admin/stockrooms.js:1
+msgid "Days"
+msgstr ""
+
+#: build/admin/stockrooms.js:1
+msgid "Weeks"
+msgstr ""
+
+#: build/admin/stockrooms.js:1
+msgid "At least"
+msgstr ""
+
+#: build/admin/stockrooms.js:1
+msgid "At most"
+msgstr ""
+
+#: build/admin/stockrooms.js:1
+msgid "Add stockroom"
+msgstr ""
+
+#: build/admin/stockrooms.js:2
+msgid "Orders take stock from the active stockroom that delivers fastest first. Stock in inactive stockrooms is not sold."
+msgstr ""
+
+#: build/admin/stockrooms.js:2
+msgid "Stockroom saved."
+msgstr ""
+
+#: build/admin/stockrooms.js:2
+msgid "Stockroom added."
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Add tax rate"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Edit tax rate"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "All states"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Rate (%)"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Up to four decimals, such as 7.25."
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Shown in the cart and on invoices."
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Priority"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Rates of one place are listed from the lowest priority up; they always add up."
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Cancel"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Save rate"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Customer's shipping address"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Customer's billing address"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Shop's address"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Shop's address for EU customers, no tax outside the EU"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "How tax is charged"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Tax is based on"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Default tax group"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "For products and shipping rates without their own group. Without one, they are not taxed."
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Save tax settings"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Tax groups"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "No tax groups yet. Add one, such as \"Standard\", then its rates."
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Add group"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Delete the group and its rates"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Delete group"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Group name"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Rate"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Actions"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "No rates yet."
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Add rate"
+msgstr ""
+
+#: build/admin/tax.js:1
+msgid "Tax settings saved."
+msgstr ""
+
+#: build/storefront/storefront.js:1
+msgid "This page has expired. Reload it and try again."
+msgstr ""
+
+#: build/storefront/storefront.js:1
+msgid "Check the marked fields."
+msgstr ""
+
+#: build/storefront/storefront.js:1
+msgid "Something went wrong. Try again."
+msgstr ""
+
+#: build/storefront/storefront.js:1
+msgid "Your addresses are saved."
+msgstr ""
+
+#: build/storefront/storefront.js:1
+msgid "Enter a code."
+msgstr ""
+
+#: build/storefront/storefront.js:1
+msgid "The totals could not be updated. Check your connection."
+msgstr ""
+
+#: build/storefront/storefront.js:2
+msgid "Added to your cart."
+msgstr ""
+
+#: build/storefront/storefront.js:2
+msgid "This combination is not sold."
+msgstr ""

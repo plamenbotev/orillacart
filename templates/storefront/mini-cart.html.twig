@@ -9,6 +9,7 @@
     {% if show_buttons %}
         <p class="orillacart-mini-cart__empty" data-orillacart-cart-empty{{ cart.items > 0 ? ' hidden' }}>{{ __('Your cart is empty.') }}</p>
         <div data-orillacart-cart-full{{ cart.items == 0 ? ' hidden' }}>
+            {# translators: %d: how many items the cart holds -#}
             <p class="orillacart-mini-cart__items" data-orillacart-cart-items>{{ _n('%d item in cart.', '%d items in cart.', cart.items)|format(cart.items) }}</p>
             <p class="orillacart-mini-cart__buttons">
                 <a class="wp-element-button orillacart-button orillacart-button--secondary" href="{{ cart_url }}">{{ __('View cart') }}</a>

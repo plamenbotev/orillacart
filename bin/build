@@ -29,6 +29,7 @@ cp -R "$ROOT/orillacart.php" "$ROOT/uninstall.php" "$ROOT/readme.txt" "$ROOT/com
       "$ROOT/src" "$ROOT/config" "$ROOT/migrations" "$STAGE/"
 mkdir -p "$STAGE/build" && cp -R "$ROOT/build/admin" "$ROOT/build/storefront" "$STAGE/build/"
 [ -d "$ROOT/templates" ] && cp -R "$ROOT/templates" "$STAGE/"
+cp -R "$ROOT/languages" "$STAGE/"
 $COMPOSER_BIN install --working-dir="$STAGE" --no-dev --no-scripts --no-plugins --prefer-dist --no-interaction --no-progress --quiet
 
 step "Compiling the service container"
@@ -42,7 +43,7 @@ fi
 php "$SCOPER" add-prefix --config="$ROOT/scoper.inc.php" --working-dir="$STAGE" --output-dir="$OUT" --force --no-interaction --quiet
 
 # PHP-Scoper only writes the files its finders select; the rest ships unchanged.
-cp -R "$STAGE/build" "$STAGE/readme.txt" "$STAGE/composer.json" "$OUT/"
+cp -R "$STAGE/build" "$STAGE/languages" "$STAGE/readme.txt" "$STAGE/composer.json" "$OUT/"
 [ -d "$STAGE/templates" ] && cp -R "$STAGE/templates" "$OUT/"
 mkdir -p "$OUT/migrations"
 

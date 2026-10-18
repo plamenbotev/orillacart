@@ -1,4 +1,5 @@
 {% extends 'emails/layout.html.twig' %}
-{% block subject %}{{ __('[%s] We received your order #%s')|format(site_name, order.number) }}{% endblock %}
+{# translators: 1: site name, 2: order number -#}
+{% block subject %}{{ __('[%1$s] We received your order #%2$s')|format(site_name, order.number) }}{% endblock %}
 {% block heading %}{{ __('Thank you for your order') }}{% endblock %}
 {% block intro %}<p>{{ __('We have your order and will start on it as soon as your payment arrives.') }}</p>{% endblock %}

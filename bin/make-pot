@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#
+# Writes languages/orillacart.pot from the PHP code, the built scripts and the Twig templates, with WP-CLI in the
+# wp-env container. Build the scripts first (npm run build): their strings are read from build/.
+#
+#   npm run i18n:pot
+#
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+mkdir -p "$ROOT/var/i18n" "$ROOT/languages"
+php "$ROOT/bin/twig-strings.php" templates > "$ROOT/var/i18n/templates.php"
+(cd "$ROOT" && npx wp-env run cli --env-cwd=wp-content/plugins/orillacart \
+    php -d memory_limit=2G /usr/local/bin/wp i18n make-pot . languages/orillacart.pot --slug=orillacart --domain=orillacart \
+    --include=orillacart.php,src,config,build/admin,build/storefront,var/i18n --exclude=var/build,var/cache,dist \
+    --headers='{"Report-Msgid-Bugs-To":"https://github.com/plamenbotev/orillacart/issues"}')
+rm -r "$ROOT/var/i18n"
