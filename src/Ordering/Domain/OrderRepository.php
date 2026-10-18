@@ -30,8 +30,10 @@ interface OrderRepository
 
     /**
      * Whether the customer, by account or by email, has an order that was not cancelled or did not fail.
+     *
+     * @param int|null $exceptOrderId an order not to count: the one being priced again
      */
-    public function hasStandingOrder(?int $customerId, string $email): bool;
+    public function hasStandingOrder(?int $customerId, string $email, ?int $exceptOrderId = null): bool;
 
     /**
      * The ids of the orders after the given id, in order: for going through every order a batch at a time.

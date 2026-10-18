@@ -81,7 +81,7 @@ final readonly class Discounts
                 }
                 continue;
             }
-            $firstOrder ??= $email === '' || !$this->orders->hasOrdered($request->customerId, $email);
+            $firstOrder ??= $email === '' || !$this->orders->hasOrdered($request->customerId, $email, $request->orderId);
             $basket = new Basket(
                 array_map(static fn(DiscountItem $item, Money $total): BasketLine => new BasketLine($item->productId, $item->quantity, $total, $item->onSale, $item->categoryIds, $item->brandIds), $request->items, $left),
                 $request->currency,

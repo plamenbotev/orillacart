@@ -162,6 +162,18 @@ final class CouponsAtCheckoutTest extends TestCase
         self::assertSame(1, $this->shop->coupons->coupon(1)->uses, 'still one use');
     }
 
+    public function testEditingAFirstOrderKeepsItsFirstOrderCode(): void
+    {
+        $this->coupon('WELCOME', 'percent', '10', firstOrderOnly: true);
+        $owner = $this->cart([10, 1]);
+        $this->shop->checkout->applyCoupon($owner, new CouponCode('WELCOME'));
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order());
+
+        $edited = $this->shop->editing->edit($placed->number, new EditOrderItems([new EditedItem(10, 2)], "rate:{$this->rate}"), 1);
+
+        self::assertSame(['8', 'WELCOME'], [$edited->discountTotal, $edited->discounts[0]->code ?? null], 'the order being edited is not an earlier order');
+    }
+
     public function testAnAutomaticDiscountAppliesWhereItHoldsWithoutACode(): void
     {
         $discount = $this->shop->coupons->create(new SaveCoupon('', 'percent', '10', '10 % off orders over 60', minSubtotal: '60', combines: true, automatic: true));

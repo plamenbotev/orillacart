@@ -470,10 +470,14 @@ final readonly class OrderService
         return $this->orders->idsAfter($afterId, $limit);
     }
 
-    /** Whether the customer, by account or by email, ordered before: an order that stands, not cancelled or failed. */
-    public function hasOrdered(?int $customerId, string $email): bool
+    /**
+     * Whether the customer, by account or by email, ordered before: an order that stands, not cancelled or failed.
+     *
+     * @param int|null $exceptOrderId an order not to count: the one being priced again
+     */
+    public function hasOrdered(?int $customerId, string $email, ?int $exceptOrderId = null): bool
     {
-        return $this->orders->hasStandingOrder($customerId, $email);
+        return $this->orders->hasStandingOrder($customerId, $email, $exceptOrderId);
     }
 
     /**

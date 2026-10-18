@@ -13,6 +13,7 @@ final readonly class DiscountRequest
      * @param list<DiscountItem> $items
      * @param string|null        $country the shipping country; country rules wait until it is known
      * @param string|null        $email   the customer's; limits per customer and first orders wait until it is known
+     * @param int|null           $orderId the order being priced again, when the shop edits it: not an earlier order
      */
     public function __construct(
         public array $items,
@@ -20,5 +21,6 @@ final readonly class DiscountRequest
         public ?string $country = null,
         public ?int $customerId = null,
         public ?string $email = null,
+        public ?int $orderId = null,
     ) {}
 }

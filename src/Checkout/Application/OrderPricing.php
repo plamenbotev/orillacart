@@ -68,12 +68,13 @@ final readonly class OrderPricing
      * @param string|null  $postcode   the shipping address's postcode, for rates that ship to some postcodes only
      * @param list<string> $codes      coupon codes; those that do not hold are left out, with the reason
      * @param string|null  $email      the customer's, for limits per customer, once known
+     * @param int|null     $orderId    the order being priced again, when the shop edits it
      *
      * @return Priced
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null): array
     {
         $settings = $this->settings->current();
         $decimals = $settings->priceDecimals;
@@ -104,6 +105,7 @@ final readonly class OrderPricing
             $shipping?->country,
             $customerId,
             $email,
+            $orderId,
         ));
         foreach ($lines as $index => $line) {
             $lines[$index]['discount'] = $discounts->forLine($index);

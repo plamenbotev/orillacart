@@ -83,7 +83,7 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         $this->entityManager->flush();
     }
 
-    public function hasStandingOrder(?int $customerId, string $email): bool
+    public function hasStandingOrder(?int $customerId, string $email, ?int $exceptOrderId = null): bool
     {
         $query = $this->entityManager->createQueryBuilder()->select('o.id')->from(Order::class, 'o')
             ->where('o.status NOT IN (:closed)')->setParameter('closed', [OrderStatus::Cancelled, OrderStatus::Failed])
@@ -92,6 +92,9 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             ->setMaxResults(1);
         if ($customerId !== null) {
             $query->setParameter('customer', $customerId);
+        }
+        if ($exceptOrderId !== null) {
+            $query->andWhere('o.id <> :except')->setParameter('except', $exceptOrderId);
         }
 
         return $query->getQuery()->getOneOrNullResult() !== null;

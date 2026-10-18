@@ -52,10 +52,10 @@ final class InMemoryOrderRepository implements OrderRepository
         return array_values(array_filter($this->orders, static fn(Order $order): bool => $order->status() === OrderStatus::PendingPayment && $order->placedAt() < $before));
     }
 
-    public function hasStandingOrder(?int $customerId, string $email): bool
+    public function hasStandingOrder(?int $customerId, string $email, ?int $exceptOrderId = null): bool
     {
         foreach ($this->orders as $order) {
-            if (!\in_array($order->status(), [OrderStatus::Cancelled, OrderStatus::Failed], true)
+            if ($order->id() !== $exceptOrderId && !\in_array($order->status(), [OrderStatus::Cancelled, OrderStatus::Failed], true)
                 && (strcasecmp($order->email(), $email) === 0 || ($customerId !== null && $order->customerId() === $customerId))) {
                 return true;
             }
