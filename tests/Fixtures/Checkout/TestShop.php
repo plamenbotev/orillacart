@@ -227,9 +227,9 @@ final class TestShop
         $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls);
         $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock);
 
-        $this->cartRecords = new InMemoryCartRepository();
-        $this->carts = new CartService($this->cartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger);
         $this->transactions = new ImmediateTransactions();
+        $this->cartRecords = new InMemoryCartRepository($this->transactions);
+        $this->carts = new CartService($this->cartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger);
         $this->orderRecords = new InMemoryOrderRepository($this->transactions);
         $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, new FakeOrderLinks(), $this->transactions);
         $this->refundRecords = new InMemoryRefundRepository();

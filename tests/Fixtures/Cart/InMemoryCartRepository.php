@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Fixtures\Cart;
 use OrillaCart\Cart\Domain\Cart;
 use OrillaCart\Cart\Domain\CartLine;
 use OrillaCart\Cart\Domain\CartRepository;
+use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 
 final class InMemoryCartRepository implements CartRepository
 {
@@ -15,8 +16,14 @@ final class InMemoryCartRepository implements CartRepository
     private int $nextCartId = 1;
     private int $nextLineId = 1;
 
-    public function find(int $id): ?Cart
+    public function __construct(private readonly ?ImmediateTransactions $transactions = null) {}
+
+    public function find(int $id, bool $lock = false): ?Cart
     {
+        if ($lock) {
+            $this->transactions?->requireOpen();
+        }
+
         return $this->carts[$id] ?? null;
     }
 

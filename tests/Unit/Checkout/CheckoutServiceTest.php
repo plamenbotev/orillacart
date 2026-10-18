@@ -151,6 +151,54 @@ final class CheckoutServiceTest extends TestCase
 
         self::assertSame('cancelled', array_values($this->shop->orderRecords->orders)[0]->status()->value);
         self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available);
+        self::assertSame(1, $this->shop->carts->cart($owner)->cart->items, 'the customer keeps the cart');
+
+        $this->shop->payPalApi->reachable = true;
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order('paypal'));
+
+        self::assertSame('pending_payment', $placed->status);
+        self::assertNotNull($placed->redirectUrl);
+        self::assertSame(0, $this->shop->carts->cart($owner)->cart->items, 'emptied once the payment started');
+    }
+
+    public function testASecondSubmitWhileTheOrderIsBeingPlacedPlacesNoSecondOrder(): void
+    {
+        $owner = $this->cart([10, 1]);
+        $second = null;
+        $this->shop->payPalApi->whileCreating = function () use ($owner, &$second): void {
+            $this->shop->payPalApi->whileCreating = null;
+            try {
+                $this->shop->checkout->placeOrder($owner, $this->order('paypal'));
+            } catch (CheckoutRuleViolation $e) {
+                $second = $e->errorCode;
+            }
+        };
+
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order('paypal'));
+
+        self::assertSame('orillacart_order_in_progress', $second);
+        self::assertCount(1, $this->shop->orderRecords->orders);
+        self::assertNotNull($placed->redirectUrl);
+        self::assertSame(2, $this->shop->stock->stock(StockItemRef::product(10))->available, 'stock taken once');
+    }
+
+    public function testACartLeftMarkedByARequestThatDiedCanBeOrderedFromAgain(): void
+    {
+        $owner = $this->cart([10, 1]);
+        $cartId = $this->shop->carts->contents($owner)?->cartId;
+        self::assertIsInt($cartId);
+        $this->shop->transactions->run(fn() => $this->shop->carts->lockForOrder($cartId));
+        $this->shop->carts->placing($cartId, 999);
+
+        try {
+            $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer'));
+            self::fail('an order is being placed');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('orillacart_order_in_progress', $e->errorCode);
+        }
+
+        $this->shop->clock->modify('+3 minutes');
+        self::assertSame('on_hold', $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer'))->status);
     }
 
     public function testStockIsCheckedAgainWhenTheOrderIsPlaced(): void

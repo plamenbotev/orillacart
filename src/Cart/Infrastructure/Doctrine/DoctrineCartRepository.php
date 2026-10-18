@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Cart\Infrastructure\Doctrine;
 
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Cart\Domain\Cart;
 use OrillaCart\Cart\Domain\CartRepository;
@@ -12,9 +13,15 @@ final readonly class DoctrineCartRepository implements CartRepository
 {
     public function __construct(private EntityManagerInterface $entityManager) {}
 
-    public function find(int $id): ?Cart
+    public function find(int $id, bool $lock = false): ?Cart
     {
-        return $this->entityManager->find(Cart::class, $id);
+        $cart = $this->entityManager->find(Cart::class, $id);
+        if ($cart !== null && $lock) {
+            // Read again under the lock: a copy loaded earlier in the request may be older than the row.
+            $this->entityManager->refresh($cart, LockMode::PESSIMISTIC_WRITE);
+        }
+
+        return $cart;
     }
 
     public function findByToken(string $token): ?Cart

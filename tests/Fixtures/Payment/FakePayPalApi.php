@@ -33,10 +33,15 @@ final class FakePayPalApi implements PayPalApi
     public ?string $refuses = null;
     /** PayPal takes the refund but the answer is lost on the way. */
     public bool $answerLost = false;
+    /** @var (\Closure(): void)|null what else happens while PayPal makes the order, such as a second submit */
+    public ?\Closure $whileCreating = null;
 
     public function createOrder(PayPalAccount $account, PayPalOrderRequest $request): PayPalOrder
     {
         $this->reach();
+        if ($this->whileCreating !== null) {
+            ($this->whileCreating)();
+        }
         $this->created[] = $request;
         $id = 'PAYPAL-' . \count($this->created);
 

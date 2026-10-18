@@ -22,6 +22,8 @@ class Cart
 {
     public const int MAX_LINES = 100;
     public const int MAX_QUANTITY = 9999;
+    /** How long an order counts as being placed from the cart: longer than a payment can take to start. */
+    public const string PLACING_FOR = 'PT2M';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -42,6 +44,13 @@ class Cart
     /** @var list<string> coupon codes, as entered; checkout decides which hold */
     #[ORM\Column(type: 'json')]
     private array $coupons = [];
+
+    /** The order being placed from the cart while its payment starts: checkout places no second one meanwhile. */
+    #[ORM\Column(nullable: true)]
+    private ?int $placingOrderId = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $placingSince = null;
 
     public function __construct(
         string $token,
@@ -193,5 +202,33 @@ class Cart
         $this->coupons = [];
         $this->lines->clear();
         $this->updatedAt = $now;
+        $this->notPlacing();
+    }
+
+    /** An order was saved from the cart; its payment is about to start. */
+    public function placing(int $orderId, \DateTimeImmutable $now): void
+    {
+        $this->placingOrderId = $orderId;
+        $this->placingSince = $now;
+    }
+
+    /**
+     * The order being placed from the cart, if any. One marked longer ago than PLACING_FOR is not: the request
+     * placing it ended without saying how, and the cart must not stay stuck.
+     */
+    public function orderBeingPlaced(\DateTimeImmutable $now): ?int
+    {
+        if ($this->placingSince === null || $this->placingSince <= $now->sub(new \DateInterval(self::PLACING_FOR))) {
+            return null;
+        }
+
+        return $this->placingOrderId;
+    }
+
+    /** The order's payment could not start: the cart is the customer's again, as it was. */
+    public function notPlacing(): void
+    {
+        $this->placingOrderId = null;
+        $this->placingSince = null;
     }
 }

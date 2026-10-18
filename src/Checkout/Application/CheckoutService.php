@@ -191,7 +191,7 @@ final readonly class CheckoutService
         $answers = $this->fields->answers($command->fields, new FieldContext($command->email, $billingAddress->country, $priced['needs_shipping'] ? $shippingAddress->country : null, $owner->customerId), $priced['needs_shipping']);
         $registering = $this->registration($owner, $command);
 
-        $order = $this->transactions->run(fn(): OrderView => $this->redeemed($priced, $owner, $command->email, $this->orders->place(new NewOrder(
+        $order = $this->transactions->run(fn(): OrderView => $this->claimed($contents->cartId, fn(): OrderView => $this->redeemed($priced, $owner, $command->email, $this->orders->place(new NewOrder(
             $owner->customerId,
             $command->email,
             $billingAddress,
@@ -210,23 +210,28 @@ final readonly class CheckoutService
             (string) $bill->discount(),
             $this->pricing->discounts($priced),
             $answers,
-        ))));
-        $this->carts->clear($contents->cartId);
-        $this->rememberCustomer($owner, $command, $registering, $order->number, $billingAddress, $priced['needs_shipping'] ? $shippingAddress : null);
+        )))));
         $receiptUrl = $this->links->receiptUrl($order->key);
 
         if ($gateway === null) {
             $this->orders->markPaid($order->number, null);
+            $this->carts->clear($contents->cartId);
+            $this->rememberCustomer($owner, $command, $registering, $order->number, $billingAddress, $priced['needs_shipping'] ? $shippingAddress : null);
 
             return $this->placed($order->key, $receiptUrl, null);
         }
         try {
             $payment = $this->payments->start(new StartPayment($order->number, $order->number, $gateway, $order->total, $currency, $receiptUrl));
         } catch (PaymentProviderUnavailable $e) {
-            $this->orders->cancel($order->number);
+            // The stock and the coupons' uses go back, and the customer keeps the cart to try again.
+            $this->orders->cancel($order->number, 'The payment could not start.');
+            $this->carts->notPlacing($contents->cartId);
 
             throw $e;
         }
+        // Only now is the order the customer's to pay, and the cart done with.
+        $this->carts->clear($contents->cartId);
+        $this->rememberCustomer($owner, $command, $registering, $order->number, $billingAddress, $priced['needs_shipping'] ? $shippingAddress : null);
         if ($payment->isOffline()) {
             $this->orders->hold($order->number);
         }
@@ -269,6 +274,27 @@ final readonly class CheckoutService
         } elseif ($owner->customerId !== null && $command->rememberAddresses) {
             $this->customers->rememberAddresses($owner->customerId, $billing, $shippingAddress);
         }
+    }
+
+    /**
+     * Places the order from the cart under the cart's lock, in the placement's transaction: a second submit of
+     * the same checkout waits for the first and is then refused instead of placing the order twice.
+     *
+     * @param \Closure(): OrderView $place
+     *
+     * @param-immediately-invoked-callable $place
+     *
+     * @throws CheckoutRuleViolation while an order is being placed from the cart
+     */
+    private function claimed(int $cartId, \Closure $place): OrderView
+    {
+        if ($this->carts->lockForOrder($cartId) !== null) {
+            throw new CheckoutRuleViolation('This order is already being placed. Wait a moment, then look at your email or your account.', 'orillacart_order_in_progress');
+        }
+        $order = $place();
+        $this->carts->placing($cartId, $order->number);
+
+        return $order;
     }
 
     /**

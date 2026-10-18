@@ -6,7 +6,11 @@ namespace OrillaCart\Cart\Domain;
 
 interface CartRepository
 {
-    public function find(int $id): ?Cart;
+    /**
+     * @param bool $lock whether to lock the cart's row until the transaction ends (SELECT … FOR UPDATE); only
+     *                   inside a transaction
+     */
+    public function find(int $id, bool $lock = false): ?Cart;
 
     public function findByToken(string $token): ?Cart;
 

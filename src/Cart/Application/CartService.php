@@ -198,6 +198,40 @@ final readonly class CartService
     }
 
     /**
+     * Locks the cart for placing an order from it, in the placement's transaction, and tells which order is
+     * already being placed from it: a second submit of the same checkout waits here for the first, then
+     * learns of its order instead of placing another.
+     *
+     * @throws CartRuleViolation for a cart that is gone since it was read
+     */
+    public function lockForOrder(int $cartId): ?int
+    {
+        $cart = $this->carts->find($cartId, true) ?? throw new CartRuleViolation('The cart is empty.', 'orillacart_cart_empty');
+
+        return $cart->orderBeingPlaced($this->clock->now());
+    }
+
+    /** The order was saved from the cart, in the transaction that locked it; its payment is about to start. */
+    public function placing(int $cartId, int $orderId): void
+    {
+        $cart = $this->carts->find($cartId);
+        if ($cart !== null) {
+            $cart->placing($orderId, $this->clock->now());
+            $this->carts->save($cart);
+        }
+    }
+
+    /** The order's payment could not start: the customer has the cart as it was. */
+    public function notPlacing(int $cartId): void
+    {
+        $cart = $this->carts->find($cartId);
+        if ($cart !== null) {
+            $cart->notPlacing();
+            $this->carts->save($cart);
+        }
+    }
+
+    /**
      * @return int how many carts were deleted
      */
     public function forgetAbandoned(): int
