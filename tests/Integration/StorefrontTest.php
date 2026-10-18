@@ -147,6 +147,31 @@ final class StorefrontTest extends RestTestCase
         unset($draft);
     }
 
+    public function testAnOptionCanAddAPercentageOfThePrice(): void
+    {
+        $this->actAs('administrator');
+        $frame = $this->product('Frame', ['price' => '80', 'stock_mode' => 'always_available', 'attributes' => [
+            ['name' => 'Wood', 'options' => [['name' => 'Oak', 'adjustment' => '15', 'adjustment_kind' => 'percent'], ['name' => 'Pine']]],
+        ]]);
+        $options = $this->data($this->request('GET', "/products/{$frame}"))['attributes'];
+        self::assertIsArray($options);
+        self::assertIsArray($options[0]);
+        self::assertIsArray($options[0]['options']);
+        self::assertIsArray($options[0]['options'][0]);
+        self::assertSame(['15', 'percent'], [$options[0]['options'][0]['adjustment'], $options[0]['options'][0]['adjustment_kind']]);
+        $oak = $options[0]['options'][0]['id'];
+        self::assertSame(422, $this->request('PUT', "/products/{$frame}", ['price' => '80', 'attributes' => [
+            ['name' => 'Wood', 'options' => [['name' => 'Oak', 'adjustment' => '-150', 'adjustment_kind' => 'percent']]],
+        ]], nonce: true)->get_status(), 'takes off more than the price');
+        wp_set_current_user(0);
+
+        self::assertStringContainsString('Oak (+15%)', $this->productPage($frame, ''));
+        $added = $this->request('POST', '/cart/items', ['product_id' => $frame, 'option_ids' => [$oak], 'quantity' => 1], nonce: true);
+        self::assertSame(201, $added->get_status(), (string) wp_json_encode($added->get_data()));
+        $this->keepCookie($added);
+        self::assertSame('92', $this->data($this->request('GET', '/cart'))['subtotal']);
+    }
+
     public function testShoppersSortByPriceAndTheShopsOrderAndTheBlockCanShowOnlyFeaturedOrSaleProducts(): void
     {
         $this->actAs('administrator');

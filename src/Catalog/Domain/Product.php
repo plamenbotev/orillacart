@@ -390,14 +390,15 @@ class Product
             throw new InvalidSelection('The product is not sold with this combination of options.');
         }
 
-        $price = $this->pricing->priceAt($now);
+        $base = $this->pricing->priceAt($now);
+        $price = $base;
         foreach ($offered as [$attribute, $options]) {
             $option = $chosen[spl_object_id($attribute)] ?? null;
             if ($option === null && $attribute->isRequired()) {
                 throw new InvalidSelection(\sprintf('Choose an option for "%s".', $attribute->name()));
             }
             if ($option !== null) {
-                $price = $price->add($option->adjustment());
+                $price = $price->add($option->adjustmentOn($base));
             }
         }
 

@@ -12,10 +12,11 @@ final readonly class OptionView
         public int $id,
         public string $name,
         public string $adjustment,
+        public string $adjustmentKind = 'amount',
     ) {}
 
     public static function fromOption(AttributeOption $option): self
     {
-        return new self($option->id(), $option->name(), (string) $option->adjustment());
+        return new self($option->id(), $option->name(), (string) $option->adjustment(), $option->adjustmentKind()->value);
     }
 }

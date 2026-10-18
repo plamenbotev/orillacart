@@ -8,7 +8,8 @@ use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\Money;
 
 /**
- * One choice of an attribute, such as "M" for "Size". Choosing it adds its adjustment to the product price.
+ * One choice of an attribute, such as "M" for "Size". Choosing it adds its adjustment to the product price: an
+ * amount, or a percentage of the product's price.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'attribute_options')]
@@ -24,6 +25,9 @@ class AttributeOption
 
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
     private string $adjustment;
+
+    #[ORM\Column(length: 10, enumType: AdjustmentKind::class, options: ['default' => 'amount'])]
+    private AdjustmentKind $adjustmentKind = AdjustmentKind::Amount;
 
     #[ORM\Column]
     private int $position;
@@ -66,6 +70,17 @@ class AttributeOption
         return Money::of($this->adjustment);
     }
 
+    public function adjustmentKind(): AdjustmentKind
+    {
+        return $this->adjustmentKind;
+    }
+
+    /** What choosing it adds to a product of this price; negative when it takes off. */
+    public function adjustmentOn(Money $price): Money
+    {
+        return $this->adjustmentKind->of($this->adjustment(), $price);
+    }
+
     public function position(): int
     {
         return $this->position;
@@ -78,6 +93,7 @@ class AttributeOption
     {
         $this->name = trim($draft->name);
         $this->adjustment = $draft->adjustment->toFixed();
+        $this->adjustmentKind = $draft->kind;
         $this->position = $position;
     }
 }

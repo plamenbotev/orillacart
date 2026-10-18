@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Catalog;
 
+use OrillaCart\Catalog\Domain\AdjustmentKind;
 use OrillaCart\Catalog\Domain\AttributeDraft;
 use OrillaCart\Catalog\Domain\AttributeSet;
 use OrillaCart\Catalog\Domain\CatalogRuleViolation;
@@ -19,6 +20,7 @@ use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Tests\Fixtures\Catalog\CatalogIds;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryAttributeSetRepository;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductRepository;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ProductTest extends TestCase
@@ -70,6 +72,39 @@ final class ProductTest extends TestCase
         self::assertSame('35', (string) $product->configure([$gold], $this->now)->unitPrice);
         self::assertSame('0', (string) $product->configure([$red, $big], $this->now)->unitPrice);
         self::assertSame('10', (string) $product->configure([$red, $red], $this->now)->unitPrice, 'a repeated option counts once');
+    }
+
+    public function testAPercentageIsOfTheProductPriceOnSaleAndDoesNotBuildOnOtherOptions(): void
+    {
+        $product = $this->product('80', [
+            new AttributeDraft(null, 'Frame', [new OptionDraft(null, 'Oak', Money::of('15'), AdjustmentKind::Percent), self::option('Pine')]),
+            new AttributeDraft(null, 'Glass', [new OptionDraft(null, 'Plain', Money::of('-10'), AdjustmentKind::Percent), self::option('Museum', '20')]),
+        ]);
+        [$oak] = $this->optionIds($product, 'Frame');
+        [$plain, $museum] = $this->optionIds($product, 'Glass');
+
+        self::assertSame('92', (string) $product->configure([$oak], $this->now)->unitPrice, '80 + 15 %');
+        self::assertSame('84', (string) $product->configure([$oak, $plain], $this->now)->unitPrice, '80 + 12 - 8: each percentage of 80');
+        self::assertSame('112', (string) $product->configure([$oak, $museum], $this->now)->unitPrice);
+
+        $product->change(new ProductDetails(ProductType::Physical, new Pricing(Money::of('80'), new Sale(Money::of('60')))));
+        self::assertSame('69', (string) $product->configure([$oak], $this->now)->unitPrice, 'of the sale price');
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function percentagesOutOfRange(): iterable
+    {
+        yield 'takes off more than the price' => ['-100.0001'];
+        yield 'too large' => ['1000'];
+    }
+
+    #[DataProvider('percentagesOutOfRange')]
+    public function testAPercentageStaysInRange(string $percent): void
+    {
+        $this->expectException(CatalogRuleViolation::class);
+        new OptionDraft(null, 'Wrong', Money::of($percent), AdjustmentKind::Percent);
     }
 
     public function testEveryRequiredAttributeNeedsOneOption(): void

@@ -7,6 +7,7 @@ namespace OrillaCart\Catalog\Application;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveSale;
+use OrillaCart\Catalog\Domain\AdjustmentKind;
 use OrillaCart\Catalog\Domain\AttributeDraft;
 use OrillaCart\Catalog\Domain\OptionDraft;
 use OrillaCart\Catalog\Domain\Pricing;
@@ -28,7 +29,7 @@ final class CatalogDrafts
         return array_map(static fn(SaveAttribute $attribute): AttributeDraft => new AttributeDraft(
             $attribute->id,
             $attribute->name,
-            array_map(static fn(SaveOption $option): OptionDraft => new OptionDraft($option->id, $option->name, Money::of($option->adjustment)), $attribute->options),
+            array_map(static fn(SaveOption $option): OptionDraft => new OptionDraft($option->id, $option->name, Money::of($option->adjustment), AdjustmentKind::from($option->adjustmentKind)), $attribute->options),
             $attribute->required,
             $attribute->priceHidden,
         ), $attributes);

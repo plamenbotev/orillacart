@@ -3,9 +3,13 @@ import apiFetch from '@wordpress/api-fetch';
 export interface AttributeOption {
 	id: number;
 	name: string;
-	/** Decimal string added to the price, such as "2.5" or "-1". */
+	/** Decimal string added to the price, such as "2.5" or "-1"; a percentage of the price when the kind is percent. */
 	adjustment: string;
+	adjustment_kind: AdjustmentKind;
 }
+
+/** amount: added to the price; percent: a percentage of the product's price. */
+export type AdjustmentKind = 'amount' | 'percent';
 
 export interface Attribute {
 	id: number;
@@ -23,7 +27,12 @@ export interface AttributeInput {
 	name: string;
 	required: boolean;
 	price_hidden: boolean;
-	options: { id?: number; name: string; adjustment: string }[];
+	options: {
+		id?: number;
+		name: string;
+		adjustment: string;
+		adjustment_kind: AdjustmentKind;
+	}[];
 }
 
 export interface AttributeSet {
@@ -140,11 +149,14 @@ export function toAttributeInput( attribute: Attribute ): AttributeInput {
 		name: attribute.name,
 		required: attribute.required,
 		price_hidden: attribute.price_hidden,
-		options: attribute.options.map( ( { id, name, adjustment } ) => ( {
-			id,
-			name,
-			adjustment,
-		} ) ),
+		options: attribute.options.map(
+			( { id, name, adjustment, adjustment_kind: adjustmentKind } ) => ( {
+				id,
+				name,
+				adjustment,
+				adjustment_kind: adjustmentKind,
+			} )
+		),
 	};
 }
 

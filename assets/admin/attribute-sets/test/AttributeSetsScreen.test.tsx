@@ -22,8 +22,18 @@ const clothing = {
 			price_hidden: false,
 			set_id: 3,
 			options: [
-				{ id: 20, name: 'S', adjustment: '0' },
-				{ id: 21, name: 'M', adjustment: '2' },
+				{
+					id: 20,
+					name: 'S',
+					adjustment: '0',
+					adjustment_kind: 'amount',
+				},
+				{
+					id: 21,
+					name: 'M',
+					adjustment: '2',
+					adjustment_kind: 'amount',
+				},
 			],
 		},
 	],
@@ -133,9 +143,23 @@ describe( 'AttributeSetsScreen', () => {
 						required: true,
 						price_hidden: false,
 						options: [
-							{ id: 20, name: 'S', adjustment: '0' },
-							{ id: 21, name: 'M', adjustment: '2' },
-							{ name: 'L', adjustment: '0' },
+							{
+								id: 20,
+								name: 'S',
+								adjustment: '0',
+								adjustment_kind: 'amount',
+							},
+							{
+								id: 21,
+								name: 'M',
+								adjustment: '2',
+								adjustment_kind: 'amount',
+							},
+							{
+								name: 'L',
+								adjustment: '0',
+								adjustment_kind: 'amount',
+							},
 						],
 					},
 				],
@@ -150,7 +174,14 @@ describe( 'AttributeSetsScreen', () => {
 			required: false,
 			price_hidden: false,
 			set_id: 3,
-			options: [ { id: 30, name: 'Red', adjustment: '0' } ],
+			options: [
+				{
+					id: 30,
+					name: 'Red',
+					adjustment: '0',
+					adjustment_kind: 'amount',
+				},
+			],
 		};
 		serve(
 			[ { ...clothing, attributes: [ ...clothing.attributes, colour ] } ],

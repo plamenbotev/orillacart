@@ -3,12 +3,13 @@ import {
 	CheckboxControl,
 	Flex,
 	FlexItem,
+	SelectControl,
 	TextControl,
 } from '@wordpress/components';
 import { useRef } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import type { AttributeInput } from './api';
+import type { AdjustmentKind, AttributeInput } from './api';
 import { SortableItem, move } from './SortableItem';
 
 interface Props {
@@ -231,6 +232,36 @@ export function AttributesEditor( { attributes, onChange }: Props ) {
 										}
 									/>
 								</FlexItem>
+								<FlexItem>
+									<SelectControl
+										__next40pxDefaultSize
+										label={ __( 'As', 'orillacart' ) }
+										value={ option.adjustment_kind }
+										options={ [
+											{
+												value: 'amount',
+												label: __(
+													'Amount',
+													'orillacart'
+												),
+											},
+											{
+												value: 'percent',
+												label: __(
+													'% of the price',
+													'orillacart'
+												),
+											},
+										] }
+										onChange={ ( kind ) =>
+											updateOption( index, optionIndex, {
+												...option,
+												adjustment_kind:
+													kind as AdjustmentKind,
+											} )
+										}
+									/>
+								</FlexItem>
 							</Flex>
 						</SortableItem>
 					) ) }
@@ -241,7 +272,11 @@ export function AttributesEditor( { attributes, onChange }: Props ) {
 								...attribute,
 								options: [
 									...attribute.options,
-									{ name: '', adjustment: '0' },
+									{
+										name: '',
+										adjustment: '0',
+										adjustment_kind: 'amount',
+									},
 								],
 							} )
 						}
@@ -259,7 +294,13 @@ export function AttributesEditor( { attributes, onChange }: Props ) {
 							name: '',
 							required: false,
 							price_hidden: false,
-							options: [ { name: '', adjustment: '0' } ],
+							options: [
+								{
+									name: '',
+									adjustment: '0',
+									adjustment_kind: 'amount',
+								},
+							],
 						},
 					] )
 				}

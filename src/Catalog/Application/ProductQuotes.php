@@ -41,7 +41,9 @@ final readonly class ProductQuotes
     public function quote(QuoteRequest $request): ItemQuote
     {
         $product = $this->products->find($request->productId) ?? throw new ProductNotFound($request->productId);
-        $configuration = $product->configure($request->optionIds, $this->clock->now());
+        $now = $this->clock->now();
+        $configuration = $product->configure($request->optionIds, $now);
+        $base = $product->priceAt($now);
         $details = $product->details();
 
         $name = $this->content->name($product->id());
@@ -65,7 +67,7 @@ final readonly class ProductQuotes
                 $option->id(),
                 $option->attribute()->name(),
                 $option->name(),
-                (string) $option->adjustment(),
+                (string) $option->adjustmentOn($base),
             ), $configuration->options),
             $available,
             $this->content->isPublished($product->id()) && $details->purchasable && $available !== 0

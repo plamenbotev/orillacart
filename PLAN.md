@@ -39,9 +39,9 @@ Agreed on 2026-10-18 after comparing every screen and setting of the old plugin 
 | ✅ | 14 | Shop manager role: an editor plus the shop; no user, plugin or site settings access | 6460dc8 |
 | ✅ | 15 | Shipping classes: one per product (variations share it); a rate carries every item or only the classes it lists | c3b6566 |
 | ✅ | 16 | Postcodes on shipping rates: exact (1000), start (SW1*) or numeric range (1000-1999); the checkout sends the postcode | 6e2e887 |
-| ✅ | 17 | Regions and postcodes a shipping rate leaves out (replaces the old and/or/not operators) | (this commit) |
-| 🔄 | 18 | Option prices as a percentage | |
-| ⬜ | 19 | Downloads through X-Sendfile / X-Accel-Redirect, optional, with a self-check | |
+| ✅ | 17 | Regions and postcodes a shipping rate leaves out (replaces the old and/or/not operators) | 612df22 |
+| ✅ | 18 | Option prices as a percentage of the product price (on sale when it is; percentages do not compound) | (this commit) |
+| 🔄 | 19 | Downloads through X-Sendfile / X-Accel-Redirect, optional, with a self-check | |
 | ⬜ | 20 | Backorders: per product and variation; stock may go below zero; order lines record what is owed; optional notice to the customer | |
 
 ## After parity

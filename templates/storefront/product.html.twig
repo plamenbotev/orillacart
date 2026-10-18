@@ -48,7 +48,7 @@
                         {% for option in attribute.options %}
                             <option value="{{ option.id }}">
                                 {{- option.name -}}
-                                {%- if not offer.variations and not attribute.price_hidden and option.adjustment != '0' %} ({{ option.adjustment starts with '-' ? '' : '+' }}{{ option.adjustment|money }}){% endif -%}
+                                {%- if not offer.variations and not attribute.price_hidden and option.adjustment != '0' %} ({{ option.adjustment starts with '-' ? '' : '+' }}{{ option.adjustment_kind == 'percent' ? option.adjustment ~ '%' : option.adjustment|money }}){% endif -%}
                             </option>
                         {% endfor %}
                     </select>
