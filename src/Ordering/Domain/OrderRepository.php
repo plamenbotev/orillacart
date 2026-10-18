@@ -6,7 +6,11 @@ namespace OrillaCart\Ordering\Domain;
 
 interface OrderRepository
 {
-    public function find(int $id): ?Order;
+    /**
+     * @param bool $lock whether to lock the order's row until the transaction ends (SELECT … FOR UPDATE); only
+     *                   inside a transaction
+     */
+    public function find(int $id, bool $lock = false): ?Order;
 
     public function findByKey(string $key): ?Order;
 

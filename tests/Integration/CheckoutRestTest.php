@@ -196,6 +196,13 @@ final class CheckoutRestTest extends RestTestCase
         $coupon = $this->rows($this->data($this->request('GET', '/coupons'))['coupons'])[0];
         self::assertSame(['SPRING', 1], [$coupon['code'], $coupon['uses']]);
         self::assertIsInt($coupon['id']);
+
+        // Cancelling gives the use back, with the coupon locked as it was when the use was counted.
+        $number = $this->data($placed)['number'];
+        self::assertIsInt($number);
+        $cancelled = $this->request('PUT', "/orders/{$number}/status", ['status' => 'cancelled'], nonce: true);
+        self::assertSame(200, $cancelled->get_status(), (string) wp_json_encode($cancelled->get_data()));
+        self::assertSame(0, $this->rows($this->data($this->request('GET', '/coupons'))['coupons'])[0]['uses']);
         self::assertSame(204, $this->request('DELETE', "/coupons/{$coupon['id']}", nonce: true)->get_status());
         self::assertSame('SPRING', $this->rows($this->data($this->request('GET', "/receipts/{$this->key($this->data($placed))}"))['discounts'])[0]['code'], 'the order keeps it');
     }

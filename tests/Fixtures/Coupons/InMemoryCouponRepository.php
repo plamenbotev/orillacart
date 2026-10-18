@@ -6,12 +6,15 @@ namespace OrillaCart\Tests\Fixtures\Coupons;
 
 use OrillaCart\Coupons\Domain\Coupon;
 use OrillaCart\Coupons\Domain\CouponRepository;
+use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 
 final class InMemoryCouponRepository implements CouponRepository
 {
     /** @var array<int, Coupon> */
     public array $coupons = [];
     private int $nextId = 1;
+
+    public function __construct(private readonly ?ImmediateTransactions $transactions = null) {}
 
     public function find(int $id): ?Coupon
     {
@@ -20,6 +23,9 @@ final class InMemoryCouponRepository implements CouponRepository
 
     public function findByCodes(array $codes, bool $lock = false): array
     {
+        if ($lock && $codes !== []) {
+            $this->transactions?->requireOpen();
+        }
         $found = [];
         foreach ($this->coupons as $coupon) {
             if (\in_array($coupon->code(), $codes, true)) {

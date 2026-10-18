@@ -229,9 +229,9 @@ final class TestShop
 
         $this->cartRecords = new InMemoryCartRepository();
         $this->carts = new CartService($this->cartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger);
-        $this->orderRecords = new InMemoryOrderRepository();
-        $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, new FakeOrderLinks());
         $this->transactions = new ImmediateTransactions();
+        $this->orderRecords = new InMemoryOrderRepository($this->transactions);
+        $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, new FakeOrderLinks(), $this->transactions);
         $this->refundRecords = new InMemoryRefundRepository();
         $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions);
         $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds);
@@ -246,7 +246,7 @@ final class TestShop
         $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCarts($this->cartRecords)(...));
         $this->customerGroups = new CustomerGroups($this->customerGroupRecords, $this->accounts);
         $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger);
-        $this->couponRecords = new InMemoryCouponRepository();
+        $this->couponRecords = new InMemoryCouponRepository($this->transactions);
         $this->redemptions = new InMemoryRedemptionRepository();
         $this->coupons = new CouponService($this->couponRecords);
         $this->discounts = new Discounts($this->couponRecords, $this->redemptions, $this->orders, $this->clock);

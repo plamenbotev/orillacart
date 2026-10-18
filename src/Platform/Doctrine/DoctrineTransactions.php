@@ -12,23 +12,26 @@ use OrillaCart\Shared\Persistence\Transactions;
  * other work runs in a savepoint. Unlike EntityManager::wrapInTransaction(), a failure does not close the entity
  * manager: an expected refusal, such as stock running out at checkout, leaves the request able to go on. When the
  * outermost transaction rolls back, the entity manager forgets what it had loaded, since those copies may hold
- * changes the database never got.
+ * changes the database never got. Work deferred to AfterCommit runs once the outermost transaction commits.
  */
 final readonly class DoctrineTransactions implements Transactions
 {
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    public function __construct(
+        private EntityManagerInterface $entityManager,
+        private AfterCommit $afterCommit,
+    ) {}
 
     public function run(callable $work): mixed
     {
         $connection = $this->entityManager->getConnection();
         $connection->beginTransaction();
+        $this->afterCommit->begin();
         try {
             $result = $work();
             $this->entityManager->flush();
             $connection->commit();
-
-            return $result;
         } catch (\Throwable $e) {
+            $this->afterCommit->rollBack();
             $connection->rollBack();
             if ($connection->getTransactionNestingLevel() === 0) {
                 $this->entityManager->clear();
@@ -36,5 +39,8 @@ final readonly class DoctrineTransactions implements Transactions
 
             throw $e;
         }
+        $this->afterCommit->commit();
+
+        return $result;
     }
 }

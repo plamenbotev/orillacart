@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Infrastructure\Doctrine;
 
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderRepository;
@@ -13,9 +14,15 @@ final readonly class DoctrineOrderRepository implements OrderRepository
 {
     public function __construct(private EntityManagerInterface $entityManager) {}
 
-    public function find(int $id): ?Order
+    public function find(int $id, bool $lock = false): ?Order
     {
-        return $this->entityManager->find(Order::class, $id);
+        $order = $this->entityManager->find(Order::class, $id);
+        if ($order !== null && $lock) {
+            // Read again under the lock: a copy loaded earlier in the request may be older than the row.
+            $this->entityManager->refresh($order, LockMode::PESSIMISTIC_WRITE);
+        }
+
+        return $order;
     }
 
     public function findByKey(string $key): ?Order

@@ -218,25 +218,30 @@ final readonly class Refunds
         $this->completed($refund, $result->reference, $result->pending, $userId);
     }
 
+    /**
+     * The refund row and the order learn of the money together, in one transaction.
+     */
     private function completed(Refund $refund, string $reference, bool $providerPending, ?int $userId): void
     {
-        if (!$refund->complete($reference, $providerPending, $this->clock->now())) {
-            return;
-        }
-        $this->refunds->save($refund);
-        $command = new RefundOrder(
-            $refund->amount()->toFixed(),
-            array_map(static fn(int $line, int $quantity): RefundLine => new RefundLine($line, $quantity), array_keys($refund->quantities()), array_values($refund->quantities())),
-            $refund->coversShipping(),
-            $refund->restocks(),
-            $refund->reason(),
-        );
-        try {
-            $this->orders->refund($refund->orderId(), $command, \sprintf('through %s (refund %s)', $this->name((string) $refund->gateway()), $reference), $userId);
-        } catch (OrderNotFound|OrderRuleViolation $e) {
-            // The money went back: the order must learn of it, even if not item by item.
-            $this->logger->error('Refund {refund} went through but order {order} could not record it: {message}', ['refund' => $refund->id(), 'order' => $refund->orderId(), 'message' => $e->getMessage()]);
-        }
+        $this->transactions->run(function () use ($refund, $reference, $providerPending, $userId): void {
+            if (!$refund->complete($reference, $providerPending, $this->clock->now())) {
+                return;
+            }
+            $this->refunds->save($refund);
+            $command = new RefundOrder(
+                $refund->amount()->toFixed(),
+                array_map(static fn(int $line, int $quantity): RefundLine => new RefundLine($line, $quantity), array_keys($refund->quantities()), array_values($refund->quantities())),
+                $refund->coversShipping(),
+                $refund->restocks(),
+                $refund->reason(),
+            );
+            try {
+                $this->orders->refund($refund->orderId(), $command, \sprintf('through %s (refund %s)', $this->name((string) $refund->gateway()), $reference), $userId);
+            } catch (OrderNotFound|OrderRuleViolation $e) {
+                // The money went back: the order must learn of it, even if not item by item.
+                $this->logger->error('Refund {refund} went through but order {order} could not record it: {message}', ['refund' => $refund->id(), 'order' => $refund->orderId(), 'message' => $e->getMessage()]);
+            }
+        });
     }
 
     private function pending(int $refundId): Refund

@@ -82,7 +82,7 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame("https://shop.test/?orillacart_order={$placed->key}", $placed->receiptUrl);
         self::assertSame(1, $this->shop->stock->stock(StockItemRef::product(10))->available);
         self::assertSame(0, $this->shop->carts->cart($owner)->cart->items);
-        self::assertSame(1, $this->shop->transactions->runs, 'stock and order were saved together');
+        self::assertSame(2, $this->shop->transactions->outermost, 'stock and order were saved together, then the order was put on hold');
 
         $order = $this->shop->orders->byKey($placed->key);
         self::assertSame(['Cash on delivery', 'Have the cash ready.', 'Courier – Bulgaria', 'ada@example.com'], [$order->paymentName, $order->paymentNote, $order->shipping, $order->email]);

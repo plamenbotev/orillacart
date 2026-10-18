@@ -15,6 +15,8 @@ interface Transactions
      *
      * @param callable(): T $work
      *
+     * @param-immediately-invoked-callable $work
+     *
      * @return T
      */
     public function run(callable $work): mixed;

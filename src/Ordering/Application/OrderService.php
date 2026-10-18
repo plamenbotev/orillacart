@@ -46,12 +46,15 @@ use OrillaCart\Ordering\Domain\ShippingChoice;
 use OrillaCart\Ordering\Domain\TakenItem;
 use OrillaCart\Ordering\Domain\TaxLine;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Persistence\Transactions;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Recording placed orders and moving them along as their payment ends. Closing an order that never got paid
- * puts its stock back.
+ * puts its stock back. Every change runs in one transaction with the order's row locked: the stock it gives back,
+ * the coupon uses it releases, its history and its events stand or fall together, and two changes of one order
+ * (a webhook and the shop, say) wait for each other.
  */
 final readonly class OrderService
 {
@@ -64,9 +67,15 @@ final readonly class OrderService
         private EventDispatcherInterface $events,
         private ClockInterface $clock,
         private OrderLinks $links,
+        private Transactions $transactions,
     ) {}
 
     public function place(NewOrder $command): OrderView
+    {
+        return $this->transactions->run(fn(): OrderView => $this->placed($command));
+    }
+
+    private function placed(NewOrder $command): OrderView
     {
         $order = new Order(new OrderDraft(
             bin2hex(random_bytes(16)),
@@ -154,11 +163,12 @@ final readonly class OrderService
      */
     public function hold(int $id, string $note = '', bool $tellCustomer = true, bool $tellShop = true): void
     {
-        $order = $this->get($id);
-        $previous = $order->status();
-        if ($order->hold()) {
-            $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
-        }
+        $this->changing($id, function (Order $order) use ($note, $tellCustomer, $tellShop): void {
+            $previous = $order->status();
+            if ($order->hold()) {
+                $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
+            }
+        });
     }
 
     /**
@@ -167,11 +177,12 @@ final readonly class OrderService
      */
     public function markPaid(int $id, ?string $transactionId, string $note = '', bool $tellCustomer = true, bool $tellShop = true): void
     {
-        $order = $this->get($id);
-        $previous = $order->status();
-        if ($order->markPaid($transactionId, $this->clock->now())) {
-            $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
-        }
+        $this->changing($id, function (Order $order) use ($transactionId, $note, $tellCustomer, $tellShop): void {
+            $previous = $order->status();
+            if ($order->markPaid($transactionId, $this->clock->now())) {
+                $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
+            }
+        });
     }
 
     /**
@@ -179,9 +190,10 @@ final readonly class OrderService
      */
     public function fail(int $id, string $note = ''): void
     {
-        $order = $this->get($id);
-        $previous = $order->status();
-        $this->changed($order, $previous, $order->fail(), $note);
+        $this->changing($id, function (Order $order) use ($note): void {
+            $previous = $order->status();
+            $this->changed($order, $previous, $order->fail(), $note);
+        });
     }
 
     /**
@@ -189,9 +201,10 @@ final readonly class OrderService
      */
     public function cancel(int $id, string $note = ''): void
     {
-        $order = $this->get($id);
-        $previous = $order->status();
-        $this->changed($order, $previous, $order->cancel(), $note);
+        $this->changing($id, function (Order $order) use ($note): void {
+            $previous = $order->status();
+            $this->changed($order, $previous, $order->cancel(), $note);
+        });
     }
 
     /**
@@ -202,12 +215,13 @@ final readonly class OrderService
      */
     public function changeStatus(int $id, ChangeOrderStatus $command, ?int $userId): OrderView
     {
-        $order = $this->get($id);
-        $previous = $order->status();
-        $taken = $order->moveTo(OrderStatus::from($command->status), $this->clock->now());
-        $this->changed($order, $previous, $taken, $command->note, $userId);
+        return $this->changing($id, function (Order $order) use ($command, $userId): OrderView {
+            $previous = $order->status();
+            $taken = $order->moveTo(OrderStatus::from($command->status), $this->clock->now());
+            $this->changed($order, $previous, $taken, $command->note, $userId);
 
-        return $this->view($order, true);
+            return $this->view($order, true);
+        });
     }
 
     /**
@@ -216,14 +230,15 @@ final readonly class OrderService
      */
     public function changeContact(int $id, ChangeOrderContact $command, ?int $userId): OrderView
     {
-        $order = $this->get($id);
-        $order->changeContact($command->email, $command->billing->toAddress(), $command->shippingAddress?->toAddress());
-        $order->answer($command->fields);
-        $order->addNote('The customer\'s details were changed.', NoteAuthor::System, false, $this->clock->now(), $userId);
-        $this->orders->save($order);
-        $this->events->dispatch(new OrderChanged($order->id()));
+        return $this->changing($id, function (Order $order) use ($command, $userId): OrderView {
+            $order->changeContact($command->email, $command->billing->toAddress(), $command->shippingAddress?->toAddress());
+            $order->answer($command->fields);
+            $order->addNote('The customer\'s details were changed.', NoteAuthor::System, false, $this->clock->now(), $userId);
+            $this->orders->save($order);
+            $this->events->dispatch(new OrderChanged($order->id()));
 
-        return $this->view($order, true);
+            return $this->view($order, true);
+        });
     }
 
     /**
@@ -231,12 +246,13 @@ final readonly class OrderService
      */
     public function addNote(int $id, AddOrderNote $command, ?int $userId): OrderView
     {
-        $order = $this->get($id);
-        $order->addNote($command->text, NoteAuthor::Shop, $command->forCustomer, $this->clock->now(), $userId);
-        $this->orders->save($order);
-        $this->events->dispatch(new OrderNoteAdded($order->id(), trim($command->text), $command->forCustomer));
+        return $this->changing($id, function (Order $order) use ($command, $userId): OrderView {
+            $order->addNote($command->text, NoteAuthor::Shop, $command->forCustomer, $this->clock->now(), $userId);
+            $this->orders->save($order);
+            $this->events->dispatch(new OrderNoteAdded($order->id(), trim($command->text), $command->forCustomer));
 
-        return $this->view($order, true);
+            return $this->view($order, true);
+        });
     }
 
     /**
@@ -246,21 +262,22 @@ final readonly class OrderService
      */
     public function changeCustomer(int $id, ?int $customerId, ?int $userId): OrderView
     {
-        $order = $this->get($id);
-        if ($order->customerId() !== $customerId) {
-            $order->changeCustomer($customerId);
-            $order->addNote(
-                $customerId === null ? 'Made a guest order.' : \sprintf('Moved to the account of customer #%d.', $customerId),
-                NoteAuthor::Shop,
-                false,
-                $this->clock->now(),
-                $userId,
-            );
-            $this->orders->save($order);
-            $this->events->dispatch(new OrderChanged($order->id()));
-        }
+        return $this->changing($id, function (Order $order) use ($customerId, $userId): OrderView {
+            if ($order->customerId() !== $customerId) {
+                $order->changeCustomer($customerId);
+                $order->addNote(
+                    $customerId === null ? 'Made a guest order.' : \sprintf('Moved to the account of customer #%d.', $customerId),
+                    NoteAuthor::Shop,
+                    false,
+                    $this->clock->now(),
+                    $userId,
+                );
+                $this->orders->save($order);
+                $this->events->dispatch(new OrderChanged($order->id()));
+            }
 
-        return $this->view($order, true);
+            return $this->view($order, true);
+        });
     }
 
     /**
@@ -274,10 +291,12 @@ final readonly class OrderService
         do {
             [$orders] = $this->orders->search(null, null, $customerId, 0, 100);
             foreach ($orders as $order) {
-                $order->changeCustomer(null);
-                $order->addNote(\sprintf('Made a guest order: the account of customer #%d was deleted.', $customerId), NoteAuthor::System, false, $this->clock->now());
-                $this->orders->save($order);
-                $this->events->dispatch(new OrderChanged($order->id()));
+                $this->changing($order->id(), function (Order $order) use ($customerId): void {
+                    $order->changeCustomer(null);
+                    $order->addNote(\sprintf('Made a guest order: the account of customer #%d was deleted.', $customerId), NoteAuthor::System, false, $this->clock->now());
+                    $this->orders->save($order);
+                    $this->events->dispatch(new OrderChanged($order->id()));
+                });
                 ++$changed;
             }
         } while ($orders !== []);
@@ -293,25 +312,26 @@ final readonly class OrderService
      */
     public function changeDownloadAllowance(int $id, int $grantId, ChangeDownloadAllowance $command, ?int $userId): OrderView
     {
-        $order = $this->get($id);
-        foreach ($order->grants() as $grant) {
-            if ($grant->id() === $grantId) {
-                $expires = $command->expiresAt === null ? null : new \DateTimeImmutable($command->expiresAt . ' 23:59:59', new \DateTimeZone('UTC'));
-                $grant->allow($command->remaining, $expires);
-                $order->addNote(
-                    \sprintf('Downloads of %s: %s left, %s.', $grant->name(), $command->remaining ?? 'no limit', $command->expiresAt === null ? 'no end' : 'until ' . $command->expiresAt),
-                    NoteAuthor::Shop,
-                    false,
-                    $this->clock->now(),
-                    $userId,
-                );
-                $this->orders->save($order);
+        return $this->changing($id, function (Order $order) use ($grantId, $command, $userId): OrderView {
+            foreach ($order->grants() as $grant) {
+                if ($grant->id() === $grantId) {
+                    $expires = $command->expiresAt === null ? null : new \DateTimeImmutable($command->expiresAt . ' 23:59:59', new \DateTimeZone('UTC'));
+                    $grant->allow($command->remaining, $expires);
+                    $order->addNote(
+                        \sprintf('Downloads of %s: %s left, %s.', $grant->name(), $command->remaining ?? 'no limit', $command->expiresAt === null ? 'no end' : 'until ' . $command->expiresAt),
+                        NoteAuthor::Shop,
+                        false,
+                        $this->clock->now(),
+                        $userId,
+                    );
+                    $this->orders->save($order);
 
-                return $this->view($order, true);
+                    return $this->view($order, true);
+                }
             }
-        }
 
-        throw new OrderNotFound();
+            throw new OrderNotFound();
+        });
     }
 
     /**
@@ -321,10 +341,11 @@ final readonly class OrderService
      */
     public function giveTo(int $id, int $customerId): void
     {
-        $order = $this->get($id);
-        $order->belongTo($customerId);
-        $this->orders->save($order);
-        $this->events->dispatch(new OrderChanged($order->id()));
+        $this->changing($id, function (Order $order) use ($customerId): void {
+            $order->belongTo($customerId);
+            $this->orders->save($order);
+            $this->events->dispatch(new OrderChanged($order->id()));
+        });
     }
 
     /**
@@ -336,16 +357,14 @@ final readonly class OrderService
      */
     public function delete(int $id): void
     {
-        $order = $this->get($id);
-        if ($order->status()->isPaid()) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is %s; refund it in full before deleting it.', $id, strtolower($order->status()->label())), 'orillacart_order_paid');
-        }
-        $taken = $order->cancel();
-        if ($taken !== []) {
-            $this->stock->giveBack(array_map(static fn(TakenItem $item): TakenStock => new TakenStock($item->item, $item->stockroomId, $item->quantity), $taken));
-        }
-        $this->orders->remove($order);
-        $this->events->dispatch(new OrderDeleted($id));
+        $this->changing($id, function (Order $order) use ($id): void {
+            if ($order->status()->isPaid()) {
+                throw new OrderRuleViolation(\sprintf('Order #%d is %s; refund it in full before deleting it.', $id, strtolower($order->status()->label())), 'orillacart_order_paid');
+            }
+            $this->giveBack($order->cancel());
+            $this->orders->remove($order);
+            $this->events->dispatch(new OrderDeleted($id));
+        });
     }
 
     /**
@@ -356,13 +375,20 @@ final readonly class OrderService
      */
     public function cancelAbandoned(): int
     {
-        $orders = $this->orders->pendingPaymentSince($this->clock->now()->sub(new \DateInterval(self::PAYMENT_WINDOW)));
-        foreach ($orders as $order) {
-            $previous = $order->status();
-            $this->changed($order, $previous, $order->cancel(), 'The payment was not finished within an hour.');
+        $cancelled = 0;
+        foreach ($this->orders->pendingPaymentSince($this->clock->now()->sub(new \DateInterval(self::PAYMENT_WINDOW))) as $found) {
+            $cancelled += $this->changing($found->id(), function (Order $order): int {
+                // Looked at again under the lock: the payment may have come in since the list was read.
+                if ($order->status() !== OrderStatus::PendingPayment) {
+                    return 0;
+                }
+                $this->changed($order, OrderStatus::PendingPayment, $order->cancel(), 'The payment was not finished within an hour.');
+
+                return 1;
+            });
         }
 
-        return \count($orders);
+        return $cancelled;
     }
 
     /**
@@ -375,9 +401,7 @@ final readonly class OrderService
         if ($order->status() === $previous) {
             return;
         }
-        if ($taken !== []) {
-            $this->stock->giveBack(array_map(static fn(TakenItem $item): TakenStock => new TakenStock($item->item, $item->stockroomId, $item->quantity), $taken));
-        }
+        $this->giveBack($taken);
         if ($order->grantDownloads(static fn(): string => bin2hex(random_bytes(32)), $this->clock->now())) {
             $order->addNote('The downloads were granted.', NoteAuthor::System, false, $this->clock->now());
         }
@@ -425,13 +449,14 @@ final readonly class OrderService
      */
     public function refund(int $id, RefundOrder $command, string $how, ?int $userId, bool $tellCustomer = true): OrderView
     {
-        $order = $this->get($id);
+        return $this->changing($id, fn(Order $order): OrderView => $this->refunded($order, $command, $how, $userId, $tellCustomer));
+    }
+
+    private function refunded(Order $order, RefundOrder $command, string $how, ?int $userId, bool $tellCustomer): OrderView
+    {
         $previous = $order->status();
         $refund = self::orderRefund($command);
-        $taken = $order->refund($refund);
-        if ($taken !== []) {
-            $this->stock->giveBack(array_map(static fn(TakenItem $item): TakenStock => new TakenStock($item->item, $item->stockroomId, $item->quantity), $taken));
-        }
+        $this->giveBack($order->refund($refund));
         $text = \sprintf('Refunded %s %s %s.', $refund->amount, $order->currency(), $how);
         if ($refund->restock && $refund->quantities !== []) {
             $text .= ' The items went back in stock.';
@@ -461,12 +486,10 @@ final readonly class OrderService
      */
     public function releaseStock(int $id): void
     {
-        $order = $this->get($id);
-        $taken = $order->releaseStock();
-        if ($taken !== []) {
-            $this->stock->giveBack(array_map(static fn(TakenItem $item): TakenStock => new TakenStock($item->item, $item->stockroomId, $item->quantity), $taken));
-        }
-        $this->orders->save($order);
+        $this->changing($id, function (Order $order): void {
+            $this->giveBack($order->releaseStock());
+            $this->orders->save($order);
+        });
     }
 
     /**
@@ -475,7 +498,11 @@ final readonly class OrderService
      */
     public function replaceItems(int $id, NewOrderItems $command, ?int $userId): OrderView
     {
-        $order = $this->get($id);
+        return $this->changing($id, fn(Order $order): OrderView => $this->itemsReplaced($order, $command, $userId));
+    }
+
+    private function itemsReplaced(Order $order, NewOrderItems $command, ?int $userId): OrderView
+    {
         $before = (string) $order->total();
         $order->replaceItems(
             self::lineDrafts($command->lines),
@@ -561,6 +588,34 @@ final readonly class OrderService
         }
 
         return new OrderRefund(Money::of($command->amount), $quantities, $command->shipping, $command->restock);
+    }
+
+    /**
+     * Runs a change of an order in one transaction, with the order's row locked.
+     *
+     * @template T
+     *
+     * @param \Closure(Order): T $work
+     *
+     * @param-immediately-invoked-callable $work
+     *
+     * @return T
+     *
+     * @throws OrderNotFound
+     */
+    private function changing(int $id, \Closure $work): mixed
+    {
+        return $this->transactions->run(fn(): mixed => $work($this->orders->find($id, true) ?? throw new OrderNotFound()));
+    }
+
+    /**
+     * @param list<TakenItem> $taken
+     */
+    private function giveBack(array $taken): void
+    {
+        if ($taken !== []) {
+            $this->stock->giveBack(array_map(static fn(TakenItem $item): TakenStock => new TakenStock($item->item, $item->stockroomId, $item->quantity), $taken));
+        }
     }
 
     private function view(Order $order, bool $forShop = false): OrderView

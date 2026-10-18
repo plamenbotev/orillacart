@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Fixtures\Ordering;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Domain\OrderStatus;
+use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 
 final class InMemoryOrderRepository implements OrderRepository
 {
@@ -16,8 +17,14 @@ final class InMemoryOrderRepository implements OrderRepository
     public array $orders = [];
     private int $nextId = 1;
 
-    public function find(int $id): ?Order
+    public function __construct(private readonly ?ImmediateTransactions $transactions = null) {}
+
+    public function find(int $id, bool $lock = false): ?Order
     {
+        if ($lock) {
+            $this->transactions?->requireOpen();
+        }
+
         return $this->orders[$id] ?? null;
     }
 
