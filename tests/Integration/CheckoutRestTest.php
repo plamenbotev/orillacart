@@ -17,8 +17,12 @@ final class CheckoutRestTest extends RestTestCase
 {
     /** @var list<int> */
     private array $posts = [];
-    /** @var list<array{method: string, url: string, body: string}> */
+    /** @var list<array{method: string, url: string, body: string, headers: array<array-key, mixed>}> */
     private array $payPalCalls = [];
+    /** How many tokens PayPal gave out; each is TOKEN-n. */
+    private int $tokens = 0;
+    /** A token PayPal no longer takes, as when it expired before the shop's cached copy did. */
+    private ?string $expiredToken = null;
     /** PayPal refuses orders that come with their lines and address, as it does an address it does not know. */
     private bool $refusesDetails = false;
     private int $product;
@@ -277,6 +281,41 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame([['currency_code' => 'EUR', 'value' => '38.33'], 'NO_SHIPPING'], [self::at($body, 'purchase_units', 0, 'amount'), self::at($body, 'payment_source', 'paypal', 'experience_context', 'shipping_preference')]);
     }
 
+    public function testTheShopRefundsThroughPayPalAndATokenPayPalDroppedIsFetchedAgain(): void
+    {
+        global $wpdb;
+        self::assertInstanceOf(\wpdb::class, $wpdb);
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient%orillacart\\_paypal\\_%'");
+        wp_cache_flush();
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));
+        $order = $this->data($this->request('POST', '/checkout', $this->order('paypal'), nonce: true));
+        $return = new \WP_REST_Request('GET', self::NAMESPACE . '/payments/paypal/return');
+        $created = array_values(array_filter($this->payPalCalls, static fn(array $call): bool => str_ends_with($call['url'], '/v2/checkout/orders')));
+        $returnUrl = self::at(json_decode($created[0]['body'], true), 'payment_source', 'paypal', 'experience_context', 'return_url');
+        self::assertIsString($returnUrl);
+        parse_str((string) parse_url($returnUrl, \PHP_URL_QUERY), $signed);
+        $return->set_query_params(['token' => 'PAY-1', 'PayerID' => 'PAYER'] + $signed);
+        self::assertSame(303, rest_do_request($return)->get_status());
+        self::assertSame(1, $this->tokens, 'one token for creating and capturing');
+
+        $this->expiredToken = 'TOKEN-1';
+        $this->actAs('administrator');
+        $number = $order['number'];
+        self::assertIsInt($number);
+        $refunded = $this->request('POST', "/orders/{$number}/refunds", ['amount' => '10', 'reason' => 'Scratched.'], nonce: true);
+
+        self::assertSame(201, $refunded->get_status(), (string) wp_json_encode($refunded->get_data()));
+        self::assertSame(2, $this->tokens, 'fetched again after PayPal refused the old one');
+        $refunds = array_values(array_filter($this->payPalCalls, static fn(array $call): bool => str_ends_with($call['url'], '/v2/payments/captures/CAP-1/refund')));
+        self::assertCount(2, $refunds, 'refused once, then sent again with the new token');
+        $body = json_decode($refunds[1]['body'], true);
+        self::assertIsArray($body);
+        self::assertSame(['value' => '10.00', 'currency_code' => 'EUR'], $body['amount']);
+        self::assertSame('Scratched.', $body['note_to_payer']);
+        self::assertSame($body['custom_id'], $refunds[1]['headers']['PayPal-Request-Id'] ?? null, 'one request id: PayPal refunds it once, and its webhook names it');
+        self::assertSame('Bearer TOKEN-2', $refunds[1]['headers']['Authorization'] ?? null);
+    }
+
     public function testPayPalWebhooksAreReadOnlyWhenPayPalSignedThem(): void
     {
         $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));
@@ -409,17 +448,22 @@ final class CheckoutRestTest extends RestTestCase
             return $preempt instanceof \WP_Error ? false : $preempt;
         }
         $body = \is_string($args['body'] ?? null) ? $args['body'] : '';
-        $this->payPalCalls[] = ['method' => \is_string($args['method'] ?? null) ? $args['method'] : 'GET', 'url' => $url, 'body' => $body];
+        $headers = \is_array($args['headers'] ?? null) ? $args['headers'] : [];
+        $this->payPalCalls[] = ['method' => \is_string($args['method'] ?? null) ? $args['method'] : 'GET', 'url' => $url, 'body' => $body, 'headers' => $headers];
         $path = (string) parse_url($url, PHP_URL_PATH);
+        if ($this->expiredToken !== null && ($headers['Authorization'] ?? null) === "Bearer {$this->expiredToken}") {
+            return ['headers' => [], 'body' => (string) wp_json_encode(['error' => 'invalid_token']), 'response' => ['code' => 401, 'message' => ''], 'cookies' => [], 'filename' => null];
+        }
         if ($this->refusesDetails && $path === '/v2/checkout/orders' && str_contains($body, '"items"')) {
             return ['headers' => [], 'body' => (string) wp_json_encode(['name' => 'UNPROCESSABLE_ENTITY', 'details' => [['issue' => 'POSTAL_CODE_REQUIRED']]]), 'response' => ['code' => 422, 'message' => ''], 'cookies' => [], 'filename' => null];
         }
         $answer = match (true) {
-            $path === '/v1/oauth2/token' => ['access_token' => 'TOKEN', 'expires_in' => 3600],
+            $path === '/v1/oauth2/token' => ['access_token' => 'TOKEN-' . ++$this->tokens, 'expires_in' => 3600],
             $path === '/v2/checkout/orders' => ['id' => 'PAY-1', 'status' => 'PAYER_ACTION_REQUIRED', 'links' => [['rel' => 'payer-action', 'href' => 'https://www.sandbox.paypal.com/checkoutnow?token=PAY-1']]],
             $path === '/v2/checkout/orders/PAY-1/capture' => ['id' => 'PAY-1', 'status' => 'COMPLETED', 'purchase_units' => [['payments' => ['captures' => [
                 ['id' => 'CAP-1', 'status' => 'COMPLETED', 'amount' => ['currency_code' => 'EUR', 'value' => '38.33']],
             ]]]]],
+            $path === '/v2/payments/captures/CAP-1/refund' => ['id' => 'RF-1', 'status' => 'COMPLETED'],
             $path === '/v1/notifications/verify-webhook-signature' => ['verification_status' => str_contains($body, '"transmission_sig":"genuine"') ? 'SUCCESS' : 'FAILURE'],
             default => null,
         };

@@ -113,6 +113,13 @@ abstract class CatalogSearchContract extends RestTestCase
         wp_update_term($this->lighting, ProductCategoryTaxonomy::NAME, ['name' => 'Lights']);
         self::assertSame([$this->lamp, $kit], $this->queued(), 'the lamp is in a category below it, and the kit holds the lamp');
         $this->work();
+        $home = max(1, $this->term('Home', ProductCategoryTaxonomy::NAME));
+        wp_update_term($this->deskLamps, ProductCategoryTaxonomy::NAME, ['parent' => $home]);
+        self::assertSame([$this->lamp, $kit], $this->queued(), 'moved under another category');
+        $this->work();
+        wp_update_term($this->acme, ProductBrandTaxonomy::NAME, ['name' => 'Acme Lighting']);
+        self::assertSame([$this->lamp, $kit], $this->queued(), 'a brand renamed');
+        $this->work();
 
         $group = $this->request('POST', '/customer-groups', ['name' => 'Trade'], nonce: true);
         self::assertSame(201, $group->get_status(), (string) wp_json_encode($group->get_data()));
@@ -143,6 +150,9 @@ abstract class CatalogSearchContract extends RestTestCase
             $this->request('DELETE', "/customer-groups/{$groupId}", nonce: true);
             wp_set_current_user(0);
         }
+        $this->work();
+        wp_delete_term($this->deskLamps, ProductCategoryTaxonomy::NAME);
+        self::assertSame([$this->lamp, $kit], $this->queued(), 'its category deleted');
     }
 
     public function testRebuildingRemovesWhatTheIndexMissedWhenAProductLeft(): void
