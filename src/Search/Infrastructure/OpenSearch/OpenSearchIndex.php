@@ -80,10 +80,10 @@ final readonly class OpenSearchIndex implements SearchIndex
     /**
      * @param array<mixed> $answer
      */
-    private static function firstError(array $answer): string
+    private static function firstError(array $answer, string $action = 'index'): string
     {
         foreach (\is_array($answer['items'] ?? null) ? $answer['items'] : [] as $item) {
-            $reason = \is_array($item) && \is_array($item['index'] ?? null) && \is_array($item['index']['error'] ?? null) ? ($item['index']['error']['reason'] ?? null) : null;
+            $reason = \is_array($item) && \is_array($item[$action] ?? null) && \is_array($item[$action]['error'] ?? null) ? ($item[$action]['error']['reason'] ?? null) : null;
             if (\is_string($reason)) {
                 return $reason;
             }
@@ -102,7 +102,41 @@ final readonly class OpenSearchIndex implements SearchIndex
         foreach ($productIds as $productId) {
             $lines .= wp_json_encode(['delete' => ['_index' => $settings->index, '_id' => (string) $productId]]) . "\n";
         }
-        $this->client->request($settings, 'POST', '/_bulk', $lines);
+        $answer = $this->client->request($settings, 'POST', '/_bulk', $lines);
+        // A document that was not there is gone all the same; anything else leaves a product shoppers can find.
+        foreach (\is_array($answer['items'] ?? null) ? $answer['items'] : [] as $item) {
+            $delete = \is_array($item) && \is_array($item['delete'] ?? null) ? $item['delete'] : [];
+            if (isset($delete['error']) && ($delete['status'] ?? null) !== 404) {
+                throw new OpenSearchUnavailable('OpenSearch did not remove a document: ' . self::firstError($answer, 'delete'));
+            }
+        }
+    }
+
+    /**
+     * Pages through the index by product id, a thousand at a time.
+     */
+    public function productIds(): array
+    {
+        $settings = $this->settings->load();
+        $ids = [];
+        $after = null;
+        do {
+            $answer = $this->client->request($settings, 'POST', '/' . rawurlencode($settings->index) . '/_search', (string) wp_json_encode(array_filter([
+                '_source' => false,
+                'size' => 1000,
+                'sort' => [['product_id' => 'asc']],
+                'search_after' => $after,
+            ], static fn(mixed $value): bool => $value !== null)));
+            $hits = \is_array($answer['hits'] ?? null) && \is_array($answer['hits']['hits'] ?? null) ? $answer['hits']['hits'] : [];
+            foreach ($hits as $hit) {
+                if (\is_array($hit) && is_numeric($hit['_id'] ?? null)) {
+                    $ids[] = (int) $hit['_id'];
+                    $after = \is_array($hit['sort'] ?? null) ? $hit['sort'] : null;
+                }
+            }
+        } while (\count($hits) === 1000 && $after !== null);
+
+        return $ids;
     }
 
     /**

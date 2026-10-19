@@ -29,6 +29,16 @@ final readonly class EngineSearchIndex implements SearchIndex
         }
     }
 
+    public function productIds(): array
+    {
+        $ids = $this->database->productIds();
+        if ($this->settings->load()->indexesOpenSearch()) {
+            $ids = array_values(array_unique([...$ids, ...$this->openSearch->productIds()]));
+        }
+
+        return $ids;
+    }
+
     public function remove(array $productIds): void
     {
         $this->database->remove($productIds);

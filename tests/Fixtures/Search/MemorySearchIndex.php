@@ -22,6 +22,11 @@ final class MemorySearchIndex implements SearchIndex
         }
     }
 
+    public function productIds(): array
+    {
+        return array_keys($this->documents);
+    }
+
     public function remove(array $productIds): void
     {
         foreach ($productIds as $id) {

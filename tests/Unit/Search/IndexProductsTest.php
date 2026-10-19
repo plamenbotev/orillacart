@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Unit\Search;
 
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Catalog\Application\ProductLookup;
 use OrillaCart\Search\Application\DocumentBuilder;
 use OrillaCart\Search\Application\IndexProducts;
+use OrillaCart\Search\Application\SearchIndexing;
 use OrillaCart\Search\Domain\EngineSettings;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchEngine;
@@ -23,6 +25,7 @@ final class IndexProductsTest extends TestCase
     private MemorySearchIndex $index;
     private FixedProductTexts $texts;
     private EngineSettingsRepository $engine;
+    private IndexProducts $handler;
 
     protected function setUp(): void
     {
@@ -52,7 +55,7 @@ final class IndexProductsTest extends TestCase
             }
         };
         $this->jobs = new TestJobs($this->shop->clock);
-        $handler = new IndexProducts(new DocumentBuilder($this->shop->catalog, $this->texts, $this->shop->priceHistory), $this->index, $this->jobs->jobs, $this->engine);
+        $this->handler = $handler = new IndexProducts(new DocumentBuilder($this->shop->catalog, $this->texts, $this->shop->priceHistory), $this->index, $this->jobs->jobs, $this->engine);
         $this->jobs->with($handler);
         $this->jobs->jobs->pushMany(IndexProducts::TYPE, array_map(static fn(int $id): array => ['key' => (string) $id, 'payload' => []], [10, 11, 12, 99]));
     }
@@ -79,5 +82,33 @@ final class IndexProductsTest extends TestCase
         self::assertSame([10, 12], array_keys($this->index->documents));
         $left = array_values($this->jobs->queue->jobs);
         self::assertSame(['11', 'Product 11 is broken.'], [$left[0]['key'], $left[0]['error']]);
+    }
+
+    public function testOpenSearchWaitsWhileAnotherWorkerStillBuilds(): void
+    {
+        $this->jobs->queue->claim([], 1, 'other', $this->shop->clock->now(), $this->shop->clock->now()->modify('+5 minutes'));
+        $this->jobs->runner->work([], 10, 'test');
+        self::assertFalse($this->engine->load()->ready, 'another worker still builds one');
+    }
+
+    public function testOpenSearchWaitsWhileAProductCouldNotBeIndexed(): void
+    {
+        $this->texts->broken = 11;
+        for ($attempt = 1; $attempt <= $this->handler->maxAttempts(); ++$attempt) {
+            $this->jobs->runner->work([], 10, 'test');
+            $this->shop->clock->sleep(3600);
+        }
+        self::assertCount(1, $this->jobs->jobs->failed(IndexProducts::TYPE));
+        self::assertFalse($this->engine->load()->ready, 'shoppers would miss product 11');
+    }
+
+    public function testRebuildingRemovesTheDocumentsOfProductsNoLongerInTheCatalog(): void
+    {
+        $this->jobs->runner->work([], 10, 'test');
+        $this->index->documents[77] = $this->index->documents[10];
+
+        new SearchIndexing($this->jobs->jobs, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->handler, $this->index)->queueEverything();
+
+        self::assertSame([10, 11, 12], array_keys($this->index->documents));
     }
 }

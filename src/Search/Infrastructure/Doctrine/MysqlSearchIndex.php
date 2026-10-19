@@ -59,6 +59,11 @@ final readonly class MysqlSearchIndex implements SearchIndex
         });
     }
 
+    public function productIds(): array
+    {
+        return array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $this->tables->connection()->fetchFirstColumn("SELECT product_id FROM {$this->tables->documents()}"));
+    }
+
     public function remove(array $productIds): void
     {
         if ($productIds !== []) {

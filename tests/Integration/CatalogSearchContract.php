@@ -145,6 +145,21 @@ abstract class CatalogSearchContract extends RestTestCase
         }
     }
 
+    public function testRebuildingRemovesWhatTheIndexMissedWhenAProductLeft(): void
+    {
+        // The TV stand's commerce details go without the shop hearing of it, as a crash in between would.
+        global $wpdb;
+        self::assertInstanceOf(\wpdb::class, $wpdb);
+        $wpdb->delete("{$wpdb->prefix}orillacart_products", ['id' => $this->tv]);
+        self::assertSame([$this->tv], $this->find('tv'), 'the index still has it');
+
+        $this->indexing()->queueEverything();
+        $this->work();
+
+        self::assertSame([], $this->find('tv'));
+        self::assertSame([$this->lamp, $this->book], $this->find('lamp'), 'the rest stay');
+    }
+
     public function testOptionsPriceAndStockHoldForOneVariantAndFacetsCountWhatTheOtherFiltersLeave(): void
     {
         $size = static fn(string ...$values): OptionFilter => new OptionFilter('size', ['Size', 'Размер'], array_values($values));

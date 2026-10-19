@@ -269,8 +269,8 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
             SearchSort::Newest => [['published_at' => 'desc'], ['product_id' => 'desc']],
             SearchSort::Name => [['title.sort' => 'asc'], ['product_id' => 'asc']],
             // Products whose price shoppers ask for come last either way.
-            SearchSort::PriceAscending => [['price_min' => ['order' => 'asc', 'missing' => '_last']], ['title.sort' => 'asc']],
-            SearchSort::PriceDescending => [['price_min' => ['order' => 'desc', 'missing' => '_last']], ['title.sort' => 'asc']],
+            SearchSort::PriceAscending => [['price_min' => ['order' => 'asc', 'missing' => '_last']], ['title.sort' => 'asc'], ['product_id' => 'asc']],
+            SearchSort::PriceDescending => [['price_min' => ['order' => 'desc', 'missing' => '_last']], ['title.sort' => 'asc'], ['product_id' => 'asc']],
         };
     }
 

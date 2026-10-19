@@ -37,7 +37,8 @@ product matches.
 `SearchDocument` (Application DTO) is built by `DocumentBuilder` from the catalog's application services and
 the product's WordPress content: title, text (excerpt and content without tags), SKUs, categories (with their
 ancestors), brands, option values per variant, today's price per variant (before tax, as the cards show it;
-none when the price is hidden), stock per variant, featured, on sale, menu order, published date, and when the
+none when the price is hidden; a guest's price: a customer group's own prices are not indexed, so the price
+filter and sorts go by what a guest pays, while the cards show the shopper their own), stock per variant, featured, on sale, menu order, published date, and when the
 price next changes (a sale starting or ending). A product with variations has one variant per variation; one
 without has a single variant with its own id, and its options are values of the whole product.
 

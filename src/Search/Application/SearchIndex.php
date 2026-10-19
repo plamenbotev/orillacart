@@ -22,4 +22,11 @@ interface SearchIndex
      * @param list<int> $productIds products no longer listed
      */
     public function remove(array $productIds): void;
+
+    /**
+     * The products it has documents of.
+     *
+     * @return list<int>
+     */
+    public function productIds(): array;
 }

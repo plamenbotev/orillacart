@@ -21,6 +21,7 @@ final readonly class SearchIndexing
         private Jobs $jobs,
         private ProductLookup $products,
         private IndexProducts $handler,
+        private SearchIndex $index,
     ) {}
 
     /**
@@ -66,12 +67,19 @@ final readonly class SearchIndexing
     {
         $count = 0;
         $after = 0;
+        $catalog = [];
         do {
             $ids = $this->products->ids($after, self::PAGE);
             $this->queue($ids);
             $count += \count($ids);
+            array_push($catalog, ...$ids);
             $after = $ids === [] ? $after : $ids[\count($ids) - 1];
         } while (\count($ids) === self::PAGE);
+        // Documents of products no longer in the catalog, whose removal the index missed, go now.
+        $stale = array_values(array_diff($this->index->productIds(), $catalog));
+        foreach (array_chunk($stale, self::PAGE) as $chunk) {
+            $this->index->remove($chunk);
+        }
         if ($count === 0) {
             $this->handler->markBuilt();
         }

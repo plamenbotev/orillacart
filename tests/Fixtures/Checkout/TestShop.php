@@ -153,6 +153,7 @@ final class TestShop
 {
     public readonly MockClock $clock;
     public readonly InMemoryProductContent $content;
+    public readonly InMemoryProductRepository $productRecords;
     public readonly ProductService $products;
     public readonly ShopCatalog $catalog;
     public readonly StockService $stock;
@@ -245,7 +246,7 @@ final class TestShop
         $this->shippingClasses = new ShippingClassService($classRecords, $carrierRecords, $this->events);
 
         $ids = new CatalogIds();
-        $productRecords = new InMemoryProductRepository($ids);
+        $this->productRecords = $productRecords = new InMemoryProductRepository($ids);
         $this->events->addListener(ShippingClassDeleted::class, new ForgetDeletedShippingClass($productRecords)(...));
         $this->content = new InMemoryProductContent();
         $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->shippingClasses, $this->events);

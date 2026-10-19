@@ -65,8 +65,9 @@ final readonly class IndexProducts implements JobHandler
             $at = $documents[(int) $job->uniqueKey]?->priceChangesAt;
             $outcomes[$job->id] = $at === null ? JobOutcome::done() : JobOutcome::reschedule($at);
         }
-        // This batch was the last of the index: OpenSearch can answer shoppers.
-        if ($this->jobs->waiting(self::TYPE)->due === 0) {
+        // This batch was the last of the index: nothing else due, running with another worker, or failed.
+        $waiting = $this->jobs->waiting(self::TYPE);
+        if ($waiting->due === 0 && $waiting->running <= \count($jobs) && $this->jobs->failed(self::TYPE, 1) === []) {
             $this->markBuilt();
         }
 
@@ -79,7 +80,8 @@ final readonly class IndexProducts implements JobHandler
     }
 
     /**
-     * OpenSearch answers shoppers once nothing is left to build after switching to it.
+     * OpenSearch answers shoppers once nothing is left to build after switching to it, and nothing failed: a
+     * product that could not be indexed would be missing from what shoppers find.
      */
     public function markBuilt(): void
     {
