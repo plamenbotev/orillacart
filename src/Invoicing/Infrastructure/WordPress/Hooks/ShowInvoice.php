@@ -10,15 +10,14 @@ use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
- * An invoice or credit note as a page of its own, laid out for printing (?orillacart_invoice=NUMBER&key=KEY):
- * the browser prints it or saves it as a PDF. The order's key, which only the customer and the shop have,
- * opens it. Themes can change it as templates/invoices/document.html.twig in their orillacart folder.
+ * An invoice or credit note as a page of its own, laid out for printing (?orillacart_invoice=NUMBER&receipt=…):
+ * the browser prints it or saves it as a PDF. A link to its order's receipt that still works opens it. Themes can change it as templates/invoices/document.html.twig in their orillacart folder.
  */
 #[AsHook('template_redirect', priority: 0)]
 final readonly class ShowInvoice
 {
     public const string QUERY = 'orillacart_invoice';
-    public const string KEY = 'key';
+    public const string KEY = 'receipt';
 
     public function __construct(
         private Invoices $invoices,
@@ -39,6 +38,7 @@ final readonly class ShowInvoice
         }
 
         nocache_headers();
+        header('Cache-Control: no-store, private');
         header('Content-Type: text/html; charset=utf-8');
         header('X-Robots-Tag: noindex, nofollow');
         header('Referrer-Policy: no-referrer');

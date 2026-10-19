@@ -96,7 +96,7 @@ final class PricesIncludingTaxTest extends TestCase
     {
         $placed = $this->shop->checkout->placeOrder($this->owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $this->shop->checkout->summary($this->owner, new CheckoutDetails('BG'))->shippingOption, payment: 'bank_transfer'));
 
-        $order = $this->shop->orders->byKey($placed->key);
+        $order = $this->shop->orders->order($placed->number);
         self::assertSame([true, '18', '2'], [$order->pricesIncludeTax, $order->total, $order->itemsTax]);
         $html = $this->shop->templates->render('storefront/receipt.html.twig', ['order' => $order, 'heading' => true, 'links' => []]);
         self::assertStringContainsString('Including VAT (20%)', $html);

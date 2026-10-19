@@ -249,7 +249,7 @@ final class RefundsTest extends TestCase
     {
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20, quantity: $quantity))->newToken);
         $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', self::address(), payment: 'paypal'));
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
         self::assertSame('processing', $this->shop->orders->order($placed->number)->status);
 
         return $placed->number;

@@ -60,7 +60,7 @@ final class CouponsAtCheckoutTest extends TestCase
         self::assertSame(['4', '1'], [$summary->lines[0]->discount, $summary->lines[1]->discount]);
 
         $placed = $this->shop->checkout->placeOrder($owner, $this->order());
-        $order = $this->shop->orders->byKey($placed->key);
+        $order = $this->shop->orders->order($placed->number);
         self::assertSame(['60', '5', 'SPRING', '4'], [$order->total, $order->discountTotal, $order->discounts[0]->code, $order->lines[0]->discount]);
         self::assertSame(1, $this->shop->coupons->coupon(1)->uses);
     }
@@ -195,7 +195,7 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->coupon('TEN', 'order_amount', '10', combines: true);
         $this->shop->checkout->applyCoupon($large, new CouponCode('TEN'));
         $placed = $this->shop->checkout->placeOrder($large, $this->order());
-        $order = $this->shop->orders->byKey($placed->key);
+        $order = $this->shop->orders->order($placed->number);
         self::assertSame([[true, '8'], [false, '10']], array_map(static fn($used): array => [$used->automatic, $used->amount], $order->discounts), 'the code takes off what the automatic discount left');
         self::assertSame(1, $this->shop->coupons->coupon($discount->id)->uses);
     }

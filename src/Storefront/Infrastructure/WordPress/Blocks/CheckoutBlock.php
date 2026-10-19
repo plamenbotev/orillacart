@@ -13,6 +13,7 @@ use OrillaCart\Customers\Application\Dto\CustomerView;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\View\TemplateRenderer;
@@ -25,7 +26,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
 
 /**
- * The checkout page, and the receipt customers come back to after ordering (?orillacart_order=KEY).
+ * The checkout page, and the receipt customers come back to after ordering (?orillacart_order=a signed link).
  *
  * The summary is priced for the addresses in the query string (shipping_country, shipping_state,
  * shipping_postcode, billing_country, billing_state, billing_postcode, rate), which the storefront script sends when the customer changes them;
@@ -63,9 +64,9 @@ final readonly class CheckoutBlock implements BlockDefinition
 
     public function render(array $attributes): string
     {
-        $key = $_GET[StorefrontOrderLinks::RECEIPT_QUERY] ?? null;
-        if (\is_string($key)) {
-            return $this->receipt($key);
+        $receipt = $_GET[StorefrontOrderLinks::RECEIPT_QUERY] ?? null;
+        if (\is_string($receipt)) {
+            return $this->receipt(sanitize_text_field(wp_unslash($receipt)));
         }
 
         if ($this->settings->current()->catalogOnly) {
@@ -111,19 +112,23 @@ final readonly class CheckoutBlock implements BlockDefinition
     }
 
     /**
-     * The order whose key is in the address. A key is a secret only the customer was given, so it shows the order to whoever has it.
+     * The order a link the shop made is for: only the customer was given it, by the checkout and the emails, so
+     * it shows the order to whoever has it, for ReceiptLinks::VALID_DAYS. An older one offers a new one, by email.
      */
-    private function receipt(string $key): string
+    private function receipt(string $receipt): string
     {
         $links = $this->links->pages();
         try {
-            $order = $this->orders->byKey(preg_match('/^[a-f0-9]{32}$/', $key) === 1 ? $key : '');
+            $order = $this->orders->byReceipt($receipt);
+        } catch (ReceiptLinkExpired) {
+            return $this->templates->render('storefront/receipt-expired.html.twig', ['receipt' => $receipt, 'links' => $links]);
         } catch (OrderNotFound) {
             return $this->templates->render('storefront/checkout.html.twig', ['summary' => null, 'problem' => __('There is no order at this address.', 'orillacart'), 'links' => $links, 'states' => []]);
         }
 
         return $this->templates->render('storefront/receipt.html.twig', [
             'order' => $order,
+            'receipt' => $receipt,
             'heading' => true,
             'links' => $links,
             'shipments' => $this->shipments->forOrder($order->number),

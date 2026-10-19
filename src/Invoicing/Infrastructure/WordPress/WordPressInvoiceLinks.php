@@ -12,8 +12,8 @@ use OrillaCart\Invoicing\Infrastructure\WordPress\Hooks\ShowInvoice;
  */
 final readonly class WordPressInvoiceLinks implements InvoiceLinks
 {
-    public function documentUrl(string $number, string $orderKey): string
+    public function documentUrl(string $number, string $receipt): string
     {
-        return add_query_arg([ShowInvoice::QUERY => rawurlencode($number), ShowInvoice::KEY => rawurlencode($orderKey)], home_url('/'));
+        return add_query_arg([ShowInvoice::QUERY => rawurlencode($number), ShowInvoice::KEY => rawurlencode($receipt)], home_url('/'));
     }
 }

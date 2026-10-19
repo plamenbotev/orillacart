@@ -11,6 +11,7 @@ use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
@@ -38,6 +39,7 @@ final readonly class AccountBlock implements BlockDefinition
         private TemplateRenderer $templates,
         private PayNow $payNow,
         private Invoices $invoices,
+        private ReceiptLinks $receipts,
     ) {}
 
     public static function name(): string
@@ -124,7 +126,7 @@ final readonly class AccountBlock implements BlockDefinition
             $order = null;
         }
 
-        return $order === null ? ['order' => null] : ['order' => $order, 'pay_methods' => $this->payNow->methods($order), 'invoices' => $this->invoices->ofOrder($order->number)];
+        return $order === null ? ['order' => null] : ['order' => $order, 'receipt' => $this->receipts->issue($order->number), 'pay_methods' => $this->payNow->methods($order), 'invoices' => $this->invoices->ofOrder($order->number)];
     }
 
     /**

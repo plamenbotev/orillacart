@@ -11,6 +11,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\CategoryOrder;
 use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
 use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
+use OrillaCart\Platform\WordPress\Security\SiteSignatures;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionShopPagesRepository;
 
 /**
@@ -321,10 +322,12 @@ final class StorefrontTest extends RestTestCase
         ], nonce: true);
         self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));
         $order = $this->data($placed);
-        self::assertIsString($order['key']);
-        self::assertSame(add_query_arg('orillacart_order', $order['key'], (string) get_permalink((int) $this->pages()['checkout'])), $order['receipt_url']);
+        self::assertIsString($order['receipt_url']);
+        parse_str((string) parse_url($order['receipt_url'], \PHP_URL_QUERY), $query);
+        self::assertIsString($query['orillacart_order'] ?? null);
+        self::assertSame(add_query_arg('orillacart_order', $query['orillacart_order'], (string) get_permalink((int) $this->pages()['checkout'])), $order['receipt_url']);
 
-        $_GET = ['orillacart_order' => $order['key']];
+        $_GET = ['orillacart_order' => $query['orillacart_order']];
         $receipt = do_blocks('<!-- wp:orillacart/checkout /-->');
         self::assertStringContainsString('Thank you for your order', $receipt);
         self::assertStringContainsString('IBAN BG00 TEST', $receipt, 'how to pay, while the order waits for the money');
@@ -332,7 +335,21 @@ final class StorefrontTest extends RestTestCase
         self::assertStringContainsString('<dt>Gift note</dt><dd>Happy birthday, Grace!</dd>', $receipt, 'the answer, with its question');
         self::assertStringContainsString('1000 Sofia<br>', $receipt, 'the address in its country\'s layout');
 
-        $_GET = ['orillacart_order' => str_repeat('0', 32)];
+        // A link the shop made long ago: the page offers a new one, which goes to the order's email.
+        $signatures = SiteSignatures::create();
+        $number = (int) strtok($query['orillacart_order'], '-');
+        $old = "{$number}-1-" . $signatures->sign('receipt', "{$number}-1");
+        $_GET = ['orillacart_order' => $old];
+        $expired = do_blocks('<!-- wp:orillacart/checkout /-->');
+        self::assertStringContainsString('This link to your order has expired.', $expired);
+        self::assertStringNotContainsString('Happy birthday', $expired);
+        $asked = $this->request('POST', '/receipts/link', ['receipt' => $old], nonce: true);
+        self::assertSame(202, $asked->get_status(), (string) wp_json_encode($asked->get_data()));
+        $this->request('POST', '/receipts/link', ['receipt' => '1-1-' . str_repeat('0', 32)], nonce: true);
+        $links = array_values(array_filter($this->sentMail(), static fn(array $mail): bool => str_contains($mail['subject'], 'The link to your order')));
+        self::assertSame(['ada@example.com'], array_column($links, 'to'), 'one, to the order\'s email');
+
+        $_GET = ['orillacart_order' => '1-1-' . str_repeat('0', 32)];
         self::assertStringContainsString('There is no order at this address.', do_blocks('<!-- wp:orillacart/checkout /-->'));
         $_GET = [];
         self::assertStringContainsString('The cart is empty.', do_blocks('<!-- wp:orillacart/checkout /-->'));

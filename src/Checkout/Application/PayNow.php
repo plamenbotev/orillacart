@@ -11,6 +11,7 @@ use OrillaCart\Inventory\Domain\InsufficientStock;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
@@ -45,14 +46,15 @@ final readonly class PayNow
     }
 
     /**
-     * @throws OrderNotFound              for a key no order has
+     * @throws OrderNotFound              for a receipt link the shop never made
+     * @throws ReceiptLinkExpired         for one too old
      * @throws CheckoutRuleViolation      for an order that cannot be paid now, a method the shop does not offer
      *                                    for it, or a failed order whose items sold out since
      * @throws PaymentProviderUnavailable when the payment cannot start; the order stays as it was
      */
-    public function pay(string $key, PayOrder $command): PlacedOrderView
+    public function pay(string $receipt, PayOrder $command): PlacedOrderView
     {
-        $order = $this->orders->byKey($key);
+        $order = $this->orders->byReceipt($receipt);
         if (!$order->payable) {
             throw new CheckoutRuleViolation('This order cannot be paid now.', 'orillacart_order_not_payable');
         }
@@ -67,9 +69,9 @@ final readonly class PayNow
         } catch (OrderRuleViolation $e) {
             throw new CheckoutRuleViolation($e->getMessage(), 'orillacart_order_not_payable', $e);
         }
-        $receiptUrl = $this->links->receiptUrl($order->key);
+        $receiptUrl = $this->links->receiptUrl($order->number);
         try {
-            $payment = $this->payments->start(new StartPayment($order->number, $order->number, $command->payment, $order->total, $order->currency, $receiptUrl));
+            $payment = $this->payments->start(new StartPayment($order->number, $order->number, $command->payment, $order->total, $order->currency));
         } catch (PaymentProviderUnavailable $e) {
             // An order that had failed fails again, giving its stock back; one that waited goes on waiting.
             if ($failed) {
@@ -82,8 +84,8 @@ final readonly class PayNow
             // The shop heard of the order when it was placed.
             $this->orders->hold($order->number, tellShop: false);
         }
-        $placed = $this->orders->byKey($key);
+        $placed = $this->orders->order($order->number);
 
-        return new PlacedOrderView($placed->number, $placed->key, $placed->status, $placed->total, $receiptUrl, $payment->redirectUrl);
+        return new PlacedOrderView($placed->number, $placed->status, $placed->total, $receiptUrl, $payment->redirectUrl);
     }
 }

@@ -44,9 +44,10 @@ final class RouteSecurityGateTest extends TestCase
         'DELETE /cart/coupons/{code}',
         'POST /checkout',
         'POST /checkout/summary',
-        'GET /receipts/{key}',
+        'GET /receipts/{receipt}',
         // Paying an unpaid order later: only with its secret key, and only a method the shop offers for it.
-        'POST /receipts/{key}/payment',
+        'POST /receipts/{receipt}/payment',
+        'POST /receipts/link',
         'POST /accounts',
         'POST /accounts/confirm',
         'GET /session',

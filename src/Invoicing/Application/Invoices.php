@@ -15,6 +15,7 @@ use OrillaCart\Invoicing\Domain\InvoiceRepository;
 use OrillaCart\Invoicing\Domain\InvoiceSettings;
 use OrillaCart\Invoicing\Domain\InvoiceSettingsRepository;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Reports\Application\ShopCalendar;
 use OrillaCart\Shared\Domain\Money;
@@ -33,6 +34,7 @@ final readonly class Invoices
         private InvoiceLinks $links,
         private ShopCalendar $calendar,
         private ClockInterface $clock,
+        private ReceiptLinks $receipts,
     ) {}
 
     /**
@@ -72,25 +74,27 @@ final readonly class Invoices
      */
     public function ofOrder(int $orderId): array
     {
-        $key = $this->orders->order($orderId)->key;
+        $this->orders->order($orderId);
+        $receipt = $this->receipts->issue($orderId);
 
-        return array_map(fn(Invoice $invoice): InvoiceView => $this->view($invoice, $key), $this->invoices->ofOrder($orderId));
+        return array_map(fn(Invoice $invoice): InvoiceView => $this->view($invoice, $receipt), $this->invoices->ofOrder($orderId));
     }
 
     /**
-     * A printable document, for whoever holds its order's key.
+     * A printable document, for whoever holds a link to its order's receipt that still works.
      *
-     * @throws InvoiceNotFound also for a key that is not its order's
+     * @throws InvoiceNotFound also for a receipt link that is not its order's, or expired
      */
-    public function document(string $number, string $orderKey): InvoiceDocument
+    public function document(string $number, string $receipt): InvoiceDocument
     {
         $invoice = $this->invoices->findByNumber($number) ?? throw new InvoiceNotFound();
+        $read = $this->receipts->read($receipt);
+        if ($read === null || $read[1] || $read[0] !== $invoice->orderId()) {
+            throw new InvoiceNotFound();
+        }
         try {
             $order = $this->orders->order($invoice->orderId());
         } catch (OrderNotFound) {
-            throw new InvoiceNotFound();
-        }
-        if (!hash_equals($order->key, $orderKey)) {
             throw new InvoiceNotFound();
         }
         $corrects = null;
@@ -102,7 +106,7 @@ final readonly class Invoices
             }
         }
 
-        return new InvoiceDocument($this->view($invoice, $orderKey), $invoice->seller(), $order, $invoice->lines(), $corrects, $invoice->taxes());
+        return new InvoiceDocument($this->view($invoice, $receipt), $invoice->seller(), $order, $invoice->lines(), $corrects, $invoice->taxes());
     }
 
     public function settings(): InvoiceSettingsView
@@ -144,8 +148,8 @@ final readonly class Invoices
         $this->invoices->save(new Invoice($orderId, $kind, $number, $amount, $currency, $settings->seller(), $now, $lines, $taxes));
     }
 
-    private function view(Invoice $invoice, string $orderKey): InvoiceView
+    private function view(Invoice $invoice, string $receipt): InvoiceView
     {
-        return new InvoiceView($invoice->number(), $invoice->kind()->value, (string) $invoice->amount(), $invoice->currency(), $invoice->issuedAt()->format(\DATE_ATOM), $this->links->documentUrl($invoice->number(), $orderKey));
+        return new InvoiceView($invoice->number(), $invoice->kind()->value, (string) $invoice->amount(), $invoice->currency(), $invoice->issuedAt()->format(\DATE_ATOM), $this->links->documentUrl($invoice->number(), $receipt));
     }
 }

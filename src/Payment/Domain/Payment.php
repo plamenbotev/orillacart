@@ -54,9 +54,6 @@ class Payment
         Money $amount,
         #[ORM\Column(length: 3)]
         private string $currency,
-        /** Where the customer goes when the payment ends: the order's receipt. */
-        #[ORM\Column(length: 2000)]
-        private string $receiptUrl,
         #[ORM\Column]
         private \DateTimeImmutable $createdAt,
     ) {
@@ -91,10 +88,6 @@ class Payment
         return $this->currency;
     }
 
-    public function receiptUrl(): string
-    {
-        return $this->receiptUrl;
-    }
 
     public function status(): PaymentStatus
     {

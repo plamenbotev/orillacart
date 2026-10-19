@@ -12,7 +12,6 @@ interface OrderRepository
      */
     public function find(int $id, bool $lock = false): ?Order;
 
-    public function findByKey(string $key): ?Order;
 
     /**
      * Orders still waiting for a provider payment since before the moment (placed then, or asked to pay again).

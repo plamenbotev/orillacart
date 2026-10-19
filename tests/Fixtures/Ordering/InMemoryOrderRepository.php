@@ -28,17 +28,6 @@ final class InMemoryOrderRepository implements OrderRepository
         return $this->orders[$id] ?? null;
     }
 
-    public function findByKey(string $key): ?Order
-    {
-        foreach ($this->orders as $order) {
-            if ($order->key() === $key) {
-                return $order;
-            }
-        }
-
-        return null;
-    }
-
     public function idsAfter(int $afterId, int $limit): array
     {
         $ids = array_values(array_filter(array_keys($this->orders), static fn(int $id): bool => $id > $afterId));

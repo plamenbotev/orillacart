@@ -13,6 +13,7 @@ use OrillaCart\Notifications\Domain\EmailRules;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
 use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\View\TemplateRenderer;
@@ -41,6 +42,7 @@ final readonly class OrderEmails
         private Jobs $jobs,
         private Invoices $invoices,
         private Languages $languages,
+        private ReceiptLinks $receipts,
     ) {}
 
     public function statusChanged(int $orderId, string $previous, string $status, bool $tellCustomer = true, bool $tellShop = true): void
@@ -55,6 +57,24 @@ final readonly class OrderEmails
     public function noteAdded(int $orderId, string $text): void
     {
         $this->queue($orderId, EmailKind::CustomerNote, $text);
+    }
+
+    /**
+     * A new link to the receipt an expired one was for, to the order's email. A link the shop never made, or
+     * one of an order deleted since, sends nothing, and whoever asked hears the same.
+     */
+    public function receiptLink(string $expired): void
+    {
+        $read = $this->receipts->read($expired);
+        if ($read === null) {
+            return;
+        }
+        try {
+            $this->orders->order($read[0]);
+        } catch (OrderNotFound) {
+            return;
+        }
+        $this->queue($read[0], EmailKind::ReceiptLink);
     }
 
     /** The shop hears why an order needs attention. */
@@ -124,7 +144,7 @@ final readonly class OrderEmails
         }
         $context = [
             'order' => $order,
-            'receipt_url' => $this->links->receiptUrl($order->key),
+            'receipt_url' => $this->links->receiptUrl($order->number),
             'site_name' => $this->site->name(),
             'site_url' => $this->site->url(),
             'for_shop' => $kind->isForShop(),

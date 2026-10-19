@@ -43,6 +43,7 @@ use OrillaCart\Notifications\Application\SendOrderEmails;
 use OrillaCart\Notifications\Infrastructure\Events\EmailAboutOrders;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
 use OrillaCart\Ordering\Domain\Event\OrderDeleted;
 use OrillaCart\Ordering\Domain\Event\OrderDeleting;
@@ -83,6 +84,7 @@ use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
+use OrillaCart\Shared\Security\Signatures;
 use OrillaCart\Shipping\Application\CarrierService;
 use OrillaCart\Shipping\Application\Consignments;
 use OrillaCart\Shipping\Application\ShipmentTracking;
@@ -214,6 +216,9 @@ final class TestShop
     public readonly RecordingAccountMail $accountMail;
     public readonly PaymentOptions $paymentOptions;
     public readonly FakeLanguages $languages;
+    public readonly ReceiptLinks $receipts;
+    public readonly Signatures $signatures;
+    public readonly FakePaymentUrls $paymentUrls;
     public readonly FakeSite $site;
     public readonly InMemoryCustomerSettingsRepository $customerSettings;
     public readonly CustomerService $customers;
@@ -270,20 +275,23 @@ final class TestShop
         $methodRecords = new InMemoryPaymentMethodRepository();
         $this->paymentRecords = new InMemoryPaymentRepository($this->transactions);
         $gateways = new Gateways($extensions);
-        $urls = new FakePaymentUrls();
+        $this->signatures = new Signatures('test secret');
+        $this->paymentUrls = $urls = new FakePaymentUrls($this->signatures);
         $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls);
         $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock, $this->logger);
 
         $this->cartRecords = new InMemoryCartRepository($this->transactions);
         $this->carts = new CartService($this->cartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger);
         $this->orderRecords = new InMemoryOrderRepository($this->transactions);
-        $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, new FakeOrderLinks(), $this->transactions);
+        $this->receipts = new ReceiptLinks($this->signatures, $this->clock);
+        $links = new FakeOrderLinks($this->receipts);
+        $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, $links, $this->transactions, $this->receipts);
         $this->refundRecords = new InMemoryRefundRepository($this->transactions);
         $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions, $this->events);
-        $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds, $this->transactions);
+        $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds, $this->transactions, $links, $this->signatures);
         $this->files = new TemporaryPrivateFiles();
         $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events);
-        $this->downloads = new Downloads(new InMemoryDownloadGrantRepository($this->orderRecords), $this->files, new FakeOrderLinks(), $this->clock, $this->logger);
+        $this->downloads = new Downloads(new InMemoryDownloadGrantRepository($this->orderRecords), $this->files, $links, $this->clock, $this->logger);
         $this->events->addListener(DownloadRemoved::class, new ForgetRemovedDownloads($this->downloads)(...));
         $this->accounts = new InMemoryAccounts();
         $this->customerSettings = new InMemoryCustomerSettingsRepository();
@@ -314,7 +322,7 @@ final class TestShop
             $paymentOptions,
             $payments,
             $this->orders,
-            new FakeOrderLinks(),
+            $links,
             $settings,
             new AddressRules($settings, $geography),
             $this->transactions,
@@ -325,10 +333,10 @@ final class TestShop
             new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography),
             $this->languages,
         );
-        $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, new FakeOrderLinks());
+        $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
         $this->invoiceSettings = new MemoryInvoiceSettings();
-        $this->invoices = new Invoices($this->invoiceRecords, $this->invoiceSettings, $this->orders, new FakeInvoiceLinks(), new SofiaCalendar(), $this->clock);
+        $this->invoices = new Invoices($this->invoiceRecords, $this->invoiceSettings, $this->orders, new FakeInvoiceLinks(), new SofiaCalendar(), $this->clock, $this->receipts);
         $issuing = new IssueInvoices($this->invoices);
         $this->events->addListener(OrderPaid::class, $issuing->paid(...));
         $this->events->addListener(OrderRefunded::class, $issuing->refunded(...));
@@ -346,7 +354,7 @@ final class TestShop
         $this->jobs = new TestJobs($this->clock);
         $this->sentEmails = new InMemorySentEmails();
         $this->jobs->immediate = true;
-        $this->emails = new OrderEmails($this->orders, new FakeOrderLinks(), $this->emailSettings, $templates, $this->mail, $this->site = new FakeSite(), $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs, $this->invoices, $this->languages);
+        $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $templates, $this->mail, $this->site = new FakeSite(), $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs, $this->invoices, $this->languages, $this->receipts);
         $this->jobs->with(new SendOrderEmails($this->emails, $this->sentEmails, $this->clock, $this->logger), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));
         $emailing = new EmailAboutOrders($this->emails);
         $this->events->addListener(OrderStatusChanged::class, $emailing->statusChanged(...));
@@ -360,5 +368,18 @@ final class TestShop
         $this->events->addListener(PaymentHeld::class, $settle->held(...));
         $this->events->addListener(PaymentFailed::class, $settle->failed(...));
         $this->events->addListener(PaymentCancelled::class, $settle->cancelled(...));
+    }
+
+    /**
+     * What a provider sends a customer back with: its reference, and the shop's signed payment id from the address
+     * the payment started with.
+     *
+     * @return array<string, string>
+     */
+    public function returnQuery(string $reference, string $gateway = 'paypal'): array
+    {
+        $payment = $this->paymentRecords->findByReference($gateway, $reference);
+
+        return ['token' => $reference] + ($payment === null ? [] : $this->paymentUrls->query($gateway, $payment->id()));
     }
 }

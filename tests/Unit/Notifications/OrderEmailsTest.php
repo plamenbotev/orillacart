@@ -17,6 +17,8 @@ use OrillaCart\Notifications\Domain\EmailSettings;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
+use OrillaCart\Ordering\Application\ReceiptLinkExpired;
+use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
@@ -64,7 +66,7 @@ final class OrderEmailsTest extends TestCase
 
         $order = $this->place('bank_transfer');
 
-        self::assertSame('de_DE', $this->shop->orders->byKey($order->key)->locale);
+        self::assertSame('de_DE', $this->shop->orders->order($order->number)->locale);
         self::assertSame(['de_DE', null], $this->shop->languages->switched, 'the received email, then the shop\'s new order email');
         self::assertStringContainsString('<html lang="de-DE">', $this->shop->mail->emails[0]->html);
         self::assertStringContainsString('<html lang="en-US">', $this->shop->mail->emails[1]->html);
@@ -83,12 +85,43 @@ final class OrderEmailsTest extends TestCase
         self::assertStringNotContainsString('<', $received->text);
     }
 
+    public function testAReceiptLinkWorksForNinetyDaysThenANewOneGoesToTheOrdersEmail(): void
+    {
+        $order = $this->place('bank_transfer');
+        $link = $this->shop->receipts->issue($order->number);
+        self::assertSame($order->number, $this->shop->orders->byReceipt($link)->number);
+        foreach ([$order->number . '-1-' . str_repeat('0', 32), substr($link, 0, -1) . 'f', ($order->number + 1) . substr($link, \strlen((string) $order->number))] as $forged) {
+            try {
+                $this->shop->orders->byReceipt($forged);
+                self::fail("{$forged} is not a link the shop made");
+            } catch (OrderNotFound) {
+                // Not found, rather than expired: there is no new link to send for it.
+            }
+        }
+
+        $this->shop->clock->modify('+90 days');
+        try {
+            $this->shop->orders->byReceipt($link);
+            self::fail('expired');
+        } catch (ReceiptLinkExpired) {
+        }
+        $sent = \count($this->shop->mail->emails);
+        $this->shop->emails->receiptLink($order->number . '-1-' . str_repeat('0', 32));
+        self::assertCount($sent, $this->shop->mail->emails, 'nothing for a link the shop never made');
+
+        $this->shop->emails->receiptLink($link);
+
+        $mail = $this->shop->mail->emails[$sent];
+        self::assertSame(['ada@example.com', "[Lamp Shop] The link to your order #{$order->number}"], [$mail->to, $mail->subject]);
+        self::assertStringContainsString($this->shop->receipts->issue($order->number), $mail->html, 'a link made today');
+    }
+
     public function testAPayPalOrderIsConfirmedOnceWhenPaid(): void
     {
         $order = $this->place('paypal');
         self::assertSame([], $this->shop->mail->summary(), 'nothing while the customer is at PayPal');
 
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
 
         self::assertSame([
             "ada@example.com: [Lamp Shop] Your order #{$order->number} is confirmed",
@@ -99,7 +132,7 @@ final class OrderEmailsTest extends TestCase
     public function testGivingUpAtPayPalSendsNothingButTheShopCancellingDoes(): void
     {
         $this->place('paypal');
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], true);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), true);
         self::assertSame([], $this->shop->mail->summary());
 
         $order = $this->place('bank_transfer');
@@ -117,7 +150,7 @@ final class OrderEmailsTest extends TestCase
         self::assertCount(3, $this->shop->mail->emails);
         self::assertStringContainsString("Your parcel leaves tomorrow.\nThanks!", $this->shop->mail->emails[2]->html);
         self::assertSame(['Order placed.', 'Status changed from pending payment to on hold.', 'Called the courier.', "Your parcel leaves tomorrow.\nThanks!"], array_column($this->shop->orders->order($order->number)->notes, 'text'));
-        self::assertSame(["Your parcel leaves tomorrow.\nThanks!"], array_column($this->shop->orders->byKey($order->key)->notes, 'text'), 'the customer sees only notes for them');
+        self::assertSame(["Your parcel leaves tomorrow.\nThanks!"], array_column($this->shop->orders->byReceipt($this->shop->receipts->issue($order->number))->notes, 'text'), 'the customer sees only notes for them');
     }
 
     public function testTurnedOffEmailsAreNotSentUnlessTheShopResendsThem(): void

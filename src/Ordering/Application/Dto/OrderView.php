@@ -26,7 +26,6 @@ final readonly class OrderView
      */
     public function __construct(
         public int $number,
-        public string $key,
         public string $status,
         public string $email,
         public AddressData $billing,
@@ -91,7 +90,6 @@ final readonly class OrderView
 
         return new self(
             $order->id(),
-            $order->key(),
             $order->status()->value,
             $order->email(),
             AddressData::fromAddress($order->billing()),

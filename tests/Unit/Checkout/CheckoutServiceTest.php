@@ -21,6 +21,7 @@ use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Payment\Domain\PaymentNotFound;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
@@ -82,12 +83,12 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
 
         self::assertSame(['on_hold', '95.59', null], [$placed->status, $placed->total, $placed->redirectUrl]);
-        self::assertSame("https://shop.test/?orillacart_order={$placed->key}", $placed->receiptUrl);
+        self::assertSame('https://shop.test/?orillacart_order=' . $this->shop->receipts->issue($placed->number), $placed->receiptUrl);
         self::assertSame(1, $this->shop->stock->stock(StockItemRef::product(10))->available);
         self::assertSame(0, $this->shop->carts->cart($owner)->cart->items);
         self::assertSame(2, $this->shop->transactions->outermost, 'stock and order were saved together, then the order was put on hold');
 
-        $order = $this->shop->orders->byKey($placed->key);
+        $order = $this->shop->orders->order($placed->number);
         self::assertSame(['Cash on delivery', 'Have the cash ready.', 'Courier – Bulgaria', 'ada@example.com'], [$order->paymentName, $order->paymentNote, $order->shipping, $order->email]);
         self::assertSame(['Lamp', 2, '33.33', '66.66'], [$order->lines[0]->name, $order->lines[0]->quantity, $order->lines[0]->unitPrice, $order->lines[0]->total]);
         self::assertSame('Sofia', $order->shippingAddress?->city);
@@ -131,7 +132,7 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart([30, 1]), $this->order(null, rate: null));
 
         self::assertSame(['processing', '0'], [$placed->status, $placed->total]);
-        self::assertNull($this->shop->orders->byKey($placed->key)->shippingAddress, 'nothing ships');
+        self::assertNull($this->shop->orders->order($placed->number)->shippingAddress, 'nothing ships');
     }
 
     public function testPayPalSendsTheCustomerToPayPalAndCapturesWhenTheyComeBack(): void
@@ -140,15 +141,36 @@ final class CheckoutServiceTest extends TestCase
 
         self::assertSame(['pending_payment', 'https://www.sandbox.paypal.com/checkoutnow?token=PAYPAL-1'], [$placed->status, $placed->redirectUrl]);
         $request = $this->shop->payPalApi->created[0];
-        self::assertSame(['46.00', 'EUR', 'https://shop.test/payments/paypal/return', 'https://shop.test/payments/paypal/cancel'], [$request->amount, $request->currency, $request->returnUrl, $request->cancelUrl]);
+        $payment = $this->shop->paymentRecords->findByReference('paypal', 'PAYPAL-1');
+        self::assertNotNull($payment);
+        self::assertSame(['46.00', 'EUR', $this->shop->paymentUrls->returnUrl('paypal', $payment->id()), $this->shop->paymentUrls->cancelUrl('paypal', $payment->id())], [$request->amount, $request->currency, $request->returnUrl, $request->cancelUrl]);
+        foreach ([['token' => 'PAYPAL-1'], ['token' => 'PAYPAL-1', 'payment' => (string) $payment->id(), 'sig' => str_repeat('0', 32)], ['token' => 'PAYPAL-1'] + $this->shop->paymentUrls->query('paypal', $payment->id() + 1)] as $forged) {
+            try {
+                $this->shop->outcomes->returned('paypal', $forged, true);
+                self::fail('a return address the shop did not sign for this payment');
+            } catch (PaymentNotFound) {
+            }
+        }
+        self::assertSame('pending_payment', $this->shop->orders->order($placed->number)->status, 'nothing was cancelled');
 
-        self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false));
-        $order = $this->shop->orders->byKey($placed->key);
+        self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false));
+        $order = $this->shop->orders->order($placed->number);
         self::assertSame(['processing', 'CAPTURE-PAYPAL-1'], [$order->status, $this->shop->orderRecords->orders[$order->number]->transactionId()]);
 
         // Coming back twice, or a webhook after the return, changes nothing.
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
         self::assertSame(['PAYPAL-1'], $this->shop->payPalApi->captured);
+    }
+
+    public function testComingBackFromTheCancelAddressAfterApprovingElsewhereStillPays(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('paypal'));
+        // The customer approved in another tab, then went back to the first one and gave up there.
+        $this->shop->payPalApi->orderStatus['PAYPAL-1'] = 'APPROVED';
+
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), true);
+
+        self::assertSame(['processing', ['PAYPAL-1']], [$this->shop->orders->order($placed->number)->status, $this->shop->payPalApi->captured]);
     }
 
     public function testGivingUpAtPayPalCancelsTheOrderAndPutsTheStockBack(): void
@@ -156,9 +178,9 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 3]), $this->order('paypal'));
         self::assertSame(0, $this->shop->stock->stock(StockItemRef::product(10))->available);
 
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], true);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), true);
 
-        self::assertSame('cancelled', $this->shop->orders->byKey($placed->key)->status);
+        self::assertSame('cancelled', $this->shop->orders->order($placed->number)->status);
         self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available);
     }
 
@@ -167,9 +189,9 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('paypal'));
         $this->shop->payPalApi->captureStatus = 'DECLINED';
 
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
 
-        self::assertSame('failed', $this->shop->orders->byKey($placed->key)->status);
+        self::assertSame('failed', $this->shop->orders->order($placed->number)->status);
         self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available);
     }
 
@@ -220,22 +242,22 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('paypal'));
         $this->shop->payPalApi->reachable = false;
 
-        self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false));
-        self::assertSame('pending_payment', $this->shop->orders->byKey($placed->key)->status, 'the webhook settles it later');
+        self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false));
+        self::assertSame('pending_payment', $this->shop->orders->order($placed->number)->status, 'the webhook settles it later');
     }
 
     public function testAFailedPaymentIsTriedAgainLaterWithAnotherWay(): void
     {
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 2]), $this->order('paypal'));
         $this->shop->payPalApi->captureStatus = 'DECLINED';
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
-        self::assertSame(['failed', 3], [$this->shop->orders->byKey($placed->key)->status, $this->shop->stock->stock(StockItemRef::product(10))->available]);
-        self::assertSame(['cash_on_delivery', 'bank_transfer', 'paypal'], array_map(static fn($method): string => $method->gateway, $this->shop->payNow->methods($this->shop->orders->byKey($placed->key))));
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
+        self::assertSame(['failed', 3], [$this->shop->orders->order($placed->number)->status, $this->shop->stock->stock(StockItemRef::product(10))->available]);
+        self::assertSame(['cash_on_delivery', 'bank_transfer', 'paypal'], array_map(static fn($method): string => $method->gateway, $this->shop->payNow->methods($this->shop->orders->order($placed->number))));
 
-        $again = $this->shop->payNow->pay($placed->key, new PayOrder('bank_transfer'));
+        $again = $this->shop->payNow->pay($this->shop->receipts->issue($placed->number), new PayOrder('bank_transfer'));
 
         self::assertSame(['on_hold', null], [$again->status, $again->redirectUrl]);
-        $order = $this->shop->orders->byKey($placed->key);
+        $order = $this->shop->orders->order($placed->number);
         self::assertSame(['Bank transfer', 'IBAN BG00 0000'], [$order->paymentName, $order->paymentNote]);
         self::assertSame(1, $this->shop->stock->stock(StockItemRef::product(10))->available, 'its items are taken again');
     }
@@ -245,16 +267,16 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('bank_transfer'));
         $this->shop->clock->modify('+5 hours');
 
-        $paying = $this->shop->payNow->pay($placed->key, new PayOrder('paypal'));
+        $paying = $this->shop->payNow->pay($this->shop->receipts->issue($placed->number), new PayOrder('paypal'));
 
         self::assertSame('pending_payment', $paying->status);
         self::assertNotNull($paying->redirectUrl);
         self::assertSame(0, $this->shop->orders->cancelAbandoned(), 'the payment window starts again');
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
-        self::assertSame('processing', $this->shop->orders->byKey($placed->key)->status);
-        self::assertSame([], $this->shop->payNow->methods($this->shop->orders->byKey($placed->key)), 'a paid order is not paid again');
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
+        self::assertSame('processing', $this->shop->orders->order($placed->number)->status);
+        self::assertSame([], $this->shop->payNow->methods($this->shop->orders->order($placed->number)), 'a paid order is not paid again');
         try {
-            $this->shop->payNow->pay($placed->key, new PayOrder('paypal'));
+            $this->shop->payNow->pay($this->shop->receipts->issue($placed->number), new PayOrder('paypal'));
             self::fail('paid already');
         } catch (CheckoutRuleViolation $e) {
             self::assertSame('orillacart_order_not_payable', $e->errorCode);
@@ -265,16 +287,16 @@ final class CheckoutServiceTest extends TestCase
     {
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 2]), $this->order('paypal'));
         $this->shop->payPalApi->captureStatus = 'DECLINED';
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
         $this->shop->checkout->placeOrder($this->cart([10, 3]), $this->order('bank_transfer'));
 
         try {
-            $this->shop->payNow->pay($placed->key, new PayOrder('bank_transfer'));
+            $this->shop->payNow->pay($this->shop->receipts->issue($placed->number), new PayOrder('bank_transfer'));
             self::fail('sold out');
         } catch (CheckoutRuleViolation $e) {
             self::assertSame('orillacart_out_of_stock', $e->errorCode);
         }
-        self::assertSame('failed', $this->shop->orders->byKey($placed->key)->status);
+        self::assertSame('failed', $this->shop->orders->order($placed->number)->status);
     }
 
     public function testASecondSubmitWhileTheOrderIsBeingPlacedPlacesNoSecondOrder(): void
@@ -362,7 +384,7 @@ final class CheckoutServiceTest extends TestCase
         $this->shop->clock->modify('+2 minutes');
         self::assertSame(1, $this->shop->orders->cancelAbandoned());
 
-        self::assertSame(['cancelled', 'on_hold'], [$this->shop->orders->byKey($placed->key)->status, $this->shop->orders->byKey($held->key)->status]);
+        self::assertSame(['cancelled', 'on_hold'], [$this->shop->orders->order($placed->number)->status, $this->shop->orders->order($held->number)->status]);
         self::assertSame(2, $this->shop->stock->stock(StockItemRef::product(10))->available);
     }
 
@@ -374,9 +396,9 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available);
 
         // The customer approves at PayPal after all, and comes back.
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
 
-        $order = $this->shop->orders->byKey($placed->key);
+        $order = $this->shop->orders->order($placed->number);
         self::assertSame('processing', $order->status);
         self::assertNotNull($order->paidAt);
         self::assertSame(1, $this->shop->stock->stock(StockItemRef::product(10))->available, 'the items are taken again');
@@ -394,9 +416,9 @@ final class CheckoutServiceTest extends TestCase
         $this->shop->orders->cancelAbandoned();
         $this->shop->checkout->placeOrder($this->cart([10, 3]), $this->order('bank_transfer'));
 
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
 
-        $order = $this->shop->orders->order($this->shop->orders->byKey($placed->key)->number);
+        $order = $this->shop->orders->order($this->shop->orders->order($placed->number)->number);
         self::assertSame('cancelled', $order->status);
         self::assertSame(0, $this->shop->stock->stock(StockItemRef::product(10))->available);
         self::assertCount(1, $this->shop->payPalApi->refunds, 'the capture went back');
@@ -459,7 +481,7 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame(2, $this->shop->carts->cart($owner)->cart->lines[0]->backordered);
 
         $placed = $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
-        $line = $this->shop->orders->byKey($placed->key)->lines[0];
+        $line = $this->shop->orders->order($placed->number)->lines[0];
         self::assertSame([5, 2, true], [$line->quantity, $line->backordered, $line->backorderShown]);
         self::assertSame([[$this->room, -2]], array_map(static fn($level): array => [$level->stockroomId, $level->quantity], $this->shop->stock->stock(StockItemRef::product(10))->levels));
         self::assertSame(0, $this->shop->stock->available([StockItemRef::product(10)]));
@@ -474,7 +496,7 @@ final class CheckoutServiceTest extends TestCase
         $owner = $this->cart([10, 4]);
 
         self::assertSame(0, $this->shop->checkout->summary($owner, new CheckoutDetails('BG'))->lines[0]->backordered);
-        $line = $this->shop->orders->byKey($this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'))->key)->lines[0];
+        $line = $this->shop->orders->order($this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'))->number)->lines[0];
         self::assertSame([1, false], [$line->backordered, $line->backorderShown]);
     }
 

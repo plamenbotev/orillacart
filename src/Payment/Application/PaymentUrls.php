@@ -9,11 +9,11 @@ namespace OrillaCart\Payment\Application;
  */
 interface PaymentUrls
 {
-    /** Where the customer comes back after approving the payment. */
-    public function returnUrl(string $gateway): string;
+    /** Where the customer comes back after approving the payment: signed with its id, see PaymentOutcomes::returned(). */
+    public function returnUrl(string $gateway, int $paymentId): string;
 
-    /** Where the customer comes back after giving up at the provider. */
-    public function cancelUrl(string $gateway): string;
+    /** Where the customer comes back after giving up at the provider, signed alike. */
+    public function cancelUrl(string $gateway, int $paymentId): string;
 
     /** Where the provider sends its notifications (webhooks). */
     public function notificationUrl(string $gateway): string;

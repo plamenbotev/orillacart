@@ -25,11 +25,6 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         return $order;
     }
 
-    public function findByKey(string $key): ?Order
-    {
-        return $this->entityManager->getRepository(Order::class)->findOneBy(['key' => $key]);
-    }
-
     public function pendingPaymentSince(\DateTimeImmutable $before): array
     {
         /** @var list<Order> */

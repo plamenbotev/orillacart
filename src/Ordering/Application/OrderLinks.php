@@ -10,7 +10,7 @@ namespace OrillaCart\Ordering\Application;
 interface OrderLinks
 {
     /** The page showing the order with this key: where checkout and payment providers send the customer. */
-    public function receiptUrl(string $key): string;
+    public function receiptUrl(int $orderNumber): string;
 
     /** The link that downloads a bought file. */
     public function downloadUrl(string $token): string;

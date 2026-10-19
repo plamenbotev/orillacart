@@ -77,6 +77,7 @@ final readonly class OrderService
         private ClockInterface $clock,
         private OrderLinks $links,
         private Transactions $transactions,
+        private ReceiptLinks $receipts,
     ) {}
 
     public function place(NewOrder $command): OrderView
@@ -87,7 +88,6 @@ final readonly class OrderService
     private function placed(NewOrder $command): OrderView
     {
         $order = new Order(new OrderDraft(
-            bin2hex(random_bytes(16)),
             $command->customerId,
             $command->email,
             $command->billing->toAddress(),
@@ -120,13 +120,20 @@ final readonly class OrderService
     }
 
     /**
-     * The receipt of an order, for whoever holds its key.
+     * The receipt of an order, for whoever holds a link to it the shop made.
      *
-     * @throws OrderNotFound
+     * @throws OrderNotFound      for a link the shop never made, or an order deleted since
+     * @throws ReceiptLinkExpired for a link too old: a new one goes to the order's email
      */
-    public function byKey(string $key): OrderView
+    public function byReceipt(string $token): OrderView
     {
-        return $this->view($this->orders->findByKey($key) ?? throw new OrderNotFound());
+        [$number, $expired] = $this->receipts->read($token) ?? throw new OrderNotFound();
+        if ($expired) {
+            throw new ReceiptLinkExpired();
+        }
+
+        // As the customer sees it: without the shop's own notes.
+        return $this->view($this->get($number));
     }
 
     /**

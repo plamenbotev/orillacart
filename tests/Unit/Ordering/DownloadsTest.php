@@ -38,12 +38,12 @@ final class DownloadsTest extends TestCase
     public function testAPaidOrderGetsItsDownloadsWithTheProductsLimitAndExpiry(): void
     {
         $order = $this->place();
-        $unpaid = $this->shop->orders->byKey($order->key);
+        $unpaid = $this->shop->orders->order($order->number);
         self::assertSame([], $unpaid->downloads, 'nothing before the money arrives');
 
         $this->shop->orders->markPaidByShop($order->number, '', 1);
 
-        $downloads = $this->shop->orders->byKey($order->key)->downloads;
+        $downloads = $this->shop->orders->order($order->number)->downloads;
         self::assertCount(1, $downloads);
         self::assertSame(['Guide', 'guide.pdf', 2, '2026-11-16T12:00:00+00:00'], [$downloads[0]->product, $downloads[0]->name, $downloads[0]->remaining, $downloads[0]->expiresAt]);
         self::assertMatchesRegularExpression('#^https://shop\.test/\?orillacart_download=[a-f0-9]{64}$#', $downloads[0]->url);
@@ -60,12 +60,12 @@ final class DownloadsTest extends TestCase
         $expiring = $this->paid();
         $refunded = $this->paid();
         $this->shop->refunds->refund($refunded->number, new MakeRefund($this->shop->orders->order($refunded->number)->total), 1);
-        self::assertSame([], $this->shop->orders->byKey($refunded->key)->downloads);
+        self::assertSame([], $this->shop->orders->order($refunded->number)->downloads);
 
         $this->shop->clock->modify('+31 days');
         $this->expectException(DownloadUnavailable::class);
         $this->expectExceptionMessage('The download link has expired.');
-        $this->shop->downloads->open($this->token($this->shop->orders->byKey($expiring->key)->downloads[0]->url));
+        $this->shop->downloads->open($this->token($this->shop->orders->order($expiring->number)->downloads[0]->url));
     }
 
     public function testAForgedOrUnknownLinkGivesNothing(): void
@@ -90,7 +90,7 @@ final class DownloadsTest extends TestCase
         $this->shop->downloadFiles->remove(20, $unsold->id);
 
         self::assertCount(1, $this->shop->files->deleted, 'only the file nobody bought is deleted');
-        self::assertSame('%PDF guide', file_get_contents($this->shop->downloads->open($this->token($this->shop->orders->byKey($order->key)->downloads[0]->url))->path));
+        self::assertSame('%PDF guide', file_get_contents($this->shop->downloads->open($this->token($this->shop->orders->order($order->number)->downloads[0]->url))->path));
     }
 
     public function testACustomerSeesTheDownloadsOfTheirPaidOrders(): void
@@ -111,7 +111,7 @@ final class DownloadsTest extends TestCase
     public function testTheShopGivesMoreDownloadsOrTime(): void
     {
         $order = $this->paid();
-        $grant = $this->shop->orders->byKey($order->key)->downloads[0];
+        $grant = $this->shop->orders->order($order->number)->downloads[0];
         $url = $grant->url;
         $this->shop->downloads->open($this->token($url));
         $this->shop->downloads->open($this->token($url));

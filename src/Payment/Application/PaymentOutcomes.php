@@ -14,6 +14,7 @@ use OrillaCart\Extension\Payment\PaymentOutcome;
 use OrillaCart\Extension\Payment\PaymentReturn;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Settings;
+use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Payment\Domain\Event\PaymentCancelled;
 use OrillaCart\Payment\Domain\Event\PaymentCompleted;
 use OrillaCart\Payment\Domain\Event\PaymentFailed;
@@ -28,6 +29,7 @@ use OrillaCart\Payment\Domain\PaymentRepository;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Shared\Security\Signatures;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
@@ -41,6 +43,9 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class PaymentOutcomes
 {
+    /** What the return and cancel addresses' signatures are for. */
+    public const string RETURN_SIGNATURE = 'payment-return';
+
     /** A payment is checked once nothing final came for this long */
     private const string CHECK_AFTER = 'PT15M';
     /** and for this long after it started: a provider forgets sessions nobody finished. */
@@ -55,19 +60,26 @@ final readonly class PaymentOutcomes
         private LoggerInterface $logger,
         private Refunds $refunds,
         private Transactions $transactions,
+        private OrderLinks $links,
+        private Signatures $signatures,
     ) {}
 
     /**
-     * The customer came back from the provider, paid or not.
+     * The customer came back from the provider, paid or not. The address carries the payment's id, signed when
+     * the payment started, so a made-up address settles nothing.
      *
-     * @param array<string, string> $query what the provider added to the address
+     * @param array<string, string> $query what the provider added to the address, and the shop's payment and sig
      *
      * @return string where to send the customer: the order's receipt
      *
-     * @throws PaymentNotFound for a return that names no payment of the gateway
+     * @throws PaymentNotFound for a return that names no payment of the gateway, or not the one it was signed for
      */
     public function returned(string $gatewayId, array $query, bool $cancelled): string
     {
+        $id = $query['payment'] ?? '';
+        if (preg_match('/^\d{1,18}$/', $id) !== 1 || !$this->signatures->verify(self::RETURN_SIGNATURE, "{$gatewayId}:{$id}", $query['sig'] ?? '')) {
+            throw new PaymentNotFound();
+        }
         try {
             $gateway = $this->gateways->get($gatewayId);
         } catch (PaymentMethodNotFound) {
@@ -76,7 +88,7 @@ final readonly class PaymentOutcomes
         $return = new PaymentReturn($query, $cancelled);
         $reference = $gateway instanceof HandlesReturns ? $gateway->reference($return) : null;
         $payment = $reference === null ? null : $this->payments->findByReference($gatewayId, $reference);
-        if ($payment === null || !$gateway instanceof HandlesReturns || $reference === null) {
+        if ($payment === null || !$gateway instanceof HandlesReturns || $reference === null || $payment->id() !== (int) $id) {
             throw new PaymentNotFound();
         }
         if (!$payment->isSettled()) {
@@ -87,12 +99,12 @@ final readonly class PaymentOutcomes
                 // provider's notification settles the payment later.
                 $this->logger->warning('Payment {payment} could not be looked up at {gateway} when the customer came back: {message}', ['payment' => $payment->id(), 'gateway' => $gatewayId, 'message' => $e->getMessage(), 'exception' => $e]);
 
-                return $payment->receiptUrl();
+                return $this->links->receiptUrl($payment->orderId());
             }
             $this->settle($payment, $outcome);
         }
 
-        return $payment->receiptUrl();
+        return $this->links->receiptUrl($payment->orderId());
     }
 
     /**

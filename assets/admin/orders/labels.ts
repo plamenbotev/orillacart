@@ -22,6 +22,10 @@ export const EMAIL_LABELS: Record< string, string > = {
 	order_failed: __( 'Payment failed', 'orillacart' ),
 	order_refunded: __( 'Order refunded', 'orillacart' ),
 	customer_note: __( 'Note to the customer', 'orillacart' ),
+	receipt_link: __(
+		'New link to the order (when the customer’s expired)',
+		'orillacart'
+	),
 	new_order: __( 'New order (to the shop)', 'orillacart' ),
 	order_attention: __(
 		'An order needs attention (to the shop)',

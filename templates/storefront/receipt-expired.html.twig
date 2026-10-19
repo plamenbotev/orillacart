@@ -1,0 +1,17 @@
+{#
+ # A receipt link too old to show the order: a new one goes to the order's email, never shown here.
+ #
+ # receipt: the expired link's token; links: the shop's pages.
+ #}
+{% import 'storefront/_macros.html.twig' as shop %}
+<div class="orillacart-receipt orillacart-receipt--expired">
+    <p class="orillacart-notice">{{ __('This link to your order has expired.') }}</p>
+    <form data-orillacart-receipt-link novalidate>
+        <input type="hidden" name="receipt" value="{{ receipt }}">
+        {{ shop.honeypot() }}
+        <p>{{ __('We can email a new link to the address the order was placed with.') }}</p>
+        <p class="orillacart-message" role="status" data-orillacart-message></p>
+        <button type="submit" class="wp-element-button orillacart-button">{{ __('Email me a new link') }}</button>
+    </form>
+    {% if links.account %}<p><a href="{{ links.account }}">{{ __('Or log in to see your orders') }}</a></p>{% endif %}
+</div>

@@ -12,7 +12,6 @@ final readonly class PlacedOrderView
 {
     public function __construct(
         public int $number,
-        public string $key,
         public string $status,
         public string $total,
         public string $receiptUrl,

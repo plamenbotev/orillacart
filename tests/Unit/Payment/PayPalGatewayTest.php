@@ -58,7 +58,7 @@ final class PayPalGatewayTest extends TestCase
     public function testAPaymentForAnOrderTheShopMarkedPaidIsKeptAndNoted(): void
     {
         $placed = $this->place();
-        $number = $this->shop->orders->byKey($placed->key)->number;
+        $number = $this->shop->orders->order($placed->number)->number;
         $this->shop->orders->markPaidByShop($number, '', 7);
 
         $this->shop->outcomes->notified('paypal', $this->notification('CHECKOUT.ORDER.APPROVED', ['id' => 'PAYPAL-1']));
@@ -74,7 +74,7 @@ final class PayPalGatewayTest extends TestCase
     {
         $placed = $this->place();
         $this->shop->outcomes->notified('paypal', $this->notification('CHECKOUT.ORDER.APPROVED', ['id' => 'PAYPAL-1']));
-        $number = $this->shop->orders->byKey($placed->key)->number;
+        $number = $this->shop->orders->order($placed->number)->number;
 
         $this->shop->outcomes->notified('paypal', $this->notification('CUSTOMER.DISPUTE.CREATED', ['reason' => 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED', 'status' => 'OPEN', 'disputed_transactions' => [['seller_transaction_id' => 'CAPTURE-PAYPAL-1']]]));
         $this->shop->outcomes->notified('paypal', $this->capture('PAYMENT.CAPTURE.REVERSED', 'REVERSED', 'PAYPAL-1', '8.00'));
@@ -94,7 +94,7 @@ final class PayPalGatewayTest extends TestCase
         $approved = $this->place();
         $held = $this->place();
         $this->shop->payPalApi->captureStatus = 'PENDING';
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-2'], false);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-2', 'paypal'), false);
         self::assertSame('on_hold', $this->orderStatus($held));
         $this->shop->payPalApi->captureStatus = 'COMPLETED';
         // The customer of PAYPAL-1 approved and closed the window; no webhook came.
@@ -157,7 +157,7 @@ final class PayPalGatewayTest extends TestCase
         $placed = $this->place();
         $this->shop->payPalApi->capturedAmount = '0.01';
 
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
 
         self::assertSame('on_hold', $this->orderStatus($placed));
         self::assertSame('warning', $this->shop->logger->records[0]['level']);
@@ -181,7 +181,7 @@ final class PayPalGatewayTest extends TestCase
     {
         $placed = $this->place();
 
-        self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], true));
+        self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), true));
 
         self::assertSame('cancelled', $this->orderStatus($placed));
         self::assertSame([], $this->shop->payPalApi->captured);
@@ -192,11 +192,11 @@ final class PayPalGatewayTest extends TestCase
         $placed = $this->place();
         $this->shop->payPalApi->reachable = false;
 
-        self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-1'], false));
+        self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false));
         self::assertSame('pending_payment', $this->orderStatus($placed));
 
         $this->expectException(PaymentNotFound::class);
-        $this->shop->outcomes->returned('paypal', ['token' => 'PAYPAL-404'], false);
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-404', 'paypal'), false);
     }
 
     private function place(): PlacedOrderView
@@ -208,7 +208,7 @@ final class PayPalGatewayTest extends TestCase
 
     private function orderStatus(PlacedOrderView $placed): string
     {
-        return $this->shop->orders->byKey($placed->key)->status;
+        return $this->shop->orders->order($placed->number)->status;
     }
 
     /**

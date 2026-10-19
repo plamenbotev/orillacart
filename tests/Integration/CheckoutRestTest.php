@@ -165,7 +165,7 @@ final class CheckoutRestTest extends RestTestCase
         $receipt = $this->request('GET', "/receipts/{$this->key($order)}");
         self::assertSame(200, $receipt->get_status());
         self::assertSame(['Cash on delivery', 'Have the cash ready.', 'Courier – Bulgaria'], [$this->data($receipt)['payment_name'], $this->data($receipt)['payment_note'], $this->data($receipt)['shipping']]);
-        self::assertSame(404, $this->request('GET', '/receipts/' . str_repeat('0', 32))->get_status());
+        self::assertSame(404, $this->request('GET', '/receipts/1-1-' . str_repeat('0', 32))->get_status());
     }
 
     public function testAVisitorUsesACouponAndTheOrderKeepsIt(): void
@@ -238,10 +238,17 @@ final class CheckoutRestTest extends RestTestCase
         $create = $creates[0];
         $body = json_decode($create['body'], true);
         self::assertSame(['currency_code' => 'EUR', 'value' => '38.33'], self::at($body, 'purchase_units', 0, 'amount'));
-        self::assertSame(rest_url('orillacart/v1/payments/paypal/return'), self::at($body, 'payment_source', 'paypal', 'experience_context', 'return_url'));
+        $returnUrl = self::at($body, 'payment_source', 'paypal', 'experience_context', 'return_url');
+        self::assertIsString($returnUrl);
+        self::assertStringStartsWith(rest_url('orillacart/v1/payments/paypal/return') . '?', $returnUrl);
+        parse_str((string) parse_url($returnUrl, \PHP_URL_QUERY), $signed);
+
+        $forged = new \WP_REST_Request('GET', self::NAMESPACE . '/payments/paypal/return');
+        $forged->set_query_params(['token' => 'PAY-1', 'PayerID' => 'PAYER']);
+        self::assertSame(404, rest_do_request($forged)->get_status(), 'an address the shop did not sign');
 
         $return = new \WP_REST_Request('GET', self::NAMESPACE . '/payments/paypal/return');
-        $return->set_query_params(['token' => 'PAY-1', 'PayerID' => 'PAYER']);
+        $return->set_query_params(['token' => 'PAY-1', 'PayerID' => 'PAYER'] + $signed);
         $back = rest_do_request($return);
         self::assertSame(303, $back->get_status());
         self::assertSame($order['receipt_url'], $back->get_headers()['Location']);
@@ -286,8 +293,11 @@ final class CheckoutRestTest extends RestTestCase
         $paid = $this->data($this->request('POST', '/checkout', $this->order('test_pay'), nonce: true));
         self::assertIsString($paid['redirect_url']);
         self::assertSame(1, preg_match('/ref=(REF-\d+)/', $paid['redirect_url'], $found));
+        parse_str((string) parse_url($paid['redirect_url'], \PHP_URL_QUERY), $redirect);
+        self::assertIsString($redirect['back'] ?? null);
+        parse_str((string) parse_url($redirect['back'], \PHP_URL_QUERY), $signed);
         $return = new \WP_REST_Request('GET', self::NAMESPACE . '/payments/test_pay/return');
-        $return->set_query_params(['ref' => $found[1]]);
+        $return->set_query_params(['ref' => $found[1]] + $signed);
         $back = rest_do_request($return);
         self::assertSame([303, $paid['receipt_url']], [$back->get_status(), $back->get_headers()['Location'] ?? null]);
         self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($paid)}"))['status']);
@@ -479,9 +489,11 @@ final class CheckoutRestTest extends RestTestCase
      */
     private function key(array $order): string
     {
-        self::assertIsString($order['key']);
+        self::assertIsString($order['receipt_url']);
+        parse_str((string) parse_url($order['receipt_url'], \PHP_URL_QUERY), $query);
+        self::assertIsString($query['orillacart_order'] ?? null);
 
-        return $order['key'];
+        return $query['orillacart_order'];
     }
 
     /**

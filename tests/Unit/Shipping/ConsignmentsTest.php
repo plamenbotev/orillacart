@@ -60,7 +60,7 @@ final class ConsignmentsTest extends TestCase
             self::assertSame('orillacart_pickup_point_required', $e->errorCode);
         }
         $placed = $this->shop->checkout->placeOrder($owner, $this->order('office', 'cash_on_delivery', 'SOF-2'));
-        $order = $this->shop->orders->byKey($placed->key);
+        $order = $this->shop->orders->order($placed->number);
         self::assertSame(['SOF-2', 'Locker Mall, 101 Bulgaria Blvd, 1404 Sofia'], [$order->pickupPointId, $order->pickupPoint]);
     }
 

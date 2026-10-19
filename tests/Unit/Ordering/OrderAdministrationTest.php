@@ -181,7 +181,7 @@ final class OrderAdministrationTest extends TestCase
     {
         $order = $this->place();
         $this->shop->orders->cancel($order->number);
-        $payment = new Payment($order->number, 'paypal', Money::of('8'), 'EUR', 'https://shop.test/receipt', $this->shop->clock->now());
+        $payment = new Payment($order->number, 'paypal', Money::of('8'), 'EUR', $this->shop->clock->now());
         $payment->refer('PAYPAL-1');
         $this->shop->paymentRecords->save($payment);
         $consignment = new Consignment($order->number, 1, 'Speedy', 'standard', 'SP1', null, $this->shop->clock->now());

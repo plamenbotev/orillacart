@@ -8,8 +8,8 @@ use OrillaCart\Invoicing\Application\InvoiceLinks;
 
 final class FakeInvoiceLinks implements InvoiceLinks
 {
-    public function documentUrl(string $number, string $orderKey): string
+    public function documentUrl(string $number, string $receipt): string
     {
-        return "https://shop.test/?orillacart_invoice={$number}&key={$orderKey}";
+        return "https://shop.test/?orillacart_invoice={$number}&receipt={$receipt}";
     }
 }

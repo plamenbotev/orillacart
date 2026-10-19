@@ -1,0 +1,9 @@
+{% extends 'emails/layout.html.twig' %}
+{#
+ # To the customer who asked again for the link to their order, as the one they had expired.
+ #}
+{# translators: 1: site name, 2: order number -#}
+{% block subject %}{{ __('[%1$s] The link to your order #%2$s')|format(site_name, order.number) }}{% endblock %}
+{% block heading %}{{ __('Your order') }}{% endblock %}
+{% block intro %}<p>{{ __('Here is a new link to your order. It works for 90 days.') }}</p><p><a href="{{ receipt_url }}" style="color:#2271b1;">{{ __('See your order') }}</a></p><p style="color:#71717a;font-size:13px;">{{ __('If you did not ask for it, ignore this email.') }}</p>{% endblock %}
+{% block content %}{% endblock %}

@@ -11,12 +11,11 @@ use OrillaCart\Shared\Domain\Money;
 
 /**
  * A placed order: what was bought at which prices, where it goes, how it is paid, and where it stands.
- * Its id is the order number customers see; its key is the secret that lets a customer without an account
- * see it.
+ * Its id is the order number customers see. It keeps no secret: a customer without an account sees it through a
+ * signed link (ReceiptLinks).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'orders')]
-#[ORM\UniqueConstraint(name: 'order_key', columns: ['order_key'])]
 #[ORM\Index(name: 'order_status', columns: ['status', 'placed_at'])]
 #[ORM\Index(name: 'order_customer', columns: ['customer_id'])]
 class Order
@@ -27,9 +26,6 @@ class Order
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
-
-    #[ORM\Column(name: 'order_key', length: 32)]
-    private string $key;
 
     #[ORM\Column(length: 20, enumType: OrderStatus::class)]
     private OrderStatus $status;
@@ -178,9 +174,6 @@ class Order
 
     public function __construct(OrderDraft $draft)
     {
-        if (preg_match('/^[a-f0-9]{32}$/', $draft->key) !== 1) {
-            throw new \InvalidArgumentException('An order key is 32 hexadecimal characters.');
-        }
         if ($draft->lines === []) {
             throw new OrderRuleViolation('An order has at least one item.', 'orillacart_empty_order');
         }
@@ -200,7 +193,6 @@ class Order
             throw new \LogicException('An order that ships has a shipping address and a way to ship, one that does not has neither.');
         }
 
-        $this->key = $draft->key;
         $this->status = OrderStatus::PendingPayment;
         $this->customerId = $draft->customerId;
         $this->email = $draft->email;
@@ -241,11 +233,6 @@ class Order
     public function id(): int
     {
         return $this->id ?? throw new \LogicException('The order has no number until it is saved.');
-    }
-
-    public function key(): string
-    {
-        return $this->key;
     }
 
     public function status(): OrderStatus

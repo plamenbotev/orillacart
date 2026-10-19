@@ -87,7 +87,7 @@ final class RefundTaxTest extends TestCase
     {
         $order = $this->paid(2);
         // A second, smaller payment through PayPal: refunds through it stop at its amount.
-        $payment = new Payment($order, 'paypal', Money::of('5'), 'EUR', 'https://shop.test/receipt', $this->shop->clock->now());
+        $payment = new Payment($order, 'paypal', Money::of('5'), 'EUR', $this->shop->clock->now());
         $payment->refer('PAYPAL-1');
         $payment->complete('CAPTURE-PAYPAL-1', $this->shop->clock->now());
         $this->shop->paymentRecords->save($payment);

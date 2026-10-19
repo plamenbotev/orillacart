@@ -1,7 +1,8 @@
 {#
- # An order as its customer sees it: after checkout (with the order's key) and in their account.
+ # An order as its customer sees it: after checkout (by a link to it) and in their account.
  #
- # order: the order; heading: whether to thank the customer for ordering;
+ # order: the order; receipt: a link's token for it, which paying it now needs; heading: whether to thank the
+ # customer for ordering;
  # links: the shop's pages; pay_methods: the ways an unpaid order can be paid now, if any; invoices: its
  # invoices and credit notes, if any.
  #}
@@ -28,8 +29,8 @@
         <div class="orillacart-notice">{{ order.payment_note|nl2br }}</div>
     {% endif %}
 
-    {% if pay_methods is defined and pay_methods %}
-        <form class="orillacart-pay-now" id="pay" data-orillacart-pay-now="{{ order.key }}">
+    {% if pay_methods is defined and pay_methods and receipt is defined %}
+        <form class="orillacart-pay-now" id="pay" data-orillacart-pay-now="{{ receipt }}">
             <h3 class="orillacart-heading">{{ __('Pay now') }}</h3>
             <p>{{ order.status == 'failed' ? __('The payment did not go through. Try again, with the same or another way to pay.') : __('The order waits for its payment. Pay it now, or choose another way to pay.') }}</p>
             <fieldset class="orillacart-choices" data-orillacart-field="payment">

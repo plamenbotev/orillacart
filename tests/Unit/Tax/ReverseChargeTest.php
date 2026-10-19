@@ -79,10 +79,10 @@ final class ReverseChargeTest extends TestCase
     {
         $placed = $this->shop->checkout->placeOrder($this->owner, new PlaceOrder('buyer@muster.de', new AddressData('Max', 'Muster', 'Hauptstr. 1', 'Berlin', '10115', 'DE', '+49 30 000000'), payment: 'bank_transfer', vatNumber: 'DE123456789'));
 
-        $order = $this->shop->orders->byKey($placed->key);
+        $order = $this->shop->orders->order($placed->number);
         self::assertSame(['DE123456789', true, '10', '0'], [$order->vatNumber, $order->reverseCharge, $order->total, $order->itemsTax]);
         $this->shop->orders->markPaidByShop($order->number, '', 7);
-        $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $this->shop->invoices->document($this->shop->invoices->ofOrder($order->number)[0]->number, $order->key), 'locale' => 'en-US']);
+        $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $this->shop->invoices->document($this->shop->invoices->ofOrder($order->number)[0]->number, $this->shop->receipts->issue($order->number)), 'locale' => 'en-US']);
         self::assertStringContainsString('DE123456789', $html);
         self::assertStringContainsString('Reverse charge', $html);
     }

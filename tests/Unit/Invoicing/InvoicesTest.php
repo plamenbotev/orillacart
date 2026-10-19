@@ -70,31 +70,38 @@ final class InvoicesTest extends TestCase
 
         $documents = $this->shop->invoices->ofOrder($order->number);
         self::assertSame(['INV-2026-00001', 'CN-2026-00001'], self::numbers($documents));
-        $credit = $this->shop->invoices->document('CN-2026-00001', $this->shop->orders->order($order->number)->key);
+        $credit = $this->shop->invoices->document('CN-2026-00001', $this->shop->receipts->issue($order->number));
         self::assertSame(['credit_note', '8', 'INV-2026-00001', [['line' => 0, 'quantity' => 1]]], [$credit->invoice->kind, $credit->invoice->amount, $credit->corrects, $credit->lines]);
         self::assertSame('BG123456789', $credit->seller['vat_number']);
     }
 
-    public function testADocumentKeepsTheSellerAsItWasAndOpensOnlyWithItsOrdersKey(): void
+    public function testADocumentKeepsTheSellerAsItWasAndOpensOnlyWithAWorkingLinkToItsOrder(): void
     {
         $order = $this->place();
         $this->shop->orders->markPaidByShop($order->number, '', 7);
         $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Lamps Holding Ltd'));
-        $key = $this->shop->orders->order($order->number)->key;
+        $key = $this->shop->receipts->issue($order->number);
 
         $document = $this->shop->invoices->document('INV-2026-00001', $key);
         self::assertSame(['Lamps Ltd', '8'], [$document->seller['legal_name'], $document->invoice->amount]);
-        self::assertSame("https://shop.test/?orillacart_invoice=INV-2026-00001&key={$key}", $document->invoice->url);
+        self::assertSame("https://shop.test/?orillacart_invoice=INV-2026-00001&receipt={$key}", $document->invoice->url);
 
-        $this->expectException(InvoiceNotFound::class);
-        $this->shop->invoices->document('INV-2026-00001', str_repeat('0', 32));
+        $other = $this->shop->receipts->issue($order->number + 1);
+        $this->shop->clock->modify('+90 days');
+        foreach (['1-1-' . str_repeat('0', 32), $other, $key] as $refused) {
+            try {
+                $this->shop->invoices->document('INV-2026-00001', $refused);
+                self::fail("{$refused} opens no other order's invoice, and none once expired");
+            } catch (InvoiceNotFound) {
+            }
+        }
     }
 
     public function testThePrintablePageShowsTheSellerTheBuyerAndTheTotal(): void
     {
         $order = $this->place(2);
         $this->shop->orders->markPaidByShop($order->number, '', 7);
-        $key = $this->shop->orders->order($order->number)->key;
+        $key = $this->shop->receipts->issue($order->number);
 
         $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $this->shop->invoices->document('INV-2026-00001', $key), 'locale' => 'en-US']);
 

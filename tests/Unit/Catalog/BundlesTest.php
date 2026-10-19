@@ -56,7 +56,7 @@ final class BundlesTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
 
         self::assertSame([3, 3], [$this->available(10), $this->available(20)], 'two cameras and four batteries went');
-        self::assertSame([['name' => 'Camera', 'quantity' => 1], ['name' => 'Battery', 'quantity' => 2]], $this->shop->orders->byKey($placed->key)->lines[0]->contents);
+        self::assertSame([['name' => 'Camera', 'quantity' => 1], ['name' => 'Battery', 'quantity' => 2]], $this->shop->orders->order($placed->number)->lines[0]->contents);
         $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('cancelled'), 1);
         self::assertSame([5, 7], [$this->available(10), $this->available(20)], 'cancelling gives each item back');
     }
@@ -126,7 +126,7 @@ final class BundlesTest extends TestCase
         self::assertSame(['370', '330'], array_map(static fn($line): string => $line->unitPrice, $this->shop->carts->cart($owner)->cart->lines), 'other choices make another line');
         $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
 
-        $line = $this->shop->orders->byKey($placed->key)->lines[0];
+        $line = $this->shop->orders->order($placed->number)->lines[0];
         self::assertSame([[20, $brown], ['Camera', 'Bag – Brown', 'Battery']], [$line->bundleChoices, array_map(static fn(array $item): string => $item['name'], $line->contents)]);
         self::assertSame([3, 5], [$this->available(10), $this->available(20)], 'two cameras, and the batteries only of the first');
     }

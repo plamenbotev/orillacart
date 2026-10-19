@@ -112,11 +112,22 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
 
     /**
      * A customer who approved is captured now; when PayPal cannot be reached, the webhook settles the payment.
+     * Coming back to the cancel address cancels only what PayPal says was never approved: one who approved in
+     * another tab, then came back from the first, has paid.
      */
     public function returned(string $token, PaymentReturn $return, Settings $settings): PaymentOutcome
     {
         if ($return->cancelled) {
-            return PaymentOutcome::cancelled($token);
+            try {
+                $order = $this->api->order(self::account($settings), $token);
+            } catch (PaymentProviderUnavailable) {
+                return PaymentOutcome::pending($token);
+            }
+
+            return match (true) {
+                $order === null, \in_array($order['status'], ['CREATED', 'PAYER_ACTION_REQUIRED', 'VOIDED'], true) => PaymentOutcome::cancelled($token),
+                default => $this->check($token, null, $settings),
+            };
         }
         try {
             return self::outcome($token, $this->api->captureOrder(self::account($settings), $token));

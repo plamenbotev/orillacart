@@ -481,9 +481,11 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));
         $order = $this->data($placed);
         self::assertIsInt($order['number']);
-        self::assertIsString($order['key']);
+        self::assertIsString($order['receipt_url']);
+        parse_str((string) parse_url($order['receipt_url'], \PHP_URL_QUERY), $query);
+        self::assertIsString($query['orillacart_order'] ?? null);
 
-        return ['number' => $order['number'], 'key' => $order['key']];
+        return ['number' => $order['number'], 'key' => $query['orillacart_order']];
     }
 
     /**

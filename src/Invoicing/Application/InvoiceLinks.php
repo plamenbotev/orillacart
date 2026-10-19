@@ -7,5 +7,5 @@ namespace OrillaCart\Invoicing\Application;
 interface InvoiceLinks
 {
     /** The printable page of a document, for whoever holds the order's key. */
-    public function documentUrl(string $number, string $orderKey): string;
+    public function documentUrl(string $number, string $receipt): string;
 }

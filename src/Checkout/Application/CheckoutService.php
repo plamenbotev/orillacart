@@ -256,17 +256,17 @@ final readonly class CheckoutService
             $reverse->applies,
             $this->languages->current(),
         )))));
-        $receiptUrl = $this->links->receiptUrl($order->key);
+        $receiptUrl = $this->links->receiptUrl($order->number);
 
         if ($gateway === null) {
             $this->orders->markPaid($order->number, null);
             $this->carts->clear($contents->cartId);
             $this->rememberCustomer($owner, $command, $registering, $order->number, $billingAddress, $priced['needs_shipping'] ? $shippingAddress : null);
 
-            return $this->placed($order->key, $receiptUrl, null);
+            return $this->placed($order->number, $receiptUrl, null);
         }
         try {
-            $payment = $this->payments->start(new StartPayment($order->number, $order->number, $gateway, $order->total, $currency, $receiptUrl));
+            $payment = $this->payments->start(new StartPayment($order->number, $order->number, $gateway, $order->total, $currency));
         } catch (PaymentProviderUnavailable $e) {
             // The stock and the coupons' uses go back, and the customer keeps the cart to try again.
             $this->orders->cancel($order->number, 'The payment could not start.');
@@ -281,7 +281,7 @@ final readonly class CheckoutService
             $this->orders->hold($order->number);
         }
 
-        return $this->placed($order->key, $receiptUrl, $payment->redirectUrl);
+        return $this->placed($order->number, $receiptUrl, $payment->redirectUrl);
     }
 
     /**
@@ -352,11 +352,11 @@ final readonly class CheckoutService
         return $order;
     }
 
-    private function placed(string $key, string $receiptUrl, ?string $redirectUrl): PlacedOrderView
+    private function placed(int $number, string $receiptUrl, ?string $redirectUrl): PlacedOrderView
     {
-        $order = $this->orders->byKey($key);
+        $order = $this->orders->order($number);
 
-        return new PlacedOrderView($order->number, $order->key, $order->status, $order->total, $receiptUrl, $redirectUrl);
+        return new PlacedOrderView($order->number, $order->status, $order->total, $receiptUrl, $redirectUrl);
     }
 
     private function contents(CartOwner $owner): CartContents

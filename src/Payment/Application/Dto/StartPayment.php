@@ -15,7 +15,5 @@ final readonly class StartPayment
         public string $gateway,
         public string $amount,
         public string $currency,
-        /** Where the customer lands when the payment ends. */
-        public string $receiptUrl,
     ) {}
 }

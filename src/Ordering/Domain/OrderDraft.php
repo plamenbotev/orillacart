@@ -19,7 +19,6 @@ final readonly class OrderDraft
      * @param list<FieldAnswer>   $fields    answers to add-ons' checkout fields
      */
     public function __construct(
-        public string $key,
         public ?int $customerId,
         public string $email,
         public Address $billing,

@@ -67,7 +67,7 @@ final class CustomerAccountsTest extends TestCase
         $order = $this->place(new CartOwner(null), 'ada@example.com', true);
 
         self::assertSame([['exists', 'ada@example.com'], ['confirm', 'grace@example.com'], ['exists', 'ada@example.com']], array_map(static fn(array $mail): array => [$mail['kind'], $mail['to']], $this->shop->accountMail->sent));
-        self::assertNull($this->shop->orders->byKey($order->key)->customerId, 'a guest order: whoever ordered may not own the account');
+        self::assertNull($this->shop->orders->order($order->number)->customerId, 'a guest order: whoever ordered may not own the account');
     }
 
     public function testALinkWorksOnceWithAGoodPasswordAndOnlyTheLatest(): void

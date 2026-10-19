@@ -41,7 +41,7 @@ final readonly class Payments
         $method = $this->methods->findByGateway($command->gateway) ?? throw new PaymentMethodNotFound($command->gateway);
         $gateway = $this->gateways->get($command->gateway);
 
-        $payment = new Payment($command->orderId, $command->gateway, Money::of($command->amount), $command->currency, $command->receiptUrl, $this->clock->now());
+        $payment = new Payment($command->orderId, $command->gateway, Money::of($command->amount), $command->currency, $this->clock->now());
         $this->payments->save($payment);
 
         try {
@@ -50,8 +50,8 @@ final readonly class Payments
                 $command->orderNumber,
                 (string) $payment->amount(),
                 $command->currency,
-                $this->urls->returnUrl($gateway->id()),
-                $this->urls->cancelUrl($gateway->id()),
+                $this->urls->returnUrl($gateway->id(), $payment->id()),
+                $this->urls->cancelUrl($gateway->id(), $payment->id()),
                 $this->urls->notificationUrl($gateway->id()),
             ), new Settings($method->settings()));
         } catch (ProviderUnavailable $e) {
