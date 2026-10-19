@@ -30,6 +30,7 @@ import {
 	saveGroup,
 	setCustomerGroups,
 } from './api';
+import { useLatest } from '../shared/useLatest';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -102,15 +103,18 @@ export function CustomersScreen() {
 		fetchGroups().then( setGroups ).catch( fail );
 	}, [] );
 	const reloadGroups = () => fetchGroups().then( setGroups ).catch( fail );
+	const latest = useLatest();
 	const load = useCallback( () => {
-		fetchCustomers( {
-			search: view.search === '' ? undefined : view.search,
-			page: view.page ?? 1,
-			per_page: view.perPage ?? 20,
-		} )
+		latest(
+			fetchCustomers( {
+				search: view.search === '' ? undefined : view.search,
+				page: view.page ?? 1,
+				per_page: view.perPage ?? 20,
+			} )
+		)
 			.then( setPage )
 			.catch( fail );
-	}, [ view ] );
+	}, [ view, latest ] );
 	useEffect( load, [ load ] );
 
 	return (

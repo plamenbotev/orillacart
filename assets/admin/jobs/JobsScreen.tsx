@@ -25,6 +25,7 @@ import {
 } from './api';
 import { laneLabel, typeLabel } from './labels';
 import './jobs.css';
+import { useLatest } from '../shared/useLatest';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -104,9 +105,10 @@ export function JobsScreen() {
 	const fail = ( error: unknown ) =>
 		setMessage( { status: 'error', text: toApiError( error ).message } );
 
+	const latestOverview = useLatest();
 	const load = useCallback( () => {
-		fetchOverview().then( setOverview ).catch( fail );
-	}, [] );
+		latestOverview( fetchOverview() ).then( setOverview ).catch( fail );
+	}, [ latestOverview ] );
 	useEffect( () => {
 		load();
 		const timer = window.setInterval( load, REFRESH );
@@ -359,12 +361,15 @@ function FailedCard( { overview, changed, onDone, onError }: FailedCardProps ) {
 	const [ open, setOpen ] = useState< FailedJob | null >( null );
 
 	// Again when the shop retried or deleted some, or when more failed.
+	const latest = useLatest();
 	useEffect( () => {
-		fetchFailedJobs( {
-			type: type === '' ? undefined : type,
-			page: view.page ?? 1,
-			per_page: view.perPage ?? 20,
-		} )
+		latest(
+			fetchFailedJobs( {
+				type: type === '' ? undefined : type,
+				page: view.page ?? 1,
+				per_page: view.perPage ?? 20,
+			} )
+		)
 			.then( setPage )
 			.catch( onError );
 		// eslint-disable-next-line react-hooks/exhaustive-deps

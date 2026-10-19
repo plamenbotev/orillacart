@@ -21,6 +21,7 @@ import {
 	type StockSheet,
 	type StockSheetQuery,
 } from './api';
+import { useLatest } from '../shared/useLatest';
 
 const MODES: Record< string, string > = {
 	tracked: __( 'Counted', 'orillacart' ),
@@ -94,9 +95,10 @@ export function StockScreen() {
 		return () => window.clearTimeout( timer );
 	}, [ parentSearch ] );
 
+	const latest = useLatest();
 	useEffect( () => {
 		setSheet( null );
-		fetchStockSheet( query )
+		latest( fetchStockSheet( query ) )
 			.then( setSheet )
 			.catch( ( error: unknown ) =>
 				setStatus( {
@@ -104,7 +106,7 @@ export function StockScreen() {
 					message: toApiError( error ).message,
 				} )
 			);
-	}, [ query ] );
+	}, [ query, latest ] );
 
 	const filter = ( change: Partial< StockSheetQuery > ) =>
 		setQuery( ( current ) => ( {

@@ -24,6 +24,7 @@ import {
 } from './api';
 import { money, when } from './labels';
 import { useConfirm } from '../shared/useConfirm';
+import { useLatest } from '../shared/useLatest';
 
 interface RefundsCardProps {
 	order: Order;
@@ -102,8 +103,11 @@ export function RefundsCard( {
 	const [ busy, setBusy ] = useState( false );
 	const [ confirmation, confirm ] = useConfirm();
 
+	const latest = useLatest();
 	useEffect( () => {
-		fetchRefunds( order.number ).then( setState ).catch( onError );
+		latest( fetchRefunds( order.number ) )
+			.then( setState )
+			.catch( onError );
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [ order.number, order.refunded_total ] );
 
@@ -135,7 +139,9 @@ export function RefundsCard( {
 		} )
 			.catch( ( error: unknown ) => {
 				// A refund that waits for the provider shows in the list.
-				fetchRefunds( order.number ).then( setState ).catch( onError );
+				latest( fetchRefunds( order.number ) )
+					.then( setState )
+					.catch( onError );
 				onError( error );
 			} )
 			.finally( () => setBusy( false ) );

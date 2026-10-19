@@ -20,6 +20,7 @@ import { toApiError } from '../shared/api';
 import { createOrder, type OrderQuote, quoteOrder } from './api';
 import { type ItemRow, ItemRows } from './ItemRows';
 import { money } from './labels';
+import { useLatest } from '../shared/useLatest';
 
 interface NewOrderProps {
 	onCreated: ( id: number ) => void;
@@ -54,18 +55,22 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 	const [ error, setError ] = useState< string | null >( null );
 	const [ saving, setSaving ] = useState( false );
 
+	const latestCustomers = useLatest();
+	const latestQuote = useLatest();
 	useEffect( () => {
 		const timer = window.setTimeout( () => {
-			fetchCustomers( {
-				search: search || undefined,
-				page: 1,
-				per_page: 20,
-			} )
+			latestCustomers(
+				fetchCustomers( {
+					search: search || undefined,
+					page: 1,
+					per_page: 20,
+				} )
+			)
 				.then( ( page ) => setCustomers( page.customers ) )
 				.catch( () => setCustomers( [] ) );
 		}, 250 );
 		return () => window.clearTimeout( timer );
-	}, [ search ] );
+	}, [ search, latestCustomers ] );
 
 	const items = rows.map( ( row ) => row.item );
 	const shipsTo = shipping ?? billing;
@@ -79,21 +84,25 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 	] );
 	useEffect( () => {
 		if ( items.length === 0 ) {
-			setQuote( null );
+			// Drops a quote still on its way for the items there were.
+			latestQuote( Promise.resolve( null ) ).then( setQuote );
 			return undefined;
 		}
 		const timer = window.setTimeout( () => {
-			quoteOrder( {
-				items,
-				billing_country: billing.country || null,
-				billing_state: billing.state,
-				shipping_country: shipsTo.country || null,
-				shipping_state: shipsTo.state,
-				shipping_postcode: shipsTo.postcode || null,
-				shipping_option: shippingOption,
-				customer_id: customerId,
-				email: email || null,
-			} )
+			// Only the quote of the latest inputs is used: an older one arriving late would price other items.
+			latestQuote(
+				quoteOrder( {
+					items,
+					billing_country: billing.country || null,
+					billing_state: billing.state,
+					shipping_country: shipsTo.country || null,
+					shipping_state: shipsTo.state,
+					shipping_postcode: shipsTo.postcode || null,
+					shipping_option: shippingOption,
+					customer_id: customerId,
+					email: email || null,
+				} )
+			)
 				.then( ( priced ) => {
 					setQuote( priced );
 					setError( null );

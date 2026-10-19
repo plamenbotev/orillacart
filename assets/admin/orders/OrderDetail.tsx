@@ -169,6 +169,12 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 			<InvoicesList order={ order } />
 			{ order.status === 'on_hold' && (
 				<ItemsCard
+					// Seeded from the order: a fresh one, from another card or a refund, seeds it again.
+					key={ JSON.stringify( [
+						order.lines,
+						order.shipping_option,
+						order.pickup_point,
+					] ) }
 					order={ order }
 					onSaved={ done(
 						__( 'The items were changed.', 'orillacart' )
@@ -229,6 +235,12 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 				onError={ fail }
 			/>
 			<ContactCard
+				key={ JSON.stringify( [
+					order.email,
+					order.billing,
+					order.shipping_address,
+					order.fields,
+				] ) }
 				order={ order }
 				onSaved={ done(
 					__( 'The customer’s details were saved.', 'orillacart' )

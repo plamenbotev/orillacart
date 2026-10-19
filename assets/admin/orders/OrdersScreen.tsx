@@ -15,6 +15,7 @@ import {
 import { STATUS_LABELS, money, when } from './labels';
 import { NewOrder } from './NewOrder';
 import { OrderDetail } from './OrderDetail';
+import { useLatest } from '../shared/useLatest';
 
 const FIELDS: Field< OrderSummary >[] = [
 	{
@@ -108,6 +109,7 @@ export function OrdersScreen() {
 	const [ selected, setSelected ] = useState< number | null >( null );
 	const [ creating, setCreating ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
+	const latest = useLatest();
 
 	const load = useCallback( () => {
 		const filter = view.filters?.find(
@@ -121,18 +123,20 @@ export function OrdersScreen() {
 		const attention =
 			view.filters?.find( ( item ) => item.field === 'attention' )
 				?.value === 'yes';
-		fetchOrders( {
-			status,
-			attention: attention ? true : undefined,
-			search: view.search === '' ? undefined : view.search,
-			page: view.page ?? 1,
-			per_page: view.perPage ?? 20,
-		} )
+		latest(
+			fetchOrders( {
+				status,
+				attention: attention ? true : undefined,
+				search: view.search === '' ? undefined : view.search,
+				page: view.page ?? 1,
+				per_page: view.perPage ?? 20,
+			} )
+		)
 			.then( setPage )
 			.catch( ( reason: unknown ) =>
 				setError( toApiError( reason ).message )
 			);
-	}, [ view ] );
+	}, [ view, latest ] );
 
 	useEffect( load, [ load ] );
 
