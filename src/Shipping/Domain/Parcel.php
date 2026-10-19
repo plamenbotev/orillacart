@@ -13,8 +13,10 @@ use OrillaCart\Shared\Domain\Money;
 final readonly class Parcel
 {
     /**
-     * Measures units as one parcel: weights add up, and so do volumes (length × width × height of each unit)
-     * and each of the three sides, as if every unit were laid next to the others.
+     * Measures units as one parcel. Weights and volumes (length × width × height of each unit) add up. For the
+     * sides, each unit lies flat on its largest face and the units are stacked: the parcel is as long and as
+     * wide as its longest and widest unit, and as high as their heights together. Couriers that weigh by size
+     * have it from the Shipment (dimensionalWeight).
      *
      * @param list<array{quantity: int, weight: Measure, length: Measure, width: Measure, height: Measure, class?: int}> $units
      *        class: the unit's shipping class, ShippingClass::NONE for none
@@ -29,12 +31,13 @@ final readonly class Parcel
             $quantity = $unit['quantity'];
             $weight = $weight->add($unit['weight']->times($quantity));
             $volume = $volume->add($unit['length']->multiply($unit['width'])->multiply($unit['height'])->times($quantity));
-            $length = $length->add($unit['length']->times($quantity));
-            $width = $width->add($unit['width']->times($quantity));
-            $height = $height->add($unit['height']->times($quantity));
+            $sides = [$unit['length'], $unit['width'], $unit['height']];
+            usort($sides, static fn(Measure $a, Measure $b): int => $b->compare($a));
+            $length = $sides[0]->compare($length) > 0 ? $sides[0] : $length;
+            $width = $sides[1]->compare($width) > 0 ? $sides[1] : $width;
+            $height = $height->add($sides[2]->times($quantity));
             $count += $quantity;
         }
-
         return new self($weight, $volume, $length, $width, $height, $count, $subtotal, array_keys($classes));
     }
 

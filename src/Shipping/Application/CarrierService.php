@@ -189,4 +189,13 @@ final readonly class CarrierService
     {
         return $range === null ? Range::any() : new Range(Measure::of($range->min), $range->max === null ? null : Measure::of($range->max));
     }
+
+    /** The shop measures in other units now: every rate's ranges converted, so each takes the parcels it took. */
+    public function convertMeasures(float $weightFactor, float $lengthFactor): void
+    {
+        foreach ($this->carriers->all() as $carrier) {
+            $carrier->measuredIn($weightFactor, $lengthFactor);
+            $this->carriers->save($carrier);
+        }
+    }
 }

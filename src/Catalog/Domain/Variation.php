@@ -177,4 +177,19 @@ class Variation
     {
         return $value === null || !str_contains($value, '.') ? $value : rtrim(rtrim($value, '0'), '.');
     }
+
+    /** The shop measures in other units now: its weight and sides in them. */
+    public function measuredIn(float $weightFactor, float $lengthFactor): void
+    {
+        $this->weight = self::scaled($this->weight, $weightFactor);
+        $this->length = self::scaled($this->length, $lengthFactor);
+        $this->width = self::scaled($this->width, $lengthFactor);
+        $this->height = self::scaled($this->height, $lengthFactor);
+    }
+
+    /** A measure in other units, to four decimals; none stays none. */
+    private static function scaled(?string $value, float $factor): ?string
+    {
+        return $value === null ? null : number_format((float) $value * $factor, 4, '.', '');
+    }
 }

@@ -342,4 +342,24 @@ final readonly class ProductService
 
         return '#' . $variationId;
     }
+
+    /**
+     * The shop measures in other units now: every product's and variation's weight and sides converted, so
+     * nothing weighs differently than it did.
+     */
+    public function convertMeasures(float $weightFactor, float $lengthFactor): void
+    {
+        $after = 0;
+        do {
+            $ids = $this->products->ids($after, 100);
+            foreach ($ids as $id) {
+                $product = $this->products->find($id);
+                if ($product !== null) {
+                    $product->measuredIn($weightFactor, $lengthFactor);
+                    $this->products->save($product);
+                }
+                $after = $id;
+            }
+        } while (\count($ids) === 100);
+    }
 }

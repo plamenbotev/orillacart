@@ -192,4 +192,12 @@ class Carrier
             }
         }
     }
+
+    /** The shop measures in other units now: each rate's ranges in them. */
+    public function measuredIn(float $weightFactor, float $lengthFactor): void
+    {
+        foreach ($this->rates() as $rate) {
+            $rate->measuredIn($weightFactor, $lengthFactor);
+        }
+    }
 }

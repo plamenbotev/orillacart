@@ -102,10 +102,12 @@ final class ShippingQuotesTest extends TestCase
 
         $options = $this->quotes->options(new ShippingQuery('BG', null, [$book, $lamp], '63.33'));
 
-        // Length 3 × 20 + 30 = 90; volume 3 × 900 + 45000 = 47700; four units.
-        self::assertSame([['Per item', '8']], array_map(static fn(ShippingOptionView $option): array => [$option->name, $option->price], $options));
-        self::assertSame(['Small', 'Per item'], $this->offered('BG', [new ParcelItem(2, '0.5', '20', '15', '3')]), 'two books are 40 long');
-        self::assertSame(['Bulky', 'Per item', 'Big orders'], $this->offered('BG', [new ParcelItem(2, '2.5', '30', '30', '50')], '100'));
+        // Each lies on its largest face and they stack: 50 long (the lamp on its side), 30 wide, 3 × 3 + 30 high;
+        // volume 3 × 900 + 45000 = 47700; four units.
+        self::assertSame([['Small', '3.5'], ['Per item', '8']], array_map(static fn(ShippingOptionView $option): array => [$option->name, $option->price], $options));
+        self::assertSame(['Small', 'Per item'], $this->offered('BG', [new ParcelItem(2, '0.5', '20', '15', '3')]), 'two books are 20 long, stacked');
+        self::assertSame(['Per item'], $this->offered('BG', [new ParcelItem(1, '0.5', '60', '15', '3')]), 'one 60 long');
+        self::assertSame(['Small', 'Bulky', 'Per item', 'Big orders'], $this->offered('BG', [new ParcelItem(2, '2.5', '30', '30', '50')], '100'), 'two lamps stacked are 50 long');
     }
 
     public function testInactiveCarriersAndTheirOrderCount(): void

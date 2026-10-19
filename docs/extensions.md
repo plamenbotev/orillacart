@@ -116,8 +116,9 @@ and the method's services are its options. Implement `OrillaCart\Extension\Shipp
 | `quote($shipment, $settings)` | the services that can ship the parcel: `new Rate($code, $name, $price, $deliveryDays)`, prices before tax in the shipment's currency; none when the courier does not serve the address |
 
 The `Shipment` carries the destination (country, state, postcode), the items with their weight and sizes in
-the shop's units (`weightUnit`, `dimensionUnit`), the subtotal and the currency; `weight()` adds up the
-items. Service codes must stay the same between quotes: checkout names an option "carrier:5:express", prices
+the shop's units (`weightUnit`, `dimensionUnit`), the subtotal and the currency; `weight('kg')` adds up the
+items in the unit asked for, `dimensionalWeight('kg', 5000)` is what their size weighs to a courier, and
+`length($item->length, 'cm')` converts a side (`Units` has the factors). Service codes must stay the same between quotes: checkout names an option "carrier:5:express", prices
 it again when the order is placed, and keeps that name with the order.
 
 - The shop keeps a quote for ten minutes per parcel and settings, so a customer filling in the form does not

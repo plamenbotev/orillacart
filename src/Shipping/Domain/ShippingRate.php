@@ -208,4 +208,14 @@ class ShippingRate
 
         return $this->perItem ? $price->times($parcel->items) : $price;
     }
+
+    /** The shop measures in other units now: the ranges in them, volumes by the cube of a side's factor. */
+    public function measuredIn(float $weightFactor, float $lengthFactor): void
+    {
+        $this->weight = $this->weight->scaled($weightFactor);
+        $this->volume = $this->volume->scaled($lengthFactor ** 3);
+        $this->length = $this->length->scaled($lengthFactor);
+        $this->width = $this->width->scaled($lengthFactor);
+        $this->height = $this->height->scaled($lengthFactor);
+    }
 }

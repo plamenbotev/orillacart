@@ -55,4 +55,12 @@ final class Range
 
         return $value->compare($this->min()) >= 0 && ($max === null || $value->compare($max) <= 0);
     }
+
+    /** The range in other units: both ends by the factor, to four decimals. */
+    public function scaled(float $factor): self
+    {
+        $scale = static fn(string $value): Measure => Measure::of(number_format((float) $value * $factor, Measure::DECIMALS, '.', ''));
+
+        return new self($scale($this->min), $this->max === null ? null : $scale($this->max));
+    }
 }

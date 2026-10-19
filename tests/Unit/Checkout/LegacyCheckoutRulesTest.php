@@ -27,6 +27,8 @@ use PHPUnit\Framework\TestCase;
  *   now and round half up (2.18).
  * - "totals add up": the old order total was rounded on its own and could differ by a cent from the sum of its
  *   rounded parts.
+ * - "units stack": the old parcel laid every unit end to end, as entered; now each lies on its largest face
+ *   and they stack, so a parcel is as long as its longest unit, and rates for smaller parcels take more of them.
  * - "line taxes add up to the bill": each line rounded its own tax, so the lines could differ by a cent from the
  *   tax billed; now each line has its share of the billed tax, a cent off its own percentage at most.
  *
@@ -38,13 +40,14 @@ use PHPUnit\Framework\TestCase;
 final class LegacyCheckoutRulesTest extends TestCase
 {
     private const array CORRECTIONS = [
-        'unchanged' => 136,
+        'unchanged' => 81,
         'shop address taxes' => 56,
         'estimated at the shop address' => 28,
         'per item counts only what ships' => 8,
         'half cents round up' => 3,
         'totals add up' => 5,
         'line taxes add up to the bill' => 5,
+        'units stack' => 96,
     ];
 
     /** @var Recorded */
@@ -69,6 +72,16 @@ final class LegacyCheckoutRulesTest extends TestCase
             $reasons = [];
             $expected = $this->expected($case, $reasons);
             $actual = self::actual($shop->summary(self::text($case['cart']), self::text($case['customer'])), $shop);
+            $extra = array_values(array_filter(self::rows($actual['rates']), static fn(array $rate): bool => !\in_array($rate, self::rows($expected['rates']), true)));
+            if ($extra !== [] && array_values(array_filter(self::rows($actual['rates']), static fn(array $rate): bool => !\in_array($rate, $extra, true))) === self::rows($expected['rates'])) {
+                // The old parcel laid every unit end to end; now they stack, so rates for smaller parcels take it.
+                foreach ($extra as $rate) {
+                    $fields = $this->rate(self::text($rate[0]));
+                    self::assertTrue(isset($fields['max_length']) || isset($fields['max_width']) || isset($fields['max_height']) || isset($fields['length']), 'only a rate by size: ' . self::text($rate[0]));
+                }
+                $expected['rates'] = $actual['rates'];
+                $reasons[] = 'units stack';
+            }
             $old = self::lineTaxes($expected['lines']);
             $new = self::lineTaxes($actual['lines']);
             $billed = Money::of(self::text($expected['tax']));
