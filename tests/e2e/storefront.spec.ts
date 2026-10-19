@@ -137,7 +137,11 @@ test.describe( 'A visitor', () => {
 		await expect(
 			pay.getByRole( 'heading', { name: 'Pay now' } )
 		).toBeVisible();
+		// The receipt loads again once the payment is set up; wait for it, or the next page races the reload.
+		const reloaded = page.waitForEvent( 'framenavigated' );
 		await pay.getByRole( 'button', { name: /Pay 65\.00/ } ).click();
+		await reloaded;
+		await page.waitForLoadState();
 		await expect(
 			page.locator( '.orillacart-receipt__facts' )
 		).toContainText( 'On hold' );
