@@ -34,6 +34,26 @@ enum Interval: string
     }
 
     /**
+     * The group a year before a group of this period, to compare with: the same day (none for a 29 February), the
+     * same month, or the week of the same number, so a leap day does not shift every day after it.
+     */
+    public function yearBefore(\DateTimeImmutable $start): ?\DateTimeImmutable
+    {
+        return match ($this) {
+            self::Day => $start->format('m-d') === '02-29' ? null : $start->modify('-1 year'),
+            self::Month => $start->modify('-1 year'),
+            self::Week => self::isoWeek((int) $start->format('o') - 1, (int) $start->format('W'), $start),
+        };
+    }
+
+    private static function isoWeek(int $year, int $week, \DateTimeImmutable $like): ?\DateTimeImmutable
+    {
+        $monday = $like->setISODate($year, $week);
+
+        return (int) $monday->format('W') === $week ? $monday : null;
+    }
+
+    /**
      * The interval that suits a period: days for two months or less, weeks up to a year, months beyond.
      */
     public static function suiting(Period $period): self

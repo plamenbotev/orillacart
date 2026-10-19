@@ -44,7 +44,7 @@ final readonly class Reports
         $currency = $frame->currency;
         $current = $this->queries->series($period, $interval, $currency);
         $before = $previous === null ? null : $this->queries->series($previous, $interval, $currency);
-        $beforeBuckets = $previous?->buckets($interval) ?? [];
+        $beforeBuckets = self::comparedBuckets($period, $previous, $interval, $query->compare === ReportQuery::YEAR);
         $series = [];
         foreach ($period->buckets($interval) as $index => $date) {
             $row = $current[$date] ?? null;
@@ -150,7 +150,8 @@ final readonly class Reports
      */
     public function rebuild(): void
     {
-        $this->jobs->push(RebuildReports::TYPE, ['after' => 0]);
+        // One rebuild at a time: its steps are one job, pushed again with where to go on.
+        $this->jobs->push(RebuildReports::TYPE, ['after' => 0], RebuildReports::KEY);
     }
 
     /**
@@ -190,6 +191,31 @@ final readonly class Reports
             $previous,
             $interval,
         ];
+    }
+
+    /**
+     * The group each of the period's groups is compared with, by position: the one as far into the period before,
+     * or the same day, week or month a year before.
+     *
+     * @return array<int, string> Y-m-d; a group with nothing to compare with is left out
+     */
+    private static function comparedBuckets(Period $period, ?Period $previous, Interval $interval, bool $yearBefore): array
+    {
+        if ($previous === null) {
+            return [];
+        }
+        if (!$yearBefore) {
+            return $previous->buckets($interval);
+        }
+        $compared = [];
+        foreach ($period->buckets($interval) as $index => $date) {
+            $then = $interval->yearBefore(new \DateTimeImmutable($date, $period->from->getTimezone()));
+            if ($then !== null) {
+                $compared[$index] = $then->format('Y-m-d');
+            }
+        }
+
+        return $compared;
     }
 
     /**

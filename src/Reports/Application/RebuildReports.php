@@ -17,6 +17,8 @@ use OrillaCart\Ordering\Application\OrderService;
 final readonly class RebuildReports implements JobHandler
 {
     public const string TYPE = 'reports.rebuild';
+    /** Every step is the same job, so there is one rebuild at a time. */
+    public const string KEY = 'all';
     private const int BATCH = 1000;
 
     public function __construct(
@@ -72,7 +74,7 @@ final readonly class RebuildReports implements JobHandler
         $ids = $this->orders->ids(\is_int($after) ? $after : 0, self::BATCH);
         $this->jobs->pushMany(ProjectOrders::TYPE, array_map(static fn(int $id): array => ['key' => (string) $id, 'payload' => []], $ids));
         if (\count($ids) === self::BATCH) {
-            $this->jobs->push(self::TYPE, ['after' => $ids[\count($ids) - 1]]);
+            $this->jobs->push(self::TYPE, ['after' => $ids[\count($ids) - 1]], self::KEY);
         }
     }
 }

@@ -17,6 +17,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { money } from '../orders/labels';
 import { toApiError } from '../shared/api';
+import { shopToday } from '../shared/dates';
 import {
 	type Compare,
 	type CustomersReport,
@@ -113,7 +114,7 @@ const number = ( value: number ) => value.toLocaleString();
  * background, so the screen is quick however many orders the shop has.
  */
 export function ReportsScreen() {
-	const [ today ] = useState( () => new Date() );
+	const [ today ] = useState( () => shopToday() );
 	const [ initial ] = useState( () => fromAddress( today ) );
 	const [ tab, setTab ] = useState< Tab >( initial.tab );
 	const [ query, setQuery ] = useState< ReportQuery >( initial.query );

@@ -67,10 +67,16 @@ final readonly class Period
         return new self($this->from->modify('-' . $this->days() . ' days'), $this->from->modify('-1 day'));
     }
 
-    /** The same days a year before. */
+    /** The same days a year before; a 29 February is the 28th then. */
     public function yearBefore(): self
     {
-        return new self($this->from->modify('-1 year'), $this->to->modify('-1 year'));
+        return new self(self::yearEarlier($this->from), self::yearEarlier($this->to));
+    }
+
+    /** The same day a year earlier, the 28th for a 29 February (PHP alone makes it 1 March). */
+    public static function yearEarlier(\DateTimeImmutable $day): \DateTimeImmutable
+    {
+        return $day->format('m-d') === '02-29' ? $day->modify('-1 year -1 day') : $day->modify('-1 year');
     }
 
     /**

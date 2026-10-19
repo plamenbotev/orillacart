@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { toApiError } from '../shared/api';
+import { shopClock } from '../shared/dates';
 import {
 	type Choice,
 	deleteFailedJobs,
@@ -633,10 +634,7 @@ function HistoryCard( { overview }: { overview: Overview } ) {
 										'%1$s: %2$d done, %3$d to retry, %4$d failed',
 										'orillacart'
 									),
-									at.toLocaleTimeString( [], {
-										hour: '2-digit',
-										minute: '2-digit',
-									} ),
+									shopClock( at.toISOString() ),
 									totals?.done ?? 0,
 									totals?.retried ?? 0,
 									totals?.failed ?? 0

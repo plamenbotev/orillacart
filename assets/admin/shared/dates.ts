@@ -95,3 +95,32 @@ export const fromLocal = (
 	at = wall - offsetAt( new Date( at ), timeZone );
 	return new Date( at ).toISOString().replace( /\.\d{3}Z$/, '+00:00' );
 };
+
+/**
+ * Today in the shop's calendar, as a Date at the browser's midnight of that day, for counting days from: a
+ * manager abroad, or just after midnight, sees the shop's today.
+ *
+ * @param now      The moment; now when not given.
+ * @param timeZone The time zone; the shop's when not given.
+ */
+export const shopToday = (
+	now: Date = new Date(),
+	timeZone: string | undefined = shopZone()
+): Date => {
+	const [ year, month, date ] = toLocal( now.toISOString(), timeZone )
+		.slice( 0, 10 )
+		.split( '-' )
+		.map( Number );
+	return new Date( year ?? 1970, ( month ?? 1 ) - 1, date ?? 1 );
+};
+
+/**
+ * The time of day of a moment on the shop's clock, as "14:00".
+ *
+ * @param iso      The moment.
+ * @param timeZone The time zone; the shop's when not given.
+ */
+export const shopClock = (
+	iso: string,
+	timeZone: string | undefined = shopZone()
+): string => toLocal( iso, timeZone ).slice( 11, 16 );

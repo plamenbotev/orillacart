@@ -88,6 +88,26 @@ final class ReportQueriesTest extends RestTestCase
         self::assertSame([2, '0'], [$this->queries->totals($march, 'EUR')->orders, $this->queries->totals($march, 'EUR')->refunds], 'a deleted order takes its refunds with it');
     }
 
+    public function testAYearBeforeComparesEachDayWithTheSameDayOverALeapDay(): void
+    {
+        $this->store->replace(self::ORDERS, [
+            $this->facts(990001, '2027-02-28', 'c7', '40'),
+            $this->facts(990002, '2027-03-01', 'c7', '100'),
+            $this->facts(990003, '2028-03-01', 'c7', '50'),
+        ]);
+        $this->actAs('administrator');
+
+        $report = $this->data($this->request('GET', '/reports/sales?from=2028-02-28&to=2028-03-01&interval=day&compare=year'));
+
+        $series = $report['series'];
+        self::assertIsArray($series);
+        self::assertSame(
+            [['2028-02-28', '0', '40'], ['2028-02-29', '0', null], ['2028-03-01', '50', '100']],
+            array_map(static fn(mixed $day): array => \is_array($day) ? [$day['date'] ?? null, $day['net'] ?? null, $day['previous_net'] ?? null] : [], $series),
+            'no 29 February a year before, and 1 March against 1 March',
+        );
+    }
+
     /**
      * @param array{string, string}|null $refund
      * @param array{string, string}|null $coupon

@@ -1,4 +1,4 @@
-import { fromLocal, toLocal } from '../dates';
+import { fromLocal, shopClock, shopToday, toLocal } from '../dates';
 
 describe( 'shop dates', () => {
 	it( 'shows and reads moments in the shop’s time zone, not the browser’s', () => {
@@ -22,5 +22,24 @@ describe( 'shop dates', () => {
 		);
 		expect( toLocal( null, 'UTC' ) ).toBe( '' );
 		expect( fromLocal( '', 'UTC' ) ).toBeNull();
+	} );
+
+	it( 'gives the shop’s today and time of day, not the browser’s', () => {
+		// 23:30 in London is already the next day in Sofia.
+		const today = shopToday(
+			new Date( '2026-03-01T23:30:00Z' ),
+			'Europe/Sofia'
+		);
+		expect( [
+			today.getFullYear(),
+			today.getMonth(),
+			today.getDate(),
+		] ).toEqual( [ 2026, 2, 2 ] );
+		expect( shopClock( '2026-03-01T22:00:00+00:00', 'Europe/Sofia' ) ).toBe(
+			'00:00'
+		);
+		expect( shopClock( '2026-03-01T22:00:00+00:00', '+05:30' ) ).toBe(
+			'03:30'
+		);
 	} );
 } );
