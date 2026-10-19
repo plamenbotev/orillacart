@@ -111,6 +111,18 @@ final class ShippingQuotesTest extends TestCase
         self::assertSame(['Small', 'Bulky', 'Per item', 'Big orders'], $this->offered('BG', [new ParcelItem(2, '2.5', '30', '30', '50')], '100'), 'two lamps stacked are 50 long');
     }
 
+    public function testARatesWidthAndHeightLimitsHoldForTheParcelAsItLies(): void
+    {
+        $this->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Large letter', '2', width: new SaveRange('0', '25'), height: new SaveRange('0', '2'))]));
+
+        // A parcel lies on its largest face: its longest side is the length, the shortest the height.
+        self::assertSame(['Large letter'], $this->offered('BG', [new ParcelItem(1, '0.1', '1', '30', '20')]), 'a card 30 × 20 × 1');
+        self::assertSame([], $this->offered('BG', [new ParcelItem(1, '0.1', '30', '30', '1')]), '30 wide');
+        self::assertSame([], $this->offered('BG', [new ParcelItem(1, '0.1', '30', '20', '3')]), '3 high');
+        self::assertSame(['Large letter'], $this->offered('BG', [new ParcelItem(2, '0.1', '30', '20', '1')]), 'two cards stack 2 high');
+        self::assertSame([], $this->offered('BG', [new ParcelItem(3, '0.1', '30', '20', '1')]), 'three are 3 high');
+    }
+
     public function testInactiveCarriersAndTheirOrderCount(): void
     {
         $this->carriers->create(new SaveCarrier('Post', position: 2, rates: [new SaveShippingRate('Post', '3')]));

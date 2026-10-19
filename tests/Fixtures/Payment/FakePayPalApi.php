@@ -41,6 +41,8 @@ final class FakePayPalApi implements PayPalApi
     public array $orderStatus = [];
     /** @var (\Closure(): void)|null what else happens while PayPal makes the order, such as a second submit */
     public ?\Closure $whileCreating = null;
+    /** @var (\Closure(): void)|null what else happens while PayPal captures, such as its webhook arriving */
+    public ?\Closure $whileCapturing = null;
 
     public function createOrder(PayPalAccount $account, PayPalOrderRequest $request): PayPalOrder
     {
@@ -57,6 +59,11 @@ final class FakePayPalApi implements PayPalApi
     public function captureOrder(PayPalAccount $account, string $orderId): PayPalCapture
     {
         $this->reach();
+        if ($this->whileCapturing !== null) {
+            $while = $this->whileCapturing;
+            $this->whileCapturing = null;
+            $while();
+        }
         $this->captured[] = $orderId;
         $index = (int) substr($orderId, \strlen('PAYPAL-')) - 1;
         $request = $this->created[$index] ?? throw new PaymentProviderUnavailable('PayPal', 'unknown order');

@@ -9,6 +9,7 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
 use OrillaCart\Notifications\Application\SendOrderEmails;
@@ -127,6 +128,26 @@ final class OrderEmailsTest extends TestCase
             "ada@example.com: [Lamp Shop] Your order #{$order->number} is confirmed",
             "owner@shop.test: [Lamp Shop] New order #{$order->number} from Ada Lovelace",
         ], $this->shop->mail->summary());
+    }
+
+    public function testPayPalsWebhookArrivingWhileTheCustomerComesBackConfirmsTheOrderOnce(): void
+    {
+        $order = $this->place('paypal');
+        $this->shop->payPalApi->whileCapturing = fn() => $this->shop->outcomes->notified('paypal', new Notification(['paypal-transmission-id' => 'T-1'], (string) json_encode([
+            'id' => 'WH-1',
+            'event_type' => 'PAYMENT.CAPTURE.COMPLETED',
+            'resource' => ['id' => 'CAPTURE-PAYPAL-1', 'status' => 'COMPLETED', 'amount' => ['value' => '8.00', 'currency_code' => 'EUR'], 'supplementary_data' => ['related_ids' => ['order_id' => 'PAYPAL-1']]],
+        ])));
+
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
+
+        self::assertSame('processing', $this->shop->orders->order($order->number)->status);
+        self::assertSame([
+            "ada@example.com: [Lamp Shop] Your order #{$order->number} is confirmed",
+            "owner@shop.test: [Lamp Shop] New order #{$order->number} from Ada Lovelace",
+        ], $this->shop->mail->summary());
+        self::assertSame(['Order placed.', 'Status changed from pending payment to processing. Paid (paypal, transaction CAPTURE-PAYPAL-1).'], array_column($this->shop->orders->order($order->number)->notes, 'text'), 'paid once, with no note of a second payment');
+        self::assertSame(['PAYPAL-1'], $this->shop->payPalApi->captured);
     }
 
     public function testGivingUpAtPayPalSendsNothingButTheShopCancellingDoes(): void

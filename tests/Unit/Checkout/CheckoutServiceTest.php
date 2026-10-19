@@ -326,6 +326,29 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame(2, $this->shop->stock->stock(StockItemRef::product(10))->available, 'stock taken once');
     }
 
+    public function testTwoShoppersCheckingOutTheLastLampsAtOnceGetOneOrder(): void
+    {
+        $first = $this->cart([10, 3]);
+        $second = $this->cart([10, 1]);
+        $refused = null;
+        // The second shopper places while the first one's payment is being started at PayPal.
+        $this->shop->payPalApi->whileCreating = function () use ($second, &$refused): void {
+            $this->shop->payPalApi->whileCreating = null;
+            try {
+                $this->shop->checkout->placeOrder($second, $this->order('bank_transfer'));
+            } catch (CheckoutRuleViolation $e) {
+                $refused = $e->errorCode;
+            }
+        };
+
+        $this->shop->checkout->placeOrder($first, $this->order('paypal'));
+
+        self::assertSame('orillacart_cart_changed', $refused, 'the first order took the last three');
+        self::assertCount(1, $this->shop->orderRecords->orders);
+        self::assertSame(0, $this->shop->stock->stock(StockItemRef::product(10))->available);
+        self::assertNotNull($this->shop->carts->contents($second), 'the second shopper keeps the cart');
+    }
+
     public function testACartLeftMarkedByARequestThatDiedCanBeOrderedFromAgain(): void
     {
         $owner = $this->cart([10, 1]);
