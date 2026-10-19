@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Unit\Jobs;
 
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
+use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Tests\Fixtures\Jobs\RecordingHandler;
 use OrillaCart\Tests\Fixtures\Jobs\TestJobs;
 use PHPUnit\Framework\TestCase;
@@ -36,6 +37,43 @@ final class JobRunnerTest extends TestCase
     {
         $this->push('a', 'a', 'a');
 
+        self::assertCount(1, $this->test->queue->jobs);
+    }
+
+    public function testPushingAKeyAgainGivesTheWaitingJobTheNewPayload(): void
+    {
+        $this->test->jobs->push(RecordingHandler::type(), ['price' => '10'], 'a');
+        $this->test->jobs->push(RecordingHandler::type(), ['price' => '12'], 'a');
+
+        self::assertSame([['price' => '12']], array_column(array_values($this->test->queue->jobs), 'payload'));
+    }
+
+    public function testJobsRunAsNobodyInTheSiteLanguageAndAreHeldAsLongAsTheirHandlerSays(): void
+    {
+        $this->handler->lock = 1800;
+        $held = [];
+        $this->handler->during = function (array $jobs) use (&$held): void {
+            foreach ($jobs as $job) {
+                if ($job instanceof QueuedJob) {
+                    $held[] = $this->test->queue->jobs[(int) $job->id]['lockedUntil'];
+                }
+            }
+        };
+        $this->push('a');
+
+        $this->test->runner->work([], 10, 'test');
+
+        self::assertSame(1, $this->test->context->runs);
+        self::assertEquals([$this->test->clock->now()->modify('+1800 seconds')], $held);
+    }
+
+    public function testWithoutAServerThatAnswersFirstARequestLeavesItsJobsToCron(): void
+    {
+        $this->test->detaches = false;
+        $this->push('a');
+        $this->test->endRequest();
+
+        self::assertSame([], $this->handler->batches);
         self::assertCount(1, $this->test->queue->jobs);
     }
 

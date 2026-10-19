@@ -34,7 +34,7 @@ final class MemoryJobQueue implements JobQueue
             $existing = $job->uniqueKey === null ? null : $this->find($job->type, $job->uniqueKey);
             if ($existing !== null) {
                 $old = $this->jobs[$existing];
-                $this->set($existing, ['version' => $old['version'] + 1, 'attempts' => 0, 'error' => null, 'at' => min($old['at'], $job->availableAt)]);
+                $this->set($existing, ['version' => $old['version'] + 1, 'payload' => $job->payload, 'attempts' => 0, 'error' => null, 'at' => min($old['at'], $job->availableAt)]);
                 continue;
             }
             $this->jobs[$this->nextId++] = ['queue' => $job->queue, 'type' => $job->type, 'key' => $job->uniqueKey, 'payload' => $job->payload, 'version' => 1, 'attempts' => 0, 'at' => $job->availableAt, 'lockedUntil' => null, 'error' => null];
@@ -52,6 +52,15 @@ final class MemoryJobQueue implements JobQueue
         }
 
         return $claimed;
+    }
+
+    public function hold(array $jobs, \DateTimeImmutable $until): void
+    {
+        foreach ($jobs as $job) {
+            if (isset($this->jobs[(int) $job->id])) {
+                $this->set((int) $job->id, ['lockedUntil' => $until]);
+            }
+        }
     }
 
     public function complete(array $jobs): void
@@ -173,7 +182,7 @@ final class MemoryJobQueue implements JobQueue
             'queue' => $job['queue'],
             'type' => $job['type'],
             'key' => $job['key'],
-            'payload' => $job['payload'],
+            'payload' => $changes['payload'] ?? $job['payload'],
             'version' => $changes['version'] ?? $job['version'],
             'attempts' => $changes['attempts'] ?? $job['attempts'],
             'at' => $changes['at'] ?? $job['at'],

@@ -52,6 +52,12 @@ final readonly class SendOrderEmails implements JobHandler
         return 60 * 4 ** ($attempt - 1);
     }
 
+    /** A batch of mails, each a while with a slow mail server. */
+    public function lockSeconds(): int
+    {
+        return 600;
+    }
+
     public function handle(array $jobs): array
     {
         $outcomes = [];

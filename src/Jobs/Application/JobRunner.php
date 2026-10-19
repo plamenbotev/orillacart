@@ -14,11 +14,12 @@ use Psr\Log\LoggerInterface;
 /**
  * Claims due jobs and hands them to their handlers, type by type, in batches. A handler that throws has its
  * batch run again job by job, so only the bad job is retried; a job is retried after its handler's wait while
- * attempts last, then failed for the shop to look at. WP-Cron, the end of requests and workers all run it.
+ * attempts last, then failed for the shop to look at. WP-Cron, the end of requests and workers all run it, each
+ * job as nobody and in the site's language.
  */
 final readonly class JobRunner
 {
-    /** How long a worker holds what it claimed; one that dies leaves it to others after this. */
+    /** How long a worker holds what it claimed until it runs it; one that dies leaves it to others after this. */
     public const int LOCK_SECONDS = 300;
 
     public function __construct(
@@ -27,6 +28,7 @@ final readonly class JobRunner
         private LoadedEntities $entities,
         private ClockInterface $clock,
         private LoggerInterface $logger,
+        private JobContext $context,
     ) {}
 
     /**
@@ -54,7 +56,7 @@ final readonly class JobRunner
         $done = $retried = $failed = 0;
         foreach ($byType as $type => $group) {
             $started = microtime(true);
-            $counts = $this->runType((string) $type, $group);
+            $counts = $this->context->run(fn(): array => $this->runType((string) $type, $group));
             $stats[(string) $type] = $counts + ['ms' => (int) round((microtime(true) - $started) * 1000)];
             $done += $counts['done'];
             $retried += $counts['retried'];
@@ -96,6 +98,7 @@ final readonly class JobRunner
         if ($runnable === []) {
             return ['done' => 0, 'retried' => 0, 'failed' => $failed];
         }
+        $this->queue->hold($runnable, $this->clock->now()->modify(\sprintf('+%d seconds', $handler->lockSeconds())));
 
         try {
             $outcomes = $handler->handle($runnable);
@@ -105,6 +108,7 @@ final readonly class JobRunner
             $outcomes = [];
             foreach ($runnable as $job) {
                 try {
+                    $this->queue->hold([$job], $this->clock->now()->modify(\sprintf('+%d seconds', $handler->lockSeconds())));
                     $outcomes += $handler->handle([$job]);
                 } catch (\Throwable $e) {
                     $this->logger->error('Job {type} {key} failed: {message}', ['type' => $type, 'key' => $job->uniqueKey ?? $job->id, 'message' => $e->getMessage(), 'exception' => $e]);

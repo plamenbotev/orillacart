@@ -18,6 +18,9 @@ final class RecordingHandler implements JobHandler
     public array $batches = [];
     /** @var array<string, JobOutcome|\Throwable> by key */
     public array $outcomes = [];
+    public int $lock = 300;
+    /** @var (\Closure(list<QueuedJob>): void)|null looks at the jobs while they run */
+    public ?\Closure $during = null;
 
     public static function type(): string
     {
@@ -39,9 +42,17 @@ final class RecordingHandler implements JobHandler
         return 10 * $attempt;
     }
 
+    public function lockSeconds(): int
+    {
+        return $this->lock;
+    }
+
     public function handle(array $jobs): array
     {
         $this->batches[] = array_map(static fn(QueuedJob $job): ?string => $job->uniqueKey, $jobs);
+        if ($this->during !== null) {
+            ($this->during)($jobs);
+        }
         $outcomes = [];
         foreach ($jobs as $job) {
             $outcome = $this->outcomes[(string) $job->uniqueKey] ?? null;

@@ -44,6 +44,12 @@ final readonly class RebuildReports implements JobHandler
         return 30 * 2 ** ($attempt - 1);
     }
 
+    /** A rebuild reads every order of a stretch of days. */
+    public function lockSeconds(): int
+    {
+        return 1800;
+    }
+
     public function handle(array $jobs): array
     {
         foreach ($jobs as $job) {

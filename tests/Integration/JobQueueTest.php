@@ -65,6 +65,18 @@ final class JobQueueTest extends RestTestCase
         self::assertSame(1, $this->queue->pending('test.job'));
     }
 
+    public function testAKeyPushedAgainTakesTheNewPayloadAndAHeldJobStaysTaken(): void
+    {
+        $this->queue->push([$this->job('1', ['price' => '10'])], $this->now);
+        $this->queue->push([$this->job('1', ['price' => '12'])], $this->now);
+
+        $claimed = $this->queue->claim(['test'], 10, 'one', $this->now, $this->lockedUntil);
+        self::assertSame([['price' => '12']], array_map(static fn(QueuedJob $job): array => $job->payload, $claimed));
+
+        $this->queue->hold($claimed, $this->lockedUntil->modify('+1 hour'));
+        self::assertSame([], $this->queue->claim(['test'], 10, 'two', $this->lockedUntil, $this->lockedUntil->modify('+5 minutes')), 'its worker holds it longer');
+    }
+
     public function testJobsWithoutAKeyAreEachKeptAndAStaleLockIsTakenOver(): void
     {
         $this->queue->push([$this->job(null), $this->job(null)], $this->now);

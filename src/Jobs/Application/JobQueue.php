@@ -35,6 +35,13 @@ interface JobQueue
     public function claim(array $queues, int $limit, string $worker, \DateTimeImmutable $now, \DateTimeImmutable $lockedUntil): array;
 
     /**
+     * The worker keeps the jobs it claimed until then, as their handler needs that long.
+     *
+     * @param list<QueuedJob> $jobs
+     */
+    public function hold(array $jobs, \DateTimeImmutable $until): void;
+
+    /**
      * The jobs are done: they leave the queue, unless pushed again while they ran, which leaves them to run again.
      *
      * @param list<QueuedJob> $jobs

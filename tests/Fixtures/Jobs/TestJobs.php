@@ -25,6 +25,9 @@ final class TestJobs implements JobHandlers, AfterResponse
     public readonly MemoryLogger $logger;
     public readonly JobWorkers $workers;
     public readonly JobRunner $runner;
+    public readonly PlainJobContext $context;
+    /** Whether the server sends responses before work after them, as PHP-FPM does. */
+    public bool $detaches = true;
     public readonly Jobs $jobs;
     /** @var array<string, \Closure> */
     public array $deferred = [];
@@ -41,7 +44,7 @@ final class TestJobs implements JobHandlers, AfterResponse
         $this->workers = new JobWorkers($this->registry, $this->clock);
         $this->runner = new JobRunner($this->queue, $this, new class implements LoadedEntities {
             public function forget(): void {}
-        }, $this->clock, $this->logger);
+        }, $this->clock, $this->logger, $this->context = new PlainJobContext());
         $this->jobs = new Jobs($this->queue, $this, $this->clock, $this, $this->runner, $this->workers, $this->queue->failed, $this->registry);
     }
 
@@ -73,6 +76,11 @@ final class TestJobs implements JobHandlers, AfterResponse
         sort($queues);
 
         return $queues;
+    }
+
+    public function detaches(): bool
+    {
+        return $this->detaches;
     }
 
     public function defer(string $key, \Closure $work): void

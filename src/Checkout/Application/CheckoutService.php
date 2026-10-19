@@ -35,6 +35,7 @@ use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
@@ -63,6 +64,7 @@ final readonly class CheckoutService
         private Discounts $discounts,
         private CheckoutFields $fields,
         private VatNumbers $vatNumbers,
+        private Languages $languages,
     ) {}
 
     /**
@@ -251,6 +253,7 @@ final readonly class CheckoutService
             $bill->includesTax(),
             $reverse->number,
             $reverse->applies,
+            $this->languages->current(),
         )))));
         $receiptUrl = $this->links->receiptUrl($order->key);
 

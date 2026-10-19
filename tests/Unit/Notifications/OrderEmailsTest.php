@@ -58,6 +58,16 @@ final class OrderEmailsTest extends TestCase
         ], \array_slice($this->shop->mail->summary(), 2));
     }
 
+    public function testTheCustomerIsWrittenInTheLanguageTheyOrderedInAndTheShopInItsOwn(): void
+    {
+        $this->shop->languages->locale = 'de_DE';
+
+        $order = $this->place('bank_transfer');
+
+        self::assertSame('de_DE', $this->shop->orders->byKey($order->key)->locale);
+        self::assertSame(['de_DE', null], $this->shop->languages->switched, 'the received email, then the shop\'s new order email');
+    }
+
     public function testAPayPalOrderIsConfirmedOnceWhenPaid(): void
     {
         $order = $this->place('paypal');

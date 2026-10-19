@@ -48,6 +48,11 @@ final readonly class IndexProducts implements JobHandler
         return 60 * 2 ** ($attempt - 1);
     }
 
+    public function lockSeconds(): int
+    {
+        return 300;
+    }
+
     public function handle(array $jobs): array
     {
         $productIds = array_map(static fn(QueuedJob $job): int => (int) $job->uniqueKey, $jobs);

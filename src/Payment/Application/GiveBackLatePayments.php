@@ -38,6 +38,11 @@ final readonly class GiveBackLatePayments implements JobHandler
         return 60;
     }
 
+    public function lockSeconds(): int
+    {
+        return 300;
+    }
+
     public function handle(array $jobs): array
     {
         $outcomes = [];

@@ -110,6 +110,7 @@ final readonly class OrderService
             $command->pricesIncludeTax,
             $command->vatNumber,
             $command->reverseCharge,
+            $command->locale,
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);

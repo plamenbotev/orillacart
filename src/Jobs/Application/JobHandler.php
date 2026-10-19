@@ -29,6 +29,12 @@ interface JobHandler
     public function retryAfter(int $attempt): int;
 
     /**
+     * Seconds a worker holds a batch of these jobs while it runs them: longer than the slowest batch takes, as
+     * another worker takes the jobs over after it, and shorter than needed only delays a worker that died.
+     */
+    public function lockSeconds(): int;
+
+    /**
      * @param non-empty-list<QueuedJob> $jobs of this handler's type
      *
      * @return array<string, JobOutcome> by job id; a job left out is done

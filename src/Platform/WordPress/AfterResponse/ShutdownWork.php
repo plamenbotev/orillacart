@@ -31,6 +31,11 @@ final class ShutdownWork implements AfterResponse, Registrar
         $this->work[$key] ??= $work;
     }
 
+    public function detaches(): bool
+    {
+        return \PHP_SAPI !== 'cli' && (\function_exists('fastcgi_finish_request') || \function_exists('litespeed_finish_request'));
+    }
+
     public function run(): void
     {
         if ($this->work === []) {
@@ -38,6 +43,12 @@ final class ShutdownWork implements AfterResponse, Registrar
         }
         if (\function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
+        } elseif (\function_exists('litespeed_finish_request')) {
+            litespeed_finish_request();
+        }
+        // The visitor has the answer; the work may take longer than the request was allowed.
+        if (\function_exists('set_time_limit')) {
+            set_time_limit(0);
         }
         foreach ($this->work as $key => $work) {
             try {

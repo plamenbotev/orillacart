@@ -1,6 +1,8 @@
 /**
  * Sets up a small shop through the REST API, as the admin, for the end-to-end tests, and takes it down again.
  */
+/// <reference types="node" />
+import { execSync } from 'child_process';
 import type { RequestUtils } from '@wordpress/e2e-test-utils-playwright';
 
 export type ShopPages = {
@@ -203,6 +205,8 @@ export async function setUpShop( requestUtils: RequestUtils ): Promise< Shop > {
 				'<!-- wp:orillacart/mini-cart {"showButtons":true} /--><!-- wp:orillacart/products /-->',
 		},
 	} );
+	// The test site's Apache cannot answer before work after the response, so the queue waits for cron.
+	runJobs();
 	const link = async ( id: number ) =>
 		(
 			await requestUtils.rest< { link: string } >( {
@@ -224,6 +228,15 @@ export async function setUpShop( requestUtils: RequestUtils ): Promise< Shop > {
 			account: await link( pages.account ),
 		},
 	};
+}
+
+/**
+ * Runs the jobs the shop queued, such as the search index, as WP-Cron would within a minute.
+ */
+export function runJobs(): void {
+	execSync( 'npx wp-env run tests-cli wp orillacart jobs work', {
+		stdio: 'ignore',
+	} );
 }
 
 /**

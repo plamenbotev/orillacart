@@ -42,5 +42,6 @@ final readonly class OrderDraft
         public bool $pricesIncludeTax = false,
         public ?string $vatNumber = null,
         public bool $reverseCharge = false,
+        public ?string $locale = null,
     ) {}
 }

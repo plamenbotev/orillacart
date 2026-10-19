@@ -109,6 +109,7 @@ use OrillaCart\Tests\Fixtures\Coupons\InMemoryRedemptionRepository;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryAccounts;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryCustomerGroupRepository;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryCustomerSettingsRepository;
+use OrillaCart\Tests\Fixtures\FakeLanguages;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
@@ -207,6 +208,7 @@ final class TestShop
     public readonly InMemorySentEmails $sentEmails;
     public readonly InMemoryAccounts $accounts;
     public readonly PaymentOptions $paymentOptions;
+    public readonly FakeLanguages $languages;
     public readonly InMemoryCustomerSettingsRepository $customerSettings;
     public readonly CustomerService $customers;
     public readonly PersonalData $personalData;
@@ -224,6 +226,7 @@ final class TestShop
         $this->events = new EventDispatcher();
         $this->logger = new MemoryLogger();
         $geography = new GeographyService(new InMemoryCountryRepository());
+        $this->languages = new FakeLanguages();
         $this->settings = new InMemorySettingsRepository(new StoreSettings(new Currency('EUR'), 2, WeightUnit::Kilogram, DimensionUnit::Centimetre, 'BG'));
         $settings = new SettingsService($this->settings, $this->events, $geography);
 
@@ -312,6 +315,7 @@ final class TestShop
             $this->discounts,
             new CheckoutFields($extensions, $this->logger),
             new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography),
+            $this->languages,
         );
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, new FakeOrderLinks());
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
@@ -334,7 +338,7 @@ final class TestShop
         $this->jobs = new TestJobs($this->clock);
         $this->sentEmails = new InMemorySentEmails();
         $this->jobs->immediate = true;
-        $this->emails = new OrderEmails($this->orders, new FakeOrderLinks(), $this->emailSettings, $templates, $this->mail, new FakeSite(), $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs, $this->invoices);
+        $this->emails = new OrderEmails($this->orders, new FakeOrderLinks(), $this->emailSettings, $templates, $this->mail, new FakeSite(), $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs, $this->invoices, $this->languages);
         $this->jobs->with(new SendOrderEmails($this->emails, $this->sentEmails, $this->clock, $this->logger), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));
         $emailing = new EmailAboutOrders($this->emails);
         $this->events->addListener(OrderStatusChanged::class, $emailing->statusChanged(...));

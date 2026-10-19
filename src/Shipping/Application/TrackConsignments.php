@@ -37,6 +37,12 @@ final readonly class TrackConsignments implements JobHandler
         return 300 * 2 ** ($attempt - 1);
     }
 
+    /** Each consignment asks its courier, who may be slow to answer. */
+    public function lockSeconds(): int
+    {
+        return 600;
+    }
+
     public function handle(array $jobs): array
     {
         $outcomes = [];

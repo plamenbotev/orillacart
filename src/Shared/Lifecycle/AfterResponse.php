@@ -13,4 +13,10 @@ interface AfterResponse
 {
     /** Runs the work once per key, however often it is deferred. */
     public function defer(string $key, \Closure $work): void;
+
+    /**
+     * Whether work after the response runs once the client has its answer: only where the server can send it
+     * first (PHP-FPM, LiteSpeed). Elsewhere the visitor would wait for it, so it is better left to cron.
+     */
+    public function detaches(): bool;
 }

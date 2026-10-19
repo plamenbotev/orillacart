@@ -118,6 +118,10 @@ class Order
     #[ORM\Column(options: ['default' => false])]
     private bool $reverseCharge = false;
 
+    /** The language the customer ordered in (a WordPress locale such as de_DE), for what the shop writes them. */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $locale = null;
+
     /** When the customer's details were erased, as a privacy request asked. */
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $anonymisedAt = null;
@@ -230,6 +234,7 @@ class Order
         $this->pricesIncludeTax = $draft->pricesIncludeTax;
         $this->vatNumber = $draft->vatNumber === null ? null : mb_substr($draft->vatNumber, 0, 20);
         $this->reverseCharge = $draft->reverseCharge;
+        $this->locale = $draft->locale === null || preg_match('/^[A-Za-z]{2,3}(_[A-Za-z0-9]{2,8}){0,2}$/', $draft->locale) !== 1 ? null : $draft->locale;
         $this->fields = self::fieldRows($draft->fields);
     }
 
@@ -1095,6 +1100,12 @@ class Order
     public function reverseCharge(): bool
     {
         return $this->reverseCharge;
+    }
+
+    /** The customer's language; null for the site's. */
+    public function locale(): ?string
+    {
+        return $this->locale;
     }
 
     /** The total is the subtotal less discounts plus shipping, and plus tax unless the amounts include it. */

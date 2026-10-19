@@ -14,6 +14,7 @@ use OrillaCart\Notifications\Domain\EmailSettingsRepository;
 use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
+use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shipping\Application\ShipmentTracking;
 use Psr\Log\LoggerInterface;
@@ -39,6 +40,7 @@ final readonly class OrderEmails
         private ShipmentTracking $shipments,
         private Jobs $jobs,
         private Invoices $invoices,
+        private Languages $languages,
     ) {}
 
     public function statusChanged(int $orderId, string $previous, string $status, bool $tellCustomer = true, bool $tellShop = true): void
@@ -131,10 +133,15 @@ final readonly class OrderEmails
         ] + $extra;
 
         try {
-            $email = new Email(
-                $kind->isForShop() ? ($settings->shopAddress ?? $this->site->adminEmail()) : $order->email,
+            // The customer reads it in the language they ordered in; the shop in the site's.
+            [$subject, $body] = $this->languages->in($kind->isForShop() ? null : $order->locale, fn(): array => [
                 trim($this->templates->renderBlock($kind->template(), 'subject', $context)),
                 $this->templates->render($kind->template(), $context),
+            ]);
+            $email = new Email(
+                $kind->isForShop() ? ($settings->shopAddress ?? $this->site->adminEmail()) : $order->email,
+                $subject,
+                $body,
                 $settings->fromName ?? $this->site->name(),
                 $settings->fromAddress ?? $this->site->adminEmail(),
                 $kind->isForShop() ? $order->email : null,

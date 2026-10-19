@@ -48,11 +48,23 @@ final readonly class DbalJobQueue implements JobQueue
             foreach (array_chunk($rows, self::CHUNK) as $chunk) {
                 $connection->executeStatement(
                     "INSERT INTO {$this->tables->jobs()} {$columns} VALUES {$placeholders(\count($chunk))}
-                     ON DUPLICATE KEY UPDATE version = version + 1, available_at = LEAST(available_at, ?), attempts = 0, last_error = NULL",
+                     ON DUPLICATE KEY UPDATE version = version + 1, payload = VALUES(payload), available_at = LEAST(available_at, ?), attempts = 0, last_error = NULL",
                     [...array_merge(...$chunk), (string) $at],
                 );
             }
         }
+    }
+
+    public function hold(array $jobs, \DateTimeImmutable $until): void
+    {
+        if ($jobs === []) {
+            return;
+        }
+        $ids = array_map(static fn(QueuedJob $job): int => (int) $job->id, $jobs);
+        $this->tables->connection()->executeStatement(
+            "UPDATE {$this->tables->jobs()} SET locked_until = ? WHERE id IN (" . implode(', ', array_fill(0, \count($ids), '?')) . ')',
+            [$until->format(self::MOMENT), ...$ids],
+        );
     }
 
     public function claim(array $queues, int $limit, string $worker, \DateTimeImmutable $now, \DateTimeImmutable $lockedUntil): array

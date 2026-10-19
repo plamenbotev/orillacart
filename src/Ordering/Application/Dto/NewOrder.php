@@ -42,5 +42,7 @@ final readonly class NewOrder
         public ?string $vatNumber = null,
         /** Sold without VAT: the customer accounts for it (reverse charge). */
         public bool $reverseCharge = false,
+        /** The language the customer ordered in; null for the site's. */
+        public ?string $locale = null,
     ) {}
 }
