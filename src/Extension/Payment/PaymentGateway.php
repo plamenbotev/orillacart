@@ -24,8 +24,11 @@ interface PaymentGateway
     /** @return list<Setting> */
     public function settings(): array;
 
-    /** Whether the gateway can take payments with these settings in this currency; checkout offers only those. */
-    public function isReady(Settings $settings, string $currency): bool;
+    /**
+     * Why the gateway cannot take payments with these settings, in this currency with amounts of these decimals;
+     * null when it can. Checkout offers only gateways that can, and the shop's admin shows the reason.
+     */
+    public function notReady(Settings $settings, string $currency, int $decimals): ?string;
 
     /**
      * Starts paying: offline (the order waits until the shop has the money), or at a provider the customer is

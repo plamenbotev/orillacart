@@ -22,6 +22,7 @@ final readonly class SettingsView
      */
     public function __construct(
         public string $currency,
+        /** The decimals amounts are priced, charged and shown in. */
         public int $priceDecimals,
         public string $weightUnit,
         public string $dimensionUnit,
@@ -37,6 +38,10 @@ final readonly class SettingsView
         public array $sellTo = [],
         public array $currencyPositions = [],
         public bool $showLowestPrice = false,
+        /** The shop's choice of fewer decimals than the currency has; null for the currency's own. */
+        public ?int $fewerDecimals = null,
+        /** The currency's own decimals (ISO 4217), the most amounts can have. */
+        public int $currencyDecimals = 2,
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -58,6 +63,8 @@ final readonly class SettingsView
             $settings->sellTo,
             CurrencyPosition::values(),
             $settings->showLowestPrice,
+            $settings->fewerDecimals,
+            $settings->currency->decimals(),
         );
     }
 }

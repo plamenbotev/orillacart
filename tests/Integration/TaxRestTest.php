@@ -54,7 +54,7 @@ final class TaxRestTest extends RestTestCase
     public function testAShopManagerSetsUpTaxesAndTheCalculatorUsesThem(): void
     {
         $this->actAs('administrator');
-        update_option(OptionSettingsRepository::OPTION, ['currency' => 'USD', 'price_decimals' => 2, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY']);
+        update_option(OptionSettingsRepository::OPTION, ['currency' => 'USD', 'fewer_decimals' => null, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY']);
 
         $created = $this->request('POST', '/tax/groups', ['name' => 'Standard'], nonce: true);
         self::assertSame(201, $created->get_status());

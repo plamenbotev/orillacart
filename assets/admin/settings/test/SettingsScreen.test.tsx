@@ -14,6 +14,8 @@ const NOTICE = { selector: '.components-notice__content' };
 const stored = {
 	currency: 'EUR',
 	price_decimals: 2,
+	fewer_decimals: null,
+	currency_decimals: 2,
 	weight_unit: 'kg',
 	dimension_unit: 'cm',
 	shop_country: null,
@@ -164,6 +166,10 @@ describe( 'SettingsScreen', () => {
 		render( <SettingsScreen /> );
 
 		const currency = await screen.findByLabelText( 'Currency' );
+		await user.selectOptions(
+			screen.getByLabelText( 'Price decimals' ),
+			'0'
+		);
 		await user.clear( currency );
 		await user.type( currency, 'usd' );
 		await user.click(
@@ -178,7 +184,7 @@ describe( 'SettingsScreen', () => {
 			method: 'PUT',
 			data: {
 				currency: 'USD',
-				price_decimals: 2,
+				fewer_decimals: 0,
 				weight_unit: 'kg',
 				dimension_unit: 'cm',
 				shop_country: null,

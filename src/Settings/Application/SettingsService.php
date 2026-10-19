@@ -49,7 +49,7 @@ final readonly class SettingsService
         $previous = $this->settings->load();
         $current = new StoreSettings(
             new Currency($command->currency),
-            $command->priceDecimals,
+            $command->fewerDecimals,
             WeightUnit::from($command->weightUnit),
             DimensionUnit::from($command->dimensionUnit),
             $command->shopCountry,

@@ -43,9 +43,9 @@ final readonly class TestPayGateway implements PaymentGateway, HandlesReturns, H
         ];
     }
 
-    public function isReady(Settings $settings, string $currency): bool
+    public function notReady(Settings $settings, string $currency, int $decimals): ?string
     {
-        return $settings->text('api_key') !== '';
+        return $settings->text('api_key') === '' ? 'Enter the API key.' : null;
     }
 
     public function start(PaymentSession $session, Settings $settings): PaymentStart

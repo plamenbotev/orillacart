@@ -3,7 +3,12 @@ import apiFetch from '@wordpress/api-fetch';
 /** The shop settings as GET /orillacart/v1/settings returns them. */
 export interface Settings {
 	currency: string;
+	/** The decimals amounts are priced, charged and shown in. */
 	price_decimals: number;
+	/** Fewer decimals than the currency has, as the shop chose; null for the currency's own. */
+	fewer_decimals: number | null;
+	/** The currency's own decimals (ISO 4217), the most amounts can have. */
+	currency_decimals: number;
 	weight_unit: string;
 	dimension_unit: string;
 	shop_country: string | null;
@@ -29,7 +34,7 @@ export interface Settings {
 export type SettingsInput = Pick<
 	Settings,
 	| 'currency'
-	| 'price_decimals'
+	| 'fewer_decimals'
 	| 'weight_unit'
 	| 'dimension_unit'
 	| 'shop_country'

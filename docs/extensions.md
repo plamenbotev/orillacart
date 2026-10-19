@@ -44,7 +44,7 @@ Implement `OrillaCart\Extension\Payment\PaymentGateway`:
 |---|---|
 | `id()`, `defaultName()` | the shop renames the method as it likes |
 | `settings()` | see above |
-| `isReady($settings, $currency)` | whether checkout may offer it: credentials set, currency supported |
+| `notReady($settings, $currency, $decimals)` | why checkout may not offer it (credentials missing, currency or its decimals not taken), or null |
 | `start($session, $settings)` | `PaymentStart::offline()` (the order waits on hold for the money), or `PaymentStart::redirect($url, $reference)` to send the customer to the provider; `$reference` is the provider's id of the payment |
 
 Throw `ProviderUnavailable` when the provider cannot be reached or refuses; the customer sees a general message

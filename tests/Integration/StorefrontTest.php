@@ -373,7 +373,7 @@ final class StorefrontTest extends RestTestCase
             $this->actAs('administrator');
             $settings = $this->data($this->request('GET', '/settings'));
             $saved = $this->request('PUT', '/settings', [
-                'currency' => $settings['currency'], 'price_decimals' => 2, 'weight_unit' => $settings['weight_unit'], 'dimension_unit' => $settings['dimension_unit'],
+                'currency' => $settings['currency'], 'fewer_decimals' => null, 'weight_unit' => $settings['weight_unit'], 'dimension_unit' => $settings['dimension_unit'],
                 'shop_country' => null, 'shop_state' => null, 'currency_sign' => '$', 'currency_position' => 'before', 'sell_to' => ['BG'],
             ], nonce: true);
             self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
@@ -394,7 +394,7 @@ final class StorefrontTest extends RestTestCase
 
             $this->actAs('administrator');
             $this->request('PUT', '/settings', [
-                'currency' => $settings['currency'], 'price_decimals' => 2, 'weight_unit' => $settings['weight_unit'], 'dimension_unit' => $settings['dimension_unit'],
+                'currency' => $settings['currency'], 'fewer_decimals' => null, 'weight_unit' => $settings['weight_unit'], 'dimension_unit' => $settings['dimension_unit'],
                 'shop_country' => null, 'shop_state' => null, 'catalog_only' => true,
             ], nonce: true);
             wp_set_current_user(0);

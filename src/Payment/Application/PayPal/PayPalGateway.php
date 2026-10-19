@@ -67,12 +67,18 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
         ];
     }
 
-    public function isReady(Settings $settings, string $currency): bool
+    public function notReady(Settings $settings, string $currency, int $decimals): ?string
     {
         $account = self::account($settings);
 
-        // Live payments need the webhook: without it the shop hears of reversals and disputes from nobody.
-        return $account->clientId !== '' && $account->clientSecret !== '' && ($account->sandbox || $account->webhookId !== '') && isset(self::CURRENCIES[$currency]);
+        return match (true) {
+            $account->clientId === '' || $account->clientSecret === '' => 'Enter the client ID and secret.',
+            // Live payments need the webhook: without it the shop hears of reversals and disputes from nobody.
+            !$account->sandbox && $account->webhookId === '' => 'Enter the webhook ID: live payments need it.',
+            !isset(self::CURRENCIES[$currency]) => "PayPal does not take {$currency}.",
+            $decimals > self::CURRENCIES[$currency] => \sprintf('PayPal takes amounts in %s with %d decimals; set the shop’s price decimals to %d.', $currency, self::CURRENCIES[$currency], self::CURRENCIES[$currency]),
+            default => null,
+        };
     }
 
     public function start(PaymentSession $session, Settings $settings): PaymentStart

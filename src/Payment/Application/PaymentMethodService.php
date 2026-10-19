@@ -92,7 +92,7 @@ final readonly class PaymentMethodService
             $settings,
             $secretsSet,
             $gateway->settings(),
-            $gateway->isReady(new Settings($method->settings()), $this->shop->current()->currency),
+            $gateway->notReady(new Settings($method->settings()), $this->shop->current()->currency, $this->shop->current()->priceDecimals),
             $gateway instanceof HandlesNotifications ? $this->urls->notificationUrl($gateway->id()) : null,
         );
     }

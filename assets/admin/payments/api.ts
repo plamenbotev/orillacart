@@ -17,7 +17,8 @@ export interface PaymentMethod {
 	secrets_set: string[];
 	fields: Setting[];
 	/** Whether checkout can offer it with these settings and the shop's currency. */
-	ready: boolean;
+	/** Why checkout does not offer it; null when it does. */
+	not_ready: string | null;
 	notification_url: string | null;
 }
 

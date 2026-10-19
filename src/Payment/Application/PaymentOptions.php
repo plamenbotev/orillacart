@@ -8,6 +8,7 @@ use OrillaCart\Extension\Settings;
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
 use OrillaCart\Payment\Domain\PaymentMethod;
 use OrillaCart\Payment\Domain\PaymentMethodRepository;
+use OrillaCart\Settings\Application\SettingsService;
 
 /**
  * Which payment methods checkout offers a customer: turned on, set up for the shop's currency, and serving
@@ -18,6 +19,7 @@ final readonly class PaymentOptions
     public function __construct(
         private PaymentMethodRepository $methods,
         private Gateways $gateways,
+        private SettingsService $shop,
     ) {}
 
     /**
@@ -62,7 +64,7 @@ final readonly class PaymentOptions
         }
         foreach ($this->gateways->all() as $gateway) {
             if ($gateway->id() === $method->gateway()) {
-                return $gateway->isReady(new Settings($method->settings()), $currency);
+                return $gateway->notReady(new Settings($method->settings()), $currency, $this->shop->current()->priceDecimals) === null;
             }
         }
 

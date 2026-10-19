@@ -17,7 +17,7 @@ final readonly class PaymentMethodView
      * @param array<string, string|bool> $settings
      * @param list<string>               $secretsSet
      * @param list<Setting>       $fields
-     * @param bool                       $ready           whether checkout can offer it with these settings and the shop's currency
+     * @param string|null                $notReady        why checkout cannot offer it with these settings and the shop's currency; null when it can
      * @param string|null                $notificationUrl where the provider sends notifications; null for gateways without them
      */
     public function __construct(
@@ -31,7 +31,7 @@ final readonly class PaymentMethodView
         public array $settings,
         public array $secretsSet,
         public array $fields,
-        public bool $ready,
+        public ?string $notReady,
         public ?string $notificationUrl,
     ) {}
 }

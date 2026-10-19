@@ -15,13 +15,13 @@ use PHPUnit\Framework\TestCase;
 
 final class RequestMapperTest extends TestCase
 {
-    private const array VALID = ['currency' => 'USD', 'price_decimals' => 2, 'weight_unit' => 'lb', 'dimension_unit' => 'in'];
+    private const array VALID = ['currency' => 'USD', 'fewer_decimals' => 0, 'weight_unit' => 'lb', 'dimension_unit' => 'in'];
 
     public function testAValidBodyBecomesTheDto(): void
     {
         $dto = $this->mapper()->body($this->request(self::VALID + ['_wpnonce' => 'abc']), UpdateSettings::class);
 
-        self::assertEquals(new UpdateSettings('USD', 2, 'lb', 'in', null, null), $dto);
+        self::assertEquals(new UpdateSettings('USD', 0, 'lb', 'in', null, null), $dto);
     }
 
     public function testAQueryStringBecomesATypedQuery(): void
@@ -37,8 +37,8 @@ final class RequestMapperTest extends TestCase
     public function testWrongTypesAreReportedPerField(): void
     {
         self::assertSame(
-            [['field' => 'price_decimals', 'message' => 'This value should be of type int.']],
-            $this->violations(['price_decimals' => 'two'] + self::VALID),
+            [['field' => 'fewer_decimals', 'message' => 'This value should be of type int|null.']],
+            $this->violations(['fewer_decimals' => 'two'] + self::VALID),
         );
     }
 
@@ -46,7 +46,8 @@ final class RequestMapperTest extends TestCase
     {
         $violations = $this->violations(['currency' => 'USD']);
 
-        self::assertSame(['price_decimals', 'weight_unit', 'dimension_unit'], array_column($violations, 'field'));
+        // Fewer decimals may go unsaid: the currency's own.
+        self::assertSame(['weight_unit', 'dimension_unit'], array_column($violations, 'field'));
     }
 
     public function testUnexpectedFieldsAreRefused(): void
@@ -59,9 +60,9 @@ final class RequestMapperTest extends TestCase
 
     public function testValidationRulesAreReportedUnderTheJsonName(): void
     {
-        $violations = $this->violations(['currency' => 'usd', 'price_decimals' => 9] + self::VALID);
+        $violations = $this->violations(['currency' => 'usd', 'fewer_decimals' => -1] + self::VALID);
 
-        self::assertSame(['currency', 'price_decimals'], array_column($violations, 'field'));
+        self::assertSame(['currency', 'fewer_decimals'], array_column($violations, 'field'));
         self::assertSame('Use a three-letter currency code such as EUR.', $violations[0]['message']);
     }
 

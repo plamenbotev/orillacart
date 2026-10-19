@@ -65,17 +65,17 @@ final class SettingsServiceTest extends TestCase
 
     public function testUpdatingSavesAndAnnouncesTheChange(): void
     {
-        $view = $this->service()->update(new UpdateSettings('USD', 3, 'lb', 'in', 'US', 'NY'));
+        $view = $this->service()->update(new UpdateSettings('USD', 0, 'lb', 'in', 'US', 'NY'));
 
         self::assertSame('USD', $view->currency);
-        self::assertSame(3, $this->repository->load()->priceDecimals);
+        self::assertSame(0, $this->repository->load()->priceDecimals);
         self::assertCount(1, $this->dispatcher->events);
         $event = $this->dispatcher->events[0];
         self::assertInstanceOf(SettingsChanged::class, $event);
         self::assertSame('settings_changed', $event->hookName());
         self::assertSame(
             [
-                ['currency' => 'USD', 'price_decimals' => 3, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY'] + self::UNSAID,
+                ['currency' => 'USD', 'price_decimals' => 0, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY'] + self::UNSAID,
                 ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null] + self::UNSAID,
             ],
             $event->hookArguments(),
@@ -89,11 +89,22 @@ final class SettingsServiceTest extends TestCase
         self::assertSame([], $this->dispatcher->events);
     }
 
-    public function testTheDomainRefusesWhatValidationMissed(): void
+    public function testAmountsHaveTheCurrencysDecimalsOrFewer(): void
     {
-        $this->expectException(RuleViolation::class);
+        $decimals = fn(string $currency, ?int $fewer = null): array => [($view = $this->service()->update(new UpdateSettings($currency, $fewer, 'kg', 'cm', null, null)))->priceDecimals, $view->fewerDecimals, $view->currencyDecimals];
 
-        $this->service()->update(new UpdateSettings('EUR', 7, 'kg', 'cm', null, null));
+        self::assertSame([0, null, 0], $decimals('JPY'));
+        self::assertSame([3, null, 3], $decimals('KWD'));
+        self::assertSame([2, null, 2], $decimals('HUF', 2), 'the currency\'s own is no choice of fewer');
+        self::assertSame([0, 0, 2], $decimals('HUF', 0));
+        self::assertSame([0, null, 0], $decimals('JPY', 0));
+
+        try {
+            $decimals('JPY', 2);
+            self::fail('Yen have no decimals.');
+        } catch (RuleViolation $e) {
+            self::assertSame(['orillacart_invalid_price_decimals', 'Amounts in JPY have at most 0 decimals.'], [$e->errorCode, $e->getMessage()]);
+        }
     }
 
     /**

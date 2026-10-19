@@ -55,7 +55,7 @@ const paypal = {
 			help: '',
 		},
 	],
-	ready: true,
+	not_ready: null,
 	notification_url:
 		'https://shop.test/wp-json/orillacart/v1/payments/paypal/webhook',
 };

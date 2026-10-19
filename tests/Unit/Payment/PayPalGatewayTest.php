@@ -15,6 +15,10 @@ use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentNotFound;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
+use OrillaCart\Settings\Domain\DimensionUnit;
+use OrillaCart\Settings\Domain\StoreSettings;
+use OrillaCart\Settings\Domain\WeightUnit;
+use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
 
@@ -104,13 +108,26 @@ final class PayPalGatewayTest extends TestCase
         self::assertSame(0, $this->shop->outcomes->reconcile(), 'settled ones are not asked again');
     }
 
+    public function testAShopChargingFillerIsNotOfferedPayPalUntilItPricesInWholeForints(): void
+    {
+        $this->shop->settings->save(new StoreSettings(new Currency('HUF'), null, WeightUnit::Kilogram, DimensionUnit::Centimetre, 'HU'));
+
+        self::assertSame('PayPal takes amounts in HUF with 0 decimals; set the shop’s price decimals to 0.', $this->shop->paymentMethods->show('paypal')->notReady);
+        self::assertSame([], $this->shop->paymentOptions->available('HU', 'HUF'));
+
+        $this->shop->settings->save(new StoreSettings(new Currency('HUF'), 0, WeightUnit::Kilogram, DimensionUnit::Centimetre, 'HU'));
+
+        self::assertNull($this->shop->paymentMethods->show('paypal')->notReady);
+        self::assertSame(['paypal'], array_map(static fn($option): string => $option->gateway, $this->shop->paymentOptions->available('HU', 'HUF')));
+    }
+
     public function testLivePaymentsNeedTheWebhook(): void
     {
         $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret']));
-        self::assertFalse($this->shop->paymentMethods->show('paypal')->ready);
+        self::assertSame('Enter the webhook ID: live payments need it.', $this->shop->paymentMethods->show('paypal')->notReady);
 
         $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret', 'sandbox' => true]));
-        self::assertTrue($this->shop->paymentMethods->show('paypal')->ready, 'test payments do without it');
+        self::assertNull($this->shop->paymentMethods->show('paypal')->notReady, 'test payments do without it');
     }
 
     public function testCaptureEventsCompleteFailOrHoldThePayment(): void

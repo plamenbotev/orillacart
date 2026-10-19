@@ -16,7 +16,7 @@ use OrillaCart\Shared\Security\Capability;
 final class SettingsRestTest extends RestTestCase
 {
     private const string ROUTE = '/settings';
-    private const array VALID = ['currency' => 'USD', 'price_decimals' => 3, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY'];
+    private const array VALID = ['currency' => 'USD', 'fewer_decimals' => 0, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY'];
     /** What the shop has without saying otherwise, besides the fields above. */
     private const array UNSAID = ['shop_postcode' => null, 'currency_sign' => '', 'currency_position' => 'after_space', 'catalog_only' => false, 'hide_prices' => false, 'sell_to' => [], 'show_lowest_price' => false];
 
@@ -90,7 +90,7 @@ final class SettingsRestTest extends RestTestCase
         self::assertSame(200, $response->get_status());
         self::assertSame(
             ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null, 'weight_units' => ['kg', 'g', 'lb', 'oz'], 'dimension_units' => ['cm', 'm', 'mm', 'in']]
-                + array_diff_key(self::UNSAID, ['show_lowest_price' => true]) + ['currency_positions' => ['before', 'before_space', 'after', 'after_space'], 'show_lowest_price' => false],
+                + array_diff_key(self::UNSAID, ['show_lowest_price' => true]) + ['currency_positions' => ['before', 'before_space', 'after', 'after_space'], 'show_lowest_price' => false, 'fewer_decimals' => null, 'currency_decimals' => 2],
             $this->data($response),
         );
     }
@@ -116,7 +116,7 @@ final class SettingsRestTest extends RestTestCase
         self::assertSame(200, $response->get_status());
         self::assertSame('USD', $this->data($response)['currency']);
         self::assertSame(self::VALID + self::UNSAID, get_option(OptionSettingsRepository::OPTION));
-        self::assertSame([[self::VALID + self::UNSAID, ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null] + self::UNSAID]], $this->announced);
+        self::assertSame([[['currency' => 'USD', 'price_decimals' => 0, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY'] + self::UNSAID, ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null] + self::UNSAID]], $this->announced);
         self::assertSame('USD', $this->data($this->request('GET', self::ROUTE))['currency']);
     }
 
@@ -124,10 +124,10 @@ final class SettingsRestTest extends RestTestCase
     {
         $this->actAs('administrator');
 
-        $response = $this->request('PUT', self::ROUTE, ['currency' => 'dollars', 'price_decimals' => 9, 'weight_unit' => 'stone', 'dimension_unit' => 'in'], nonce: true);
+        $response = $this->request('PUT', self::ROUTE, ['currency' => 'dollars', 'fewer_decimals' => -1, 'weight_unit' => 'stone', 'dimension_unit' => 'in'], nonce: true);
 
         self::assertSame(422, $response->get_status());
-        self::assertSame(['currency', 'price_decimals', 'weight_unit'], array_column($this->violations($response), 'field'));
+        self::assertSame(['currency', 'fewer_decimals', 'weight_unit'], array_column($this->violations($response), 'field'));
         self::assertFalse(get_option(OptionSettingsRepository::OPTION));
     }
 

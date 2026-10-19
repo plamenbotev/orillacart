@@ -13,10 +13,16 @@ use OrillaCart\Shared\Domain\RuleViolation;
  */
 final readonly class StoreSettings
 {
-    public const int MAX_PRICE_DECIMALS = 4;
     public const int MAX_SIGN_LENGTH = 8;
 
+    /** The decimals amounts are priced, charged and shown in: the currency's, or fewer when the shop chose so. */
+    public int $priceDecimals;
+
+    /** Fewer decimals than the currency has, as the shop chose (whole forints for PayPal); null for the currency's. */
+    public ?int $fewerDecimals;
+
     /**
+     * @param int|null     $decimals     fewer decimals than the currency has; null, or the currency's own, to follow it
      * @param string       $currencySign shown with amounts; empty to show the currency code
      * @param bool         $catalogOnly  products are shown but not sold
      * @param bool         $hidePrices   prices are not shown, and products are not sold online, unless a product says otherwise
@@ -24,7 +30,7 @@ final readonly class StoreSettings
      */
     public function __construct(
         public Currency $currency,
-        public int $priceDecimals,
+        ?int $decimals,
         public WeightUnit $weightUnit,
         public DimensionUnit $dimensionUnit,
         /** ISO 3166-1 alpha-2 code of the country the shop sells from; null until the shop sets it. */
@@ -40,12 +46,15 @@ final readonly class StoreSettings
         /** Sales show the lowest price of the 30 days before them, as the EU's Omnibus directive asks. */
         public bool $showLowestPrice = false,
     ) {
-        if ($priceDecimals < 0 || $priceDecimals > self::MAX_PRICE_DECIMALS) {
+        $most = $currency->decimals();
+        if ($decimals !== null && ($decimals < 0 || $decimals > $most)) {
             throw new RuleViolation(
-                \sprintf('Prices can have between 0 and %d decimals.', self::MAX_PRICE_DECIMALS),
+                \sprintf('Amounts in %s have at most %d decimals.', $currency->code, $most),
                 'orillacart_invalid_price_decimals',
             );
         }
+        $this->fewerDecimals = $decimals === $most ? null : $decimals;
+        $this->priceDecimals = $decimals ?? $most;
         if ($shopState !== null && $shopCountry === null) {
             throw new RuleViolation('The shop state needs a shop country.', 'orillacart_invalid_shop_address');
         }
@@ -73,13 +82,13 @@ final readonly class StoreSettings
 
     public static function defaults(): self
     {
-        return new self(new Currency('EUR'), 2, WeightUnit::Kilogram, DimensionUnit::Centimetre);
+        return new self(new Currency('EUR'), null, WeightUnit::Kilogram, DimensionUnit::Centimetre);
     }
 
     public function equals(self $other): bool
     {
         return $this->currency->equals($other->currency)
-            && $this->priceDecimals === $other->priceDecimals
+            && $this->fewerDecimals === $other->fewerDecimals
             && $this->weightUnit === $other->weightUnit
             && $this->dimensionUnit === $other->dimensionUnit
             && $this->shopCountry === $other->shopCountry

@@ -33,7 +33,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
         try {
             return new StoreSettings(
                 new Currency(self::string($stored, 'currency')),
-                self::int($stored, 'price_decimals'),
+                self::optionalInt($stored, 'fewer_decimals'),
                 WeightUnit::from(self::string($stored, 'weight_unit')),
                 DimensionUnit::from(self::string($stored, 'dimension_unit')),
                 self::optionalString($stored, 'shop_country'),
@@ -57,7 +57,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
     {
         update_option(self::OPTION, [
             'currency' => $settings->currency->code,
-            'price_decimals' => $settings->priceDecimals,
+            'fewer_decimals' => $settings->fewerDecimals,
             'weight_unit' => $settings->weightUnit->value,
             'dimension_unit' => $settings->dimensionUnit->value,
             'shop_country' => $settings->shopCountry,
@@ -100,10 +100,10 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
     }
 
     /** @param array<array-key, mixed> $stored */
-    private static function int(array $stored, string $key): int
+    private static function optionalInt(array $stored, string $key): ?int
     {
         $value = $stored[$key] ?? null;
 
-        return \is_int($value) ? $value : throw new \UnexpectedValueException(\sprintf('"%s" is missing or not a number.', $key));
+        return $value === null || \is_int($value) ? $value : throw new \UnexpectedValueException(\sprintf('"%s" is not a number.', $key));
     }
 }

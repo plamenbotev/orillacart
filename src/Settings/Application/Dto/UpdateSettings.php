@@ -22,8 +22,9 @@ final readonly class UpdateSettings
     public function __construct(
         #[Assert\Regex('/^[A-Z]{3}$/', message: 'Use a three-letter currency code such as EUR.')]
         public string $currency,
-        #[Assert\Range(min: 0, max: StoreSettings::MAX_PRICE_DECIMALS)]
-        public int $priceDecimals,
+        /** Fewer decimals than the currency has; null for the currency's own. */
+        #[Assert\PositiveOrZero]
+        public ?int $fewerDecimals,
         #[Assert\Choice(callback: [WeightUnit::class, 'values'])]
         public string $weightUnit,
         #[Assert\Choice(callback: [DimensionUnit::class, 'values'])]

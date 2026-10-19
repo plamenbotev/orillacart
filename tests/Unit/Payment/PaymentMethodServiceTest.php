@@ -27,7 +27,7 @@ final class PaymentMethodServiceTest extends TestCase
 
         self::assertSame(
             [['cash_on_delivery', 'Cash on delivery', false, true], ['bank_transfer', 'Bank transfer', false, true], ['cheque', 'Cheque', false, true], ['paypal', 'PayPal', false, false]],
-            array_map(static fn(PaymentMethodView $method): array => [$method->gateway, $method->name, $method->active, $method->ready], $methods),
+            array_map(static fn(PaymentMethodView $method): array => [$method->gateway, $method->name, $method->active, $method->notReady === null], $methods),
         );
         self::assertSame(['client_id', 'client_secret', 'sandbox', 'webhook_id'], array_map(static fn($field): string => $field->key, $methods[3]->fields));
         self::assertSame('https://shop.test/payments/paypal/webhook', $methods[3]->notificationUrl);
@@ -38,7 +38,7 @@ final class PaymentMethodServiceTest extends TestCase
         $saved = $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'abc', 'client_secret' => 's3cret', 'sandbox' => true]));
         self::assertSame(['client_id' => 'abc', 'client_secret' => '', 'sandbox' => true, 'webhook_id' => ''], $saved->settings);
         self::assertSame(['client_secret'], $saved->secretsSet);
-        self::assertTrue($saved->ready);
+        self::assertNull($saved->notReady);
 
         // Saving again without the secret keeps it.
         $again = $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'abc', 'client_secret' => '', 'sandbox' => false]));
@@ -77,6 +77,6 @@ final class PaymentMethodServiceTest extends TestCase
         $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'abc', 'client_secret' => 's']));
         $this->shop->settings->save(new \OrillaCart\Settings\Domain\StoreSettings(new \OrillaCart\Shared\Domain\Currency('BGN'), 2, \OrillaCart\Settings\Domain\WeightUnit::Kilogram, \OrillaCart\Settings\Domain\DimensionUnit::Centimetre));
 
-        self::assertFalse($this->shop->paymentMethods->show('paypal')->ready);
+        self::assertNotNull($this->shop->paymentMethods->show('paypal')->notReady);
     }
 }

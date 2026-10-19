@@ -206,6 +206,7 @@ final class TestShop
     public readonly TestJobs $jobs;
     public readonly InMemorySentEmails $sentEmails;
     public readonly InMemoryAccounts $accounts;
+    public readonly PaymentOptions $paymentOptions;
     public readonly InMemoryCustomerSettingsRepository $customerSettings;
     public readonly CustomerService $customers;
     public readonly PersonalData $personalData;
@@ -294,7 +295,7 @@ final class TestShop
         $this->events->addListener(OrderDeleted::class, $releasing->deleted(...));
         $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts);
-        $paymentOptions = new PaymentOptions($methodRecords, $gateways);
+        $this->paymentOptions = $paymentOptions = new PaymentOptions($methodRecords, $gateways, $settings);
         $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts);
         $this->checkout = new CheckoutService(
             $this->carts,

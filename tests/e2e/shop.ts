@@ -239,6 +239,8 @@ async function shopIn(
 		weight_units: weightUnits,
 		dimension_units: dimensionUnits,
 		currency_positions: currencyPositions,
+		price_decimals: decimals,
+		currency_decimals: currencyDecimals,
 		...settings
 	} = await requestUtils.rest< Record< string, unknown > >( {
 		path: '/orillacart/v1/settings',

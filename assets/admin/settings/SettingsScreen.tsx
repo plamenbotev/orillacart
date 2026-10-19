@@ -10,7 +10,7 @@ import {
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
 import { toApiError, violationOf, type Violation } from '../shared/api';
@@ -37,7 +37,7 @@ type Status =
 function inputOf( settings: Settings ): SettingsInput {
 	return {
 		currency: settings.currency,
-		price_decimals: settings.price_decimals,
+		fewer_decimals: settings.fewer_decimals,
 		weight_unit: settings.weight_unit,
 		dimension_unit: settings.dimension_unit,
 		shop_country: settings.shop_country,
@@ -50,6 +50,32 @@ function inputOf( settings: Settings ): SettingsInput {
 		show_lowest_price: settings.show_lowest_price,
 		sell_to: settings.sell_to,
 	};
+}
+
+/**
+ * The choices of price decimals: the currency's own, or fewer.
+ *
+ * @param most The currency's decimals; null when the form's currency is not saved yet.
+ */
+function decimalChoices( most: number | null ) {
+	const fewer = Array.from( { length: most ?? 4 }, ( _, decimals ) => ( {
+		label: String( decimals ),
+		value: String( decimals ),
+	} ) );
+	return [
+		{
+			label:
+				most === null
+					? __( 'The currency’s own', 'orillacart' )
+					: sprintf(
+							/* translators: %d: how many decimals the currency has */
+							__( 'The currency’s own: %d', 'orillacart' ),
+							most
+						),
+			value: '',
+		},
+		...fewer,
+	];
 }
 
 const POSITIONS: Record< string, string > = {
@@ -182,18 +208,32 @@ export function SettingsScreen() {
 									update( 'currency_position', value )
 								}
 							/>
-							<TextControl
+							<SelectControl
 								__next40pxDefaultSize
-								type="number"
-								min={ 0 }
-								max={ 4 }
 								label={ __( 'Price decimals', 'orillacart' ) }
-								help={ fieldError( 'price_decimals' ) }
-								value={ String( form.price_decimals ) }
+								help={
+									fieldError( 'fewer_decimals' ) ??
+									__(
+										'Amounts are priced, charged and shown with these decimals. Fewer than the currency has suit shops that price in whole amounts, as PayPal takes forints.',
+										'orillacart'
+									)
+								}
+								value={
+									form.fewer_decimals === null
+										? ''
+										: String( form.fewer_decimals )
+								}
+								options={ decimalChoices(
+									form.currency === settings.currency
+										? settings.currency_decimals
+										: null
+								) }
 								onChange={ ( value ) =>
 									update(
-										'price_decimals',
-										Number.parseInt( value, 10 ) || 0
+										'fewer_decimals',
+										value === ''
+											? null
+											: Number.parseInt( value, 10 )
 									)
 								}
 							/>

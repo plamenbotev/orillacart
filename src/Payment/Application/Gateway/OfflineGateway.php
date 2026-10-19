@@ -20,9 +20,9 @@ abstract class OfflineGateway implements PaymentGateway
         return [];
     }
 
-    public function isReady(Settings $settings, string $currency): bool
+    public function notReady(Settings $settings, string $currency, int $decimals): ?string
     {
-        return true;
+        return null;
     }
 
     public function start(PaymentSession $session, Settings $settings): PaymentStart

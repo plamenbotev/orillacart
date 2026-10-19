@@ -105,12 +105,12 @@ echo "Every shipped template compiles to prefixed classes\n";
 // The serializer and validator read attributes from plugin DTOs; their class names were rewritten too.
 $serializers = new SerializerFactory();
 $mapper = new RequestMapper($serializers->create(), new ValidatorFactory()->create(), $serializers->nameConverter());
-$dto = $mapper->map(['currency' => 'USD', 'price_decimals' => 2, 'weight_unit' => 'lb', 'dimension_unit' => 'in'], UpdateSettings::class);
-if ($dto->currency !== 'USD' || $dto->priceDecimals !== 2) {
+$dto = $mapper->map(['currency' => 'USD', 'fewer_decimals' => 0, 'weight_unit' => 'lb', 'dimension_unit' => 'in'], UpdateSettings::class);
+if ($dto->currency !== 'USD' || $dto->fewerDecimals !== 0) {
     $fail('The serializer did not fill the settings DTO.');
 }
 try {
-    $mapper->map(['currency' => 'usd', 'price_decimals' => 2, 'weight_unit' => 'lb', 'dimension_unit' => 'in'], UpdateSettings::class);
+    $mapper->map(['currency' => 'usd', 'fewer_decimals' => 0, 'weight_unit' => 'lb', 'dimension_unit' => 'in'], UpdateSettings::class);
     $fail('The validator accepted a lower-case currency code.');
 } catch (HttpException $e) {
     if ($e->status !== 422) {

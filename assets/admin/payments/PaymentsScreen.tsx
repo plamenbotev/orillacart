@@ -124,11 +124,15 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 		<Card className="orillacart-card">
 			<CardHeader>
 				<h2>{ method.name }</h2>
-				{ method.active && ! method.ready && (
+				{ method.active && method.not_ready !== null && (
 					<Notice status="warning" isDismissible={ false }>
-						{ __(
-							'Checkout does not offer it: its settings are incomplete or it does not take the shop’s currency.',
-							'orillacart'
+						{ sprintf(
+							/* translators: %s: what the payment method needs */
+							__(
+								'Checkout does not offer it. %s',
+								'orillacart'
+							),
+							method.not_ready
 						) }
 					</Notice>
 				) }
