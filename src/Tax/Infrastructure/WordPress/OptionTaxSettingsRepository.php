@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tax\Infrastructure\WordPress;
 
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tax\Domain\TaxSettingsRepository;
@@ -13,7 +14,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Keeps the tax settings in one autoloaded WordPress option.
  */
-final readonly class OptionTaxSettingsRepository implements TaxSettingsRepository, LifecycleListener
+final readonly class OptionTaxSettingsRepository implements TaxSettingsRepository, LifecycleListener, RemovesShopData
 {
     public const string OPTION = 'orillacart_tax_settings';
 

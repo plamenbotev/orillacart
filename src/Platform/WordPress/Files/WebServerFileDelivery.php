@@ -10,13 +10,14 @@ use OrillaCart\Shared\Files\DeliverySettings;
 use OrillaCart\Shared\Files\FileDelivery;
 use OrillaCart\Shared\Files\PrivateFiles;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 
 /**
  * Keeps the delivery method in an option and tests a method before keeping it: a probe file is stored, the site
  * asks itself over HTTP for ?orillacart_delivery_probe=TOKEN, DeliveryProbe answers with only the hand-off header,
  * and the method works when the web server sent the probe's content in its place.
  */
-final readonly class WebServerFileDelivery implements FileDelivery, LifecycleListener
+final readonly class WebServerFileDelivery implements FileDelivery, LifecycleListener, RemovesShopData
 {
     public const string OPTION = 'orillacart_download_delivery';
     public const string PROBE_QUERY = 'orillacart_delivery_probe';

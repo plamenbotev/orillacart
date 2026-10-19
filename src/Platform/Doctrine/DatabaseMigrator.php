@@ -8,11 +8,12 @@ use Doctrine\Migrations\DependencyFactory;
 use Doctrine\Migrations\MigratorConfiguration;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 
 /**
  * Keeps the plugin's tables at the latest migration, and removes them on uninstall.
  */
-final readonly class DatabaseMigrator implements LifecycleListener
+final readonly class DatabaseMigrator implements LifecycleListener, RemovesShopData
 {
     public function __construct(
         private DependencyFactory $migrations,

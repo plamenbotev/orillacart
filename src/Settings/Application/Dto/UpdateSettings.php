@@ -44,5 +44,6 @@ final readonly class UpdateSettings
         #[Assert\All([new Assert\Regex('/^[A-Z]{2}$/', message: 'Use two-letter country codes such as DE.')])]
         public array $sellTo = [],
         public bool $showLowestPrice = false,
+        public bool $removeDataOnUninstall = false,
     ) {}
 }

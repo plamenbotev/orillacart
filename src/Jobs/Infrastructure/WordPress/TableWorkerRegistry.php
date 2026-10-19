@@ -8,13 +8,14 @@ use OrillaCart\Jobs\Application\Dto\WorkerView;
 use OrillaCart\Jobs\Application\WorkerRegistry;
 use OrillaCart\Jobs\Infrastructure\Doctrine\JobTables;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 
 /**
  * Workers in the job_workers table, a row each, so many workers never write the same row; the restart request and
  * WP-Cron's last run in options, read straight from the database: WordPress caches options for the life of a
  * process, and a worker lives for hours.
  */
-final readonly class TableWorkerRegistry implements WorkerRegistry, LifecycleListener
+final readonly class TableWorkerRegistry implements WorkerRegistry, LifecycleListener, RemovesShopData
 {
     public const string RESTART = 'orillacart_jobs_restart';
     public const string CRON = 'orillacart_jobs_cron';

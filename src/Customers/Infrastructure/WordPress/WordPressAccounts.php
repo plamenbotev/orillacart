@@ -9,6 +9,7 @@ use OrillaCart\Customers\Application\Dto\CustomerRecord;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
@@ -16,7 +17,7 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  * Customers are WordPress users. Those who made their account at checkout have the shop's customer role;
  * anyone logged in has an account with saved addresses, kept in user meta.
  */
-final readonly class WordPressAccounts implements Accounts, LifecycleListener
+final readonly class WordPressAccounts implements Accounts, LifecycleListener, RemovesShopData
 {
     public const string ROLE = 'orillacart_customer';
     public const string BILLING = 'orillacart_billing';

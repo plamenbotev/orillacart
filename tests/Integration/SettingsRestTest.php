@@ -90,7 +90,7 @@ final class SettingsRestTest extends RestTestCase
         self::assertSame(200, $response->get_status());
         self::assertSame(
             ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null, 'weight_units' => ['kg', 'g', 'lb', 'oz'], 'dimension_units' => ['cm', 'm', 'mm', 'in']]
-                + array_diff_key(self::UNSAID, ['show_lowest_price' => true]) + ['currency_positions' => ['before', 'before_space', 'after', 'after_space'], 'show_lowest_price' => false, 'fewer_decimals' => null, 'currency_decimals' => 2],
+                + array_diff_key(self::UNSAID, ['show_lowest_price' => true]) + ['currency_positions' => ['before', 'before_space', 'after', 'after_space'], 'show_lowest_price' => false, 'fewer_decimals' => null, 'currency_decimals' => 2, 'remove_data_on_uninstall' => false],
             $this->data($response),
         );
     }
@@ -115,7 +115,7 @@ final class SettingsRestTest extends RestTestCase
 
         self::assertSame(200, $response->get_status());
         self::assertSame('USD', $this->data($response)['currency']);
-        self::assertSame(self::VALID + self::UNSAID, get_option(OptionSettingsRepository::OPTION));
+        self::assertSame(self::VALID + self::UNSAID + ['remove_data_on_uninstall' => false], get_option(OptionSettingsRepository::OPTION));
         self::assertSame([[['currency' => 'USD', 'price_decimals' => 0, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY'] + self::UNSAID, ['currency' => 'EUR', 'price_decimals' => 2, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => null, 'shop_state' => null] + self::UNSAID]], $this->announced);
         self::assertSame('USD', $this->data($this->request('GET', self::ROUTE))['currency']);
     }

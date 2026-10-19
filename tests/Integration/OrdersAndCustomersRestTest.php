@@ -431,7 +431,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         // The test site counts none; one address of its own, two sign-ups an hour.
         $limits = static fn(): array => ['accounts' => [2, 3600]];
         add_filter('orillacart_rate_limits', $limits, 20);
-        $_SERVER['REMOTE_ADDR'] = '198.51.100.' . random_int(1, 254);
+        $_SERVER['REMOTE_ADDR'] = '2001:db8::' . implode(':', str_split(bin2hex(random_bytes(8)), 4));
         try {
             $statuses = [];
             for ($attempt = 1; $attempt <= 3; ++$attempt) {

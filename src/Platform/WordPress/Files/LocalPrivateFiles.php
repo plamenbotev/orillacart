@@ -8,6 +8,7 @@ use OrillaCart\Shared\Files\PrivateFiles;
 use OrillaCart\Shared\Files\StorageCheck;
 use OrillaCart\Shared\Files\StoredFile;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 
 /**
  * Keeps private files on the server's disk, where no web server can reach them when possible:
@@ -23,11 +24,15 @@ use OrillaCart\Shared\Lifecycle\LifecycleListener;
  *
  * Every file gets a random name without an extension, so nothing in the folder runs or is sniffed as a page.
  */
-final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListener
+final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListener, RemovesShopData
 {
     public const string SECRET_OPTION = 'orillacart_downloads_folder';
     /** The folder chosen when the first file was stored, so every process uses the same one. */
     public const string DIRECTORY_OPTION = 'orillacart_downloads_directory';
+    /** The folder the plugin made itself, which it may remove; one it found (ORILLACART_DOWNLOADS_DIR) stays. */
+    public const string CREATED_OPTION = 'orillacart_downloads_created';
+    /** What the plugin writes into the folder besides the files: the web servers' deny rules. */
+    private const array DENY_FILES = ['.htaccess', 'web.config', 'index.php'];
     private const string CHECK_TRANSIENT = 'orillacart_downloads_check';
     private const string PROBE = 'orillacart-probe.txt';
     private const string PROBE_CONTENT = 'orillacart private file probe';
@@ -68,9 +73,11 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
     public function check(bool $fresh = false): StorageCheck
     {
         $directory = $this->directory();
+        // Written again on every check: a deploy or a backup restore may have lost them.
+        self::writeDenyFiles($directory);
         $location = $this->location();
-        $rule = \sprintf("location ^~ /%s/ {\n    deny all;\n}", trim((string) wp_make_link_relative($this->uploadsUrl($directory) ?? ''), '/'));
-        $url = $this->uploadsUrl($directory);
+        $url = $this->webUrl($directory);
+        $rule = \sprintf("location ^~ /%s/ {\n    deny all;\n}", trim((string) wp_make_link_relative($url ?? ''), '/'));
         if ($url === null) {
             return new StorageCheck($location, $directory, null, '');
         }
@@ -97,20 +104,28 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
 
     public function deactivate(): void {}
 
+    /**
+     * Removes the files the plugin stored and its deny rules, never anything else: ORILLACART_DOWNLOADS_DIR may
+     * name a folder others use too. The folder itself goes only when the plugin made it and it is empty now.
+     */
     public function uninstall(): void
     {
         $directory = $this->directory(create: false);
         if (is_dir($directory)) {
             $files = scandir($directory);
             foreach ($files === false ? [] : $files as $file) {
-                if ($file !== '.' && $file !== '..') {
+                if (preg_match('/^[a-f0-9]{32}$/', $file) === 1 || \in_array($file, [...self::DENY_FILES, self::PROBE], true)) {
                     wp_delete_file($directory . '/' . $file);
                 }
             }
-            rmdir($directory);
+            $left = scandir($directory);
+            if (get_option(self::CREATED_OPTION) === $directory && $left !== false && array_diff($left, ['.', '..']) === []) {
+                rmdir($directory);
+            }
         }
         delete_option(self::SECRET_OPTION);
         delete_option(self::DIRECTORY_OPTION);
+        delete_option(self::CREATED_OPTION);
         delete_transient(self::CHECK_TRANSIENT);
     }
 
@@ -138,13 +153,22 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
             if (!wp_mkdir_p($directory)) {
                 throw new \RuntimeException(\sprintf('The downloads folder %s could not be made.', $directory));
             }
-            // For servers that read them: Apache and IIS refuse every request into the folder.
-            file_put_contents($directory . '/.htaccess', "Require all denied\nDeny from all\n");
-            file_put_contents($directory . '/web.config', '<?xml version="1.0"?><configuration><system.webServer><authorization><deny users="*" /></authorization></system.webServer></configuration>');
-            file_put_contents($directory . '/index.php', "<?php\n// Silence.\n");
+            update_option(self::CREATED_OPTION, $directory, false);
+            self::writeDenyFiles($directory);
         }
 
         return $directory;
+    }
+
+    /** For servers that read them: Apache and IIS refuse every request into the folder. */
+    private static function writeDenyFiles(string $directory): void
+    {
+        if (!is_dir($directory) || !wp_is_writable($directory)) {
+            return;
+        }
+        file_put_contents($directory . '/.htaccess', "Require all denied\nDeny from all\n");
+        file_put_contents($directory . '/web.config', '<?xml version="1.0"?><configuration><system.webServer><authorization><deny users="*" /></authorization></system.webServer></configuration>');
+        file_put_contents($directory . '/index.php', "<?php\n// Silence.\n");
     }
 
     private static function configured(): string
@@ -174,11 +198,18 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
         return wp_upload_dir(null, false)['basedir'] . '/orillacart-' . $secret;
     }
 
-    /** The folder's address on the web, for a folder inside the uploads folder; null for one outside it. */
-    private function uploadsUrl(string $directory): ?string
+    /**
+     * The folder's address on the web, for a folder a web server may hand out: inside the uploads folder or
+     * anywhere under the site's own folder; null for one outside it.
+     */
+    private function webUrl(string $directory): ?string
     {
         $uploads = wp_upload_dir(null, false);
+        if (str_starts_with($directory, $uploads['basedir'] . '/')) {
+            return $uploads['baseurl'] . substr($directory, \strlen($uploads['basedir']));
+        }
+        $root = rtrim(ABSPATH, '/');
 
-        return str_starts_with($directory, $uploads['basedir'] . '/') ? $uploads['baseurl'] . substr($directory, \strlen($uploads['basedir'])) : null;
+        return str_starts_with($directory, $root . '/') ? site_url(substr($directory, \strlen($root))) : null;
     }
 }

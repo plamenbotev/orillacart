@@ -6,6 +6,7 @@ namespace OrillaCart\Search\Infrastructure\WordPress;
 
 use OrillaCart\Search\Application\SearchIndexing;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**
@@ -13,7 +14,7 @@ use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
  * index (or before the index changed) gets them indexed. After the migrations, which make the tables.
  */
 #[AsTaggedItem(priority: -100)]
-final readonly class SearchIndexLifecycle implements LifecycleListener
+final readonly class SearchIndexLifecycle implements LifecycleListener, RemovesShopData
 {
     public function __construct(private SearchIndexing $indexing) {}
 

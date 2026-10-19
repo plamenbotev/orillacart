@@ -8,12 +8,13 @@ use OrillaCart\Invoicing\Domain\InvoiceSettings;
 use OrillaCart\Invoicing\Domain\InvoiceSettingsRepository;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use Psr\Log\LoggerInterface;
 
 /**
  * Keeps the invoice settings in one WordPress option.
  */
-final readonly class OptionInvoiceSettingsRepository implements InvoiceSettingsRepository, LifecycleListener
+final readonly class OptionInvoiceSettingsRepository implements InvoiceSettingsRepository, LifecycleListener, RemovesShopData
 {
     public const string OPTION = 'orillacart_invoice_settings';
 

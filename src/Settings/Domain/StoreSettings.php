@@ -45,6 +45,8 @@ final readonly class StoreSettings
         public array $sellTo = [],
         /** Sales show the lowest price of the 30 days before them, as the EU's Omnibus directive asks. */
         public bool $showLowestPrice = false,
+        /** Deleting the plugin removes the shop's data too: orders, products, settings and files. */
+        public bool $removeDataOnUninstall = false,
     ) {
         $most = $currency->decimals();
         if ($decimals !== null && ($decimals < 0 || $decimals > $most)) {
@@ -99,6 +101,7 @@ final readonly class StoreSettings
             && $this->catalogOnly === $other->catalogOnly
             && $this->hidePrices === $other->hidePrices
             && $this->sellTo === $other->sellTo
-            && $this->showLowestPrice === $other->showLowestPrice;
+            && $this->showLowestPrice === $other->showLowestPrice
+            && $this->removeDataOnUninstall === $other->removeDataOnUninstall;
     }
 }

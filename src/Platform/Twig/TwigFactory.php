@@ -66,6 +66,12 @@ final readonly class TwigFactory
         return array_values(array_unique(array_filter($paths, is_dir(...))));
     }
 
+    /** The cache folder's name for a version of the plugin. */
+    public static function versionFolder(string $version): string
+    {
+        return preg_replace('/[^A-Za-z0-9._-]/', '_', $version) ?? 'unknown';
+    }
+
     /**
      * Compiled templates go to wp-content/cache/orillacart/twig/<version>; without a writable folder Twig compiles in memory.
      */
@@ -74,7 +80,7 @@ final readonly class TwigFactory
         if (!\defined('WP_CONTENT_DIR')) {
             return null;
         }
-        $dir = WP_CONTENT_DIR . '/cache/orillacart/twig/' . preg_replace('/[^A-Za-z0-9._-]/', '_', $this->context->version);
+        $dir = WP_CONTENT_DIR . '/cache/orillacart/twig/' . self::versionFolder($this->context->version);
         if (!is_dir($dir) && !wp_mkdir_p($dir)) {
             return null;
         }

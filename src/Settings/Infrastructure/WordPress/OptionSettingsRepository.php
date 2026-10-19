@@ -12,12 +12,13 @@ use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use Psr\Log\LoggerInterface;
 
 /**
  * Keeps the settings in one autoloaded WordPress option, read on nearly every request.
  */
-final readonly class OptionSettingsRepository implements SettingsRepository, LifecycleListener
+final readonly class OptionSettingsRepository implements SettingsRepository, LifecycleListener, RemovesShopData
 {
     public const string OPTION = 'orillacart_settings';
 
@@ -45,6 +46,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
                 ($stored['hide_prices'] ?? false) === true,
                 array_values(array_filter(\is_array($stored['sell_to'] ?? null) ? $stored['sell_to'] : [], \is_string(...))),
                 ($stored['show_lowest_price'] ?? false) === true,
+                ($stored['remove_data_on_uninstall'] ?? false) === true,
             );
         } catch (RuleViolation|\ValueError|\UnexpectedValueException $e) {
             $this->logger->warning('Stored shop settings are not valid, using the defaults: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
@@ -69,6 +71,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
             'hide_prices' => $settings->hidePrices,
             'sell_to' => $settings->sellTo,
             'show_lowest_price' => $settings->showLowestPrice,
+            'remove_data_on_uninstall' => $settings->removeDataOnUninstall,
         ], true);
     }
 

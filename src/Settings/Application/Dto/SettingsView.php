@@ -42,6 +42,8 @@ final readonly class SettingsView
         public ?int $fewerDecimals = null,
         /** The currency's own decimals (ISO 4217), the most amounts can have. */
         public int $currencyDecimals = 2,
+        /** Deleting the plugin removes the shop's data too. */
+        public bool $removeDataOnUninstall = false,
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -65,6 +67,7 @@ final readonly class SettingsView
             $settings->showLowestPrice,
             $settings->fewerDecimals,
             $settings->currency->decimals(),
+            $settings->removeDataOnUninstall,
         );
     }
 }

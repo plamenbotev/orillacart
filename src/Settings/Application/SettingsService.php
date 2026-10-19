@@ -61,6 +61,7 @@ final readonly class SettingsService
             $command->hidePrices,
             $sellTo,
             $command->showLowestPrice,
+            $command->removeDataOnUninstall,
         );
 
         if (!$current->equals($previous)) {

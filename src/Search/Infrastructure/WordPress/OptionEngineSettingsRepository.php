@@ -8,12 +8,13 @@ use OrillaCart\Search\Domain\EngineSettings;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchEngine;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use OrillaCart\Shared\Security\Secrets;
 
 /**
  * The engine settings in one WordPress option, read when the shop searches or indexes; the password sealed.
  */
-final readonly class OptionEngineSettingsRepository implements EngineSettingsRepository, LifecycleListener
+final readonly class OptionEngineSettingsRepository implements EngineSettingsRepository, LifecycleListener, RemovesShopData
 {
     public const string OPTION = 'orillacart_search_engine';
 

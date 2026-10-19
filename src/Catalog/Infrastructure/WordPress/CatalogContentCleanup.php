@@ -10,12 +10,13 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\VariationPostType;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 
 /**
  * Deletes the product posts and their terms when the plugin is deleted. The Catalog tables go with the
  * plugin's other tables.
  */
-final readonly class CatalogContentCleanup implements LifecycleListener
+final readonly class CatalogContentCleanup implements LifecycleListener, RemovesShopData
 {
     public function __construct(
         private ProductCategoryTaxonomy $categories,

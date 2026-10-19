@@ -8,8 +8,9 @@ use OrillaCart\Customers\Domain\AccountMode;
 use OrillaCart\Customers\Domain\CustomerSettings;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 
-final readonly class OptionCustomerSettingsRepository implements CustomerSettingsRepository, LifecycleListener
+final readonly class OptionCustomerSettingsRepository implements CustomerSettingsRepository, LifecycleListener, RemovesShopData
 {
     public const string OPTION = 'orillacart_customer_settings';
 

@@ -9,12 +9,13 @@ use OrillaCart\Notifications\Domain\EmailSettings;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use Psr\Log\LoggerInterface;
 
 /**
  * Keeps the email settings in one WordPress option.
  */
-final readonly class OptionEmailSettingsRepository implements EmailSettingsRepository, LifecycleListener
+final readonly class OptionEmailSettingsRepository implements EmailSettingsRepository, LifecycleListener, RemovesShopData
 {
     public const string OPTION = 'orillacart_email_settings';
 

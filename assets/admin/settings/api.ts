@@ -25,6 +25,8 @@ export interface Settings {
 	sell_to: string[];
 	/** Sales show the lowest price of the 30 days before them (EU Omnibus). */
 	show_lowest_price: boolean;
+	/** Deleting the plugin removes the shop's data too. */
+	remove_data_on_uninstall: boolean;
 	weight_units: string[];
 	dimension_units: string[];
 	currency_positions: string[];
@@ -46,6 +48,7 @@ export type SettingsInput = Pick<
 	| 'hide_prices'
 	| 'sell_to'
 	| 'show_lowest_price'
+	| 'remove_data_on_uninstall'
 >;
 
 const PATH = '/orillacart/v1/settings';

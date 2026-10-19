@@ -48,6 +48,7 @@ function inputOf( settings: Settings ): SettingsInput {
 		catalog_only: settings.catalog_only,
 		hide_prices: settings.hide_prices,
 		show_lowest_price: settings.show_lowest_price,
+		remove_data_on_uninstall: settings.remove_data_on_uninstall,
 		sell_to: settings.sell_to,
 	};
 }
@@ -373,6 +374,20 @@ export function SettingsScreen() {
 								checked={ form.show_lowest_price }
 								onChange={ ( value ) =>
 									update( 'show_lowest_price', value )
+								}
+							/>
+							<CheckboxControl
+								label={ __(
+									'Remove all shop data when the plugin is deleted',
+									'orillacart'
+								) }
+								help={ __(
+									'Orders, products, customers’ shop data, settings and stored files go with the plugin, for good. Without it, deleting the plugin keeps them for when it comes back.',
+									'orillacart'
+								) }
+								checked={ form.remove_data_on_uninstall }
+								onChange={ ( value ) =>
+									update( 'remove_data_on_uninstall', value )
 								}
 							/>
 							<Button

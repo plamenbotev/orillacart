@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use OrillaCart\Storefront\Domain\ShopPages;
 use OrillaCart\Storefront\Domain\ShopPagesRepository;
 
@@ -13,7 +14,7 @@ use OrillaCart\Storefront\Domain\ShopPagesRepository;
  * later ones make a page again only when the chosen one was deleted, so a part set to "none" stays off.
  * Uninstalling deletes the pages the plugin made.
  */
-final readonly class OptionShopPagesRepository implements ShopPagesRepository, LifecycleListener
+final readonly class OptionShopPagesRepository implements ShopPagesRepository, LifecycleListener, RemovesShopData
 {
     public const string OPTION = 'orillacart_shop_pages';
     /** The ids of the pages the plugin made, which uninstalling removes. */
