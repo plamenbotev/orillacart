@@ -48,6 +48,15 @@ interface OrderRepository
      */
     public function ofPerson(string $email, ?int $customerId, int $offset, int $limit): array;
 
+    /**
+     * How many orders each customer has, in one query.
+     *
+     * @param list<int> $customerIds
+     *
+     * @return array<int, int> by customer id; those without orders left out
+     */
+    public function countByCustomers(array $customerIds): array;
+
     public function save(Order $order): void;
 
     public function remove(Order $order): void;

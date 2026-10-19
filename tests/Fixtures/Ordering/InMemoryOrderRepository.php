@@ -49,6 +49,19 @@ final class InMemoryOrderRepository implements OrderRepository
         return \array_slice($found, $offset, $limit);
     }
 
+    public function countByCustomers(array $customerIds): array
+    {
+        $counts = [];
+        foreach ($this->orders as $order) {
+            $customer = $order->customerId();
+            if ($customer !== null && \in_array($customer, $customerIds, true)) {
+                $counts[$customer] = ($counts[$customer] ?? 0) + 1;
+            }
+        }
+
+        return $counts;
+    }
+
     public function hasStandingOrder(?int $customerId, string $email, ?int $exceptOrderId = null): bool
     {
         foreach ($this->orders as $order) {

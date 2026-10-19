@@ -37,6 +37,29 @@ final class InMemoryCustomerGroupRepository implements CustomerGroupRepository
         return null;
     }
 
+    public function groupIdsOfMany(array $customerIds): array
+    {
+        $groups = [];
+        foreach ($customerIds as $customerId) {
+            $ids = $this->groupIdsOf($customerId);
+            if ($ids !== []) {
+                $groups[$customerId] = $ids;
+            }
+        }
+
+        return $groups;
+    }
+
+    public function memberCounts(): array
+    {
+        $counts = [];
+        foreach ($this->groups as $group) {
+            $counts[$group->id()] = \count($group->customerIds());
+        }
+
+        return $counts;
+    }
+
     public function groupIdsOf(int $customerId): array
     {
         return array_values(array_map(static fn(CustomerGroup $group): int => $group->id(), array_filter($this->groups, static fn(CustomerGroup $group): bool => $group->contains($customerId))));

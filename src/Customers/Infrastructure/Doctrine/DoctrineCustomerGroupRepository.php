@@ -29,6 +29,38 @@ final readonly class DoctrineCustomerGroupRepository implements CustomerGroupRep
         return $this->entityManager->getRepository(CustomerGroup::class)->findOneBy(['name' => trim($name)]);
     }
 
+    public function groupIdsOfMany(array $customerIds): array
+    {
+        if ($customerIds === []) {
+            return [];
+        }
+        $rows = $this->entityManager->createQueryBuilder()->select('m.customerId AS customer, IDENTITY(m.group) AS id')->from(CustomerGroupMember::class, 'm')
+            ->where('m.customerId IN (:customers)')->setParameter('customers', $customerIds)
+            ->getQuery()->getScalarResult();
+        $groups = [];
+        foreach ($rows as $row) {
+            if (\is_array($row) && is_numeric($row['customer'] ?? null) && is_numeric($row['id'] ?? null)) {
+                $groups[(int) $row['customer']][] = (int) $row['id'];
+            }
+        }
+
+        return $groups;
+    }
+
+    public function memberCounts(): array
+    {
+        $rows = $this->entityManager->createQueryBuilder()->select('IDENTITY(m.group) AS id, COUNT(m.customerId) AS members')->from(CustomerGroupMember::class, 'm')
+            ->groupBy('m.group')->getQuery()->getScalarResult();
+        $counts = [];
+        foreach ($rows as $row) {
+            if (\is_array($row) && is_numeric($row['id'] ?? null) && is_numeric($row['members'] ?? null)) {
+                $counts[(int) $row['id']] = (int) $row['members'];
+            }
+        }
+
+        return $counts;
+    }
+
     public function groupIdsOf(int $customerId): array
     {
         $rows = $this->entityManager->createQueryBuilder()->select('IDENTITY(m.group) AS id')->from(CustomerGroupMember::class, 'm')

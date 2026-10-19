@@ -26,7 +26,9 @@ final readonly class CustomerGroups
     /** @return list<CustomerGroupView> by name */
     public function groups(): array
     {
-        return array_map(static fn(CustomerGroup $group): CustomerGroupView => new CustomerGroupView($group->id(), $group->name(), \count($group->customerIds())), $this->groups->all());
+        $members = $this->groups->memberCounts();
+
+        return array_map(static fn(CustomerGroup $group): CustomerGroupView => new CustomerGroupView($group->id(), $group->name(), $members[$group->id()] ?? 0), $this->groups->all());
     }
 
     /**

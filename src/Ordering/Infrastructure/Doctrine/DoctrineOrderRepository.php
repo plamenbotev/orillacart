@@ -97,6 +97,24 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         $this->entityManager->flush();
     }
 
+    public function countByCustomers(array $customerIds): array
+    {
+        if ($customerIds === []) {
+            return [];
+        }
+        $rows = $this->entityManager->createQueryBuilder()->select('o.customerId AS customer, COUNT(o.id) AS orders')->from(Order::class, 'o')
+            ->where('o.customerId IN (:customers)')->setParameter('customers', $customerIds)
+            ->groupBy('o.customerId')->getQuery()->getScalarResult();
+        $counts = [];
+        foreach ($rows as $row) {
+            if (\is_array($row) && is_numeric($row['customer'] ?? null) && is_numeric($row['orders'] ?? null)) {
+                $counts[(int) $row['customer']] = (int) $row['orders'];
+            }
+        }
+
+        return $counts;
+    }
+
     public function hasStandingOrder(?int $customerId, string $email, ?int $exceptOrderId = null): bool
     {
         $query = $this->entityManager->createQueryBuilder()->select('o.id')->from(Order::class, 'o')

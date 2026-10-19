@@ -146,6 +146,15 @@ final class CatalogRestTest extends RestTestCase
         $taken = $this->request('PUT', "/products/{$post}", ['price' => '1', 'sku' => 'CUP'], nonce: true);
         self::assertSame(422, $taken->get_status());
         self::assertSame('orillacart_duplicate_sku', $this->data($taken)['code']);
+        // The database holds each SKU once: changing one frees it for others.
+        global $wpdb;
+        self::assertInstanceOf(\wpdb::class, $wpdb);
+        $claims = static fn(): array => $wpdb->get_col($wpdb->prepare('SELECT sku FROM %i ORDER BY sku', $wpdb->prefix . 'orillacart_skus'));
+        self::assertContains('CUP', $claims());
+        $this->request('PUT', "/products/{$other}", ['price' => '1', 'sku' => 'CUP-2'], nonce: true);
+        $bowl = $this->post('Bowl');
+        self::assertSame(200, $this->request('PUT', "/products/{$bowl}", ['price' => '1', 'sku' => 'CUP'], nonce: true)->get_status());
+        self::assertSame(['CUP', 'CUP-2'], array_values(array_intersect($claims(), ['CUP', 'CUP-2'])));
 
         $page = wp_insert_post(['post_type' => 'page', 'post_title' => 'About', 'post_status' => 'publish']);
         self::assertIsInt($page);

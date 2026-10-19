@@ -144,9 +144,13 @@ final readonly class CustomerService
     {
         $search = $query->search === null || trim($query->search) === '' ? null : trim($query->search);
         [$records, $total] = $this->accounts->search($search, ($query->page - 1) * $query->perPage, $query->perPage);
+        // Two queries for the page, not two a customer.
+        $ids = array_map(static fn($record): int => $record->id, $records);
+        $orders = $this->orders->orderCounts($ids);
+        $groups = $this->groups->groupIdsOfMany($ids);
 
         return new CustomerPageView(
-            array_map(fn($record): CustomerView => CustomerView::fromRecord($record, $this->orders->orders(new OrderQuery(customerId: $record->id, perPage: 1))->total, $this->groups->groupIdsOf($record->id)), $records),
+            array_map(static fn($record): CustomerView => CustomerView::fromRecord($record, $orders[$record->id] ?? 0, $groups[$record->id] ?? []), $records),
             $total,
             $query->page,
             max(1, (int) ceil($total / $query->perPage)),

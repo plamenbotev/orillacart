@@ -148,6 +148,18 @@ final readonly class OrderService
     }
 
     /**
+     * How many orders each customer has, for a list of customers, in one query.
+     *
+     * @param list<int> $customerIds
+     *
+     * @return array<int, int> by customer id; 0 for those without orders
+     */
+    public function orderCounts(array $customerIds): array
+    {
+        return $this->orders->countByCustomers($customerIds) + array_fill_keys($customerIds, 0);
+    }
+
+    /**
      * An order of a customer, as they see it; another customer's order is not found.
      *
      * @throws OrderNotFound

@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace OrillaCart\Catalog\Infrastructure\Doctrine;
 
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Catalog\Domain\Attribute;
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\AttributeSet;
+use OrillaCart\Catalog\Domain\CatalogRuleViolation;
+use OrillaCart\Catalog\Domain\ClaimedSku;
 use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Catalog\Domain\ProductRepository;
 use OrillaCart\Catalog\Domain\Variation;
@@ -176,10 +179,49 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return $this->entityManager->find(Variation::class, $variationId)?->product();
     }
 
+    /**
+     * Saves the product and the SKUs it and its variations have, together: one the database already holds for
+     * another product or variation is refused, and nothing is saved.
+     *
+     * @throws CatalogRuleViolation for a SKU another has, as when two saves took it at once
+     */
     public function save(Product $product): void
     {
-        $this->entityManager->persist($product);
-        $this->entityManager->flush();
+        $connection = $this->entityManager->getConnection();
+        $connection->beginTransaction();
+        try {
+            $this->entityManager->persist($product);
+            $this->entityManager->flush();
+            $this->claimSkus($product);
+            $connection->commit();
+        } catch (UniqueConstraintViolationException $e) {
+            $connection->rollBack();
+
+            throw new CatalogRuleViolation('Another product or variation has one of these SKUs.', 'orillacart_duplicate_sku', $e);
+        } catch (\Throwable $e) {
+            $connection->rollBack();
+
+            throw $e;
+        }
+    }
+
+    private function claimSkus(Product $product): void
+    {
+        $table = $this->entityManager->getClassMetadata(ClaimedSku::class)->getTableName();
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement("DELETE FROM {$table} WHERE product_id = ?", [$product->id()]);
+        $claims = [];
+        if ($product->details()->sku !== null) {
+            $claims[] = [$product->details()->sku, $product->id(), null];
+        }
+        foreach ($product->variations() as $variation) {
+            if ($variation->sku() !== null) {
+                $claims[] = [$variation->sku(), $product->id(), $variation->id()];
+            }
+        }
+        foreach ($claims as $claim) {
+            $connection->executeStatement("INSERT INTO {$table} (sku, product_id, variation_id) VALUES (?, ?, ?)", $claim);
+        }
     }
 
     public function remove(Product $product): void
@@ -198,24 +240,15 @@ final readonly class DoctrineProductRepository implements ProductRepository
 
     public function isSkuTaken(string $sku, ?int $exceptProductId = null, ?int $exceptVariationId = null): bool
     {
-        $products = $this->entityManager->createQueryBuilder()
-            ->select('COUNT(p.id)')
-            ->from(Product::class, 'p')
-            ->where('p.sku = :sku')
-            ->setParameter('sku', $sku);
-        if ($exceptProductId !== null) {
-            $products->andWhere('p.id <> :product')->setParameter('product', $exceptProductId);
-        }
-        $variations = $this->entityManager->createQueryBuilder()
-            ->select('COUNT(v.id)')
-            ->from(Variation::class, 'v')
-            ->where('v.sku = :sku')
-            ->setParameter('sku', $sku);
-        if ($exceptVariationId !== null) {
-            $variations->andWhere('v.id <> :variation')->setParameter('variation', $exceptVariationId);
-        }
+        // One statement on the table of SKUs, where products' and variations' are side by side.
+        $table = $this->entityManager->getClassMetadata(ClaimedSku::class)->getTableName();
 
-        return (int) $products->getQuery()->getSingleScalarResult() + (int) $variations->getQuery()->getSingleScalarResult() > 0;
+        $count = $this->entityManager->getConnection()->fetchOne(
+            "SELECT COUNT(*) FROM {$table} WHERE sku = ? AND NOT (product_id <=> ? AND variation_id IS NULL) AND NOT (variation_id <=> ?)",
+            [$sku, $exceptProductId ?? -1, $exceptVariationId ?? -1],
+        );
+
+        return is_numeric($count) && (int) $count > 0;
     }
 
     public function isAnyOptionUsedByVariations(array $optionIds): bool
