@@ -178,7 +178,8 @@ final readonly class Consignments
     }
 
     /**
-     * Asks the courier where the shipment is. A delivered one completes its shipped order.
+     * Asks the courier where the shipment is, and the order follows: the first word that it is on its way ships
+     * an order being prepared (and tells the customer), delivery completes it, and a return is noted for the shop.
      *
      * @throws \Throwable when the courier cannot answer now: ask again later
      *
@@ -209,21 +210,24 @@ final readonly class Consignments
             return false;
         }
         $this->consignments->save($consignment);
-        if ($status === ConsignmentStatus::Delivered) {
-            $this->complete($consignment);
-        }
+        $this->orderFollows($consignment, $status);
 
         return true;
     }
 
-    private function complete(Consignment $consignment): void
+    private function orderFollows(Consignment $consignment, ConsignmentStatus $status): void
     {
+        $orderId = $consignment->orderId();
         try {
-            if ($this->orders->order($consignment->orderId())->status === 'shipped') {
-                $this->orders->changeStatus($consignment->orderId(), new ChangeOrderStatus('completed', note: \sprintf('The courier delivered shipment %s.', $consignment->number())), null);
-            }
+            $order = $this->orders->order($orderId)->status;
+            match (true) {
+                $status === ConsignmentStatus::OnTheWay && $order === 'processing' => $this->orders->changeStatus($orderId, new ChangeOrderStatus('shipped', note: \sprintf('The courier picked up shipment %s.', $consignment->number())), null),
+                $status === ConsignmentStatus::Delivered && \in_array($order, ['processing', 'shipped'], true) => $this->orders->changeStatus($orderId, new ChangeOrderStatus('completed', note: \sprintf('The courier delivered shipment %s.', $consignment->number())), null),
+                $status === ConsignmentStatus::Returned => $this->orders->addNote($orderId, new AddOrderNote(\sprintf('The courier is bringing shipment %s back: %s', $consignment->number(), $consignment->tracking() === '' ? 'no reason given.' : $consignment->tracking())), null),
+                default => null,
+            };
         } catch (RuleViolation $e) {
-            $this->logger->warning('Order {order} was not completed after its delivery: {message}', ['order' => $consignment->orderId(), 'message' => $e->getMessage()]);
+            $this->logger->warning('Order {order} did not follow shipment {shipment}: {message}', ['order' => $orderId, 'shipment' => $consignment->number(), 'message' => $e->getMessage()]);
         }
     }
 

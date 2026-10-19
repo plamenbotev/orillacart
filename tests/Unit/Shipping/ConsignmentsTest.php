@@ -139,6 +139,27 @@ final class ConsignmentsTest extends TestCase
         self::assertSame('completed', $this->shop->orders->order($placed->number)->status);
     }
 
+    public function testTheCouriersFirstScanShipsTheOrderAndADeliveryOrAReturnFollows(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart(), $this->order('express', 'bank_transfer'));
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('processing'), 7);
+        $booked = $this->shop->consignments->book($placed->number, new BookShipment(), 7);
+        self::assertSame('processing', $this->shop->orders->order($placed->number)->status, 'booked is not shipped');
+        $sent = \count($this->shop->mail->emails);
+
+        $this->shop->consignments->track($booked->id);
+
+        self::assertSame('shipped', $this->shop->orders->order($placed->number)->status);
+        self::assertStringContainsString('https://track.test/TS1', $this->shop->mail->emails[$sent]->html, 'the customer hears it left, with the tracking');
+
+        $returned = $this->shop->checkout->placeOrder($this->cart(), $this->order('express', 'bank_transfer'));
+        $this->shop->orders->changeStatus($returned->number, new ChangeOrderStatus('processing'), 7);
+        $back = $this->shop->consignments->book($returned->number, new BookShipment(), 7);
+        $this->courier->tracking[$back->number] = new Tracking(Tracking::RETURNED, 'Refused by the recipient');
+        $this->shop->consignments->track($back->id);
+        self::assertContains("The courier is bringing shipment {$back->number} back: Refused by the recipient", array_column($this->shop->orders->order($returned->number)->notes, 'text'));
+    }
+
     public function testAnOrderShippedByTheShopsOwnRatesHasNothingToBook(): void
     {
         $rate = $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Anywhere', '4')]))->rates[0]->id;
