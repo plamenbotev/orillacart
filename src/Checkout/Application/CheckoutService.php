@@ -265,7 +265,7 @@ final readonly class CheckoutService
             return $this->placed($order->number, $receiptUrl, null);
         }
         try {
-            $payment = $this->payments->start(new StartPayment($order->number, $order->number, $gateway, $order->total, $currency));
+            $payment = $this->payments->start(StartPayment::forOrder($order, $gateway));
         } catch (PaymentProviderUnavailable $e) {
             // The stock and the coupons' uses go back, and the customer keeps the cart to try again.
             $this->orders->cancel($order->number, 'The payment could not start.');

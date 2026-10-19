@@ -19,6 +19,8 @@ final class CheckoutRestTest extends RestTestCase
     private array $posts = [];
     /** @var list<array{method: string, url: string, body: string}> */
     private array $payPalCalls = [];
+    /** PayPal refuses orders that come with their lines and address, as it does an address it does not know. */
+    private bool $refusesDetails = false;
     private int $product;
     private int $rate;
     private ?\Closure $payPalFilter = null;
@@ -237,7 +239,12 @@ final class CheckoutRestTest extends RestTestCase
         self::assertCount(1, $creates);
         $create = $creates[0];
         $body = json_decode($create['body'], true);
-        self::assertSame(['currency_code' => 'EUR', 'value' => '38.33'], self::at($body, 'purchase_units', 0, 'amount'));
+        self::assertSame(['EUR', '38.33'], [self::at($body, 'purchase_units', 0, 'amount', 'currency_code'), self::at($body, 'purchase_units', 0, 'amount', 'value')]);
+        self::assertIsInt($order['number']);
+        self::assertSame((string) $order['number'], self::at($body, 'purchase_units', 0, 'custom_id'));
+        self::assertSame(['item_total' => ['currency_code' => 'EUR', 'value' => '33.33'], 'shipping' => ['currency_code' => 'EUR', 'value' => '5.00']], self::at($body, 'purchase_units', 0, 'amount', 'breakdown'));
+        self::assertSame([['name' => 'Lamp', 'quantity' => '1', 'unit_amount' => ['currency_code' => 'EUR', 'value' => '33.33']]], self::at($body, 'purchase_units', 0, 'items'));
+        self::assertSame([['type' => 'SHIPPING', 'name' => ['full_name' => 'Ada Lovelace'], 'address' => ['address_line_1' => '1 Vitosha Blvd', 'admin_area_2' => 'Sofia', 'postal_code' => '1000', 'country_code' => 'BG']], 'SET_PROVIDED_ADDRESS'], [self::at($body, 'purchase_units', 0, 'shipping'), self::at($body, 'payment_source', 'paypal', 'experience_context', 'shipping_preference')]);
         $returnUrl = self::at($body, 'payment_source', 'paypal', 'experience_context', 'return_url');
         self::assertIsString($returnUrl);
         self::assertStringStartsWith(rest_url('orillacart/v1/payments/paypal/return') . '?', $returnUrl);
@@ -253,6 +260,21 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame(303, $back->get_status());
         self::assertSame($order['receipt_url'], $back->get_headers()['Location']);
         self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($order)}"))['status']);
+    }
+
+    public function testAnOrderPayPalRefusesTheDetailsOfIsPaidForItsAmountAlone(): void
+    {
+        $this->refusesDetails = true;
+        $this->expectOutputRegex('/PayPal refused the details of order .* \(POSTAL_CODE_REQUIRED\)/');
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));
+
+        $order = $this->data($this->request('POST', '/checkout', $this->order('paypal'), nonce: true));
+
+        self::assertSame('pending_payment', $order['status']);
+        $creates = array_values(array_filter($this->payPalCalls, static fn(array $call): bool => $call['url'] === 'https://api-m.sandbox.paypal.com/v2/checkout/orders'));
+        self::assertCount(2, $creates);
+        $body = json_decode($creates[1]['body'], true);
+        self::assertSame([['currency_code' => 'EUR', 'value' => '38.33'], 'NO_SHIPPING'], [self::at($body, 'purchase_units', 0, 'amount'), self::at($body, 'payment_source', 'paypal', 'experience_context', 'shipping_preference')]);
     }
 
     public function testPayPalWebhooksAreReadOnlyWhenPayPalSignedThem(): void
@@ -389,6 +411,9 @@ final class CheckoutRestTest extends RestTestCase
         $body = \is_string($args['body'] ?? null) ? $args['body'] : '';
         $this->payPalCalls[] = ['method' => \is_string($args['method'] ?? null) ? $args['method'] : 'GET', 'url' => $url, 'body' => $body];
         $path = (string) parse_url($url, PHP_URL_PATH);
+        if ($this->refusesDetails && $path === '/v2/checkout/orders' && str_contains($body, '"items"')) {
+            return ['headers' => [], 'body' => (string) wp_json_encode(['name' => 'UNPROCESSABLE_ENTITY', 'details' => [['issue' => 'POSTAL_CODE_REQUIRED']]]), 'response' => ['code' => 422, 'message' => ''], 'cookies' => [], 'filename' => null];
+        }
         $answer = match (true) {
             $path === '/v1/oauth2/token' => ['access_token' => 'TOKEN', 'expires_in' => 3600],
             $path === '/v2/checkout/orders' => ['id' => 'PAY-1', 'status' => 'PAYER_ACTION_REQUIRED', 'links' => [['rel' => 'payer-action', 'href' => 'https://www.sandbox.paypal.com/checkoutnow?token=PAY-1']]],

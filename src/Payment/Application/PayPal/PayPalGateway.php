@@ -12,6 +12,7 @@ use OrillaCart\Extension\Payment\NamesNotifiedEvents;
 use OrillaCart\Extension\Payment\NamesNotifiedPayments;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Extension\Payment\PaymentGateway;
+use OrillaCart\Extension\Payment\PaymentItem;
 use OrillaCart\Extension\Payment\PaymentOutcome;
 use OrillaCart\Extension\Payment\PaymentReturn;
 use OrillaCart\Extension\Payment\PaymentSession;
@@ -90,14 +91,35 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
             throw new ProviderUnavailable('PayPal', "The amount {$amount} has more decimals than PayPal takes in {$session->currency}.");
         }
 
+        $breakdown = $session->breakdown;
+        $parts = $breakdown === null ? [] : ['itemTotal' => $breakdown->itemTotal, 'tax' => $breakdown->tax, 'shipping' => $breakdown->shipping, 'discount' => $breakdown->discount];
+        foreach ($session->items as $item) {
+            $parts[] = $item->unitAmount;
+        }
+        // The shop's decimals are never more than PayPal's (notReady), but an add-on's session might be.
+        $fits = array_all($parts, static fn(string $part): bool => Money::of($part)->rounded($decimals)->equals(Money::of($part)));
         $order = $this->call(fn() => $this->api->createOrder(self::account($settings), new PayPalOrderRequest(
             "orillacart-payment-{$session->paymentId}",
             "orillacart-{$session->orderNumber}-{$session->paymentId}",
+            (string) $session->orderNumber,
             "Order #{$session->orderNumber}",
             $amount->format($decimals),
             $session->currency,
             $session->returnUrl,
             $session->cancelUrl,
+            $fits && $breakdown !== null ? array_map(static fn(PaymentItem $item): array => [
+                'name' => mb_substr($item->name, 0, 127),
+                'sku' => $item->sku === null ? null : mb_substr($item->sku, 0, 127),
+                'quantity' => $item->quantity,
+                'unitAmount' => Money::of($item->unitAmount)->format($decimals),
+            ], $session->items) : [],
+            $fits && $breakdown !== null ? [
+                'itemTotal' => Money::of($breakdown->itemTotal)->format($decimals),
+                'tax' => Money::of($breakdown->tax)->format($decimals),
+                'shipping' => Money::of($breakdown->shipping)->format($decimals),
+                'discount' => Money::of($breakdown->discount)->format($decimals),
+            ] : null,
+            $session->shipTo,
         )));
 
         return PaymentStart::redirect($order->approveUrl, $order->id);

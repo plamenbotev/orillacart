@@ -15,6 +15,7 @@ use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentNotFound;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
+use OrillaCart\Payment\Domain\PaymentStatus;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
@@ -150,6 +151,23 @@ final class PayPalGatewayTest extends TestCase
         self::assertSame('pending_payment', $this->orderStatus($denied), 'DENIED is not a status the shop knows: nothing changes');
         $this->shop->outcomes->notified('paypal', $this->capture('PAYMENT.CAPTURE.DECLINED', 'DECLINED', 'PAYPAL-3', '8.00'));
         self::assertSame('failed', $this->orderStatus($denied));
+    }
+
+    public function testMarkingAHeldPaymentPaidCompletesItWithItsTransaction(): void
+    {
+        $held = $this->place();
+        self::assertNull($this->shop->payPalApi->created[0]->shipTo, 'an e-book ships nowhere');
+        $this->shop->outcomes->notified('paypal', $this->capture('PAYMENT.CAPTURE.PENDING', 'PENDING', 'PAYPAL-1', '8.00'));
+
+        // The shop saw the money arrive at PayPal before PayPal said so.
+        $this->shop->orders->markPaidByShop($held->number, '', 7);
+
+        $payment = $this->shop->paymentRecords->findByReference('paypal', 'PAYPAL-1');
+        self::assertSame(['processing', 'CAPTURE-PAYPAL-1'], [$this->orderStatus($held), $this->shop->orderRecords->orders[$held->number]->transactionId()]);
+        self::assertSame(PaymentStatus::Completed, $payment?->status());
+        $notes = \count($this->shop->orders->order($held->number)->notes);
+        $this->shop->outcomes->notified('paypal', $this->capture('PAYMENT.CAPTURE.COMPLETED', 'COMPLETED', 'PAYPAL-1', '8.00'));
+        self::assertCount($notes, $this->shop->orders->order($held->number)->notes, 'PayPal\'s word after it changes nothing');
     }
 
     public function testMoneyThatDoesNotMatchTheOrderWaitsForTheShop(): void

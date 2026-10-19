@@ -71,7 +71,7 @@ final readonly class PayNow
         }
         $receiptUrl = $this->links->receiptUrl($order->number);
         try {
-            $payment = $this->payments->start(new StartPayment($order->number, $order->number, $command->payment, $order->total, $order->currency));
+            $payment = $this->payments->start(StartPayment::forOrder($order, $command->payment));
         } catch (PaymentProviderUnavailable $e) {
             // An order that had failed fails again, giving its stock back; one that waited goes on waiting.
             if ($failed) {

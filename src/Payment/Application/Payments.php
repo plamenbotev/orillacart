@@ -53,6 +53,9 @@ final readonly class Payments
                 $this->urls->returnUrl($gateway->id(), $payment->id()),
                 $this->urls->cancelUrl($gateway->id(), $payment->id()),
                 $this->urls->notificationUrl($gateway->id()),
+                $command->items,
+                $command->breakdown,
+                $command->shipTo,
             ), new Settings($method->settings()));
         } catch (ProviderUnavailable $e) {
             $payment->fail(null, $this->clock->now());

@@ -145,6 +145,10 @@ final class CheckoutServiceTest extends TestCase
         $payment = $this->shop->paymentRecords->findByReference('paypal', 'PAYPAL-1');
         self::assertNotNull($payment);
         self::assertSame(['46.00', 'EUR', $this->shop->paymentUrls->returnUrl('paypal', $payment->id()), $this->shop->paymentUrls->cancelUrl('paypal', $payment->id())], [$request->amount, $request->currency, $request->returnUrl, $request->cancelUrl]);
+        self::assertSame((string) $placed->number, $request->customId);
+        self::assertSame([['name' => 'Lamp', 'sku' => null, 'quantity' => 1, 'unitAmount' => '33.33']], $request->items);
+        self::assertSame(['itemTotal' => '33.33', 'tax' => '7.67', 'shipping' => '5.00', 'discount' => '0.00'], $request->breakdown);
+        self::assertSame(['Ada Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', null], [$request->shipTo?->name, $request->shipTo?->street, $request->shipTo?->city, $request->shipTo?->postcode, $request->shipTo?->country, $request->shipTo?->state]);
         foreach ([['token' => 'PAYPAL-1'], ['token' => 'PAYPAL-1', 'payment' => (string) $payment->id(), 'sig' => str_repeat('0', 32)], ['token' => 'PAYPAL-1'] + $this->shop->paymentUrls->query('paypal', $payment->id() + 1)] as $forged) {
             try {
                 $this->shop->outcomes->returned('paypal', $forged, true);

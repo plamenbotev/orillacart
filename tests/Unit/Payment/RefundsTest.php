@@ -288,7 +288,12 @@ final class RefundsTest extends TestCase
             'amount' => ['value' => $amount, 'currency_code' => 'EUR'],
             'custom_id' => $customId,
             'links' => [['rel' => 'up', 'href' => 'https://api.sandbox.paypal.com/v2/payments/captures/CAPTURE-PAYPAL-1']],
-        ])])));
+        ], self::given(...))], self::given(...))));
+    }
+
+    private static function given(mixed $value): bool
+    {
+        return $value !== null;
     }
 
     private function available(): ?int

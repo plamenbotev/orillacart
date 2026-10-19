@@ -31,6 +31,7 @@ use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
 use OrillaCart\Ordering\Domain\Event\OrderChanged;
 use OrillaCart\Ordering\Domain\Event\OrderDeleted;
 use OrillaCart\Ordering\Domain\Event\OrderDeleting;
+use OrillaCart\Ordering\Domain\Event\OrderMarkingPaid;
 use OrillaCart\Ordering\Domain\Event\OrderNeedsAttention;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderPaid;
@@ -240,7 +241,12 @@ final readonly class OrderService
     {
         return $this->changing($id, function (Order $order) use ($note, $userId): OrderView {
             $previous = $order->status();
-            if (!$order->markPaid($order->transactionId(), $this->clock->now())) {
+            if ($order->paidAt() !== null) {
+                throw new OrderRuleViolation(\sprintf('Order #%d is paid already.', $order->id()), 'orillacart_order_paid');
+            }
+            $marking = new OrderMarkingPaid($order->id());
+            $this->events->dispatch($marking);
+            if (!$order->markPaid($marking->transactionId ?? $order->transactionId(), $this->clock->now())) {
                 throw new OrderRuleViolation(\sprintf('Order #%d is paid already.', $order->id()), 'orillacart_order_paid');
             }
             $order->status() === $previous ? $this->paidWhileFulfilled($order, $note, $userId) : $this->changed($order, $previous, [], $note, $userId);

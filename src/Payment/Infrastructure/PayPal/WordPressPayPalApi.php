@@ -13,6 +13,7 @@ use OrillaCart\Payment\Application\Dto\PayPalOrderRequest;
 use OrillaCart\Payment\Application\Dto\PayPalRefund;
 use OrillaCart\Payment\Application\PayPal\PayPalApi;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Security\Secrets;
 use Psr\Log\LoggerInterface;
 
@@ -34,21 +35,17 @@ final readonly class WordPressPayPalApi implements PayPalApi
 
     public function createOrder(PayPalAccount $account, PayPalOrderRequest $request): PayPalOrder
     {
-        $order = $this->call($account, 'POST', '/v2/checkout/orders', [
-            'intent' => 'CAPTURE',
-            'purchase_units' => [[
-                'invoice_id' => $request->invoiceId,
-                'description' => $request->description,
-                'amount' => ['currency_code' => $request->currency, 'value' => $request->amount],
-            ]],
-            'payment_source' => ['paypal' => ['experience_context' => [
-                'brand_name' => self::brand(),
-                'user_action' => 'PAY_NOW',
-                'shipping_preference' => 'NO_SHIPPING',
-                'return_url' => $request->returnUrl,
-                'cancel_url' => $request->cancelUrl,
-            ]]],
-        ], ['PayPal-Request-Id' => $request->requestId]);
+        $response = $this->send($account, 'POST', '/v2/checkout/orders', self::orderBody($request, true), ['PayPal-Request-Id' => $request->requestId]);
+        if ($response['status'] === 422 && ($request->breakdown !== null || $request->shipTo !== null)) {
+            // PayPal refused the lines or the address, as for a postcode it does not know: the payment goes on
+            // without them, as one order for the amount.
+            $this->logger->warning('PayPal refused the details of order {invoice} ({issue}); asking again for the amount alone.', ['invoice' => $request->invoiceId, 'issue' => self::issue($response['body'])]);
+            $response = $this->send($account, 'POST', '/v2/checkout/orders', self::orderBody($request, false), ['PayPal-Request-Id' => "{$request->requestId}-plain"]);
+        }
+        if ($response['status'] >= 300) {
+            throw $this->unavailable("PayPal refused to create order {$request->invoiceId} ({$response['status']}).", $response['body']);
+        }
+        $order = $response['body'];
 
         $id = self::text($order, 'id');
         foreach (\is_array($order['links'] ?? null) ? $order['links'] : [] as $link) {
@@ -58,6 +55,64 @@ final readonly class WordPressPayPalApi implements PayPalApi
         }
 
         throw $this->unavailable('PayPal created an order without an approval link.', $order);
+    }
+
+    /**
+     * The order PayPal shows the customer: its lines and what the amount is made of, and the address the goods go to,
+     * which PayPal's seller protection needs.
+     *
+     * @return array<string, mixed>
+     */
+    private static function orderBody(PayPalOrderRequest $request, bool $detailed): array
+    {
+        $money = static fn(string $value): array => ['currency_code' => $request->currency, 'value' => $value];
+        $amount = $money($request->amount);
+        $unit = ['invoice_id' => $request->invoiceId, 'custom_id' => $request->customId, 'description' => $request->description];
+        $breakdown = $detailed ? $request->breakdown : null;
+        if ($breakdown !== null) {
+            $amount['breakdown'] = array_filter([
+                'item_total' => $money($breakdown['itemTotal']),
+                'tax_total' => $money($breakdown['tax']),
+                'shipping' => $money($breakdown['shipping']),
+                'discount' => $money($breakdown['discount']),
+            ], static fn(array $part, string $key): bool => $key === 'item_total' || !Money::of($part['value'])->isZero(), ARRAY_FILTER_USE_BOTH);
+            if ($request->items !== []) {
+                $unit['items'] = array_map(static fn(array $item): array => array_filter([
+                    'name' => $item['name'],
+                    'sku' => $item['sku'],
+                    'quantity' => (string) $item['quantity'],
+                    'unit_amount' => $money($item['unitAmount']),
+                ], static fn(mixed $value): bool => $value !== null && $value !== ''), $request->items);
+            }
+        }
+        $unit['amount'] = $amount;
+        $shipTo = $detailed ? $request->shipTo : null;
+        if ($shipTo !== null) {
+            $unit['shipping'] = [
+                'type' => 'SHIPPING',
+                'name' => ['full_name' => mb_substr($shipTo->name, 0, 300)],
+                'address' => array_filter([
+                    'address_line_1' => mb_substr($shipTo->street, 0, 300),
+                    'admin_area_2' => mb_substr($shipTo->city, 0, 120),
+                    'admin_area_1' => $shipTo->state,
+                    'postal_code' => $shipTo->postcode,
+                    'country_code' => $shipTo->country,
+                ], static fn(?string $value): bool => $value !== null && $value !== ''),
+            ];
+        }
+
+        return [
+            'intent' => 'CAPTURE',
+            'purchase_units' => [$unit],
+            'payment_source' => ['paypal' => ['experience_context' => [
+                'brand_name' => self::brand(),
+                'user_action' => 'PAY_NOW',
+                // The customer cannot change the address at PayPal: the shop charged for shipping to this one.
+                'shipping_preference' => $shipTo === null ? 'NO_SHIPPING' : 'SET_PROVIDED_ADDRESS',
+                'return_url' => $request->returnUrl,
+                'cancel_url' => $request->cancelUrl,
+            ]]],
+        ];
     }
 
     public function captureOrder(PayPalAccount $account, string $orderId): PayPalCapture
