@@ -47,15 +47,6 @@ final readonly class AccountBlock implements BlockDefinition
         return 'orillacart/account';
     }
 
-    public static function metadata(): array
-    {
-        return [
-            'title' => __('Customer account', 'orillacart'),
-            'description' => __('Logging in, making an account, and the customer\'s orders, files and addresses.', 'orillacart'),
-            'icon' => 'admin-users',
-        ];
-    }
-
     public function render(array $attributes): string
     {
         $here = (string) get_permalink();

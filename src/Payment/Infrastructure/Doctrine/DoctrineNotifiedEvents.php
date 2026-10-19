@@ -29,4 +29,11 @@ final readonly class DoctrineNotifiedEvents implements NotifiedEvents
             ->where('e.receivedAt < :before')->setParameter('before', $before)
             ->getQuery()->execute();
     }
+
+    public function lastReceivedAt(string $gateway): ?\DateTimeImmutable
+    {
+        $last = $this->entityManager->getRepository(NotifiedEvent::class)->findOneBy(['gateway' => $gateway], ['receivedAt' => 'DESC']);
+
+        return $last?->receivedAt();
+    }
 }

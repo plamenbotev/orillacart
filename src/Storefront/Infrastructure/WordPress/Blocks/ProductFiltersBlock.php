@@ -29,17 +29,6 @@ final readonly class ProductFiltersBlock implements BlockDefinition
         return 'orillacart/product-filters';
     }
 
-    public static function metadata(): array
-    {
-        return [
-            'title' => __('Product filters', 'orillacart'),
-            'description' => __('Brands, the shop’s filters, price and stock, with how many products each leaves. Place it beside a Products block.', 'orillacart'),
-            'icon' => 'filter',
-            'keywords' => [__('filter', 'orillacart'), __('facets', 'orillacart'), __('shop', 'orillacart')],
-            'attributes' => [],
-        ];
-    }
-
     public function render(array $attributes): string
     {
         $products = self::productsBlock();

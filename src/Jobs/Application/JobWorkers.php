@@ -95,4 +95,9 @@ final readonly class JobWorkers
     {
         return $this->registry->cronRanAt();
     }
+
+    public function cronDisabled(): bool
+    {
+        return $this->registry->cronDisabled();
+    }
 }

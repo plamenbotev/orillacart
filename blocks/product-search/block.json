@@ -1,0 +1,30 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/product-search",
+	"title": "Product search",
+	"category": "widgets",
+	"icon": "search",
+	"description": "A search box that finds products in the shop.",
+	"keywords": [
+		"search",
+		"find"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"placeholder": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		]
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

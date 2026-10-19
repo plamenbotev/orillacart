@@ -53,15 +53,6 @@ final readonly class CheckoutBlock implements BlockDefinition
         return 'orillacart/checkout';
     }
 
-    public static function metadata(): array
-    {
-        return [
-            'title' => __('Checkout', 'orillacart'),
-            'description' => __('Addresses, shipping and payment for the cart, then the receipt.', 'orillacart'),
-            'icon' => 'money-alt',
-        ];
-    }
-
     public function render(array $attributes): string
     {
         $receipt = $_GET[StorefrontOrderLinks::RECEIPT_QUERY] ?? null;

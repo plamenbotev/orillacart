@@ -18,6 +18,8 @@ final readonly class JobsOverview
      * @param list<ScheduledJobView> $scheduled the soonest scheduled ahead
      * @param list<JobCounts>        $hours  the last 24 hours, per type
      * @param list<JobCounts>        $days   the last 30 days, per type
+     * @param bool                   $cronDisabled WP-Cron does not run on visits: a server's cron or workers have to
+     *                                              run the jobs
      */
     public function __construct(
         public array $lanes,
@@ -30,5 +32,6 @@ final readonly class JobsOverview
         public array $hours,
         public array $days,
         public string $now,
+        public bool $cronDisabled = false,
     ) {}
 }

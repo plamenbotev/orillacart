@@ -7,8 +7,11 @@ namespace OrillaCart\Tests\Unit\Platform\Twig;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\Twig\TwigFactory;
 use OrillaCart\Platform\Twig\TwigRenderer;
+use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 use PHPUnit\Framework\TestCase;
 use Twig\Environment;
+use Twig\Error\RuntimeError;
+use Twig\Loader\ArrayLoader;
 use Twig\Loader\FilesystemLoader;
 
 final class TwigFactoryTest extends TestCase
@@ -53,5 +56,22 @@ final class TwigFactoryTest extends TestCase
 
         self::assertSame('theme: &lt;script&gt;', $renderer->render('product.twig', ['name' => '<script>']));
         self::assertSame('cart: Mug', $renderer->render('cart.twig', ['name' => 'Mug']));
+    }
+
+    public function testALiveSiteLogsWhatATemplateWasNotGivenAndRendersItAnyway(): void
+    {
+        $loader = new ArrayLoader(['note.twig' => 'Hi {{ name }}{{ note.text }}!']);
+        $logger = new MemoryLogger();
+
+        $live = new TwigRenderer(new Environment($loader, ['strict_variables' => true]), logger: $logger);
+        self::assertSame('Hi Ada!', $live->render('note.twig', ['name' => 'Ada']));
+        self::assertSame('Hi Ada!', $live->render('note.twig', ['name' => 'Ada']), 'strict again for the next one');
+        self::assertCount(2, $logger->records);
+        $message = $logger->records[0]['context']['message'] ?? null;
+        self::assertIsString($message);
+        self::assertStringContainsString('Variable "note" does not exist', $message);
+
+        $this->expectException(RuntimeError::class);
+        new TwigRenderer(new Environment($loader, ['strict_variables' => true, 'debug' => true]))->render('note.twig', ['name' => 'Ada']);
     }
 }

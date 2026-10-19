@@ -169,6 +169,16 @@ export function JobsScreen() {
 }
 
 function Health( { overview }: { overview: Overview } ) {
+	if ( overview.runner === 'none' && overview.cron_disabled ) {
+		return (
+			<Notice status="warning" isDismissible={ false }>
+				{ __(
+					'WP-Cron is turned off on this site (DISABLE_WP_CRON) and no worker is running, so nothing runs the jobs. Have the server run "wp cron event run --due-now" every minute, or run workers (wp orillacart jobs work --loop).',
+					'orillacart'
+				) }
+			</Notice>
+		);
+	}
 	if ( overview.runner === 'none' ) {
 		return (
 			<Notice status="warning" isDismissible={ false }>

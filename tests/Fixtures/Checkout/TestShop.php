@@ -357,7 +357,7 @@ final class TestShop
         $this->mail = new SentMail();
         $this->emailSettings = new InMemoryEmailSettingsRepository();
         $context = new PluginContext(\dirname(__DIR__, 3) . '/orillacart.php', 'test');
-        $this->templates = $templates = new TwigRenderer(new TwigFactory($context, new ShopExtension($settings, $geography, $taxes))->create(), new SerializerFactory()->create());
+        $this->templates = $templates = new TwigRenderer(new TwigFactory($context, new ShopExtension($settings, $geography, $taxes))->create(), new SerializerFactory()->create(), $this->logger);
         $this->consignmentRecords = new InMemoryConsignmentRepository();
         $keepShipped = new KeepShippedOrders($this->consignmentRecords);
         $this->events->addListener(OrderDeleting::class, $keepShipped->deleting(...));

@@ -5,28 +5,61 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\Twig;
 
 use OrillaCart\Shared\View\TemplateRenderer;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Twig\Environment;
+use Twig\Error\RuntimeError;
 
 /**
  * Renders templates with view DTOs turned into the same arrays the REST API sends, so templates name fields
- * as the API does: {{ order.shipping_total }}.
+ * as the API does: {{ order.shipping_total }}. Twig is strict about variables: with WP_DEBUG a template naming
+ * one it was not given fails; on a live site that is logged, and the template rendered again as if it were empty.
  */
 final readonly class TwigRenderer implements TemplateRenderer
 {
     public function __construct(
         private Environment $twig,
         private ?NormalizerInterface $normalizer = null,
+        private LoggerInterface $logger = new NullLogger(),
     ) {}
 
     public function render(string $template, array $context = []): string
     {
-        return $this->twig->render($template, $this->normalized($context));
+        $context = $this->normalized($context);
+
+        return $this->leniently($template, fn(): string => $this->twig->render($template, $context));
     }
 
     public function renderBlock(string $template, string $block, array $context = []): string
     {
-        return $this->twig->load($template)->renderBlock($block, $this->normalized($context));
+        $context = $this->normalized($context);
+
+        return $this->leniently($template, fn(): string => $this->twig->load($template)->renderBlock($block, $context));
+    }
+
+    /**
+     * @param \Closure(): string $render
+     */
+    private function leniently(string $template, \Closure $render): string
+    {
+        if (!$this->twig->isStrictVariables() || $this->twig->isDebug()) {
+            return $render();
+        }
+        try {
+            return $render();
+        } catch (RuntimeError $e) {
+            // Only what strictness found: a template that fails leniently too fails as it is.
+            $this->twig->disableStrictVariables();
+            try {
+                $html = $render();
+            } finally {
+                $this->twig->enableStrictVariables();
+            }
+            $this->logger->warning('Template {template} names what it was not given: {message}', ['template' => $template, 'message' => $e->getMessage()]);
+
+            return $html;
+        }
     }
 
     /**

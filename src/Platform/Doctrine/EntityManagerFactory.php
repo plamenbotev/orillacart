@@ -15,12 +15,15 @@ use Doctrine\ORM\Events;
 use Doctrine\ORM\Mapping\UnderscoreNamingStrategy;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\ToolEvents;
+use OrillaCart\Platform\CacheFolders;
 use OrillaCart\Platform\Doctrine\StrictMysqli\Middleware;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\WordPress\Security\SiteSignatures;
 use OrillaCart\Shared\Security\Secrets;
 use OrillaCart\Shared\Security\Signatures;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Cache\Adapter\PhpFilesAdapter;
 
 /**
  * Doctrine on its own connection, with WordPress' credentials, seeing only the plugin's tables.
@@ -40,11 +43,12 @@ final readonly class EntityManagerFactory
     {
         $entityDirectories = glob($this->context->path(self::ENTITY_DIRECTORIES), GLOB_ONLYDIR);
 
+        $devMode = \defined('WP_DEBUG') && WP_DEBUG;
         // An explicit cache: ORMSetup's own default probes Memcached and Redis on 127.0.0.1, wrong on shared hosts.
         $config = ORMSetup::createAttributeMetadataConfig(
             paths: $entityDirectories === false ? [] : $entityDirectories,
-            isDevMode: \defined('WP_DEBUG') && WP_DEBUG,
-            cache: new ArrayAdapter(),
+            isDevMode: $devMode,
+            cache: $devMode ? new ArrayAdapter() : $this->metadataCache(),
         );
         $config->enableNativeLazyObjects(true);
         // Properties are camelCase, columns snake_case: inEu is stored as in_eu.
@@ -62,6 +66,21 @@ final readonly class EntityManagerFactory
         $events->addEventListener(ToolEvents::postGenerateSchema, new ReferencesListener($this->database->tablePrefix));
 
         return new EntityManager($connection, $config, $events);
+    }
+
+    /**
+     * The mapping, read from the entities' attributes once per version and kept as PHP files, which OPcache
+     * keeps in memory: every request would otherwise read every entity class. One set per table prefix, as each
+     * site of a network maps the entities to its own tables. In memory without a writable cache folder.
+     */
+    private function metadataCache(): CacheItemPoolInterface
+    {
+        $dir = CacheFolders::path('doctrine', $this->context->version);
+        if ($dir === null) {
+            return new ArrayAdapter();
+        }
+
+        return new PhpFilesAdapter('meta.' . substr(hash('sha256', $this->database->tablePrefix), 0, 12), 0, $dir);
     }
 
     private function dbalConfiguration(): DbalConfiguration

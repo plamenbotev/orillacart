@@ -1,0 +1,20 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/cart",
+	"title": "Cart",
+	"category": "widgets",
+	"icon": "cart",
+	"description": "What the shopper put in the cart, with quantities and the way to the checkout.",
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		]
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

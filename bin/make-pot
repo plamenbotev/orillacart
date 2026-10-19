@@ -12,6 +12,6 @@ mkdir -p "$ROOT/var/i18n" "$ROOT/languages"
 php "$ROOT/bin/twig-strings.php" templates > "$ROOT/var/i18n/templates.php"
 (cd "$ROOT" && npx wp-env run cli --env-cwd=wp-content/plugins/orillacart \
     php -d memory_limit=2G /usr/local/bin/wp i18n make-pot . languages/orillacart.pot --slug=orillacart --domain=orillacart \
-    --include=orillacart.php,src,config,build/admin,build/storefront,var/i18n --exclude=var/build,var/cache,dist \
+    --include=orillacart.php,src,config,blocks,build/admin,build/storefront,var/i18n --exclude=var/build,var/cache,dist \
     --headers='{"Report-Msgid-Bugs-To":"https://github.com/plamenbotev/orillacart/issues"}')
 rm -r "$ROOT/var/i18n"

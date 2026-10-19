@@ -77,6 +77,7 @@ final readonly class JobOverview
             $hours,
             self::byDay($this->queue->history($now->setTime(0, 0)->modify('-29 days'))),
             $now->format(\DATE_ATOM),
+            $this->workers->cronDisabled(),
         );
     }
 

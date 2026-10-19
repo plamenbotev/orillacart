@@ -37,6 +37,7 @@ const overview = ( changes: Partial< Overview > = {} ): Overview => ( {
 	workers: [],
 	runner: 'none',
 	cron_ran_at: '2030-01-01T12:10:00+00:00',
+	cron_disabled: false,
 	failed: 1,
 	scheduled: [],
 	hours: [
@@ -135,6 +136,25 @@ describe( 'JobsScreen', () => {
 			data: { all: true },
 		} );
 		expect( job ).toBeInTheDocument();
+	} );
+
+	it( 'says when WP-Cron is turned off and nothing else runs the jobs', async () => {
+		mockedFetch.mockImplementation( ( options ) =>
+			Promise.resolve(
+				( options as Request ).path.startsWith(
+					'/orillacart/v1/jobs/failed'
+				)
+					? failed
+					: overview( { cron_disabled: true } )
+			)
+		);
+		render( <JobsScreen /> );
+
+		expect(
+			await screen.findByText( /WP-Cron is turned off on this site/, {
+				selector: '.components-notice__content',
+			} )
+		).toHaveTextContent( 'wp cron event run --due-now' );
 	} );
 
 	it( 'lists the workers and asks them to restart', async () => {

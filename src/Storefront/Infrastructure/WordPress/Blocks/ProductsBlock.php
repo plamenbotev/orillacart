@@ -36,25 +36,6 @@ final readonly class ProductsBlock implements BlockDefinition
         return 'orillacart/products';
     }
 
-    public static function metadata(): array
-    {
-        return [
-            'title' => __('Products', 'orillacart'),
-            'description' => __('The shop: products with their prices, by category, with search.', 'orillacart'),
-            'icon' => 'products',
-            'keywords' => [__('shop', 'orillacart'), __('catalog', 'orillacart')],
-            'attributes' => [
-                'perPage' => ['type' => 'integer', 'default' => 12],
-                'columns' => ['type' => 'integer', 'default' => 3],
-                'category' => ['type' => 'string', 'default' => ''],
-                'sort' => ['type' => 'string', 'default' => 'order'],
-                'featured' => ['type' => 'boolean', 'default' => false],
-                'onSale' => ['type' => 'boolean', 'default' => false],
-                'filters' => ['type' => 'boolean', 'default' => true],
-            ],
-        ];
-    }
-
     public function render(array $attributes): string
     {
         $perPage = max(1, min(60, \is_int($attributes['perPage'] ?? null) ? $attributes['perPage'] : 12));

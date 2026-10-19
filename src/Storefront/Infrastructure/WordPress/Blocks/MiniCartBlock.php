@@ -28,18 +28,6 @@ final readonly class MiniCartBlock implements BlockDefinition
         return 'orillacart/mini-cart';
     }
 
-    public static function metadata(): array
-    {
-        return [
-            'title' => __('Mini cart', 'orillacart'),
-            'description' => __('The number of items in the cart, with a link or buttons to the cart and the checkout.', 'orillacart'),
-            'icon' => 'cart',
-            'attributes' => [
-                'showButtons' => ['type' => 'boolean', 'default' => false],
-            ],
-        ];
-    }
-
     public function render(array $attributes): string
     {
         $url = $this->links->pages()['cart'];

@@ -12,4 +12,7 @@ interface NotifiedEvents
 
     /** Forgets the events received before then. */
     public function forgetBefore(\DateTimeImmutable $before): void;
+
+    /** When the provider's last event that is still kept came. */
+    public function lastReceivedAt(string $gateway): ?\DateTimeImmutable;
 }

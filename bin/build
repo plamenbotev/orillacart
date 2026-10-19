@@ -26,7 +26,7 @@ step "Admin assets"
 step "Staging production files"
 rm -rf "$WORK" && mkdir -p "$STAGE" "$ROOT/dist"
 cp -R "$ROOT/orillacart.php" "$ROOT/uninstall.php" "$ROOT/readme.txt" "$ROOT/composer.json" "$ROOT/composer.lock" \
-      "$ROOT/src" "$ROOT/config" "$ROOT/migrations" "$STAGE/"
+      "$ROOT/src" "$ROOT/config" "$ROOT/migrations" "$ROOT/blocks" "$STAGE/"
 mkdir -p "$STAGE/build" && cp -R "$ROOT/build/admin" "$ROOT/build/storefront" "$STAGE/build/"
 [ -d "$ROOT/templates" ] && cp -R "$ROOT/templates" "$STAGE/"
 cp -R "$ROOT/languages" "$STAGE/"
@@ -43,7 +43,7 @@ fi
 php "$SCOPER" add-prefix --config="$ROOT/scoper.inc.php" --working-dir="$STAGE" --output-dir="$OUT" --force --no-interaction --quiet
 
 # PHP-Scoper only writes the files its finders select; the rest ships unchanged.
-cp -R "$STAGE/build" "$STAGE/languages" "$STAGE/readme.txt" "$STAGE/composer.json" "$OUT/"
+cp -R "$STAGE/build" "$STAGE/blocks" "$STAGE/languages" "$STAGE/readme.txt" "$STAGE/composer.json" "$OUT/"
 [ -d "$STAGE/templates" ] && cp -R "$STAGE/templates" "$OUT/"
 mkdir -p "$OUT/migrations"
 

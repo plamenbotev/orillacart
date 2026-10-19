@@ -1,0 +1,20 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/checkout",
+	"title": "Checkout",
+	"category": "widgets",
+	"icon": "money-alt",
+	"description": "Addresses, shipping and payment for the cart, then the receipt.",
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		]
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

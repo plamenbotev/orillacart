@@ -9,6 +9,7 @@ use OrillaCart\Jobs\Application\WorkerRegistry;
 
 final class MemoryWorkerRegistry implements WorkerRegistry
 {
+    public bool $cronOff = false;
     /** @var array<string, WorkerView> */
     public array $workers = [];
     public ?\DateTimeImmutable $restart = null;
@@ -52,5 +53,10 @@ final class MemoryWorkerRegistry implements WorkerRegistry
     public function cronRan(\DateTimeImmutable $at): void
     {
         $this->cron = $at;
+    }
+
+    public function cronDisabled(): bool
+    {
+        return $this->cronOff;
     }
 }

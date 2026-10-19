@@ -30,4 +30,7 @@ interface WorkerRegistry
     public function cronRanAt(): ?\DateTimeImmutable;
 
     public function cronRan(\DateTimeImmutable $at): void;
+
+    /** Whether the site turned off WP-Cron's runs on visits (DISABLE_WP_CRON): a server's cron has to run it. */
+    public function cronDisabled(): bool;
 }

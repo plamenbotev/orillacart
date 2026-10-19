@@ -81,6 +81,11 @@ final readonly class TableWorkerRegistry implements WorkerRegistry, LifecycleLis
         update_option(self::CRON, (string) $at->getTimestamp(), false);
     }
 
+    public function cronDisabled(): bool
+    {
+        return \defined('DISABLE_WP_CRON') && DISABLE_WP_CRON;
+    }
+
     public function activate(): void {}
 
     public function upgrade(?string $fromVersion): void {}

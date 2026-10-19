@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Storefront;
 
+use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
 /**
- * Registers the shop's blocks on init. A block is built only when a page renders it.
+ * Registers the shop's blocks on init from their block.json (blocks/<name>), so the editor, translations and the
+ * block directory read them as WordPress expects. A block is built only when a page renders it.
  */
 final readonly class BlockRegistrar implements Registrar
 {
@@ -20,6 +22,7 @@ final readonly class BlockRegistrar implements Registrar
     public function __construct(
         #[AutowireLocator(BlockDefinition::TAG, defaultIndexMethod: 'name')]
         private ServiceLocator $blocks,
+        private PluginContext $context,
     ) {}
 
     public function register(): void
@@ -34,13 +37,7 @@ final readonly class BlockRegistrar implements Registrar
             if (!is_a($class, BlockDefinition::class, true)) {
                 continue;
             }
-            register_block_type($name, $class::metadata() + [
-                'api_version' => '3',
-                'category' => 'widgets',
-                'supports' => ['html' => false, 'align' => ['wide', 'full']],
-                'editor_script_handles' => [StorefrontScripts::EDITOR],
-                'view_script_handles' => [StorefrontScripts::HANDLE],
-                'style_handles' => [StorefrontScripts::HANDLE],
+            register_block_type($this->context->path('blocks/' . substr($name, \strlen('orillacart/'))), [
                 'render_callback' => fn(array $attributes): string => self::wrap($this->blocks->get($name)->render(self::named($attributes))),
             ]);
         }

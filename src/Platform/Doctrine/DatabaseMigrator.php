@@ -42,6 +42,16 @@ final readonly class DatabaseMigrator implements LifecycleListener, RemovesShopD
         return $executed;
     }
 
+    /**
+     * @return list<string> versions not run yet
+     */
+    public function pending(): array
+    {
+        $this->migrations->getMetadataStorage()->ensureInitialized();
+
+        return array_values(array_map(static fn($migration): string => (string) $migration->getVersion(), $this->migrations->getMigrationStatusCalculator()->getNewMigrations()->getItems()));
+    }
+
     public function activate(): void
     {
         $this->migrate();

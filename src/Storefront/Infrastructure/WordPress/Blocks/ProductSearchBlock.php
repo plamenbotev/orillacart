@@ -24,19 +24,6 @@ final readonly class ProductSearchBlock implements BlockDefinition
         return 'orillacart/product-search';
     }
 
-    public static function metadata(): array
-    {
-        return [
-            'title' => __('Product search', 'orillacart'),
-            'description' => __('A search box that finds products in the shop.', 'orillacart'),
-            'icon' => 'search',
-            'keywords' => [__('search', 'orillacart'), __('find', 'orillacart')],
-            'attributes' => [
-                'placeholder' => ['type' => 'string', 'default' => ''],
-            ],
-        ];
-    }
-
     public function render(array $attributes): string
     {
         $shop = $this->links->pages()['shop'];

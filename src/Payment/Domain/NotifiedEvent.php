@@ -29,4 +29,9 @@ class NotifiedEvent
     {
         return $this->eventId;
     }
+
+    public function receivedAt(): \DateTimeImmutable
+    {
+        return $this->receivedAt;
+    }
 }

@@ -27,4 +27,11 @@ final class InMemoryNotifiedEvents implements NotifiedEvents
     {
         $this->events = array_filter($this->events, static fn(\DateTimeImmutable $at): bool => $at >= $before);
     }
+
+    public function lastReceivedAt(string $gateway): ?\DateTimeImmutable
+    {
+        $kept = array_filter($this->events, static fn(string $key): bool => str_starts_with($key, "{$gateway}:"), ARRAY_FILTER_USE_KEY);
+
+        return $kept === [] ? null : max($kept);
+    }
 }

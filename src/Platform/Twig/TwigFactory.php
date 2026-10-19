@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\Twig;
 
+use OrillaCart\Platform\CacheFolders;
 use OrillaCart\Platform\PluginContext;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
@@ -28,7 +29,8 @@ final readonly class TwigFactory
 
         $twig = new Environment(new FilesystemLoader($this->templatePaths()), [
             'autoescape' => 'html',
-            'strict_variables' => $debug,
+            // Strict everywhere: on a live site TwigRenderer logs what strictness finds and renders leniently.
+            'strict_variables' => true,
             'debug' => $debug,
             'cache' => $this->cacheDir() ?? false,
             // Recompile a template whose file changed: themes override templates without the plugin's version changing.
@@ -66,25 +68,11 @@ final readonly class TwigFactory
         return array_values(array_unique(array_filter($paths, is_dir(...))));
     }
 
-    /** The cache folder's name for a version of the plugin. */
-    public static function versionFolder(string $version): string
-    {
-        return preg_replace('/[^A-Za-z0-9._-]/', '_', $version) ?? 'unknown';
-    }
-
     /**
      * Compiled templates go to wp-content/cache/orillacart/twig/<version>; without a writable folder Twig compiles in memory.
      */
     private function cacheDir(): ?string
     {
-        if (!\defined('WP_CONTENT_DIR')) {
-            return null;
-        }
-        $dir = WP_CONTENT_DIR . '/cache/orillacart/twig/' . self::versionFolder($this->context->version);
-        if (!is_dir($dir) && !wp_mkdir_p($dir)) {
-            return null;
-        }
-
-        return is_writable($dir) ? $dir : null;
+        return CacheFolders::path('twig', $this->context->version);
     }
 }

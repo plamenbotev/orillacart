@@ -54,6 +54,8 @@ export interface Overview {
 	workers: Worker[];
 	runner: 'workers' | 'cron' | 'none';
 	cron_ran_at: string | null;
+	/** WP-Cron does not run on visits (DISABLE_WP_CRON). */
+	cron_disabled: boolean;
 	failed: number;
 	scheduled: ScheduledJob[];
 	hours: JobCounts[];

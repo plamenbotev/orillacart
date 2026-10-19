@@ -34,15 +34,6 @@ final readonly class CartBlock implements BlockDefinition
         return 'orillacart/cart';
     }
 
-    public static function metadata(): array
-    {
-        return [
-            'title' => __('Cart', 'orillacart'),
-            'description' => __('What the shopper put in the cart, with quantities and the way to the checkout.', 'orillacart'),
-            'icon' => 'cart',
-        ];
-    }
-
     public function render(array $attributes): string
     {
         $links = $this->links->pages();

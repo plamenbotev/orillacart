@@ -1,0 +1,20 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/account",
+	"title": "Customer account",
+	"category": "widgets",
+	"icon": "admin-users",
+	"description": "Logging in, making an account, and the customer's orders, files and addresses.",
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		]
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

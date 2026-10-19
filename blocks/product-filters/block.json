@@ -1,0 +1,25 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/product-filters",
+	"title": "Product filters",
+	"category": "widgets",
+	"icon": "filter",
+	"description": "Brands, the shop’s filters, price and stock, with how many products each leaves. Place it beside a Products block.",
+	"keywords": [
+		"filter",
+		"facets",
+		"shop"
+	],
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		]
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}
