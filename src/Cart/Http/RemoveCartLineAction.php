@@ -25,6 +25,6 @@ final readonly class RemoveCartLineAction implements RequestHandlerInterface
     {
         $result = $this->carts->remove($this->cookie->owner($request), PathParameter::id($request));
 
-        return $this->cookie->give($this->responder->ok($result->cart), $result->newToken, $request);
+        return $this->cookie->keep($this->responder->ok($result->cart), $result, $request);
     }
 }

@@ -37,7 +37,9 @@ final readonly class RestBridge
         // get_body() is documented as a string but returns null when the request has no body.
         $body = $request->get_body();
         $body = \is_string($body) ? $body : '';
+        // Secure as WordPress tells it, behind a proxy that ends HTTPS too: cookies take Secure from it.
         $uri = $this->uris->createUri(rest_url(ltrim($request->get_route(), '/')))
+            ->withScheme(is_ssl() ? 'https' : 'http')
             ->withQuery(http_build_query($query));
 
         $psr = $this->requests->createServerRequest($request->get_method(), $uri, $_SERVER)

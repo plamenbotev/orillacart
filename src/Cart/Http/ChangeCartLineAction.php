@@ -28,6 +28,6 @@ final readonly class ChangeCartLineAction implements RequestHandlerInterface
     {
         $result = $this->carts->changeQuantity($this->cookie->owner($request), PathParameter::id($request), $this->input->body($request, ChangeQuantity::class));
 
-        return $this->cookie->give($this->responder->ok($result->cart), $result->newToken, $request);
+        return $this->cookie->keep($this->responder->ok($result->cart), $result, $request);
     }
 }

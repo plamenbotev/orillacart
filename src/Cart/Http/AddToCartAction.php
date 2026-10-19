@@ -27,6 +27,6 @@ final readonly class AddToCartAction implements RequestHandlerInterface
     {
         $result = $this->carts->add($this->cookie->owner($request), $this->input->body($request, AddToCart::class));
 
-        return $this->cookie->give($this->responder->ok($result->cart, 201), $result->newToken, $request);
+        return $this->cookie->keep($this->responder->ok($result->cart, 201), $result, $request);
     }
 }

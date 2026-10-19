@@ -233,6 +233,17 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame(4, $this->data($this->request('GET', '/cart'))['items'], 'the next request works: the database layer was not left broken');
     }
 
+    public function testEveryChangeToTheCartGivesItsCookieAgain(): void
+    {
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));
+        $token = $_COOKIE[CartCookie::NAME] ?? null;
+
+        $again = $this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true);
+        $this->keepCookie($again);
+        self::assertSame($token, $_COOKIE[CartCookie::NAME] ?? null, 'the same cart, for another month');
+        self::assertArrayNotHasKey('Set-Cookie', $this->request('GET', '/cart')->get_headers(), 'reading it changes nothing');
+    }
+
     public function testAVisitorPaysWithPayPal(): void
     {
         $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));

@@ -6,13 +6,16 @@ namespace OrillaCart\Cart\Http;
 
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Cart\Application\Dto\CartResult;
 use OrillaCart\Shared\Http\Security\Authorization;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * The browser's cart cookie: who owns a cart, and handing out a new token. The cookie is HttpOnly, so scripts
- * cannot read it, and SameSite=Lax, so other sites cannot make the browser change the cart or order from it.
+ * cannot read it, and SameSite=Lax, so other sites cannot make the browser change the cart or order from it;
+ * Secure on a site served over HTTPS. Every change to the cart gives it again, so a cart in use does not expire
+ * in the browser before the shop forgets it.
  */
 final readonly class CartCookie
 {
@@ -23,6 +26,12 @@ final readonly class CartCookie
     public function owner(ServerRequestInterface $request): CartOwner
     {
         return CartOwner::fromCookie($request->getCookieParams()[self::NAME] ?? null, $this->authorization->userId());
+    }
+
+    /** After a change: the new token, or again the one the browser sent, for as long as the shop keeps carts. */
+    public function keep(ResponseInterface $response, CartResult $result, ServerRequestInterface $request): ResponseInterface
+    {
+        return $this->give($response, $result->newToken ?? $this->owner($request)->token, $request);
     }
 
     public function give(ResponseInterface $response, ?string $token, ServerRequestInterface $request): ResponseInterface
