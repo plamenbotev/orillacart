@@ -120,6 +120,7 @@ const variationInput = ( variation: Variation | null ): VariationInput => ( {
 	sku: variation?.sku ?? null,
 	stock_mode: variation?.stock_mode ?? 'tracked',
 	backorders: variation?.backorders ?? null,
+	backorder_limit: variation?.backorder_limit ?? null,
 	weight: variation?.weight ?? null,
 	length: variation?.length ?? null,
 	width: variation?.width ?? null,
@@ -256,6 +257,23 @@ function VariationRow( {
 								value === ''
 									? null
 									: ( value as VariationInput[ 'backorders' ] ),
+						} )
+					}
+				/>
+			) }
+			{ draft.stock_mode === 'tracked' && draft.backorders !== 'no' && (
+				<TextControl
+					__next40pxDefaultSize
+					type="number"
+					min={ 1 }
+					label={ __( 'Owe at most', 'orillacart' ) }
+					help={ __( 'Empty: as the product.', 'orillacart' ) }
+					value={ draft.backorder_limit ?? '' }
+					onChange={ ( value ) =>
+						setDraft( {
+							...draft,
+							backorder_limit:
+								value === '' ? null : Number( value ),
 						} )
 					}
 				/>

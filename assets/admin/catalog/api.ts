@@ -72,6 +72,8 @@ export interface Variation {
 	stock_mode: StockMode;
 	/** Its own; null to follow the product. */
 	backorders: Backorders | null;
+	/** How many it may owe at most; null to follow the product. */
+	backorder_limit: number | null;
 	/** Its own; null for the product's. Length, width and height likewise. */
 	weight: string | null;
 	length: string | null;
@@ -94,6 +96,8 @@ export interface Product {
 	tax_group_id: number | null;
 	stock_mode: StockMode;
 	backorders: Backorders;
+	/** How many it may owe at most when it takes backorders; null for no limit. */
+	backorder_limit: number | null;
 	purchasable: boolean;
 	featured: boolean;
 	/** shop: as the shop's setting says; shown; hidden (not sold online). */
@@ -203,6 +207,7 @@ export function toProductInput( product: Product ): ProductInput {
 		tax_group_id: product.tax_group_id,
 		stock_mode: product.stock_mode,
 		backorders: product.backorders,
+		backorder_limit: product.backorder_limit,
 		purchasable: product.purchasable,
 		featured: product.featured,
 		price_visibility: product.price_visibility,

@@ -67,6 +67,9 @@ class Product
     private Backorders $backorders = Backorders::No;
 
     #[ORM\Column(nullable: true)]
+    private ?int $backorderLimit = null;
+
+    #[ORM\Column(nullable: true)]
     private ?int $downloadLimit = null;
 
     #[ORM\Column(nullable: true)]
@@ -139,6 +142,7 @@ class Product
             $this->priceVisibility,
             $this->shippingClassId,
             $this->backorders,
+            $this->backorderLimit,
         );
     }
 
@@ -161,6 +165,7 @@ class Product
         $this->priceVisibility = $details->priceVisibility;
         $this->shippingClassId = $details->shippingClassId;
         $this->backorders = $details->backorders;
+        $this->backorderLimit = $details->backorderLimit;
     }
 
     /** Its shipping class is gone; it ships as an item without one. */

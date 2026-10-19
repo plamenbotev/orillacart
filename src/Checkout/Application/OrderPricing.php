@@ -343,7 +343,7 @@ final readonly class OrderPricing
                 }
                 $refs = [$item->variationId !== null ? StockItemRef::variation($item->variationId) : StockItemRef::product($item->productId)];
                 try {
-                    array_push($taken, ...$this->stock->take($refs, $item->quantity * $quantity, $item->backorders !== 'no'));
+                    array_push($taken, ...$this->stock->take($refs, $item->quantity * $quantity, $item->backorders !== 'no', $item->backorderLimit));
                 } catch (InsufficientStock) {
                     throw new CheckoutRuleViolation(\sprintf('%s sold out in the meantime. Review the items and try again.', $quote->name), 'orillacart_out_of_stock');
                 }
@@ -355,7 +355,7 @@ final readonly class OrderPricing
         // Stock that does not limit the item takes nothing; items always available or never sold were checked above.
         // Backorders lift the limit, but the stock is still taken and the shortfall owed.
         try {
-            return $quote->available === null && $quote->inStock === null ? [] : $this->stock->take($refs, $quantity, $quote->backorders !== 'no');
+            return $quote->available === null && $quote->inStock === null ? [] : $this->stock->take($refs, $quantity, $quote->backorders !== 'no', $quote->backorderLimit);
         } catch (InsufficientStock) {
             throw new CheckoutRuleViolation(\sprintf('%s sold out in the meantime. Review the items and try again.', $quote->name), 'orillacart_out_of_stock');
         }

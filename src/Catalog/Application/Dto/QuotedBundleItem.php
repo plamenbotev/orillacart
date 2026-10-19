@@ -11,7 +11,8 @@ final readonly class QuotedBundleItem
 {
     /**
      * @param bool   $countsStock whether selling it takes stock: its stock is counted
-     * @param string $backorders  no, yes or notify, as the item says
+     * @param string   $backorders     no, yes or notify, as the item says
+     * @param int|null $backorderLimit how many the item may owe at most; null for no limit
      */
     public function __construct(
         public int $productId,
@@ -20,5 +21,6 @@ final readonly class QuotedBundleItem
         public int $quantity,
         public bool $countsStock,
         public string $backorders = 'no',
+        public ?int $backorderLimit = null,
     ) {}
 }

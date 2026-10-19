@@ -54,6 +54,7 @@ final readonly class ProductView
         public string $backorders = 'no',
         /** What it is made of when it is a bundle. */
         public ?BundleView $bundle = null,
+        public ?int $backorderLimit = null,
     ) {}
 
     /**
@@ -92,6 +93,7 @@ final readonly class ProductView
             $details->shippingClassId,
             $details->backorders->value,
             $bundle === null ? null : BundleView::fromBundle($bundle, $itemName ?? static fn(int $productId, ?int $variationId): string => '#' . ($variationId ?? $productId)),
+            $details->backorderLimit,
         );
     }
 

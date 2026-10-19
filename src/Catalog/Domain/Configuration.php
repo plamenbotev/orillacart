@@ -37,6 +37,12 @@ final readonly class Configuration
         return $this->variation?->backorders() ?? $this->product->details()->backorders;
     }
 
+    /** How many it may owe at most; null for no limit. */
+    public function backorderLimit(): ?int
+    {
+        return $this->variation?->backorderLimit() ?? $this->product->details()->backorderLimit;
+    }
+
     /**
      * What one item weighs and measures, for shipping: a variation's own values where it has them, else the
      * product's.

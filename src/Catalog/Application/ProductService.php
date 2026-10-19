@@ -103,6 +103,7 @@ final readonly class ProductService
             PriceVisibility::from($command->priceVisibility),
             $command->shippingClassId,
             Backorders::from($command->backorders),
+            $command->backorderLimit,
         );
         $product = $this->products->find($id);
         if ($product === null) {
@@ -284,6 +285,7 @@ final readonly class ProductService
             $command->width,
             $command->height,
             $command->backorders === null ? null : Backorders::from($command->backorders),
+            $command->backorderLimit,
         );
     }
 

@@ -48,6 +48,8 @@ final readonly class ItemQuote
         public array $brandIds = [],
         /** @var list<QuotedBundleItem> what one of it holds, when it is a bundle */
         public array $contents = [],
+        /** How many it may owe at most when it takes backorders; null for no limit. */
+        public ?int $backorderLimit = null,
     ) {}
 
     /** How many of this quantity the customer is told are on backorder: none unless the product says so. */

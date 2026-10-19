@@ -28,6 +28,8 @@ final readonly class VariationView
         public ?string $height = null,
         /** null when it follows the product */
         public ?string $backorders = null,
+        /** null when it follows the product */
+        public ?int $backorderLimit = null,
     ) {}
 
     public static function fromVariation(Variation $variation): self
@@ -47,6 +49,7 @@ final readonly class VariationView
             $variation->width(),
             $variation->height(),
             $variation->backorders()?->value,
+            $variation->backorderLimit(),
         );
     }
 }

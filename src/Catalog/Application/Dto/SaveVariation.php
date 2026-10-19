@@ -40,5 +40,8 @@ final readonly class SaveVariation
         /** null to follow the product; no, yes or notify */
         #[Assert\Choice(callback: [Backorders::class, 'values'])]
         public ?string $backorders = null,
+        /** Null to follow the product. */
+        #[Assert\Positive]
+        public ?int $backorderLimit = null,
     ) {}
 }

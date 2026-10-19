@@ -32,6 +32,10 @@ class Variation
     #[ORM\Column(length: 10, nullable: true, enumType: Backorders::class)]
     private ?Backorders $backorders = null;
 
+    /** How many it may owe at most; null when it follows its product. */
+    #[ORM\Column(nullable: true)]
+    private ?int $backorderLimit = null;
+
     #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
     private ?string $weight = null;
 
@@ -102,6 +106,12 @@ class Variation
         return $this->backorders;
     }
 
+    /** Its own limit; null when it follows its product. */
+    public function backorderLimit(): ?int
+    {
+        return $this->backorderLimit;
+    }
+
     /** Its own weight, or null for the product's. */
     public function weight(): ?string
     {
@@ -163,6 +173,7 @@ class Variation
         $this->pricing = $details->pricing;
         $this->stockMode = $details->stockMode;
         $this->backorders = $details->backorders;
+        $this->backorderLimit = $details->backorderLimit;
         $this->weight = $details->weight;
         $this->length = $details->length;
         $this->width = $details->width;

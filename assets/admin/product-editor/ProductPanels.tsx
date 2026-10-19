@@ -453,6 +453,26 @@ export function ProductPanels() {
 						}
 					/>
 				) }
+				{ ( draft.stock_mode === 'tracked' || hasVariations ) &&
+					draft.backorders !== 'no' && (
+						<TextControl
+							__next40pxDefaultSize
+							type="number"
+							min={ 1 }
+							label={ __( 'Owe at most', 'orillacart' ) }
+							help={ __(
+								'How many may be sold on backorder in all. Empty for no limit.',
+								'orillacart'
+							) }
+							value={ draft.backorder_limit ?? '' }
+							onChange={ ( value ) =>
+								change( {
+									backorder_limit:
+										value === '' ? null : Number( value ),
+								} )
+							}
+						/>
+					) }
 				{ hasVariations && (
 					<p>
 						{ __(

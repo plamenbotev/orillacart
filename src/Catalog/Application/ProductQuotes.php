@@ -56,13 +56,16 @@ final readonly class ProductQuotes
         if ($configuration->variation !== null) {
             $name .= ' – ' . implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $configuration->variation->options()));
         }
-        $available = $this->available($configuration);
+        // Below zero by what is owed already, for the backorder limit.
+        $level = $this->available($configuration);
+        $available = $level === null ? null : max(0, $level);
         $backorders = $configuration->backorders();
         $inStock = null;
-        if ($backorders->allowed() && $configuration->stockMode() === StockMode::Tracked && $available !== null) {
-            // Backorders lift the limit; how many are in stock tells what will be owed.
+        $backorderLimit = $backorders->allowed() ? $configuration->backorderLimit() : null;
+        if ($backorders->allowed() && $configuration->stockMode() === StockMode::Tracked && $level !== null) {
+            // Backorders lift the limit, up to how many it may owe; how many are in stock tells what will be owed.
             $inStock = $available;
-            $available = null;
+            $available = $backorderLimit === null ? null : max(0, $level + $backorderLimit);
         }
         $measures = $configuration->measures();
         $pricing = $configuration->variation?->pricing() ?? $details->pricing;
@@ -108,7 +111,7 @@ final readonly class ProductQuotes
                     $extrasWeight = $extrasWeight->add($itemWeight);
                 }
                 array_push($downloads, ...$quote->downloads);
-                $contents[] = new QuotedBundleItem($quote->productId, $quote->variationId, $quote->name, $item->quantity, $quote->available !== null || $quote->inStock !== null, $quote->backorders);
+                $contents[] = new QuotedBundleItem($quote->productId, $quote->variationId, $quote->name, $item->quantity, $quote->available !== null || $quote->inStock !== null, $quote->backorders, $quote->backorderLimit);
             }
             // A fixed price covers the items every bundle holds; the optional ones the customer adds cost their own.
             $unitPrice = $bundle->pricing === Bundle::SUM ? $bundle->priceOf($sum) : $unitPrice->add($extras);
@@ -150,6 +153,7 @@ final readonly class ProductQuotes
             $terms['categories'],
             $terms['brands'],
             $contents,
+            $bundle === null ? $backorderLimit : null,
         );
     }
 
@@ -179,7 +183,7 @@ final readonly class ProductQuotes
             StockMode::Unavailable => 0,
             StockMode::Tracked => $this->stock->available($configuration->variation !== null
                 ? [StockItemRef::variation($configuration->variation->id())]
-                : [StockItemRef::product($configuration->product->id()), ...array_map(static fn(AttributeOption $option): StockItemRef => StockItemRef::option($option->id()), $configuration->options)]),
+                : [StockItemRef::product($configuration->product->id()), ...array_map(static fn(AttributeOption $option): StockItemRef => StockItemRef::option($option->id()), $configuration->options)], owedBelowZero: true),
         };
     }
 }

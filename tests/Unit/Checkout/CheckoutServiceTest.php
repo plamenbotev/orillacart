@@ -529,6 +529,20 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame([1, false], [$line->backordered, $line->backorderShown]);
     }
 
+    public function testABackorderLimitStopsWhatTheShopOwes(): void
+    {
+        $this->shop->products->save(10, new SaveProduct('33.33', weight: '2.5', backorders: 'notify', backorderLimit: 2));
+        self::assertSame(5, $this->shop->catalog->offer(10)->available, 'three in stock and two to owe');
+
+        $this->shop->checkout->placeOrder($this->cart([10, 4]), $this->order('cash_on_delivery'));
+        $last = $this->cart([10, 1]);
+        $this->shop->checkout->placeOrder($last, $this->order('cash_on_delivery'));
+        self::assertSame([[$this->room, -2]], array_map(static fn($level): array => [$level->stockroomId, $level->quantity], $this->shop->stock->stock(StockItemRef::product(10))->levels), 'two owed, the most it may');
+
+        $this->expectException(CartRuleViolation::class);
+        $this->cart([10, 1]);
+    }
+
     public function testWithoutBackordersTheCartStopsAtTheStock(): void
     {
         $this->expectException(CartRuleViolation::class);

@@ -19,6 +19,7 @@ final readonly class ProductDetails
      * @param int|null    $downloadExpiryDays  how many days after payment the downloads work; null for always
      * @param int|null    $shippingClassId     the shipping class of the product and its variations; null for none
      * @param Backorders  $backorders          whether it sells on when its counted stock runs out; variations may differ
+     * @param int|null    $backorderLimit      how many it may owe at most, as variations do unless they say; null for no limit
      */
     public function __construct(
         public ProductType $type,
@@ -38,8 +39,10 @@ final readonly class ProductDetails
         public PriceVisibility $priceVisibility = PriceVisibility::Shop,
         public ?int $shippingClassId = null,
         public Backorders $backorders = Backorders::No,
+        public ?int $backorderLimit = null,
     ) {
         self::validSku($sku);
+        self::validBackorderLimit($backorderLimit);
         if (($downloadLimit !== null && $downloadLimit < 1) || ($downloadExpiryDays !== null && $downloadExpiryDays < 1)) {
             throw new CatalogRuleViolation('A download limit and expiry are at least 1, or empty for none.', 'orillacart_invalid_download_terms');
         }
@@ -67,7 +70,18 @@ final readonly class ProductDetails
             $this->priceVisibility,
             $this->shippingClassId,
             $this->backorders,
+            $this->backorderLimit,
         );
+    }
+
+    /**
+     * @throws CatalogRuleViolation for a limit below one
+     */
+    public static function validBackorderLimit(?int $limit): void
+    {
+        if ($limit !== null && $limit < 1) {
+            throw new CatalogRuleViolation('A backorder limit is at least 1, or empty for no limit.', 'orillacart_invalid_backorder_limit');
+        }
     }
 
     /**

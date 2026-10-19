@@ -150,12 +150,12 @@ final readonly class StockService
      *
      * @return array<string, ?int> by item ("variation:12"); null when stock does not limit it
      */
-    public function availableEach(array $refs): array
+    public function availableEach(array $refs, bool $owedBelowZero = false): array
     {
         $available = [];
         foreach ($this->levels->stockOf(array_map(static fn(StockItemRef $ref): StockItem => $ref->toItem(), $refs)) as $stock) {
             $count = $stock->available();
-            $available[(string) $stock->item] = $count === null ? null : max(0, $count);
+            $available[(string) $stock->item] = $count === null || $owedBelowZero ? $count : max(0, $count);
         }
 
         return $available;
@@ -169,7 +169,7 @@ final readonly class StockService
      *
      * @return int|null null when stock limits none of them
      */
-    public function available(array $refs): ?int
+    public function available(array $refs, bool $owedBelowZero = false): ?int
     {
         $available = null;
         foreach ($this->levels->stockOf(array_map(static fn(StockItemRef $ref): StockItem => $ref->toItem(), $refs)) as $stock) {
@@ -179,7 +179,7 @@ final readonly class StockService
             }
         }
 
-        return $available === null ? null : max(0, $available);
+        return $available === null || $owedBelowZero ? $available : max(0, $available);
     }
 
     /**
@@ -205,27 +205,29 @@ final readonly class StockService
 
     /**
      * Takes the quantity of each item for a placed order: all of it or, when one item falls short, nothing. With
-     * backorders, what is not in stock is owed instead (see Stock::take()).
+     * backorders, what is not in stock is owed instead (see Stock::take()), up to the limit of what may be owed.
      *
      * @param list<StockItemRef> $refs
+     * @param int|null           $backorderLimit how many may be owed in all, what is owed already included; null for no limit
      *
      * @return list<TakenStock>
      *
      * @throws InsufficientStock
      */
-    public function take(array $refs, int $quantity, bool $backorders = false): array
+    public function take(array $refs, int $quantity, bool $backorders = false, ?int $backorderLimit = null): array
     {
         $items = array_map(static fn(StockItemRef $ref): StockItem => $ref->toItem(), $refs);
 
         $before = [];
         $after = [];
-        $taken = $this->levels->lockedStockOf($items, static function (array $stocks) use ($quantity, $backorders, &$before, &$after): array {
+        $taken = $this->levels->lockedStockOf($items, static function (array $stocks) use ($quantity, $backorders, $backorderLimit, &$before, &$after): array {
             /** @var list<Stock> $stocks */
             $before = self::availableOf($stocks);
             foreach ($stocks as $stock) {
                 $available = $stock->available();
-                if (!$backorders && $available !== null && $available < $quantity) {
-                    throw new InsufficientStock($stock->item, $quantity, max(0, $available));
+                $owable = $backorders ? $backorderLimit : 0;
+                if ($available !== null && $owable !== null && $available + $owable < $quantity) {
+                    throw new InsufficientStock($stock->item, $quantity, max(0, $available + $owable));
                 }
             }
             $taken = [];

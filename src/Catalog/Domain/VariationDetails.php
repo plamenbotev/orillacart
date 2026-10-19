@@ -12,7 +12,8 @@ final readonly class VariationDetails
     /**
      * @param list<int>   $optionIds one option of each attribute the variation differs in
      * @param string|null $weight    in the shop's weight unit; null for the product's, as for length, width and height
-     * @param Backorders|null $backorders null to follow the product
+     * @param Backorders|null $backorders     null to follow the product
+     * @param int|null        $backorderLimit null to follow the product
      */
     public function __construct(
         public array $optionIds,
@@ -24,8 +25,10 @@ final readonly class VariationDetails
         public ?string $width = null,
         public ?string $height = null,
         public ?Backorders $backorders = null,
+        public ?int $backorderLimit = null,
     ) {
         ProductDetails::validSku($sku);
+        ProductDetails::validBackorderLimit($backorderLimit);
         ProductDetails::validMeasures(['weight' => $weight, 'length' => $length, 'width' => $width, 'height' => $height]);
         if ($optionIds === []) {
             throw new CatalogRuleViolation('A variation needs at least one option.', 'orillacart_variation_without_options');
