@@ -22,7 +22,7 @@ use OrillaCart\Search\Application\ShopSearch;
  */
 abstract class CatalogSearchContract extends RestTestCase
 {
-    private const array TABLES = ['search_filters', 'jobs', 'failed_jobs', 'search_values', 'search_variants', 'search_documents', 'stock_levels', 'stockrooms', 'variations', 'products'];
+    private const array TABLES = ['price_rules', 'search_filters', 'jobs', 'failed_jobs', 'search_values', 'search_variants', 'search_documents', 'stock_levels', 'stockrooms', 'variations', 'products'];
 
     /** @var list<int> */
     private array $posts = [];
@@ -99,6 +99,50 @@ abstract class CatalogSearchContract extends RestTestCase
         $this->work();
         self::assertSame([$this->lamp, $bulb], $this->find('light', SearchSort::Order));
         self::assertSame([$bulb, $this->lamp], $this->find('light', SearchSort::Relevance), 'a title outweighs the text');
+    }
+
+    public function testOnlyTheProductsAChangeTouchesAreQueued(): void
+    {
+        $this->actAs('administrator');
+        $kit = $this->product('Lamp kit', '', ['price' => '0', 'bundle' => ['items' => [['product_id' => $this->lamp, 'quantity' => 2]], 'pricing' => 'sum']], 7);
+        $this->work();
+
+        // A description is not in the index; a name is, for every product below the category.
+        wp_update_term($this->lighting, ProductCategoryTaxonomy::NAME, ['description' => 'All the lights.']);
+        self::assertSame([], $this->queued());
+        wp_update_term($this->lighting, ProductCategoryTaxonomy::NAME, ['name' => 'Lights']);
+        self::assertSame([$this->lamp, $kit], $this->queued(), 'the lamp is in a category below it, and the kit holds the lamp');
+        $this->work();
+
+        $group = $this->request('POST', '/customer-groups', ['name' => 'Trade'], nonce: true);
+        self::assertSame(201, $group->get_status(), (string) wp_json_encode($group->get_data()));
+        $groupId = $this->data($group)['id'];
+        self::assertIsInt($groupId);
+        try {
+            $rule = function (string $for = '', array $ids = []): int {
+                $body = ['name' => 'Rule', 'tiers' => [['min_quantity' => 1, 'kind' => 'percent', 'value' => '10']]];
+                if ($for !== '') {
+                    $body[$for] = $ids;
+                }
+                $id = $this->data($this->request('POST', '/price-rules', $body, nonce: true))['id'];
+                self::assertIsInt($id);
+
+                return $id;
+            };
+            $rule('group_ids', [$groupId]);
+            self::assertSame([], $this->queued(), 'guests, whose prices the index keeps, do not get it');
+            $brand = $rule('brand_ids', [$this->acme]);
+            self::assertSame([$this->lamp, $kit], $this->queued());
+            $this->work();
+            $this->request('PUT', "/price-rules/{$brand}", ['name' => 'Rule', 'tiers' => [['min_quantity' => 1, 'kind' => 'percent', 'value' => '10']], 'product_ids' => [$this->book]], nonce: true);
+            self::assertSame([$this->lamp, $this->book, $kit], $this->queued(), 'the products it was for, and is for now');
+            $this->work();
+            $rule();
+            self::assertCount(7, $this->queued(), 'a rule for the whole catalog');
+        } finally {
+            $this->request('DELETE', "/customer-groups/{$groupId}", nonce: true);
+            wp_set_current_user(0);
+        }
     }
 
     public function testOptionsPriceAndStockHoldForOneVariantAndFacetsCountWhatTheOtherFiltersLeave(): void
@@ -281,6 +325,23 @@ abstract class CatalogSearchContract extends RestTestCase
         $runner = self::kernel()->container()->get(JobRunner::class);
         self::assertInstanceOf(JobRunner::class, $runner);
         while ($runner->work(['search'], 100, 'test')->count() > 0);
+    }
+
+    /**
+     * The products waiting to be indexed, by id.
+     *
+     * @return list<int>
+     */
+    private function queued(): array
+    {
+        global $wpdb;
+        self::assertInstanceOf(\wpdb::class, $wpdb);
+        $table = $wpdb->prefix . 'orillacart_jobs';
+        $keys = $wpdb->get_col($wpdb->prepare('SELECT unique_key FROM %i WHERE type = %s AND attempts = 0', $table, 'search.index'));
+        $ids = array_map('intval', $keys);
+        sort($ids);
+
+        return $ids;
     }
 
     private function indexing(): SearchIndexing

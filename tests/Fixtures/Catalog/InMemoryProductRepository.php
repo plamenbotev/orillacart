@@ -92,9 +92,20 @@ final class InMemoryProductRepository implements ProductRepository
         return $names;
     }
 
-    public function bundles(): array
+    public function bundlesHolding(array $productIds): array
     {
-        return array_values(array_filter($this->products, static fn(Product $product): bool => $product->isBundle()));
+        $ids = [];
+        foreach ($this->products as $product) {
+            foreach ($product->bundle()->items ?? [] as $item) {
+                if (\in_array($item->productId, $productIds, true)) {
+                    $ids[] = $product->id();
+                    break;
+                }
+            }
+        }
+        sort($ids);
+
+        return $ids;
     }
 
     public function idsUsingSet(int $setId): array

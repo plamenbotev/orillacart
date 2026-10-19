@@ -266,7 +266,7 @@ lets plugins adjust a few things through filters. Arguments are ids and plain va
 | `orillacart_product_changed` | product id |
 | `orillacart_catalog_items_removed` | product ids, variation ids, option ids |
 | `orillacart_stock_changed` | item (`product:12`, `variation:30`, `option:7`), how many could be sold before and after (null: unlimited) |
-| `orillacart_price_rules_changed` | |
+| `orillacart_price_rules_changed` | the rule's scopes before and after: each its `groups`, `products`, `categories` and `brands` ids (none: everyone, or the whole catalog) |
 | `orillacart_tax_rates_changed` | tax group id |
 | `orillacart_settings_changed` | the settings now and before |
 | `orillacart_cart_item_added` | product id, variation id (null for none), how many were added, customer id (null for a guest) |

@@ -43,10 +43,29 @@ final readonly class QueueChangedProducts
         $this->indexing->queue($event->productIds);
     }
 
-    /** A price rule may change the guest's price of any product. */
+    /**
+     * The index keeps guests' prices: a rule only for customer groups changes none of them, and a rule for some
+     * products, categories or brands changes only theirs. A rule for the whole catalog queues everything.
+     */
     public function priceRulesChanged(PriceRulesChanged $event): void
     {
-        $this->indexing->queueEverything();
+        $products = [];
+        $categories = [];
+        $brands = [];
+        foreach ($event->scopes as $scope) {
+            if ($scope['groups'] !== []) {
+                continue;
+            }
+            if ($scope['products'] === [] && $scope['categories'] === [] && $scope['brands'] === []) {
+                $this->indexing->queueEverything();
+
+                return;
+            }
+            array_push($products, ...$scope['products']);
+            array_push($categories, ...$scope['categories']);
+            array_push($brands, ...$scope['brands']);
+        }
+        $this->indexing->queuePricedFor($products, array_values(array_unique($categories)), array_values(array_unique($brands)));
     }
 
     /** Hiding or showing prices changes every product's price in the index. */

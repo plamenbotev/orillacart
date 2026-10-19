@@ -26,6 +26,16 @@ interface ProductContent
     public function termIds(int $productId): array;
 
     /**
+     * Ids of the products in any of the categories, or the categories below them, or in any of the brands.
+     *
+     * @param list<int> $categoryIds
+     * @param list<int> $brandIds
+     *
+     * @return list<int>
+     */
+    public function productIdsInTerms(array $categoryIds, array $brandIds): array;
+
+    /**
      * Makes the post of a new variation of the product.
      *
      * @return int its id, which the variation shares

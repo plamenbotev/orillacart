@@ -35,6 +35,22 @@ final readonly class SearchIndexing
         ));
     }
 
+    /**
+     * Queues the products a price rule is for: those named, and those in its categories or brands.
+     *
+     * @param list<int> $productIds
+     * @param list<int> $categoryIds
+     * @param list<int> $brandIds
+     */
+    public function queuePricedFor(array $productIds, array $categoryIds, array $brandIds): void
+    {
+        $inTerms = $categoryIds === [] && $brandIds === [] ? [] : $this->products->idsInTerms($categoryIds, $brandIds);
+        $ids = array_values(array_unique([...$productIds, ...$inTerms]));
+        if ($ids !== []) {
+            $this->queue($ids);
+        }
+    }
+
     /** Stock of a product, variation or option changed: "variation:12", as StockChanged names it. */
     public function queueStockItem(string $item): void
     {

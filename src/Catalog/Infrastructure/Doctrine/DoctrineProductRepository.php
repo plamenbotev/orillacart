@@ -142,11 +142,33 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->getSingleColumnResult());
     }
 
-    public function bundles(): array
+    public function bundlesHolding(array $productIds): array
     {
-        /** @var list<Product> */
-        return $this->entityManager->createQueryBuilder()->select('p')->from(Product::class, 'p')
-            ->where('p.bundle IS NOT NULL')->orderBy('p.id')->getQuery()->getResult();
+        if ($productIds === []) {
+            return [];
+        }
+        $metadata = $this->entityManager->getClassMetadata(Product::class);
+        $table = $metadata->getTableName();
+        $id = $metadata->getColumnName('id');
+        $bundle = $metadata->getColumnName('bundle');
+        $ids = [];
+        // An item is an object of the bundle's items list: {"product_id": 12, ...}.
+        foreach (array_chunk(array_values(array_unique($productIds)), 100) as $chunk) {
+            $holds = implode(' OR ', array_fill(0, \count($chunk), "JSON_CONTAINS({$bundle}, ?, '\$.items')"));
+            $found = $this->entityManager->getConnection()->fetchFirstColumn(
+                "SELECT {$id} FROM {$table} WHERE {$bundle} IS NOT NULL AND ({$holds})",
+                array_map(static fn(int $productId): string => json_encode(['product_id' => $productId], \JSON_THROW_ON_ERROR), $chunk),
+            );
+            foreach ($found as $bundleId) {
+                if (is_numeric($bundleId)) {
+                    $ids[(int) $bundleId] = true;
+                }
+            }
+        }
+        $ids = array_keys($ids);
+        sort($ids);
+
+        return $ids;
     }
 
     public function findByVariation(int $variationId): ?Product

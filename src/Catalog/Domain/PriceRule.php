@@ -134,6 +134,16 @@ class PriceRule
         return $this->active;
     }
 
+    /**
+     * For whom and what the rule is: its groups, products, categories and brands.
+     *
+     * @return array{groups: list<int>, products: list<int>, categories: list<int>, brands: list<int>}
+     */
+    public function scope(): array
+    {
+        return ['groups' => $this->groupIds, 'products' => $this->productIds, 'categories' => $this->categoryIds, 'brands' => $this->brandIds];
+    }
+
     /** @return list<int> */
     public function groupIds(): array
     {

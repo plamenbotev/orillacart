@@ -33,6 +33,34 @@ final readonly class WordPressProductContent implements ProductContent
         return ['categories' => self::terms($productId, ProductCategoryTaxonomy::NAME), 'brands' => self::terms($productId, ProductBrandTaxonomy::NAME)];
     }
 
+    public function productIdsInTerms(array $categoryIds, array $brandIds): array
+    {
+        $ids = [];
+        foreach ([ProductCategoryTaxonomy::NAME => $categoryIds, ProductBrandTaxonomy::NAME => $brandIds] as $taxonomy => $termIds) {
+            if ($termIds === []) {
+                continue;
+            }
+            $below = [];
+            foreach ($termIds as $termId) {
+                $children = get_term_children($termId, $taxonomy);
+                $below[] = $termId;
+                foreach (\is_array($children) ? $children : [] as $child) {
+                    if (is_numeric($child)) {
+                        $below[] = (int) $child;
+                    }
+                }
+            }
+            $objects = get_objects_in_term(array_values(array_unique($below)), $taxonomy);
+            foreach (\is_array($objects) ? $objects : [] as $id) {
+                if (is_numeric($id)) {
+                    $ids[(int) $id] = true;
+                }
+            }
+        }
+
+        return array_keys($ids);
+    }
+
     /**
      * @return list<int>
      */

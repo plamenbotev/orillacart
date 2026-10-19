@@ -40,7 +40,7 @@ final readonly class PriceRules
     {
         $rule = new PriceRule(...self::arguments($command));
         $this->rules->save($rule);
-        $this->events->dispatch(new PriceRulesChanged());
+        $this->events->dispatch(new PriceRulesChanged([$rule->scope()]));
 
         return PriceRuleView::fromRule($rule);
     }
@@ -52,9 +52,10 @@ final readonly class PriceRules
     public function update(int $id, SavePriceRule $command): PriceRuleView
     {
         $rule = $this->get($id);
+        $before = $rule->scope();
         $rule->change(...self::arguments($command));
         $this->rules->save($rule);
-        $this->events->dispatch(new PriceRulesChanged());
+        $this->events->dispatch(new PriceRulesChanged([$before, $rule->scope()]));
 
         return PriceRuleView::fromRule($rule);
     }
@@ -64,8 +65,9 @@ final readonly class PriceRules
      */
     public function delete(int $id): void
     {
-        $this->rules->delete($this->get($id));
-        $this->events->dispatch(new PriceRulesChanged());
+        $rule = $this->get($id);
+        $this->rules->delete($rule);
+        $this->events->dispatch(new PriceRulesChanged([$rule->scope()]));
     }
 
     private function get(int $id): PriceRule

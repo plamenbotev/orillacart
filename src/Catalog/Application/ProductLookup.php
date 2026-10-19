@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Catalog\Application;
 
+use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductRepository;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Domain\StockItemKind;
@@ -14,7 +15,10 @@ use OrillaCart\Inventory\Domain\StockItemKind;
  */
 final readonly class ProductLookup
 {
-    public function __construct(private ProductRepository $products) {}
+    public function __construct(
+        private ProductRepository $products,
+        private ProductContent $content,
+    ) {}
 
     /**
      * @return list<int> the product itself, a variation's product, or the products offering an option
@@ -37,17 +41,20 @@ final readonly class ProductLookup
      */
     public function bundlesHolding(array $productIds): array
     {
-        $ids = [];
-        foreach ($this->products->bundles() as $bundle) {
-            foreach ($bundle->bundle()->items ?? [] as $item) {
-                if (\in_array($item->productId, $productIds, true)) {
-                    $ids[] = $bundle->id();
-                    break;
-                }
-            }
-        }
+        return $this->products->bundlesHolding($productIds);
+    }
 
-        return $ids;
+    /**
+     * The products in any of the categories (or below them) or brands, whose prices a price rule for them sets.
+     *
+     * @param list<int> $categoryIds
+     * @param list<int> $brandIds
+     *
+     * @return list<int>
+     */
+    public function idsInTerms(array $categoryIds, array $brandIds): array
+    {
+        return $this->content->productIdsInTerms($categoryIds, $brandIds);
     }
 
     /**

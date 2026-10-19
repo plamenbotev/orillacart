@@ -50,6 +50,18 @@ final class InMemoryProductContent implements ProductContent
         return $this->terms[$productId] ?? ['categories' => [], 'brands' => []];
     }
 
+    public function productIdsInTerms(array $categoryIds, array $brandIds): array
+    {
+        $ids = [];
+        foreach ($this->terms as $productId => $terms) {
+            if (array_intersect($terms['categories'], $categoryIds) !== [] || array_intersect($terms['brands'], $brandIds) !== []) {
+                $ids[] = $productId;
+            }
+        }
+
+        return $ids;
+    }
+
     public function createVariation(int $productId, string $name): int
     {
         $id = $this->nextVariation++;
