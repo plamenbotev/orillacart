@@ -68,10 +68,11 @@ final readonly class ProductQuotes
         $pricing = $configuration->variation?->pricing() ?? $details->pricing;
         $terms = $this->content->termIds($product->id());
         $onSale = $pricing->priceAt($now)->compare($pricing->price()) < 0;
-        // The shop's price rules change the product's (or variation's) price; options keep their adjustments.
+        // The shop's price rules change the product's (or variation's) price; options add their amounts, and
+        // their percentages of the price the shopper pays.
         $own = $pricing->priceAt($now);
         $ruled = $this->prices->forShopper($request->customerId)->price($own, new PricedItem($product->id(), $onSale, $terms['categories'], $terms['brands']), max(1, $request->quantity), $configuration->variation?->id(), $pricing->price());
-        $unitPrice = $configuration->unitPrice->subtract($own)->add($ruled)->atLeastZero();
+        $unitPrice = array_reduce($configuration->options, static fn(Money $price, AttributeOption $option): Money => $price->add($option->adjustmentOn($ruled)), $ruled)->atLeastZero();
         $weight = $measures['weight'];
         $downloads = array_map(static fn(DownloadFile $file): QuotedDownload => new QuotedDownload($file->id(), $file->name(), $file->storageKey(), $file->mimeType()), $product->downloads());
         $contents = [];
@@ -131,7 +132,7 @@ final readonly class ProductQuotes
                 $option->id(),
                 $option->attribute()->name(),
                 $option->name(),
-                (string) $option->adjustmentOn($base),
+                (string) $option->adjustmentOn($ruled),
             ), $configuration->options),
             $available,
             $forSale && $this->content->isPublished($product->id()) && $details->purchasable && $available !== 0

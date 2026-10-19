@@ -21,7 +21,7 @@ final readonly class SaveOption
         public string $adjustment = '0',
         #[Assert\Positive]
         public ?int $id = null,
-        /** amount, or percent: the adjustment is a percentage of the product price */
+        /** amount, or percent: the adjustment is a percentage of the price the shopper pays for the product */
         #[Assert\Choice(callback: [AdjustmentKind::class, 'values'])]
         public string $adjustmentKind = 'amount',
     ) {}

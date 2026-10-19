@@ -53,6 +53,18 @@ final class PriceAdjustersTest extends TestCase
         self::assertSame([10, 10, null, '9', '10', 'EUR'], $seen[2]);
     }
 
+    public function testAPercentageOptionIsAShareOfThePriceTheShopperPays(): void
+    {
+        $this->shop->content->add(40, 'Ring');
+        $ring = $this->shop->products->save(40, new SaveProduct('100', attributes: [new SaveAttribute('Metal', [new SaveOption('Silver'), new SaveOption('Gold', '10', adjustmentKind: 'percent')])]));
+        $gold = $ring->attributes[0]->options[1]->id;
+        $this->shop->priceRules->create(new SavePriceRule('Sale', [new PriceTierData(1, 'percent', '20')]));
+
+        $quote = $this->shop->quotes->quote(new QuoteRequest(40, [$gold]));
+
+        self::assertSame(['88', '8'], [$quote->unitPrice, $quote->options[0]->adjustment], 'gold adds 10 % of the 80 the rule leaves');
+    }
+
     public function testTheProductPageAndListingsShowTheAdjustedPriceAndTiers(): void
     {
         $this->shop->priceRules->create(new SavePriceRule('Bulk', [new PriceTierData(10, 'percent', '10')]));
