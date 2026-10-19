@@ -8,7 +8,8 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * The right to download one file of a paid order line, through a secret link: how many downloads are left and
- * until when. Made when the order is paid; gone when it is cancelled or refunded.
+ * until when. Made when the order is paid; gone when it is cancelled or refunded. A download that broke off and
+ * resumes within a day is the same download.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'download_grants')]
@@ -16,6 +17,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(name: 'download_storage', columns: ['storage_key'])]
 class DownloadGrant
 {
+    public const int RESUME_HOURS = 24;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -23,6 +26,10 @@ class DownloadGrant
 
     #[ORM\Column]
     private int $downloads = 0;
+
+    /** When a download was last counted: a browser resuming it soon after is not counted again. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $lastDownloadedAt = null;
 
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Order::class, inversedBy: 'grants')]
@@ -129,5 +136,19 @@ class DownloadGrant
             $this->remaining !== null && $this->remaining < 1 => 'There are no downloads left for this file.',
             default => null,
         };
+    }
+
+    public function lastDownloadedAt(): ?\DateTimeImmutable
+    {
+        return $this->lastDownloadedAt;
+    }
+
+    /** Whether the rest of the last counted download can still be fetched without counting another. */
+    public function resumes(\DateTimeImmutable $now): bool
+    {
+        return $this->order->isPaid()
+            && ($this->expiresAt === null || $this->expiresAt >= $now)
+            && $this->lastDownloadedAt !== null
+            && $this->lastDownloadedAt > $now->modify(\sprintf('-%d hours', self::RESUME_HOURS));
     }
 }

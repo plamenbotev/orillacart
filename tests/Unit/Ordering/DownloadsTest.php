@@ -55,6 +55,23 @@ final class DownloadsTest extends TestCase
         $this->shop->downloads->open($this->token($downloads[0]->url));
     }
 
+    public function testABrowserResumingADownloadSoonAfterIsNotCountedAgain(): void
+    {
+        $order = $this->place();
+        $this->shop->orders->markPaidByShop($order->number, '', 1);
+        $token = $this->token($this->shop->orders->order($order->number)->downloads[0]->url);
+
+        $this->shop->downloads->open($token);
+        $this->shop->downloads->open($token);
+        $this->shop->clock->modify('+3 hours');
+        $this->shop->downloads->open($token, resuming: true);
+        self::assertSame(0, $this->shop->orders->order($order->number)->downloads[0]->remaining, 'the rest of the last one, uncounted');
+
+        $this->shop->clock->modify('+1 day');
+        $this->expectExceptionMessage('There are no downloads left for this file.');
+        $this->shop->downloads->open($token, resuming: true);
+    }
+
     public function testLinksStopWorkingWhenTheyExpireOrTheOrderIsRefunded(): void
     {
         $expiring = $this->paid();

@@ -27,17 +27,22 @@ final readonly class Downloads
     ) {}
 
     /**
-     * Counts a download and gives the file to send.
+     * Counts a download and gives the file to send. A browser fetching the rest of one that broke off, soon after
+     * it was counted, is given it without counting another, even when that was the last.
+     *
+     * @param bool $resuming the request asks for the file from past its start
      *
      * @throws DownloadUnavailable for an unknown or expired link, an unpaid order, no downloads left, or a lost file
      */
-    public function open(string $token): DownloadFile
+    public function open(string $token, bool $resuming = false): DownloadFile
     {
         $grant = preg_match('/^[a-f0-9]{64}$/', $token) === 1 ? $this->grants->findByToken($token) : null;
         if ($grant === null) {
             throw new DownloadUnavailable('This download link does not work.');
         }
-        $refusal = $grant->refusal($this->clock->now());
+        $now = $this->clock->now();
+        $resumes = $resuming && $grant->resumes($now);
+        $refusal = $resumes ? null : $grant->refusal($now);
         if ($refusal !== null) {
             throw new DownloadUnavailable($refusal);
         }
@@ -47,7 +52,7 @@ final readonly class Downloads
 
             throw new DownloadUnavailable('The file is not available right now. Please contact the shop.');
         }
-        if (!$this->grants->consume($grant)) {
+        if (!$resumes && !$this->grants->consume($grant, $now)) {
             throw new DownloadUnavailable('There are no downloads left for this file.');
         }
 

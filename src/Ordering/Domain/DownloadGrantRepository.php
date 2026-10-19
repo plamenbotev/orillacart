@@ -13,7 +13,7 @@ interface DownloadGrantRepository
      *
      * @return bool false when no downloads were left
      */
-    public function consume(DownloadGrant $grant): bool;
+    public function consume(DownloadGrant $grant, \DateTimeImmutable $at): bool;
 
     /** @return list<DownloadGrant> of the customer's paid orders, newest order first */
     public function ofCustomer(int $customerId): array;

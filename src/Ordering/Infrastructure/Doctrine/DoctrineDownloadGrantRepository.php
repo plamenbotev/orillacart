@@ -19,13 +19,13 @@ final readonly class DoctrineDownloadGrantRepository implements DownloadGrantRep
         return $this->entityManager->getRepository(DownloadGrant::class)->findOneBy(['token' => $token]);
     }
 
-    public function consume(DownloadGrant $grant): bool
+    public function consume(DownloadGrant $grant, \DateTimeImmutable $at): bool
     {
         // One statement, so two downloads at once cannot both take the last one.
         $changed = $this->entityManager->createQuery(
-            'UPDATE ' . DownloadGrant::class . ' g SET g.downloads = g.downloads + 1, g.remaining = CASE WHEN g.remaining IS NULL THEN g.remaining ELSE g.remaining - 1 END
+            'UPDATE ' . DownloadGrant::class . ' g SET g.downloads = g.downloads + 1, g.lastDownloadedAt = :at, g.remaining = CASE WHEN g.remaining IS NULL THEN g.remaining ELSE g.remaining - 1 END
              WHERE g.id = :id AND (g.remaining IS NULL OR g.remaining > 0)',
-        )->setParameter('id', $grant->id())->execute();
+        )->setParameter('id', $grant->id())->setParameter('at', $at, 'datetime_immutable')->execute();
         $this->entityManager->refresh($grant);
 
         return $changed === 1;
