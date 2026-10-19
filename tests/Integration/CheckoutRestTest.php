@@ -287,6 +287,12 @@ final class CheckoutRestTest extends RestTestCase
         $saved = $this->request('PUT', '/payment-methods/test_pay', ['name' => 'Test Pay', 'active' => true, 'position' => 3, 'settings' => ['api_key' => 'k3y', 'mode' => 'test', 'fee' => '1.5']], nonce: true);
         self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
         self::assertStringNotContainsString('k3y', (string) wp_json_encode($saved->get_data()));
+        global $wpdb;
+        self::assertInstanceOf(\wpdb::class, $wpdb);
+        $stored = $wpdb->get_var($wpdb->prepare('SELECT settings FROM %i WHERE gateway = %s', $wpdb->prefix . 'orillacart_payment_methods', 'test_pay'));
+        self::assertIsString($stored);
+        self::assertStringContainsString('"sealed"', $stored, 'the settings are sealed in the database');
+        self::assertStringNotContainsString('k3y', $stored);
         wp_set_current_user(0);
 
         $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));

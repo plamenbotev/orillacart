@@ -124,7 +124,9 @@ test.describe( 'A visitor', () => {
 		await expect(
 			page.getByRole( 'heading', { name: 'Thank you for your order' } )
 		).toBeVisible();
-		await expect( page ).toHaveURL( /orillacart_order=\d+-\d+-[a-f0-9]{32}/ );
+		await expect( page ).toHaveURL(
+			/orillacart_order=\d+-\d+-[a-f0-9]{32}/
+		);
 		await expect( page.getByText( 'Pay to IBAN BG00 E2E' ) ).toBeVisible();
 		await expect(
 			page.locator( '.orillacart-receipt__facts' )

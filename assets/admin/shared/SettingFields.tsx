@@ -78,28 +78,53 @@ export function SettingFields( {
 						/>
 					);
 				}
+				const saved =
+					field.type === 'secret' && secretsSet.includes( field.key );
+				// A saved secret sent as false is cleared; sent empty, it stays.
+				const clearing = saved && values[ field.key ] === false;
 				return (
-					<TextControl
-						key={ field.key }
-						__next40pxDefaultSize
-						type={ field.type === 'secret' ? 'password' : 'text' }
-						inputMode={
-							field.type === 'number' ? 'decimal' : undefined
-						}
-						autoComplete="off"
-						label={ field.label }
-						help={
-							field.type === 'secret' &&
-							secretsSet.includes( field.key )
-								? __(
-										'Saved. Leave empty to keep it.',
-										'orillacart'
-									)
-								: field.help
-						}
-						value={ String( values[ field.key ] ?? '' ) }
-						onChange={ ( value ) => onChange( field.key, value ) }
-					/>
+					<div key={ field.key }>
+						<TextControl
+							__next40pxDefaultSize
+							type={
+								field.type === 'secret' ? 'password' : 'text'
+							}
+							inputMode={
+								field.type === 'number' ? 'decimal' : undefined
+							}
+							autoComplete="off"
+							label={ field.label }
+							help={
+								saved
+									? __(
+											'Saved. Leave empty to keep it.',
+											'orillacart'
+										)
+									: field.help
+							}
+							disabled={ clearing }
+							value={
+								clearing
+									? ''
+									: String( values[ field.key ] ?? '' )
+							}
+							onChange={ ( value ) =>
+								onChange( field.key, value )
+							}
+						/>
+						{ saved && (
+							<CheckboxControl
+								label={ __(
+									'Clear the saved one',
+									'orillacart'
+								) }
+								checked={ clearing }
+								onChange={ ( checked ) =>
+									onChange( field.key, checked ? false : '' )
+								}
+							/>
+						) }
+					</div>
 				);
 			} ) }
 		</>

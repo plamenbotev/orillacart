@@ -29,6 +29,8 @@ export interface SearchEngineInput {
 	username: string;
 	password: string;
 	index: string;
+	/** Forgets the saved password; an empty one otherwise keeps it. */
+	clear_password?: boolean;
 }
 
 const PATH = '/orillacart/v1/search-engine';

@@ -8,6 +8,7 @@ use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Configuration as DbalConfiguration;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Schema\AbstractAsset;
+use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Events;
@@ -16,6 +17,9 @@ use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\ToolEvents;
 use OrillaCart\Platform\Doctrine\StrictMysqli\Middleware;
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Platform\WordPress\Security\SiteSignatures;
+use OrillaCart\Shared\Security\Secrets;
+use OrillaCart\Shared\Security\Signatures;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 /**
@@ -29,6 +33,7 @@ final readonly class EntityManagerFactory
     public function __construct(
         private DatabaseConfig $database,
         private PluginContext $context,
+        private ?Secrets $secrets = null,
     ) {}
 
     public function create(): EntityManagerInterface
@@ -45,6 +50,11 @@ final readonly class EntityManagerFactory
         // Properties are camelCase, columns snake_case: inEu is stored as in_eu.
         $config->setNamingStrategy(new UnderscoreNamingStrategy(CASE_LOWER));
 
+        if (!Type::hasType(SealedJsonType::NAME)) {
+            Type::addType(SealedJsonType::NAME, SealedJsonType::class);
+        }
+        // The site's key; tools without WordPress (the schema, the build check) seal nothing they keep.
+        SealedJsonType::useSecrets($this->secrets ?? new Secrets(\defined('ABSPATH') ? SiteSignatures::create() : new Signatures(random_bytes(32))));
         $connection = DriverManager::getConnection($this->database->connectionParams(), $this->dbalConfiguration());
 
         $events = new EventManager();

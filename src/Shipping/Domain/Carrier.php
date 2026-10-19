@@ -38,7 +38,7 @@ class Carrier
     private ?string $method = null;
 
     /** @var array<string, string|bool> */
-    #[ORM\Column(type: 'json')]
+    #[ORM\Column(type: 'sealed_json')]
     private array $methodSettings = [];
 
     /** Whether the method's prices are taxed, and by which tax group (null: the shop's default). */

@@ -33,13 +33,13 @@ final readonly class SearchEngines
     {
         $saved = $this->settings->load();
         if ($command->engine === SearchEngine::Database->value) {
-            $settings = new EngineSettings(SearchEngine::Database, trim($command->host), trim($command->username), $command->password === '' ? $saved->password : $command->password, trim($command->index));
+            $settings = new EngineSettings(SearchEngine::Database, trim($command->host), trim($command->username), $command->clearPassword ? '' : ($command->password === '' ? $saved->password : $command->password), trim($command->index));
             $this->settings->save($settings);
 
             return $this->view($settings, true, 'The shop searches its database.');
         }
 
-        $candidate = new EngineSettings(SearchEngine::OpenSearch, trim($command->host), trim($command->username), $command->password === '' ? $saved->password : $command->password, trim($command->index));
+        $candidate = new EngineSettings(SearchEngine::OpenSearch, trim($command->host), trim($command->username), $command->clearPassword ? '' : ($command->password === '' ? $saved->password : $command->password), trim($command->index));
         $problem = $this->server->prepare($candidate);
         if ($problem !== null) {
             return $this->view($saved, false, $problem);

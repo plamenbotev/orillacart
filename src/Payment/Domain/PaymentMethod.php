@@ -46,7 +46,7 @@ class PaymentMethod
     private string $receiptNote;
 
     /** @var array<string, string|bool> */
-    #[ORM\Column(type: 'json')]
+    #[ORM\Column(type: 'sealed_json')]
     private array $settings;
 
     /**

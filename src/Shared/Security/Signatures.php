@@ -13,9 +13,10 @@ final readonly class Signatures
     private const int LENGTH = 32;
 
     /**
-     * @param string $secret the site's, as wp_salt() gives it; never shown to anyone
+     * @param string|\Closure(): string $secret the site's, as wp_salt() gives it, or how to read it once needed
+     *                                         (WordPress defines wp_salt() only after plugins load)
      */
-    public function __construct(#[\SensitiveParameter] private string $secret) {}
+    public function __construct(#[\SensitiveParameter] private string|\Closure $secret) {}
 
     /** @return string 32 hexadecimal characters */
     public function sign(string $purpose, string $data): string
@@ -31,6 +32,6 @@ final readonly class Signatures
     /** A key of the site's for one purpose, so a signature made for one is no good for another. */
     public function key(string $purpose): string
     {
-        return hash_hmac('sha256', "orillacart:{$purpose}", $this->secret, true);
+        return hash_hmac('sha256', "orillacart:{$purpose}", \is_string($this->secret) ? $this->secret : ($this->secret)(), true);
     }
 }

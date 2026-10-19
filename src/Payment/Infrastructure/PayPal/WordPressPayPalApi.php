@@ -13,6 +13,7 @@ use OrillaCart\Payment\Application\Dto\PayPalOrderRequest;
 use OrillaCart\Payment\Application\Dto\PayPalRefund;
 use OrillaCart\Payment\Application\PayPal\PayPalApi;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
+use OrillaCart\Shared\Security\Secrets;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -26,7 +27,10 @@ final readonly class WordPressPayPalApi implements PayPalApi
 
     private const int TIMEOUT = 30;
 
-    public function __construct(private LoggerInterface $logger) {}
+    public function __construct(
+        private LoggerInterface $logger,
+        private Secrets $secrets,
+    ) {}
 
     public function createOrder(PayPalAccount $account, PayPalOrderRequest $request): PayPalOrder
     {
@@ -225,9 +229,11 @@ final readonly class WordPressPayPalApi implements PayPalApi
 
     private function token(PayPalAccount $account): string
     {
+        // Sealed, in a transient that expires, so never loaded with every page.
         $cached = get_transient(self::tokenKey($account));
-        if (\is_string($cached) && $cached !== '') {
-            return $cached;
+        $opened = \is_string($cached) ? $this->secrets->open($cached) : null;
+        if ($opened !== null && $opened !== '' && Secrets::isSealed($cached)) {
+            return $opened;
         }
 
         $response = wp_remote_post(self::base($account) . '/v1/oauth2/token', [
@@ -244,7 +250,7 @@ final readonly class WordPressPayPalApi implements PayPalApi
             throw $this->unavailable('PayPal refused the credentials (' . wp_remote_retrieve_response_code($response) . '); check the client ID and secret.', \is_array($decoded) ? $decoded : []);
         }
         $lifetime = \is_array($decoded) && \is_int($decoded['expires_in'] ?? null) ? $decoded['expires_in'] : 600;
-        set_transient(self::tokenKey($account), $token, max(60, $lifetime - 120));
+        set_transient(self::tokenKey($account), $this->secrets->seal($token), max(60, $lifetime - 120));
 
         return $token;
     }

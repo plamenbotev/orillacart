@@ -9,10 +9,14 @@ use OrillaCart\Shared\Domain\RuleViolation;
 
 /**
  * Checks what the admin screen sends for a gateway's or shipping method's settings against what it declares,
- * keeping the saved secrets the screen never receives, and shows saved values without them.
+ * keeping the saved secrets the screen never receives, and shows saved values without them. A secret sent empty
+ * stays as saved; sent as false, it is cleared.
  */
 final class SettingValues
 {
+    /** The longest text a setting holds. */
+    public const int MAX_LENGTH = 2000;
+
     /**
      * @param list<Setting>              $fields
      * @param array<string, string|bool> $saved
@@ -93,15 +97,21 @@ final class SettingValues
 
             return $value ?? false;
         }
+        if ($field->type === Setting::SECRET && $value === false) {
+            return '';
+        }
         if ($value !== null && !\is_string($value)) {
             throw new RuleViolation(\sprintf('"%s" is text.', $field->label), 'orillacart_invalid_setting');
         }
         $value = trim($value ?? '');
+        if (mb_strlen($value) > self::MAX_LENGTH) {
+            throw new RuleViolation(\sprintf('"%s" has up to %d characters.', $field->label, self::MAX_LENGTH), 'orillacart_invalid_setting');
+        }
         if ($field->type === Setting::NUMBER && $value !== '' && preg_match('/^-?\d{1,12}(\.\d{1,6})?$/', $value) !== 1) {
             throw new RuleViolation(\sprintf('"%s" is a number, such as 2.5.', $field->label), 'orillacart_invalid_setting');
         }
         if ($field->type === Setting::CHOICE && $value !== '' && !\array_key_exists($value, $field->choices)) {
-            throw new RuleViolation(\sprintf('"%s" is one of: %s.', $field->label, implode(', ', $field->choices)), 'orillacart_invalid_setting');
+            throw new RuleViolation(\sprintf('"%s" is one of: %s.', $field->label, implode(', ', array_map(strval(...), array_keys($field->choices)))), 'orillacart_invalid_setting');
         }
 
         // An empty secret keeps the saved one: the screen never receives secrets to send back.

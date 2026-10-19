@@ -406,6 +406,7 @@ describe( 'SettingsScreen', () => {
 				username: '',
 				password: '',
 				index: 'orillacart',
+				clear_password: false,
 			},
 		} );
 		expect(

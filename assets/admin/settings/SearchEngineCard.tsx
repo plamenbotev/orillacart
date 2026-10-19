@@ -1,5 +1,6 @@
 import {
 	Button,
+	CheckboxControl,
 	Card,
 	CardBody,
 	CardHeader,
@@ -31,6 +32,7 @@ export function SearchEngineCard() {
 	const [ host, setHost ] = useState( '' );
 	const [ username, setUsername ] = useState( '' );
 	const [ password, setPassword ] = useState( '' );
+	const [ clearPassword, setClearPassword ] = useState( false );
 	const [ index, setIndex ] = useState( 'orillacart' );
 	const [ busy, setBusy ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
@@ -139,9 +141,20 @@ export function SearchEngineCard() {
 												)
 											: ''
 									}
-									value={ password }
+									disabled={ clearPassword }
+									value={ clearPassword ? '' : password }
 									onChange={ setPassword }
 								/>
+								{ state.password_set && (
+									<CheckboxControl
+										label={ __(
+											'Clear the saved one',
+											'orillacart'
+										) }
+										checked={ clearPassword }
+										onChange={ setClearPassword }
+									/>
+								) }
 								<TextControl
 									__next40pxDefaultSize
 									label={ __( 'Index', 'orillacart' ) }
@@ -215,6 +228,7 @@ export function SearchEngineCard() {
 											username,
 											password,
 											index,
+											clear_password: clearPassword,
 										} )
 									)
 								}

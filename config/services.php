@@ -132,6 +132,7 @@ use OrillaCart\Shared\Lifecycle\AfterResponse;
 use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\LoadedEntities;
 use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Shared\Security\Secrets;
 use OrillaCart\Shared\Security\Signatures;
 use OrillaCart\Shipping\Application\RateCache;
 use OrillaCart\Shipping\Domain\CarrierRepository;
@@ -284,6 +285,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(LoadedEntities::class, DoctrineLoadedEntities::class);
     $services->alias(AfterResponse::class, ShutdownWork::class);
     $services->set(Signatures::class)->factory([SiteSignatures::class, 'create']);
+    $services->set(Secrets::class)->args([service(Signatures::class)]);
     $services->alias(Languages::class, WordPressLanguages::class);
     $services->alias(JobContext::class, WordPressJobContext::class);
     $services->alias(PrivateFiles::class, LocalPrivateFiles::class);

@@ -14,6 +14,6 @@ final class SiteSignatures
 {
     public static function create(): Signatures
     {
-        return new Signatures(wp_salt('auth'));
+        return new Signatures(static fn(): string => wp_salt('auth'));
     }
 }

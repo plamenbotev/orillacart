@@ -8,13 +8,16 @@ use OrillaCart\Search\Domain\EngineSettings;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchEngine;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Security\Secrets;
 
 /**
- * The engine settings in one WordPress option, read when the shop searches or indexes.
+ * The engine settings in one WordPress option, read when the shop searches or indexes; the password sealed.
  */
 final readonly class OptionEngineSettingsRepository implements EngineSettingsRepository, LifecycleListener
 {
     public const string OPTION = 'orillacart_search_engine';
+
+    public function __construct(private Secrets $secrets) {}
 
     public function load(): EngineSettings
     {
@@ -28,7 +31,7 @@ final readonly class OptionEngineSettingsRepository implements EngineSettingsRep
             SearchEngine::tryFrom($text('engine')) ?? SearchEngine::Database,
             $text('host'),
             $text('username'),
-            $text('password'),
+            $this->secrets->open($text('password')) ?? '',
             $text('index', 'orillacart'),
             ($stored['ready'] ?? false) === true,
         );
@@ -40,7 +43,7 @@ final readonly class OptionEngineSettingsRepository implements EngineSettingsRep
             'engine' => $settings->engine->value,
             'host' => $settings->host,
             'username' => $settings->username,
-            'password' => $settings->password,
+            'password' => $this->secrets->seal($settings->password),
             'index' => $settings->index,
             'ready' => $settings->ready,
         ], false);
