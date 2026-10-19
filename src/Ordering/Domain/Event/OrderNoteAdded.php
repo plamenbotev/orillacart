@@ -16,6 +16,8 @@ final readonly class OrderNoteAdded implements PublicEvent
         public int $orderId,
         public string $text,
         public bool $forCustomer,
+        /** For listeners that come back for it later, such as an email job, rather than keep its text. */
+        public int $noteId = 0,
     ) {}
 
     public function hookName(): string

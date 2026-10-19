@@ -11,6 +11,7 @@ use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailRules;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
+use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinks;
@@ -54,9 +55,10 @@ final readonly class OrderEmails
         }
     }
 
-    public function noteAdded(int $orderId, string $text): void
+    /** The note goes by its id: the job keeps no text a customer or the shop wrote. */
+    public function noteAdded(int $orderId, int $noteId): void
     {
-        $this->queue($orderId, EmailKind::CustomerNote, $text);
+        $this->queue($orderId, EmailKind::CustomerNote, $noteId);
     }
 
     /**
@@ -77,10 +79,10 @@ final readonly class OrderEmails
         $this->queue($read[0], EmailKind::ReceiptLink);
     }
 
-    /** The shop hears why an order needs attention. */
-    public function needsAttention(int $orderId, string $reason): void
+    /** The shop hears why an order needs attention: every reason waiting when the email goes, in one. */
+    public function needsAttention(int $orderId): void
     {
-        $this->queue($orderId, EmailKind::OrderAttention, $reason);
+        $this->queue($orderId, EmailKind::OrderAttention);
     }
 
     /**
@@ -119,18 +121,29 @@ final readonly class OrderEmails
     }
 
     /**
-     * Writes and sends an email now; SendOrderEmails runs it for each job.
+     * Writes and sends an email now; SendOrderEmails runs it for each job. A customer note's email is not sent
+     * once the note is gone, nor an attention email once the shop handled the order.
      *
      * @throws OrderNotFound
      * @throws EmailNotWritten its template failed: trying again would fail the same way
      * @throws EmailNotSent    the mail system refused it, perhaps for a while
      *
+     * @param int|null                                                                               $noteId for the customer note email: the note it brings
      * @param array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>}|null $refund for the refund email: the refund it tells of
      */
-    public function send(int $orderId, EmailKind $kind, string $note = '', ?array $refund = null): void
+    public function send(int $orderId, EmailKind $kind, ?int $noteId = null, ?array $refund = null): void
     {
         $settings = $this->settings->load();
         $order = $this->orders->order($orderId);
+        $note = match ($kind) {
+            EmailKind::CustomerNote => self::noteText($order, $noteId),
+            EmailKind::OrderAttention => $order->attention,
+            default => '',
+        };
+        if ($note === null) {
+            // The note is gone, as with an order made anonymous, or the shop handled what needed attention.
+            return;
+        }
         $extra = ['note' => $note, 'refund' => null];
         if ($refund !== null) {
             $lines = [];
@@ -179,24 +192,37 @@ final readonly class OrderEmails
         }
 
         if (!$this->mailer->send($email)) {
-            throw new EmailNotSent(\sprintf('The %s email of order %d to %s was not sent: the mail system refused it.', $kind->value, $orderId, $email->to));
+            // Without the address: the message is kept with the job, which outlives the order's personal data.
+            throw new EmailNotSent(\sprintf('The %s email of order %d to %s was not sent: the mail system refused it.', $kind->value, $orderId, $kind->isForShop() ? 'the shop' : 'the customer'));
         }
     }
 
     /**
-     * One job per order and kind while it waits; customer notes and refunds each get their own.
+     * One job per order and kind while it waits; customer notes and refunds each get their own. A job keeps
+     * ids and amounts, never a note's text or an address.
      *
      * @param array<string, mixed>|null $refund
      */
-    private function queue(int $orderId, EmailKind $kind, string $note = '', ?array $refund = null): void
+    private function queue(int $orderId, EmailKind $kind, ?int $noteId = null, ?array $refund = null): void
     {
         if (!$this->settings->load()->sends($kind)) {
             return;
         }
         $this->jobs->push(
             SendOrderEmails::TYPE,
-            ['order' => $orderId, 'kind' => $kind->value] + ($note === '' ? [] : ['note' => $note]) + ($refund === null ? [] : ['refund' => $refund]),
-            $kind === EmailKind::CustomerNote || $kind === EmailKind::OrderAttention || $refund !== null ? null : "{$orderId}:{$kind->value}",
+            ['order' => $orderId, 'kind' => $kind->value] + ($noteId === null ? [] : ['note' => $noteId]) + ($refund === null ? [] : ['refund' => $refund]),
+            $kind === EmailKind::CustomerNote || $refund !== null ? null : "{$orderId}:{$kind->value}",
         );
+    }
+
+    private static function noteText(OrderView $order, ?int $noteId): ?string
+    {
+        foreach ($order->notes as $note) {
+            if ($note->id === $noteId && $note->forCustomer) {
+                return $note->text;
+            }
+        }
+
+        return null;
     }
 }

@@ -12,6 +12,7 @@ use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 final class InMemoryOrderRepository implements OrderRepository
 {
     private int $lastGrantId = 0;
+    private int $lastNoteId = 0;
 
     /** @var array<int, Order> */
     public array $orders = [];
@@ -92,7 +93,13 @@ final class InMemoryOrderRepository implements OrderRepository
 
     public function save(Order $order): void
     {
-        // Grants get ids on save, as the database gives them.
+        // Grants and notes get ids on save, as the database gives them.
+        foreach ($order->notes() as $note) {
+            $id = new \ReflectionProperty($note, 'id');
+            if ($id->getValue($note) === null) {
+                $id->setValue($note, ++$this->lastNoteId);
+            }
+        }
         foreach ($order->grants() as $grant) {
             $id = new \ReflectionProperty($grant, 'id');
             if ($id->getValue($grant) === null) {

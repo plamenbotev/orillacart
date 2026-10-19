@@ -227,6 +227,29 @@ final class OrderEmailsTest extends TestCase
         self::assertStringContainsString('the mail system refused it', $failed[0]->error);
     }
 
+    public function testAnEmailJobKeepsNoNoteTextOrAddress(): void
+    {
+        $order = $this->place('bank_transfer');
+        $this->shop->mail->accepts = false;
+        $this->shop->orders->addNote($order->number, new AddOrderNote('Your door code 4321 works.', forCustomer: true), 1);
+        for ($attempt = 1; $attempt < 5; ++$attempt) {
+            $this->shop->clock->sleep(60 * 4 ** ($attempt - 1));
+            $this->shop->jobs->runAll();
+        }
+
+        $failed = $this->shop->jobs->jobs->failed(SendOrderEmails::TYPE);
+        self::assertCount(1, $failed);
+        self::assertSame(['order' => $order->number, 'kind' => 'customer_note', 'note' => $this->shop->orders->order($order->number)->notes[2]->id], $failed[0]->payload);
+        self::assertSame("The customer_note email of order {$order->number} to the customer was not sent: the mail system refused it.", $failed[0]->error);
+
+        $this->shop->mail->accepts = true;
+        $this->shop->jobs->jobs->retryFailed([$failed[0]->id]);
+        $this->shop->jobs->runAll();
+        $last = end($this->shop->mail->emails);
+        self::assertNotFalse($last);
+        self::assertStringContainsString('Your door code 4321 works.', $last->html, 'the note is read from the order');
+    }
+
     private function place(string $payment): PlacedOrderView
     {
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);

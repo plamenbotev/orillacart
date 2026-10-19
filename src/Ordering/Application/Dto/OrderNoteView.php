@@ -13,10 +13,11 @@ final readonly class OrderNoteView
         public string $author,
         public bool $forCustomer,
         public string $createdAt,
+        public ?int $id = null,
     ) {}
 
     public static function fromNote(OrderNote $note): self
     {
-        return new self($note->text(), $note->author()->value, $note->isForCustomer(), $note->createdAt()->format(\DATE_ATOM));
+        return new self($note->text(), $note->author()->value, $note->isForCustomer(), $note->createdAt()->format(\DATE_ATOM), $note->id());
     }
 }

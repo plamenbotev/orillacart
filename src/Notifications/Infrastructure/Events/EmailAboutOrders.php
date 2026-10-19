@@ -25,14 +25,14 @@ final readonly class EmailAboutOrders
     public function noteAdded(OrderNoteAdded $event): void
     {
         if ($event->forCustomer) {
-            $this->emails->noteAdded($event->orderId, $event->text);
+            $this->emails->noteAdded($event->orderId, $event->noteId);
         }
     }
 
     #[AsEventListener]
     public function needsAttention(OrderNeedsAttention $event): void
     {
-        $this->emails->needsAttention($event->orderId, $event->reason);
+        $this->emails->needsAttention($event->orderId);
     }
 
     #[AsEventListener]

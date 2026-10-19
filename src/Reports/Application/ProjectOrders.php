@@ -19,6 +19,7 @@ use OrillaCart\Reports\Domain\SoldLine;
 use OrillaCart\Reports\Domain\SoldOrder;
 use OrillaCart\Reports\Domain\UsedCoupon;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Security\Signatures;
 
 /**
  * Keeps the reports' facts of orders that changed, a batch at a time, in one write: the reports read only these,
@@ -28,6 +29,7 @@ use OrillaCart\Shared\Domain\Money;
 final readonly class ProjectOrders implements JobHandler
 {
     public const string TYPE = 'reports.order';
+    private const string GUEST_PURPOSE = 'report-guest';
 
 
     public function __construct(
@@ -35,6 +37,7 @@ final readonly class ProjectOrders implements JobHandler
         private Refunds $refunds,
         private ReportStore $store,
         private ShopCalendar $calendar,
+        private Signatures $signatures,
     ) {}
 
     public static function type(): string
@@ -107,7 +110,9 @@ final readonly class ProjectOrders implements JobHandler
                 match (true) {
                     $order->customerId !== null => 'c' . $order->customerId,
                     $order->anonymised => 'o' . $order->number,
-                    default => 'e' . mb_substr(mb_strtolower($order->email), 0, 200),
+                    // A guest by a keyed hash of the email: told apart, not named. A new site secret
+                    // tells them apart anew from the next rebuild.
+                    default => 'e' . $this->signatures->sign(self::GUEST_PURPOSE, mb_strtolower(trim($order->email))),
                 },
                 $order->customerId,
                 mb_substr(trim($order->billing->firstName . ' ' . $order->billing->lastName), 0, 200),

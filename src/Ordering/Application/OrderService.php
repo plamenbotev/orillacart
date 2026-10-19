@@ -409,9 +409,9 @@ final readonly class OrderService
     public function note(int $id, string $text, bool $forCustomer): void
     {
         $this->changing($id, function (Order $order) use ($text, $forCustomer): void {
-            $order->addNote($text, NoteAuthor::System, $forCustomer, $this->clock->now());
+            $note = $order->addNote($text, NoteAuthor::System, $forCustomer, $this->clock->now());
             $this->orders->save($order);
-            $this->events->dispatch(new OrderNoteAdded($order->id(), trim($text), $forCustomer));
+            $this->events->dispatch(new OrderNoteAdded($order->id(), trim($text), $forCustomer, $note->id()));
         });
     }
 
@@ -482,9 +482,9 @@ final readonly class OrderService
     public function addNote(int $id, AddOrderNote $command, ?int $userId): OrderView
     {
         return $this->changing($id, function (Order $order) use ($command, $userId): OrderView {
-            $order->addNote($command->text, NoteAuthor::Shop, $command->forCustomer, $this->clock->now(), $userId);
+            $note = $order->addNote($command->text, NoteAuthor::Shop, $command->forCustomer, $this->clock->now(), $userId);
             $this->orders->save($order);
-            $this->events->dispatch(new OrderNoteAdded($order->id(), trim($command->text), $command->forCustomer));
+            $this->events->dispatch(new OrderNoteAdded($order->id(), trim($command->text), $command->forCustomer, $note->id()));
 
             return $this->view($order, true);
         });

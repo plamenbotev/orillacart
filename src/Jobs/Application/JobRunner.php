@@ -128,15 +128,24 @@ final readonly class JobRunner
                 $this->queue->reschedule($job, $outcome->at);
                 ++$rescheduled;
             } elseif ($outcome->isRetry() && $job->attempts < $handler->maxAttempts()) {
-                $this->queue->retry($job, $outcome->error, $now->modify(\sprintf('+%d seconds', max(1, $handler->retryAfter($job->attempts)))));
+                $this->queue->retry($job, self::kept($outcome->error), $now->modify(\sprintf('+%d seconds', max(1, $handler->retryAfter($job->attempts)))));
                 ++$retried;
             } else {
-                $this->queue->fail($job, $outcome->error, $now);
+                $this->queue->fail($job, self::kept($outcome->error), $now);
                 ++$failed;
             }
         }
         $this->queue->complete($done);
 
         return ['done' => \count($done) + $rescheduled, 'retried' => $retried, 'failed' => $failed];
+    }
+
+    /**
+     * An error as the queue keeps it, for the shop to read for weeks: a message from deep down (a template, the
+     * database) can carry a customer's email address, which it does not need.
+     */
+    private static function kept(string $error): string
+    {
+        return mb_substr((string) preg_replace('/[^\s@<>"\'(),;:]+@[^\s@<>"\'(),;:]+\.[a-z]{2,}/i', '[email]', $error), 0, 2000);
     }
 }

@@ -19,7 +19,8 @@ use OrillaCart\Shared\Domain\Money;
 class SoldOrder
 {
     /**
-     * @param string $customerKey who bought: "c42" for customer 42, or "e" and the guest's email
+     * @param string $customerKey who bought: "c42" for customer 42, "e" and a keyed hash of a guest's email, or
+     *                            "o" and the order number for an erased customer
      * @param string $gross       the items' prices before discounts and tax
      * @param string $shippingTotal shipping before tax
      * @param string $tax         items' and shipping tax

@@ -23,6 +23,7 @@ use OrillaCart\Reports\Application\ProjectOrders;
 use OrillaCart\Reports\Application\RebuildReports;
 use OrillaCart\Reports\Application\ShopCalendar;
 use OrillaCart\Reports\Infrastructure\Events\CountChangedOrders;
+use OrillaCart\Shared\Security\Signatures;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Reports\InMemoryReportStore;
 use PHPUnit\Framework\TestCase;
@@ -48,7 +49,7 @@ final class ReportProjectionTest extends TestCase
                 return new \DateTimeZone('America/New_York');
             }
         };
-        $this->shop->jobs->with(new ProjectOrders($this->shop->orders, $this->shop->refunds, $this->store, $calendar), new RebuildReports($this->shop->orders, $this->shop->jobs->jobs));
+        $this->shop->jobs->with(new ProjectOrders($this->shop->orders, $this->shop->refunds, $this->store, $calendar, new Signatures('test secret')), new RebuildReports($this->shop->orders, $this->shop->jobs->jobs));
         $counting = new CountChangedOrders($this->shop->jobs->jobs);
         $this->shop->events->addListener(OrderPlaced::class, $counting->placed(...));
         $this->shop->events->addListener(OrderStatusChanged::class, $counting->statusChanged(...));
@@ -76,6 +77,7 @@ final class ReportProjectionTest extends TestCase
 
         $this->shop->orders->changeContact($order->number, new ChangeOrderContact('ada@example.com', new AddressData('Ada', 'King', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000')), 7);
         self::assertSame('Ada King', $this->store->facts[$order->number]->order->customerName, 'an edited order is counted again');
+        self::assertMatchesRegularExpression('/^e[a-f0-9]{32}$/', $this->store->facts[$order->number]->order->customerKey, 'a guest is told apart by a keyed hash, not by the email');
     }
 
     public function testADeletedOrderIsForgottenAndARebuildCountsEveryOrder(): void

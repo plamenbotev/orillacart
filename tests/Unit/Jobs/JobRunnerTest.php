@@ -95,7 +95,7 @@ final class JobRunnerTest extends TestCase
     public function testAJobThatKeepsFailingIsGivenUpForTheShopToRetry(): void
     {
         $this->push('a');
-        $this->handler->outcomes['a'] = JobOutcome::retry('Timeout');
+        $this->handler->outcomes['a'] = JobOutcome::retry('Timeout sending to ada.lovelace+shop@example.co.uk');
 
         for ($attempt = 1; $attempt <= 3; ++$attempt) {
             $this->test->runner->work([], 10, 'test');
@@ -104,7 +104,7 @@ final class JobRunnerTest extends TestCase
 
         self::assertSame([], $this->test->queue->jobs);
         $failed = $this->test->jobs->failed('test.record');
-        self::assertSame([['a', 'Timeout', 3, 'Record a']], array_map(static fn($job): array => [$job->uniqueKey, $job->error, $job->attempts, $job->about], $failed));
+        self::assertSame([['a', 'Timeout sending to [email]', 3, 'Record a']], array_map(static fn($job): array => [$job->uniqueKey, $job->error, $job->attempts, $job->about], $failed));
 
         unset($this->handler->outcomes['a']);
         self::assertSame(1, $this->test->jobs->retryFailed(null));

@@ -73,7 +73,7 @@ final readonly class SendOrderEmails implements JobHandler
                 if ($this->sent->wasSent($mark)) {
                     continue;
                 }
-                $this->emails->send($order, $kind, \is_string($job->payload['note'] ?? null) ? $job->payload['note'] : '', self::refund($job->payload['refund'] ?? null));
+                $this->emails->send($order, $kind, \is_int($job->payload['note'] ?? null) ? $job->payload['note'] : null, self::refund($job->payload['refund'] ?? null));
                 $this->sent->remember(new SentEmail($mark, $this->clock->now()));
             } catch (OrderNotFound) {
                 // Deleted since: nobody to write to about it.
