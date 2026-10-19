@@ -39,6 +39,10 @@ final readonly class SearchEngines
             return $this->view($settings, true, 'The shop searches its database.');
         }
 
+        $wrongHost = self::hostProblem(trim($command->host));
+        if ($wrongHost !== null) {
+            return $this->view($saved, false, $wrongHost);
+        }
         $candidate = new EngineSettings(SearchEngine::OpenSearch, trim($command->host), trim($command->username), $command->clearPassword ? '' : ($command->password === '' ? $saved->password : $command->password), trim($command->index));
         $problem = $this->server->prepare($candidate);
         if ($problem !== null) {
@@ -76,5 +80,22 @@ final readonly class SearchEngines
             $message,
             $this->workers->serving(IndexProducts::queue()),
         );
+    }
+
+    /** What is wrong with an OpenSearch address, for the screen; null for a good one. */
+    private static function hostProblem(string $host): ?string
+    {
+        $parts = parse_url($host);
+        if ($parts === false || !\in_array($parts['scheme'] ?? '', ['http', 'https'], true) || ($parts['host'] ?? '') === '') {
+            return 'Enter the address OpenSearch listens on, such as https://search.example.com:9200.';
+        }
+        if (isset($parts['user']) || isset($parts['pass'])) {
+            return 'Put the user name and password in their own fields, not in the address: it is shown and logged.';
+        }
+        if (isset($parts['query']) || isset($parts['fragment'])) {
+            return 'The address has no query: just the scheme, the host, the port and a path if any.';
+        }
+
+        return null;
     }
 }

@@ -28,7 +28,7 @@ final class ShopManagerTest extends RestTestCase
         foreach (['edit_others_posts', 'publish_pages', 'upload_files', 'moderate_comments'] as $capability) {
             self::assertTrue(user_can($manager, $capability), $capability);
         }
-        foreach (['edit_users', 'list_users', 'promote_users', 'manage_options', 'activate_plugins', 'edit_theme_options'] as $capability) {
+        foreach (['edit_users', 'list_users', 'promote_users', 'manage_options', 'activate_plugins', 'edit_theme_options', 'unfiltered_html'] as $capability) {
             self::assertFalse(user_can($manager, $capability), $capability);
         }
     }

@@ -37,6 +37,8 @@ final readonly class ShopCapabilities implements LifecycleListener
         foreach (array_keys(array_filter($content)) as $capability) {
             $manager->add_cap($capability);
         }
+        // Raw HTML in posts runs as script for everyone who views them: the site's administrators decide that.
+        $manager->remove_cap('unfiltered_html');
         foreach (Capability::all() as $capability) {
             $manager->add_cap($capability);
         }
