@@ -7,38 +7,39 @@ namespace OrillaCart\Ordering\Domain;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * A postal address as the customer gave it at checkout. Orders keep it unchanged.
+ * A postal address as the customer gave it at checkout. Orders keep it unchanged. Where an order has none, as
+ * one that ships nothing, its columns hold empty strings: every column but the state holds text.
  */
 #[ORM\Embeddable]
 final class Address
 {
     public const int MAX_LENGTH = 200;
 
-    #[ORM\Column(length: self::MAX_LENGTH, nullable: true)]
-    private ?string $firstName;
+    #[ORM\Column(length: self::MAX_LENGTH, options: ['default' => ''])]
+    private string $firstName;
 
-    #[ORM\Column(length: self::MAX_LENGTH, nullable: true)]
-    private ?string $lastName;
+    #[ORM\Column(length: self::MAX_LENGTH, options: ['default' => ''])]
+    private string $lastName;
 
-    #[ORM\Column(length: self::MAX_LENGTH, nullable: true)]
-    private ?string $street;
+    #[ORM\Column(length: self::MAX_LENGTH, options: ['default' => ''])]
+    private string $street;
 
-    #[ORM\Column(length: self::MAX_LENGTH, nullable: true)]
-    private ?string $city;
+    #[ORM\Column(length: self::MAX_LENGTH, options: ['default' => ''])]
+    private string $city;
 
-    #[ORM\Column(length: 20, nullable: true)]
-    private ?string $postcode;
+    #[ORM\Column(length: 20, options: ['default' => ''])]
+    private string $postcode;
 
-    #[ORM\Column(length: 2, nullable: true)]
-    private ?string $country;
+    #[ORM\Column(length: 2, options: ['default' => ''])]
+    private string $country;
 
     #[ORM\Column(length: 3, nullable: true)]
     private ?string $state;
 
-    #[ORM\Column(length: 40, nullable: true)]
-    private ?string $phone;
+    #[ORM\Column(length: 40, options: ['default' => ''])]
+    private string $phone;
 
-    private function __construct(?string $firstName, ?string $lastName, ?string $street, ?string $city, ?string $postcode, ?string $country, ?string $state, ?string $phone)
+    private function __construct(string $firstName, string $lastName, string $street, string $city, string $postcode, string $country, ?string $state, string $phone)
     {
         $this->firstName = $firstName;
         $this->lastName = $lastName;
@@ -73,43 +74,43 @@ final class Address
      */
     public function anonymised(): self
     {
-        return new self('Anonymised', '', null, null, null, $this->country, $this->state, null);
+        return new self('Anonymised', '', '', '', '', $this->country, $this->state, '');
     }
 
     /** No address: the columns an order that ships nothing leaves empty. */
     public static function none(): self
     {
-        return new self(null, null, null, null, null, null, null, null);
+        return new self('', '', '', '', '', '', null, '');
     }
 
     public function firstName(): string
     {
-        return (string) $this->firstName;
+        return $this->firstName;
     }
 
     public function lastName(): string
     {
-        return (string) $this->lastName;
+        return $this->lastName;
     }
 
     public function street(): string
     {
-        return (string) $this->street;
+        return $this->street;
     }
 
     public function city(): string
     {
-        return (string) $this->city;
+        return $this->city;
     }
 
     public function postcode(): string
     {
-        return (string) $this->postcode;
+        return $this->postcode;
     }
 
     public function country(): string
     {
-        return (string) $this->country;
+        return $this->country;
     }
 
     public function state(): ?string
@@ -119,13 +120,13 @@ final class Address
 
     public function phone(): string
     {
-        return (string) $this->phone;
+        return $this->phone;
     }
 
     /** Whether this is none(): an order that ships nothing has no shipping address. */
     public function isEmpty(): bool
     {
-        return $this->country === null;
+        return $this->country === '';
     }
 
     /** Whether it is the same place, whatever the phone: a parcel goes to the same door. */
