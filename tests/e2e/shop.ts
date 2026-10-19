@@ -39,7 +39,7 @@ export { BILLING };
  * @param requestUtils The admin's API access.
  * @param path         The route, below /wp-json.
  */
-async function remove(
+export async function remove(
 	requestUtils: RequestUtils,
 	path: string
 ): Promise< void > {
