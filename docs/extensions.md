@@ -69,6 +69,12 @@ A gateway whose provider calls back implements `HandlesNotifications`. The admin
   notification is about, without checking it. The shop calls `notified()` only for payments it started, so a
   provider account shared with another site never captures that site's money here. Return null for
   notifications about no payment the shop started, such as refunds made at the provider's site.
+- A gateway whose notifications carry the provider's event id implements `NamesNotifiedEvents`:
+  `eventId($notification)` reads it, and the shop handles each event once (kept a month).
+- A refund outcome passes the shop's own id of a refund it asked for, as the provider echoes it
+  (`PaymentOutcome::refunded(…, request: $id)`, the `RefundRequest->id` sent): the shop recognises its refund by
+  it, never by the amount. A notification the gateway refuses is answered 400; one it cannot confirm because the
+  provider is unavailable is answered 503 with `Retry-After`, so the provider sends it again.
 
 The shop settles each payment once; later returns and notifications change nothing. A completed outcome whose
 amount or currency is not the order's is held for the shop to look at instead of completing the order.

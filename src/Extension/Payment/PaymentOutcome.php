@@ -37,6 +37,8 @@ final readonly class PaymentOutcome
         public ?string $refundId = null,
         /** What the provider said, for an outcome the shop has to look at. */
         public ?string $reason = null,
+        /** For a refund: the shop's own id of it, as RefundRequest->id gave it and the provider echoes it. */
+        public ?string $request = null,
     ) {}
 
     public static function completed(string $reference, string $transactionId, ?string $amount = null, ?string $currency = null): self
@@ -82,9 +84,11 @@ final readonly class PaymentOutcome
      *
      * @param string      $reference     the payment's reference; empty when the provider names only the transaction
      * @param string|null $transactionId the payment's transaction, to find it by when the reference is empty
+     * @param string|null $request       the shop's id of the refund, when it asked for it: how it is told from one
+     *                                   made at the provider
      */
-    public static function refunded(string $reference, string $refundId, string $amount, ?string $currency = null, ?string $transactionId = null): self
+    public static function refunded(string $reference, string $refundId, string $amount, ?string $currency = null, ?string $transactionId = null, ?string $request = null): self
     {
-        return new self($reference, self::REFUNDED, $transactionId, $amount, $currency, $refundId);
+        return new self($reference, self::REFUNDED, $transactionId, $amount, $currency, $refundId, request: $request);
     }
 }

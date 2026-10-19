@@ -181,12 +181,37 @@ final class RefundsTest extends TestCase
         } catch (PaymentRuleViolation) {
         }
 
-        $this->shop->outcomes->notified('paypal', $this->refunded('REFUND-1', '8.00'));
-        $this->shop->outcomes->notified('paypal', $this->refunded('REFUND-1', '8.00'));
+        $sent = $this->shop->refundRecords->ofOrder($order)[0]->idempotencyKey();
+        $this->shop->outcomes->notified('paypal', $this->refunded('REFUND-1', '8.00', $sent));
+        $this->shop->outcomes->notified('paypal', $this->refunded('REFUND-1', '8.00', $sent));
 
         $view = $this->shop->refunds->forOrder($order);
-        self::assertCount(1, $view->refunds, 'the webhook is about the refund the shop sent');
+        self::assertCount(1, $view->refunds, 'the webhook is about the refund the shop sent, by its id');
         self::assertSame(['done', 'REFUND-1', '8'], [$view->refunds[0]->status, $view->refunds[0]->providerReference, $view->refundable]);
+    }
+
+    public function testARefundMadeInPayPalsDashboardIsNotTakenForOneTheShopSentOfTheSameAmount(): void
+    {
+        $order = $this->paidWithPayPal(2);
+        $this->shop->payPalApi->answerLost = true;
+        try {
+            $this->shop->refunds->refund($order, new MakeRefund('8'), 7);
+        } catch (PaymentRuleViolation) {
+        }
+
+        $this->shop->outcomes->notified('paypal', $this->refunded('DASH-2', '8.00'));
+
+        self::assertSame([['provider', 'pending'], ['external', 'done']], array_map(static fn($refund): array => [$refund->method, $refund->status], $this->shop->refunds->forOrder($order)->refunds));
+    }
+
+    public function testAnEventSentAgainChangesNothing(): void
+    {
+        $order = $this->paidWithPayPal(2);
+
+        $this->shop->outcomes->notified('paypal', $this->refunded('DASH-1', '5.00', eventId: 'WH-EVENT-1'));
+        $this->shop->outcomes->notified('paypal', $this->refunded('DASH-3', '5.00', eventId: 'WH-EVENT-1'));
+
+        self::assertCount(1, $this->shop->refunds->forOrder($order)->refunds, 'the replay is ignored, whatever it says');
     }
 
     public function testARefundMadeInPayPalsDashboardIsRecordedOnce(): void
@@ -255,14 +280,15 @@ final class RefundsTest extends TestCase
         return $placed->number;
     }
 
-    private function refunded(string $refundId, string $amount): Notification
+    private function refunded(string $refundId, string $amount, ?string $customId = null, ?string $eventId = null): Notification
     {
-        return new Notification(['paypal-transmission-id' => 'T-1'], (string) json_encode(['event_type' => 'PAYMENT.CAPTURE.REFUNDED', 'resource' => [
+        return new Notification(['paypal-transmission-id' => 'T-1'], (string) json_encode(array_filter(['id' => $eventId, 'event_type' => 'PAYMENT.CAPTURE.REFUNDED', 'resource' => array_filter([
             'id' => $refundId,
             'status' => 'COMPLETED',
             'amount' => ['value' => $amount, 'currency_code' => 'EUR'],
+            'custom_id' => $customId,
             'links' => [['rel' => 'up', 'href' => 'https://api.sandbox.paypal.com/v2/payments/captures/CAPTURE-PAYPAL-1']],
-        ]]));
+        ])])));
     }
 
     private function available(): ?int

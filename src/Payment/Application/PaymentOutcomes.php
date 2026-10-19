@@ -8,6 +8,7 @@ use OrillaCart\Extension\Payment\ChecksPayments;
 use OrillaCart\Extension\Payment\HandlesNotifications;
 use OrillaCart\Extension\Payment\HandlesReturns;
 use OrillaCart\Extension\Payment\InvalidNotification;
+use OrillaCart\Extension\Payment\NamesNotifiedEvents;
 use OrillaCart\Extension\Payment\NamesNotifiedPayments;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Extension\Payment\PaymentOutcome;
@@ -20,6 +21,8 @@ use OrillaCart\Payment\Domain\Event\PaymentCompleted;
 use OrillaCart\Payment\Domain\Event\PaymentFailed;
 use OrillaCart\Payment\Domain\Event\PaymentHeld;
 use OrillaCart\Payment\Domain\Event\PaymentInQuestion;
+use OrillaCart\Payment\Domain\NotifiedEvent;
+use OrillaCart\Payment\Domain\NotifiedEvents;
 use OrillaCart\Payment\Domain\Payment;
 use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentMethodRepository;
@@ -62,6 +65,7 @@ final readonly class PaymentOutcomes
         private Transactions $transactions,
         private OrderLinks $links,
         private Signatures $signatures,
+        private NotifiedEvents $handled,
     ) {}
 
     /**
@@ -120,6 +124,11 @@ final readonly class PaymentOutcomes
         if (!$gateway instanceof HandlesNotifications) {
             throw new PaymentMethodNotFound($gatewayId);
         }
+        // The same event once: a provider retrying, or a notification replayed, changes nothing again.
+        $eventId = $gateway instanceof NamesNotifiedEvents ? $gateway->eventId($notification) : null;
+        if ($eventId !== null && $this->handled->wasHandled($gatewayId, $eventId)) {
+            return;
+        }
         if ($gateway instanceof NamesNotifiedPayments) {
             $reference = $gateway->paymentReference($notification);
             if ($reference !== null && $this->payments->findByReference($gatewayId, $reference) === null) {
@@ -138,6 +147,9 @@ final readonly class PaymentOutcomes
             $this->logger->error('Payment method {gateway} failed on a notification: {message}', ['gateway' => $gatewayId, 'message' => $e->getMessage(), 'exception' => $e]);
 
             throw new PaymentProviderUnavailable($this->methods->findByGateway($gatewayId)?->name() ?? $gateway->defaultName(), $e->getMessage(), $e);
+        }
+        if ($eventId !== null) {
+            $this->handled->remember(new NotifiedEvent($gatewayId, $eventId, $this->clock->now()));
         }
         if ($outcome === null) {
             return;
@@ -259,5 +271,11 @@ final readonly class PaymentOutcomes
     private function settings(string $gatewayId): Settings
     {
         return new Settings($this->methods->findByGateway($gatewayId)?->settings() ?? []);
+    }
+
+    /** Forgets the providers' events handled more than a month ago, daily: longer than any provider retries. */
+    public function forgetOldEvents(): void
+    {
+        $this->handled->forgetBefore($this->clock->now()->modify('-30 days'));
     }
 }

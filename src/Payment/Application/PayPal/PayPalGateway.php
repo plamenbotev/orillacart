@@ -8,6 +8,7 @@ use OrillaCart\Extension\Payment\ChecksPayments;
 use OrillaCart\Extension\Payment\ChecksRefunds;
 use OrillaCart\Extension\Payment\HandlesReturns;
 use OrillaCart\Extension\Payment\InvalidNotification;
+use OrillaCart\Extension\Payment\NamesNotifiedEvents;
 use OrillaCart\Extension\Payment\NamesNotifiedPayments;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Extension\Payment\PaymentGateway;
@@ -34,7 +35,7 @@ use OrillaCart\Shared\Domain\Money;
  * approves it at PayPal and comes back, and the shop captures it. A verified webhook settles payments whose
  * customer never came back, and tells of refunds made in PayPal's own dashboard. Refunds go back to the capture. Built on the extension API, as an add-on's gateway would be.
  */
-final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, NamesNotifiedPayments, ChecksPayments, ChecksRefunds
+final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, NamesNotifiedPayments, NamesNotifiedEvents, ChecksPayments, ChecksRefunds
 {
     public const string ID = 'paypal';
 
@@ -184,6 +185,13 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
     /**
      * An approved order is captured when its notification comes: only for PayPal orders this shop started.
      */
+    public function eventId(Notification $notification): ?string
+    {
+        $event = json_decode($notification->body, true);
+
+        return \is_array($event) && \is_string($event['id'] ?? null) && $event['id'] !== '' ? mb_substr($event['id'], 0, 100) : null;
+    }
+
     public function paymentReference(Notification $notification): ?string
     {
         $event = json_decode($notification->body, true);
@@ -253,6 +261,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
                 self::text($amount, 'value'),
                 self::text($amount, 'currency_code'),
                 $captureId === '' ? null : $captureId,
+                self::text($resource, 'custom_id') === '' ? null : self::text($resource, 'custom_id'),
             );
         }
         if (str_starts_with($type, 'PAYMENT.CAPTURE.')) {

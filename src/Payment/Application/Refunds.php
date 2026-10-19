@@ -221,14 +221,15 @@ final readonly class Refunds
 
             return;
         }
-        $amount = preg_match('/^\d{1,11}(\.\d{1,4})?$/', $outcome->amount ?? '') === 1 ? Money::of($outcome->amount ?? '0') : Money::zero();
+        // One the shop asked for, whose answer it never heard: known by the id it sent, never by its amount.
         foreach ($this->refunds->ofOrder($payment->orderId()) as $refund) {
-            if ($refund->status() === RefundStatus::Pending && $refund->paymentId() === $payment->id() && $refund->amount()->equals($amount)) {
+            if ($refund->isOpen() && $refund->paymentId() === $payment->id() && $outcome->request !== null && $outcome->request === $refund->idempotencyKey()) {
                 $this->completed($refund, $refundId, null);
 
                 return;
             }
         }
+        $amount = preg_match('/^\d{1,11}(\.\d{1,4})?$/', $outcome->amount ?? '') === 1 ? Money::of($outcome->amount ?? '0') : Money::zero();
 
         try {
             $order = $this->orders->order($payment->orderId());

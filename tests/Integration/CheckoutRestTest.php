@@ -266,7 +266,7 @@ final class CheckoutRestTest extends RestTestCase
         $forged->set_body((string) wp_json_encode(['event_type' => 'CHECKOUT.ORDER.APPROVED', 'resource' => ['id' => 'PAY-1']]));
         $response = rest_do_request($forged);
 
-        self::assertSame(422, $response->get_status());
+        self::assertSame(400, $response->get_status(), 'not from PayPal: a bad request, not one to send again');
         self::assertSame('pending_payment', $this->data($this->request('GET', "/receipts/{$this->key($order)}"))['status']);
 
         $forged->set_header('PayPal-Transmission-Sig', 'genuine');
@@ -318,7 +318,7 @@ final class CheckoutRestTest extends RestTestCase
         $notification->set_header('Content-Type', 'application/json');
         $notification->set_body($body);
         $notification->set_header('X-Test-Signature', 'forged');
-        self::assertSame(422, rest_do_request($notification)->get_status());
+        self::assertSame(400, rest_do_request($notification)->get_status());
         $notification->set_header('X-Test-Signature', hash_hmac('sha256', $body, 'k3y'));
         self::assertSame(200, rest_do_request($notification)->get_status());
         self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($waiting)}"))['status']);

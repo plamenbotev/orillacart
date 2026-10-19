@@ -138,6 +138,7 @@ use OrillaCart\Tests\Fixtures\Ordering\InMemoryOrderRepository;
 use OrillaCart\Tests\Fixtures\Payment\FakePaymentUrls;
 use OrillaCart\Tests\Fixtures\Payment\FakePayPalApi;
 use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
+use OrillaCart\Tests\Fixtures\Payment\InMemoryNotifiedEvents;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentMethodRepository;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentRepository;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryRefundRepository;
@@ -223,6 +224,7 @@ final class TestShop
     public readonly FakeLanguages $languages;
     public readonly ReceiptLinks $receipts;
     public readonly Signatures $signatures;
+    public readonly InMemoryNotifiedEvents $notifiedEvents;
     public readonly FakePaymentUrls $paymentUrls;
     public readonly FakeSite $site;
     public readonly InMemoryCustomerSettingsRepository $customerSettings;
@@ -295,7 +297,7 @@ final class TestShop
         $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, $links, $this->transactions, $this->receipts);
         $this->refundRecords = new InMemoryRefundRepository($this->transactions);
         $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions, $this->events);
-        $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds, $this->transactions, $links, $this->signatures);
+        $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds, $this->transactions, $links, $this->signatures, $this->notifiedEvents = new InMemoryNotifiedEvents());
         $this->files = new TemporaryPrivateFiles();
         $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events);
         $this->downloads = new Downloads(new InMemoryDownloadGrantRepository($this->orderRecords), $this->files, $links, $this->clock, $this->logger);

@@ -102,7 +102,8 @@ final readonly class WordPressPayPalApi implements PayPalApi
 
     public function refundCapture(PayPalAccount $account, string $captureId, string $requestId, string $amount, string $currency, string $note): PayPalRefund
     {
-        $body = ['amount' => ['value' => $amount, 'currency_code' => $currency]];
+        // custom_id comes back with the refund's notifications: the shop knows its own refund by it.
+        $body = ['amount' => ['value' => $amount, 'currency_code' => $currency], 'custom_id' => $requestId];
         if (trim($note) !== '') {
             $body['note_to_payer'] = mb_substr(trim($note), 0, 255);
         }
