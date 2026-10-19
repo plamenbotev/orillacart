@@ -34,6 +34,7 @@ final readonly class PriceResolver
             $customerId,
             $this->settings->current()->currency,
             $this->logger,
+            $this->settings->current()->priceDecimals,
         );
     }
 }

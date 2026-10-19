@@ -84,4 +84,41 @@ final class MoneyTest extends TestCase
         self::assertSame(['5', '2.5', '100'], [(string) Money::of('107.5')->includedPercent('5', ['5', '2.5']), (string) Money::of('107.5')->includedPercent('2.5', ['5', '2.5']), (string) Money::of('107.5')->withoutPercents(['5', '2.5'])]);
         self::assertSame('9', (string) Money::of('9')->withoutPercents([]));
     }
+
+    public function testProportionsAreExactEvenForLargeAmounts(): void
+    {
+        self::assertSame('3.3333', (string) Money::of('10')->proportion(Money::of('1'), Money::of('3')));
+        self::assertSame('-3.3333', (string) Money::of('-10')->proportion(Money::of('1'), Money::of('3')));
+        self::assertSame('0', (string) Money::of('10')->proportion(Money::of('1'), Money::zero()));
+        // 2,000,000 × 1,500,000 overflows an integer in ten-thousandths; as floats it lost the last digits.
+        self::assertSame('1000000', (string) Money::of('2000000')->proportion(Money::of('1500000'), Money::of('3000000')));
+        self::assertSame('-1000000', (string) Money::of('-2000000')->proportion(Money::of('1500000'), Money::of('3000000')));
+        self::assertSame('1000000', (string) Money::of('-2000000')->proportion(Money::of('1500000'), Money::of('-3000000')));
+        self::assertSame('333333.3333', (string) Money::of('1000000')->proportion(Money::of('1000000.0001'), Money::of('3000000.0003')));
+        self::assertSame('66666666666.6666', (string) Money::of('99999999999.9999')->proportion(Money::of('2'), Money::of('3')));
+    }
+
+    public function testAmountsStayWithinWhatTheColumnsHold(): void
+    {
+        self::assertSame('99999999999.9999', (string) Money::of('99999999999.9998')->add(Money::of('0.0001')));
+        foreach ([
+            static fn(): Money => Money::of('99999999999.9999')->add(Money::of('0.0001')),
+            static fn(): Money => Money::of('-99999999999.9999')->subtract(Money::of('1')),
+            static fn(): Money => Money::of('50000000000')->times(2),
+            static fn(): Money => Money::of('1')->times(\PHP_INT_MAX),
+            static fn(): Money => Money::of('99999999999')->proportion(Money::of('3'), Money::of('1')),
+        ] as $index => $tooLarge) {
+            try {
+                $tooLarge();
+                self::fail("Case {$index} is too large.");
+            } catch (RuleViolation $e) {
+                self::assertSame('orillacart_amount_too_large', $e->errorCode);
+            }
+        }
+    }
+
+    public function testPercentagesOffAreFromZeroToAHundred(): void
+    {
+        self::assertSame([true, true, true, false, false], array_map(static fn(string $value): bool => Money::of($value)->isPercentOff(), ['0', '12.5', '100', '100.0001', '-1']));
+    }
 }

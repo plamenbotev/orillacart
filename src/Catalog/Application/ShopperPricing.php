@@ -12,8 +12,8 @@ use OrillaCart\Shared\Domain\Money;
 use Psr\Log\LoggerInterface;
 
 /**
- * An item's own price for one shopper: the price rules that hold for them, then each add-on's adjuster in turn.
- * Options and bundles price on top of it.
+ * An item's own price for one shopper: the price rules that hold for them, then each add-on's adjuster in turn,
+ * rounded to the shop's decimals, so the price shown is the price charged. Options and bundles price on top of it.
  */
 final readonly class ShopperPricing
 {
@@ -26,6 +26,7 @@ final readonly class ShopperPricing
         private ?int $customerId,
         private string $currency,
         private LoggerInterface $logger,
+        private int $decimals = Money::DECIMALS,
     ) {}
 
     /**
@@ -36,7 +37,7 @@ final readonly class ShopperPricing
      */
     public function price(Money $price, PricedItem $item, int $quantity = 1, ?int $variationId = null, ?Money $regular = null): Money
     {
-        return $this->adjusted($this->rules->price($price, $item, $quantity), $item->productId, $variationId, $quantity, $regular ?? $price);
+        return $this->adjusted($this->rules->price($price, $item, $quantity), $item->productId, $variationId, $quantity, $regular ?? $price)->rounded($this->decimals);
     }
 
     /**
@@ -46,11 +47,7 @@ final readonly class ShopperPricing
      */
     public function tiers(Money $price, PricedItem $item, ?int $variationId = null, ?Money $regular = null): array
     {
-        if ($this->adjusters === []) {
-            return $this->rules->tiers($price, $item);
-        }
-
-        return $this->rules->tiers($price, $item, fn(Money $ruled, int $quantity): Money => $this->adjusted($ruled, $item->productId, $variationId, $quantity, $regular ?? $price));
+        return $this->rules->tiers($price, $item, fn(Money $ruled, int $quantity): Money => $this->adjusted($ruled, $item->productId, $variationId, $quantity, $regular ?? $price)->rounded($this->decimals));
     }
 
     public function nextChange(PricedItem $item): ?\DateTimeImmutable

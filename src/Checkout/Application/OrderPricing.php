@@ -116,7 +116,11 @@ final readonly class OrderPricing
         ));
         foreach ($lines as $index => $line) {
             $lines[$index]['discount'] = $discounts->forLine($index);
-            $lines[$index]['tax'] = $bill->addItem($line['total'], $taxesOf[$index], $lines[$index]['discount']);
+            $bill->addItem($line['total'], $taxesOf[$index], $lines[$index]['discount']);
+        }
+        $lineTaxes = $bill->lineTaxes();
+        foreach ($lines as $index => $line) {
+            $lines[$index]['tax'] = $lineTaxes[$index];
         }
         $free = $discounts->freeShipping();
 

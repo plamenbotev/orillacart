@@ -29,7 +29,7 @@ final readonly class PriceTier
         if (!\in_array($kind, [self::PERCENT, self::AMOUNT_OFF, self::FIXED_PRICE], true) || $value->isNegative()) {
             throw new CatalogRuleViolation('A tier takes a percentage or an amount off, or sets a price, of zero or more.', 'orillacart_invalid_price_tier');
         }
-        if ($kind === self::PERCENT && $value->compare(Money::of('100')) > 0) {
+        if ($kind === self::PERCENT && !$value->isPercentOff()) {
             throw new CatalogRuleViolation('A percentage is at most 100.', 'orillacart_invalid_price_tier');
         }
     }

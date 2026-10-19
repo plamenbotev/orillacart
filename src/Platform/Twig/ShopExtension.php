@@ -8,6 +8,7 @@ use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Geography\Domain\AddressFormat;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Settings\Domain\CurrencyPosition;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Tax\Application\TaxCalculator;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
@@ -83,9 +84,16 @@ final class ShopExtension extends AbstractExtension
     public function money(string $amount, ?string $currency = null): string
     {
         $settings = $this->settings->current();
-        $number = \function_exists('number_format_i18n')
-            ? number_format_i18n((float) $amount, $settings->priceDecimals)
-            : number_format((float) $amount, $settings->priceDecimals);
+        // Exact to the last decimal, never through a float; WordPress's locale chooses the separators.
+        $fixed = Money::of($amount)->format($settings->priceDecimals);
+        [$whole, $fraction] = explode('.', $fixed . '.');
+        $negative = str_starts_with($whole, '-');
+        $whole = ltrim($whole, '-');
+        $locale = $GLOBALS['wp_locale'] ?? null;
+        $format = $locale instanceof \WP_Locale ? $locale->number_format : [];
+        $thousands = \is_string($format['thousands_sep'] ?? null) ? $format['thousands_sep'] : ',';
+        $point = \is_string($format['decimal_point'] ?? null) ? $format['decimal_point'] : '.';
+        $number = ($negative ? '-' : '') . strrev(implode(strrev($thousands), str_split(strrev($whole), 3))) . ($fraction === '' ? '' : $point . $fraction);
         $sign = $currency !== null && $currency !== $settings->currency
             ? $currency
             : ($settings->currencySign !== '' ? $settings->currencySign : $settings->currency);

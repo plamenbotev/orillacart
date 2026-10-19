@@ -45,6 +45,18 @@ final class PriceRulesTest extends TestCase
         self::assertSame('432', $this->shop->checkout->summary($owner, new CheckoutDetails())->subtotal);
     }
 
+    public function testAPercentageOffIsRoundedToTheShopsDecimalsWhereverThePriceShows(): void
+    {
+        $this->shop->products->save(10, new SaveProduct('33.33', 'virtual'));
+        $this->rule('Buy 10', [new PriceTierData(10, 'percent', '10')], categoryIds: [3]);
+
+        // 10 % off 33.33 is 29.997: the page, the cart and the order all say 30.
+        self::assertSame([['min_quantity' => 1, 'price' => '33.33'], ['min_quantity' => 10, 'price' => '30']], $this->shop->catalog->offer(10)->tiers);
+        self::assertSame('30', $this->unit(10, 10));
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10, quantity: 10))->newToken);
+        self::assertSame(['300', '300'], [$this->shop->carts->cart($owner)->cart->subtotal, $this->shop->checkout->summary($owner, new CheckoutDetails())->subtotal]);
+    }
+
     public function testACustomerGroupSeesItsOwnPriceAndGuestsDoNot(): void
     {
         $wholesale = $this->shop->customerGroups->create(new SaveCustomerGroup('Wholesale'))->id;

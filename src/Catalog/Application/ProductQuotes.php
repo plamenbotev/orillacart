@@ -114,6 +114,8 @@ final readonly class ProductQuotes
             $weight = $weight === null ? ($itemsWeight->isZero() ? null : (string) $itemsWeight) : (string) Money::of($weight)->add($extrasWeight);
             $backorders = Backorders::No;
         }
+        // After every adjustment, in the shop's decimals: what the cart shows is what the order charges.
+        $unitPrice = $unitPrice->rounded($this->settings->current()->priceDecimals);
 
         return new ItemQuote(
             $product->id(),

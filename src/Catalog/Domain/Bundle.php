@@ -48,7 +48,7 @@ final readonly class Bundle
         if (!\in_array($pricing, [self::FIXED, self::SUM], true)) {
             throw new CatalogRuleViolation('A bundle has its own price, or the sum of its items.', 'orillacart_invalid_bundle');
         }
-        if ($discount !== null && ($discount->isNegative() || $discount->compare(Money::of('100')) > 0)) {
+        if ($discount !== null && !$discount->isPercentOff()) {
             throw new CatalogRuleViolation('A bundle discount is a percentage from 0 to 100.', 'orillacart_invalid_bundle');
         }
     }

@@ -112,6 +112,20 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame($now, $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery', expectedTotal: $now))->total);
     }
 
+    public function testTheLinesShareTheTaxBilledSoTheyAddUpToIt(): void
+    {
+        foreach ([40, 41, 42] as $product) {
+            $this->shop->content->add($product, "Pin {$product}");
+            $this->shop->products->save($product, new SaveProduct('0.33', 'virtual'));
+        }
+
+        $summary = $this->shop->checkout->summary($this->cart([40, 1], [41, 1], [42, 1]), new CheckoutDetails('BG'));
+
+        // 20 % of 0.99 is 0.198, billed as 0.20; each line's own 0.066 would round to 0.07, 0.21 in all.
+        self::assertSame('0.2', $summary->itemsTax);
+        self::assertSame(['0.07', '0.07', '0.06'], array_map(static fn($line): string => $line->tax, $summary->lines));
+    }
+
     public function testAFreeOrderNeedsNoPaymentAndGoesStraightToProcessing(): void
     {
         $placed = $this->shop->checkout->placeOrder($this->cart([30, 1]), $this->order(null, rate: null));

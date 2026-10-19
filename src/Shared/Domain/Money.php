@@ -17,8 +17,14 @@ final readonly class Money implements \Stringable
     public const string MAX = '99999999999.9999';
 
     private const int UNIT = 10 ** self::DECIMALS;
+    private const int MAX_UNITS = 999_999_999_999_999;
 
-    private function __construct(public int $tenThousandths) {}
+    private function __construct(public int $tenThousandths)
+    {
+        if (abs($tenThousandths) > self::MAX_UNITS) {
+            throw new RuleViolation(\sprintf('The amount is larger than %s.', self::MAX), 'orillacart_amount_too_large');
+        }
+    }
 
     /**
      * @param string $value a decimal such as "20", "8.5", "-1.25" or "0.0001"
@@ -34,6 +40,12 @@ final readonly class Money implements \Stringable
         $amount = (int) $parts[2] * self::UNIT + (int) str_pad($parts[3] ?? '', self::DECIMALS, '0');
 
         return new self($parts[1] === '-' ? -$amount : $amount);
+    }
+
+    /** An amount in ten-thousandths, as the shop holds it: 85000 is 8.5. */
+    public static function fromTenThousandths(int $tenThousandths): self
+    {
+        return new self($tenThousandths);
     }
 
     public static function zero(): self
@@ -53,11 +65,16 @@ final readonly class Money implements \Stringable
 
     public function times(int $quantity): self
     {
+        if ($quantity !== 0 && abs($this->tenThousandths) > intdiv(self::MAX_UNITS, abs($quantity))) {
+            throw new RuleViolation(\sprintf('The amount is larger than %s.', self::MAX), 'orillacart_amount_too_large');
+        }
+
         return new self($this->tenThousandths * $quantity);
     }
 
     /**
-     * The part of this amount that $part is of $whole, rounded half away from zero: 10 spread by 1 of 3 is 3.3333.
+     * The part of this amount that $part is of $whole, exact and rounded half away from zero: 10 spread by 1 of
+     * 3 is 3.3333.
      */
     public function proportion(self $part, self $whole): self
     {
@@ -65,7 +82,13 @@ final readonly class Money implements \Stringable
             return self::zero();
         }
 
-        return new self((int) round($this->tenThousandths * ($part->tenThousandths / $whole->tenThousandths)));
+        return new self(self::multiplyDivide($this->tenThousandths, $part->tenThousandths, $whole->tenThousandths));
+    }
+
+    /** Whether this is a percentage taken off a price, as tiers, bundles and coupons take: from 0 to 100. */
+    public function isPercentOff(): bool
+    {
+        return !$this->isNegative() && $this->tenThousandths <= 100 * self::UNIT;
     }
 
     /**
@@ -176,6 +199,50 @@ final readonly class Money implements \Stringable
     public function equals(self $other): bool
     {
         return $this->tenThousandths === $other->tenThousandths;
+    }
+
+    /**
+     * $a × $b ÷ $c, rounded half away from zero, exact where the product is larger than an integer holds: the
+     * product is then multiplied and divided as decimal digits.
+     */
+    private static function multiplyDivide(int $a, int $b, int $c): int
+    {
+        $negative = (($a < 0) !== ($b < 0)) !== ($c < 0);
+        [$a, $b, $c] = [abs($a), abs($b), abs($c)];
+        if ($b === 0 || $a <= intdiv(\PHP_INT_MAX, $b)) {
+            $quotient = self::divideRounded($a * $b, $c);
+
+            return $negative ? -$quotient : $quotient;
+        }
+        // Base 10^4 limbs, least significant first: each product of two limbs and the carries stay small.
+        $left = array_map(static fn(string $limb): int => (int) strrev($limb), str_split(strrev((string) $a), 4));
+        $right = array_map(static fn(string $limb): int => (int) strrev($limb), str_split(strrev((string) $b), 4));
+        $product = array_fill(0, \count($left) + \count($right), 0);
+        foreach ($left as $i => $l) {
+            $carry = 0;
+            foreach ($right as $j => $r) {
+                $sum = $product[$i + $j] + $l * $r + $carry;
+                $product[$i + $j] = $sum % 10000;
+                $carry = intdiv($sum, 10000);
+            }
+            $product[$i + \count($right)] += $carry;
+        }
+        $digits = ltrim(implode('', array_map(static fn(int $limb): string => \sprintf('%04d', $limb), array_reverse($product))), '0');
+        $quotient = 0;
+        $remainder = 0;
+        foreach (str_split($digits) as $digit) {
+            if ($quotient > intdiv(self::MAX_UNITS, 10)) {
+                throw new RuleViolation(\sprintf('The amount is larger than %s.', self::MAX), 'orillacart_amount_too_large');
+            }
+            $remainder = $remainder * 10 + (int) $digit;
+            $quotient = $quotient * 10 + intdiv($remainder, $c);
+            $remainder %= $c;
+        }
+        if (2 * $remainder >= $c) {
+            ++$quotient;
+        }
+
+        return $negative ? -$quotient : $quotient;
     }
 
     private static function divideRounded(int $value, int $divisor): int

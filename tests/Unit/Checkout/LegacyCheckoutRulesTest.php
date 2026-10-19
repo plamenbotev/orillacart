@@ -27,6 +27,8 @@ use PHPUnit\Framework\TestCase;
  *   now and round half up (2.18).
  * - "totals add up": the old order total was rounded on its own and could differ by a cent from the sum of its
  *   rounded parts.
+ * - "line taxes add up to the bill": each line rounded its own tax, so the lines could differ by a cent from the
+ *   tax billed; now each line has its share of the billed tax, a cent off its own percentage at most.
  *
  * Shipping rates are compared only when something ships: the old checkout listed rates for downloads too, but
  * never charged them.
@@ -36,12 +38,13 @@ use PHPUnit\Framework\TestCase;
 final class LegacyCheckoutRulesTest extends TestCase
 {
     private const array CORRECTIONS = [
-        'unchanged' => 141,
+        'unchanged' => 136,
         'shop address taxes' => 56,
         'estimated at the shop address' => 28,
         'per item counts only what ships' => 8,
         'half cents round up' => 3,
         'totals add up' => 5,
+        'line taxes add up to the bill' => 5,
     ];
 
     /** @var Recorded */
@@ -66,6 +69,20 @@ final class LegacyCheckoutRulesTest extends TestCase
             $reasons = [];
             $expected = $this->expected($case, $reasons);
             $actual = self::actual($shop->summary(self::text($case['cart']), self::text($case['customer'])), $shop);
+            $old = self::lineTaxes($expected['lines']);
+            $new = self::lineTaxes($actual['lines']);
+            $billed = Money::of(self::text($expected['tax']));
+            if (!self::sum($old)->equals($billed)) {
+                // The old lines rounded their own tax; now they share what is billed, a cent here or there.
+                self::assertTrue(self::sum($new)->equals($billed));
+                $lines = [];
+                foreach (self::rows($expected['lines']) as $index => $line) {
+                    self::assertContains((string) Money::of($old[$index])->subtract(Money::of($new[$index])), ['0', '0.01', '-0.01']);
+                    $lines[] = [$line[0], $line[1], $new[$index]];
+                }
+                $expected['lines'] = $lines;
+                $reasons[] = 'line taxes add up to the bill';
+            }
 
             self::assertSame($expected, $actual, \sprintf('%s / %s / %s', $setting, self::text($case['cart']), self::text($case['customer'])));
             foreach ($reasons === [] ? ['unchanged'] : array_unique($reasons) as $reason) {
@@ -173,6 +190,24 @@ final class LegacyCheckoutRulesTest extends TestCase
             'total' => $view->total,
             'payment' => array_map(static fn(PaymentOptionView $method): string => $method->gateway, $view->paymentMethods),
         ];
+    }
+
+    /**
+     * The tax of each line, from the lines as expected() and actual() give them.
+     *
+     * @return list<string>
+     */
+    private static function lineTaxes(mixed $lines): array
+    {
+        return array_map(static fn(mixed $line): string => \is_array($line) && \is_string($line[2] ?? null) ? $line[2] : throw new \LogicException('A line without its tax.'), \is_array($lines) ? array_values($lines) : []);
+    }
+
+    /**
+     * @param list<string> $amounts
+     */
+    private static function sum(array $amounts): Money
+    {
+        return array_reduce($amounts, static fn(Money $sum, string $amount): Money => $sum->add(Money::of($amount)), Money::zero());
     }
 
     /**

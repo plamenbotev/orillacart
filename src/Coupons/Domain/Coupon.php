@@ -134,7 +134,7 @@ class Coupon
         if ($code === '' || mb_strlen($code) > self::MAX_CODE_LENGTH || preg_match('/^[\p{L}\p{N}_-]+$/u', $code) !== 1) {
             throw new CouponRuleViolation(\sprintf('A code has up to %d letters, digits, dashes and underscores.', self::MAX_CODE_LENGTH), 'orillacart_invalid_coupon_code');
         }
-        if ($terms->kind === CouponKind::Percent && ($terms->amount->compare(Money::of('100')) > 0 || $terms->amount->isZero())) {
+        if ($terms->kind === CouponKind::Percent && (!$terms->amount->isPercentOff() || $terms->amount->isZero())) {
             throw new CouponRuleViolation('A percentage is more than 0 and at most 100.', 'orillacart_invalid_coupon_amount');
         }
         if ($terms->kind !== CouponKind::FreeShipping && ($terms->amount->isZero() || $terms->amount->isNegative())) {
@@ -333,7 +333,8 @@ class Coupon
     }
 
     /**
-     * Splits an amount over the lines in proportion to their weights; the last line takes the rounding.
+     * Splits an amount over the lines in proportion to their weights; the largest line takes the rounding, as
+     * it has the most room for it.
      *
      * @param array<int, Money> $weights
      *
@@ -342,17 +343,25 @@ class Coupon
     private static function spread(Money $amount, array $weights): array
     {
         $whole = self::sum($weights);
-        if ($whole->isZero()) {
+        $largest = array_key_first($weights);
+        if ($whole->isZero() || $largest === null) {
             return [];
+        }
+        foreach ($weights as $index => $weight) {
+            if ($weight->compare($weights[$largest]) > 0) {
+                $largest = $index;
+            }
         }
         $shares = [];
         $left = $amount;
-        $last = array_key_last($weights);
         foreach ($weights as $index => $weight) {
-            $share = $index === $last ? $left : $amount->proportion($weight, $whole);
-            $shares[$index] = self::atMost($share, $weight);
-            $left = $left->subtract($shares[$index]);
+            if ($index !== $largest) {
+                $shares[$index] = self::atMost($amount->proportion($weight, $whole), $weight);
+                $left = $left->subtract($shares[$index]);
+            }
         }
+        $shares[$largest] = self::atMost($left, $weights[$largest]);
+        ksort($shares);
 
         return $shares;
     }

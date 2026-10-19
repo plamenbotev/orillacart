@@ -14,6 +14,9 @@ use OrillaCart\Shared\Domain\Money;
  *
  * With prices that include tax, the amounts are what the customer pays, tax in them: each rate takes its part
  * of what it applies to, rounded once, and the total is the subtotal less discounts plus shipping, as entered.
+ *
+ * Each line's tax is its share of what each rate bills on the items, in the currency's decimals, so the lines
+ * add up to the bill to the cent.
  */
 final class Bill
 {
@@ -26,6 +29,9 @@ final class Bill
      *                                                                     prices that include tax, its exact part
      */
     private array $bases = [];
+
+    /** @var list<array<string, Money>> each line's exact tax, by rate */
+    private array $lineParts = [];
 
     public function __construct(
         private readonly int $decimals,
@@ -40,23 +46,62 @@ final class Bill
      * @param list<Tax> $taxes    the rates charged on the line
      * @param Money|null $discount what coupons take off the line's total
      *
-     * @return Money the line's tax, exact: what it shows, not what is billed
+     * @return int the line's place, for its tax among lineTaxes()
      */
-    public function addItem(Money $total, array $taxes, ?Money $discount = null): Money
+    public function addItem(Money $total, array $taxes, ?Money $discount = null): int
     {
         $discount ??= Money::zero();
         $this->subtotal = $this->subtotal->add($total);
         $this->discount = $this->discount->add($discount);
         $taxed = $total->subtract($discount);
         $percents = array_map(static fn(Tax $rate): string => $rate->percent, $taxes);
-        $tax = Money::zero();
+        $parts = [];
         foreach ($taxes as $rate) {
             $part = $this->includesTax ? $taxed->includedPercent($rate->percent, $percents) : $taxed->percent($rate->percent);
             $this->base($rate)['items'] = $this->base($rate)['items']->add($this->includesTax ? $part : $taxed);
-            $tax = $tax->add($part);
+            $parts[$rate->key] = ($parts[$rate->key] ?? Money::zero())->add($part);
+        }
+        $this->lineParts[] = $parts;
+
+        return \count($this->lineParts) - 1;
+    }
+
+    /**
+     * Each line's tax, in the order the lines were added: its share of each rate's billed items tax. A rate's
+     * tax goes to the lines by their exact parts, rounded down to the currency, and the cents left over go to
+     * the lines whose parts lost the most to rounding.
+     *
+     * @return list<Money>
+     */
+    public function lineTaxes(): array
+    {
+        $taxes = array_fill(0, \count($this->lineParts), Money::zero());
+        $step = 10 ** (Money::DECIMALS - $this->decimals);
+        foreach ($this->bases as $key => ['tax' => $tax, 'items' => $items]) {
+            $billed = ($this->includesTax ? $items : $items->percent($tax->percent))->rounded($this->decimals)->tenThousandths;
+            $floors = [];
+            $remainders = [];
+            foreach ($this->lineParts as $line => $parts) {
+                $exact = ($parts[$key] ?? Money::zero())->tenThousandths;
+                $floors[$line] = intdiv($exact, $step) * $step;
+                $remainders[$line] = $exact - $floors[$line];
+            }
+            $left = intdiv($billed - array_sum($floors), $step);
+            // Largest remainders first for cents to give, smallest first for cents to take back; ties by line.
+            $order = array_keys($remainders);
+            usort($order, static fn(int $a, int $b): int => [$remainders[$b], $a] <=> [$remainders[$a], $b]);
+            if ($left < 0) {
+                $order = array_reverse(array_filter($order, static fn(int $line): bool => $floors[$line] > 0));
+            }
+            for ($i = 0; $i < abs($left) && $order !== []; ++$i) {
+                $floors[$order[$i % \count($order)]] += $left > 0 ? $step : -$step;
+            }
+            foreach ($floors as $line => $share) {
+                $taxes[$line] = $taxes[$line]->add(Money::fromTenThousandths($share));
+            }
         }
 
-        return $tax;
+        return array_values($taxes);
     }
 
     public function includesTax(): bool
