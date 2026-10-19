@@ -76,6 +76,11 @@
     </fieldset>
 {% endmacro %}
 
+{# A field people do not see and leave empty, and programs fill in: the shop refuses what comes with it filled. #}
+{% macro honeypot(name = 'orillacart_website') %}
+    <p class="orillacart-honeypot" aria-hidden="true"><label>{{ __('Leave this empty') }} <input type="text" name="{{ name }}" value="" tabindex="-1" autocomplete="off"></label></p>
+{% endmacro %}
+
 {% macro input(prefix, name, label, value, autocomplete, type = 'text') %}
     <p class="orillacart-field">
         <label for="{{ prefix }}-{{ name }}">{{ label }} <span aria-hidden="true">*</span></label>

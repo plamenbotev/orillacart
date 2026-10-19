@@ -17,7 +17,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * on a request without a nonce, so this route only ever sees visitors. For the same reason another site that
  * reads it gets nothing more than a visitor's nonce, and the cart cookie (SameSite=Lax) is not sent to it.
  */
-#[Route('/session', methods: ['GET'], capability: Route::PUBLIC)]
+#[Route('/session', methods: ['GET'], capability: Route::PUBLIC, guard: 'session')]
 final readonly class ShowSessionAction implements RequestHandlerInterface
 {
     public function __construct(

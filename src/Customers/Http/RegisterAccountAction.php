@@ -16,9 +16,9 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * A visitor makes an account; the browser is logged in to it.
+ * A visitor asks for an account. The answer is the same whether the email has one or not; the email tells them.
  */
-#[Route('/accounts', methods: ['POST'], capability: Route::PUBLIC)]
+#[Route('/accounts', methods: ['POST'], capability: Route::PUBLIC, guard: 'accounts')]
 final readonly class RegisterAccountAction implements RequestHandlerInterface
 {
     public function __construct(
@@ -34,6 +34,8 @@ final readonly class RegisterAccountAction implements RequestHandlerInterface
             throw new RuleViolation('You are logged in already.', 'orillacart_logged_in');
         }
 
-        return $this->responder->ok($this->customers->register($this->input->body($request, RegisterAccount::class)), 201);
+        $this->customers->requestAccount($this->input->body($request, RegisterAccount::class));
+
+        return $this->responder->ok(['message' => 'Look in your email for the link to make your account.'], 202);
     }
 }

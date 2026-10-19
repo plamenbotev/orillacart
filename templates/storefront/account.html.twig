@@ -2,13 +2,29 @@
  # The customer's account. Visitors log in (WordPress's login) or make an account; customers see their
  # orders, files and addresses.
  #
- # logged_in; accounts: optional | required | disabled; login_form (HTML); lost_password_url; section: orders |
+ # logged_in; accounts: optional | required | disabled; login_form (HTML); lost_password_url; confirm_token: the
+ # token of an emailed link to make the account, for choosing its password; section: orders |
  # order | downloads | addresses; urls: {orders, downloads, addresses, logout}; orders (a page of them, with
  # order_urls and page_urls); order (null when not theirs); downloads; customer; countries; states.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-account">
-    {% if not logged_in %}
+    {% if not logged_in and confirm_token %}
+        <section class="orillacart-account__confirm">
+            <h2 class="orillacart-heading">{{ __('Choose your password') }}</h2>
+            <p>{{ __('Your account is made as soon as you choose its password.') }}</p>
+            <form data-orillacart-confirm novalidate>
+                <input type="hidden" name="token" value="{{ confirm_token }}">
+                <p class="orillacart-field">
+                    <label for="confirm-password">{{ __('Password') }} <span aria-hidden="true">*</span></label>
+                    <input id="confirm-password" type="password" name="password" autocomplete="new-password" minlength="8" required data-orillacart-field="password">
+                    <small>{{ __('At least 8 characters.') }}</small>
+                </p>
+                <p class="orillacart-message" role="alert" data-orillacart-message></p>
+                <button type="submit" class="wp-element-button orillacart-button">{{ __('Make my account') }}</button>
+            </form>
+        </section>
+    {% elseif not logged_in %}
         <div class="orillacart-account__entry">
             <section class="orillacart-account__login">
                 <h2 class="orillacart-heading">{{ __('Log in') }}</h2>
@@ -24,8 +40,8 @@
                             {{ shop.input('register', 'last_name', __('Last name'), '', 'family-name') }}
                         </div>
                         {{ shop.input('register', 'email', __('Email'), '', 'email', 'email') }}
-                        {{ shop.input('register', 'password', __('Password'), '', 'new-password', 'password') }}
-                        <p><small>{{ __('At least 8 characters.') }}</small></p>
+                        {{ shop.honeypot('register.orillacart_website') }}
+                        <p><small>{{ __('We email you a link to choose your password.') }}</small></p>
                         <p class="orillacart-message" role="alert" data-orillacart-message></p>
                         <button type="submit" class="wp-element-button orillacart-button">{{ __('Make an account') }}</button>
                     </form>

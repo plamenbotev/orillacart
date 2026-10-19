@@ -38,21 +38,6 @@ export function bindCheckout( form: HTMLFormElement ): void {
 	};
 	showShipping();
 
-	const account = form.querySelector< HTMLInputElement >(
-		'[data-orillacart-create-account]'
-	);
-	const password = form.querySelector< HTMLElement >(
-		'[data-orillacart-password]'
-	);
-	account?.addEventListener( 'change', () => {
-		if ( password ) {
-			password.hidden = ! account.checked;
-			password
-				.querySelector( 'input' )
-				?.toggleAttribute( 'required', account.checked );
-		}
-	} );
-
 	bindCoupons( form, () => {
 		summary = summary.then( () => refreshSummary( form ) );
 		return summary;

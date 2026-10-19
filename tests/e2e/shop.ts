@@ -240,6 +240,30 @@ export function runJobs(): void {
 }
 
 /**
+ * The link to make an account the email got last: the test site keeps its mail (its mu-plugin).
+ * @param email The address.
+ */
+export function accountLink( email: string ): string {
+	const kept = JSON.parse(
+		execSync(
+			'npx wp-env run tests-cli wp option get orillacart_test_mail --format=json',
+			{ encoding: 'utf8' }
+		)
+			.split( '\n' )
+			.find( ( line ) => line.startsWith( '[' ) ) ?? '[]'
+	) as { to: string; message: string }[];
+	for ( const mail of kept.reverse() ) {
+		const link = /href="([^"]*orillacart_account=[a-f0-9]{64})"/.exec(
+			mail.message
+		);
+		if ( mail.to === email && link?.[ 1 ] ) {
+			return link[ 1 ].replace( /&amp;/g, '&' );
+		}
+	}
+	throw new Error( `No link to make an account for ${ email }.` );
+}
+
+/**
  * Puts the shop in a country, or in none: the cart estimates tax and shipping there.
  * @param requestUtils
  * @param country      ISO 3166-1 code, or null.

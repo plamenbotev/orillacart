@@ -2,10 +2,19 @@
   "$schema": "https://schemas.wp.org/trunk/wp-env.json",
   "core": null,
   "phpVersion": "8.4",
-  "plugins": [ "." ],
+  "plugins": [
+    "."
+  ],
   "config": {
     "WP_DEBUG": true,
     "WP_DEBUG_LOG": true,
     "WP_DEBUG_DISPLAY": false
+  },
+  "env": {
+    "tests": {
+      "mappings": {
+        "wp-content/mu-plugins/orillacart-test-site.php": "./tests/e2e/mu-plugins/orillacart-test-site.php"
+      }
+    }
   }
 }

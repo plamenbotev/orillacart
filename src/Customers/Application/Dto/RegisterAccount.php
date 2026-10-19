@@ -7,7 +7,7 @@ namespace OrillaCart\Customers\Application\Dto;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Command: a visitor makes an account without ordering.
+ * Command: a visitor asks for an account; the link to make it, and choose its password, comes by email.
  */
 final readonly class RegisterAccount
 {
@@ -16,9 +16,6 @@ final readonly class RegisterAccount
         #[Assert\Email]
         #[Assert\Length(max: 200)]
         public string $email,
-        #[Assert\NotBlank]
-        #[Assert\Length(max: 200)]
-        public string $password,
         #[Assert\NotBlank]
         #[Assert\Length(max: 200)]
         public string $firstName,

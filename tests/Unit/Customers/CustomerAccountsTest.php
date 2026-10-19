@@ -11,7 +11,9 @@ use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Customers\Application\Dto\ConfirmAccount;
 use OrillaCart\Customers\Application\Dto\CustomerQuery;
+use OrillaCart\Customers\Application\Dto\RegisterAccount;
 use OrillaCart\Customers\Application\Dto\SaveAddresses;
 use OrillaCart\Customers\Application\Dto\SaveCustomerGroup;
 use OrillaCart\Customers\Application\Dto\SetCustomerGroups;
@@ -38,31 +40,61 @@ final class CustomerAccountsTest extends TestCase
         $this->address = new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000');
     }
 
-    public function testAVisitorMakesAnAccountWithTheOrderAndGetsIt(): void
+    public function testAVisitorAsksForAnAccountWithTheOrderAndGetsItWithTheLink(): void
     {
-        $order = $this->place(new CartOwner(null), createAccount: true, password: 'correct horse');
+        $order = $this->place(new CartOwner(null), createAccount: true);
 
-        $id = $this->shop->accounts->loggedIn;
-        self::assertNotNull($id, 'logged in right away');
-        self::assertSame('correct horse', $this->shop->accounts->passwords[$id]);
-        $customer = $this->shop->customers->customer($id);
+        self::assertNull($this->shop->accounts->loggedIn, 'nothing until the link is followed');
+        self::assertFalse($this->shop->accounts->isRegistered('ada@example.com'));
+        self::assertSame([['confirm', 'ada@example.com']], array_map(static fn(array $mail): array => [$mail['kind'], $mail['to']], $this->shop->accountMail->sent));
+
+        $customer = $this->shop->customers->confirmAccount(new ConfirmAccount($this->shop->accountMail->tokenFor('ada@example.com'), 'correct horse'));
+
+        self::assertSame($customer->id, $this->shop->accounts->loggedIn);
+        self::assertSame('correct horse', $this->shop->accounts->passwords[$customer->id]);
         self::assertSame(['ada@example.com', 'Ada', 'Lovelace', 1], [$customer->email, $customer->firstName, $customer->lastName, $customer->orders]);
-        self::assertEquals($this->address, $customer->billing, 'the addresses are saved for next time');
-        self::assertSame($order->number, $this->shop->orders->customerOrder($id, $order->number)->number);
+        self::assertEquals($this->address, $customer->billing, 'the order\'s addresses are saved for next time');
+        self::assertSame($order->number, $this->shop->orders->customerOrder($customer->id, $order->number)->number);
+        self::assertSame([], $this->shop->pendingAccounts->accounts, 'the link works once');
     }
 
-    public function testAnAccountIsCheckedBeforeAnythingIsOrdered(): void
+    public function testSigningUpSaysNothingOfWhetherTheEmailHasAnAccount(): void
     {
         $this->shop->accounts->add('ada@example.com');
-        foreach ([['ada@example.com', 'correct horse', 'orillacart_account_exists'], ['new@example.com', 'short', 'orillacart_weak_password']] as [$email, $password, $code]) {
+
+        $this->shop->customers->requestAccount(new RegisterAccount('ada@example.com', 'Ada', 'Lovelace'));
+        $this->shop->customers->requestAccount(new RegisterAccount('grace@example.com', 'Grace', 'Hopper'));
+        $order = $this->place(new CartOwner(null), 'ada@example.com', true);
+
+        self::assertSame([['exists', 'ada@example.com'], ['confirm', 'grace@example.com'], ['exists', 'ada@example.com']], array_map(static fn(array $mail): array => [$mail['kind'], $mail['to']], $this->shop->accountMail->sent));
+        self::assertNull($this->shop->orders->byKey($order->key)->customerId, 'a guest order: whoever ordered may not own the account');
+    }
+
+    public function testALinkWorksOnceWithAGoodPasswordAndOnlyTheLatest(): void
+    {
+        $this->shop->customers->requestAccount(new RegisterAccount('ada@example.com', 'Ada', 'Lovelace'));
+        $first = $this->shop->accountMail->tokenFor('ada@example.com');
+        $this->shop->customers->requestAccount(new RegisterAccount('ada@example.com', 'Ada', 'Lovelace'));
+        $latest = $this->shop->accountMail->tokenFor('ada@example.com');
+
+        foreach ([[$first, 'correct horse', 'orillacart_invalid_link'], [$latest, 'short', 'orillacart_weak_password'], [str_repeat('a', 64), 'correct horse', 'orillacart_invalid_link']] as [$token, $password, $code]) {
             try {
-                $this->place(new CartOwner(null), $email, true, $password);
-                self::fail("{$email} with {$password}");
+                $this->shop->customers->confirmAccount(new ConfirmAccount($token, $password));
+                self::fail($code);
             } catch (RuleViolation $e) {
                 self::assertSame($code, $e->errorCode);
             }
         }
-        self::assertSame([], $this->shop->orderRecords->orders);
+
+        $this->shop->clock->modify('+49 hours');
+        try {
+            $this->shop->customers->confirmAccount(new ConfirmAccount($latest, 'correct horse'));
+            self::fail('expired');
+        } catch (RuleViolation $e) {
+            self::assertSame('orillacart_invalid_link', $e->errorCode);
+        }
+        $this->shop->customers->forgetUnconfirmed();
+        self::assertSame([], $this->shop->pendingAccounts->accounts);
     }
 
     public function testAShopCanRequireAccountsOrTurnThemOff(): void
@@ -79,8 +111,8 @@ final class CustomerAccountsTest extends TestCase
         self::assertSame('on_hold', $this->place(new CartOwner(null, $customer), 'grace@example.com')->status);
 
         $this->shop->customers->updateSettings(new UpdateCustomerSettings('disabled'));
-        $this->place(new CartOwner(null), 'guest@example.com', true, 'correct horse');
-        self::assertFalse($this->shop->accounts->isRegistered('guest@example.com'), 'no accounts when they are off');
+        $this->place(new CartOwner(null), 'guest@example.com', true);
+        self::assertSame([], $this->shop->accountMail->sent, 'no accounts when they are off');
     }
 
     public function testALoggedInCustomersAddressesAreRememberedUnlessTheySayNo(): void
@@ -151,8 +183,8 @@ final class CustomerAccountsTest extends TestCase
         return new CartOwner($result->newToken ?? $owner->token, $owner->customerId);
     }
 
-    private function place(CartOwner $owner, string $email = 'ada@example.com', bool $createAccount = false, ?string $password = null, bool $rememberAddresses = true): PlacedOrderView
+    private function place(CartOwner $owner, string $email = 'ada@example.com', bool $createAccount = false, bool $rememberAddresses = true): PlacedOrderView
     {
-        return $this->shop->checkout->placeOrder($this->cart($owner), new PlaceOrder($email, $this->address, payment: 'bank_transfer', createAccount: $createAccount, password: $password, rememberAddresses: $rememberAddresses));
+        return $this->shop->checkout->placeOrder($this->cart($owner), new PlaceOrder($email, $this->address, payment: 'bank_transfer', createAccount: $createAccount, rememberAddresses: $rememberAddresses));
     }
 }

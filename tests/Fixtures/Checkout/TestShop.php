@@ -109,6 +109,8 @@ use OrillaCart\Tests\Fixtures\Coupons\InMemoryRedemptionRepository;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryAccounts;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryCustomerGroupRepository;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryCustomerSettingsRepository;
+use OrillaCart\Tests\Fixtures\Customers\InMemoryPendingAccounts;
+use OrillaCart\Tests\Fixtures\Customers\RecordingAccountMail;
 use OrillaCart\Tests\Fixtures\FakeLanguages;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
@@ -208,6 +210,8 @@ final class TestShop
     public readonly TestJobs $jobs;
     public readonly InMemorySentEmails $sentEmails;
     public readonly InMemoryAccounts $accounts;
+    public readonly InMemoryPendingAccounts $pendingAccounts;
+    public readonly RecordingAccountMail $accountMail;
     public readonly PaymentOptions $paymentOptions;
     public readonly FakeLanguages $languages;
     public readonly FakeSite $site;
@@ -283,7 +287,9 @@ final class TestShop
         $this->events->addListener(DownloadRemoved::class, new ForgetRemovedDownloads($this->downloads)(...));
         $this->accounts = new InMemoryAccounts();
         $this->customerSettings = new InMemoryCustomerSettingsRepository();
-        $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders, $this->customerGroupRecords, $this->events);
+        $this->pendingAccounts = new InMemoryPendingAccounts();
+        $this->accountMail = new RecordingAccountMail();
+        $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders, $this->customerGroupRecords, $this->events, $this->pendingAccounts, $this->accountMail, $this->accountMail, $this->clock);
         $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCustomers($this->orders)(...));
         $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCarts($this->cartRecords)(...));
         $this->events->addListener(CustomerErased::class, new ForgetDeletedCarts($this->cartRecords)->erased(...));

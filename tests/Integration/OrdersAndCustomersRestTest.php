@@ -285,12 +285,16 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertNotTrue($storage['reachable'], 'the web server must not hand the files out by itself');
         wp_set_current_user(0);
 
-        $order = $this->order([[$this->guide, 1]], ['create_account' => true, 'password' => 'correct horse battery']);
+        $order = $this->order([[$this->guide, 1]], ['create_account' => true]);
+        self::assertFalse(email_exists('ada@example.com'), 'no account until the emailed link is followed');
+        $confirmed = $this->request('POST', '/accounts/confirm', ['token' => $this->accountToken('ada@example.com'), 'password' => 'correct horse battery'], nonce: true);
+        self::assertSame(201, $confirmed->get_status(), (string) wp_json_encode($confirmed->get_data()));
         $user = get_user_by('email', 'ada@example.com');
         self::assertInstanceOf(\WP_User::class, $user);
         $this->users[] = $user->ID;
         self::assertSame([WordPressAccounts::ROLE], $user->roles);
-        self::assertSame($user->ID, get_current_user_id(), 'logged in after ordering');
+        self::assertStringStartsWith('customer-', $user->user_login, 'not the email\'s first part');
+        self::assertSame($user->ID, get_current_user_id(), 'logged in once the account is made');
         self::assertSame('Sofia', $this->rows([$this->data($this->request('GET', '/account'))['billing']])[0]['city']);
         self::assertSame([$order['number']], array_column($this->rows($this->data($this->request('GET', '/account/orders'))['orders']), 'number'));
         self::assertSame([], $this->data($this->request('GET', '/account/downloads')), 'not paid yet');
@@ -388,18 +392,69 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertContains(['new_order', $order['number']], $seen, 'the shop\'s email too');
     }
 
-    public function testAnAddOnMayRefuseASignUp(): void
+    public function testSigningUpAnswersAlikeAndTheEmailSaysWhetherThereIsAnAccount(): void
     {
-        $refuse = static fn(\WP_Error $errors, string $email): \WP_Error => str_ends_with($email, '@example.com') ? new \WP_Error('spam', '<strong>Error</strong>: Looks like spam.') : $errors;
-        add_filter('orillacart_registration_errors', $refuse, 10, 2);
-        try {
-            $refused = $this->request('POST', '/accounts', ['email' => 'bot@example.com', 'password' => 'correct horse battery', 'first_name' => 'Bot', 'last_name' => 'Bot'], nonce: true);
-        } finally {
-            remove_filter('orillacart_registration_errors', $refuse, 10);
+        $id = wp_insert_user(['user_login' => 'grace', 'user_email' => 'grace@example.com', 'user_pass' => 'correct horse battery']);
+        self::assertIsInt($id);
+        $this->users[] = $id;
+
+        $answers = [];
+        foreach (['grace@example.com', 'ada@example.com'] as $email) {
+            $answer = $this->request('POST', '/accounts', ['email' => $email, 'first_name' => 'Ada', 'last_name' => 'Lovelace'], nonce: true);
+            $answers[] = [$answer->get_status(), $this->data($answer)];
         }
-        self::assertSame(422, $refused->get_status(), (string) wp_json_encode($refused->get_data()));
-        self::assertSame('Error: Looks like spam.', $this->data($refused)['message'] ?? null);
-        self::assertFalse(get_user_by('email', 'bot@example.com'));
+
+        self::assertSame($answers[0], $answers[1], 'nothing tells them apart');
+        self::assertSame(202, $answers[0][0]);
+        self::assertSame([['grace@example.com', '[orillacart] You have an account already'], ['ada@example.com', '[orillacart] Make your account']], array_map(static fn(array $mail): array => [$mail['to'], $mail['subject']], $this->sentMail()));
+        self::assertNotSame('', $this->accountToken('ada@example.com'));
+    }
+
+    public function testAnAddOnMayRefuseAFormAndAProgramFillsTheHoneypot(): void
+    {
+        $refuse = static fn(mixed $verdict, string $guard): mixed => $guard === 'accounts' ? new \WP_Error('captcha', '<strong>Error</strong>: Prove you are human.') : $verdict;
+        add_filter('orillacart_verify_request', $refuse, 10, 2);
+        try {
+            $refused = $this->request('POST', '/accounts', ['email' => 'bot@example.com', 'first_name' => 'Bot', 'last_name' => 'Bot'], nonce: true);
+        } finally {
+            remove_filter('orillacart_verify_request', $refuse, 10);
+        }
+        self::assertSame([422, 'Error: Prove you are human.'], [$refused->get_status(), $this->data($refused)['message'] ?? null]);
+
+        $filled = $this->request('POST', '/accounts', ['email' => 'bot@example.com', 'first_name' => 'Bot', 'last_name' => 'Bot', 'orillacart_website' => 'http://spam.test'], nonce: true);
+        self::assertSame(422, $filled->get_status());
+        self::assertSame([], $this->sentMail(), 'nothing was sent');
+    }
+
+    public function testAnAddressSendsSoManySignUpsInAWhile(): void
+    {
+        // The test site counts none; one address of its own, two sign-ups an hour.
+        $limits = static fn(): array => ['accounts' => [2, 3600]];
+        add_filter('orillacart_rate_limits', $limits, 20);
+        $_SERVER['REMOTE_ADDR'] = '198.51.100.' . random_int(1, 254);
+        try {
+            $statuses = [];
+            for ($attempt = 1; $attempt <= 3; ++$attempt) {
+                $statuses[] = $this->request('POST', '/accounts', ['email' => "ada{$attempt}@example.com", 'first_name' => 'Ada', 'last_name' => 'Lovelace'], nonce: true)->get_status();
+            }
+        } finally {
+            remove_filter('orillacart_rate_limits', $limits, 20);
+            unset($_SERVER['REMOTE_ADDR']);
+        }
+
+        self::assertSame([202, 202, 429], $statuses);
+    }
+
+    /** The token of the last link to make an account the email got. */
+    private function accountToken(string $email): string
+    {
+        foreach (array_reverse($this->sentMail()) as $mail) {
+            if ($mail['to'] === $email && preg_match('/orillacart_account=([a-f0-9]{64})/', $mail['message'], $match) === 1) {
+                return $match[1];
+            }
+        }
+
+        return '';
     }
 
     /**
@@ -491,7 +546,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     {
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['pending_accounts', 'invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }

@@ -33,6 +33,7 @@ final readonly class RouteDefinition
         public string $nonce,
         public array $requirements = [],
         public bool $signed = false,
+        public ?string $guard = null,
     ) {
         if (!str_starts_with($path, '/')) {
             throw new \InvalidArgumentException(\sprintf('Route path "%s" of %s must start with "/".', $path, $action));
@@ -52,6 +53,9 @@ final readonly class RouteDefinition
         if (trim($nonce) === '') {
             throw new \InvalidArgumentException(\sprintf('Route %s of %s needs a nonce action.', $path, $action));
         }
+        if ($guard !== null && preg_match('/^[a-z][a-z_]{0,39}$/', $guard) !== 1) {
+            throw new \InvalidArgumentException(\sprintf('Route %s of %s has a guard "%s" that is not a name.', $path, $action, $guard));
+        }
         if ($signed && $capability !== Route::PUBLIC) {
             throw new \InvalidArgumentException(\sprintf('Route %s of %s is signed, so it must be public.', $path, $action));
         }
@@ -66,7 +70,7 @@ final readonly class RouteDefinition
 
     public static function fromAttribute(string $action, Route $route): self
     {
-        return new self($action, $route->path, $route->methods, $route->capability, $route->nonce, $route->requirements, $route->signed);
+        return new self($action, $route->path, $route->methods, $route->capability, $route->nonce, $route->requirements, $route->signed, $route->guard);
     }
 
     /**
@@ -118,7 +122,7 @@ final readonly class RouteDefinition
     }
 
     /**
-     * @return array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool}
+     * @return array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string}
      */
     public function toArray(): array
     {
@@ -130,14 +134,15 @@ final readonly class RouteDefinition
             'nonce' => $this->nonce,
             'requirements' => $this->requirements,
             'signed' => $this->signed,
+            'guard' => $this->guard,
         ];
     }
 
     /**
-     * @param array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool} $data
+     * @param array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string} $data
      */
     public static function fromArray(array $data): self
     {
-        return new self($data['action'], $data['path'], $data['methods'], $data['capability'], $data['nonce'], $data['requirements'], $data['signed']);
+        return new self($data['action'], $data['path'], $data['methods'], $data['capability'], $data['nonce'], $data['requirements'], $data['signed'], $data['guard']);
     }
 }

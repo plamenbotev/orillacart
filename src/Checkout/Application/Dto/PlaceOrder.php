@@ -12,7 +12,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 /**
  * Command: order what is in the cart. Without a shipping address, the order ships to the billing address.
  * A shipping rate is needed when something ships, a payment method when there is something to pay.
- * A visitor may make an account with the order (create_account and a password); a logged-in customer's
+ * A visitor may ask for an account with the order (create_account): the link to make it comes by email, and the
+ * account then has the order. A logged-in customer's
  * addresses are remembered for next time unless remember_addresses is false. Fields holds the answers to the
  * questions add-ons ask.
  */
@@ -34,8 +35,6 @@ final readonly class PlaceOrder
         #[Assert\Length(max: Order::MAX_NOTE_LENGTH)]
         public string $note = '',
         public bool $createAccount = false,
-        #[Assert\Length(max: 200)]
-        public ?string $password = null,
         public bool $rememberAddresses = true,
         /** The office or locker to deliver to, for a service to one (the courier's id). */
         #[Assert\Length(max: 64)]

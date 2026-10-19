@@ -65,20 +65,17 @@
                         <legend>{{ __('Account') }}</legend>
                         {% if accounts == 'required' %}
                             <input type="hidden" name="create_account" value="1">
-                            <p>{{ __('An account is made with your order, so you can follow it and download what you buy.') }}</p>
+                            <p>{{ __('An account comes with your order, so you can follow it and download what you buy: we email you a link to choose its password.') }}</p>
                         {% else %}
                             <p class="orillacart-field orillacart-field--check">
                                 <input id="orillacart-create-account" type="checkbox" name="create_account" value="1" data-orillacart-create-account>
                                 <label for="orillacart-create-account">{{ __('Make an account with this order') }}</label>
                             </p>
+                            <p><small>{{ __('We email you a link to choose its password.') }}</small></p>
                         {% endif %}
-                        <p class="orillacart-field" data-orillacart-password{{ accounts != 'required' ? ' hidden' }}>
-                            <label for="orillacart-password">{{ __('Password') }} <span aria-hidden="true">*</span></label>
-                            <input id="orillacart-password" type="password" name="password" autocomplete="new-password" minlength="8" data-orillacart-field="password"{{ accounts == 'required' ? ' required' }}>
-                            <small>{{ __('At least 8 characters.') }}</small>
-                        </p>
                     </fieldset>
                 {% endif %}
+                {{ shop.honeypot() }}
                 {{ slot('checkout_after_details') }}
             </div>
 

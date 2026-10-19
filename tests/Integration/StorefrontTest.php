@@ -345,13 +345,22 @@ final class StorefrontTest extends RestTestCase
         self::assertStringContainsString('id="orillacart-login"', $page, "WordPress's login form");
         self::assertStringContainsString('data-orillacart-register', $page);
 
-        $short = $this->request('POST', '/accounts', ['email' => 'grace@example.com', 'password' => 'short', 'first_name' => 'Grace', 'last_name' => 'Hopper'], nonce: true);
+        $asked = $this->request('POST', '/accounts', ['email' => 'grace@example.com', 'first_name' => 'Grace', 'last_name' => 'Hopper'], nonce: true);
+        self::assertSame(202, $asked->get_status(), (string) wp_json_encode($asked->get_data()));
+        self::assertFalse(get_user_by('email', 'grace@example.com'), 'not before the link');
+        $mail = $this->sentMail();
+        self::assertSame(1, preg_match('/\?orillacart_account=([a-f0-9]{64})/', $mail[0]['message'] ?? '', $link));
+        $_GET = ['orillacart_account' => $link[1]];
+        self::assertStringContainsString('data-orillacart-confirm', do_blocks('<!-- wp:orillacart/account /-->'), 'the link opens the form to choose the password');
+        $_GET = [];
+
+        $short = $this->request('POST', '/accounts/confirm', ['token' => $link[1], 'password' => 'short'], nonce: true);
         self::assertSame('orillacart_weak_password', $this->data($short)['code']);
-        $made = $this->request('POST', '/accounts', ['email' => 'grace@example.com', 'password' => 'correct horse', 'first_name' => 'Grace', 'last_name' => 'Hopper'], nonce: true);
+        $made = $this->request('POST', '/accounts/confirm', ['token' => $link[1], 'password' => 'correct horse'], nonce: true);
         self::assertSame(201, $made->get_status(), (string) wp_json_encode($made->get_data()));
         self::assertSame('grace@example.com', wp_get_current_user()->user_email, 'logged in to the new account');
         self::assertContains('orillacart_customer', wp_get_current_user()->roles);
-        self::assertSame('orillacart_logged_in', $this->data($this->request('POST', '/accounts', ['email' => 'other@example.com', 'password' => 'correct horse', 'first_name' => 'A', 'last_name' => 'B'], nonce: true))['code']);
+        self::assertSame('orillacart_logged_in', $this->data($this->request('POST', '/accounts', ['email' => 'other@example.com', 'first_name' => 'A', 'last_name' => 'B'], nonce: true))['code']);
 
         $account = do_blocks('<!-- wp:orillacart/account /-->');
         self::assertStringContainsString('You have not ordered anything yet.', $account);
@@ -359,11 +368,11 @@ final class StorefrontTest extends RestTestCase
         self::assertStringContainsString('There is no such order in your account.', do_blocks('<!-- wp:orillacart/account /-->'));
 
         wp_set_current_user(0);
-        self::assertSame('orillacart_account_exists', $this->data($this->request('POST', '/accounts', ['email' => 'grace@example.com', 'password' => 'correct horse', 'first_name' => 'Grace', 'last_name' => 'Hopper'], nonce: true))['code']);
+        self::assertSame('orillacart_invalid_link', $this->data($this->request('POST', '/accounts/confirm', ['token' => $link[1], 'password' => 'correct horse'], nonce: true))['code'], 'a link works once');
         update_option(OptionCustomerSettingsRepository::OPTION, ['accounts' => 'disabled']);
         $_GET = [];
         self::assertStringNotContainsString('data-orillacart-register', do_blocks('<!-- wp:orillacart/account /-->'));
-        self::assertSame('orillacart_accounts_disabled', $this->data($this->request('POST', '/accounts', ['email' => 'new@example.com', 'password' => 'correct horse', 'first_name' => 'A', 'last_name' => 'B'], nonce: true))['code']);
+        self::assertSame('orillacart_accounts_disabled', $this->data($this->request('POST', '/accounts', ['email' => 'new@example.com', 'first_name' => 'A', 'last_name' => 'B'], nonce: true))['code']);
     }
 
     public function testTheShopsSettingsDecideHowPricesShowAndWhetherItSells(): void
@@ -513,7 +522,7 @@ final class StorefrontTest extends RestTestCase
     {
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['invoices', 'refunds', 'jobs', 'failed_jobs', 'search_values', 'search_variants', 'search_documents', 'download_grants', 'payments', 'payment_methods', 'order_notes', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['pending_accounts', 'invoices', 'refunds', 'jobs', 'failed_jobs', 'search_values', 'search_variants', 'search_documents', 'download_grants', 'payments', 'payment_methods', 'order_notes', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }

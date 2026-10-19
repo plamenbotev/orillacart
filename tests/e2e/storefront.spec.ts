@@ -4,7 +4,13 @@
 import { expect, test } from '@wordpress/e2e-test-utils-playwright';
 import type { Page } from '@playwright/test';
 
-import { BILLING, setUpShop, tearDownShop, type Shop } from './shop';
+import {
+	accountLink,
+	BILLING,
+	setUpShop,
+	tearDownShop,
+	type Shop,
+} from './shop';
 
 let shop: Shop;
 
@@ -231,7 +237,6 @@ test.describe( 'A visitor', () => {
 		await page.goto( shop.urls.checkout );
 		await fillBilling( page, email );
 		await page.getByLabel( 'Make an account with this order' ).check();
-		await page.getByLabel( 'Password' ).fill( 'correct horse battery' );
 		await page.getByRole( 'button', { name: 'Place order' } ).click();
 		await expect(
 			page.getByRole( 'heading', { name: 'Thank you for your order' } )
@@ -242,7 +247,10 @@ test.describe( 'A visitor', () => {
 				.first()
 				.textContent() ) ?? '';
 
-		await page.goto( shop.urls.account );
+		// The account is made with the emailed link.
+		await page.goto( accountLink( email ) );
+		await page.getByLabel( 'Password' ).fill( 'correct horse battery' );
+		await page.getByRole( 'button', { name: 'Make my account' } ).click();
 		await expect(
 			page.getByRole( 'link', { name: 'Log out' } )
 		).toBeVisible();
@@ -258,22 +266,26 @@ test.describe( 'A visitor', () => {
 	test( 'makes an account on the account page and logs out', async ( {
 		page,
 	} ) => {
+		const email = `e2e-grace-${ Date.now() }@example.com`;
 		await page.goto( shop.urls.account );
 		await page.locator( '#register-first_name' ).fill( 'Grace' );
 		await page.locator( '#register-last_name' ).fill( 'Hopper' );
-		await page
-			.locator( '#register-email' )
-			.fill( `e2e-grace-${ Date.now() }@example.com` );
-		await page.locator( '#register-password' ).fill( 'short' );
+		await page.locator( '#register-email' ).fill( email );
 		await page.getByRole( 'button', { name: 'Make an account' } ).click();
+		await expect(
+			page.getByText(
+				'Look in your email for the link to make your account.'
+			)
+		).toBeVisible();
+
+		await page.goto( accountLink( email ) );
+		await page.getByLabel( 'Password' ).fill( 'short' );
+		await page.getByRole( 'button', { name: 'Make my account' } ).click();
 		await expect(
 			page.getByText( 'Choose a password of at least 8 characters.' )
 		).toBeVisible();
-
-		await page
-			.locator( '#register-password' )
-			.fill( 'correct horse battery' );
-		await page.getByRole( 'button', { name: 'Make an account' } ).click();
+		await page.getByLabel( 'Password' ).fill( 'correct horse battery' );
+		await page.getByRole( 'button', { name: 'Make my account' } ).click();
 		await expect(
 			page.getByText( 'You have not ordered anything yet.' )
 		).toBeVisible();

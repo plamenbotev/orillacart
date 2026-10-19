@@ -1,5 +1,6 @@
 /**
- * The account page's forms: making an account, and saving addresses.
+ * The account page's forms: asking for an account, choosing its password from the emailed link, and saving
+ * addresses.
  */
 import { __ } from '@wordpress/i18n';
 
@@ -53,7 +54,15 @@ export function bindRegister( form: HTMLFormElement ): void {
 			return;
 		}
 		if ( result.ok ) {
-			window.location.reload();
+			// The same answer whether the email has an account or not: the email tells them.
+			form.reset();
+			showMessage(
+				form,
+				__(
+					'Look in your email for the link to make your account.',
+					'orillacart'
+				)
+			);
 			return;
 		}
 		// The form's fields are named register.email and so on; the API names them email.
@@ -64,6 +73,34 @@ export function bindRegister( form: HTMLFormElement ): void {
 		showMessage(
 			form,
 			failure( result, showErrors( form, violations ) ),
+			'error'
+		);
+	} );
+}
+
+/**
+ * Choosing the password of an account asked for: the account is made, and the page shows it, without the link.
+ * @param form The form with the emailed link's token.
+ */
+export function bindConfirm( form: HTMLFormElement ): void {
+	form.addEventListener( 'submit', async ( event ) => {
+		event.preventDefault();
+		clearErrors( form );
+		const result = await busy( form, () =>
+			api( 'POST', '/accounts/confirm', formBody( form ) )
+		);
+		if ( result === null ) {
+			return;
+		}
+		if ( result.ok ) {
+			const url = new URL( window.location.href );
+			url.searchParams.delete( 'orillacart_account' );
+			window.location.assign( url.toString() );
+			return;
+		}
+		showMessage(
+			form,
+			failure( result, showErrors( form, result.violations ) ),
 			'error'
 		);
 	} );

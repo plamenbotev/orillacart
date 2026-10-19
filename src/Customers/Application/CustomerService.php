@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Customers\Application;
 
+use OrillaCart\Customers\Application\Dto\ConfirmAccount;
 use OrillaCart\Customers\Application\Dto\CustomerPageView;
 use OrillaCart\Customers\Application\Dto\CustomerQuery;
 use OrillaCart\Customers\Application\Dto\CustomerSettingsView;
@@ -11,7 +12,6 @@ use OrillaCart\Customers\Application\Dto\CustomerView;
 use OrillaCart\Customers\Application\Dto\RegisterAccount;
 use OrillaCart\Customers\Application\Dto\SaveAddresses;
 use OrillaCart\Customers\Application\Dto\UpdateCustomerSettings;
-use OrillaCart\Customers\Domain\AccountExists;
 use OrillaCart\Customers\Domain\AccountMode;
 use OrillaCart\Customers\Domain\CustomerGroupRepository;
 use OrillaCart\Customers\Domain\CustomerNotFound;
@@ -19,16 +19,20 @@ use OrillaCart\Customers\Domain\CustomerSettings;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
 use OrillaCart\Customers\Domain\Event\CustomerDeleted;
 use OrillaCart\Customers\Domain\Event\CustomerErased;
+use OrillaCart\Customers\Domain\PendingAccount;
+use OrillaCart\Customers\Domain\PendingAccountRepository;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
+use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
- * Customer accounts: whether the shop has them, making one at checkout, and the addresses checkout fills in.
+ * Customer accounts: whether the shop has them, making one (by a link sent to the email), and the addresses
+ * checkout fills in.
  */
 final readonly class CustomerService
 {
@@ -38,6 +42,10 @@ final readonly class CustomerService
         private OrderService $orders,
         private CustomerGroupRepository $groups,
         private EventDispatcherInterface $events,
+        private PendingAccountRepository $pending,
+        private AccountMail $accountMail,
+        private AccountLinks $links,
+        private ClockInterface $clock,
     ) {}
 
     /**
@@ -48,10 +56,15 @@ final readonly class CustomerService
      */
     public function erase(string $email): bool
     {
+        // An account asked for and not made holds the email and names too.
+        $pending = $this->pending->findByEmail($email);
+        if ($pending !== null) {
+            $this->pending->remove($pending);
+        }
         $id = $this->accounts->idOf($email);
         $record = $id === null ? null : $this->accounts->find($id);
         if ($id === null || $record === null) {
-            return false;
+            return $pending !== null;
         }
         $groupIds = $this->groups->groupIdsOf($id);
         $this->accounts->saveAddresses($id, null, null);
@@ -160,54 +173,79 @@ final readonly class CustomerService
     }
 
     /**
-     * Makes a visitor's account and logs them in.
+     * A visitor asks for an account, on the account page or with an order: the link to make it goes to the email,
+     * or word that it has one already. Whoever asked learns nothing either way, so nobody can find out from the
+     * shop whose email is a customer's. Asking again sends a new link; the old one stops working.
      *
-     * @throws AccountExists
-     * @throws RuleViolation when the shop makes no accounts, or for a password that is too short
+     * @param int|null $orderId the order placed while asking, for the account to have
+     *
+     * @throws RuleViolation when the shop makes no accounts
      */
-    public function register(RegisterAccount $command): CustomerView
+    public function requestAccount(RegisterAccount $command, ?int $orderId = null): void
     {
         if (!$this->accountsOffered()) {
             throw new RuleViolation('The shop does not make accounts.', 'orillacart_accounts_disabled');
         }
-        $this->checkRegistration($command->email, $command->password);
-        $id = $this->accounts->register($command->email, $command->password, $command->firstName, $command->lastName);
+        if ($this->accounts->isRegistered($command->email)) {
+            $this->accountMail->exists($command->email, $this->links->loginUrl(), $this->links->lostPasswordUrl());
+
+            return;
+        }
+        $earlier = $this->pending->findByEmail($command->email);
+        $orderIds = [...($earlier?->orderIds() ?? []), ...($orderId === null ? [] : [$orderId])];
+        if ($earlier !== null) {
+            $this->pending->remove($earlier);
+        }
+        [$account, $token] = PendingAccount::start($command->email, $command->firstName, $command->lastName, $orderIds, $this->clock->now());
+        $this->pending->save($account);
+        $this->accountMail->confirm($account->email(), $account->firstName(), $this->links->confirmUrl($token), $account->expiresAt());
+    }
+
+    /**
+     * The visitor followed the link and chose a password: the account is made, with the orders placed while
+     * asking for it and the addresses of the first, and the browser is logged in to it.
+     *
+     * @throws RuleViolation for a link that does not work (any more), a password that is too short, or an email
+     *                       that has an account since
+     */
+    public function confirmAccount(ConfirmAccount $command): CustomerView
+    {
+        $account = $this->pending->findByToken($command->token);
+        if ($account === null || $account->isExpired($this->clock->now())) {
+            throw new RuleViolation('This link does not work any more. Sign up again for a new one.', 'orillacart_invalid_link');
+        }
+        if (mb_strlen($command->password) < CustomerSettings::MIN_PASSWORD_LENGTH) {
+            throw new RuleViolation(\sprintf('Choose a password of at least %d characters.', CustomerSettings::MIN_PASSWORD_LENGTH), 'orillacart_weak_password');
+        }
+        if ($this->accounts->isRegistered($account->email())) {
+            $this->pending->remove($account);
+
+            throw new RuleViolation('This email has an account: log in instead.', 'orillacart_account_exists');
+        }
+        $id = $this->accounts->register($account->email(), $command->password, $account->firstName(), $account->lastName());
+        $addressed = false;
+        foreach ($account->orderIds() as $orderId) {
+            try {
+                $order = $this->orders->order($orderId);
+                $this->orders->giveTo($orderId, $id);
+            } catch (OrderNotFound) {
+                continue;
+            }
+            if (!$addressed) {
+                $this->accounts->saveAddresses($id, $order->billing, $order->shippingAddress);
+                $addressed = true;
+            }
+        }
+        $this->pending->remove($account);
         $this->accounts->logIn($id);
 
         return $this->customer($id);
     }
 
-    /**
-     * Refuses an account checkout could not make, before the order is placed.
-     *
-     * @throws AccountExists
-     * @throws RuleViolation for a password that is too short
-     */
-    public function checkRegistration(string $email, string $password): void
+    /** Forgets the accounts asked for whose links stopped working, daily. */
+    public function forgetUnconfirmed(): void
     {
-        if (mb_strlen($password) < CustomerSettings::MIN_PASSWORD_LENGTH) {
-            throw new RuleViolation(\sprintf('Choose a password of at least %d characters.', CustomerSettings::MIN_PASSWORD_LENGTH), 'orillacart_weak_password');
-        }
-        if ($this->accounts->isRegistered($email)) {
-            throw new AccountExists();
-        }
-    }
-
-    /**
-     * Makes the account of a customer who just ordered, gives them the order and logs them in.
-     *
-     * @throws AccountExists
-     * @throws RuleViolation
-     */
-    public function registerAfterOrder(int $orderId, string $email, string $password, AddressData $billing, ?AddressData $shippingAddress): int
-    {
-        $this->checkRegistration($email, $password);
-        $id = $this->accounts->register($email, $password, $billing->firstName, $billing->lastName);
-        $this->accounts->saveAddresses($id, $billing, $shippingAddress);
-        $this->orders->giveTo($orderId, $id);
-        $this->accounts->logIn($id);
-
-        return $id;
+        $this->pending->removeExpired($this->clock->now());
     }
 
     /**

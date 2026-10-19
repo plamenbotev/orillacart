@@ -47,6 +47,15 @@
 	background: transparent;
 }
 
+/* The field people never see: off screen, not hidden, as some programs skip hidden fields. */
+.orillacart-honeypot {
+	position: absolute;
+	left: -10000px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
 .orillacart-field--check {
 	display: flex;
 	align-items: center;

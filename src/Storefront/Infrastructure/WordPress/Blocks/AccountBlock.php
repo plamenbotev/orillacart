@@ -17,6 +17,7 @@ use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
+use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
 
 /**
  * The customer's account page. Visitors see WordPress's login form and, unless the shop makes no accounts,
@@ -65,6 +66,7 @@ final readonly class AccountBlock implements BlockDefinition
                 // The theme's button style for WordPress's login button, like the shop's own buttons.
                 'login_form' => str_replace('class="button button-primary"', 'class="button button-primary wp-element-button"', (string) wp_login_form(['echo' => false, 'redirect' => $here, 'form_id' => 'orillacart-login', 'remember' => true])),
                 'lost_password_url' => wp_lostpassword_url($here),
+                'confirm_token' => \is_string($_GET[StorefrontAccountLinks::CONFIRM_QUERY] ?? null) && preg_match('/^[a-f0-9]{64}$/', $_GET[StorefrontAccountLinks::CONFIRM_QUERY]) === 1 ? $_GET[StorefrontAccountLinks::CONFIRM_QUERY] : null,
                 'links' => $links,
             ]);
         }

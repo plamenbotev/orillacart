@@ -275,7 +275,8 @@ lets plugins adjust a few things through filters. Arguments are ids and plain va
 
 | filter | value | arguments |
 |---|---|---|
-| `orillacart_registration_errors` | a `WP_Error`; add an error to refuse a shop sign-up (at checkout or on the account page) with its message | email, first name, last name, the login the shop would give |
+| `orillacart_verify_request` | `true`; a `WP_Error` (or `false`) refuses one of the shop's public forms with its message, as a captcha does | the form (`accounts`, `account_links`, `coupons`, `checkout`, `session`), what it sent |
+| `orillacart_rate_limits` | `{form: [how many, in seconds]}` each address and each cart may send; leave a form out to count none | |
 | `orillacart_email_attachments` | file paths | email kind, order number |
 | `orillacart_email_headers` | header lines | email kind, order number |
 | `orillacart_template_paths` | template folders an add-on brings | |
@@ -284,7 +285,9 @@ lets plugins adjust a few things through filters. Arguments are ids and plain va
 The page slots above are actions too.
 
 WordPress's own `registration_errors` is left to the wp-login.php form: captcha plugins on it expect that form's
-fields and would refuse every shop sign-up.
+fields and would refuse every shop sign-up. The shop's forms carry a field people never see, `orillacart_website`:
+what comes with it filled in is refused, before `orillacart_verify_request` is asked. Signing up never says whether
+the email has an account: the link to make it, or word that it has one, goes to the email.
 
 ## Translations
 

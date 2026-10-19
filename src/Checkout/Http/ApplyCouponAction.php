@@ -14,7 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-#[Route('/cart/coupons', methods: ['POST'], capability: Route::PUBLIC)]
+#[Route('/cart/coupons', methods: ['POST'], capability: Route::PUBLIC, guard: 'coupons')]
 final readonly class ApplyCouponAction implements RequestHandlerInterface
 {
     public function __construct(

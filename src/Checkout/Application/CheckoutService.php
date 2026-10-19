@@ -22,6 +22,7 @@ use OrillaCart\Coupons\Application\Discounts;
 use OrillaCart\Coupons\Application\Dto\AppliedDiscounts;
 use OrillaCart\Coupons\Domain\Coupon;
 use OrillaCart\Customers\Application\CustomerService;
+use OrillaCart\Customers\Application\Dto\RegisterAccount;
 use OrillaCart\Extension\Checkout\FieldContext;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
@@ -295,8 +296,6 @@ final readonly class CheckoutService
             return false;
         }
         if ($command->createAccount && $this->customers->accountsOffered()) {
-            $this->customers->checkRegistration($command->email, $command->password ?? '');
-
             return true;
         }
         if ($this->customers->accountsRequired()) {
@@ -309,11 +308,11 @@ final readonly class CheckoutService
     private function rememberCustomer(CartOwner $owner, PlaceOrder $command, bool $registering, int $orderId, AddressData $billing, ?AddressData $shippingAddress): void
     {
         if ($registering) {
+            // The order is a guest's until the customer follows the emailed link; the account then has it.
             try {
-                $this->customers->registerAfterOrder($orderId, $command->email, $command->password ?? '', $billing, $shippingAddress);
+                $this->customers->requestAccount(new RegisterAccount($command->email, $billing->firstName, $billing->lastName), $orderId);
             } catch (RuleViolation $e) {
-                // Checked before ordering; someone took the email since. The order stands as a guest order.
-                $this->logger->warning('No account was made with order {order}: {reason}', ['order' => $orderId, 'reason' => $e->getMessage()]);
+                $this->logger->warning('No account was asked for with order {order}: {reason}', ['order' => $orderId, 'reason' => $e->getMessage()]);
             }
         } elseif ($owner->customerId !== null && $command->rememberAddresses) {
             $this->customers->rememberAddresses($owner->customerId, $billing, $shippingAddress);

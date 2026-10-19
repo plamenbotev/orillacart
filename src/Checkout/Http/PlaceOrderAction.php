@@ -14,7 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-#[Route('/checkout', methods: ['POST'], capability: Route::PUBLIC)]
+#[Route('/checkout', methods: ['POST'], capability: Route::PUBLIC, guard: 'checkout')]
 final readonly class PlaceOrderAction implements RequestHandlerInterface
 {
     public function __construct(

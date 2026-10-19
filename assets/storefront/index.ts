@@ -4,7 +4,7 @@
  */
 import './storefront.css';
 
-import { bindAddresses, bindRegister } from './account';
+import { bindAddresses, bindConfirm, bindRegister } from './account';
 import { bindCart } from './cart';
 import { bindCheckout } from './checkout';
 import { bindGallery } from './gallery';
@@ -33,6 +33,9 @@ function start(): void {
 	document
 		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-register]' )
 		.forEach( bindRegister );
+	document
+		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-confirm]' )
+		.forEach( bindConfirm );
 	document
 		.querySelectorAll< HTMLFormElement >(
 			'form[data-orillacart-addresses]'

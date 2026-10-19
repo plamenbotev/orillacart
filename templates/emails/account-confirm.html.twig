@@ -1,0 +1,14 @@
+{% extends 'emails/layout.html.twig' %}
+{#
+ # To a visitor who asked for an account: the link that makes it. first_name, link, until (ISO 8601).
+ #}
+{# translators: %s: site name -#}
+{% block subject %}{{ __('[%s] Make your account')|format(site_name) }}{% endblock %}
+{# translators: %s: the customer's first name -#}
+{% block heading %}{{ __('Welcome, %s')|format(first_name) }}{% endblock %}
+{% block intro %}<p>{{ __('Choose your password to make your account. Orders you placed with it come with it.') }}</p>{% endblock %}
+{% block content %}
+<p><a href="{{ link }}" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;border-radius:4px;text-decoration:none;">{{ __('Choose your password') }}</a></p>
+{# translators: %s: date and time -#}
+<p style="color:#71717a;font-size:13px;">{{ __('The link works until %s. If you did not ask for an account, ignore this email.')|format(until|shop_date) }}</p>
+{% endblock %}

@@ -31,6 +31,8 @@ final readonly class Route
      * @param string                $nonce        nonce action checked for unsafe methods
      * @param array<string, string> $requirements regular expression per placeholder; [^/]+ when absent
      * @param bool                  $signed       the action verifies the caller's signature; no nonce (public routes only)
+     * @param string|null           $guard        a form visitors send, guarded by name: rate limits, the honeypot
+     *                                            and add-ons' captcha checks (GuardMiddleware)
      */
     public function __construct(
         public string $path,
@@ -39,5 +41,6 @@ final readonly class Route
         public string $nonce = self::REST_NONCE,
         public array $requirements = [],
         public bool $signed = false,
+        public ?string $guard = null,
     ) {}
 }

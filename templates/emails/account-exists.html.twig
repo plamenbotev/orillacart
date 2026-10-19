@@ -1,0 +1,12 @@
+{% extends 'emails/layout.html.twig' %}
+{#
+ # To an email that has an account, when someone asked for another: how to get into it. login_url, lost_password_url.
+ #}
+{# translators: %s: site name -#}
+{% block subject %}{{ __('[%s] You have an account already')|format(site_name) }}{% endblock %}
+{% block heading %}{{ __('You have an account already') }}{% endblock %}
+{% block intro %}<p>{{ __('Someone asked for an account with this email, which has one. Log in to it, or set a new password if you forgot yours.') }}</p>{% endblock %}
+{% block content %}
+<p><a href="{{ login_url }}" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;border-radius:4px;text-decoration:none;">{{ __('Log in') }}</a> <a href="{{ lost_password_url }}" style="color:#2271b1;">{{ __('Set a new password') }}</a></p>
+<p style="color:#71717a;font-size:13px;">{{ __('If it was not you, ignore this email: nothing changed.') }}</p>
+{% endblock %}
