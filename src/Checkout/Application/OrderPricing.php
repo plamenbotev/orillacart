@@ -84,9 +84,14 @@ final readonly class OrderPricing
         $lines = [];
         $parcel = [];
         $taxesOf = [];
+        // Prices by quantity count every line of the product: its variations and option choices together.
+        $ofProduct = [];
+        foreach ($items as $line) {
+            $ofProduct[$line['product_id']] = ($ofProduct[$line['product_id']] ?? 0) + $line['quantity'];
+        }
         foreach ($items as $line) {
             try {
-                $quote = $this->quotes->quote(new QuoteRequest($line['product_id'], $line['option_ids'], $line['quantity'], $customerId, $line['bundle_choices'] ?? []));
+                $quote = $this->quotes->quote(new QuoteRequest($line['product_id'], $line['option_ids'], $ofProduct[$line['product_id']], $customerId, $line['bundle_choices'] ?? []));
             } catch (NotFound|RuleViolation) {
                 throw new CheckoutRuleViolation('An item is no longer sold. Review the items and try again.', 'orillacart_cart_changed');
             }

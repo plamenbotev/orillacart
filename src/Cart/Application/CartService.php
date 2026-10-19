@@ -296,9 +296,14 @@ final readonly class CartService
     {
         $quoted = [];
         $checked = [];
+        // Prices by quantity count every line of the product: its variations and option choices together.
+        $ofProduct = [];
+        foreach ($cart->lines() as $line) {
+            $ofProduct[$line->productId()] = ($ofProduct[$line->productId()] ?? 0) + $line->quantity();
+        }
         foreach ($cart->lines() as $line) {
             try {
-                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), $line->quantity(), $cart->customerId(), $line->bundleChoices()));
+                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), $ofProduct[$line->productId()], $cart->customerId(), $line->bundleChoices()));
             } catch (NotFound|RuleViolation) {
                 $quote = null;
             }

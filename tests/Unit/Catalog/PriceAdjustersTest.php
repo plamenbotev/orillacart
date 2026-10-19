@@ -65,6 +65,16 @@ final class PriceAdjustersTest extends TestCase
         self::assertSame(['88', '8'], [$quote->unitPrice, $quote->options[0]->adjustment], 'gold adds 10 % of the 80 the rule leaves');
     }
 
+    public function testPricesByQuantityCountEveryLineOfTheProduct(): void
+    {
+        $this->shop->priceRules->create(new SavePriceRule('Bulk', [new PriceTierData(10, 'percent', '10')]));
+        $plain = $this->shop->carts->add(new CartOwner(null), new AddToCart(10, quantity: 5));
+        $owner = new CartOwner($plain->newToken);
+        $cart = $this->shop->carts->add($owner, new AddToCart(10, [$this->gold], 5))->cart;
+
+        self::assertSame(['9', '11.5'], array_map(static fn($line): string => $line->unitPrice, $cart->lines), 'five plain and five gold mugs are ten mugs');
+    }
+
     public function testTheProductPageAndListingsShowTheAdjustedPriceAndTiers(): void
     {
         $this->shop->priceRules->create(new SavePriceRule('Bulk', [new PriceTierData(10, 'percent', '10')]));
