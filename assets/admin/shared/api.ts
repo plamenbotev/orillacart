@@ -1,3 +1,5 @@
+import { __ } from '@wordpress/i18n';
+
 export interface Violation {
 	field: string;
 	message: string;
@@ -24,7 +26,13 @@ export function toApiError( error: unknown ): ApiError {
 		return error as ApiError;
 	}
 
-	return { code: 'unknown', message: 'The request failed.' };
+	return {
+		code: 'unknown',
+		message: __(
+			'The request failed. Check the connection and try again.',
+			'orillacart'
+		),
+	};
 }
 
 /**

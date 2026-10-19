@@ -62,7 +62,8 @@
 
     {{ slot('product_before_form', offer.id) }}
     {% if (offer.for_sale or offer.bundle_choices) and cart_url and not offer.price_hidden %}
-        <form class="orillacart-add-to-cart" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}" data-variations="{{ variations|json_encode }}"{% if offer.bundle_choices %} data-bundle="{{ offer.id }}"{% endif %}>
+        <form class="orillacart-add-to-cart" method="post" action="{{ cart_url }}" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}" data-variations="{{ variations|json_encode }}"{% if offer.bundle_choices %} data-bundle="{{ offer.id }}"{% endif %}>
+            <input type="hidden" name="orillacart_add_to_cart" value="1">
             <input type="hidden" name="product_id" value="{{ offer.id }}">
             {% for attribute in offer.attributes %}
                 <p class="orillacart-field">

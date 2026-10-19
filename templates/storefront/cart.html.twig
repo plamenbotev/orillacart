@@ -5,8 +5,10 @@
  # coupons and discount: the codes entered and what they take off, as checkout prices them; estimate: the
  # checkout summary at the customer's saved address or the shop's, and estimated_for: that country's name.
  #}
+{% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-cart" data-orillacart-region="cart">
     {{ slot('cart_before') }}
+    {{ shop.needs_script(__('Turn on JavaScript in your browser to change the cart and check out.')) }}
     {% if cart.lines is empty %}
         <p class="orillacart-empty">{{ __('Your cart is empty.') }}</p>
         {% if links.shop %}<p><a class="wp-element-button orillacart-button" href="{{ links.shop }}">{{ __('Go to the shop') }}</a></p>{% endif %}

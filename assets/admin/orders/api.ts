@@ -192,6 +192,16 @@ export interface OrderQuery {
 	search?: string | undefined;
 	/** Only orders the shop has to look at. */
 	attention?: boolean | undefined;
+	/** Moments, as the shop's days begin: placed from the first, before the second. */
+	placed_from?: string | undefined;
+	placed_before?: string | undefined;
+	/** A payment gateway's id. */
+	payment?: string | undefined;
+	min_total?: string | undefined;
+	max_total?: string | undefined;
+	placed_by?: 'account' | 'guest' | undefined;
+	order_by?: 'number' | 'total' | undefined;
+	order?: 'asc' | 'desc' | undefined;
 	page: number;
 	per_page: number;
 }

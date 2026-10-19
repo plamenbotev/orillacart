@@ -8,6 +8,7 @@
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-checkout">
+    {{ shop.needs_script(__('Turn on JavaScript in your browser to check out: the shipping, the taxes and the payment depend on your address.')) }}
     {% if summary is null %}
         <p class="orillacart-notice orillacart-notice--error">{{ problem }}</p>
         {% if links.cart %}<p><a class="wp-element-button orillacart-button" href="{{ links.cart }}">{{ __('Back to the cart') }}</a></p>{% endif %}

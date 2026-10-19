@@ -77,6 +77,11 @@
 {% endmacro %}
 
 {# A field people do not see and leave empty, and programs fill in: the shop refuses what comes with it filled. #}
+{# Said to browsers without JavaScript, on the pages that need it. #}
+{% macro needs_script(what) %}
+<noscript><p class="orillacart-notice orillacart-notice--warning">{{ what }}</p></noscript>
+{% endmacro %}
+
 {% macro honeypot(name = 'orillacart_website') %}
     <p class="orillacart-honeypot" aria-hidden="true"><label>{{ __('Leave this empty') }} <input type="text" name="{{ name }}" value="" tabindex="-1" autocomplete="off"></label></p>
 {% endmacro %}

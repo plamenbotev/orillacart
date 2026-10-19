@@ -21,11 +21,11 @@ interface OrderRepository
     public function pendingPaymentSince(\DateTimeImmutable $before): array;
 
     /**
-     * A page of orders, newest first, and how many orders match in all.
+     * A page of the orders that match, in the order asked for, and how many match in all.
      *
      * @return array{list<Order>, int}
      */
-    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit, bool $attentionOnly = false): array;
+    public function search(OrderSearch $search, int $offset, int $limit): array;
 
     /**
      * Whether the customer, by account or by email, has an order that was not cancelled or did not fail.

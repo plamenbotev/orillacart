@@ -19,6 +19,7 @@ use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
+use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentNotFound;
@@ -454,7 +455,7 @@ final class CheckoutServiceTest extends TestCase
                 self::assertSame($index === 0 ? 'orillacart_country_not_served' : 'orillacart_catalog_only', $e->errorCode);
             }
         }
-        self::assertSame(0, $this->shop->orderRecords->search(null, null, null, 0, 10)[1], 'no order');
+        self::assertSame(0, $this->shop->orderRecords->search(new OrderSearch(), 0, 10)[1], 'no order');
     }
 
     public function testAnEmptyCartCannotBeOrdered(): void

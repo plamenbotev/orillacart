@@ -51,6 +51,21 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         parent::tearDown();
     }
 
+    public function testTheOrdersListFiltersAndSortsOnTheDatabase(): void
+    {
+        $this->actAs('administrator');
+
+        $listed = $this->request('GET', '/orders?placed_from=2020-01-01T00:00:00%2B02:00&placed_before=2100-01-01T00:00:00%2B00:00&payment=cash_on_delivery&min_total=0&max_total=99999&placed_by=guest&order_by=total&order=asc');
+        self::assertSame(200, $listed->get_status(), (string) wp_json_encode($listed->get_data()));
+        $totals = array_map(static fn(array $order): float => \is_string($order['total']) ? (float) $order['total'] : -1.0, $this->rows($this->data($listed)['orders']));
+        $sorted = $totals;
+        sort($sorted);
+        self::assertSame($sorted, $totals, 'lowest total first');
+
+        self::assertSame(422, $this->request('GET', '/orders?order_by=email')->get_status());
+        self::assertSame(422, $this->request('GET', '/orders?min_total=lots')->get_status());
+    }
+
     public function testOnlyShopManagersWorkOrdersAndOnlyCustomersSeeTheirAccount(): void
     {
         $shop = [['GET', '/orders'], ['GET', '/orders/1'], ['PUT', '/orders/1/status'], ['PUT', '/orders/1/contact'], ['POST', '/orders/1/notes'],

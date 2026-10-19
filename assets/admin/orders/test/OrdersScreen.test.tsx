@@ -117,6 +117,9 @@ describe( 'OrdersScreen', () => {
 					refunds: [],
 				} );
 			}
+			if ( request.path === '/orillacart/v1/payment-methods' ) {
+				return Promise.resolve( [] );
+			}
 			if ( request.method === undefined ) {
 				return Promise.resolve(
 					request.path.startsWith( '/orillacart/v1/orders?' )
@@ -151,12 +154,12 @@ describe( 'OrdersScreen', () => {
 		const user = userEvent.setup();
 		render( <OrdersScreen /> );
 
-		expect( mockedFetch.mock.calls[ 0 ]?.[ 0 ]?.path ).toBe(
-			'/orillacart/v1/orders?page=1&per_page=20'
-		);
 		await user.click(
 			await screen.findByRole( 'button', { name: /Open/ } )
 		);
+		expect(
+			mockedFetch.mock.calls.map( ( [ options ] ) => options?.path )
+		).toContain( '/orillacart/v1/orders?page=1&per_page=20' );
 
 		await screen.findByRole( 'heading', { name: 'Order #7 — On hold' } );
 		expect( screen.getByText( 'Order placed.' ) ).toBeVisible();

@@ -1,34 +1,40 @@
 import { Button, Notice } from '@wordpress/components';
 import { DataViews, type Field, type View } from '@wordpress/dataviews';
-import { useCallback, useEffect, useState } from '@wordpress/element';
+import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { addQueryArgs } from '@wordpress/url';
+
+import { fetchPaymentMethods } from '../payments/api';
 import { toApiError } from '../shared/api';
 import {
 	deleteOrder,
 	fetchOrders,
 	type OrderPage,
 	type OrderSummary,
-	type Status,
 	STATUSES,
 } from './api';
+import { ordersQuery, viewArgs, viewFromArgs } from './listView';
 import { STATUS_LABELS, money, when } from './labels';
 import { NewOrder } from './NewOrder';
 import { OrderDetail } from './OrderDetail';
 import { useLatest } from '../shared/useLatest';
 
-const FIELDS: Field< OrderSummary >[] = [
+type Payments = { value: string; label: string }[];
+
+const fields = ( payments: Payments ): Field< OrderSummary >[] => [
 	{
 		id: 'number',
 		label: __( 'Order', 'orillacart' ),
 		enableHiding: false,
-		enableSorting: false,
 		render: ( { item } ) => <strong>#{ item.number }</strong>,
 	},
 	{
 		id: 'placed_at',
 		label: __( 'Placed', 'orillacart' ),
+		type: 'date',
 		enableSorting: false,
+		filterBy: { operators: [ 'on', 'before', 'after', 'between' ] },
 		render: ( { item } ) => when( item.placed_at ),
 	},
 	{
@@ -72,13 +78,33 @@ const FIELDS: Field< OrderSummary >[] = [
 	{
 		id: 'total',
 		label: __( 'Total', 'orillacart' ),
-		enableSorting: false,
+		type: 'number',
+		getValue: ( { item } ) => Number( item.total ),
+		filterBy: { operators: [ 'greaterThanOrEqual', 'lessThanOrEqual' ] },
 		render: ( { item } ) => money( item.total, item.currency ),
 	},
 	{
-		id: 'payment_name',
+		id: 'payment',
 		label: __( 'Payment', 'orillacart' ),
 		enableSorting: false,
+		elements: payments,
+		filterBy: { operators: [ 'is' ] },
+		getValue: ( { item } ) => item.payment_name,
+		render: ( { item } ) => item.payment_name,
+	},
+	{
+		id: 'placed_by',
+		label: __( 'Placed by', 'orillacart' ),
+		enableSorting: false,
+		elements: [
+			{ value: 'account', label: __( 'A customer', 'orillacart' ) },
+			{ value: 'guest', label: __( 'A guest', 'orillacart' ) },
+		],
+		filterBy: { operators: [ 'is' ] },
+		render: ( { item } ) =>
+			item.customer_id === null
+				? __( 'A guest', 'orillacart' )
+				: __( 'A customer', 'orillacart' ),
 	},
 ];
 
@@ -94,7 +120,7 @@ const DEFAULT_VIEW: View = {
 		'status',
 		'attention',
 		'total',
-		'payment_name',
+		'payment',
 	],
 	titleField: 'number',
 	layout: {},
@@ -104,34 +130,47 @@ const DEFAULT_VIEW: View = {
  * The Shop → Orders screen: every order, newest first, and one order at a time to work on.
  */
 export function OrdersScreen() {
-	const [ view, setView ] = useState< View >( DEFAULT_VIEW );
+	const [ view, setView ] = useState< View >( () =>
+		viewFromArgs( window.location.search, DEFAULT_VIEW )
+	);
+	const [ payments, setPayments ] = useState< Payments >( [] );
+	const fieldList = useMemo( () => fields( payments ), [ payments ] );
 	const [ page, setPage ] = useState< OrderPage | null >( null );
 	const [ selected, setSelected ] = useState< number | null >( null );
 	const [ creating, setCreating ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
 	const latest = useLatest();
 
-	const load = useCallback( () => {
-		const filter = view.filters?.find(
-			( item ) => item.field === 'status'
+	useEffect( () => {
+		fetchPaymentMethods()
+			.then( ( methods ) =>
+				setPayments(
+					methods.map( ( method ) => ( {
+						value: method.gateway,
+						label: method.name,
+					} ) )
+				)
+			)
+			.catch( () => setPayments( [] ) );
+	}, [] );
+
+	// The address keeps the list as it is, for a reload, the back button or a link to it.
+	useEffect( () => {
+		const adminPage = new URLSearchParams( window.location.search ).get(
+			'page'
 		);
-		const status =
-			typeof filter?.value === 'string' &&
-			( STATUSES as readonly string[] ).includes( filter.value )
-				? ( filter.value as Status )
-				: undefined;
-		const attention =
-			view.filters?.find( ( item ) => item.field === 'attention' )
-				?.value === 'yes';
-		latest(
-			fetchOrders( {
-				status,
-				attention: attention ? true : undefined,
-				search: view.search === '' ? undefined : view.search,
-				page: view.page ?? 1,
-				per_page: view.perPage ?? 20,
+		window.history.replaceState(
+			null,
+			'',
+			addQueryArgs( window.location.pathname, {
+				...( adminPage === null ? {} : { page: adminPage } ),
+				...viewArgs( view ),
 			} )
-		)
+		);
+	}, [ view ] );
+
+	const load = useCallback( () => {
+		latest( fetchOrders( ordersQuery( view ) ) )
 			.then( setPage )
 			.catch( ( reason: unknown ) =>
 				setError( toApiError( reason ).message )
@@ -180,7 +219,7 @@ export function OrdersScreen() {
 			<DataViews< OrderSummary >
 				view={ view }
 				onChangeView={ setView }
-				fields={ FIELDS }
+				fields={ fieldList }
 				data={ page?.orders ?? [] }
 				getItemId={ ( item ) => String( item.number ) }
 				isLoading={ page === null }

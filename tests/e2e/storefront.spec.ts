@@ -208,6 +208,31 @@ test.describe( 'A visitor', () => {
 		await expect( page.getByText( 'Your cart is empty.' ) ).toBeVisible();
 	} );
 
+	test( 'adds to the cart without JavaScript, and is told checking out needs it', async ( {
+		browser,
+	} ) => {
+		const context = await browser.newContext( {
+			javaScriptEnabled: false,
+		} );
+		const page = await context.newPage();
+		try {
+			await page.goto( shop.lampUrl );
+			await page.getByLabel( 'Quantity' ).fill( '2' );
+			await page.getByRole( 'button', { name: 'Add to cart' } ).click();
+
+			await expect( page ).toHaveURL( shop.urls.cart );
+			await expect(
+				page.getByRole( 'link', { name: 'E2E Lamp' } )
+			).toBeVisible();
+			// Playwright turns scripts off without the parser showing <noscript>: the page source holds it.
+			expect( await page.content() ).toContain(
+				'Turn on JavaScript in your browser to change the cart and check out.'
+			);
+		} finally {
+			await context.close();
+		}
+	} );
+
 	test( 'sees what is missing next to each field', async ( { page } ) => {
 		await page.goto( shop.lampUrl );
 		await page.getByRole( 'button', { name: 'Add to cart' } ).click();

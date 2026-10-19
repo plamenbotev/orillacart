@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Fixtures\Ordering;
 
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderRepository;
+use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Ordering\Domain\OrderStatus;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 
@@ -75,13 +76,25 @@ final class InMemoryOrderRepository implements OrderRepository
         return false;
     }
 
-    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit, bool $attentionOnly = false): array
+    public function search(OrderSearch $search, int $offset, int $limit): array
     {
-        $found = array_values(array_filter($this->orders, static fn(Order $order): bool => ($status === null || $order->status() === $status)
-            && (!$attentionOnly || $order->attention() !== null)
-            && ($customerId === null || $order->customerId() === $customerId)
+        $text = $search->text;
+        $found = array_values(array_filter($this->orders, static fn(Order $order): bool => ($search->status === null || $order->status() === $search->status)
+            && (!$search->attentionOnly || $order->attention() !== null)
+            && ($search->customerId === null || $order->customerId() === $search->customerId)
+            && ($search->who === null || ($search->who === OrderSearch::GUESTS) === ($order->customerId() === null))
+            && ($search->placedFrom === null || $order->placedAt() >= $search->placedFrom)
+            && ($search->placedBefore === null || $order->placedAt() < $search->placedBefore)
+            && ($search->gateway === null || $order->paymentGateway() === $search->gateway)
+            && ($search->minTotal === null || $order->total()->compare($search->minTotal) >= 0)
+            && ($search->maxTotal === null || $order->total()->compare($search->maxTotal) <= 0)
             && ($text === null || str_contains(strtolower($order->email() . ' ' . $order->billing()->firstName() . ' ' . $order->billing()->lastName()), strtolower($text)) || ltrim($text, '#') === (string) $order->id())));
-        usort($found, static fn(Order $a, Order $b): int => $b->id() <=> $a->id());
+        usort($found, static function (Order $a, Order $b) use ($search): int {
+            $by = $search->sortBy === OrderSearch::BY_TOTAL ? $a->total()->compare($b->total()) : 0;
+            $by = $by !== 0 ? $by : $a->id() <=> $b->id();
+
+            return $search->ascending ? $by : -$by;
+        });
 
         return [\array_slice($found, $offset, $limit), \count($found)];
     }

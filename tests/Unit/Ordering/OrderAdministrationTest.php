@@ -229,6 +229,26 @@ final class OrderAdministrationTest extends TestCase
         $this->shop->orders->changeContact($order->number, new ChangeOrderContact('ada@example.com', $view->billing, $view->billing), 7);
     }
 
+    public function testTheShopNarrowsTheListByDayPaymentTotalAndWhoOrderedAndSortsByTotal(): void
+    {
+        $this->shop->paymentMethods->update('cheque', new SavePaymentMethod('Cheque', true));
+        $this->shop->clock->modify('2030-03-01 10:00:00');
+        $small = $this->place(1);
+        $this->shop->clock->modify('2030-03-02 10:00:00');
+        $large = $this->place(3);
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20, quantity: 2))->newToken);
+        $byCheque = $this->shop->checkout->placeOrder($owner, new PlaceOrder('bo@example.com', new AddressData('Bo', 'Peep', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'cheque'));
+
+        $numbers = fn(OrderQuery $query): array => array_map(static fn($order): int => $order->number, $this->shop->orders->orders($query, true)->orders);
+        self::assertSame([$byCheque->number, $large->number], $numbers(new OrderQuery(placedFrom: '2030-03-02T00:00:00+00:00')));
+        self::assertSame([$small->number], $numbers(new OrderQuery(placedBefore: '2030-03-02T01:00:00+02:00')), 'the shop’s day, in UTC');
+        self::assertSame([$byCheque->number], $numbers(new OrderQuery(payment: 'cheque')));
+        self::assertSame([$byCheque->number, $small->number], $numbers(new OrderQuery(maxTotal: '16')));
+        self::assertSame([$large->number], $numbers(new OrderQuery(minTotal: '16.01')));
+        self::assertSame([], $numbers(new OrderQuery(placedBy: 'account')), 'only guests ordered');
+        self::assertSame([$small->number, $byCheque->number, $large->number], $numbers(new OrderQuery(orderBy: 'total', order: 'asc')));
+    }
+
     private function available(): ?int
     {
         return $this->shop->stock->stock(StockItemRef::product(20))->available;

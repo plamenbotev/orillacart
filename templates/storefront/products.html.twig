@@ -55,7 +55,8 @@
                     {% elseif not product.offer.for_sale %}
                         <p class="orillacart-stock orillacart-stock--out">{{ __('Not available') }}</p>
                     {% elseif product.simple and cart_url %}
-                        <form class="orillacart-add-to-cart orillacart-add-to-cart--card" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}">
+                        <form class="orillacart-add-to-cart orillacart-add-to-cart--card" method="post" action="{{ cart_url }}" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}">
+                            <input type="hidden" name="orillacart_add_to_cart" value="1">
                             <input type="hidden" name="product_id" value="{{ product.offer.id }}">
                             <input type="hidden" name="quantity" value="1">
                             <button type="submit" class="wp-element-button orillacart-button">{{ __('Add to cart') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></button>

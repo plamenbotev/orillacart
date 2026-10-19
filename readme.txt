@@ -48,3 +48,24 @@ folder in your theme, keeping its path (orillacart/storefront/cart.html.twig), a
 
 Yes. Shop and product pages carry nothing personal and can be cached; the cart count in the Mini cart is
 corrected in the browser. The cart, checkout and account pages tell caches not to keep them.
+
+== Screenshots ==
+
+1. The shop page: products by category with search, the shop's filters with how many products each leaves, and sorting.
+2. A product with its options; the price follows the option chosen.
+3. The cart, with the shipping, tax and total estimated before an address is known.
+4. Shop → Orders: every order, filtered by status, day, payment, total and who placed it, and sorted by number or total.
+5. Shop → Reports: sales against the days before or a year before, by product, category, coupon and customer.
+
+== Changelog ==
+
+= 2.0.0 =
+
+Rebuilt from scratch on PHP 8.4, with no code or data kept from 1.x.
+
+* Storefront blocks: shop, product filters, search, mini cart, cart, checkout and account, from Twig templates a theme can override.
+* Catalog: variations, options with price changes, bundles, digital downloads, stock in several stockrooms, backorders, price rules per customer group, sales with the lowest earlier price shown.
+* Checkout: guest or account orders, taxes by address with reverse charge for EU businesses, coupons, shipping rates by weight, size and postcode, pickup points, PayPal, bank transfer, cheque and cash on delivery.
+* Orders: the shop's own orders, editing, partial and full refunds through PayPal, invoices and credit notes, emails in the customer's language.
+* Search on the database or OpenSearch, background jobs with an overview screen, reports, Site Health checks, privacy tools, multisite.
+* An extension API for payment gateways, shipping methods with live rates and labels, price adjusters, cart rules, checkout fields and order actions.

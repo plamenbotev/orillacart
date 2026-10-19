@@ -51,6 +51,7 @@ use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRefund;
 use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
+use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Ordering\Domain\OrderStatus;
 use OrillaCart\Ordering\Domain\ShippingChoice;
 use OrillaCart\Ordering\Domain\TakenItem;
@@ -181,13 +182,25 @@ final readonly class OrderService
     public function orders(OrderQuery $query, bool $forShop = false): OrderPageView
     {
         $search = $query->search === null || trim($query->search) === '' ? null : trim($query->search);
+        // Orders keep when they were placed in UTC.
+        $moment = static fn(?string $at): ?\DateTimeImmutable => $at === null ? null : new \DateTimeImmutable($at)->setTimezone(new \DateTimeZone('UTC'));
         [$orders, $total] = $this->orders->search(
-            $query->status === null ? null : OrderStatus::from($query->status),
-            $search,
-            $query->customerId,
+            new OrderSearch(
+                $query->status === null ? null : OrderStatus::from($query->status),
+                $search,
+                $query->customerId,
+                $forShop && $query->attention,
+                $moment($query->placedFrom),
+                $moment($query->placedBefore),
+                $query->payment,
+                $query->minTotal === null ? null : Money::of($query->minTotal),
+                $query->maxTotal === null ? null : Money::of($query->maxTotal),
+                $query->placedBy,
+                $query->orderBy,
+                $query->order === 'asc',
+            ),
             ($query->page - 1) * $query->perPage,
             $query->perPage,
-            $forShop && $query->attention,
         );
 
         return new OrderPageView(array_map(static fn(Order $order): OrderSummaryView => OrderSummaryView::fromOrder($order, $forShop), $orders), $total, $query->page, max(1, (int) ceil($total / $query->perPage)));
@@ -524,7 +537,7 @@ final readonly class OrderService
     {
         $changed = 0;
         do {
-            [$orders] = $this->orders->search(null, null, $customerId, 0, 100);
+            [$orders] = $this->orders->search(OrderSearch::ofCustomer($customerId), 0, 100);
             foreach ($orders as $order) {
                 $this->changing($order->id(), function (Order $order) use ($customerId): void {
                     $order->changeCustomer(null);

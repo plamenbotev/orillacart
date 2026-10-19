@@ -115,10 +115,14 @@ export function bindAddToCart( form: HTMLFormElement ): void {
 		if ( button ) {
 			button.disabled = true;
 		}
-		const body = formBody( form, {
-			lists: [ 'option_ids', 'bundle_choices' ],
-			numbers: [ 'product_id', 'quantity' ],
-		} );
+		// The field that tells the server a browser without the script posted the form is not the API's.
+		const { orillacart_add_to_cart: _withoutScript, ...body } = formBody(
+			form,
+			{
+				lists: [ 'option_ids', 'bundle_choices' ],
+				numbers: [ 'product_id', 'quantity' ],
+			}
+		);
 		const result = await api< CartSummary >( 'POST', '/cart/items', {
 			option_ids: [],
 			bundle_choices: [],

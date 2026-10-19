@@ -8,6 +8,7 @@ use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderRepository;
+use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Ordering\Domain\OrderStatus;
 
 final readonly class DoctrineOrderRepository implements OrderRepository
@@ -40,17 +41,36 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             ->getResult();
     }
 
-    public function search(?OrderStatus $status, ?string $text, ?int $customerId, int $offset, int $limit, bool $attentionOnly = false): array
+    public function search(OrderSearch $search, int $offset, int $limit): array
     {
         $query = $this->entityManager->createQueryBuilder()->from(Order::class, 'o');
-        if ($attentionOnly) {
+        $text = $search->text;
+        if ($search->attentionOnly) {
             $query->andWhere('o.attention IS NOT NULL');
         }
-        if ($status !== null) {
-            $query->andWhere('o.status = :status')->setParameter('status', $status);
+        if ($search->status !== null) {
+            $query->andWhere('o.status = :status')->setParameter('status', $search->status);
         }
-        if ($customerId !== null) {
-            $query->andWhere('o.customerId = :customer')->setParameter('customer', $customerId);
+        if ($search->customerId !== null) {
+            $query->andWhere('o.customerId = :customer')->setParameter('customer', $search->customerId);
+        }
+        if ($search->who !== null) {
+            $query->andWhere($search->who === OrderSearch::GUESTS ? 'o.customerId IS NULL' : 'o.customerId IS NOT NULL');
+        }
+        if ($search->placedFrom !== null) {
+            $query->andWhere('o.placedAt >= :from')->setParameter('from', $search->placedFrom, 'datetime_immutable');
+        }
+        if ($search->placedBefore !== null) {
+            $query->andWhere('o.placedAt < :before')->setParameter('before', $search->placedBefore, 'datetime_immutable');
+        }
+        if ($search->gateway !== null) {
+            $query->andWhere('o.paymentGateway = :gateway')->setParameter('gateway', $search->gateway);
+        }
+        if ($search->minTotal !== null) {
+            $query->andWhere('o.total >= :min')->setParameter('min', $search->minTotal->toFixed());
+        }
+        if ($search->maxTotal !== null) {
+            $query->andWhere('o.total <= :max')->setParameter('max', $search->maxTotal->toFixed());
         }
         if ($text !== null) {
             $like = '%' . addcslashes($text, '%_\\') . '%';
@@ -64,9 +84,14 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         }
 
         $total = (int) (clone $query)->select('COUNT(o.id)')->getQuery()->getSingleScalarResult();
+        $direction = $search->ascending ? 'ASC' : 'DESC';
+        if ($search->sortBy === OrderSearch::BY_TOTAL) {
+            $query->orderBy('o.total', $direction)->addOrderBy('o.id', $direction);
+        } else {
+            $query->orderBy('o.id', $direction);
+        }
         /** @var list<Order> $orders */
         $orders = $query->select('o')
-            ->orderBy('o.id', 'DESC')
             ->setFirstResult($offset)
             ->setMaxResults($limit)
             ->getQuery()
