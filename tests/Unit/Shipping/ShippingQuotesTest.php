@@ -46,6 +46,7 @@ final class ShippingQuotesTest extends TestCase
     private RecordingDispatcher $events;
     private TestShipMethod $method;
     private MemoryLogger $logger;
+    private MemoryRateCache $cache;
 
     protected function setUp(): void
     {
@@ -57,7 +58,7 @@ final class ShippingQuotesTest extends TestCase
         $this->carriers = new CarrierService($records, $geography, new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), $geography, new RecordingDispatcher()), $classes, $methods);
         $settings = new SettingsService(new InMemorySettingsRepository(new StoreSettings(new Currency('EUR'), 2, WeightUnit::Kilogram, DimensionUnit::Centimetre)), new RecordingDispatcher(), $geography);
         $this->logger = new MemoryLogger();
-        $this->quotes = new ShippingQuotes($records, $classes, $methods, $settings, new MemoryRateCache(), $this->logger);
+        $this->quotes = new ShippingQuotes($records, $classes, $methods, $settings, $this->cache = new MemoryRateCache(), $this->logger);
         $this->events = new RecordingDispatcher();
         $this->classes = new ShippingClassService($classes, $records, $this->events);
     }
@@ -254,6 +255,9 @@ final class ShippingQuotesTest extends TestCase
 
         self::assertSame(['Anywhere'], array_map(static fn(ShippingOptionView $option): string => $option->name, $options));
         self::assertSame('warning', $this->logger->records[0]['level'] ?? null);
+        $this->quotes->options(new ShippingQuery('BG', null, [new ParcelItem(1, '1')], '10', '9999'));
+        self::assertSame(1, $this->method->quotes, 'not asked again on the next keystroke');
+        self::assertSame([60], array_values($this->cache->seconds), 'but again in a minute');
     }
 
     public function testAMethodCarrierHasNoRatesItsSettingsAreCheckedAndItNeedsTheRequiredOnesToBeOn(): void

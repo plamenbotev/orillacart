@@ -10,6 +10,8 @@ final class MemoryRateCache implements RateCache
 {
     /** @var array<string, list<array<string, string|int|bool|null>>> */
     public array $rows = [];
+    /** @var array<string, int> how long each was kept for */
+    public array $seconds = [];
 
     public function get(string $key): ?array
     {
@@ -19,5 +21,6 @@ final class MemoryRateCache implements RateCache
     public function put(string $key, array $rows, int $seconds): void
     {
         $this->rows[$key] = $rows;
+        $this->seconds[$key] = $seconds;
     }
 }

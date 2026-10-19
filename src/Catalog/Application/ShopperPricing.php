@@ -6,9 +6,11 @@ namespace OrillaCart\Catalog\Application;
 
 use OrillaCart\Catalog\Domain\PricedItem;
 use OrillaCart\Catalog\Domain\ShopperPrices;
+use OrillaCart\Extension\FailsClosed;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Pricing\PriceQuery;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Extension\ExtensionFailures;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -27,6 +29,7 @@ final readonly class ShopperPricing
         private string $currency,
         private LoggerInterface $logger,
         private int $decimals = Money::DECIMALS,
+        private ExtensionFailures $failures = new ExtensionFailures(),
     ) {}
 
     /**
@@ -62,6 +65,7 @@ final readonly class ShopperPricing
                 $answer = $adjuster->adjust(new PriceQuery($productId, $variationId, $quantity, $this->customerId, (string) $price, (string) $regular, $this->currency));
             } catch (\Throwable $e) {
                 $this->logger->error('The price adjuster {adjuster} failed for product {product}: {message}', ['adjuster' => $adjuster->id(), 'product' => $productId, 'message' => $e->getMessage(), 'exception' => $e]);
+                $this->failures->record(\sprintf('The price adjuster %s failed for product %d; it was priced without it.', $adjuster->id(), $productId), $adjuster instanceof FailsClosed);
 
                 continue;
             }
@@ -70,6 +74,7 @@ final readonly class ShopperPricing
             }
             if (preg_match('/^-?\d{1,11}(\.\d{1,' . Money::DECIMALS . '})?$/', $answer) !== 1) {
                 $this->logger->error('The price adjuster {adjuster} answered "{answer}" for product {product}, which is not a price; it is ignored.', ['adjuster' => $adjuster->id(), 'answer' => $answer, 'product' => $productId]);
+                $this->failures->record(\sprintf('The price adjuster %s answered "%s" for product %d, which is not a price; it was priced without it.', $adjuster->id(), mb_substr($answer, 0, 40), $productId), $adjuster instanceof FailsClosed);
 
                 continue;
             }

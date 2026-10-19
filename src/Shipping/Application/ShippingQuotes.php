@@ -29,13 +29,15 @@ use Psr\Log\LoggerInterface;
 /**
  * Which rates can ship a parcel, priced for it: checkout's view of shipping. Taxes are checkout's to add.
  * A carrier priced by a shipping method gets its services from the method, kept for a few minutes; a method
- * that fails leaves the carrier out and is logged, so checkout still offers the others.
+ * that fails leaves the carrier out for a minute and is logged, so checkout still offers the others.
  */
 final readonly class ShippingQuotes
 {
     private const int KEEP_SECONDS = 600;
     /** Offices and lockers change rarely. */
     private const int KEEP_POINTS_SECONDS = 3600;
+    /** A courier that failed is left out for a minute before it is asked again. */
+    private const int FAILED_SECONDS = 60;
 
     public function __construct(
         private CarrierRepository $carriers,
@@ -132,6 +134,8 @@ final readonly class ShippingQuotes
             $quoted = $method->quote($shipment, $settings);
         } catch (\Throwable $e) {
             $this->logger->warning('{method} could not quote for carrier {carrier}; checkout leaves it out. {message}', ['method' => $method->name(), 'carrier' => $carrier->name(), 'message' => $e->getMessage()]);
+            // Not asked again on every keystroke while it is down.
+            $this->cache->put($key, [], self::FAILED_SECONDS);
 
             return [];
         }
@@ -173,6 +177,7 @@ final readonly class ShippingQuotes
             $points = array_map(static fn(PickupPoint $point): PickupPointView => new PickupPointView($point->id, $point->name, $point->address, $point->hours), $method->pickupPoints($query, $settings));
         } catch (\Throwable $e) {
             $this->logger->warning('{method} could not list pickup points for carrier {carrier}. {message}', ['method' => $method->name(), 'carrier' => $carrier->name(), 'message' => $e->getMessage()]);
+            $this->cache->put($key, [], self::FAILED_SECONDS);
 
             return [];
         }

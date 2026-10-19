@@ -24,6 +24,7 @@ use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Settings\Domain\StoreSettings;
+use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tests\Fixtures\Catalog\CatalogIds;
@@ -68,7 +69,7 @@ final class ProductQuotesTest extends TestCase
         $this->stockroom = new StockroomService($stockrooms)->create(new SaveStockroom('Sofia'))->id;
         $this->settings = new InMemorySettingsRepository(StoreSettings::defaults());
         $clock = new MockClock('2026-10-17 12:00:00 UTC');
-        $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, $clock, new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new PriceResolver(new InMemoryPriceRuleRepository(), new GroupsOfShoppers(new InMemoryCustomerGroupRepository()), $clock, new FixedExtensions(), new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new MemoryLogger()));
+        $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, $clock, new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new PriceResolver(new InMemoryPriceRuleRepository(), new GroupsOfShoppers(new InMemoryCustomerGroupRepository()), $clock, new FixedExtensions(), new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new MemoryLogger(), new ExtensionFailures()));
     }
 
     public function testAQuoteHasTheChosenOptionsTheirPriceAndTheStock(): void

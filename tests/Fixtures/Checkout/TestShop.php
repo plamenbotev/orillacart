@@ -88,6 +88,7 @@ use OrillaCart\Settings\Domain\SettingsChanged;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
+use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Security\Signatures;
 use OrillaCart\Shipping\Application\CarrierService;
 use OrillaCart\Shipping\Application\Consignments;
@@ -162,6 +163,7 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 final class TestShop
 {
     public readonly MockClock $clock;
+    public readonly ExtensionFailures $failures;
     public readonly InMemoryProductContent $content;
     public readonly InMemoryProductRepository $productRecords;
     public readonly ProductService $products;
@@ -275,7 +277,7 @@ final class TestShop
         $this->stock = new StockService(new InMemoryStockLevelRepository(), $stockroomRecords, $this->events);
         $this->priceRuleRecords = new InMemoryPriceRuleRepository();
         $this->customerGroupRecords = new InMemoryCustomerGroupRepository();
-        $prices = new PriceResolver($this->priceRuleRecords, new GroupsOfShoppers($this->customerGroupRecords), $this->clock, $extensions, $settings, $this->logger);
+        $prices = new PriceResolver($this->priceRuleRecords, new GroupsOfShoppers($this->customerGroupRecords), $this->clock, $extensions, $settings, $this->logger, $this->failures = new ExtensionFailures());
         $this->priceRules = new PriceRules($this->priceRuleRecords, $this->events);
         $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices);
         $this->quotes = $quotes;
@@ -325,7 +327,7 @@ final class TestShop
         $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts);
         $this->paymentOptions = $paymentOptions = new PaymentOptions($methodRecords, $gateways, $settings);
-        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts);
+        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures);
         $this->checkout = new CheckoutService(
             $this->carts,
             $this->pricing,
@@ -339,9 +341,10 @@ final class TestShop
             $this->customers,
             $this->logger,
             $this->discounts,
-            new CheckoutFields($extensions, $this->logger),
+            new CheckoutFields($extensions, $this->logger, $this->failures),
             new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography),
             $this->languages,
+            $this->failures,
         );
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);

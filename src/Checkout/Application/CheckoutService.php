@@ -36,6 +36,7 @@ use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
@@ -66,6 +67,7 @@ final readonly class CheckoutService
         private CheckoutFields $fields,
         private VatNumbers $vatNumbers,
         private Languages $languages,
+        private ExtensionFailures $failures,
     ) {}
 
     /**
@@ -190,7 +192,8 @@ final readonly class CheckoutService
     /**
      * @throws CheckoutRuleViolation      for an empty cart, items that cannot be ordered, a missing or unknown
      *                                    shipping rate or payment method, stock that ran out, an address in a
-     *                                    country the shop does not sell to, or a shop that only shows its catalog
+     *                                    country the shop does not sell to, a shop that only shows its catalog,
+     *                                    or a price an add-on that fails closed could not set
      * @throws PaymentProviderUnavailable when the payment cannot start; the order is then cancelled
      */
     public function placeOrder(CartOwner $owner, PlaceOrder $command): PlacedOrderView
@@ -198,6 +201,7 @@ final readonly class CheckoutService
         if ($this->settings->current()->catalogOnly) {
             throw new CheckoutRuleViolation('The shop does not take orders online.', 'orillacart_catalog_only');
         }
+        $failed = $this->failures->mark();
         $contents = $this->contents($owner);
         $billingAddress = $this->addresses->require($command->billing, 'billing');
         $shippingAddress = $command->shippingAddress === null ? $billingAddress : $this->addresses->require($command->shippingAddress, 'shipping');
@@ -208,6 +212,9 @@ final readonly class CheckoutService
         $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies);
         foreach ($priced['discounts']->refused as $code => $reason) {
             throw new CheckoutRuleViolation(\sprintf('The code %s does not apply: %s Remove it to order.', $code, $reason), 'orillacart_coupon_refused');
+        }
+        if ($this->failures->closedSince($failed)) {
+            throw new CheckoutRuleViolation('Some prices cannot be worked out right now. Try again in a moment.', 'orillacart_prices_unavailable');
         }
         $bill = $priced['bill'];
         if ($command->expectedTotal !== null && !Money::of($command->expectedTotal)->equals($bill->total())) {
@@ -256,6 +263,9 @@ final readonly class CheckoutService
             $reverse->applies,
             $this->languages->current(),
         )), $gateway === null)));
+        foreach ($this->failures->since($failed) as $failure) {
+            $this->orders->note($order->number, $failure, false);
+        }
         $receiptUrl = $this->links->receiptUrl($order->number);
 
         if ($gateway === null) {

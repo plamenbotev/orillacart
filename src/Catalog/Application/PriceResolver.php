@@ -7,6 +7,7 @@ namespace OrillaCart\Catalog\Application;
 use OrillaCart\Catalog\Domain\PriceRuleRepository;
 use OrillaCart\Catalog\Domain\ShopperPrices;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -23,6 +24,7 @@ final readonly class PriceResolver
         private InstalledExtensions $extensions,
         private SettingsService $settings,
         private LoggerInterface $logger,
+        private ExtensionFailures $failures,
     ) {}
 
     /** @param int|null $customerId null for a guest, and for the search index */
@@ -35,6 +37,7 @@ final readonly class PriceResolver
             $this->settings->current()->currency,
             $this->logger,
             $this->settings->current()->priceDecimals,
+            $this->failures,
         );
     }
 }

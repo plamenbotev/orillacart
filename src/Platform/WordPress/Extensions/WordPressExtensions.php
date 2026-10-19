@@ -191,15 +191,60 @@ final class WordPressExtensions implements Registry, InstalledExtensions
                 $this->paymentGateway($gateway);
             }
             if (\function_exists('do_action')) {
-                try {
-                    do_action(self::ACTION, $this);
-                } catch (\Throwable $e) {
-                    // One broken add-on does not take the shop's checkout with it.
-                    $this->logger->error('An add-on failed while registering: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
-                }
+                $this->isolateCallbacks();
+                do_action(self::ACTION, $this);
             }
         } finally {
             $this->collecting = false;
         }
+    }
+
+    /**
+     * Each add-on registers on its own: one that throws is logged and left with what it registered before it
+     * threw, and the add-ons after it still register.
+     */
+    private function isolateCallbacks(): void
+    {
+        global $wp_filter;
+        $hook = \is_array($wp_filter) ? ($wp_filter[self::ACTION] ?? null) : null;
+        if (!$hook instanceof \WP_Hook) {
+            return;
+        }
+        $isolated = [];
+        foreach ($hook->callbacks as $priority => $callbacks) {
+            foreach ($callbacks as $key => $callback) {
+                $function = $callback['function'];
+                $isolated[$priority][$key] = ['function' => function (mixed ...$arguments) use ($function): void {
+                    try {
+                        $function(...$arguments);
+                    } catch (\Throwable $e) {
+                        // One broken add-on does not take the shop's checkout, or the add-ons after it, with it.
+                        $this->logger->error('An add-on failed while registering ({callback}): {message}', ['callback' => self::describe($function), 'message' => $e->getMessage(), 'exception' => $e]);
+                    }
+                }, 'accepted_args' => $callback['accepted_args']];
+            }
+        }
+        $hook->callbacks = $isolated;
+    }
+
+    /** Where a callback is, for the shop to find the add-on: a function or method name, or a closure's file and line. */
+    private static function describe(mixed $callback): string
+    {
+        try {
+            return match (true) {
+                \is_string($callback) => $callback,
+                \is_array($callback) && \count($callback) === 2 && \is_string($callback[1]) => (\is_object($callback[0]) ? $callback[0]::class : (\is_string($callback[0]) ? $callback[0] : '?')) . '::' . $callback[1],
+                $callback instanceof \Closure => self::closureAt(new \ReflectionFunction($callback)),
+                \is_object($callback) => $callback::class,
+                default => 'an unknown callback',
+            };
+        } catch (\ReflectionException) {
+            return 'an unknown callback';
+        }
+    }
+
+    private static function closureAt(\ReflectionFunction $function): string
+    {
+        return \sprintf('a closure in %s:%d', (string) $function->getFileName(), (int) $function->getStartLine());
     }
 }

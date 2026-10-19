@@ -13,9 +13,11 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\FieldCheck;
 use OrillaCart\Extension\Checkout\FieldContext;
+use OrillaCart\Extension\FailsClosed;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\OrderFieldView;
+use OrillaCart\Ordering\Application\Dto\OrderNoteView;
 use OrillaCart\Ordering\Application\OrderSummaries;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shared\Domain\InvalidFields;
@@ -92,6 +94,36 @@ final class CheckoutFieldsTest extends TestCase
         self::assertSame(['vat_number' => 'BG999', 'wrap' => 'A box', 'terms' => 'Yes'], $summary->fields);
         self::assertSame([$number, 'on_hold', 'ada@example.com', 'Sofia', '8', 'E-book'], [$summary->number, $summary->status, $summary->email, $summary->billing->city, $summary->total, $summary->lines[0]->name]);
         self::assertNull(new OrderSummaries($this->shop->orders)->find(999));
+    }
+
+    public function testACheckThatFailsTakesTheAnswerAndTellsTheShopUnlessItFailsClosed(): void
+    {
+        $failing = new readonly class implements FieldCheck {
+            public function check(string $answer, FieldContext $context): ?string
+            {
+                throw new \RuntimeException('VIES is down');
+            }
+        };
+        $closed = new readonly class implements FieldCheck, FailsClosed {
+            public function check(string $answer, FieldContext $context): ?string
+            {
+                throw new \RuntimeException('The ERP is down');
+            }
+        };
+        $this->shop->extensions->fields = [new CheckoutField('vat_number', 'VAT number', check: $failing)];
+
+        $number = $this->place(['vat_number' => 'BG175074752']);
+
+        $notes = array_map(static fn(OrderNoteView $note): array => [$note->text, $note->forCustomer], $this->shop->orders->order($number)->notes);
+        self::assertContains(['The check of the checkout field "VAT number" failed; the answer was taken unchecked.', false], $notes);
+
+        $this->shop->extensions->fields = [new CheckoutField('account', 'Trade account', check: $closed)];
+        try {
+            $this->place(['account' => 'T-1']);
+            self::fail('an answer that cannot be checked');
+        } catch (InvalidFields $e) {
+            self::assertSame([['field' => 'fields.account', 'message' => 'This answer cannot be checked right now. Try again in a moment.']], $e->violations);
+        }
     }
 
     /**

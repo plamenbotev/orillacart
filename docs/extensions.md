@@ -20,7 +20,8 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
 - Ids are lowercase letters, digits and underscores, up to 40 characters, and unique across the shop. The
   shop's own gateways (`cash_on_delivery`, `bank_transfer`, `cheque`, `paypal`) come first; a second
   registration with a taken id is logged and left out.
-- An add-on that throws while registering is logged; the shop goes on without it.
+- An add-on that throws while registering is logged with where its callback is, and keeps what it registered
+  before it threw; the add-ons after it still register.
 - `$registry->shippingMethod(...)` registers a shipping method the same way; method ids are unique among
   methods. Price adjusters, cart rules, checkout fields and order actions follow (version 2).
 - `$registry->version()` is the API's version (`OrillaCart\Extension\Version`): 2 since price adjusters, cart
@@ -130,7 +131,7 @@ it again when the order is placed, and keeps that name with the order.
 - The shop keeps a quote for ten minutes per parcel and settings, so a customer filling in the form does not
   call the courier on every change.
 - Throw `ProviderUnavailable` when the courier cannot be asked: checkout leaves the carrier out, logs it, and
-  offers the others.
+  offers the others. The carrier stays out for a minute for that parcel before the courier is asked again.
 - Whether the method's prices are taxed, and by which tax group, is the carrier's setting.
 
 `tests/Fixtures/Extension/TestShipMethod.php` is a complete example.
@@ -169,7 +170,9 @@ for a guest), the currency, the regular price and the price so far: after the sh
 adjusters registered before. Return another unit price as a decimal string, or null to keep it. Option prices,
 bundle pricing and tax apply on top, so the product page, listings, cart, checkout and order editing all show
 and charge it. An answer below zero is zero; one that is not a number, or an adjuster that throws, is logged and
-skipped.
+skipped, and an order placed with the price unadjusted says so in a note for the shop. An adjuster the shop
+cannot do without also implements `OrillaCart\Extension\FailsClosed`: when it fails, checkout (and the order the
+shop makes by hand) refuses the order with `orillacart_prices_unavailable` and asks to try again in a moment.
 
 The search index sorts and filters by the price a guest sees (`customerId` null). An adjuster whose answer
 changes with time, not only with the product, quantity and customer, has to have the products reindexed then.
@@ -199,7 +202,9 @@ $registry->checkoutField(new CheckoutField('terms', 'I accept the terms', Checko
 - Sections: `BILLING` (after the billing address), `SHIPPING` (after the shipping address, only for orders that
   ship), `ORDER` (after the order's note). `help` shows under the field; `longest` caps its length.
 - The shop checks what the field says; a `FieldCheck` checks the rest (`check($answer, FieldContext)` with the
-  email, the countries and the customer) and returns the message to show next to the field, or null.
+  email, the countries and the customer) and returns the message to show next to the field, or null. A check that
+  throws is logged and the answer taken, with a note on the order for the shop; one that implements `FailsClosed`
+  refuses the answer instead, asking to try again in a moment.
 - The order keeps each answer with the label it had: a choice by its label, a ticked box as "Yes". The receipt,
   the emails and the order screen show them, the order screen corrects them, and `OrderSummary::$fields` gives
   them to add-ons by field id. Orders the shop makes by hand do not ask them.

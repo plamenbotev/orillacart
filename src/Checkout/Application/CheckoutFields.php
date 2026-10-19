@@ -7,8 +7,10 @@ namespace OrillaCart\Checkout\Application;
 use OrillaCart\Checkout\Application\Dto\CheckoutFieldView;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\FieldContext;
+use OrillaCart\Extension\FailsClosed;
 use OrillaCart\Ordering\Application\Dto\OrderFieldView;
 use OrillaCart\Shared\Domain\InvalidFields;
+use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Log\LoggerInterface;
 
@@ -24,6 +26,7 @@ final readonly class CheckoutFields
     public function __construct(
         private InstalledExtensions $extensions,
         private LoggerInterface $logger,
+        private ExtensionFailures $failures,
     ) {}
 
     /**
@@ -100,7 +103,10 @@ final readonly class CheckoutFields
         return $text;
     }
 
-    /** What the add-on's own check says; one that fails is logged and the answer taken. */
+    /**
+     * What the add-on's own check says. One that fails is logged and the answer taken, noted on the order; one that
+     * fails closed refuses the answer for now.
+     */
     private function check(CheckoutField $field, string $answer, FieldContext $context): ?string
     {
         if ($field->check === null) {
@@ -110,6 +116,10 @@ final readonly class CheckoutFields
             return $field->check->check($answer, $context);
         } catch (\Throwable $e) {
             $this->logger->error('The check of the checkout field {field} failed: {message}', ['field' => $field->id, 'message' => $e->getMessage(), 'exception' => $e]);
+            if ($field->check instanceof FailsClosed) {
+                return 'This answer cannot be checked right now. Try again in a moment.';
+            }
+            $this->failures->record(\sprintf('The check of the checkout field "%s" failed; the answer was taken unchecked.', $field->label), false);
 
             return null;
         }

@@ -4,14 +4,22 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Catalog;
 
+use OrillaCart\Cart\Application\Dto\AddToCart;
+use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\PriceTierData;
 use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SavePriceRule;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Extension\FailsClosed;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Pricing\PriceQuery;
+use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\OrderNoteView;
+use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
 
@@ -64,6 +72,49 @@ final class PriceAdjustersTest extends TestCase
 
         $this->shop->extensions->adjusters[] = self::adjuster('generous', static fn(): string => '-3');
         self::assertSame('2.5', $this->quote(null, 1), 'the item is free, the option still costs');
+    }
+
+    public function testAnOrderPricedWithoutAFailingAdjusterTellsTheShopAndOneThatFailsClosedRefusesIt(): void
+    {
+        $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
+        $this->shop->content->add(30, 'E-book');
+        $this->shop->products->save(30, new SaveProduct('8', 'virtual'));
+        $this->shop->extensions->adjusters[] = self::adjuster('failing', static fn(): string => throw new \RuntimeException('ERP down'));
+
+        $placed = $this->shop->checkout->placeOrder($this->cart(), $this->order());
+
+        $notes = array_map(static fn(OrderNoteView $note): array => [$note->text, $note->forCustomer], $this->shop->orders->order($placed->number)->notes);
+        self::assertContains(['The price adjuster failing failed for product 30; it was priced without it.', false], $notes);
+
+        $this->shop->extensions->adjusters = [new readonly class implements PriceAdjuster, FailsClosed {
+            public function id(): string
+            {
+                return 'price_list';
+            }
+
+            public function adjust(PriceQuery $query): ?string
+            {
+                throw new \RuntimeException('ERP down');
+            }
+        }];
+        $orders = \count($this->shop->orderRecords->orders);
+        try {
+            $this->shop->checkout->placeOrder($this->cart(), $this->order());
+            self::fail('prices the shop cannot do without');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('orillacart_prices_unavailable', $e->errorCode);
+        }
+        self::assertCount($orders, $this->shop->orderRecords->orders);
+    }
+
+    private function cart(): CartOwner
+    {
+        return new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(30))->newToken);
+    }
+
+    private function order(): PlaceOrder
+    {
+        return new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer');
     }
 
     private function quote(?int $customerId, int $quantity): string
