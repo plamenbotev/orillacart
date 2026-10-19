@@ -14,8 +14,10 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Extension\Shipping\Tracking;
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shipping\Application\Dto\BookShipment;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
@@ -158,6 +160,33 @@ final class ConsignmentsTest extends TestCase
         $this->courier->tracking[$back->number] = new Tracking(Tracking::RETURNED, 'Refused by the recipient');
         $this->shop->consignments->track($back->id);
         self::assertContains("The courier is bringing shipment {$back->number} back: Refused by the recipient", array_column($this->shop->orders->order($returned->number)->notes, 'text'));
+    }
+
+    public function testABookedOrShippedOrderKeepsItsAddressButItsPhoneAndEmailChange(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart(), $this->order('express', 'bank_transfer'));
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('processing'), 7);
+        $booked = $this->shop->consignments->book($placed->number, new BookShipment(), 7);
+        $elsewhere = new AddressData('Ada', 'Lovelace', '9 Shipka St', 'Sofia', '1000', 'BG', '+359 2 000 0000');
+        $newPhone = new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 88 000 0000');
+
+        $refused = function (AddressData $address) use ($placed): string {
+            try {
+                $this->shop->orders->changeContact($placed->number, new ChangeOrderContact('ada@example.com', $address, $address), 7);
+            } catch (RuleViolation $e) {
+                return $e->errorCode;
+            }
+
+            return 'changed';
+        };
+        self::assertSame('orillacart_order_shipped', $refused($elsewhere), 'the parcel is booked to the old address');
+        self::assertSame('changed', $refused($newPhone));
+        self::assertSame('+359 88 000 0000', $this->shop->orders->order($placed->number)->shippingAddress?->phone);
+
+        $this->shop->consignments->cancel($booked->id, 7);
+        self::assertSame('changed', $refused($elsewhere), 'once the booking is cancelled');
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('shipped'), 7);
+        self::assertSame('orillacart_order_shipped', $refused(self::address()), 'nor once it shipped');
     }
 
     public function testAnOrderShippedByTheShopsOwnRatesHasNothingToBook(): void

@@ -97,7 +97,7 @@ final readonly class ManualOrders
             throw new CheckoutRuleViolation('The shop does not offer this payment method for the billing country.', 'orillacart_payment_required');
         }
 
-        $order = $this->transactions->run(function () use ($command, $billingAddress, $shippingAddress, $currency): OrderView {
+        $order = $this->transactions->run(function () use ($command, $billingAddress, $shippingAddress, $currency, $userId): OrderView {
             $priced = $this->pricing->price(
                 self::items($command->items),
                 new TaxAddress($shippingAddress->country, $shippingAddress->state),
@@ -137,16 +137,16 @@ final readonly class ManualOrders
             ));
             // The shop's automatic discounts count their uses as at checkout; the shop enters no codes.
             $this->discounts->redeem($order->number, $priced['discounts']->coupons, $command->customerId, $command->email);
+            // With the order, all or nothing: an order taken is never left without its note and its status.
+            $this->orders->addNote($order->number, new AddOrderNote('Taken by the shop.'), $userId);
+            if ($command->paid || Money::of($order->total)->isZero()) {
+                $this->orders->markPaid($order->number, null, 'Paid when the shop took the order.', tellCustomer: $command->emailCustomer, tellShop: false);
+            } else {
+                $this->orders->hold($order->number, 'Waiting for the payment.', tellCustomer: $command->emailCustomer, tellShop: false);
+            }
 
             return $order;
         });
-
-        $this->orders->addNote($order->number, new AddOrderNote('Taken by the shop.'), $userId);
-        if ($command->paid || Money::of($order->total)->isZero()) {
-            $this->orders->markPaid($order->number, null, 'Paid when the shop took the order.', tellCustomer: $command->emailCustomer, tellShop: false);
-        } else {
-            $this->orders->hold($order->number, 'Waiting for the payment.', tellCustomer: $command->emailCustomer, tellShop: false);
-        }
 
         return $this->orders->order($order->number);
     }

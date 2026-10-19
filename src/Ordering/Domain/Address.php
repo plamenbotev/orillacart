@@ -127,4 +127,11 @@ final class Address
     {
         return $this->country === null;
     }
+
+    /** Whether it is the same place, whatever the phone: a parcel goes to the same door. */
+    public function samePlaceAs(self $other): bool
+    {
+        return [$this->firstName, $this->lastName, $this->street, $this->city, $this->postcode, $this->country, $this->state]
+            === [$other->firstName, $other->lastName, $other->street, $other->city, $other->postcode, $other->country, $other->state];
+    }
 }

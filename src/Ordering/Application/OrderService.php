@@ -35,6 +35,7 @@ use OrillaCart\Ordering\Domain\Event\OrderNeedsAttention;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderPaid;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
+use OrillaCart\Ordering\Domain\Event\OrderReaddressing;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderRepricing;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
@@ -442,7 +443,12 @@ final readonly class OrderService
     public function changeContact(int $id, ChangeOrderContact $command, ?int $userId): OrderView
     {
         return $this->changing($id, function (Order $order) use ($command, $userId): OrderView {
-            $order->changeContact($command->email, $command->billing->toAddress(), $command->shippingAddress?->toAddress());
+            $shippingAddress = $command->shippingAddress?->toAddress();
+            // Asked before anything changes: a shipment booked to the old address refuses it.
+            if ($order->shipsElsewhere($shippingAddress)) {
+                $this->events->dispatch(new OrderReaddressing($order->id()));
+            }
+            $order->changeContact($command->email, $command->billing->toAddress(), $shippingAddress);
             $order->answer($command->fields);
             $order->addNote('The customer\'s details were changed.', NoteAuthor::System, false, $this->clock->now(), $userId);
             $this->orders->save($order);

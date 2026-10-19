@@ -684,7 +684,19 @@ class Order
      *
      * @throws OrderRuleViolation for an invalid email, or a shipping address on an order that ships nothing
      */
-    public function changeContact(string $email, Address $billing, ?Address $shippingAddress): void
+    /** Whether the address is another place than where the order ships now. */
+    public function shipsElsewhere(?Address $shippingAddress): bool
+    {
+        return $shippingAddress !== null && !$shippingAddress->samePlaceAs($this->shippingAddress);
+    }
+
+    /**
+     * @return bool whether it now ships somewhere else
+     *
+     * @throws OrderRuleViolation for a shipped order sent somewhere else: its parcel left; the email and phones stay
+     *                            the customer's to change
+     */
+    public function changeContact(string $email, Address $billing, ?Address $shippingAddress): bool
     {
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || mb_strlen($email) > 200) {
             throw new OrderRuleViolation('An order needs a valid email address.', 'orillacart_invalid_email');
@@ -692,9 +704,15 @@ class Order
         if (($shippingAddress === null) !== ($this->shippingName === null)) {
             throw new OrderRuleViolation($this->shippingName === null ? 'This order ships nothing, so it has no shipping address.' : 'This order ships, so it needs a shipping address.', 'orillacart_invalid_address');
         }
+        $readdressed = $this->shipsElsewhere($shippingAddress);
+        if ($readdressed && \in_array($this->status, [OrderStatus::Shipped, OrderStatus::Completed], true)) {
+            throw new OrderRuleViolation('The order shipped already: its address cannot change. The email and phone still can.', 'orillacart_order_shipped');
+        }
         $this->email = $email;
         $this->billing = $billing;
         $this->shippingAddress = $shippingAddress ?? Address::none();
+
+        return $readdressed;
     }
 
     /**

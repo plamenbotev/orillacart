@@ -255,11 +255,10 @@ final readonly class CheckoutService
             $reverse->number,
             $reverse->applies,
             $this->languages->current(),
-        )))));
+        )), $gateway === null)));
         $receiptUrl = $this->links->receiptUrl($order->number);
 
         if ($gateway === null) {
-            $this->orders->markPaid($order->number, null);
             $this->carts->clear($contents->cartId);
             $this->rememberCustomer($owner, $command, $registering, $order->number, $billingAddress, $priced['needs_shipping'] ? $shippingAddress : null);
 
@@ -345,9 +344,13 @@ final readonly class CheckoutService
      *
      * @param array{discounts: AppliedDiscounts} $priced
      */
-    private function redeemed(array $priced, CartOwner $owner, string $email, OrderView $order): OrderView
+    private function redeemed(array $priced, CartOwner $owner, string $email, OrderView $order, bool $free = false): OrderView
     {
         $this->discounts->redeem($order->number, $priced['discounts']->coupons, $owner->customerId, $email);
+        if ($free) {
+            // Nothing to pay: paid with the order, in its transaction, so a free order is never left unpaid.
+            $this->orders->markPaid($order->number, null);
+        }
 
         return $order;
     }

@@ -51,6 +51,7 @@ use OrillaCart\Ordering\Domain\Event\OrderDeleting;
 use OrillaCart\Ordering\Domain\Event\OrderNeedsAttention;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderPaid;
+use OrillaCart\Ordering\Domain\Event\OrderReaddressing;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderRepricing;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
@@ -352,7 +353,9 @@ final class TestShop
         $context = new PluginContext(\dirname(__DIR__, 3) . '/orillacart.php', 'test');
         $this->templates = $templates = new TwigRenderer(new TwigFactory($context, new ShopExtension($settings, $geography, $taxes))->create(), new SerializerFactory()->create());
         $this->consignmentRecords = new InMemoryConsignmentRepository();
-        $this->events->addListener(OrderDeleting::class, new KeepShippedOrders($this->consignmentRecords)->deleting(...));
+        $keepShipped = new KeepShippedOrders($this->consignmentRecords);
+        $this->events->addListener(OrderDeleting::class, $keepShipped->deleting(...));
+        $this->events->addListener(OrderReaddressing::class, $keepShipped->readdressing(...));
         $withPayments = new OrdersWithPayments($this->paymentRecords);
         $this->events->addListener(OrderDeleting::class, $withPayments->deleting(...));
         $this->events->addListener(OrderRepricing::class, $withPayments->repricing(...));

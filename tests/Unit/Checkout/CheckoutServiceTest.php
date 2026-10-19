@@ -132,6 +132,7 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart([30, 1]), $this->order(null, rate: null));
 
         self::assertSame(['processing', '0'], [$placed->status, $placed->total]);
+        self::assertSame(1, $this->shop->transactions->outermost, 'placed and paid together');
         self::assertNull($this->shop->orders->order($placed->number)->shippingAddress, 'nothing ships');
     }
 
