@@ -20,8 +20,8 @@ use PHPUnit\Framework\TestCase;
  *
  * - "shop address taxes": taxing by the shop's address added up the rates of every country in the tax group
  *   (the tax bug found in Phase 2); the shop is in Bulgaria, so its Bulgarian rates apply.
- * - "rates without an address": before the customer gave an address, every country's rates were offered;
- *   now only rates that ship everywhere are.
+ * - "estimated at the shop address": before the customer gave an address, nothing was taxed and every
+ *   country's rates were offered; now tax, shipping and payment are estimated at the shop's address.
  * - "per item counts only what ships": a per-item rate charged for downloads and services too.
  * - "half cents round up": amounts such as 2.175 were rounded as floats, sometimes down (2.17); they are exact
  *   now and round half up (2.18).
@@ -36,9 +36,9 @@ use PHPUnit\Framework\TestCase;
 final class LegacyCheckoutRulesTest extends TestCase
 {
     private const array CORRECTIONS = [
-        'unchanged' => 147,
+        'unchanged' => 141,
         'shop address taxes' => 56,
-        'rates without an address' => 20,
+        'estimated at the shop address' => 28,
         'per item counts only what ships' => 8,
         'half cents round up' => 3,
         'totals add up' => 5,
@@ -87,6 +87,12 @@ final class LegacyCheckoutRulesTest extends TestCase
         $setting = self::text($case['settings']);
         $customer = self::text($case['customer']);
         $cart = self::text($case['cart']);
+        if ($customer === 'nobody') {
+            // Without an address, checkout estimates at the shop's: in Bulgaria, as for a Bulgarian customer.
+            $case = $this->case($setting, $cart, 'bg');
+            $customer = 'bg';
+            $reasons[] = 'estimated at the shop address';
+        }
         $source = $case;
         if ($setting === 'shop-address') {
             // The shop is in Bulgaria: its taxes are the ones a Bulgarian customer pays when taxing by address.
@@ -115,10 +121,6 @@ final class LegacyCheckoutRulesTest extends TestCase
             foreach (self::rows($case['rates']) as $rate) {
                 $key = self::text($rate['rate']);
                 $fields = $this->rate($key);
-                if ($customer === 'nobody' && isset($fields['countries'])) {
-                    $reasons[] = 'rates without an address';
-                    continue;
-                }
                 $net = self::number($rate['gross']) - self::number($rate['tax']);
                 $percent = $net === 0.0 ? 0.0 : self::number($rate['tax']) / $net;
                 if (($fields['per_item'] ?? 'no') === 'yes') {

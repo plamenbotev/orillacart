@@ -11,6 +11,7 @@ use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
+use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
@@ -25,6 +26,7 @@ final readonly class CartBlock implements BlockDefinition
         private ShopLinks $links,
         private TemplateRenderer $templates,
         private CheckoutService $checkout,
+        private AddressChoices $addresses,
     ) {}
 
     public static function name(): string
@@ -52,7 +54,8 @@ final readonly class CartBlock implements BlockDefinition
         $priced = null;
         if ($cart->lines !== [] && $cart->orderable) {
             try {
-                // Priced as checkout prices it, without an address yet, for what the codes take off.
+                // Priced as checkout prices it, without an address yet: what the codes take off, and an estimate of
+                // tax and shipping at the customer's saved address or the shop's.
                 $priced = $this->checkout->summary($owner, new CheckoutDetails());
             } catch (CheckoutRuleViolation) {
             }
@@ -62,6 +65,8 @@ final readonly class CartBlock implements BlockDefinition
             'cart' => $cart,
             'coupons' => $priced->coupons ?? [],
             'discount' => $priced->discount ?? '0',
+            'estimate' => $priced?->estimatedFor === null ? null : $priced,
+            'estimated_for' => $priced?->estimatedFor === null ? null : $this->addresses->countryName($priced->estimatedFor),
             'product_urls' => $this->links->products(array_map(static fn(CartLineView $line): int => $line->productId, $cart->lines)),
             'links' => $links,
         ]);

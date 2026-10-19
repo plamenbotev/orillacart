@@ -140,6 +140,14 @@ final readonly class CustomerService
         );
     }
 
+    /** Where a customer has things sent, as they saved it: their shipping address, or their billing one. */
+    public function savedAddress(int $id): ?AddressData
+    {
+        $record = $this->accounts->find($id);
+
+        return $record->shippingAddress ?? $record?->billing;
+    }
+
     /**
      * @throws CustomerNotFound
      */

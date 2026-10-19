@@ -70,6 +70,15 @@ final readonly class CheckoutService
      */
     public function summary(CartOwner $owner, CheckoutDetails $details): CheckoutView
     {
+        // Without an address, as in the cart: an estimate for the customer's saved address, or the shop's.
+        $estimatedFor = null;
+        if ($details->shippingCountry === null && $details->billingCountry === null) {
+            $at = $this->estimateAt($owner);
+            if ($at !== null) {
+                $estimatedFor = $at['country'];
+                $details = new CheckoutDetails($at['country'], $at['state'], $at['country'], $at['state'], $details->shippingOption, $at['postcode']);
+            }
+        }
         $shipping = $details->shippingCountry === null ? null : new TaxAddress($details->shippingCountry, $details->shippingState);
         $billing = $details->billingCountry === null ? $shipping : new TaxAddress($details->billingCountry, $details->billingState);
         $contents = $this->contents($owner);
@@ -122,7 +131,24 @@ final readonly class CheckoutService
             $this->vatNumbers->asked(),
             $reverse->applies,
             $reverse->message,
+            $estimatedFor,
         );
+    }
+
+    /**
+     * Where to estimate tax and shipping for a customer who has not entered an address.
+     *
+     * @return array{country: string, state: ?string, postcode: ?string}|null
+     */
+    private function estimateAt(CartOwner $owner): ?array
+    {
+        $address = $owner->customerId === null ? null : $this->customers->savedAddress($owner->customerId);
+        if ($address !== null) {
+            return ['country' => $address->country, 'state' => $address->state, 'postcode' => $address->postcode];
+        }
+        $shop = $this->settings->current();
+
+        return $shop->shopCountry === null || $shop->shopCountry === '' ? null : ['country' => $shop->shopCountry, 'state' => $shop->shopState, 'postcode' => $shop->shopPostcode];
     }
 
     /**

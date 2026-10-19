@@ -112,6 +112,9 @@ describe( 'TaxScreen', () => {
 		serve( write );
 		const user = userEvent.setup();
 		render( <TaxScreen /> );
+		const untaxed =
+			'There is no default tax group: products and shipping rates without their own group are sold without tax.';
+		expect( await screen.findByText( untaxed, NOTICE ) ).toBeVisible();
 
 		await user.selectOptions(
 			await screen.findByLabelText( 'Tax is based on' ),
@@ -138,6 +141,7 @@ describe( 'TaxScreen', () => {
 				reverse_charge: false,
 			},
 		} );
+		expect( screen.queryByText( untaxed, NOTICE ) ).toBeNull();
 	} );
 
 	it( 'adds a rate and shows what the server refused', async () => {

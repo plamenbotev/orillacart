@@ -40,4 +40,16 @@ final readonly class AddressChoices
 
         return ['countries' => $countries, 'states' => $states];
     }
+
+    /** A country's name, or its code when the shop does not know it. */
+    public function countryName(string $code): string
+    {
+        foreach ($this->geography->countries() as $country) {
+            if ($country->code === $code) {
+                return $country->name;
+            }
+        }
+
+        return $code;
+    }
 }

@@ -99,6 +99,10 @@ test.describe( 'A visitor', () => {
 		await expect(
 			page.locator( '.orillacart-cart__table tfoot' )
 		).toContainText( '60.00' );
+		// Before an address, shipping and tax are estimated at the shop's.
+		await expect(
+			page.locator( '.orillacart-cart__table .orillacart-total' )
+		).toContainText( /Estimated total.*65\.00/ );
 
 		await page.getByRole( 'link', { name: 'Check out' } ).click();
 		await expect( page ).toHaveURL( shop.urls.checkout );

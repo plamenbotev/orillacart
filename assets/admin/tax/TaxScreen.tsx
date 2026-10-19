@@ -198,12 +198,32 @@ function SettingsCard( {
 			.finally( () => setSaving( false ) );
 	};
 
+	const saved = groups.find(
+		( group ) => group.id === settings.default_group_id
+	);
+
 	return (
 		<Card className="orillacart-card">
 			<CardHeader>
 				<h2>{ __( 'How tax is charged', 'orillacart' ) }</h2>
 			</CardHeader>
 			<CardBody>
+				{ saved === undefined && (
+					<Notice status="warning" isDismissible={ false }>
+						{ __(
+							'There is no default tax group: products and shipping rates without their own group are sold without tax.',
+							'orillacart'
+						) }
+					</Notice>
+				) }
+				{ saved !== undefined && saved.rates.length === 0 && (
+					<Notice status="warning" isDismissible={ false }>
+						{ __(
+							'The default tax group has no rates yet: products and shipping rates without their own group are sold without tax.',
+							'orillacart'
+						) }
+					</Notice>
+				) }
 				<form onSubmit={ submit }>
 					<SelectControl
 						__next40pxDefaultSize

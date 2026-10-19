@@ -2,7 +2,8 @@
  # The cart page. Quantities and removals go to the REST API; the storefront script then reloads this region.
  #
  # cart: the cart (lines, items, subtotal, orderable); product_urls: {product id: url}; links: the shop's pages;
- # coupons and discount: the codes entered and what they take off, as checkout prices them.
+ # coupons and discount: the codes entered and what they take off, as checkout prices them; estimate: the
+ # checkout summary at the customer's saved address or the shop's, and estimated_for: that country's name.
  #}
 <div class="orillacart-cart" data-orillacart-region="cart">
     {{ slot('cart_before') }}
@@ -68,6 +69,27 @@
                         <td colspan="2">−{{ discount|money }}</td>
                     </tr>
                 {% endif %}
+                {% if estimate %}
+                    {% if estimate.needs_shipping %}
+                        <tr class="orillacart-estimate">
+                            <th scope="row" colspan="3">{{ __('Shipping (estimated)') }}</th>
+                            <td colspan="2">{{ estimate.shipping_option ? estimate.shipping|money(estimate.currency) : '—' }}</td>
+                        </tr>
+                    {% endif %}
+                    {% if not estimate.prices_include_tax %}
+                        {% for tax in estimate.taxes %}
+                            {# translators: 1: tax name, 2: its rate -#}
+                            <tr class="orillacart-estimate"><th scope="row" colspan="3">{{ __('%1$s (%2$s%%, estimated)')|format(tax.name, tax.percent) }}</th><td colspan="2">{{ tax.total|money(estimate.currency) }}</td></tr>
+                        {% endfor %}
+                    {% endif %}
+                    <tr class="orillacart-total"><th scope="row" colspan="3">{{ __('Estimated total') }}</th><td colspan="2">{{ estimate.total|money(estimate.currency) }}</td></tr>
+                    {% if estimate.prices_include_tax %}
+                        {% for tax in estimate.taxes %}
+                            {# translators: 1: tax name, 2: its rate -#}
+                            <tr class="orillacart-included-tax"><th scope="row" colspan="3">{{ __('Including %1$s (%2$s%%)')|format(tax.name, tax.percent) }}</th><td colspan="2">{{ tax.total|money(estimate.currency) }}</td></tr>
+                        {% endfor %}
+                    {% endif %}
+                {% endif %}
             </tfoot>
         </table>
         {% for refusal in cart.refusals %}
@@ -75,7 +97,12 @@
         {% endfor %}
         {% include 'storefront/_coupons.html.twig' with {coupons: coupons, currency: null} %}
         {{ slot('cart_after_totals') }}
-        <p class="orillacart-cart__note">{{ __('Taxes and shipping are added at checkout.') }}</p>
+        {% if estimate %}
+            {# translators: %s: country name -#}
+            <p class="orillacart-cart__note">{{ __('Estimated for delivery to %s. Checkout works out tax and shipping for your address.')|format(estimated_for) }}</p>
+        {% else %}
+            <p class="orillacart-cart__note">{{ __('Taxes and shipping are added at checkout.') }}</p>
+        {% endif %}
         <p class="orillacart-message" role="status" data-orillacart-message></p>
         <div class="orillacart-cart__actions">
             {% if links.shop %}<a href="{{ links.shop }}">{{ __('Continue shopping') }}</a>{% endif %}

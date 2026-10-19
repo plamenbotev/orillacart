@@ -42,6 +42,9 @@
         {% endif %}
     </tfoot>
 </table>
+{% if summary.estimated_for %}
+    <p class="orillacart-notice">{{ __('Tax and shipping are estimated until you enter your address.') }}</p>
+{% endif %}
 
 {% include 'storefront/_coupons.html.twig' with {coupons: summary.coupons, currency: summary.currency} %}
 

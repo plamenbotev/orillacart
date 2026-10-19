@@ -52,5 +52,7 @@ final readonly class CheckoutView
         public bool $reverseCharge = false,
         /** Why VAT is charged although a VAT number was given. */
         public ?string $vatMessage = null,
+        /** Without an address from the customer: the country tax and shipping are estimated for (theirs saved, or the shop's). */
+        public ?string $estimatedFor = null,
     ) {}
 }

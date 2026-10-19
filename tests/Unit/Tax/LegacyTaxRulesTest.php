@@ -37,6 +37,8 @@ use PHPUnit\Framework\TestCase;
  *    and a Texan, with no state rate, paid nothing. Now whole-country rates always apply, plus the state's.
  * 3. Outdated reference data: the United Kingdom was still in the EU, so EU mode charged British customers
  *    the shop's VAT. Now they are outside the EU.
+ * 4. Nothing taxed before the address was known. With the shipping or billing address deciding, a cart
+ *    without one showed prices without tax. Now the shop's own address stands in until it is known.
  */
 final class LegacyTaxRulesTest extends TestCase
 {
@@ -70,7 +72,7 @@ final class LegacyTaxRulesTest extends TestCase
     {
         $groups = new InMemoryTaxGroupRepository();
         $groupIds = $this->createGroups($groups);
-        $corrections = ['unchanged' => 0, 'lost parentheses' => 0, 'whole-country rates' => 0, 'United Kingdom' => 0];
+        $corrections = ['unchanged' => 0, 'lost parentheses' => 0, 'whole-country rates' => 0, 'United Kingdom' => 0, 'shop address until known' => 0];
 
         foreach ($this->cases as $number => $case) {
             /** @var array{mode: string, shop: array{?string, ?string}, default_group: ?string, call: string, group: ?string, rate: float|int, lines: list<int>, address?: array{?string, ?string}, shipping?: array{?string, ?string}, billing?: array{?string, ?string}} $case */
@@ -122,6 +124,18 @@ final class LegacyTaxRulesTest extends TestCase
     {
         $lines = $case['lines'];
         $location = $this->location($basis, $shipping, $billing, $case['shop']);
+        if ($location === null && \in_array($basis, [TaxBasis::ShippingAddress, TaxBasis::BillingAddress], true) && self::locate($case['shop']) !== null) {
+            // The old code taxed nothing until the address was known; the shop's own address stands in for it now.
+            [$country, $state] = self::locate($case['shop']);
+            $group = $case['group'] ?? $case['default_group'];
+            $corrected = array_keys(array_filter(
+                $this->rates,
+                static fn(array $rate): bool => $rate['group'] === $group && $rate['country'] === $country && ($rate['state'] === '' || $rate['state'] === $state),
+            ));
+            usort($corrected, fn(int $a, int $b): int => [$this->rates[$a]['priority'], $a] <=> [$this->rates[$b]['priority'], $b]);
+
+            return [$corrected, 'shop address until known'];
+        }
         $consistent = abs((float) $case['rate'] - (float) $this->sum($lines) / 100) < 1e-9;
 
         if ($location !== null && $basis === TaxBasis::EuOrigin && $shipping[0] === 'GB' && \in_array('GB', $this->legacyEu, true)) {

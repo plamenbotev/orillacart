@@ -190,6 +190,7 @@ export async function setUpShop( requestUtils: RequestUtils ): Promise< Shop > {
 		path: '/orillacart/v1/customer-settings',
 		data: { accounts: 'optional' },
 	} );
+	await shopIn( requestUtils, 'BG' );
 
 	const pages = await ensurePages( requestUtils );
 	const miniCart = await requestUtils.rest< { link: string } >( {
@@ -226,12 +227,37 @@ export async function setUpShop( requestUtils: RequestUtils ): Promise< Shop > {
 }
 
 /**
+ * Puts the shop in a country, or in none: the cart estimates tax and shipping there.
+ * @param requestUtils
+ * @param country      ISO 3166-1 code, or null.
+ */
+async function shopIn(
+	requestUtils: RequestUtils,
+	country: string | null
+): Promise< void > {
+	const {
+		weight_units: weightUnits,
+		dimension_units: dimensionUnits,
+		currency_positions: currencyPositions,
+		...settings
+	} = await requestUtils.rest< Record< string, unknown > >( {
+		path: '/orillacart/v1/settings',
+	} );
+	await requestUtils.rest( {
+		method: 'PUT',
+		path: '/orillacart/v1/settings',
+		data: { ...settings, shop_country: country, shop_state: null },
+	} );
+}
+
+/**
  * Removes what setUpShop made, and the orders and customers the tests made.
  * @param requestUtils
  */
 export async function tearDownShop(
 	requestUtils: RequestUtils
 ): Promise< void > {
+	await shopIn( requestUtils, null );
 	const products = await requestUtils.rest< { id: number }[] >( {
 		path: '/wp/v2/orillacart_product?search=E2E&status=any&per_page=100&_fields=id',
 	} );

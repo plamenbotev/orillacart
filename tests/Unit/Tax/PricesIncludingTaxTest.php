@@ -54,6 +54,28 @@ final class PricesIncludingTaxTest extends TestCase
         self::assertSame('6', $summary->shippingOptions[0]->total, 'shipping as entered, tax in it');
     }
 
+    public function testWithoutAnAddressTheCartIsEstimatedAtTheShopsAddress(): void
+    {
+        $summary = $this->shop->checkout->summary($this->owner, new CheckoutDetails());
+
+        self::assertSame('BG', $summary->estimatedFor);
+        self::assertSame(['12', '6', '18'], [$summary->subtotal, $summary->shipping, $summary->total], 'the price as entered, not less the tax in it');
+        self::assertSame([['VAT', '3']], array_map(static fn($tax): array => [$tax->name, $tax->total], $summary->taxes));
+        self::assertNull($this->shop->checkout->summary($this->owner, new CheckoutDetails('BG'))->estimatedFor);
+    }
+
+    public function testACustomerWithASavedAddressIsEstimatedThere(): void
+    {
+        $id = $this->shop->accounts->add('ada@example.com');
+        $this->shop->accounts->saveAddresses($id, new AddressData('Ada', 'Lovelace', '1 Unter den Linden', 'Berlin', '10117', 'DE', '+49 30 000000'), null);
+        $this->shop->carts->add(new CartOwner(null, $id), new AddToCart(10));
+
+        $summary = $this->shop->checkout->summary(new CartOwner(null, $id), new CheckoutDetails());
+
+        self::assertSame('DE', $summary->estimatedFor);
+        self::assertSame([['MwSt', '1.92']], array_map(static fn($tax): array => [$tax->name, $tax->items], $summary->taxes));
+    }
+
     public function testACustomerElsewhereInTheEuPaysTheSamePriceWithTheirRateInIt(): void
     {
         $summary = $this->shop->checkout->summary($this->owner, new CheckoutDetails('DE'));
