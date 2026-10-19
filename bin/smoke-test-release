@@ -102,7 +102,7 @@ docker exec "$WP" test -f /var/www/html/wp-content/plugins/orillacart/build/admi
 PASS="$(wp user application-password create admin smoke --porcelain)"
 [ "$(api -u "admin:$PASS" "$URL")" = 200 ] || fail "the administrator could not read the settings"
 [ "$(api -u "admin:$PASS" -X PUT -H 'Content-Type: application/json' \
-    -d '{"currency":"USD","price_decimals":2,"weight_unit":"lb","dimension_unit":"in"}' "$URL")" = 200 ] \
+    -d '{"currency":"USD","fewer_decimals":null,"weight_unit":"lb","dimension_unit":"in"}' "$URL")" = 200 ] \
     || fail "the administrator could not save the settings"
 [ "$(wp option pluck orillacart_settings currency)" = USD ] || fail "the settings were not stored"
 [ "$(api -u "admin:$PASS" -X PUT -H 'Content-Type: application/json' -d '{"currency":"usd"}' "$URL")" = 422 ] \
@@ -111,7 +111,7 @@ PASS="$(wp user application-password create admin smoke --porcelain)"
 status="$(wp eval --user=admin '
     $request = new WP_REST_Request("PUT", "/orillacart/v1/settings");
     $request->set_header("Content-Type", "application/json");
-    $request->set_body("{\"currency\":\"GBP\",\"price_decimals\":2,\"weight_unit\":\"lb\",\"dimension_unit\":\"in\"}");
+    $request->set_body("{\"currency\":\"GBP\",\"fewer_decimals\":null,\"weight_unit\":\"lb\",\"dimension_unit\":\"in\"}");
     echo rest_do_request($request)->get_status();
 ')"
 [ "$status" = 403 ] || fail "a save without a nonce answered $status"
@@ -175,7 +175,8 @@ visitor -X POST -d "{\"product_id\":$product,\"quantity\":2}" "$API/cart/items" 
 docker exec "$WP" grep -q 'orillacart_cart' /tmp/cart || fail "the cart cookie was not set"
 placed="$(visitor -X POST -d "{\"email\":\"ada@example.com\",\"billing\":{\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"street\":\"1 Main St\",\"city\":\"Sofia\",\"postcode\":\"1000\",\"country\":\"BG\",\"phone\":\"+359 2 000 0000\"},\"shipping_option\":\"rate:$rate\",\"payment\":\"cash_on_delivery\"}" "$API/checkout")"
 grep -q '"status":"on_hold"' <<< "$placed" || fail "the order was not placed: $placed"
-key="$(echo "$placed" | sed -n 's/.*"key":"\([a-f0-9]*\)".*/\1/p')"
+# The receipt link is signed: the order number, the day, and a signature, in the receipt address.
+key="$(echo "$placed" | sed -n 's/.*orillacart_order=\([0-9]*-[0-9]*-[a-f0-9]*\).*/\1/p')"
 [ "$(api "$API/receipts/$key")" = 200 ] || fail "the receipt does not open"
 [ "$(wp eval "
     \$kernel = new OrillaCart\Platform\Kernel(new OrillaCart\Platform\PluginContext(WP_PLUGIN_DIR . '/orillacart/orillacart.php', ORILLACART_VERSION));
@@ -187,6 +188,8 @@ for hook in orillacart_cancel_abandoned_orders orillacart_forget_abandoned_carts
 done
 wp cron event run orillacart_cancel_abandoned_orders orillacart_forget_abandoned_carts > /dev/null || fail "the scheduled tasks failed"
 
+# Emails are jobs; this Apache answers before nothing, so cron or a worker sends them.
+wp orillacart jobs work > /dev/null || fail "the jobs did not run"
 docker exec "$WP" grep -q 'ada@example.com: .* We received your order' /var/www/html/wp-content/mail.log \
     || fail "the customer was not emailed about the order"
 
@@ -248,6 +251,14 @@ plugin_tables | grep -qx 'wp_orillacart_migrations' || fail "the upgrade did not
 plugin_tables | grep -qx 'wp_orillacart_countries' || fail "the upgrade did not create the countries table"
 
 echo "==> Uninstall"
+# Deleting the plugin keeps the shop's data unless its settings ask for it to go.
+remove_all_data() {
+    wp "$@" eval '$s = get_option("orillacart_settings");
+        $s = is_array($s) ? $s : ["currency" => "EUR", "weight_unit" => "kg", "dimension_unit" => "cm"];
+        $s["remove_data_on_uninstall"] = true;
+        update_option("orillacart_settings", $s);'
+}
+remove_all_data
 before="$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e 'SHOW TABLES' 2> /dev/null | grep -vc orillacart)"
 wp plugin uninstall orillacart --deactivate > /dev/null
 [ -z "$(plugin_tables)" ] || fail "plugin tables left after uninstall"
@@ -282,6 +293,8 @@ site_tables "${third}\\_" | grep -qx "wp_${third}_orillacart_migrations" || fail
 wp site delete "$third" --yes > /dev/null
 [ -z "$(site_tables "${third}\\_")" ] || fail "a deleted site's tables were left"
 wp plugin deactivate orillacart --network > /dev/null
+remove_all_data
+remove_all_data --url=http://localhost/second/
 wp plugin uninstall orillacart > /dev/null
 [ -z "$(site_tables '')$(site_tables '2\_')" ] || fail "plugin tables left after uninstalling from the network"
 wp --url=http://localhost/second/ option get orillacart_version > /dev/null 2>&1 && fail "the second site's options left after uninstall"
