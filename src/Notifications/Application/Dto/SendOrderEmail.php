@@ -13,7 +13,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 final readonly class SendOrderEmail
 {
     public function __construct(
-        #[Assert\Choice(callback: [EmailKind::class, 'values'])]
+        #[Assert\Choice(callback: [EmailKind::class, 'resendable'])]
         public string $kind,
     ) {}
 }

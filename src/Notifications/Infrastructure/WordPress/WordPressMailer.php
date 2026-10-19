@@ -6,14 +6,20 @@ namespace OrillaCart\Notifications\Infrastructure\WordPress;
 
 use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Notifications\Application\Mailer;
+use OrillaCart\Shared\WordPress\AsHook;
 
 /**
- * Sends through wp_mail(), so SMTP plugins and the site's mail settings apply. Add-ons add headers and attach
+ * Sends through wp_mail(), so SMTP plugins and the site's mail settings apply, with the plain text as the HTML's
+ * alternative. Add-ons add headers and attach
  * files (an invoice, say) through the filters orillacart_email_headers and orillacart_email_attachments, which get
  * the email's kind and order number.
  */
-final readonly class WordPressMailer implements Mailer
+#[AsHook('phpmailer_init', method: 'alternative')]
+final class WordPressMailer implements Mailer
 {
+    /** The plain text of the mail being sent, for its alternative part. */
+    private ?string $text = null;
+
     public function send(Email $email): bool
     {
         $headers = [
@@ -26,7 +32,20 @@ final readonly class WordPressMailer implements Mailer
         $headers = self::lines(apply_filters('orillacart_email_headers', $headers, $email->kind, $email->orderNumber));
         $attachments = array_values(array_filter(self::lines(apply_filters('orillacart_email_attachments', [], $email->kind, $email->orderNumber)), is_file(...)));
 
-        return wp_mail($email->to, $email->subject, $email->html, $headers, $attachments);
+        $this->text = $email->text;
+        try {
+            return wp_mail($email->to, $email->subject, $email->html, $headers, $attachments);
+        } finally {
+            $this->text = null;
+        }
+    }
+
+    /** The plain text goes with the HTML as its alternative, for the shop's mails only. */
+    public function alternative(object $mailer): void
+    {
+        if ($this->text !== null && property_exists($mailer, 'AltBody')) {
+            $mailer->AltBody = $this->text;
+        }
     }
 
     /**

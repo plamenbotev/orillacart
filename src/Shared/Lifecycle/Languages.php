@@ -12,6 +12,9 @@ interface Languages
     /** This request's language: a WordPress locale such as de_DE. */
     public function current(): string;
 
+    /** The site's language. */
+    public function site(): string;
+
     /**
      * Runs the work in the language, then goes back to the one before.
      *

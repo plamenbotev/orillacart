@@ -1,9 +1,9 @@
 {#
  # The frame of every shop email. A theme overrides it with orillacart/emails/layout.html.twig.
- # Blocks: heading, intro, content.
+ # Blocks: heading, intro, content. lang: the reader's language, such as de-DE.
  #}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang|default('en') }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width">

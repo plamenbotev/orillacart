@@ -8,9 +8,11 @@ use OrillaCart\Notifications\Application\Site;
 
 final class FakeSite implements Site
 {
+    public string $name = 'Lamp Shop';
+
     public function name(): string
     {
-        return 'Lamp Shop';
+        return $this->name;
     }
 
     public function adminEmail(): string

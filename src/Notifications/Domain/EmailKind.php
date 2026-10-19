@@ -42,4 +42,15 @@ enum EmailKind: string
     {
         return array_column(self::cases(), 'value');
     }
+
+    /**
+     * The emails the shop can send again from the order alone: those about its status. A note, a refund or what
+     * needed attention is told once, with what it was about.
+     *
+     * @return list<string>
+     */
+    public static function resendable(): array
+    {
+        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::OrderAttention], true)), 'value');
+    }
 }

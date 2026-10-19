@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Notifications\Application\Dto;
 
 /**
- * An email ready to send: HTML body, from the shop's sender. An order email names its kind (order_received,
+ * An email ready to send: HTML body and its plain text, from the shop's sender. An order email names its kind (order_received,
  * new_order…) and order, for the add-ons that attach files or add headers to it.
  */
 final readonly class Email
@@ -14,6 +14,8 @@ final readonly class Email
         public string $to,
         public string $subject,
         public string $html,
+        /** The same, as plain text, for mail programs that do not show HTML. */
+        public string $text,
         public string $fromName,
         public string $fromAddress,
         public ?string $replyTo = null,

@@ -134,14 +134,18 @@ final readonly class OrderEmails
 
         try {
             // The customer reads it in the language they ordered in; the shop in the site's.
-            [$subject, $body] = $this->languages->in($kind->isForShop() ? null : $order->locale, fn(): array => [
-                trim($this->templates->renderBlock($kind->template(), 'subject', $context)),
+            $locale = $kind->isForShop() ? null : $order->locale;
+            $context['lang'] = str_replace('_', '-', $locale ?? $this->languages->site());
+            [$subject, $body] = $this->languages->in($locale, fn(): array => [
+                // A subject is plain text: what the template escaped for HTML reads as written.
+                html_entity_decode(trim($this->templates->renderBlock($kind->template(), 'subject', $context)), \ENT_QUOTES | \ENT_HTML5, 'UTF-8'),
                 $this->templates->render($kind->template(), $context),
             ]);
             $email = new Email(
                 $kind->isForShop() ? ($settings->shopAddress ?? $this->site->adminEmail()) : $order->email,
                 $subject,
                 $body,
+                PlainText::fromHtml($body),
                 $settings->fromName ?? $this->site->name(),
                 $settings->fromAddress ?? $this->site->adminEmail(),
                 $kind->isForShop() ? $order->email : null,

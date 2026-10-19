@@ -210,6 +210,7 @@ final class TestShop
     public readonly InMemoryAccounts $accounts;
     public readonly PaymentOptions $paymentOptions;
     public readonly FakeLanguages $languages;
+    public readonly FakeSite $site;
     public readonly InMemoryCustomerSettingsRepository $customerSettings;
     public readonly CustomerService $customers;
     public readonly PersonalData $personalData;
@@ -339,7 +340,7 @@ final class TestShop
         $this->jobs = new TestJobs($this->clock);
         $this->sentEmails = new InMemorySentEmails();
         $this->jobs->immediate = true;
-        $this->emails = new OrderEmails($this->orders, new FakeOrderLinks(), $this->emailSettings, $templates, $this->mail, new FakeSite(), $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs, $this->invoices, $this->languages);
+        $this->emails = new OrderEmails($this->orders, new FakeOrderLinks(), $this->emailSettings, $templates, $this->mail, $this->site = new FakeSite(), $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs, $this->invoices, $this->languages);
         $this->jobs->with(new SendOrderEmails($this->emails, $this->sentEmails, $this->clock, $this->logger), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));
         $emailing = new EmailAboutOrders($this->emails);
         $this->events->addListener(OrderStatusChanged::class, $emailing->statusChanged(...));

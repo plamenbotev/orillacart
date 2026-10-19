@@ -66,6 +66,21 @@ final class OrderEmailsTest extends TestCase
 
         self::assertSame('de_DE', $this->shop->orders->byKey($order->key)->locale);
         self::assertSame(['de_DE', null], $this->shop->languages->switched, 'the received email, then the shop\'s new order email');
+        self::assertStringContainsString('<html lang="de-DE">', $this->shop->mail->emails[0]->html);
+        self::assertStringContainsString('<html lang="en-US">', $this->shop->mail->emails[1]->html);
+    }
+
+    public function testASubjectReadsAsWrittenAndEveryEmailHasItsPlainText(): void
+    {
+        $this->shop->site->name = 'Lamps & "Lights"';
+
+        $order = $this->place('bank_transfer');
+
+        $received = $this->shop->mail->emails[0];
+        self::assertSame("[Lamps & \"Lights\"] We received your order #{$order->number}", $received->subject);
+        self::assertStringContainsString('Thank you for your order', $received->text);
+        self::assertStringContainsString("Pay now ({$order->receiptUrl}#pay)", $received->text);
+        self::assertStringNotContainsString('<', $received->text);
     }
 
     public function testAPayPalOrderIsConfirmedOnceWhenPaid(): void

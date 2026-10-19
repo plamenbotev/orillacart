@@ -212,7 +212,6 @@ export const EMAILS = [
 	'order_completed',
 	'order_cancelled',
 	'order_failed',
-	'order_refunded',
 	'new_order',
 ] as const;
 

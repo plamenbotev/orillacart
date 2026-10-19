@@ -17,6 +17,11 @@ final readonly class WordPressLanguages implements Languages
         return determine_locale();
     }
 
+    public function site(): string
+    {
+        return get_locale();
+    }
+
     public function in(?string $locale, \Closure $work): mixed
     {
         $switched = switch_to_locale($locale ?? get_locale());

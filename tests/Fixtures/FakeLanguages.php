@@ -21,6 +21,11 @@ final class FakeLanguages implements Languages
         return $this->locale;
     }
 
+    public function site(): string
+    {
+        return 'en_US';
+    }
+
     public function in(?string $locale, \Closure $work): mixed
     {
         $this->switched[] = $locale;
