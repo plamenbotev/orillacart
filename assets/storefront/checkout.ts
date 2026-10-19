@@ -103,6 +103,11 @@ export function bindCheckout( form: HTMLFormElement ): void {
 		if ( button ) {
 			button.disabled = false;
 		}
+		if ( result.code === 'orillacart_cart_changed' ) {
+			// The summary shows what the order costs now; the message goes in after it is drawn.
+			summary = refreshSummary( form );
+			await summary;
+		}
 		showMessage(
 			form,
 			failure( result, showErrors( form, result.violations ) ),

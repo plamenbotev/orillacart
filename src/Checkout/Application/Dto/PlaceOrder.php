@@ -47,5 +47,8 @@ final readonly class PlaceOrder
         /** A business customer's VAT number, for the reverse charge. */
         #[Assert\Length(max: 20)]
         public ?string $vatNumber = null,
+        /** The total the customer saw: an order that would cost anything else is refused, for them to look again. */
+        #[Assert\Regex(pattern: '/^\d{1,11}(\.\d{1,4})?$/')]
+        public ?string $expectedTotal = null,
     ) {}
 }

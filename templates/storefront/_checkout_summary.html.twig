@@ -95,6 +95,7 @@
     <p class="orillacart-notice">{{ summary.vat_message }}</p>
 {% endif %}
 
+<input type="hidden" name="expected_total" value="{{ summary.total }}">
 <p class="orillacart-message" role="alert" data-orillacart-message></p>
 {{ slot('checkout_before_place_order') }}
 <button type="submit" class="wp-element-button orillacart-button orillacart-checkout__place">{{ __('Place order') }}</button>

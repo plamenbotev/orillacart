@@ -93,6 +93,25 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame('Sofia', $order->shippingAddress?->city);
     }
 
+    public function testAnOrderThatWouldCostOtherThanTheCustomerSawIsNotPlaced(): void
+    {
+        $owner = $this->cart([10, 2], [20, 1]);
+        $seen = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: 'rate:' . $this->courier))->total;
+        $this->shop->products->save(10, new SaveProduct('35', weight: '2.5'));
+
+        try {
+            $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery', expectedTotal: $seen));
+            self::fail('The lamp costs more than the customer saw.');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('orillacart_cart_changed', $e->errorCode);
+        }
+        self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available, 'nothing was taken');
+
+        $now = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: 'rate:' . $this->courier))->total;
+        self::assertSame(['95.59', '99.6'], [$seen, $now]);
+        self::assertSame($now, $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery', expectedTotal: $now))->total);
+    }
+
     public function testAFreeOrderNeedsNoPaymentAndGoesStraightToProcessing(): void
     {
         $placed = $this->shop->checkout->placeOrder($this->cart([30, 1]), $this->order(null, rate: null));
@@ -480,13 +499,14 @@ final class CheckoutServiceTest extends TestCase
         return $owner;
     }
 
-    private function order(?string $payment, ?int $rate = -1, string $country = 'BG'): PlaceOrder
+    private function order(?string $payment, ?int $rate = -1, string $country = 'BG', ?string $expectedTotal = null): PlaceOrder
     {
         return new PlaceOrder(
             'ada@example.com',
             new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', $country, '+359 2 000 0000'),
             shippingOption: $rate === -1 ? 'rate:' . $this->courier : ($rate === null ? null : 'rate:' . $rate),
             payment: $payment,
+            expectedTotal: $expectedTotal,
         );
     }
 }

@@ -207,6 +207,10 @@ final readonly class CheckoutService
             throw new CheckoutRuleViolation(\sprintf('The code %s does not apply: %s Remove it to order.', $code, $reason), 'orillacart_coupon_refused');
         }
         $bill = $priced['bill'];
+        if ($command->expectedTotal !== null && !Money::of($command->expectedTotal)->equals($bill->total())) {
+            // A price, a rule, a coupon or a rate changed since the summary: the customer orders only what they saw.
+            throw new CheckoutRuleViolation('The total of your order changed. Review it and place the order again.', 'orillacart_cart_changed');
+        }
         $chosen = $priced['chosen'];
         if ($priced['needs_shipping'] && ($chosen === null || $chosen->id !== $command->shippingOption)) {
             throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to this address.' : 'Choose how to ship the order.', 'orillacart_shipping_required');
