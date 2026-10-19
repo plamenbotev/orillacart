@@ -25,8 +25,9 @@ const decoded = ( html: string ): string => {
  * @param taxonomy "orillacart_category" or "orillacart_brand".
  */
 export async function fetchTerms( taxonomy: string ): Promise< Named[] > {
+	// Every term, past the API's 100 a page: apiFetch reads each page for per_page=-1.
 	const terms = await apiFetch< { id: number; name: string }[] >( {
-		path: `/wp/v2/${ taxonomy }?per_page=100&_fields=id,name&orderby=name`,
+		path: `/wp/v2/${ taxonomy }?per_page=-1&_fields=id,name&orderby=name`,
 	} );
 	return terms.map( ( term ) => ( {
 		id: term.id,

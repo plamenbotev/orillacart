@@ -87,8 +87,9 @@ export interface Category {
 export async function fetchCategories(): Promise<
 	( Category & { depth: number } )[]
 > {
+	// Every category, past the API's 100 a page: apiFetch reads each page for per_page=-1.
 	const all = await apiFetch< Category[] >( {
-		path: '/wp/v2/orillacart_category?per_page=100&_fields=id,name,parent&orderby=name',
+		path: '/wp/v2/orillacart_category?per_page=-1&_fields=id,name,parent&orderby=name',
 	} );
 	const decode = document.createElement( 'textarea' );
 	const ordered: ( Category & { depth: number } )[] = [];

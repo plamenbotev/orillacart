@@ -32,6 +32,7 @@ import {
 	type TaxSettings,
 } from './api';
 import { RateModal } from './RateModal';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -183,6 +184,17 @@ function SettingsCard( {
 		settings.reverse_charge
 	);
 	const [ saving, setSaving ] = useState( false );
+	useUnsavedChanges(
+		differs(
+			[ basis, defaultGroup, includeTax, reverseCharge ],
+			[
+				settings.basis,
+				settings.default_group_id,
+				settings.prices_include_tax,
+				settings.reverse_charge,
+			]
+		)
+	);
 
 	const submit = ( event: FormEvent ) => {
 		event.preventDefault();

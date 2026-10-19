@@ -25,10 +25,11 @@ export function saveShopPages( pages: ShopPages ): Promise< ShopPages > {
 
 /** Published pages, by title. */
 export async function fetchPageChoices(): Promise< PageChoice[] > {
+	// Every page, past the API's 100 a page: apiFetch reads each page for per_page=-1.
 	const pages = await apiFetch<
 		{ id: number; title: { rendered: string } }[]
 	>( {
-		path: '/wp/v2/pages?status=publish&per_page=100&orderby=title&order=asc&_fields=id,title',
+		path: '/wp/v2/pages?status=publish&per_page=-1&orderby=title&order=asc&_fields=id,title',
 	} );
 	const decode = document.createElement( 'textarea' );
 	return pages.map( ( page ) => {

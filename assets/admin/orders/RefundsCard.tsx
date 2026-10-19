@@ -25,6 +25,7 @@ import {
 import { money, when } from './labels';
 import { useConfirm } from '../shared/useConfirm';
 import { useLatest } from '../shared/useLatest';
+import { MoneyControl } from '../shared/MoneyControl';
 
 interface RefundsCardProps {
 	order: Order;
@@ -302,8 +303,7 @@ export function RefundsCard( {
 									} }
 								/>
 							) }
-						<TextControl
-							__next40pxDefaultSize
+						<MoneyControl
 							label={ __( 'Amount to refund', 'orillacart' ) }
 							help={ __(
 								'Follows the items and shipping you chose, tax included. Change it to keep a fee, or refund an amount alone as a goodwill gesture.',

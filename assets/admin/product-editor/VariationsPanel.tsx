@@ -23,6 +23,8 @@ import type { Stockroom } from '../inventory/api';
 import { BACKORDERS, orNull, STOCK_MODES, withSalePrice } from './fields';
 import { GalleryField, ImageField } from '../catalog/MediaFields';
 import { StockLevels } from './StockLevels';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
+import { MoneyControl } from '../shared/MoneyControl';
 
 interface Props {
 	productId: number;
@@ -99,6 +101,31 @@ interface RowProps {
 	onError: ( error: unknown ) => void;
 }
 
+const NO_CONTENT: VariationContent = {
+	title: '',
+	description: '',
+	image: 0,
+	gallery: [],
+};
+
+/**
+ * What a variation's form starts with: the variation as saved, or nothing for a new one.
+ *
+ * @param variation The variation; null for the form that adds one.
+ */
+const variationInput = ( variation: Variation | null ): VariationInput => ( {
+	option_ids: variation?.option_ids ?? [],
+	price: variation?.price ?? '',
+	sale: variation?.sale ?? null,
+	sku: variation?.sku ?? null,
+	stock_mode: variation?.stock_mode ?? 'tracked',
+	backorders: variation?.backorders ?? null,
+	weight: variation?.weight ?? null,
+	length: variation?.length ?? null,
+	width: variation?.width ?? null,
+	height: variation?.height ?? null,
+} );
+
 function VariationRow( {
 	productId,
 	attributes,
@@ -107,29 +134,24 @@ function VariationRow( {
 	onChanged,
 	onError,
 }: RowProps ) {
-	const [ draft, setDraft ] = useState< VariationInput >( {
-		option_ids: variation?.option_ids ?? [],
-		price: variation?.price ?? '',
-		sale: variation?.sale ?? null,
-		sku: variation?.sku ?? null,
-		stock_mode: variation?.stock_mode ?? 'tracked',
-		backorders: variation?.backorders ?? null,
-		weight: variation?.weight ?? null,
-		length: variation?.length ?? null,
-		width: variation?.width ?? null,
-		height: variation?.height ?? null,
-	} );
-	const [ content, setContent ] = useState< VariationContent >( {
-		title: '',
-		description: '',
-		image: 0,
-		gallery: [],
-	} );
+	const [ draft, setDraft ] = useState< VariationInput >(
+		variationInput( variation )
+	);
+	const [ content, setContent ] = useState< VariationContent >( NO_CONTENT );
+	const [ savedContent, setSavedContent ] =
+		useState< VariationContent >( NO_CONTENT );
+	useUnsavedChanges(
+		differs( draft, variationInput( variation ) ) ||
+			differs( content, savedContent )
+	);
 	const variationId = variation?.id;
 	useEffect( () => {
 		if ( variationId !== undefined ) {
 			fetchVariationContent( variationId )
-				.then( setContent )
+				.then( ( loaded ) => {
+					setContent( loaded );
+					setSavedContent( loaded );
+				} )
 				.catch( onError );
 		}
 	}, [ variationId, onError ] );
@@ -180,14 +202,12 @@ function VariationRow( {
 					onChange={ ( value ) => choose( attribute, value ) }
 				/>
 			) ) }
-			<TextControl
-				__next40pxDefaultSize
+			<MoneyControl
 				label={ __( 'Price', 'orillacart' ) }
 				value={ draft.price }
 				onChange={ ( price ) => setDraft( { ...draft, price } ) }
 			/>
-			<TextControl
-				__next40pxDefaultSize
+			<MoneyControl
 				label={ __( 'Sale price', 'orillacart' ) }
 				value={ draft.sale?.price ?? '' }
 				onChange={ ( price ) =>

@@ -9,6 +9,7 @@ import {
 	type StockItemKind,
 	type Stockroom,
 } from '../inventory/api';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 interface Props {
 	kind: StockItemKind;
@@ -31,17 +32,20 @@ export function StockLevels( { kind, id, stockrooms, onError }: Props ) {
 	const [ quantities, setQuantities ] = useState< Record< number, string > >(
 		{}
 	);
+	const savedQuantities = ( loaded: Stock ): Record< number, string > =>
+		Object.fromEntries(
+			loaded.levels.map( ( level ) => [
+				level.stockroom_id,
+				String( level.quantity ),
+			] )
+		);
+	useUnsavedChanges(
+		stock !== null && differs( quantities, savedQuantities( stock ) )
+	);
 
 	const show = ( loaded: Stock ) => {
 		setStock( loaded );
-		setQuantities(
-			Object.fromEntries(
-				loaded.levels.map( ( level ) => [
-					level.stockroom_id,
-					String( level.quantity ),
-				] )
-			)
-		);
+		setQuantities( savedQuantities( loaded ) );
 	};
 
 	useEffect( () => {

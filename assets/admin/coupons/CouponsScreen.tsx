@@ -31,6 +31,7 @@ import {
 	NEW_COUPON,
 	saveCoupon,
 } from './api';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -272,6 +273,8 @@ export function CouponForm( {
 				? { ...NEW_COUPON, combines: true, automatic: true }
 				: NEW_COUPON )
 	);
+	const [ opened ] = useState( fields );
+	useUnsavedChanges( differs( fields, opened ) );
 	const [ categories, setCategories ] = useState< Named[] >( [] );
 	const [ brands, setBrands ] = useState< Named[] >( [] );
 	const [ busy, setBusy ] = useState( false );

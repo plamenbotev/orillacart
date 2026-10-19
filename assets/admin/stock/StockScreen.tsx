@@ -22,6 +22,7 @@ import {
 	type StockSheetQuery,
 } from './api';
 import { useLatest } from '../shared/useLatest';
+import { useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 const MODES: Record< string, string > = {
 	tracked: __( 'Counted', 'orillacart' ),
@@ -61,6 +62,7 @@ export function StockScreen() {
 	);
 	const [ parentSearch, setParentSearch ] = useState( '' );
 	const [ edits, setEdits ] = useState< Edits >( {} );
+	useUnsavedChanges( Object.keys( edits ).length > 0 );
 	const [ status, setStatus ] = useState<
 		| { kind: 'idle' | 'saving' | 'saved' }
 		| { kind: 'error'; message: string }

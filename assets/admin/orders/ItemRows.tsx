@@ -3,6 +3,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import type { EditedItem } from './api';
 import { ProductPicker } from './ProductPicker';
+import { MoneyControl } from '../shared/MoneyControl';
 
 /** An item being edited, with the name to show: order lines have one, picked products bring theirs. */
 export interface ItemRow {
@@ -60,8 +61,7 @@ export function ItemRows( {
 						/>
 					</FlexItem>
 					<FlexItem>
-						<TextControl
-							__next40pxDefaultSize
+						<MoneyControl
 							label={ __( 'Unit price', 'orillacart' ) }
 							help={ __(
 								'Empty for the catalog price',

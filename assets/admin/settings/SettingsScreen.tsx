@@ -27,6 +27,7 @@ import {
 	type Settings,
 	type SettingsInput,
 } from './api';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 type Status =
 	| { kind: 'idle' }
@@ -95,6 +96,11 @@ export function SettingsScreen() {
 	const [ form, setForm ] = useState< SettingsInput | null >( null );
 	const [ violations, setViolations ] = useState< Violation[] >( [] );
 	const [ status, setStatus ] = useState< Status >( { kind: 'idle' } );
+	useUnsavedChanges(
+		form !== null &&
+			settings !== null &&
+			differs( form, inputOf( settings ) )
+	);
 
 	useEffect( () => {
 		Promise.all( [ fetchSettings(), fetchCountries() ] )

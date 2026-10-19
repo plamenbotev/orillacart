@@ -39,6 +39,7 @@ import {
 	type TierKind,
 	TIER_KINDS,
 } from './api';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -386,6 +387,8 @@ function RuleForm( {
 	const [ fields, setFields ] = useState< PriceRuleFields >(
 		rule ?? NEW_RULE
 	);
+	const [ opened ] = useState( fields );
+	useUnsavedChanges( differs( fields, opened ) );
 	const [ categories, setCategories ] = useState< Named[] >( [] );
 	const [ brands, setBrands ] = useState< Named[] >( [] );
 	const [ busy, setBusy ] = useState( false );

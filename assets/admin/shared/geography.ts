@@ -17,6 +17,19 @@ export function fetchCountries(): Promise< Country[] > {
 	return apiFetch< Country[] >( { path: '/orillacart/v1/countries' } );
 }
 
+let countries: Promise< Country[] > | null = null;
+
+/**
+ * The countries, asked once per page: every address form of a screen shares them.
+ */
+export function knownCountries(): Promise< Country[] > {
+	countries ??= fetchCountries().catch( ( reason: unknown ) => {
+		countries = null;
+		throw reason;
+	} );
+	return countries;
+}
+
 export function fetchStates( country: string ): Promise< State[] > {
 	return apiFetch< State[] >( {
 		path: `/orillacart/v1/countries/${ encodeURIComponent(

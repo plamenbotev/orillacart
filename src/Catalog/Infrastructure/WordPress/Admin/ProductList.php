@@ -131,7 +131,8 @@ final class ProductList
 
     /**
      * Saves the price from quick edit, whose request WordPress checked (nonce and capability) before saving the
-     * post. Other saves carry no such field.
+     * post. Other saves carry no such field. A price that is not one is refused where quick edit shows its errors:
+     * WordPress puts what the request ends with under the fields when it is not the row.
      */
     public function saveQuickEdit(int $postId): void
     {
@@ -140,13 +141,20 @@ final class ProductList
             return;
         }
         $price = trim(str_replace(',', '.', $price));
-        if ($price === '' || preg_match('/^\d{1,13}(\.\d{1,4})?$/', $price) !== 1) {
+        if ($price === '') {
             return;
+        }
+        if (preg_match('/^\d{1,13}(\.\d{1,4})?$/', $price) !== 1) {
+            wp_die(esc_html__('The price was not saved: use a number such as 19.90.', 'orillacart'));
         }
         try {
             $this->products->changePrice($postId, $price);
-        } catch (RuleViolation) {
-            // A product whose details were never saved has no price to change.
+        } catch (RuleViolation $e) {
+            wp_die(esc_html(\sprintf(
+                /* translators: %s: why the price was refused */
+                __('The price was not saved: %s', 'orillacart'),
+                $e->getMessage(),
+            )));
         }
     }
 

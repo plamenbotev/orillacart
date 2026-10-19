@@ -23,6 +23,7 @@ import {
 	type PaymentMethodInput,
 	savePaymentMethod,
 } from './api';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -91,16 +92,21 @@ interface MethodCardProps {
 	onError: ( error: unknown ) => void;
 }
 
+const inputOf = ( method: PaymentMethod ): PaymentMethodInput => ( {
+	name: method.name,
+	active: method.active,
+	position: method.position,
+	countries: method.countries,
+	instructions: method.instructions,
+	receipt_note: method.receipt_note,
+	settings: method.settings,
+} );
+
 function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
-	const [ draft, setDraft ] = useState< PaymentMethodInput >( {
-		name: method.name,
-		active: method.active,
-		position: method.position,
-		countries: method.countries,
-		instructions: method.instructions,
-		receipt_note: method.receipt_note,
-		settings: method.settings,
-	} );
+	const [ draft, setDraft ] = useState< PaymentMethodInput >(
+		inputOf( method )
+	);
+	useUnsavedChanges( differs( draft, inputOf( method ) ) );
 	const [ countries, setCountries ] = useState(
 		method.countries.join( ', ' )
 	);

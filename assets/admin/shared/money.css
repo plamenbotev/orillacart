@@ -1,0 +1,9 @@
+/* An amount that is not one: the field and its help line in the admin's error colour. */
+.components-base-control.is-invalid input {
+	border-color: #d63638;
+	box-shadow: 0 0 0 1px #d63638;
+}
+
+.components-base-control.is-invalid .components-base-control__help {
+	color: #d63638;
+}

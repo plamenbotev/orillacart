@@ -35,6 +35,8 @@ import {
 	WITHOUT_CLASS,
 } from './api';
 import { ShippingClassesCard } from './ShippingClassesCard';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
+import { MoneyControl } from '../shared/MoneyControl';
 
 type ListField =
 	'regions' | 'postcodes' | 'excluded_regions' | 'excluded_postcodes';
@@ -198,6 +200,17 @@ interface CarrierCardProps {
 	onError: ( error: unknown ) => void;
 }
 
+const NEW_CARRIER: CarrierInput = {
+	name: '',
+	active: true,
+	position: 0,
+	rates: [],
+	method: null,
+	method_settings: {},
+	method_taxable: true,
+	method_tax_group_id: null,
+};
+
 function CarrierCard( {
 	carrier,
 	groups,
@@ -208,17 +221,9 @@ function CarrierCard( {
 	onError,
 }: CarrierCardProps ) {
 	const [ draft, setDraft ] = useState< CarrierInput >(
-		carrier ?? {
-			name: '',
-			active: true,
-			position: 0,
-			rates: [],
-			method: null,
-			method_settings: {},
-			method_taxable: true,
-			method_tax_group_id: null,
-		}
+		carrier ?? NEW_CARRIER
 	);
+	useUnsavedChanges( differs( draft, carrier ?? NEW_CARRIER ) );
 	const method = methods.find( ( found ) => found.id === draft.method );
 	const [ confirming, setConfirming ] = useState( false );
 
@@ -562,8 +567,7 @@ function RateFields( {
 					/>
 				</FlexItem>
 				<FlexItem>
-					<TextControl
-						__next40pxDefaultSize
+					<MoneyControl
 						label={ __( 'Price', 'orillacart' ) }
 						value={ rate.price }
 						onChange={ ( price ) => onChange( { ...rate, price } ) }

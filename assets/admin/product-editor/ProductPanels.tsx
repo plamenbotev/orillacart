@@ -41,6 +41,8 @@ import { StockLevels } from './StockLevels';
 import { BundlePanel, bundleItemKey, bundleItemLabel } from './BundlePanel';
 import { DownloadsPanel } from './DownloadsPanel';
 import { VariationsPanel } from './VariationsPanel';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
+import { MoneyControl } from '../shared/MoneyControl';
 
 /**
  * Panels in the product editor's sidebar for what the shop sells the product as. The details are saved with the
@@ -72,6 +74,11 @@ export function ProductPanels() {
 	const [ stockrooms, setStockrooms ] = useState< Stockroom[] >( [] );
 	const [ loadError, setLoadError ] = useState< string | null >( null );
 	const [ saving, setSaving ] = useState( false );
+	useUnsavedChanges(
+		product !== null &&
+			draft !== null &&
+			differs( draft, toProductInput( product ) )
+	);
 
 	const fail = useCallback(
 		( error: unknown ) => {
@@ -215,8 +222,7 @@ export function ProductPanels() {
 						change( { type: type as ProductInput[ 'type' ] } )
 					}
 				/>
-				<TextControl
-					__next40pxDefaultSize
+				<MoneyControl
 					label={ __( 'Price', 'orillacart' ) }
 					help={
 						hasVariations
@@ -229,8 +235,7 @@ export function ProductPanels() {
 					value={ draft.price }
 					onChange={ ( price ) => change( { price } ) }
 				/>
-				<TextControl
-					__next40pxDefaultSize
+				<MoneyControl
 					label={ __( 'Sale price', 'orillacart' ) }
 					value={ draft.sale?.price ?? '' }
 					onChange={ ( price ) =>

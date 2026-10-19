@@ -114,7 +114,9 @@ test.describe( 'The admin', () => {
 		await page.getByLabel( 'Street' ).fill( BILLING.street );
 		await page.getByLabel( 'Postcode' ).fill( BILLING.postcode );
 		await page.getByLabel( 'City' ).fill( BILLING.city );
-		await page.getByLabel( 'Country code' ).fill( 'BG' );
+		await page
+			.getByLabel( 'Country', { exact: true } )
+			.selectOption( 'BG' );
 		await page.getByLabel( 'Phone' ).fill( BILLING.phone );
 		await page
 			.getByRole( 'combobox', { name: 'Add a product' } )
