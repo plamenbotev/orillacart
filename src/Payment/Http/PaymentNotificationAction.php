@@ -6,8 +6,7 @@ namespace OrillaCart\Payment\Http;
 
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Payment\Application\PaymentOutcomes;
-use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
-use OrillaCart\Payment\Domain\PaymentRuleViolation;
+use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\QueryStrings;
 use OrillaCart\Shared\Http\Output\JsonResponder;
@@ -36,15 +35,13 @@ final readonly class PaymentNotificationAction implements RequestHandlerInterfac
         }
         try {
             $this->outcomes->notified(PathParameter::string($request, 'gateway'), new Notification($headers, (string) $request->getBody(), QueryStrings::of($request)));
-        } catch (PaymentProviderUnavailable $e) {
-            // The provider sends it again: say when, and that it is not the notification's fault.
-            return $this->responder->error(503, $e->errorCode, $e->getMessage())->withHeader('Retry-After', '60');
-        } catch (PaymentRuleViolation $e) {
-            if ($e->errorCode !== 'orillacart_invalid_notification') {
-                throw $e;
-            }
-
-            return $this->responder->error(400, $e->errorCode, $e->getMessage());
+        } catch (RuleViolation $e) {
+            return match ($e->errorCode) {
+                // The provider sends it again: say when, and that it is not the notification's fault.
+                'orillacart_payment_provider_unavailable' => $this->responder->error(503, $e->errorCode, $e->getMessage())->withHeader('Retry-After', '60'),
+                'orillacart_invalid_notification' => $this->responder->error(400, $e->errorCode, $e->getMessage()),
+                default => throw $e,
+            };
         }
 
         return $this->responder->ok(['received' => true]);
