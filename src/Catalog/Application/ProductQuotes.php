@@ -111,7 +111,7 @@ final readonly class ProductQuotes
                     $extrasWeight = $extrasWeight->add($itemWeight);
                 }
                 array_push($downloads, ...$quote->downloads);
-                $contents[] = new QuotedBundleItem($quote->productId, $quote->variationId, $quote->name, $item->quantity, $quote->available !== null || $quote->inStock !== null, $quote->backorders, $quote->backorderLimit);
+                $contents[] = new QuotedBundleItem($quote->productId, $quote->variationId, $quote->name, $item->quantity, $quote->available !== null || $quote->inStock !== null, $quote->backorders, $quote->backorderLimit, (string) $price, $quote->taxable, $quote->taxGroupId);
             }
             // A fixed price covers the items every bundle holds; the optional ones the customer adds cost their own.
             $unitPrice = $bundle->pricing === Bundle::SUM ? $bundle->priceOf($sum) : $unitPrice->add($extras);

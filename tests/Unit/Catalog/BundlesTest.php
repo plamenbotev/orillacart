@@ -15,6 +15,7 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Catalog\Domain\InvalidSelection;
+use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
@@ -23,6 +24,8 @@ use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
+use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
 
@@ -59,6 +62,24 @@ final class BundlesTest extends TestCase
         self::assertSame([['name' => 'Camera', 'quantity' => 1], ['name' => 'Battery', 'quantity' => 2]], $this->shop->orders->order($placed->number)->lines[0]->contents);
         $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('cancelled'), 1);
         self::assertSame([5, 7], [$this->available(10), $this->available(20)], 'cancelling gives each item back');
+    }
+
+    public function testABundleIsTaxedPerItemItsPriceSharedByWhatTheyCost(): void
+    {
+        $standard = $this->shop->taxGroups->create(new SaveTaxGroup('Standard'))->id;
+        $this->shop->taxGroups->addRate($standard, new SaveTaxRate('BG', null, '20', 'VAT'));
+        $reduced = $this->shop->taxGroups->create(new SaveTaxGroup('Books'))->id;
+        $this->shop->taxGroups->addRate($reduced, new SaveTaxRate('BG', null, '9', 'VAT 9 %'));
+        $this->shop->products->save(10, new SaveProduct('300', 'virtual', taxGroupId: $standard));
+        $this->shop->products->save(20, new SaveProduct('20', 'virtual', taxGroupId: $reduced));
+        // 300 of camera and 2 × 20 of batteries: the 306 of the kit is 270 and 36 of them.
+        $this->shop->products->save(30, new SaveProduct('306', 'virtual', taxGroupId: $standard, bundle: new SaveBundle([new SaveBundleItem(10, 1), new SaveBundleItem(20, 2)])));
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(30))->newToken);
+
+        $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG'));
+
+        self::assertSame('57.24', $summary->lines[0]->tax, '20 % of 270 and 9 % of 36');
+        self::assertSame(['VAT' => '54', 'VAT 9 %' => '3.24'], array_column(array_map(static fn($tax): array => ['name' => $tax->name, 'amount' => $tax->items], $summary->taxes), 'amount', 'name'));
     }
 
     public function testABundlePricedByItsItemsTakesItsDiscountOffTheirSum(): void

@@ -98,14 +98,21 @@ final readonly class OrderPricing
             if (!$quote->forSale || ($quote->available !== null && $quote->available < $line['quantity'])) {
                 throw new CheckoutRuleViolation(\sprintf('%s is not available in that quantity. Review the items and try again.', $quote->name), 'orillacart_cart_changed');
             }
-            $unitPrice = $line['unit_price'] ?? $quote->unitPrice;
-            $taxes = $quote->taxable && !$reverseCharge ? $this->taxes($quote->taxGroupId, $shipping, $billing) : [];
-            if ($inclusive && $quote->taxable && $taxes === []) {
-                // A price including tax, for a customer who owes none (an export): the shop's own tax comes off.
-                $unitPrice = (string) Money::of($unitPrice)->withoutPercents($this->shopPercents($quote->taxGroupId));
+            // A bundle is taxed per item: its price shared out by what its items cost, each share at its item's rates.
+            $parts = [];
+            $units = self::shares(Money::of($line['unit_price'] ?? $quote->unitPrice), $quote->contents === [] ? [Money::of('1')] : array_map(static fn(QuotedBundleItem $item): Money => Money::of($item->price), $quote->contents));
+            foreach ($quote->contents === [] ? [[$quote->taxable, $quote->taxGroupId]] : array_map(static fn(QuotedBundleItem $item): array => [$item->taxable, $item->taxGroupId], $quote->contents) as $index => [$taxable, $groupId]) {
+                $taxes = $taxable && !$reverseCharge ? $this->taxes($groupId, $shipping, $billing) : [];
+                $unit = $units[$index];
+                if ($inclusive && $taxable && $taxes === []) {
+                    // A price including tax, for a customer who owes none (an export): the shop's own tax comes off.
+                    $unit = $unit->withoutPercents($this->shopPercents($groupId));
+                }
+                $parts[] = ['unit' => $unit, 'taxes' => $taxes];
             }
+            $unitPrice = (string) array_reduce($parts, static fn(Money $sum, array $part): Money => $sum->add($part['unit']), Money::zero());
             $total = Money::of($unitPrice)->times($line['quantity']);
-            $taxesOf[] = $taxes;
+            $taxesOf[] = array_map(static fn(array $part): array => ['total' => $part['unit']->times($line['quantity']), 'taxes' => $part['taxes']], $parts);
             $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero()];
             if ($quote->type === 'physical') {
                 $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
@@ -119,13 +126,18 @@ final readonly class OrderPricing
             $email,
             $orderId,
         ));
+        $places = [];
         foreach ($lines as $index => $line) {
             $lines[$index]['discount'] = $discounts->forLine($index);
-            $bill->addItem($line['total'], $taxesOf[$index], $lines[$index]['discount']);
+            $parts = $taxesOf[$index];
+            $discountShares = self::shares($lines[$index]['discount'], array_map(static fn(array $part): Money => $part['total'], $parts));
+            foreach ($parts as $part => ['total' => $partTotal, 'taxes' => $taxes]) {
+                $places[$index][] = $bill->addItem($partTotal, $taxes, $discountShares[$part]);
+            }
         }
         $lineTaxes = $bill->lineTaxes();
         foreach ($lines as $index => $line) {
-            $lines[$index]['tax'] = $lineTaxes[$index];
+            $lines[$index]['tax'] = array_reduce($places[$index] ?? [], static fn(Money $sum, int $place): Money => $sum->add($lineTaxes[$place]), Money::zero());
         }
         $free = $discounts->freeShipping();
 
@@ -294,6 +306,33 @@ final readonly class OrderPricing
             static fn(AppliedTaxView $tax): Tax => new Tax($tax->rateId === null ? "{$tax->name}|{$tax->percent}" : (string) $tax->rateId, $tax->name, $tax->percent),
             $this->tax->taxes(new TaxQuery($groupId, $shipping, $billing))->taxes,
         );
+    }
+
+    /**
+     * An amount shared out in proportion to weights, exactly: what proportions leave over goes to the largest.
+     * All of it to the first when the weights add up to nothing.
+     *
+     * @param non-empty-list<Money> $weights
+     *
+     * @return non-empty-list<Money> one share per weight, adding up to the amount
+     */
+    private static function shares(Money $amount, array $weights): array
+    {
+        $whole = array_reduce($weights, static fn(Money $sum, Money $weight): Money => $sum->add($weight), Money::zero());
+        $shares = [];
+        $left = $amount;
+        $largest = 0;
+        foreach ($weights as $index => $weight) {
+            $share = $whole->isZero() ? ($index === 0 ? $amount : Money::zero()) : $amount->proportion($weight, $whole);
+            $shares[] = $share;
+            $left = $left->subtract($share);
+            if ($weight->compare($weights[$largest]) > 0) {
+                $largest = $index;
+            }
+        }
+        $shares[$largest] = $shares[$largest]->add($left);
+
+        return array_values($shares);
     }
 
     /**
