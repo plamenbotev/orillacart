@@ -48,8 +48,13 @@ Implement `OrillaCart\Extension\Payment\PaymentGateway`:
 | `notReady($settings, $currency, $decimals)` | why checkout may not offer it (credentials missing, currency or its decimals not taken), or null |
 | `start($session, $settings)` | `PaymentStart::offline()` (the order waits on hold for the money), or `PaymentStart::redirect($url, $reference)` to send the customer to the provider; `$reference` is the provider's id of the payment |
 
-Throw `ProviderUnavailable` when the provider cannot be reached or refuses; the customer sees a general message
-and the order is cancelled so they can try again.
+Throw `ProviderUnavailable` when the provider cannot be reached or refuses; the customer sees a general message,
+the order is cancelled (its stock and coupon uses go back), and the customer keeps the cart to try again.
+
+The session gives the payment id, the order number, the amount and currency, and for providers that show or
+protect them the order's `items`, a `breakdown` (item total, tax, shipping, discount) and `shipTo`, the address
+the goods go to (null for a pickup point or nothing that ships). The items and breakdown come only when they
+add up exactly to the amount; leave them out of the provider's request otherwise.
 
 A gateway that sends customers away also implements `HandlesReturns`. The session carries the shop's
 `returnUrl` and `cancelUrl`; the provider sends the customer back there.

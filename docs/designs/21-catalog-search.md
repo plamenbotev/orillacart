@@ -42,14 +42,13 @@ filter and sorts go by what a guest pays, while the cards show the shopper their
 price next changes (a sale starting or ending). A product with variations has one variant per variation; one
 without has a single variant with its own id, and its options are values of the whole product.
 
-The MySQL engine keeps it in four tables:
+The MySQL engine keeps it in three tables:
 
 | table | rows |
 |---|---|
 | `search_documents` | one per indexed product: title, text, price_min/max, in_stock, featured, on_sale, menu_order, published_at; FULLTEXT on title and on title+text |
 | `search_variants` | one per variant: price, in_stock |
 | `search_values` | product, variant (null: the whole product), facet, value, label; index (facet, value, product_id). Facets: `category`, `brand`, `sku`, `attr:<attribute name>` |
-| `index_jobs` | the queue (below) |
 
 Text search splits the query into words. Words of three letters or more that are not InnoDB stopwords are
 required in `MATCH … AGAINST` in boolean mode, as prefixes; shorter words must appear in the title; stopwords
@@ -60,27 +59,25 @@ Ports (Search\Application): `CatalogSearch::search(SearchQuery): SearchResult` a
 `ShopSearch` turns what the storefront asks into a `SearchQuery` (category slugs, the shop's filters) and
 labels the facets.
 
-## Keeping it fresh: a queue in the database
+## Keeping it fresh: jobs
 
-`index_jobs (product_id PK, version, available_at, attempts, locked_until, last_error)` (since 28a, `search.index` jobs in the shared `jobs` queue)
+Built first on a queue of its own (`index_jobs`); since 28a each product is a `search.index` job in the shared
+`jobs` queue (28-background-jobs.md), with the product id as its unique key, in the `search` lane.
 
-- **Producers** upsert one row per product:
-  `INSERT … ON DUPLICATE KEY UPDATE version = version + 1, available_at = LEAST(available_at, ?), attempts = 0`.
-  Events: `ProductChanged`, `StockChanged` (variation and option stock map to their products),
-  `CatalogItemsRemoved`, `AttributeSetChanged` (products using the set), `SettingsChanged` (hidden prices:
-  every product); WordPress hooks: a product post saved, its status or terms changed, deleted; a category
-  moved under another parent (its products).
-- **Sale boundaries**: a built document that knows when the price next changes leaves its job due then.
-- **Workers** claim a batch in a short transaction:
-  `SELECT … WHERE available_at <= now AND (locked_until IS NULL OR locked_until < now) AND attempts < 5
-  ORDER BY available_at LIMIT n FOR UPDATE SKIP LOCKED`, set `locked_until`, commit; then build outside it.
-  Completing deletes the row `WHERE version = claimed` (or moves `available_at` to the next price change);
-  when the version moved, a change arrived while building, so the row is only unlocked and built again.
-  A failure counts an attempt and retries later; after five the job is parked, logged and shown in the admin
-  until the product changes again.
+- **Producers** push one job per product; pushing a product already waiting only counts up its version, so a
+  change made while it builds builds it again. Events: `ProductChanged` (also for the products of an attribute
+  set that changed), `StockChanged` (variation and option stock map to their products), `CatalogItemsRemoved`,
+  `PriceRulesChanged` (the products and groups a rule touches; every product only for a shop-wide rule),
+  `SettingsChanged` (hidden prices: every product); WordPress hooks: a product post saved, its status or terms
+  changed, deleted; a category renamed or moved under another parent, or deleted (its products).
+- **Sale boundaries**: a built document that knows when the price next changes reschedules its job for then.
+- **Workers**: the shared job runners claim a batch (`FOR UPDATE SKIP LOCKED`), build outside the transaction
+  and complete it. A failure retries later; after five attempts the job is failed and shown on the Background
+  jobs screen until the shop retries it, or the product changes again.
 - **Runners**: WP-Cron every minute; at the end of a request that queued jobs (after the response is sent
-  where PHP-FPM allows), a small batch, so the admin's changes show at once; `wp orillacart index work`
-  (`--loop` for a supervisor), `wp orillacart index rebuild` (queues every product), `wp orillacart index status`.
+  where the server allows), a small batch, so the admin's changes show at once; `wp orillacart jobs work
+  --queue=search` (`--loop` for a supervisor); `wp orillacart index rebuild` (queues every product) and
+  `wp orillacart index status`.
 
 ## OpenSearch (21c)
 

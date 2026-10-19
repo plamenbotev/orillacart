@@ -1,7 +1,7 @@
 # 28 · Background jobs, with an overview for the shop
 
-Status: built (2026-10-18), 28a–28c. Decided without answers to the questions below, to keep going: emails move onto jobs
-now (28b), and done jobs are kept only as hourly counts; failed jobs keep their details.
+Status: built (2026-10-18), 28a–28c. Decided without answers, to keep going: emails moved onto jobs with the
+indexing (28b), and done jobs are kept only as hourly counts; failed jobs keep their details.
 
 ## Why
 
@@ -27,21 +27,22 @@ One queue for all background work, in `jobs`:
 | queue | a lane: `default`, `search`, `mail`; workers can serve some lanes only |
 | type | what to do: `search.index`, `mail.order` |
 | unique_key | one pending job per key and type (a product to index): a second push only counts up its version |
-| payload | JSON the handler reads: `{"order": 1042, "email": "order_received"}` |
+| payload | JSON the handler reads: `{"order": 1042, "kind": "order_received"}`; ids and amounts, never personal data |
 | version, available_at, attempts, locked_until, locked_by | as the index queue has them |
-| last_error, created_at, finished_at | |
+| last_error, created_at | a done job is deleted, so it has no finish time |
 
 - **Handlers**: one class per type implements `JobHandler` (`type()`, `handle(list<Job>)`, batching when it can,
   as indexing does), found by the container like scheduled tasks.
-- **Pushing**: `Jobs::push(type, payload, uniqueKey?, at?, queue?)` from application services. Emails become a
-  job pushed after the order's transaction commits, with three attempts and a growing delay between them.
+- **Pushing**: `Jobs::push(type, payload, uniqueKey?, at?)` from application services; the handler names the
+  lane (`queue()`). Emails become a job pushed after the order's transaction commits, with five attempts and a
+  growing delay between them.
 - **Retries**: each type has its attempts and back-off; a job that used them up is **failed**, kept in
-  `failed_jobs` with its payload and error until the shop retries or deletes it.
-- **Done jobs** are deleted; per type and hour, a counter row (`job_stats`: done, failed, average run time) keeps
-  the history for charts, trimmed after 30 days.
+  `failed_jobs` with its payload and error until the shop retries or deletes it, or for 30 days.
+- **Done jobs** are deleted; per type and hour, a counter row (`job_stats`: done, retried, failed, run time)
+  keeps the history for charts, trimmed after 90 days.
 - **Runners**: the same as the index has now, for every lane: WP-Cron every minute, the end of a request that
   pushed something, and `wp orillacart jobs work --loop [--queue=search,mail] [--max-jobs …]` with
-  `jobs restart`, `jobs status`, `jobs retry <id|all>`, `jobs forget <id|all>`.
+  `jobs restart`, `jobs status`, `jobs failed`, `jobs retry <id|all>`, `jobs forget <id|all>`.
 - **Workers** record their heartbeat with what they serve, the job they are on, how many they did and their
   memory, so the overview lists them.
 
@@ -68,9 +69,3 @@ Permissions: shop managers (`manage_orillacart`).
 
 Priorities within a lane, job chains and batches of different types, and a public API for add-ons to push jobs
 (it can be added to the extension API later).
-
-## Questions for you
-
-1. Should emails move onto jobs now, together with the indexing, or only the system and the overview first?
-2. Keep done jobs only as hourly counts (small, fast), or keep each done job for a while (say 7 days) to look
-   them up one by one, as Horizon's "completed jobs" does?

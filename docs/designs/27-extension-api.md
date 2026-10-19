@@ -1,7 +1,19 @@
 # 27 · Public extension API for add-ons
 
-Status: agreed 2026-10-18. 27a (registry and payment gateways), 27b (shipping methods, live rates) and 27c (pickup points, shipments, labels, tracking) built; the add-on guide is docs/extensions.md.
-Order of work: 25, 27, 21b, 21c, then 26 (DPD) and the rest.
+Status: built (2026-10-18): 27a (registry and payment gateways), 27b (shipping methods, live rates) and 27c
+(pickup points, shipments, labels, tracking); the add-on guide is docs/extensions.md, which is the reference.
+Changes from the plan below:
+
+- The registry gives add-ons a log and the shop's orders (`log()`, `orders()`), not an HTTP client, a clock or a
+  key-value store: add-ons use WordPress's own for those.
+- Quoting is part of `ShippingMethod` (`quote()`), not a `QuotesRates` capability. There is no "Test the
+  connection" button: `isReady()` says whether a method can quote with its settings.
+- The rate table stays the carrier's own, outside the registry; the plugin's payment gateways register through
+  it like an add-on's.
+- Tracking: every hour the shop asks for the shipments on their way. The first scan ships an order in
+  Processing; delivered completes it from Processing or Shipped; a shipment coming back adds a note for the shop.
+- No contract test suite for add-ons yet: the plugin's own tests run a fixture add-on (`TestAddOn`,
+  `TestShipMethod`, registered in tests/bootstrap.php) through checkout, the order screen and the emails.
 
 ## Why
 
