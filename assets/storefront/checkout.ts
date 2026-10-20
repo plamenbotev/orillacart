@@ -37,6 +37,7 @@ export function bindCheckout( form: HTMLFormElement ): void {
 		}
 	};
 	showShipping();
+	bindContact( form );
 
 	bindCoupons( form, () => {
 		summary = summary.then( () => refreshSummary( form ) );
@@ -77,6 +78,7 @@ export function bindCheckout( form: HTMLFormElement ): void {
 		await summary;
 		const body = formBody( form, { flags: [ 'create_account' ] } );
 		delete body.ship_elsewhere;
+		delete body.remind_cart;
 		body.remember_addresses = body.remember_addresses === true;
 		const result = await api< PlacedOrder >( 'POST', '/checkout', body );
 		if ( result.ok ) {
@@ -99,6 +101,28 @@ export function bindCheckout( form: HTMLFormElement ): void {
 			'error'
 		);
 	} );
+}
+
+/**
+ * Tells the shop the customer is at checkout with the cart, with the email so far and whether they ask to be
+ * reminded of the cart: when the page opens, and when either changes.
+ * @param form The checkout form.
+ */
+function bindContact( form: HTMLFormElement ): void {
+	const email = form.querySelector< HTMLInputElement >( '[name="email"]' );
+	const remind = form.querySelector< HTMLInputElement >(
+		'[data-orillacart-remind]'
+	);
+	const send = (): void => {
+		const given = email?.value.trim() ?? '';
+		void api( 'POST', '/cart/checkout-contact', {
+			email: given !== '' && email?.validity.valid ? given : null,
+			remind: remind?.checked === true,
+		} );
+	};
+	send();
+	email?.addEventListener( 'change', send );
+	remind?.addEventListener( 'change', send );
 }
 
 /**

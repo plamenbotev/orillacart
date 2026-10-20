@@ -11,11 +11,21 @@ export interface EmailSettings {
 	kinds: string[];
 	/** Days after the order the customer is reminded to pay for it. */
 	reminder_days: number;
+	/** Hours after a cart was left at checkout its customer is reminded of it. */
+	cart_reminder_hours: number;
+	/** The code of the coupon the cart reminder offers. */
+	cart_reminder_coupon: string | null;
 }
 
 export type EmailSettingsInput = Pick<
 	EmailSettings,
-	'from_name' | 'from_address' | 'shop_address' | 'disabled' | 'reminder_days'
+	| 'from_name'
+	| 'from_address'
+	| 'shop_address'
+	| 'disabled'
+	| 'reminder_days'
+	| 'cart_reminder_hours'
+	| 'cart_reminder_coupon'
 >;
 
 const BASE = '/orillacart/v1';

@@ -9,8 +9,8 @@ use OrillaCart\Notifications\Domain\EmailSettings;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Command: change who the shop's emails come from, where the shop's own go, which are turned off, and when the
- * payment reminder goes.
+ * Command: change who the shop's emails come from, where the shop's own go, which are turned off, when the
+ * payment reminder goes, and when the cart reminder goes, with which coupon.
  * Empty name or addresses use the site's.
  */
 final readonly class UpdateEmailSettings
@@ -29,5 +29,9 @@ final readonly class UpdateEmailSettings
         public array $disabled = [],
         #[Assert\Range(min: 1, max: EmailSettings::MAX_REMINDER_DAYS)]
         public int $reminderDays = EmailSettings::DEFAULT_REMINDER_DAYS,
+        #[Assert\Range(min: 1, max: EmailSettings::MAX_CART_REMINDER_HOURS)]
+        public int $cartReminderHours = EmailSettings::DEFAULT_CART_REMINDER_HOURS,
+        #[Assert\Length(max: 100)]
+        public ?string $cartReminderCoupon = null,
     ) {}
 }

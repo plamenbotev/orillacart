@@ -12,6 +12,8 @@ use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Application\Dto\CustomerView;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Invoicing\Application\Invoices;
+use OrillaCart\Notifications\Application\EmailSettingsService;
+use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
@@ -46,6 +48,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         private ShipmentTracking $shipments,
         private PayNow $payNow,
         private Invoices $invoices,
+        private EmailSettingsService $emails,
     ) {}
 
     public static function name(): string
@@ -97,6 +100,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'ship_elsewhere' => $billing !== null && $shipping !== null && get_object_vars($billing) !== get_object_vars($shipping),
             'logged_in' => $this->shopper->customerId() !== null,
             'accounts' => $this->customers->accountMode(),
+            'cart_reminders' => !\in_array(EmailKind::CartReminder->value, $this->emails->current()->disabled, true),
             'login_url' => wp_login_url((string) get_permalink()),
             'links' => $links,
         ] + $this->addresses->all());

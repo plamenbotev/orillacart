@@ -39,6 +39,17 @@ final class InMemoryCartRepository implements CartRepository
         return null;
     }
 
+    public function findByRecoverToken(string $token): ?Cart
+    {
+        foreach ($this->carts as $cart) {
+            if (new \ReflectionProperty(Cart::class, 'recoverHash')->getValue($cart) === Cart::hash($token)) {
+                return $cart;
+            }
+        }
+
+        return null;
+    }
+
     public function findByCustomer(int $customerId): ?Cart
     {
         $found = null;

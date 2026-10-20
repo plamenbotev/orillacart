@@ -17,6 +17,8 @@ const settings = {
 	default_address: 'owner@shop.test',
 	kinds: [ 'order_received', 'new_order' ],
 	reminder_days: 3,
+	cart_reminder_hours: 4,
+	cart_reminder_coupon: null,
 };
 
 const shipped = {
@@ -44,6 +46,9 @@ describe( 'EmailsScreen', () => {
 			if ( request.path.startsWith( '/orillacart/v1/email-templates' ) ) {
 				return [];
 			}
+			if ( request.path.startsWith( '/orillacart/v1/coupons' ) ) {
+				return { coupons: [ { code: 'COMEBACK' } ], total: 1 };
+			}
 			return request.method === undefined
 				? settings
 				: { ...settings, ...( request.data as object ) };
@@ -58,6 +63,11 @@ describe( 'EmailsScreen', () => {
 			'orders@shop.test'
 		);
 		await user.click( screen.getByLabelText( 'New order (to the shop)' ) );
+		await screen.findByRole( 'option', { name: 'COMEBACK' } );
+		await user.selectOptions(
+			screen.getByLabelText( 'Coupon in the cart reminder' ),
+			'COMEBACK'
+		);
 		await user.click( screen.getByRole( 'button', { name: 'Save' } ) );
 
 		expect(
@@ -74,6 +84,8 @@ describe( 'EmailsScreen', () => {
 				shop_address: 'orders@shop.test',
 				disabled: [ 'new_order' ],
 				reminder_days: 3,
+				cart_reminder_hours: 4,
+				cart_reminder_coupon: 'COMEBACK',
 			},
 		} );
 	} );

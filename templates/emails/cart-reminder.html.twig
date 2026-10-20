@@ -1,0 +1,28 @@
+{% extends 'emails/layout.html.twig' %}
+{#
+ # To a customer who asked at checkout to be reminded of the cart they left there.
+ # cart: {lines: [{name, options: [{attribute, option}], quantity, total}], subtotal, currency}; cart_url: the link
+ # that brings the cart back; coupon: {code, description} the shop offers, or null.
+ #}
+{# translators: %s: site name -#}
+{% block subject %}{{ __('[%s] Your cart is waiting for you')|format(site_name) }}{% endblock %}
+{% block heading %}{{ __('Your cart is waiting for you') }}{% endblock %}
+{% block intro %}<p>{{ __('You left some things in your cart. We kept it for you, so you can pick up where you left off.') }}</p>{% endblock %}
+{% block content %}
+<table role="presentation" width="100%" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+{% for line in cart.lines %}
+<tr style="border-bottom:1px solid #e4e4e7;">
+<td>{{ line.name }}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}</td>
+<td style="text-align:right;white-space:nowrap;">× {{ line.quantity }}</td>
+<td style="text-align:right;white-space:nowrap;">{{ line.total|money(cart.currency) }}</td>
+</tr>
+{% endfor %}
+<tr style="font-weight:600;"><td colspan="2">{{ __('Subtotal') }}</td><td style="text-align:right;">{{ cart.subtotal|money(cart.currency) }}</td></tr>
+</table>
+{% if coupon %}
+{# translators: %s: coupon code -#}
+<p style="margin:16px 0 0;">{{ __('Use the code %s at checkout.')|format(coupon.code) }}{% if coupon.description %} {{ coupon.description }}{% endif %} {{ __('The link below puts it in your cart.') }}</p>
+{% endif %}
+<p style="margin:20px 0 0;"><a href="{{ cart_url }}" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;border-radius:4px;text-decoration:none;">{{ __('Back to your cart') }}</a></p>
+<p style="color:#71717a;font-size:13px;">{{ __('You asked us at checkout to remind you of your cart. This is the only reminder we send for it.') }}</p>
+{% endblock %}

@@ -31,6 +31,8 @@ final readonly class EmailSettingsService
             $blank($command->shopAddress),
             array_values(array_unique(array_map(EmailKind::from(...), $command->disabled), SORT_REGULAR)),
             $command->reminderDays,
+            $command->cartReminderHours,
+            $blank($command->cartReminderCoupon),
         );
         $this->settings->save($settings);
 
@@ -48,6 +50,8 @@ final readonly class EmailSettingsService
             $this->site->adminEmail(),
             EmailKind::values(),
             $settings->reminderDays,
+            $settings->cartReminderHours,
+            $settings->cartReminderCoupon,
         );
     }
 }

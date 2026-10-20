@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Fixtures\Checkout;
 
+use OrillaCart\Cart\Application\AbandonedCarts;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Infrastructure\Events\ForgetDeletedCustomers as ForgetDeletedCarts;
 use OrillaCart\Catalog\Application\DownloadService;
@@ -32,6 +33,7 @@ use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Application\PersonalData;
 use OrillaCart\Customers\Domain\Event\CustomerDeleted;
 use OrillaCart\Customers\Domain\Event\CustomerErased;
+use OrillaCart\Customers\Domain\Event\PersonErased;
 use OrillaCart\Customers\Infrastructure\GroupsOfShoppers;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Geography\Application\GeographyService;
@@ -40,8 +42,10 @@ use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Invoicing\Application\InvoiceAttachments;
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Invoicing\Infrastructure\Events\IssueInvoices;
+use OrillaCart\Notifications\Application\CartReminders;
 use OrillaCart\Notifications\Application\EmailWriter;
 use OrillaCart\Notifications\Application\OrderEmails;
+use OrillaCart\Notifications\Application\SendCartReminder;
 use OrillaCart\Notifications\Application\SendOrderEmails;
 use OrillaCart\Notifications\Infrastructure\Events\EmailAboutOrders;
 use OrillaCart\Ordering\Application\Downloads;
@@ -112,6 +116,8 @@ use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tax\Application\VatNumbers;
 use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxSettings;
+use OrillaCart\Tests\Fixtures\Cart\FakeCartLinks;
+use OrillaCart\Tests\Fixtures\Cart\InMemoryAbandonedCartRepository;
 use OrillaCart\Tests\Fixtures\Cart\InMemoryCartRepository;
 use OrillaCart\Tests\Fixtures\Catalog\CatalogIds;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryAttributeSetRepository;
@@ -207,6 +213,9 @@ final class TestShop
     public readonly InMemoryRefundRepository $refundRecords;
     public readonly CartService $carts;
     public readonly InMemoryCartRepository $cartRecords;
+    public readonly InMemoryAbandonedCartRepository $abandonedCartRecords;
+    public readonly AbandonedCarts $abandonedCarts;
+    public readonly CartReminders $cartReminders;
     public readonly InMemoryOrderRepository $orderRecords;
     public readonly OrderService $orders;
     public readonly CheckoutService $checkout;
@@ -309,7 +318,9 @@ final class TestShop
         $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock, $this->logger);
 
         $this->cartRecords = new InMemoryCartRepository($this->transactions);
-        $this->carts = new CartService($this->cartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger);
+        $this->abandonedCartRecords = new InMemoryAbandonedCartRepository($this->cartRecords);
+        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger);
+        $this->abandonedCarts = new AbandonedCarts($this->cartRecords, $this->abandonedCartRecords, $this->carts, $settings, $this->clock);
         $this->orderRecords = new InMemoryOrderRepository($this->transactions);
         $this->receipts = new ReceiptLinks($this->signatures, $this->clock);
         $links = new FakeOrderLinks($this->receipts);
@@ -327,8 +338,9 @@ final class TestShop
         $this->accountMail = new RecordingAccountMail();
         $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders, $this->customerGroupRecords, $this->events, $this->pendingAccounts, $this->accountMail, $this->accountMail, $this->clock);
         $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCustomers($this->orders)(...));
-        $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCarts($this->cartRecords)(...));
-        $this->events->addListener(CustomerErased::class, new ForgetDeletedCarts($this->cartRecords)->erased(...));
+        $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)(...));
+        $this->events->addListener(CustomerErased::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)->erased(...));
+        $this->events->addListener(PersonErased::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)->personErased(...));
         $this->personalData = new PersonalData($this->orders, $this->customers);
         $this->customerGroups = new CustomerGroups($this->customerGroupRecords, $this->accounts);
         $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger);
@@ -396,6 +408,8 @@ final class TestShop
         $this->jobs->immediate = true;
         $this->writer = new EmailWriter($this->emailTemplates, $this->emailSettings, $this->site = new FakeSite(), $this->languages);
         $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $this->writer, $this->mail, $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs, $this->invoices, $this->receipts, new InvoiceAttachments($this->invoices, $this->invoiceSettings, $this->invoicePdfs = new FakeInvoicePdfs(), $this->languages, $this->logger));
+        $this->cartReminders = new CartReminders($this->abandonedCarts, new FakeCartLinks(), $this->coupons, $this->emailSettings, $settings, $this->writer, $this->mail, $this->jobs->jobs, $this->clock);
+        $this->jobs->with(new SendCartReminder($this->cartReminders));
         $this->jobs->with(new SendOrderEmails($this->emails, $this->sentEmails, $this->clock, $this->logger), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));
         $emailing = new EmailAboutOrders($this->emails);
         $this->events->addListener(OrderStatusChanged::class, $emailing->statusChanged(...));

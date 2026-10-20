@@ -231,6 +231,16 @@ class Coupon
         );
     }
 
+    /** Whether the shop can offer the code now, as a reminder does: on, begun, not ended or used up, and typed. */
+    public function offerable(\DateTimeImmutable $now): bool
+    {
+        return !$this->automatic
+            && $this->active
+            && ($this->startsAt === null || $now >= $this->startsAt)
+            && ($this->endsAt === null || $now < $this->endsAt)
+            && ($this->usageLimit === null || $this->uses < $this->usageLimit);
+    }
+
     /**
      * Why the coupon does not hold for the basket, in words for the customer; null when it does.
      *

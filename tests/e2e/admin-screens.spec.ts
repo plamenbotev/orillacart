@@ -252,6 +252,11 @@ test.describe( 'The admin', () => {
 		await expect(
 			page.getByRole( 'tab', { name: 'Products' } )
 		).toHaveAttribute( 'aria-selected', 'true' );
+		await page.getByRole( 'tab', { name: 'Carts' } ).click();
+		await expect(
+			page.getByText( 'Carts left at checkout' )
+		).toBeVisible();
+		await expect( page ).toHaveURL( /report=carts/ );
 	} );
 
 	test( 'writes, previews and resets an email template on the Emails screen', async ( {

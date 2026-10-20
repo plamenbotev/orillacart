@@ -264,6 +264,20 @@ export function accountLink( email: string ): string {
 }
 
 /**
+ * A link that brings back the cart left at checkout with the email, as the reminder's would: its token set in the
+ * database, since the reminder goes hours later.
+ * @param email The address given at checkout.
+ * @param token 64 hexadecimal characters.
+ */
+export function cartLink( email: string, token: string ): string {
+	execSync(
+		`npx wp-env run tests-cli wp db query "UPDATE wp_orillacart_carts SET recover_hash = SHA2('${ token }', 256) WHERE contact_email = '${ email }'"`,
+		{ stdio: 'ignore' }
+	);
+	return `orillacart_cart_link=${ token }`;
+}
+
+/**
  * Puts the shop in a country, or in none: the cart estimates tax and shipping there.
  * @param requestUtils
  * @param country      ISO 3166-1 code, or null.

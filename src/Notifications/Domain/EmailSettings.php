@@ -7,14 +7,17 @@ namespace OrillaCart\Notifications\Domain;
 use OrillaCart\Shared\Domain\RuleViolation;
 
 /**
- * Who the shop's emails come from, where the shop's own emails go, which emails are turned off, and how many days
- * after an order was placed the customer is reminded to pay for it. Without a name or address of its own, the shop
+ * Who the shop's emails come from, where the shop's own emails go, which emails are turned off, how many days
+ * after an order was placed the customer is reminded to pay for it, and how many hours after a cart was left at
+ * checkout its customer is reminded of it, with which coupon. Without a name or address of its own, the shop
  * uses the site's name and administration email.
  */
 final readonly class EmailSettings
 {
     public const int DEFAULT_REMINDER_DAYS = 3;
     public const int MAX_REMINDER_DAYS = 60;
+    public const int DEFAULT_CART_REMINDER_HOURS = 4;
+    public const int MAX_CART_REMINDER_HOURS = 168;
 
     /**
      * @param list<EmailKind> $disabled
@@ -25,7 +28,14 @@ final readonly class EmailSettings
         public ?string $shopAddress = null,
         public array $disabled = [],
         public int $reminderDays = self::DEFAULT_REMINDER_DAYS,
+        /** Hours after the customer left the cart at checkout: then it counts abandoned, and they are reminded. */
+        public int $cartReminderHours = self::DEFAULT_CART_REMINDER_HOURS,
+        /** The code of a coupon the cart reminder offers; none for none. */
+        public ?string $cartReminderCoupon = null,
     ) {
+        if ($cartReminderHours < 1 || $cartReminderHours > self::MAX_CART_REMINDER_HOURS) {
+            throw new RuleViolation(\sprintf('The cart reminder goes 1 to %d hours after the cart was left.', self::MAX_CART_REMINDER_HOURS), 'orillacart_invalid_cart_reminder_hours');
+        }
         if ($reminderDays < 1 || $reminderDays > self::MAX_REMINDER_DAYS) {
             throw new RuleViolation(\sprintf('The payment reminder goes 1 to %d days after the order.', self::MAX_REMINDER_DAYS), 'orillacart_invalid_reminder_days');
         }

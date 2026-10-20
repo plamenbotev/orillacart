@@ -19,6 +19,8 @@ import { money } from '../orders/labels';
 import { toApiError } from '../shared/api';
 import { shopToday } from '../shared/dates';
 import {
+	type CartsReport,
+	type CartTotals,
 	type Compare,
 	type CustomersReport,
 	fetchReport,
@@ -52,6 +54,7 @@ const TABS: { name: Tab; title: string }[] = [
 	{ name: 'categories', title: __( 'Categories', 'orillacart' ) },
 	{ name: 'coupons', title: __( 'Coupons', 'orillacart' ) },
 	{ name: 'customers', title: __( 'Customers', 'orillacart' ) },
+	{ name: 'carts', title: __( 'Carts', 'orillacart' ) },
 ];
 
 /**
@@ -388,6 +391,14 @@ function TabContent( {
 			);
 		case 'customers':
 			return <CustomersTab report={ report as CustomersReport } />;
+		case 'carts':
+			return (
+				<CartsTab
+					report={ report as CartsReport }
+					query={ query }
+					onQuery={ onQuery }
+				/>
+			);
 	}
 }
 
@@ -1062,6 +1073,154 @@ function CouponsTab( {
 	);
 }
 
+/**
+ * Carts left at checkout: how many, worth what, reminded, and ordered after all; and the latest of them.
+ * @param props
+ * @param props.report
+ * @param props.query
+ * @param props.onQuery
+ */
+function CartsTab( {
+	report,
+	query,
+	onQuery,
+}: {
+	report: CartsReport;
+	query: ReportQuery;
+	onQuery: ( changes: Partial< ReportQuery > ) => void;
+} ) {
+	const currency = report.frame.currency;
+	const { totals, previous } = report;
+	const was = ( pick: ( figures: CartTotals ) => string | number ) =>
+		previous === null ? null : Number( pick( previous ) );
+	const rate = ( figures: CartTotals ) =>
+		figures.abandoned === 0
+			? 0
+			: ( figures.recovered / figures.abandoned ) * 100;
+	const kpis = [
+		{
+			label: __( 'Carts left at checkout', 'orillacart' ),
+			value: number( totals.abandoned ),
+			current: totals.abandoned,
+			previous: was( ( t ) => t.abandoned ),
+			lowerIsBetter: true,
+		},
+		{
+			label: __( 'Worth', 'orillacart' ),
+			value: money( totals.value, currency ),
+			current: Number( totals.value ),
+			previous: was( ( t ) => t.value ),
+			lowerIsBetter: true,
+		},
+		{
+			label: __( 'Reminded', 'orillacart' ),
+			value: number( totals.reminded ),
+			current: totals.reminded,
+			previous: was( ( t ) => t.reminded ),
+		},
+		{
+			label: __( 'Ordered after all', 'orillacart' ),
+			value: number( totals.recovered ),
+			current: totals.recovered,
+			previous: was( ( t ) => t.recovered ),
+		},
+		{
+			label: __( 'Recovered sales', 'orillacart' ),
+			value: money( totals.recovered_value, currency ),
+			current: Number( totals.recovered_value ),
+			previous: was( ( t ) => t.recovered_value ),
+		},
+		{
+			label: __( 'Recovery rate', 'orillacart' ),
+			value: `${ rate( totals ).toFixed( 1 ) } %`,
+			current: rate( totals ),
+			previous: previous === null ? null : rate( previous ),
+		},
+	];
+	const status = ( row: CartsReport[ 'latest' ][ number ] ) => {
+		if ( row.order_id !== null ) {
+			return sprintf(
+				/* translators: %d: order number */
+				__( 'Ordered: #%d', 'orillacart' ),
+				row.order_id
+			);
+		}
+		return row.reminded_at !== null
+			? __( 'Reminded', 'orillacart' )
+			: __( 'Left', 'orillacart' );
+	};
+	return (
+		<>
+			<div className="orillacart-reports__kpis">
+				{ kpis.map( ( kpi ) => (
+					<Kpi key={ kpi.label } { ...kpi } />
+				) ) }
+			</div>
+			<p className="description">
+				{ sprintf(
+					/* translators: %d: how many of the carts ordered after all were reminded */
+					_n(
+						'%d of the carts ordered after all was reminded first.',
+						'%d of the carts ordered after all were reminded first.',
+						totals.recovered_after_reminder,
+						'orillacart'
+					),
+					totals.recovered_after_reminder
+				) }
+			</p>
+			<Card>
+				<CardHeader>
+					<h2>{ __( 'Latest carts left', 'orillacart' ) }</h2>
+					<LimitControl query={ query } onQuery={ onQuery } />
+				</CardHeader>
+				<CardBody>
+					{ report.latest.length === 0 ? (
+						<p className="orillacart-reports__empty">
+							{ __(
+								'No cart was left at checkout in these days.',
+								'orillacart'
+							) }
+						</p>
+					) : (
+						<RankingTable
+							empty={ false }
+							header={ [
+								__( 'Left', 'orillacart' ),
+								__( 'Customer', 'orillacart' ),
+								__( 'Items', 'orillacart' ),
+								__( 'Worth', 'orillacart' ),
+								__( 'Since', 'orillacart' ),
+							] }
+							rows={ report.latest.map( ( row ) => ( {
+								key: String( row.id ),
+								cells: [
+									new Date(
+										row.abandoned_at
+									).toLocaleString(),
+									row.email ??
+										( row.customer_id !== null
+											? sprintf(
+													/* translators: %d: customer id */
+													__(
+														'Customer #%d',
+														'orillacart'
+													),
+													row.customer_id
+												)
+											: __( 'Visitor', 'orillacart' ) ),
+									number( row.items ),
+									money( row.subtotal, currency ),
+									status( row ),
+								],
+							} ) ) }
+						/>
+					) }
+				</CardBody>
+			</Card>
+		</>
+	);
+}
+
 function CustomersTab( { report }: { report: CustomersReport } ) {
 	const currency = report.frame.currency;
 	const returning = report.totals.customers - report.totals.new_customers;
@@ -1332,6 +1491,35 @@ function exportCsv( tab: Tab, report: Reports[ Tab ] ): void {
 						row.amount,
 						row.previous_orders,
 						row.previous_amount,
+					] )
+				)
+			);
+			return;
+		}
+		case 'carts': {
+			const carts = report as CartsReport;
+			download(
+				name,
+				toCsv(
+					[
+						'left_at',
+						'customer_id',
+						'email',
+						'items',
+						'worth',
+						'reminded_at',
+						'order',
+						'order_total',
+					],
+					carts.latest.map( ( row ) => [
+						row.abandoned_at,
+						row.customer_id,
+						row.email,
+						row.items,
+						row.subtotal,
+						row.reminded_at,
+						row.order_id,
+						row.order_total,
 					] )
 				)
 			);

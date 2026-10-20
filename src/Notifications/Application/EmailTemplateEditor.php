@@ -38,6 +38,7 @@ final readonly class EmailTemplateEditor
         private EmailTemplateRepository $templates,
         private OrderEmails $orderEmails,
         private LowStockAlerts $lowStock,
+        private CartReminders $cartReminders,
         private OrderService $orders,
         private EmailWriter $writer,
         private Mailer $mailer,
@@ -176,6 +177,8 @@ final readonly class EmailTemplateEditor
             'account_exists' => $this->writer->write('emails/account-exists.html.twig', $kind, $to, null, ['login_url' => $url, 'lost_password_url' => $url]),
             EmailKind::AccountWelcome->value => $this->writer->write(EmailKind::AccountWelcome->template(), $kind, $to, null, ['first_name' => 'Ada', 'account_url' => $url]),
             EmailKind::LowStock->value => $this->lowStock->preview(),
+            EmailKind::CartReminder->value => $this->cartReminders->preview($to),
+            EmailKind::BackInStock->value => $this->writer->write(EmailKind::BackInStock->template(), $kind, $to, null, ['product' => ['name' => 'Desk lamp', 'variation' => 'Green', 'url' => $url]]),
             default => $this->orderEmail(EmailKind::from($kind), $orderId),
         };
     }

@@ -7,6 +7,7 @@ import type { Page } from '@playwright/test';
 import {
 	accountLink,
 	BILLING,
+	cartLink,
 	product,
 	remove,
 	setUpShop,
@@ -325,6 +326,52 @@ test.describe( 'A visitor', () => {
 
 		await page.getByRole( 'link', { name: 'Log out' } ).click();
 		await expect( page.locator( '#orillacart-login' ) ).toBeVisible();
+	} );
+
+	test( 'asks at checkout to be reminded of the cart, and its link brings it back elsewhere', async ( {
+		page,
+		browser,
+	} ) => {
+		await page.goto( shop.miniCartUrl );
+		await page
+			.locator( '.orillacart-product-card', { hasText: 'E2E Lamp' } )
+			.getByRole( 'button', { name: /Add to cart/ } )
+			.click();
+		await expect(
+			page
+				.locator( '.orillacart-mini-cart--panel' )
+				.getByText( '1 item in cart.' )
+		).toBeVisible();
+		await page.goto( shop.urls.checkout );
+		const remind = page.getByLabel(
+			'Remind me once about my cart if I leave without ordering'
+		);
+		await expect( remind ).not.toBeChecked();
+		await page.getByLabel( 'Email' ).fill( 'e2e-left@example.com' );
+		const told = page.waitForResponse(
+			( response ) =>
+				response.url().includes( 'checkout-contact' ) &&
+				( response.request().postDataJSON() as { remind: boolean } )
+					.remind
+		);
+		await remind.check();
+		expect( ( await told ).status() ).toBe( 204 );
+
+		const elsewhere = await browser.newContext();
+		try {
+			const other = await elsewhere.newPage();
+			await other.goto(
+				`${ shop.urls.cart }${
+					shop.urls.cart.includes( '?' ) ? '&' : '?'
+				}${ cartLink( 'e2e-left@example.com', 'ab'.repeat( 32 ) ) }`
+			);
+			await expect( other ).toHaveURL( shop.urls.cart );
+			await expect(
+				other.getByRole( 'link', { name: 'E2E Lamp' } )
+			).toBeVisible();
+		} finally {
+			await elsewhere.close();
+		}
 	} );
 
 	test( 'asks to hear when a sold-out product is back', async ( {

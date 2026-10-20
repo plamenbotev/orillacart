@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Notifications\Domain;
 
 /**
- * The emails the shop can turn off, each from its template in templates/emails/: those about orders, and the
- * welcome to a new account.
+ * The emails the shop can turn off, each from its template in templates/emails/: those about orders, the welcome
+ * to a new account, and those to customers who asked for them.
  */
 enum EmailKind: string
 {
@@ -31,6 +31,8 @@ enum EmailKind: string
     case CustomerNote = 'customer_note';
     /** To the customer: a new link to the receipt, when theirs expired. */
     case ReceiptLink = 'receipt_link';
+    /** To a customer who asked at checkout: the cart they left there waits for them. */
+    case CartReminder = 'cart_reminder';
     /** To a visitor who asked: a sold-out product or variation is back in stock. */
     case BackInStock = 'back_in_stock';
     /** To the customer: their account is made. */
@@ -70,6 +72,6 @@ enum EmailKind: string
      */
     public static function resendable(): array
     {
-        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::RefundMade, self::OrderAttention, self::ReceiptLink, self::AccountWelcome, self::LowStock, self::BackInStock], true)), 'value');
+        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::RefundMade, self::OrderAttention, self::ReceiptLink, self::AccountWelcome, self::LowStock, self::BackInStock, self::CartReminder], true)), 'value');
     }
 }

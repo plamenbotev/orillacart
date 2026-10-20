@@ -23,5 +23,9 @@ final readonly class EmailSettingsView
         public array $kinds,
         /** Days after the order the customer is reminded to pay for it. */
         public int $reminderDays,
+        /** Hours after a cart was left at checkout its customer is reminded of it. */
+        public int $cartReminderHours,
+        /** The code of the coupon the cart reminder offers. */
+        public ?string $cartReminderCoupon,
     ) {}
 }

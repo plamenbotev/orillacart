@@ -269,7 +269,7 @@ final readonly class CheckoutService
         $receiptUrl = $this->links->receiptUrl($order->number);
 
         if ($gateway === null) {
-            $this->carts->clear($contents->cartId);
+            $this->carts->clear($contents->cartId, $order->number, $order->total);
             $this->rememberCustomer($owner, $command, $registering, $order->number, $billingAddress, $priced['needs_shipping'] ? $shippingAddress : null);
 
             return $this->placed($order->number, $receiptUrl, null);
@@ -284,7 +284,7 @@ final readonly class CheckoutService
             throw $e;
         }
         // Only now is the order the customer's to pay, and the cart done with.
-        $this->carts->clear($contents->cartId);
+        $this->carts->clear($contents->cartId, $order->number, $order->total);
         $this->rememberCustomer($owner, $command, $registering, $order->number, $billingAddress, $priced['needs_shipping'] ? $shippingAddress : null);
         if ($payment->isOffline()) {
             $this->orders->hold($order->number);

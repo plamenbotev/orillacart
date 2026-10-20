@@ -29,6 +29,11 @@ final readonly class DoctrineCartRepository implements CartRepository
         return $this->entityManager->getRepository(Cart::class)->findOneBy(['tokenHash' => Cart::hash($token)]);
     }
 
+    public function findByRecoverToken(string $token): ?Cart
+    {
+        return $this->entityManager->getRepository(Cart::class)->findOneBy(['recoverHash' => Cart::hash($token)]);
+    }
+
     public function findByCustomer(int $customerId): ?Cart
     {
         return $this->entityManager->getRepository(Cart::class)->findOneBy(['customerId' => $customerId], ['updatedAt' => 'DESC', 'id' => 'DESC']);

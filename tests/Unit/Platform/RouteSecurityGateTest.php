@@ -42,6 +42,8 @@ final class RouteSecurityGateTest extends TestCase
         'DELETE /cart/items/{id}',
         'POST /cart/coupons',
         'DELETE /cart/coupons/{code}',
+        // Only the browser's own cart: the email given at checkout, and whether to be reminded of the cart.
+        'POST /cart/checkout-contact',
         'POST /checkout',
         'POST /checkout/summary',
         'GET /receipts/{receipt}',

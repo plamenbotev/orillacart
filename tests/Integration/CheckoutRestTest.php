@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Cart\Application\AbandonedCarts;
 use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Notifications\Application\CartReminders;
 
 /**
  * The store through the REST routes: the shop sets up shipping and payment, a visitor fills a cart (kept by a
@@ -144,6 +146,38 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame([422, 'orillacart_shipping_required'], [$refused->get_status(), $this->data($refused)['code']]);
         $placed = $this->request('POST', '/checkout', $this->order('cash_on_delivery'), nonce: true);
         self::assertSame(201, $placed->get_status(), 'the billing address in Sofia (1000) is the shipping address');
+    }
+
+    public function testACartLeftAtCheckoutIsRemindedReportedAndRecoveredByItsOrder(): void
+    {
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product, 'quantity' => 1], nonce: true));
+        self::assertSame(422, $this->request('POST', '/cart/checkout-contact', ['email' => 'not an email', 'remind' => true], nonce: true)->get_status());
+        self::assertSame(204, $this->request('POST', '/cart/checkout-contact', ['email' => 'Ada@Example.com', 'remind' => true], nonce: true)->get_status());
+
+        $container = self::kernel()->container();
+        $abandoned = $container->get(AbandonedCarts::class);
+        self::assertInstanceOf(AbandonedCarts::class, $abandoned);
+        $left = $abandoned->mark(new \DateTimeImmutable('+5 hours'));
+        self::assertCount(1, $left);
+        self::assertSame([], $abandoned->mark(new \DateTimeImmutable('+5 hours')), 'counted once');
+        $reminders = $container->get(CartReminders::class);
+        self::assertInstanceOf(CartReminders::class, $reminders);
+        $reminders->send($left[0]);
+        self::assertSame(['ada@example.com'], array_column($this->mails, 'to'));
+        self::assertStringContainsString('Your cart is waiting for you', $this->mails[0]['subject']);
+        self::assertMatchesRegularExpression('/orillacart_cart_link=[a-f0-9]{64}/', $this->mails[0]['message']);
+
+        $placed = $this->request('POST', '/checkout', $this->order('cash_on_delivery'), nonce: true);
+        self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));
+        $this->actAs('administrator');
+        $report = $this->data($this->request('GET', '/reports/carts?compare=none'));
+        self::assertIsArray($report['totals']);
+        self::assertSame([1, 1, 1, 1], [$report['totals']['abandoned'], $report['totals']['reminded'], $report['totals']['recovered'], $report['totals']['recovered_after_reminder']]);
+        self::assertSame($this->data($placed)['total'], $report['totals']['recovered_value']);
+        $latest = $this->rows($report['latest']);
+        self::assertSame(['ada@example.com', $this->data($placed)['number']], [$latest[0]['email'], $latest[0]['order_id']]);
+        wp_set_current_user(0);
+        self::assertSame(401, $this->request('GET', '/reports/carts')->get_status());
     }
 
     public function testAVisitorOrdersAndPaysOnDelivery(): void
@@ -607,7 +641,7 @@ final class CheckoutRestTest extends RestTestCase
     private function clean(): void
     {
         $wpdb = $this->wpdb();
-        foreach (['invoices', 'refunds', 'coupon_redemptions', 'coupons', 'consignments', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'shipping_classes', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['abandoned_carts', 'invoices', 'refunds', 'coupon_redemptions', 'coupons', 'consignments', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'shipping_classes', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
         foreach (array_keys(wp_load_alloptions()) as $option) {

@@ -31,6 +31,14 @@ final readonly class CouponService
         return new CouponPageView(array_map(CouponView::fromCoupon(...), $coupons), $total, $query->page, max(1, (int) ceil($total / $query->perPage)));
     }
 
+    /** The coupon with the code, when the shop can offer it now; null otherwise. */
+    public function offerable(string $code, \DateTimeImmutable $now): ?CouponView
+    {
+        $coupon = $this->coupons->findByCodes([Coupon::normalize($code)])[Coupon::normalize($code)] ?? null;
+
+        return $coupon !== null && $coupon->offerable($now) ? CouponView::fromCoupon($coupon) : null;
+    }
+
     /**
      * @throws CouponNotFound
      */

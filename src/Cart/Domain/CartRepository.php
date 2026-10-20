@@ -14,6 +14,9 @@ interface CartRepository
 
     public function findByToken(string $token): ?Cart;
 
+    /** The cart a reminder's link brings back. */
+    public function findByRecoverToken(string $token): ?Cart;
+
     /** The customer's most recently changed cart. */
     public function findByCustomer(int $customerId): ?Cart;
 

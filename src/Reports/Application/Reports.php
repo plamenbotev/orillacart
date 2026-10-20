@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Reports\Application;
 
+use OrillaCart\Cart\Application\AbandonedCarts;
 use OrillaCart\Jobs\Application\Jobs;
+use OrillaCart\Reports\Application\Dto\CartsReport;
 use OrillaCart\Reports\Application\Dto\CustomersReport;
 use OrillaCart\Reports\Application\Dto\RankingReport;
 use OrillaCart\Reports\Application\Dto\ReportFrame;
@@ -18,7 +20,7 @@ use OrillaCart\Shared\Domain\Money;
 use Psr\Clock\ClockInterface;
 
 /**
- * The shop's reports: sales, products, categories, coupons and customers over days of its calendar, each against
+ * The shop's reports: sales, products, categories, coupons, customers and carts left at checkout over days of its calendar, each against
  * the days before or the same days a year before. They read the facts the projection keeps of each order, in the
  * shop's currency.
  */
@@ -33,6 +35,7 @@ final readonly class Reports
         private ClockInterface $clock,
         private SettingsService $settings,
         private Jobs $jobs,
+        private AbandonedCarts $abandoned,
     ) {}
 
     /**
@@ -142,6 +145,37 @@ final readonly class Reports
             $series,
             $this->queries->topCustomers($period, $frame->currency, $query->limit),
         );
+    }
+
+    /**
+     * Carts left at checkout in the period, counted when they were: they need no projection.
+     *
+     * @throws InvalidPeriod
+     */
+    public function carts(ReportQuery $query): CartsReport
+    {
+        [$frame, $period, $previous] = $this->frame($query);
+        [$from, $until] = self::moments($period);
+        $current = $this->abandoned->report($from, $until, $frame->currency, $query->limit);
+        $before = null;
+        if ($previous !== null) {
+            [$from, $until] = self::moments($previous);
+            $before = $this->abandoned->report($from, $until, $frame->currency, 1);
+        }
+
+        return new CartsReport($frame, $current['totals'], $before['totals'] ?? null, $current['latest']);
+    }
+
+    /**
+     * The period's first moment and the moment after its last day, as the clock keeps time.
+     *
+     * @return array{\DateTimeImmutable, \DateTimeImmutable}
+     */
+    private static function moments(Period $period): array
+    {
+        $utc = new \DateTimeZone('UTC');
+
+        return [$period->from->setTimezone($utc), $period->to->modify('+1 day')->setTimezone($utc)];
     }
 
     /**

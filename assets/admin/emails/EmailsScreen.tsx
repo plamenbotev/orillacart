@@ -5,6 +5,7 @@ import {
 	CardHeader,
 	CheckboxControl,
 	Notice,
+	SelectControl,
 	Spinner,
 	TextControl,
 } from '@wordpress/components';
@@ -12,6 +13,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
+import { fetchCoupons } from '../coupons/api';
 import { EMAIL_LABELS } from '../orders/labels';
 import { toApiError } from '../shared/api';
 import {
@@ -36,6 +38,15 @@ export function EmailsScreen() {
 	const [ templates, setTemplates ] = useState< EmailTemplate[] >( [] );
 	const [ editing, setEditing ] = useState< string | null >( null );
 	const [ message, setMessage ] = useState< Message >( null );
+	const [ coupons, setCoupons ] = useState< string[] >( [] );
+
+	useEffect( () => {
+		fetchCoupons( { page: 1, per_page: 100 } )
+			.then( ( page ) =>
+				setCoupons( page.coupons.map( ( coupon ) => coupon.code ) )
+			)
+			.catch( () => setCoupons( [] ) );
+	}, [] );
 
 	useEffect( () => {
 		fetchEmailSettings()
@@ -91,6 +102,8 @@ export function EmailsScreen() {
 			shop_address: settings.shop_address,
 			disabled: settings.disabled,
 			reminder_days: settings.reminder_days,
+			cart_reminder_hours: settings.cart_reminder_hours,
+			cart_reminder_coupon: settings.cart_reminder_coupon,
 		} )
 			.then( ( saved ) => {
 				setSettings( saved );
@@ -207,6 +220,77 @@ export function EmailsScreen() {
 									} )
 								}
 							/>
+						) }
+						{ ! settings.disabled.includes( 'cart_reminder' ) && (
+							<>
+								<TextControl
+									__next40pxDefaultSize
+									type="number"
+									min={ 1 }
+									max={ 168 }
+									label={ __(
+										'Remind of a cart left at checkout after (hours)',
+										'orillacart'
+									) }
+									help={ __(
+										'Once, to customers who ticked the box at checkout. The cart counts abandoned then, for the report.',
+										'orillacart'
+									) }
+									value={ String(
+										settings.cart_reminder_hours
+									) }
+									onChange={ ( value ) =>
+										setSettings( {
+											...settings,
+											cart_reminder_hours:
+												Number( value ),
+										} )
+									}
+								/>
+								<SelectControl
+									__next40pxDefaultSize
+									label={ __(
+										'Coupon in the cart reminder',
+										'orillacart'
+									) }
+									help={ __(
+										'Its code shows in the email, and the link puts it in the cart.',
+										'orillacart'
+									) }
+									value={
+										settings.cart_reminder_coupon ?? ''
+									}
+									options={ [
+										{
+											label: __(
+												'No coupon',
+												'orillacart'
+											),
+											value: '',
+										},
+										...[
+											...new Set( [
+												...coupons,
+												...( settings.cart_reminder_coupon
+													? [
+															settings.cart_reminder_coupon,
+														]
+													: [] ),
+											] ),
+										].map( ( code ) => ( {
+											label: code,
+											value: code,
+										} ) ),
+									] }
+									onChange={ ( value ) =>
+										setSettings( {
+											...settings,
+											cart_reminder_coupon:
+												blank( value ),
+										} )
+									}
+								/>
+							</>
 						) }
 					</CardBody>
 				</Card>

@@ -11,6 +11,8 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Cart\Application\Dto\CartResult;
 use OrillaCart\Cart\Application\Dto\CartView;
 use OrillaCart\Cart\Application\Dto\ChangeQuantity;
+use OrillaCart\Cart\Application\Dto\CheckoutContact;
+use OrillaCart\Cart\Domain\AbandonedCartRepository;
 use OrillaCart\Cart\Domain\Cart;
 use OrillaCart\Cart\Domain\CartLine;
 use OrillaCart\Cart\Domain\CartLineNotFound;
@@ -48,6 +50,7 @@ final readonly class CartService
 
     public function __construct(
         private CartRepository $carts,
+        private AbandonedCartRepository $abandoned,
         private ProductQuotes $quotes,
         private ClockInterface $clock,
         private SettingsService $settings,
@@ -186,15 +189,82 @@ final readonly class CartService
     }
 
     /**
-     * Empties the cart an order was placed from.
+     * Empties the cart an order was placed from. A cart left at checkout before is counted recovered by the order.
+     *
+     * @param string|null $orderTotal what the order costs, for the report
      */
-    public function clear(int $cartId): void
+    public function clear(int $cartId, ?int $orderId = null, ?string $orderTotal = null): void
     {
         $cart = $this->carts->find($cartId);
-        if ($cart !== null) {
-            $cart->clear($this->clock->now());
-            $this->carts->save($cart);
+        if ($cart === null) {
+            return;
         }
+        $abandonedId = $cart->abandonedId();
+        $left = $abandonedId === null || $orderId === null ? null : $this->abandoned->find($abandonedId);
+        if ($left !== null && $orderId !== null && !$left->isRecovered()) {
+            $left->recovered($orderId, $orderTotal ?? '0', $this->clock->now());
+            $this->abandoned->save($left);
+        }
+        $cart->clear($this->clock->now());
+        $this->carts->save($cart);
+    }
+
+    /**
+     * The customer is at checkout with the cart: their email, and whether they ask to be reminded of the cart.
+     *
+     * @return string|null a new token for the browser, when it has to be given one
+     */
+    public function atCheckout(CartOwner $owner, CheckoutContact $contact, ?string $locale): ?string
+    {
+        [$cart, $newToken] = $this->find($owner);
+        if ($cart === null) {
+            return null;
+        }
+        $email = $contact->email === null || trim($contact->email) === '' ? null : strtolower(trim($contact->email));
+        $cart->atCheckout($email, $contact->remind, $locale, $this->clock->now());
+        $this->carts->save($cart);
+
+        return $newToken;
+    }
+
+    /**
+     * The visitor's cart a reminder's link brings back, to this browser: a cart of a customer's account is theirs
+     * to log in to instead.
+     *
+     * @return string|null the token for the browser; null for no such cart
+     */
+    public function recover(string $token): ?string
+    {
+        $cart = $this->carts->findByRecoverToken($token);
+        if ($cart === null || $cart->customerId() !== null) {
+            return null;
+        }
+        $newToken = self::token();
+        $cart->rekey($newToken);
+        $this->carts->save($cart);
+
+        return $newToken;
+    }
+
+    /** Puts a coupon code a reminder offered in the owner's cart; checkout decides whether it holds. */
+    public function offerCoupon(CartOwner $owner, string $code): ?string
+    {
+        [$cart, $newToken] = $this->find($owner);
+        if ($cart === null || trim($code) === '') {
+            return $newToken;
+        }
+        $cart->useCoupons([...$cart->coupons(), trim($code)], $this->clock->now());
+        $this->carts->save($cart);
+
+        return $newToken;
+    }
+
+    /** A cart as the customer would see it now; null for one that is gone. */
+    public function viewOf(int $cartId): ?CartView
+    {
+        $cart = $this->carts->find($cartId);
+
+        return $cart === null ? null : $this->view($cart);
     }
 
     /**

@@ -4,6 +4,7 @@
  #
  # summary: the priced cart, or null with problem set; email; billing and shipping: the addresses to start from;
  # address_known: whether the summary had a country; ship_elsewhere; countries; states: {country: [states]}; logged_in; accounts: optional | required | disabled;
+ # cart_reminders: whether the shop reminds customers who ask of a cart they leave at checkout;
  # links: the shop's pages.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
@@ -22,6 +23,12 @@
                         <label for="orillacart-email">{{ __('Email') }} <span aria-hidden="true">*</span></label>
                         <input id="orillacart-email" type="email" name="email" value="{{ email }}" autocomplete="email" required data-orillacart-field="email">
                     </p>
+                    {% if cart_reminders %}
+                        <p class="orillacart-field orillacart-field--check">
+                            <input id="orillacart-remind" type="checkbox" name="remind_cart" value="1"{{ logged_in ? ' checked' }} data-orillacart-remind>
+                            <label for="orillacart-remind">{{ __('Remind me once about my cart if I leave without ordering') }}</label>
+                        </p>
+                    {% endif %}
                     {% if not logged_in and links.account %}
                         <p class="orillacart-checkout__login">{{ __('Have an account?') }} <a href="{{ login_url }}">{{ __('Log in') }}</a></p>
                     {% endif %}

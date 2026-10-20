@@ -18,6 +18,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\UniqueConstraint(name: 'cart_token', columns: ['token_hash'])]
 #[ORM\Index(name: 'cart_customer', columns: ['customer_id'])]
 #[ORM\Index(name: 'cart_updated', columns: ['updated_at'])]
+#[ORM\Index(name: 'cart_checkout', columns: ['checkout_at'])]
+#[ORM\UniqueConstraint(name: 'cart_recover', columns: ['recover_hash'])]
 class Cart
 {
     public const int MAX_LINES = 100;
@@ -51,6 +53,30 @@ class Cart
 
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $placingSince = null;
+
+    /** The email given at checkout, kept only while its owner asks to be reminded of the cart. */
+    #[ORM\Column(length: 254, nullable: true)]
+    private ?string $contactEmail = null;
+
+    /** Whether the customer asked, at checkout, to be reminded of the cart if they leave it. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $remind = false;
+
+    /** The language the customer was at checkout in, for the reminder. */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $locale = null;
+
+    /** When the customer was last at checkout with the cart; null for a cart that never got there. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $checkoutAt = null;
+
+    /** The abandonment the cart is in, from when it sat at checkout long enough until an order is placed from it. */
+    #[ORM\Column(nullable: true)]
+    private ?int $abandonedId = null;
+
+    /** The hash of the token in the reminder's link, which brings a visitor's cart back on another browser. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $recoverHash = null;
 
     public function __construct(
         string $token,
@@ -203,6 +229,72 @@ class Cart
         $this->lines->clear();
         $this->updatedAt = $now;
         $this->notPlacing();
+        $this->contactEmail = null;
+        $this->remind = false;
+        $this->checkoutAt = null;
+        $this->abandonedId = null;
+        $this->recoverHash = null;
+    }
+
+    /**
+     * The customer is at checkout with the cart: the email they gave, and whether they ask to be reminded. Without
+     * the ask, the email is not kept.
+     */
+    public function atCheckout(?string $email, bool $remind, ?string $locale, \DateTimeImmutable $now): void
+    {
+        $this->remind = $remind && $email !== null;
+        $this->contactEmail = $this->remind ? $email : null;
+        $this->locale = $locale;
+        $this->checkoutAt = $now;
+    }
+
+    public function checkoutAt(): ?\DateTimeImmutable
+    {
+        return $this->checkoutAt;
+    }
+
+    public function contactEmail(): ?string
+    {
+        return $this->contactEmail;
+    }
+
+    public function remind(): bool
+    {
+        return $this->remind;
+    }
+
+    public function locale(): ?string
+    {
+        return $this->locale;
+    }
+
+    public function updatedAt(): \DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    /** The cart sat at checkout long enough: it is in this abandonment until it is ordered. */
+    public function abandon(int $abandonedId): void
+    {
+        $this->abandonedId = $abandonedId;
+    }
+
+    public function abandonedId(): ?int
+    {
+        return $this->abandonedId;
+    }
+
+    /** A new token for the reminder's link; the one before stops working. */
+    public function recoverWith(string $token): void
+    {
+        $this->recoverHash = self::hash($token);
+    }
+
+    /** Forgets the email given at checkout, as a privacy request asks. */
+    public function forgetContact(): void
+    {
+        $this->contactEmail = null;
+        $this->remind = false;
     }
 
     /**

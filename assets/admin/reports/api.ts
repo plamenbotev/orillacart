@@ -3,7 +3,8 @@ import { addQueryArgs } from '@wordpress/url';
 
 export type Interval = 'day' | 'week' | 'month';
 export type Compare = 'previous' | 'year' | 'none';
-export type Tab = 'sales' | 'products' | 'categories' | 'coupons' | 'customers';
+export type Tab =
+	'sales' | 'products' | 'categories' | 'coupons' | 'customers' | 'carts';
 
 /** What a report covers: days of the shop's calendar, Y-m-d, the last one included. */
 export interface ReportQuery {
@@ -122,12 +123,41 @@ export interface CustomersReport {
 	}[];
 }
 
+/** Carts left at checkout, counted when they were. */
+export interface CartTotals {
+	abandoned: number;
+	value: string;
+	reminded: number;
+	recovered: number;
+	recovered_value: string;
+	recovered_after_reminder: number;
+}
+
+export interface CartsReport {
+	frame: Frame;
+	totals: CartTotals;
+	previous: CartTotals | null;
+	latest: {
+		id: number;
+		abandoned_at: string;
+		customer_id: number | null;
+		/** Only for a customer who asked to be reminded, while the cart is kept. */
+		email: string | null;
+		items: number;
+		subtotal: string;
+		reminded_at: string | null;
+		order_id: number | null;
+		order_total: string | null;
+	}[];
+}
+
 export interface Reports {
 	sales: SalesReport;
 	products: RankingReport< ProductRow >;
 	categories: RankingReport< CategoryRow >;
 	coupons: RankingReport< CouponRow >;
 	customers: CustomersReport;
+	carts: CartsReport;
 }
 
 /**
