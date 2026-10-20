@@ -31,6 +31,10 @@ final class StockSheetTest extends RestTestCase
         foreach (['stock_levels', 'stockrooms', 'variations', 'products', 'attribute_sets'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
+        // The sheet shows the whole catalog: products another test left behind would count too.
+        foreach (get_posts(['post_type' => ProductPostType::NAME, 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids']) as $left) {
+            wp_delete_post((int) $left, true);
+        }
         $this->actAs('administrator');
         $this->sofia = $this->id($this->request('POST', '/stockrooms', ['name' => 'Sofia'], nonce: true));
         $this->berlin = $this->id($this->request('POST', '/stockrooms', ['name' => 'Berlin'], nonce: true));
