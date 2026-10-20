@@ -16,6 +16,8 @@ export const STATUS_LABELS: Record< Status, string > = {
 export const EMAIL_LABELS: Record< string, string > = {
 	order_received: __( 'Order received (awaiting payment)', 'orillacart' ),
 	order_processing: __( 'Order confirmed', 'orillacart' ),
+	order_backordered: __( 'Items on backorder', 'orillacart' ),
+	tracking_added: __( 'Shipment booked, with its tracking', 'orillacart' ),
 	order_shipped: __( 'Order shipped', 'orillacart' ),
 	order_completed: __( 'Order completed', 'orillacart' ),
 	payment_reminder: __( 'Reminder to pay', 'orillacart' ),
@@ -33,6 +35,8 @@ export const EMAIL_LABELS: Record< string, string > = {
 		'An order needs attention (to the shop)',
 		'orillacart'
 	),
+	payment_failed: __( 'Payment failed (to the shop)', 'orillacart' ),
+	refund_made: __( 'Refund made (to the shop)', 'orillacart' ),
 };
 
 declare global {

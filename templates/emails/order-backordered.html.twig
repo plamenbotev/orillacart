@@ -1,0 +1,8 @@
+{% extends 'emails/layout.html.twig' %}
+{# translators: 1: site name, 2: order number -#}
+{% block subject %}{{ __('[%1$s] Some items of order #%2$s come later')|format(site_name, order.number) }}{% endblock %}
+{% block heading %}{{ __('Some items come later') }}{% endblock %}
+{% block intro %}
+<p>{{ __('We did not have all of your order in stock. These items are on backorder; we send them as soon as they arrive:') }}</p>
+<ul style="margin:8px 0 0;padding-left:20px;">{% for line in order.lines %}{% if line.backordered > 0 and line.backorder_shown %}<li>{{ line.name }} × {{ line.backordered }}</li>{% endif %}{% endfor %}</ul>
+{% endblock %}

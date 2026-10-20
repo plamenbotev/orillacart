@@ -13,6 +13,7 @@ use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
+use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RestockItems;
@@ -149,7 +150,7 @@ final class RefundsTest extends TestCase
 
         self::assertSame('done', $this->shop->refunds->forOrder($order)->refunds[0]->status);
         self::assertSame('8', $this->shop->orders->order($order)->refundedTotal);
-        self::assertCount($sent + 1, $this->shop->mail->emails, 'the customer hears of it now');
+        self::assertSame(['ada@example.com', 'owner@shop.test'], array_map(static fn(Email $email): string => $email->to, \array_slice($this->shop->mail->emails, $sent)), 'the customer hears of it now, and the shop');
     }
 
     public function testARefundPayPalGivesUpOnFlagsTheOrderForTheShop(): void
@@ -301,9 +302,10 @@ final class RefundsTest extends TestCase
         return $this->shop->stock->available([StockItemRef::product(20)]);
     }
 
+    /** The subject of the last email to the customer. */
     private function lastMail(): string
     {
-        $emails = $this->shop->mail->emails;
+        $emails = array_values(array_filter($this->shop->mail->emails, static fn(Email $email): bool => $email->to === 'ada@example.com'));
 
         return $emails === [] ? '' : $emails[\count($emails) - 1]->subject;
     }

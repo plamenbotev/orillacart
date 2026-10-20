@@ -97,6 +97,7 @@ use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Shipping\Application\ShippingMethods;
 use OrillaCart\Shipping\Application\ShippingQuotes;
 use OrillaCart\Shipping\Application\TrackConsignments;
+use OrillaCart\Shipping\Domain\Event\ConsignmentBooked;
 use OrillaCart\Shipping\Domain\Event\ShippingClassDeleted;
 use OrillaCart\Shipping\Infrastructure\Events\ConvertMeasures as ConvertRateMeasures;
 use OrillaCart\Shipping\Infrastructure\Events\KeepShippedOrders;
@@ -366,7 +367,7 @@ final class TestShop
         $this->events->addListener(OrderDeleting::class, $withPayments->deleting(...));
         $this->events->addListener(OrderRepricing::class, $withPayments->repricing(...));
         $this->events->addListener(OrderMarkingPaid::class, $withPayments->markingPaid(...));
-        $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger);
+        $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger, $this->events);
         $this->jobs = new TestJobs($this->clock);
         $this->sentEmails = new InMemorySentEmails();
         $this->jobs->immediate = true;
@@ -377,6 +378,7 @@ final class TestShop
         $this->events->addListener(OrderNoteAdded::class, $emailing->noteAdded(...));
         $this->events->addListener(OrderRefunded::class, $emailing->refunded(...));
         $this->events->addListener(OrderNeedsAttention::class, $emailing->needsAttention(...));
+        $this->events->addListener(ConsignmentBooked::class, $emailing->consignmentBooked(...));
         $this->events->addListener(PaymentInQuestion::class, new FlagOrdersInQuestion($this->orders, $this->logger)->inQuestion(...));
 
         $settle = new SettleOrdersByPayment($this->orders, $this->jobs->jobs, $this->logger);

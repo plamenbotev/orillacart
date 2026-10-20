@@ -512,6 +512,9 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
         $line = $this->shop->orders->order($placed->number)->lines[0];
         self::assertSame([5, 2, true], [$line->quantity, $line->backordered, $line->backorderShown]);
+        $notice = array_search("ada@example.com: [Lamp Shop] Some items of order #{$placed->number} come later", $this->shop->mail->summary(), true);
+        self::assertIsInt($notice, 'the customer hears which items come later');
+        self::assertStringContainsString('Lamp × 2', $this->shop->mail->emails[$notice]->html ?? '');
         self::assertSame([[$this->room, -2]], array_map(static fn($level): array => [$level->stockroomId, $level->quantity], $this->shop->stock->stock(StockItemRef::product(10))->levels));
         self::assertSame(0, $this->shop->stock->available([StockItemRef::product(10)]));
 

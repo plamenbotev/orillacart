@@ -92,6 +92,9 @@ final class ConsignmentsTest extends TestCase
         $request = $this->courier->booked[0];
         self::assertSame(['office', 'SOF-1', $placed->total, 2, '2'], [$request->service, $request->pickupPointId, $request->cashOnDelivery, $request->parcels, $request->contents->weight()], 'the courier collects the unpaid total');
         self::assertContains('Shipment TS1 booked with Speedy.', array_map(static fn($note): string => $note->text, $this->shop->orders->order($placed->number)->notes));
+        $mails = $this->shop->mail->summary();
+        self::assertSame("ada@example.com: [Lamp Shop] Follow your order #{$placed->number}", end($mails), 'the customer can follow it');
+        self::assertStringContainsString('href="https://track.test/TS1"', $this->shop->mail->emails[\count($mails) - 1]->html);
 
         try {
             $this->shop->consignments->book($placed->number, new BookShipment(), 7);

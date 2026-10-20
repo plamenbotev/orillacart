@@ -33,8 +33,10 @@ use OrillaCart\Shipping\Domain\Consignment;
 use OrillaCart\Shipping\Domain\ConsignmentNotFound;
 use OrillaCart\Shipping\Domain\ConsignmentRepository;
 use OrillaCart\Shipping\Domain\ConsignmentStatus;
+use OrillaCart\Shipping\Domain\Event\ConsignmentBooked;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use Psr\Clock\ClockInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -56,6 +58,7 @@ final readonly class Consignments
         private SettingsService $settings,
         private ClockInterface $clock,
         private LoggerInterface $logger,
+        private EventDispatcherInterface $events,
     ) {}
 
     /**
@@ -118,6 +121,7 @@ final readonly class Consignments
         $consignment = new Consignment($orderId, $booking['carrier']->id(), $booking['carrier']->name(), $booking['method']->id(), $booked->number, $booked->trackingUrl, $this->clock->now());
         $this->consignments->save($consignment);
         $this->orders->addNote($orderId, new AddOrderNote(\sprintf('Shipment %s booked with %s.', $booked->number, $booking['carrier']->name())), $userId);
+        $this->events->dispatch(new ConsignmentBooked($orderId, $consignment->id()));
 
         return ConsignmentView::fromConsignment($consignment);
     }

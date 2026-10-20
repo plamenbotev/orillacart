@@ -19,6 +19,7 @@ use OrillaCart\Notifications\Domain\EmailSettings;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
+use OrillaCart\Ordering\Application\Dto\RefundOrder;
 use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
@@ -325,6 +326,25 @@ final class OrderEmailsTest extends TestCase
         self::assertContains('cheque', $offline);
         self::assertNotContains('cash_on_delivery', $offline, 'paid when it arrives');
         self::assertNotContains('paypal', $offline);
+    }
+
+    public function testTheShopHearsOfAFailedPaymentAndOfEveryRefund(): void
+    {
+        $failed = $this->place('paypal');
+        $this->shop->orders->fail($failed->number, 'Declined.');
+
+        self::assertSame([
+            "ada@example.com: [Lamp Shop] The payment for order #{$failed->number} failed",
+            "owner@shop.test: [Lamp Shop] The payment for order #{$failed->number} failed",
+        ], $this->shop->mail->summary());
+
+        $order = $this->place('bank_transfer');
+        $this->shop->orders->markPaid($order->number, null);
+        $sent = \count($this->shop->mail->emails);
+        $this->shop->orders->refund($order->number, new RefundOrder('3', reason: 'Goodwill.'), 'by hand', 1, tellCustomer: false);
+
+        self::assertSame(["owner@shop.test: [Lamp Shop] Order #{$order->number} was refunded"], \array_slice($this->shop->mail->summary(), $sent), 'not the customer, as the shop said');
+        self::assertStringContainsString('3.00 EUR went back to the customer.', $this->shop->mail->emails[$sent]->html);
     }
 
     private function reminders(): PaymentReminders

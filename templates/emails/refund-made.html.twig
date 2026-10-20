@@ -1,0 +1,12 @@
+{% extends 'emails/layout.html.twig' %}
+{# translators: 1: site name, 2: order number -#}
+{% block subject %}{{ __('[%1$s] Order #%2$s was refunded')|format(site_name, order.number) }}{% endblock %}
+{# translators: %s: order number -#}
+{% block heading %}{{ __('Order #%s was refunded')|format(order.number) }}{% endblock %}
+{% block intro %}
+{% if refund %}
+{# translators: %s: amount -#}
+<p>{{ (refund.full ? __('%s went back to the customer; the order is refunded in full.') : __('%s went back to the customer.'))|format(refund.amount|money(order.currency)) }}</p>
+{% if refund.lines %}<ul style="margin:8px 0 0;padding-left:20px;">{% for line in refund.lines %}<li>{{ line.name }} × {{ line.quantity }}</li>{% endfor %}</ul>{% endif %}
+{% endif %}
+{% endblock %}

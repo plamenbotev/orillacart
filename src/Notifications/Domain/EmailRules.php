@@ -10,7 +10,7 @@ namespace OrillaCart\Notifications\Domain;
  * The customer hears once that the order is real: "received" when it waits for their offline payment, or
  * "processing" when it is paid (or free); a payment confirmed later sends "processing" too. An order the
  * customer gave up at the payment provider sends nothing: they know. The shop hears of each new order once,
- * when it stops waiting for the customer at the provider.
+ * when it stops waiting for the customer at the provider, and of each failed payment.
  */
 final class EmailRules
 {
@@ -28,7 +28,7 @@ final class EmailRules
             $status === 'shipped' => [EmailKind::OrderShipped],
             $status === 'completed' => [EmailKind::OrderCompleted],
             $status === 'refunded' => [EmailKind::OrderRefunded],
-            $status === 'failed' => [EmailKind::OrderFailed],
+            $status === 'failed' => [EmailKind::OrderFailed, EmailKind::PaymentFailed],
             $status === 'cancelled' && !$placed => [EmailKind::OrderCancelled],
             default => [],
         };

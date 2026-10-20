@@ -1,0 +1,6 @@
+{% extends 'emails/layout.html.twig' %}
+{# translators: 1: site name, 2: order number -#}
+{% block subject %}{{ __('[%1$s] The payment for order #%2$s failed')|format(site_name, order.number) }}{% endblock %}
+{# translators: %s: order number -#}
+{% block heading %}{{ __('The payment for order #%s failed')|format(order.number) }}{% endblock %}
+{% block intro %}<p>{{ __('The customer was told, and can pay again from their receipt while the items are in stock.') }}</p>{% endblock %}

@@ -9,6 +9,7 @@ use OrillaCart\Ordering\Domain\Event\OrderNeedsAttention;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
+use OrillaCart\Shipping\Domain\Event\ConsignmentBooked;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 final readonly class EmailAboutOrders
@@ -36,10 +37,14 @@ final readonly class EmailAboutOrders
     }
 
     #[AsEventListener]
+    public function consignmentBooked(ConsignmentBooked $event): void
+    {
+        $this->emails->trackingAdded($event->orderId);
+    }
+
+    #[AsEventListener]
     public function refunded(OrderRefunded $event): void
     {
-        if ($event->tellCustomer) {
-            $this->emails->refunded($event->orderId, $event->amount, $event->full, $event->quantities);
-        }
+        $this->emails->refunded($event->orderId, $event->amount, $event->full, $event->quantities, $event->tellCustomer);
     }
 }

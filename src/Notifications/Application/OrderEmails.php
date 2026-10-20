@@ -53,6 +53,15 @@ final readonly class OrderEmails
                 $this->queue($orderId, $kind);
             }
         }
+        if ($tellCustomer && $previous === 'pending_payment' && \in_array($status, ['on_hold', 'processing'], true) && self::owesShown($this->orders->order($orderId))) {
+            $this->queue($orderId, EmailKind::OrderBackordered);
+        }
+    }
+
+    /** The customer can follow a shipment a courier booked. */
+    public function trackingAdded(int $orderId): void
+    {
+        $this->queue($orderId, EmailKind::TrackingAdded);
     }
 
     /** The note goes by its id: the job keeps no text a customer or the shop wrote. */
@@ -92,14 +101,18 @@ final readonly class OrderEmails
     }
 
     /**
-     * Money went back: the customer hears how much, and for which items.
+     * Money went back: the customer hears how much, and for which items, unless the shop said not to; the shop
+     * hears it too, as a refund may come from the provider's own dashboard.
      *
      * @param array<int, int> $quantities items refunded by line position
      */
-    public function refunded(int $orderId, string $amount, bool $full, array $quantities): void
+    public function refunded(int $orderId, string $amount, bool $full, array $quantities, bool $tellCustomer = true): void
     {
         $refund = ['amount' => $amount, 'full' => $full, 'quantities' => array_map(static fn(int $line, int $quantity): array => ['line' => $line, 'quantity' => $quantity], array_keys($quantities), array_values($quantities))];
-        $this->queue($orderId, EmailKind::OrderRefunded, refund: $refund);
+        if ($tellCustomer) {
+            $this->queue($orderId, EmailKind::OrderRefunded, refund: $refund);
+        }
+        $this->queue($orderId, EmailKind::RefundMade, refund: $refund);
     }
 
     /**
@@ -224,6 +237,18 @@ final readonly class OrderEmails
             ['order' => $orderId, 'kind' => $kind->value] + ($noteId === null ? [] : ['note' => $noteId]) + ($refund === null ? [] : ['refund' => $refund]),
             $kind === EmailKind::CustomerNote || $refund !== null ? null : "{$orderId}:{$kind->value}",
         );
+    }
+
+    /** Whether the order owes items the customer is told of. */
+    private static function owesShown(OrderView $order): bool
+    {
+        foreach ($order->lines as $line) {
+            if ($line->backordered > 0 && $line->backorderShown) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function noteText(OrderView $order, ?int $noteId): ?string

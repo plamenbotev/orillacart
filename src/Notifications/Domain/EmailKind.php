@@ -14,6 +14,10 @@ enum EmailKind: string
     case OrderReceived = 'order_received';
     /** To the customer: paid (or free), the shop is preparing it. */
     case OrderProcessing = 'order_processing';
+    /** To the customer, with the order's first email: some items are owed, and come later. */
+    case OrderBackordered = 'order_backordered';
+    /** To the customer: a courier has the shipment booked, and it can be followed. */
+    case TrackingAdded = 'tracking_added';
     case OrderShipped = 'order_shipped';
     case OrderCompleted = 'order_completed';
     /** To the customer: the order still waits for their offline payment, some days after it was placed. */
@@ -33,6 +37,10 @@ enum EmailKind: string
     case NewOrder = 'new_order';
     /** To the shop: an order needs attention, such as a payment disputed after it was paid. */
     case OrderAttention = 'order_attention';
+    /** To the shop: an order's payment failed. */
+    case PaymentFailed = 'payment_failed';
+    /** To the shop: money went back for an order. */
+    case RefundMade = 'refund_made';
 
     public function template(): string
     {
@@ -41,7 +49,7 @@ enum EmailKind: string
 
     public function isForShop(): bool
     {
-        return $this === self::NewOrder || $this === self::OrderAttention;
+        return \in_array($this, [self::NewOrder, self::OrderAttention, self::PaymentFailed, self::RefundMade], true);
     }
 
     /** @return list<string> */
@@ -58,6 +66,6 @@ enum EmailKind: string
      */
     public static function resendable(): array
     {
-        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::OrderAttention, self::ReceiptLink, self::AccountWelcome], true)), 'value');
+        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::RefundMade, self::OrderAttention, self::ReceiptLink, self::AccountWelcome], true)), 'value');
     }
 }

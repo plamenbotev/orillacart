@@ -1,0 +1,8 @@
+{% extends 'emails/layout.html.twig' %}
+{# translators: 1: site name, 2: order number -#}
+{% block subject %}{{ __('[%1$s] Follow your order #%2$s')|format(site_name, order.number) }}{% endblock %}
+{% block heading %}{{ __('Your shipment is booked') }}{% endblock %}
+{% block intro %}
+<p>{{ __('The courier has your shipment booked. From here you can follow it on its way to you.') }}</p>
+{% for shipment in shipments %}{% if loop.last %}<p style="margin:16px 0;">{% if shipment.tracking_url %}<a href="{{ shipment.tracking_url }}" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;text-decoration:none;border-radius:3px;">{{ __('Follow the shipment') }}</a>{% else %}{{ __('Shipment %1$s with %2$s')|format(shipment.number, shipment.carrier) }}{% endif %}</p>{% endif %}{% endfor %}
+{% endblock %}
