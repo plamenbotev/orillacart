@@ -53,6 +53,7 @@ final class RouteSecurityGateTest extends TestCase
         'POST /receipts/{receipt}/payment',
         'POST /receipts/link',
         'POST /receipts/lookup',
+        'POST /receipts/{receipt}/reorder',
         // Asking to return items: only with the receipt's secret key, for items of that order that can go back.
         'POST /receipts/{receipt}/returns',
         'POST /accounts',

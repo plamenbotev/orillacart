@@ -199,9 +199,15 @@
             </form>
         {% endif %}
     {% endif %}
-{% if order.fields %}
+    {% if order.fields %}
         <h3 class="orillacart-heading">{{ __('Other details') }}</h3>
         {{ shop.field_answers(order.fields) }}
+    {% endif %}
+    {% if receipt is defined %}
+        <form class="orillacart-receipt__reorder" data-orillacart-reorder="{{ receipt }}"{{ links.cart ?? false ? ' data-orillacart-cart-url=' ~ links.cart }} novalidate>
+            <p class="orillacart-message" role="status" data-orillacart-message></p>
+            <button type="submit" class="wp-element-button orillacart-button orillacart-button--secondary">{{ __('Order these again') }}</button>
+        </form>
     {% endif %}
     {{ slot('receipt_after', order.number) }}
 </div>

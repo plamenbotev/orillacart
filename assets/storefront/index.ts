@@ -14,7 +14,7 @@ import { bindBackInStock } from './backinstock';
 import { bindCart } from './cart';
 import { bindCheckout } from './checkout';
 import { bindGallery } from './gallery';
-import { bindPayNow, bindReceiptLink, bindReturn } from './paynow';
+import { bindPayNow, bindReceiptLink, bindReorder, bindReturn } from './paynow';
 import { bindAddToCart, refreshCartCount } from './product';
 import { bindShop } from './shop';
 
@@ -44,6 +44,9 @@ function start(): void {
 	document
 		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-return]' )
 		.forEach( bindReturn );
+	document
+		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-reorder]' )
+		.forEach( bindReorder );
 	document
 		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-register]' )
 		.forEach( bindRegister );

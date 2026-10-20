@@ -1,12 +1,13 @@
 /**
  * The receipt's forms: Pay now, where an unpaid order is paid with the way chosen, then the customer goes to
- * the provider, or sees the receipt anew for an offline payment; asking to return items; and, for an expired
- * link, asking for a new one.
+ * the provider, or sees the receipt anew for an offline payment; ordering the items again; asking to return
+ * items; and, for an expired link, asking for a new one.
  */
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 import { api } from './api';
 import { failure, formBody, showMessage } from './dom';
+import { refreshCartCount } from './product';
 
 type Placed = { receipt_url: string; redirect_url: string | null };
 
@@ -74,6 +75,60 @@ export function bindReceiptLink( form: HTMLFormElement ): void {
 					)
 				: failure( result ),
 			result.ok ? 'success' : 'error'
+		);
+	} );
+}
+
+/**
+ * Puts the order's items in the cart again, at today's prices, and goes to the cart; when some could not go in,
+ * it says which first.
+ * @param form The receipt's order-again form.
+ */
+export function bindReorder( form: HTMLFormElement ): void {
+	form.addEventListener( 'submit', async ( event ) => {
+		event.preventDefault();
+		const button = form.querySelector< HTMLButtonElement >(
+			'button[type="submit"]'
+		);
+		if ( button?.disabled ) {
+			return;
+		}
+		if ( button ) {
+			button.disabled = true;
+		}
+		const result = await api< { missed: string[] } >(
+			'POST',
+			`/receipts/${ form.dataset.orillacartReorder ?? '' }/reorder`
+		);
+		if ( button ) {
+			button.disabled = false;
+		}
+		if ( ! result.ok ) {
+			showMessage( form, failure( result ), 'error' );
+			return;
+		}
+		void refreshCartCount();
+		const cart = form.dataset.orillacartCartUrl;
+		if ( result.data.missed.length === 0 && cart ) {
+			window.location.assign( cart );
+			return;
+		}
+		showMessage(
+			form,
+			result.data.missed.length === 0
+				? __( 'The items are in your cart.', 'orillacart' )
+				: sprintf(
+						/* translators: %s: the names of the products, separated by commas */
+						__(
+							'These are not for sale now, or not in stock: %s. The rest are in your cart.',
+							'orillacart'
+						),
+						result.data.missed.join( ', ' )
+					),
+			result.data.missed.length === 0 ? 'success' : 'error',
+			cart
+				? { url: cart, label: __( 'Go to the cart', 'orillacart' ) }
+				: undefined
 		);
 	} );
 }

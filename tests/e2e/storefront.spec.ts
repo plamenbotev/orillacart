@@ -379,6 +379,13 @@ test.describe( 'A visitor', () => {
 		await expect(
 			page.getByText( number, { exact: true } ).first()
 		).toBeVisible();
+
+		// The receipt orders the items again: they are in the cart.
+		await page.getByRole( 'button', { name: 'Order these again' } ).click();
+		await expect( page ).toHaveURL( shop.urls.cart );
+		await expect(
+			page.locator( '.orillacart-cart__table' ).getByText( 'E2E Lamp' )
+		).toBeVisible();
 	} );
 
 	test( 'makes an account on the account page and logs out', async ( {

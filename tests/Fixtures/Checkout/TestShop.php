@@ -26,6 +26,7 @@ use OrillaCart\Checkout\Application\OrderEditing;
 use OrillaCart\Checkout\Application\OrderFees;
 use OrillaCart\Checkout\Application\OrderPricing;
 use OrillaCart\Checkout\Application\PayNow;
+use OrillaCart\Checkout\Application\Reorder;
 use OrillaCart\Coupons\Application\CouponService;
 use OrillaCart\Coupons\Application\Discounts;
 use OrillaCart\Coupons\Infrastructure\Events\ForgetErasedCustomers as ForgetErasedRedemptions;
@@ -188,6 +189,7 @@ final class TestShop
     public readonly DeliveryDays $deliveryDays;
     public readonly AddressChecks $addressChecks;
     public readonly Returns $returns;
+    public readonly Reorder $reorder;
     public readonly ExtensionFailures $failures;
     public readonly InMemoryProductContent $content;
     public readonly InMemoryProductRepository $productRecords;
@@ -387,6 +389,7 @@ final class TestShop
             $this->deliveryDays = new DeliveryDays($carrierRecords, $this->orders, new SofiaCalendar(), $this->clock),
             $this->addressChecks = new AddressChecks($extensions, $this->logger),
         );
+        $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns(new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock);
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
