@@ -9,6 +9,7 @@ use OrillaCart\Extension\Order\OrderLine;
 use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Order\OrderSummary;
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\Dto\OrderFieldView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -46,7 +47,7 @@ final readonly class OrderSummaries implements Orders
             $order->subtotal,
             $order->discountTotal,
             $order->shippingTotal,
-            (string) Money::of($order->itemsTax)->add(Money::of($order->shippingTax)),
+            (string) Money::of($order->itemsTax)->add(Money::of($order->shippingTax))->add(Money::of($order->feesTax)),
             $order->total,
             $order->refundedTotal,
             $order->currency,
@@ -55,6 +56,7 @@ final readonly class OrderSummaries implements Orders
             $order->shipping,
             $order->note,
             array_column(array_map(static fn(OrderFieldView $field): array => [$field->id, $field->answer], $order->fields), 1, 0),
+            array_column(array_map(static fn(NewOrderFee $fee): array => [$fee->label, $fee->amount], $order->fees), 1, 0),
         );
     }
 

@@ -13,6 +13,7 @@
 <tr><td colspan="2">{{ __('Subtotal') }}</td><td style="text-align:right;">{{ order.subtotal|money(order.currency) }}</td></tr>
 {% for discount in order.discounts %}<tr><td colspan="2">{{ discount.automatic ? discount.description : __('Coupon %s')|format(discount.code) }}</td><td style="text-align:right;">{{ discount.free_shipping ? __('Free shipping') : '−' ~ discount.amount|money(order.currency) }}</td></tr>{% endfor %}
 {% if order.shipping %}<tr><td colspan="2">{{ __('Shipping') }}: {{ order.shipping }}</td><td style="text-align:right;">{{ order.shipping_total|money(order.currency) }}</td></tr>{% endif %}
+{% for fee in order.fees %}<tr><td colspan="2">{{ fee.label }}</td><td style="text-align:right;">{{ fee.amount|money(order.currency) }}</td></tr>{% endfor %}
 {% if not order.prices_include_tax %}{% for tax in order.taxes %}<tr><td colspan="2">{{ tax.name }} ({{ tax.percent }} %)</td><td style="text-align:right;">{{ tax.amount|money(order.currency) }}</td></tr>{% endfor %}{% endif %}
 <tr style="font-weight:600;"><td colspan="2">{{ __('Total') }}</td><td style="text-align:right;">{{ order.total|money(order.currency) }}</td></tr>
 {# translators: 1: tax name, 2: its rate -#}

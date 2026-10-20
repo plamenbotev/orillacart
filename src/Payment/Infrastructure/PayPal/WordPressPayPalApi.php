@@ -75,6 +75,7 @@ final readonly class WordPressPayPalApi implements PayPalApi
                 'tax_total' => $money($breakdown['tax']),
                 'shipping' => $money($breakdown['shipping']),
                 'discount' => $money($breakdown['discount']),
+                'handling' => $money($breakdown['handling']),
             ], static fn(array $part, string $key): bool => $key === 'item_total' || !Money::of($part['value'])->isZero(), ARRAY_FILTER_USE_BOTH);
             if ($request->items !== []) {
                 $unit['items'] = array_map(static fn(array $item): array => array_filter([

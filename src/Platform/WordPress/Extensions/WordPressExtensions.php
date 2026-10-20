@@ -7,6 +7,7 @@ namespace OrillaCart\Platform\WordPress\Extensions;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Checkout\CheckoutField;
+use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Log;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
@@ -43,6 +44,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $cartRules = [];
     /** @var array<string, CheckoutField> */
     private array $fields = [];
+    /** @var array<string, OrderFee> */
+    private array $fees = [];
     /** @var array<string, OrderAction> */
     private array $actions = [];
     /** @var array<string, OrderColumn> */
@@ -101,6 +104,13 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     {
         if ($this->accepts('checkout field', $field->id, $this->fields[$field->id] ?? null, $field)) {
             $this->fields[$field->id] = $field;
+        }
+    }
+
+    public function orderFee(OrderFee $fee): void
+    {
+        if ($this->accepts('order fee', $fee->id(), $this->fees[$fee->id()] ?? null, $fee)) {
+            $this->fees[$fee->id()] = $fee;
         }
     }
 
@@ -168,6 +178,13 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->fields);
+    }
+
+    public function orderFees(): array
+    {
+        $this->collect();
+
+        return array_values($this->fees);
     }
 
     public function orderActions(): array

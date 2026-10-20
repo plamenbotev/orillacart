@@ -85,6 +85,9 @@
             {% if order.shipping %}
                 <tr><th scope="row">{{ __('Shipping') }} ({{ order.shipping }})</th><td>{{ order.shipping_total|money(order.currency) }}</td></tr>
             {% endif %}
+            {% for fee in order.fees %}
+                <tr class="orillacart-fee"><th scope="row">{{ fee.label }}</th><td>{{ fee.amount|money(order.currency) }}</td></tr>
+            {% endfor %}
             {% if not order.prices_include_tax %}
                 {% for tax in order.taxes %}
                     <tr><th scope="row">{{ tax.name }} ({{ tax.percent }}%)</th><td>{{ tax.amount|money(order.currency) }}</td></tr>

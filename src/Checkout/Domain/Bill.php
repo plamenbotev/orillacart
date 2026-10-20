@@ -8,12 +8,13 @@ use OrillaCart\Shared\Domain\Money;
 
 /**
  * The totals of an order. Line amounts stay exact; each tax rate is charged on the sum of what it applies to
- * and rounded once to the currency, as are the subtotal, the discount and shipping, and the total is the sum of
- * those rounded parts, so an invoice always adds up. Discounts lower what tax is charged on: tax is on what the
+ * and rounded once to the currency, as are the subtotal, the discount, shipping and the fees, and the total is
+ * the sum of those rounded parts, so an invoice always adds up. Discounts lower what tax is charged on: tax is on what the
  * customer pays.
  *
  * With prices that include tax, the amounts are what the customer pays, tax in them: each rate takes its part
- * of what it applies to, rounded once, and the total is the subtotal less discounts plus shipping, as entered.
+ * of what it applies to, rounded once, and the total is the subtotal less discounts plus shipping and fees, as
+ * entered.
  *
  * Each line's tax is its share of what each rate bills on the items, in the currency's decimals, so the lines
  * add up to the bill to the cent.
@@ -24,9 +25,13 @@ final class Bill
     private Money $discount;
     private Money $shipping;
 
+    /** @var list<array{label: string, amount: Money}> */
+    private array $fees = [];
+
     /**
-     * @var array<string, array{tax: Tax, items: Money, shipping: Money}> what each rate is charged on, or with
-     *                                                                     prices that include tax, its exact part
+     * @var array<string, array{tax: Tax, items: Money, shipping: Money, fees: Money}> what each rate is charged on,
+     *                                                                                 or with prices that include
+     *                                                                                 tax, its exact part
      */
     private array $bases = [];
 
@@ -121,6 +126,34 @@ final class Bill
         }
     }
 
+    /**
+     * A fee the order pays besides its items and shipping, such as for its way to pay.
+     *
+     * @param list<Tax> $taxes the rates charged on it
+     */
+    public function addFee(string $label, Money $amount, array $taxes): void
+    {
+        $amount = $amount->rounded($this->decimals);
+        $this->fees[] = ['label' => $label, 'amount' => $amount];
+        $percents = array_map(static fn(Tax $rate): string => $rate->percent, $taxes);
+        foreach ($taxes as $rate) {
+            $this->base($rate)['fees'] = $this->base($rate)['fees']->add($this->includesTax ? $amount->includedPercent($rate->percent, $percents) : $amount);
+        }
+    }
+
+    /**
+     * @return list<array{label: string, amount: Money}> each in the currency's decimals
+     */
+    public function fees(): array
+    {
+        return $this->fees;
+    }
+
+    public function feesTotal(): Money
+    {
+        return array_reduce($this->fees, static fn(Money $sum, array $fee): Money => $sum->add($fee['amount']), Money::zero());
+    }
+
     public function subtotal(): Money
     {
         return $this->subtotal->rounded($this->decimals);
@@ -143,12 +176,13 @@ final class Bill
     public function taxes(): array
     {
         $taxes = [];
-        foreach ($this->bases as ['tax' => $tax, 'items' => $items, 'shipping' => $shipping]) {
+        foreach ($this->bases as ['tax' => $tax, 'items' => $items, 'shipping' => $shipping, 'fees' => $fees]) {
             $billed = new BilledTax(
                 $tax->name,
                 $tax->percent,
                 ($this->includesTax ? $items : $items->percent($tax->percent))->rounded($this->decimals),
                 ($this->includesTax ? $shipping : $shipping->percent($tax->percent))->rounded($this->decimals),
+                ($this->includesTax ? $fees : $fees->percent($tax->percent))->rounded($this->decimals),
             );
             if (!$billed->total()->isZero()) {
                 $taxes[] = $billed;
@@ -168,19 +202,24 @@ final class Bill
         return array_reduce($this->taxes(), static fn(Money $sum, BilledTax $tax): Money => $sum->add($tax->shipping), Money::zero());
     }
 
+    public function feesTax(): Money
+    {
+        return array_reduce($this->taxes(), static fn(Money $sum, BilledTax $tax): Money => $sum->add($tax->fees), Money::zero());
+    }
+
     public function total(): Money
     {
-        $total = $this->subtotal()->subtract($this->discount())->add($this->shipping());
+        $total = $this->subtotal()->subtract($this->discount())->add($this->shipping())->add($this->feesTotal());
 
-        return $this->includesTax ? $total : $total->add($this->itemsTax())->add($this->shippingTax());
+        return $this->includesTax ? $total : $total->add($this->itemsTax())->add($this->shippingTax())->add($this->feesTax());
     }
 
     /**
-     * @return array{tax: Tax, items: Money, shipping: Money}
+     * @return array{tax: Tax, items: Money, shipping: Money, fees: Money}
      */
     private function &base(Tax $tax): array
     {
-        $this->bases[$tax->key] ??= ['tax' => $tax, 'items' => Money::zero(), 'shipping' => Money::zero()];
+        $this->bases[$tax->key] ??= ['tax' => $tax, 'items' => Money::zero(), 'shipping' => Money::zero(), 'fees' => Money::zero()];
 
         return $this->bases[$tax->key];
     }

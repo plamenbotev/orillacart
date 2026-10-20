@@ -36,9 +36,9 @@ final readonly class StartPayment
      */
     public static function forOrder(OrderView $order, string $gateway): self
     {
-        $tax = $order->pricesIncludeTax ? Money::zero() : Money::of($order->itemsTax)->add(Money::of($order->shippingTax));
-        $breakdown = new PaymentBreakdown($order->subtotal, (string) $tax, $order->shippingTotal, $order->discountTotal);
-        $parts = Money::of($order->subtotal)->add($tax)->add(Money::of($order->shippingTotal))->subtract(Money::of($order->discountTotal));
+        $tax = $order->pricesIncludeTax ? Money::zero() : Money::of($order->itemsTax)->add(Money::of($order->shippingTax))->add(Money::of($order->feesTax));
+        $breakdown = new PaymentBreakdown($order->subtotal, (string) $tax, $order->shippingTotal, $order->discountTotal, $order->feesTotal);
+        $parts = Money::of($order->subtotal)->add($tax)->add(Money::of($order->shippingTotal))->add(Money::of($order->feesTotal))->subtract(Money::of($order->discountTotal));
         $items = array_map(static fn(OrderLineView $line): PaymentItem => new PaymentItem($line->name, $line->sku, $line->quantity, $line->unitPrice), $order->lines);
         $listed = array_reduce($items, static fn(Money $sum, PaymentItem $item): Money => $sum->add(Money::of($item->unitAmount)->times($item->quantity)), Money::zero());
         $address = $order->shippingAddress;

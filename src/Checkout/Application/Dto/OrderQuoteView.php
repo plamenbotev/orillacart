@@ -21,6 +21,7 @@ final readonly class OrderQuoteView
      * @param list<CheckoutTaxView>    $taxes
      * @param list<PickupPointView>    $pickupPoints where the chosen service can deliver, when it delivers to offices or lockers
      * @param list<OrderDiscountView>  $discounts    the shop's automatic discounts that hold for the order
+     * @param list<CheckoutFeeView>    $fees         what it pays besides its items and shipping
      */
     public function __construct(
         public array $lines,
@@ -38,5 +39,7 @@ final readonly class OrderQuoteView
         public array $pickupPoints = [],
         public string $discount = '0',
         public array $discounts = [],
+        public array $fees = [],
+        public string $feesTax = '0',
     ) {}
 }

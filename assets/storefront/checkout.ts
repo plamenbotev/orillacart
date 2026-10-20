@@ -52,9 +52,14 @@ export function bindCheckout( form: HTMLFormElement ): void {
 		if ( target === elsewhere ) {
 			showShipping();
 		}
+		if ( target instanceof HTMLInputElement && target.name === 'payment' ) {
+			// A refresh already on its way draws the summary with the way to pay it was asked for: the
+			// customer's choice is kept here, for the refreshes after it.
+			form.dataset.orillacartPayment = target.value;
+		}
 		if (
 			target.matches(
-				'[data-orillacart-country], [data-orillacart-state], [name$=".postcode"], [data-orillacart-ship-elsewhere], [data-orillacart-rate], [name="vat_number"]'
+				'[data-orillacart-country], [data-orillacart-state], [name$=".postcode"], [data-orillacart-ship-elsewhere], [data-orillacart-rate], [data-orillacart-payment], [name="vat_number"]'
 			)
 		) {
 			// After this change's other listeners: the state list follows a new country first.
@@ -126,6 +131,19 @@ function bindContact( form: HTMLFormElement ): void {
 }
 
 /**
+ * The way to pay the customer chose last, or the one ticked.
+ *
+ * @param form The checkout form.
+ */
+function chosenPayment( form: HTMLFormElement ): string | undefined {
+	return (
+		form.dataset.orillacartPayment ??
+		form.querySelector< HTMLInputElement >( '[name="payment"]:checked' )
+			?.value
+	);
+}
+
+/**
  * Prices the order again for the addresses on the form, keeping the chosen way to pay.
  * @param form The checkout form.
  */
@@ -150,6 +168,8 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 			)?.value ?? '',
 		pickup_point: value( 'pickup_point' ),
 		vat_number: value( 'vat_number' ),
+		// A way to pay may cost a fee: the totals are for the one chosen.
+		payment: chosenPayment( form ) ?? '',
 	};
 	for ( const [ name, given ] of Object.entries( query ) ) {
 		if ( given ) {
@@ -158,9 +178,7 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 			url.searchParams.delete( name );
 		}
 	}
-	const payment = form.querySelector< HTMLInputElement >(
-		'[name="payment"]:checked'
-	)?.value;
+	const payment = chosenPayment( form );
 	const summary = form.querySelector(
 		'[data-orillacart-region="checkout-summary"]'
 	);

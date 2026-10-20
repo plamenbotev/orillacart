@@ -56,5 +56,12 @@ final readonly class CheckoutView
         public ?string $estimatedFor = null,
         /** How much more the items would have to cost for one of the shop's rates to ship them free; null when none would. */
         public ?string $freeShippingShort = null,
+        /** The way to pay the totals are for: the one chosen, or the first offered. */
+        public ?string $paymentMethod = null,
+        /** @var list<CheckoutFeeView> what the order pays besides its items and shipping */
+        public array $fees = [],
+        public string $feesTax = '0',
+        /** @var array<string, string> what each way to pay adds, before tax, by gateway; those without a fee left out */
+        public array $paymentFees = [],
     ) {}
 }

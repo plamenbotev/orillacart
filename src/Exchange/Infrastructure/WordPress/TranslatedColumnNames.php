@@ -49,6 +49,7 @@ final class TranslatedColumnNames implements ColumnNames
             'subtotal' => __('Subtotal', 'orillacart'),
             'discount' => __('Discount', 'orillacart'),
             'shipping_total' => __('Shipping', 'orillacart'),
+            'fees' => __('Fees', 'orillacart'),
             'tax' => __('Tax', 'orillacart'),
             'total' => __('Total', 'orillacart'),
             'refunded' => __('Refunded', 'orillacart'),

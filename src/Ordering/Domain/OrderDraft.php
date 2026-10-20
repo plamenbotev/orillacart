@@ -17,6 +17,7 @@ final readonly class OrderDraft
      * @param Money           $subtotal      the items before tax and before the discounts
      * @param list<OrderDiscount> $discounts
      * @param list<FieldAnswer>   $fields    answers to add-ons' checkout fields
+     * @param list<OrderFee>      $fees      what it pays besides its items and shipping
      */
     public function __construct(
         public ?int $customerId,
@@ -42,5 +43,7 @@ final readonly class OrderDraft
         public ?string $vatNumber = null,
         public bool $reverseCharge = false,
         public ?string $locale = null,
+        public array $fees = [],
+        public ?Money $feesTax = null,
     ) {}
 }

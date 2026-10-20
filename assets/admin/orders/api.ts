@@ -133,6 +133,10 @@ export interface Order {
 	}[];
 	/** Answers to the questions add-ons ask at checkout, with the labels they had. */
 	fields: { id: string; label: string; answer: string }[];
+	/** What it pays besides its items and shipping, as its prices are. */
+	fees: { label: string; amount: string }[];
+	fees_total: string;
+	fees_tax: string;
 	/** Why the shop has to look at it, one reason a line; null when nothing. */
 	attention: string | null;
 	/** The business customer's VAT number, and whether it bought without VAT. */
@@ -506,6 +510,9 @@ export interface OrderQuote {
 	/** The shop's automatic discounts that hold for the order. */
 	discount: string;
 	discounts: { code: string; description: string; amount: string }[];
+	/** What it pays besides its items and shipping, such as for the way to pay. */
+	fees: { label: string; amount: string }[];
+	fees_tax: string;
 }
 
 export interface QuoteQuery {
@@ -519,6 +526,8 @@ export interface QuoteQuery {
 	/** Whose order: automatic discounts for groups or first orders depend on it. */
 	customer_id: number | null;
 	email: string | null;
+	/** The way it is paid, for its fee. */
+	payment: string | null;
 }
 
 /**

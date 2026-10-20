@@ -33,5 +33,9 @@ final readonly class PaymentMethodView
         public array $fields,
         public ?string $notReady,
         public ?string $notificationUrl,
+        public string $fee = '0',
+        public string $feePercent = '0',
+        /** As the shop entered it: empty for the method's name. */
+        public string $feeLabel = '',
     ) {}
 }

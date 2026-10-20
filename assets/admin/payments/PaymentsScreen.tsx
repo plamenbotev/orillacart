@@ -100,6 +100,9 @@ const inputOf = ( method: PaymentMethod ): PaymentMethodInput => ( {
 	instructions: method.instructions,
 	receipt_note: method.receipt_note,
 	settings: method.settings,
+	fee: method.fee,
+	fee_percent: method.fee_percent,
+	fee_label: method.fee_label,
 } );
 
 function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
@@ -113,7 +116,14 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 
 	const submit = ( event: FormEvent ) => {
 		event.preventDefault();
-		savePaymentMethod( method.gateway, draft )
+		savePaymentMethod( method.gateway, {
+			...draft,
+			fee: draft.fee.trim() === '' ? '0' : draft.fee.trim(),
+			fee_percent:
+				draft.fee_percent.trim() === ''
+					? '0'
+					: draft.fee_percent.trim(),
+		} )
 			.then( ( saved ) => {
 				setDraft( { ...draft, settings: saved.settings } );
 				onSaved( saved );
@@ -221,6 +231,43 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 							setDraft( { ...draft, receipt_note: receiptNote } )
 						}
 					/>
+					<fieldset className="orillacart-fee">
+						<legend>{ __( 'Fee', 'orillacart' ) }</legend>
+						<p className="description">
+							{ __(
+								'What an order paid this way pays besides its items and shipping, taxed at the default tax group: a fixed amount and a percentage of the items and shipping. Leave both at 0 for none.',
+								'orillacart'
+							) }
+						</p>
+						<TextControl
+							__next40pxDefaultSize
+							label={ __( 'Fixed amount', 'orillacart' ) }
+							value={ draft.fee }
+							onChange={ ( fee ) =>
+								setDraft( { ...draft, fee } )
+							}
+						/>
+						<TextControl
+							__next40pxDefaultSize
+							label={ __( 'Percentage', 'orillacart' ) }
+							value={ draft.fee_percent }
+							onChange={ ( percent ) =>
+								setDraft( { ...draft, fee_percent: percent } )
+							}
+						/>
+						<TextControl
+							__next40pxDefaultSize
+							label={ __( 'Name in the totals', 'orillacart' ) }
+							help={ __(
+								'Such as "Cash on delivery fee". Empty for the method\'s name.',
+								'orillacart'
+							) }
+							value={ draft.fee_label }
+							onChange={ ( label ) =>
+								setDraft( { ...draft, fee_label: label } )
+							}
+						/>
+					</fieldset>
 					<SettingFields
 						fields={ method.fields }
 						values={ draft.settings }

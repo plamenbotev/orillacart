@@ -22,6 +22,7 @@ use OrillaCart\Checkout\Application\CheckoutFields;
 use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\ManualOrders;
 use OrillaCart\Checkout\Application\OrderEditing;
+use OrillaCart\Checkout\Application\OrderFees;
 use OrillaCart\Checkout\Application\OrderPricing;
 use OrillaCart\Checkout\Application\PayNow;
 use OrillaCart\Coupons\Application\CouponService;
@@ -352,9 +353,10 @@ final class TestShop
         $releasing = new ReleaseCouponUses($this->discounts);
         $this->events->addListener(OrderStatusChanged::class, $releasing->statusChanged(...));
         $this->events->addListener(OrderDeleted::class, $releasing->deleted(...));
-        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts);
-        $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts);
         $this->paymentOptions = $paymentOptions = new PaymentOptions($methodRecords, $gateways, $settings);
+        $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
+        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees);
+        $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts);
         $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures);
         $this->checkout = new CheckoutService(
             $this->carts,
@@ -373,6 +375,7 @@ final class TestShop
             new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography),
             $this->languages,
             $this->failures,
+            $fees,
         );
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);

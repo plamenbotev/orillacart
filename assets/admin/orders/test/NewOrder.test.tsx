@@ -52,6 +52,8 @@ const quote = {
 	items_tax: '6',
 	shipping: '5',
 	shipping_tax: '1',
+	fees: [],
+	fees_tax: '0',
 	total: '42',
 	discount: '0',
 	discounts: [],

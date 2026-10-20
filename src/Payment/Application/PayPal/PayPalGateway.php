@@ -92,7 +92,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
         }
 
         $breakdown = $session->breakdown;
-        $parts = $breakdown === null ? [] : ['itemTotal' => $breakdown->itemTotal, 'tax' => $breakdown->tax, 'shipping' => $breakdown->shipping, 'discount' => $breakdown->discount];
+        $parts = $breakdown === null ? [] : ['itemTotal' => $breakdown->itemTotal, 'tax' => $breakdown->tax, 'shipping' => $breakdown->shipping, 'discount' => $breakdown->discount, 'handling' => $breakdown->handling];
         foreach ($session->items as $item) {
             $parts[] = $item->unitAmount;
         }
@@ -118,6 +118,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
                 'tax' => Money::of($breakdown->tax)->format($decimals),
                 'shipping' => Money::of($breakdown->shipping)->format($decimals),
                 'discount' => Money::of($breakdown->discount)->format($decimals),
+                'handling' => Money::of($breakdown->handling)->format($decimals),
             ] : null,
             $session->shipTo,
         )));

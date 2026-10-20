@@ -35,5 +35,8 @@ final readonly class QuoteOrder
         public ?int $customerId = null,
         #[Assert\Length(max: 100)]
         public ?string $email = null,
+        /** The way it is paid, for its fee. */
+        #[Assert\Regex(pattern: '/^[a-z][a-z0-9_]{0,39}$/')]
+        public ?string $payment = null,
     ) {}
 }

@@ -132,6 +132,9 @@
                     {% if order.shipping %}
                         <tr><th scope="row" colspan="3">{{ __('Shipping') }} ({{ order.shipping }})</th><td class="amount">{{ order.shipping_total|money(order.currency) }}</td></tr>
                     {% endif %}
+                    {% for fee in order.fees %}
+                        <tr><th scope="row" colspan="3">{{ fee.label }}</th><td class="amount">{{ fee.amount|money(order.currency) }}</td></tr>
+                    {% endfor %}
                     {% if not order.prices_include_tax %}
                         {% for tax in order.taxes %}
                             <tr><th scope="row" colspan="3">{{ tax.name }} {{ tax.percent }}%</th><td class="amount">{{ tax.amount|money(order.currency) }}</td></tr>

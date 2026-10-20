@@ -7,6 +7,7 @@ namespace OrillaCart\Extension;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Checkout\CheckoutField;
+use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\Orders;
@@ -42,6 +43,9 @@ interface Registry
 
     /** Since version 2. */
     public function checkoutField(CheckoutField $field): void;
+
+    /** A fee checkout adds to orders. Since version 5. */
+    public function orderFee(OrderFee $fee): void;
 
     /** Since version 2. */
     public function orderAction(OrderAction $action): void;

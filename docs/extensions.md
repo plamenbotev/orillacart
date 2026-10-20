@@ -25,7 +25,7 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
 - `$registry->shippingMethod(...)` registers a shipping method the same way; method ids are unique among
   methods. Price adjusters, cart rules, checkout fields and order actions follow (version 2).
 - `$registry->version()` is the API's version (`OrillaCart\Extension\Version`): 2 since price adjusters, cart
-  rules, checkout fields, order actions and `orders()` came; 4 since export columns.
+  rules, checkout fields, order actions and `orders()` came; 4 since export columns; 5 since order fees.
 - `$registry->log()` writes to the shop's log. Never log secrets or card data.
 - Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
 
@@ -52,8 +52,8 @@ Throw `ProviderUnavailable` when the provider cannot be reached or refuses; the 
 the order is cancelled (its stock and coupon uses go back), and the customer keeps the cart to try again.
 
 The session gives the payment id, the order number, the amount and currency, and for providers that show or
-protect them the order's `items`, a `breakdown` (item total, tax, shipping, discount) and `shipTo`, the address
-the goods go to (null for a pickup point or nothing that ships). The items and breakdown come only when they
+protect them the order's `items`, a `breakdown` (item total, tax, shipping, discount and, since version 5,
+handling: the order's fees) and `shipTo`, the address the goods go to (null for a pickup point or nothing that ships). The items and breakdown come only when they
 add up exactly to the amount; leave them out of the provider's request otherwise.
 
 A gateway that sends customers away also implements `HandlesReturns`. The session carries the shop's
@@ -213,6 +213,39 @@ $registry->checkoutField(new CheckoutField('terms', 'I accept the terms', Checko
 - The order keeps each answer with the label it had: a choice by its label, a ticked box as "Yes". The receipt,
   the emails and the order screen show them, the order screen corrects them, and `OrderSummary::$fields` gives
   them to add-ons by field id. Orders the shop makes by hand do not ask them.
+
+## Order fees
+
+Version 5 lets an add-on charge a fee on orders: a surcharge for a bulky order, insurance, a delivery that
+needs a crane. `OrillaCart\Extension\Checkout\OrderFee::fee(FeeQuery $query)` sees the order as checkout has it
+(its items, the subtotal less discounts, shipping, the way to ship and to pay chosen, where it goes, the
+customer and the currency) and returns a `Fee` or null:
+
+```php
+if ($registry->version() >= 5) {
+    $registry->orderFee(new class implements OrillaCart\Extension\Checkout\OrderFee {
+        public function id(): string { return 'bulky'; }
+        public function fee(OrillaCart\Extension\Checkout\FeeQuery $query): ?OrillaCart\Extension\Checkout\Fee
+        {
+            $items = array_sum(array_map(static fn($item): int => $item->quantity, $query->items));
+
+            return $items > 10 ? new OrillaCart\Extension\Checkout\Fee(__('Bulky order', 'my-add-on'), '4.50') : null;
+        }
+    });
+}
+```
+
+- The amount is as the shop's prices are: before tax, or including it when the shop's prices include tax. A fee
+  is taxed as an item of its tax group is (`taxGroupId`, null for the shop's default), unless `taxable` is false.
+  Zero or less is no fee.
+- The shop's own fee for a way to pay (Payments → the method → Fee) comes first, then the add-ons', in the order
+  they were registered. Checkout, the order the shop takes by hand, and editing an order on hold price them all.
+- The order keeps each fee with its label; the receipt, the emails, the invoice and the order screen show them,
+  `OrderSummary::$fees` gives them to add-ons (amount by label), and a payment gateway finds them as the
+  `handling` of the `PaymentBreakdown`.
+- A fee that throws, or answers what is not a label and an amount, is logged and left out, and an order placed
+  without it says so in a note for the shop. One that implements `OrillaCart\Extension\FailsClosed` refuses the
+  order instead, asking the customer to try again in a moment.
 
 ## Order actions and reading orders
 

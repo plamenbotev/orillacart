@@ -16,7 +16,8 @@ final class Version
      * 1: payment gateways, shipping methods. 2: price adjusters, cart rules, checkout fields, order actions,
      * orders. 3: gateways naming the payment of a notification (NamesNotifiedPayments), checking payments and
      * refunds at the provider (ChecksPayments, ChecksRefunds). 4: columns of the orders export and the products
-     * file (OrderColumn, ProductColumn, ImportsProductColumn).
+     * file (OrderColumn, ProductColumn, ImportsProductColumn). 5: fees on orders (OrderFee), the handling of a
+     * PaymentBreakdown, an order's fees in its OrderSummary.
      */
-    public const int CURRENT = 4;
+    public const int CURRENT = 5;
 }

@@ -374,6 +374,74 @@ test.describe( 'A visitor', () => {
 		}
 	} );
 
+	test( 'sees the fee of a way to pay in the totals, and pays it', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		await requestUtils.rest( {
+			method: 'PUT',
+			path: '/orillacart/v1/payment-methods/cash_on_delivery',
+			data: {
+				name: 'Cash on delivery',
+				active: true,
+				fee: '2',
+				fee_label: 'Cash on delivery fee',
+			},
+		} );
+		try {
+			await page.goto( shop.miniCartUrl );
+			await page
+				.locator( '.orillacart-product-card', { hasText: 'E2E Lamp' } )
+				.getByRole( 'button', { name: /Add to cart/ } )
+				.click();
+			await expect(
+				page
+					.locator( '.orillacart-mini-cart--panel' )
+					.getByText( '1 item in cart.' )
+			).toBeVisible();
+			await page.goto( shop.urls.checkout );
+			await fillBilling( page, 'e2e-fee@example.com' );
+			const cash = page.getByRole( 'radio', {
+				name: /Cash on delivery \(\+ .*2\.00.* fee\)/,
+			} );
+			await cash.check();
+			await expect(
+				page.locator( '.orillacart-checkout__lines .orillacart-fee' )
+			).toContainText( /Cash on delivery fee.*2\.00/ );
+			await expect( page.locator( '.orillacart-total' ) ).toContainText(
+				'37.00'
+			);
+
+			await page.getByRole( 'radio', { name: 'Bank transfer' } ).check();
+			await expect( page.locator( '.orillacart-total' ) ).toContainText(
+				'35.00'
+			);
+			await expect( page.locator( '.orillacart-fee' ) ).toHaveCount( 0 );
+
+			await page
+				.getByRole( 'radio', { name: /Cash on delivery/ } )
+				.check();
+			await expect( page.locator( '.orillacart-total' ) ).toContainText(
+				'37.00'
+			);
+			await page.getByRole( 'button', { name: 'Place order' } ).click();
+			await expect(
+				page.getByRole( 'heading', {
+					name: 'Thank you for your order',
+				} )
+			).toBeVisible();
+			await expect( page.locator( '.orillacart-fee' ) ).toContainText(
+				/Cash on delivery fee.*2\.00/
+			);
+		} finally {
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: '/orillacart/v1/payment-methods/cash_on_delivery',
+				data: { name: 'Cash on delivery', active: false },
+			} );
+		}
+	} );
+
 	test( 'asks to hear when a sold-out product is back', async ( {
 		page,
 		requestUtils,

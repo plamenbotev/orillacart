@@ -19,10 +19,13 @@ use OrillaCart\Coupons\Application\Dto\AppliedCoupon;
 use OrillaCart\Coupons\Application\Dto\AppliedDiscounts;
 use OrillaCart\Coupons\Application\Dto\DiscountItem;
 use OrillaCart\Coupons\Application\Dto\DiscountRequest;
+use OrillaCart\Extension\Checkout\FeeItem;
+use OrillaCart\Extension\Checkout\FeeQuery;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Inventory\Domain\InsufficientStock;
+use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\Dto\NewOrderLine;
 use OrillaCart\Ordering\Application\Dto\NewShipping;
 use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
@@ -41,7 +44,7 @@ use OrillaCart\Tax\Application\Dto\TaxQuery;
 use OrillaCart\Tax\Application\TaxCalculator;
 
 /**
- * Prices items as an order: catalog prices, taxes at the customer's address, shipping and the bill; and turns
+ * Prices items as an order: catalog prices, taxes at the customer's address, shipping, fees and the bill; and turns
  * a priced order into order lines, taking their stock. Checkout and order editing price the same way.
  *
  * Coupons take money off the items before tax is charged, and free shipping makes every way to ship cost nothing.
@@ -58,6 +61,7 @@ final readonly class OrderPricing
         private StockService $stock,
         private SettingsService $settings,
         private Discounts $discounts,
+        private OrderFees $fees,
     ) {}
 
     /**
@@ -70,12 +74,13 @@ final readonly class OrderPricing
      * @param string|null  $email      the customer's, for limits per customer, once known
      * @param int|null     $orderId    the order being priced again, when the shop edits it
      * @param bool         $reverseCharge a business in another EU country buys without VAT
+     * @param string|null  $payment    the way to pay chosen, for its fee
      *
      * @return Priced
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null): array
     {
         $settings = $this->settings->current();
         $decimals = $settings->priceDecimals;
@@ -169,8 +174,47 @@ final readonly class OrderPricing
                 $bill->ship($chosen['price'], $chosen['taxes']);
             }
         }
+        if ($lines !== []) {
+            $this->charge($bill, new FeeQuery(
+                array_map(static fn(array $line): FeeItem => new FeeItem($line['quote']->productId, $line['quote']->variationId, $line['quote']->name, $line['quantity'], (string) $line['total']->subtract($line['discount'])), $lines),
+                (string) $bill->subtotal()->subtract($bill->discount()),
+                (string) $bill->shipping(),
+                $chosen['view']->id ?? null,
+                $payment,
+                $needsShipping ? $shipping?->country : $billing?->country,
+                $customerId,
+                $settings->currency,
+            ), $shipping, $billing, $reverseCharge);
+        }
 
         return ['lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'free_from' => $freeFrom];
+    }
+
+    /**
+     * Adds the order's fees to the bill, taxed as items of their tax group are.
+     */
+    private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge): void
+    {
+        foreach ($this->fees->of($query) as $fee) {
+            $taxes = $fee['taxable'] && !$reverseCharge ? $this->taxes($fee['tax_group_id'], $shipping, $billing) : [];
+            $amount = $fee['amount'];
+            if ($bill->includesTax() && $fee['taxable'] && $taxes === []) {
+                $amount = $amount->withoutPercents($this->shopPercents($fee['tax_group_id']));
+            }
+            $bill->addFee($fee['label'], $amount, $taxes);
+        }
+    }
+
+    /**
+     * The fees the order pays, as it records them.
+     *
+     * @param Priced $priced
+     *
+     * @return list<NewOrderFee>
+     */
+    public function orderFees(array $priced): array
+    {
+        return array_map(static fn(array $fee): NewOrderFee => new NewOrderFee($fee['label'], (string) $fee['amount']), $priced['bill']->fees());
     }
 
     /**

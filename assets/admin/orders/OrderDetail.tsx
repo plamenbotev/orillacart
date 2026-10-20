@@ -516,6 +516,13 @@ function Summary( { order }: { order: Order } ) {
 							</dd>
 						</>
 					) }
+					{ order.fees.map( ( fee ) => (
+						<FragmentRow
+							key={ fee.label }
+							label={ fee.label }
+							value={ money( fee.amount, order.currency ) }
+						/>
+					) ) }
 					{ order.taxes.map( ( tax ) => (
 						<FragmentRow
 							key={ tax.name + tax.percent }

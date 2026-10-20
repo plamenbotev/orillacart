@@ -81,6 +81,16 @@ class Order
     #[ORM\Column(type: 'json')]
     private array $taxes;
 
+    /** @var list<array{label: string, amount: string}> the fees it pays besides its items and shipping */
+    #[ORM\Column(type: 'json')]
+    private array $fees = [];
+
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+    private string $feesTotal = '0';
+
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+    private string $feesTax = '0';
+
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
     private string $subtotal;
 
@@ -186,7 +196,8 @@ class Order
         $shippingTotal = $draft->shipping->price ?? Money::zero();
         $shippingTax = $draft->shipping->tax ?? Money::zero();
         $discountTotal = $draft->discountTotal ?? Money::zero();
-        if (!self::addsUp($draft->subtotal, $discountTotal, $draft->itemsTax, $shippingTotal, $shippingTax, $draft->total, $draft->pricesIncludeTax)) {
+        $feesTax = $draft->feesTax ?? Money::zero();
+        if (!self::addsUp($draft->subtotal, $discountTotal, $draft->itemsTax, $shippingTotal->add(self::sumOf($draft->fees)), $shippingTax->add($feesTax), $draft->total, $draft->pricesIncludeTax)) {
             throw new \LogicException('The order total is not the sum of its parts.');
         }
         if (($draft->shipping === null) !== ($draft->shippingAddress === null)) {
@@ -210,6 +221,7 @@ class Order
         $this->pickupPoint = $draft->shipping?->pickupPoint === null ? null : mb_substr($draft->shipping->pickupPoint, 0, 255);
         $this->shippingTotal = $shippingTotal->toFixed();
         $this->shippingTax = $shippingTax->toFixed();
+        $this->charge($draft->fees, $feesTax);
         $this->taxes = array_map(static fn(TaxLine $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount->toFixed()], $draft->taxes);
         $this->subtotal = $draft->subtotal->toFixed();
         $this->itemsTax = $draft->itemsTax->toFixed();
@@ -293,6 +305,22 @@ class Order
     public function shippingTax(): Money
     {
         return Money::of($this->shippingTax);
+    }
+
+    /** @return list<OrderFee> */
+    public function fees(): array
+    {
+        return array_map(static fn(array $fee): OrderFee => new OrderFee($fee['label'], Money::of($fee['amount'])), $this->fees);
+    }
+
+    public function feesTotal(): Money
+    {
+        return Money::of($this->feesTotal);
+    }
+
+    public function feesTax(): Money
+    {
+        return Money::of($this->feesTax);
     }
 
     /** @return list<TaxLine> */
@@ -537,13 +565,13 @@ class Order
             foreach ($this->lines as $line) {
                 $covered[] = [$line, $this->lineShare($line, $line->quantity())[0]];
             }
-            [$gross, $tax] = [$this->total(), $this->itemsTax()->add($this->shippingTax())];
+            [$gross, $tax] = [$this->total(), $this->itemsTax()->add($this->shippingTax())->add($this->feesTax())];
         }
         foreach ($covered as [$line, $lineGross]) {
             $line->refunded($refund->amount->proportion($lineGross, $gross));
         }
 
-        $taxLeft = $this->itemsTax()->add($this->shippingTax())->subtract($this->refundedTax())->atLeastZero();
+        $taxLeft = $this->itemsTax()->add($this->shippingTax())->add($this->feesTax())->subtract($this->refundedTax())->atLeastZero();
         $share = $refund->amount->compare($this->refundable()) >= 0 ? $taxLeft : $tax->proportion($refund->amount, $gross);
 
         return $share->compare($taxLeft) > 0 ? $taxLeft : $share;
@@ -794,11 +822,13 @@ class Order
      * @param list<LineDraft>     $lines
      * @param list<TaxLine>       $taxes
      * @param list<OrderDiscount> $discounts the coupons, priced again
+     * @param list<OrderFee>      $fees      the fees, priced again
      *
      * @throws OrderRuleViolation for an order not on hold, or one without items
      */
-    public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, array $taxes, Money $subtotal, Money $itemsTax, Money $total, ?Money $discountTotal = null, array $discounts = [], bool $pricesIncludeTax = false): void
+    public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, array $taxes, Money $subtotal, Money $itemsTax, Money $total, ?Money $discountTotal = null, array $discounts = [], bool $pricesIncludeTax = false, array $fees = [], ?Money $feesTax = null): void
     {
+        $feesTax ??= Money::zero();
         $discountTotal ??= Money::zero();
         $this->requireOnHold();
         if ($lines === []) {
@@ -806,7 +836,7 @@ class Order
         }
         $shippingTotal = $shipping->price ?? Money::zero();
         $shippingTax = $shipping->tax ?? Money::zero();
-        if (!self::addsUp($subtotal, $discountTotal, $itemsTax, $shippingTotal, $shippingTax, $total, $pricesIncludeTax)) {
+        if (!self::addsUp($subtotal, $discountTotal, $itemsTax, $shippingTotal->add(self::sumOf($fees)), $shippingTax->add($feesTax), $total, $pricesIncludeTax)) {
             throw new \LogicException('The order total is not the sum of its parts.');
         }
         if (($shipping === null) !== ($shippingAddress === null)) {
@@ -823,6 +853,7 @@ class Order
         $this->pickupPoint = $shipping?->pickupPoint === null ? null : mb_substr($shipping->pickupPoint, 0, 255);
         $this->shippingTotal = $shippingTotal->toFixed();
         $this->shippingTax = $shippingTax->toFixed();
+        $this->charge($fees, $feesTax);
         $this->taxes = array_map(static fn(TaxLine $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount->toFixed()], $taxes);
         $this->subtotal = $subtotal->toFixed();
         $this->itemsTax = $itemsTax->toFixed();
@@ -1113,7 +1144,25 @@ class Order
         return $this->locale;
     }
 
-    /** The total is the subtotal less discounts plus shipping, and plus tax unless the amounts include it. */
+    /**
+     * @param list<OrderFee> $fees
+     */
+    private function charge(array $fees, Money $tax): void
+    {
+        $this->fees = array_map(static fn(OrderFee $fee): array => ['label' => mb_substr($fee->label, 0, 100), 'amount' => $fee->amount->toFixed()], $fees);
+        $this->feesTotal = self::sumOf($fees)->toFixed();
+        $this->feesTax = $tax->toFixed();
+    }
+
+    /**
+     * @param list<OrderFee> $fees
+     */
+    private static function sumOf(array $fees): Money
+    {
+        return array_reduce($fees, static fn(Money $sum, OrderFee $fee): Money => $sum->add($fee->amount), Money::zero());
+    }
+
+    /** The total is the subtotal less discounts plus shipping and fees, and plus tax unless the amounts include it. */
     private static function addsUp(Money $subtotal, Money $discount, Money $itemsTax, Money $shipping, Money $shippingTax, Money $total, bool $includesTax): bool
     {
         $sum = $subtotal->subtract($discount)->add($shipping);

@@ -18,6 +18,9 @@ const paypal = {
 	countries: [],
 	instructions: '',
 	receipt_note: '',
+	fee: '0',
+	fee_percent: '0',
+	fee_label: '',
 	settings: {
 		client_id: 'abc',
 		client_secret: '',
@@ -101,6 +104,9 @@ describe( 'PaymentsScreen', () => {
 
 		const countries = screen.getAllByLabelText( 'Billing countries' )[ 0 ];
 		await user.type( countries as HTMLElement, 'bg, ro' );
+		const fee = screen.getAllByLabelText( 'Fixed amount' )[ 0 ];
+		await user.clear( fee as HTMLElement );
+		await user.type( fee as HTMLElement, '2' );
 		const cashOn = screen.getAllByLabelText( 'Active' )[ 0 ];
 		await user.click( cashOn as HTMLElement );
 		await user.click(
@@ -113,7 +119,12 @@ describe( 'PaymentsScreen', () => {
 		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toMatchObject( {
 			path: '/orillacart/v1/payment-methods/cash_on_delivery',
 			method: 'PUT',
-			data: { active: false, countries: [ 'BG', 'RO' ] },
+			data: {
+				active: false,
+				countries: [ 'BG', 'RO' ],
+				fee: '2',
+				fee_percent: '0',
+			},
 		} );
 	} );
 } );

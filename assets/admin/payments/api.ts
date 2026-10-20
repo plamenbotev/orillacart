@@ -20,6 +20,12 @@ export interface PaymentMethod {
 	/** Why checkout does not offer it; null when it does. */
 	not_ready: string | null;
 	notification_url: string | null;
+	/** A fee for paying this way, as the shop's prices are (before tax, or including it). */
+	fee: string;
+	/** And a percentage of the items, less discounts, and shipping. */
+	fee_percent: string;
+	/** What the totals call the fee; empty for the method's name. */
+	fee_label: string;
 }
 
 export interface PaymentMethodInput {
@@ -30,6 +36,9 @@ export interface PaymentMethodInput {
 	instructions: string;
 	receipt_note: string;
 	settings: Settings;
+	fee: string;
+	fee_percent: string;
+	fee_label: string;
 }
 
 const BASE = '/orillacart/v1';

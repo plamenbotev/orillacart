@@ -17,7 +17,7 @@ final readonly class PayPalOrderRequest
      * @param string                                                                  $requestId idempotency key: the same request id never creates a second PayPal order
      * @param string                                                                  $customId  the shop's order number, which PayPal shows the seller and sends back
      * @param list<array{name: string, sku: ?string, quantity: int, unitAmount: string}> $items     only with a breakdown
-     * @param ?array{itemTotal: string, tax: string, shipping: string, discount: string} $breakdown adds up to the amount
+     * @param ?array{itemTotal: string, tax: string, shipping: string, discount: string, handling: string} $breakdown adds up to the amount
      * @param ?PaymentAddress                                                          $shipTo    where the goods go; null when nothing ships
      */
     public function __construct(

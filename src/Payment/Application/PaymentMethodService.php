@@ -14,6 +14,7 @@ use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentMethodRepository;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Extension\SettingValues;
 
@@ -66,6 +67,7 @@ final readonly class PaymentMethodService
             throw new PaymentRuleViolation(\sprintf('%s needs "%s" before it can be turned on.', $command->name, $missing->label), 'orillacart_payment_method_incomplete');
         }
         $method->change($command->name, $command->active, $command->position, $command->countries, $command->instructions, $command->receiptNote, $settings);
+        $method->chargeFee(Money::of($command->fee), $command->feePercent, $command->feeLabel);
         $this->methods->save($method);
 
         return $this->view($found, $method);
@@ -94,6 +96,9 @@ final readonly class PaymentMethodService
             $gateway->settings(),
             $gateway->notReady(new Settings($method->settings()), $this->shop->current()->currency, $this->shop->current()->priceDecimals),
             $gateway instanceof HandlesNotifications ? $this->urls->notificationUrl($gateway->id()) : null,
+            (string) $method->fee(),
+            $method->feePercent(),
+            $method->feeLabel() === $method->name() ? '' : $method->feeLabel(),
         );
     }
 }

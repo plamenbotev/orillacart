@@ -32,5 +32,8 @@ final readonly class CheckoutDetails
         /** A business customer's VAT number, for the reverse charge. */
         #[Assert\Length(max: 20)]
         public ?string $vatNumber = null,
+        /** The way to pay chosen, for its fee; without it, the first offered. */
+        #[Assert\Regex(pattern: '/^[a-z][a-z0-9_]{0,39}$/')]
+        public ?string $payment = null,
     ) {}
 }

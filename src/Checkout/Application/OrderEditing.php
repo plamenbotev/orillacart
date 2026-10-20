@@ -96,7 +96,7 @@ final readonly class OrderEditing
             $this->orders->releaseStock($orderId);
             // Its own uses do not count against the limits while it is priced again.
             $this->discounts->release($orderId);
-            $priced = $this->pricing->price($items, $shipping, $billing, $command->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge);
+            $priced = $this->pricing->price($items, $shipping, $billing, $command->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, $order->paymentGateway);
             if ($priced['needs_shipping'] && $priced['chosen']?->id !== $command->shippingOption) {
                 throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to its address.' : 'Choose how the order ships.', 'orillacart_shipping_required');
             }
@@ -120,6 +120,8 @@ final readonly class OrderEditing
                 (string) $bill->discount(),
                 $this->pricing->discounts($priced),
                 $bill->includesTax(),
+                $this->pricing->orderFees($priced),
+                (string) $bill->feesTax(),
             ), $userId);
         });
     }

@@ -28,6 +28,9 @@
         {% if summary.needs_shipping %}
             <tr><th scope="row">{{ __('Shipping') }}</th><td>{{ summary.shipping_option ? summary.shipping|money(summary.currency) : '—' }}</td></tr>
         {% endif %}
+        {% for fee in summary.fees %}
+            <tr class="orillacart-fee"><th scope="row">{{ fee.label }}</th><td>{{ fee.amount|money(summary.currency) }}</td></tr>
+        {% endfor %}
         {% if not summary.prices_include_tax %}
             {% for tax in summary.taxes %}
                 <tr><th scope="row">{{ tax.name }} ({{ tax.percent }}%)</th><td>{{ tax.total|money(summary.currency) }}</td></tr>
@@ -83,8 +86,9 @@
         <legend>{{ __('Payment') }}</legend>
         {% for method in summary.payment_methods %}
             <div class="orillacart-choice">
-                <input id="orillacart-payment-{{ method.gateway }}" type="radio" name="payment" value="{{ method.gateway }}"{{ loop.first ? ' checked' }}>
-                <label for="orillacart-payment-{{ method.gateway }}">{{ method.name }}</label>
+                <input id="orillacart-payment-{{ method.gateway }}" type="radio" name="payment" value="{{ method.gateway }}"{{ method.gateway == summary.payment_method ? ' checked' }} data-orillacart-payment>
+                {# translators: %s: an amount of money -#}
+                <label for="orillacart-payment-{{ method.gateway }}">{{ method.name }}{% if summary.payment_fees[method.gateway] is defined %} <small>{{ __('(+ %s fee)')|format(summary.payment_fees[method.gateway]|money(summary.currency)) }}</small>{% endif %}</label>
                 {% if method.instructions %}<p class="orillacart-choice__note">{{ method.instructions|nl2br }}</p>{% endif %}
             </div>
         {% else %}

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace OrillaCart\Payment\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
+use OrillaCart\Shared\Domain\Money;
 
 /**
  * How the shop set up one payment gateway: whether checkout offers it, under which name, in which countries,
- * what the customer reads before and after ordering, and the gateway's own settings (such as PayPal's keys).
+ * what the customer reads before and after ordering, the fee an order paid this way pays, and the gateway's own
+ * settings (such as PayPal's keys).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'payment_methods')]
@@ -48,6 +50,18 @@ class PaymentMethod
     /** @var array<string, string|bool> */
     #[ORM\Column(type: 'sealed_json')]
     private array $settings;
+
+    /** A fee for paying this way, as the shop's prices are (before tax, or including it). */
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+    private string $fee = '0';
+
+    /** And a percentage of the items (less discounts) and shipping. */
+    #[ORM\Column(type: 'decimal', precision: 7, scale: 4, options: ['default' => '0.0000'])]
+    private string $feePercent = '0';
+
+    /** What the totals call the fee; empty for the method's name. */
+    #[ORM\Column(length: self::MAX_NAME_LENGTH, options: ['default' => ''])]
+    private string $feeLabel = '';
 
     /**
      * @param list<string>               $countries ISO 3166-1 codes where checkout offers it; empty for everywhere
@@ -129,6 +143,44 @@ class PaymentMethod
     public function settings(): array
     {
         return $this->settings;
+    }
+
+    /**
+     * @param string $percent of the items, less discounts, and shipping: "2.5"
+     *
+     * @throws PaymentRuleViolation for a fee below zero, a percentage not from 0 to 100, or a label too long
+     */
+    public function chargeFee(Money $fixed, string $percent, string $label): void
+    {
+        if ($fixed->isNegative()) {
+            throw new PaymentRuleViolation('A fee cannot be less than nothing.', 'orillacart_invalid_payment_fee');
+        }
+        if (preg_match('/^\d{1,3}(\.\d{1,4})?$/', $percent) !== 1 || (float) $percent > 100) {
+            throw new PaymentRuleViolation('A fee\'s percentage is from 0 to 100, with up to four decimals.', 'orillacart_invalid_payment_fee');
+        }
+        $label = trim($label);
+        if (mb_strlen($label) > self::MAX_NAME_LENGTH) {
+            throw new PaymentRuleViolation(\sprintf('A fee\'s label has up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_payment_fee');
+        }
+        $this->fee = $fixed->toFixed();
+        $this->feePercent = Money::of($percent)->toFixed();
+        $this->feeLabel = $label;
+    }
+
+    public function fee(): Money
+    {
+        return Money::of($this->fee);
+    }
+
+    public function feePercent(): string
+    {
+        return (string) Money::of($this->feePercent);
+    }
+
+    /** What the totals call the fee. */
+    public function feeLabel(): string
+    {
+        return $this->feeLabel === '' ? $this->name : $this->feeLabel;
     }
 
     /** Whether a customer billed in this country may use it; without a country, only methods for everywhere. */

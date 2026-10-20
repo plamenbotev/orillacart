@@ -6,6 +6,7 @@ namespace OrillaCart\Payment\Application;
 
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Settings;
+use OrillaCart\Payment\Application\Dto\PaymentFeeView;
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
 use OrillaCart\Payment\Application\Gateway\OfflineGateway;
 use OrillaCart\Payment\Domain\PaymentMethod;
@@ -52,6 +53,17 @@ final readonly class PaymentOptions
     public function receiptNote(string $gateway): string
     {
         return $this->methods->findByGateway($gateway)?->receiptNote() ?? '';
+    }
+
+    /** The fee for paying with the method; null when it has none. */
+    public function fee(string $gateway): ?PaymentFeeView
+    {
+        $method = $this->methods->findByGateway($gateway);
+        if ($method === null || ($method->fee()->isZero() && $method->feePercent() === '0')) {
+            return null;
+        }
+
+        return new PaymentFeeView($method->feeLabel(), (string) $method->fee(), $method->feePercent());
     }
 
     public function name(string $gateway): string

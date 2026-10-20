@@ -16,6 +16,7 @@ final readonly class NewOrder
      * @param string             $discountTotal what the coupons took off the items
      * @param list<OrderDiscountView> $discounts
      * @param list<OrderFieldView>    $fields    answers to add-ons' checkout fields
+     * @param list<NewOrderFee>       $fees      what it pays besides its items and shipping
      */
     public function __construct(
         public ?int $customerId,
@@ -44,5 +45,8 @@ final readonly class NewOrder
         public bool $reverseCharge = false,
         /** The language the customer ordered in; null for the site's. */
         public ?string $locale = null,
+        public array $fees = [],
+        /** The tax on the fees. */
+        public string $feesTax = '0',
     ) {}
 }

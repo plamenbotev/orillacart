@@ -15,6 +15,7 @@ use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
+use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\Dto\NewOrderItems;
 use OrillaCart\Ordering\Application\Dto\NewOrderLine;
 use OrillaCart\Ordering\Application\Dto\NewShipping;
@@ -49,6 +50,7 @@ use OrillaCart\Ordering\Domain\NoteAuthor;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderDiscount;
 use OrillaCart\Ordering\Domain\OrderDraft;
+use OrillaCart\Ordering\Domain\OrderFee;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRefund;
 use OrillaCart\Ordering\Domain\OrderRepository;
@@ -116,6 +118,8 @@ final readonly class OrderService
             $command->vatNumber,
             $command->reverseCharge,
             $command->locale,
+            self::fees($command->fees),
+            Money::of($command->feesTax),
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);
@@ -831,6 +835,8 @@ final readonly class OrderService
             Money::of($command->discountTotal),
             self::discounts($command->discounts),
             $command->pricesIncludeTax,
+            self::fees($command->fees),
+            Money::of($command->feesTax),
         );
         $order->addNote(\sprintf('The items were changed; the total went from %s to %s %s.', $before, (string) $order->total(), $order->currency()), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
         $this->orders->save($order);
@@ -838,6 +844,16 @@ final readonly class OrderService
         $this->events->dispatch(new OrderChanged($order->id()));
 
         return $this->view($order, true);
+    }
+
+    /**
+     * @param list<NewOrderFee> $fees
+     *
+     * @return list<OrderFee>
+     */
+    private static function fees(array $fees): array
+    {
+        return array_map(static fn(NewOrderFee $fee): OrderFee => new OrderFee($fee->label, Money::of($fee->amount)), $fees);
     }
 
     /**

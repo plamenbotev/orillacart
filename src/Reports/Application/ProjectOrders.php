@@ -123,7 +123,7 @@ final readonly class ProjectOrders implements JobHandler
                 $net($order->subtotal, $order->itemsTax),
                 $order->discountTotal,
                 $net($order->shippingTotal, $order->shippingTax),
-                (string) Money::of($order->itemsTax)->add(Money::of($order->shippingTax)),
+                (string) Money::of($order->itemsTax)->add(Money::of($order->shippingTax))->add(Money::of($order->feesTax)),
                 $order->total,
             ),
             array_map(static fn(OrderLineView $line): SoldLine => new SoldLine(

@@ -10,6 +10,7 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Checkout\Application\Dto\CheckoutCouponView;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
+use OrillaCart\Checkout\Application\Dto\CheckoutFeeView;
 use OrillaCart\Checkout\Application\Dto\CheckoutLineView;
 use OrillaCart\Checkout\Application\Dto\CheckoutTaxView;
 use OrillaCart\Checkout\Application\Dto\CheckoutView;
@@ -29,6 +30,7 @@ use OrillaCart\Ordering\Application\Dto\NewOrder;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Payment\Application\Dto\PaymentOptionView;
 use OrillaCart\Payment\Application\Dto\StartPayment;
 use OrillaCart\Payment\Application\PaymentOptions;
 use OrillaCart\Payment\Application\Payments;
@@ -68,6 +70,7 @@ final readonly class CheckoutService
         private VatNumbers $vatNumbers,
         private Languages $languages,
         private ExtensionFailures $failures,
+        private OrderFees $fees,
     ) {}
 
     /**
@@ -81,16 +84,22 @@ final readonly class CheckoutService
             $at = $this->estimateAt($owner);
             if ($at !== null) {
                 $estimatedFor = $at['country'];
-                $details = new CheckoutDetails($at['country'], $at['state'], $at['country'], $at['state'], $details->shippingOption, $at['postcode']);
+                $details = new CheckoutDetails($at['country'], $at['state'], $at['country'], $at['state'], $details->shippingOption, $at['postcode'], payment: $details->payment);
             }
         }
         $shipping = $details->shippingCountry === null ? null : new TaxAddress($details->shippingCountry, $details->shippingState);
         $billing = $details->billingCountry === null ? $shipping : new TaxAddress($details->billingCountry, $details->billingState);
         $contents = $this->contents($owner);
         $reverse = $this->vatNumbers->reverseCharge($details->billingCountry, $details->vatNumber);
-        $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies);
-        $bill = $priced['bill'];
         $currency = $this->settings->current()->currency;
+        // The methods offered depend on where the order is billed, not on what it costs: the one chosen, or the
+        // first, prices its fee in.
+        $methods = $this->paymentOptions->available($billing?->country, $currency);
+        $gateways = array_map(static fn(PaymentOptionView $method): string => $method->gateway, $methods);
+        $payment = \in_array($details->payment, $gateways, true) ? $details->payment : ($gateways[0] ?? null);
+        $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment);
+        $bill = $priced['bill'];
+        $base = $bill->subtotal()->subtract($bill->discount())->add($bill->shipping());
         $applied = [];
         foreach ($priced['discounts']->coupons as $coupon) {
             $applied[$coupon->code] = new CheckoutCouponView($coupon->code, $coupon->description, (string) Money::of($coupon->amount), $coupon->freeShipping, null, $coupon->automatic);
@@ -118,7 +127,7 @@ final readonly class CheckoutService
             $priced['options'],
             $priced['chosen']?->id,
             !$bill->total()->isZero(),
-            $bill->total()->isZero() ? [] : $this->paymentOptions->available($billing?->country, $currency),
+            $bill->total()->isZero() ? [] : $methods,
             array_map(static fn(BilledTax $tax): CheckoutTaxView => new CheckoutTaxView($tax->name, $tax->percent, (string) $tax->items, (string) $tax->shipping, (string) $tax->total()), $bill->taxes()),
             (string) $bill->subtotal(),
             (string) $bill->itemsTax(),
@@ -138,7 +147,31 @@ final readonly class CheckoutService
             $reverse->message,
             $estimatedFor,
             $priced['free_from'] === null ? null : (string) Money::of($priced['free_from'])->subtract($bill->subtotal()->subtract($bill->discount())),
+            $bill->total()->isZero() ? null : $payment,
+            array_map(static fn(array $fee): CheckoutFeeView => new CheckoutFeeView($fee['label'], (string) $fee['amount']), $bill->fees()),
+            (string) $bill->feesTax(),
+            $bill->total()->isZero() ? [] : $this->paymentFees($gateways, $base),
         );
+    }
+
+    /**
+     * What each way to pay adds to an order of this much, before tax, for the customer choosing.
+     *
+     * @param list<string> $gateways
+     *
+     * @return array<string, string> by gateway, those without a fee left out
+     */
+    private function paymentFees(array $gateways, Money $base): array
+    {
+        $fees = [];
+        foreach ($gateways as $gateway) {
+            $fee = $this->fees->paymentFee($gateway, $base);
+            if ($fee !== null) {
+                $fees[$gateway] = (string) $fee->rounded($this->settings->current()->priceDecimals);
+            }
+        }
+
+        return $fees;
     }
 
     /**
@@ -210,7 +243,7 @@ final readonly class CheckoutService
         $shippingTax = new TaxAddress($shippingAddress->country, $shippingAddress->state);
 
         $reverse = $this->vatNumbers->reverseCharge($billingAddress->country, $command->vatNumber);
-        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies);
+        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment);
         foreach ($priced['discounts']->refused as $code => $reason) {
             throw new CheckoutRuleViolation(\sprintf('The code %s does not apply: %s Remove it to order.', $code, $reason), 'orillacart_coupon_refused');
         }
@@ -263,6 +296,8 @@ final readonly class CheckoutService
             $reverse->number,
             $reverse->applies,
             $this->languages->current(),
+            $this->pricing->orderFees($priced),
+            (string) $bill->feesTax(),
         )), $gateway === null)));
         foreach ($this->failures->since($failed) as $failure) {
             $this->orders->note($order->number, $failure, false);

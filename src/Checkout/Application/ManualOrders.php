@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Checkout\Application;
 
+use OrillaCart\Checkout\Application\Dto\CheckoutFeeView;
 use OrillaCart\Checkout\Application\Dto\CheckoutLineView;
 use OrillaCart\Checkout\Application\Dto\CheckoutTaxView;
 use OrillaCart\Checkout\Application\Dto\CreateOrder;
@@ -51,7 +52,7 @@ final readonly class ManualOrders
     {
         $shipping = $query->shippingCountry === null ? null : new TaxAddress($query->shippingCountry, $query->shippingState);
         $billing = $query->billingCountry === null ? $shipping : new TaxAddress($query->billingCountry, $query->billingState);
-        $priced = $this->pricing->price(self::items($query->items), $shipping ?? $billing, $billing, $query->shippingOption, $query->shippingPostcode, [], $query->customerId, $query->email);
+        $priced = $this->pricing->price(self::items($query->items), $shipping ?? $billing, $billing, $query->shippingOption, $query->shippingPostcode, [], $query->customerId, $query->email, payment: $query->payment);
         $bill = $priced['bill'];
         $currency = $this->settings->current()->currency;
 
@@ -79,6 +80,8 @@ final readonly class ManualOrders
             $this->pricing->pickupPoints($priced, $query->shippingCountry ?? $query->billingCountry, $query->shippingPostcode),
             (string) $bill->discount(),
             $this->pricing->discounts($priced),
+            array_map(static fn(array $fee): CheckoutFeeView => new CheckoutFeeView($fee['label'], (string) $fee['amount']), $bill->fees()),
+            (string) $bill->feesTax(),
         );
     }
 
@@ -111,6 +114,7 @@ final readonly class ManualOrders
                 [],
                 $command->customerId,
                 $command->email,
+                payment: $command->payment,
             );
             if ($this->failures->closedSince($failed)) {
                 throw new CheckoutRuleViolation('Some prices cannot be worked out right now: an add-on that sets them failed. Try again in a moment.', 'orillacart_prices_unavailable');
@@ -141,6 +145,8 @@ final readonly class ManualOrders
                 $this->pricing->discounts($priced),
                 [],
                 $bill->includesTax(),
+                fees: $this->pricing->orderFees($priced),
+                feesTax: (string) $bill->feesTax(),
             ));
             // The shop's automatic discounts count their uses as at checkout; the shop enters no codes.
             $this->discounts->redeem($order->number, $priced['discounts']->coupons, $command->customerId, $command->email);

@@ -7,6 +7,7 @@ namespace OrillaCart\Ordering\Application\Dto;
 use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderDiscount;
+use OrillaCart\Ordering\Domain\OrderFee;
 use OrillaCart\Ordering\Domain\OrderNote;
 use OrillaCart\Ordering\Domain\OrderStatus;
 use OrillaCart\Ordering\Domain\TaxLine;
@@ -78,6 +79,10 @@ final readonly class OrderView
         public string $refundable = '0',
         /** The language the customer ordered in; null for the site's. */
         public ?string $locale = null,
+        /** @var list<NewOrderFee> what it pays besides its items and shipping, as the order's prices are */
+        public array $fees = [],
+        public string $feesTotal = '0',
+        public string $feesTax = '0',
     ) {}
 
     /**
@@ -133,6 +138,9 @@ final readonly class OrderView
             $order->anonymisedAt() !== null,
             (string) $order->refundable(),
             $order->locale(),
+            array_map(static fn(OrderFee $fee): NewOrderFee => new NewOrderFee($fee->label, (string) $fee->amount), $order->fees()),
+            (string) $order->feesTotal(),
+            (string) $order->feesTax(),
         );
     }
 }

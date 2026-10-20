@@ -13,6 +13,7 @@ final readonly class NewOrderItems
      * @param list<NewOrderLine> $lines
      * @param list<TaxLineView>  $taxes
      * @param list<OrderDiscountView> $discounts the order's coupons, priced again
+     * @param list<NewOrderFee>       $fees      its fees, priced again
      */
     public function __construct(
         public array $lines,
@@ -25,5 +26,7 @@ final readonly class NewOrderItems
         public string $discountTotal = '0',
         public array $discounts = [],
         public bool $pricesIncludeTax = false,
+        public array $fees = [],
+        public string $feesTax = '0',
     ) {}
 }

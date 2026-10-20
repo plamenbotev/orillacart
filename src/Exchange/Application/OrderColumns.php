@@ -9,6 +9,7 @@ use OrillaCart\Extension\Order\OrderAddress;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\OrderLine;
 use OrillaCart\Extension\Order\OrderSummary;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Log\LoggerInterface;
 
@@ -50,6 +51,7 @@ final readonly class OrderColumns
             new Column('subtotal', 'Subtotal', static fn(OrderSummary $order): string => $order->subtotal),
             new Column('discount', 'Discount', static fn(OrderSummary $order): string => $order->discount),
             new Column('shipping_total', 'Shipping', static fn(OrderSummary $order): string => $order->shippingTotal),
+            new Column('fees', 'Fees', static fn(OrderSummary $order): string => (string) array_reduce($order->fees, static fn(Money $sum, string $fee): Money => $sum->add(Money::of($fee)), Money::zero())),
             new Column('tax', 'Tax', static fn(OrderSummary $order): string => $order->tax),
             new Column('total', 'Total', static fn(OrderSummary $order): string => $order->total),
             new Column('refunded', 'Refunded', static fn(OrderSummary $order): string => $order->refunded),

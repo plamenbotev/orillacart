@@ -81,6 +81,7 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 		shippingOption,
 		customerId,
 		email,
+		payment,
 	] );
 	useEffect( () => {
 		if ( items.length === 0 ) {
@@ -101,6 +102,7 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 					shipping_option: shippingOption,
 					customer_id: customerId,
 					email: email || null,
+					payment: payment === '' ? null : payment,
 				} )
 			)
 				.then( ( priced ) => {
@@ -336,6 +338,16 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 								money( quote.total, quote.currency )
 							) }
 						</p>
+						{ quote.fees.map( ( fee ) => (
+							<p key={ fee.label }>
+								{ sprintf(
+									/* translators: 1: what the fee is for, 2: its amount */
+									__( '%1$s: %2$s.', 'orillacart' ),
+									fee.label,
+									money( fee.amount, quote.currency )
+								) }
+							</p>
+						) ) }
 						{ quote.discounts.map( ( discount ) => (
 							<p key={ discount.code }>
 								{ sprintf(
