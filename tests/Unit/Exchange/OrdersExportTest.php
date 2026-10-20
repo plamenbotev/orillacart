@@ -9,6 +9,7 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Exchange\Application\ColumnChoice;
 use OrillaCart\Exchange\Application\CsvFile;
 use OrillaCart\Exchange\Application\Dto\ChooseColumns;
 use OrillaCart\Exchange\Application\Dto\ColumnView;
@@ -38,7 +39,7 @@ final class OrdersExportTest extends TestCase
         $this->shop->content->add(20, 'E-book');
         $this->shop->products->save(20, new SaveProduct('8', 'virtual'));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
-        $this->export = new OrdersExport(new OrderColumns($this->shop->extensions, $this->shop->logger), new InMemoryExportChoices(), $this->shop->orders, new OrderSummaries($this->shop->orders), new EnglishColumnNames(), $this->shop->logger);
+        $this->export = new OrdersExport(new OrderColumns($this->shop->extensions, $this->shop->logger), new ColumnChoice(new InMemoryExportChoices(), new EnglishColumnNames()), $this->shop->orders, new OrderSummaries($this->shop->orders), $this->shop->logger);
     }
 
     public function testTheChosenColumnsOfEveryOrderTheListFindsGoToTheFile(): void

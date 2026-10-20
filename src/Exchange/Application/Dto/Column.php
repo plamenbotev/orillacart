@@ -13,10 +13,12 @@ final readonly class Column
 {
     /**
      * @param \Closure(T): string $value
+     * @param bool               $importable the import reads it back (product columns)
      */
     public function __construct(
         public string $id,
         public string $label,
         public \Closure $value,
+        public bool $importable = false,
     ) {}
 }

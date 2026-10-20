@@ -8,7 +8,6 @@ use OrillaCart\Exchange\Application\Dto\ChooseColumns;
 use OrillaCart\Exchange\Application\Dto\Column;
 use OrillaCart\Exchange\Application\Dto\ColumnView;
 use OrillaCart\Exchange\Domain\ExchangeRuleViolation;
-use OrillaCart\Exchange\Domain\ExportChoices;
 use OrillaCart\Exchange\Domain\ExportKind;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\OrderSummary;
@@ -28,40 +27,16 @@ final readonly class OrdersExport
 
     public function __construct(
         private OrderColumns $columns,
-        private ExportChoices $choices,
+        private ColumnChoice $choice,
         private OrderService $orders,
         private OrderSummaries $summaries,
-        private ColumnNames $names,
         private LoggerInterface $logger,
     ) {}
 
     /** @return list<ColumnView> the chosen ones in their order, then the others: the shop's own, then the add-ons' */
     public function columns(): array
     {
-        $chosen = $this->chosen();
-        $others = array_diff_key($this->columns->all(), array_flip(array_map(self::id(...), $chosen)));
-
-        return [
-            ...array_map(fn(Column|OrderColumn $column): ColumnView => new ColumnView(self::id($column), $this->label($column), $column instanceof OrderColumn, true), $chosen),
-            ...array_values(array_map(fn(Column|OrderColumn $column): ColumnView => new ColumnView(self::id($column), $this->label($column), $column instanceof OrderColumn, false), $others)),
-        ];
-    }
-
-    /**
-     * The columns to export, in the order chosen; every one while the shop never chose. A chosen column that is
-     * gone, as with an add-on turned off, drops out.
-     *
-     * @return list<Column<OrderSummary>|OrderColumn>
-     */
-    private function chosen(): array
-    {
-        $all = $this->columns->all();
-        $chosen = $this->choices->chosen(ExportKind::Orders);
-        if ($chosen === null) {
-            return array_values($all);
-        }
-
-        return array_values(array_filter(array_map(static fn(string $id): Column|OrderColumn|null => $all[$id] ?? null, $chosen)));
+        return $this->choice->views(ExportKind::Orders, $this->columns->all());
     }
 
     /**
@@ -73,13 +48,7 @@ final readonly class OrdersExport
      */
     public function choose(ChooseColumns $command): array
     {
-        $all = $this->columns->all();
-        foreach ($command->columns as $id) {
-            if (!isset($all[$id])) {
-                throw new ExchangeRuleViolation(\sprintf('There is no order column "%s".', $id), 'orillacart_unknown_column');
-            }
-        }
-        $this->choices->choose(ExportKind::Orders, array_values(array_unique($command->columns)));
+        $this->choice->choose(ExportKind::Orders, $this->columns->all(), $command);
 
         return $this->columns();
     }
@@ -89,8 +58,8 @@ final readonly class OrdersExport
      */
     public function export(OrderQuery $query, ExportFile $file): void
     {
-        $columns = $this->chosen();
-        $file->start(array_map(self::id(...), $columns), array_map($this->label(...), $columns));
+        $columns = $this->choice->chosen(ExportKind::Orders, $this->columns->all());
+        $file->start(array_map(ColumnChoice::id(...), $columns), array_map($this->choice->label(...), $columns));
         $page = 1;
         do {
             $found = $this->orders->orders(new OrderQuery(
@@ -133,17 +102,5 @@ final readonly class OrdersExport
 
             return '';
         }
-    }
-
-    /** @param Column<OrderSummary>|OrderColumn $column */
-    private static function id(Column|OrderColumn $column): string
-    {
-        return $column instanceof Column ? $column->id : $column->id();
-    }
-
-    /** @param Column<OrderSummary>|OrderColumn $column */
-    private function label(Column|OrderColumn $column): string
-    {
-        return $column instanceof Column ? $this->names->of($column->id, $column->label) : $column->label();
     }
 }

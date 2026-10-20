@@ -177,6 +177,12 @@ final class ProductList
                 };
             } )();
             JS);
+        // Beside "Add New": the products file out and back in.
+        wp_add_inline_script('inline-edit-post', \sprintf(
+            '( function () { const add = document.querySelector( ".wrap .page-title-action" ); if ( ! add ) { return; } const link = document.createElement( "a" ); link.className = "page-title-action"; link.href = %s; link.textContent = %s; add.after( link ); } )();',
+            wp_json_encode(admin_url('admin.php?page=orillacart-exchange')),
+            wp_json_encode(__('Import and export', 'orillacart')),
+        ));
         wp_add_inline_style('list-tables', '.column-orillacart_image{width:52px}.column-orillacart_order{width:5em}.column-orillacart_sku{width:10em}');
     }
 

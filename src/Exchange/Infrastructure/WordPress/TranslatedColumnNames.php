@@ -18,6 +18,11 @@ final class TranslatedColumnNames implements ColumnNames
     {
         $this->names ??= self::names();
 
+        if (str_starts_with($id, 'stock_') && str_starts_with($english, 'Stock: ')) {
+            /* translators: %s: stockroom name */
+            return \sprintf(__('Stock: %s', 'orillacart'), substr($english, \strlen('Stock: ')));
+        }
+
         return $this->names[$id] ?? $english;
     }
 
@@ -52,6 +57,32 @@ final class TranslatedColumnNames implements ColumnNames
             'transaction_id' => __('Transaction', 'orillacart'),
             'shipping' => __('Shipping method', 'orillacart'),
             'note' => __('Customer note', 'orillacart'),
+            'id' => __('Product ID', 'orillacart'),
+            'variation_id' => __('Variation ID', 'orillacart'),
+            'name' => __('Name', 'orillacart'),
+            'type' => __('Type', 'orillacart'),
+            'sku' => __('SKU', 'orillacart'),
+            'price' => __('Price', 'orillacart'),
+            'sale_price' => __('Sale price', 'orillacart'),
+            'sale_from' => __('Sale from', 'orillacart'),
+            'sale_until' => __('Sale until', 'orillacart'),
+            'stock_mode' => __('Stock', 'orillacart'),
+            'backorders' => __('Backorders', 'orillacart'),
+            'backorder_limit' => __('Owe at most', 'orillacart'),
+            'low_stock_threshold' => __('Low stock at', 'orillacart'),
+            'weight' => __('Weight', 'orillacart'),
+            'length' => __('Length', 'orillacart'),
+            'width' => __('Width', 'orillacart'),
+            'height' => __('Height', 'orillacart'),
+            'taxable' => __('Taxable', 'orillacart'),
+            'purchasable' => __('Purchasable', 'orillacart'),
+            'featured' => __('Featured', 'orillacart'),
+            'categories' => __('Categories', 'orillacart'),
+            'brands' => __('Brands', 'orillacart'),
+            'tags' => __('Tags', 'orillacart'),
+            'short_description' => __('Short description', 'orillacart'),
+            'description' => __('Description', 'orillacart'),
+            'options' => __('Options', 'orillacart'),
         ];
     }
 }

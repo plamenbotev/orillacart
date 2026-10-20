@@ -8,6 +8,7 @@ use OrillaCart\Exchange\Application\CsvFile;
 use OrillaCart\Exchange\Application\ExportFile;
 use OrillaCart\Exchange\Application\JsonFile;
 use OrillaCart\Exchange\Application\OrdersExport;
+use OrillaCart\Exchange\Application\ProductsExport;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -16,17 +17,19 @@ use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
- * Streams an export to the shop manager's browser as it is written (admin-post.php?action=orillacart_export_orders
- * with the Orders screen's filters, format csv or json, and the REST nonce the admin screens hold), so a file of any
- * size never sits in memory.
+ * Streams an export to the shop manager's browser as it is written, so a file of any size never sits in memory:
+ * admin-post.php?action=orillacart_export_orders with the Orders screen's filters and format csv or json, or
+ * action=orillacart_export_products for the products file, each with the REST nonce the admin screens hold.
  */
 #[AsHook('admin_post_orillacart_export_orders', method: 'orders')]
+#[AsHook('admin_post_orillacart_export_products', method: 'products')]
 final readonly class DownloadExport
 {
     private const array OWN_PARAMETERS = ['action', 'format', '_wpnonce'];
 
     public function __construct(
         private OrdersExport $orders,
+        private ProductsExport $products,
         private RequestMapper $input,
     ) {}
 
@@ -42,6 +45,14 @@ final readonly class DownloadExport
             wp_die(esc_html($e->getMessage()), esc_html__('Export', 'orillacart'), ['response' => 422, 'back_link' => true]);
         }
         $this->orders->export($query, $this->file('orders'));
+        exit;
+    }
+
+    /** The products file, every product and variation: CSV only, as the import reads it. */
+    public function products(): void
+    {
+        $this->authorize();
+        $this->products->export($this->file('products', csvOnly: true));
         exit;
     }
 
@@ -66,9 +77,9 @@ final readonly class DownloadExport
     }
 
     /** Sends the headers of the file and opens the response for it. */
-    private function file(string $name): ExportFile
+    private function file(string $name, bool $csvOnly = false): ExportFile
     {
-        $json = ($_GET['format'] ?? 'csv') === 'json';
+        $json = !$csvOnly && ($_GET['format'] ?? 'csv') === 'json';
         while (ob_get_level() > 0) {
             ob_end_clean();
         }
@@ -81,6 +92,6 @@ final readonly class DownloadExport
             wp_die(esc_html__('The export could not be written.', 'orillacart'));
         }
 
-        return $json ? new JsonFile($stream) : new CsvFile($stream);
+        return $json ? new JsonFile($stream) : new CsvFile($stream, headerIds: $csvOnly);
     }
 }

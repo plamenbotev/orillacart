@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Cart\Http\CartCookie;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Exchange\Application\CsvFile;
 use OrillaCart\Exchange\Application\OrdersExport;
+use OrillaCart\Exchange\Application\ProductsExport;
 use OrillaCart\Exchange\Infrastructure\WordPress\OptionExportChoices;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 
@@ -19,6 +21,8 @@ final class ExportsRestTest extends RestTestCase
 {
     /** @var list<int> */
     private array $posts = [];
+    /** @var list<int> */
+    private array $terms = [];
 
     protected function setUp(): void
     {
@@ -32,6 +36,9 @@ final class ExportsRestTest extends RestTestCase
         unset($_COOKIE[CartCookie::NAME]);
         foreach ($this->posts as $post) {
             wp_delete_post($post, true);
+        }
+        foreach ($this->terms as $term) {
+            wp_delete_term($term, ProductCategoryTaxonomy::NAME);
         }
         $this->clean();
         delete_option(OptionExportChoices::OPTION);
@@ -63,6 +70,30 @@ final class ExportsRestTest extends RestTestCase
         rewind($stream);
         $lines = explode("\n", trim(substr((string) stream_get_contents($stream), 3)));
         self::assertSame(['Warehouse,Order,Email', "W-{$number},{$number},ada@example.com"], $lines);
+    }
+
+    public function testTheProductsFileHasTheProductsPostsAndTermsByColumnIds(): void
+    {
+        $this->actAs('administrator');
+        $lamp = $this->product();
+        wp_update_post(['ID' => $lamp, 'post_excerpt' => 'Bright', 'post_status' => 'draft']);
+        $parent = wp_insert_term('Lighting', ProductCategoryTaxonomy::NAME);
+        self::assertIsArray($parent);
+        $child = wp_insert_term('Desk lamps', ProductCategoryTaxonomy::NAME, ['parent' => (int) $parent['term_id']]);
+        self::assertIsArray($child);
+        $this->terms = [(int) $child['term_id'], (int) $parent['term_id']];
+        wp_set_object_terms($lamp, [(int) $child['term_id']], ProductCategoryTaxonomy::NAME);
+
+        $chosen = $this->request('PUT', '/exports/products/columns', ['columns' => ['id', 'name', 'status', 'price', 'categories', 'short_description']], nonce: true);
+        self::assertSame(200, $chosen->get_status(), (string) wp_json_encode($chosen->get_data()));
+        $export = self::kernel()->container()->get(ProductsExport::class);
+        self::assertInstanceOf(ProductsExport::class, $export);
+        $stream = fopen('php://memory', 'w+b');
+        self::assertIsResource($stream);
+        $export->export(new CsvFile($stream, headerIds: true));
+        rewind($stream);
+
+        self::assertSame(['id,name,status,price,categories,short_description', "{$lamp},Lamp,draft,30,\"Lighting > Desk lamps\",Bright"], explode("\n", trim(substr((string) stream_get_contents($stream), 3))));
     }
 
     private function product(): int
