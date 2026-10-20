@@ -5,7 +5,9 @@
  # summary: the priced cart, or null with problem set; email; billing and shipping: the addresses to start from;
  # address_checks: whether add-ons check addresses before the order is placed; address_known: whether the summary had a country; ship_elsewhere; countries; states: {country: [states]}; logged_in; accounts: optional | required | disabled;
  # saved_addresses: the logged-in customer's address book;
- # cart_reminders: whether the shop reminds customers who ask of a cart they leave at checkout;
+ # cart_reminders: whether the shop reminds customers who ask of a cart they leave at checkout; remind_ticked:
+ # whether its box starts ticked (a customer who did not turn it off); newsletter: the words of the newsletter's
+ # box, when the shop offers one and the customer is not subscribed;
  # links: the shop's pages.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
@@ -26,8 +28,14 @@
                     </p>
                     {% if cart_reminders %}
                         <p class="orillacart-field orillacart-field--check">
-                            <input id="orillacart-remind" type="checkbox" name="remind_cart" value="1"{{ logged_in ? ' checked' }} data-orillacart-remind>
+                            <input id="orillacart-remind" type="checkbox" name="remind_cart" value="1"{{ remind_ticked ?? false ? ' checked' }} data-orillacart-remind>
                             <label for="orillacart-remind">{{ __('Remind me once about my cart if I leave without ordering') }}</label>
+                        </p>
+                    {% endif %}
+                    {% if newsletter ?? null %}
+                        <p class="orillacart-field orillacart-field--check">
+                            <input id="orillacart-newsletter" type="checkbox" name="newsletter" value="1">
+                            <label for="orillacart-newsletter">{{ newsletter }}</label>
                         </p>
                     {% endif %}
                     {% if not logged_in and links.account %}

@@ -46,6 +46,8 @@ use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Invoicing\Application\InvoiceAttachments;
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Invoicing\Infrastructure\Events\IssueInvoices;
+use OrillaCart\Newsletter\Application\Newsletter;
+use OrillaCart\Newsletter\Application\SyncSubscriber;
 use OrillaCart\Notifications\Application\CartReminders;
 use OrillaCart\Notifications\Application\EmailWriter;
 use OrillaCart\Notifications\Application\OrderEmails;
@@ -153,6 +155,8 @@ use OrillaCart\Tests\Fixtures\Invoicing\InMemoryInvoices;
 use OrillaCart\Tests\Fixtures\Invoicing\MemoryInvoiceSettings;
 use OrillaCart\Tests\Fixtures\Invoicing\SofiaCalendar;
 use OrillaCart\Tests\Fixtures\Jobs\TestJobs;
+use OrillaCart\Tests\Fixtures\Newsletter\InMemoryNewsletterSettings;
+use OrillaCart\Tests\Fixtures\Newsletter\InMemorySubscribers;
 use OrillaCart\Tests\Fixtures\Notifications\FakeSite;
 use OrillaCart\Tests\Fixtures\Notifications\InMemoryEmailSettingsRepository;
 use OrillaCart\Tests\Fixtures\Notifications\InMemoryEmailTemplates;
@@ -195,6 +199,9 @@ final class TestShop
     public readonly Reorder $reorder;
     public readonly InMemoryCustomerNotes $customerNoteRecords;
     public readonly CustomerNotes $customerNotes;
+    public readonly Newsletter $newsletter;
+    public readonly InMemorySubscribers $subscribers;
+    public readonly InMemoryNewsletterSettings $newsletterSettings;
     public readonly ExtensionFailures $failures;
     public readonly InMemoryProductContent $content;
     public readonly InMemoryProductRepository $productRecords;
@@ -284,6 +291,8 @@ final class TestShop
     public function __construct(string $now = '2026-10-17 12:00:00 UTC', array $shippingMethods = [])
     {
         $this->clock = new MockClock($now);
+        $this->jobs = new TestJobs($this->clock);
+        $this->jobs->immediate = true;
         $this->transactions = new ImmediateTransactions();
         $this->events = new EventDispatcher();
         $this->logger = new MemoryLogger();
@@ -352,13 +361,15 @@ final class TestShop
         $this->customerSettings = new InMemoryCustomerSettingsRepository();
         $this->pendingAccounts = new InMemoryPendingAccounts();
         $this->accountMail = new RecordingAccountMail();
-        $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders, $this->customerGroupRecords, $this->events, $this->pendingAccounts, $this->accountMail, $this->accountMail, $this->clock, $settings, $this->customerNoteRecords = new InMemoryCustomerNotes());
+        $this->newsletter = new Newsletter($this->subscribers = new InMemorySubscribers(), $this->newsletterSettings = new InMemoryNewsletterSettings(), $extensions, $this->jobs->jobs, $this->clock);
+        $this->jobs->with(new SyncSubscriber($this->newsletter, $this->logger));
+        $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders, $this->customerGroupRecords, $this->events, $this->pendingAccounts, $this->accountMail, $this->accountMail, $this->clock, $settings, $this->customerNoteRecords = new InMemoryCustomerNotes(), $this->newsletter);
         $this->customerNotes = new CustomerNotes($this->customerNoteRecords, $this->accounts, new FixedUserNames(), $this->clock);
         $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCustomers($this->orders)(...));
         $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)(...));
         $this->events->addListener(CustomerErased::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)->erased(...));
         $this->events->addListener(PersonErased::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)->personErased(...));
-        $this->personalData = new PersonalData($this->orders, $this->customers, $this->customerNotes);
+        $this->personalData = new PersonalData($this->orders, $this->customers, $this->customerNotes, $this->newsletter);
         $this->customerGroups = new CustomerGroups($this->customerGroupRecords, $this->accounts);
         $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger);
         $this->couponRecords = new InMemoryCouponRepository($this->transactions);
@@ -394,6 +405,7 @@ final class TestShop
             $fees,
             $this->deliveryDays = new DeliveryDays($carrierRecords, $this->orders, new SofiaCalendar(), $this->clock),
             $this->addressChecks = new AddressChecks($extensions, $this->logger),
+            $this->newsletter,
         );
         $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns(new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock);
@@ -426,9 +438,7 @@ final class TestShop
         $this->events->addListener(OrderRepricing::class, $withPayments->repricing(...));
         $this->events->addListener(OrderMarkingPaid::class, $withPayments->markingPaid(...));
         $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger, $this->events);
-        $this->jobs = new TestJobs($this->clock);
         $this->sentEmails = new InMemorySentEmails();
-        $this->jobs->immediate = true;
         $this->writer = new EmailWriter($this->emailTemplates, $this->emailSettings, $this->site = new FakeSite(), $this->languages);
         $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $this->writer, $this->mail, $this->logger, new ShipmentTracking($this->consignmentRecords, $this->orders), $this->jobs->jobs, $this->invoices, $this->receipts, new InvoiceAttachments($this->invoices, $this->invoiceSettings, $this->invoicePdfs = new FakeInvoicePdfs(), $this->languages, $this->logger));
         $this->cartReminders = new CartReminders($this->abandonedCarts, new FakeCartLinks(), $this->coupons, $this->emailSettings, $settings, $this->writer, $this->mail, $this->jobs->jobs, $this->clock);

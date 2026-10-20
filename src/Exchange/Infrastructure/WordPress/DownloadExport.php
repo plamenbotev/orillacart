@@ -9,6 +9,7 @@ use OrillaCart\Exchange\Application\ExportFile;
 use OrillaCart\Exchange\Application\JsonFile;
 use OrillaCart\Exchange\Application\OrdersExport;
 use OrillaCart\Exchange\Application\ProductsExport;
+use OrillaCart\Exchange\Application\SubscribersExport;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -19,10 +20,12 @@ use OrillaCart\Shared\WordPress\AsHook;
 /**
  * Streams an export to the shop manager's browser as it is written, so a file of any size never sits in memory:
  * admin-post.php?action=orillacart_export_orders with the Orders screen's filters and format csv or json, or
- * action=orillacart_export_products for the products file, each with the REST nonce the admin screens hold.
+ * action=orillacart_export_products for the products file, or action=orillacart_export_subscribers for the
+ * newsletter's subscribers, each with the REST nonce the admin screens hold.
  */
 #[AsHook('admin_post_orillacart_export_orders', method: 'orders')]
 #[AsHook('admin_post_orillacart_export_products', method: 'products')]
+#[AsHook('admin_post_orillacart_export_subscribers', method: 'subscribers')]
 final readonly class DownloadExport
 {
     private const array OWN_PARAMETERS = ['action', 'format', '_wpnonce'];
@@ -30,6 +33,7 @@ final readonly class DownloadExport
     public function __construct(
         private OrdersExport $orders,
         private ProductsExport $products,
+        private SubscribersExport $subscribers,
         private RequestMapper $input,
     ) {}
 
@@ -53,6 +57,14 @@ final readonly class DownloadExport
     {
         $this->authorize();
         $this->products->export($this->file('products', csvOnly: true));
+        exit;
+    }
+
+    /** The newsletter's subscribers: CSV or JSON. */
+    public function subscribers(): void
+    {
+        $this->authorize();
+        $this->subscribers->export($this->file('subscribers'));
         exit;
     }
 

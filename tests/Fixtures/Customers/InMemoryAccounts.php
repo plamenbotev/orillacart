@@ -68,7 +68,13 @@ final class InMemoryAccounts implements Accounts
     public function saveAddresses(int $id, AddressBook $addresses): void
     {
         $account = $this->accounts[$id];
-        $this->accounts[$id] = new CustomerRecord($id, $account->email, $account->firstName, $account->lastName, $account->registeredAt, $addresses);
+        $this->accounts[$id] = new CustomerRecord($id, $account->email, $account->firstName, $account->lastName, $account->registeredAt, $addresses, $account->cartReminders);
+    }
+
+    public function saveCartReminders(int $id, bool $on): void
+    {
+        $account = $this->accounts[$id];
+        $this->accounts[$id] = new CustomerRecord($id, $account->email, $account->firstName, $account->lastName, $account->registeredAt, $account->addresses, $on);
     }
 
     public function search(?string $text, int $offset, int $limit): array

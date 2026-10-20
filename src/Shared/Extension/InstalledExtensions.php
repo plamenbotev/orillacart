@@ -9,6 +9,7 @@ use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Marketing\MailingList;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Payment\PaymentGateway;
@@ -56,6 +57,11 @@ interface InstalledExtensions
      * @return list<OrderFee>
      */
     public function orderFees(): array;
+
+    /**
+     * @return list<MailingList>
+     */
+    public function mailingLists(): array;
 
     /**
      * @return list<OrderAction>

@@ -28,6 +28,9 @@ interface Accounts
 
     public function saveAddresses(int $id, AddressBook $addresses): void;
 
+    /** Whether checkout starts with the box ticked to remind them of a cart they leave. */
+    public function saveCartReminders(int $id, bool $on): void;
+
     /**
      * Customers newest first, and how many match in all. The search matches email and names.
      *

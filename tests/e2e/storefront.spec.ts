@@ -337,6 +337,67 @@ test.describe( 'A visitor', () => {
 		await expect(
 			page.locator( '#shipping_address-postcode' )
 		).toHaveValue( '1000' );
+		await expect( page.locator( '#orillacart-remind' ) ).toBeChecked();
+
+		// Turned off in the account, the reminder's box starts unticked.
+		await page.goto( shop.urls.account );
+		await page.getByRole( 'link', { name: 'Emails' } ).click();
+		await page
+			.getByLabel( 'At checkout, offer to remind me of a cart I leave' )
+			.uncheck();
+		await page.getByRole( 'button', { name: 'Save' } ).click();
+		await expect(
+			page.getByText( 'Your choices are saved.' )
+		).toBeVisible();
+		await page.goto( shop.urls.checkout );
+		await expect( page.locator( '#orillacart-remind' ) ).not.toBeChecked();
+	} );
+
+	test( 'signs up for the newsletter at checkout', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const email = `e2e-reader-${ Date.now() }@example.com`;
+		await requestUtils.rest( {
+			method: 'PUT',
+			path: '/orillacart/v1/newsletter-settings',
+			data: {
+				offered: true,
+				consent: 'Send me the E2E letter.',
+				lists: [],
+			},
+		} );
+		try {
+			await page.goto( shop.lampUrl );
+			await page.getByRole( 'button', { name: 'Add to cart' } ).click();
+			await expect( page.getByRole( 'status' ) ).toHaveText( /Added/ );
+			await page.goto( shop.urls.checkout );
+			await fillBilling( page, email );
+			await page.getByLabel( 'Send me the E2E letter.' ).check();
+			await page.getByRole( 'button', { name: 'Place order' } ).click();
+			await expect(
+				page.getByRole( 'heading', {
+					name: 'Thank you for your order',
+				} )
+			).toBeVisible();
+
+			const settings = await requestUtils.rest< { subscribers: number } >(
+				{
+					path: '/orillacart/v1/newsletter-settings',
+				}
+			);
+			expect( settings.subscribers ).toBeGreaterThan( 0 );
+		} finally {
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: '/orillacart/v1/newsletter-settings',
+				data: {
+					offered: false,
+					consent: 'Send me the E2E letter.',
+					lists: [],
+				},
+			} );
+		}
 	} );
 
 	test( 'orders as a guest, then finds the order by its number and email', async ( {

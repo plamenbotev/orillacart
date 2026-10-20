@@ -15,7 +15,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  * A visitor may ask for an account with the order (create_account): the link to make it comes by email, and the
  * account then has the order. A logged-in customer's
  * addresses are remembered for next time unless remember_addresses is false. Fields holds the answers to the
- * questions add-ons ask.
+ * questions add-ons ask. Newsletter signs the email up, when the shop offers one.
  */
 final readonly class PlaceOrder
 {
@@ -54,5 +54,7 @@ final readonly class PlaceOrder
         public ?string $deliveryDate = null,
         #[Assert\Length(max: 40)]
         public ?string $deliverySlot = null,
+        /** The customer ticked the box to get the shop's newsletter. */
+        public bool $newsletter = false,
     ) {}
 }

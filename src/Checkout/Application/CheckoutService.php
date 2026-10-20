@@ -25,6 +25,8 @@ use OrillaCart\Coupons\Domain\Coupon;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Application\Dto\RegisterAccount;
 use OrillaCart\Extension\Checkout\FieldContext;
+use OrillaCart\Newsletter\Application\Newsletter;
+use OrillaCart\Newsletter\Domain\SignUpSource;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -78,6 +80,7 @@ final readonly class CheckoutService
         private OrderFees $fees,
         private DeliveryDays $deliveryDays,
         private AddressChecks $addressChecks,
+        private Newsletter $newsletter,
     ) {}
 
     /**
@@ -397,6 +400,9 @@ final readonly class CheckoutService
             }
         } elseif ($owner->customerId !== null && $command->rememberAddresses) {
             $this->customers->rememberAddresses($owner->customerId, $billing, $shippingAddress);
+        }
+        if ($command->newsletter && $this->newsletter->offer() !== null) {
+            $this->newsletter->subscribe($command->email, $billing->firstName, $billing->lastName, SignUpSource::Checkout, $owner->customerId);
         }
     }
 

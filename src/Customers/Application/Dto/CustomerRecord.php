@@ -18,5 +18,7 @@ final readonly class CustomerRecord
         public string $lastName,
         public string $registeredAt,
         public AddressBook $addresses = new AddressBook(),
+        /** Whether checkout offers to remind them of a cart they leave, the box ticked. */
+        public bool $cartReminders = true,
     ) {}
 }

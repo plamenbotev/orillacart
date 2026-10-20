@@ -9,6 +9,7 @@ use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Marketing\MailingList;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Payment\PaymentGateway;
@@ -34,6 +35,8 @@ final class FixedExtensions implements InstalledExtensions
     public array $fees = [];
     /** @var list<OrderAction> */
     public array $actions = [];
+    /** @var list<MailingList> */
+    public array $mailingLists = [];
     /** @var list<OrderColumn> */
     public array $orderColumns = [];
     /** @var list<ProductColumn> */
@@ -73,6 +76,11 @@ final class FixedExtensions implements InstalledExtensions
     public function addressChecks(): array
     {
         return $this->addressChecks;
+    }
+
+    public function mailingLists(): array
+    {
+        return $this->mailingLists;
     }
 
     public function orderFees(): array

@@ -26,6 +26,7 @@ import {
 	saveGroup,
 } from './api';
 import { CustomerCard } from './CustomerCard';
+import { NewsletterCard } from './NewsletterCard';
 import { money } from '../orders/labels';
 import { useLatest } from '../shared/useLatest';
 
@@ -165,6 +166,15 @@ export function CustomersScreen() {
 					</CardBody>
 				</Card>
 			) }
+			<NewsletterCard
+				onSaved={ () =>
+					setMessage( {
+						status: 'success',
+						text: __( 'Saved.', 'orillacart' ),
+					} )
+				}
+				onError={ fail }
+			/>
 			<GroupsCard
 				groups={ groups }
 				onChanged={ () => {

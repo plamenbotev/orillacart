@@ -133,6 +133,16 @@ function Value( { customer }: { customer: Customer } ) {
 			<dd>{ day( value.first_order_at ) }</dd>
 			<dt>{ __( 'Last order', 'orillacart' ) }</dt>
 			<dd>{ day( value.last_order_at ) }</dd>
+			<dt>{ __( 'Newsletter', 'orillacart' ) }</dt>
+			<dd>
+				{ customer.newsletter?.subscribed
+					? sprintf(
+							/* translators: %s: the day they signed up */
+							__( 'Subscribed since %s', 'orillacart' ),
+							day( customer.newsletter.subscribed_at )
+						)
+					: __( 'Not subscribed', 'orillacart' ) }
+			</dd>
 		</dl>
 	);
 }

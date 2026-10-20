@@ -1,6 +1,6 @@
 /**
- * The account page's forms: asking for an account, choosing its password from the emailed link, and the
- * address book.
+ * The account page's forms: asking for an account, choosing its password from the emailed link, finding a
+ * guest's order, the address book and the emails the customer wants.
  */
 import { __ } from '@wordpress/i18n';
 
@@ -217,5 +217,38 @@ export function bindAddressBook( book: HTMLElement ): void {
 				'error'
 			);
 		} );
+	} );
+}
+
+/**
+ * The emails the customer wants: the newsletter, and the reminders of carts they leave.
+ * @param form The account's emails form.
+ */
+export function bindEmails( form: HTMLFormElement ): void {
+	form.addEventListener( 'submit', async ( event ) => {
+		event.preventDefault();
+		const newsletter = form.querySelector< HTMLInputElement >(
+			'[name="newsletter"]'
+		);
+		const reminders = form.querySelector< HTMLInputElement >(
+			'[name="cart_reminders"]'
+		);
+		const result = await busy( form, () =>
+			api( 'PUT', '/account/emails', {
+				cart_reminders:
+					reminders?.type !== 'checkbox' || reminders.checked,
+				newsletter: newsletter ? newsletter.checked : null,
+			} )
+		);
+		if ( result === null ) {
+			return;
+		}
+		showMessage(
+			form,
+			result.ok
+				? __( 'Your choices are saved.', 'orillacart' )
+				: failure( result ),
+			result.ok ? 'success' : 'error'
+		);
 	} );
 }

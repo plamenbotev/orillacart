@@ -60,7 +60,7 @@ export function chooseExportColumns(
  * @param query  The filters, as the list asks the API with them.
  */
 export function exportUrl(
-	kind: ExportKind,
+	kind: ExportKind | 'subscribers',
 	format: string,
 	query: Record< string, unknown >
 ): string {

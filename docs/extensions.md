@@ -26,7 +26,7 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   methods. Price adjusters, cart rules, checkout fields and order actions follow (version 2).
 - `$registry->version()` is the API's version (`OrillaCart\Extension\Version`): 2 since price adjusters, cart
   rules, checkout fields, order actions and `orders()` came; 4 since export columns; 5 since order fees and
-  address checks.
+  address checks; 6 since mailing lists.
 - `$registry->log()` writes to the shop's log. Never log secrets or card data.
 - Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
 
@@ -294,6 +294,44 @@ if ($registry->version() >= 4) {
     });
 }
 ```
+
+## Mailing lists
+
+Version 6 lets an add-on send the newsletter's sign-ups to a newsletter service (Mailchimp, Brevo…). The shop
+keeps every sign-up itself, with the words the customer agreed to, when and where (checkout or their account);
+the shop manager turns each add-on's list on or off (Shop → Customers → Newsletter), and can download the
+subscribers.
+
+```php
+if ($registry->version() >= 6) {
+    $registry->mailingList(new class implements OrillaCart\Extension\Marketing\MailingList {
+        public function id(): string { return 'acme_mail'; }
+        public function name(): string { return __('Acme Mail: Customers', 'my-add-on'); }
+        public function subscribe(OrillaCart\Extension\Marketing\Subscriber $subscriber): void
+        {
+            $response = wp_remote_post('https://api.acme-mail.example/members', ['body' => [
+                'email' => $subscriber->email,
+                'name' => trim("{$subscriber->firstName} {$subscriber->lastName}"),
+                'consent' => $subscriber->consent,
+                'consented_at' => $subscriber->subscribedAt->format(DATE_ATOM),
+            ]]);
+            if (is_wp_error($response) || wp_remote_retrieve_response_code($response) >= 500) {
+                throw new OrillaCart\Extension\ProviderUnavailable('Acme Mail', 'not reachable');
+            }
+        }
+        public function unsubscribe(string $email): void { /* … */ }
+    });
+}
+```
+
+- The shop tells a list in the background (a job in the mail lane), never while the customer waits: of each
+  sign-up, of each unsubscribe in the account, and of the people the privacy tools erase. Turned on, a list gets
+  everyone subscribed so far.
+- Throw `ProviderUnavailable` when the service cannot be reached: the shop asks again later, up to six times.
+  Anything else is logged, and the job is left among the failed ones (Shop → Background jobs) to retry.
+- `subscribe()` may come again for someone already on the list (a retry, a list turned on again): treat it as
+  updating them. Someone who unsubscribes at the service is the service's to keep off; the shop does not hear of
+  it.
 
 ## Page slots
 

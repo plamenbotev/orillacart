@@ -43,6 +43,8 @@ const ADA: Customer = {
 		first_order_at: '2026-10-17T12:00:00+00:00',
 		last_order_at: '2026-11-06T12:00:00+00:00',
 	},
+	cart_reminders: true,
+	newsletter: null,
 };
 
 describe( 'CustomerCard', () => {

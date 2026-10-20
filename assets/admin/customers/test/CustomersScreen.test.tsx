@@ -26,6 +26,16 @@ describe( 'CustomersScreen', () => {
 					modes: [ 'optional', 'required', 'disabled' ],
 				} );
 			}
+			if (
+				request.path.startsWith( '/orillacart/v1/newsletter-settings' )
+			) {
+				return Promise.resolve( {
+					offered: false,
+					consent: 'News.',
+					lists: [],
+					subscribers: 0,
+				} );
+			}
 			return Promise.resolve( {
 				customers: [
 					{

@@ -10,6 +10,7 @@ use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Log;
+use OrillaCart\Extension\Marketing\MailingList;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\Orders;
@@ -51,6 +52,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $fees = [];
     /** @var array<string, OrderAction> */
     private array $actions = [];
+    /** @var array<string, MailingList> */
+    private array $mailingLists = [];
     /** @var array<string, OrderColumn> */
     private array $orderColumns = [];
     /** @var array<string, ProductColumn> */
@@ -121,6 +124,13 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     {
         if ($this->accepts('order fee', $fee->id(), $this->fees[$fee->id()] ?? null, $fee)) {
             $this->fees[$fee->id()] = $fee;
+        }
+    }
+
+    public function mailingList(MailingList $list): void
+    {
+        if ($this->accepts('mailing list', $list->id(), $this->mailingLists[$list->id()] ?? null, $list)) {
+            $this->mailingLists[$list->id()] = $list;
         }
     }
 
@@ -202,6 +212,13 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->fees);
+    }
+
+    public function mailingLists(): array
+    {
+        $this->collect();
+
+        return array_values($this->mailingLists);
     }
 
     public function orderActions(): array

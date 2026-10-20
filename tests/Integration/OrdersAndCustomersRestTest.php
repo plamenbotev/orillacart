@@ -111,7 +111,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     {
         $shop = [['GET', '/orders'], ['GET', '/orders/1'], ['PUT', '/orders/1/status'], ['PUT', '/orders/1/contact'], ['POST', '/orders/1/notes'],
             ['PUT', '/orders/1/items'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['GET', '/customers/1'],
-            ['POST', '/customers/1/addresses'], ['PUT', '/customers/1/addresses/ab12cd34'], ['DELETE', '/customers/1/addresses/ab12cd34'], ['GET', '/customers/1/notes'], ['POST', '/customers/1/notes'], ['DELETE', '/customers/1/notes/1'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/email-settings'],
+            ['POST', '/customers/1/addresses'], ['PUT', '/customers/1/addresses/ab12cd34'], ['DELETE', '/customers/1/addresses/ab12cd34'], ['GET', '/customers/1/notes'], ['POST', '/customers/1/notes'], ['DELETE', '/customers/1/notes/1'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/newsletter-settings'], ['PUT', '/newsletter-settings'], ['GET', '/email-settings'],
             ['PUT', '/email-settings'], ['POST', '/products/1/downloads'], ['DELETE', '/products/1/downloads/1'], ['GET', '/download-storage'],
             ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1'], ['POST', '/orders'], ['POST', '/orders/quote'],
             ['GET', '/orders/1/shipments'], ['POST', '/orders/1/shipments'], ['POST', '/orders/1/shipments/sent'], ['POST', '/shipments/1/arrived'], ['POST', '/orders/1/ready-for-pickup'], ['POST', '/orders/1/picked-up'], ['GET', '/orders/1/returns'], ['POST', '/returns/1/approve'], ['POST', '/returns/1/refuse'], ['POST', '/returns/1/receive'], ['POST', '/returns/1/refund'], ['GET', '/shipments/1/label'], ['POST', '/shipments/1/cancel'], ['GET', '/shipping-methods'], ['GET', '/orders/1/pickup-points'],
@@ -123,7 +123,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
             ['GET', '/coupons'], ['POST', '/coupons'], ['GET', '/coupons/1'], ['PUT', '/coupons/1'], ['DELETE', '/coupons/1'],
             ['GET', '/jobs'], ['GET', '/jobs/failed'], ['POST', '/jobs/failed/retry'], ['POST', '/jobs/failed/delete'], ['POST', '/jobs/workers/restart'],
             ['GET', '/orders/1/actions'], ['POST', '/orders/1/actions/test_export']];
-        $account = [['GET', '/account'], ['POST', '/account/addresses'], ['PUT', '/account/addresses/ab12cd34'], ['DELETE', '/account/addresses/ab12cd34'], ['GET', '/account/orders'], ['GET', '/account/orders/1'], ['GET', '/account/downloads']];
+        $account = [['GET', '/account'], ['POST', '/account/addresses'], ['PUT', '/account/addresses/ab12cd34'], ['DELETE', '/account/addresses/ab12cd34'], ['PUT', '/account/emails'], ['GET', '/account/orders'], ['GET', '/account/orders/1'], ['GET', '/account/downloads']];
         foreach ([...$shop, ...$account] as [$method, $route]) {
             self::assertSame(401, $this->request($method, $route)->get_status(), "visitor: {$method} {$route}");
         }
@@ -181,6 +181,44 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame([['Prefers calls.', 'orillacart_administrator']], array_map(static fn(array $note): array => [$note['text'], $note['author']], $notes));
         self::assertSame(204, $this->request('DELETE', "/customers/{$customer}/notes/{$this->id($added)}", nonce: true)->get_status());
         self::assertSame(422, $this->request('POST', "/customers/{$customer}/notes", ['text' => ' '], nonce: true)->get_status());
+    }
+
+    public function testTheNewsletterSignsUpAtCheckoutAndTheCustomerLeavesInTheirAccount(): void
+    {
+        global $wpdb;
+        self::assertInstanceOf(\wpdb::class, $wpdb);
+        $this->actAs('administrator');
+        $settings = $this->request('PUT', '/newsletter-settings', ['offered' => true, 'consent' => 'News and offers.', 'lists' => []], nonce: true);
+        self::assertSame(200, $settings->get_status(), (string) wp_json_encode($settings->get_data()));
+        self::assertSame(422, $this->request('PUT', '/newsletter-settings', ['offered' => true, 'consent' => 'News.', 'lists' => ['nobody']], nonce: true)->get_status(), 'a list no add-on brings');
+
+        $customer = $this->actAs('subscriber');
+        // The order's email, for the account to find its sign-up by; put back after.
+        $wpdb->update($wpdb->users, ['user_email' => 'ada@example.com'], ['ID' => $customer]);
+        clean_user_cache($customer);
+        try {
+            $this->order([[$this->guide, 1]], ['newsletter' => true]);
+            $this->actAs('administrator');
+            self::assertSame(1, $this->data($this->request('GET', '/newsletter-settings'))['subscribers']);
+            $subscription = $this->data($this->request('GET', "/customers/{$customer}"))['newsletter'];
+            self::assertIsArray($subscription);
+            self::assertSame([true, 'checkout', 'News and offers.'], [$subscription['subscribed'], $subscription['source'], $subscription['consent']]);
+
+            wp_set_current_user($customer);
+            $chosen = $this->request('PUT', '/account/emails', ['cart_reminders' => false, 'newsletter' => false], nonce: true);
+            self::assertSame(200, $chosen->get_status(), (string) wp_json_encode($chosen->get_data()));
+            $view = $this->data($chosen);
+            self::assertFalse($view['cart_reminders']);
+            self::assertIsArray($view['newsletter']);
+            self::assertFalse($view['newsletter']['subscribed']);
+            $this->actAs('administrator');
+            self::assertSame(0, $this->data($this->request('GET', '/newsletter-settings'))['subscribers']);
+        } finally {
+            delete_option('orillacart_newsletter');
+            delete_user_meta($customer, 'orillacart_no_cart_reminders');
+            $wpdb->update($wpdb->users, ['user_email' => ''], ['ID' => $customer]);
+            clean_user_cache($customer);
+        }
     }
 
     public function testACustomerGroupGetsItsPriceInTheCartAndGuestsPayTheRegularOne(): void
@@ -635,7 +673,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     {
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['customer_notes', 'pending_accounts', 'invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'consignments', 'returns', 'order_lines', 'orders', 'shipping_rates', 'carriers', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['newsletter_subscribers', 'customer_notes', 'pending_accounts', 'invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'consignments', 'returns', 'order_lines', 'orders', 'shipping_rates', 'carriers', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }

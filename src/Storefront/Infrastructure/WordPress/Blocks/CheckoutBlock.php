@@ -13,6 +13,7 @@ use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Application\Dto\CustomerView;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Invoicing\Application\Invoices;
+use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Notifications\Application\EmailSettingsService;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Ordering\Application\OrderService;
@@ -53,6 +54,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         private EmailSettingsService $emails,
         private AddressChecks $addressChecks,
         private Returns $returns,
+        private Newsletter $newsletter,
     ) {}
 
     public static function name(): string
@@ -106,6 +108,8 @@ final readonly class CheckoutBlock implements BlockDefinition
             'saved_addresses' => $customer->addresses ?? [],
             'accounts' => $this->customers->accountMode(),
             'cart_reminders' => !\in_array(EmailKind::CartReminder->value, $this->emails->current()->disabled, true),
+            'remind_ticked' => $customer->cartReminders ?? false,
+            'newsletter' => $customer !== null && $this->newsletter->isSubscribed($customer->email) ? null : $this->newsletter->offer(),
             'address_checks' => $this->addressChecks->any(),
             'login_url' => wp_login_url((string) get_permalink()),
             'links' => $links,

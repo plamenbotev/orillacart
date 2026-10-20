@@ -7,6 +7,7 @@ import './storefront.css';
 import {
 	bindAddressBook,
 	bindConfirm,
+	bindEmails,
 	bindFindOrder,
 	bindRegister,
 } from './account';
@@ -63,6 +64,9 @@ function start(): void {
 			'form[data-orillacart-find-order]'
 		)
 		.forEach( bindFindOrder );
+	document
+		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-emails]' )
+		.forEach( bindEmails );
 	document
 		.querySelectorAll< HTMLElement >( '.orillacart-account__addresses' )
 		.forEach( bindAddressBook );

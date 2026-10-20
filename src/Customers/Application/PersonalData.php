@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Customers\Application;
 
 use OrillaCart\Customers\Domain\Event\PersonErased;
+use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -13,8 +14,9 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * What the shop holds of a person, for WordPress's privacy tools (Tools → Export and Erase Personal Data): their
- * orders, their account's addresses and the shop's notes about them, given out or erased a page at a time. Erasing anonymises orders, which
- * the books keep (see Order::anonymise()), and forgets the rest.
+ * orders, their account's addresses, the shop's notes about them and their newsletter sign-up, given out or
+ * erased a page at a time. Erasing anonymises orders, which the books keep (see Order::anonymise()), and forgets
+ * the rest.
  */
 final readonly class PersonalData
 {
@@ -24,6 +26,7 @@ final readonly class PersonalData
         private OrderService $orders,
         private CustomerService $customers,
         private CustomerNotes $notes,
+        private Newsletter $newsletter,
         private ?EventDispatcherInterface $events = null,
     ) {}
 
@@ -38,6 +41,14 @@ final readonly class PersonalData
             $customer = $id === null ? null : $this->customers->customer($id);
             foreach ($customer->addresses ?? [] as $saved) {
                 $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-address-' . $saved->id, 'data' => [['name' => 'Saved address', 'value' => self::address($saved->address)]]];
+            }
+            $subscription = $this->newsletter->subscription($email);
+            if ($subscription !== null) {
+                $items[] = ['group' => 'orillacart-newsletter', 'label' => 'Newsletter', 'id' => 'orillacart-newsletter', 'data' => array_values(array_filter([
+                    ['name' => 'Signed up', 'value' => $subscription->subscribedAt],
+                    ['name' => 'Agreed to', 'value' => $subscription->consent],
+                    $subscription->unsubscribedAt === null ? null : ['name' => 'Unsubscribed', 'value' => $subscription->unsubscribedAt],
+                ]))];
             }
             foreach ($id === null ? [] : $this->notes->of($id) as $note) {
                 $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-note-' . $note->id, 'data' => [['name' => 'The shop\'s note', 'value' => $note->text]]];
@@ -57,7 +68,11 @@ final readonly class PersonalData
     public function erase(string $email, int $page): array
     {
         $customerId = $this->customers->customerIdOf($email);
-        $removed = $page === 1 && $this->customers->erase($email);
+        $removed = false;
+        if ($page === 1) {
+            $account = $this->customers->erase($email);
+            $removed = $this->newsletter->erase($email) || $account;
+        }
         if ($page === 1) {
             $this->events?->dispatch(new PersonErased($email));
         }

@@ -22,6 +22,7 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
 {
     public const string ROLE = 'orillacart_customer';
     public const string ADDRESSES = 'orillacart_addresses';
+    public const string NO_CART_REMINDERS = 'orillacart_no_cart_reminders';
 
     public function __construct(
         private NormalizerInterface $normalizer,
@@ -89,6 +90,15 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
         ]);
     }
 
+    public function saveCartReminders(int $id, bool $on): void
+    {
+        if ($on) {
+            delete_user_meta($id, self::NO_CART_REMINDERS);
+        } else {
+            update_user_meta($id, self::NO_CART_REMINDERS, '1');
+        }
+    }
+
     public function search(?string $text, int $offset, int $limit): array
     {
         $query = new \WP_User_Query(array_filter([
@@ -131,6 +141,7 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
         }
         remove_role(self::ROLE);
         delete_metadata('user', 0, self::ADDRESSES, '', true);
+        delete_metadata('user', 0, self::NO_CART_REMINDERS, '', true);
     }
 
     private function record(\WP_User $user): CustomerRecord
@@ -142,6 +153,7 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
             $user->last_name,
             (string) mysql2date(\DATE_ATOM, $user->user_registered, false),
             $this->addressBook($user->ID),
+            get_user_meta($user->ID, self::NO_CART_REMINDERS, true) !== '1',
         );
     }
 

@@ -18,6 +18,27 @@ export interface Customer {
 	group_ids: number[];
 	addresses: SavedAddress[];
 	lifetime_value: LifetimeValue | null;
+	cart_reminders: boolean;
+	/** Their sign-up for the newsletter, if they ever signed up. */
+	newsletter: Subscription | null;
+}
+
+export interface Subscription {
+	email: string;
+	subscribed: boolean;
+	subscribed_at: string;
+	unsubscribed_at: string | null;
+	source: 'checkout' | 'account';
+	/** The words of the box they ticked. */
+	consent: string;
+}
+
+export interface NewsletterSettings {
+	offered: boolean;
+	consent: string;
+	/** The add-ons' mailing lists, and whether the sign-ups go to each. */
+	lists: { id: string; name: string; on: boolean }[];
+	subscribers: number;
 }
 
 /** What the customer paid in the shop's currency, less what went back, over their paid orders. */
@@ -130,6 +151,24 @@ export function removeNote( id: number, noteId: number ): Promise< unknown > {
 	return apiFetch( {
 		path: `${ BASE }/customers/${ id }/notes/${ noteId }`,
 		method: 'DELETE',
+	} );
+}
+
+export function fetchNewsletterSettings(): Promise< NewsletterSettings > {
+	return apiFetch< NewsletterSettings >( {
+		path: `${ BASE }/newsletter-settings`,
+	} );
+}
+
+export function saveNewsletterSettings(
+	settings: Pick< NewsletterSettings, 'offered' | 'consent' > & {
+		lists: string[];
+	}
+): Promise< NewsletterSettings > {
+	return apiFetch< NewsletterSettings >( {
+		path: `${ BASE }/newsletter-settings`,
+		method: 'PUT',
+		data: settings,
 	} );
 }
 

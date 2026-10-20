@@ -9,6 +9,9 @@ use OrillaCart\Customers\Application\AddressBook;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Invoicing\Application\Invoices;
+use OrillaCart\Newsletter\Application\Newsletter;
+use OrillaCart\Notifications\Application\EmailSettingsService;
+use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderService;
@@ -25,7 +28,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
 /**
  * The customer's account page. Visitors see WordPress's login form and, unless the shop makes no accounts,
  * a form to make one. Customers see their orders (?section=orders, or ?order=ID for one), their files
- * (?section=downloads) and their address book (?section=addresses).
+ * (?section=downloads), their address book (?section=addresses) and the emails they want (?section=emails).
  */
 final readonly class AccountBlock implements BlockDefinition
 {
@@ -43,6 +46,8 @@ final readonly class AccountBlock implements BlockDefinition
         private Invoices $invoices,
         private ReceiptLinks $receipts,
         private SettingsService $settings,
+        private Newsletter $newsletter,
+        private EmailSettingsService $emails,
     ) {}
 
     public static function name(): string
@@ -69,7 +74,7 @@ final readonly class AccountBlock implements BlockDefinition
 
         $orderId = self::number('order');
         $section = $orderId > 0 ? 'order' : (\is_string($_GET['section'] ?? null) ? sanitize_key($_GET['section']) : 'orders');
-        $section = \in_array($section, ['orders', 'order', 'downloads', 'addresses'], true) ? $section : 'orders';
+        $section = \in_array($section, ['orders', 'order', 'downloads', 'addresses', 'emails'], true) ? $section : 'orders';
         $context = [
             'logged_in' => true,
             'section' => $section,
@@ -78,6 +83,7 @@ final readonly class AccountBlock implements BlockDefinition
                 'orders' => $here,
                 'downloads' => add_query_arg('section', 'downloads', $here),
                 'addresses' => add_query_arg('section', 'addresses', $here),
+                'emails' => add_query_arg('section', 'emails', $here),
                 // wp_logout_url() returns the address escaped for HTML (&amp;); the template escapes it.
                 'logout' => html_entity_decode(wp_logout_url($here), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             ],
@@ -87,6 +93,7 @@ final readonly class AccountBlock implements BlockDefinition
             'order' => $this->order($customerId, $orderId),
             'downloads' => ['downloads' => $this->downloads->ofCustomer($customerId)],
             'addresses' => $this->addressForm($customerId),
+            'emails' => $this->emailChoices($customerId),
             default => $this->orderList($customerId, $here),
         });
     }
@@ -141,6 +148,27 @@ final readonly class AccountBlock implements BlockDefinition
             'default_country' => $customer->shippingAddress->country ?? $this->settings->current()->shopCountry,
             'countries' => $choices['countries'],
             'states' => $choices['states'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function emailChoices(int $customerId): array
+    {
+        try {
+            $customer = $this->customers->customer($customerId);
+        } catch (CustomerNotFound) {
+            $customer = null;
+        }
+        $subscribed = $customer?->newsletter->subscribed ?? false;
+
+        return [
+            'customer' => $customer,
+            // One who signed up can leave even after the shop stopped offering it.
+            'newsletter' => $this->newsletter->offer() ?? ($subscribed ? __('The shop\'s newsletter', 'orillacart') : null),
+            'subscribed' => $subscribed,
+            'cart_reminders' => !\in_array(EmailKind::CartReminder->value, $this->emails->current()->disabled, true),
         ];
     }
 

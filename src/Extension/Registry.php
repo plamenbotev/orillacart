@@ -9,6 +9,7 @@ use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Marketing\MailingList;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\Orders;
@@ -59,6 +60,9 @@ interface Registry
 
     /** A column of the products file, exported and, for an ImportsProductColumn, imported. Since version 4. */
     public function productColumn(ProductColumn $column): void;
+
+    /** A mailing list the shop's newsletter sign-ups may go to. Since version 6. */
+    public function mailingList(MailingList $list): void;
 
     /** Reads the shop's orders. Since version 2. */
     public function orders(): Orders;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Customers\Application;
 
+use OrillaCart\Customers\Application\Dto\ChooseEmails;
 use OrillaCart\Customers\Application\Dto\ConfirmAccount;
 use OrillaCart\Customers\Application\Dto\CustomerPageView;
 use OrillaCart\Customers\Application\Dto\CustomerQuery;
@@ -23,6 +24,8 @@ use OrillaCart\Customers\Domain\Event\CustomerDeleted;
 use OrillaCart\Customers\Domain\Event\CustomerErased;
 use OrillaCart\Customers\Domain\PendingAccount;
 use OrillaCart\Customers\Domain\PendingAccountRepository;
+use OrillaCart\Newsletter\Application\Newsletter;
+use OrillaCart\Newsletter\Domain\SignUpSource;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\LifetimeValueView;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
@@ -52,6 +55,7 @@ final readonly class CustomerService
         private ClockInterface $clock,
         private SettingsService $shop,
         private CustomerNoteRepository $notes,
+        private Newsletter $newsletter,
     ) {}
 
     /**
@@ -146,7 +150,7 @@ final readonly class CustomerService
     {
         $record = $this->accounts->find($id) ?? throw new CustomerNotFound($id);
 
-        return CustomerView::fromRecord($record, $this->orders->orders(new OrderQuery(customerId: $id, perPage: 1))->total, $this->groups->groupIdsOf($id), $this->lifetimeValues([$id])[$id]);
+        return CustomerView::fromRecord($record, $this->orders->orders(new OrderQuery(customerId: $id, perPage: 1))->total, $this->groups->groupIdsOf($id), $this->lifetimeValues([$id])[$id], $this->newsletter->subscription($record->email));
     }
 
     public function customers(CustomerQuery $query): CustomerPageView
@@ -287,6 +291,25 @@ final readonly class CustomerService
     public function forgetUnconfirmed(): void
     {
         $this->pending->removeExpired($this->clock->now());
+    }
+
+    /**
+     * The emails a customer chooses in their account: the newsletter (when the shop has one), and whether
+     * checkout starts with the box ticked to remind them of a cart they leave.
+     *
+     * @throws CustomerNotFound
+     */
+    public function chooseEmails(int $id, ChooseEmails $command): CustomerView
+    {
+        $record = $this->accounts->find($id) ?? throw new CustomerNotFound($id);
+        $this->accounts->saveCartReminders($id, $command->cartReminders);
+        if ($command->newsletter === true && $this->newsletter->offer() !== null) {
+            $this->newsletter->subscribe($record->email, $record->firstName, $record->lastName, SignUpSource::Account, $id);
+        } elseif ($command->newsletter === false) {
+            $this->newsletter->unsubscribe($record->email);
+        }
+
+        return $this->customer($id);
     }
 
     /**
