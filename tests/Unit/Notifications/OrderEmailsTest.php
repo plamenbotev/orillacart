@@ -12,6 +12,7 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
+use OrillaCart\Notifications\Application\PaymentReminders;
 use OrillaCart\Notifications\Application\SendOrderEmails;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailSettings;
@@ -269,6 +270,66 @@ final class OrderEmailsTest extends TestCase
         $last = end($this->shop->mail->emails);
         self::assertNotFalse($last);
         self::assertStringContainsString('Your door code 4321 works.', $last->html, 'the note is read from the order');
+    }
+
+    public function testACustomerIsRemindedOnceToPayTheShopsDaysAfterOrdering(): void
+    {
+        $reminders = $this->reminders();
+        $order = $this->place('bank_transfer');
+        $paid = $this->place('bank_transfer');
+        $this->shop->orders->markPaid($paid->number, null);
+        $sent = \count($this->shop->mail->emails);
+
+        $this->shop->clock->modify('+2 days');
+        self::assertSame(0, $reminders->remind());
+
+        $this->shop->clock->modify('+1 day');
+        self::assertSame(1, $reminders->remind(), 'not the paid order');
+        self::assertSame(["ada@example.com: [Lamp Shop] Your order #{$order->number} waits for your payment"], \array_slice($this->shop->mail->summary(), $sent));
+        self::assertStringContainsString('IBAN BG00 0000 0000', $this->shop->mail->emails[$sent]->html, 'with the bank details again');
+
+        $this->shop->clock->modify('+1 hour');
+        self::assertSame(0, $reminders->remind(), 'once');
+    }
+
+    public function testRemindersFollowTheShopsDaysAndCanBeTurnedOff(): void
+    {
+        $reminders = $this->reminders();
+        $this->place('bank_transfer');
+        $this->shop->emailSettings->save(new EmailSettings(reminderDays: 5));
+
+        $this->shop->clock->modify('+4 days');
+        self::assertSame(0, $reminders->remind());
+
+        $this->shop->emailSettings->save(new EmailSettings(disabled: [EmailKind::PaymentReminder], reminderDays: 5));
+        $this->shop->clock->modify('+1 day');
+        self::assertSame(0, $reminders->remind());
+    }
+
+    public function testAnOrderPaidBeforeItsReminderWentOutIsNotReminded(): void
+    {
+        $order = $this->place('bank_transfer');
+        $this->shop->orders->markPaid($order->number, null);
+        $sent = \count($this->shop->mail->emails);
+
+        $this->shop->emails->send($order->number, EmailKind::PaymentReminder);
+
+        self::assertCount($sent, $this->shop->mail->emails);
+    }
+
+    public function testOnlyMethodsPaidBeforeShippingAreReminded(): void
+    {
+        $offline = $this->shop->paymentOptions->paidOffline();
+
+        self::assertContains('bank_transfer', $offline);
+        self::assertContains('cheque', $offline);
+        self::assertNotContains('cash_on_delivery', $offline, 'paid when it arrives');
+        self::assertNotContains('paypal', $offline);
+    }
+
+    private function reminders(): PaymentReminders
+    {
+        return new PaymentReminders($this->shop->orders, $this->shop->paymentOptions, $this->shop->emailSettings, $this->shop->sentEmails, $this->shop->emails, $this->shop->clock);
     }
 
     private function place(string $payment): PlacedOrderView

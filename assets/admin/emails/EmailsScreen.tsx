@@ -64,6 +64,7 @@ export function EmailsScreen() {
 			from_address: settings.from_address,
 			shop_address: settings.shop_address,
 			disabled: settings.disabled,
+			reminder_days: settings.reminder_days,
 		} )
 			.then( ( saved ) => {
 				setSettings( saved );
@@ -156,6 +157,31 @@ export function EmailsScreen() {
 								}
 							/>
 						) ) }
+						{ ! settings.disabled.includes(
+							'payment_reminder'
+						) && (
+							<TextControl
+								__next40pxDefaultSize
+								type="number"
+								min={ 1 }
+								max={ 60 }
+								label={ __(
+									'Remind to pay after (days)',
+									'orillacart'
+								) }
+								help={ __(
+									'Orders on hold for a bank transfer or cheque; not cash on delivery.',
+									'orillacart'
+								) }
+								value={ String( settings.reminder_days ) }
+								onChange={ ( value ) =>
+									setSettings( {
+										...settings,
+										reminder_days: Number( value ),
+									} )
+								}
+							/>
+						) }
 					</CardBody>
 				</Card>
 				<Button variant="primary" type="submit">

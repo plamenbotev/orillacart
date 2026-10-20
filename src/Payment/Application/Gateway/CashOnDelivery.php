@@ -18,4 +18,9 @@ final class CashOnDelivery extends OfflineGateway
     {
         return 'Cash on delivery';
     }
+
+    public function paidFirst(): bool
+    {
+        return false;
+    }
 }

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Application;
 
+use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Settings;
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
+use OrillaCart\Payment\Application\Gateway\OfflineGateway;
 use OrillaCart\Payment\Domain\PaymentMethod;
 use OrillaCart\Payment\Domain\PaymentMethodRepository;
 use OrillaCart\Settings\Application\SettingsService;
@@ -55,6 +57,20 @@ final readonly class PaymentOptions
     public function name(string $gateway): string
     {
         return $this->methods->findByGateway($gateway)?->name() ?? $this->gateways->get($gateway)->defaultName();
+    }
+
+    /**
+     * The methods whose orders wait for the customer to pay outside the shop, as by bank transfer: those a
+     * reminder helps.
+     *
+     * @return list<string> their gateways
+     */
+    public function paidOffline(): array
+    {
+        return array_values(array_map(
+            static fn(OfflineGateway $gateway): string => $gateway->id(),
+            array_filter($this->gateways->all(), static fn(PaymentGateway $gateway): bool => $gateway instanceof OfflineGateway && $gateway->paidFirst()),
+        ));
     }
 
     private function offers(PaymentMethod $method, ?string $country, string $currency): bool

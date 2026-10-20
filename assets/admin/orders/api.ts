@@ -217,6 +217,7 @@ export interface EditedItem {
 
 export const EMAILS = [
 	'order_received',
+	'payment_reminder',
 	'order_processing',
 	'order_shipped',
 	'order_completed',

@@ -16,6 +16,8 @@ enum EmailKind: string
     case OrderProcessing = 'order_processing';
     case OrderShipped = 'order_shipped';
     case OrderCompleted = 'order_completed';
+    /** To the customer: the order still waits for their offline payment, some days after it was placed. */
+    case PaymentReminder = 'payment_reminder';
     /** To the customer: the shop cancelled it. */
     case OrderCancelled = 'order_cancelled';
     /** To the customer: the payment failed. */

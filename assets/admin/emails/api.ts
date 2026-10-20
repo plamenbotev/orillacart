@@ -9,11 +9,13 @@ export interface EmailSettings {
 	default_name: string;
 	default_address: string;
 	kinds: string[];
+	/** Days after the order the customer is reminded to pay for it. */
+	reminder_days: number;
 }
 
 export type EmailSettingsInput = Pick<
 	EmailSettings,
-	'from_name' | 'from_address' | 'shop_address' | 'disabled'
+	'from_name' | 'from_address' | 'shop_address' | 'disabled' | 'reminder_days'
 >;
 
 const BASE = '/orillacart/v1';

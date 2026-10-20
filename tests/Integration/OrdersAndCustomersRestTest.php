@@ -8,6 +8,7 @@ use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Ordering\Application\Downloads;
+use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Tests\Fixtures\Extension\TestAddOn;
 
 /**
@@ -64,6 +65,18 @@ final class OrdersAndCustomersRestTest extends RestTestCase
 
         self::assertSame(422, $this->request('GET', '/orders?order_by=email')->get_status());
         self::assertSame(422, $this->request('GET', '/orders?min_total=lots')->get_status());
+    }
+
+    public function testTheOrdersToRemindAreFoundOnTheDatabase(): void
+    {
+        $order = $this->order([[$this->lamp, 1]]);
+        $orders = self::kernel()->container()->get(OrderService::class);
+        self::assertInstanceOf(OrderService::class, $orders);
+        $now = new \DateTimeImmutable();
+
+        self::assertSame([$order['number']], $orders->unpaidOnHold($now->modify('-1 hour'), $now->modify('+1 hour'), ['bank_transfer', 'cheque']));
+        self::assertSame([], $orders->unpaidOnHold($now->modify('-1 hour'), $now->modify('+1 hour'), ['cheque']));
+        self::assertSame([], $orders->unpaidOnHold($now->modify('+1 hour'), $now->modify('+2 hours'), ['bank_transfer']));
     }
 
     public function testOnlyShopManagersWorkOrdersAndOnlyCustomersSeeTheirAccount(): void

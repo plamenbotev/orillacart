@@ -29,4 +29,10 @@ abstract class OfflineGateway implements PaymentGateway
     {
         return PaymentStart::offline();
     }
+
+    /** Whether the customer pays before the order ships, so an order waits for them; not so cash on delivery. */
+    public function paidFirst(): bool
+    {
+        return true;
+    }
 }

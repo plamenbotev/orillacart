@@ -620,6 +620,18 @@ final readonly class OrderService
     }
 
     /**
+     * The unpaid orders on hold placed in the time given, with one of the payment methods: those to remind.
+     *
+     * @param list<string> $gateways
+     *
+     * @return list<int> their ids
+     */
+    public function unpaidOnHold(\DateTimeImmutable $placedFrom, \DateTimeImmutable $placedUntil, array $gateways): array
+    {
+        return $this->orders->unpaidOnHold($placedFrom, $placedUntil, $gateways);
+    }
+
+    /**
      * Cancels orders whose customer went to pay at a provider and neither paid nor came back within the
      * payment window, so their stock is sold again.
      *

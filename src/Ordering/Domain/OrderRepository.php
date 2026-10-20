@@ -21,6 +21,15 @@ interface OrderRepository
     public function pendingPaymentSince(\DateTimeImmutable $before): array;
 
     /**
+     * Unpaid orders on hold, placed in the time given, with one of the payment methods.
+     *
+     * @param list<string> $gateways
+     *
+     * @return list<int> their ids
+     */
+    public function unpaidOnHold(\DateTimeImmutable $placedFrom, \DateTimeImmutable $placedUntil, array $gateways): array;
+
+    /**
      * A page of the orders that match, in the order asked for, and how many match in all.
      *
      * @return array{list<Order>, int}

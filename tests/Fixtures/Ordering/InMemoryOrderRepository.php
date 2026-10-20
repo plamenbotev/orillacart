@@ -43,6 +43,14 @@ final class InMemoryOrderRepository implements OrderRepository
         return array_values(array_filter($this->orders, static fn(Order $order): bool => $order->status() === OrderStatus::PendingPayment && $order->awaitingPaymentSince() < $before));
     }
 
+    public function unpaidOnHold(\DateTimeImmutable $placedFrom, \DateTimeImmutable $placedUntil, array $gateways): array
+    {
+        return array_values(array_map(static fn(Order $order): int => $order->id(), array_filter($this->orders, static fn(Order $order): bool => $order->status() === OrderStatus::OnHold
+            && $order->paidAt() === null
+            && $order->placedAt() >= $placedFrom && $order->placedAt() <= $placedUntil
+            && \in_array($order->paymentGateway(), $gateways, true))));
+    }
+
     public function ofPerson(string $email, ?int $customerId, int $offset, int $limit): array
     {
         $found = array_values(array_filter($this->orders, static fn(Order $order): bool => strcasecmp($order->email(), $email) === 0 || ($customerId !== null && $order->customerId() === $customerId)));

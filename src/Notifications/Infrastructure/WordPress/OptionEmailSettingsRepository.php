@@ -36,6 +36,7 @@ final readonly class OptionEmailSettingsRepository implements EmailSettingsRepos
                 $text('from_address'),
                 $text('shop_address'),
                 array_values(array_filter(array_map(static fn(mixed $kind): ?EmailKind => \is_string($kind) ? EmailKind::tryFrom($kind) : null, $disabled))),
+                \is_int($stored['reminder_days'] ?? null) ? $stored['reminder_days'] : EmailSettings::DEFAULT_REMINDER_DAYS,
             );
         } catch (RuleViolation) {
             $this->logger->warning('Stored email settings are not valid, using the defaults.');
@@ -51,6 +52,7 @@ final readonly class OptionEmailSettingsRepository implements EmailSettingsRepos
             'from_address' => $settings->fromAddress,
             'shop_address' => $settings->shopAddress,
             'disabled' => array_map(static fn(EmailKind $kind): string => $kind->value, $settings->disabled),
+            'reminder_days' => $settings->reminderDays,
         ], false);
     }
 

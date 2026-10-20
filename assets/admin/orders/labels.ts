@@ -18,6 +18,7 @@ export const EMAIL_LABELS: Record< string, string > = {
 	order_processing: __( 'Order confirmed', 'orillacart' ),
 	order_shipped: __( 'Order shipped', 'orillacart' ),
 	order_completed: __( 'Order completed', 'orillacart' ),
+	payment_reminder: __( 'Reminder to pay', 'orillacart' ),
 	order_cancelled: __( 'Order cancelled', 'orillacart' ),
 	order_failed: __( 'Payment failed', 'orillacart' ),
 	order_refunded: __( 'Order refunded', 'orillacart' ),

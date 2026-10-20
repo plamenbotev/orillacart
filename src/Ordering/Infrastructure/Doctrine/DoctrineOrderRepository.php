@@ -41,6 +41,30 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             ->getResult();
     }
 
+    public function unpaidOnHold(\DateTimeImmutable $placedFrom, \DateTimeImmutable $placedUntil, array $gateways): array
+    {
+        if ($gateways === []) {
+            return [];
+        }
+
+        $ids = $this->entityManager->createQueryBuilder()
+            ->select('o.id')
+            ->from(Order::class, 'o')
+            ->where('o.status = :status')
+            ->andWhere('o.paidAt IS NULL')
+            ->andWhere('o.placedAt >= :from AND o.placedAt <= :until')
+            ->andWhere('o.paymentGateway IN (:gateways)')
+            ->setParameter('status', OrderStatus::OnHold)
+            ->setParameter('from', $placedFrom)
+            ->setParameter('until', $placedUntil)
+            ->setParameter('gateways', $gateways)
+            ->orderBy('o.id')
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        return array_values(array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $ids));
+    }
+
     public function search(OrderSearch $search, int $offset, int $limit): array
     {
         $query = $this->entityManager->createQueryBuilder()->from(Order::class, 'o');

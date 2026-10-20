@@ -21,5 +21,7 @@ final readonly class EmailSettingsView
         public string $defaultName,
         public string $defaultAddress,
         public array $kinds,
+        /** Days after the order the customer is reminded to pay for it. */
+        public int $reminderDays,
     ) {}
 }

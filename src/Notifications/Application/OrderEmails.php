@@ -79,6 +79,12 @@ final readonly class OrderEmails
         $this->queue($read[0], EmailKind::ReceiptLink);
     }
 
+    /** The customer is reminded that the order waits for their payment. */
+    public function paymentReminder(int $orderId): void
+    {
+        $this->queue($orderId, EmailKind::PaymentReminder);
+    }
+
     /** The shop hears why an order needs attention: every reason waiting when the email goes, in one. */
     public function needsAttention(int $orderId): void
     {
@@ -122,7 +128,8 @@ final readonly class OrderEmails
 
     /**
      * Writes and sends an email now; SendOrderEmails runs it for each job. A customer note's email is not sent
-     * once the note is gone, nor an attention email once the shop handled the order.
+     * once the note is gone, an attention email once the shop handled the order, nor a payment reminder once
+     * the order is paid or no longer on hold.
      *
      * @throws OrderNotFound
      * @throws EmailNotWritten its template failed: trying again would fail the same way
@@ -142,6 +149,10 @@ final readonly class OrderEmails
         };
         if ($note === null) {
             // The note is gone, as with an order made anonymous, or the shop handled what needed attention.
+            return;
+        }
+        if ($kind === EmailKind::PaymentReminder && ($order->status !== 'on_hold' || $order->paidAt !== null)) {
+            // Paid or called off since it was queued.
             return;
         }
         $extra = ['note' => $note, 'refund' => null];
