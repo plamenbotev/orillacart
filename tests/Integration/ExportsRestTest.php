@@ -79,7 +79,7 @@ final class ExportsRestTest extends RestTestCase
         wp_update_post(['ID' => $lamp, 'post_excerpt' => 'Bright', 'post_status' => 'draft']);
         $parent = wp_insert_term('Lighting', ProductCategoryTaxonomy::NAME);
         self::assertIsArray($parent);
-        $child = wp_insert_term('Desk lamps', ProductCategoryTaxonomy::NAME, ['parent' => (int) $parent['term_id']]);
+        $child = wp_insert_term('Desk lamps', ProductCategoryTaxonomy::NAME, ['parent' => max(0, (int) $parent['term_id'])]);
         self::assertIsArray($child);
         $this->terms = [(int) $child['term_id'], (int) $parent['term_id']];
         wp_set_object_terms($lamp, [(int) $child['term_id']], ProductCategoryTaxonomy::NAME);
