@@ -1,0 +1,30 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Catalog\Http;
+
+use OrillaCart\Catalog\Application\Dto\StockHistoryQuery;
+use OrillaCart\Catalog\Application\StockHistory;
+use OrillaCart\Shared\Http\Input\RequestMapper;
+use OrillaCart\Shared\Http\Output\JsonResponder;
+use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Security\Capability;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+
+#[Route('/stock-history', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
+final readonly class StockHistoryAction implements RequestHandlerInterface
+{
+    public function __construct(
+        private StockHistory $history,
+        private RequestMapper $input,
+        private JsonResponder $responder,
+    ) {}
+
+    public function handle(ServerRequestInterface $request): ResponseInterface
+    {
+        return $this->responder->ok($this->history->history($this->input->query($request, StockHistoryQuery::class)));
+    }
+}

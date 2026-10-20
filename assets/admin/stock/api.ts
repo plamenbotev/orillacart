@@ -105,3 +105,71 @@ export async function fetchCategories(): Promise<
 	add( 0, 0 );
 	return ordered;
 }
+
+export type StockReason =
+	'sale' | 'release' | 'return' | 'count' | 'import' | 'bulk_edit';
+
+/** One move of a stock level. */
+export interface Movement {
+	id: number;
+	kind: StockItemKind;
+	item_id: number;
+	/** The product to open for it; null for an option of an attribute set. */
+	product_id: number | null;
+	name: string;
+	sku: string | null;
+	stockroom_id: number;
+	stockroom: string;
+	/** Up when positive. */
+	delta: number;
+	/** The stockroom's level after it; below zero by what is owed. */
+	after: number;
+	reason: StockReason;
+	order_id: number | null;
+	/** Who made it; null for the shop itself, as with an order. */
+	user: string | null;
+	at: string;
+}
+
+export interface StockHistory {
+	movements: Movement[];
+	/** What moved in and out in all, by stockroom and reason. */
+	totals: {
+		reason: StockReason;
+		stockroomId: number;
+		stockroom: string;
+		in: number;
+		out: number;
+	}[];
+	total: number;
+	page: number;
+	pages: number;
+}
+
+export interface StockHistoryQuery {
+	product: number | null;
+	stockroom: number | null;
+	reason: StockReason | null;
+	/** ISO 8601 moments; null for no bound. */
+	from: string | null;
+	before: string | null;
+	page: number;
+}
+
+/**
+ * @param query Which movements, newest first.
+ */
+export function fetchStockHistory(
+	query: StockHistoryQuery
+): Promise< StockHistory > {
+	return apiFetch< StockHistory >( {
+		path: addQueryArgs(
+			`${ BASE }/stock-history`,
+			Object.fromEntries(
+				Object.entries( { ...query, per_page: 50 } ).filter(
+					( [ , value ] ) => value !== null
+				)
+			)
+		),
+	} );
+}

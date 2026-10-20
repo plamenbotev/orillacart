@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace OrillaCart\Ordering\Application;
 
 use OrillaCart\Catalog\Application\Dto\QuotedDownload;
+use OrillaCart\Inventory\Application\Dto\StockNote;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Inventory\Domain\InsufficientStock;
+use OrillaCart\Inventory\Domain\StockReason;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
@@ -117,6 +119,7 @@ final readonly class OrderService
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);
+        $this->stock->record(self::takenOf($command->lines), new StockNote(StockReason::Sale, $order->id()));
         $this->events->dispatch(new OrderPlaced($order->id()));
 
         return $this->view($order);
@@ -306,7 +309,7 @@ final readonly class OrderService
                 $previous = $order->status();
                 $order->reopenPaid($transactionId, $this->clock->now(), fn(array $wanted): array => array_map(
                     static fn(array $taken): array => array_map(static fn(TakenStock $part): TakenItem => new TakenItem($part->item, $part->stockroomId, $part->quantity), $taken),
-                    $this->stock->takeAgain($wanted),
+                    $this->stock->takeAgain($wanted, new StockNote(StockReason::Sale, $order->id())),
                 ), $amount === null ? null : Money::of($amount));
                 $this->paidOtherThanTotal($order);
                 $this->changed($order, $previous, [], trim(\sprintf('The money came after the order was %s, so it was opened again and its items taken again. %s', strtolower($previous->label()), $note)));
@@ -332,7 +335,7 @@ final readonly class OrderService
             $previous = $order->status();
             $order->awaitPayment($gateway, $name, $note, $this->clock->now(), fn(array $wanted): array => array_map(
                 static fn(array $taken): array => array_map(static fn(TakenStock $part): TakenItem => new TakenItem($part->item, $part->stockroomId, $part->quantity), $taken),
-                $this->stock->takeAgain($wanted),
+                $this->stock->takeAgain($wanted, new StockNote(StockReason::Sale, $order->id())),
             ));
             $text = \sprintf('The customer chose to pay by %s.', $name);
             if ($order->status() !== $previous) {
@@ -665,7 +668,7 @@ final readonly class OrderService
         if ($order->status() === $previous) {
             return;
         }
-        $this->giveBack($taken);
+        $this->giveBack($taken, new StockNote(StockReason::Release, $order->id(), $userId));
         if ($order->grantDownloads(static fn(): string => bin2hex(random_bytes(32)), $this->clock->now())) {
             $order->addNote('The downloads were granted.', NoteAuthor::System, false, $this->clock->now());
         }
@@ -725,7 +728,7 @@ final readonly class OrderService
         $previous = $order->status();
         $refund = self::orderRefund($command);
         $share = $order->refund($refund);
-        $this->giveBack($share->taken);
+        $this->giveBack($share->taken, new StockNote(StockReason::Return, $order->id(), $userId));
         $taxes = array_map(static fn(TaxLine $tax): TaxLineView => new TaxLineView($tax->name, $tax->percent, (string) $tax->amount), $share->taxes);
         $text = \sprintf('Refunded %s %s %s.', $refund->amount, $order->currency(), $how);
         if ($refund->restock && $refund->quantities !== []) {
@@ -760,7 +763,7 @@ final readonly class OrderService
             foreach ($command->lines as $line) {
                 $quantities[$line->line] = ($quantities[$line->line] ?? 0) + $line->quantity;
             }
-            $this->giveBack($order->restock($quantities));
+            $this->giveBack($order->restock($quantities), new StockNote(StockReason::Return, $order->id(), $userId));
             $order->addNote(\sprintf('%d items came back and went back in stock.', array_sum($quantities)), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
             $this->orders->save($order);
             $this->events->dispatch(new OrderChanged($order->id()));
@@ -779,7 +782,7 @@ final readonly class OrderService
     public function releaseStock(int $id): void
     {
         $this->changing($id, function (Order $order): void {
-            $this->giveBack($order->releaseStock());
+            $this->giveBack($order->releaseStock(), new StockNote(StockReason::Release, $order->id()));
             $this->orders->save($order);
         });
     }
@@ -811,6 +814,7 @@ final readonly class OrderService
         );
         $order->addNote(\sprintf('The items were changed; the total went from %s to %s %s.', $before, (string) $order->total(), $order->currency()), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
         $this->orders->save($order);
+        $this->stock->record(self::takenOf($command->lines), new StockNote(StockReason::Sale, $order->id(), $userId));
         $this->events->dispatch(new OrderChanged($order->id()));
 
         return $this->view($order, true);
@@ -915,11 +919,21 @@ final readonly class OrderService
     /**
      * @param list<TakenItem> $taken
      */
-    private function giveBack(array $taken): void
+    private function giveBack(array $taken, StockNote $note): void
     {
         if ($taken !== []) {
-            $this->stock->giveBack(array_map(static fn(TakenItem $item): TakenStock => new TakenStock($item->item, $item->stockroomId, $item->quantity), $taken));
+            $this->stock->giveBack(array_map(static fn(TakenItem $item): TakenStock => new TakenStock($item->item, $item->stockroomId, $item->quantity), $taken), $note);
         }
+    }
+
+    /**
+     * @param list<NewOrderLine> $lines
+     *
+     * @return list<TakenStock> what the lines took, as they were priced
+     */
+    private static function takenOf(array $lines): array
+    {
+        return array_merge(...array_map(static fn(NewOrderLine $line): array => $line->taken, $lines));
     }
 
     private function view(Order $order, bool $forShop = false): OrderView

@@ -6,23 +6,32 @@ namespace OrillaCart\Inventory\Application;
 
 use OrillaCart\Inventory\Application\Dto\ChangeStockLevel;
 use OrillaCart\Inventory\Application\Dto\ItemLevelView;
+use OrillaCart\Inventory\Application\Dto\MovementView;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
+use OrillaCart\Inventory\Application\Dto\StockNote;
 use OrillaCart\Inventory\Application\Dto\StockView;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Domain\Event\StockChanged;
 use OrillaCart\Inventory\Domain\InsufficientStock;
 use OrillaCart\Inventory\Domain\InventoryRuleViolation;
+use OrillaCart\Inventory\Domain\MovementSearch;
 use OrillaCart\Inventory\Domain\Stock;
 use OrillaCart\Inventory\Domain\StockItem;
 use OrillaCart\Inventory\Domain\StockLevel;
 use OrillaCart\Inventory\Domain\StockLevelRepository;
+use OrillaCart\Inventory\Domain\StockMovement;
+use OrillaCart\Inventory\Domain\StockMovementRepository;
+use OrillaCart\Inventory\Domain\StockReason;
 use OrillaCart\Inventory\Domain\StockroomRepository;
+use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Stock levels of products, variations and options: setting them, asking how many can be sold,
- * and taking stock for orders.
+ * and taking stock for orders. Every move of a level is kept as a movement (the stock history), with why: the
+ * shop counting, an import, a bulk edit, or an order. Stock taken for an order is recorded once the order has its
+ * number (record()), in the same transaction.
  */
 final readonly class StockService
 {
@@ -30,6 +39,8 @@ final readonly class StockService
         private StockLevelRepository $levels,
         private StockroomRepository $stockrooms,
         private EventDispatcherInterface $events,
+        private ?StockMovementRepository $movements = null,
+        private ?ClockInterface $clock = null,
     ) {}
 
     public function stock(StockItemRef $ref): StockView
@@ -72,6 +83,31 @@ final readonly class StockService
     }
 
     /**
+     * A page of the stock history, newest first, and how many movements match in all.
+     *
+     * @return array{list<MovementView>, int}
+     */
+    public function movements(MovementSearch $search, int $offset, int $limit): array
+    {
+        if ($this->movements === null) {
+            return [[], 0];
+        }
+        [$found, $total] = $this->movements->search($search, $offset, $limit);
+
+        return [array_map(MovementView::fromMovement(...), $found), $total];
+    }
+
+    /**
+     * What moved in all, in and out, by stockroom and reason.
+     *
+     * @return list<array{reason: string, stockroomId: int, stockroom: string, in: int, out: int}>
+     */
+    public function movedTotals(MovementSearch $search): array
+    {
+        return $this->movements === null ? [] : array_map(static fn(array $total): array => ['reason' => $total['reason']->value] + $total, $this->movements->totals($search));
+    }
+
+    /**
      * Changes single levels of many items together, as the stock sheet saves them: a quantity sets the
      * stockroom's level, null removes it. Nothing changes when one change is refused.
      *
@@ -79,7 +115,7 @@ final readonly class StockService
      *
      * @throws InventoryRuleViolation for a stockroom that does not exist, or a cell changed twice
      */
-    public function changeLevels(array $changes): void
+    public function changeLevels(array $changes, StockNote $note = new StockNote()): void
     {
         $byItem = [];
         foreach ($changes as $change) {
@@ -96,7 +132,9 @@ final readonly class StockService
         }
 
         $items = array_map(StockItem::fromString(...), array_keys($byItem));
-        $before = self::availableOf($this->levels->stockOf($items));
+        $stocks = $this->levels->stockOf($items);
+        $before = self::availableOf($stocks);
+        $was = self::levelsBy($stocks);
         foreach ($this->levels->stockOf($items) as $stock) {
             $wanted = $byItem[(string) $stock->item];
             foreach ($stock->levels() as $level) {
@@ -118,13 +156,14 @@ final readonly class StockService
             }
         }
         $this->levels->flush();
+        $this->log($was, $items, $note);
         $this->announce($before, self::availableOf($this->levels->stockOf($items)));
     }
 
     /**
      * @throws InventoryRuleViolation for a stockroom that does not exist, or one listed twice
      */
-    public function setLevels(StockItemRef $ref, SetStockLevels $command): StockView
+    public function setLevels(StockItemRef $ref, SetStockLevels $command, StockNote $note = new StockNote()): StockView
     {
         $item = $ref->toItem();
         $wanted = [];
@@ -137,6 +176,7 @@ final readonly class StockService
 
         $stock = $this->levels->stockOf([$item])[0];
         $before = self::availableOf([$stock]);
+        $was = self::levelsBy([$stock]);
         foreach ($stock->levels() as $level) {
             $stockroomId = $level->stockroom()->id();
             if (\array_key_exists($stockroomId, $wanted)) {
@@ -152,6 +192,7 @@ final readonly class StockService
             $this->levels->add(new StockLevel($stockroom, $item, $quantity));
         }
         $this->levels->flush();
+        $this->log($was, [$item], $note);
         $this->announce($before, self::availableOf($this->levels->stockOf([$item])));
 
         return $this->stock($ref);
@@ -272,7 +313,7 @@ final readonly class StockService
      *
      * @throws InsufficientStock
      */
-    public function takeAgain(array $wanted): array
+    public function takeAgain(array $wanted, StockNote $note = new StockNote(StockReason::Sale)): array
     {
         $items = [];
         $needed = [];
@@ -312,9 +353,21 @@ final readonly class StockService
 
             return $taken;
         });
+        $this->record(array_merge(...array_values($taken)), $note);
         $this->announce($before, $after);
 
         return $taken;
+    }
+
+    /**
+     * Keeps stock taken for an order in the history, once the order has its number: take() runs while the
+     * order is priced, before it is placed.
+     *
+     * @param list<TakenStock> $taken
+     */
+    public function record(array $taken, StockNote $note = new StockNote(StockReason::Sale)): void
+    {
+        $this->logParts($taken, -1, $note);
     }
 
     /**
@@ -323,7 +376,7 @@ final readonly class StockService
      *
      * @param list<TakenStock> $taken
      */
-    public function giveBack(array $taken): void
+    public function giveBack(array $taken, StockNote $note = new StockNote(StockReason::Release)): void
     {
         $items = [];
         foreach ($taken as $part) {
@@ -350,6 +403,7 @@ final readonly class StockService
                 }
             }
         });
+        $this->logParts($taken, 1, $note);
         // Levels made anew are not in the locked copies: ask again.
         $this->announce($before, self::availableOf($this->levels->stockOf(array_values($items))));
     }
@@ -367,6 +421,92 @@ final readonly class StockService
         }
 
         return $available;
+    }
+
+    /**
+     * @param list<Stock> $stocks
+     *
+     * @return array<string, array<int, int>> levels by item, then stockroom id
+     */
+    private static function levelsBy(array $stocks): array
+    {
+        $levels = [];
+        foreach ($stocks as $stock) {
+            foreach ($stock->levels() as $level) {
+                $levels[(string) $stock->item][$level->stockroom()->id()] = $level->quantity();
+            }
+        }
+
+        return $levels;
+    }
+
+    /**
+     * Keeps what the shop changed by hand: each stockroom's level that moved, from what it was.
+     *
+     * @param array<string, array<int, int>> $was
+     * @param list<StockItem>                $items
+     */
+    private function log(array $was, array $items, StockNote $note): void
+    {
+        if ($this->movements === null) {
+            return;
+        }
+        $now = self::levelsBy($this->levels->stockOf($items));
+        $moves = [];
+        foreach ($items as $item) {
+            $key = (string) $item;
+            foreach (array_keys(($was[$key] ?? []) + ($now[$key] ?? [])) as $room) {
+                $delta = ($now[$key][$room] ?? 0) - ($was[$key][$room] ?? 0);
+                if ($delta !== 0) {
+                    $moves[] = [$item, $room, $delta, $now[$key][$room] ?? 0];
+                }
+            }
+        }
+        $this->keep($moves, $note);
+    }
+
+    /**
+     * Keeps stock taken or given back for an order.
+     *
+     * @param list<TakenStock> $parts
+     * @param int              $sign  -1 taken, 1 given back
+     */
+    private function logParts(array $parts, int $sign, StockNote $note): void
+    {
+        if ($this->movements === null || $parts === []) {
+            return;
+        }
+        $items = [];
+        foreach ($parts as $part) {
+            $items[$part->item] = StockItem::fromString($part->item);
+        }
+        $now = self::levelsBy($this->levels->stockOf(array_values($items)));
+        $moves = [];
+        foreach ($parts as $part) {
+            if ($part->quantity !== 0) {
+                $moves[] = [$items[$part->item], $part->stockroomId, $sign * $part->quantity, $now[$part->item][$part->stockroomId] ?? 0];
+            }
+        }
+        $this->keep($moves, $note);
+    }
+
+    /**
+     * @param list<array{StockItem, int, int, int}> $moves item, stockroom, delta, level after
+     */
+    private function keep(array $moves, StockNote $note): void
+    {
+        if ($this->movements === null || $moves === []) {
+            return;
+        }
+        $names = [];
+        foreach ($this->stockrooms->all() as $stockroom) {
+            $names[$stockroom->id()] = $stockroom->details()->name;
+        }
+        $at = $this->clock?->now() ?? new \DateTimeImmutable();
+        $this->movements->add(array_map(
+            static fn(array $move): StockMovement => new StockMovement($move[0], $move[1], $names[$move[1]] ?? "#{$move[1]}", $move[2], $move[3], $note->reason, $note->orderId, $note->userId, $at),
+            $moves,
+        ));
     }
 
     /**

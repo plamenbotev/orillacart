@@ -131,6 +131,7 @@ use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockLevelRepository;
+use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockMovements;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockroomRepository;
 use OrillaCart\Tests\Fixtures\Invoicing\FakeInvoiceLinks;
 use OrillaCart\Tests\Fixtures\Invoicing\FakeInvoicePdfs;
@@ -178,6 +179,7 @@ final class TestShop
     public readonly ProductService $products;
     public readonly ShopCatalog $catalog;
     public readonly StockService $stock;
+    public readonly InMemoryStockMovements $stockMovements;
     public readonly StockroomService $stockrooms;
     public readonly TaxGroupService $taxGroups;
     public readonly InMemoryTaxSettingsRepository $taxSettings;
@@ -288,7 +290,7 @@ final class TestShop
         $this->events->addListener(SettingsChanged::class, new ConvertRateMeasures($this->carriers)(...));
         $stockroomRecords = new InMemoryStockroomRepository();
         $this->stockrooms = new StockroomService($stockroomRecords);
-        $this->stock = new StockService(new InMemoryStockLevelRepository(), $stockroomRecords, $this->events);
+        $this->stock = new StockService(new InMemoryStockLevelRepository(), $stockroomRecords, $this->events, $this->stockMovements = new InMemoryStockMovements(), $this->clock);
         $this->priceRuleRecords = new InMemoryPriceRuleRepository();
         $this->customerGroupRecords = new InMemoryCustomerGroupRepository();
         $prices = new PriceResolver($this->priceRuleRecords, new GroupsOfShoppers($this->customerGroupRecords), $this->clock, $extensions, $settings, $this->logger, $this->failures = new ExtensionFailures());

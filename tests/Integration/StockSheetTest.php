@@ -28,7 +28,7 @@ final class StockSheetTest extends RestTestCase
         parent::setUp();
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['stock_levels', 'stockrooms', 'variations', 'products', 'attribute_sets'] as $table) {
+        foreach (['stock_movements', 'stock_levels', 'stockrooms', 'variations', 'products', 'attribute_sets'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
         // The sheet shows the whole catalog: products another test left behind would count too.
@@ -109,6 +109,11 @@ final class StockSheetTest extends RestTestCase
 
         $rows = $this->sheet('')['rows'];
         self::assertSame([[(string) $this->sofia => 5], [(string) $this->berlin => 0]], [$rows[0]['levels'], $rows[1]['levels']]);
+        $history = $this->data($this->request('GET', "/stock-history?product={$this->lamp}"));
+        self::assertIsArray($history['movements']);
+        self::assertIsArray($history['movements'][0]);
+        $user = wp_get_current_user()->display_name;
+        self::assertSame(['Brass lamp', 'Sofia', 5, 5, 'count', $user], [$history['movements'][0]['name'], $history['movements'][0]['stockroom'], $history['movements'][0]['delta'], $history['movements'][0]['after'], $history['movements'][0]['reason'], $history['movements'][0]['user']], 'the history keeps who counted');
 
         $refused = $this->request('PATCH', '/stock-levels', ['changes' => [
             ['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'quantity' => null],

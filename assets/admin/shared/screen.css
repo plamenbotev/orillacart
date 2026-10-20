@@ -119,3 +119,8 @@
 	overflow-y: auto;
 	color: #8a2424;
 }
+
+.orillacart-stock-totals {
+	margin: 16px 0;
+	max-width: 640px;
+}

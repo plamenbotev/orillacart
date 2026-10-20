@@ -15,7 +15,9 @@ use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
+use OrillaCart\Inventory\Application\Dto\StockNote;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Inventory\Domain\StockReason;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -41,7 +43,7 @@ final readonly class BulkEdits
      *
      * @throws CatalogRuleViolation for a change that is not one
      */
-    public function apply(array $ids, BulkEdit $edit): array
+    public function apply(array $ids, BulkEdit $edit, ?int $userId = null): array
     {
         self::check($edit);
         $refused = [];
@@ -56,7 +58,7 @@ final readonly class BulkEdits
                 $levels = $this->levels($product, $edit);
                 $this->prices($product, $edit);
                 foreach ($levels as [$item, $now]) {
-                    $this->stock->setLevels($item, new SetStockLevels(array_map(static fn(int $room, int $count): SetStockLevel => new SetStockLevel($room, $count), array_keys($now), array_values($now))));
+                    $this->stock->setLevels($item, new SetStockLevels(array_map(static fn(int $room, int $count): SetStockLevel => new SetStockLevel($room, $count), array_keys($now), array_values($now))), new StockNote(StockReason::BulkEdit, null, $userId));
                 }
             } catch (RuleViolation $e) {
                 $refused[] = \sprintf('%s: %s', $name, $e->getMessage());

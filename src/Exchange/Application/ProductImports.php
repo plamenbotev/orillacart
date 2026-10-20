@@ -195,7 +195,7 @@ final readonly class ProductImports
             }
         }
         try {
-            $this->rows->import($row) ? $import->createdRow() : $import->updatedRow();
+            $this->rows->import($row, $import->userId()) ? $import->createdRow() : $import->updatedRow();
         } catch (InvalidFields $e) {
             $import->failedRow($line, implode(' ', array_map(static fn(array $violation): string => "{$violation['field']}: {$violation['message']}", $e->violations)));
         } catch (RuleViolation|\InvalidArgumentException $e) {

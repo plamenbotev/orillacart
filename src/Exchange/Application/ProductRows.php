@@ -20,7 +20,9 @@ use OrillaCart\Extension\Catalog\ImportsProductColumn;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
+use OrillaCart\Inventory\Application\Dto\StockNote;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Inventory\Domain\StockReason;
 
 /**
  * Imports one row of a products file. The row finds its product by variation_id, id or SKU, in that order, and
@@ -48,7 +50,7 @@ final readonly class ProductRows
      *
      * @throws \OrillaCart\Shared\Domain\RuleViolation|\InvalidArgumentException why the row is refused
      */
-    public function import(array $row): bool
+    public function import(array $row, ?int $userId = null): bool
     {
         $row = array_map(self::cell(...), $row);
         [$productId, $variationId] = $this->target($row);
@@ -68,11 +70,11 @@ final readonly class ProductRows
             if (!$post->isEmpty()) {
                 $this->posts->change($productId, $post);
             }
-            $this->levels(StockItemRef::product($productId), $row);
+            $this->levels(StockItemRef::product($productId), $row, $userId);
         } else {
             $variation = self::variation($product, $variationId);
             $this->products->changeVariation($productId, $variationId, SaveVariation::unchanged($variation, self::variationChanges($row, $variation)));
-            $this->levels(StockItemRef::variation($variationId), $row);
+            $this->levels(StockItemRef::variation($variationId), $row, $userId);
         }
         $this->addOns($row, $this->products->product($productId), $variationId);
 
@@ -209,7 +211,7 @@ final readonly class ProductRows
      *
      * @param array<string, string> $row
      */
-    private function levels(StockItemRef $item, array $row): void
+    private function levels(StockItemRef $item, array $row, ?int $userId): void
     {
         $changed = false;
         $levels = $this->stock->levelsOf([$item])["{$item->kind}:{$item->id}"] ?? [];
@@ -226,7 +228,7 @@ final readonly class ProductRows
             }
         }
         if ($changed) {
-            $this->stock->setLevels($item, new SetStockLevels(array_map(static fn(int $room, int $quantity): SetStockLevel => new SetStockLevel($room, $quantity), array_keys($levels), array_values($levels))));
+            $this->stock->setLevels($item, new SetStockLevels(array_map(static fn(int $room, int $quantity): SetStockLevel => new SetStockLevel($room, $quantity), array_keys($levels), array_values($levels))), new StockNote(StockReason::Import, null, $userId));
         }
     }
 

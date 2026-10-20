@@ -8,6 +8,7 @@ use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\LowStock;
+use OrillaCart\Catalog\Application\StockItemNames;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Notifications\Application\Dto\EmailTemplateView;
@@ -44,7 +45,7 @@ final class EmailTemplateEditorTest extends TestCase
         $this->shop->content->add(20, 'E-book');
         $this->shop->products->save(20, new SaveProduct('8', 'virtual'));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
-        $low = new LowStockAlerts(new LowStock($this->shop->productRecords, $this->shop->content, $this->shop->stock, $this->shop->stockrooms, $this->shop->settingsService), new InMemoryAlertedStock(), $this->shop->emailSettings, $this->shop->writer, $this->shop->mail, $this->shop->logger);
+        $low = new LowStockAlerts(new LowStock($this->shop->productRecords, new StockItemNames($this->shop->productRecords, $this->shop->content), $this->shop->stock, $this->shop->stockrooms, $this->shop->settingsService), new InMemoryAlertedStock(), $this->shop->emailSettings, $this->shop->writer, $this->shop->mail, $this->shop->logger);
         $this->editor = new EmailTemplateEditor($this->shop->templateEditing, $this->shop->emailTemplateRecords, $this->shop->emails, $low, $this->shop->orders, $this->shop->writer, $this->shop->mail, $this->shop->site, $this->shop->clock);
     }
 

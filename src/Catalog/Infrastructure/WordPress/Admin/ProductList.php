@@ -230,7 +230,7 @@ final class ProductList
         }
         $products = array_values(array_filter(array_map(intval(...), $updated), static fn(int $id): bool => get_post_type($id) === ProductPostType::NAME));
         try {
-            $refused = $this->bulk->apply($products, $edit);
+            $refused = $this->bulk->apply($products, $edit, get_current_user_id());
         } catch (RuleViolation $e) {
             $refused = [$e->getMessage()];
         }

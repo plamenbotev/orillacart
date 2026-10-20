@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Unit\Notifications;
 use OrillaCart\Catalog\Application\Dto\LowStockView;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\LowStock;
+use OrillaCart\Catalog\Application\StockItemNames;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
@@ -41,7 +42,7 @@ final class LowStockAlertsTest extends TestCase
         $this->level(10, $this->plovdiv, 8);
         $this->level(11, $this->sofia, 1);
         $this->level(12, $this->sofia, 0);
-        $this->low = new LowStock($this->shop->productRecords, $this->shop->content, $this->shop->stock, $this->shop->stockrooms, $this->shop->settingsService);
+        $this->low = new LowStock($this->shop->productRecords, new StockItemNames($this->shop->productRecords, $this->shop->content), $this->shop->stock, $this->shop->stockrooms, $this->shop->settingsService);
         $this->alerts = new LowStockAlerts($this->low, new InMemoryAlertedStock(), $this->shop->emailSettings, $this->shop->writer, $this->shop->mail, $this->shop->logger);
     }
 
