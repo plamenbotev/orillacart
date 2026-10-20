@@ -10,11 +10,12 @@ use OrillaCart\Customers\Application\Dto\CustomerQuery;
 use OrillaCart\Customers\Application\Dto\CustomerSettingsView;
 use OrillaCart\Customers\Application\Dto\CustomerView;
 use OrillaCart\Customers\Application\Dto\RegisterAccount;
-use OrillaCart\Customers\Application\Dto\SaveAddresses;
+use OrillaCart\Customers\Application\Dto\SaveAddress;
 use OrillaCart\Customers\Application\Dto\UpdateCustomerSettings;
 use OrillaCart\Customers\Domain\AccountMode;
 use OrillaCart\Customers\Domain\CustomerGroupRepository;
 use OrillaCart\Customers\Domain\CustomerNotFound;
+use OrillaCart\Customers\Domain\CustomerRuleViolation;
 use OrillaCart\Customers\Domain\CustomerSettings;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
 use OrillaCart\Customers\Domain\Event\CustomerDeleted;
@@ -31,8 +32,8 @@ use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
- * Customer accounts: whether the shop has them, making one (by a link sent to the email), and the addresses
- * checkout fills in.
+ * Customer accounts: whether the shop has them, making one (by a link sent to the email), and the address book
+ * checkout fills addresses in from.
  */
 final readonly class CustomerService
 {
@@ -67,7 +68,7 @@ final readonly class CustomerService
             return $pending !== null;
         }
         $groupIds = $this->groups->groupIdsOf($id);
-        $this->accounts->saveAddresses($id, null, null);
+        $this->accounts->saveAddresses($id, new AddressBook());
         foreach ($groupIds as $groupId) {
             $group = $this->groups->find($groupId);
             if ($group !== null) {
@@ -77,7 +78,7 @@ final readonly class CustomerService
         }
         $this->events->dispatch(new CustomerErased($id));
 
-        return $record->billing !== null || $record->shippingAddress !== null || $groupIds !== [];
+        return $record->addresses->addresses !== [] || $groupIds !== [];
     }
 
     /** The account of the email, if any. */
@@ -160,18 +161,32 @@ final readonly class CustomerService
     /** Where a customer has things sent, as they saved it: their shipping address, or their billing one. */
     public function savedAddress(int $id): ?AddressData
     {
-        $record = $this->accounts->find($id);
+        return $this->accounts->find($id)?->addresses->shipping();
+    }
 
-        return $record->shippingAddress ?? $record?->billing;
+    /**
+     * Saves an address in the customer's address book: a new one, or in place of the one of the id.
+     *
+     * @throws CustomerNotFound
+     * @throws CustomerRuleViolation for an id the book does not have, or a full book
+     */
+    public function saveAddress(int $id, ?string $addressId, SaveAddress $command): CustomerView
+    {
+        $record = $this->accounts->find($id) ?? throw new CustomerNotFound($id);
+        [$book] = $record->addresses->with($addressId, $command->address, $command->billing, $command->shipping);
+        $this->accounts->saveAddresses($id, $book);
+
+        return $this->customer($id);
     }
 
     /**
      * @throws CustomerNotFound
+     * @throws CustomerRuleViolation for an id the book does not have
      */
-    public function saveAddresses(int $id, SaveAddresses $command): CustomerView
+    public function removeAddress(int $id, string $addressId): CustomerView
     {
-        $this->accounts->find($id) ?? throw new CustomerNotFound($id);
-        $this->accounts->saveAddresses($id, $command->billing, $command->shippingAddress);
+        $record = $this->accounts->find($id) ?? throw new CustomerNotFound($id);
+        $this->accounts->saveAddresses($id, $record->addresses->without($addressId));
 
         return $this->customer($id);
     }
@@ -236,7 +251,7 @@ final readonly class CustomerService
                 continue;
             }
             if (!$addressed) {
-                $this->accounts->saveAddresses($id, $order->billing, $order->shippingAddress);
+                $this->accounts->saveAddresses($id, new AddressBook()->remembering($order->billing, $order->shippingAddress));
                 $addressed = true;
             }
         }
@@ -269,12 +284,14 @@ final readonly class CustomerService
     }
 
     /**
-     * Remembers the addresses a logged-in customer ordered with, for their next order.
+     * Remembers the addresses a logged-in customer ordered with in their address book, as the ones to start
+     * from next time.
      */
     public function rememberAddresses(int $id, AddressData $billing, ?AddressData $shippingAddress): void
     {
-        if ($this->accounts->find($id) !== null) {
-            $this->accounts->saveAddresses($id, $billing, $shippingAddress);
+        $record = $this->accounts->find($id);
+        if ($record !== null) {
+            $this->accounts->saveAddresses($id, $record->addresses->remembering($billing, $shippingAddress));
         }
     }
 }

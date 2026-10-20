@@ -450,6 +450,30 @@ fieldset[aria-invalid="true"] {
 	font-style: normal;
 }
 
+/* The account's address book: each address, what checkout uses it for, and its form. */
+.orillacart-account__addresses {
+	display: grid;
+	gap: calc(var(--orillacart-gap) * 2);
+}
+
+.orillacart-saved-address {
+	padding: var(--orillacart-gap);
+	border: 1px solid currentcolor;
+	border-radius: 4px;
+}
+
+.orillacart-saved-address summary {
+	cursor: pointer;
+}
+
+.orillacart-badge {
+	display: inline-block;
+	padding: 0 0.5em;
+	border: 1px solid currentcolor;
+	border-radius: 1em;
+	font-size: 0.85em;
+}
+
 /* Answers to add-ons' checkout questions: the question, then the answer under it. */
 .orillacart-answers dt {
 	font-weight: 600;

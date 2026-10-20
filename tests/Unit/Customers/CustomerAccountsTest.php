@@ -14,7 +14,7 @@ use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Customers\Application\Dto\ConfirmAccount;
 use OrillaCart\Customers\Application\Dto\CustomerQuery;
 use OrillaCart\Customers\Application\Dto\RegisterAccount;
-use OrillaCart\Customers\Application\Dto\SaveAddresses;
+use OrillaCart\Customers\Application\Dto\SaveAddress;
 use OrillaCart\Customers\Application\Dto\SaveCustomerGroup;
 use OrillaCart\Customers\Application\Dto\SetCustomerGroups;
 use OrillaCart\Customers\Application\Dto\UpdateCustomerSettings;
@@ -146,8 +146,41 @@ final class CustomerAccountsTest extends TestCase
         $page = $this->shop->customers->customers(new CustomerQuery('ada'));
         self::assertSame([[$ada], 1], [array_column($page->customers, 'id'), $page->total]);
 
-        $saved = $this->shop->customers->saveAddresses($ada, new SaveAddresses($this->address, $this->address));
-        self::assertEquals($this->address, $saved->shippingAddress);
+        $saved = $this->shop->customers->saveAddress($ada, null, new SaveAddress($this->address));
+        self::assertEquals([$this->address, $this->address], [$saved->billing, $saved->shippingAddress], 'the first is the one to start from');
+    }
+
+    public function testACustomerKeepsAnAddressBookAndChoosesWhichToStartFrom(): void
+    {
+        $ada = $this->shop->accounts->add('ada@example.com');
+        $office = new AddressData('Ada', 'Lovelace', '5 Shipka St', 'Sofia', '1504', 'BG', '+359 2 111 1111');
+        $home = $this->shop->customers->saveAddress($ada, null, new SaveAddress($this->address))->addresses[0]->id;
+
+        $customer = $this->shop->customers->saveAddress($ada, null, new SaveAddress($office, shipping: true));
+        self::assertEquals([$this->address, $office], [$customer->billing, $customer->shippingAddress]);
+        self::assertSame([[$home, true, false], [$customer->addresses[1]->id, false, true]], array_map(static fn($saved): array => [$saved->id, $saved->billing, $saved->shipping], $customer->addresses));
+        self::assertEquals($office, $this->shop->customers->savedAddress($ada), 'estimates go where things are sent');
+
+        $moved = new AddressData('Ada', 'Lovelace', '9 Rakovski St', 'Sofia', '1000', 'BG', '+359 2 000 0000');
+        $customer = $this->shop->customers->saveAddress($ada, $home, new SaveAddress($moved));
+        self::assertEquals([$moved, 2], [$customer->billing, \count($customer->addresses)], 'changed in place');
+
+        $customer = $this->shop->customers->removeAddress($ada, $customer->addresses[1]->id);
+        self::assertEquals([$moved, $moved], [$customer->billing, $customer->shippingAddress], 'shipping falls back to billing');
+
+        $this->expectException(RuleViolation::class);
+        $this->shop->customers->removeAddress($ada, 'ffffffff');
+    }
+
+    public function testOrderingAddsTheAddressesOnceEachAsTheOnesToStartFrom(): void
+    {
+        $id = $this->shop->accounts->add('ada@example.com');
+        $this->place(new CartOwner(null, $id));
+        $this->place(new CartOwner(null, $id));
+
+        $customer = $this->shop->customers->customer($id);
+        self::assertCount(1, $customer->addresses);
+        self::assertSame([true, true], [$customer->addresses[0]->billing, $customer->addresses[0]->shipping]);
     }
 
     public function testADeletedAccountsOrdersBecomeGuestOrdersAndItsCartAndGroupsGo(): void

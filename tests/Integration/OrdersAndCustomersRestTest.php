@@ -111,7 +111,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     {
         $shop = [['GET', '/orders'], ['GET', '/orders/1'], ['PUT', '/orders/1/status'], ['PUT', '/orders/1/contact'], ['POST', '/orders/1/notes'],
             ['PUT', '/orders/1/items'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['GET', '/customers/1'],
-            ['PUT', '/customers/1/addresses'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/email-settings'],
+            ['POST', '/customers/1/addresses'], ['PUT', '/customers/1/addresses/ab12cd34'], ['DELETE', '/customers/1/addresses/ab12cd34'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/email-settings'],
             ['PUT', '/email-settings'], ['POST', '/products/1/downloads'], ['DELETE', '/products/1/downloads/1'], ['GET', '/download-storage'],
             ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1'], ['POST', '/orders'], ['POST', '/orders/quote'],
             ['GET', '/orders/1/shipments'], ['POST', '/orders/1/shipments'], ['POST', '/orders/1/shipments/sent'], ['POST', '/shipments/1/arrived'], ['POST', '/orders/1/ready-for-pickup'], ['POST', '/orders/1/picked-up'], ['GET', '/orders/1/returns'], ['POST', '/returns/1/approve'], ['POST', '/returns/1/refuse'], ['POST', '/returns/1/receive'], ['POST', '/returns/1/refund'], ['GET', '/shipments/1/label'], ['POST', '/shipments/1/cancel'], ['GET', '/shipping-methods'], ['GET', '/orders/1/pickup-points'],
@@ -123,7 +123,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
             ['GET', '/coupons'], ['POST', '/coupons'], ['GET', '/coupons/1'], ['PUT', '/coupons/1'], ['DELETE', '/coupons/1'],
             ['GET', '/jobs'], ['GET', '/jobs/failed'], ['POST', '/jobs/failed/retry'], ['POST', '/jobs/failed/delete'], ['POST', '/jobs/workers/restart'],
             ['GET', '/orders/1/actions'], ['POST', '/orders/1/actions/test_export']];
-        $account = [['GET', '/account'], ['PUT', '/account/addresses'], ['GET', '/account/orders'], ['GET', '/account/orders/1'], ['GET', '/account/downloads']];
+        $account = [['GET', '/account'], ['POST', '/account/addresses'], ['PUT', '/account/addresses/ab12cd34'], ['DELETE', '/account/addresses/ab12cd34'], ['GET', '/account/orders'], ['GET', '/account/orders/1'], ['GET', '/account/downloads']];
         foreach ([...$shop, ...$account] as [$method, $route]) {
             self::assertSame(401, $this->request($method, $route)->get_status(), "visitor: {$method} {$route}");
         }

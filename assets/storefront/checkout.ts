@@ -39,6 +39,7 @@ export function bindCheckout( form: HTMLFormElement ): void {
 	};
 	showShipping();
 	bindContact( form );
+	bindSavedAddresses( form );
 
 	bindCoupons( form, () => {
 		summary = summary.then( () => refreshSummary( form ) );
@@ -126,6 +127,61 @@ export function bindCheckout( form: HTMLFormElement ): void {
  * reminded of the cart: when the page opens, and when either changes.
  * @param form The checkout form.
  */
+/** A saved address as the page has it, and the address fields its values go in. */
+type SavedAddress = Record< string, string | null >;
+const SAVED_FIELDS: Record< string, string > = {
+	firstName: 'first_name',
+	lastName: 'last_name',
+	street: 'street',
+	city: 'city',
+	postcode: 'postcode',
+	phone: 'phone',
+};
+
+/**
+ * Choosing one of the customer's saved addresses fills in the address's fields; a new country refills the
+ * states first, and the summary follows.
+ * @param form The checkout form.
+ */
+function bindSavedAddresses( form: HTMLFormElement ): void {
+	const saved = JSON.parse(
+		form.querySelector( '[data-orillacart-saved-addresses]' )
+			?.textContent ?? '{}'
+	) as Record< string, SavedAddress >;
+	form.querySelectorAll< HTMLSelectElement >(
+		'[data-orillacart-saved-address]'
+	).forEach( ( select ) => {
+		select.addEventListener( 'change', () => {
+			const address = saved[ select.value ];
+			const prefix = select.dataset.orillacartSavedAddress ?? '';
+			const field = ( name: string ) =>
+				form.querySelector< HTMLInputElement | HTMLSelectElement >(
+					`[name="${ prefix }.${ name }"]`
+				);
+			if ( ! address ) {
+				return;
+			}
+			for ( const [ key, name ] of Object.entries( SAVED_FIELDS ) ) {
+				const input = field( name );
+				if ( input ) {
+					input.value = address[ key ] ?? '';
+				}
+			}
+			const country = field( 'country' );
+			if ( country ) {
+				country.value = address.country ?? '';
+				country.dispatchEvent(
+					new Event( 'change', { bubbles: true } )
+				);
+			}
+			const state = field( 'state' );
+			if ( state ) {
+				state.value = address.state ?? '';
+			}
+		} );
+	} );
+}
+
 function bindContact( form: HTMLFormElement ): void {
 	const email = form.querySelector< HTMLInputElement >( '[name="email"]' );
 	const remind = form.querySelector< HTMLInputElement >(

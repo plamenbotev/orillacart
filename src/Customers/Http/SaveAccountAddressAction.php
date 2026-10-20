@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Customers\Http;
 
+use OrillaCart\Customers\Application\AddressBook;
 use OrillaCart\Customers\Application\CustomerService;
-use OrillaCart\Customers\Application\Dto\SaveAddresses;
+use OrillaCart\Customers\Application\Dto\SaveAddress;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
@@ -16,8 +17,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-#[Route('/account/addresses', methods: ['PUT'], capability: Capability::ACCOUNT)]
-final readonly class SaveAccountAddressesAction implements RequestHandlerInterface
+/** The customer saves a new address in their address book, or changes one. */
+#[Route('/account/addresses', methods: ['POST'], capability: Capability::ACCOUNT)]
+#[Route('/account/addresses/{address}', methods: ['PUT'], capability: Capability::ACCOUNT, requirements: ['address' => AddressBook::ID_PATTERN])]
+final readonly class SaveAccountAddressAction implements RequestHandlerInterface
 {
     public function __construct(
         private CustomerService $customers,
@@ -29,7 +32,8 @@ final readonly class SaveAccountAddressesAction implements RequestHandlerInterfa
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $id = $this->authorization->userId() ?? throw HttpException::unauthorized();
+        $address = $request->getAttribute('address');
 
-        return $this->responder->ok($this->customers->saveAddresses($id, $this->input->body($request, SaveAddresses::class)));
+        return $this->responder->ok($this->customers->saveAddress($id, \is_string($address) ? $address : null, $this->input->body($request, SaveAddress::class)));
     }
 }

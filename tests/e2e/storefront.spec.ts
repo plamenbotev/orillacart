@@ -294,8 +294,47 @@ test.describe( 'A visitor', () => {
 			page.getByRole( 'heading', { name: `Order ${ number }` } )
 		).toBeVisible();
 
+		// The order's address is saved; another is added, for shipping to.
 		await page.getByRole( 'link', { name: 'Addresses' } ).click();
-		await expect( page.locator( '#billing-city' ) ).toHaveValue( 'Sofia' );
+		await expect(
+			page.locator( '.orillacart-saved-address' ).first()
+		).toContainText( '1 Vitosha Blvd' );
+		await page.getByText( 'Add an address' ).click();
+		await page.locator( '#address-new-first_name' ).fill( 'Ada' );
+		await page.locator( '#address-new-last_name' ).fill( 'Lovelace' );
+		await page.locator( '#address-new-street' ).fill( '5 Shipka St' );
+		await page.locator( '#address-new-city' ).fill( 'Sofia' );
+		await page.locator( '#address-new-postcode' ).fill( '1504' );
+		await page.locator( '#address-new-phone' ).fill( BILLING.phone );
+		await page.locator( '#address-new-country' ).selectOption( 'BG' );
+		await page.getByLabel( 'Use for shipping' ).check();
+		await page.getByRole( 'button', { name: 'Save address' } ).click();
+		await expect(
+			page.locator( '.orillacart-saved-address', {
+				hasText: '5 Shipka St',
+			} )
+		).toContainText( 'Shipping' );
+
+		// Checkout starts from it, and offers the other.
+		await page.goto( shop.lampUrl );
+		await page.getByRole( 'button', { name: 'Add to cart' } ).click();
+		await expect( page.getByRole( 'status' ) ).toHaveText( /Added/ );
+		await page.goto( shop.urls.checkout );
+		await expect( page.locator( '#billing-street' ) ).toHaveValue(
+			'1 Vitosha Blvd'
+		);
+		await expect( page.locator( '#shipping_address-street' ) ).toHaveValue(
+			'5 Shipka St'
+		);
+		await page
+			.locator( '#shipping_address-saved' )
+			.selectOption( { index: 0 } );
+		await expect( page.locator( '#shipping_address-street' ) ).toHaveValue(
+			'1 Vitosha Blvd'
+		);
+		await expect(
+			page.locator( '#shipping_address-postcode' )
+		).toHaveValue( '1000' );
 	} );
 
 	test( 'makes an account on the account page and logs out', async ( {

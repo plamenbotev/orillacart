@@ -4,6 +4,7 @@
  #
  # summary: the priced cart, or null with problem set; email; billing and shipping: the addresses to start from;
  # address_checks: whether add-ons check addresses before the order is placed; address_known: whether the summary had a country; ship_elsewhere; countries; states: {country: [states]}; logged_in; accounts: optional | required | disabled;
+ # saved_addresses: the logged-in customer's address book;
  # cart_reminders: whether the shop reminds customers who ask of a cart they leave at checkout;
  # links: the shop's pages.
  #}
@@ -34,6 +35,7 @@
                     {% endif %}
                 </fieldset>
 
+                {{ _self.saved_addresses('billing', saved_addresses ?? [], 'billing') }}
                 {{ shop.address('billing', summary.needs_shipping ? __('Billing address') : __('Address'), billing, countries, states, 'billing') }}
                 {% if summary.vat_asked %}
                     <p class="orillacart-field">
@@ -51,6 +53,7 @@
                         <label for="orillacart-ship-elsewhere">{{ __('Ship to a different address') }}</label>
                     </p>
                     <div data-orillacart-shipping-address{{ not ship_elsewhere ? ' hidden' }}>
+                        {{ _self.saved_addresses('shipping_address', saved_addresses ?? [], 'shipping') }}
                         {{ shop.address('shipping_address', __('Shipping address'), shipping, countries, states, 'shipping') }}
                     </div>
                     {{ shop.extra_fields(summary.fields, 'shipping') }}
@@ -96,3 +99,22 @@
     {% endif %}
 </div>
 <script type="application/json" data-orillacart-states>{{ states|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw }}</script>
+
+{# A choice of the customer's saved addresses, which fills in the address fields of the prefix. #}
+{% macro saved_addresses(prefix, saved, use) %}
+    {% if saved|length > 1 %}
+        <p class="orillacart-field">
+            <label for="{{ prefix }}-saved">{{ __('Saved addresses') }}</label>
+            <select id="{{ prefix }}-saved" data-orillacart-saved-address="{{ prefix }}">
+                {% for entry in saved %}
+                    <option value="{{ entry.id }}"{{ attribute(entry, use) ? ' selected' }}>{{ entry.address|address_lines|join(', ') }}</option>
+                {% endfor %}
+            </select>
+        </p>
+        {% if prefix == 'billing' %}
+            {% set fields = {} %}
+            {% for entry in saved %}{% set fields = fields|merge({(entry.id): entry.address}) %}{% endfor %}
+            <script type="application/json" data-orillacart-saved-addresses>{{ fields|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw }}</script>
+        {% endif %}
+    {% endif %}
+{% endmacro %}

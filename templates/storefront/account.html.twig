@@ -5,7 +5,8 @@
  # logged_in; accounts: optional | required | disabled; login_form (HTML); lost_password_url; confirm_token: the
  # token of an emailed link to make the account, for choosing its password; section: orders |
  # order | downloads | addresses; urls: {orders, downloads, addresses, logout}; orders (a page of them, with
- # order_urls and page_urls); order (null when not theirs); downloads; customer; countries; states.
+ # order_urls and page_urls); order (null when not theirs); downloads; customer (with its address book);
+ # max_addresses; default_country: where a new address starts; countries; states.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-account">
@@ -77,12 +78,31 @@
                 {% endif %}
 
             {% elseif section == 'addresses' %}
-                <form class="orillacart-account__addresses" data-orillacart-addresses novalidate>
-                    {{ shop.address('billing', __('Billing address'), customer.billing ?? {}, countries, states, 'billing') }}
-                    {{ shop.address('shipping_address', __('Shipping address'), customer.shipping_address ?? customer.billing ?? {}, countries, states, 'shipping') }}
-                    <p class="orillacart-message" role="status" data-orillacart-message></p>
-                    <button type="submit" class="wp-element-button orillacart-button">{{ __('Save addresses') }}</button>
-                </form>
+                <div class="orillacart-account__addresses">
+                    {% for saved in customer.addresses ?? [] %}
+                        <section class="orillacart-saved-address">
+                            {{ shop.address_text(saved.address) }}
+                            <p class="orillacart-saved-address__uses">
+                                {%- if saved.billing %}<span class="orillacart-badge">{{ __('Billing') }}</span>{% endif -%}
+                                {%- if saved.shipping %} <span class="orillacart-badge">{{ __('Shipping') }}</span>{% endif -%}
+                            </p>
+                            <p class="orillacart-message" role="alert" data-orillacart-message></p>
+                            <details>
+                                <summary>{{ __('Change') }}</summary>
+                                {{ _self.address_form('address-' ~ saved.id, saved, countries, states) }}
+                            </details>
+                            <button type="button" class="wp-element-button orillacart-button orillacart-button--secondary" data-orillacart-remove-address="{{ saved.id }}">{{ __('Remove') }}</button>
+                        </section>
+                    {% else %}
+                        <p class="orillacart-empty">{{ __('You have no saved addresses yet: checkout saves the ones you order with.') }}</p>
+                    {% endfor %}
+                    {% if (customer.addresses ?? [])|length < max_addresses %}
+                        <details class="orillacart-saved-address orillacart-saved-address--new"{{ (customer.addresses ?? []) is empty ? ' open' }}>
+                            <summary>{{ __('Add an address') }}</summary>
+                            {{ _self.address_form('address-new', {address: {country: default_country}, billing: false, shipping: false}, countries, states) }}
+                        </details>
+                    {% endif %}
+                </div>
                 <script type="application/json" data-orillacart-states>{{ states|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP'))|raw }}</script>
 
             {% else %}
@@ -125,3 +145,25 @@
     {% endif %}
     {{ slot('account_after', section ?? null) }}
 </div>
+
+{# A form for one address of the address book: saved (saved.id) or new. #}
+{% macro address_form(prefix, saved, countries, states) %}
+    {% import 'storefront/_macros.html.twig' as shop %}
+    <form class="orillacart-saved-address__form" data-orillacart-address-book="{{ prefix }}"{{ saved.id is defined ? ' data-orillacart-address-id=' ~ saved.id }} novalidate>
+        {{ shop.address(prefix, __('Address'), saved.address, countries, states, 'shipping') }}
+        {% if not saved.billing %}
+            <p class="orillacart-field orillacart-field--check">
+                <input id="{{ prefix }}-billing" type="checkbox" name="billing" value="1">
+                <label for="{{ prefix }}-billing">{{ __('Use for billing') }}</label>
+            </p>
+        {% endif %}
+        {% if not saved.shipping %}
+            <p class="orillacart-field orillacart-field--check">
+                <input id="{{ prefix }}-shipping" type="checkbox" name="shipping" value="1">
+                <label for="{{ prefix }}-shipping">{{ __('Use for shipping') }}</label>
+            </p>
+        {% endif %}
+        <p class="orillacart-message" role="alert" data-orillacart-message></p>
+        <button type="submit" class="wp-element-button orillacart-button">{{ __('Save address') }}</button>
+    </form>
+{% endmacro %}

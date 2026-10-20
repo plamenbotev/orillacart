@@ -9,11 +9,22 @@ export interface Customer {
 	first_name: string;
 	last_name: string;
 	registered_at: string;
+	/** The saved address checkout starts from for billing. */
 	billing: Address | null;
+	/** The saved address checkout starts from for shipping. */
 	shipping_address: Address | null;
 	orders: number;
 	/** The customer groups they are in. */
 	group_ids: number[];
+	addresses: SavedAddress[];
+}
+
+/** An address of the customer's address book, and whether checkout starts from it for billing or shipping. */
+export interface SavedAddress {
+	id: string;
+	address: Address;
+	billing: boolean;
+	shipping: boolean;
 }
 
 export interface CustomerGroup {
@@ -46,15 +57,38 @@ export function fetchCustomers( query: {
 	} );
 }
 
-export function saveAddresses(
+/**
+ * Saves an address in the customer's address book: a new one (addressId null), or in place of a saved one.
+ * @param id            The customer.
+ * @param addressId     The saved address, or null for a new one.
+ * @param address       The address.
+ * @param uses          Whether checkout starts from it for billing or shipping from now on.
+ * @param uses.billing
+ * @param uses.shipping
+ */
+export function saveAddress(
 	id: number,
-	billing: Address | null,
-	shippingAddress: Address | null
+	addressId: string | null,
+	address: Address,
+	uses: { billing: boolean; shipping: boolean }
 ): Promise< Customer > {
 	return apiFetch< Customer >( {
-		path: `${ BASE }/customers/${ id }/addresses`,
-		method: 'PUT',
-		data: { billing, shipping_address: shippingAddress },
+		path:
+			addressId === null
+				? `${ BASE }/customers/${ id }/addresses`
+				: `${ BASE }/customers/${ id }/addresses/${ addressId }`,
+		method: addressId === null ? 'POST' : 'PUT',
+		data: { address, ...uses },
+	} );
+}
+
+export function removeAddress(
+	id: number,
+	addressId: string
+): Promise< Customer > {
+	return apiFetch< Customer >( {
+		path: `${ BASE }/customers/${ id }/addresses/${ addressId }`,
+		method: 'DELETE',
 	} );
 }
 

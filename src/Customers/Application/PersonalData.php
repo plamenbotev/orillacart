@@ -35,10 +35,8 @@ final readonly class PersonalData
         if ($page === 1) {
             $id = $this->customers->customerIdOf($email);
             $customer = $id === null ? null : $this->customers->customer($id);
-            foreach (['Billing address' => $customer?->billing, 'Shipping address' => $customer?->shippingAddress] as $label => $address) {
-                if ($address instanceof AddressData) {
-                    $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-' . strtok($label, ' '), 'data' => [['name' => $label, 'value' => self::address($address)]]];
-                }
+            foreach ($customer->addresses ?? [] as $saved) {
+                $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-address-' . $saved->id, 'data' => [['name' => 'Saved address', 'value' => self::address($saved->address)]]];
             }
         }
         $orders = $this->orders->ofPerson($email, $this->customers->customerIdOf($email), $page, self::PER_PAGE);

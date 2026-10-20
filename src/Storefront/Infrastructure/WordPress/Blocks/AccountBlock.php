@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Checkout\Application\PayNow;
+use OrillaCart\Customers\Application\AddressBook;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Invoicing\Application\Invoices;
@@ -13,6 +14,7 @@ use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\OrderNotFound;
+use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
@@ -23,7 +25,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
 /**
  * The customer's account page. Visitors see WordPress's login form and, unless the shop makes no accounts,
  * a form to make one. Customers see their orders (?section=orders, or ?order=ID for one), their files
- * (?section=downloads) and their addresses (?section=addresses).
+ * (?section=downloads) and their address book (?section=addresses).
  */
 final readonly class AccountBlock implements BlockDefinition
 {
@@ -40,6 +42,7 @@ final readonly class AccountBlock implements BlockDefinition
         private PayNow $payNow,
         private Invoices $invoices,
         private ReceiptLinks $receipts,
+        private SettingsService $settings,
     ) {}
 
     public static function name(): string
@@ -132,7 +135,13 @@ final readonly class AccountBlock implements BlockDefinition
         }
         $choices = $this->addresses->all();
 
-        return ['customer' => $customer, 'countries' => $choices['countries'], 'states' => $choices['states']];
+        return [
+            'customer' => $customer,
+            'max_addresses' => AddressBook::MAX_ADDRESSES,
+            'default_country' => $customer->shippingAddress->country ?? $this->settings->current()->shopCountry,
+            'countries' => $choices['countries'],
+            'states' => $choices['states'],
+        ];
     }
 
     private static function number(string $name): int

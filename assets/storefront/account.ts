@@ -1,6 +1,6 @@
 /**
- * The account page's forms: asking for an account, choosing its password from the emailed link, and saving
- * addresses.
+ * The account page's forms: asking for an account, choosing its password from the emailed link, and the
+ * address book.
  */
 import { __ } from '@wordpress/i18n';
 
@@ -106,28 +106,73 @@ export function bindConfirm( form: HTMLFormElement ): void {
 	} );
 }
 
-export function bindAddresses( form: HTMLFormElement ): void {
-	bindStates( form );
-	form.addEventListener( 'submit', async ( event ) => {
-		event.preventDefault();
-		clearErrors( form );
-		const result = await busy( form, () =>
-			api( 'PUT', '/account/addresses', formBody( form ) )
-		);
-		if ( result === null ) {
-			return;
-		}
-		if ( result.ok ) {
+/**
+ * The account's address book: each form saves an address, new or saved, and each remove button forgets one;
+ * the page then shows the book as it is now.
+ * @param book The address book.
+ */
+export function bindAddressBook( book: HTMLElement ): void {
+	bindStates( book );
+	book.querySelectorAll< HTMLFormElement >(
+		'form[data-orillacart-address-book]'
+	).forEach( ( form ) => {
+		const prefix = form.dataset.orillacartAddressBook ?? '';
+		const id = form.dataset.orillacartAddressId;
+		form.addEventListener( 'submit', async ( event ) => {
+			event.preventDefault();
+			clearErrors( form );
+			const body = formBody( form );
+			const result = await busy( form, () =>
+				api(
+					id ? 'PUT' : 'POST',
+					id ? `/account/addresses/${ id }` : '/account/addresses',
+					{
+						address: body[ prefix ] ?? {},
+						billing: body.billing === true,
+						shipping: body.shipping === true,
+					}
+				)
+			);
+			if ( result === null ) {
+				return;
+			}
+			if ( result.ok ) {
+				window.location.reload();
+				return;
+			}
+			// The form's fields are named for the form (address-new.street); the API names them address.street.
+			const violations = result.violations.map( ( violation ) => ( {
+				...violation,
+				field: violation.field.replace( /^address\./, `${ prefix }.` ),
+			} ) );
 			showMessage(
 				form,
-				__( 'Your addresses are saved.', 'orillacart' )
+				failure( result, showErrors( form, violations ) ),
+				'error'
 			);
-			return;
-		}
-		showMessage(
-			form,
-			failure( result, showErrors( form, result.violations ) ),
-			'error'
-		);
+		} );
+	} );
+	book.querySelectorAll< HTMLButtonElement >(
+		'[data-orillacart-remove-address]'
+	).forEach( ( button ) => {
+		button.addEventListener( 'click', async () => {
+			button.disabled = true;
+			const result = await api(
+				'DELETE',
+				`/account/addresses/${
+					button.dataset.orillacartRemoveAddress ?? ''
+				}`
+			);
+			if ( result.ok ) {
+				window.location.reload();
+				return;
+			}
+			button.disabled = false;
+			showMessage(
+				button.closest( '.orillacart-saved-address' ),
+				failure( result ),
+				'error'
+			);
+		} );
 	} );
 }

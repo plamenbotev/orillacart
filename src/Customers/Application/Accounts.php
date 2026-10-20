@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace OrillaCart\Customers\Application;
 
 use OrillaCart\Customers\Application\Dto\CustomerRecord;
-use OrillaCart\Ordering\Application\Dto\AddressData;
 
 /**
- * Where customer accounts live: WordPress users with the shop's customer role, and their saved addresses.
+ * Where customer accounts live: WordPress users with the shop's customer role, and their address books.
  */
 interface Accounts
 {
@@ -27,7 +26,7 @@ interface Accounts
     /** Logs the browser in as the account, as WordPress's login does. */
     public function logIn(int $id): void;
 
-    public function saveAddresses(int $id, ?AddressData $billing, ?AddressData $shippingAddress): void;
+    public function saveAddresses(int $id, AddressBook $addresses): void;
 
     /**
      * Customers newest first, and how many match in all. The search matches email and names.

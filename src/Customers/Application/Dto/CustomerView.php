@@ -14,11 +14,15 @@ final readonly class CustomerView
         public string $firstName,
         public string $lastName,
         public string $registeredAt,
+        /** The saved address checkout starts from for billing. */
         public ?AddressData $billing,
+        /** The saved address checkout starts from for shipping. */
         public ?AddressData $shippingAddress,
         public int $orders,
         /** @var list<int> the customer groups they are in */
         public array $groupIds = [],
+        /** @var list<SavedAddressView> */
+        public array $addresses = [],
     ) {}
 
     /**
@@ -26,6 +30,13 @@ final readonly class CustomerView
      */
     public static function fromRecord(CustomerRecord $record, int $orders, array $groupIds = []): self
     {
-        return new self($record->id, $record->email, $record->firstName, $record->lastName, $record->registeredAt, $record->billing, $record->shippingAddress, $orders, $groupIds);
+        $book = $record->addresses;
+        $shippingId = $book->shippingId !== null && isset($book->addresses[$book->shippingId]) ? $book->shippingId : $book->billingId;
+        $saved = [];
+        foreach ($book->addresses as $id => $address) {
+            $saved[] = new SavedAddressView((string) $id, $address, (string) $id === $book->billingId, (string) $id === $shippingId);
+        }
+
+        return new self($record->id, $record->email, $record->firstName, $record->lastName, $record->registeredAt, $book->billing(), $book->shipping(), $orders, $groupIds, $saved);
     }
 }

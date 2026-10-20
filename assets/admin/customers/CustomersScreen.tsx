@@ -3,7 +3,6 @@ import {
 	Card,
 	CardBody,
 	CardHeader,
-	CheckboxControl,
 	Notice,
 	RadioControl,
 	TextControl,
@@ -12,8 +11,6 @@ import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { type Address, EMPTY_ADDRESS } from '../shared/address';
-import { AddressFields } from '../shared/AddressFields';
 import { toApiError } from '../shared/api';
 import { useConfirm } from '../shared/useConfirm';
 import {
@@ -25,11 +22,10 @@ import {
 	fetchCustomers,
 	fetchCustomerSettings,
 	fetchGroups,
-	saveAddresses,
 	saveCustomerSettings,
 	saveGroup,
-	setCustomerGroups,
 } from './api';
+import { CustomerCard } from './CustomerCard';
 import { useLatest } from '../shared/useLatest';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
@@ -175,10 +171,7 @@ export function CustomersScreen() {
 						load();
 						setMessage( {
 							status: 'success',
-							text: __(
-								'The addresses were saved.',
-								'orillacart'
-							),
+							text: __( 'Saved.', 'orillacart' ),
 						} );
 					} }
 					onError={ fail }
@@ -363,102 +356,6 @@ function GroupsCard( {
 						{ __( 'Add the group', 'orillacart' ) }
 					</Button>
 				</form>
-			</CardBody>
-		</Card>
-	);
-}
-
-interface CustomerCardProps {
-	groups: CustomerGroup[];
-	customer: Customer;
-	onClose: () => void;
-	onSaved: ( customer: Customer ) => void;
-	onError: ( error: unknown ) => void;
-}
-
-function CustomerCard( {
-	groups,
-	customer,
-	onClose,
-	onSaved,
-	onError,
-}: CustomerCardProps ) {
-	const [ billing, setBilling ] = useState< Address >(
-		customer.billing ?? EMPTY_ADDRESS
-	);
-	const [ shipping, setShipping ] = useState< Address >(
-		customer.shipping_address ?? EMPTY_ADDRESS
-	);
-	const [ member, setMember ] = useState< number[] >(
-		customer.group_ids ?? []
-	);
-	const filled = ( address: Address ) =>
-		address.street.trim() === '' ? null : address;
-
-	return (
-		<Card className="orillacart-card">
-			<CardHeader>
-				<h2>
-					{ sprintf(
-						/* translators: 1: name, 2: email */
-						__( '%1$s (%2$s)', 'orillacart' ),
-						`${ customer.first_name } ${ customer.last_name }`,
-						customer.email
-					) }
-				</h2>
-				<Button variant="tertiary" onClick={ onClose }>
-					{ __( 'Close', 'orillacart' ) }
-				</Button>
-			</CardHeader>
-			<CardBody>
-				<p>
-					{ __(
-						'Checkout fills these in for the customer. Leave the street empty to forget an address.',
-						'orillacart'
-					) }
-				</p>
-				{ groups.length > 0 && (
-					<>
-						<h3>{ __( 'Customer groups', 'orillacart' ) }</h3>
-						{ groups.map( ( group ) => (
-							<CheckboxControl
-								key={ group.id }
-								label={ group.name }
-								checked={ member.includes( group.id ) }
-								onChange={ ( on ) => {
-									const next = on
-										? [ ...member, group.id ]
-										: member.filter(
-												( id ) => id !== group.id
-											);
-									setCustomerGroups( customer.id, next )
-										.then( ( saved ) =>
-											setMember( saved.group_ids )
-										)
-										.catch( onError );
-								} }
-							/>
-						) ) }
-					</>
-				) }
-				<h3>{ __( 'Billing address', 'orillacart' ) }</h3>
-				<AddressFields address={ billing } onChange={ setBilling } />
-				<h3>{ __( 'Shipping address', 'orillacart' ) }</h3>
-				<AddressFields address={ shipping } onChange={ setShipping } />
-				<Button
-					variant="primary"
-					onClick={ () =>
-						saveAddresses(
-							customer.id,
-							filled( billing ),
-							filled( shipping )
-						)
-							.then( onSaved )
-							.catch( onError )
-					}
-				>
-					{ __( 'Save addresses', 'orillacart' ) }
-				</Button>
 			</CardBody>
 		</Card>
 	);

@@ -103,6 +103,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'address_known' => $details->billingCountry !== null,
             'ship_elsewhere' => $billing !== null && $shipping !== null && get_object_vars($billing) !== get_object_vars($shipping),
             'logged_in' => $this->shopper->customerId() !== null,
+            'saved_addresses' => $customer->addresses ?? [],
             'accounts' => $this->customers->accountMode(),
             'cart_reminders' => !\in_array(EmailKind::CartReminder->value, $this->emails->current()->disabled, true),
             'address_checks' => $this->addressChecks->any(),

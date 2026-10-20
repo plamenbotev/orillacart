@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Customers\Application\Dto;
 
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Customers\Application\AddressBook;
 
 /**
  * A customer's account as the accounts store has it.
@@ -17,7 +17,6 @@ final readonly class CustomerRecord
         public string $firstName,
         public string $lastName,
         public string $registeredAt,
-        public ?AddressData $billing,
-        public ?AddressData $shippingAddress,
+        public AddressBook $addresses = new AddressBook(),
     ) {}
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Customers\Infrastructure\WordPress;
 
 use OrillaCart\Customers\Application\Accounts;
+use OrillaCart\Customers\Application\AddressBook;
 use OrillaCart\Customers\Application\Dto\CustomerRecord;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -15,13 +16,12 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 /**
  * Customers are WordPress users. Those who made their account at checkout have the shop's customer role;
- * anyone logged in has an account with saved addresses, kept in user meta.
+ * anyone logged in has an account with an address book, kept in user meta.
  */
 final readonly class WordPressAccounts implements Accounts, LifecycleListener, RemovesShopData
 {
     public const string ROLE = 'orillacart_customer';
-    public const string BILLING = 'orillacart_billing';
-    public const string SHIPPING = 'orillacart_shipping';
+    public const string ADDRESSES = 'orillacart_addresses';
 
     public function __construct(
         private NormalizerInterface $normalizer,
@@ -75,15 +75,18 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
         wp_set_auth_cookie($id, true, is_ssl());
     }
 
-    public function saveAddresses(int $id, ?AddressData $billing, ?AddressData $shippingAddress): void
+    public function saveAddresses(int $id, AddressBook $addresses): void
     {
-        foreach ([self::BILLING => $billing, self::SHIPPING => $shippingAddress] as $key => $address) {
-            if ($address === null) {
-                delete_user_meta($id, $key);
-            } else {
-                update_user_meta($id, $key, $this->normalizer->normalize($address, 'json'));
-            }
+        if ($addresses->addresses === []) {
+            delete_user_meta($id, self::ADDRESSES);
+
+            return;
         }
+        update_user_meta($id, self::ADDRESSES, [
+            'addresses' => array_map(fn(AddressData $address): mixed => $this->normalizer->normalize($address, 'json'), $addresses->addresses),
+            'billing' => $addresses->billingId,
+            'shipping' => $addresses->shippingId,
+        ]);
     }
 
     public function search(?string $text, int $offset, int $limit): array
@@ -127,8 +130,7 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
             }
         }
         remove_role(self::ROLE);
-        delete_metadata('user', 0, self::BILLING, '', true);
-        delete_metadata('user', 0, self::SHIPPING, '', true);
+        delete_metadata('user', 0, self::ADDRESSES, '', true);
     }
 
     private function record(\WP_User $user): CustomerRecord
@@ -139,23 +141,30 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
             $user->first_name,
             $user->last_name,
             (string) mysql2date(\DATE_ATOM, $user->user_registered, false),
-            $this->address($user->ID, self::BILLING),
-            $this->address($user->ID, self::SHIPPING),
+            $this->addressBook($user->ID),
         );
     }
 
-    private function address(int $id, string $key): ?AddressData
+    /** The saved address book; an address that no longer reads is left out. */
+    private function addressBook(int $id): AddressBook
     {
-        $saved = get_user_meta($id, $key, true);
-        if (!\is_array($saved)) {
-            return null;
+        $saved = get_user_meta($id, self::ADDRESSES, true);
+        if (!\is_array($saved) || !\is_array($saved['addresses'] ?? null)) {
+            return new AddressBook();
         }
-        try {
-            $address = $this->denormalizer->denormalize($saved, AddressData::class, 'json');
-        } catch (\Throwable) {
-            return null;
+        $addresses = [];
+        foreach ($saved['addresses'] as $addressId => $address) {
+            try {
+                $address = \is_array($address) ? $this->denormalizer->denormalize($address, AddressData::class, 'json') : null;
+            } catch (\Throwable) {
+                continue;
+            }
+            if ($address instanceof AddressData) {
+                $addresses[(string) $addressId] = $address;
+            }
         }
+        $chosen = static fn(mixed $addressId): ?string => \is_string($addressId) && isset($addresses[$addressId]) ? $addressId : null;
 
-        return $address instanceof AddressData ? $address : null;
+        return new AddressBook($addresses, $chosen($saved['billing'] ?? null) ?? array_key_first($addresses), $chosen($saved['shipping'] ?? null));
     }
 }

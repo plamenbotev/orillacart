@@ -39,7 +39,8 @@ final class PersonalDataTest extends TestCase
         $export = $this->shop->personalData->export('ada@example.com', 1);
 
         self::assertTrue($export['done']);
-        self::assertSame(['orillacart-account-Billing', 'orillacart-order-' . $ordered->number, 'orillacart-order-' . $asGuest->number], array_column($export['items'], 'id'), 'the account, then the orders by account and by email, oldest first');
+        $saved = $this->shop->customers->customer($ada)->addresses[0]->id;
+        self::assertSame(['orillacart-account-address-' . $saved, 'orillacart-order-' . $ordered->number, 'orillacart-order-' . $asGuest->number], array_column($export['items'], 'id'), 'the account, then the orders by account and by email, oldest first');
         self::assertSame('Ada Lovelace, 1 Vitosha Blvd, Sofia, 1000, BG, +359 2 000 0000', $export['items'][0]['data'][0]['value']);
         $order = array_column($export['items'][1]['data'], 'value', 'name');
         self::assertSame(['#' . $ordered->number, 'ada@example.com', '1 × E-book'], [$order['Order'], $order['Email'], $order['Items']]);

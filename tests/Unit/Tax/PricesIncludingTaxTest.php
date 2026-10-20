@@ -9,6 +9,7 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Customers\Application\AddressBook;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
@@ -67,7 +68,7 @@ final class PricesIncludingTaxTest extends TestCase
     public function testACustomerWithASavedAddressIsEstimatedThere(): void
     {
         $id = $this->shop->accounts->add('ada@example.com');
-        $this->shop->accounts->saveAddresses($id, new AddressData('Ada', 'Lovelace', '1 Unter den Linden', 'Berlin', '10117', 'DE', '+49 30 000000'), null);
+        $this->shop->accounts->saveAddresses($id, new AddressBook()->remembering(new AddressData('Ada', 'Lovelace', '1 Unter den Linden', 'Berlin', '10117', 'DE', '+49 30 000000'), null));
         $this->shop->carts->add(new CartOwner(null, $id), new AddToCart(10));
 
         $summary = $this->shop->checkout->summary(new CartOwner(null, $id), new CheckoutDetails());
