@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace OrillaCart\Catalog\Application;
 
+use OrillaCart\Catalog\Application\Dto\AttributeView;
+use OrillaCart\Catalog\Application\Dto\OptionView;
 use OrillaCart\Catalog\Application\Dto\ProductView;
+use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveBundle;
+use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Catalog\Application\Dto\VariationView;
@@ -191,6 +195,43 @@ final readonly class ProductService
         $this->events->dispatch(new ProductChanged($productId));
 
         return VariationView::fromVariation($variation);
+    }
+
+    /**
+     * A copy of the product to start another from: a draft, "(copy)" after its name, with its texts, terms and
+     * pictures, its prices, attributes and variations, but no SKUs (they are each one item's), no stock and no
+     * downloads (their files are the product's own).
+     *
+     * @throws ProductNotFound
+     */
+    public function duplicate(int $id): ProductView
+    {
+        $original = $this->product($id);
+        $copy = $this->content->copy($id);
+        $attributes = array_map(static fn(AttributeView $attribute): SaveAttribute => new SaveAttribute(
+            $attribute->name,
+            array_map(static fn(OptionView $option): SaveOption => new SaveOption($option->name, $option->adjustment, null, $option->adjustmentKind), $attribute->options),
+            $attribute->required,
+            $attribute->priceHidden,
+        ), $original->attributes);
+        if (!$original->saved) {
+            return $this->product($copy);
+        }
+        $saved = $this->save($copy, SaveProduct::unchanged($original, ['sku' => null, 'attributes' => $attributes]));
+        // The copy's options are new: each takes the place of the original's at the same place.
+        $options = [];
+        foreach ($original->attributes as $a => $attribute) {
+            foreach ($attribute->options as $o => $option) {
+                $copied = $saved->attributes[$a]->options[$o] ?? null;
+                $options[$option->id] = $copied?->id;
+            }
+        }
+        foreach ($original->variations as $variation) {
+            $optionIds = array_map(static fn(int $option): int => $options[$option] ?? $option, $variation->optionIds);
+            $this->addVariation($copy, SaveVariation::unchanged($variation, ['optionIds' => $optionIds, 'sku' => null]));
+        }
+
+        return $this->product($copy);
     }
 
     /**

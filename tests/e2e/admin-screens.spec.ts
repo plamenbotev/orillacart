@@ -328,4 +328,53 @@ test.describe( 'The admin', () => {
 			);
 		}
 	} );
+
+	test( 'duplicates a product as a draft from the products list', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		const original = await product( requestUtils, 'E2E Copied Mug', {
+			price: '12',
+			sku: 'E2E-COPIED',
+		} );
+		let copy = 0;
+		try {
+			await admin.visitAdminPage(
+				'edit.php',
+				'post_type=orillacart_product&s=E2E+Copied+Mug'
+			);
+			await page.locator( `#post-${ original.id }` ).hover();
+			await page
+				.locator( `#post-${ original.id }` )
+				.getByRole( 'link', { name: 'Duplicate' } )
+				.click();
+			await page.waitForURL( /post\.php\?post=\d+&action=edit/ );
+			copy = Number( new URL( page.url() ).searchParams.get( 'post' ) );
+
+			expect( copy ).not.toBe( original.id );
+			const saved = await requestUtils.rest< {
+				price: string;
+				sku: string | null;
+			} >( { path: `/orillacart/v1/products/${ copy }` } );
+			expect( [ saved.price, saved.sku ] ).toEqual( [ '12', null ] );
+			const post = await requestUtils.rest< {
+				status: string;
+				title: { raw: string };
+			} >( {
+				path: `/wp/v2/orillacart_product/${ copy }?context=edit`,
+			} );
+			expect( [ post.status, post.title.raw ] ).toEqual( [
+				'draft',
+				'E2E Copied Mug (copy)',
+			] );
+		} finally {
+			for ( const id of [ original.id, copy ].filter( Boolean ) ) {
+				await remove(
+					requestUtils,
+					`/wp/v2/orillacart_product/${ id }?force=true`
+				);
+			}
+		}
+	} );
 } );

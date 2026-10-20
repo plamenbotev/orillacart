@@ -95,6 +95,40 @@ final readonly class WordPressProductContent implements ProductContent
         return $id;
     }
 
+    public function copy(int $productId): int
+    {
+        $post = get_post($productId);
+        if (!$post instanceof \WP_Post || $post->post_type !== ProductPostType::NAME) {
+            throw new \RuntimeException(\sprintf('There is no product post %d to copy.', $productId));
+        }
+        $id = wp_insert_post([
+            'post_type' => ProductPostType::NAME,
+            'post_status' => 'draft',
+            /* translators: %s: the product's name */
+            'post_title' => \sprintf(__('%s (copy)', 'orillacart'), $post->post_title),
+            'post_content' => $post->post_content,
+            'post_excerpt' => $post->post_excerpt,
+            'menu_order' => $post->menu_order,
+        ], true);
+        if ($id instanceof \WP_Error) {
+            throw new \RuntimeException('The copy\'s post could not be made: ' . $id->get_error_message());
+        }
+        foreach (get_object_taxonomies(ProductPostType::NAME) as $taxonomy) {
+            $terms = wp_get_object_terms($productId, $taxonomy, ['fields' => 'ids']);
+            if (\is_array($terms) && $terms !== []) {
+                wp_set_object_terms($id, array_map(intval(...), $terms), $taxonomy);
+            }
+        }
+        foreach (['_thumbnail_id', 'orillacart_gallery'] as $key) {
+            $value = get_post_meta($productId, $key, true);
+            if ($value !== '' && $value !== false) {
+                update_post_meta($id, $key, $value);
+            }
+        }
+
+        return $id;
+    }
+
     public function deleteVariation(int $variationId): void
     {
         if (get_post_type($variationId) === VariationPostType::NAME) {

@@ -21,7 +21,7 @@ use OrillaCart\Shared\WordPress\AsHook;
 /**
  * WordPress's list of products, as the old one was: a picture, SKU, price and order beside each name, filters by
  * category and brand, and the price in quick edit (the order is there already). Bulk edit changes prices, sales
- * and stock (BulkEdits).
+ * and stock (BulkEdits); "Duplicate" copies a product as a draft.
  */
 #[AsHook('manage_' . ProductPostType::NAME . '_posts_columns', method: 'columns', filter: true)]
 #[AsHook('manage_' . ProductPostType::NAME . '_posts_custom_column', method: 'column', arguments: 2)]
@@ -33,6 +33,8 @@ use OrillaCart\Shared\WordPress\AsHook;
 #[AsHook('bulk_edit_custom_box', method: 'bulkEdit', arguments: 2)]
 #[AsHook('bulk_edit_posts', method: 'saveBulkEdit', arguments: 2)]
 #[AsHook('admin_notices', method: 'bulkNotice')]
+#[AsHook('post_row_actions', method: 'rowActions', filter: true, arguments: 2)]
+#[AsHook('admin_post_orillacart_duplicate_product', method: 'duplicate')]
 final class ProductList
 {
     private const string PRICE_FIELD = 'orillacart_price';
@@ -253,6 +255,41 @@ final class ProductList
             esc_html__('Bulk edit left some products as they were:', 'orillacart'),
             implode('', array_map(static fn(mixed $line): string => '<li>' . esc_html(\is_string($line) ? $line : '') . '</li>', $refused)),
         );
+    }
+
+    /**
+     * "Duplicate" under each product's name.
+     *
+     * @param array<string, string> $actions
+     *
+     * @return array<string, string>
+     */
+    public function rowActions(array $actions, \WP_Post $post): array
+    {
+        if ($post->post_type !== ProductPostType::NAME || !current_user_can(Capability::MANAGE_SHOP)) {
+            return $actions;
+        }
+        $url = wp_nonce_url(add_query_arg(['action' => 'orillacart_duplicate_product', 'product' => $post->ID], admin_url('admin-post.php')), 'orillacart_duplicate_' . $post->ID);
+        $actions['orillacart_duplicate'] = \sprintf('<a href="%s">%s</a>', esc_url($url), esc_html__('Duplicate', 'orillacart'));
+
+        return $actions;
+    }
+
+    /** Copies the product as a draft and opens the copy. */
+    public function duplicate(): void
+    {
+        $id = isset($_GET['product']) && \is_string($_GET['product']) ? absint($_GET['product']) : 0;
+        if ($id === 0 || !current_user_can(Capability::MANAGE_SHOP) || !current_user_can('edit_post', $id)) {
+            wp_die(esc_html__('You may not copy this product.', 'orillacart'), '', ['response' => 403]);
+        }
+        check_admin_referer('orillacart_duplicate_' . $id);
+        try {
+            $copy = $this->products->duplicate($id);
+        } catch (RuleViolation $e) {
+            wp_die(esc_html($e->getMessage()), esc_html__('Duplicate', 'orillacart'), ['response' => 422, 'back_link' => true]);
+        }
+        wp_safe_redirect(get_edit_post_link($copy->id, 'raw') ?? admin_url('edit.php?post_type=' . ProductPostType::NAME));
+        exit;
     }
 
     /** @param array<int|string, string> $choices */

@@ -25,6 +25,15 @@ final class InMemoryProductContent implements ProductContent
     /** @var array<int, array{categories: list<int>, brands: list<int>}> by product id */
     public array $terms = [];
 
+    public function copy(int $productId): int
+    {
+        $id = max([...array_keys($this->posts), 0]) + 1;
+        $this->posts[$id] = [$this->name($productId) . ' (copy)', false];
+        $this->terms[$id] = $this->termIds($productId);
+
+        return $id;
+    }
+
     public function add(int $id, string $name, bool $published = true): void
     {
         $this->posts[$id] = [$name, $published];

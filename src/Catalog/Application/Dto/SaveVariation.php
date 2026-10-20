@@ -51,7 +51,7 @@ final readonly class SaveVariation
     /**
      * The command that saves the variation as it is, but for the changes, by argument name.
      *
-     * @param array{price?: string, sale?: ?SaveSale, sku?: ?string, stockMode?: string, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: ?string, backorderLimit?: ?int, lowStockThreshold?: ?int} $changes
+     * @param array{optionIds?: list<int>, price?: string, sale?: ?SaveSale, sku?: ?string, stockMode?: string, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: ?string, backorderLimit?: ?int, lowStockThreshold?: ?int} $changes
      */
     public static function unchanged(VariationView $view, array $changes = []): self
     {

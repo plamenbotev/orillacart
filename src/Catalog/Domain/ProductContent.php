@@ -44,4 +44,11 @@ interface ProductContent
 
     /** Removes a variation's post, with nothing left in the trash. */
     public function deleteVariation(int $variationId): void;
+
+    /**
+     * A draft copy of the product's post, "(copy)" after its name: its texts, terms, picture and gallery.
+     *
+     * @return int the copy's id
+     */
+    public function copy(int $productId): int;
 }

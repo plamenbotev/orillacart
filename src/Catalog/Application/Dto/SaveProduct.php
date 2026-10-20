@@ -82,7 +82,7 @@ final readonly class SaveProduct
      * The command that saves the product as it is, but for the changes, by argument name: what an import row
      * changes of it.
      *
-     * @param array{price?: string, type?: string, sale?: ?SaveSale, sku?: ?string, taxable?: bool, stockMode?: string, purchasable?: bool, featured?: bool, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: string, backorderLimit?: ?int, lowStockThreshold?: ?int} $changes
+     * @param array{price?: string, type?: string, sale?: ?SaveSale, sku?: ?string, taxable?: bool, stockMode?: string, purchasable?: bool, featured?: bool, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: string, backorderLimit?: ?int, lowStockThreshold?: ?int, attributes?: list<SaveAttribute>} $changes
      */
     public static function unchanged(ProductView $view, array $changes = []): self
     {
