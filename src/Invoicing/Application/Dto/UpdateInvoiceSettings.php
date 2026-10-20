@@ -8,7 +8,7 @@ use OrillaCart\Invoicing\Domain\InvoiceSettings;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Command: who issues the shop's invoices, and how their numbers read.
+ * Command: who issues the shop's invoices, how their numbers read, and whether the customer's emails carry them.
  */
 final readonly class UpdateInvoiceSettings
 {
@@ -30,5 +30,6 @@ final readonly class UpdateInvoiceSettings
         #[Assert\Regex(pattern: '/^[A-Za-z0-9\/._-]{0,20}$/', message: 'Use up to 20 letters, digits, dots, dashes, slashes or underscores.')]
         public string $creditNotePrefix = 'CN-',
         public bool $yearly = true,
+        public bool $attachToEmails = true,
     ) {}
 }

@@ -193,6 +193,18 @@ wp orillacart jobs work > /dev/null || fail "the jobs did not run"
 docker exec "$WP" grep -q 'ada@example.com: .* We received your order' /var/www/html/wp-content/mail.log \
     || fail "the customer was not emailed about the order"
 
+# Invoices go to customers as PDFs, printed by the bundled dompdf under the plugin's prefix, its fonts included.
+pdf="$(wp eval '
+    $options = new OrillaCart\Vendor\Dompdf\Options();
+    $options->setDefaultFont("DejaVu Sans")->setFontCache(get_temp_dir())->setTempDir(get_temp_dir());
+    $pdf = new OrillaCart\Vendor\Dompdf\Dompdf($options);
+    $pdf->loadHtml("<p>Фактура № 1</p><table><tr><td>Лампа</td></tr></table>", "UTF-8");
+    $pdf->render();
+    $out = (string) $pdf->output();
+    echo substr($out, 0, 5), str_contains($out, "DejaVuSans") ? " DejaVu" : "";
+')"
+[ "$pdf" = '%PDF- DejaVu' ] || fail "the bundled dompdf printed '$pdf'"
+
 echo "==> Orders, accounts and downloads"
 [ "$(api -u "admin:$PASS" "$API/orders&status=on_hold")" = 200 ] || fail "the administrator could not list orders"
 number="$(echo "$placed" | sed -n 's/.*"number":\([0-9]*\).*/\1/p')"

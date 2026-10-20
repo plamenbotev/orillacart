@@ -125,6 +125,7 @@ function serve( save?: () => Promise< unknown > ) {
 				invoice_prefix: 'INV-',
 				credit_note_prefix: 'CN-',
 				yearly: true,
+				attach_to_emails: true,
 			} );
 		}
 		if ( path.startsWith( '/wp/v2/pages' ) ) {

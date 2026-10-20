@@ -138,7 +138,7 @@ final readonly class EmailTemplateEditor
     {
         $to = $this->site->userEmail($userId) ?? throw new EmailRuleViolation('Your user has no email address to send the test to.', 'orillacart_no_email');
         $email = $this->write($name, $command);
-        $test = new Email($to, 'Test: ' . $email->subject, $email->html, $email->text, $email->fromName, $email->fromAddress, null, $email->kind, $email->orderNumber);
+        $test = new Email($to, 'Test: ' . $email->subject, $email->html, $email->text, $email->fromName, $email->fromAddress, null, $email->kind, $email->orderNumber, $email->attachments);
 
         return new TestEmailView($to, $this->mailer->send($test));
     }

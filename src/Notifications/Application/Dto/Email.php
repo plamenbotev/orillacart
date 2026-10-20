@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Notifications\Application\Dto;
 
 /**
- * An email ready to send: HTML body and its plain text, from the shop's sender. An order email names its kind (order_received,
- * new_order…) and order, for the add-ons that attach files or add headers to it.
+ * An email ready to send: HTML body and its plain text, from the shop's sender, with the files made for it. An order
+ * email names its kind (order_received, new_order…) and order, for the add-ons that attach files or add headers to it.
  */
 final readonly class Email
 {
@@ -21,5 +21,13 @@ final readonly class Email
         public ?string $replyTo = null,
         public ?string $kind = null,
         public ?int $orderNumber = null,
+        /** @var list<EmailAttachment> */
+        public array $attachments = [],
     ) {}
+
+    /** @param list<EmailAttachment> $attachments */
+    public function with(array $attachments): self
+    {
+        return new self($this->to, $this->subject, $this->html, $this->text, $this->fromName, $this->fromAddress, $this->replyTo, $this->kind, $this->orderNumber, [...$this->attachments, ...$attachments]);
+    }
 }

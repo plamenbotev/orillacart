@@ -5,7 +5,7 @@
  # document: {invoice: {number, kind, amount, currency, issued_at}, seller: {legal_name, address, vat_number,
  # company_number, bank_details, footer}, order (as on the receipt), lines (the order lines a credit note gives
  # back: {line, quantity}), corrects (the invoice a credit note corrects), taxes (the tax a credit note gives
- # back: {name, percent, amount})}; locale.
+ # back: {name, percent, amount})}; locale; pdf (optional): printed to a PDF to attach to an email.
  #}
 {% set invoice = document.invoice %}
 {% set seller = document.seller %}
@@ -41,6 +41,16 @@
         @media print { body { background: #fff; } .sheet { margin: 0; max-width: none; padding: 0; } .actions { display: none; } }
         @page { size: A4; margin: 16mm; }
     </style>
+    {% if pdf|default(false) %}
+    {# Printed to a PDF for an email, by dompdf: no flexbox, and DejaVu Sans for every alphabet. #}
+    <style>
+        body { background: #fff; font-family: "DejaVu Sans", sans-serif; font-size: 11px; }
+        .sheet { margin: 0; max-width: none; padding: 0; }
+        .actions { display: none; }
+        header, .parties { display: table; width: 100%; }
+        header > div, .parties > div { display: table-cell; vertical-align: top; width: 50%; }
+    </style>
+    {% endif %}
 </head>
 <body>
     <p class="actions"><button type="button" onclick="window.print()">{{ __('Print or save as PDF') }}</button></p>

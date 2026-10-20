@@ -15,13 +15,18 @@ use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Invoicing\Application\Dto\InvoiceView;
 use OrillaCart\Invoicing\Application\Dto\UpdateInvoiceSettings;
+use OrillaCart\Invoicing\Domain\InvoiceKind;
 use OrillaCart\Invoicing\Domain\InvoiceNotFound;
+use OrillaCart\Notifications\Application\Dto\Email;
+use OrillaCart\Notifications\Application\Dto\EmailAttachment;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Platform\Pdf\DompdfInvoicePdfs;
+use OrillaCart\Platform\PluginContext;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
@@ -146,6 +151,59 @@ final class InvoicesTest extends TestCase
     private static function numbers(array $invoices): array
     {
         return array_map(static fn(InvoiceView $invoice): string => $invoice->number, $invoices);
+    }
+
+    public function testThePaidOrdersEmailCarriesTheInvoiceAndTheRefundsItsCreditNote(): void
+    {
+        $order = $this->place(2);
+        self::assertSame([], $this->lastCustomerEmail()->attachments, 'nothing to attach before it is paid');
+
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        // Here jobs run as they are pushed, before the payment's transaction issued the invoice; the queue runs them after.
+        self::assertTrue($this->shop->emails->resend($order->number, new SendOrderEmail('order_processing')));
+        $paid = $this->lastCustomerEmail();
+        self::assertSame('order_processing', $paid->kind);
+        self::assertSame([['INV-2026-00001.pdf', "%PDF-1.7 INV-2026-00001 for #{$order->number}"]], array_map(static fn(EmailAttachment $file): array => [$file->filename, $file->content], $paid->attachments));
+
+        $this->shop->refunds->refund($order->number, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
+        self::assertSame(['CN-2026-00001.pdf'], array_map(static fn(EmailAttachment $file): string => $file->filename, $this->lastCustomerEmail()->attachments));
+    }
+
+    public function testTheShopTurnsTheAttachmentOffAndAFailedPrintSendsTheEmailWithout(): void
+    {
+        $order = $this->place();
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Lamps Ltd', attachToEmails: false));
+        self::assertTrue($this->shop->emails->resend($order->number, new SendOrderEmail('order_processing')));
+        self::assertSame([], $this->lastCustomerEmail()->attachments);
+
+        $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Lamps Ltd'));
+        $this->shop->invoicePdfs->failing = true;
+        self::assertTrue($this->shop->emails->resend($order->number, new SendOrderEmail('order_processing')));
+        self::assertSame([], $this->lastCustomerEmail()->attachments);
+        self::assertContains('out of paper', array_map(static fn(array $record): mixed => str_contains((string) json_encode($record['context']), 'out of paper') ? 'out of paper' : null, $this->shop->logger->records), 'logged');
+    }
+
+    public function testDompdfPrintsTheInvoicePageInEveryAlphabet(): void
+    {
+        $order = $this->place();
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Лампи ООД'));
+        $document = $this->shop->invoices->latest($order->number, InvoiceKind::Invoice);
+        self::assertNotNull($document);
+
+        $pdf = new DompdfInvoicePdfs($this->shop->templates, new PluginContext(\dirname(__DIR__, 3) . '/orillacart.php', 'test'), $this->shop->languages)->pdf($document);
+
+        self::assertStringStartsWith('%PDF-', $pdf);
+        self::assertStringContainsString('DejaVu', $pdf, 'the font that prints Cyrillic is embedded');
+    }
+
+    private function lastCustomerEmail(): Email
+    {
+        $emails = array_values(array_filter($this->shop->mail->emails, static fn(Email $email): bool => $email->to === 'ada@example.com'));
+        self::assertNotSame([], $emails);
+
+        return $emails[\count($emails) - 1];
     }
 
     private function place(int $quantity = 1): PlacedOrderView

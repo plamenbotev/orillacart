@@ -12,6 +12,8 @@ export interface InvoiceSettings {
 	credit_note_prefix: string;
 	/** Numbering restarts every year, with the year in the number. */
 	yearly: boolean;
+	/** The customer's emails carry the invoice, or the credit note, as a PDF. */
+	attach_to_emails: boolean;
 }
 
 const PATH = '/orillacart/v1/invoice-settings';

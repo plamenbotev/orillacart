@@ -25,7 +25,7 @@ abstract class RestTestCase extends TestCase
         $lifecycle->activate();
     }
 
-    /** @var list<array{to: string, subject: string, message: string, headers: list<string>, attachments: list<string>}> mail the plugin sent during the test */
+    /** @var list<array{to: string, subject: string, message: string, headers: list<string>, attachments: list<string>, named: array<string, string>}> mail the plugin sent during the test */
     protected array $mails = [];
     private ?\Closure $mailCatcher = null;
 
@@ -64,6 +64,8 @@ abstract class RestTestCase extends TestCase
             'message' => \is_string($mail['message'] ?? null) ? $mail['message'] : '',
             'headers' => array_values(array_filter((array) ($mail['headers'] ?? []), \is_string(...))),
             'attachments' => array_values(array_filter((array) ($mail['attachments'] ?? []), \is_string(...))),
+            // Files sent by a name of their own, with how they begin: the shop's PDFs exist only while they go.
+            'named' => array_map(static fn(mixed $path): string => \is_string($path) ? (string) file_get_contents($path, length: 5) : '', array_filter((array) ($mail['attachments'] ?? []), \is_string(...), ARRAY_FILTER_USE_KEY)),
         ];
 
         return true;
@@ -74,7 +76,7 @@ abstract class RestTestCase extends TestCase
      * command line, which runs nothing after the response). Read through this method: the mail filter fills the
      * list behind static analysis.
      *
-     * @return list<array{to: string, subject: string, message: string, headers: list<string>, attachments: list<string>}>
+     * @return list<array{to: string, subject: string, message: string, headers: list<string>, attachments: list<string>, named: array<string, string>}>
      */
     protected function sentMail(): array
     {

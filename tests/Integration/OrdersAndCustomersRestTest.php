@@ -187,6 +187,9 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertMatchesRegularExpression('/^TC\d{5}$/', $creditNote);
         self::assertStringContainsString('orillacart_invoice=', $url);
         self::assertSame(422, $this->request('DELETE', "/orders/{$first['number']}", nonce: true)->get_status(), 'it stays for the books');
+        $named = array_merge(...array_map(static fn(array $mail): array => $mail['named'], $this->sentMail()));
+        self::assertSame('%PDF-', $named["{$next}.pdf"] ?? null, 'the paid order\'s email carries its invoice');
+        self::assertSame('%PDF-', $named["{$creditNote}.pdf"] ?? null, 'the refund\'s its credit note');
     }
 
     public function testWordPressPrivacyToolsExportAndEraseAPersonsOrders(): void

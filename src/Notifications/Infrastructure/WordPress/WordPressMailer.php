@@ -10,9 +10,9 @@ use OrillaCart\Shared\WordPress\AsHook;
 
 /**
  * Sends through wp_mail(), so SMTP plugins and the site's mail settings apply, with the plain text as the HTML's
- * alternative. Add-ons add headers and attach
- * files (an invoice, say) through the filters orillacart_email_headers and orillacart_email_attachments, which get
- * the email's kind and order number.
+ * alternative, and the files the email carries (the invoice PDF) by their names. Add-ons add headers and attach
+ * files through the filters orillacart_email_headers and orillacart_email_attachments, which get the email's kind
+ * and order number.
  */
 #[AsHook('phpmailer_init', method: 'alternative')]
 final class WordPressMailer implements Mailer
@@ -31,12 +31,23 @@ final class WordPressMailer implements Mailer
         }
         $headers = self::lines(apply_filters('orillacart_email_headers', $headers, $email->kind, $email->orderNumber));
         $attachments = array_values(array_filter(self::lines(apply_filters('orillacart_email_attachments', [], $email->kind, $email->orderNumber)), is_file(...)));
+        // The email's own files go as files for the while, by their names.
+        $made = [];
+        foreach ($email->attachments as $attachment) {
+            $path = tempnam(get_temp_dir(), 'orillacart-mail-');
+            if ($path !== false && file_put_contents($path, $attachment->content) !== false) {
+                $made[sanitize_file_name($attachment->filename)] = $path;
+            }
+        }
 
         $this->text = $email->text;
         try {
-            return wp_mail($email->to, $email->subject, $email->html, $headers, $attachments);
+            return wp_mail($email->to, $email->subject, $email->html, $headers, $made + $attachments);
         } finally {
             $this->text = null;
+            foreach ($made as $path) {
+                wp_delete_file($path);
+            }
         }
     }
 

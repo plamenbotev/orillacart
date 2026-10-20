@@ -191,6 +191,20 @@ export function InvoicesCard() {
 							checked={ settings.yearly }
 							onChange={ ( value ) => field( 'yearly', value ) }
 						/>
+						<CheckboxControl
+							label={ __(
+								'Attach the invoice to the customer’s emails, as a PDF',
+								'orillacart'
+							) }
+							help={ __(
+								'The order confirmation and the completed order carry the invoice; a refund carries its credit note.',
+								'orillacart'
+							) }
+							checked={ settings.attach_to_emails }
+							onChange={ ( value ) =>
+								field( 'attach_to_emails', value )
+							}
+						/>
 						<Button
 							variant="primary"
 							isBusy={ busy }

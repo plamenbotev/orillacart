@@ -69,7 +69,7 @@ return [
 
             // Keep the string's own separator: single backslashes, or escaped ones inside double quotes.
             return (string) preg_replace_callback(
-                "/(['\"])((?:Doctrine|Symfony|Psr|Twig|Nyholm|phpDocumentor|PHPStan)(?:\\\\{1,2}[A-Za-z_][A-Za-z0-9_]*)+(?:::[A-Za-z_]*)?)\\1/",
+                "/(['\"])((?:Doctrine|Symfony|Psr|Twig|Nyholm|phpDocumentor|PHPStan|Dompdf|FontLib|Svg|Masterminds|Sabberworm)(?:\\\\{1,2}[A-Za-z_][A-Za-z0-9_]*)+(?:::[A-Za-z_]*)?)\\1/",
                 static function (array $match) use ($prefix): string {
                     $separator = str_contains($match[2], '\\\\') ? '\\\\' : '\\';
 
@@ -93,6 +93,38 @@ return [
                 $contents,
             );
         },
+        // dompdf and its font library build class names in strings with a part filled in: "Dompdf\\FrameDecorator\\$decorator",
+        // '\\Dompdf\\Positioner\\' . $type, "FontLib\\Table\\Type\\$name". Prefix the namespace those strings start with,
+        // with the string's own backslashes.
+        static function (string $filePath, string $prefix, string $contents): string {
+            if (!str_contains($filePath, '/dompdf/')) {
+                return $contents;
+            }
+
+            return (string) preg_replace_callback(
+                '/([\'"])((?:\\\\){0,2})(Dompdf|FontLib)((?:\\\\){1,2})(?=[A-Za-z_${\'"])/',
+                static fn(array $match): string => $match[1] . $match[2] . str_replace('\\', $match[4], $prefix) . $match[4] . $match[3] . $match[4],
+                $contents,
+            );
+        },
+        // php-font-lib names a font's class relative to its own namespace ("TrueType\\File"), then puts "FontLib\\"
+        // before it; PHP-Scoper takes the relative name for a whole one and prefixes it. Put it back.
+        static function (string $filePath, string $prefix, string $contents): string {
+            if (!str_ends_with($filePath, '/php-font-lib/src/FontLib/Font.php')) {
+                return $contents;
+            }
+
+            return (string) preg_replace('/"' . preg_quote(str_replace('\\', '\\\\', $prefix), '/') . '\\\\\\\\((?:TrueType|OpenType|WOFF|EOT)\\\\\\\\)/', '"$1', $contents);
+        },
+        // php-font-lib reads a font's type from its class's second name part (FontLib\TrueType\File), which the
+        // prefix moves: take the part before the class instead.
+        static function (string $filePath, string $prefix, string $contents): string {
+            if (!str_ends_with($filePath, '/php-font-lib/src/FontLib/TrueType/File.php')) {
+                return $contents;
+            }
+
+            return str_replace('return $class_parts[1];', 'return $class_parts[\count($class_parts) - 2];', $contents);
+        },
         // Libraries probe optional PHP extensions with function_exists('iconv'); PHP-Scoper prefixes those names,
         // so the probe always fails. Put the global names back.
         static function (string $filePath, string $prefix, string $contents): string {
@@ -102,6 +134,15 @@ return [
             return (string) preg_replace(
                 '/([\'"])(?:' . $prefixes . ')\\\\{1,2}(' . implode('|', $functions) . ')\1/',
                 '$1$2$1',
+                $contents,
+            );
+        },
+        // Escapes alone in single quotes, such as '\\r\\n' (a CSS line break the CSS parser looks for), look like a
+        // namespaced name to PHP-Scoper, which prefixes it. No class name is only one-letter parts: put them back.
+        static function (string $filePath, string $prefix, string $contents): string {
+            return (string) preg_replace_callback(
+                "/'" . preg_quote($prefix, '/') . '((?:\\\\[a-z])+)' . "'/",
+                static fn(array $match): string => "'" . str_replace('\\', '\\\\', $match[1]) . "'",
                 $contents,
             );
         },

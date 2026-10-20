@@ -39,6 +39,7 @@ final readonly class OptionInvoiceSettingsRepository implements InvoiceSettingsR
                 $text('invoice_prefix', 'INV-'),
                 $text('credit_note_prefix', 'CN-'),
                 ($stored['yearly'] ?? true) === true,
+                ($stored['attach_to_emails'] ?? true) === true,
             );
         } catch (RuleViolation) {
             $this->logger->warning('Stored invoice settings are not valid, using the defaults.');
@@ -59,6 +60,7 @@ final readonly class OptionInvoiceSettingsRepository implements InvoiceSettingsR
             'invoice_prefix' => $settings->invoicePrefix,
             'credit_note_prefix' => $settings->creditNotePrefix,
             'yearly' => $settings->yearly,
+            'attach_to_emails' => $settings->attachToEmails,
         ], false);
     }
 

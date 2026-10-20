@@ -109,6 +109,25 @@ final readonly class Invoices
         return new InvoiceDocument($this->view($invoice, $receipt), $invoice->seller(), $order, $invoice->lines(), $corrects, $invoice->taxes());
     }
 
+    /**
+     * The document of the order's invoice, or of its latest credit note, for the shop's own emails; null when it has
+     * none.
+     */
+    public function latest(int $orderId, InvoiceKind $kind): ?InvoiceDocument
+    {
+        $latest = null;
+        foreach ($this->invoices->ofOrder($orderId) as $issued) {
+            if ($issued->kind() === $kind) {
+                $latest = $issued;
+            }
+        }
+        if ($latest === null) {
+            return null;
+        }
+
+        return $this->document($latest->number(), $this->receipts->issue($orderId));
+    }
+
     public function settings(): InvoiceSettingsView
     {
         return InvoiceSettingsView::fromSettings($this->settings->load());
@@ -126,6 +145,7 @@ final readonly class Invoices
             $command->invoicePrefix,
             $command->creditNotePrefix,
             $command->yearly,
+            $command->attachToEmails,
         );
         $this->settings->save($settings);
 

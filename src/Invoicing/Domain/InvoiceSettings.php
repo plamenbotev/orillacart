@@ -24,6 +24,8 @@ final readonly class InvoiceSettings
         public string $invoicePrefix = 'INV-',
         public string $creditNotePrefix = 'CN-',
         public bool $yearly = true,
+        /** The customer's emails carry the invoice, or the credit note, as a PDF. */
+        public bool $attachToEmails = true,
     ) {
         foreach (['legal name' => $legalName, 'address' => $address, 'VAT number' => $vatNumber, 'company number' => $companyNumber, 'bank details' => $bankDetails, 'footer' => $footer] as $what => $text) {
             if (mb_strlen($text) > self::MAX_TEXT) {

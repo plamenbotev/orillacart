@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace OrillaCart\Notifications\Application;
 
+use OrillaCart\Invoicing\Application\InvoiceAttachments;
 use OrillaCart\Invoicing\Application\Invoices;
+use OrillaCart\Invoicing\Domain\InvoiceKind;
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Notifications\Application\Dto\Email;
+use OrillaCart\Notifications\Application\Dto\EmailAttachment;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailRules;
@@ -41,6 +44,7 @@ final readonly class OrderEmails
         private Jobs $jobs,
         private Invoices $invoices,
         private ReceiptLinks $receipts,
+        private InvoiceAttachments $attachments,
     ) {}
 
     public function statusChanged(int $orderId, string $previous, string $status, bool $tellCustomer = true, bool $tellShop = true): void
@@ -227,9 +231,17 @@ final readonly class OrderEmails
         ] + $extra;
 
         // The customer reads it in the language they ordered in; the shop in the site's.
-        return $kind->isForShop()
-            ? $this->writer->write($kind->template(), $kind->value, $this->writer->shopAddress(), null, $context, $order->email, $order->number)
-            : $this->writer->write($kind->template(), $kind->value, $order->email, $order->locale, $context, null, $order->number);
+        if ($kind->isForShop()) {
+            return $this->writer->write($kind->template(), $kind->value, $this->writer->shopAddress(), null, $context, $order->email, $order->number);
+        }
+        $email = $this->writer->write($kind->template(), $kind->value, $order->email, $order->locale, $context, null, $order->number);
+        $invoice = match ($kind) {
+            EmailKind::OrderProcessing, EmailKind::OrderCompleted => $this->attachments->file($order->number, InvoiceKind::Invoice, $order->locale),
+            EmailKind::OrderRefunded => $this->attachments->file($order->number, InvoiceKind::CreditNote, $order->locale),
+            default => null,
+        };
+
+        return $invoice === null ? $email : $email->with([new EmailAttachment($invoice->filename, $invoice->content)]);
     }
 
     /**
