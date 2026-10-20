@@ -29,6 +29,8 @@ export interface Settings {
 	remove_data_on_uninstall: boolean;
 	/** The shop hears when a stockroom holds this many of an item or fewer, unless the stockroom or item says. */
 	low_stock_threshold: number;
+	/** Orders on hold for a bank transfer or cheque are cancelled after this many days unpaid; null never. */
+	unpaid_hold_days: number | null;
 	weight_units: string[];
 	dimension_units: string[];
 	currency_positions: string[];
@@ -52,6 +54,7 @@ export type SettingsInput = Pick<
 	| 'show_lowest_price'
 	| 'remove_data_on_uninstall'
 	| 'low_stock_threshold'
+	| 'unpaid_hold_days'
 >;
 
 const PATH = '/orillacart/v1/settings';

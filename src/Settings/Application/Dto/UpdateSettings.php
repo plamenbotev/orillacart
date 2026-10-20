@@ -47,5 +47,7 @@ final readonly class UpdateSettings
         public bool $removeDataOnUninstall = false,
         #[Assert\PositiveOrZero]
         public int $lowStockThreshold = StoreSettings::DEFAULT_LOW_STOCK_THRESHOLD,
+        #[Assert\Range(min: 1, max: 365)]
+        public ?int $unpaidHoldDays = null,
     ) {}
 }

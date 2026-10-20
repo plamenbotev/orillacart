@@ -51,6 +51,7 @@ function inputOf( settings: Settings ): SettingsInput {
 		show_lowest_price: settings.show_lowest_price,
 		remove_data_on_uninstall: settings.remove_data_on_uninstall,
 		low_stock_threshold: settings.low_stock_threshold,
+		unpaid_hold_days: settings.unpaid_hold_days,
 		sell_to: settings.sell_to,
 	};
 }
@@ -397,6 +398,27 @@ export function SettingsScreen() {
 									update(
 										'low_stock_threshold',
 										Math.max( 0, Number( value ) || 0 )
+									)
+								}
+							/>
+							<TextControl
+								__next40pxDefaultSize
+								type="number"
+								min={ 1 }
+								max={ 365 }
+								label={ __(
+									'Cancel unpaid orders after (days)',
+									'orillacart'
+								) }
+								help={ __(
+									'Orders on hold for a bank transfer or cheque; their stock sells again and the customer hears of it. Empty: never. Cash on delivery waits.',
+									'orillacart'
+								) }
+								value={ form.unpaid_hold_days ?? '' }
+								onChange={ ( value ) =>
+									update(
+										'unpaid_hold_days',
+										value === '' ? null : Number( value )
 									)
 								}
 							/>

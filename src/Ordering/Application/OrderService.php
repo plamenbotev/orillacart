@@ -635,6 +635,26 @@ final readonly class OrderService
     }
 
     /**
+     * Cancels an unpaid order on hold that waited long enough, giving its stock back; the customer hears of it.
+     * One paid or no longer on hold since it was found is left.
+     *
+     * @return bool whether it was cancelled
+     *
+     * @throws OrderNotFound
+     */
+    public function expireUnpaid(int $id, int $days): bool
+    {
+        return $this->changing($id, function (Order $order) use ($days): bool {
+            if ($order->status() !== OrderStatus::OnHold || $order->paidAt() !== null) {
+                return false;
+            }
+            $this->changed($order, OrderStatus::OnHold, $order->cancel(), \sprintf('The payment did not come within %d days.', $days));
+
+            return true;
+        });
+    }
+
+    /**
      * Cancels orders whose customer went to pay at a provider and neither paid nor came back within the
      * payment window, so their stock is sold again.
      *

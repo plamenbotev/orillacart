@@ -45,6 +45,7 @@ final readonly class SettingsView
         /** Deleting the plugin removes the shop's data too. */
         public bool $removeDataOnUninstall = false,
         public int $lowStockThreshold = StoreSettings::DEFAULT_LOW_STOCK_THRESHOLD,
+        public ?int $unpaidHoldDays = null,
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -70,6 +71,7 @@ final readonly class SettingsView
             $settings->currency->decimals(),
             $settings->removeDataOnUninstall,
             $settings->lowStockThreshold,
+            $settings->unpaidHoldDays,
         );
     }
 }

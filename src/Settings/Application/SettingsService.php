@@ -63,6 +63,7 @@ final readonly class SettingsService
             $command->showLowestPrice,
             $command->removeDataOnUninstall,
             $command->lowStockThreshold,
+            $command->unpaidHoldDays,
         );
 
         if (!$current->equals($previous)) {
