@@ -78,6 +78,54 @@ final readonly class SaveProduct
         public ?int $lowStockThreshold = null,
     ) {}
 
+    /**
+     * The command that saves the product as it is, but for the changes, by argument name: what an import row
+     * changes of it.
+     *
+     * @param array{price?: string, type?: string, sale?: ?SaveSale, sku?: ?string, taxable?: bool, stockMode?: string, purchasable?: bool, featured?: bool, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: string, backorderLimit?: ?int, lowStockThreshold?: ?int} $changes
+     */
+    public static function unchanged(ProductView $view, array $changes = []): self
+    {
+        $bundle = $view->bundle === null ? null : new SaveBundle(
+            array_map(static fn(array $item): SaveBundleItem => new SaveBundleItem($item['product_id'], $item['quantity'], $item['variation_ids'], $item['optional']), $view->bundle->items),
+            $view->bundle->pricing,
+            $view->bundle->discount,
+        );
+        $arguments = [
+            'price' => $view->price,
+            'type' => $view->type,
+            'sale' => $view->sale === null ? null : new SaveSale($view->sale->price, $view->sale->from, $view->sale->until),
+            'sku' => $view->sku,
+            'taxable' => $view->taxable,
+            'taxGroupId' => $view->taxGroupId,
+            'stockMode' => $view->stockMode,
+            'purchasable' => $view->purchasable,
+            'featured' => $view->featured,
+            'weight' => $view->weight,
+            'length' => $view->length,
+            'width' => $view->width,
+            'height' => $view->height,
+            'setIds' => $view->setIds,
+            'attributes' => array_map(static fn(AttributeView $attribute): SaveAttribute => new SaveAttribute(
+                $attribute->name,
+                array_map(static fn(OptionView $option): SaveOption => new SaveOption($option->name, $option->adjustment, $option->id, $option->adjustmentKind), $attribute->options),
+                $attribute->required,
+                $attribute->priceHidden,
+                $attribute->id,
+            ), $view->attributes),
+            'downloadLimit' => $view->downloadLimit,
+            'downloadExpiryDays' => $view->downloadExpiryDays,
+            'priceVisibility' => $view->priceVisibility,
+            'shippingClassId' => $view->shippingClassId,
+            'backorders' => $view->backorders,
+            'backorderLimit' => $view->backorderLimit,
+            'bundle' => $bundle,
+            'lowStockThreshold' => $view->lowStockThreshold,
+        ];
+
+        return new self(...array_merge($arguments, $changes));
+    }
+
     /** @return list<string> */
     public static function types(): array
     {

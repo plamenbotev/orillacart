@@ -47,4 +47,27 @@ final readonly class SaveVariation
         #[Assert\PositiveOrZero]
         public ?int $lowStockThreshold = null,
     ) {}
+
+    /**
+     * The command that saves the variation as it is, but for the changes, by argument name.
+     *
+     * @param array{price?: string, sale?: ?SaveSale, sku?: ?string, stockMode?: string, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: ?string, backorderLimit?: ?int, lowStockThreshold?: ?int} $changes
+     */
+    public static function unchanged(VariationView $view, array $changes = []): self
+    {
+        return new self(...array_merge([
+            'optionIds' => $view->optionIds,
+            'price' => $view->price,
+            'sale' => $view->sale === null ? null : new SaveSale($view->sale->price, $view->sale->from, $view->sale->until),
+            'sku' => $view->sku,
+            'stockMode' => $view->stockMode,
+            'weight' => $view->weight,
+            'length' => $view->length,
+            'width' => $view->width,
+            'height' => $view->height,
+            'backorders' => $view->backorders,
+            'backorderLimit' => $view->backorderLimit,
+            'lowStockThreshold' => $view->lowStockThreshold,
+        ], $changes));
+    }
 }

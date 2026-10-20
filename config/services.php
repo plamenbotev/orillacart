@@ -40,6 +40,8 @@ use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Exchange\Application\ColumnNames;
 use OrillaCart\Exchange\Application\ProductPosts;
 use OrillaCart\Exchange\Domain\ExportChoices;
+use OrillaCart\Exchange\Domain\ProductImportRepository;
+use OrillaCart\Exchange\Infrastructure\Doctrine\DoctrineProductImports;
 use OrillaCart\Exchange\Infrastructure\WordPress\OptionExportChoices;
 use OrillaCart\Exchange\Infrastructure\WordPress\TranslatedColumnNames;
 use OrillaCart\Extension\Registry;
@@ -273,6 +275,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ExportChoices::class, OptionExportChoices::class);
     $services->alias(ColumnNames::class, TranslatedColumnNames::class);
     $services->alias(ProductPosts::class, WordPressProductPosts::class);
+    $services->alias(ProductImportRepository::class, DoctrineProductImports::class);
     $services->alias(EmailTemplateRepository::class, DoctrineEmailTemplates::class);
     $services->alias(EditedTemplates::class, DoctrineEmailTemplates::class);
     $services->alias(VatRegistry::class, ViesVatRegistry::class);

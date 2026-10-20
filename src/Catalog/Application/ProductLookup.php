@@ -80,4 +80,25 @@ final readonly class ProductLookup
     {
         return $this->products->ids($afterId, $limit);
     }
+
+    /**
+     * The product or variation whose SKU is exactly this one; SKUs are unique across both.
+     *
+     * @return array{int, ?int}|null its product's id, and the variation's for a variation
+     */
+    public function withSku(string $sku): ?array
+    {
+        foreach ($this->products->findMany($this->products->idsWithSku($sku)) as $product) {
+            if ($product->details()->sku === $sku) {
+                return [$product->id(), null];
+            }
+            foreach ($product->variations() as $variation) {
+                if ($variation->sku() === $sku) {
+                    return [$product->id(), $variation->id()];
+                }
+            }
+        }
+
+        return null;
+    }
 }

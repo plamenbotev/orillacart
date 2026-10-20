@@ -92,15 +92,25 @@ final readonly class ColumnChoice
         return $column instanceof Column ? $this->names->of($column->id, $column->label) : $column->label();
     }
 
+    /**
+     * Whether the import reads the column back.
+     *
+     * @param Column<covariant mixed>|OrderColumn|ProductColumn $column
+     */
+    public static function importable(Column|OrderColumn|ProductColumn $column): bool
+    {
+        return $column instanceof Column ? $column->importable : $column instanceof ImportsProductColumn;
+    }
+
     /** @param Column<covariant mixed>|OrderColumn|ProductColumn $column */
-    private function view(Column|OrderColumn|ProductColumn $column, bool $chosen): ColumnView
+    public function view(Column|OrderColumn|ProductColumn $column, bool $chosen): ColumnView
     {
         return new ColumnView(
             self::id($column),
             $this->label($column),
             !$column instanceof Column,
             $chosen,
-            $column instanceof Column ? $column->importable : $column instanceof ImportsProductColumn,
+            self::importable($column),
         );
     }
 }

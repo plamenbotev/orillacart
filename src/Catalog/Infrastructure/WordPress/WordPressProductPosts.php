@@ -9,10 +9,12 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Exchange\Application\Dto\ProductPost;
+use OrillaCart\Exchange\Application\Dto\ProductPostChange;
 use OrillaCart\Exchange\Application\ProductPosts;
 
 /**
- * Products' posts for the products file: a batch's posts in one query, their terms primed with them.
+ * Products' posts for the products file: a batch's posts in one query, their terms primed with them; and the
+ * import's changes to them.
  */
 final readonly class WordPressProductPosts implements ProductPosts
 {
@@ -38,6 +40,59 @@ final readonly class WordPressProductPosts implements ProductPosts
         }
 
         return $found;
+    }
+
+    public function create(string $name, string $status): int
+    {
+        $id = wp_insert_post(['post_type' => ProductPostType::NAME, 'post_title' => $name, 'post_status' => $status], true);
+        if ($id instanceof \WP_Error) {
+            throw new \RuntimeException($id->get_error_message());
+        }
+
+        return $id;
+    }
+
+    public function change(int $id, ProductPostChange $change): void
+    {
+        $post = array_filter([
+            'post_title' => $change->name,
+            'post_status' => $change->status,
+            'post_content' => $change->description,
+            'post_excerpt' => $change->shortDescription,
+        ], static fn(?string $value): bool => $value !== null);
+        if ($post !== []) {
+            $updated = wp_update_post(['ID' => $id] + $post, true);
+            if ($updated instanceof \WP_Error) {
+                throw new \RuntimeException($updated->get_error_message());
+            }
+        }
+        if ($change->categories !== null) {
+            wp_set_object_terms($id, array_map(self::category(...), $change->categories), ProductCategoryTaxonomy::NAME);
+        }
+        if ($change->brands !== null) {
+            wp_set_object_terms($id, $change->brands, ProductBrandTaxonomy::NAME);
+        }
+        if ($change->tags !== null) {
+            wp_set_object_terms($id, $change->tags, ProductTagTaxonomy::NAME);
+        }
+    }
+
+    /** The category a path names, made with its parents where missing. */
+    private static function category(string $path): int
+    {
+        $parent = 0;
+        foreach (array_filter(array_map(trim(...), explode('>', $path)), static fn(string $name): bool => $name !== '') as $name) {
+            $found = term_exists($name, ProductCategoryTaxonomy::NAME, $parent);
+            if (!\is_array($found)) {
+                $found = wp_insert_term($name, ProductCategoryTaxonomy::NAME, ['parent' => max(0, $parent)]);
+                if ($found instanceof \WP_Error) {
+                    throw new \RuntimeException($found->get_error_message());
+                }
+            }
+            $parent = (int) $found['term_id'];
+        }
+
+        return $parent;
     }
 
     /** @return list<string> */

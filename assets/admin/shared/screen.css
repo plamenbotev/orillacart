@@ -113,3 +113,9 @@
 .orillacart-export-columns .components-checkbox-control {
 	margin: 4px 0;
 }
+
+.orillacart-import-errors {
+	max-height: 40vh;
+	overflow-y: auto;
+	color: #8a2424;
+}

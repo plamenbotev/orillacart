@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Cart\Http\CartCookie;
+use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Exchange\Application\CsvFile;
 use OrillaCart\Exchange\Application\OrdersExport;
+use OrillaCart\Exchange\Application\ProductImports;
 use OrillaCart\Exchange\Application\ProductsExport;
 use OrillaCart\Exchange\Infrastructure\WordPress\OptionExportChoices;
+use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 
 /**
@@ -21,8 +24,6 @@ final class ExportsRestTest extends RestTestCase
 {
     /** @var list<int> */
     private array $posts = [];
-    /** @var list<int> */
-    private array $terms = [];
 
     protected function setUp(): void
     {
@@ -36,9 +37,6 @@ final class ExportsRestTest extends RestTestCase
         unset($_COOKIE[CartCookie::NAME]);
         foreach ($this->posts as $post) {
             wp_delete_post($post, true);
-        }
-        foreach ($this->terms as $term) {
-            wp_delete_term($term, ProductCategoryTaxonomy::NAME);
         }
         $this->clean();
         delete_option(OptionExportChoices::OPTION);
@@ -81,7 +79,6 @@ final class ExportsRestTest extends RestTestCase
         self::assertIsArray($parent);
         $child = wp_insert_term('Desk lamps', ProductCategoryTaxonomy::NAME, ['parent' => max(0, (int) $parent['term_id'])]);
         self::assertIsArray($child);
-        $this->terms = [(int) $child['term_id'], (int) $parent['term_id']];
         wp_set_object_terms($lamp, [(int) $child['term_id']], ProductCategoryTaxonomy::NAME);
 
         $chosen = $this->request('PUT', '/exports/products/columns', ['columns' => ['id', 'name', 'status', 'price', 'categories', 'short_description']], nonce: true);
@@ -94,6 +91,48 @@ final class ExportsRestTest extends RestTestCase
         rewind($stream);
 
         self::assertSame(['id,name,status,price,categories,short_description', "{$lamp},Lamp,draft,30,\"Lighting > Desk lamps\",Bright"], explode("\n", trim(substr((string) stream_get_contents($stream), 3))));
+    }
+
+    public function testAnUploadedFileIsImportedByItsJobIntoWordPress(): void
+    {
+        $this->actAs('administrator');
+        $lamp = $this->product();
+        $file = tempnam(sys_get_temp_dir(), 'import');
+        self::assertIsString($file);
+        file_put_contents($file, "\u{FEFF}id,name,price,status,categories,short_description\n{$lamp},Brass lamp,35,draft,Lighting > Desk lamps,Bright\n,Bulb,3,,,\n");
+        $upload = new \WP_REST_Request('POST', self::NAMESPACE . '/imports/products');
+        $upload->set_header('X-WP-Nonce', wp_create_nonce('wp_rest'));
+        $upload->set_file_params(['file' => ['name' => 'products.csv', 'type' => 'text/csv', 'tmp_name' => $file, 'error' => UPLOAD_ERR_OK, 'size' => max(0, (int) filesize($file))]]);
+        $uploaded = rest_do_request($upload);
+        self::assertSame(201, $uploaded->get_status(), (string) wp_json_encode($uploaded->get_data()));
+        $import = $this->data($uploaded);
+        self::assertSame(['ready', 2], [$import['status'], $import['rows']]);
+        self::assertIsInt($import['id']);
+
+        $started = $this->request('POST', "/imports/products/{$import['id']}/start", [], nonce: true);
+        self::assertSame(200, $started->get_status(), (string) wp_json_encode($started->get_data()));
+        $runner = self::kernel()->container()->get(JobRunner::class);
+        self::assertInstanceOf(JobRunner::class, $runner);
+        while ($runner->work(['imports'], 10, 'test')->count() > 0);
+
+        // Read anew: the requests' entity manager still holds the import as the start left it.
+        $imports = self::kernel()->container()->get(ProductImports::class);
+        self::assertInstanceOf(ProductImports::class, $imports);
+        $done = $imports->latest();
+        self::assertNotNull($done);
+        self::assertSame(['done', 1, 1, 0], [$done->status, $done->created, $done->updated, $done->failed], (string) wp_json_encode($done));
+        $post = get_post($lamp);
+        self::assertInstanceOf(\WP_Post::class, $post);
+        self::assertSame(['Brass lamp', 'draft', 'Bright'], [$post->post_title, $post->post_status, $post->post_excerpt]);
+        $categories = wp_get_object_terms($lamp, ProductCategoryTaxonomy::NAME);
+        self::assertIsArray($categories);
+        self::assertSame(['Desk lamps'], wp_list_pluck($categories, 'name'));
+        $products = self::kernel()->container()->get(ProductService::class);
+        self::assertInstanceOf(ProductService::class, $products);
+        self::assertSame('35', $products->product($lamp)->price);
+        $bulb = get_posts(['post_type' => ProductPostType::NAME, 'title' => 'Bulb', 'post_status' => 'any', 'fields' => 'ids']);
+        self::assertCount(1, $bulb);
+        $this->posts[] = (int) $bulb[0];
     }
 
     private function product(): int
@@ -130,9 +169,17 @@ final class ExportsRestTest extends RestTestCase
 
     private function clean(): void
     {
+        // What a test that failed left: the export reads the whole catalog, and the import finds by name.
+        foreach (get_posts(['post_type' => ProductPostType::NAME, 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids']) as $left) {
+            wp_delete_post((int) $left, true);
+        }
+        $terms = get_terms(['taxonomy' => ProductCategoryTaxonomy::NAME, 'hide_empty' => false, 'fields' => 'ids']);
+        foreach (\is_array($terms) ? $terms : [] as $term) {
+            wp_delete_term((int) $term, ProductCategoryTaxonomy::NAME);
+        }
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['pending_accounts', 'invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['product_imports', 'pending_accounts', 'invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }

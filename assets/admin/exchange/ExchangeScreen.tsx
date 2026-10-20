@@ -3,6 +3,7 @@ import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 import { ExportDialog } from '../shared/ExportDialog';
+import { ImportCard } from './ImportCard';
 
 /**
  * The Shop → Import and export screen: the products file, every product and variation with the columns the shop
@@ -33,6 +34,7 @@ export function ExchangeScreen() {
 					</Button>
 				</CardBody>
 			</Card>
+			<ImportCard />
 			{ exporting && (
 				<ExportDialog
 					kind="products"
