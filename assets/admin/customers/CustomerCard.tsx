@@ -5,17 +5,23 @@ import {
 	CardHeader,
 	CheckboxControl,
 	Flex,
+	TextareaControl,
 } from '@wordpress/components';
-import { useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { type Address, EMPTY_ADDRESS } from '../shared/address';
 import { AddressFields } from '../shared/AddressFields';
 import { useConfirm } from '../shared/useConfirm';
+import { money } from '../orders/labels';
 import {
+	addNote,
 	type Customer,
 	type CustomerGroup,
+	type CustomerNote,
+	fetchNotes,
 	removeAddress,
+	removeNote,
 	type SavedAddress,
 	saveAddress,
 	setCustomerGroups,
@@ -30,7 +36,7 @@ interface CustomerCardProps {
 }
 
 /**
- * One customer: their groups and their address book.
+ * One customer: what they are worth to the shop, its notes about them, their groups and their address book.
  * @param props
  * @param props.groups
  * @param props.customer
@@ -65,6 +71,8 @@ export function CustomerCard( {
 				</Button>
 			</CardHeader>
 			<CardBody>
+				<Value customer={ customer } />
+				<Notes customer={ customer } onError={ onError } />
 				{ groups.length > 0 && (
 					<>
 						<h3>{ __( 'Customer groups', 'orillacart' ) }</h3>
@@ -96,6 +104,132 @@ export function CustomerCard( {
 				/>
 			</CardBody>
 		</Card>
+	);
+}
+
+function day( at: string | null ): string {
+	return at === null ? '—' : new Date( at ).toLocaleDateString();
+}
+
+/**
+ * The customer's lifetime value: what they paid less what went back, over how many paid orders.
+ * @param props
+ * @param props.customer
+ */
+function Value( { customer }: { customer: Customer } ) {
+	const value = customer.lifetime_value;
+	if ( value === null ) {
+		return null;
+	}
+	return (
+		<dl className="orillacart-facts">
+			<dt>{ __( 'Spent', 'orillacart' ) }</dt>
+			<dd>{ money( value.spent, value.currency ) }</dd>
+			<dt>{ __( 'Paid orders', 'orillacart' ) }</dt>
+			<dd>{ value.paid_orders }</dd>
+			<dt>{ __( 'Average order', 'orillacart' ) }</dt>
+			<dd>{ money( value.average, value.currency ) }</dd>
+			<dt>{ __( 'First order', 'orillacart' ) }</dt>
+			<dd>{ day( value.first_order_at ) }</dd>
+			<dt>{ __( 'Last order', 'orillacart' ) }</dt>
+			<dd>{ day( value.last_order_at ) }</dd>
+		</dl>
+	);
+}
+
+/**
+ * What the shop noted about the customer, newest first; the customer never sees them.
+ * @param props
+ * @param props.customer
+ * @param props.onError
+ */
+function Notes( {
+	customer,
+	onError,
+}: Pick< CustomerCardProps, 'customer' | 'onError' > ) {
+	const [ notes, setNotes ] = useState< CustomerNote[] >( [] );
+	const [ text, setText ] = useState( '' );
+	const [ busy, setBusy ] = useState( false );
+	const [ confirmation, confirm ] = useConfirm();
+	// The screen hands a new onError each render: the notes load again only for another customer.
+	const failed = useRef( onError );
+	failed.current = onError;
+	useEffect( () => {
+		let current = true;
+		fetchNotes( customer.id )
+			.then( ( loaded ) => current && setNotes( loaded ) )
+			.catch( ( error: unknown ) => failed.current( error ) );
+		return () => {
+			current = false;
+		};
+	}, [ customer.id ] );
+
+	return (
+		<>
+			<h3>{ __( 'Notes', 'orillacart' ) }</h3>
+			{ confirmation }
+			<TextareaControl
+				__nextHasNoMarginBottom
+				label={ __( 'Note for the shop', 'orillacart' ) }
+				help={ __( 'The customer does not see it.', 'orillacart' ) }
+				value={ text }
+				onChange={ setText }
+			/>
+			<Button
+				variant="secondary"
+				isBusy={ busy }
+				disabled={ busy || text.trim() === '' }
+				onClick={ () => {
+					setBusy( true );
+					addNote( customer.id, text )
+						.then( ( note ) => {
+							setNotes( ( shown ) => [ note, ...shown ] );
+							setText( '' );
+						} )
+						.catch( onError )
+						.finally( () => setBusy( false ) );
+				} }
+			>
+				{ __( 'Add note', 'orillacart' ) }
+			</Button>
+			<ul className="orillacart-notes">
+				{ notes.map( ( note ) => (
+					<li key={ note.id }>
+						<p>{ note.text }</p>
+						<small>
+							{ [
+								new Date( note.created_at ).toLocaleString(),
+								note.author,
+							]
+								.filter( Boolean )
+								.join( ' · ' ) }
+						</small>{ ' ' }
+						<Button
+							variant="link"
+							isDestructive
+							onClick={ () =>
+								confirm(
+									__( 'Delete this note?', 'orillacart' ),
+									() =>
+										void removeNote( customer.id, note.id )
+											.then( () =>
+												setNotes( ( shown ) =>
+													shown.filter(
+														( other ) =>
+															other.id !== note.id
+													)
+												)
+											)
+											.catch( onError )
+								)
+							}
+						>
+							{ __( 'Delete', 'orillacart' ) }
+						</Button>
+					</li>
+				) ) }
+			</ul>
+		</>
 	);
 }
 

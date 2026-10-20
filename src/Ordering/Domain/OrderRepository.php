@@ -67,6 +67,16 @@ interface OrderRepository
     public function countByCustomers(array $customerIds): array;
 
     /**
+     * What customers paid for their orders in a currency, and what went back, with when they first and last
+     * ordered (orders not cancelled or failed).
+     *
+     * @param list<int> $customerIds
+     *
+     * @return array<int, array{paid_orders: int, paid: string, refunded: string, first: ?\DateTimeImmutable, last: ?\DateTimeImmutable}> by customer id; only those with orders
+     */
+    public function spendByCustomers(array $customerIds, string $currency): array;
+
+    /**
      * Orders not cancelled, failed or refunded with a delivery day from $from to $until, counted by day and slot.
      *
      * @param string $carrier the start of their delivery keys: "5:"

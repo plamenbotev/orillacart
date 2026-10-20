@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Customers\Application\Dto;
 
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\LifetimeValueView;
 
 final readonly class CustomerView
 {
@@ -23,12 +24,13 @@ final readonly class CustomerView
         public array $groupIds = [],
         /** @var list<SavedAddressView> */
         public array $addresses = [],
+        public ?LifetimeValueView $lifetimeValue = null,
     ) {}
 
     /**
      * @param list<int> $groupIds
      */
-    public static function fromRecord(CustomerRecord $record, int $orders, array $groupIds = []): self
+    public static function fromRecord(CustomerRecord $record, int $orders, array $groupIds = [], ?LifetimeValueView $lifetimeValue = null): self
     {
         $book = $record->addresses;
         $shippingId = $book->shippingId !== null && isset($book->addresses[$book->shippingId]) ? $book->shippingId : $book->billingId;
@@ -37,6 +39,6 @@ final readonly class CustomerView
             $saved[] = new SavedAddressView((string) $id, $address, (string) $id === $book->billingId, (string) $id === $shippingId);
         }
 
-        return new self($record->id, $record->email, $record->firstName, $record->lastName, $record->registeredAt, $book->billing(), $book->shipping(), $orders, $groupIds, $saved);
+        return new self($record->id, $record->email, $record->firstName, $record->lastName, $record->registeredAt, $book->billing(), $book->shipping(), $orders, $groupIds, $saved, $lifetimeValue);
     }
 }

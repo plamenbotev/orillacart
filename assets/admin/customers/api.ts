@@ -17,6 +17,26 @@ export interface Customer {
 	/** The customer groups they are in. */
 	group_ids: number[];
 	addresses: SavedAddress[];
+	lifetime_value: LifetimeValue | null;
+}
+
+/** What the customer paid in the shop's currency, less what went back, over their paid orders. */
+export interface LifetimeValue {
+	currency: string;
+	spent: string;
+	paid_orders: number;
+	average: string;
+	first_order_at: string | null;
+	last_order_at: string | null;
+}
+
+/** What the shop noted about a customer, for itself. */
+export interface CustomerNote {
+	id: number;
+	text: string;
+	/** Who of the shop wrote it; null when their account is gone. */
+	author: string | null;
+	created_at: string;
 }
 
 /** An address of the customer's address book, and whether checkout starts from it for billing or shipping. */
@@ -88,6 +108,27 @@ export function removeAddress(
 ): Promise< Customer > {
 	return apiFetch< Customer >( {
 		path: `${ BASE }/customers/${ id }/addresses/${ addressId }`,
+		method: 'DELETE',
+	} );
+}
+
+export function fetchNotes( id: number ): Promise< CustomerNote[] > {
+	return apiFetch< CustomerNote[] >( {
+		path: `${ BASE }/customers/${ id }/notes`,
+	} );
+}
+
+export function addNote( id: number, text: string ): Promise< CustomerNote > {
+	return apiFetch< CustomerNote >( {
+		path: `${ BASE }/customers/${ id }/notes`,
+		method: 'POST',
+		data: { text },
+	} );
+}
+
+export function removeNote( id: number, noteId: number ): Promise< unknown > {
+	return apiFetch( {
+		path: `${ BASE }/customers/${ id }/notes/${ noteId }`,
 		method: 'DELETE',
 	} );
 }

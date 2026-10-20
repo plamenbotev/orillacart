@@ -14,6 +14,7 @@ use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
+use OrillaCart\Ordering\Application\Dto\LifetimeValueView;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
 use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\Dto\NewOrderItems;
@@ -168,6 +169,33 @@ final readonly class OrderService
     public function orderCounts(array $customerIds): array
     {
         return $this->orders->countByCustomers($customerIds) + array_fill_keys($customerIds, 0);
+    }
+
+    /**
+     * Customers' lifetime value in the shop's currency: one query for them all.
+     *
+     * @param list<int> $customerIds
+     *
+     * @return array<int, LifetimeValueView> by customer id, for each of them
+     */
+    public function lifetimeValues(array $customerIds, string $currency, int $decimals): array
+    {
+        $spend = $this->orders->spendByCustomers($customerIds, $currency);
+        $values = [];
+        foreach ($customerIds as $id) {
+            $of = $spend[$id] ?? ['paid_orders' => 0, 'paid' => '0', 'refunded' => '0', 'first' => null, 'last' => null];
+            $spent = Money::of($of['paid'])->subtract(Money::of($of['refunded']))->atLeastZero();
+            $values[$id] = new LifetimeValueView(
+                $currency,
+                (string) $spent->rounded($decimals),
+                $of['paid_orders'],
+                (string) $spent->proportion(Money::of('1'), Money::of((string) max(1, $of['paid_orders'])))->rounded($decimals),
+                $of['first']?->format(\DATE_ATOM),
+                $of['last']?->format(\DATE_ATOM),
+            );
+        }
+
+        return $values;
     }
 
     /**

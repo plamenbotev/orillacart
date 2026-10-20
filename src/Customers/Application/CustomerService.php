@@ -14,6 +14,7 @@ use OrillaCart\Customers\Application\Dto\SaveAddress;
 use OrillaCart\Customers\Application\Dto\UpdateCustomerSettings;
 use OrillaCart\Customers\Domain\AccountMode;
 use OrillaCart\Customers\Domain\CustomerGroupRepository;
+use OrillaCart\Customers\Domain\CustomerNoteRepository;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Customers\Domain\CustomerRuleViolation;
 use OrillaCart\Customers\Domain\CustomerSettings;
@@ -23,10 +24,12 @@ use OrillaCart\Customers\Domain\Event\CustomerErased;
 use OrillaCart\Customers\Domain\PendingAccount;
 use OrillaCart\Customers\Domain\PendingAccountRepository;
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\LifetimeValueView;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
+use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\RuleViolation;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -47,11 +50,13 @@ final readonly class CustomerService
         private AccountMail $accountMail,
         private AccountLinks $links,
         private ClockInterface $clock,
+        private SettingsService $shop,
+        private CustomerNoteRepository $notes,
     ) {}
 
     /**
-     * The person of the email erased, as a privacy request asks: their saved addresses go, and they leave their
-     * groups. The WordPress account itself is WordPress's to remove.
+     * The person of the email erased, as a privacy request asks: their saved addresses and the shop's notes about
+     * them go, and they leave their groups. The WordPress account itself is WordPress's to remove.
      *
      * @return bool whether there was anything to erase
      */
@@ -68,7 +73,9 @@ final readonly class CustomerService
             return $pending !== null;
         }
         $groupIds = $this->groups->groupIdsOf($id);
+        $noted = $this->notes->ofCustomer($id) !== [];
         $this->accounts->saveAddresses($id, new AddressBook());
+        $this->notes->removeOfCustomer($id);
         foreach ($groupIds as $groupId) {
             $group = $this->groups->find($groupId);
             if ($group !== null) {
@@ -78,7 +85,7 @@ final readonly class CustomerService
         }
         $this->events->dispatch(new CustomerErased($id));
 
-        return $record->addresses->addresses !== [] || $groupIds !== [];
+        return $record->addresses->addresses !== [] || $groupIds !== [] || $noted;
     }
 
     /** The account of the email, if any. */
@@ -88,11 +95,12 @@ final readonly class CustomerService
     }
 
     /**
-     * A customer's account was deleted: they leave their groups, and the other areas let go of them too (their
+     * A customer's account was deleted: the shop's notes about them go, they leave their groups, and the other areas let go of them too (their
      * orders become guest orders, their carts go).
      */
     public function forget(int $customerId): void
     {
+        $this->notes->removeOfCustomer($customerId);
         foreach ($this->groups->groupIdsOf($customerId) as $groupId) {
             $group = $this->groups->find($groupId);
             if ($group !== null) {
@@ -138,24 +146,37 @@ final readonly class CustomerService
     {
         $record = $this->accounts->find($id) ?? throw new CustomerNotFound($id);
 
-        return CustomerView::fromRecord($record, $this->orders->orders(new OrderQuery(customerId: $id, perPage: 1))->total, $this->groups->groupIdsOf($id));
+        return CustomerView::fromRecord($record, $this->orders->orders(new OrderQuery(customerId: $id, perPage: 1))->total, $this->groups->groupIdsOf($id), $this->lifetimeValues([$id])[$id]);
     }
 
     public function customers(CustomerQuery $query): CustomerPageView
     {
         $search = $query->search === null || trim($query->search) === '' ? null : trim($query->search);
         [$records, $total] = $this->accounts->search($search, ($query->page - 1) * $query->perPage, $query->perPage);
-        // Two queries for the page, not two a customer.
+        // Three queries for the page, not three a customer.
         $ids = array_map(static fn($record): int => $record->id, $records);
         $orders = $this->orders->orderCounts($ids);
         $groups = $this->groups->groupIdsOfMany($ids);
+        $values = $this->lifetimeValues($ids);
 
         return new CustomerPageView(
-            array_map(static fn($record): CustomerView => CustomerView::fromRecord($record, $orders[$record->id] ?? 0, $groups[$record->id] ?? []), $records),
+            array_map(static fn($record): CustomerView => CustomerView::fromRecord($record, $orders[$record->id] ?? 0, $groups[$record->id] ?? [], $values[$record->id] ?? null), $records),
             $total,
             $query->page,
             max(1, (int) ceil($total / $query->perPage)),
         );
+    }
+
+    /**
+     * @param list<int> $ids
+     *
+     * @return array<int, LifetimeValueView>
+     */
+    private function lifetimeValues(array $ids): array
+    {
+        $shop = $this->shop->current();
+
+        return $this->orders->lifetimeValues($ids, $shop->currency, $shop->priceDecimals);
     }
 
     /** Where a customer has things sent, as they saved it: their shipping address, or their billing one. */

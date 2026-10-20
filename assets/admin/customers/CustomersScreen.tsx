@@ -26,6 +26,7 @@ import {
 	saveGroup,
 } from './api';
 import { CustomerCard } from './CustomerCard';
+import { money } from '../orders/labels';
 import { useLatest } from '../shared/useLatest';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
@@ -40,6 +41,18 @@ const FIELDS: Field< Customer >[] = [
 	},
 	{ id: 'email', label: __( 'Email', 'orillacart' ), enableSorting: false },
 	{ id: 'orders', label: __( 'Orders', 'orillacart' ), enableSorting: false },
+	{
+		id: 'spent',
+		label: __( 'Spent', 'orillacart' ),
+		enableSorting: false,
+		render: ( { item } ) =>
+			item.lifetime_value
+				? money(
+						item.lifetime_value.spent,
+						item.lifetime_value.currency
+					)
+				: '',
+	},
 	{
 		id: 'registered_at',
 		label: __( 'Since', 'orillacart' ),

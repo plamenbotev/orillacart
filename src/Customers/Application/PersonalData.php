@@ -13,7 +13,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * What the shop holds of a person, for WordPress's privacy tools (Tools → Export and Erase Personal Data): their
- * orders and their account's addresses, given out or erased a page at a time. Erasing anonymises orders, which
+ * orders, their account's addresses and the shop's notes about them, given out or erased a page at a time. Erasing anonymises orders, which
  * the books keep (see Order::anonymise()), and forgets the rest.
  */
 final readonly class PersonalData
@@ -23,6 +23,7 @@ final readonly class PersonalData
     public function __construct(
         private OrderService $orders,
         private CustomerService $customers,
+        private CustomerNotes $notes,
         private ?EventDispatcherInterface $events = null,
     ) {}
 
@@ -37,6 +38,9 @@ final readonly class PersonalData
             $customer = $id === null ? null : $this->customers->customer($id);
             foreach ($customer->addresses ?? [] as $saved) {
                 $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-address-' . $saved->id, 'data' => [['name' => 'Saved address', 'value' => self::address($saved->address)]]];
+            }
+            foreach ($id === null ? [] : $this->notes->of($id) as $note) {
+                $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-note-' . $note->id, 'data' => [['name' => 'The shop\'s note', 'value' => $note->text]]];
             }
         }
         $orders = $this->orders->ofPerson($email, $this->customers->customerIdOf($email), $page, self::PER_PAGE);

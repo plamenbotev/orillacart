@@ -111,7 +111,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     {
         $shop = [['GET', '/orders'], ['GET', '/orders/1'], ['PUT', '/orders/1/status'], ['PUT', '/orders/1/contact'], ['POST', '/orders/1/notes'],
             ['PUT', '/orders/1/items'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['GET', '/customers/1'],
-            ['POST', '/customers/1/addresses'], ['PUT', '/customers/1/addresses/ab12cd34'], ['DELETE', '/customers/1/addresses/ab12cd34'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/email-settings'],
+            ['POST', '/customers/1/addresses'], ['PUT', '/customers/1/addresses/ab12cd34'], ['DELETE', '/customers/1/addresses/ab12cd34'], ['GET', '/customers/1/notes'], ['POST', '/customers/1/notes'], ['DELETE', '/customers/1/notes/1'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/email-settings'],
             ['PUT', '/email-settings'], ['POST', '/products/1/downloads'], ['DELETE', '/products/1/downloads/1'], ['GET', '/download-storage'],
             ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1'], ['POST', '/orders'], ['POST', '/orders/quote'],
             ['GET', '/orders/1/shipments'], ['POST', '/orders/1/shipments'], ['POST', '/orders/1/shipments/sent'], ['POST', '/shipments/1/arrived'], ['POST', '/orders/1/ready-for-pickup'], ['POST', '/orders/1/picked-up'], ['GET', '/orders/1/returns'], ['POST', '/returns/1/approve'], ['POST', '/returns/1/refuse'], ['POST', '/returns/1/receive'], ['POST', '/returns/1/refund'], ['GET', '/shipments/1/label'], ['POST', '/shipments/1/cancel'], ['GET', '/shipping-methods'], ['GET', '/orders/1/pickup-points'],
@@ -160,6 +160,27 @@ final class OrdersAndCustomersRestTest extends RestTestCase
 
         $receipt = $this->data($this->request('GET', "/receipts/{$order['key']}"));
         self::assertSame(['It leaves tomorrow.'], array_column($this->rows($receipt['notes']), 'text'), 'the customer sees only their notes');
+    }
+
+    public function testTheCustomerScreenSumsWhatTheCustomerPaidAndKeepsTheShopsNotes(): void
+    {
+        $customer = $this->actAs('customer');
+        $paid = $this->order([[$this->lamp, 2]]);
+        $this->order([[$this->guide, 1]]);
+        $this->actAs('administrator');
+        self::assertSame(200, $this->request('POST', "/orders/{$paid['number']}/paid", [], nonce: true)->get_status());
+
+        $value = $this->data($this->request('GET', "/customers/{$customer}"))['lifetime_value'];
+        self::assertIsArray($value);
+        self::assertSame(['60', 1, '60'], [$value['spent'], $value['paid_orders'], $value['average']], 'the unpaid order counts for nothing');
+        self::assertIsString($value['first_order_at']);
+
+        $added = $this->request('POST', "/customers/{$customer}/notes", ['text' => 'Prefers calls.'], nonce: true);
+        self::assertSame(201, $added->get_status(), (string) wp_json_encode($added->get_data()));
+        $notes = $this->rows($this->data($this->request('GET', "/customers/{$customer}/notes")));
+        self::assertSame([['Prefers calls.', 'orillacart_administrator']], array_map(static fn(array $note): array => [$note['text'], $note['author']], $notes));
+        self::assertSame(204, $this->request('DELETE', "/customers/{$customer}/notes/{$this->id($added)}", nonce: true)->get_status());
+        self::assertSame(422, $this->request('POST', "/customers/{$customer}/notes", ['text' => ' '], nonce: true)->get_status());
     }
 
     public function testACustomerGroupGetsItsPriceInTheCartAndGuestsPayTheRegularOne(): void
@@ -614,7 +635,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     {
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['pending_accounts', 'invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'consignments', 'returns', 'order_lines', 'orders', 'shipping_rates', 'carriers', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['customer_notes', 'pending_accounts', 'invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'consignments', 'returns', 'order_lines', 'orders', 'shipping_rates', 'carriers', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }

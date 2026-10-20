@@ -188,6 +188,38 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         return $counts;
     }
 
+    public function spendByCustomers(array $customerIds, string $currency): array
+    {
+        if ($customerIds === []) {
+            return [];
+        }
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('o.customerId AS customer, MIN(o.placedAt) AS first, MAX(o.placedAt) AS last')
+            ->addSelect('SUM(CASE WHEN o.paidAt IS NOT NULL AND o.currency = :currency THEN 1 ELSE 0 END) AS paid_orders')
+            ->addSelect('SUM(CASE WHEN o.paidAt IS NOT NULL AND o.currency = :currency THEN o.paidAmount ELSE 0 END) AS paid')
+            ->addSelect('SUM(CASE WHEN o.paidAt IS NOT NULL AND o.currency = :currency THEN o.refundedTotal ELSE 0 END) AS refunded')
+            ->from(Order::class, 'o')
+            ->where('o.customerId IN (:customers)')->setParameter('customers', $customerIds)
+            ->andWhere('o.status NOT IN (:unplaced)')->setParameter('unplaced', [OrderStatus::Cancelled, OrderStatus::Failed])
+            ->setParameter('currency', $currency)
+            ->groupBy('o.customerId')->getQuery()->getScalarResult();
+        $spend = [];
+        foreach ($rows as $row) {
+            if (!\is_array($row) || !is_numeric($row['customer'] ?? null)) {
+                continue;
+            }
+            $spend[(int) $row['customer']] = [
+                'paid_orders' => is_numeric($row['paid_orders'] ?? null) ? (int) $row['paid_orders'] : 0,
+                'paid' => is_numeric($row['paid'] ?? null) ? (string) $row['paid'] : '0',
+                'refunded' => is_numeric($row['refunded'] ?? null) ? (string) $row['refunded'] : '0',
+                'first' => \is_string($row['first'] ?? null) ? new \DateTimeImmutable($row['first'], new \DateTimeZone('UTC')) : null,
+                'last' => \is_string($row['last'] ?? null) ? new \DateTimeImmutable($row['last'], new \DateTimeZone('UTC')) : null,
+            ];
+        }
+
+        return $spend;
+    }
+
     public function hasStandingOrder(?int $customerId, string $email, ?int $exceptOrderId = null): bool
     {
         $query = $this->entityManager->createQueryBuilder()->select('o.id')->from(Order::class, 'o')

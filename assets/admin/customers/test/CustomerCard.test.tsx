@@ -35,6 +35,14 @@ const ADA: Customer = {
 	addresses: [
 		{ id: 'ab12cd34', address: HOME, billing: true, shipping: true },
 	],
+	lifetime_value: {
+		currency: 'EUR',
+		spent: '25',
+		paid_orders: 2,
+		average: '12.5',
+		first_order_at: '2026-10-17T12:00:00+00:00',
+		last_order_at: '2026-11-06T12:00:00+00:00',
+	},
 };
 
 describe( 'CustomerCard', () => {
@@ -44,6 +52,9 @@ describe( 'CustomerCard', () => {
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
 			if ( request.path.startsWith( '/orillacart/v1/countries' ) ) {
+				return Promise.resolve( [] );
+			}
+			if ( request.path.endsWith( '/notes' ) ) {
 				return Promise.resolve( [] );
 			}
 			return Promise.resolve( ADA );
@@ -97,5 +108,65 @@ describe( 'CustomerCard', () => {
 			path: '/orillacart/v1/customers/3/addresses/ab12cd34',
 			method: 'DELETE',
 		} );
+	} );
+
+	it( 'shows what the customer spent and keeps the shop’s notes', async () => {
+		mockedFetch.mockImplementation( ( options ) => {
+			const request = options as Request;
+			if ( request.path === '/orillacart/v1/customers/3/notes' ) {
+				return Promise.resolve(
+					request.method === 'POST'
+						? {
+								id: 2,
+								text: 'Wholesale prices agreed.',
+								author: 'Mara',
+								created_at: '2026-10-20T10:00:00+00:00',
+							}
+						: [
+								{
+									id: 1,
+									text: 'Prefers calls.',
+									author: null,
+									created_at: '2026-10-19T10:00:00+00:00',
+								},
+							]
+				);
+			}
+			return Promise.resolve( [] );
+		} );
+		const user = userEvent.setup();
+		render(
+			<CustomerCard
+				groups={ [] }
+				customer={ ADA }
+				onClose={ () => undefined }
+				onSaved={ () => undefined }
+				onError={ ( error ) => {
+					throw error;
+				} }
+			/>
+		);
+
+		expect(
+			screen.getByText( 'Paid orders' ).nextSibling
+		).toHaveTextContent( '2' );
+		expect( await screen.findByText( 'Prefers calls.' ) ).toBeVisible();
+		await user.type(
+			screen.getByLabelText( 'Note for the shop' ),
+			'Wholesale prices agreed.'
+		);
+		await user.click( screen.getByRole( 'button', { name: 'Add note' } ) );
+
+		expect(
+			await screen.findByText( 'Wholesale prices agreed.' )
+		).toBeVisible();
+		expect( mockedFetch ).toHaveBeenCalledWith( {
+			path: '/orillacart/v1/customers/3/notes',
+			method: 'POST',
+			data: { text: 'Wholesale prices agreed.' },
+		} );
+		expect( screen.getByLabelText( 'Note for the shop' ) ).toHaveValue(
+			''
+		);
 	} );
 } );

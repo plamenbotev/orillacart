@@ -8,6 +8,7 @@ use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Ordering\Domain\OrderStatus;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 
 final class InMemoryOrderRepository implements OrderRepository
@@ -88,6 +89,28 @@ final class InMemoryOrderRepository implements OrderRepository
         }
 
         return $counts;
+    }
+
+    public function spendByCustomers(array $customerIds, string $currency): array
+    {
+        $spend = [];
+        foreach ($this->orders as $order) {
+            $customer = $order->customerId();
+            if ($customer === null || !\in_array($customer, $customerIds, true) || \in_array($order->status(), [OrderStatus::Cancelled, OrderStatus::Failed], true)) {
+                continue;
+            }
+            $was = $spend[$customer] ?? ['paid_orders' => 0, 'paid' => '0', 'refunded' => '0', 'first' => null, 'last' => null];
+            $paid = $order->paidAt() !== null && $order->currency() === $currency;
+            $spend[$customer] = [
+                'paid_orders' => $was['paid_orders'] + ($paid ? 1 : 0),
+                'paid' => $paid ? Money::of($was['paid'])->add($order->paidAmount())->toFixed() : $was['paid'],
+                'refunded' => $paid ? Money::of($was['refunded'])->add($order->refundedTotal())->toFixed() : $was['refunded'],
+                'first' => $was['first'] === null || $order->placedAt() < $was['first'] ? $order->placedAt() : $was['first'],
+                'last' => $was['last'] === null || $order->placedAt() > $was['last'] ? $order->placedAt() : $was['last'],
+            ];
+        }
+
+        return $spend;
     }
 
     public function hasStandingOrder(?int $customerId, string $email, ?int $exceptOrderId = null): bool
