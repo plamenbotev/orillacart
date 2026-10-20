@@ -58,11 +58,14 @@ use OrillaCart\Jobs\Infrastructure\LocatedJobHandlers;
 use OrillaCart\Jobs\Infrastructure\WordPress\TableWorkerRegistry;
 use OrillaCart\Jobs\Infrastructure\WordPress\WordPressJobContext;
 use OrillaCart\Notifications\Application\AccountEmails;
+use OrillaCart\Notifications\Application\EmailWriter;
 use OrillaCart\Notifications\Application\Mailer;
 use OrillaCart\Notifications\Application\Site;
 use OrillaCart\Notifications\Domain\AlertedStock;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
+use OrillaCart\Notifications\Domain\EmailTemplateRepository;
 use OrillaCart\Notifications\Domain\SentEmails;
+use OrillaCart\Notifications\Infrastructure\Doctrine\DoctrineEmailTemplates;
 use OrillaCart\Notifications\Infrastructure\Doctrine\DoctrineSentEmails;
 use OrillaCart\Notifications\Infrastructure\WordPress\OptionAlertedStock;
 use OrillaCart\Notifications\Infrastructure\WordPress\OptionEmailSettingsRepository;
@@ -99,7 +102,10 @@ use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Serialization\ValidatorFactory;
+use OrillaCart\Platform\Twig\EmailTemplateEditing;
+use OrillaCart\Platform\Twig\EmailTwig;
 use OrillaCart\Platform\Twig\TwigFactory;
+use OrillaCart\Platform\Twig\TwigRenderer;
 use OrillaCart\Platform\WordPress\AfterResponse\ShutdownWork;
 use OrillaCart\Platform\WordPress\Extensions\WordPressExtensions;
 use OrillaCart\Platform\WordPress\Files\LocalPrivateFiles;
@@ -138,6 +144,9 @@ use OrillaCart\Shared\Persistence\LoadedEntities;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shared\Security\Secrets;
 use OrillaCart\Shared\Security\Signatures;
+use OrillaCart\Shared\View\EditedTemplates;
+use OrillaCart\Shared\View\TemplateEditing;
+use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shipping\Application\RateCache;
 use OrillaCart\Shipping\Domain\CarrierRepository;
 use OrillaCart\Shipping\Domain\ConsignmentRepository;
@@ -254,6 +263,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(EmailSettingsRepository::class, OptionEmailSettingsRepository::class);
     $services->alias(SentEmails::class, DoctrineSentEmails::class);
     $services->alias(AlertedStock::class, OptionAlertedStock::class);
+    $services->alias(EmailTemplateRepository::class, DoctrineEmailTemplates::class);
+    $services->alias(EditedTemplates::class, DoctrineEmailTemplates::class);
     $services->alias(VatRegistry::class, ViesVatRegistry::class);
     $services->alias(PriceHistoryRepository::class, DoctrinePriceHistoryRepository::class);
     $services->alias(InvoiceRepository::class, DoctrineInvoiceRepository::class);
@@ -337,6 +348,15 @@ return static function (ContainerConfigurator $container): void {
     // Storefront templates
     $services->set(Environment::class)
         ->factory([service(TwigFactory::class), 'create']);
+    // Email templates: the shop's edits before the files, always sandboxed
+    $services->set('orillacart.email_twig', Environment::class)
+        ->factory([service(EmailTwig::class), 'create']);
+    $services->set('orillacart.email_templates', TwigRenderer::class)
+        ->arg('$twig', service('orillacart.email_twig'));
+    $services->get(EmailWriter::class)->arg('$templates', service('orillacart.email_templates'));
+    $services->get(EmailTemplateEditing::class)->arg('$twig', service('orillacart.email_twig'));
+    $services->alias(TemplateEditing::class, EmailTemplateEditing::class);
+    $services->alias(TemplateRenderer::class, TwigRenderer::class);
 
     // Entry points used by the WordPress bootstrap and WP-CLI
     $services->set(WordPressIntegration::class)->public();

@@ -22,4 +22,11 @@ final readonly class WordPressSite implements Site
     {
         return home_url('/');
     }
+
+    public function userEmail(int $userId): ?string
+    {
+        $user = get_userdata($userId);
+
+        return $user instanceof \WP_User && $user->user_email !== '' ? $user->user_email : null;
+    }
 }

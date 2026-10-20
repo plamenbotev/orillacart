@@ -6,10 +6,12 @@ namespace OrillaCart\Notifications\Application;
 
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Jobs\Application\Jobs;
+use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailRules;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
+use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderService;
@@ -23,8 +25,8 @@ use Psr\Log\LoggerInterface;
  * or stops the order, and a mail it refused is tried again (SendOrderEmails). Sending again from the order's
  * screen is immediate, so the shop sees whether it went.
  *
- * A template renders the body and has a "subject" block; a theme overrides it by placing a file of the same
- * name in its orillacart/emails/ folder.
+ * A template renders the body and has a "subject" block; the shop writes its own on the Emails screen, and a
+ * theme overrides the file by placing one of the same name in its orillacart/emails/ folder.
  */
 final readonly class OrderEmails
 {
@@ -162,6 +164,49 @@ final readonly class OrderEmails
             // Paid or called off since it was queued.
             return;
         }
+        try {
+            $email = $this->write($order, $kind, $note, $refund);
+        } catch (EmailNotWritten $e) {
+            $this->logger->error('The {kind} email of order {order} could not be written: {message}', ['kind' => $kind->value, 'order' => $orderId, 'message' => $e->getMessage(), 'exception' => $e]);
+
+            throw $e;
+        }
+
+        if (!$this->mailer->send($email)) {
+            // Without the address: the message is kept with the job, which outlives the order's personal data.
+            throw new EmailNotSent(\sprintf('The %s email of order %d to %s was not sent: the mail system refused it.', $kind->value, $orderId, $kind->isForShop() ? 'the shop' : 'the customer'));
+        }
+    }
+
+    /**
+     * An order's email as it would go, for the shop to look at while editing its template: a note, what needed
+     * attention and a refund are made up when the order has none.
+     *
+     * @throws OrderNotFound
+     * @throws EmailNotWritten
+     */
+    public function preview(int $orderId, EmailKind $kind): Email
+    {
+        $order = $this->orders->order($orderId);
+        $note = match ($kind) {
+            EmailKind::CustomerNote => 'A note from the shop to the customer.',
+            EmailKind::OrderAttention => $order->attention ?? 'What the order needs attention for.',
+            default => '',
+        };
+        $refund = \in_array($kind, [EmailKind::OrderRefunded, EmailKind::RefundMade], true)
+            ? ['amount' => $order->total, 'full' => true, 'quantities' => array_map(static fn(int $line, OrderLineView $view): array => ['line' => $line, 'quantity' => $view->quantity], array_keys($order->lines), array_values($order->lines))]
+            : null;
+
+        return $this->write($order, $kind, $note, $refund);
+    }
+
+    /**
+     * @param array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>}|null $refund
+     *
+     * @throws EmailNotWritten
+     */
+    private function write(OrderView $order, EmailKind $kind, string $note, ?array $refund): Email
+    {
         $extra = ['note' => $note, 'refund' => null];
         if ($refund !== null) {
             $lines = [];
@@ -177,25 +222,14 @@ final readonly class OrderEmails
             'order' => $order,
             'receipt_url' => $this->links->receiptUrl($order->number),
             'for_shop' => $kind->isForShop(),
-            'shipments' => $this->shipments->forOrder($orderId),
-            'invoices' => $kind->isForShop() ? [] : $this->invoices->ofOrder($orderId),
+            'shipments' => $this->shipments->forOrder($order->number),
+            'invoices' => $kind->isForShop() ? [] : $this->invoices->ofOrder($order->number),
         ] + $extra;
 
-        try {
-            // The customer reads it in the language they ordered in; the shop in the site's.
-            $email = $kind->isForShop()
-                ? $this->writer->write($kind->template(), $kind->value, $this->writer->shopAddress(), null, $context, $order->email, $order->number)
-                : $this->writer->write($kind->template(), $kind->value, $order->email, $order->locale, $context, null, $order->number);
-        } catch (EmailNotWritten $e) {
-            $this->logger->error('The {kind} email of order {order} could not be written: {message}', ['kind' => $kind->value, 'order' => $orderId, 'message' => $e->getMessage(), 'exception' => $e]);
-
-            throw $e;
-        }
-
-        if (!$this->mailer->send($email)) {
-            // Without the address: the message is kept with the job, which outlives the order's personal data.
-            throw new EmailNotSent(\sprintf('The %s email of order %d to %s was not sent: the mail system refused it.', $kind->value, $orderId, $kind->isForShop() ? 'the shop' : 'the customer'));
-        }
+        // The customer reads it in the language they ordered in; the shop in the site's.
+        return $kind->isForShop()
+            ? $this->writer->write($kind->template(), $kind->value, $this->writer->shopAddress(), null, $context, $order->email, $order->number)
+            : $this->writer->write($kind->template(), $kind->value, $order->email, $order->locale, $context, null, $order->number);
     }
 
     /**

@@ -13,7 +13,7 @@ use OrillaCart\Shared\Lifecycle\LifecycleListener;
  */
 final readonly class CacheFolders implements LifecycleListener
 {
-    public const array KINDS = ['twig', 'doctrine'];
+    public const array KINDS = ['twig', 'twig-emails', 'doctrine'];
 
     public function __construct(private PluginContext $context) {}
 

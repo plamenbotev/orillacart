@@ -1,0 +1,13 @@
+.orillacart-template-source textarea {
+	font-family: Menlo, Consolas, monospace;
+	font-size: 13px;
+	line-height: 1.5;
+	tab-size: 4;
+}
+
+.orillacart-email-preview {
+	width: 100%;
+	min-height: 640px;
+	border: 1px solid #dcdcde;
+	background: #fff;
+}

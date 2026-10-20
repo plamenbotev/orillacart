@@ -14,4 +14,7 @@ interface Site
     public function adminEmail(): string;
 
     public function url(): string;
+
+    /** The email of a WordPress user; null for one that does not exist. */
+    public function userEmail(int $userId): ?string;
 }

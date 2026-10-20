@@ -24,4 +24,9 @@ final class FakeSite implements Site
     {
         return 'https://shop.test/';
     }
+
+    public function userEmail(int $userId): ?string
+    {
+        return $userId === 7 ? 'manager@shop.test' : null;
+    }
 }

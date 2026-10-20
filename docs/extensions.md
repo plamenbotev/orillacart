@@ -244,14 +244,22 @@ Escape what you print. A theme that overrides a template keeps the slots it copi
 
 ## Emails and templates
 
-- `orillacart_email_attachments` filters the files attached to an order email (paths that exist), with the email's
-  kind (`order_received`, `order_processing`, `order_shipped`, `order_completed`, `order_cancelled`,
-  `order_failed`, `order_refunded`, `customer_note`, `new_order`) and the order number. Emails go out from a
-  background job, so the filter runs there.
+- `orillacart_email_attachments` filters the files attached to an email (paths that exist), with the email's
+  kind and its order number. The kinds about an order are `order_received`, `payment_reminder`,
+  `order_processing`, `order_backordered`, `tracking_added`, `order_shipped`, `order_completed`,
+  `order_cancelled`, `order_failed`, `order_refunded`, `customer_note` and `receipt_link` to the customer, and
+  `new_order`, `order_attention`, `payment_failed` and `refund_made` to the shop. The others have no order:
+  `account_confirm`, `account_exists` and `account_welcome` to the customer, `low_stock` to the shop. Order emails
+  go out from a background job, so the filter runs there.
 - `orillacart_email_headers` filters the header lines, with the same arguments.
 - `orillacart_template_paths` adds folders of templates: the shop looks in the theme's `orillacart/` folder, then
   in these, then in its own `templates/`. A file with the same path (`storefront/receipt.html.twig`) replaces the
   shop's.
+- Email templates (`emails/`) can also be written by the shop on the Emails screen; its own comes before every
+  file of the name. Emails render apart from the storefront, always in Twig's sandbox: a template may use Twig's
+  tags, filters and tests (not `constant`, `source` or calling methods), the shop's `__`, `_n`, `money`,
+  `shop_date`, `address_lines` and `slot`, and the values the email is given. A theme's or add-on's email
+  template has to keep to that too.
 
 ## Addresses
 

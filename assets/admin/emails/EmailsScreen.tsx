@@ -16,18 +16,25 @@ import { EMAIL_LABELS } from '../orders/labels';
 import { toApiError } from '../shared/api';
 import {
 	type EmailSettings,
+	type EmailTemplate,
 	fetchEmailSettings,
+	fetchEmailTemplates,
 	saveEmailSettings,
 } from './api';
+import './emails.css';
+import { TemplateEditor } from './TemplateEditor';
+import { templateLabel } from './templates';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
 /**
- * The Shop → Emails screen: who the shop's emails come from, where the shop's own go, and which are sent.
- * The emails themselves are templates a theme can override (orillacart/emails/ in the theme).
+ * The Shop → Emails screen: who the shop's emails come from, where the shop's own go, which are sent, and the
+ * templates they are written from, which the shop can write itself (a theme can too, in orillacart/emails/).
  */
 export function EmailsScreen() {
 	const [ settings, setSettings ] = useState< EmailSettings | null >( null );
+	const [ templates, setTemplates ] = useState< EmailTemplate[] >( [] );
+	const [ editing, setEditing ] = useState< string | null >( null );
 	const [ message, setMessage ] = useState< Message >( null );
 
 	useEffect( () => {
@@ -40,6 +47,25 @@ export function EmailsScreen() {
 				} )
 			);
 	}, [] );
+	useEffect( () => {
+		if ( editing === null ) {
+			fetchEmailTemplates()
+				.then( setTemplates )
+				.catch( () => setTemplates( [] ) );
+		}
+	}, [ editing ] );
+
+	if ( editing !== null ) {
+		return (
+			<>
+				<h1>{ __( 'Emails', 'orillacart' ) }</h1>
+				<TemplateEditor
+					name={ editing }
+					onClose={ () => setEditing( null ) }
+				/>
+			</>
+		);
+	}
 
 	const notice = message !== null && (
 		<Notice status={ message.status } onRemove={ () => setMessage( null ) }>
@@ -188,6 +214,43 @@ export function EmailsScreen() {
 					{ __( 'Save', 'orillacart' ) }
 				</Button>
 			</form>
+			<Card className="orillacart-card">
+				<CardHeader>
+					<h2>{ __( 'Templates', 'orillacart' ) }</h2>
+				</CardHeader>
+				<CardBody>
+					<table className="widefat striped">
+						<tbody>
+							{ templates.map( ( template ) => (
+								<tr key={ template.name }>
+									<td>
+										{ templateLabel( template.name ) }
+										{ template.edited && (
+											<em>
+												{ ' — ' }
+												{ __(
+													'the shop’s own',
+													'orillacart'
+												) }
+											</em>
+										) }
+									</td>
+									<td>
+										<Button
+											variant="link"
+											onClick={ () =>
+												setEditing( template.name )
+											}
+										>
+											{ __( 'Edit', 'orillacart' ) }
+										</Button>
+									</td>
+								</tr>
+							) ) }
+						</tbody>
+					</table>
+				</CardBody>
+			</Card>
 		</>
 	);
 }

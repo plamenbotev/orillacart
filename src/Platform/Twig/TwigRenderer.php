@@ -14,7 +14,8 @@ use Twig\Error\RuntimeError;
 /**
  * Renders templates with view DTOs turned into the same arrays the REST API sends, so templates name fields
  * as the API does: {{ order.shipping_total }}. Twig is strict about variables: with WP_DEBUG a template naming
- * one it was not given fails; on a live site that is logged, and the template rendered again as if it were empty.
+ * one it was not given fails; on a live site that is logged, and the template rendered again as if it were empty,
+ * unless Strictness says otherwise.
  */
 final readonly class TwigRenderer implements TemplateRenderer
 {
@@ -22,6 +23,7 @@ final readonly class TwigRenderer implements TemplateRenderer
         private Environment $twig,
         private ?NormalizerInterface $normalizer = null,
         private LoggerInterface $logger = new NullLogger(),
+        private ?Strictness $strictness = null,
     ) {}
 
     public function render(string $template, array $context = []): string
@@ -43,7 +45,7 @@ final readonly class TwigRenderer implements TemplateRenderer
      */
     private function leniently(string $template, \Closure $render): string
     {
-        if (!$this->twig->isStrictVariables() || $this->twig->isDebug()) {
+        if (!$this->twig->isStrictVariables() || $this->twig->isDebug() || $this->strictness?->on() === true) {
             return $render();
         }
         try {

@@ -6,6 +6,7 @@ namespace OrillaCart\Notifications\Application;
 
 use OrillaCart\Catalog\Application\Dto\LowStockView;
 use OrillaCart\Catalog\Application\LowStock;
+use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Notifications\Domain\AlertedStock;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
@@ -41,16 +42,8 @@ final readonly class LowStockAlerts
 
             return false;
         }
-        $items = array_map(static fn(LowStockView $item): array => [
-            'name' => $item->name,
-            'sku' => $item->sku,
-            'stockroom' => $item->stockroom,
-            'quantity' => $item->quantity,
-            'threshold' => $item->threshold,
-            'new' => !\in_array($item->key(), $before, true),
-        ], $low);
         try {
-            $email = $this->writer->write(EmailKind::LowStock->template(), EmailKind::LowStock->value, $this->writer->shopAddress(), null, ['items' => $items]);
+            $email = $this->write(self::items($low, $before));
         } catch (EmailNotWritten $e) {
             $this->logger->error('The low stock email could not be written: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
 
@@ -65,5 +58,46 @@ final readonly class LowStockAlerts
         $this->alerted->remember($keys);
 
         return true;
+    }
+
+    /**
+     * The email as it would go now, for the shop to look at while editing its template; with an item made up
+     * when nothing is low.
+     *
+     * @throws EmailNotWritten
+     */
+    public function preview(): Email
+    {
+        $items = self::items($this->stock->items(), []);
+
+        return $this->write($items !== [] ? $items : [['name' => 'Brass lamp', 'sku' => 'LAMP-1', 'stockroom' => 'Main', 'quantity' => 1, 'threshold' => 2, 'new' => true]]);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $items
+     *
+     * @throws EmailNotWritten
+     */
+    private function write(array $items): Email
+    {
+        return $this->writer->write(EmailKind::LowStock->template(), EmailKind::LowStock->value, $this->writer->shopAddress(), null, ['items' => $items]);
+    }
+
+    /**
+     * @param list<LowStockView> $low
+     * @param list<string>       $before what the last email named
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function items(array $low, array $before): array
+    {
+        return array_map(static fn(LowStockView $item): array => [
+            'name' => $item->name,
+            'sku' => $item->sku,
+            'stockroom' => $item->stockroom,
+            'quantity' => $item->quantity,
+            'threshold' => $item->threshold,
+            'new' => !\in_array($item->key(), $before, true),
+        ], $low);
     }
 }
