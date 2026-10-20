@@ -51,6 +51,6 @@ final class StockHistoryTest extends TestCase
             ['release', 'Sofia', 2, 0],
             ['sale', 'Sofia', 0, 2],
         ], array_map(static fn(array $total): array => [$total['reason'], $total['stockroom'], $total['in'], $total['out']], $history->totals));
-        self::assertSame(1, \count(new StockHistory($shop->stock, new StockItemNames($shop->productRecords, $shop->content), $shop->productRecords, new FixedUserNames())->history(new StockHistoryQuery(reason: 'sale'))->movements));
+        self::assertCount(1, new StockHistory($shop->stock, new StockItemNames($shop->productRecords, $shop->content), $shop->productRecords, new FixedUserNames())->history(new StockHistoryQuery(reason: 'sale'))->movements);
     }
 }
