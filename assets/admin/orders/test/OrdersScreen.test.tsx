@@ -225,7 +225,10 @@ describe( 'OrdersScreen', () => {
 		expect(
 			await screen.findByText( 'Exported #7.', NOTICE )
 		).toBeVisible();
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+		// The customer picker may look customers up after the click: the action is among the calls, not last.
+		expect(
+			mockedFetch.mock.calls.map( ( [ call ] ) => call )
+		).toContainEqual( {
 			path: '/orillacart/v1/orders/7/actions/export',
 			method: 'POST',
 		} );
