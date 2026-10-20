@@ -8,7 +8,14 @@ import {
 	type RequestUtils,
 } from '@wordpress/e2e-test-utils-playwright';
 
-import { BILLING, product, remove, setUpShop, tearDownShop } from './shop';
+import {
+	BILLING,
+	product,
+	remove,
+	runJobs,
+	setUpShop,
+	tearDownShop,
+} from './shop';
 
 test.beforeAll( async ( { requestUtils } ) => {
 	// The shop's pages, a product and a carrier, as the screens expect a shop to have.
@@ -375,6 +382,75 @@ test.describe( 'The admin', () => {
 					`/wp/v2/orillacart_product/${ id }?force=true`
 				);
 			}
+		}
+	} );
+
+	test( 'exports the products file and imports a change from it', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		const mug = await product( requestUtils, 'E2E Imported Mug', {
+			price: '9',
+			sku: 'E2E-IMPORTED',
+		} );
+		// An import a run before left waiting would stand in for the upload.
+		const left = await requestUtils.rest< {
+			import: { id: number; status: string } | null;
+		} >( { path: '/orillacart/v1/imports/products/latest' } );
+		if ( left.import?.status === 'ready' ) {
+			await remove(
+				requestUtils,
+				`/orillacart/v1/imports/products/${ left.import.id }`
+			);
+		}
+		try {
+			await admin.visitAdminPage(
+				'admin.php',
+				'page=orillacart-exchange'
+			);
+			await page
+				.getByRole( 'button', { name: 'Export products' } )
+				.click();
+			const downloading = page.waitForEvent( 'download' );
+			await page
+				.getByRole( 'dialog' )
+				.getByRole( 'button', { name: 'Export' } )
+				.click();
+			const download = await downloading;
+			expect( download.suggestedFilename() ).toMatch(
+				/^products-.*\.csv$/
+			);
+
+			await page.locator( 'input[type="file"]' ).setInputFiles( {
+				name: 'products.csv',
+				mimeType: 'text/csv',
+				buffer: Buffer.from( 'sku,price\nE2E-IMPORTED,11.50\n' ),
+			} );
+			await expect(
+				page.getByText( 'products.csv has 1 row. It changes:' )
+			).toBeVisible();
+			await page
+				.getByRole( 'button', { name: 'Start the import' } )
+				.click();
+			runJobs();
+			await expect(
+				page
+					.getByText(
+						'products.csv is imported: 0 added, 1 updated, 0 refused.'
+					)
+					.first()
+			).toBeVisible( { timeout: 30000 } );
+
+			const saved = await requestUtils.rest< { price: string } >( {
+				path: `/orillacart/v1/products/${ mug.id }`,
+			} );
+			expect( saved.price ).toBe( '11.5' );
+		} finally {
+			await remove(
+				requestUtils,
+				`/wp/v2/orillacart_product/${ mug.id }?force=true`
+			);
 		}
 	} );
 } );
