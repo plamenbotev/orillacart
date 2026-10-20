@@ -64,6 +64,7 @@ final readonly class CarrierService
     {
         $carrier = new Carrier($command->name, $command->active, $command->position);
         $this->price($carrier, $command);
+        $carrier->scheduleDeliveries($command->deliverySchedule?->toSchedule());
         $this->carriers->save($carrier);
 
         return $this->view($carrier);
@@ -80,6 +81,7 @@ final readonly class CarrierService
         $carrier->activate($command->active);
         $carrier->moveTo($command->position);
         $this->price($carrier, $command);
+        $carrier->scheduleDeliveries($command->deliverySchedule?->toSchedule());
         $this->carriers->save($carrier);
 
         return $this->view($carrier);

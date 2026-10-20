@@ -65,6 +65,30 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         return array_values(array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $ids));
     }
 
+    public function deliveriesBooked(string $carrier, \DateTimeImmutable $from, \DateTimeImmutable $until): array
+    {
+        /** @var list<array{day: \DateTimeImmutable, slot: string, orders: int|string}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('o.deliveryDate AS day, o.deliveryKey AS slot, COUNT(o.id) AS orders')
+            ->from(Order::class, 'o')
+            ->where('o.deliveryKey LIKE :carrier')
+            ->andWhere('o.deliveryDate >= :from AND o.deliveryDate <= :until')
+            ->andWhere('o.status NOT IN (:closed)')
+            ->setParameter('carrier', addcslashes($carrier, '%_') . '%')
+            ->setParameter('from', $from, 'date_immutable')
+            ->setParameter('until', $until, 'date_immutable')
+            ->setParameter('closed', [OrderStatus::Cancelled, OrderStatus::Failed, OrderStatus::Refunded])
+            ->groupBy('o.deliveryDate, o.deliveryKey')
+            ->getQuery()
+            ->getResult();
+        $booked = [];
+        foreach ($rows as $row) {
+            $booked[$row['day']->format('Y-m-d') . '|' . substr($row['slot'], \strlen($carrier))] = (int) $row['orders'];
+        }
+
+        return $booked;
+    }
+
     public function search(OrderSearch $search, int $offset, int $limit): array
     {
         $query = $this->entityManager->createQueryBuilder()->from(Order::class, 'o');

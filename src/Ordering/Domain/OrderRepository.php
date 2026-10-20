@@ -66,6 +66,15 @@ interface OrderRepository
      */
     public function countByCustomers(array $customerIds): array;
 
+    /**
+     * Orders not cancelled, failed or refunded with a delivery day from $from to $until, counted by day and slot.
+     *
+     * @param string $carrier the start of their delivery keys: "5:"
+     *
+     * @return array<string, int> by "2026-10-21|morning"
+     */
+    public function deliveriesBooked(string $carrier, \DateTimeImmutable $from, \DateTimeImmutable $until): array;
+
     public function save(Order $order): void;
 
     public function remove(Order $order): void;

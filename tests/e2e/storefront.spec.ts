@@ -504,6 +504,72 @@ test.describe( 'A visitor', () => {
 		}
 	} );
 
+	test( 'chooses the day and the time of delivery', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const scheduled = await requestUtils.rest< { id: number } >( {
+			method: 'POST',
+			path: '/orillacart/v1/carriers',
+			data: {
+				name: 'E2E Scheduled',
+				rates: [ { name: 'By appointment', price: '7' } ],
+				delivery_schedule: {
+					weekdays: [ 1, 2, 3, 4, 5, 6, 7 ],
+					lead_days: 1,
+					days_ahead: 7,
+					slots: [
+						{ id: 'morning', from: '09:00', to: '12:00' },
+						{ id: 'evening', from: '17:00', to: '20:00' },
+					],
+					required: true,
+				},
+			},
+		} );
+		try {
+			await page.goto( shop.miniCartUrl );
+			await page
+				.locator( '.orillacart-product-card', { hasText: 'E2E Lamp' } )
+				.getByRole( 'button', { name: /Add to cart/ } )
+				.click();
+			await expect(
+				page
+					.locator( '.orillacart-mini-cart--panel' )
+					.getByText( '1 item in cart.' )
+			).toBeVisible();
+			await page.goto( shop.urls.checkout );
+			await fillBilling( page, 'e2e-day@example.com' );
+			await page.getByRole( 'radio', { name: /By appointment/ } ).check();
+			const day = page.getByLabel( 'Day of delivery' );
+			await expect( day.locator( 'option' ) ).toHaveCount( 7 );
+			const second = await day
+				.locator( 'option' )
+				.nth( 1 )
+				.getAttribute( 'value' );
+			await day.selectOption( second ?? '' );
+			const time = page.getByLabel( 'Time of delivery' );
+			await expect( time ).toHaveValue( 'morning' );
+			await time.selectOption( 'evening' );
+			await page.getByRole( 'radio', { name: 'Bank transfer' } ).check();
+			await page.getByRole( 'button', { name: 'Place order' } ).click();
+			await expect(
+				page.getByRole( 'heading', {
+					name: 'Thank you for your order',
+				} )
+			).toBeVisible();
+			await expect(
+				page
+					.locator( '.orillacart-receipt' )
+					.getByText( /, 17:00–20:00/ )
+			).toBeVisible();
+		} finally {
+			await remove(
+				requestUtils,
+				`/orillacart/v1/carriers/${ scheduled.id }`
+			);
+		}
+	} );
+
 	test( 'asks to hear when a sold-out product is back', async ( {
 		page,
 		requestUtils,

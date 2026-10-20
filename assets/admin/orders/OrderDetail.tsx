@@ -566,6 +566,26 @@ function Summary( { order }: { order: Order } ) {
 								when( order.paid_at )
 							) }
 				</p>
+				{ order.delivery_date !== null && (
+					<p>
+						{ sprintf(
+							/* translators: 1: the day, 2: the time of day, or nothing */
+							__( 'Delivery on %1$s%2$s.', 'orillacart' ),
+							new Date(
+								`${ order.delivery_date }T12:00:00Z`
+							).toLocaleDateString( undefined, {
+								weekday: 'long',
+								year: 'numeric',
+								month: 'long',
+								day: 'numeric',
+								timeZone: 'UTC',
+							} ),
+							order.delivery_slot === null
+								? ''
+								: `, ${ order.delivery_slot }`
+						) }
+					</p>
+				) }
 				{ order.vat_number !== null && (
 					<p>
 						{ sprintf(

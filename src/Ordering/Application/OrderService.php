@@ -30,6 +30,7 @@ use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RefundOrder;
 use OrillaCart\Ordering\Application\Dto\RestockItems;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
+use OrillaCart\Ordering\Domain\DeliveryChoice;
 use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
 use OrillaCart\Ordering\Domain\Event\OrderChanged;
 use OrillaCart\Ordering\Domain\Event\OrderDeleted;
@@ -120,6 +121,7 @@ final readonly class OrderService
             $command->locale,
             self::fees($command->fees),
             Money::of($command->feesTax),
+            $command->deliveryDate === null ? null : new DeliveryChoice(new \DateTimeImmutable($command->deliveryDate), $command->deliverySlot, $command->deliveryKey),
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);
@@ -636,6 +638,18 @@ final readonly class OrderService
     public function unpaidOnHold(\DateTimeImmutable $placedFrom, \DateTimeImmutable $placedUntil, array $gateways): array
     {
         return $this->orders->unpaidOnHold($placedFrom, $placedUntil, $gateways);
+    }
+
+    /**
+     * How many orders still to deliver each of a carrier's slots took, by day: for slots that take so many a day.
+     *
+     * @param string $carrier the start of the keys the orders count against: "5:"
+     *
+     * @return array<string, int> by "2026-10-21|morning"
+     */
+    public function deliveriesBooked(string $carrier, \DateTimeImmutable $from, \DateTimeImmutable $until): array
+    {
+        return $this->orders->deliveriesBooked($carrier, $from, $until);
     }
 
     /**

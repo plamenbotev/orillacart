@@ -49,5 +49,10 @@ final readonly class PlaceOrder
         /** The total the customer saw: an order that would cost anything else is refused, for them to look again. */
         #[Assert\Regex(pattern: '/^\d{1,11}(\.\d{1,4})?$/')]
         public ?string $expectedTotal = null,
+        /** The day chosen for delivery, "2026-10-21", and the time of day's id, when the way to ship offers them. */
+        #[Assert\Date]
+        public ?string $deliveryDate = null,
+        #[Assert\Length(max: 40)]
+        public ?string $deliverySlot = null,
     ) {}
 }

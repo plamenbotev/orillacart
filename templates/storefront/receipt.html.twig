@@ -149,6 +149,12 @@
                 </ul>
             </div>
         {% endif %}
+        {% if order.delivery_date %}
+            <div>
+                <h3 class="orillacart-heading">{{ __('Delivery') }}</h3>
+                <p>{{ order.delivery_date|shop_day }}{% if order.delivery_slot %}, {{ order.delivery_slot }}{% endif %}</p>
+            </div>
+        {% endif %}
         {% if order.pickup_point %}
             <div>
                 <h3 class="orillacart-heading">{{ __('Pickup point') }}</h3>

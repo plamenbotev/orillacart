@@ -18,6 +18,7 @@ use OrillaCart\Shared\Domain\Money;
 #[ORM\Table(name: 'orders')]
 #[ORM\Index(name: 'order_status', columns: ['status', 'placed_at'])]
 #[ORM\Index(name: 'order_customer', columns: ['customer_id'])]
+#[ORM\Index(name: 'order_delivery', columns: ['delivery_key', 'delivery_date'])]
 class Order
 {
     public const int MAX_NOTE_LENGTH = 2000;
@@ -80,6 +81,18 @@ class Order
     /** @var list<array{name: string, percent: string, amount: string}> */
     #[ORM\Column(type: 'json')]
     private array $taxes;
+
+    /** The day the customer chose for delivery, in the shop's calendar. */
+    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    private ?\DateTimeImmutable $deliveryDate = null;
+
+    /** The time of day they chose: "09:00–12:00". */
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $deliverySlot = null;
+
+    /** The carrier and slot it counts against, "5:morning", for slots that take so many orders a day. */
+    #[ORM\Column(length: 60, nullable: true)]
+    private ?string $deliveryKey = null;
 
     /** @var list<array{label: string, amount: string}> the fees it pays besides its items and shipping */
     #[ORM\Column(type: 'json')]
@@ -222,6 +235,12 @@ class Order
         $this->shippingTotal = $shippingTotal->toFixed();
         $this->shippingTax = $shippingTax->toFixed();
         $this->charge($draft->fees, $feesTax);
+        if ($draft->delivery !== null && $draft->shipping === null) {
+            throw new \LogicException('An order that ships nothing has no delivery day.');
+        }
+        $this->deliveryDate = $draft->delivery?->date;
+        $this->deliverySlot = $draft->delivery?->slot;
+        $this->deliveryKey = $draft->delivery?->key;
         $this->taxes = array_map(static fn(TaxLine $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount->toFixed()], $draft->taxes);
         $this->subtotal = $draft->subtotal->toFixed();
         $this->itemsTax = $draft->itemsTax->toFixed();
@@ -305,6 +324,12 @@ class Order
     public function shippingTax(): Money
     {
         return Money::of($this->shippingTax);
+    }
+
+    /** The day and time of day the customer chose for delivery; null when they chose none. */
+    public function delivery(): ?DeliveryChoice
+    {
+        return $this->deliveryDate === null ? null : new DeliveryChoice($this->deliveryDate, $this->deliverySlot, $this->deliveryKey);
     }
 
     /** @return list<OrderFee> */

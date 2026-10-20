@@ -28,7 +28,7 @@ final readonly class EmailTwig
         'abs', 'batch', 'capitalize', 'column', 'date', 'date_modify', 'default', 'e', 'escape', 'filter', 'first', 'format', 'join', 'json_encode', 'keys',
         'last', 'length', 'lower', 'map', 'merge', 'nl2br', 'number_format', 'raw', 'reduce', 'replace', 'reverse', 'round', 'slice', 'sort', 'split',
         'striptags', 'title', 'trim', 'upper', 'url_encode',
-        'money', 'shop_date', 'address_lines',
+        'money', 'shop_date', 'shop_day', 'address_lines',
     ];
     public const array FUNCTIONS = ['block', 'cycle', 'date', 'include', 'max', 'min', 'parent', 'range', '__', '_n', 'prices_include_tax', 'slot'];
     public const array TESTS = ['defined', 'divisible by', 'empty', 'even', 'iterable', 'mapping', 'none', 'null', 'odd', 'same as', 'sequence', 'true'];

@@ -35,5 +35,10 @@ final readonly class CheckoutDetails
         /** The way to pay chosen, for its fee; without it, the first offered. */
         #[Assert\Regex(pattern: '/^[a-z][a-z0-9_]{0,39}$/')]
         public ?string $payment = null,
+        /** The day chosen for delivery, "2026-10-21", and the time of day, when the way to ship offers them. */
+        #[Assert\Date]
+        public ?string $deliveryDate = null,
+        #[Assert\Length(max: 40)]
+        public ?string $deliverySlot = null,
     ) {}
 }

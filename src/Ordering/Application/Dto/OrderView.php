@@ -83,6 +83,9 @@ final readonly class OrderView
         public array $fees = [],
         public string $feesTotal = '0',
         public string $feesTax = '0',
+        /** The day the customer chose for delivery, "2026-10-21", and the time of day. */
+        public ?string $deliveryDate = null,
+        public ?string $deliverySlot = null,
     ) {}
 
     /**
@@ -141,6 +144,8 @@ final readonly class OrderView
             array_map(static fn(OrderFee $fee): NewOrderFee => new NewOrderFee($fee->label, (string) $fee->amount), $order->fees()),
             (string) $order->feesTotal(),
             (string) $order->feesTax(),
+            $order->delivery()?->date->format('Y-m-d'),
+            $order->delivery()?->slot,
         );
     }
 }

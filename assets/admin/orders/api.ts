@@ -137,6 +137,9 @@ export interface Order {
 	fees: { label: string; amount: string }[];
 	fees_total: string;
 	fees_tax: string;
+	/** The day the customer chose for delivery, "2026-10-21", and the time of day. */
+	delivery_date: string | null;
+	delivery_slot: string | null;
 	/** Why the shop has to look at it, one reason a line; null when nothing. */
 	attention: string | null;
 	/** The business customer's VAT number, and whether it bought without VAT. */

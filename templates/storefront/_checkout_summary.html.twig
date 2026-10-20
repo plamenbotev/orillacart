@@ -69,6 +69,34 @@
         {% else %}
             <p class="orillacart-notice">{{ address_known ? __('We cannot ship your order to this address.') : __('Enter your address to see the ways to ship.') }}</p>
         {% endfor %}
+        {% if summary.delivery %}
+            {% if summary.delivery.days %}
+                <p class="orillacart-field">
+                    <label for="orillacart-delivery-date">{{ __('Day of delivery') }}{% if summary.delivery.required %} <span aria-hidden="true">*</span>{% endif %}</label>
+                    <select id="orillacart-delivery-date" name="delivery_date"{{ summary.delivery.required ? ' required' }} data-orillacart-delivery data-orillacart-field="delivery_date">
+                        {% if not summary.delivery.required %}<option value="">{{ __('Whenever the courier comes') }}</option>{% endif %}
+                        {% for day in summary.delivery.days %}
+                            <option value="{{ day.date }}"{{ day.date == summary.delivery_date ? ' selected' }}>{{ day.date|shop_day }}</option>
+                        {% endfor %}
+                    </select>
+                </p>
+                {% for day in summary.delivery.days %}
+                    {% if day.date == summary.delivery_date and day.slots %}
+                        <p class="orillacart-field">
+                            <label for="orillacart-delivery-slot">{{ __('Time of delivery') }} <span aria-hidden="true">*</span></label>
+                            <select id="orillacart-delivery-slot" name="delivery_slot" required data-orillacart-field="delivery_slot">
+                                {% for slot in day.slots %}
+                                    {# translators: %s: a time of day, such as 09:00–12:00 -#}
+                                    <option value="{{ slot.id }}"{{ slot.id == summary.delivery_slot ? ' selected' }}{{ slot.full ? ' disabled' }}>{{ slot.full ? __('%s (fully booked)')|format(slot.label) : slot.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </p>
+                    {% endif %}
+                {% endfor %}
+            {% elseif summary.delivery.required %}
+                <p class="orillacart-notice orillacart-notice--error">{{ __('There is no day left to deliver on soon. Choose another way to ship.') }}</p>
+            {% endif %}
+        {% endif %}
         {% if summary.pickup_points %}
             <p class="orillacart-field">
                 <label for="orillacart-pickup-point">{{ __('Pick it up from') }} <span aria-hidden="true">*</span></label>

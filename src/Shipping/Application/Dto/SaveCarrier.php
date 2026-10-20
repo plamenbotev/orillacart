@@ -37,5 +37,8 @@ final readonly class SaveCarrier
         #[Assert\Valid]
         #[Assert\Count(max: 100)]
         public array $pickupLocations = [],
+        /** The days, and times of day, the customer chooses for delivery; null to leave them out. */
+        #[Assert\Valid]
+        public ?SaveDeliverySchedule $deliverySchedule = null,
     ) {}
 }

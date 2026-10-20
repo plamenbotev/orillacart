@@ -48,5 +48,9 @@ final readonly class NewOrder
         public array $fees = [],
         /** The tax on the fees. */
         public string $feesTax = '0',
+        /** The day the customer chose for delivery, "2026-10-21", with the time of day and what it counts against. */
+        public ?string $deliveryDate = null,
+        public ?string $deliverySlot = null,
+        public ?string $deliveryKey = null,
     ) {}
 }

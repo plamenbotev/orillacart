@@ -35,6 +35,7 @@ import {
 	type ShippingRateInput,
 	WITHOUT_CLASS,
 } from './api';
+import { DeliveryScheduleFields } from './DeliveryScheduleFields';
 import { ShippingClassesCard } from './ShippingClassesCard';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import { MoneyControl } from '../shared/MoneyControl';
@@ -213,6 +214,7 @@ const NEW_CARRIER: CarrierInput = {
 	method_taxable: true,
 	method_tax_group_id: null,
 	pickup_locations: [],
+	delivery_schedule: null,
 };
 
 const NEW_PLACE: Omit< PickupLocation, 'id' > = {
@@ -272,6 +274,7 @@ function CarrierCard( {
 			method_taxable: draft.method_taxable,
 			method_tax_group_id: draft.method_tax_group_id,
 			pickup_locations: pickup ? draft.pickup_locations : [],
+			delivery_schedule: draft.delivery_schedule,
 		} )
 			.then( ( saved ) => {
 				setDraft( saved );
@@ -574,6 +577,15 @@ function CarrierCard( {
 							</Flex>
 						</>
 					) }
+					<DeliveryScheduleFields
+						value={ draft.delivery_schedule }
+						onChange={ ( schedule ) =>
+							setDraft( {
+								...draft,
+								delivery_schedule: schedule,
+							} )
+						}
+					/>
 					{ draft.method === null &&
 						! pickup &&
 						draft.rates.map( ( rate, index ) => (

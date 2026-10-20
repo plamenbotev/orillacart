@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Checkout\Application\Dto;
 
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
+use OrillaCart\Shipping\Application\Dto\DeliveryChoiceView;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 
 /**
@@ -63,5 +64,10 @@ final readonly class CheckoutView
         public string $feesTax = '0',
         /** @var array<string, string> what each way to pay adds, before tax, by gateway; those without a fee left out */
         public array $paymentFees = [],
+        /** The days, and times of day, the chosen way to ship lets the customer choose; null when it offers none. */
+        public ?DeliveryChoiceView $delivery = null,
+        /** The day and the time of day chosen, as the form sends them back. */
+        public ?string $deliveryDate = null,
+        public ?string $deliverySlot = null,
     ) {}
 }

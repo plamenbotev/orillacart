@@ -50,6 +50,8 @@ final class ShopExtension extends AbstractExtension
         return [
             new TwigFilter('money', $this->money(...)),
             new TwigFilter('shop_date', $this->date(...)),
+            // {{ order.delivery_date|shop_day }}: a day of the calendar, "Monday, 19 October 2026"
+            new TwigFilter('shop_day', $this->day(...)),
             // {% for line in order.billing|address_lines %}
             new TwigFilter('address_lines', $this->addressLines(...)),
         ];
@@ -75,6 +77,24 @@ final class ShopExtension extends AbstractExtension
         }
 
         return (string) wp_date($format, $time);
+    }
+
+    /**
+     * A day of the calendar ("2026-10-19") with its weekday, in the site's language and date format: a day, not a
+     * moment, so no time zone moves it.
+     */
+    public function day(?string $date): string
+    {
+        $day = $date === null ? false : \DateTimeImmutable::createFromFormat('!Y-m-d', $date, new \DateTimeZone('UTC'));
+        if ($day === false) {
+            return '';
+        }
+        if (!\function_exists('wp_date')) {
+            return $day->format('l, Y-m-d');
+        }
+        $format = get_option('date_format');
+
+        return (string) wp_date('l, ' . (\is_string($format) && $format !== '' ? $format : 'Y-m-d'), $day->getTimestamp(), new \DateTimeZone('UTC'));
     }
 
     /**

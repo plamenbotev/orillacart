@@ -51,6 +51,24 @@ final class InMemoryOrderRepository implements OrderRepository
             && \in_array($order->paymentGateway(), $gateways, true))));
     }
 
+    public function deliveriesBooked(string $carrier, \DateTimeImmutable $from, \DateTimeImmutable $until): array
+    {
+        $booked = [];
+        foreach ($this->orders as $order) {
+            $delivery = $order->delivery();
+            if ($delivery?->key === null || !str_starts_with($delivery->key, $carrier) || $order->status()->isClosed()) {
+                continue;
+            }
+            $day = $delivery->date->format('Y-m-d');
+            if ($day >= $from->format('Y-m-d') && $day <= $until->format('Y-m-d')) {
+                $key = $day . '|' . substr($delivery->key, \strlen($carrier));
+                $booked[$key] = ($booked[$key] ?? 0) + 1;
+            }
+        }
+
+        return $booked;
+    }
+
     public function ofPerson(string $email, ?int $customerId, int $offset, int $limit): array
     {
         $found = array_values(array_filter($this->orders, static fn(Order $order): bool => strcasecmp($order->email(), $email) === 0 || ($customerId !== null && $order->customerId() === $customerId)));

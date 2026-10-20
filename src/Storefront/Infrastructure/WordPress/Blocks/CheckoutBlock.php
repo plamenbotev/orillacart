@@ -165,6 +165,8 @@ final readonly class CheckoutBlock implements BlockDefinition
             \is_string($_GET['pickup_point'] ?? null) ? mb_substr(sanitize_text_field(wp_unslash($_GET['pickup_point'])), 0, 64) : null,
             \is_string($_GET['vat_number'] ?? null) ? mb_substr(sanitize_text_field(wp_unslash($_GET['vat_number'])), 0, 20) : null,
             \is_string($_GET['payment'] ?? null) && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $_GET['payment']) === 1 ? $_GET['payment'] : null,
+            \is_string($_GET['delivery_date'] ?? null) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['delivery_date']) === 1 ? $_GET['delivery_date'] : null,
+            \is_string($_GET['delivery_slot'] ?? null) && preg_match('/^[a-z0-9][a-z0-9-]{0,39}$/', $_GET['delivery_slot']) === 1 ? $_GET['delivery_slot'] : null,
         );
     }
 

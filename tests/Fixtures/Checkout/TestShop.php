@@ -103,6 +103,7 @@ use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Security\Signatures;
 use OrillaCart\Shipping\Application\CarrierService;
 use OrillaCart\Shipping\Application\Consignments;
+use OrillaCart\Shipping\Application\DeliveryDays;
 use OrillaCart\Shipping\Application\ShipmentTracking;
 use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Shipping\Application\ShippingMethods;
@@ -181,6 +182,7 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 final class TestShop
 {
     public readonly MockClock $clock;
+    public readonly DeliveryDays $deliveryDays;
     public readonly ExtensionFailures $failures;
     public readonly InMemoryProductContent $content;
     public readonly InMemoryProductRepository $productRecords;
@@ -377,6 +379,7 @@ final class TestShop
             $this->languages,
             $this->failures,
             $fees,
+            $this->deliveryDays = new DeliveryDays($carrierRecords, $this->orders, new SofiaCalendar(), $this->clock),
         );
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);

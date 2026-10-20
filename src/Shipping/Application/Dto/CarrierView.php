@@ -29,6 +29,7 @@ final readonly class CarrierView
         public bool $methodTaxable = true,
         public ?int $methodTaxGroupId = null,
         public array $pickupLocations = [],
+        public ?SaveDeliverySchedule $deliverySchedule = null,
     ) {}
 
     /**
@@ -50,6 +51,7 @@ final readonly class CarrierView
             $carrier->isMethodTaxable(),
             $carrier->methodTaxGroupId(),
             array_map(PickupLocationView::fromLocation(...), $carrier->pickupLocations()),
+            $carrier->deliverySchedule() === null ? null : SaveDeliverySchedule::fromSchedule($carrier->deliverySchedule()),
         );
     }
 }

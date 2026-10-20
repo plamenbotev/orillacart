@@ -45,5 +45,6 @@ final readonly class OrderDraft
         public ?string $locale = null,
         public array $fees = [],
         public ?Money $feesTax = null,
+        public ?DeliveryChoice $delivery = null,
     ) {}
 }

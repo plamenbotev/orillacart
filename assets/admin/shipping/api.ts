@@ -66,6 +66,25 @@ export interface Carrier {
 	method_tax_group_id: number | null;
 	/** The shop's places to collect orders, for its own pickup; none for a carrier that ships. */
 	pickup_locations: PickupLocation[];
+	/** The days, and times of day, the customer chooses for delivery; null to leave them out. */
+	delivery_schedule: DeliverySchedule | null;
+}
+
+/** The days, and times of day, a carrier lets the customer choose for delivery. */
+export interface DeliverySchedule {
+	/** 1 (Monday) to 7 (Sunday). */
+	weekdays: number[];
+	/** The days it needs: 1 delivers tomorrow at the earliest. */
+	lead_days: number;
+	/** "14:00": an order after it counts from the next day. */
+	cutoff: string | null;
+	/** How many days from the earliest the customer may choose among. */
+	days_ahead: number;
+	/** Dates it does not deliver on, "2026-12-25". */
+	closed: string[];
+	slots: { id: string; from: string; to: string; limit: number | null }[];
+	/** The customer must choose. */
+	required: boolean;
 }
 
 /** One of the shop's places where customers collect their orders. */
@@ -90,6 +109,7 @@ export interface CarrierInput {
 	method_taxable: boolean;
 	method_tax_group_id: number | null;
 	pickup_locations: PickupLocation[];
+	delivery_schedule: DeliverySchedule | null;
 }
 
 /** A shipping method an add-on brings. */

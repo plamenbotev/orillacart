@@ -48,6 +48,8 @@ const order = {
 	shipping_tax: '0',
 	fees: [],
 	fees_total: '0',
+	delivery_date: null,
+	delivery_slot: null,
 	fees_tax: '0',
 	taxes: [],
 	subtotal: '8',

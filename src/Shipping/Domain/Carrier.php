@@ -47,6 +47,10 @@ class Carrier
     #[ORM\Column(type: 'json')]
     private array $pickupLocations = [];
 
+    /** @var array{weekdays: list<int>, lead_days: int, cutoff: ?string, days_ahead: int, closed: list<string>, slots: list<array{id: string, from: string, to: string, limit: ?int}>, required: bool}|null the days the customer may choose for delivery; null for none */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $deliverySchedule = null;
+
     /** Whether the method's prices (or the pickup fees) are taxed, and by which tax group (null: the shop's default). */
     #[ORM\Column]
     private bool $methodTaxable = true;
@@ -174,6 +178,17 @@ class Carrier
             $this->methodTaxable = $taxable;
             $this->methodTaxGroupId = $taxGroupId;
         }
+    }
+
+    /** The days, and times of day, the customer chooses for delivery; null to leave them out. */
+    public function scheduleDeliveries(?DeliverySchedule $schedule): void
+    {
+        $this->deliverySchedule = $schedule?->toArray();
+    }
+
+    public function deliverySchedule(): ?DeliverySchedule
+    {
+        return $this->deliverySchedule === null ? null : DeliverySchedule::fromArray($this->deliverySchedule);
     }
 
     /** Whether it is the shop's own pickup. */

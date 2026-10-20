@@ -21,6 +21,7 @@ const courier = {
 	method_taxable: true,
 	method_tax_group_id: null,
 	pickup_locations: [],
+	delivery_schedule: null,
 	rates: [
 		{
 			id: 7,
@@ -214,6 +215,48 @@ describe( 'ShippingScreen', () => {
 			/^[a-z0-9][a-z0-9-]{0,39}$/
 		);
 	} );
+
+	it( 'lets customers choose the day of delivery, in time slots', async () => {
+		serve();
+		const user = userEvent.setup();
+		render( <ShippingScreen /> );
+
+		await screen.findByRole( 'heading', { name: 'Courier' } );
+		await user.click(
+			screen.getAllByLabelText(
+				'Customers choose the day of delivery'
+			)[ 0 ] as HTMLElement
+		);
+		await user.click( screen.getByLabelText( 'Saturday' ) );
+		await user.type(
+			screen.getByLabelText( 'Closed on' ),
+			'2026-12-25, 2027-01-01'
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Add a time slot' } )
+		);
+		await user.type( screen.getByLabelText( 'Slot 1: orders a day' ), '5' );
+		await user.click(
+			screen.getByLabelText( 'The customer must choose a day' )
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save Courier' } )
+		);
+
+		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toMatchObject( {
+			path: '/orillacart/v1/carriers/1',
+			data: {
+				delivery_schedule: {
+					weekdays: [ 1, 2, 3, 4, 5, 6 ],
+					lead_days: 1,
+					days_ahead: 14,
+					closed: [ '2026-12-25', '2027-01-01' ],
+					slots: [ { from: '09:00', to: '12:00', limit: 5 } ],
+					required: true,
+				},
+			},
+		} );
+	}, 15000 );
 
 	it( 'adds a shipping class', async () => {
 		serve();

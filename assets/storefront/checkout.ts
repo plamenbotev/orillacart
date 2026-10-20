@@ -53,16 +53,18 @@ export function bindCheckout( form: HTMLFormElement ): void {
 			showShipping();
 		}
 		if (
-			target instanceof HTMLInputElement &&
-			( target.name === 'payment' || target.name === 'shipping_option' )
+			( target instanceof HTMLInputElement ||
+				target instanceof HTMLSelectElement ) &&
+			target.name in CHOSEN
 		) {
 			// A refresh already on its way draws the summary with the choices it was asked for: the
 			// customer's are kept here, for the refreshes after it.
-			form.dataset[ CHOSEN[ target.name ] ] = target.value;
+			form.dataset[ CHOSEN[ target.name as keyof typeof CHOSEN ] ] =
+				target.value;
 		}
 		if (
 			target.matches(
-				'[data-orillacart-country], [data-orillacart-state], [name$=".postcode"], [data-orillacart-ship-elsewhere], [data-orillacart-rate], [data-orillacart-payment], [name="vat_number"]'
+				'[data-orillacart-country], [data-orillacart-state], [name$=".postcode"], [data-orillacart-ship-elsewhere], [data-orillacart-rate], [data-orillacart-payment], [data-orillacart-delivery], [name="vat_number"]'
 			)
 		) {
 			// After this change's other listeners: the state list follows a new country first.
@@ -144,10 +146,12 @@ function bindContact( form: HTMLFormElement ): void {
 const CHOSEN = {
 	payment: 'orillacartPayment',
 	shipping_option: 'orillacartShipping',
+	delivery_date: 'orillacartDeliveryDate',
+	delivery_slot: 'orillacartDeliverySlot',
 } as const;
 
 /**
- * The way to ship or to pay the customer chose last, or the one ticked.
+ * The way to ship or to pay, or the delivery day or time, the customer chose last; or the one the form shows.
  *
  * @param form The checkout form.
  * @param name The radio buttons' name.
@@ -159,6 +163,8 @@ function chosen(
 	return (
 		form.dataset[ CHOSEN[ name ] ] ??
 		form.querySelector< HTMLInputElement >( `[name="${ name }"]:checked` )
+			?.value ??
+		form.querySelector< HTMLSelectElement >( `select[name="${ name }"]` )
 			?.value
 	);
 }
@@ -187,6 +193,9 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 		vat_number: value( 'vat_number' ),
 		// A way to pay may cost a fee: the totals are for the one chosen.
 		payment: chosen( form, 'payment' ) ?? '',
+		// The times of day open follow the day.
+		delivery_date: chosen( form, 'delivery_date' ) ?? '',
+		delivery_slot: chosen( form, 'delivery_slot' ) ?? '',
 	};
 	for ( const [ name, given ] of Object.entries( query ) ) {
 		if ( given ) {

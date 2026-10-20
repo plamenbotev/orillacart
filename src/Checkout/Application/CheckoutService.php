@@ -41,7 +41,12 @@ use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Shipping\Application\DeliveryDays;
+use OrillaCart\Shipping\Application\Dto\DeliveryChoiceView;
+use OrillaCart\Shipping\Application\Dto\DeliveryDayView;
+use OrillaCart\Shipping\Application\Dto\DeliverySlotView;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
+use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Application\VatNumbers;
 use Psr\Log\LoggerInterface;
@@ -71,6 +76,7 @@ final readonly class CheckoutService
         private Languages $languages,
         private ExtensionFailures $failures,
         private OrderFees $fees,
+        private DeliveryDays $deliveryDays,
     ) {}
 
     /**
@@ -151,7 +157,28 @@ final readonly class CheckoutService
             array_map(static fn(array $fee): CheckoutFeeView => new CheckoutFeeView($fee['label'], (string) $fee['amount']), $bill->fees()),
             (string) $bill->feesTax(),
             $bill->total()->isZero() ? [] : $this->paymentFees($gateways, $base),
+            $delivery = $priced['needs_shipping'] ? $this->deliveryDays->forOption($priced['chosen']?->id) : null,
+            ...self::deliveryChosen($delivery, $details->deliveryDate, $details->deliverySlot),
         );
+    }
+
+    /**
+     * The day and time of day the form shows chosen: the customer's when they are offered, otherwise the first
+     * day for a choice the customer must make.
+     *
+     * @return array{?string, ?string}
+     */
+    private static function deliveryChosen(?DeliveryChoiceView $delivery, ?string $date, ?string $slot): array
+    {
+        if ($delivery === null) {
+            return [null, null];
+        }
+        $day = array_find($delivery->days, static fn(DeliveryDayView $day): bool => $day->date === $date)
+            ?? ($delivery->required ? ($delivery->days[0] ?? null) : null);
+        $open = array_values(array_filter($day->slots ?? [], static fn(DeliverySlotView $offered): bool => !$offered->full));
+        $chosen = array_find($open, static fn(DeliverySlotView $offered): bool => $offered->id === $slot) ?? ($open[0] ?? null);
+
+        return [$day?->date, $chosen?->id];
     }
 
     /**
@@ -260,6 +287,11 @@ final readonly class CheckoutService
             throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to this address.' : 'Choose how to ship the order.', 'orillacart_shipping_required');
         }
         $pickupPoint = $this->pricing->pickupPoint($priced, $shippingAddress->country, $shippingAddress->postcode, $command->pickupPoint);
+        try {
+            $delivery = $priced['needs_shipping'] ? $this->deliveryDays->pick($chosen?->id, $command->deliveryDate, $command->deliverySlot) : null;
+        } catch (ShippingRuleViolation $e) {
+            throw new CheckoutRuleViolation($e->getMessage(), $e->errorCode, $e);
+        }
         $currency = $this->settings->current()->currency;
         $needsPayment = !$bill->total()->isZero();
         $gateway = null;
@@ -298,6 +330,9 @@ final readonly class CheckoutService
             $this->languages->current(),
             $this->pricing->orderFees($priced),
             (string) $bill->feesTax(),
+            $delivery?->date,
+            $delivery?->slot,
+            $delivery?->key,
         )), $gateway === null)));
         foreach ($this->failures->since($failed) as $failure) {
             $this->orders->note($order->number, $failure, false);
