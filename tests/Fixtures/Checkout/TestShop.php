@@ -109,6 +109,7 @@ use OrillaCart\Shipping\Application\ShippingMethods;
 use OrillaCart\Shipping\Application\ShippingQuotes;
 use OrillaCart\Shipping\Application\TrackConsignments;
 use OrillaCart\Shipping\Domain\Event\ConsignmentBooked;
+use OrillaCart\Shipping\Domain\Event\OrderReadyForPickup;
 use OrillaCart\Shipping\Domain\Event\ShippingClassDeleted;
 use OrillaCart\Shipping\Infrastructure\Events\ConvertMeasures as ConvertRateMeasures;
 use OrillaCart\Shipping\Infrastructure\Events\KeepShippedOrders;
@@ -420,6 +421,7 @@ final class TestShop
         $this->events->addListener(OrderRefunded::class, $emailing->refunded(...));
         $this->events->addListener(OrderNeedsAttention::class, $emailing->needsAttention(...));
         $this->events->addListener(ConsignmentBooked::class, $emailing->consignmentBooked(...));
+        $this->events->addListener(OrderReadyForPickup::class, $emailing->readyForPickup(...));
         $this->events->addListener(PaymentInQuestion::class, new FlagOrdersInQuestion($this->orders, $this->logger)->inQuestion(...));
 
         $settle = new SettleOrdersByPayment($this->orders, $this->jobs->jobs, $this->logger);

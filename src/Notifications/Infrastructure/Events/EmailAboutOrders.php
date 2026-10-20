@@ -10,6 +10,7 @@ use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
 use OrillaCart\Shipping\Domain\Event\ConsignmentBooked;
+use OrillaCart\Shipping\Domain\Event\OrderReadyForPickup;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 final readonly class EmailAboutOrders
@@ -40,6 +41,12 @@ final readonly class EmailAboutOrders
     public function consignmentBooked(ConsignmentBooked $event): void
     {
         $this->emails->trackingAdded($event->orderId);
+    }
+
+    #[AsEventListener]
+    public function readyForPickup(OrderReadyForPickup $event): void
+    {
+        $this->emails->readyForPickup($event->orderId);
     }
 
     #[AsEventListener]

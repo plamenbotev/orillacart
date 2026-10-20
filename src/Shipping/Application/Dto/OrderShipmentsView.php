@@ -16,6 +16,8 @@ final readonly class OrderShipmentsView
      * @param list<ConsignmentView> $shipments oldest first
      * @param list<ShippedItemView> $left      the items not in a shipment yet
      * @param bool                  $sendable  the order can ship what is left
+     * @param string|null           $pickup    the shop's place the customer collects the order from, for a pickup
+     * @param bool                  $collectable the shop can say it is ready there, and that it was collected
      */
     public function __construct(
         public bool $bookable,
@@ -23,5 +25,7 @@ final readonly class OrderShipmentsView
         public array $shipments,
         public array $left = [],
         public bool $sendable = false,
+        public ?string $pickup = null,
+        public bool $collectable = false,
     ) {}
 }

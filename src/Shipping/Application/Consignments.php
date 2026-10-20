@@ -39,6 +39,7 @@ use OrillaCart\Shipping\Domain\ConsignmentNotFound;
 use OrillaCart\Shipping\Domain\ConsignmentRepository;
 use OrillaCart\Shipping\Domain\ConsignmentStatus;
 use OrillaCart\Shipping\Domain\Event\ConsignmentBooked;
+use OrillaCart\Shipping\Domain\Event\OrderReadyForPickup;
 use OrillaCart\Shipping\Domain\ParcelTracking;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use Psr\Clock\ClockInterface;
@@ -78,7 +79,8 @@ final readonly class Consignments
         $booking = $this->booking($order);
         $consignments = $this->consignments->forOrder($orderId);
         $left = self::left($order, $consignments);
-        $ships = !\in_array($order->status, self::CLOSED, true) && $order->shippingAddress !== null && $left !== [];
+        $pickup = self::isPickup($order);
+        $ships = !\in_array($order->status, self::CLOSED, true) && $order->shippingAddress !== null && $left !== [] && !$pickup;
 
         return new OrderShipmentsView(
             $booking !== null && $ships,
@@ -86,7 +88,50 @@ final readonly class Consignments
             array_map(static fn(Consignment $consignment): ConsignmentView => ConsignmentView::fromConsignment($consignment, self::names($order)), $consignments),
             array_map(static fn(int $line, int $quantity): ShippedItemView => new ShippedItemView($line, self::names($order)[$line] ?? '', $quantity), array_keys($left), $left),
             $ships,
+            $pickup ? $order->pickupPoint : null,
+            $pickup && \in_array($order->status, ['processing', 'shipped'], true),
         );
+    }
+
+    /**
+     * An order to collect from one of the shop's places is ready there: the customer hears of it, with the place
+     * and when it is open. The shop may say so again.
+     *
+     * @throws OrderNotFound
+     * @throws ShippingRuleViolation for an order not collected from the shop, or not being fulfilled
+     */
+    public function readyForPickup(int $orderId, ?int $userId): void
+    {
+        $order = $this->collected($orderId);
+        $this->orders->addNote($orderId, new AddOrderNote(\sprintf('Ready to collect at %s.', $order->pickupPoint ?? '')), $userId);
+        $this->events->dispatch(new OrderReadyForPickup($orderId));
+    }
+
+    /**
+     * The customer collected the order: it is completed.
+     *
+     * @throws OrderNotFound
+     * @throws ShippingRuleViolation for an order not collected from the shop, or not being fulfilled
+     */
+    public function pickedUp(int $orderId, ?int $userId): void
+    {
+        $order = $this->collected($orderId);
+        $this->orders->changeStatus($orderId, new ChangeOrderStatus('completed', note: \sprintf('Collected at %s.', $order->pickupPoint ?? '')), $userId);
+    }
+
+    private function collected(int $orderId): OrderView
+    {
+        $order = $this->orders->order($orderId);
+        if (!self::isPickup($order) || !\in_array($order->status, ['processing', 'shipped'], true)) {
+            throw new ShippingRuleViolation(\sprintf('Order #%d is not one to collect from the shop now.', $orderId), 'orillacart_not_for_pickup');
+        }
+
+        return $order;
+    }
+
+    private static function isPickup(OrderView $order): bool
+    {
+        return str_starts_with($order->shippingOption ?? '', 'pickup:');
     }
 
     /**

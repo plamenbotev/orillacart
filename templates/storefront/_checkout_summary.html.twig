@@ -62,7 +62,9 @@
             <p class="orillacart-choice">
                 {% set field_id = 'orillacart-shipping-' ~ option.id|replace({':': '-'}) %}
                 <input id="{{ field_id }}" type="radio" name="shipping_option" value="{{ option.id }}"{{ option.id == summary.shipping_option ? ' checked' }} data-orillacart-rate>
-                <label for="{{ field_id }}">{{ option.carrier }}: {{ option.name }} <strong>{{ option.total|money(summary.currency) }}</strong></label>
+                <label for="{{ field_id }}">{{ option.carrier }}: {{ option.name }} <strong>{{ option.total|money(summary.currency) }}</strong>
+                    {%- if option.collect_at %}<br><small class="orillacart-choice__note">{{ option.collect_at.address }}{% if option.collect_at.hours %} · {{ option.collect_at.hours }}{% endif %}</small>{% endif -%}
+                </label>
             </p>
         {% else %}
             <p class="orillacart-notice">{{ address_known ? __('We cannot ship your order to this address.') : __('Enter your address to see the ways to ship.') }}</p>

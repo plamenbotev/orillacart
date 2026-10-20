@@ -10,12 +10,14 @@ use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Extension\SettingValues;
 use OrillaCart\Shipping\Application\Dto\CarrierView;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
+use OrillaCart\Shipping\Application\Dto\SavePickupLocation;
 use OrillaCart\Shipping\Application\Dto\SaveRange;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Shipping\Domain\Carrier;
 use OrillaCart\Shipping\Domain\CarrierNotFound;
 use OrillaCart\Shipping\Domain\CarrierRepository;
 use OrillaCart\Shipping\Domain\Measure;
+use OrillaCart\Shipping\Domain\PickupLocation;
 use OrillaCart\Shipping\Domain\PostcodePattern;
 use OrillaCart\Shipping\Domain\Range;
 use OrillaCart\Shipping\Domain\RateDetails;
@@ -94,13 +96,26 @@ final readonly class CarrierService
     }
 
     /**
-     * The carrier's own rates, or the method that prices it with its settings.
+     * The carrier's own rates, the method that prices it with its settings, or its pickup places.
      *
      * @throws ShippingRuleViolation
      * @throws RuleViolation         for settings the method does not declare, or of the wrong kind
      */
     private function price(Carrier $carrier, SaveCarrier $command): void
     {
+        if ($command->pickupLocations !== []) {
+            if ($command->method !== null || $command->rates !== []) {
+                throw new ShippingRuleViolation('The shop\'s own pickup has no rates and no shipping method.', 'orillacart_method_carrier_rates');
+            }
+            $carrier->offerPickup(
+                array_map(static fn(SavePickupLocation $location): PickupLocation => new PickupLocation($location->id, $location->name, $location->address, $location->hours, Money::of($location->fee)), $command->pickupLocations),
+                $command->methodTaxable,
+                $this->taxGroup($command->methodTaxGroupId),
+            );
+
+            return;
+        }
+        $carrier->offerPickup([]);
         if ($command->method === null) {
             $carrier->useMethod(null);
             $carrier->replaceRates($this->drafts($command->rates));

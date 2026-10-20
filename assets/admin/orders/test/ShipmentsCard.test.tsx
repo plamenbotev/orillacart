@@ -36,6 +36,8 @@ const waiting: OrderShipments = {
 		{ line: 1, name: 'Shade', quantity: 1 },
 	],
 	sendable: true,
+	pickup: null,
+	collectable: false,
 };
 
 type Request = { path: string; method?: string; data?: unknown };

@@ -65,6 +65,12 @@ final readonly class OrderEmails
         $this->queue($orderId, EmailKind::TrackingAdded);
     }
 
+    /** The order waits at the shop's place the customer collects it from. */
+    public function readyForPickup(int $orderId): void
+    {
+        $this->queue($orderId, EmailKind::ReadyForPickup);
+    }
+
     /** The note goes by its id: the job keeps no text a customer or the shop wrote. */
     public function noteAdded(int $orderId, int $noteId): void
     {

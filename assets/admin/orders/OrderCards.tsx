@@ -20,6 +20,8 @@ import {
 	changeDownloadAllowance,
 	fetchLabel,
 	fetchShipments,
+	pickedUp,
+	readyForPickup,
 	sendShipment,
 	shipmentArrived,
 	type Order,
@@ -273,7 +275,11 @@ export function ShipmentsCard( {
 	if ( state === null ) {
 		return <Spinner />;
 	}
-	if ( ! state.sendable && state.shipments.length === 0 ) {
+	if (
+		! state.sendable &&
+		state.shipments.length === 0 &&
+		state.pickup === null
+	) {
 		return null;
 	}
 	const run = ( work: Promise< unknown > ) => {
@@ -302,6 +308,48 @@ export function ShipmentsCard( {
 						onError={ onError }
 					/>
 				) ) }
+				{ state.pickup !== null && (
+					<Flex align="center" wrap>
+						<FlexItem isBlock>
+							{ sprintf(
+								/* translators: %s: the shop's place, with its address and hours */
+								__( 'Collected at %s', 'orillacart' ),
+								state.pickup
+							) }
+						</FlexItem>
+						{ state.collectable && (
+							<>
+								<FlexItem>
+									<Button
+										variant="secondary"
+										disabled={ busy }
+										onClick={ () =>
+											run(
+												readyForPickup( order.number )
+											)
+										}
+									>
+										{ __(
+											'Tell the customer it is ready',
+											'orillacart'
+										) }
+									</Button>
+								</FlexItem>
+								<FlexItem>
+									<Button
+										variant="primary"
+										disabled={ busy }
+										onClick={ () =>
+											run( pickedUp( order.number ) )
+										}
+									>
+										{ __( 'Collected', 'orillacart' ) }
+									</Button>
+								</FlexItem>
+							</>
+						) }
+					</Flex>
+				) }
 				{ state.sendable && (
 					<NewShipment
 						key={ JSON.stringify( state.left ) }

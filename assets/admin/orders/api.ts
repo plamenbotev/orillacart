@@ -608,6 +608,10 @@ export interface OrderShipments {
 	left: ShippedItem[];
 	/** Whether what is left can be sent. */
 	sendable: boolean;
+	/** The shop's place the customer collects the order from, for a pickup. */
+	pickup: string | null;
+	/** Whether the shop can say it is ready there, and that it was collected. */
+	collectable: boolean;
 }
 
 export function fetchShipments( orderId: number ): Promise< OrderShipments > {
@@ -651,6 +655,28 @@ export function sendShipment(
 		path: `${ BASE }/orders/${ orderId }/shipments/sent`,
 		method: 'POST',
 		data: input,
+	} );
+}
+
+/**
+ * Tells the customer the order is ready at the place they collect it from.
+ * @param orderId
+ */
+export function readyForPickup( orderId: number ): Promise< void > {
+	return apiFetch< void >( {
+		path: `${ BASE }/orders/${ orderId }/ready-for-pickup`,
+		method: 'POST',
+	} );
+}
+
+/**
+ * The customer collected the order: it is completed.
+ * @param orderId
+ */
+export function pickedUp( orderId: number ): Promise< void > {
+	return apiFetch< void >( {
+		path: `${ BASE }/orders/${ orderId }/picked-up`,
+		method: 'POST',
 	} );
 }
 

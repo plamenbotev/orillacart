@@ -442,6 +442,68 @@ test.describe( 'A visitor', () => {
 		}
 	} );
 
+	test( 'collects the order at one of the shop’s places', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const pickup = await requestUtils.rest< { id: number } >( {
+			method: 'POST',
+			path: '/orillacart/v1/carriers',
+			data: {
+				name: 'E2E Pickup',
+				pickup_locations: [
+					{
+						id: 'sofia',
+						name: 'Sofia shop',
+						address: '1 Vitosha Blvd, Sofia',
+						hours: 'Mon–Fri 9–18',
+						fee: '0',
+					},
+				],
+			},
+		} );
+		try {
+			await page.goto( shop.miniCartUrl );
+			await page
+				.locator( '.orillacart-product-card', { hasText: 'E2E Lamp' } )
+				.getByRole( 'button', { name: /Add to cart/ } )
+				.click();
+			await expect(
+				page
+					.locator( '.orillacart-mini-cart--panel' )
+					.getByText( '1 item in cart.' )
+			).toBeVisible();
+			await page.goto( shop.urls.checkout );
+			await fillBilling( page, 'e2e-pickup@example.com' );
+			const place = page.getByRole( 'radio', { name: /Sofia shop/ } );
+			await expect( place ).toBeVisible();
+			await expect(
+				page.getByText( '1 Vitosha Blvd, Sofia · Mon–Fri 9–18' )
+			).toBeVisible();
+			await place.check();
+			await expect( page.locator( '.orillacart-total' ) ).toContainText(
+				'30.00'
+			);
+			await page.getByRole( 'radio', { name: 'Bank transfer' } ).check();
+			await page.getByRole( 'button', { name: 'Place order' } ).click();
+			await expect(
+				page.getByRole( 'heading', {
+					name: 'Thank you for your order',
+				} )
+			).toBeVisible();
+			await expect(
+				page.getByText(
+					'Sofia shop, 1 Vitosha Blvd, Sofia (Mon–Fri 9–18)'
+				)
+			).toBeVisible();
+		} finally {
+			await remove(
+				requestUtils,
+				`/orillacart/v1/carriers/${ pickup.id }`
+			);
+		}
+	} );
+
 	test( 'asks to hear when a sold-out product is back', async ( {
 		page,
 		requestUtils,

@@ -7,11 +7,13 @@ namespace OrillaCart\Shipping\Domain;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use OrillaCart\Shared\Domain\Money;
 
 /**
  * A company or service that ships orders, such as "Courier". Its prices come from its own rates, in the order
  * checkout lists them, or from a shipping method an add-on brings (the courier's own services), set up with
- * the method's settings. An inactive carrier keeps everything but checkout offers none of it.
+ * the method's settings; or it is the shop's own pickup, offering the places where customers collect their
+ * orders. An inactive carrier keeps everything but checkout offers none of it.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'carriers')]
@@ -41,7 +43,11 @@ class Carrier
     #[ORM\Column(type: 'sealed_json')]
     private array $methodSettings = [];
 
-    /** Whether the method's prices are taxed, and by which tax group (null: the shop's default). */
+    /** @var list<array{id: string, name: string, address: string, hours: string, fee: string}> where customers collect orders, for the shop's own pickup */
+    #[ORM\Column(type: 'json')]
+    private array $pickupLocations = [];
+
+    /** Whether the method's prices (or the pickup fees) are taxed, and by which tax group (null: the shop's default). */
     #[ORM\Column]
     private bool $methodTaxable = true;
 
@@ -140,7 +146,57 @@ class Carrier
         $this->methodTaxGroupId = $method === null ? null : $taxGroupId;
         if ($method !== null) {
             $this->rates->clear();
+            $this->pickupLocations = [];
         }
+    }
+
+    /**
+     * Makes it the shop's own pickup at these places, or (none) a carrier that ships again. A pickup has no rates
+     * and no method; its fees are taxed as the method's prices would be.
+     *
+     * @param list<PickupLocation> $locations in the order checkout lists them
+     *
+     * @throws ShippingRuleViolation for a place listed twice
+     */
+    public function offerPickup(array $locations, bool $taxable = true, ?int $taxGroupId = null): void
+    {
+        $seen = [];
+        foreach ($locations as $location) {
+            if (isset($seen[$location->id])) {
+                throw new ShippingRuleViolation(\sprintf('The pickup place "%s" is listed twice.', $location->id), 'orillacart_duplicate_pickup_location');
+            }
+            $seen[$location->id] = true;
+        }
+        $this->pickupLocations = array_map(static fn(PickupLocation $location): array => ['id' => $location->id, 'name' => $location->name, 'address' => $location->address, 'hours' => $location->hours, 'fee' => $location->fee->toFixed()], $locations);
+        if ($locations !== []) {
+            $this->useMethod(null);
+            $this->rates->clear();
+            $this->methodTaxable = $taxable;
+            $this->methodTaxGroupId = $taxGroupId;
+        }
+    }
+
+    /** Whether it is the shop's own pickup. */
+    public function isPickup(): bool
+    {
+        return $this->pickupLocations !== [];
+    }
+
+    /** @return list<PickupLocation> */
+    public function pickupLocations(): array
+    {
+        return array_map(static fn(array $row): PickupLocation => new PickupLocation($row['id'], $row['name'], $row['address'], $row['hours'], Money::of($row['fee'])), $this->pickupLocations);
+    }
+
+    public function pickupLocation(string $id): ?PickupLocation
+    {
+        foreach ($this->pickupLocations() as $location) {
+            if ($location->id === $id) {
+                return $location;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -164,8 +220,8 @@ class Carrier
      */
     public function replaceRates(array $drafts): void
     {
-        if ($this->method !== null && $drafts !== []) {
-            throw new ShippingRuleViolation('A carrier whose shipping method prices it has no rates of its own.', 'orillacart_method_carrier_rates');
+        if (($this->method !== null || $this->isPickup()) && $drafts !== []) {
+            throw new ShippingRuleViolation('A carrier whose shipping method prices it, or the shop\'s own pickup, has no rates of its own.', 'orillacart_method_carrier_rates');
         }
         $existing = [];
         foreach ($this->rates as $rate) {

@@ -25,6 +25,7 @@ import {
 	fetchCarriers,
 	fetchShippingClasses,
 	fetchShippingMethods,
+	type PickupLocation,
 	type Measure,
 	MEASURES,
 	type Range,
@@ -211,7 +212,24 @@ const NEW_CARRIER: CarrierInput = {
 	method_settings: {},
 	method_taxable: true,
 	method_tax_group_id: null,
+	pickup_locations: [],
 };
+
+const NEW_PLACE: Omit< PickupLocation, 'id' > = {
+	name: '',
+	address: '',
+	hours: '',
+	fee: '0',
+};
+
+/** "Prices from" the shop's own pickup places. */
+const PICKUP = '__pickup';
+
+/** A new place's id: stays the same while it is edited. */
+const placeId = (): string =>
+	`place-${ Date.now().toString( 36 ) }${ Math.floor(
+		Math.random() * 1296
+	).toString( 36 ) }`;
 
 function CarrierCard( {
 	carrier,
@@ -228,6 +246,17 @@ function CarrierCard( {
 	useUnsavedChanges( differs( draft, carrier ?? NEW_CARRIER ) );
 	const method = methods.find( ( found ) => found.id === draft.method );
 	const [ confirming, setConfirming ] = useState( false );
+	// The shop's own pickup: places to collect orders, no rates and no method.
+	const [ pickup, setPickup ] = useState(
+		( carrier?.pickup_locations.length ?? 0 ) > 0
+	);
+	const setPlace = ( index: number, change: Partial< PickupLocation > ) =>
+		setDraft( {
+			...draft,
+			pickup_locations: draft.pickup_locations.map( ( place, i ) =>
+				i === index ? { ...place, ...change } : place
+			),
+		} );
 
 	const submit = ( event: FormEvent ) => {
 		event.preventDefault();
@@ -236,11 +265,13 @@ function CarrierCard( {
 			name: draft.name,
 			active: draft.active,
 			position: draft.position,
-			rates: draft.method === null ? draft.rates : [],
-			method: draft.method,
-			method_settings: draft.method === null ? {} : draft.method_settings,
+			rates: draft.method === null && ! pickup ? draft.rates : [],
+			method: pickup ? null : draft.method,
+			method_settings:
+				draft.method === null || pickup ? {} : draft.method_settings,
 			method_taxable: draft.method_taxable,
 			method_tax_group_id: draft.method_tax_group_id,
+			pickup_locations: pickup ? draft.pickup_locations : [],
 		} )
 			.then( ( saved ) => {
 				setDraft( saved );
@@ -335,33 +366,134 @@ function CarrierCard( {
 							setDraft( { ...draft, active } )
 						}
 					/>
-					{ ( methods.length > 0 || draft.method !== null ) && (
-						<SelectControl
-							__next40pxDefaultSize
-							label={ __( 'Prices from', 'orillacart' ) }
-							value={ draft.method ?? '' }
-							options={ [
-								{
-									value: '',
-									label: __( 'Its own rates', 'orillacart' ),
-								},
-								...methods.map( ( found ) => ( {
-									value: found.id,
-									label: found.name,
-								} ) ),
-							] }
-							onChange={ ( value ) =>
+					<SelectControl
+						__next40pxDefaultSize
+						label={ __( 'Prices from', 'orillacart' ) }
+						value={ pickup ? PICKUP : ( draft.method ?? '' ) }
+						options={ [
+							{
+								value: '',
+								label: __( 'Its own rates', 'orillacart' ),
+							},
+							{
+								value: PICKUP,
+								label: __(
+									'Pickup at the shop’s places',
+									'orillacart'
+								),
+							},
+							...methods.map( ( found ) => ( {
+								value: found.id,
+								label: found.name,
+							} ) ),
+						] }
+						onChange={ ( value ) => {
+							setPickup( value === PICKUP );
+							setDraft( {
+								...draft,
+								method:
+									value === '' || value === PICKUP
+										? null
+										: value,
+								method_settings: {},
+								pickup_locations:
+									value === PICKUP &&
+									draft.pickup_locations.length === 0
+										? [ { ...NEW_PLACE, id: placeId() } ]
+										: draft.pickup_locations,
+							} );
+						} }
+					/>
+					{ pickup &&
+						draft.pickup_locations.map( ( place, index ) => (
+							<fieldset
+								key={ place.id }
+								className="orillacart-pickup-place"
+							>
+								<legend>
+									{ place.name ||
+										__(
+											'A place to collect orders',
+											'orillacart'
+										) }
+								</legend>
+								<TextControl
+									__next40pxDefaultSize
+									label={ __( 'Place name', 'orillacart' ) }
+									value={ place.name }
+									onChange={ ( name ) =>
+										setPlace( index, { name } )
+									}
+								/>
+								<TextControl
+									__next40pxDefaultSize
+									label={ __( 'Address', 'orillacart' ) }
+									value={ place.address }
+									onChange={ ( address ) =>
+										setPlace( index, { address } )
+									}
+								/>
+								<TextControl
+									__next40pxDefaultSize
+									label={ __(
+										'Opening hours',
+										'orillacart'
+									) }
+									help={ __(
+										'Such as "Mon–Fri 9–18, Sat 10–14".',
+										'orillacart'
+									) }
+									value={ place.hours }
+									onChange={ ( hours ) =>
+										setPlace( index, { hours } )
+									}
+								/>
+								<TextControl
+									__next40pxDefaultSize
+									label={ __( 'Fee', 'orillacart' ) }
+									value={ place.fee }
+									onChange={ ( fee ) =>
+										setPlace( index, {
+											fee: fee === '' ? '0' : fee,
+										} )
+									}
+								/>
+								<Button
+									variant="tertiary"
+									isDestructive
+									onClick={ () =>
+										setDraft( {
+											...draft,
+											pickup_locations:
+												draft.pickup_locations.filter(
+													( _, i ) => i !== index
+												),
+										} )
+									}
+								>
+									{ __( 'Remove the place', 'orillacart' ) }
+								</Button>
+							</fieldset>
+						) ) }
+					{ pickup && (
+						<Button
+							variant="secondary"
+							onClick={ () =>
 								setDraft( {
 									...draft,
-									method: value === '' ? null : value,
-									method_settings: {},
+									pickup_locations: [
+										...draft.pickup_locations,
+										{ ...NEW_PLACE, id: placeId() },
+									],
 								} )
 							}
-						/>
+						>
+							{ __( 'Add a place', 'orillacart' ) }
+						</Button>
 					) }
-					{ draft.method !== null && (
+					{ ( draft.method !== null || pickup ) && (
 						<>
-							{ method === undefined && (
+							{ ! pickup && method === undefined && (
 								<Notice
 									status="warning"
 									isDismissible={ false }
@@ -373,7 +505,9 @@ function CarrierCard( {
 								</Notice>
 							) }
 							<SettingFields
-								fields={ method?.fields ?? [] }
+								fields={
+									pickup ? [] : ( method?.fields ?? [] )
+								}
 								values={ draft.method_settings }
 								secretsSet={ carrier?.secrets_set ?? [] }
 								onChange={ ( key, value ) =>
@@ -441,6 +575,7 @@ function CarrierCard( {
 						</>
 					) }
 					{ draft.method === null &&
+						! pickup &&
 						draft.rates.map( ( rate, index ) => (
 							<RateFields
 								key={ rate.id ?? `new-${ index }` }
@@ -461,7 +596,7 @@ function CarrierCard( {
 							/>
 						) ) }
 					<Flex justify="flex-start">
-						{ draft.method === null && (
+						{ draft.method === null && ! pickup && (
 							<Button
 								variant="secondary"
 								onClick={ () =>

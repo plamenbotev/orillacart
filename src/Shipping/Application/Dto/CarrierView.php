@@ -15,6 +15,7 @@ final readonly class CarrierView
      * @param string|null                $method         the add-on's shipping method that prices it
      * @param array<string, string|bool> $methodSettings secrets come back empty; secrets_set names the saved ones
      * @param list<string>               $secretsSet
+     * @param list<PickupLocationView>   $pickupLocations the shop's places to collect orders, for its own pickup
      */
     public function __construct(
         public int $id,
@@ -27,6 +28,7 @@ final readonly class CarrierView
         public array $secretsSet = [],
         public bool $methodTaxable = true,
         public ?int $methodTaxGroupId = null,
+        public array $pickupLocations = [],
     ) {}
 
     /**
@@ -47,6 +49,7 @@ final readonly class CarrierView
             $secretsSet,
             $carrier->isMethodTaxable(),
             $carrier->methodTaxGroupId(),
+            array_map(PickupLocationView::fromLocation(...), $carrier->pickupLocations()),
         );
     }
 }

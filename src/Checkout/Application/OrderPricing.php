@@ -163,7 +163,7 @@ final readonly class OrderPricing
                 $percents = array_map(static fn(Tax $rate): string => $rate->percent, $taxes);
                 $tax = array_reduce($taxes, static fn(Money $sum, Tax $rate): Money => $sum->add(($inclusive ? $price->includedPercent($rate->percent, $percents) : $price->percent($rate->percent))->rounded($decimals)), Money::zero());
                 $total = $inclusive ? $price->rounded($decimals) : $price->rounded($decimals)->add($tax);
-                $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $total, $option->toPickupPoint);
+                $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $total, $option->toPickupPoint, $option->collectAt);
                 $options[] = $view;
                 // The customer's choice when it is offered, otherwise the first rate, so the totals include shipping.
                 if ($chosen === null || $option->id === $shippingOption) {
@@ -296,7 +296,11 @@ final readonly class OrderPricing
         $chosen = $priced['chosen'];
         $bill = $priced['bill'];
 
-        return $chosen === null || !$priced['needs_shipping'] ? null : new NewShipping($chosen->id, $chosen->carrier, $chosen->name, (string) $bill->shipping(), (string) $bill->shippingTax(), $pickupPoint?->id, $pickupPoint?->label());
+        // Collected from the shop: the place, with when it is open, is where the order goes.
+        $pickupPoint ??= $chosen?->collectAt;
+        $label = $pickupPoint === null ? null : ($chosen?->collectAt !== null && $pickupPoint->hours !== '' ? "{$pickupPoint->label()} ({$pickupPoint->hours})" : $pickupPoint->label());
+
+        return $chosen === null || !$priced['needs_shipping'] ? null : new NewShipping($chosen->id, $chosen->carrier, $chosen->name, (string) $bill->shipping(), (string) $bill->shippingTax(), $pickupPoint?->id, $label);
     }
 
     /**

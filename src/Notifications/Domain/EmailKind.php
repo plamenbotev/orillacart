@@ -19,6 +19,8 @@ enum EmailKind: string
     /** To the customer: a courier has the shipment booked, and it can be followed. */
     case TrackingAdded = 'tracking_added';
     case OrderShipped = 'order_shipped';
+    /** To the customer: the order waits at the shop's place they collect it from. */
+    case ReadyForPickup = 'ready_for_pickup';
     case OrderCompleted = 'order_completed';
     /** To the customer: the order still waits for their offline payment, some days after it was placed. */
     case PaymentReminder = 'payment_reminder';

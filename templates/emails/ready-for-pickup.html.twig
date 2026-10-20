@@ -1,0 +1,8 @@
+{% extends 'emails/layout.html.twig' %}
+{# translators: 1: site name, 2: order number -#}
+{% block subject %}{{ __('[%1$s] Your order #%2$s is ready to collect')|format(site_name, order.number) }}{% endblock %}
+{% block heading %}{{ __('Your order is ready to collect') }}{% endblock %}
+{% block intro %}
+<p>{{ __('Your order waits for you at:') }}</p>
+<p style="margin:16px 0;"><strong>{{ order.pickup_point }}</strong></p>
+{% endblock %}

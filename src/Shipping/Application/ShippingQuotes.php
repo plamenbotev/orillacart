@@ -61,6 +61,21 @@ final readonly class ShippingQuotes
             if (!$carrier->isActive()) {
                 continue;
             }
+            if ($carrier->isPickup()) {
+                foreach ($carrier->pickupLocations() as $location) {
+                    $options[] = new ShippingOptionView(
+                        "pickup:{$carrier->id()}:{$location->id}",
+                        $carrier->id(),
+                        $carrier->name(),
+                        $location->name,
+                        (string) $location->fee,
+                        $carrier->isMethodTaxable(),
+                        $carrier->methodTaxGroupId(),
+                        collectAt: new PickupPointView($location->id, $location->name, $location->address, $location->hours),
+                    );
+                }
+                continue;
+            }
             if ($carrier->method() !== null) {
                 foreach ($query->country === null ? [] : $this->quoted($carrier, $query) as $rate) {
                     $options[] = new ShippingOptionView(
@@ -105,7 +120,7 @@ final readonly class ShippingQuotes
         $subtotal = Money::of($query->subtotal);
         $least = null;
         foreach ($this->carriers->all() as $carrier) {
-            if (!$carrier->isActive() || $carrier->method() !== null) {
+            if (!$carrier->isActive() || $carrier->method() !== null || $carrier->isPickup()) {
                 continue;
             }
             foreach ($carrier->rates() as $rate) {

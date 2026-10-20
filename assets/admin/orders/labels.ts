@@ -19,6 +19,7 @@ export const EMAIL_LABELS: Record< string, string > = {
 	order_backordered: __( 'Items on backorder', 'orillacart' ),
 	tracking_added: __( 'Shipment booked, with its tracking', 'orillacart' ),
 	order_shipped: __( 'Order shipped', 'orillacart' ),
+	ready_for_pickup: __( 'Ready to collect', 'orillacart' ),
 	order_completed: __( 'Order completed', 'orillacart' ),
 	payment_reminder: __( 'Reminder to pay', 'orillacart' ),
 	order_cancelled: __( 'Order cancelled', 'orillacart' ),

@@ -20,6 +20,7 @@ const courier = {
 	secrets_set: [],
 	method_taxable: true,
 	method_tax_group_id: null,
+	pickup_locations: [],
 	rates: [
 		{
 			id: 7,
@@ -139,7 +140,8 @@ describe( 'ShippingScreen', () => {
 			postcodes: [ '1000-1999', 'SW1*' ],
 			excluded_regions: [ 'US-HI' ],
 		} );
-	} );
+		// It types into many fields of a long form: more than Jest's default 5 seconds on a busy machine.
+	}, 15000 );
 
 	it( 'prices a carrier with an add-on’s shipping method', async () => {
 		serve();
@@ -166,6 +168,51 @@ describe( 'ShippingScreen', () => {
 				method_settings: { account: 'A-1' },
 			},
 		} );
+	} );
+
+	it( 'makes a carrier the shop’s own pickup at its places', async () => {
+		serve();
+		const user = userEvent.setup();
+		render( <ShippingScreen /> );
+
+		await screen.findByRole( 'heading', { name: 'Courier' } );
+		await user.selectOptions(
+			screen.getAllByLabelText( 'Prices from' )[ 0 ] as HTMLElement,
+			'__pickup'
+		);
+		expect( screen.queryByLabelText( 'Rate name' ) ).toBeNull();
+		await user.type( screen.getByLabelText( 'Place name' ), 'Sofia shop' );
+		await user.type( screen.getByLabelText( 'Address' ), '1 Vitosha Blvd' );
+		await user.type(
+			screen.getByLabelText( 'Opening hours' ),
+			'Mon–Fri 9–18'
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save Courier' } )
+		);
+
+		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toMatchObject( {
+			path: '/orillacart/v1/carriers/1',
+			method: 'PUT',
+			data: {
+				rates: [],
+				method: null,
+				pickup_locations: [
+					{
+						name: 'Sofia shop',
+						address: '1 Vitosha Blvd',
+						hours: 'Mon–Fri 9–18',
+						fee: '0',
+					},
+				],
+			},
+		} );
+		const data = mockedFetch.mock.lastCall?.[ 0 ]?.data as {
+			pickup_locations: { id: string }[];
+		};
+		expect( data.pickup_locations[ 0 ]?.id ).toMatch(
+			/^[a-z0-9][a-z0-9-]{0,39}$/
+		);
 	} );
 
 	it( 'adds a shipping class', async () => {

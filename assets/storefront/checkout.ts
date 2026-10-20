@@ -52,10 +52,13 @@ export function bindCheckout( form: HTMLFormElement ): void {
 		if ( target === elsewhere ) {
 			showShipping();
 		}
-		if ( target instanceof HTMLInputElement && target.name === 'payment' ) {
-			// A refresh already on its way draws the summary with the way to pay it was asked for: the
-			// customer's choice is kept here, for the refreshes after it.
-			form.dataset.orillacartPayment = target.value;
+		if (
+			target instanceof HTMLInputElement &&
+			( target.name === 'payment' || target.name === 'shipping_option' )
+		) {
+			// A refresh already on its way draws the summary with the choices it was asked for: the
+			// customer's are kept here, for the refreshes after it.
+			form.dataset[ CHOSEN[ target.name ] ] = target.value;
 		}
 		if (
 			target.matches(
@@ -130,15 +133,25 @@ function bindContact( form: HTMLFormElement ): void {
 	remind?.addEventListener( 'change', send );
 }
 
+/** Where the form keeps the customer's last choice of each. */
+const CHOSEN = {
+	payment: 'orillacartPayment',
+	shipping_option: 'orillacartShipping',
+} as const;
+
 /**
- * The way to pay the customer chose last, or the one ticked.
+ * The way to ship or to pay the customer chose last, or the one ticked.
  *
  * @param form The checkout form.
+ * @param name The radio buttons' name.
  */
-function chosenPayment( form: HTMLFormElement ): string | undefined {
+function chosen(
+	form: HTMLFormElement,
+	name: keyof typeof CHOSEN
+): string | undefined {
 	return (
-		form.dataset.orillacartPayment ??
-		form.querySelector< HTMLInputElement >( '[name="payment"]:checked' )
+		form.dataset[ CHOSEN[ name ] ] ??
+		form.querySelector< HTMLInputElement >( `[name="${ name }"]:checked` )
 			?.value
 	);
 }
@@ -162,14 +175,11 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 		shipping_country: value( 'shipping_address.country' ),
 		shipping_state: value( 'shipping_address.state' ),
 		shipping_postcode: value( 'shipping_address.postcode' ),
-		shipping:
-			form.querySelector< HTMLInputElement >(
-				'[name="shipping_option"]:checked'
-			)?.value ?? '',
+		shipping: chosen( form, 'shipping_option' ) ?? '',
 		pickup_point: value( 'pickup_point' ),
 		vat_number: value( 'vat_number' ),
 		// A way to pay may cost a fee: the totals are for the one chosen.
-		payment: chosenPayment( form ) ?? '',
+		payment: chosen( form, 'payment' ) ?? '',
 	};
 	for ( const [ name, given ] of Object.entries( query ) ) {
 		if ( given ) {
@@ -178,7 +188,7 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 			url.searchParams.delete( name );
 		}
 	}
-	const payment = chosenPayment( form );
+	const payment = chosen( form, 'payment' );
 	const summary = form.querySelector(
 		'[data-orillacart-region="checkout-summary"]'
 	);

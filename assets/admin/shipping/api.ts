@@ -64,6 +64,20 @@ export interface Carrier {
 	secrets_set: string[];
 	method_taxable: boolean;
 	method_tax_group_id: number | null;
+	/** The shop's places to collect orders, for its own pickup; none for a carrier that ships. */
+	pickup_locations: PickupLocation[];
+}
+
+/** One of the shop's places where customers collect their orders. */
+export interface PickupLocation {
+	/** Stays the same while the place is edited: orders name it by it. */
+	id: string;
+	name: string;
+	address: string;
+	/** When it is open: "Mon–Fri 9–18, Sat 10–14". */
+	hours: string;
+	/** What collecting there costs, as the shop's prices are. */
+	fee: string;
 }
 
 export interface CarrierInput {
@@ -75,6 +89,7 @@ export interface CarrierInput {
 	method_settings: SettingValues;
 	method_taxable: boolean;
 	method_tax_group_id: number | null;
+	pickup_locations: PickupLocation[];
 }
 
 /** A shipping method an add-on brings. */

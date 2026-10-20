@@ -9,13 +9,15 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Command: create a carrier, or replace one's name, state, position and whole list of rates; or set it up with
- * an add-on's shipping method, which then prices it (and it has no rates of its own).
+ * an add-on's shipping method, which then prices it (and it has no rates of its own); or make it the shop's own
+ * pickup at its places (no rates, no method; the method's tax settings tax the fees).
  */
 final readonly class SaveCarrier
 {
     /**
      * @param list<SaveShippingRate>     $rates          in the order checkout lists them
      * @param array<string, string|bool> $methodSettings the method's settings; an empty secret keeps the saved one
+     * @param list<SavePickupLocation>   $pickupLocations the shop's places to collect orders, in the order checkout lists them
      */
     public function __construct(
         #[Assert\NotBlank]
@@ -32,5 +34,8 @@ final readonly class SaveCarrier
         public bool $methodTaxable = true,
         #[Assert\Positive]
         public ?int $methodTaxGroupId = null,
+        #[Assert\Valid]
+        #[Assert\Count(max: 100)]
+        public array $pickupLocations = [],
     ) {}
 }
