@@ -27,6 +27,11 @@ use OrillaCart\Shipping\Application\Dto\BookShipment;
 use OrillaCart\Shipping\Application\Dto\ConsignmentView;
 use OrillaCart\Shipping\Application\Dto\LabelView;
 use OrillaCart\Shipping\Application\Dto\OrderShipmentsView;
+use OrillaCart\Shipping\Application\Dto\SaveParcel;
+use OrillaCart\Shipping\Application\Dto\SendShipment;
+use OrillaCart\Shipping\Application\Dto\ShipItem;
+use OrillaCart\Shipping\Application\Dto\ShipmentArrived;
+use OrillaCart\Shipping\Application\Dto\ShippedItemView;
 use OrillaCart\Shipping\Domain\Carrier;
 use OrillaCart\Shipping\Domain\CarrierRepository;
 use OrillaCart\Shipping\Domain\Consignment;
@@ -34,19 +39,22 @@ use OrillaCart\Shipping\Domain\ConsignmentNotFound;
 use OrillaCart\Shipping\Domain\ConsignmentRepository;
 use OrillaCart\Shipping\Domain\ConsignmentStatus;
 use OrillaCart\Shipping\Domain\Event\ConsignmentBooked;
+use OrillaCart\Shipping\Domain\ParcelTracking;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Shipments the shop books with couriers from the order screen, through the shipping method of the carrier the
- * customer chose: the label to print, cancelling one the courier has not picked up, and tracking, which
- * completes a shipped order once the courier delivered it.
+ * An order's shipments, from the order screen: booked with the courier of the carrier the customer chose, through
+ * its shipping method (the label to print, cancelling one the courier has not picked up, and tracking), or sent by
+ * the shop itself with each parcel's tracking number. A shipment carries some or all of the items; the order ships
+ * once nothing is left to send, and completes once everything arrived.
  */
 final readonly class Consignments
 {
     private const string CASH_ON_DELIVERY = 'cash_on_delivery';
+    private const array CLOSED = ['cancelled', 'failed', 'refunded'];
     private const int TRACKED_PER_RUN = 1000;
 
     public function __construct(
@@ -68,30 +76,28 @@ final readonly class Consignments
     {
         $order = $this->orders->order($orderId);
         $booking = $this->booking($order);
+        $consignments = $this->consignments->forOrder($orderId);
+        $left = self::left($order, $consignments);
+        $ships = !\in_array($order->status, self::CLOSED, true) && $order->shippingAddress !== null && $left !== [];
 
         return new OrderShipmentsView(
-            $booking !== null && !\in_array($order->status, ['cancelled', 'failed', 'refunded'], true),
+            $booking !== null && $ships,
             $booking === null ? null : $booking['carrier']->name(),
-            array_map(ConsignmentView::fromConsignment(...), $this->consignments->forOrder($orderId)),
+            array_map(static fn(Consignment $consignment): ConsignmentView => ConsignmentView::fromConsignment($consignment, self::names($order)), $consignments),
+            array_map(static fn(int $line, int $quantity): ShippedItemView => new ShippedItemView($line, self::names($order)[$line] ?? '', $quantity), array_keys($left), $left),
+            $ships,
         );
     }
 
     /**
      * @throws OrderNotFound
-     * @throws ShippingRuleViolation for an order its carrier cannot book, one already on its way, or a courier that refused
+     * @throws ShippingRuleViolation for an order its carrier cannot book, items it does not have left to send, or a courier that refused
      */
     public function book(int $orderId, BookShipment $command, ?int $userId): ConsignmentView
     {
         $order = $this->orders->order($orderId);
         $booking = $this->booking($order) ?? throw new ShippingRuleViolation('The order\'s way to ship does not book shipments with a courier.', 'orillacart_shipment_not_bookable');
-        if (\in_array($order->status, ['cancelled', 'failed', 'refunded'], true)) {
-            throw new ShippingRuleViolation(\sprintf('Order #%d is %s; it does not ship.', $orderId, $order->status), 'orillacart_shipment_not_bookable');
-        }
-        foreach ($this->consignments->forOrder($orderId) as $existing) {
-            if ($existing->status()->isOpen()) {
-                throw new ShippingRuleViolation(\sprintf('Shipment %s is on its way already; cancel it to book another.', $existing->number()), 'orillacart_shipment_exists');
-            }
-        }
+        $items = $this->sending($order, $command->items);
 
         $address = $order->shippingAddress ?? $order->billing;
         try {
@@ -107,8 +113,8 @@ final readonly class Consignments
                 $address->country,
                 $address->state,
                 $order->pickupPointId,
-                $this->contents($order),
-                $order->paymentGateway === self::CASH_ON_DELIVERY && $order->paidAt === null ? $order->total : null,
+                $this->contents($order, $items),
+                $order->paymentGateway === self::CASH_ON_DELIVERY && $order->paidAt === null && !$this->hasShipments($orderId) ? $order->total : null,
                 $order->subtotal,
                 $command->parcels,
             ), $booking['settings']);
@@ -118,12 +124,62 @@ final readonly class Consignments
             throw $this->broken('booking', $e);
         }
 
-        $consignment = new Consignment($orderId, $booking['carrier']->id(), $booking['carrier']->name(), $booking['method']->id(), $booked->number, $booked->trackingUrl, $this->clock->now());
+        $parcels = [];
+        foreach ($booked->parcels as $number) {
+            try {
+                $parcels[] = new ParcelTracking($number);
+            } catch (ShippingRuleViolation) {
+                $this->logger->warning('{method} gave the parcel number "{number}", which is not one; it is left out.', ['method' => $booking['method']->name(), 'number' => mb_substr($number, 0, 100)]);
+            }
+        }
+        $consignment = Consignment::booked($orderId, $booking['carrier']->id(), $booking['carrier']->name(), $booking['method']->id(), $booked->number, $booked->trackingUrl, $this->clock->now(), $items, $parcels);
         $this->consignments->save($consignment);
-        $this->orders->addNote($orderId, new AddOrderNote(\sprintf('Shipment %s booked with %s.', $booked->number, $booking['carrier']->name())), $userId);
+        $this->orders->addNote($orderId, new AddOrderNote(\sprintf('Shipment %s booked with %s%s.', $booked->number, $booking['carrier']->name(), self::partly($order, $items))), $userId);
         $this->events->dispatch(new ConsignmentBooked($orderId, $consignment->id()));
 
-        return ConsignmentView::fromConsignment($consignment);
+        return ConsignmentView::fromConsignment($consignment, self::names($order));
+    }
+
+    /**
+     * Records a shipment the shop sent itself, as with a courier it has no add-on for: on its way, and the
+     * order ships once nothing is left to send.
+     *
+     * @throws OrderNotFound
+     * @throws ShippingRuleViolation for an order that does not ship, or items it does not have left to send
+     */
+    public function send(int $orderId, SendShipment $command, ?int $userId): ConsignmentView
+    {
+        $order = $this->orders->order($orderId);
+        if ($order->shippingAddress === null) {
+            throw new ShippingRuleViolation(\sprintf('Order #%d ships nothing.', $orderId), 'orillacart_shipment_not_bookable');
+        }
+        $items = $this->sending($order, $command->items);
+        $parcels = array_map(static fn(SaveParcel $parcel): ParcelTracking => new ParcelTracking($parcel->number, $parcel->trackingUrl), $command->parcels);
+        $consignment = Consignment::sent($orderId, $command->carrier, $parcels, $this->clock->now(), $items);
+        $this->consignments->save($consignment);
+        $this->orders->addNote($orderId, new AddOrderNote(\sprintf('Shipment %s sent with %s%s.', $consignment->number(), $consignment->carrier(), self::partly($order, $items))), $userId);
+        $this->events->dispatch(new ConsignmentBooked($orderId, $consignment->id()));
+        $this->orderFollows($consignment, ConsignmentStatus::OnTheWay);
+
+        return ConsignmentView::fromConsignment($consignment, self::names($order));
+    }
+
+    /**
+     * The shop says a shipment it sent itself arrived, or came back; the order completes once all it sent arrived.
+     *
+     * @throws ConsignmentNotFound
+     * @throws ShippingRuleViolation for a shipment its courier follows, or one that arrived already
+     */
+    public function arrived(int $id, ShipmentArrived $command, ?int $userId): ConsignmentView
+    {
+        $consignment = $this->get($id);
+        $status = ConsignmentStatus::from($command->status);
+        $consignment->arrived($status, $this->clock->now());
+        $this->consignments->save($consignment);
+        $this->orders->addNote($consignment->orderId(), new AddOrderNote(\sprintf($status === ConsignmentStatus::Delivered ? 'Shipment %s arrived.' : 'Shipment %s came back.', $consignment->number())), $userId);
+        $this->orderFollows($consignment, $status);
+
+        return ConsignmentView::fromConsignment($consignment, self::names($this->orders->order($consignment->orderId())));
     }
 
     /**
@@ -219,20 +275,111 @@ final readonly class Consignments
         return true;
     }
 
+    /**
+     * The order follows its shipments: it ships once everything is on its way (a courier's first word, or the
+     * shop sending it), completes once everything arrived, and the shop hears of a shipment coming back.
+     */
     private function orderFollows(Consignment $consignment, ConsignmentStatus $status): void
     {
         $orderId = $consignment->orderId();
         try {
-            $order = $this->orders->order($orderId)->status;
+            $order = $this->orders->order($orderId);
+            $consignments = $this->consignments->forOrder($orderId);
+            $everything = self::left($order, $consignments) === [];
+            $all = static fn(ConsignmentStatus ...$statuses): bool => $everything && array_all(array_filter($consignments, static fn(Consignment $shipment): bool => $shipment->carries()), static fn(Consignment $shipment): bool => \in_array($shipment->status(), $statuses, true));
             match (true) {
-                $status === ConsignmentStatus::OnTheWay && $order === 'processing' => $this->orders->changeStatus($orderId, new ChangeOrderStatus('shipped', note: \sprintf('The courier picked up shipment %s.', $consignment->number())), null),
-                $status === ConsignmentStatus::Delivered && \in_array($order, ['processing', 'shipped'], true) => $this->orders->changeStatus($orderId, new ChangeOrderStatus('completed', note: \sprintf('The courier delivered shipment %s.', $consignment->number())), null),
-                $status === ConsignmentStatus::Returned => $this->orders->addNote($orderId, new AddOrderNote(\sprintf('The courier is bringing shipment %s back: %s', $consignment->number(), $consignment->tracking() === '' ? 'no reason given.' : $consignment->tracking())), null),
+                $status === ConsignmentStatus::OnTheWay && $order->status === 'processing' && $all(ConsignmentStatus::OnTheWay, ConsignmentStatus::Delivered) => $this->orders->changeStatus($orderId, new ChangeOrderStatus('shipped', note: \sprintf($consignment->isSentByShop() ? 'Shipment %s sent.' : 'The courier picked up shipment %s.', $consignment->number())), null),
+                $status === ConsignmentStatus::Delivered && \in_array($order->status, ['processing', 'shipped'], true) && $all(ConsignmentStatus::Delivered) => $this->orders->changeStatus($orderId, new ChangeOrderStatus('completed', note: \sprintf($consignment->isSentByShop() ? 'Shipment %s arrived.' : 'The courier delivered shipment %s.', $consignment->number())), null),
+                $status === ConsignmentStatus::Returned && !$consignment->isSentByShop() => $this->orders->addNote($orderId, new AddOrderNote(\sprintf('The courier is bringing shipment %s back: %s', $consignment->number(), $consignment->tracking() === '' ? 'no reason given.' : $consignment->tracking())), null),
                 default => null,
             };
         } catch (RuleViolation $e) {
             $this->logger->warning('Order {order} did not follow shipment {shipment}: {message}', ['order' => $orderId, 'shipment' => $consignment->number(), 'message' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * What is left to send of each line that ships: its items, less those refunded and those in a shipment that
+     * still carries them.
+     *
+     * @param list<Consignment> $consignments
+     *
+     * @return array<int, int> quantities by line position, only those with some left
+     */
+    private static function left(OrderView $order, array $consignments): array
+    {
+        $left = [];
+        foreach ($order->lines as $position => $line) {
+            \assert($line instanceof OrderLineView);
+            if ($line->ships) {
+                $left[$position] = $line->quantity - $line->refundedQuantity;
+            }
+        }
+        foreach ($consignments as $consignment) {
+            if ($consignment->carries()) {
+                foreach ($consignment->items() as $position => $quantity) {
+                    $left[$position] = ($left[$position] ?? 0) - $quantity;
+                }
+            }
+        }
+
+        return array_filter($left, static fn(int $quantity): bool => $quantity > 0);
+    }
+
+    /**
+     * The items a new shipment carries: those asked for, or everything left.
+     *
+     * @param list<ShipItem> $asked
+     *
+     * @return array<int, int> quantities by line position
+     *
+     * @throws ShippingRuleViolation for a closed order, or more of a line than is left to send
+     */
+    private function sending(OrderView $order, array $asked): array
+    {
+        if (\in_array($order->status, self::CLOSED, true)) {
+            throw new ShippingRuleViolation(\sprintf('Order #%d is %s; it does not ship.', $order->number, $order->status), 'orillacart_shipment_not_bookable');
+        }
+        $left = self::left($order, $this->consignments->forOrder($order->number));
+        if ($asked === []) {
+            return $left !== [] ? $left : throw new ShippingRuleViolation(\sprintf('Everything of order #%d is in a shipment already.', $order->number), 'orillacart_nothing_to_ship');
+        }
+        $items = [];
+        foreach ($asked as $item) {
+            $items[$item->line] = ($items[$item->line] ?? 0) + $item->quantity;
+        }
+        foreach ($items as $line => $quantity) {
+            if ($quantity > ($left[$line] ?? 0)) {
+                throw new ShippingRuleViolation(\sprintf('%d of "%s" are left to send.', $left[$line] ?? 0, self::names($order)[$line] ?? (string) ($line + 1)), 'orillacart_nothing_to_ship');
+            }
+        }
+        ksort($items);
+
+        return $items;
+    }
+
+    /**
+     * ", with 2 of the 5 items", for a shipment that leaves some behind.
+     *
+     * @param array<int, int> $items quantities by line position
+     */
+    private static function partly(OrderView $order, array $items): string
+    {
+        $all = array_sum(array_map(static fn(OrderLineView $line): int => $line->ships ? $line->quantity - $line->refundedQuantity : 0, $order->lines));
+        $sent = array_sum($items);
+
+        return $sent < $all ? \sprintf(', with %d of the %d items', $sent, $all) : '';
+    }
+
+    /** @return array<int, string> the order's line names, by position */
+    private static function names(OrderView $order): array
+    {
+        return array_map(static fn(OrderLineView $line): string => $line->name, $order->lines);
+    }
+
+    private function hasShipments(int $orderId): bool
+    {
+        return array_filter($this->consignments->forOrder($orderId), static fn(Consignment $consignment): bool => $consignment->carries()) !== [];
     }
 
     /**
@@ -271,25 +418,32 @@ final readonly class Consignments
      */
     private function methodOf(Consignment $consignment): array
     {
-        $carrier = $this->carriers->find($consignment->carrierId());
-        $method = $this->methods->find($consignment->method());
+        $carrier = $consignment->carrierId() === null ? null : $this->carriers->find($consignment->carrierId());
+        $method = $consignment->method() === null ? null : $this->methods->find($consignment->method());
         if (!$carrier instanceof Carrier || !$method instanceof CreatesShipments) {
-            throw new ShippingRuleViolation(\sprintf('The shipping method that booked shipment %s is not active.', $consignment->number()), 'orillacart_unknown_shipping_method');
+            throw new ShippingRuleViolation(\sprintf($consignment->isSentByShop() ? 'Shipment %s was sent by the shop; it has no courier to ask.' : 'The shipping method that booked shipment %s is not active.', $consignment->number()), 'orillacart_unknown_shipping_method');
         }
 
         return [$method, new Settings($carrier->methodSettings())];
     }
 
     /**
-     * What ships, measured as the catalog measures it now.
+     * What the shipment carries, measured as the catalog measures it now.
      */
-    private function contents(OrderView $order): Shipment
+    /**
+     * @param array<int, int> $sending quantities by line position
+     */
+    private function contents(OrderView $order, array $sending): Shipment
     {
         $shop = $this->settings->current();
         $address = $order->shippingAddress ?? $order->billing;
         $items = [];
-        foreach ($order->lines as $line) {
+        foreach ($order->lines as $position => $line) {
             \assert($line instanceof OrderLineView);
+            if (!isset($sending[$position])) {
+                continue;
+            }
+            $line = new OrderLineView($line->productId, $line->variationId, $line->name, $line->sku, $line->options, $sending[$position], $line->unitPrice, $line->total, $line->tax, $line->optionIds, bundleChoices: $line->bundleChoices);
             try {
                 $quote = $this->products->quote(new QuoteRequest($line->productId, $line->optionIds, bundleChoices: $line->bundleChoices));
             } catch (RuleViolation) {

@@ -410,7 +410,7 @@ final class TestShop
         $this->sentEmails = new InMemorySentEmails();
         $this->jobs->immediate = true;
         $this->writer = new EmailWriter($this->emailTemplates, $this->emailSettings, $this->site = new FakeSite(), $this->languages);
-        $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $this->writer, $this->mail, $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs, $this->invoices, $this->receipts, new InvoiceAttachments($this->invoices, $this->invoiceSettings, $this->invoicePdfs = new FakeInvoicePdfs(), $this->languages, $this->logger));
+        $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $this->writer, $this->mail, $this->logger, new ShipmentTracking($this->consignmentRecords, $this->orders), $this->jobs->jobs, $this->invoices, $this->receipts, new InvoiceAttachments($this->invoices, $this->invoiceSettings, $this->invoicePdfs = new FakeInvoicePdfs(), $this->languages, $this->logger));
         $this->cartReminders = new CartReminders($this->abandonedCarts, new FakeCartLinks(), $this->coupons, $this->emailSettings, $settings, $this->writer, $this->mail, $this->jobs->jobs, $this->clock);
         $this->jobs->with(new SendCartReminder($this->cartReminders));
         $this->jobs->with(new SendOrderEmails($this->emails, $this->sentEmails, $this->clock, $this->logger), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));

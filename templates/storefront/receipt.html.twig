@@ -137,7 +137,14 @@
                 <h3 class="orillacart-heading">{{ __('Shipments') }}</h3>
                 <ul>
                     {% for shipment in shipments %}
-                        <li>{{ shipment.carrier }} {{ shipment.number }}{% if shipment.tracking %}: {{ shipment.tracking }}{% endif %}{% if shipment.tracking_url %} — <a href="{{ shipment.tracking_url }}">{{ __('Follow it') }}</a>{% endif %}</li>
+                        <li>
+                            {{ shipment.carrier }} {{ shipment.number }}{% if shipment.tracking %}: {{ shipment.tracking }}{% endif %}{% if shipment.tracking_url %} — <a href="{{ shipment.tracking_url }}">{{ __('Follow it') }}</a>{% endif %}
+                            {% if shipments|length > 1 %}<br><small>{% for item in shipment.items %}{{ item.quantity }} × {{ item.name }}{{ not loop.last ? ', ' }}{% endfor %}</small>{% endif %}
+                            {% if shipment.parcels|length > 1 %}
+                                {# translators: shown before the tracking numbers of a shipment's parcels -#}
+                                <br><small>{{ __('Parcels:') }} {% for parcel in shipment.parcels %}{% if parcel.tracking_url %}<a href="{{ parcel.tracking_url }}">{{ parcel.number }}</a>{% else %}{{ parcel.number }}{% endif %}{{ not loop.last ? ', ' }}{% endfor %}</small>
+                            {% endif %}
+                        </li>
                     {% endfor %}
                 </ul>
             </div>

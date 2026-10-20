@@ -21,7 +21,7 @@
 {% if order.refunded_total > 0 %}<tr><td colspan="2">{{ __('Refunded') }}</td><td style="text-align:right;">−{{ order.refunded_total|money(order.currency) }}</td></tr>{% endif %}
 </table>
 {# translators: 1: shipment number, 2: carrier name -#}
-{% for shipment in shipments ?? [] %}<p style="margin:16px 0 0;">{{ __('Shipment %1$s with %2$s')|format(shipment.number, shipment.carrier) }}{% if shipment.tracking_url %}: <a href="{{ shipment.tracking_url }}" style="color:#2271b1;">{{ __('follow it') }}</a>{% endif %}</p>{% endfor %}
+{% for shipment in shipments ?? [] %}<p style="margin:16px 0 0;">{{ __('Shipment %1$s with %2$s')|format(shipment.number, shipment.carrier) }}{% if shipment.tracking_url %}: <a href="{{ shipment.tracking_url }}" style="color:#2271b1;">{{ __('follow it') }}</a>{% endif %}{% if (shipments ?? [])|length > 1 %}<br><small>{% for item in shipment.items %}{{ item.quantity }} × {{ item.name }}{{ not loop.last ? ', ' }}{% endfor %}</small>{% endif %}{% if shipment.parcels|length > 1 %}<br><small>{{ __('Parcels:') }} {% for parcel in shipment.parcels %}{% if parcel.tracking_url %}<a href="{{ parcel.tracking_url }}" style="color:#2271b1;">{{ parcel.number }}</a>{% else %}{{ parcel.number }}{% endif %}{{ not loop.last ? ', ' }}{% endfor %}</small>{% endif %}</p>{% endfor %}
 {% if order.pickup_point %}<p style="margin:16px 0 0;">{{ __('Pickup point') }}: {{ order.pickup_point }}</p>{% endif %}
 {% if order.payment_name %}<p style="margin:16px 0 0;">{{ __('Payment') }}: {{ order.payment_name }}</p>{% endif %}
 {% if order.vat_number %}<p style="margin:8px 0 0;">{{ __('VAT number') }}: {{ order.vat_number }}{% if order.reverse_charge %} ({{ __('reverse charge: no VAT') }}){% endif %}</p>{% endif %}

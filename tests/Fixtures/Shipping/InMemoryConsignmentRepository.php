@@ -25,7 +25,7 @@ final class InMemoryConsignmentRepository implements ConsignmentRepository
 
     public function open(int $limit): array
     {
-        return \array_slice(array_values(array_filter($this->consignments, static fn(Consignment $consignment): bool => $consignment->status()->isOpen())), 0, $limit);
+        return \array_slice(array_values(array_filter($this->consignments, static fn(Consignment $consignment): bool => $consignment->status()->isOpen() && !$consignment->isSentByShop())), 0, $limit);
     }
 
     public function save(Consignment $consignment): void

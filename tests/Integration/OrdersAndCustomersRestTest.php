@@ -67,6 +67,34 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(422, $this->request('GET', '/orders?min_total=lots')->get_status());
     }
 
+    public function testTheShopSendsAnOrderInTwoShipmentsAndItCompletesWhenBothArrived(): void
+    {
+        $this->actAs('administrator');
+        $vase = $this->product('Vase', ['price' => '20', 'weight' => '1', 'stock_mode' => 'always_available']);
+        $rate = $this->data($this->request('POST', '/carriers', ['name' => 'Post', 'rates' => [['name' => 'Anywhere', 'price' => '4']]], nonce: true))['rates'];
+        self::assertIsArray($rate);
+        self::assertIsArray($rate[0]);
+        wp_set_current_user(0);
+        $order = $this->order([[$vase, 2]], ['shipping_option' => 'rate:' . self::int($rate[0]['id'])]);
+        $this->actAs('administrator');
+        $this->request('PUT', "/orders/{$order['number']}/status", ['status' => 'processing'], nonce: true);
+
+        $first = $this->request('POST', "/orders/{$order['number']}/shipments/sent", ['carrier' => 'Post', 'parcels' => [['number' => 'P1', 'tracking_url' => 'https://post.test/P1']], 'items' => [['line' => 0, 'quantity' => 1]]], nonce: true);
+        self::assertSame(201, $first->get_status(), (string) wp_json_encode($first->get_data()));
+        self::assertSame(422, $this->request('POST', "/orders/{$order['number']}/shipments/sent", ['carrier' => 'Post', 'parcels' => [['number' => 'P2']], 'items' => [['line' => 0, 'quantity' => 2]]], nonce: true)->get_status(), 'one is left');
+        $second = $this->request('POST', "/orders/{$order['number']}/shipments/sent", ['carrier' => 'Post', 'parcels' => [['number' => 'P2'], ['number' => 'P3']]], nonce: true);
+        self::assertSame(201, $second->get_status(), (string) wp_json_encode($second->get_data()));
+        self::assertSame('shipped', $this->data($this->request('GET', "/orders/{$order['number']}"))['status']);
+
+        foreach ([$first, $second] as $shipment) {
+            $arrived = $this->request('POST', '/shipments/' . self::int($this->data($shipment)['id']) . '/arrived', ['status' => 'delivered'], nonce: true);
+            self::assertSame(200, $arrived->get_status(), (string) wp_json_encode($arrived->get_data()));
+        }
+        self::assertSame('completed', $this->data($this->request('GET', "/orders/{$order['number']}"))['status']);
+        $shipments = $this->data($this->request('GET', "/orders/{$order['number']}/shipments"));
+        self::assertSame([[], false], [$shipments['left'], $shipments['sendable']]);
+    }
+
     public function testTheOrdersToRemindAreFoundOnTheDatabase(): void
     {
         $order = $this->order([[$this->lamp, 1]]);
@@ -86,7 +114,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
             ['PUT', '/customers/1/addresses'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/email-settings'],
             ['PUT', '/email-settings'], ['POST', '/products/1/downloads'], ['DELETE', '/products/1/downloads/1'], ['GET', '/download-storage'],
             ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1'], ['POST', '/orders'], ['POST', '/orders/quote'],
-            ['GET', '/orders/1/shipments'], ['POST', '/orders/1/shipments'], ['GET', '/shipments/1/label'], ['POST', '/shipments/1/cancel'], ['GET', '/shipping-methods'], ['GET', '/orders/1/pickup-points'],
+            ['GET', '/orders/1/shipments'], ['POST', '/orders/1/shipments'], ['POST', '/orders/1/shipments/sent'], ['POST', '/shipments/1/arrived'], ['GET', '/shipments/1/label'], ['POST', '/shipments/1/cancel'], ['GET', '/shipping-methods'], ['GET', '/orders/1/pickup-points'],
             ['GET', '/search-filters'], ['POST', '/search-filters'], ['PUT', '/search-filters/1'], ['DELETE', '/search-filters/1'], ['GET', '/search-filters/attributes'],
             ['GET', '/search-engine'], ['PUT', '/search-engine'], ['POST', '/search-engine/rebuild'],
             ['GET', '/orders/1/refunds'], ['POST', '/orders/1/refunds'], ['POST', '/refunds/1/retry'], ['POST', '/refunds/1/give-up'],
@@ -575,11 +603,18 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         return array_values($value);
     }
 
+    private static function int(mixed $value): int
+    {
+        self::assertIsInt($value);
+
+        return $value;
+    }
+
     private function clean(): void
     {
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['pending_accounts', 'invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['pending_accounts', 'invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'consignments', 'order_lines', 'orders', 'shipping_rates', 'carriers', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }

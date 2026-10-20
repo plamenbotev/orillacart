@@ -19,8 +19,14 @@ use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shipping\Application\Dto\BookShipment;
+use OrillaCart\Shipping\Application\Dto\OrderShipmentsView;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
+use OrillaCart\Shipping\Application\Dto\SaveParcel;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
+use OrillaCart\Shipping\Application\Dto\SendShipment;
+use OrillaCart\Shipping\Application\Dto\ShipItem;
+use OrillaCart\Shipping\Application\Dto\ShipmentArrived;
+use OrillaCart\Shipping\Application\Dto\ShippedItemView;
 use OrillaCart\Shipping\Application\TrackConsignments;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
@@ -98,9 +104,9 @@ final class ConsignmentsTest extends TestCase
 
         try {
             $this->shop->consignments->book($placed->number, new BookShipment(), 7);
-            self::fail('one is on its way');
+            self::fail('everything is in a shipment');
         } catch (ShippingRuleViolation $e) {
-            self::assertSame('orillacart_shipment_exists', $e->errorCode);
+            self::assertSame('orillacart_nothing_to_ship', $e->errorCode);
         }
         $label = $this->shop->consignments->label($booked->id);
         self::assertSame(['label-TS1.pdf', '%PDF-1.4 label of TS1'], [$label->filename, base64_decode($label->content, true)]);
@@ -203,9 +209,87 @@ final class ConsignmentsTest extends TestCase
         $this->shop->consignments->book($placed->number, new BookShipment(), 7);
     }
 
-    private function cart(): CartOwner
+    public function testAnOrderGoesInSeveralShipmentsAndShipsOnceNothingIsLeft(): void
     {
-        return new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        $this->shop->content->add(20, 'Shade');
+        $this->shop->products->save(20, new SaveProduct('10', weight: '0.5', stockMode: 'always_available'));
+        $owner = $this->cart(2);
+        $this->shop->carts->add($owner, new AddToCart(20));
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order('express', 'cash_on_delivery'));
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('processing'), 7);
+        $left = static fn(OrderShipmentsView $shipments): array => array_map(static fn(ShippedItemView $item): array => [$item->name, $item->quantity], $shipments->left);
+        self::assertSame([['Lamp', 2], ['Shade', 1]], $left($this->shop->consignments->forOrder($placed->number)));
+
+        $first = $this->shop->consignments->book($placed->number, new BookShipment(1, [new ShipItem(0, 1)]), 7);
+        self::assertSame([['Lamp', 1]], array_map(static fn($item): array => [$item->name, $item->quantity], $first->items));
+        self::assertSame(['2', $placed->total], [$this->courier->booked[0]->contents->weight(), $this->courier->booked[0]->cashOnDelivery], 'one lamp; the courier collects the total with the first');
+        self::assertContains('Shipment TS1 booked with Speedy, with 1 of the 3 items.', array_column($this->shop->orders->order($placed->number)->notes, 'text'));
+        try {
+            $this->shop->consignments->book($placed->number, new BookShipment(1, [new ShipItem(0, 2)]), 7);
+            self::fail('one lamp is left');
+        } catch (ShippingRuleViolation $e) {
+            self::assertSame(['orillacart_nothing_to_ship', '1 of "Lamp" are left to send.'], [$e->errorCode, $e->getMessage()]);
+        }
+        $this->shop->consignments->track($first->id);
+        self::assertSame('processing', $this->shop->orders->order($placed->number)->status, 'the rest has not gone');
+
+        $rest = $this->shop->consignments->book($placed->number, new BookShipment(), 7);
+        self::assertSame([['Lamp', 1], ['Shade', 1]], array_map(static fn($item): array => [$item->name, $item->quantity], $rest->items));
+        self::assertNull($this->courier->booked[1]->cashOnDelivery, 'collected once');
+        self::assertSame([], $left($this->shop->consignments->forOrder($placed->number)));
+        $this->shop->consignments->track($rest->id);
+        self::assertSame('shipped', $this->shop->orders->order($placed->number)->status);
+
+        $this->courier->tracking[$first->number] = new Tracking(Tracking::DELIVERED);
+        $this->shop->consignments->track($first->id);
+        self::assertSame('shipped', $this->shop->orders->order($placed->number)->status, 'one parcel is still on its way');
+        $this->courier->tracking[$rest->number] = new Tracking(Tracking::DELIVERED);
+        $this->shop->consignments->track($rest->id);
+        self::assertSame('completed', $this->shop->orders->order($placed->number)->status);
+    }
+
+    public function testTheShopSendsAShipmentItselfWithEachParcelsTrackingNumber(): void
+    {
+        $rate = $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Anywhere', '4')]))->rates[0]->id;
+        $placed = $this->shop->checkout->placeOrder($this->cart(3), new PlaceOrder('ada@example.com', self::address(), shippingOption: "rate:{$rate}", payment: 'bank_transfer'));
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('processing'), 7);
+        $shipments = $this->shop->consignments->forOrder($placed->number);
+        self::assertSame([false, true], [$shipments->bookable, $shipments->sendable]);
+
+        $sent = $this->shop->consignments->send($placed->number, new SendShipment('Bulgarian Post', [new SaveParcel('PS1', 'https://post.test/PS1'), new SaveParcel('PS2', 'https://post.test/PS2')], [new ShipItem(0, 2)]), 7);
+        self::assertSame(['PS1', 'https://post.test/PS1', 'on_the_way', true], [$sent->number, $sent->trackingUrl, $sent->status, $sent->sentByShop]);
+        self::assertSame([['number' => 'PS1', 'tracking_url' => 'https://post.test/PS1'], ['number' => 'PS2', 'tracking_url' => 'https://post.test/PS2']], $sent->parcels);
+        self::assertSame('processing', $this->shop->orders->order($placed->number)->status, 'one lamp is left');
+        $mails = $this->shop->mail->summary();
+        self::assertSame("ada@example.com: [Lamp Shop] Follow your order #{$placed->number}", end($mails));
+        self::assertSame([], $this->shop->consignments->onTheWay(), 'no courier to ask');
+
+        $last = $this->shop->consignments->send($placed->number, new SendShipment('Bulgarian Post', [new SaveParcel('PS3')]), 7);
+        self::assertSame('shipped', $this->shop->orders->order($placed->number)->status);
+
+        $this->shop->consignments->arrived($sent->id, new ShipmentArrived(), 7);
+        self::assertSame('shipped', $this->shop->orders->order($placed->number)->status);
+        $this->shop->consignments->arrived($last->id, new ShipmentArrived(), 7);
+        self::assertSame('completed', $this->shop->orders->order($placed->number)->status);
+        $this->expectException(ShippingRuleViolation::class);
+        $this->shop->consignments->arrived($last->id, new ShipmentArrived('returned'), 7);
+    }
+
+    public function testAShipmentThatCameBackLeavesItsItemsToSendAgain(): void
+    {
+        $rate = $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Anywhere', '4')]))->rates[0]->id;
+        $placed = $this->shop->checkout->placeOrder($this->cart(), new PlaceOrder('ada@example.com', self::address(), shippingOption: "rate:{$rate}", payment: 'bank_transfer'));
+        $sent = $this->shop->consignments->send($placed->number, new SendShipment('Post', [new SaveParcel('PS1')]), 7);
+
+        $this->shop->consignments->arrived($sent->id, new ShipmentArrived('returned'), 7);
+
+        self::assertSame([['Lamp', 1]], array_map(static fn($item): array => [$item->name, $item->quantity], $this->shop->consignments->forOrder($placed->number)->left));
+        self::assertContains('Shipment PS1 came back.', array_column($this->shop->orders->order($placed->number)->notes, 'text'));
+    }
+
+    private function cart(int $quantity = 1): CartOwner
+    {
+        return new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10, quantity: $quantity))->newToken);
     }
 
     private function option(string $service): string

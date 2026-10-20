@@ -184,7 +184,7 @@ final class OrderAdministrationTest extends TestCase
         $payment = new Payment($order->number, 'paypal', Money::of('8'), 'EUR', $this->shop->clock->now());
         $payment->refer('PAYPAL-1');
         $this->shop->paymentRecords->save($payment);
-        $consignment = new Consignment($order->number, 1, 'Speedy', 'standard', 'SP1', null, $this->shop->clock->now());
+        $consignment = Consignment::booked($order->number, 1, 'Speedy', 'standard', 'SP1', null, $this->shop->clock->now(), [0 => 1]);
         $this->shop->consignmentRecords->save($consignment);
 
         foreach ([['orillacart_order_shipped', static fn() => $consignment->cancel(new \DateTimeImmutable())], ['orillacart_order_payment_open', static fn() => $payment->cancel(new \DateTimeImmutable())]] as [$code, $let]) {

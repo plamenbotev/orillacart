@@ -39,6 +39,8 @@ final readonly class DoctrineConsignmentRepository implements ConsignmentReposit
             ->select('c')
             ->from(Consignment::class, 'c')
             ->where('c.status IN (:open)')
+            // Only couriers are asked; what the shop sent itself, the shop says when it arrived.
+            ->andWhere('c.method IS NOT NULL')
             ->setParameter('open', [ConsignmentStatus::Booked->value, ConsignmentStatus::OnTheWay->value])
             ->orderBy('c.updatedAt')
             ->setMaxResults($limit)

@@ -157,15 +157,20 @@ orders shipped by the carrier's services:
 - `createShipment($request, $settings)` books it. The `ShipmentRequest` has the reference ("Order #1042"),
   the service, the recipient and address, the pickup point, the contents as a `Shipment`, the number of
   parcels, the declared value and, for an unpaid cash-on-delivery order, the amount the courier collects.
-  Return a `BookedShipment` with the courier's number and the tracking link; throw `ProviderUnavailable` with
-  the courier's reason when it refuses: the shop manager sees it.
+  Return a `BookedShipment` with the courier's number and the tracking link, and since version 5 each parcel's
+  own number when the courier gives them (`parcels`); throw `ProviderUnavailable` with the courier's reason
+  when it refuses: the shop manager sees it.
+- An order may go in several shipments: the shop chooses which items each carries, and the `Shipment` holds
+  only those. The amount to collect comes with the first shipment of the order only.
 - `label($number, $settings)` returns the `Label` (a PDF, usually) the shop prints.
 - `cancelShipment($number, $settings)` cancels one the courier has not picked up; throw when it cannot.
 
 A method that implements `TracksShipments` is asked every hour where the shipments on their way are:
 `track($number, $settings)` returns a `Tracking` (on the way, delivered or returned, with the courier's
-words). A delivered shipment completes its order when the order is shipped. The receipt and the emails show
-every shipment with its tracking link.
+words). The order ships once everything is on its way, and completes once every shipment was delivered. The
+receipt and the emails show every shipment with its tracking link, what it carries and its parcels' numbers.
+Shipments the shop sent itself (with a courier it has no add-on for, entering each parcel's tracking number)
+are never asked about: the shop says when they arrived.
 
 ## Prices
 

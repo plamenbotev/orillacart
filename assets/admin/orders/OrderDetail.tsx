@@ -219,8 +219,16 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 				}
 				onError={ fail }
 			/>
-			{ order.shipping_option?.startsWith( 'carrier:' ) && (
-				<ShipmentsCard order={ order } onError={ fail } />
+			{ order.shipping !== null && (
+				<ShipmentsCard
+					order={ order }
+					onError={ fail }
+					onChanged={ () =>
+						fetchOrder( order.number )
+							.then( setOrder )
+							.catch( fail )
+					}
+				/>
 			) }
 			<ActionsCard
 				order={ order }

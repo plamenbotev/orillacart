@@ -35,7 +35,10 @@ test.afterAll( async ( { requestUtils } ) => {
 } );
 
 test.describe( 'The admin', () => {
-	test( 'finds the order and marks it paid', async ( { admin, page } ) => {
+	test( 'finds the order, marks it paid and records its shipment', async ( {
+		admin,
+		page,
+	} ) => {
 		await admin.visitAdminPage( 'admin.php', 'page=orillacart' );
 		await page.getByRole( 'searchbox' ).fill( 'e2e-admin@example.com' );
 		await page.getByRole( 'button', { name: `#${ order }` } ).click();
@@ -55,6 +58,31 @@ test.describe( 'The admin', () => {
 		await expect(
 			page.getByRole( 'button', { name: 'Mark as paid' } )
 		).toHaveCount( 0 );
+
+		// Sent with a courier the shop has no add-on for: the tracking number, and the order ships.
+		const shipments = page.locator( '.orillacart-card', {
+			has: page.getByRole( 'heading', { name: 'Shipments' } ),
+		} );
+		await shipments.getByLabel( 'Sent with' ).fill( 'E2E Post' );
+		await shipments
+			.getByLabel( 'Tracking number of parcel 1' )
+			.fill( 'E2E-PS1' );
+		await shipments
+			.getByLabel( 'Tracking link of parcel 1' )
+			.fill( 'https://post.example/E2E-PS1' );
+		await shipments
+			.getByRole( 'button', { name: 'Record the shipment' } )
+			.click();
+		await expect( shipments.getByText( 'E2E Post E2E-PS1' ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'heading', { name: `Order #${ order } — Shipped` } )
+		).toBeVisible();
+		await page.getByRole( 'button', { name: 'It arrived' } ).click();
+		await expect(
+			page.getByRole( 'heading', {
+				name: `Order #${ order } — Completed`,
+			} )
+		).toBeVisible();
 	} );
 
 	test( 'adds a product to an order on hold with the product picker', async ( {

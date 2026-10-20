@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Shipping\Application;
 
+use OrillaCart\Ordering\Application\Dto\OrderLineView;
+use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shipping\Application\Dto\ConsignmentView;
 use OrillaCart\Shipping\Domain\Consignment;
 use OrillaCart\Shipping\Domain\ConsignmentRepository;
@@ -14,15 +17,24 @@ use OrillaCart\Shipping\Domain\ConsignmentStatus;
  */
 final readonly class ShipmentTracking
 {
-    public function __construct(private ConsignmentRepository $consignments) {}
+    public function __construct(
+        private ConsignmentRepository $consignments,
+        private OrderService $orders,
+    ) {}
 
     /**
      * @return list<ConsignmentView> oldest first
      */
     public function forOrder(int $orderId): array
     {
+        try {
+            $names = array_map(static fn(OrderLineView $line): string => $line->name, $this->orders->order($orderId)->lines);
+        } catch (OrderNotFound) {
+            return [];
+        }
+
         return array_values(array_map(
-            ConsignmentView::fromConsignment(...),
+            static fn(Consignment $consignment): ConsignmentView => ConsignmentView::fromConsignment($consignment, $names),
             array_filter($this->consignments->forOrder($orderId), static fn(Consignment $consignment): bool => $consignment->status() !== ConsignmentStatus::Cancelled),
         ));
     }

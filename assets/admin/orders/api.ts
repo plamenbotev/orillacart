@@ -576,6 +576,13 @@ export interface PickupPoint {
 	hours: string;
 }
 
+/** How many of one of the order's lines a shipment carries, or are left to send; lines count from 0. */
+export interface ShippedItem {
+	line: number;
+	name: string;
+	quantity: number;
+}
+
 export interface Shipment {
 	id: number;
 	number: string;
@@ -585,6 +592,11 @@ export interface Shipment {
 	/** The courier's last words about it. */
 	tracking: string;
 	booked_at: string;
+	items: ShippedItem[];
+	/** Each parcel's number, when there is one each. */
+	parcels: { number: string; tracking_url: string | null }[];
+	/** The shop sent it itself, and says when it arrived. */
+	sent_by_shop: boolean;
 }
 
 export interface OrderShipments {
@@ -592,6 +604,10 @@ export interface OrderShipments {
 	bookable: boolean;
 	carrier: string | null;
 	shipments: Shipment[];
+	/** The items not in a shipment yet. */
+	left: ShippedItem[];
+	/** Whether what is left can be sent. */
+	sendable: boolean;
 }
 
 export function fetchShipments( orderId: number ): Promise< OrderShipments > {
@@ -600,14 +616,57 @@ export function fetchShipments( orderId: number ): Promise< OrderShipments > {
 	} );
 }
 
+/** What a new shipment carries: quantities of lines; empty for everything left. */
+export type ShipItems = { line: number; quantity: number }[];
+
 export function bookShipment(
 	orderId: number,
-	parcels: number
+	parcels: number,
+	items: ShipItems = []
 ): Promise< Shipment > {
 	return apiFetch< Shipment >( {
 		path: `${ BASE }/orders/${ orderId }/shipments`,
 		method: 'POST',
-		data: { parcels },
+		data: { parcels, items },
+	} );
+}
+
+/**
+ * Records a shipment the shop sent itself, with each parcel's tracking number.
+ * @param orderId
+ * @param input
+ * @param input.carrier
+ * @param input.parcels
+ * @param input.items
+ */
+export function sendShipment(
+	orderId: number,
+	input: {
+		carrier: string;
+		parcels: { number: string; tracking_url: string | null }[];
+		items: ShipItems;
+	}
+): Promise< Shipment > {
+	return apiFetch< Shipment >( {
+		path: `${ BASE }/orders/${ orderId }/shipments/sent`,
+		method: 'POST',
+		data: input,
+	} );
+}
+
+/**
+ * A shipment the shop sent itself arrived, or came back.
+ * @param id
+ * @param status
+ */
+export function shipmentArrived(
+	id: number,
+	status: 'delivered' | 'returned'
+): Promise< Shipment > {
+	return apiFetch< Shipment >( {
+		path: `${ BASE }/shipments/${ id }/arrived`,
+		method: 'POST',
+		data: { status },
 	} );
 }
 
