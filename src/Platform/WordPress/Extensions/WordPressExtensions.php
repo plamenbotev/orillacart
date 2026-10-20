@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\WordPress\Extensions;
 
 use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Log;
 use OrillaCart\Extension\Order\OrderAction;
+use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
@@ -43,6 +45,10 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $fields = [];
     /** @var array<string, OrderAction> */
     private array $actions = [];
+    /** @var array<string, OrderColumn> */
+    private array $orderColumns = [];
+    /** @var array<string, ProductColumn> */
+    private array $productColumns = [];
     private bool $collected = false;
     private bool $collecting = false;
 
@@ -105,6 +111,20 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         }
     }
 
+    public function orderColumn(OrderColumn $column): void
+    {
+        if ($this->accepts('order column', $column->id(), $this->orderColumns[$column->id()] ?? null, $column)) {
+            $this->orderColumns[$column->id()] = $column;
+        }
+    }
+
+    public function productColumn(ProductColumn $column): void
+    {
+        if ($this->accepts('product column', $column->id(), $this->productColumns[$column->id()] ?? null, $column)) {
+            $this->productColumns[$column->id()] = $column;
+        }
+    }
+
     public function orders(): Orders
     {
         return ($this->orders)();
@@ -155,6 +175,20 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->actions);
+    }
+
+    public function orderColumns(): array
+    {
+        $this->collect();
+
+        return array_values($this->orderColumns);
+    }
+
+    public function productColumns(): array
+    {
+        $this->collect();
+
+        return array_values($this->productColumns);
     }
 
     /**

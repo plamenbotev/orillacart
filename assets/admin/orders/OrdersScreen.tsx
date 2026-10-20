@@ -19,6 +19,7 @@ import { STATUS_LABELS, money, when } from './labels';
 import { NewOrder } from './NewOrder';
 import { OrderDetail } from './OrderDetail';
 import { useLatest } from '../shared/useLatest';
+import { ExportDialog } from '../shared/ExportDialog';
 
 type Payments = { value: string; label: string }[];
 
@@ -138,6 +139,7 @@ export function OrdersScreen() {
 	const [ page, setPage ] = useState< OrderPage | null >( null );
 	const [ selected, setSelected ] = useState< number | null >( null );
 	const [ creating, setCreating ] = useState( false );
+	const [ exporting, setExporting ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
 	const latest = useLatest();
 
@@ -210,7 +212,25 @@ export function OrdersScreen() {
 			</h1>{ ' ' }
 			<Button variant="secondary" onClick={ () => setCreating( true ) }>
 				{ __( 'Add order', 'orillacart' ) }
+			</Button>{ ' ' }
+			<Button variant="secondary" onClick={ () => setExporting( true ) }>
+				{ __( 'Export', 'orillacart' ) }
 			</Button>
+			{ exporting && (
+				<ExportDialog
+					kind="orders"
+					title={ __( 'Export the orders listed', 'orillacart' ) }
+					query={ { ...ordersQuery( view ) } }
+					formats={ [
+						{
+							value: 'csv',
+							label: __( 'CSV (spreadsheet)', 'orillacart' ),
+						},
+						{ value: 'json', label: 'JSON' },
+					] }
+					onClose={ () => setExporting( false ) }
+				/>
+			) }
 			{ error !== null && (
 				<Notice status="error" onRemove={ () => setError( null ) }>
 					{ error }

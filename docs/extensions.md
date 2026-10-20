@@ -25,7 +25,7 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
 - `$registry->shippingMethod(...)` registers a shipping method the same way; method ids are unique among
   methods. Price adjusters, cart rules, checkout fields and order actions follow (version 2).
 - `$registry->version()` is the API's version (`OrillaCart\Extension\Version`): 2 since price adjusters, cart
-  rules, checkout fields, order actions and `orders()` came.
+  rules, checkout fields, order actions and `orders()` came; 4 since export columns.
 - `$registry->log()` writes to the shop's log. Never log secrets or card data.
 - Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
 
@@ -225,6 +225,36 @@ shop manager sees the message and nothing is recorded.
 addresses, lines, totals, refunds, currency, payment, shipping, the customer's note and the field answers. Use it
 from the `orillacart_order_…` actions listed below, which pass only the number; keep the registry the
 `orillacart_extensions` action gave you.
+
+## Export columns
+
+Version 4 lets an add-on add columns to the shop's exports. The shop manager sees them beside the shop's own in
+the export dialog, chooses which to export and in what order, and the shop keeps that choice.
+
+- `OrillaCart\Extension\Order\OrderColumn` is a column of the orders export: `id()`, `label()` (the dialog's and
+  the file's header) and `value(OrderSummary)`, the order's cell. Register it with `$registry->orderColumn(...)`.
+- `OrillaCart\Extension\Catalog\ProductColumn` is a column of the products file, with `value(ProductItem)` for
+  a product or one of its variations (`ProductItem` has their ids, name, SKU and price). Register it with
+  `$registry->productColumn(...)`. Implement `ImportsProductColumn` too and the import reads the column back:
+  `import(ProductItem, $value)` runs after the shop saved the row's product; throw `InvalidArgumentException` to
+  report the row's value as refused.
+
+Column ids are unique among their kind, the shop's own ids included (`number`, `email`, `total`, `sku`,
+`price`…): a column with a taken id is logged and left out. A column that throws gives an empty cell, and is
+logged.
+
+```php
+if ($registry->version() >= 4) {
+    $registry->orderColumn(new class implements OrillaCart\Extension\Order\OrderColumn {
+        public function id(): string { return 'warehouse'; }
+        public function label(): string { return __('Warehouse', 'my-add-on'); }
+        public function value(OrillaCart\Extension\Order\OrderSummary $order): string
+        {
+            return (string) get_option('my_warehouse_of_' . $order->number, '');
+        }
+    });
+}
+```
 
 ## Page slots
 

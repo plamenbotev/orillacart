@@ -15,7 +15,8 @@ final class Version
     /**
      * 1: payment gateways, shipping methods. 2: price adjusters, cart rules, checkout fields, order actions,
      * orders. 3: gateways naming the payment of a notification (NamesNotifiedPayments), checking payments and
-     * refunds at the provider (ChecksPayments, ChecksRefunds).
+     * refunds at the provider (ChecksPayments, ChecksRefunds). 4: columns of the orders export and the products
+     * file (OrderColumn, ProductColumn, ImportsProductColumn).
      */
-    public const int CURRENT = 3;
+    public const int CURRENT = 4;
 }

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace OrillaCart\Extension;
 
 use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Order\OrderAction;
+use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
@@ -43,6 +45,12 @@ interface Registry
 
     /** Since version 2. */
     public function orderAction(OrderAction $action): void;
+
+    /** A column of the orders export. Since version 4. */
+    public function orderColumn(OrderColumn $column): void;
+
+    /** A column of the products file, exported and, for an ImportsProductColumn, imported. Since version 4. */
+    public function productColumn(ProductColumn $column): void;
 
     /** Reads the shop's orders. Since version 2. */
     public function orders(): Orders;

@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Fixtures\Payment;
 
 use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Order\OrderAction;
+use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 
 /**
- * What a test gives the shop, as if built in or registered by add-ons. Tests add adjusters, rules, fields and
- * actions as they go.
+ * What a test gives the shop, as if built in or registered by add-ons. Tests add adjusters, rules, fields,
+ * actions and columns as they go.
  */
 final class FixedExtensions implements InstalledExtensions
 {
@@ -26,6 +28,10 @@ final class FixedExtensions implements InstalledExtensions
     public array $fields = [];
     /** @var list<OrderAction> */
     public array $actions = [];
+    /** @var list<OrderColumn> */
+    public array $orderColumns = [];
+    /** @var list<ProductColumn> */
+    public array $productColumns = [];
 
     /**
      * @param list<PaymentGateway> $gateways
@@ -61,5 +67,15 @@ final class FixedExtensions implements InstalledExtensions
     public function orderActions(): array
     {
         return $this->actions;
+    }
+
+    public function orderColumns(): array
+    {
+        return $this->orderColumns;
+    }
+
+    public function productColumns(): array
+    {
+        return $this->productColumns;
     }
 }

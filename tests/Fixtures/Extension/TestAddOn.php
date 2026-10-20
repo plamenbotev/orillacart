@@ -10,6 +10,7 @@ use OrillaCart\Extension\Cart\CheckedCart;
 use OrillaCart\Extension\Cart\CheckedLine;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Order\OrderAction;
+use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\OrderSummary;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Pricing\PriceQuery;
@@ -18,7 +19,7 @@ use OrillaCart\Extension\Registry;
 /**
  * An add-on, registered on orillacart_extensions as another plugin would be: a gateway and a shipping method of
  * its own, a checkout field, a price adjuster (off until a test
- * sets a price), a cart rule (at most 50 of an item) and an order action.
+ * sets a price), a cart rule (at most 50 of an item), an order action and an order column.
  */
 final class TestAddOn
 {
@@ -81,5 +82,23 @@ final class TestAddOn
                 return \sprintf('Exported #%d for %s.', $order->number, $again?->email);
             }
         });
+        if ($registry->version() >= 4) {
+            $registry->orderColumn(new class implements OrderColumn {
+                public function id(): string
+                {
+                    return 'test_warehouse';
+                }
+
+                public function label(): string
+                {
+                    return 'Warehouse';
+                }
+
+                public function value(OrderSummary $order): string
+                {
+                    return 'W-' . $order->number;
+                }
+            });
+        }
     }
 }

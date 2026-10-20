@@ -101,3 +101,15 @@
 [id^="orillacart-admin-"] .orillacart-orders__attention-reason {
 	white-space: pre-line;
 }
+
+.orillacart-export-columns {
+	max-height: 50vh;
+	overflow-y: auto;
+	margin: 0 0 16px;
+	padding: 0;
+	list-style: none;
+}
+
+.orillacart-export-columns .components-checkbox-control {
+	margin: 4px 0;
+}

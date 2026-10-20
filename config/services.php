@@ -36,6 +36,10 @@ use OrillaCart\Customers\Infrastructure\Doctrine\DoctrinePendingAccountRepositor
 use OrillaCart\Customers\Infrastructure\GroupsOfShoppers;
 use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
 use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
+use OrillaCart\Exchange\Application\ColumnNames;
+use OrillaCart\Exchange\Domain\ExportChoices;
+use OrillaCart\Exchange\Infrastructure\WordPress\OptionExportChoices;
+use OrillaCart\Exchange\Infrastructure\WordPress\TranslatedColumnNames;
 use OrillaCart\Extension\Registry;
 use OrillaCart\Geography\Domain\CountryRepository;
 use OrillaCart\Geography\Infrastructure\Doctrine\DoctrineCountryRepository;
@@ -210,11 +214,12 @@ return static function (ContainerConfigurator $container): void {
             '../src/Shared/Security/',
             '../src/Shared/WordPress/AsHook.php',
             '../src/Search/Infrastructure/Doctrine/{FullTextQuery,SqlParams}.php',
+            '../src/Exchange/Application/{CsvFile,JsonFile}.php',
         ]);
 
     // Application services are each area's API: other areas, WordPress hooks and WP-CLI commands call them.
     $services->load('OrillaCart\\', '../src/*/Application/')
-        ->exclude('../src/*/Application/Dto/')
+        ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/{CsvFile,JsonFile}.php'])
         ->public();
     // Made per shopper by PriceResolver, not a service.
     $services->remove(ShopperPricing::class);
@@ -263,6 +268,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(EmailSettingsRepository::class, OptionEmailSettingsRepository::class);
     $services->alias(SentEmails::class, DoctrineSentEmails::class);
     $services->alias(AlertedStock::class, OptionAlertedStock::class);
+    $services->alias(ExportChoices::class, OptionExportChoices::class);
+    $services->alias(ColumnNames::class, TranslatedColumnNames::class);
     $services->alias(EmailTemplateRepository::class, DoctrineEmailTemplates::class);
     $services->alias(EditedTemplates::class, DoctrineEmailTemplates::class);
     $services->alias(VatRegistry::class, ViesVatRegistry::class);
