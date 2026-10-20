@@ -6,7 +6,6 @@ namespace OrillaCart\Notifications\Application;
 
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Jobs\Application\Jobs;
-use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailRules;
@@ -16,8 +15,6 @@ use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\OrderNotFound;
-use OrillaCart\Shared\Lifecycle\Languages;
-use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shipping\Application\ShipmentTracking;
 use Psr\Log\LoggerInterface;
 
@@ -35,14 +32,12 @@ final readonly class OrderEmails
         private OrderService $orders,
         private OrderLinks $links,
         private EmailSettingsRepository $settings,
-        private TemplateRenderer $templates,
+        private EmailWriter $writer,
         private Mailer $mailer,
-        private Site $site,
         private LoggerInterface $logger,
         private ShipmentTracking $shipments,
         private Jobs $jobs,
         private Invoices $invoices,
-        private Languages $languages,
         private ReceiptLinks $receipts,
     ) {}
 
@@ -153,7 +148,6 @@ final readonly class OrderEmails
      */
     public function send(int $orderId, EmailKind $kind, ?int $noteId = null, ?array $refund = null): void
     {
-        $settings = $this->settings->load();
         $order = $this->orders->order($orderId);
         $note = match ($kind) {
             EmailKind::CustomerNote => self::noteText($order, $noteId),
@@ -182,8 +176,6 @@ final readonly class OrderEmails
         $context = [
             'order' => $order,
             'receipt_url' => $this->links->receiptUrl($order->number),
-            'site_name' => $this->site->name(),
-            'site_url' => $this->site->url(),
             'for_shop' => $kind->isForShop(),
             'shipments' => $this->shipments->forOrder($orderId),
             'invoices' => $kind->isForShop() ? [] : $this->invoices->ofOrder($orderId),
@@ -191,28 +183,13 @@ final readonly class OrderEmails
 
         try {
             // The customer reads it in the language they ordered in; the shop in the site's.
-            $locale = $kind->isForShop() ? null : $order->locale;
-            $context['lang'] = str_replace('_', '-', $locale ?? $this->languages->site());
-            [$subject, $body] = $this->languages->in($locale, fn(): array => [
-                // A subject is plain text: what the template escaped for HTML reads as written.
-                html_entity_decode(trim($this->templates->renderBlock($kind->template(), 'subject', $context)), \ENT_QUOTES | \ENT_HTML5, 'UTF-8'),
-                $this->templates->render($kind->template(), $context),
-            ]);
-            $email = new Email(
-                $kind->isForShop() ? ($settings->shopAddress ?? $this->site->adminEmail()) : $order->email,
-                $subject,
-                $body,
-                PlainText::fromHtml($body),
-                $settings->fromName ?? $this->site->name(),
-                $settings->fromAddress ?? $this->site->adminEmail(),
-                $kind->isForShop() ? $order->email : null,
-                $kind->value,
-                $order->number,
-            );
-        } catch (\Throwable $e) {
+            $email = $kind->isForShop()
+                ? $this->writer->write($kind->template(), $kind->value, $this->writer->shopAddress(), null, $context, $order->email, $order->number)
+                : $this->writer->write($kind->template(), $kind->value, $order->email, $order->locale, $context, null, $order->number);
+        } catch (EmailNotWritten $e) {
             $this->logger->error('The {kind} email of order {order} could not be written: {message}', ['kind' => $kind->value, 'order' => $orderId, 'message' => $e->getMessage(), 'exception' => $e]);
 
-            throw new EmailNotWritten(\sprintf('The %s email could not be written: %s', $kind->value, $e->getMessage()), previous: $e);
+            throw $e;
         }
 
         if (!$this->mailer->send($email)) {

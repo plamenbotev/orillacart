@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace OrillaCart\Notifications\Application;
 
 use OrillaCart\Customers\Application\AccountMail;
-use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
 use OrillaCart\Shared\Lifecycle\Languages;
-use OrillaCart\Shared\View\TemplateRenderer;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -20,10 +18,9 @@ use Psr\Log\LoggerInterface;
 final readonly class AccountEmails implements AccountMail
 {
     public function __construct(
-        private TemplateRenderer $templates,
+        private EmailWriter $writer,
         private Mailer $mailer,
         private EmailSettingsRepository $settings,
-        private Site $site,
         private Languages $languages,
         private LoggerInterface $logger,
     ) {}
@@ -50,21 +47,9 @@ final readonly class AccountEmails implements AccountMail
      */
     private function send(string $to, string $template, string $kind, array $context): void
     {
-        $settings = $this->settings->load();
-        $context += ['site_name' => $this->site->name(), 'site_url' => $this->site->url(), 'lang' => str_replace('_', '-', $this->languages->current())];
         try {
-            $body = $this->templates->render($template, $context);
-            $email = new Email(
-                $to,
-                html_entity_decode(trim($this->templates->renderBlock($template, 'subject', $context)), \ENT_QUOTES | \ENT_HTML5, 'UTF-8'),
-                $body,
-                PlainText::fromHtml($body),
-                $settings->fromName ?? $this->site->name(),
-                $settings->fromAddress ?? $this->site->adminEmail(),
-                null,
-                $kind,
-            );
-        } catch (\Throwable $e) {
+            $email = $this->writer->write($template, $kind, $to, $this->languages->current(), $context);
+        } catch (EmailNotWritten $e) {
             $this->logger->error('The {kind} email could not be written: {message}', ['kind' => $kind, 'message' => $e->getMessage(), 'exception' => $e]);
 
             return;

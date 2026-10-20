@@ -18,7 +18,7 @@ final class AccountEmailsTest extends TestCase
     protected function setUp(): void
     {
         $this->shop = new TestShop();
-        $this->emails = new AccountEmails($this->shop->templates, $this->shop->mail, $this->shop->emailSettings, $this->shop->site, $this->shop->languages, $this->shop->logger);
+        $this->emails = new AccountEmails($this->shop->writer, $this->shop->mail, $this->shop->emailSettings, $this->shop->languages, $this->shop->logger);
     }
 
     public function testANewAccountIsWelcomedWithTheWayToIt(): void

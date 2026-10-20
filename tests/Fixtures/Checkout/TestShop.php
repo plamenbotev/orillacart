@@ -39,6 +39,7 @@ use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Invoicing\Infrastructure\Events\IssueInvoices;
+use OrillaCart\Notifications\Application\EmailWriter;
 use OrillaCart\Notifications\Application\OrderEmails;
 use OrillaCart\Notifications\Application\SendOrderEmails;
 use OrillaCart\Notifications\Infrastructure\Events\EmailAboutOrders;
@@ -218,6 +219,7 @@ final class TestShop
     public readonly EventDispatcher $events;
     public readonly SentMail $mail;
     public readonly InMemoryEmailSettingsRepository $emailSettings;
+    public readonly EmailWriter $writer;
     public readonly OrderEmails $emails;
     public readonly TestJobs $jobs;
     public readonly InMemorySentEmails $sentEmails;
@@ -371,7 +373,8 @@ final class TestShop
         $this->jobs = new TestJobs($this->clock);
         $this->sentEmails = new InMemorySentEmails();
         $this->jobs->immediate = true;
-        $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $templates, $this->mail, $this->site = new FakeSite(), $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs, $this->invoices, $this->languages, $this->receipts);
+        $this->writer = new EmailWriter($templates, $this->emailSettings, $this->site = new FakeSite(), $this->languages);
+        $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $this->writer, $this->mail, $this->logger, new ShipmentTracking($this->consignmentRecords), $this->jobs->jobs, $this->invoices, $this->receipts);
         $this->jobs->with(new SendOrderEmails($this->emails, $this->sentEmails, $this->clock, $this->logger), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));
         $emailing = new EmailAboutOrders($this->emails);
         $this->events->addListener(OrderStatusChanged::class, $emailing->statusChanged(...));
