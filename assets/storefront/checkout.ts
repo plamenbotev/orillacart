@@ -121,12 +121,19 @@ function bindContact( form: HTMLFormElement ): void {
 	const remind = form.querySelector< HTMLInputElement >(
 		'[data-orillacart-remind]'
 	);
+	// One after another, each with the form as it is when it goes: leaving the email field and ticking the box
+	// fire together, and the shop keeps whichever arrives last.
+	let sending: Promise< unknown > = Promise.resolve();
 	const send = (): void => {
-		const given = email?.value.trim() ?? '';
-		void api( 'POST', '/cart/checkout-contact', {
-			email: given !== '' && email?.validity.valid ? given : null,
-			remind: remind?.checked === true,
-		} );
+		sending = sending
+			.catch( () => undefined )
+			.then( () => {
+				const given = email?.value.trim() ?? '';
+				return api( 'POST', '/cart/checkout-contact', {
+					email: given !== '' && email?.validity.valid ? given : null,
+					remind: remind?.checked === true,
+				} );
+			} );
 	};
 	send();
 	email?.addEventListener( 'change', send );
