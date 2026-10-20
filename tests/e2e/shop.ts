@@ -271,7 +271,8 @@ export function accountLink( email: string ): string {
  */
 export function cartLink( email: string, token: string ): string {
 	execSync(
-		`npx wp-env run tests-cli wp db query "UPDATE wp_orillacart_carts SET recover_hash = SHA2('${ token }', 256) WHERE contact_email = '${ email }'"`,
+		// Only the latest cart with the email: carts of earlier runs stay, and one may hold the token still.
+		`npx wp-env run tests-cli wp db query "UPDATE wp_orillacart_carts SET recover_hash = NULL WHERE recover_hash = SHA2('${ token }', 256); UPDATE wp_orillacart_carts SET recover_hash = SHA2('${ token }', 256) WHERE contact_email = '${ email }' ORDER BY id DESC LIMIT 1"`,
 		{ stdio: 'ignore' }
 	);
 	return `orillacart_cart_link=${ token }`;
