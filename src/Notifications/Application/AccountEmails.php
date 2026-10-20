@@ -6,6 +6,7 @@ namespace OrillaCart\Notifications\Application;
 
 use OrillaCart\Customers\Application\AccountMail;
 use OrillaCart\Notifications\Application\Dto\Email;
+use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
 use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\View\TemplateRenderer;
@@ -13,7 +14,8 @@ use Psr\Log\LoggerInterface;
 
 /**
  * The emails signing up sends, in the visitor's language, from templates/emails/account-*.html.twig. Sent at
- * once: the visitor waits for the link. One that fails is logged, and the visitor asks again.
+ * once: the visitor waits for the link. One that fails is logged, and the visitor asks again. The welcome is the
+ * shop's to turn off.
  */
 final readonly class AccountEmails implements AccountMail
 {
@@ -34,6 +36,13 @@ final readonly class AccountEmails implements AccountMail
     public function exists(string $email, string $loginUrl, string $lostPasswordUrl): void
     {
         $this->send($email, 'emails/account-exists.html.twig', 'account_exists', ['login_url' => $loginUrl, 'lost_password_url' => $lostPasswordUrl]);
+    }
+
+    public function welcome(string $email, string $firstName, string $accountUrl): void
+    {
+        if ($this->settings->load()->sends(EmailKind::AccountWelcome)) {
+            $this->send($email, EmailKind::AccountWelcome->template(), EmailKind::AccountWelcome->value, ['first_name' => $firstName, 'account_url' => $accountUrl]);
+        }
     }
 
     /**

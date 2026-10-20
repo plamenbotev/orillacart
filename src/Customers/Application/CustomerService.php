@@ -242,6 +242,7 @@ final readonly class CustomerService
         }
         $this->pending->remove($account);
         $this->accounts->logIn($id);
+        $this->accountMail->welcome($account->email(), $account->firstName(), $this->links->accountUrl());
 
         return $this->customer($id);
     }

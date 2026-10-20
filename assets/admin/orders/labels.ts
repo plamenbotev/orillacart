@@ -26,6 +26,7 @@ export const EMAIL_LABELS: Record< string, string > = {
 		'New link to the order (when the customer’s expired)',
 		'orillacart'
 	),
+	account_welcome: __( 'Welcome to a new account', 'orillacart' ),
 	new_order: __( 'New order (to the shop)', 'orillacart' ),
 	order_attention: __(
 		'An order needs attention (to the shop)',

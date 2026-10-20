@@ -25,6 +25,11 @@ final class RecordingAccountMail implements AccountMail, AccountLinks
         $this->sent[] = ['kind' => 'exists', 'to' => $email, 'link' => null];
     }
 
+    public function welcome(string $email, string $firstName, string $accountUrl): void
+    {
+        $this->sent[] = ['kind' => 'welcome', 'to' => $email, 'link' => null];
+    }
+
     /** The token of the last link sent to the email. */
     public function tokenFor(string $email): string
     {
@@ -37,6 +42,11 @@ final class RecordingAccountMail implements AccountMail, AccountLinks
         }
 
         return '';
+    }
+
+    public function accountUrl(): string
+    {
+        return 'https://shop.test/account/';
     }
 
     public function confirmUrl(string $token): string

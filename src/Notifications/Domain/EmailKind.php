@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Notifications\Domain;
 
 /**
- * The emails the shop sends, each from its template in templates/emails/.
+ * The emails the shop can turn off, each from its template in templates/emails/: those about orders, and the
+ * welcome to a new account.
  */
 enum EmailKind: string
 {
@@ -24,6 +25,8 @@ enum EmailKind: string
     case CustomerNote = 'customer_note';
     /** To the customer: a new link to the receipt, when theirs expired. */
     case ReceiptLink = 'receipt_link';
+    /** To the customer: their account is made. */
+    case AccountWelcome = 'account_welcome';
     /** To the shop: a new order to look at. */
     case NewOrder = 'new_order';
     /** To the shop: an order needs attention, such as a payment disputed after it was paid. */
@@ -53,6 +56,6 @@ enum EmailKind: string
      */
     public static function resendable(): array
     {
-        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::OrderAttention, self::ReceiptLink], true)), 'value');
+        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::OrderAttention, self::ReceiptLink, self::AccountWelcome], true)), 'value');
     }
 }

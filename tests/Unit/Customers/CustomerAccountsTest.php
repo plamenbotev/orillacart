@@ -56,6 +56,7 @@ final class CustomerAccountsTest extends TestCase
         self::assertEquals($this->address, $customer->billing, 'the order\'s addresses are saved for next time');
         self::assertSame($order->number, $this->shop->orders->customerOrder($customer->id, $order->number)->number);
         self::assertSame([], $this->shop->pendingAccounts->accounts, 'the link works once');
+        self::assertSame([['confirm', 'ada@example.com'], ['welcome', 'ada@example.com']], array_map(static fn(array $mail): array => [$mail['kind'], $mail['to']], $this->shop->accountMail->sent));
     }
 
     public function testSigningUpSaysNothingOfWhetherTheEmailHasAnAccount(): void
