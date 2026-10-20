@@ -246,4 +246,48 @@ test.describe( 'The admin', () => {
 			page.getByRole( 'tab', { name: 'Products' } )
 		).toHaveAttribute( 'aria-selected', 'true' );
 	} );
+
+	test( 'writes, previews and resets an email template on the Emails screen', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		await remove(
+			requestUtils,
+			'/orillacart/v1/email-templates/account-welcome'
+		);
+		await admin.visitAdminPage( 'admin.php', 'page=orillacart-emails' );
+		await page
+			.getByRole( 'row', { name: /Welcome to a new account/ } )
+			.getByRole( 'button', { name: 'Edit' } )
+			.click();
+		const source = page.getByLabel( 'Template (Twig)' );
+		await expect( source ).toHaveValue( /Your account is ready/ );
+		await source.fill(
+			"{% extends 'emails/layout.html.twig' %}{% block subject %}Hello {{ first_name }}{% endblock %}{% block content %}<p>Shop with us</p>{% endblock %}"
+		);
+		await page.getByRole( 'button', { name: 'Preview' } ).click();
+		await expect(
+			page.getByRole( 'heading', { name: /Hello Ada/ } )
+		).toBeVisible();
+		await expect(
+			page
+				.frameLocator( 'iframe[title="Preview"]' )
+				.getByText( 'Shop with us' )
+		).toBeVisible();
+
+		await page.getByRole( 'button', { name: 'Save', exact: true } ).click();
+		await expect(
+			page.getByText( 'Template saved.' ).first()
+		).toBeVisible();
+		await page.getByRole( 'button', { name: 'Reset to the file' } ).click();
+		await page
+			.getByRole( 'dialog' )
+			.getByRole( 'button', { name: 'Reset' } )
+			.click();
+		await expect(
+			page.getByText( 'Back to the file’s template.' ).first()
+		).toBeVisible();
+		await expect( source ).toHaveValue( /Your account is ready/ );
+	} );
 } );
