@@ -113,6 +113,14 @@ describe( 'OrdersScreen', () => {
 					order,
 				} );
 			}
+			if ( request.path.endsWith( '/returns' ) ) {
+				return Promise.resolve( {
+					accepting: false,
+					until: null,
+					returnable: [],
+					returns: [],
+				} );
+			}
 			if ( request.path.endsWith( '/refunds' ) ) {
 				return Promise.resolve( {
 					refundable: '0',
@@ -207,6 +215,14 @@ describe( 'OrdersScreen', () => {
 			if ( request.path.endsWith( '/actions/export' ) ) {
 				return Promise.resolve( { message: 'Exported #7.', order } );
 			}
+			if ( request.path.endsWith( '/returns' ) ) {
+				return Promise.resolve( {
+					accepting: false,
+					until: null,
+					returnable: [],
+					returns: [],
+				} );
+			}
 			if ( request.path.endsWith( '/refunds' ) ) {
 				return Promise.resolve( {
 					refundable: '0',
@@ -256,6 +272,14 @@ describe( 'OrdersScreen', () => {
 			}
 			if ( request.path.endsWith( '/actions' ) ) {
 				return Promise.resolve( [] );
+			}
+			if ( request.path.endsWith( '/returns' ) ) {
+				return Promise.resolve( {
+					accepting: false,
+					until: null,
+					returnable: [],
+					returns: [],
+				} );
 			}
 			if ( request.path.endsWith( '/refunds' ) ) {
 				return Promise.resolve( {
@@ -320,6 +344,14 @@ describe( 'OrdersScreen', () => {
 			}
 			if ( request.path.endsWith( '/actions' ) ) {
 				return Promise.resolve( [] );
+			}
+			if ( request.path.endsWith( '/returns' ) ) {
+				return Promise.resolve( {
+					accepting: false,
+					until: null,
+					returnable: [],
+					returns: [],
+				} );
 			}
 			if ( request.path.endsWith( '/refunds' ) ) {
 				return Promise.resolve( {

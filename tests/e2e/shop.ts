@@ -279,6 +279,32 @@ export function cartLink( email: string, token: string ): string {
 }
 
 /**
+ * Lets customers return items for so many days after their order shipped, or takes no returns.
+ * @param requestUtils The admin's API access.
+ * @param days         The return window, or null.
+ */
+export async function takeReturns(
+	requestUtils: RequestUtils,
+	days: number | null
+): Promise< void > {
+	const {
+		weight_units: weightUnits,
+		dimension_units: dimensionUnits,
+		currency_positions: currencyPositions,
+		price_decimals: decimals,
+		currency_decimals: currencyDecimals,
+		...settings
+	} = await requestUtils.rest< Record< string, unknown > >( {
+		path: '/orillacart/v1/settings',
+	} );
+	await requestUtils.rest( {
+		method: 'PUT',
+		path: '/orillacart/v1/settings',
+		data: { ...settings, return_days: days },
+	} );
+}
+
+/**
  * Puts the shop in a country, or in none: the cart estimates tax and shipping there.
  * @param requestUtils
  * @param country      ISO 3166-1 code, or null.

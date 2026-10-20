@@ -46,6 +46,7 @@ final readonly class SettingsView
         public bool $removeDataOnUninstall = false,
         public int $lowStockThreshold = StoreSettings::DEFAULT_LOW_STOCK_THRESHOLD,
         public ?int $unpaidHoldDays = null,
+        public ?int $returnDays = null,
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -72,6 +73,7 @@ final readonly class SettingsView
             $settings->removeDataOnUninstall,
             $settings->lowStockThreshold,
             $settings->unpaidHoldDays,
+            $settings->returnDays,
         );
     }
 }

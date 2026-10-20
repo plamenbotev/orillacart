@@ -737,3 +737,56 @@ export function fetchPickupPoints(
 		} ),
 	} );
 }
+
+/** A customer's request to send items back, and where it stands. */
+export interface ItemReturn {
+	id: number;
+	status: 'requested' | 'approved' | 'refused' | 'received' | 'refunded';
+	items: { line: number; name: string; quantity: number }[];
+	reason: string;
+	reason_label: string;
+	comment: string;
+	/** What the shop told the customer when it answered. */
+	answer: string;
+	/** What refunding the items gives back, with their tax. */
+	amount: string;
+	requested_at: string;
+	answered_at: string | null;
+	received_at: string | null;
+	refunded_at: string | null;
+}
+
+export interface OrderReturns {
+	/** Whether the customer may ask for a return now. */
+	accepting: boolean;
+	/** The last day they may, "2026-11-19". */
+	until: string | null;
+	returnable: { line: number; name: string; quantity: number }[];
+	returns: ItemReturn[];
+}
+
+export function fetchReturns( orderId: number ): Promise< OrderReturns > {
+	return apiFetch< OrderReturns >( {
+		path: `${ BASE }/orders/${ orderId }/returns`,
+	} );
+}
+
+/**
+ * Moves a return on: approve or refuse it with an answer for the customer, say the items came back, or refund them.
+ * @param id           The return.
+ * @param step         What happens to it.
+ * @param data         What the step takes.
+ * @param data.answer  For approving or refusing: what the customer reads.
+ * @param data.outside For refunding: the shop gave the money back itself.
+ */
+export function moveReturn(
+	id: number,
+	step: 'approve' | 'refuse' | 'receive' | 'refund',
+	data: { answer?: string; outside?: boolean } = {}
+): Promise< ItemReturn > {
+	return apiFetch< ItemReturn >( {
+		path: `${ BASE }/returns/${ id }/${ step }`,
+		method: 'POST',
+		data,
+	} );
+}

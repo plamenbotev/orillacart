@@ -48,6 +48,7 @@ import {
 } from './api';
 import { EMAIL_LABELS, STATUS_LABELS, money, when } from './labels';
 import { AccountCard, DownloadsCard, ShipmentsCard } from './OrderCards';
+import { ReturnsCard } from './ReturnsCard';
 import { type ItemRow, ItemRows } from './ItemRows';
 import { RefundsCard } from './RefundsCard';
 
@@ -210,7 +211,16 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 					onError={ fail }
 				/>
 			) }
+			<ReturnsCard
+				order={ order }
+				onChanged={ () =>
+					fetchOrder( order.number ).then( setOrder ).catch( fail )
+				}
+				onError={ fail }
+			/>
 			<RefundsCard
+				// What was refunded changes when a return is refunded: the card loads its refunds again.
+				key={ order.refunded_total }
 				order={ order }
 				onRefunded={ ( text ) =>
 					fetchOrder( order.number )

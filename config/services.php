@@ -136,6 +136,8 @@ use OrillaCart\Reports\Application\ShopCalendar;
 use OrillaCart\Reports\Infrastructure\Doctrine\DbalReportQueries;
 use OrillaCart\Reports\Infrastructure\Doctrine\DbalReportStore;
 use OrillaCart\Reports\Infrastructure\WordPress\SiteCalendar;
+use OrillaCart\Returns\Domain\ReturnRepository;
+use OrillaCart\Returns\Infrastructure\Doctrine\DoctrineReturnRepository;
 use OrillaCart\Search\Application\CatalogSearch;
 use OrillaCart\Search\Application\ProductTexts;
 use OrillaCart\Search\Application\SearchIndex;
@@ -306,6 +308,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ProductTexts::class, WordPressProductTexts::class);
     $services->alias(RateCache::class, TransientRateCache::class);
     $services->alias(ConsignmentRepository::class, DoctrineConsignmentRepository::class);
+    $services->alias(ReturnRepository::class, DoctrineReturnRepository::class);
     $services->alias(CouponRepository::class, DoctrineCouponRepository::class);
     $services->alias(CustomerGroupRepository::class, DoctrineCustomerGroupRepository::class);
     $services->alias(PendingAccountRepository::class, DoctrinePendingAccountRepository::class);

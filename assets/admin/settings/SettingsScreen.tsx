@@ -52,6 +52,7 @@ function inputOf( settings: Settings ): SettingsInput {
 		remove_data_on_uninstall: settings.remove_data_on_uninstall,
 		low_stock_threshold: settings.low_stock_threshold,
 		unpaid_hold_days: settings.unpaid_hold_days,
+		return_days: settings.return_days,
 		sell_to: settings.sell_to,
 	};
 }
@@ -418,6 +419,27 @@ export function SettingsScreen() {
 								onChange={ ( value ) =>
 									update(
 										'unpaid_hold_days',
+										value === '' ? null : Number( value )
+									)
+								}
+							/>
+							<TextControl
+								__next40pxDefaultSize
+								type="number"
+								min={ 1 }
+								max={ 365 }
+								label={ __(
+									'Customers may return items within (days)',
+									'orillacart'
+								) }
+								help={ __(
+									'Counted from when the order shipped; customers ask from their order page, and you approve or refuse. Empty: you take no returns.',
+									'orillacart'
+								) }
+								value={ form.return_days ?? '' }
+								onChange={ ( value ) =>
+									update(
+										'return_days',
 										value === '' ? null : Number( value )
 									)
 								}

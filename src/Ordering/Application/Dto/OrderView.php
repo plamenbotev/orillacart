@@ -86,6 +86,8 @@ final readonly class OrderView
         /** The day the customer chose for delivery, "2026-10-21", and the time of day. */
         public ?string $deliveryDate = null,
         public ?string $deliverySlot = null,
+        /** When it first left for the customer; returns count from it. */
+        public ?string $fulfilledAt = null,
     ) {}
 
     /**
@@ -146,6 +148,7 @@ final readonly class OrderView
             (string) $order->feesTax(),
             $order->delivery()?->date->format('Y-m-d'),
             $order->delivery()?->slot,
+            $order->fulfilledAt()?->format(\DATE_ATOM),
         );
     }
 }

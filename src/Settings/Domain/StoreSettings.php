@@ -52,9 +52,14 @@ final readonly class StoreSettings
         public int $lowStockThreshold = self::DEFAULT_LOW_STOCK_THRESHOLD,
         /** Orders on hold for a payment made outside the shop are cancelled after this many days unpaid; null never. */
         public ?int $unpaidHoldDays = null,
+        /** Customers may ask to return items this many days after their order shipped; null takes no returns. */
+        public ?int $returnDays = null,
     ) {
         if ($unpaidHoldDays !== null && ($unpaidHoldDays < 1 || $unpaidHoldDays > 365)) {
             throw new RuleViolation('Unpaid orders are cancelled after 1 to 365 days, or never.', 'orillacart_invalid_unpaid_days');
+        }
+        if ($returnDays !== null && ($returnDays < 1 || $returnDays > 365)) {
+            throw new RuleViolation('Customers return items within 1 to 365 days, or the shop takes no returns.', 'orillacart_invalid_return_days');
         }
         if ($lowStockThreshold < 0) {
             throw new RuleViolation('A low stock threshold is 0 or more.', 'orillacart_invalid_low_stock_threshold');
@@ -115,6 +120,7 @@ final readonly class StoreSettings
             && $this->showLowestPrice === $other->showLowestPrice
             && $this->removeDataOnUninstall === $other->removeDataOnUninstall
             && $this->lowStockThreshold === $other->lowStockThreshold
-            && $this->unpaidHoldDays === $other->unpaidHoldDays;
+            && $this->unpaidHoldDays === $other->unpaidHoldDays
+            && $this->returnDays === $other->returnDays;
     }
 }

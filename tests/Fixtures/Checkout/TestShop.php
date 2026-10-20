@@ -94,6 +94,7 @@ use OrillaCart\Platform\Twig\ShopExtension;
 use OrillaCart\Platform\Twig\Strictness;
 use OrillaCart\Platform\Twig\TwigFactory;
 use OrillaCart\Platform\Twig\TwigRenderer;
+use OrillaCart\Returns\Application\Returns;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\SettingsChanged;
@@ -164,6 +165,7 @@ use OrillaCart\Tests\Fixtures\Payment\InMemoryNotifiedEvents;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentMethodRepository;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentRepository;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryRefundRepository;
+use OrillaCart\Tests\Fixtures\Returns\InMemoryReturnRepository;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryConsignmentRepository;
@@ -185,6 +187,7 @@ final class TestShop
     public readonly MockClock $clock;
     public readonly DeliveryDays $deliveryDays;
     public readonly AddressChecks $addressChecks;
+    public readonly Returns $returns;
     public readonly ExtensionFailures $failures;
     public readonly InMemoryProductContent $content;
     public readonly InMemoryProductRepository $productRecords;
@@ -384,6 +387,7 @@ final class TestShop
             $this->deliveryDays = new DeliveryDays($carrierRecords, $this->orders, new SofiaCalendar(), $this->clock),
             $this->addressChecks = new AddressChecks($extensions, $this->logger),
         );
+        $this->returns = new Returns(new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock);
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
         $this->invoiceSettings = new MemoryInvoiceSettings();

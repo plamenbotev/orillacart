@@ -4,7 +4,7 @@
  # order: the order; receipt: a link's token for it, which paying it now needs; heading: whether to thank the
  # customer for ordering;
  # links: the shop's pages; pay_methods: the ways an unpaid order can be paid now, if any; invoices: its
- # invoices and credit notes, if any.
+ # invoices and credit notes, if any; returns: its returns, and what may still go back, if the shop takes returns.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-receipt">
@@ -162,6 +162,43 @@
             </div>
         {% endif %}
     </div>
+    {% if returns is defined and returns and (returns.returns or returns.accepting) %}
+        {% set reasons = {damaged: __('It arrived damaged'), wrong_item: __('It is not what I ordered'), not_as_described: __('It is not as described'), no_longer_needed: __('I no longer need it'), other: __('Another reason')} %}
+        {% set states = {requested: __('Asked; the shop will answer'), approved: __('Approved: send the items back'), refused: __('Refused'), received: __('The items came back'), refunded: __('Refunded')} %}
+        <h3 class="orillacart-heading" id="returns">{{ __('Returns') }}</h3>
+        {% for item_return in returns.returns %}
+            <div class="orillacart-return">
+                <p><strong>{% for item in item_return.items %}{{ item.quantity }} × {{ item.name }}{{ not loop.last ? ', ' }}{% endfor %}</strong> — {{ states[item_return.status] ?? item_return.status }}</p>
+                {% if item_return.answer %}<p class="orillacart-return__answer">{{ item_return.answer|nl2br }}</p>{% endif %}
+            </div>
+        {% endfor %}
+        {% if returns.accepting and receipt is defined %}
+            <form class="orillacart-return-form" data-orillacart-return="{{ receipt }}">
+                {# translators: %s: a date -#}
+                <p>{{ __('You may ask to send items back until %s.')|format(returns.until|shop_day) }}</p>
+                {% for item in returns.returnable %}
+                    <p class="orillacart-field">
+                        <label for="orillacart-return-{{ item.line }}">{{ item.name }}</label>
+                        <select id="orillacart-return-{{ item.line }}" name="items.{{ item.line }}" data-orillacart-return-line="{{ item.line }}">
+                            {% for quantity in 0..item.quantity %}<option value="{{ quantity }}">{{ quantity }}</option>{% endfor %}
+                        </select>
+                    </p>
+                {% endfor %}
+                <p class="orillacart-field">
+                    <label for="orillacart-return-reason">{{ __('Why') }}</label>
+                    <select id="orillacart-return-reason" name="reason">
+                        {% for value, label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                    </select>
+                </p>
+                <p class="orillacart-field">
+                    <label for="orillacart-return-comment">{{ __('Anything to add') }}</label>
+                    <textarea id="orillacart-return-comment" name="comment" maxlength="1000" rows="3"></textarea>
+                </p>
+                <p class="orillacart-message" role="alert" data-orillacart-message></p>
+                <button type="submit" class="wp-element-button orillacart-button">{{ __('Ask to return these items') }}</button>
+            </form>
+        {% endif %}
+    {% endif %}
 {% if order.fields %}
         <h3 class="orillacart-heading">{{ __('Other details') }}</h3>
         {{ shop.field_answers(order.fields) }}

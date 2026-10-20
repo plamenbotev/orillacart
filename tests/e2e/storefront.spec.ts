@@ -11,6 +11,7 @@ import {
 	product,
 	remove,
 	setUpShop,
+	takeReturns,
 	tearDownShop,
 	type Shop,
 } from './shop';
@@ -600,6 +601,61 @@ test.describe( 'A visitor', () => {
 		await expect(
 			page.getByText( '1 Vitosha Blvd' ).first()
 		).toBeVisible();
+	} );
+
+	test( 'asks from the receipt to send an item back', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		await takeReturns( requestUtils, 30 );
+		try {
+			await requestUtils.rest( {
+				method: 'POST',
+				path: '/orillacart/v1/cart/items',
+				data: { product_id: shop.lamp, quantity: 2 },
+			} );
+			const placed = await requestUtils.rest< {
+				number: number;
+				receipt_url: string;
+			} >( {
+				method: 'POST',
+				path: '/orillacart/v1/checkout',
+				data: {
+					email: 'e2e-return@example.com',
+					billing: { ...BILLING, country: 'BG' },
+					shipping_option: `rate:${ shop.rate }`,
+					payment: 'bank_transfer',
+					remember_addresses: false,
+				},
+			} );
+			for ( const status of [ 'processing', 'shipped' ] ) {
+				await requestUtils.rest( {
+					method: 'PUT',
+					path: `/orillacart/v1/orders/${ placed.number }/status`,
+					data: { status },
+				} );
+			}
+
+			await page.goto( placed.receipt_url );
+			const form = page.locator( 'form[data-orillacart-return]' );
+			await form.getByLabel( 'E2E Lamp' ).selectOption( '1' );
+			await form.getByLabel( 'Why' ).selectOption( 'damaged' );
+			await form.getByLabel( 'Anything to add' ).fill( 'Cracked.' );
+			await form
+				.getByRole( 'button', { name: 'Ask to return these items' } )
+				.click();
+
+			await expect(
+				page.locator( '.orillacart-return' ).first()
+			).toContainText( '1 × E2E Lamp — Asked; the shop will answer' );
+			await expect(
+				page
+					.locator( 'form[data-orillacart-return]' )
+					.getByLabel( 'E2E Lamp' )
+			).toHaveValue( '0' );
+		} finally {
+			await takeReturns( requestUtils, null );
+		}
 	} );
 
 	test( 'asks to hear when a sold-out product is back', async ( {

@@ -161,6 +161,10 @@ class Order
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $paidAt = null;
 
+    /** When it first left for the customer: shipped, or completed without shipping first. Returns count from it. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $fulfilledAt = null;
+
     /** Why the shop has to look at the order, such as a payment disputed after it was paid; null when nothing. */
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $attention = null;
@@ -463,6 +467,11 @@ class Order
     public function paidAt(): ?\DateTimeImmutable
     {
         return $this->paidAt;
+    }
+
+    public function fulfilledAt(): ?\DateTimeImmutable
+    {
+        return $this->fulfilledAt;
     }
 
     public function refundedTotal(): Money
@@ -1007,12 +1016,16 @@ class Order
                 // Done: the courier handed over the cash of an order paid on delivery, if nothing came before.
                 $this->status = OrderStatus::Completed;
                 $this->paidAt ??= $at;
+                $this->fulfilledAt ??= $at;
 
                 return [];
             case OrderStatus::Cancelled:
                 return $this->close(OrderStatus::Cancelled);
             default:
                 $this->status = $status;
+                if ($status === OrderStatus::Shipped) {
+                    $this->fulfilledAt ??= $at;
+                }
 
                 return [];
         }

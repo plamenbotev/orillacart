@@ -18,6 +18,7 @@ use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
+use OrillaCart\Returns\Application\Returns;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
@@ -51,6 +52,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         private Invoices $invoices,
         private EmailSettingsService $emails,
         private AddressChecks $addressChecks,
+        private Returns $returns,
     ) {}
 
     public static function name(): string
@@ -132,6 +134,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'shipments' => $this->shipments->forOrder($order->number),
             'pay_methods' => $this->payNow->methods($order),
             'invoices' => $this->invoices->ofOrder($order->number),
+            'returns' => $this->returns->forOrder($order->number),
         ]);
     }
 

@@ -31,6 +31,8 @@ export interface Settings {
 	low_stock_threshold: number;
 	/** Orders on hold for a bank transfer or cheque are cancelled after this many days unpaid; null never. */
 	unpaid_hold_days: number | null;
+	/** Customers ask to return items this many days after their order shipped; null takes no returns. */
+	return_days: number | null;
 	weight_units: string[];
 	dimension_units: string[];
 	currency_positions: string[];
@@ -55,6 +57,7 @@ export type SettingsInput = Pick<
 	| 'remove_data_on_uninstall'
 	| 'low_stock_threshold'
 	| 'unpaid_hold_days'
+	| 'return_days'
 >;
 
 const PATH = '/orillacart/v1/settings';

@@ -1,6 +1,7 @@
 /**
  * The receipt's forms: Pay now, where an unpaid order is paid with the way chosen, then the customer goes to
- * the provider, or sees the receipt anew for an offline payment; and, for an expired link, asking for a new one.
+ * the provider, or sees the receipt anew for an offline payment; asking to return items; and, for an expired
+ * link, asking for a new one.
  */
 import { __ } from '@wordpress/i18n';
 
@@ -74,5 +75,57 @@ export function bindReceiptLink( form: HTMLFormElement ): void {
 				: failure( result ),
 			result.ok ? 'success' : 'error'
 		);
+	} );
+}
+
+/**
+ * Asks to send some of the order's items back: how many of each, and why. The receipt shows the request after.
+ * @param form The receipt's return form.
+ */
+export function bindReturn( form: HTMLFormElement ): void {
+	form.addEventListener( 'submit', async ( event ) => {
+		event.preventDefault();
+		const button = form.querySelector< HTMLButtonElement >(
+			'button[type="submit"]'
+		);
+		if ( button?.disabled ) {
+			return;
+		}
+		const items = Array.from(
+			form.querySelectorAll< HTMLSelectElement >(
+				'[data-orillacart-return-line]'
+			)
+		)
+			.map( ( select ) => ( {
+				line: Number( select.dataset.orillacartReturnLine ),
+				quantity: Number( select.value ),
+			} ) )
+			.filter( ( item ) => item.quantity > 0 );
+		if ( items.length === 0 ) {
+			showMessage(
+				form,
+				__( 'Choose how many of an item to send back.', 'orillacart' ),
+				'error'
+			);
+			return;
+		}
+		if ( button ) {
+			button.disabled = true;
+		}
+		const body = formBody( form );
+		const result = await api(
+			'POST',
+			`/receipts/${ form.dataset.orillacartReturn ?? '' }/returns`,
+			{ items, reason: body.reason, comment: body.comment ?? '' }
+		);
+		if ( result.ok ) {
+			window.location.hash = 'returns';
+			window.location.reload();
+			return;
+		}
+		if ( button ) {
+			button.disabled = false;
+		}
+		showMessage( form, failure( result ), 'error' );
 	} );
 }
