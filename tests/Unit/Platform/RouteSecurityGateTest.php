@@ -52,6 +52,7 @@ final class RouteSecurityGateTest extends TestCase
         // Paying an unpaid order later: only with its secret key, and only a method the shop offers for it.
         'POST /receipts/{receipt}/payment',
         'POST /receipts/link',
+        'POST /receipts/lookup',
         // Asking to return items: only with the receipt's secret key, for items of that order that can go back.
         'POST /receipts/{receipt}/returns',
         'POST /accounts',

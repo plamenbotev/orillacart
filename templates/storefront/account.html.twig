@@ -1,5 +1,6 @@
 {#
- # The customer's account. Visitors log in (WordPress's login) or make an account; customers see their
+ # The customer's account. Visitors log in (WordPress's login), make an account, or have the link to an
+ # order they placed as guests emailed to them; customers see their
  # orders, files and addresses.
  #
  # logged_in; accounts: optional | required | disabled; login_form (HTML); lost_password_url; confirm_token: the
@@ -48,6 +49,17 @@
                     </form>
                 </section>
             {% endif %}
+            <section class="orillacart-account__find">
+                <h2 class="orillacart-heading">{{ __('Find an order') }}</h2>
+                <form data-orillacart-find-order novalidate>
+                    {{ shop.input('find', 'number', __('Order number'), '', 'off', 'text') }}
+                    {{ shop.input('find', 'email', __('Email the order was placed with'), '', 'email', 'email') }}
+                    {{ shop.honeypot('find.orillacart_website') }}
+                    <p><small>{{ __('We email the link to your order to that address.') }}</small></p>
+                    <p class="orillacart-message" role="status" data-orillacart-message></p>
+                    <button type="submit" class="wp-element-button orillacart-button">{{ __('Email me the link') }}</button>
+                </form>
+            </section>
         </div>
     {% else %}
         <nav class="orillacart-account__nav" aria-label="{{ __('Account') }}">

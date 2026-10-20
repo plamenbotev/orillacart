@@ -240,10 +240,16 @@ export function runJobs(): void {
 }
 
 /**
- * The link to make an account the email got last: the test site keeps its mail (its mu-plugin).
- * @param email The address.
+ * The last link of the pattern the email got: the test site keeps its mail (its mu-plugin).
+ * @param email   The address.
+ * @param pattern The link, as the first group of a pattern of the email's HTML.
+ * @param subject Words of the email's subject, to tell it from others with such links.
  */
-export function accountLink( email: string ): string {
+export function mailedLink(
+	email: string,
+	pattern: RegExp,
+	subject = ''
+): string {
 	const kept = JSON.parse(
 		execSync(
 			'npx wp-env run tests-cli wp option get orillacart_test_mail --format=json',
@@ -251,16 +257,26 @@ export function accountLink( email: string ): string {
 		)
 			.split( '\n' )
 			.find( ( line ) => line.startsWith( '[' ) ) ?? '[]'
-	) as { to: string; message: string }[];
+	) as { to: string; subject: string; message: string }[];
 	for ( const mail of kept.reverse() ) {
-		const link = /href="([^"]*orillacart_account=[a-f0-9]{64})"/.exec(
-			mail.message
-		);
-		if ( mail.to === email && link?.[ 1 ] ) {
+		const link = pattern.exec( mail.message );
+		if (
+			mail.to === email &&
+			mail.subject.includes( subject ) &&
+			link?.[ 1 ]
+		) {
 			return link[ 1 ].replace( /&amp;/g, '&' );
 		}
 	}
-	throw new Error( `No link to make an account for ${ email }.` );
+	throw new Error( `No link of ${ pattern.source } for ${ email }.` );
+}
+
+/**
+ * The link to make an account the email got last.
+ * @param email The address.
+ */
+export function accountLink( email: string ): string {
+	return mailedLink( email, /href="([^"]*orillacart_account=[a-f0-9]{64})"/ );
 }
 
 /**

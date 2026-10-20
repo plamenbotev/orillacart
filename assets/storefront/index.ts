@@ -4,7 +4,12 @@
  */
 import './storefront.css';
 
-import { bindAddressBook, bindConfirm, bindRegister } from './account';
+import {
+	bindAddressBook,
+	bindConfirm,
+	bindFindOrder,
+	bindRegister,
+} from './account';
 import { bindBackInStock } from './backinstock';
 import { bindCart } from './cart';
 import { bindCheckout } from './checkout';
@@ -50,6 +55,11 @@ function start(): void {
 	document
 		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-confirm]' )
 		.forEach( bindConfirm );
+	document
+		.querySelectorAll< HTMLFormElement >(
+			'form[data-orillacart-find-order]'
+		)
+		.forEach( bindFindOrder );
 	document
 		.querySelectorAll< HTMLElement >( '.orillacart-account__addresses' )
 		.forEach( bindAddressBook );

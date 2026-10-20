@@ -95,6 +95,22 @@ final readonly class OrderEmails
         $this->queue($read[0], EmailKind::ReceiptLink);
     }
 
+    /**
+     * A guest looks up their order by its number and email: the link to its receipt goes to the order's email,
+     * when they match. Whoever asked hears the same either way, and sees nothing of the order.
+     */
+    public function findOrder(int $number, string $email): void
+    {
+        try {
+            $order = $this->orders->order($number);
+        } catch (OrderNotFound) {
+            return;
+        }
+        if (mb_strtolower(trim($order->email)) === mb_strtolower(trim($email))) {
+            $this->queue($order->number, EmailKind::ReceiptLink);
+        }
+    }
+
     /** The customer is reminded that the order waits for their payment. */
     public function paymentReminder(int $orderId): void
     {

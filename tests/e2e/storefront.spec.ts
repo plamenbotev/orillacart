@@ -8,8 +8,10 @@ import {
 	accountLink,
 	BILLING,
 	cartLink,
+	mailedLink,
 	product,
 	remove,
+	runJobs,
 	setUpShop,
 	takeReturns,
 	tearDownShop,
@@ -335,6 +337,48 @@ test.describe( 'A visitor', () => {
 		await expect(
 			page.locator( '#shipping_address-postcode' )
 		).toHaveValue( '1000' );
+	} );
+
+	test( 'orders as a guest, then finds the order by its number and email', async ( {
+		page,
+	} ) => {
+		const email = `e2e-guest-${ Date.now() }@example.com`;
+		await page.goto( shop.lampUrl );
+		await page.getByRole( 'button', { name: 'Add to cart' } ).click();
+		await expect( page.getByRole( 'status' ) ).toHaveText( /Added/ );
+		await page.goto( shop.urls.checkout );
+		await fillBilling( page, email );
+		await page.getByRole( 'button', { name: 'Place order' } ).click();
+		await expect(
+			page.getByRole( 'heading', { name: 'Thank you for your order' } )
+		).toBeVisible();
+		const number =
+			( await page
+				.locator( '.orillacart-receipt__facts strong' )
+				.first()
+				.textContent() ) ?? '';
+
+		await page.goto( shop.urls.account );
+		await page.getByLabel( 'Order number' ).fill( number );
+		await page
+			.getByLabel( 'Email the order was placed with' )
+			.fill( email );
+		await page.getByRole( 'button', { name: 'Email me the link' } ).click();
+		await expect(
+			page.getByText( 'If the order number and email match' )
+		).toBeVisible();
+
+		runJobs();
+		await page.goto(
+			mailedLink(
+				email,
+				/href="([^"]*orillacart_order=[^"]+)"/,
+				'The link to your order'
+			)
+		);
+		await expect(
+			page.getByText( number, { exact: true } ).first()
+		).toBeVisible();
 	} );
 
 	test( 'makes an account on the account page and logs out', async ( {

@@ -119,6 +119,21 @@ final class OrderEmailsTest extends TestCase
         self::assertStringContainsString($this->shop->receipts->issue($order->number), $mail->html, 'a link made today');
     }
 
+    public function testAGuestFindsTheirOrderByItsNumberAndEmailInTheirInbox(): void
+    {
+        $order = $this->place('bank_transfer');
+        $sent = \count($this->shop->mail->emails);
+
+        $this->shop->emails->findOrder($order->number, 'grace@example.com');
+        $this->shop->emails->findOrder($order->number + 1, 'ada@example.com');
+        self::assertCount($sent, $this->shop->mail->emails, 'nothing for an email or number that does not match');
+
+        $this->shop->emails->findOrder($order->number, ' ADA@example.com');
+        $mail = $this->shop->mail->emails[$sent];
+        self::assertSame(['ada@example.com', "[Lamp Shop] The link to your order #{$order->number}"], [$mail->to, $mail->subject]);
+        self::assertStringContainsString($this->shop->receipts->issue($order->number), $mail->html);
+    }
+
     public function testAPayPalOrderIsConfirmedOnceWhenPaid(): void
     {
         $order = $this->place('paypal');

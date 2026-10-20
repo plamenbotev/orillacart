@@ -79,6 +79,49 @@ export function bindRegister( form: HTMLFormElement ): void {
 }
 
 /**
+ * A guest looks up an order: the link to it goes to the email it was placed with, and the page says the same
+ * whether the two matched or not.
+ * @param form The account page's find-an-order form.
+ */
+export function bindFindOrder( form: HTMLFormElement ): void {
+	form.addEventListener( 'submit', async ( event ) => {
+		event.preventDefault();
+		clearErrors( form );
+		const fields =
+			( formBody( form ).find as Record< string, string > | undefined ) ??
+			{};
+		// "#1042" as the emails write it.
+		const number = Number( ( fields.number ?? '' ).replace( /\D/g, '' ) );
+		const result = await busy( form, () =>
+			api( 'POST', '/receipts/lookup', { ...fields, number } )
+		);
+		if ( result === null ) {
+			return;
+		}
+		if ( result.ok ) {
+			form.reset();
+			showMessage(
+				form,
+				__(
+					'If the order number and email match, the link to the order is on its way to that email.',
+					'orillacart'
+				)
+			);
+			return;
+		}
+		const violations = result.violations.map( ( violation ) => ( {
+			...violation,
+			field: `find.${ violation.field }`,
+		} ) );
+		showMessage(
+			form,
+			failure( result, showErrors( form, violations ) ),
+			'error'
+		);
+	} );
+}
+
+/**
  * Choosing the password of an account asked for: the account is made, and the page shows it, without the link.
  * @param form The form with the emailed link's token.
  */
