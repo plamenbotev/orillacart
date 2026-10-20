@@ -9,6 +9,8 @@ use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\ProductGallery;
+use OrillaCart\Notifications\Domain\EmailKind;
+use OrillaCart\Notifications\Domain\EmailSettingsRepository;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
@@ -27,6 +29,7 @@ final readonly class ProductPanel
         private ShopLinks $links,
         private TemplateRenderer $templates,
         private Shopper $shopper,
+        private EmailSettingsRepository $emails,
     ) {}
 
     public function content(string $content): string
@@ -54,12 +57,15 @@ final readonly class ProductPanel
                 'for_sale' => $variation->forSale,
                 'available' => $variation->available,
                 'on_backorder' => $variation->onBackorder,
+                'sold_out' => $variation->soldOut,
                 'price' => $this->templates->render('storefront/_variation_price.html.twig', ['variation' => $variation]),
                 'image' => self::images([(int) get_post_thumbnail_id($variation->id)])[0] ?? null,
                 'gallery' => self::images(ProductGallery::of($variation->id)),
                 'description' => wp_strip_all_tags((string) get_post_field('post_excerpt', $variation->id)),
             ], $offer->variations),
             'cart_url' => $this->links->pages()['cart'],
+            'back_in_stock' => $this->emails->load()->sends(EmailKind::BackInStock),
+            'email' => is_user_logged_in() ? wp_get_current_user()->user_email : '',
         ]);
     }
 

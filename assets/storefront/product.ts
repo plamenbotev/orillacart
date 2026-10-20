@@ -4,6 +4,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { api } from './api';
+import { showBackInStock } from './backinstock';
 import { clearErrors, failure, formBody, showErrors, showMessage } from './dom';
 import { bindGallery, type Gallery, type Picture } from './gallery';
 
@@ -25,6 +26,8 @@ type Variation = {
 	available: number | null;
 	/** Out of stock, sold on backorder, and the customer is told. */
 	on_backorder: boolean;
+	/** For sale but none in stock: a visitor may ask to hear when it is back. */
+	sold_out: boolean;
 	price: string;
 	image: Picture | null;
 	gallery: Picture[];
@@ -268,6 +271,11 @@ function showVariation(
 			: null
 	);
 
+	showBackInStock(
+		product,
+		variation?.id ?? null,
+		variation?.sold_out ?? false
+	);
 	if ( ! variation ) {
 		if ( stock && chosen.length > 0 && chosen.length === choices ) {
 			stock.textContent = __(

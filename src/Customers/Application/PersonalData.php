@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace OrillaCart\Customers\Application;
 
+use OrillaCart\Customers\Domain\Event\PersonErased;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderService;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * What the shop holds of a person, for WordPress's privacy tools (Tools → Export and Erase Personal Data): their
@@ -21,6 +23,7 @@ final readonly class PersonalData
     public function __construct(
         private OrderService $orders,
         private CustomerService $customers,
+        private ?EventDispatcherInterface $events = null,
     ) {}
 
     /**
@@ -53,6 +56,9 @@ final readonly class PersonalData
     {
         $customerId = $this->customers->customerIdOf($email);
         $removed = $page === 1 && $this->customers->erase($email);
+        if ($page === 1) {
+            $this->events?->dispatch(new PersonErased($email));
+        }
         // Erased orders no longer match the email, so each page starts at the first that still does.
         $orders = $this->orders->ofPerson($email, $customerId, 1, self::PER_PAGE);
         foreach ($orders as $order) {

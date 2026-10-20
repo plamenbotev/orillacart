@@ -23,6 +23,13 @@ final readonly class WordPressSite implements Site
         return home_url('/');
     }
 
+    public function productUrl(int $productId): ?string
+    {
+        $url = get_permalink($productId);
+
+        return \is_string($url) ? $url : null;
+    }
+
     public function userEmail(int $userId): ?string
     {
         $user = get_userdata($userId);

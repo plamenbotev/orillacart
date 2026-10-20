@@ -279,7 +279,8 @@ Escape what you print. A theme that overrides a template keeps the slots it copi
   `order_processing`, `order_backordered`, `tracking_added`, `order_shipped`, `order_completed`,
   `order_cancelled`, `order_failed`, `order_refunded`, `customer_note` and `receipt_link` to the customer, and
   `new_order`, `order_attention`, `payment_failed` and `refund_made` to the shop. The others have no order:
-  `account_confirm`, `account_exists` and `account_welcome` to the customer, `low_stock` to the shop. Order emails
+  `account_confirm`, `account_exists` and `account_welcome` to the customer, `back_in_stock` to a visitor who
+  asked, `low_stock` to the shop. Order emails
   go out from a background job, so the filter runs there.
 - `orillacart_email_headers` filters the header lines, with the same arguments.
 - `orillacart_template_paths` adds folders of templates: the shop looks in the theme's `orillacart/` folder, then

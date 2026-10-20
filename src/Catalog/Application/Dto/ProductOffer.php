@@ -45,6 +45,8 @@ final readonly class ProductOffer
         public array $bundleChoices = [],
         /** On sale: the lowest price of the 30 days before the sale price began (EU Omnibus), when known. */
         public ?string $lowestPrice = null,
+        /** For sale but none in stock: a visitor may ask to hear when it is back. */
+        public bool $soldOut = false,
     ) {}
 
     /** Whether the product goes in the cart as it is, with no options to choose. */

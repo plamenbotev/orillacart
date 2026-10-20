@@ -3,7 +3,8 @@
  #
  # offer: the product (price, sale, stock, choices); gallery: its images, featured first ({src, srcset, sizes,
  # alt, thumb}); variations: each variation with its price already formatted, image, gallery and description,
- # for the script that shows the chosen one; cart_url: null when the shop has no cart page.
+ # for the script that shows the chosen one; cart_url: null when the shop has no cart page; back_in_stock: whether
+ # visitors may ask to hear when a sold-out item is back (email: the logged-in customer's, to fill in).
  #
  # The script shows a chosen picture in the theme's featured image (img.wp-post-image), or in the stage here
  # when the page has none.
@@ -60,6 +61,17 @@
         {%- endif -%}
     </p>
 
+    {% if back_in_stock|default(false) and (offer.sold_out or variations|filter(variation => variation.sold_out)|length > 0) %}
+        <form class="orillacart-back-in-stock" data-orillacart-back-in-stock data-product="{{ offer.id }}"{{ offer.sold_out ? '' : ' hidden' }}>
+            <p class="orillacart-field">
+                <label for="orillacart-back-in-stock-{{ offer.id }}">{{ __('Email me when it is back') }}</label>
+                <input id="orillacart-back-in-stock-{{ offer.id }}" type="email" name="email" data-orillacart-field="email" value="{{ email|default('') }}" autocomplete="email" required>
+            </p>
+            {{ shop.honeypot() }}
+            <button type="submit" class="wp-element-button orillacart-button">{{ __('Tell me') }}</button>
+            <p class="orillacart-message" role="status" data-orillacart-message></p>
+        </form>
+    {% endif %}
     {{ slot('product_before_form', offer.id) }}
     {% if (offer.for_sale or offer.bundle_choices) and cart_url and not offer.price_hidden %}
         <form class="orillacart-add-to-cart" method="post" action="{{ cart_url }}" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}" data-variations="{{ variations|json_encode }}"{% if offer.bundle_choices %} data-bundle="{{ offer.id }}"{% endif %}>

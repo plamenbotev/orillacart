@@ -7,6 +7,8 @@ import type { Page } from '@playwright/test';
 import {
 	accountLink,
 	BILLING,
+	product,
+	remove,
 	setUpShop,
 	tearDownShop,
 	type Shop,
@@ -323,5 +325,47 @@ test.describe( 'A visitor', () => {
 
 		await page.getByRole( 'link', { name: 'Log out' } ).click();
 		await expect( page.locator( '#orillacart-login' ) ).toBeVisible();
+	} );
+
+	test( 'asks to hear when a sold-out product is back', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const stockroom = await requestUtils.rest< { id: number } >( {
+			method: 'POST',
+			path: '/orillacart/v1/stockrooms',
+			data: { name: 'E2E Back room' },
+		} );
+		const lamp = await product( requestUtils, 'E2E Sold Out Lamp', {
+			price: '15',
+		} );
+		try {
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: `/orillacart/v1/stock/product/${ lamp.id }`,
+				data: {
+					levels: [ { stockroom_id: stockroom.id, quantity: 0 } ],
+				},
+			} );
+			await page.goto( lamp.link );
+			const form = page.locator( 'form[data-orillacart-back-in-stock]' );
+			await form
+				.getByLabel( 'Email me when it is back' )
+				.fill( 'waiting@example.com' );
+			await form.getByRole( 'button', { name: 'Tell me' } ).click();
+
+			await expect(
+				form.getByText( 'We will email you once when it is back.' )
+			).toBeVisible();
+		} finally {
+			await remove(
+				requestUtils,
+				`/wp/v2/orillacart_product/${ lamp.id }?force=true`
+			);
+			await remove(
+				requestUtils,
+				`/orillacart/v1/stockrooms/${ stockroom.id }`
+			);
+		}
 	} );
 } );

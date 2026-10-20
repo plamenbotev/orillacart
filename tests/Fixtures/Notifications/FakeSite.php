@@ -25,6 +25,14 @@ final class FakeSite implements Site
         return 'https://shop.test/';
     }
 
+    /** @var list<int> products that are gone */
+    public array $gone = [];
+
+    public function productUrl(int $productId): ?string
+    {
+        return \in_array($productId, $this->gone, true) ? null : "https://shop.test/?p={$productId}";
+    }
+
     public function userEmail(int $userId): ?string
     {
         return $userId === 7 ? 'manager@shop.test' : null;

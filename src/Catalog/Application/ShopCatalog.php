@@ -241,6 +241,7 @@ final readonly class ShopCatalog
             $onBackorder,
             $prices->tiers($own, $item($details->pricing), regular: $details->pricing->price()),
             lowestPrice: $regular === null ? null : ($lowest["product:{$product->id()}"] ?? null),
+            soldOut: $sellable && $available === 0,
         );
     }
 
@@ -375,6 +376,7 @@ final readonly class ShopCatalog
             $available,
             $onBackorder,
             $regular === null ? null : ($lowest["variation:{$variation->id()}"] ?? null),
+            $sellable && $available === 0,
         );
     }
 

@@ -23,6 +23,7 @@ final readonly class TransientRateLimiter implements RateLimiter
         'session' => [120, 600],
         'receipts' => [60, 600],
         'receipt_links' => [5, 3600],
+        'back_in_stock' => [10, 3600],
     ];
 
     public function hit(string $guard, string $caller): ?int

@@ -15,6 +15,9 @@ interface Site
 
     public function url(): string;
 
+    /** A product's page; null for one gone. */
+    public function productUrl(int $productId): ?string;
+
     /** The email of a WordPress user; null for one that does not exist. */
     public function userEmail(int $userId): ?string;
 }

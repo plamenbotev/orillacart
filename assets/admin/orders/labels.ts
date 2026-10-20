@@ -30,6 +30,7 @@ export const EMAIL_LABELS: Record< string, string > = {
 		'orillacart'
 	),
 	account_welcome: __( 'Welcome to a new account', 'orillacart' ),
+	back_in_stock: __( 'Back in stock, to those who asked', 'orillacart' ),
 	new_order: __( 'New order (to the shop)', 'orillacart' ),
 	order_attention: __(
 		'An order needs attention (to the shop)',

@@ -50,6 +50,7 @@ final class RouteSecurityGateTest extends TestCase
         'POST /receipts/link',
         'POST /accounts',
         'POST /accounts/confirm',
+        'POST /back-in-stock',
         'GET /session',
         'GET /payments/{gateway}/return',
         'GET /payments/{gateway}/cancel',

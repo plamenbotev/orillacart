@@ -27,5 +27,7 @@ final readonly class OfferedVariation
         public bool $onBackorder = false,
         /** On sale: the lowest price of the 30 days before the sale price began, when known. */
         public ?string $lowestPrice = null,
+        /** For sale but none in stock: a visitor may ask to hear when it is back. */
+        public bool $soldOut = false,
     ) {}
 }
