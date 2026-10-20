@@ -473,6 +473,25 @@ export function ProductPanels() {
 							}
 						/>
 					) }
+				{ ( draft.stock_mode === 'tracked' || hasVariations ) && (
+					<TextControl
+						__next40pxDefaultSize
+						type="number"
+						min={ 0 }
+						label={ __( 'Low stock at', 'orillacart' ) }
+						help={ __(
+							'The shop hears when a stockroom holds this many or fewer. Empty for the stockroom’s or the shop’s.',
+							'orillacart'
+						) }
+						value={ draft.low_stock_threshold ?? '' }
+						onChange={ ( value ) =>
+							change( {
+								low_stock_threshold:
+									value === '' ? null : Number( value ),
+							} )
+						}
+					/>
+				) }
 				{ hasVariations && (
 					<p>
 						{ __(

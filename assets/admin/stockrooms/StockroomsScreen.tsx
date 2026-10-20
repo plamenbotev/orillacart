@@ -34,6 +34,7 @@ const EMPTY: StockroomInput = {
 	max_delivery_days: 0,
 	delivery_unit: 'days',
 	active: true,
+	low_stock_threshold: null,
 };
 
 /**
@@ -277,6 +278,24 @@ function StockroomCard( {
 						value={ draft.description }
 						onChange={ ( description ) =>
 							setDraft( { ...draft, description } )
+						}
+					/>
+					<TextControl
+						__next40pxDefaultSize
+						type="number"
+						min={ 0 }
+						label={ __( 'Low stock at', 'orillacart' ) }
+						help={ __(
+							'Empty for the shop’s setting. A product can say otherwise.',
+							'orillacart'
+						) }
+						value={ draft.low_stock_threshold ?? '' }
+						onChange={ ( value ) =>
+							setDraft( {
+								...draft,
+								low_stock_threshold:
+									value === '' ? null : Number( value ),
+							} )
 						}
 					/>
 					<CheckboxControl

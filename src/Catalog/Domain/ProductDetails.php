@@ -20,6 +20,8 @@ final readonly class ProductDetails
      * @param int|null    $shippingClassId     the shipping class of the product and its variations; null for none
      * @param Backorders  $backorders          whether it sells on when its counted stock runs out; variations may differ
      * @param int|null    $backorderLimit      how many it may owe at most, as variations do unless they say; null for no limit
+     * @param int|null    $lowStockThreshold   the shop hears when a stockroom holds this many or fewer, as of variations
+     *                                         unless they say; null for the stockroom's or the shop's
      */
     public function __construct(
         public ProductType $type,
@@ -40,9 +42,11 @@ final readonly class ProductDetails
         public ?int $shippingClassId = null,
         public Backorders $backorders = Backorders::No,
         public ?int $backorderLimit = null,
+        public ?int $lowStockThreshold = null,
     ) {
         self::validSku($sku);
         self::validBackorderLimit($backorderLimit);
+        self::validLowStockThreshold($lowStockThreshold);
         if (($downloadLimit !== null && $downloadLimit < 1) || ($downloadExpiryDays !== null && $downloadExpiryDays < 1)) {
             throw new CatalogRuleViolation('A download limit and expiry are at least 1, or empty for none.', 'orillacart_invalid_download_terms');
         }
@@ -71,6 +75,7 @@ final readonly class ProductDetails
             $this->shippingClassId,
             $this->backorders,
             $this->backorderLimit,
+            $this->lowStockThreshold,
         );
     }
 
@@ -81,6 +86,16 @@ final readonly class ProductDetails
     {
         if ($limit !== null && $limit < 1) {
             throw new CatalogRuleViolation('A backorder limit is at least 1, or empty for no limit.', 'orillacart_invalid_backorder_limit');
+        }
+    }
+
+    /**
+     * @throws CatalogRuleViolation for a threshold below zero
+     */
+    public static function validLowStockThreshold(?int $threshold): void
+    {
+        if ($threshold !== null && $threshold < 0) {
+            throw new CatalogRuleViolation('A low stock threshold is 0 or more, or empty for the stockroom\'s or the shop\'s.', 'orillacart_invalid_low_stock_threshold');
         }
     }
 

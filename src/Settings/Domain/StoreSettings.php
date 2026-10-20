@@ -14,6 +14,7 @@ use OrillaCart\Shared\Domain\RuleViolation;
 final readonly class StoreSettings
 {
     public const int MAX_SIGN_LENGTH = 8;
+    public const int DEFAULT_LOW_STOCK_THRESHOLD = 2;
 
     /** The decimals amounts are priced, charged and shown in: the currency's, or fewer when the shop chose so. */
     public int $priceDecimals;
@@ -47,7 +48,12 @@ final readonly class StoreSettings
         public bool $showLowestPrice = false,
         /** Deleting the plugin removes the shop's data too: orders, products, settings and files. */
         public bool $removeDataOnUninstall = false,
+        /** The shop hears when a stockroom holds this many of an item or fewer, unless the stockroom or item says otherwise. */
+        public int $lowStockThreshold = self::DEFAULT_LOW_STOCK_THRESHOLD,
     ) {
+        if ($lowStockThreshold < 0) {
+            throw new RuleViolation('A low stock threshold is 0 or more.', 'orillacart_invalid_low_stock_threshold');
+        }
         $most = $currency->decimals();
         if ($decimals !== null && ($decimals < 0 || $decimals > $most)) {
             throw new RuleViolation(
@@ -102,6 +108,7 @@ final readonly class StoreSettings
             && $this->hidePrices === $other->hidePrices
             && $this->sellTo === $other->sellTo
             && $this->showLowestPrice === $other->showLowestPrice
-            && $this->removeDataOnUninstall === $other->removeDataOnUninstall;
+            && $this->removeDataOnUninstall === $other->removeDataOnUninstall
+            && $this->lowStockThreshold === $other->lowStockThreshold;
     }
 }

@@ -30,6 +30,8 @@ final readonly class VariationView
         public ?string $backorders = null,
         /** null when it follows the product */
         public ?int $backorderLimit = null,
+        /** null when it follows the product */
+        public ?int $lowStockThreshold = null,
     ) {}
 
     public static function fromVariation(Variation $variation): self
@@ -50,6 +52,7 @@ final readonly class VariationView
             $variation->height(),
             $variation->backorders()?->value,
             $variation->backorderLimit(),
+            $variation->lowStockThreshold(),
         );
     }
 }

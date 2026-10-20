@@ -82,6 +82,7 @@ describe( 'StockroomsScreen', () => {
 				max_delivery_days: 14,
 				active: true,
 				delivery_unit: 'weeks',
+				low_stock_threshold: null,
 			},
 		} );
 		expect(

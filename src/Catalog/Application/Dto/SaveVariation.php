@@ -43,5 +43,8 @@ final readonly class SaveVariation
         /** Null to follow the product. */
         #[Assert\Positive]
         public ?int $backorderLimit = null,
+        /** Null to follow the product. */
+        #[Assert\PositiveOrZero]
+        public ?int $lowStockThreshold = null,
     ) {}
 }

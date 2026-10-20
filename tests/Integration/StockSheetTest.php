@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Catalog\Application\Dto\LowStockView;
+use OrillaCart\Catalog\Application\LowStock;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 
@@ -110,6 +112,30 @@ final class StockSheetTest extends RestTestCase
         ]], nonce: true);
         self::assertSame(422, $refused->get_status());
         self::assertSame([(string) $this->sofia => 5], $this->sheet('')['rows'][0]['levels'], 'nothing changed');
+    }
+
+    public function testTheLowStockIsFoundOnTheDatabaseWithEachThreshold(): void
+    {
+        $sheet = $this->sheet("parent={$this->hoodie}")['rows'];
+        $small = $sheet[0]['id'];
+        $this->request('PUT', "/products/{$this->hoodie}/variations/{$small}", ['option_ids' => [$this->sheet('kind=options')['rows'][0]['id']], 'price' => '40', 'sku' => 'HOOD-0', 'low_stock_threshold' => 6], nonce: true);
+        $this->request('PUT', "/stockrooms/{$this->berlin}", ['name' => 'Berlin', 'low_stock_threshold' => 9], nonce: true);
+        $option = $this->sheet('kind=options')['rows'][1]['id'];
+        $saved = $this->request('PATCH', '/stock-levels', ['changes' => [
+            ['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'quantity' => 3],
+            ['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->berlin, 'quantity' => 9],
+            ['kind' => 'variation', 'id' => $small, 'stockroom_id' => $this->sofia, 'quantity' => 5],
+            ['kind' => 'option', 'id' => $option, 'stockroom_id' => $this->sofia, 'quantity' => 1],
+        ]], nonce: true);
+        self::assertSame(204, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
+
+        $low = self::kernel()->container()->get(LowStock::class);
+        self::assertInstanceOf(LowStock::class, $low);
+        self::assertSame([
+            ['Brass lamp', 'Berlin', 9, 9],
+            ['Hoodie – S', 'Sofia', 5, 6],
+            ['Size: M', 'Sofia', 1, 2],
+        ], array_map(static fn(LowStockView $item): array => [$item->name, $item->stockroom, $item->quantity, $item->threshold], $low->items()), 'the lamp holds 3 in Sofia, above the shop\'s 2');
     }
 
     /**

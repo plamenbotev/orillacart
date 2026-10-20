@@ -9,6 +9,8 @@ export interface Stockroom {
 	active: boolean;
 	/** How the times are shown and entered; they are kept in days. */
 	delivery_unit: 'days' | 'weeks';
+	/** The shop hears when an item here is down to this many or fewer; null for the shop's. */
+	low_stock_threshold: number | null;
 }
 
 export type StockroomInput = Omit< Stockroom, 'id' >;

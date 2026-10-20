@@ -120,6 +120,40 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return $product !== null ? [$product->id()] : ($set !== null ? $this->idsUsingSet($set->id()) : []);
     }
 
+    public function optionsWithIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        /** @var list<AttributeOption> */
+        return $this->entityManager->createQueryBuilder()
+            ->select('o', 'a')
+            ->from(AttributeOption::class, 'o')
+            ->join('o.attribute', 'a')
+            ->where('o.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function highestLowStockThreshold(): ?int
+    {
+        $highest = null;
+        foreach ([Product::class, Variation::class] as $entity) {
+            $most = $this->entityManager->createQueryBuilder()
+                ->select('MAX(e.lowStockThreshold)')
+                ->from($entity, 'e')
+                ->getQuery()
+                ->getSingleScalarResult();
+            if (is_numeric($most)) {
+                $highest = max($highest ?? 0, (int) $most);
+            }
+        }
+
+        return $highest;
+    }
+
     public function attributeNames(): array
     {
         $names = $this->entityManager->createQueryBuilder()

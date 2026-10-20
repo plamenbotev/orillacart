@@ -16,12 +16,13 @@ final readonly class StockroomView
         public int $maxDeliveryDays,
         public bool $active,
         public string $deliveryUnit = 'days',
+        public ?int $lowStockThreshold = null,
     ) {}
 
     public static function fromStockroom(Stockroom $stockroom): self
     {
         $details = $stockroom->details();
 
-        return new self($stockroom->id(), $details->name, $details->description, $details->minDeliveryDays, $details->maxDeliveryDays, $details->active, $details->deliveryUnit->value);
+        return new self($stockroom->id(), $details->name, $details->description, $details->minDeliveryDays, $details->maxDeliveryDays, $details->active, $details->deliveryUnit->value, $details->lowStockThreshold);
     }
 }

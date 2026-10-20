@@ -1,0 +1,17 @@
+{% extends 'emails/layout.html.twig' %}
+{#
+ # To the shop: what the stockrooms hold few of. items: name, sku, stockroom, quantity (below zero by what is
+ # owed), threshold, and new (it ran low since the last email).
+ #}
+{# translators: %s: site name -#}
+{% block subject %}{{ __('[%s] Stock runs low')|format(site_name) }}{% endblock %}
+{% block heading %}{{ __('Stock runs low') }}{% endblock %}
+{% block intro %}<p>{{ __('These items are at or below the stock you want to hear of. New since the last email:') }} <strong>{{ items|filter(item => item.new)|length }}</strong></p>{% endblock %}
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+<tr><th align="left" style="padding:6px 0;border-bottom:1px solid #e4e4e7;">{{ __('Item') }}</th><th align="left" style="padding:6px 8px;border-bottom:1px solid #e4e4e7;">{{ __('Stockroom') }}</th><th align="right" style="padding:6px 0;border-bottom:1px solid #e4e4e7;">{{ __('In stock') }}</th></tr>
+{% for item in items %}
+<tr><td style="padding:6px 0;border-bottom:1px solid #f4f4f5;">{% if item.new %}<strong>{{ item.name }}</strong>{% else %}{{ item.name }}{% endif %}{% if item.sku %}<br><small style="color:#71717a;">{{ item.sku }}</small>{% endif %}</td><td style="padding:6px 8px;border-bottom:1px solid #f4f4f5;">{{ item.stockroom }}</td><td align="right" style="padding:6px 0;border-bottom:1px solid #f4f4f5;">{% if item.quantity < 0 %}{{ __('%d owed')|format(-item.quantity) }}{% else %}{{ item.quantity }}{% endif %} <small style="color:#71717a;">/ {{ item.threshold }}</small></td></tr>
+{% endfor %}
+</table>
+{% endblock %}

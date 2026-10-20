@@ -41,6 +41,8 @@ enum EmailKind: string
     case PaymentFailed = 'payment_failed';
     /** To the shop: money went back for an order. */
     case RefundMade = 'refund_made';
+    /** To the shop, daily when an item ran low since: what the stockrooms hold few of. */
+    case LowStock = 'low_stock';
 
     public function template(): string
     {
@@ -49,7 +51,7 @@ enum EmailKind: string
 
     public function isForShop(): bool
     {
-        return \in_array($this, [self::NewOrder, self::OrderAttention, self::PaymentFailed, self::RefundMade], true);
+        return \in_array($this, [self::NewOrder, self::OrderAttention, self::PaymentFailed, self::RefundMade, self::LowStock], true);
     }
 
     /** @return list<string> */
@@ -66,6 +68,6 @@ enum EmailKind: string
      */
     public static function resendable(): array
     {
-        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::RefundMade, self::OrderAttention, self::ReceiptLink, self::AccountWelcome], true)), 'value');
+        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::RefundMade, self::OrderAttention, self::ReceiptLink, self::AccountWelcome, self::LowStock], true)), 'value');
     }
 }

@@ -36,6 +36,10 @@ class Variation
     #[ORM\Column(nullable: true)]
     private ?int $backorderLimit = null;
 
+    /** The shop hears when a stockroom holds this many or fewer; null when it follows its product. */
+    #[ORM\Column(nullable: true)]
+    private ?int $lowStockThreshold = null;
+
     #[ORM\Column(type: 'decimal', precision: 12, scale: 4, nullable: true)]
     private ?string $weight = null;
 
@@ -112,6 +116,12 @@ class Variation
         return $this->backorderLimit;
     }
 
+    /** Its own threshold; null when it follows its product. */
+    public function lowStockThreshold(): ?int
+    {
+        return $this->lowStockThreshold;
+    }
+
     /** Its own weight, or null for the product's. */
     public function weight(): ?string
     {
@@ -174,6 +184,7 @@ class Variation
         $this->stockMode = $details->stockMode;
         $this->backorders = $details->backorders;
         $this->backorderLimit = $details->backorderLimit;
+        $this->lowStockThreshold = $details->lowStockThreshold;
         $this->weight = $details->weight;
         $this->length = $details->length;
         $this->width = $details->width;

@@ -36,6 +36,9 @@ class Stockroom
     #[ORM\Column(length: 10, enumType: DeliveryUnit::class, options: ['default' => 'days'])]
     private DeliveryUnit $deliveryUnit = DeliveryUnit::Days;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $lowStockThreshold = null;
+
     public function __construct(StockroomDetails $details)
     {
         $this->change($details);
@@ -48,7 +51,7 @@ class Stockroom
 
     public function details(): StockroomDetails
     {
-        return new StockroomDetails($this->name, $this->minDeliveryDays, $this->maxDeliveryDays, $this->active, $this->description, $this->deliveryUnit);
+        return new StockroomDetails($this->name, $this->minDeliveryDays, $this->maxDeliveryDays, $this->active, $this->description, $this->deliveryUnit, $this->lowStockThreshold);
     }
 
     public function isActive(): bool
@@ -69,5 +72,6 @@ class Stockroom
         $this->maxDeliveryDays = $details->maxDeliveryDays;
         $this->active = $details->active;
         $this->deliveryUnit = $details->deliveryUnit;
+        $this->lowStockThreshold = $details->lowStockThreshold;
     }
 }

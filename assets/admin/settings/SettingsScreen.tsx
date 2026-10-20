@@ -50,6 +50,7 @@ function inputOf( settings: Settings ): SettingsInput {
 		hide_prices: settings.hide_prices,
 		show_lowest_price: settings.show_lowest_price,
 		remove_data_on_uninstall: settings.remove_data_on_uninstall,
+		low_stock_threshold: settings.low_stock_threshold,
 		sell_to: settings.sell_to,
 	};
 }
@@ -380,6 +381,23 @@ export function SettingsScreen() {
 								checked={ form.show_lowest_price }
 								onChange={ ( value ) =>
 									update( 'show_lowest_price', value )
+								}
+							/>
+							<TextControl
+								__next40pxDefaultSize
+								type="number"
+								min={ 0 }
+								label={ __( 'Low stock at', 'orillacart' ) }
+								help={ __(
+									'The shop hears daily of items a stockroom holds this many of or fewer. A stockroom or product can say otherwise.',
+									'orillacart'
+								) }
+								value={ String( form.low_stock_threshold ) }
+								onChange={ ( value ) =>
+									update(
+										'low_stock_threshold',
+										Math.max( 0, Number( value ) || 0 )
+									)
 								}
 							/>
 							<CheckboxControl

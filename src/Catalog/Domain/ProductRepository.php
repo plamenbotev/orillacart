@@ -57,6 +57,18 @@ interface ProductRepository
     public function findByVariation(int $variationId): ?Product;
 
     /**
+     * The attribute options with the ids, with their attributes; those that do not exist are left out.
+     *
+     * @param list<int> $ids
+     *
+     * @return list<AttributeOption>
+     */
+    public function optionsWithIds(array $ids): array;
+
+    /** The highest low stock threshold a product or variation has; null when none has one. */
+    public function highestLowStockThreshold(): ?int;
+
+    /**
      * Ids of the bundles holding any of the products, found without loading every bundle.
      *
      * @param list<int> $productIds

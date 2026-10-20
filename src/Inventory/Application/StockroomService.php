@@ -64,6 +64,6 @@ final readonly class StockroomService
 
     private static function details(SaveStockroom $command): StockroomDetails
     {
-        return new StockroomDetails($command->name, $command->minDeliveryDays, $command->maxDeliveryDays, $command->active, $command->description, DeliveryUnit::from($command->deliveryUnit));
+        return new StockroomDetails($command->name, $command->minDeliveryDays, $command->maxDeliveryDays, $command->active, $command->description, DeliveryUnit::from($command->deliveryUnit), $command->lowStockThreshold);
     }
 }

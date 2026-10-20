@@ -45,5 +45,7 @@ final readonly class UpdateSettings
         public array $sellTo = [],
         public bool $showLowestPrice = false,
         public bool $removeDataOnUninstall = false,
+        #[Assert\PositiveOrZero]
+        public int $lowStockThreshold = StoreSettings::DEFAULT_LOW_STOCK_THRESHOLD,
     ) {}
 }

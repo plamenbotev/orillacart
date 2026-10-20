@@ -62,6 +62,7 @@ final readonly class SettingsService
             $sellTo,
             $command->showLowestPrice,
             $command->removeDataOnUninstall,
+            $command->lowStockThreshold,
         );
 
         if (!$current->equals($previous)) {

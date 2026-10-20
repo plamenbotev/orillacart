@@ -47,6 +47,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
                 array_values(array_filter(\is_array($stored['sell_to'] ?? null) ? $stored['sell_to'] : [], \is_string(...))),
                 ($stored['show_lowest_price'] ?? false) === true,
                 ($stored['remove_data_on_uninstall'] ?? false) === true,
+                self::optionalInt($stored, 'low_stock_threshold') ?? StoreSettings::DEFAULT_LOW_STOCK_THRESHOLD,
             );
         } catch (RuleViolation|\ValueError|\UnexpectedValueException $e) {
             $this->logger->warning('Stored shop settings are not valid, using the defaults: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
@@ -72,6 +73,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
             'sell_to' => $settings->sellTo,
             'show_lowest_price' => $settings->showLowestPrice,
             'remove_data_on_uninstall' => $settings->removeDataOnUninstall,
+            'low_stock_threshold' => $settings->lowStockThreshold,
         ], true);
     }
 

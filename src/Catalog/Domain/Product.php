@@ -70,6 +70,9 @@ class Product
     private ?int $backorderLimit = null;
 
     #[ORM\Column(nullable: true)]
+    private ?int $lowStockThreshold = null;
+
+    #[ORM\Column(nullable: true)]
     private ?int $downloadLimit = null;
 
     #[ORM\Column(nullable: true)]
@@ -143,6 +146,7 @@ class Product
             $this->shippingClassId,
             $this->backorders,
             $this->backorderLimit,
+            $this->lowStockThreshold,
         );
     }
 
@@ -166,6 +170,7 @@ class Product
         $this->shippingClassId = $details->shippingClassId;
         $this->backorders = $details->backorders;
         $this->backorderLimit = $details->backorderLimit;
+        $this->lowStockThreshold = $details->lowStockThreshold;
     }
 
     /** Its shipping class is gone; it ships as an item without one. */

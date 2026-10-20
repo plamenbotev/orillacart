@@ -104,6 +104,7 @@ final readonly class ProductService
             $command->shippingClassId,
             Backorders::from($command->backorders),
             $command->backorderLimit,
+            $command->lowStockThreshold,
         );
         $product = $this->products->find($id);
         if ($product === null) {
@@ -286,6 +287,7 @@ final readonly class ProductService
             $command->height,
             $command->backorders === null ? null : Backorders::from($command->backorders),
             $command->backorderLimit,
+            $command->lowStockThreshold,
         );
     }
 

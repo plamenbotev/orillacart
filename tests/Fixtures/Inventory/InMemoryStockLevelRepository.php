@@ -28,6 +28,11 @@ final class InMemoryStockLevelRepository implements StockLevelRepository
         return $work($this->stockOf($items));
     }
 
+    public function atMost(int $quantity): array
+    {
+        return array_values(array_filter($this->levels, static fn(StockLevel $level): bool => $level->quantity() <= $quantity && $level->stockroom()->isActive()));
+    }
+
     public function add(StockLevel $level): void
     {
         $this->levels[] = $level;

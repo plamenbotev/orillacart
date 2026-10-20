@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Inventory\Application;
 
 use OrillaCart\Inventory\Application\Dto\ChangeStockLevel;
+use OrillaCart\Inventory\Application\Dto\ItemLevelView;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\StockView;
@@ -55,6 +56,19 @@ final readonly class StockService
         }
 
         return $levels;
+    }
+
+    /**
+     * The stock levels of active stockrooms holding this many of an item or fewer, owed stock below zero.
+     *
+     * @return list<ItemLevelView>
+     */
+    public function atMost(int $quantity): array
+    {
+        return array_map(
+            static fn(StockLevel $level): ItemLevelView => new ItemLevelView(new StockItemRef($level->item()->kind->value, $level->item()->id), $level->stockroom()->id(), $level->quantity()),
+            $this->levels->atMost($quantity),
+        );
     }
 
     /**

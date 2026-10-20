@@ -27,6 +27,8 @@ export interface Settings {
 	show_lowest_price: boolean;
 	/** Deleting the plugin removes the shop's data too. */
 	remove_data_on_uninstall: boolean;
+	/** The shop hears when a stockroom holds this many of an item or fewer, unless the stockroom or item says. */
+	low_stock_threshold: number;
 	weight_units: string[];
 	dimension_units: string[];
 	currency_positions: string[];
@@ -49,6 +51,7 @@ export type SettingsInput = Pick<
 	| 'sell_to'
 	| 'show_lowest_price'
 	| 'remove_data_on_uninstall'
+	| 'low_stock_threshold'
 >;
 
 const PATH = '/orillacart/v1/settings';

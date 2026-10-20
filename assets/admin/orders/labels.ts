@@ -37,6 +37,7 @@ export const EMAIL_LABELS: Record< string, string > = {
 	),
 	payment_failed: __( 'Payment failed (to the shop)', 'orillacart' ),
 	refund_made: __( 'Refund made (to the shop)', 'orillacart' ),
+	low_stock: __( 'Stock runs low (to the shop, daily)', 'orillacart' ),
 };
 
 declare global {

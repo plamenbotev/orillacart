@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Fixtures\Catalog;
 
+use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\AttributeSet;
 use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Catalog\Domain\ProductRepository;
@@ -133,6 +134,25 @@ final class InMemoryProductRepository implements ProductRepository
         }
 
         return null;
+    }
+
+    public function optionsWithIds(array $ids): array
+    {
+        return array_values(array_filter($this->options(null, 0, PHP_INT_MAX)[0], static fn(AttributeOption $option): bool => \in_array($option->id(), $ids, true)));
+    }
+
+    public function highestLowStockThreshold(): ?int
+    {
+        $thresholds = [];
+        foreach ($this->products as $product) {
+            $thresholds[] = $product->details()->lowStockThreshold;
+            foreach ($product->variations() as $variation) {
+                $thresholds[] = $variation->lowStockThreshold();
+            }
+        }
+        $thresholds = array_filter($thresholds, \is_int(...));
+
+        return $thresholds === [] ? null : max($thresholds);
     }
 
     public function findMany(array $ids): array

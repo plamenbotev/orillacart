@@ -73,6 +73,9 @@ final readonly class SaveProduct
         /** What it is made of when it is a bundle; null for a product of its own. */
         #[Assert\Valid]
         public ?SaveBundle $bundle = null,
+        /** The shop hears when a stockroom holds this many or fewer; null for the stockroom's or the shop's. */
+        #[Assert\PositiveOrZero]
+        public ?int $lowStockThreshold = null,
     ) {}
 
     /** @return list<string> */

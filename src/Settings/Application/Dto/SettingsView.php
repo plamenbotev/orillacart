@@ -44,6 +44,7 @@ final readonly class SettingsView
         public int $currencyDecimals = 2,
         /** Deleting the plugin removes the shop's data too. */
         public bool $removeDataOnUninstall = false,
+        public int $lowStockThreshold = StoreSettings::DEFAULT_LOW_STOCK_THRESHOLD,
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -68,6 +69,7 @@ final readonly class SettingsView
             $settings->fewerDecimals,
             $settings->currency->decimals(),
             $settings->removeDataOnUninstall,
+            $settings->lowStockThreshold,
         );
     }
 }

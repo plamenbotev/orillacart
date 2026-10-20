@@ -29,5 +29,8 @@ final readonly class SaveStockroom
         public string $description = '',
         #[Assert\Choice(callback: [DeliveryUnit::class, 'values'])]
         public string $deliveryUnit = 'days',
+        /** The shop hears when an item here is down to this many or fewer; null for the shop's. */
+        #[Assert\PositiveOrZero]
+        public ?int $lowStockThreshold = null,
     ) {}
 }

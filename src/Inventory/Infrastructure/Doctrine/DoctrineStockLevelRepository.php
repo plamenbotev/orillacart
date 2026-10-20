@@ -30,6 +30,21 @@ final readonly class DoctrineStockLevelRepository implements StockLevelRepositor
         return $this->transactions->run(fn(): mixed => $work($this->group($items, $this->load($items, true))));
     }
 
+    public function atMost(int $quantity): array
+    {
+        /** @var list<StockLevel> */
+        return $this->entityManager->createQueryBuilder()
+            ->select('l', 's')
+            ->from(StockLevel::class, 'l')
+            ->join('l.stockroom', 's')
+            ->where('l.quantity <= :quantity')
+            ->andWhere('s.active = true')
+            ->setParameter('quantity', $quantity)
+            ->orderBy('l.id')
+            ->getQuery()
+            ->getResult();
+    }
+
     public function add(StockLevel $level): void
     {
         $this->entityManager->persist($level);

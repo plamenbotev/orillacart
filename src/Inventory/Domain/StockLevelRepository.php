@@ -26,6 +26,13 @@ interface StockLevelRepository
      */
     public function lockedStockOf(array $items, \Closure $work): mixed;
 
+    /**
+     * The levels of active stockrooms holding this many or fewer, with their stockrooms.
+     *
+     * @return list<StockLevel>
+     */
+    public function atMost(int $quantity): array;
+
     public function add(StockLevel $level): void;
 
     public function remove(StockLevel $level): void;
