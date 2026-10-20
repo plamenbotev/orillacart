@@ -4,7 +4,7 @@
  * Plugin Name: OrillaCart test site
  * Description: The wp-env test site only. Keeps the mail WordPress sends (it has no mail server) in the option
  * orillacart_test_mail, the last twenty, for the end-to-end tests to read; and counts no rate limits, which the
- * tests' many orders from one address would reach.
+ * tests' many orders from one address would reach; and checks addresses as an add-on would.
  */
 
 declare(strict_types=1);
@@ -25,3 +25,20 @@ add_filter('pre_wp_mail', static function (mixed $short, array $mail): mixed {
 }, 5, 2);
 
 add_filter('orillacart_rate_limits', static fn(): array => []);
+
+// An address register as an add-on brings one: it knows one street of the tests', and corrects it.
+add_action('orillacart_extensions', static function (OrillaCart\Extension\Registry $registry): void {
+    $registry->addressCheck(new class implements OrillaCart\Extension\Checkout\AddressCheck {
+        public function id(): string
+        {
+            return 'e2e_register';
+        }
+
+        public function check(OrillaCart\Extension\Checkout\CheckedAddress $address): ?OrillaCart\Extension\Checkout\AddressSuggestion
+        {
+            return $address->street === '1 Vitoshaa'
+                ? OrillaCart\Extension\Checkout\AddressSuggestion::corrected('1 Vitosha Blvd', message: 'Did you mean this street?')
+                : null;
+        }
+    });
+});

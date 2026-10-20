@@ -3,6 +3,7 @@
  */
 import { __ } from '@wordpress/i18n';
 
+import { addressesConfirmed, confirmAddresses } from './address-check';
 import { api } from './api';
 import { bindCoupons } from './coupons';
 import {
@@ -90,6 +91,13 @@ export function bindCheckout( form: HTMLFormElement ): void {
 		delete body.ship_elsewhere;
 		delete body.remind_cart;
 		body.remember_addresses = body.remember_addresses === true;
+		confirmAddresses( form, body );
+		if ( ! ( await addressesConfirmed( form, body ) ) ) {
+			if ( button ) {
+				button.disabled = false;
+			}
+			return;
+		}
 		const result = await api< PlacedOrder >( 'POST', '/checkout', body );
 		if ( result.ok ) {
 			window.location.assign(
@@ -204,7 +212,6 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 			url.searchParams.delete( name );
 		}
 	}
-	const payment = chosen( form, 'payment' );
 	const summary = form.querySelector(
 		'[data-orillacart-region="checkout-summary"]'
 	);
@@ -224,12 +231,26 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 	form.querySelector(
 		'[data-orillacart-region="checkout-summary"]'
 	)?.removeAttribute( 'aria-busy' );
-	if ( payment ) {
-		const again = form.querySelector< HTMLInputElement >(
-			`[name="payment"][value="${ CSS.escape( payment ) }"]`
+	// A choice made while this refresh was on its way stands, where the new summary still offers it.
+	for ( const name of Object.keys( CHOSEN ) as ( keyof typeof CHOSEN )[] ) {
+		const kept = form.dataset[ CHOSEN[ name ] ];
+		if ( kept === undefined ) {
+			continue;
+		}
+		const radio = form.querySelector< HTMLInputElement >(
+			`input[name="${ name }"][value="${ CSS.escape( kept ) }"]`
 		);
-		if ( again ) {
-			again.checked = true;
+		if ( radio ) {
+			radio.checked = true;
+		}
+		const select = form.querySelector< HTMLSelectElement >(
+			`select[name="${ name }"]`
+		);
+		const option = select?.querySelector< HTMLOptionElement >(
+			`option[value="${ CSS.escape( kept ) }"]`
+		);
+		if ( select && option && ! option.disabled ) {
+			select.value = kept;
 		}
 	}
 }

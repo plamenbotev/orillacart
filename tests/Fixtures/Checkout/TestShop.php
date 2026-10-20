@@ -17,6 +17,7 @@ use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
 use OrillaCart\Catalog\Infrastructure\Events\ConvertMeasures as ConvertProductMeasures;
 use OrillaCart\Catalog\Infrastructure\Events\ForgetDeletedShippingClass;
+use OrillaCart\Checkout\Application\AddressChecks;
 use OrillaCart\Checkout\Application\AddressRules;
 use OrillaCart\Checkout\Application\CheckoutFields;
 use OrillaCart\Checkout\Application\CheckoutService;
@@ -183,6 +184,7 @@ final class TestShop
 {
     public readonly MockClock $clock;
     public readonly DeliveryDays $deliveryDays;
+    public readonly AddressChecks $addressChecks;
     public readonly ExtensionFailures $failures;
     public readonly InMemoryProductContent $content;
     public readonly InMemoryProductRepository $productRecords;
@@ -380,6 +382,7 @@ final class TestShop
             $this->failures,
             $fees,
             $this->deliveryDays = new DeliveryDays($carrierRecords, $this->orders, new SofiaCalendar(), $this->clock),
+            $this->addressChecks = new AddressChecks($extensions, $this->logger),
         );
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);

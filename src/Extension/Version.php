@@ -17,7 +17,8 @@ final class Version
      * orders. 3: gateways naming the payment of a notification (NamesNotifiedPayments), checking payments and
      * refunds at the provider (ChecksPayments, ChecksRefunds). 4: columns of the orders export and the products
      * file (OrderColumn, ProductColumn, ImportsProductColumn). 5: fees on orders (OrderFee), the handling of a
-     * PaymentBreakdown, an order's fees in its OrderSummary.
+     * PaymentBreakdown, an order's fees in its OrderSummary, checking addresses (AddressCheck), each parcel's number
+     * of a BookedShipment.
      */
     public const int CURRENT = 5;
 }

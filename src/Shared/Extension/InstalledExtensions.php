@@ -6,6 +6,7 @@ namespace OrillaCart\Shared\Extension;
 
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\ProductColumn;
+use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Order\OrderAction;
@@ -16,7 +17,7 @@ use OrillaCart\Extension\Shipping\ShippingMethod;
 
 /**
  * What the shop has through the extension API: its own payment gateways and those add-ons registered, and the
- * add-ons' shipping methods, price adjusters, cart rules, checkout fields, order fees, order actions and export columns, each
+ * add-ons' shipping methods, price adjusters, cart rules, checkout fields, address checks, order fees, order actions and export columns, each
  * in the order they were registered.
  */
 interface InstalledExtensions
@@ -45,6 +46,11 @@ interface InstalledExtensions
      * @return list<CheckoutField>
      */
     public function checkoutFields(): array;
+
+    /**
+     * @return list<AddressCheck>
+     */
+    public function addressChecks(): array;
 
     /**
      * @return list<OrderFee>

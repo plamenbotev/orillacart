@@ -12,6 +12,7 @@ use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\PayOrder;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Geography\Domain\PostcodeFormat;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
@@ -596,7 +597,7 @@ final class CheckoutServiceTest extends TestCase
     {
         return new PlaceOrder(
             'ada@example.com',
-            new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', $country, '+359 2 000 0000'),
+            new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', PostcodeFormat::example($country) ?? '1000', $country, '+359 2 000 0000'),
             shippingOption: $rate === -1 ? 'rate:' . $this->courier : ($rate === null ? null : 'rate:' . $rate),
             payment: $payment,
             expectedTotal: $expectedTotal,

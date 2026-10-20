@@ -3,7 +3,7 @@
  # change, the storefront script reloads it from this page with the addresses in the query string.
  #
  # summary: the priced cart, or null with problem set; email; billing and shipping: the addresses to start from;
- # address_known: whether the summary had a country; ship_elsewhere; countries; states: {country: [states]}; logged_in; accounts: optional | required | disabled;
+ # address_checks: whether add-ons check addresses before the order is placed; address_known: whether the summary had a country; ship_elsewhere; countries; states: {country: [states]}; logged_in; accounts: optional | required | disabled;
  # cart_reminders: whether the shop reminds customers who ask of a cart they leave at checkout;
  # links: the shop's pages.
  #}
@@ -14,7 +14,7 @@
         <p class="orillacart-notice orillacart-notice--error">{{ problem }}</p>
         {% if links.cart %}<p><a class="wp-element-button orillacart-button" href="{{ links.cart }}">{{ __('Back to the cart') }}</a></p>{% endif %}
     {% else %}
-        <form class="orillacart-checkout__form" data-orillacart-checkout novalidate>
+        <form class="orillacart-checkout__form" data-orillacart-checkout{{ address_checks ?? false ? ' data-orillacart-address-checks' }} novalidate>
             <div class="orillacart-checkout__details">
                 {{ slot('checkout_before_details') }}
                 <fieldset class="orillacart-checkout__contact">
@@ -87,6 +87,8 @@
                 {{ slot('checkout_after_details') }}
             </div>
 
+            {# What add-ons' address checks suggest, shown before the order is placed. #}
+            <div class="orillacart-checkout__addresses-checked" data-orillacart-address-suggestions aria-live="polite" hidden></div>
             <div class="orillacart-checkout__summary" data-orillacart-region="checkout-summary" aria-live="polite">
                 {% include 'storefront/_checkout_summary.html.twig' %}
             </div>

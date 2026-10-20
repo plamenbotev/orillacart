@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Fixtures\Payment;
 
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\ProductColumn;
+use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Order\OrderAction;
@@ -27,6 +28,8 @@ final class FixedExtensions implements InstalledExtensions
     public array $cartRules = [];
     /** @var list<CheckoutField> */
     public array $fields = [];
+    /** @var list<AddressCheck> */
+    public array $addressChecks = [];
     /** @var list<OrderFee> */
     public array $fees = [];
     /** @var list<OrderAction> */
@@ -65,6 +68,11 @@ final class FixedExtensions implements InstalledExtensions
     public function checkoutFields(): array
     {
         return $this->fields;
+    }
+
+    public function addressChecks(): array
+    {
+        return $this->addressChecks;
     }
 
     public function orderFees(): array

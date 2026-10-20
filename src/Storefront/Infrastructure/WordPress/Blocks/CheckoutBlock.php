@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
+use OrillaCart\Checkout\Application\AddressChecks;
 use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\PayNow;
@@ -49,6 +50,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         private PayNow $payNow,
         private Invoices $invoices,
         private EmailSettingsService $emails,
+        private AddressChecks $addressChecks,
     ) {}
 
     public static function name(): string
@@ -101,6 +103,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'logged_in' => $this->shopper->customerId() !== null,
             'accounts' => $this->customers->accountMode(),
             'cart_reminders' => !\in_array(EmailKind::CartReminder->value, $this->emails->current()->disabled, true),
+            'address_checks' => $this->addressChecks->any(),
             'login_url' => wp_login_url((string) get_permalink()),
             'links' => $links,
         ] + $this->addresses->all());

@@ -77,6 +77,7 @@ final readonly class CheckoutService
         private ExtensionFailures $failures,
         private OrderFees $fees,
         private DeliveryDays $deliveryDays,
+        private AddressChecks $addressChecks,
     ) {}
 
     /**
@@ -334,7 +335,7 @@ final readonly class CheckoutService
             $delivery?->slot,
             $delivery?->key,
         )), $gateway === null)));
-        foreach ($this->failures->since($failed) as $failure) {
+        foreach ([...$this->failures->since($failed), ...$this->addressChecks->kept($billingAddress, $priced['needs_shipping'] && $command->shippingAddress !== null ? $shippingAddress : null)] as $failure) {
             $this->orders->note($order->number, $failure, false);
         }
         $receiptUrl = $this->links->receiptUrl($order->number);

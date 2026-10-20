@@ -9,6 +9,8 @@ use OrillaCart\Geography\Application\Dto\LocationView;
 use OrillaCart\Geography\Application\Dto\StateView;
 use OrillaCart\Geography\Domain\AddressFormat;
 use OrillaCart\Geography\Domain\CountryRepository;
+use OrillaCart\Geography\Domain\InvalidPostcode;
+use OrillaCart\Geography\Domain\PostcodeFormat;
 use OrillaCart\Geography\Domain\UnknownCountry;
 use OrillaCart\Geography\Domain\UnknownState;
 use OrillaCart\Shared\Domain\NotFound;
@@ -76,6 +78,22 @@ final readonly class GeographyService
         }
 
         return new LocationView($found->code, $state === null ? null : $found->state($state)?->code, $found->inEu);
+    }
+
+    /**
+     * The postcode as the shop keeps it (in capitals, with single spaces), refused when it does not look like the
+     * country's postcodes.
+     *
+     * @throws InvalidPostcode
+     */
+    public function postcode(string $country, string $postcode): string
+    {
+        $example = PostcodeFormat::example($country);
+        if ($example !== null && !PostcodeFormat::fits($country, $postcode)) {
+            throw new InvalidPostcode($this->countries->find($country)->name ?? $country, $example);
+        }
+
+        return PostcodeFormat::normalize($postcode);
     }
 
     /**

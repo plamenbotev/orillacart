@@ -46,6 +46,8 @@ final class RouteSecurityGateTest extends TestCase
         'POST /cart/checkout-contact',
         'POST /checkout',
         'POST /checkout/summary',
+        // What add-ons' address checks say of the addresses typed; changes nothing, and is rate limited.
+        'POST /checkout/addresses',
         'GET /receipts/{receipt}',
         // Paying an unpaid order later: only with its secret key, and only a method the shop offers for it.
         'POST /receipts/{receipt}/payment',

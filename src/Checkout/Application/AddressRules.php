@@ -6,13 +6,15 @@ namespace OrillaCart\Checkout\Application;
 
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\Geography\Domain\InvalidPostcode;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\RuleViolation;
 
 /**
- * What an order's address must be: in a known country, with a state exactly when the country has states, and,
- * when customers order, in a country the shop sells to.
+ * What an order's address must be: in a known country, with a state exactly when the country has states, a
+ * postcode that looks like the country's (kept in capitals with single spaces), and, when customers order, in a
+ * country the shop sells to.
  */
 final readonly class AddressRules
 {
@@ -44,9 +46,12 @@ final readonly class AddressRules
         if ($states !== [] && $address->state === null) {
             throw new CheckoutRuleViolation(\sprintf('Choose the state of the %s address.', $kind), 'orillacart_invalid_address');
         }
+        try {
+            $postcode = $this->geography->postcode($address->country, $address->postcode);
+        } catch (InvalidPostcode $e) {
+            throw new CheckoutRuleViolation(\sprintf('The postcode of the %s address is not one of %s, which look like %s.', $kind, $e->countryName, $e->example), 'orillacart_invalid_postcode', $e);
+        }
 
-        return $states === [] && $address->state !== null
-            ? new AddressData($address->firstName, $address->lastName, $address->street, $address->city, $address->postcode, $address->country, $address->phone)
-            : $address;
+        return new AddressData($address->firstName, $address->lastName, $address->street, $address->city, $postcode, $address->country, $address->phone, $states === [] ? null : $address->state);
     }
 }

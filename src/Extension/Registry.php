@@ -6,6 +6,7 @@ namespace OrillaCart\Extension;
 
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\ProductColumn;
+use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Order\OrderAction;
@@ -43,6 +44,9 @@ interface Registry
 
     /** Since version 2. */
     public function checkoutField(CheckoutField $field): void;
+
+    /** Checks the addresses customers enter at checkout, suggesting corrections. Since version 5. */
+    public function addressCheck(AddressCheck $check): void;
 
     /** A fee checkout adds to orders. Since version 5. */
     public function orderFee(OrderFee $fee): void;

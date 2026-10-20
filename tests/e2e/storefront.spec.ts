@@ -570,6 +570,38 @@ test.describe( 'A visitor', () => {
 		}
 	} );
 
+	test( 'takes the address an address check suggests', async ( { page } ) => {
+		await page.goto( shop.miniCartUrl );
+		await page
+			.locator( '.orillacart-product-card', { hasText: 'E2E Lamp' } )
+			.getByRole( 'button', { name: /Add to cart/ } )
+			.click();
+		await expect(
+			page
+				.locator( '.orillacart-mini-cart--panel' )
+				.getByText( '1 item in cart.' )
+		).toBeVisible();
+		await page.goto( shop.urls.checkout );
+		await fillBilling( page, 'e2e-address@example.com' );
+		await page.locator( '#billing-street' ).fill( '1 Vitoshaa' );
+		await page.getByRole( 'radio', { name: 'Bank transfer' } ).check();
+		await page.getByRole( 'button', { name: 'Place order' } ).click();
+
+		const suggestion = page.locator( '.orillacart-address-suggestion' );
+		await expect( suggestion ).toContainText( 'Did you mean this street?' );
+		await expect( suggestion ).toContainText( '1 Vitosha Blvd' );
+		await suggestion
+			.getByRole( 'button', { name: 'Use this address' } )
+			.click();
+
+		await expect(
+			page.getByRole( 'heading', { name: 'Thank you for your order' } )
+		).toBeVisible();
+		await expect(
+			page.getByText( '1 Vitosha Blvd' ).first()
+		).toBeVisible();
+	} );
+
 	test( 'asks to hear when a sold-out product is back', async ( {
 		page,
 		requestUtils,

@@ -25,7 +25,8 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
 - `$registry->shippingMethod(...)` registers a shipping method the same way; method ids are unique among
   methods. Price adjusters, cart rules, checkout fields and order actions follow (version 2).
 - `$registry->version()` is the API's version (`OrillaCart\Extension\Version`): 2 since price adjusters, cart
-  rules, checkout fields, order actions and `orders()` came; 4 since export columns; 5 since order fees.
+  rules, checkout fields, order actions and `orders()` came; 4 since export columns; 5 since order fees and
+  address checks.
 - `$registry->log()` writes to the shop's log. Never log secrets or card data.
 - Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
 
@@ -343,6 +344,24 @@ separators, and empty lines go:
 add_filter('orillacart_address_format', static fn(string $format, string $country): string =>
     $country === 'BG' ? "{name}\n{street}\n{city} {postcode}\n{country}" : $format, 10, 2);
 ```
+
+The shop refuses an order whose postcode does not look like its country's (about sixty countries; any other
+country takes any postcode), and keeps postcodes in capitals with single spaces.
+
+### Address checks
+
+Version 5 lets an add-on check the addresses customers enter against a register (Loqate, Google, the post
+office's). `OrillaCart\Extension\Checkout\AddressCheck::check(CheckedAddress $address)` gets the billing or
+shipping address (`kind`, street, city, postcode, country, state) and returns null when it is fine or the check
+cannot tell, `AddressSuggestion::corrected($street, $city, $postcode, $state, $message)` (the parts left null
+stay as entered) or `AddressSuggestion::notFound($message)`. Register it with `$registry->addressCheck(...)`.
+
+- When the customer places the order, checkout asks first (`POST /checkout/addresses`, thirty an hour per
+  visitor) and shows what the check said: the customer takes the corrected address or keeps theirs. The first
+  check with something to say is heard.
+- A check never keeps the customer from ordering. An order placed with an address a check would have corrected,
+  or could not find, says so in a note for the shop.
+- A check that throws is logged and left out. Keep it quick: it runs while the customer waits.
 
 ## Actions and filters
 

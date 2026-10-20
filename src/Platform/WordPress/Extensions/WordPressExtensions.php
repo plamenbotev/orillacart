@@ -6,6 +6,7 @@ namespace OrillaCart\Platform\WordPress\Extensions;
 
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\ProductColumn;
+use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Log;
@@ -44,6 +45,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $cartRules = [];
     /** @var array<string, CheckoutField> */
     private array $fields = [];
+    /** @var array<string, AddressCheck> */
+    private array $addressChecks = [];
     /** @var array<string, OrderFee> */
     private array $fees = [];
     /** @var array<string, OrderAction> */
@@ -104,6 +107,13 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     {
         if ($this->accepts('checkout field', $field->id, $this->fields[$field->id] ?? null, $field)) {
             $this->fields[$field->id] = $field;
+        }
+    }
+
+    public function addressCheck(AddressCheck $check): void
+    {
+        if ($this->accepts('address check', $check->id(), $this->addressChecks[$check->id()] ?? null, $check)) {
+            $this->addressChecks[$check->id()] = $check;
         }
     }
 
@@ -178,6 +188,13 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->fields);
+    }
+
+    public function addressChecks(): array
+    {
+        $this->collect();
+
+        return array_values($this->addressChecks);
     }
 
     public function orderFees(): array

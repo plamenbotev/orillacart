@@ -11,6 +11,7 @@ use OrillaCart\Checkout\Application\Dto\QuoteOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Customers\Domain\CustomerNotFound;
+use OrillaCart\Geography\Domain\PostcodeFormat;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
@@ -106,6 +107,16 @@ final class ManualOrdersTest extends TestCase
         self::assertNotNull($order->paidAt);
     }
 
+    public function testAPostcodeLooksLikeItsCountrysAndIsKeptInCapitals(): void
+    {
+        $london = new AddressData('Ada', 'Lovelace', '10 Downing St', 'London', 'sw1a   2aa', 'GB', '+44 20 0000 0000');
+        self::assertSame('SW1A 2AA', $this->shop->manualOrders->create(new CreateOrder('ada@example.com', $london, [new EditedItem(20, 1)]), 7)->billing->postcode);
+
+        $this->expectException(CheckoutRuleViolation::class);
+        $this->expectExceptionMessage('The postcode of the billing address is not one of Bulgaria, which look like 1000.');
+        $this->shop->manualOrders->create(new CreateOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '10000', 'BG', '+359 2 000 0000'), [new EditedItem(20, 1)]), 7);
+    }
+
     public function testTheShopMayTakeOrdersFromCountriesCustomersCannotOrderFrom(): void
     {
         $this->shop->settings->save(new StoreSettings(new Currency('EUR'), 2, WeightUnit::Kilogram, DimensionUnit::Centimetre, 'BG', sellTo: ['BG']));
@@ -136,6 +147,6 @@ final class ManualOrdersTest extends TestCase
 
     private static function address(string $country): AddressData
     {
-        return new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', $country, '+359 2 000 0000');
+        return new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', PostcodeFormat::example($country) ?? '1000', $country, '+359 2 000 0000');
     }
 }
