@@ -109,7 +109,7 @@ async function ensurePages(
 	return ids;
 }
 
-async function product(
+export async function product(
 	requestUtils: RequestUtils,
 	title: string,
 	details: Record< string, unknown >

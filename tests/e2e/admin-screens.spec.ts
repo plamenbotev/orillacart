@@ -8,7 +8,7 @@ import {
 	type RequestUtils,
 } from '@wordpress/e2e-test-utils-playwright';
 
-import { BILLING, remove, setUpShop, tearDownShop } from './shop';
+import { BILLING, product, remove, setUpShop, tearDownShop } from './shop';
 
 test.beforeAll( async ( { requestUtils } ) => {
 	// The shop's pages, a product and a carrier, as the screens expect a shop to have.
@@ -289,5 +289,43 @@ test.describe( 'The admin', () => {
 			page.getByText( 'Back to the file’s template.' ).first()
 		).toBeVisible();
 		await expect( source ).toHaveValue( /Your account is ready/ );
+	} );
+
+	test( 'raises the prices of the products chosen with bulk edit', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		const bulk = await product( requestUtils, 'E2E Bulk Mug', {
+			price: '20',
+		} );
+		try {
+			await admin.visitAdminPage(
+				'edit.php',
+				'post_type=orillacart_product&s=E2E+Bulk+Mug'
+			);
+			await page.locator( `#cb-select-${ bulk.id }` ).check();
+			await page
+				.locator( '#bulk-action-selector-top' )
+				.selectOption( 'edit' );
+			await page.locator( '#doaction' ).click();
+			const editor = page.locator( '#bulk-edit' );
+			await editor
+				.locator( 'select[name="orillacart_bulk[price]"]' )
+				.selectOption( 'raise_percent' );
+			await editor
+				.locator( 'input[name="orillacart_bulk[price_by]"]' )
+				.fill( '10' );
+			await editor.getByRole( 'button', { name: 'Update' } ).click();
+
+			await expect(
+				page.locator( `#post-${ bulk.id } .column-orillacart_price` )
+			).toContainText( '22' );
+		} finally {
+			await remove(
+				requestUtils,
+				`/wp/v2/orillacart_product/${ bulk.id }?force=true`
+			);
+		}
 	} );
 } );

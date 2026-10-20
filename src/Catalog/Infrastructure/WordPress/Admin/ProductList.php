@@ -4,19 +4,24 @@ declare(strict_types=1);
 
 namespace OrillaCart\Catalog\Infrastructure\WordPress\Admin;
 
+use OrillaCart\Catalog\Application\BulkEdits;
+use OrillaCart\Catalog\Application\Dto\BulkEdit;
 use OrillaCart\Catalog\Application\Dto\ProductOffer;
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
  * WordPress's list of products, as the old one was: a picture, SKU, price and order beside each name, filters by
- * category and brand, and the price in quick edit (the order is there already).
+ * category and brand, and the price in quick edit (the order is there already). Bulk edit changes prices, sales
+ * and stock (BulkEdits).
  */
 #[AsHook('manage_' . ProductPostType::NAME . '_posts_columns', method: 'columns', filter: true)]
 #[AsHook('manage_' . ProductPostType::NAME . '_posts_custom_column', method: 'column', arguments: 2)]
@@ -25,9 +30,15 @@ use OrillaCart\Shared\WordPress\AsHook;
 #[AsHook('quick_edit_custom_box', method: 'quickEdit', arguments: 2)]
 #[AsHook('save_post_' . ProductPostType::NAME, method: 'saveQuickEdit', priority: 20)]
 #[AsHook('admin_enqueue_scripts', method: 'scripts')]
+#[AsHook('bulk_edit_custom_box', method: 'bulkEdit', arguments: 2)]
+#[AsHook('bulk_edit_posts', method: 'saveBulkEdit', arguments: 2)]
+#[AsHook('admin_notices', method: 'bulkNotice')]
 final class ProductList
 {
     private const string PRICE_FIELD = 'orillacart_price';
+    private const string BULK = 'orillacart_bulk';
+    /** What a bulk edit left as it was, for the list the browser comes back to. */
+    private const string NOTICE = 'orillacart_bulk_refused_';
 
     /** @var array<int, ?ProductOffer> by product id, for the page being listed */
     private array $offers = [];
@@ -36,6 +47,8 @@ final class ProductList
         private readonly ShopCatalog $catalog,
         private readonly ProductService $products,
         private readonly TemplateRenderer $templates,
+        private readonly BulkEdits $bulk,
+        private readonly StockroomService $stockrooms,
     ) {}
 
     /**
@@ -156,6 +169,101 @@ final class ProductList
                 $e->getMessage(),
             )));
         }
+    }
+
+    /** Bulk edit's own fields: the price, the sale and the stock in a stockroom, each left as it is by default. */
+    public function bulkEdit(string $column, string $postType): void
+    {
+        if ($postType !== ProductPostType::NAME || $column !== 'orillacart_price') {
+            return;
+        }
+        $select = self::select(...);
+        $input = static fn(string $name, string $mode = 'decimal'): string => \sprintf('<input type="text" name="%s[%s]" inputmode="%s" size="8" value="">', self::BULK, esc_attr($name), esc_attr($mode));
+        $rooms = ['' => __('— Stockroom —', 'orillacart')];
+        foreach ($this->stockrooms->stockrooms() as $room) {
+            $rooms[$room->id] = $room->name;
+        }
+        printf(
+            '<fieldset class="inline-edit-col-right"><div class="inline-edit-col"><label class="alignleft"><span class="title">%s</span>%s %s</label><label class="alignleft"><span class="title">%s</span>%s %s</label><label class="alignleft"><span class="title">%s</span>%s %s %s</label><p class="howto">%s</p></div></fieldset>',
+            esc_html__('Price', 'orillacart'),
+            $select('price', ['' => __('— No change —', 'orillacart'), 'set' => __('Set to', 'orillacart'), 'raise' => __('Raise by', 'orillacart'), 'lower' => __('Lower by', 'orillacart'), 'raise_percent' => __('Raise by %', 'orillacart'), 'lower_percent' => __('Lower by %', 'orillacart')]),
+            $input('price_by'),
+            esc_html__('Sale', 'orillacart'),
+            $select('sale', ['' => __('— No change —', 'orillacart'), 'set' => __('Set to', 'orillacart'), 'percent_off' => __('% off the price', 'orillacart'), 'remove' => __('End the sale', 'orillacart')]),
+            $input('sale_by'),
+            esc_html__('Stock', 'orillacart'),
+            $select('stockroom', $rooms),
+            $select('stock', ['' => __('— No change —', 'orillacart'), 'set' => __('Set to', 'orillacart'), 'add' => __('Add', 'orillacart')]),
+            $input('stock_by', 'numeric'),
+            esc_html__('Products with variations change each variation, from its own price and stock.', 'orillacart'),
+        );
+    }
+
+    /**
+     * Applies bulk edit's own fields to the products WordPress just saved, whose request it checked (nonce and
+     * capability). What could not be changed is told on the list the browser comes back to.
+     *
+     * @param list<int>            $updated
+     * @param array<string, mixed> $shared
+     */
+    public function saveBulkEdit(array $updated, array $shared): void
+    {
+        $fields = $_REQUEST[self::BULK] ?? null;
+        if (!\is_array($fields) || ($shared['post_type'] ?? ProductPostType::NAME) !== ProductPostType::NAME || !current_user_can(Capability::MANAGE_SHOP)) {
+            return;
+        }
+        $fields = wp_unslash($fields);
+        $text = static fn(string $name): string => \is_array($fields) && \is_string($fields[$name] ?? null) ? trim(str_replace(',', '.', $fields[$name])) : '';
+        $edit = new BulkEdit(
+            $text('price') === '' ? null : $text('price'),
+            $text('price_by'),
+            $text('sale') === '' ? null : $text('sale'),
+            $text('sale_by'),
+            $text('stock') === '' ? null : $text('stock'),
+            ctype_digit($text('stockroom')) ? (int) $text('stockroom') : null,
+            preg_match('/^-?\d{1,9}$/', $text('stock_by')) === 1 ? (int) $text('stock_by') : 0,
+        );
+        if ($edit->price === null && $edit->sale === null && $edit->stock === null) {
+            return;
+        }
+        $products = array_values(array_filter(array_map(intval(...), $updated), static fn(int $id): bool => get_post_type($id) === ProductPostType::NAME));
+        try {
+            $refused = $this->bulk->apply($products, $edit);
+        } catch (RuleViolation $e) {
+            $refused = [$e->getMessage()];
+        }
+        if ($refused !== []) {
+            set_transient(self::NOTICE . get_current_user_id(), $refused, MINUTE_IN_SECONDS * 5);
+        }
+    }
+
+    public function bulkNotice(): void
+    {
+        if (get_current_screen()?->id !== 'edit-' . ProductPostType::NAME) {
+            return;
+        }
+        $key = self::NOTICE . get_current_user_id();
+        $refused = get_transient($key);
+        if (!\is_array($refused) || $refused === []) {
+            return;
+        }
+        delete_transient($key);
+        printf(
+            '<div class="notice notice-warning is-dismissible"><p>%s</p><ul>%s</ul></div>',
+            esc_html__('Bulk edit left some products as they were:', 'orillacart'),
+            implode('', array_map(static fn(mixed $line): string => '<li>' . esc_html(\is_string($line) ? $line : '') . '</li>', $refused)),
+        );
+    }
+
+    /** @param array<int|string, string> $choices */
+    private static function select(string $name, array $choices): string
+    {
+        $options = '';
+        foreach ($choices as $value => $label) {
+            $options .= \sprintf('<option value="%s">%s</option>', esc_attr((string) $value), esc_html($label));
+        }
+
+        return \sprintf('<select name="%s[%s]">%s</select>', self::BULK, esc_attr($name), $options);
     }
 
     public function scripts(string $hook): void
