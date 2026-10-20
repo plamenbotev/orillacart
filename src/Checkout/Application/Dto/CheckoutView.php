@@ -54,5 +54,7 @@ final readonly class CheckoutView
         public ?string $vatMessage = null,
         /** Without an address from the customer: the country tax and shipping are estimated for (theirs saved, or the shop's). */
         public ?string $estimatedFor = null,
+        /** How much more the items would have to cost for one of the shop's rates to ship them free; null when none would. */
+        public ?string $freeShippingShort = null,
     ) {}
 }

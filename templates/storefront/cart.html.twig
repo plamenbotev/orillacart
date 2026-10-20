@@ -94,6 +94,10 @@
                 {% endif %}
             </tfoot>
         </table>
+        {% if estimate and estimate.free_shipping_short %}
+            {# translators: %s: an amount of money -#}
+            <p class="orillacart-notice orillacart-free-shipping">{{ __('Add %s more to your order for free shipping.')|format(estimate.free_shipping_short|money(estimate.currency)) }}</p>
+        {% endif %}
         {% for refusal in cart.refusals %}
             <p class="orillacart-notice orillacart-notice--error">{{ refusal }}</p>
         {% endfor %}

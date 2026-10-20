@@ -10,7 +10,7 @@ use OrillaCart\Shared\Domain\Money;
 /**
  * One way a carrier ships: where to, which parcels, and the price. Checkout offers it when the parcel's
  * destination is in one of its regions and matches one of its postcodes but none it excludes, it carries the shipping class of every item, and every measure of the parcel
- * is in its range.
+ * (its count of items too) is in its range.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'shipping_rates')]
@@ -51,6 +51,9 @@ class ShippingRate
 
     #[ORM\Embedded(columnPrefix: 'subtotal_')]
     private Range $subtotal;
+
+    #[ORM\Embedded(columnPrefix: 'items_')]
+    private Range $items;
 
     #[ORM\Column]
     private bool $taxable;
@@ -120,6 +123,7 @@ class ShippingRate
         $this->width = $details->width;
         $this->height = $details->height;
         $this->subtotal = $details->subtotal;
+        $this->items = $details->items;
         $this->taxable = $details->taxable;
         $this->taxGroupId = $details->taxGroupId;
         $this->classes = array_values($details->classes);
@@ -148,6 +152,7 @@ class ShippingRate
             array_map(PostcodePattern::of(...), $this->postcodes),
             array_map(Region::of(...), $this->excludedRegions),
             array_map(PostcodePattern::of(...), $this->excludedPostcodes),
+            $this->items,
         );
     }
 
@@ -198,6 +203,7 @@ class ShippingRate
             && $this->length->contains($parcel->length)
             && $this->width->contains($parcel->width)
             && $this->height->contains($parcel->height)
+            && $this->items->contains(Measure::of((string) $parcel->items))
             && $this->subtotal->contains(Measure::of((string) $parcel->subtotal->atLeastZero()));
     }
 

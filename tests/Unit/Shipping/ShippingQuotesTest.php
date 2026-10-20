@@ -111,6 +111,37 @@ final class ShippingQuotesTest extends TestCase
         self::assertSame(['Small', 'Bulky', 'Per item', 'Big orders'], $this->offered('BG', [new ParcelItem(2, '2.5', '30', '30', '50')], '100'), 'two lamps stacked are 50 long');
     }
 
+    public function testATableOfRatesByItemCountCountsEveryUnit(): void
+    {
+        $this->carriers->create(new SaveCarrier('Post', rates: [
+            new SaveShippingRate('1 to 3 items', '4', items: new SaveRange('1', '3')),
+            new SaveShippingRate('4 to 9 items', '7', items: new SaveRange('4', '9')),
+            new SaveShippingRate('10 or more', '0', items: new SaveRange('10')),
+        ]));
+
+        self::assertSame(['1 to 3 items'], $this->offered('BG', [new ParcelItem(2, '1'), new ParcelItem(1, '1')]));
+        self::assertSame(['4 to 9 items'], $this->offered('BG', [new ParcelItem(4, '1')]));
+        self::assertSame(['10 or more'], $this->offered('BG', [new ParcelItem(6, '1'), new ParcelItem(4, '1')]));
+    }
+
+    public function testHowMuchMoreTheOrderNeedsToShipFree(): void
+    {
+        $this->carriers->create(new SaveCarrier('Post', rates: [
+            new SaveShippingRate('Standard', '5'),
+            new SaveShippingRate('Free in Bulgaria', '0', regions: ['BG'], subtotal: new SaveRange('50')),
+            new SaveShippingRate('Free light parcels', '0', weight: new SaveRange('0', '2'), subtotal: new SaveRange('40')),
+        ]));
+        $this->carriers->create(new SaveCarrier('Closed', false, rates: [new SaveShippingRate('Free', '0', subtotal: new SaveRange('20'))]));
+        $free = fn(?string $country, string $weight, string $subtotal): ?string => $this->quotes->freeFrom(new ShippingQuery($country, null, [new ParcelItem(1, $weight)], $subtotal));
+
+        self::assertSame('40', $free('BG', '1', '10'), 'the lowest of the free rates that take the parcel');
+        self::assertSame('50', $free('BG', '3', '10'), 'too heavy for the other');
+        self::assertNull($free('DE', '3', '10'), 'no free rate ships there');
+        self::assertSame('40', $free(null, '1', '10'), 'without an address, a rate for everywhere');
+        self::assertNull($free('BG', '1', '45'), 'it ships free already');
+        self::assertSame('50', $free('BG', '3', '45'));
+    }
+
     public function testARatesWidthAndHeightLimitsHoldForTheParcelAsItLies(): void
     {
         $this->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Large letter', '2', width: new SaveRange('0', '25'), height: new SaveRange('0', '2'))]));

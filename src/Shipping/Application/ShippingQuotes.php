@@ -53,17 +53,8 @@ final readonly class ShippingQuotes
      */
     public function options(ShippingQuery $query): array
     {
-        $destination = $query->country === null ? null : new Destination($query->country, $query->state, $query->postcode);
-        $measure = static fn(?string $value): Measure => $value === null || $value === '' ? Measure::zero() : Measure::of($value);
-        $known = array_map(static fn(ShippingClass $class): int => $class->id(), $this->classes->all());
-        $parcel = Parcel::of(array_map(static fn(ParcelItem $item): array => [
-            'quantity' => $item->quantity,
-            'weight' => $measure($item->weight),
-            'length' => $measure($item->length),
-            'width' => $measure($item->width),
-            'height' => $measure($item->height),
-            'class' => $item->shippingClassId !== null && \in_array($item->shippingClassId, $known, true) ? $item->shippingClassId : ShippingClass::NONE,
-        ], $query->items), Money::of($query->subtotal));
+        $destination = self::destination($query);
+        $parcel = $this->parcel($query, Money::of($query->subtotal));
 
         $options = [];
         foreach ($this->carriers->all() as $carrier) {
@@ -101,6 +92,61 @@ final readonly class ShippingQuotes
         }
 
         return $options;
+    }
+
+    /**
+     * The least order value at which one of the shop's own rates would ship the parcel there for free, when it
+     * is more than the order is worth now: "spend 12 more for free shipping". Null when no free rate would
+     * take it, or one takes it already. Rates a shipping method quotes are the courier's, and not looked at.
+     */
+    public function freeFrom(ShippingQuery $query): ?string
+    {
+        $destination = self::destination($query);
+        $subtotal = Money::of($query->subtotal);
+        $least = null;
+        foreach ($this->carriers->all() as $carrier) {
+            if (!$carrier->isActive() || $carrier->method() !== null) {
+                continue;
+            }
+            foreach ($carrier->rates() as $rate) {
+                $details = $rate->details();
+                if (!$details->price->isZero()) {
+                    continue;
+                }
+                $from = Money::of((string) $details->subtotal->min());
+                if ($from->compare($subtotal) <= 0) {
+                    if ($rate->accepts($destination, $this->parcel($query, $subtotal))) {
+                        return null;
+                    }
+                    continue;
+                }
+                if (($least === null || $from->compare($least) < 0) && $rate->accepts($destination, $this->parcel($query, $from))) {
+                    $least = $from;
+                }
+            }
+        }
+
+        return $least === null ? null : (string) $least;
+    }
+
+    private static function destination(ShippingQuery $query): ?Destination
+    {
+        return $query->country === null ? null : new Destination($query->country, $query->state, $query->postcode);
+    }
+
+    private function parcel(ShippingQuery $query, Money $subtotal): Parcel
+    {
+        $measure = static fn(?string $value): Measure => $value === null || $value === '' ? Measure::zero() : Measure::of($value);
+        $known = array_map(static fn(ShippingClass $class): int => $class->id(), $this->classes->all());
+
+        return Parcel::of(array_map(static fn(ParcelItem $item): array => [
+            'quantity' => $item->quantity,
+            'weight' => $measure($item->weight),
+            'length' => $measure($item->length),
+            'width' => $measure($item->width),
+            'height' => $measure($item->height),
+            'class' => $item->shippingClassId !== null && \in_array($item->shippingClassId, $known, true) ? $item->shippingClassId : ShippingClass::NONE,
+        ], $query->items), $subtotal);
     }
 
     /**

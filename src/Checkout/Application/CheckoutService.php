@@ -137,6 +137,7 @@ final readonly class CheckoutService
             $reverse->applies,
             $reverse->message,
             $estimatedFor,
+            $priced['free_from'] === null ? null : (string) Money::of($priced['free_from'])->subtract($bill->subtotal()->subtract($bill->discount())),
         );
     }
 

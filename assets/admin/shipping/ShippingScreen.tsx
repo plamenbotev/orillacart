@@ -54,6 +54,7 @@ const EMPTY_RATE: ShippingRateInput = {
 	width: null,
 	height: null,
 	subtotal: null,
+	items: null,
 	taxable: true,
 	tax_group_id: null,
 	shipping_classes: [],
@@ -69,6 +70,7 @@ const MEASURE_LABELS: Record< Measure, string > = {
 	width: __( 'Width', 'orillacart' ),
 	height: __( 'Height', 'orillacart' ),
 	subtotal: __( 'Order value', 'orillacart' ),
+	items: __( 'Number of items', 'orillacart' ),
 };
 
 /**

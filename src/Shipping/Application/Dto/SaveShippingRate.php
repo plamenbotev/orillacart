@@ -10,7 +10,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 /**
  * One rate of a carrier as the admin saves it. Without an id it is a new rate. Ranges left out take any
  * parcel; weight is in the shop's weight unit, volume, length, width and height in its dimension unit
- * (volume cubed), subtotal in its currency.
+ * (volume cubed), subtotal in its currency, items as a count of units.
  */
 final readonly class SaveShippingRate
 {
@@ -55,5 +55,7 @@ final readonly class SaveShippingRate
         public array $excludedRegions = [],
         #[Assert\All([new Assert\Length(max: 30)])]
         public array $excludedPostcodes = [],
+        #[Assert\Valid]
+        public ?SaveRange $items = null,
     ) {}
 }

@@ -23,6 +23,8 @@ final readonly class RateDetails
      * @param list<Region>          $excludedRegions   where it does not ship even within its regions, such as
      *                                                 the islands of a country it ships to
      * @param list<PostcodePattern> $excludedPostcodes postcodes it does not ship to
+     * @param Range                 $items             how many items it takes, each unit counted: a table of
+     *                                                 rates by item count is a rate for each range
      */
     public function __construct(
         public string $name,
@@ -41,6 +43,7 @@ final readonly class RateDetails
         public array $postcodes = [],
         public array $excludedRegions = [],
         public array $excludedPostcodes = [],
+        public Range $items = new Range(),
     ) {
         if (trim($name) === '' || mb_strlen(trim($name)) > self::MAX_NAME_LENGTH) {
             throw new ShippingRuleViolation(\sprintf('A shipping rate needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_rate_name');

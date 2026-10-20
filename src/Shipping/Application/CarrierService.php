@@ -156,6 +156,7 @@ final readonly class CarrierService
             array_map(PostcodePattern::of(...), $rate->postcodes),
             array_map($this->region(...), $rate->excludedRegions),
             array_map(PostcodePattern::of(...), $rate->excludedPostcodes),
+            self::range($rate->items),
         )), $rates);
     }
 

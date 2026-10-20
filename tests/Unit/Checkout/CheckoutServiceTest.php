@@ -26,6 +26,7 @@ use OrillaCart\Payment\Domain\PaymentNotFound;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
+use OrillaCart\Shipping\Application\Dto\SaveRange;
 use OrillaCart\Shipping\Application\Dto\SaveShippingClass;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
@@ -550,6 +551,16 @@ final class CheckoutServiceTest extends TestCase
     {
         $this->expectException(CartRuleViolation::class);
         $this->cart([10, 4]);
+    }
+
+    public function testTheSummarySaysHowMuchMoreShipsTheOrderFree(): void
+    {
+        $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Free over 100', '0', subtotal: new SaveRange('100'))]));
+        $owner = $this->cart([10, 2], [20, 1]);
+
+        self::assertSame('25.34', $this->shop->checkout->summary($owner, new CheckoutDetails('BG'))->freeShippingShort, 'the items before tax, 74.66, are 25.34 short');
+        $owner = new CartOwner($this->shop->carts->add($owner, new AddToCart(10))->newToken ?? $owner->token);
+        self::assertNull($this->shop->checkout->summary($owner, new CheckoutDetails('BG'))->freeShippingShort, 'free now');
     }
 
     public function testAProductsShippingClassChoosesTheRatesUntilTheClassIsDeleted(): void

@@ -15,6 +15,7 @@ export const MEASURES = [
 	'width',
 	'height',
 	'subtotal',
+	'items',
 ] as const;
 export type Measure = ( typeof MEASURES )[ number ];
 

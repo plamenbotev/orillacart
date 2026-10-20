@@ -34,6 +34,7 @@ final readonly class ShippingRateView
         public array $postcodes,
         public array $excludedRegions,
         public array $excludedPostcodes,
+        public ?RangeView $items,
     ) {}
 
     public static function fromRate(ShippingRate $rate): self
@@ -58,6 +59,7 @@ final readonly class ShippingRateView
             array_map(strval(...), $details->postcodes),
             array_map(strval(...), $details->excludedRegions),
             array_map(strval(...), $details->excludedPostcodes),
+            RangeView::fromRange($details->items),
         );
     }
 }

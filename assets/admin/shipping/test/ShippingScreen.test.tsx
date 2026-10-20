@@ -33,6 +33,7 @@ const courier = {
 			width: null,
 			height: null,
 			subtotal: null,
+			items: null,
 			taxable: true,
 			tax_group_id: null,
 			shipping_classes: [],
