@@ -57,6 +57,19 @@ final readonly class ChangeLog
         );
     }
 
+    /**
+     * A privacy request erased someone: what was sent about them goes from the records made on their order or
+     * account, and from those that mention their email. Who changed what, and when, stays.
+     *
+     * @param list<string> $paths the routes of what was theirs: "/orders/12", "/customers/3"
+     *
+     * @return int how many records were changed
+     */
+    public function forget(array $paths, ?string $email = null): int
+    {
+        return $this->records->replaceValues($paths, $email, ['_' => 'Erased, as a privacy request asked.']);
+    }
+
     /** @return int how many records older than KEEP_DAYS went */
     public function forgetOld(): int
     {

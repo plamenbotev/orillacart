@@ -33,6 +33,8 @@ final readonly class Route
      * @param bool                  $signed       the action verifies the caller's signature; no nonce (public routes only)
      * @param string|null           $guard        a form visitors send, guarded by name: rate limits, the honeypot
      *                                            and add-ons' captcha checks (GuardMiddleware)
+     * @param bool                  $changes      false for an unsafe method that only works something out (a quote,
+     *                                            a preview): it is not written into the change log
      */
     public function __construct(
         public string $path,
@@ -42,5 +44,6 @@ final readonly class Route
         public array $requirements = [],
         public bool $signed = false,
         public ?string $guard = null,
+        public bool $changes = true,
     ) {}
 }

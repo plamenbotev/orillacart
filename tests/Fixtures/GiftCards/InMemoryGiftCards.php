@@ -58,6 +58,11 @@ final class InMemoryGiftCards implements GiftCardRepository
         return array_values(array_filter($this->cards, static fn(GiftCard $card): bool => $card->orderId() === $orderId));
     }
 
+    public function toRecipient(string $email): array
+    {
+        return array_values(array_filter($this->cards, static fn(GiftCard $card): bool => strcasecmp($card->recipientEmail(), trim($email)) === 0));
+    }
+
     public function save(GiftCard $card): void
     {
         $id = new \ReflectionProperty(GiftCard::class, 'id');

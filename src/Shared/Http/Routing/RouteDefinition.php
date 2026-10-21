@@ -34,6 +34,8 @@ final readonly class RouteDefinition
         public array $requirements = [],
         public bool $signed = false,
         public ?string $guard = null,
+        /** False when an unsafe method only works something out: not a change to log. */
+        public bool $changes = true,
     ) {
         if (!str_starts_with($path, '/')) {
             throw new \InvalidArgumentException(\sprintf('Route path "%s" of %s must start with "/".', $path, $action));
@@ -70,7 +72,7 @@ final readonly class RouteDefinition
 
     public static function fromAttribute(string $action, Route $route): self
     {
-        return new self($action, $route->path, $route->methods, $route->capability, $route->nonce, $route->requirements, $route->signed, $route->guard);
+        return new self($action, $route->path, $route->methods, $route->capability, $route->nonce, $route->requirements, $route->signed, $route->guard, $route->changes);
     }
 
     /**
@@ -122,7 +124,7 @@ final readonly class RouteDefinition
     }
 
     /**
-     * @return array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string}
+     * @return array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string, changes: bool}
      */
     public function toArray(): array
     {
@@ -135,14 +137,15 @@ final readonly class RouteDefinition
             'requirements' => $this->requirements,
             'signed' => $this->signed,
             'guard' => $this->guard,
+            'changes' => $this->changes,
         ];
     }
 
     /**
-     * @param array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string} $data
+     * @param array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string, changes: bool} $data
      */
     public static function fromArray(array $data): self
     {
-        return new self($data['action'], $data['path'], $data['methods'], $data['capability'], $data['nonce'], $data['requirements'], $data['signed'], $data['guard']);
+        return new self($data['action'], $data['path'], $data['methods'], $data['capability'], $data['nonce'], $data['requirements'], $data['signed'], $data['guard'], $data['changes']);
     }
 }

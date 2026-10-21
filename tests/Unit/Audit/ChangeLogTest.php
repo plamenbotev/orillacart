@@ -49,6 +49,31 @@ final class ChangeLogTest extends TestCase
         self::assertSame(['_' => 'Too long to keep.'], $records->records[0]->values());
         self::assertSame('', $records->records[0]->userName());
     }
+
+    public function testAPrivacyRequestErasesWhatWasSentAboutThePersonAndKeepsTheChange(): void
+    {
+        $records = new InMemoryChangeRecords();
+        $log = new ChangeLog($records, new class implements UserNames {
+            public function names(array $ids): array
+            {
+                return [];
+            }
+        }, new MockClock());
+        $log->record(1, 'PUT', '/orders/{id}/contact', '/orders/12/contact', ['billing' => ['first_name' => 'Ada']]);
+        $log->record(1, 'PUT', '/orders/{id}/contact', '/orders/123/contact', ['billing' => ['first_name' => 'Grace']]);
+        $log->record(1, 'POST', '/gift-cards', '/gift-cards', ['recipient_email' => 'Ada@Example.com']);
+        $log->record(1, 'PUT', '/settings', '/settings', ['shop_name' => 'Lamps']);
+
+        self::assertSame(2, $log->forget(['/orders/12'], 'ada@example.com'));
+
+        self::assertSame([
+            ['_' => 'Erased, as a privacy request asked.'],
+            ['billing' => ['first_name' => 'Grace']],
+            ['_' => 'Erased, as a privacy request asked.'],
+            ['shop_name' => 'Lamps'],
+        ], array_map(static fn(ChangeRecord $record): array => $record->values(), $records->records), 'not another order whose number starts the same');
+        self::assertSame('PUT /orders/{id}/contact', $records->records[0]->route(), 'who changed what, and when, stays');
+    }
 }
 
 final class InMemoryChangeRecords implements ChangeRecordRepository
@@ -70,6 +95,21 @@ final class InMemoryChangeRecords implements ChangeRecordRepository
     public function areas(): array
     {
         return array_values(array_unique(array_map(static fn(ChangeRecord $record): string => $record->area(), $this->records)));
+    }
+
+    public function replaceValues(array $paths, ?string $mention, array $values): int
+    {
+        $changed = 0;
+        foreach ($this->records as $record) {
+            $below = array_filter($paths, static fn(string $path): bool => $record->path() === $path || str_starts_with($record->path(), "{$path}/"));
+            $mentions = $mention !== null && $mention !== '' && stripos((string) json_encode($record->values()), $mention) !== false;
+            if ($below !== [] || $mentions) {
+                new \ReflectionProperty(ChangeRecord::class, 'values')->setValue($record, $values);
+                ++$changed;
+            }
+        }
+
+        return $changed;
     }
 
     public function removeOlderThan(\DateTimeImmutable $before): int

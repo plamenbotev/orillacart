@@ -17,7 +17,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Prices an order the shop is taking, before it creates it. POST, since the items do not fit a query string.
  */
-#[Route('/orders/quote', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
+#[Route('/orders/quote', methods: ['POST'], capability: Capability::MANAGE_SHOP, changes: false)]
 final readonly class QuoteOrderAction implements RequestHandlerInterface
 {
     public function __construct(

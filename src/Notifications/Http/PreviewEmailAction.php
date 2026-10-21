@@ -17,7 +17,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** The email a template makes, saved or as edited; a template that fails as it renders says why (422). */
-#[Route('/email-templates/{name}/preview', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['name' => '[a-z_-]+'])]
+#[Route('/email-templates/{name}/preview', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['name' => '[a-z_-]+'], changes: false)]
 final readonly class PreviewEmailAction implements RequestHandlerInterface
 {
     public function __construct(

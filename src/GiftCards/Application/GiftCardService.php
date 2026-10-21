@@ -181,6 +181,22 @@ final readonly class GiftCardService
         return \sprintf('as gift card ····%s, sent to %s', $card->codeEnd(), $email);
     }
 
+    /**
+     * A privacy request erased the email: the cards made out to it forget who they were for.
+     *
+     * @return int how many cards
+     */
+    public function forgetRecipient(string $email): int
+    {
+        $cards = trim($email) === '' ? [] : $this->cards->toRecipient($email);
+        foreach ($cards as $card) {
+            $card->forgetRecipient();
+            $this->cards->save($card);
+        }
+
+        return \count($cards);
+    }
+
     public function settings(): GiftCardSettingsView
     {
         return GiftCardSettingsView::of($this->settings->load());

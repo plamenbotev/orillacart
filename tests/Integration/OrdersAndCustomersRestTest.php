@@ -281,10 +281,17 @@ final class OrdersAndCustomersRestTest extends RestTestCase
 
     public function testWordPressPrivacyToolsExportAndEraseAPersonsOrders(): void
     {
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_change_log");
         $first = $this->order([[$this->lamp, 1]]);
         $second = $this->order([[$this->lamp, 1]]);
         $this->actAs('administrator');
         $this->request('POST', "/orders/{$first['number']}/paid", [], nonce: true);
+        $this->request('POST', "/orders/{$second['number']}/notes", ['text' => 'Ada rang about the lamp'], nonce: true);
+        $card = $this->rows([$this->data($this->request('POST', '/gift-cards', ['amount' => '20', 'recipient_name' => 'Ada', 'recipient_email' => 'Ada@example.com', 'message' => 'Happy birthday'], nonce: true))['card'] ?? null])[0]['id'] ?? null;
+        self::assertIsInt($card);
+        self::assertSame(200, $this->request('POST', '/orders/quote', ['items' => [['product_id' => $this->lamp, 'quantity' => 1]], 'billing_country' => 'BG', 'email' => 'ada@example.com'], nonce: true)->get_status());
 
         $export = $this->privacyCallback('wp_privacy_personal_data_exporters');
         $exported = $export('ada@example.com', 1);
@@ -301,6 +308,12 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(['anonymised@invalid', 'Anonymised', true, '0'], [$order['email'] ?? null, $this->rows([$order['billing'] ?? null])[0]['first_name'] ?? null, $order['anonymised'] ?? null, $order['refunded_total'] ?? null]);
         self::assertCount(1, $this->rows($this->data($this->request('GET', "/orders/{$first['number']}/invoices"))), 'the invoice stays');
         self::assertSame(200, $this->request('POST', "/orders/{$second['number']}/anonymise", [], nonce: true)->get_status(), 'erasing twice changes nothing');
+        $logged = array_filter($this->rows($this->data($this->request('GET', '/change-log?per_page=100'))['records']), static fn(array $record): bool => \in_array($record['path'], ["/orders/{$first['number']}/paid", "/orders/{$second['number']}/notes", '/gift-cards', '/orders/quote'], true));
+        self::assertSame(['/gift-cards', "/orders/{$second['number']}/notes", "/orders/{$first['number']}/paid"], array_values(array_column($logged, 'path')), 'the quote changed nothing');
+        self::assertSame([['_' => 'Erased, as a privacy request asked.']], array_values(array_unique(array_column($logged, 'values'), \SORT_REGULAR)));
+        $recipient = $this->data($this->request('GET', "/gift-cards/{$card}"))['card'];
+        self::assertIsArray($recipient);
+        self::assertSame(['', '', '', '20'], [$recipient['recipient_name'] ?? null, $recipient['recipient_email'] ?? null, $recipient['message'] ?? null, $recipient['balance'] ?? null], 'the card stays');
         $again = $export('ada@example.com', 1);
         self::assertIsArray($again);
         self::assertSame([], $this->rows($again['data'] ?? null));

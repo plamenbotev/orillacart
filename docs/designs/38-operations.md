@@ -27,8 +27,11 @@ Status: built (2026-10-21), PLAN item 95.
 
 Each change a shop manager makes through the shop's API, once it succeeded: who, when, the route and what was
 sent, with keys named like secrets, passwords, tokens and API keys blanked out (`change_log`). Reads, failures
-and visitors' requests are not kept, nor more than 8 KB of what was sent. A middleware writes it after the
-action, building the log only for a change, and never fails the change for it. Shop → Status lists it by area;
+and visitors' requests are not kept, nor routes that only work something out (`changes: false`: the order
+quote, an email preview), nor more than 8 KB of what was sent. What was sent may be a customer's address or
+email: once a privacy request erases them, or an order is anonymised, the records made on their order or
+account, and those that mention their email, keep only who changed what, and when. A middleware writes it
+after the action, building the log only for a change, and never fails the change for it. Shop → Status lists it by area;
 `GET /change-log`. A year is kept.
 
 ## API keys and webhooks (src/Integrations)

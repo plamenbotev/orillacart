@@ -21,6 +21,9 @@ interface GiftCardRepository
     /** @return list<GiftCard> those bought with the order */
     public function boughtWith(int $orderId): array;
 
+    /** @return list<GiftCard> those made out to the email, in any case */
+    public function toRecipient(string $email): array;
+
     public function save(GiftCard $card): void;
 
     public function add(GiftCardEntry $entry): void;

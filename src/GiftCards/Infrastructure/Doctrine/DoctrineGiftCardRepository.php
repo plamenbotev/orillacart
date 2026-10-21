@@ -56,6 +56,16 @@ final readonly class DoctrineGiftCardRepository implements GiftCardRepository
         return array_values($this->entityManager->getRepository(GiftCard::class)->findBy(['orderId' => $orderId], ['id' => 'ASC']));
     }
 
+    public function toRecipient(string $email): array
+    {
+        /** @var list<GiftCard> $cards */
+        $cards = $this->entityManager->createQueryBuilder()->select('c')->from(GiftCard::class, 'c')
+            ->where('LOWER(c.recipientEmail) = :email')->setParameter('email', mb_strtolower(trim($email)))
+            ->getQuery()->getResult();
+
+        return $cards;
+    }
+
     public function save(GiftCard $card): void
     {
         $this->entityManager->persist($card);

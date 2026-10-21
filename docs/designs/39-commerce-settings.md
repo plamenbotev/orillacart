@@ -62,6 +62,8 @@ Two kinds on the coupon engine, as codes or automatic discounts:
 - Refunds: "As store credit, to spend in the shop", or for a guest "As a gift card, sent to …" (`MakeRefund`
   `storeCredit`, `RefundMethod::StoreCredit`).
 - An order gift cards paid part of keeps its items: it is not edited, but cancelled and placed again.
+- A privacy request that erases an email, or anonymises an order, takes the recipient's name, email and message
+  off the cards made out to it; the cards and their balances stay.
 
 ## Other currencies
 

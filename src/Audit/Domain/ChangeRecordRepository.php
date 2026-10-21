@@ -20,6 +20,17 @@ interface ChangeRecordRepository
      */
     public function areas(): array;
 
+    /**
+     * Replaces what was sent with $values in the records made on any of $paths or below them, and in those whose
+     * values mention $mention (any case).
+     *
+     * @param list<string>         $paths  "/orders/12": that route and those below it
+     * @param array<string, mixed> $values
+     *
+     * @return int how many were changed
+     */
+    public function replaceValues(array $paths, ?string $mention, array $values): int;
+
     /** @return int how many went */
     public function removeOlderThan(\DateTimeImmutable $before): int;
 }

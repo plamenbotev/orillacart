@@ -16,7 +16,7 @@ final readonly class RouteCollection
     private array $routes;
 
     /**
-     * @param list<array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string}> $routes
+     * @param list<array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string, changes: bool}> $routes
      */
     public function __construct(array $routes)
     {

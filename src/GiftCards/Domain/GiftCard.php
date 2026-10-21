@@ -240,6 +240,14 @@ class GiftCard
         $this->codeEnd = $code->end();
     }
 
+    /** A privacy request erased the recipient: the card, and what is left on it, stays. */
+    public function forgetRecipient(): void
+    {
+        $this->recipientName = '';
+        $this->recipientEmail = '';
+        $this->message = '';
+    }
+
     /**
      * @throws GiftCardRuleViolation
      */
