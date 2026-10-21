@@ -10,8 +10,9 @@ final readonly class WordPressCsrfProtection implements CsrfProtection
 {
     public function isRequired(): bool
     {
-        // Set by WordPress when the request authenticated with an application password instead of a cookie.
-        return did_action('application_password_did_authenticate') === 0;
+        // Set when the request authenticated with an application password, or one of the shop's API keys, instead
+        // of a cookie.
+        return did_action('application_password_did_authenticate') === 0 && did_action('orillacart_api_key_did_authenticate') === 0;
     }
 
     public function isTokenValid(string $token, string $action): bool

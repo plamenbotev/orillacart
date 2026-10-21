@@ -54,6 +54,8 @@ use OrillaCart\Exchange\Infrastructure\WordPress\TranslatedColumnNames;
 use OrillaCart\Extension\Registry;
 use OrillaCart\Geography\Domain\CountryRepository;
 use OrillaCart\Geography\Infrastructure\Doctrine\DoctrineCountryRepository;
+use OrillaCart\Integrations\Domain\ApiKeyRepository;
+use OrillaCart\Integrations\Infrastructure\Doctrine\DoctrineApiKeyRepository;
 use OrillaCart\Inventory\Domain\StockLevelRepository;
 use OrillaCart\Inventory\Domain\StockMovementRepository;
 use OrillaCart\Inventory\Domain\StockroomRepository;
@@ -338,6 +340,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ProductCardsHtml::class, RenderedProductCards::class);
     $services->alias(StatusReport::class, HealthStatusReport::class);
     $services->alias(ChangeRecordRepository::class, DoctrineChangeRecordRepository::class);
+    $services->alias(ApiKeyRepository::class, DoctrineApiKeyRepository::class);
     $services->alias(PendingAccountRepository::class, DoctrinePendingAccountRepository::class);
     $services->alias(AccountMail::class, AccountEmails::class);
     $services->alias(AccountLinks::class, StorefrontAccountLinks::class);

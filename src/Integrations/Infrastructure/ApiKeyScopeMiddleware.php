@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Integrations\Infrastructure;
+
+use OrillaCart\Integrations\Domain\ApiKeyScope;
+use OrillaCart\Integrations\Infrastructure\WordPress\ApiKeyRequest;
+use OrillaCart\Shared\Http\HttpException;
+use OrillaCart\Shared\Http\HttpKernel;
+use OrillaCart\Shared\Http\Routing\RouteDefinition;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
+
+/**
+ * Holds a request made with an API key to the key's scope: a read-only key changes nothing, and no key makes,
+ * lists or revokes keys (that takes a shop manager logged in).
+ */
+#[AutoconfigureTag(HttpKernel::MIDDLEWARE_TAG)]
+final readonly class ApiKeyScopeMiddleware implements MiddlewareInterface
+{
+    public function __construct(private ApiKeyRequest $keys) {}
+
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
+        $key = $this->keys->key;
+        $route = $request->getAttribute(RouteDefinition::ATTRIBUTE);
+        if ($key !== null && $route instanceof RouteDefinition) {
+            if (str_starts_with($route->path, '/api-keys')) {
+                throw new HttpException(403, 'orillacart_api_key_forbidden', 'API keys are made and revoked by a shop manager logged in, not with a key.');
+            }
+            if ($key->scope === ApiKeyScope::Read && !$route->isSafe($request->getMethod())) {
+                throw new HttpException(403, 'orillacart_read_only_key', 'This API key only reads.');
+            }
+        }
+
+        return $handler->handle($request);
+    }
+}

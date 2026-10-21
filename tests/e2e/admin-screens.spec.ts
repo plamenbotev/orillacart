@@ -259,6 +259,57 @@ test.describe( 'The admin', () => {
 		await expect( page ).toHaveURL( /report=carts/ );
 	} );
 
+	test( 'makes an API key an integration reads the shop with, and revokes it', async ( {
+		admin,
+		page,
+		playwright,
+	} ) => {
+		await admin.visitAdminPage(
+			'admin.php',
+			'page=orillacart-integrations'
+		);
+		await page.getByLabel( 'New key for' ).fill( 'E2E reader' );
+		await page.getByRole( 'button', { name: 'Make the key' } ).click();
+		const key =
+			( await page.locator( '.orillacart-api-key' ).textContent() ) ?? '';
+		expect( key ).toMatch( /^oc_[a-f0-9]{40}$/ );
+
+		// Another program: no cookies, no nonce, only the key.
+		const api = await playwright.request.newContext( {
+			baseURL: new URL( page.url() ).origin,
+			extraHTTPHeaders: { Authorization: `Bearer ${ key }` },
+		} );
+		try {
+			const read = await api.get( '/wp-json/orillacart/v1/orders' );
+			expect( read.status() ).toBe( 200 );
+			const change = await api.put(
+				'/wp-json/orillacart/v1/review-settings',
+				{
+					data: { policy: 'off' },
+				}
+			);
+			expect( ( await change.json() ).code ).toBe(
+				'orillacart_read_only_key'
+			);
+
+			// This key's row, by its first characters: keys of other runs may be there too.
+			const row = page.getByRole( 'row', {
+				name: new RegExp( key.slice( 0, 11 ) ),
+			} );
+			await row.getByRole( 'button', { name: 'Revoke' } ).click();
+			await page
+				.getByRole( 'dialog' )
+				.getByRole( 'button', { name: 'Revoke' } )
+				.click();
+			await expect( row ).toBeHidden();
+			expect(
+				( await api.get( '/wp-json/orillacart/v1/orders' ) ).status()
+			).toBe( 401 );
+		} finally {
+			await api.dispose();
+		}
+	} );
+
 	test( 'checks the shop on the Status screen', async ( { admin, page } ) => {
 		await admin.visitAdminPage( 'admin.php', 'page=orillacart-status' );
 		await expect(
