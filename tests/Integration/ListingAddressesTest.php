@@ -30,7 +30,7 @@ final class ListingAddressesTest extends RestTestCase
         parent::setUp();
         $this->stored = get_option(OptionShopPagesRepository::OPTION);
         $this->requestUri = $_SERVER['REQUEST_URI'] ?? null;
-        $shop = wp_insert_post(['post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Shop ' . uniqid(), 'post_content' => '<!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column"><!-- wp:orillacart/product-filters /--></div><!-- /wp:column --><!-- wp:column --><div class="wp-block-column"><!-- wp:orillacart/products {"filters":false} /--></div><!-- /wp:column --></div><!-- /wp:columns -->']);
+        $shop = wp_insert_post(['post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Shop ' . uniqid(), 'post_content' => '<!-- wp:paragraph --><p>Welcome to our shop!</p><!-- /wp:paragraph --><!-- wp:columns --><div class="wp-block-columns"><!-- wp:column --><div class="wp-block-column"><!-- wp:orillacart/product-filters /--></div><!-- /wp:column --><!-- wp:column --><div class="wp-block-column"><!-- wp:orillacart/products {"filters":false} /--></div><!-- /wp:column --></div><!-- /wp:columns -->']);
         self::assertIsInt($shop);
         $this->shop = $shop;
         update_option(OptionShopPagesRepository::OPTION, ['shop' => $shop]);
@@ -104,6 +104,7 @@ final class ListingAddressesTest extends RestTestCase
 
         self::assertStringContainsString('wp-block-columns', $html, 'the shop page\'s columns');
         self::assertStringContainsString('data-orillacart-region="filters"', $html, 'and its filters block');
+        self::assertStringNotContainsString('Welcome to our shop!', $html, 'not the shop page\'s own words');
         self::assertStringNotContainsString('class="orillacart-products__filters" method="get" action="" ', $html);
     }
 

@@ -80,15 +80,40 @@ final readonly class ProductArchives
         return $own !== '' ? $own : \dirname(__DIR__, 5) . '/templates/wordpress/product-archive.php';
     }
 
-    /** The shop page's blocks when it lists products, published; else the Products block on its own. */
+    /**
+     * The listing part of the shop page, published: its top-level blocks from the first to the last that hold
+     * the Products or Product filters block (the columns around them, say), not its heading, welcome text or
+     * banners, which belong to the shop page alone. The Products block on its own where the shop page has none.
+     */
     private function listing(): string
     {
         $id = $this->pages->load()->shop;
         $page = $id === null ? null : get_post($id);
-        if ($page instanceof \WP_Post && $page->post_status === 'publish' && has_block('orillacart/products', $page)) {
-            return $page->post_content;
+        if (!$page instanceof \WP_Post || $page->post_status !== 'publish' || !has_block('orillacart/products', $page)) {
+            return '<!-- wp:orillacart/products {"align":"wide"} /-->';
+        }
+        $blocks = array_values(array_filter(parse_blocks($page->post_content), static fn(array $block): bool => $block['blockName'] !== null));
+        $holding = array_keys(array_filter($blocks, self::holdsListing(...)));
+        $first = $holding[0] ?? 0;
+        $last = $holding === [] ? \count($blocks) - 1 : $holding[\count($holding) - 1];
+
+        return serialize_blocks(\array_slice($blocks, $first, $last - $first + 1));
+    }
+
+    /**
+     * @param array<mixed> $block as parse_blocks() gives it
+     */
+    private static function holdsListing(array $block): bool
+    {
+        if (\in_array($block['blockName'] ?? null, ['orillacart/products', 'orillacart/product-filters'], true)) {
+            return true;
+        }
+        foreach (\is_array($block['innerBlocks'] ?? null) ? $block['innerBlocks'] : [] as $inner) {
+            if (\is_array($inner) && self::holdsListing($inner)) {
+                return true;
+            }
         }
 
-        return '<!-- wp:orillacart/products {"align":"wide"} /-->';
+        return false;
     }
 }

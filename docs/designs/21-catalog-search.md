@@ -32,7 +32,8 @@ Decisions:
 - Grid or list (item 101): the Products block's own, a category's ("Shown as", which those below it take), or
   the shopper's (`?view=list`, kept by the forms). Rows add a short description.
 - Addresses (item 103): a category's, tag's or brand's products are at its own page, laid out as the shop page
-  (its blocks, else the Products block); the shop's category links go there, and a listing page asked for
+  (its blocks from the first to the last holding the Products or Product filters block, not its own words;
+  else the Products block); the shop's category links go there, and a listing page asked for
   `?category=` or `?tag=` sends there for good (`ListingAddresses`). Pages are in the path
   (`/product-category/lamps/page/2/`, `/shop/2/`; `?product-page=2` without pretty permalinks, and sent on
   with them), never a 404 for WordPress's own list of posts. Listings narrowed by words, filters, sorting or
