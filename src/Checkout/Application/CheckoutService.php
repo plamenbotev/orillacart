@@ -133,6 +133,7 @@ final readonly class CheckoutService
                 $line['quote']->shownBackorder($line['quantity']),
                 (string) $line['discount'],
                 array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
+                $line['gift'],
             ), $priced['lines']),
             $priced['needs_shipping'],
             $priced['options'],

@@ -125,6 +125,11 @@ final readonly class CouponService
             $command->usageLimit,
             $command->perCustomerLimit,
             $command->firstOrderOnly,
+            $command->buyQuantity,
+            $command->getQuantity,
+            $ids($command->getProductIds),
+            $ids($command->getCategoryIds),
+            $command->giftProductId,
         );
     }
 }

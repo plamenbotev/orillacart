@@ -382,7 +382,7 @@ Public: checkout and account forms list the countries before anyone logs in.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `code` (string): required; at most 40 characters
-  - `kind` (string): required; one of percent, order_amount, item_amount, free_shipping
+  - `kind` (string): required; one of percent, order_amount, item_amount, free_shipping, buy_get, free_gift
   - `amount` (string): matches `/^\d{1,11}(\.\d{1,4})?$/`; default '0'
   - `description` (string): at most 255 characters
   - `cap` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
@@ -404,6 +404,11 @@ Public: checkout and account forms list the countries before anyone logs in.
   - `per_customer_limit` (int|null): more than 0
   - `first_order_only` (bool): default false
   - `automatic` (bool): default false
+  - `buy_quantity` (int): 0 to 1000; default 0
+  - `get_quantity` (int): 0 to 1000; default 0
+  - `get_product_ids` (list<int>): at most 1000 items
+  - `get_category_ids` (list<int>): at most 1000 items
+  - `gift_product_id` (int|null): more than 0
 
 ### `GET /coupons/{id}`
 
@@ -414,7 +419,7 @@ Public: checkout and account forms list the countries before anyone logs in.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `code` (string): required; at most 40 characters
-  - `kind` (string): required; one of percent, order_amount, item_amount, free_shipping
+  - `kind` (string): required; one of percent, order_amount, item_amount, free_shipping, buy_get, free_gift
   - `amount` (string): matches `/^\d{1,11}(\.\d{1,4})?$/`; default '0'
   - `description` (string): at most 255 characters
   - `cap` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
@@ -436,6 +441,11 @@ Public: checkout and account forms list the countries before anyone logs in.
   - `per_customer_limit` (int|null): more than 0
   - `first_order_only` (bool): default false
   - `automatic` (bool): default false
+  - `buy_quantity` (int): 0 to 1000; default 0
+  - `get_quantity` (int): 0 to 1000; default 0
+  - `get_product_ids` (list<int>): at most 1000 items
+  - `get_category_ids` (list<int>): at most 1000 items
+  - `gift_product_id` (int|null): more than 0
 
 ### `DELETE /coupons/{id}`
 

@@ -14,6 +14,10 @@ enum CouponKind: string
     case ItemAmount = 'item_amount';
     /** The shipping costs nothing. */
     case FreeShipping = 'free_shipping';
+    /** Buy some of the matching items, get some (the cheapest, or others the coupon names) a percentage off. */
+    case BuyGet = 'buy_get';
+    /** A product added to the order for nothing. */
+    case FreeGift = 'free_gift';
 
     /** @return list<string> */
     public static function values(): array

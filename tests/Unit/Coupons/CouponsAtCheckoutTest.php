@@ -244,6 +244,61 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->shop->checkout->applyCoupon($again, new CouponCode('ONCE'));
     }
 
+    public function testBuyTwoGetOneFreeGivesTheCheapestItems(): void
+    {
+        $this->shop->coupons->create(new SaveCoupon('THREE', 'buy_get', '100', buyQuantity: 2, getQuantity: 1));
+
+        $owner = $this->cart([10, 2], [20, 1]);
+        $summary = $this->shop->checkout->applyCoupon($owner, new CouponCode('THREE'));
+        self::assertSame(['0', '10'], [$summary->lines[0]->discount, $summary->lines[1]->discount], 'two lamps bought, the shade given');
+
+        $owner = $this->cart([10, 3], [20, 3]);
+        $summary = $this->shop->checkout->applyCoupon($owner, new CouponCode('THREE'));
+        self::assertSame(['0', '20'], [$summary->lines[0]->discount, $summary->lines[1]->discount], 'two rounds: two lamps and a shade, then a lamp, a shade and a shade');
+
+        $this->expectExceptionMessage('This code needs 3 of the items it applies to: 2 to buy and 1 it gives.');
+        $this->shop->checkout->applyCoupon($this->cart([10, 2]), new CouponCode('THREE'));
+    }
+
+    public function testBuyingSomeItemsGivesOthersAPercentageOff(): void
+    {
+        $this->shop->coupons->create(new SaveCoupon('SHADE', 'buy_get', '50', productIds: [10], buyQuantity: 1, getQuantity: 1, getProductIds: [20]));
+
+        $summary = $this->shop->checkout->applyCoupon($this->cart([10, 2], [20, 3]), new CouponCode('SHADE'));
+        self::assertSame(['0', '10'], [$summary->lines[0]->discount, $summary->lines[1]->discount], 'a shade at half price for each lamp');
+
+        $this->expectExceptionMessage('Add the items this code gives off to your cart.');
+        $this->shop->checkout->applyCoupon($this->cart([10, 1]), new CouponCode('SHADE'));
+    }
+
+    public function testAFreeGiftIsAddedOnceTheOrderHoldsAndTheOrderKeepsIt(): void
+    {
+        $this->shop->coupons->create(new SaveCoupon('', 'free_gift', '0', 'A shade with orders over 50', minSubtotal: '50', combines: true, automatic: true, getQuantity: 1, giftProductId: 20));
+
+        $small = $this->shop->checkout->summary($this->cart([10, 1]), new CheckoutDetails('BG'));
+        self::assertCount(1, $small->lines, 'under 50');
+
+        $owner = $this->cart([10, 2]);
+        $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
+        self::assertSame([['Lamp', 2, '80', '0', false], ['Shade', 1, '10', '10', true]], array_map(static fn($line): array => [$line->name, $line->quantity, $line->total, $line->discount, $line->gift], $summary->lines));
+        self::assertSame(['90', '10', '16', '102'], [$summary->subtotal, $summary->discount, $summary->itemsTax, $summary->total], 'the gift costs nothing, and nothing in tax');
+        self::assertSame([['A shade with orders over 50', '10']], array_map(static fn($coupon): array => [$coupon->description, $coupon->amount], $summary->coupons));
+
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order());
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame([['Lamp', '0'], ['Shade', '10']], array_map(static fn($line): array => [$line->name, $line->discount], $order->lines));
+        self::assertSame('102', $order->total);
+
+        $own = $this->shop->checkout->summary($this->cart([10, 2], [20, 2]), new CheckoutDetails('BG'));
+        self::assertSame([['Lamp', 2, '0'], ['Shade', 2, '10']], array_map(static fn($line): array => [$line->name, $line->quantity, $line->discount], $own->lines), 'a shade in the cart is made free, none added; the gift does not count towards the order');
+    }
+
+    public function testAFreeGiftNamesItsProduct(): void
+    {
+        $this->expectException(CouponRuleViolation::class);
+        $this->shop->coupons->create(new SaveCoupon('GIFT', 'free_gift', '0', getQuantity: 1));
+    }
+
     public function testAnAutomaticDiscountNeedsADescription(): void
     {
         $this->expectException(CouponRuleViolation::class);

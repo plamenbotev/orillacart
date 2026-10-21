@@ -24,6 +24,8 @@ final readonly class SaveCoupon
      * @param list<int>    $brandIds
      * @param list<int>    $excludedProductIds
      * @param list<int>    $excludedCategoryIds
+     * @param list<int>    $getProductIds       buy-get: the items given; none of these or the categories: the matching ones
+     * @param list<int>    $getCategoryIds
      */
     public function __construct(
         #[Assert\Length(max: Coupon::MAX_CODE_LENGTH)]
@@ -68,5 +70,17 @@ final readonly class SaveCoupon
         public ?int $perCustomerLimit = null,
         public bool $firstOrderOnly = false,
         public bool $automatic = false,
+        /** Buy-get: how many to buy, and how many given, each time. A free gift: how many of the gift. */
+        #[Assert\Range(min: 0, max: 1000)]
+        public int $buyQuantity = 0,
+        #[Assert\Range(min: 0, max: 1000)]
+        public int $getQuantity = 0,
+        #[Assert\Count(max: 1000)]
+        public array $getProductIds = [],
+        #[Assert\Count(max: 1000)]
+        public array $getCategoryIds = [],
+        /** A free gift: the product given, one without variations or options. */
+        #[Assert\Positive]
+        public ?int $giftProductId = null,
     ) {}
 }

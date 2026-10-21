@@ -25,5 +25,7 @@ final readonly class CheckoutLineView
         public string $discount = '0',
         /** @var list<array{name: string, quantity: int}> what one bundle holds */
         public array $contents = [],
+        /** A free gift a discount added to the order. */
+        public bool $gift = false,
     ) {}
 }

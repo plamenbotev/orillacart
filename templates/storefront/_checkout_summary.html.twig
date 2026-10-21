@@ -11,6 +11,7 @@
             <tr>
                 <td>
                     {{ line.name }} &times; {{ line.quantity }}
+                    {% if line.gift %}<br><small class="orillacart-gift">{{ __('Free gift') }}</small>{% endif %}
                     {% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}
                     {% if line.contents %}<br><small class="orillacart-bundle">{{ __('Holds') }}: {% for item in line.contents %}{{ item.quantity }} × {{ item.name }}{{ not loop.last ? ', ' }}{% endfor %}</small>{% endif %}
                     {# translators: %d: how many of the item wait for stock -#}

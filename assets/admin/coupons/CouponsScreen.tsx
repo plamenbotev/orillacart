@@ -40,7 +40,15 @@ export const KIND_LABELS: Record< Kind, string > = {
 	order_amount: __( 'Amount off the order', 'orillacart' ),
 	item_amount: __( 'Amount off each item', 'orillacart' ),
 	free_shipping: __( 'Free shipping', 'orillacart' ),
+	buy_get: __( 'Buy X, get Y', 'orillacart' ),
+	free_gift: __( 'Free gift', 'orillacart' ),
 };
+
+function amountLabel( kind: Kind ): string {
+	return kind === 'percent' || kind === 'buy_get'
+		? __( 'Percentage', 'orillacart' )
+		: __( 'Amount', 'orillacart' );
+}
 
 /**
  * What a coupon takes off, in a few words: "10 %", "5 off the order", "Free shipping".
@@ -74,6 +82,23 @@ export function discountLabel( coupon: CouponFields ): string {
 				__( '%s off each item', 'orillacart' ),
 				coupon.amount
 			);
+		case 'buy_get':
+			return Number( coupon.amount ) >= 100
+				? sprintf(
+						/* translators: 1: how many to buy, 2: how many free */
+						__( 'Buy %1$d, get %2$d free', 'orillacart' ),
+						coupon.buy_quantity,
+						coupon.get_quantity
+					)
+				: sprintf(
+						/* translators: 1: how many to buy, 2: how many given, 3: percentage */
+						__( 'Buy %1$d, get %2$d at %3$s %% off', 'orillacart' ),
+						coupon.buy_quantity,
+						coupon.get_quantity,
+						coupon.amount
+					);
+		case 'free_gift':
+			return KIND_LABELS.free_gift;
 		default:
 			return KIND_LABELS.free_shipping;
 	}
@@ -376,29 +401,114 @@ export function CouponForm( {
 									value: kind,
 									label: KIND_LABELS[ kind ],
 								} ) ) }
-								onChange={ ( value ) =>
-									set( 'kind', value as Kind )
-								}
+								onChange={ ( value ) => {
+									const kind = value as Kind;
+									setFields( {
+										...fields,
+										kind,
+										// Each kind starts from quantities that make it.
+										buy_quantity:
+											kind === 'buy_get'
+												? Math.max(
+														1,
+														fields.buy_quantity
+													)
+												: 0,
+										get_quantity:
+											kind === 'buy_get' ||
+											kind === 'free_gift'
+												? Math.max(
+														1,
+														fields.get_quantity
+													)
+												: 0,
+										amount:
+											kind === 'buy_get' &&
+											Number( fields.amount ) > 100
+												? '100'
+												: fields.amount,
+									} );
+								} }
 							/>
 						</FlexItem>
-						{ fields.kind !== 'free_shipping' && (
+						{ fields.kind === 'buy_get' && (
+							<>
+								<FlexItem isBlock>
+									<TextControl
+										__next40pxDefaultSize
+										type="number"
+										min={ 1 }
+										label={ __( 'Buy', 'orillacart' ) }
+										value={ String( fields.buy_quantity ) }
+										onChange={ ( value ) =>
+											set(
+												'buy_quantity',
+												count( value ) ?? 1
+											)
+										}
+									/>
+								</FlexItem>
+								<FlexItem isBlock>
+									<TextControl
+										__next40pxDefaultSize
+										type="number"
+										min={ 1 }
+										label={ __( 'Get', 'orillacart' ) }
+										value={ String( fields.get_quantity ) }
+										onChange={ ( value ) =>
+											set(
+												'get_quantity',
+												count( value ) ?? 1
+											)
+										}
+									/>
+								</FlexItem>
+							</>
+						) }
+						{ fields.kind === 'free_gift' && (
 							<FlexItem isBlock>
 								<TextControl
 									__next40pxDefaultSize
-									label={
-										fields.kind === 'percent'
-											? __( 'Percentage', 'orillacart' )
-											: __( 'Amount', 'orillacart' )
-									}
-									value={ fields.amount }
+									type="number"
+									min={ 1 }
+									label={ __(
+										'How many of the gift',
+										'orillacart'
+									) }
+									value={ String( fields.get_quantity ) }
 									onChange={ ( value ) =>
-										set( 'amount', value )
+										set(
+											'get_quantity',
+											count( value ) ?? 1
+										)
 									}
-									required
 								/>
 							</FlexItem>
 						) }
-						{ fields.kind === 'percent' && (
+						{ fields.kind !== 'free_shipping' &&
+							fields.kind !== 'free_gift' && (
+								<FlexItem isBlock>
+									<TextControl
+										__next40pxDefaultSize
+										label={ amountLabel( fields.kind ) }
+										help={
+											fields.kind === 'buy_get'
+												? __(
+														'Off the items given: 100 gives them free.',
+														'orillacart'
+													)
+												: undefined
+										}
+										value={ fields.amount }
+										onChange={ ( value ) =>
+											set( 'amount', value )
+										}
+										required
+									/>
+								</FlexItem>
+							) }
+						{ ( fields.kind === 'percent' ||
+							fields.kind === 'buy_get' ) && (
 							<FlexItem isBlock>
 								<TextControl
 									__next40pxDefaultSize
@@ -422,6 +532,52 @@ export function CouponForm( {
 						checked={ fields.active }
 						onChange={ ( value ) => set( 'active', value ) }
 					/>
+
+					{ fields.kind === 'free_gift' && (
+						<ProductTokens
+							label={ __( 'The gift', 'orillacart' ) }
+							help={ __(
+								'A product without variations or options. Checkout adds it once the coupon holds, or makes the one in the cart free; while it is not for sale, the order goes without it.',
+								'orillacart'
+							) }
+							ids={
+								fields.gift_product_id === null
+									? []
+									: [ fields.gift_product_id ]
+							}
+							onChange={ ( ids ) =>
+								set( 'gift_product_id', ids.at( -1 ) ?? null )
+							}
+							onError={ onError }
+						/>
+					) }
+					{ fields.kind === 'buy_get' && (
+						<>
+							<h3>{ __( 'What it gives', 'orillacart' ) }</h3>
+							<p>
+								{ __(
+									'Leave these empty to give off the items it applies to: the dearest count as bought, the cheapest as given. Otherwise buying the items it applies to gives these.',
+									'orillacart'
+								) }
+							</p>
+							<ProductTokens
+								label={ __( 'Products given', 'orillacart' ) }
+								ids={ fields.get_product_ids }
+								onChange={ ( ids ) =>
+									set( 'get_product_ids', ids )
+								}
+								onError={ onError }
+							/>
+							<TermTokens
+								label={ __( 'Categories given', 'orillacart' ) }
+								terms={ categories }
+								ids={ fields.get_category_ids }
+								onChange={ ( ids ) =>
+									set( 'get_category_ids', ids )
+								}
+							/>
+						</>
+					) }
 
 					<h3>{ __( 'What it applies to', 'orillacart' ) }</h3>
 					<p>

@@ -106,11 +106,13 @@ export function TermTokens( {
 
 export function ProductTokens( {
 	label,
+	help,
 	ids,
 	onChange,
 	onError,
 }: {
 	label: string;
+	help?: string;
 	ids: number[];
 	onChange: ( ids: number[] ) => void;
 	onError: ( error: unknown ) => void;
@@ -128,33 +130,41 @@ export function ProductTokens( {
 	const name = ( id: number ) =>
 		all.find( ( product ) => product.id === id )?.name ?? `#${ id }`;
 	return (
-		<FormTokenField
-			__next40pxDefaultSize
-			label={ label }
-			value={ ids.map( name ) }
-			suggestions={ found.map( ( product ) => product.name ) }
-			onInputChange={ ( search ) => {
-				if ( search.trim().length >= 2 ) {
-					fetchProducts( { search } )
-						.then( setFound )
-						.catch( onError );
-				}
-			} }
-			onChange={ ( tokens ) => {
-				setKnown( all );
-				onChange(
-					tokens
-						.map( ( token ) => {
-							const text =
-								typeof token === 'string' ? token : token.value;
-							return (
-								all.find( ( product ) => product.name === text )
-									?.id ?? 0
-							);
-						} )
-						.filter( ( id ) => id > 0 )
-				);
-			} }
-		/>
+		<>
+			<FormTokenField
+				__next40pxDefaultSize
+				label={ label }
+				value={ ids.map( name ) }
+				suggestions={ found.map( ( product ) => product.name ) }
+				onInputChange={ ( search ) => {
+					if ( search.trim().length >= 2 ) {
+						fetchProducts( { search } )
+							.then( setFound )
+							.catch( onError );
+					}
+				} }
+				onChange={ ( tokens ) => {
+					setKnown( all );
+					onChange(
+						tokens
+							.map( ( token ) => {
+								const text =
+									typeof token === 'string'
+										? token
+										: token.value;
+								return (
+									all.find(
+										( product ) => product.name === text
+									)?.id ?? 0
+								);
+							} )
+							.filter( ( id ) => id > 0 )
+					);
+				} }
+			/>
+			{ help !== undefined && (
+				<p className="components-form-token-field__help">{ help }</p>
+			) }
+		</>
 	);
 }

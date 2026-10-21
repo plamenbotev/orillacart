@@ -48,8 +48,9 @@ use OrillaCart\Tax\Application\TaxCalculator;
  * a priced order into order lines, taking their stock. Checkout and order editing price the same way.
  *
  * Coupons take money off the items before tax is charged, and free shipping makes every way to ship cost nothing.
+ * A free gift that holds is added to the items, when it is for sale, and the order priced again with it.
  *
- * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money}
+ * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, gift: bool}
  * @phpstan-type Priced array{lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, free_from: ?string, ships_from: ?string}
  */
 final readonly class OrderPricing
@@ -68,7 +69,7 @@ final readonly class OrderPricing
      * Prices items with the customer's addresses: taxes, the shipping rates offered and the chosen one (or the
      * first), and the bill. An item may carry its own unit price, which the shop sets when it edits an order.
      *
-     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string}> $items
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, gift?: bool}> $items
      * @param string|null  $postcode   the shipping address's postcode, for rates that ship to some postcodes only
      * @param list<string> $codes      coupon codes; those that do not hold are left out, with the reason
      * @param string|null  $email      the customer's, for limits per customer, once known
@@ -81,6 +82,44 @@ final readonly class OrderPricing
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
     public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null): array
+    {
+        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment);
+        $gifts = $this->gifts($priced['discounts']->gifts, $customerId);
+
+        return $gifts === [] ? $priced : $this->priceItems([...$items, ...$gifts], $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment);
+    }
+
+    /**
+     * The free gifts to add that are for sale in that quantity; a gift that is not is left out.
+     *
+     * @param list<array{productId: int, quantity: int}> $gifts
+     *
+     * @return list<array{product_id: int, option_ids: list<int>, quantity: int, gift: bool}>
+     */
+    private function gifts(array $gifts, ?int $customerId): array
+    {
+        $items = [];
+        foreach ($gifts as $gift) {
+            try {
+                $quote = $this->quotes->quote(new QuoteRequest($gift['productId'], [], $gift['quantity'], $customerId));
+            } catch (NotFound|RuleViolation) {
+                continue;
+            }
+            if ($quote->forSale && ($quote->available === null || $quote->available >= $gift['quantity'])) {
+                $items[] = ['product_id' => $gift['productId'], 'option_ids' => [], 'quantity' => $gift['quantity'], 'gift' => true];
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, gift?: bool}> $items
+     * @param list<string> $codes
+     *
+     * @return Priced
+     */
+    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment): array
     {
         $settings = $this->settings->current();
         $decimals = $settings->priceDecimals;
@@ -118,7 +157,7 @@ final readonly class OrderPricing
             $unitPrice = (string) array_reduce($parts, static fn(Money $sum, array $part): Money => $sum->add($part['unit']), Money::zero());
             $total = Money::of($unitPrice)->times($line['quantity']);
             $taxesOf[] = array_map(static fn(array $part): array => ['total' => $part['unit']->times($line['quantity']), 'taxes' => $part['taxes']], $parts);
-            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero()];
+            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero(), 'gift' => $line['gift'] ?? false];
             if ($quote->type === 'physical') {
                 $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
             }

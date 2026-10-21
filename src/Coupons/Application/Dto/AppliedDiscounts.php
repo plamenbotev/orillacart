@@ -14,10 +14,13 @@ final readonly class AppliedDiscounts
     /**
      * @param list<AppliedCoupon>   $coupons in the order they were entered
      * @param array<string, string> $refused why, by code
+     * @param list<array{productId: int, quantity: int}> $gifts free gifts that hold but are not in the order yet:
+     *                                                          checkout adds them and prices the order again
      */
     public function __construct(
         public array $coupons = [],
         public array $refused = [],
+        public array $gifts = [],
     ) {}
 
     /** What the coupons take off the item, by its index in the order. */

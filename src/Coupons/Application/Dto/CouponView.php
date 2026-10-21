@@ -42,6 +42,13 @@ final readonly class CouponView
         public bool $firstOrderOnly,
         public int $uses,
         public bool $automatic = false,
+        public int $buyQuantity = 0,
+        public int $getQuantity = 0,
+        /** @var list<int> */
+        public array $getProductIds = [],
+        /** @var list<int> */
+        public array $getCategoryIds = [],
+        public ?int $giftProductId = null,
     ) {}
 
     public static function fromCoupon(Coupon $coupon): self
@@ -74,6 +81,11 @@ final readonly class CouponView
             $terms->firstOrderOnly,
             $coupon->uses(),
             $coupon->isAutomatic(),
+            $terms->buyQuantity,
+            $terms->getQuantity,
+            $terms->getProductIds,
+            $terms->getCategoryIds,
+            $terms->giftProductId,
         );
     }
 }

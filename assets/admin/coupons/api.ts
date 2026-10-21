@@ -6,6 +6,8 @@ export const KINDS = [
 	'order_amount',
 	'item_amount',
 	'free_shipping',
+	'buy_get',
+	'free_gift',
 ] as const;
 export type Kind = ( typeof KINDS )[ number ];
 
@@ -34,6 +36,14 @@ export interface CouponFields {
 	first_order_only: boolean;
 	/** No code to enter: it applies wherever it holds. */
 	automatic?: boolean;
+	/** Buy X, get Y: how many to buy and how many it gives, each time; a free gift: how many of it. */
+	buy_quantity: number;
+	get_quantity: number;
+	/** Buy X, get Y: the items given; empty for the matching ones, the cheapest first. */
+	get_product_ids: number[];
+	get_category_ids: number[];
+	/** A free gift: the product given. */
+	gift_product_id: number | null;
 }
 
 export interface Coupon extends CouponFields {
@@ -72,6 +82,11 @@ export const NEW_COUPON: CouponFields = {
 	usage_limit: null,
 	per_customer_limit: null,
 	first_order_only: false,
+	buy_quantity: 0,
+	get_quantity: 0,
+	get_product_ids: [],
+	get_category_ids: [],
+	gift_product_id: null,
 };
 
 const BASE = '/orillacart/v1';

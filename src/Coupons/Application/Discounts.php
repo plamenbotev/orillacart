@@ -62,6 +62,7 @@ final readonly class Discounts
         $known = $email !== '' || $request->customerId !== null;
         $applied = [];
         $refused = [];
+        $gifts = [];
         // Automatic discounts always go with codes: a customer never loses one by entering a code. Among
         // themselves, and codes among themselves, one that does not combine stands alone.
         $automaticApplied = [];
@@ -118,8 +119,12 @@ final readonly class Discounts
                 $lines[$index] = $discount->toFixed();
                 $sum = $sum->add($discount);
             }
-            if ($silent && $sum->isZero() && !$coupon->freeShipping()) {
+            $missing = $coupon->missingGift($basket);
+            if ($silent && $sum->isZero() && !$coupon->freeShipping() && $missing === null) {
                 continue;
+            }
+            if ($missing !== null) {
+                $gifts[] = $missing;
             }
             $applied[] = new AppliedCoupon($coupon->code(), $coupon->description(), $sum->toFixed(), $coupon->freeShipping(), $lines, $silent);
             if ($silent) {
@@ -131,7 +136,7 @@ final readonly class Discounts
             }
         }
 
-        return new AppliedDiscounts($applied, $refused);
+        return new AppliedDiscounts($applied, $refused, $gifts);
     }
 
     /**
