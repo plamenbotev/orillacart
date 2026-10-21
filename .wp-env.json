@@ -14,6 +14,10 @@
     "tests": {
       "mappings": {
         "wp-content/mu-plugins/orillacart-test-site.php": "./tests/e2e/mu-plugins/orillacart-test-site.php"
+      },
+      "config": {
+        "WP_HTTP_BLOCK_EXTERNAL": true,
+        "WP_ACCESSIBLE_HOSTS": "oc-opensearch"
       }
     }
   }
