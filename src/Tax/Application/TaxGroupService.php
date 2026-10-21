@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tax\Application;
 
 use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\Shared\Domain\PostcodePattern;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
@@ -175,6 +176,8 @@ final readonly class TaxGroupService
     {
         $location = $this->geography->require($command->country, $command->state);
 
-        return new TaxRateDetails($location->country, $location->state, Percentage::of($command->percent), trim($command->name), $command->priority);
+        $postcodes = array_values(array_filter(array_map(trim(...), $command->postcodes), static fn(string $postcode): bool => $postcode !== ''));
+
+        return new TaxRateDetails($location->country, $location->state, Percentage::of($command->percent), trim($command->name), $command->priority, array_map(PostcodePattern::of(...), $postcodes), $command->compound);
     }
 }

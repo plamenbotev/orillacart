@@ -352,6 +352,7 @@ The totals for the addresses and shipping the customer has chosen so far. Change
   - `payment` (string|null): matches `/^[a-z][a-z0-9_]{0,39}$/`
   - `delivery_date` (string|null): a date, Y-m-d
   - `delivery_slot` (string|null): at most 40 characters
+  - `billing_postcode` (string|null): at most 20 characters
 
 ## /countries
 
@@ -779,6 +780,7 @@ Prices an order the shop is taking, before it creates it. POST, since the items 
   - `shipping_country` (string|null): matches `/^[A-Z]{2}$/`
   - `shipping_state` (string|null): matches `/^[A-Z0-9]{1,3}$/`
   - `shipping_postcode` (string|null): at most 20 characters
+  - `billing_postcode` (string|null): at most 20 characters
   - `shipping_option` (string|null): matches `/^(rate:[1-9]\d{0,9}|carrier:[1-9]\d{0,9}:[a-z0-9_]{1,40}|pickup:[1-9]\d{0,9}:[a-z0-9][a-z0-9-]{0,39})$/`
   - `customer_id` (int|null): more than 0
   - `email` (string|null): at most 100 characters
@@ -1684,6 +1686,8 @@ Fills a tax group with the standard VAT rate of every EU country it has none for
   - `percent` (string): required; matches `/^\d{1,3}(\.\d{1,4})?$/`
   - `name` (string): at most 64 characters
   - `priority` (int): 0 to 1000; default 0
+  - `postcodes` (array): at most 500 items; each at most 21 characters
+  - `compound` (bool): default false
 
 ### `PUT /tax/groups/{id}/rates/{rate}`
 
@@ -1694,6 +1698,8 @@ Fills a tax group with the standard VAT rate of every EU country it has none for
   - `percent` (string): required; matches `/^\d{1,3}(\.\d{1,4})?$/`
   - `name` (string): at most 64 characters
   - `priority` (int): 0 to 1000; default 0
+  - `postcodes` (array): at most 500 items; each at most 21 characters
+  - `compound` (bool): default false
 
 ### `DELETE /tax/groups/{id}/rates/{rate}`
 
@@ -1711,6 +1717,7 @@ Fills a tax group with the standard VAT rate of every EU country it has none for
   - `default_group_id` (int|null): required; more than 0
   - `prices_include_tax` (bool): default false
   - `reverse_charge` (bool): default false
+  - `rounds_each_line` (bool): default false
 
 ## /webhooks
 

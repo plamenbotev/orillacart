@@ -85,7 +85,7 @@ final readonly class OrderPricing
         $settings = $this->settings->current();
         $decimals = $settings->priceDecimals;
         $inclusive = $this->tax->pricesIncludeTax();
-        $bill = new Bill($decimals, $inclusive);
+        $bill = new Bill($decimals, $inclusive, $this->tax->roundsEachLine());
         $lines = [];
         $parcel = [];
         $taxesOf = [];
@@ -111,7 +111,7 @@ final readonly class OrderPricing
                 $unit = $units[$index];
                 if ($inclusive && $taxable && $taxes === []) {
                     // A price including tax, for a customer who owes none (an export): the shop's own tax comes off.
-                    $unit = $unit->withoutPercents($this->shopPercents($groupId));
+                    $unit = Tax::without($unit, $this->shopTaxes($groupId));
                 }
                 $parts[] = ['unit' => $unit, 'taxes' => $taxes];
             }
@@ -158,10 +158,9 @@ final readonly class OrderPricing
                 $taxes = $option->taxable && !$free && !$reverseCharge ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
                 $price = $free ? Money::zero() : Money::of($option->price);
                 if ($inclusive && $option->taxable && $taxes === [] && !$free) {
-                    $price = $price->withoutPercents($this->shopPercents($option->taxGroupId));
+                    $price = Tax::without($price, $this->shopTaxes($option->taxGroupId));
                 }
-                $percents = array_map(static fn(Tax $rate): string => $rate->percent, $taxes);
-                $tax = array_reduce($taxes, static fn(Money $sum, Tax $rate): Money => $sum->add(($inclusive ? $price->includedPercent($rate->percent, $percents) : $price->percent($rate->percent))->rounded($decimals)), Money::zero());
+                $tax = array_reduce(Tax::parts($price, $taxes, $inclusive), static fn(Money $sum, Money $part): Money => $sum->add($part->rounded($decimals)), Money::zero());
                 $total = $inclusive ? $price->rounded($decimals) : $price->rounded($decimals)->add($tax);
                 $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $total, $option->toPickupPoint, $option->collectAt);
                 $options[] = $view;
@@ -199,7 +198,7 @@ final readonly class OrderPricing
             $taxes = $fee['taxable'] && !$reverseCharge ? $this->taxes($fee['tax_group_id'], $shipping, $billing) : [];
             $amount = $fee['amount'];
             if ($bill->includesTax() && $fee['taxable'] && $taxes === []) {
-                $amount = $amount->withoutPercents($this->shopPercents($fee['tax_group_id']));
+                $amount = Tax::without($amount, $this->shopTaxes($fee['tax_group_id']));
             }
             $bill->addFee($fee['label'], $amount, $taxes);
         }
@@ -354,9 +353,14 @@ final readonly class OrderPricing
     private function taxes(?int $groupId, ?TaxAddress $shipping, ?TaxAddress $billing): array
     {
         return array_map(
-            static fn(AppliedTaxView $tax): Tax => new Tax($tax->rateId === null ? "{$tax->name}|{$tax->percent}" : (string) $tax->rateId, $tax->name, $tax->percent),
+            self::tax(...),
             $this->tax->taxes(new TaxQuery($groupId, $shipping, $billing))->taxes,
         );
+    }
+
+    private static function tax(AppliedTaxView $tax): Tax
+    {
+        return new Tax($tax->rateId === null ? "{$tax->name}|{$tax->percent}" : (string) $tax->rateId, $tax->name, $tax->percent, $tax->compound);
     }
 
     /**
@@ -389,11 +393,11 @@ final readonly class OrderPricing
     /**
      * The rates a price including tax holds at the shop's own address.
      *
-     * @return list<string>
+     * @return list<Tax>
      */
-    private function shopPercents(?int $groupId): array
+    private function shopTaxes(?int $groupId): array
     {
-        return array_map(static fn(AppliedTaxView $tax): string => $tax->percent, $this->tax->shopTaxes($groupId)->taxes);
+        return array_map(self::tax(...), $this->tax->shopTaxes($groupId)->taxes);
     }
 
     /**

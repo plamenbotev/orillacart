@@ -18,6 +18,11 @@ final readonly class TaxSettings
         public bool $pricesIncludeTax = false,
         /** Checkout asks business customers for their VAT number: those of other EU countries buy without VAT. */
         public bool $reverseCharge = false,
+        /**
+         * Each line's tax rounded to the currency and added up, as some tax offices and accounting systems expect;
+         * otherwise each rate is rounded once over the order, which is closer to the exact tax.
+         */
+        public bool $roundsEachLine = false,
     ) {}
 
     public static function defaults(): self
@@ -27,6 +32,6 @@ final readonly class TaxSettings
 
     public function equals(self $other): bool
     {
-        return $this->basis === $other->basis && $this->defaultGroupId === $other->defaultGroupId && $this->pricesIncludeTax === $other->pricesIncludeTax && $this->reverseCharge === $other->reverseCharge;
+        return $this->basis === $other->basis && $this->defaultGroupId === $other->defaultGroupId && $this->pricesIncludeTax === $other->pricesIncludeTax && $this->reverseCharge === $other->reverseCharge && $this->roundsEachLine === $other->roundsEachLine;
     }
 }

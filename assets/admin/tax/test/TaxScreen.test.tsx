@@ -21,6 +21,8 @@ const standard = {
 			percent: '7.25',
 			name: 'California',
 			priority: 1,
+			postcodes: [],
+			compound: false,
 		},
 		{
 			id: 11,
@@ -29,6 +31,8 @@ const standard = {
 			percent: '2',
 			name: 'Federal',
 			priority: 2,
+			postcodes: [],
+			compound: false,
 		},
 	],
 };
@@ -55,6 +59,7 @@ function serve( write: ( request: Request ) => Promise< unknown > ) {
 					default_group_id: null,
 					prices_include_tax: false,
 					reverse_charge: false,
+					rounds_each_line: false,
 					bases: [
 						'shipping_address',
 						'billing_address',
@@ -98,10 +103,10 @@ describe( 'TaxScreen', () => {
 		const table = await screen.findByRole( 'table' );
 		const rows = within( table ).getAllByRole( 'row' );
 		expect( rows[ 1 ] ).toHaveTextContent(
-			'United StatesCA7.25 %California1'
+			'United StatesCAAll postcodes7.25 %California1'
 		);
 		expect( rows[ 2 ] ).toHaveTextContent(
-			'United StatesAll states2 %Federal2'
+			'United StatesAll statesAll postcodes2 %Federal2'
 		);
 	} );
 
@@ -139,6 +144,7 @@ describe( 'TaxScreen', () => {
 				default_group_id: 1,
 				prices_include_tax: false,
 				reverse_charge: false,
+				rounds_each_line: false,
 			},
 		} );
 		expect( screen.queryByText( untaxed, NOTICE ) ).toBeNull();
@@ -187,6 +193,8 @@ describe( 'TaxScreen', () => {
 				percent: '19,5',
 				name: '',
 				priority: 0,
+				postcodes: [],
+				compound: false,
 			},
 		} );
 	} );

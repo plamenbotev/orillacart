@@ -246,7 +246,7 @@ final class ShippingQuotesTest extends TestCase
         self::assertSame(['Sofia', 'Bulgaria'], $offered('1404'));
         self::assertSame(['Bulgaria'], $offered('4000'));
 
-        $this->expectException(ShippingRuleViolation::class);
+        $this->expectException(RuleViolation::class);
         $this->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Wrong', '1', postcodes: ['1999-1000'])]));
     }
 

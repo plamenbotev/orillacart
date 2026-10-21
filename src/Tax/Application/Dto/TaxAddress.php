@@ -12,5 +12,6 @@ final readonly class TaxAddress
     public function __construct(
         public ?string $country,
         public ?string $state = null,
+        public ?string $postcode = null,
     ) {}
 }

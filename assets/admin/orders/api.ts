@@ -522,6 +522,7 @@ export interface QuoteQuery {
 	items: EditedItem[];
 	billing_country: string | null;
 	billing_state: string | null;
+	billing_postcode: string | null;
 	shipping_country: string | null;
 	shipping_state: string | null;
 	shipping_postcode: string | null;

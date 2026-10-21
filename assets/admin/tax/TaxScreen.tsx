@@ -183,15 +183,17 @@ function SettingsCard( {
 	const [ reverseCharge, setReverseCharge ] = useState(
 		settings.reverse_charge
 	);
+	const [ eachLine, setEachLine ] = useState( settings.rounds_each_line );
 	const [ saving, setSaving ] = useState( false );
 	useUnsavedChanges(
 		differs(
-			[ basis, defaultGroup, includeTax, reverseCharge ],
+			[ basis, defaultGroup, includeTax, reverseCharge, eachLine ],
 			[
 				settings.basis,
 				settings.default_group_id,
 				settings.prices_include_tax,
 				settings.reverse_charge,
+				settings.rounds_each_line,
 			]
 		)
 	);
@@ -204,6 +206,7 @@ function SettingsCard( {
 			default_group_id: defaultGroup,
 			prices_include_tax: includeTax,
 			reverse_charge: reverseCharge,
+			rounds_each_line: eachLine,
 		} )
 			.then( onSaved )
 			.catch( onError )
@@ -295,6 +298,18 @@ function SettingsCard( {
 						) }
 						checked={ reverseCharge }
 						onChange={ setReverseCharge }
+					/>
+					<CheckboxControl
+						label={ __(
+							'Round the tax of each line',
+							'orillacart'
+						) }
+						help={ __(
+							'Each item’s tax is rounded to the cent and the rounded amounts added up, as some accounting systems expect. Otherwise each rate is rounded once over the whole order, which is closer to the exact tax; the two can differ by a cent.',
+							'orillacart'
+						) }
+						checked={ eachLine }
+						onChange={ setEachLine }
 					/>
 					<Button
 						variant="primary"
@@ -480,6 +495,7 @@ function GroupCard( {
 						<tr>
 							<th>{ __( 'Country', 'orillacart' ) }</th>
 							<th>{ __( 'State', 'orillacart' ) }</th>
+							<th>{ __( 'Postcodes', 'orillacart' ) }</th>
 							<th>{ __( 'Rate', 'orillacart' ) }</th>
 							<th>{ __( 'Name', 'orillacart' ) }</th>
 							<th>{ __( 'Priority', 'orillacart' ) }</th>
@@ -493,7 +509,7 @@ function GroupCard( {
 					<tbody>
 						{ group.rates.length === 0 && (
 							<tr>
-								<td colSpan={ 6 }>
+								<td colSpan={ 7 }>
 									{ __( 'No rates yet.', 'orillacart' ) }
 								</td>
 							</tr>
@@ -505,7 +521,16 @@ function GroupCard( {
 									{ rate.state ??
 										__( 'All states', 'orillacart' ) }
 								</td>
-								<td>{ rate.percent } %</td>
+								<td>
+									{ rate.postcodes.length === 0
+										? __( 'All postcodes', 'orillacart' )
+										: rate.postcodes.join( ', ' ) }
+								</td>
+								<td>
+									{ rate.percent } %
+									{ rate.compound &&
+										` ${ __( '(compound)', 'orillacart' ) }` }
+								</td>
 								<td>{ rate.name }</td>
 								<td>{ rate.priority }</td>
 								<td>

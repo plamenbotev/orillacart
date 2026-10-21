@@ -19,5 +19,7 @@ final readonly class UpdateTaxSettings
         public ?int $defaultGroupId,
         public bool $pricesIncludeTax = false,
         public bool $reverseCharge = false,
+        /** Each line's tax rounded, instead of each rate once over the order. */
+        public bool $roundsEachLine = false,
     ) {}
 }

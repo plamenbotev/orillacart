@@ -45,6 +45,17 @@ final readonly class Percentage implements \Stringable
         return new self($this->tenThousandths + $other->tenThousandths);
     }
 
+    /**
+     * This rate charged on a price and a tax of $before already on it, as a share of the price: 10 % on top of
+     * 20 % is 12 %. Rounded half away from zero to four decimals.
+     */
+    public function on(self $before): self
+    {
+        $extra = $this->tenThousandths * $before->tenThousandths;
+
+        return new self($this->tenThousandths + intdiv($extra + intdiv(100 * self::UNIT, 2), 100 * self::UNIT));
+    }
+
     public function isZero(): bool
     {
         return $this->tenThousandths === 0;

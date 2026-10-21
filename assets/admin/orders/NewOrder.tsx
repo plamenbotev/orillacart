@@ -96,6 +96,7 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 					items,
 					billing_country: billing.country || null,
 					billing_state: billing.state,
+					billing_postcode: billing.postcode || null,
 					shipping_country: shipsTo.country || null,
 					shipping_state: shipsTo.state,
 					shipping_postcode: shipsTo.postcode || null,

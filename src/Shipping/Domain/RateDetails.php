@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Shipping\Domain;
 
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\PostcodePattern;
 
 /**
  * Where a rate ships, which parcels it takes and what it costs.

@@ -52,16 +52,19 @@ final class TaxGroupServiceTest extends TestCase
         $group = $this->service->create(new SaveTaxGroup('Standard'));
 
         $rate = $this->service->addRate($group->id, new SaveTaxRate('US', 'CA', '7.25', ' California ', 1));
-        self::assertEquals(new TaxRateView($rate->id, 'US', 'CA', '7.25', 'California', 1), $rate);
+        self::assertEquals(new TaxRateView($rate->id, 'US', 'CA', '7.25', 'California', 1, [], false), $rate);
 
         $changed = $this->service->changeRate($group->id, $rate->id, new SaveTaxRate('US', null, '2', 'Federal'));
-        self::assertEquals(new TaxRateView($rate->id, 'US', null, '2', 'Federal', 0), $changed);
+        self::assertEquals(new TaxRateView($rate->id, 'US', null, '2', 'Federal', 0, [], false), $changed);
         self::assertEquals([$changed], $this->service->group($group->id)->rates);
+
+        $local = $this->service->changeRate($group->id, $rate->id, new SaveTaxRate('US', 'CA', '1.25', 'Local', 1, [' 900* ', '', '91000-91999'], true));
+        self::assertEquals(new TaxRateView($rate->id, 'US', 'CA', '1.25', 'Local', 1, ['900*', '91000-91999'], true), $local);
 
         $this->service->removeRate($group->id, $rate->id);
         self::assertSame([], $this->service->group($group->id)->rates);
 
-        self::assertEquals(array_fill(0, 3, new TaxRatesChanged($group->id)), $this->events->events);
+        self::assertEquals(array_fill(0, 4, new TaxRatesChanged($group->id)), $this->events->events);
     }
 
     public function testRatesNeedAKnownLocation(): void

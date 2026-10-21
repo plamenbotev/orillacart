@@ -94,11 +94,11 @@ final readonly class CheckoutService
             $at = $this->estimateAt($owner);
             if ($at !== null) {
                 $estimatedFor = $at['country'];
-                $details = new CheckoutDetails($at['country'], $at['state'], $at['country'], $at['state'], $details->shippingOption, $at['postcode'], payment: $details->payment);
+                $details = new CheckoutDetails($at['country'], $at['state'], $at['country'], $at['state'], $details->shippingOption, $at['postcode'], payment: $details->payment, billingPostcode: $at['postcode']);
             }
         }
-        $shipping = $details->shippingCountry === null ? null : new TaxAddress($details->shippingCountry, $details->shippingState);
-        $billing = $details->billingCountry === null ? $shipping : new TaxAddress($details->billingCountry, $details->billingState);
+        $shipping = $details->shippingCountry === null ? null : new TaxAddress($details->shippingCountry, $details->shippingState, $details->shippingPostcode);
+        $billing = $details->billingCountry === null ? $shipping : new TaxAddress($details->billingCountry, $details->billingState, $details->billingPostcode ?? ($details->billingCountry === $details->shippingCountry ? $details->shippingPostcode : null));
         $contents = $this->contents($owner);
         $reverse = $this->vatNumbers->reverseCharge($details->billingCountry, $details->vatNumber);
         $currency = $this->settings->current()->currency;
@@ -270,8 +270,8 @@ final readonly class CheckoutService
         $contents = $this->contents($owner);
         $billingAddress = $this->addresses->require($command->billing, 'billing');
         $shippingAddress = $command->shippingAddress === null ? $billingAddress : $this->addresses->require($command->shippingAddress, 'shipping');
-        $billingTax = new TaxAddress($billingAddress->country, $billingAddress->state);
-        $shippingTax = new TaxAddress($shippingAddress->country, $shippingAddress->state);
+        $billingTax = new TaxAddress($billingAddress->country, $billingAddress->state, $billingAddress->postcode);
+        $shippingTax = new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode);
 
         $reverse = $this->vatNumbers->reverseCharge($billingAddress->country, $command->vatNumber);
         $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment);

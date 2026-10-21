@@ -6,6 +6,7 @@ namespace OrillaCart\Shipping\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\PostcodePattern;
 
 /**
  * One way a carrier ships: where to, which parcels, and the price. Checkout offers it when the parcel's

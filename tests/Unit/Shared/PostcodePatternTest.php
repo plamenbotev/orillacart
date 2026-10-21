@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Tests\Unit\Shipping;
+namespace OrillaCart\Tests\Unit\Shared;
 
-use OrillaCart\Shipping\Domain\PostcodePattern;
-use OrillaCart\Shipping\Domain\ShippingRuleViolation;
+use OrillaCart\Shared\Domain\PostcodePattern;
+use OrillaCart\Shared\Domain\RuleViolation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -24,6 +24,7 @@ final class PostcodePatternTest extends TestCase
         yield 'a range includes its start' => ['1000-1999', '1000', true];
         yield 'and its end' => ['1000-1999', '1999', true];
         yield 'but not past it' => ['1000-1999', '2000', false];
+        yield 'a range may be written with a dash' => ['1000–1999', '1500', true];
         yield 'a range reads the digits a postcode starts with' => ['94000-94999', '94103-1234', true];
         yield 'a range takes no letters' => ['1000-1999', 'A1500', false];
         yield 'the old plugin cast postcodes to numbers; letters are not zero' => ['0-999', 'SW1A', false];
@@ -54,7 +55,7 @@ final class PostcodePatternTest extends TestCase
     #[DataProvider('invalid')]
     public function testWhatIsNotAPattern(string $pattern): void
     {
-        $this->expectException(ShippingRuleViolation::class);
+        $this->expectException(RuleViolation::class);
         PostcodePattern::of($pattern);
     }
 }

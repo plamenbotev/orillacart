@@ -6,6 +6,7 @@ namespace OrillaCart\Shipping\Application;
 
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\PostcodePattern;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Extension\SettingValues;
 use OrillaCart\Shipping\Application\Dto\CarrierView;
@@ -18,7 +19,6 @@ use OrillaCart\Shipping\Domain\CarrierNotFound;
 use OrillaCart\Shipping\Domain\CarrierRepository;
 use OrillaCart\Shipping\Domain\Measure;
 use OrillaCart\Shipping\Domain\PickupLocation;
-use OrillaCart\Shipping\Domain\PostcodePattern;
 use OrillaCart\Shipping\Domain\Range;
 use OrillaCart\Shipping\Domain\RateDetails;
 use OrillaCart\Shipping\Domain\RateDraft;

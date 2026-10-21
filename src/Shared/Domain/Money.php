@@ -109,39 +109,6 @@ final readonly class Money implements \Stringable
         return new self(self::divideRounded($this->tenThousandths * $share, 100 * self::UNIT));
     }
 
-    /**
-     * The part of this amount, which includes tax at the given rates, that is the tax at one of them: of 12.00
-     * including 20 %, the 20 % are 2.00. The rates add up, as a country's and a state's do.
-     *
-     * @param string       $percent one of the rates
-     * @param list<string> $all     every rate the amount includes, $percent among them
-     */
-    public function includedPercent(string $percent, array $all): self
-    {
-        $share = self::percentShare($percent);
-        $whole = 100 * self::UNIT + array_sum(array_map(self::percentShare(...), $all));
-        if ($share !== 0 && abs($this->tenThousandths) > intdiv(\PHP_INT_MAX, $share)) {
-            throw new RuleViolation('The amount is too large to take a percentage of.', 'orillacart_amount_too_large');
-        }
-
-        return new self(self::divideRounded($this->tenThousandths * $share, $whole));
-    }
-
-    /**
-     * This amount, which includes tax at the given rates, without it: 12.00 including 20 % is 10.00 before tax.
-     *
-     * @param list<string> $all
-     */
-    public function withoutPercents(array $all): self
-    {
-        $tax = self::zero();
-        foreach ($all as $percent) {
-            $tax = $tax->add($this->includedPercent($percent, $all));
-        }
-
-        return $this->subtract($tax);
-    }
-
     /** A percentage in ten-thousandths of a percent: "20" is 200000, "7.5" is 75000. */
     private static function percentShare(string $percent): int
     {

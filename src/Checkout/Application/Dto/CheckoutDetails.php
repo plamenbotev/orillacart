@@ -40,5 +40,8 @@ final readonly class CheckoutDetails
         public ?string $deliveryDate = null,
         #[Assert\Length(max: 40)]
         public ?string $deliverySlot = null,
+        /** For taxes charged at some postcodes only, when the billing address decides. */
+        #[Assert\Length(max: 20)]
+        public ?string $billingPostcode = null,
     ) {}
 }

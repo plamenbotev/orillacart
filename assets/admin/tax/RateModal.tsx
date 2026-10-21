@@ -1,5 +1,6 @@
 import {
 	Button,
+	CheckboxControl,
 	Flex,
 	Modal,
 	Notice,
@@ -40,7 +41,12 @@ export function RateModal( {
 		percent: rate?.percent ?? '',
 		name: rate?.name ?? '',
 		priority: rate?.priority ?? 0,
+		postcodes: rate?.postcodes ?? [],
+		compound: rate?.compound ?? false,
 	} );
+	const [ postcodes, setPostcodes ] = useState(
+		( rate?.postcodes ?? [] ).join( ', ' )
+	);
 	const [ violations, setViolations ] = useState< Violation[] >( [] );
 	const [ error, setError ] = useState< string | null >( null );
 	const [ saving, setSaving ] = useState( false );
@@ -50,7 +56,13 @@ export function RateModal( {
 		setSaving( true );
 		setViolations( [] );
 		setError( null );
-		saveRate( groupId, rate?.id ?? null, form )
+		saveRate( groupId, rate?.id ?? null, {
+			...form,
+			postcodes: postcodes
+				.split( ',' )
+				.map( ( postcode ) => postcode.trim() )
+				.filter( ( postcode ) => postcode !== '' ),
+		} )
 			.then( onSaved )
 			.catch( ( failure: unknown ) => {
 				const apiError = toApiError( failure );
@@ -93,6 +105,19 @@ export function RateModal( {
 				/>
 				<TextControl
 					__next40pxDefaultSize
+					label={ __( 'Postcodes', 'orillacart' ) }
+					help={
+						violationOf( violations, 'postcodes' ) ??
+						__(
+							'Only for these postcodes, separated by commas: 1000, a start such as SW1*, or a range such as 1000–1999. Empty for every postcode.',
+							'orillacart'
+						)
+					}
+					value={ postcodes }
+					onChange={ setPostcodes }
+				/>
+				<TextControl
+					__next40pxDefaultSize
 					label={ __( 'Rate (%)', 'orillacart' ) }
 					help={
 						violationOf( violations, 'percent' ) ??
@@ -120,7 +145,7 @@ export function RateModal( {
 					help={
 						violationOf( violations, 'priority' ) ??
 						__(
-							'Rates of one place are listed from the lowest priority up; they always add up.',
+							'Rates of one place are listed from the lowest priority up.',
 							'orillacart'
 						)
 					}
@@ -130,6 +155,17 @@ export function RateModal( {
 							...form,
 							priority: Number.parseInt( priority, 10 ) || 0,
 						} )
+					}
+				/>
+				<CheckboxControl
+					label={ __( 'Compound', 'orillacart' ) }
+					help={ __(
+						'Charged on the price and the taxes listed before it, instead of on the price alone.',
+						'orillacart'
+					) }
+					checked={ form.compound }
+					onChange={ ( compound ) =>
+						setForm( { ...form, compound } )
 					}
 				/>
 				<Flex justify="flex-end">

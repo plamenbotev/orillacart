@@ -28,6 +28,8 @@ final readonly class QuoteOrder
         public ?string $shippingState = null,
         #[Assert\Length(max: 20)]
         public ?string $shippingPostcode = null,
+        #[Assert\Length(max: 20)]
+        public ?string $billingPostcode = null,
         #[Assert\Regex(pattern: ShippingOptionView::ID_PATTERN)]
         public ?string $shippingOption = null,
         /** Whose order: automatic discounts for customer groups or first orders depend on it. */

@@ -63,11 +63,11 @@ final class TaxRestTest extends RestTestCase
         $federal = $this->id($this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'US', 'state' => null, 'percent' => '2', 'name' => 'Federal', 'priority' => 2], nonce: true));
         $california = $this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'US', 'state' => 'CA', 'percent' => '7.25', 'name' => 'California', 'priority' => 1], nonce: true);
         self::assertSame(201, $california->get_status());
-        self::assertSame(['country' => 'US', 'state' => 'CA', 'percent' => '7.25', 'name' => 'California', 'priority' => 1], array_diff_key($this->data($california), ['id' => true]));
+        self::assertSame(['country' => 'US', 'state' => 'CA', 'percent' => '7.25', 'name' => 'California', 'priority' => 1, 'postcodes' => [], 'compound' => false], array_diff_key($this->data($california), ['id' => true]));
 
         $settings = $this->request('PUT', '/tax/settings', ['basis' => 'shipping_address', 'default_group_id' => $group], nonce: true);
         self::assertSame(200, $settings->get_status());
-        self::assertSame(['basis' => 'shipping_address', 'default_group_id' => $group, 'bases' => ['shipping_address', 'billing_address', 'shop_address', 'eu_origin', 'eu_destination'], 'prices_include_tax' => false, 'reverse_charge' => false], $this->data($settings));
+        self::assertSame(['basis' => 'shipping_address', 'default_group_id' => $group, 'bases' => ['shipping_address', 'billing_address', 'shop_address', 'eu_origin', 'eu_destination'], 'prices_include_tax' => false, 'reverse_charge' => false, 'rounds_each_line' => false], $this->data($settings));
 
         $calculator = self::kernel()->container()->get(TaxCalculator::class);
         self::assertInstanceOf(TaxCalculator::class, $calculator);
@@ -86,6 +86,25 @@ final class TaxRestTest extends RestTestCase
         self::assertInstanceOf(TaxCalculator::class, $calculator);
         self::assertSame('7.25', $calculator->taxes(new TaxQuery(shipping: new TaxAddress('US', 'CA')))->total);
         self::assertSame([[$group], [$group], [$group]], $this->announced);
+    }
+
+    public function testARateForSomePostcodesOnTopOfTheOthers(): void
+    {
+        $this->actAs('administrator');
+        update_option(OptionSettingsRepository::OPTION, ['currency' => 'USD', 'fewer_decimals' => null, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY']);
+        $group = $this->id($this->request('POST', '/tax/groups', ['name' => 'Standard'], nonce: true));
+        $this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'US', 'state' => 'CA', 'percent' => '5', 'name' => 'State'], nonce: true);
+        $local = $this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'US', 'state' => 'CA', 'percent' => '10', 'name' => 'City', 'priority' => 1, 'postcodes' => ['900*'], 'compound' => true], nonce: true);
+        self::assertSame(201, $local->get_status());
+        self::assertSame(['900*'], $this->data($local)['postcodes'] ?? null);
+        self::assertSame(422, $this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'US', 'state' => 'CA', 'percent' => '1', 'postcodes' => ['9-1']], nonce: true)->get_status());
+        $this->request('PUT', '/tax/settings', ['basis' => 'shipping_address', 'default_group_id' => $group, 'rounds_each_line' => true], nonce: true);
+
+        $calculator = self::kernel()->container()->get(TaxCalculator::class);
+        self::assertInstanceOf(TaxCalculator::class, $calculator);
+        self::assertSame('15.5', $calculator->taxes(new TaxQuery(shipping: new TaxAddress('US', 'CA', '90012')))->total);
+        self::assertSame('5', $calculator->taxes(new TaxQuery(shipping: new TaxAddress('US', 'CA', '94103')))->total);
+        self::assertTrue($calculator->roundsEachLine());
     }
 
     public function testInvalidRatesAreRefused(): void

@@ -50,8 +50,8 @@ final readonly class ManualOrders
      */
     public function quote(QuoteOrder $query): OrderQuoteView
     {
-        $shipping = $query->shippingCountry === null ? null : new TaxAddress($query->shippingCountry, $query->shippingState);
-        $billing = $query->billingCountry === null ? $shipping : new TaxAddress($query->billingCountry, $query->billingState);
+        $shipping = $query->shippingCountry === null ? null : new TaxAddress($query->shippingCountry, $query->shippingState, $query->shippingPostcode);
+        $billing = $query->billingCountry === null ? $shipping : new TaxAddress($query->billingCountry, $query->billingState, $query->billingPostcode);
         $priced = $this->pricing->price(self::items($query->items), $shipping ?? $billing, $billing, $query->shippingOption, $query->shippingPostcode, [], $query->customerId, $query->email, payment: $query->payment);
         $bill = $priced['bill'];
         $currency = $this->settings->current()->currency;
@@ -107,8 +107,8 @@ final readonly class ManualOrders
         $order = $this->transactions->run(function () use ($command, $billingAddress, $shippingAddress, $currency, $userId, $failed): OrderView {
             $priced = $this->pricing->price(
                 self::items($command->items),
-                new TaxAddress($shippingAddress->country, $shippingAddress->state),
-                new TaxAddress($billingAddress->country, $billingAddress->state),
+                new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode),
+                new TaxAddress($billingAddress->country, $billingAddress->state, $billingAddress->postcode),
                 $command->shippingOption,
                 $shippingAddress->postcode,
                 [],

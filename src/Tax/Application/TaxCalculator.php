@@ -32,6 +32,12 @@ final readonly class TaxCalculator
         return AppliedTaxesView::fromTaxes($this->applied($query));
     }
 
+    /** Whether each line's tax is rounded, rather than each rate once over the order; see TaxSettings. */
+    public function roundsEachLine(): bool
+    {
+        return $this->settings->load()->roundsEachLine;
+    }
+
     /** Whether prices are entered including tax; see TaxSettings. */
     public function pricesIncludeTax(): bool
     {
@@ -48,7 +54,7 @@ final readonly class TaxCalculator
         $groupId ??= $settings->defaultGroupId;
         $group = $groupId === null ? null : $this->groups->find($groupId);
         $shop = $this->shop->current();
-        $location = $this->locate(new TaxAddress($shop->shopCountry, $shop->shopState));
+        $location = $this->locate(new TaxAddress($shop->shopCountry, $shop->shopState, $shop->shopPostcode));
 
         return AppliedTaxesView::fromTaxes($group === null || $location === null ? AppliedTaxes::none() : $group->taxesAt($location));
     }
@@ -66,7 +72,7 @@ final readonly class TaxCalculator
         $location = $settings->basis->location(
             $this->locate($query->shipping),
             $this->locate($query->billing),
-            $this->locate(new TaxAddress($shop->shopCountry, $shop->shopState)),
+            $this->locate(new TaxAddress($shop->shopCountry, $shop->shopState, $shop->shopPostcode)),
         );
 
         return $location === null ? AppliedTaxes::none() : $group->taxesAt($location);
@@ -76,6 +82,6 @@ final readonly class TaxCalculator
     {
         $location = $address === null ? null : $this->geography->locate($address->country, $address->state);
 
-        return $location instanceof LocationView ? new TaxLocation($location->country, $location->state, $location->inEu) : null;
+        return $location instanceof LocationView ? new TaxLocation($location->country, $location->state, $location->inEu, $address?->postcode) : null;
     }
 }

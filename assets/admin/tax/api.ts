@@ -8,6 +8,10 @@ export interface TaxRate {
 	percent: string;
 	name: string;
 	priority: number;
+	/** Postcodes such as 1000, SW1* or 1000-1999 it applies to; empty for every postcode. */
+	postcodes: string[];
+	/** Charged on the price and the taxes listed before it. */
+	compound: boolean;
 }
 
 export interface TaxGroup {
@@ -26,6 +30,8 @@ export interface TaxSettings {
 	prices_include_tax: boolean;
 	/** Checkout asks business customers for their EU VAT number (reverse charge). */
 	reverse_charge: boolean;
+	/** Each line's tax rounded, instead of each rate once over the order. */
+	rounds_each_line: boolean;
 }
 
 export type TaxSettingsInput = Omit< TaxSettings, 'bases' >;

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace OrillaCart\Tax\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
+use OrillaCart\Shared\Domain\PostcodePattern;
 
 /**
- * One rate of a tax group: a percentage charged in a country, or only in one of its states.
+ * One rate of a tax group: a percentage charged in a country, or only in one of its states, or only at some
+ * postcodes.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'tax_rates')]
@@ -34,6 +36,13 @@ class TaxRate
 
     #[ORM\Column]
     private int $priority;
+
+    /** @var list<string> the postcode patterns it applies to; empty for every postcode */
+    #[ORM\Column(type: 'json')]
+    private array $postcodes = [];
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $compound = false;
 
     /**
      * Created through TaxGroup::addRate().
@@ -64,7 +73,7 @@ class TaxRate
 
     public function details(): TaxRateDetails
     {
-        return new TaxRateDetails($this->country, $this->state, Percentage::of($this->percent), $this->name, $this->priority);
+        return new TaxRateDetails($this->country, $this->state, Percentage::of($this->percent), $this->name, $this->priority, array_map(PostcodePattern::of(...), $this->postcodes), $this->compound);
     }
 
     public function change(TaxRateDetails $details): void
@@ -74,11 +83,21 @@ class TaxRate
         $this->percent = $details->percent->toFixed();
         $this->name = $details->name;
         $this->priority = $details->priority;
+        $this->postcodes = array_values(array_map(strval(...), $details->postcodes));
+        $this->compound = $details->compound;
     }
 
+    /**
+     * A rate for some postcodes applies only once the postcode is known.
+     */
     public function appliesAt(TaxLocation $location): bool
     {
-        return $this->country === $location->country && ($this->state === null || $this->state === $location->state);
+        if ($this->country !== $location->country || ($this->state !== null && $this->state !== $location->state)) {
+            return false;
+        }
+        $postcode = $location->postcode;
+
+        return $this->postcodes === [] || ($postcode !== null && $postcode !== '' && array_filter($this->postcodes, static fn(string $pattern): bool => PostcodePattern::of($pattern)->matches($postcode)) !== []);
     }
 
     /**

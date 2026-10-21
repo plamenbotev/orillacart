@@ -15,12 +15,15 @@ final readonly class TaxRateView
         public string $percent,
         public string $name,
         public int $priority,
+        /** @var list<string> */
+        public array $postcodes,
+        public bool $compound,
     ) {}
 
     public static function fromRate(TaxRate $rate): self
     {
         $details = $rate->details();
 
-        return new self($rate->id(), $details->country, $details->state, (string) $details->percent, $details->name, $details->priority);
+        return new self($rate->id(), $details->country, $details->state, (string) $details->percent, $details->name, $details->priority, array_map(strval(...), $details->postcodes), $details->compound);
     }
 }

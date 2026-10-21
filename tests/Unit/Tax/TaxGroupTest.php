@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Tax;
 
+use OrillaCart\Shared\Domain\PostcodePattern;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Tax\Domain\AppliedTax;
 use OrillaCart\Tax\Domain\Percentage;
@@ -25,6 +26,30 @@ final class TaxGroupTest extends TestCase
         self::assertSame([['Federal', '2']], self::lines($group->taxesAt(new TaxLocation('US', 'TX'))->taxes));
         self::assertSame([['Federal', '2']], self::lines($group->taxesAt(new TaxLocation('US'))->taxes));
         self::assertTrue($group->taxesAt(new TaxLocation('CA', 'NY'))->isEmpty());
+    }
+
+    public function testARateForSomePostcodesAppliesOnlyThere(): void
+    {
+        $group = new TaxGroup('Standard');
+        $group->addRate(self::rate('US', 'CA', '6', 'California'));
+        $group->addRate(new TaxRateDetails('US', 'CA', Percentage::of('1.25'), 'Los Angeles', 1, [PostcodePattern::of('900*'), PostcodePattern::of('91000-91999')]));
+
+        self::assertSame([['California', '6'], ['Los Angeles', '1.25']], self::lines($group->taxesAt(new TaxLocation('US', 'CA', postcode: '90012'))->taxes));
+        self::assertSame([['California', '6'], ['Los Angeles', '1.25']], self::lines($group->taxesAt(new TaxLocation('US', 'CA', postcode: '91101-1234'))->taxes));
+        self::assertSame([['California', '6']], self::lines($group->taxesAt(new TaxLocation('US', 'CA', postcode: '94103'))->taxes));
+        self::assertSame([['California', '6']], self::lines($group->taxesAt(new TaxLocation('US', 'CA'))->taxes), 'not before the postcode is known');
+    }
+
+    public function testACompoundRateIsChargedOnTheTaxesBeforeIt(): void
+    {
+        $group = new TaxGroup('Standard');
+        $group->addRate(self::rate('CA', 'QC', '5', 'GST'));
+        $group->addRate(new TaxRateDetails('CA', 'QC', Percentage::of('9.975'), 'QST', 1, compound: true));
+        $taxes = $group->taxesAt(new TaxLocation('CA', 'QC'));
+
+        self::assertSame([false, true], array_map(static fn(AppliedTax $tax): bool => $tax->compound, $taxes->taxes));
+        // 9.975 % of 105 % is 10.4738 % of the price.
+        self::assertSame('15.4738', (string) $taxes->total());
     }
 
     public function testRatesAreListedByPriorityThenAsAdded(): void
@@ -79,7 +104,7 @@ final class TaxGroupTest extends TestCase
         return $group;
     }
 
-    private static function rate(string $country, ?string $state, string $percent, string $name, int $priority): TaxRateDetails
+    private static function rate(string $country, ?string $state, string $percent, string $name, int $priority = 0): TaxRateDetails
     {
         return new TaxRateDetails($country, $state, Percentage::of($percent), $name, $priority);
     }

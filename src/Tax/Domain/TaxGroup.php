@@ -105,14 +105,14 @@ class TaxGroup
 
     /**
      * The taxes of this group at a location: every rate for the whole country, plus the rates for the
-     * location's state. They add up, listed by priority.
+     * location's state and postcode. They add up, listed by priority; a compound one on top of those before it.
      */
     public function taxesAt(TaxLocation $location): AppliedTaxes
     {
         $taxes = [];
         foreach ($this->rates() as $rate) {
             if ($rate->appliesAt($location)) {
-                $taxes[] = new AppliedTax($rate->isSaved() ? $rate->id() : null, $rate->details()->name, $rate->details()->percent);
+                $taxes[] = new AppliedTax($rate->isSaved() ? $rate->id() : null, $rate->details()->name, $rate->details()->percent, $rate->details()->compound);
             }
         }
 

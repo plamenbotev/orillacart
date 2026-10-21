@@ -49,13 +49,13 @@ final readonly class OrderEditing
     public function shippingOptions(int $orderId): array
     {
         $order = $this->orders->order($orderId);
-        $billing = new TaxAddress($order->billing->country, $order->billing->state);
+        $billing = new TaxAddress($order->billing->country, $order->billing->state, $order->billing->postcode);
         $shippingAddress = $order->shippingAddress ?? $order->billing;
         $items = array_map(static fn(OrderLineView $line): array => ['product_id' => $line->productId, 'option_ids' => $line->optionIds, 'bundle_choices' => $line->bundleChoices, 'quantity' => $line->quantity, 'unit_price' => $line->unitPrice], $order->lines);
 
         $codes = array_map(static fn(OrderDiscountView $discount): string => $discount->code, $order->discounts);
 
-        return $this->pricing->price($items, new TaxAddress($shippingAddress->country, $shippingAddress->state), $billing, $order->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge)['options'];
+        return $this->pricing->price($items, new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode), $billing, $order->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge)['options'];
     }
 
     /**
@@ -84,9 +84,9 @@ final readonly class OrderEditing
         if ($order->status !== 'on_hold') {
             throw new OrderRuleViolation(\sprintf('Only orders on hold can change their items; order #%d is %s.', $orderId, str_replace('_', ' ', $order->status)), 'orillacart_order_not_editable');
         }
-        $billing = new TaxAddress($order->billing->country, $order->billing->state);
+        $billing = new TaxAddress($order->billing->country, $order->billing->state, $order->billing->postcode);
         $shippingAddress = $order->shippingAddress ?? $order->billing;
-        $shipping = new TaxAddress($shippingAddress->country, $shippingAddress->state);
+        $shipping = new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode);
         $items = array_map(static fn(EditedItem $item): array => ['product_id' => $item->productId, 'option_ids' => $item->optionIds, 'bundle_choices' => $item->bundleChoices, 'quantity' => $item->quantity, 'unit_price' => $item->unitPrice], $command->items);
 
         $keptPoint = $order->pickupPointId;

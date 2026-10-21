@@ -24,5 +24,10 @@ final readonly class SaveTaxRate
         public string $name = '',
         #[Assert\Range(min: 0, max: 1000)]
         public int $priority = 0,
+        /** @var list<string> postcodes such as 1000, SW1* or 1000-1999; empty for every postcode */
+        #[Assert\Count(max: TaxRateDetails::MAX_POSTCODES)]
+        #[Assert\All([new Assert\Type('string'), new Assert\Length(max: 21)])]
+        public array $postcodes = [],
+        public bool $compound = false,
     ) {}
 }
