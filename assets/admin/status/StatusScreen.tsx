@@ -11,6 +11,7 @@ import { __ } from '@wordpress/i18n';
 
 import { toApiError } from '../shared/api';
 import { type Check, fetchStatus, reportText, type Status } from './api';
+import { ChangeLogCard } from './ChangeLogCard';
 
 const LABELS: Record< Check[ 'status' ], string > = {
 	good: __( 'Good', 'orillacart' ),
@@ -20,7 +21,7 @@ const LABELS: Record< Check[ 'status' ], string > = {
 
 /**
  * Shop → Status: the shop's checks (as Site Health and `wp orillacart doctor` run them), then what the shop,
- * WordPress and the server are, with a report to copy into a support request.
+ * WordPress and the server are, with a report to copy into a support request, and the changes shop managers made.
  */
 export function StatusScreen() {
 	const [ status, setStatus ] = useState< Status | null >( null );
@@ -113,6 +114,7 @@ export function StatusScreen() {
 							</CardBody>
 						</Card>
 					) ) }
+					<ChangeLogCard />
 				</>
 			) }
 		</>

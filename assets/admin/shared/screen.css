@@ -195,3 +195,10 @@
 [id^="orillacart-admin-"] .orillacart-card table th {
 	width: 30%;
 }
+
+[id^="orillacart-admin-"] .orillacart-change__values {
+	max-width: 40em;
+	max-height: 20em;
+	overflow: auto;
+	white-space: pre-wrap;
+}

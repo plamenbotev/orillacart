@@ -1,4 +1,5 @@
 import apiFetch from '@wordpress/api-fetch';
+import { addQueryArgs } from '@wordpress/url';
 
 export interface Check {
 	id: string;
@@ -44,4 +45,36 @@ export function reportText( status: Status ): string {
 		}
 	}
 	return lines.join( '\n' );
+}
+
+export interface ChangeRecord {
+	id: number;
+	user_id: number | null;
+	user: string;
+	area: string;
+	route: string;
+	path: string;
+	values: Record< string, unknown >;
+	made_at: string;
+}
+
+/** A page of the change log, as GET /orillacart/v1/change-log returns it. */
+export interface ChangeLogPage {
+	records: ChangeRecord[];
+	total: number;
+	page: number;
+	pages: number;
+	areas: string[];
+}
+
+export function fetchChangeLog(
+	area: string,
+	page: number
+): Promise< ChangeLogPage > {
+	return apiFetch< ChangeLogPage >( {
+		path: addQueryArgs( '/orillacart/v1/change-log', {
+			...( area === '' ? {} : { area } ),
+			page,
+		} ),
+	} );
 }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Nyholm\Psr7\Factory\Psr17Factory;
+use OrillaCart\Audit\Domain\ChangeRecordRepository;
+use OrillaCart\Audit\Infrastructure\Doctrine\DoctrineChangeRecordRepository;
 use OrillaCart\Cart\Application\CartLinks;
 use OrillaCart\Cart\Domain\AbandonedCartRepository;
 use OrillaCart\Cart\Domain\CartRepository;
@@ -335,6 +337,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(StorefrontSettingsRepository::class, OptionStorefrontSettingsRepository::class);
     $services->alias(ProductCardsHtml::class, RenderedProductCards::class);
     $services->alias(StatusReport::class, HealthStatusReport::class);
+    $services->alias(ChangeRecordRepository::class, DoctrineChangeRecordRepository::class);
     $services->alias(PendingAccountRepository::class, DoctrinePendingAccountRepository::class);
     $services->alias(AccountMail::class, AccountEmails::class);
     $services->alias(AccountLinks::class, StorefrontAccountLinks::class);
