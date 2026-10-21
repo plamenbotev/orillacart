@@ -91,12 +91,12 @@ final class ProductCategoriesBlockTest extends RestTestCase
         $wear = 'wear-' . $this->suffix;
         $_GET = ['category' => $wear];
         $html = do_blocks('<!-- wp:orillacart/products /-->');
-        self::assertMatchesRegularExpression('#category=' . $wear . '" aria-current="page">Wear#', $html);
+        self::assertMatchesRegularExpression('#/product-category/' . $wear . '/" aria-current="page">Wear#', $html, 'its own page');
         self::assertSame(['Hoodies', 'Shirts'], $this->below($html), 'the row below it');
 
         $_GET = ['category' => 'shirts-' . $this->suffix];
         $html = do_blocks('<!-- wp:orillacart/products /-->');
-        self::assertMatchesRegularExpression('#category=' . $wear . '" aria-current="true">Wear#', $html, 'Wear holds the page');
+        self::assertMatchesRegularExpression('#/product-category/' . $wear . '/" aria-current="true">Wear#', $html, 'Wear holds the page');
         self::assertSame(['Hoodies', 'Shirts'], $this->below($html), 'Shirts has none below it: those beside it');
         self::assertMatchesRegularExpression('#aria-current="page">Shirts ' . $this->suffix . '</a>#', $html);
     }

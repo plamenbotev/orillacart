@@ -31,6 +31,8 @@ final readonly class ShopListing
     public const array SORTS = ['order', 'newest', 'name', 'price_asc', 'price_desc'];
     /** The address's arguments for the shop's filters; the rest are words, category, tag, sort and page. */
     public const array FILTER_ARGUMENTS = ['brand', 'f', 'price_min', 'price_max', 'in_stock'];
+    /** The page of products where the site has no pretty permalinks; older links that the shop sends on. */
+    public const string PAGE_ARGUMENT = 'product-page';
 
     public function __construct(
         private ShopSearch $search,
@@ -63,7 +65,7 @@ final readonly class ShopListing
             'in_stock' => self::query('in_stock') === '1',
             // Searching sorts by best match unless the shopper chose otherwise.
             'sort' => \in_array(self::query('sort'), $sorts, true) ? self::query('sort') : ($search === '' ? $defaultSort : 'relevance'),
-            'page' => max(1, ctype_digit(self::query('product-page')) ? (int) self::query('product-page') : 1),
+            'page' => self::currentPage(),
             // The shopper's own way to see the products, grid or list; empty for the shop's.
             'view' => \in_array(self::query('view'), ['grid', 'list'], true) ? self::query('view') : '',
         ];
@@ -131,7 +133,7 @@ final readonly class ShopListing
             'price' => $result->priceRange === null ? null : ['min' => $choices['price_min'], 'max' => $choices['price_max'], 'low' => $result->priceRange[0], 'high' => $result->priceRange[1]],
             'in_stock' => $choices['in_stock'],
             'filtered' => $choices['brands'] !== [] || $choices['options'] !== [] || $choices['price_min'] !== null || $choices['price_max'] !== null || $choices['in_stock'],
-            'clear_url' => remove_query_arg([...self::FILTER_ARGUMENTS, 'product-page']),
+            'clear_url' => remove_query_arg(self::FILTER_ARGUMENTS, self::pageUrl(1)),
         ];
     }
 
@@ -196,6 +198,62 @@ final readonly class ShopListing
         }
 
         return $this->search->filters($categoryId, array_values(array_map(intval(...), get_ancestors($categoryId, ProductCategoryTaxonomy::NAME, 'taxonomy'))));
+    }
+
+    /**
+     * The page of products shown: from the address's path (/page/2/ on a category, /shop/2/ on a page), or from
+     * ?product-page=2 where the site has no pretty permalinks.
+     */
+    public static function currentPage(): int
+    {
+        $page = ctype_digit(self::query(self::PAGE_ARGUMENT)) ? (int) self::query(self::PAGE_ARGUMENT) : 1;
+        foreach (['paged', 'page'] as $var) {
+            $value = get_query_var($var);
+            $page = max($page, is_numeric($value) ? (int) $value : 1);
+        }
+
+        return max(1, $page);
+    }
+
+    /**
+     * The address of a page of the products shown, with the shopper's choices: /product-category/lamps/page/2/,
+     * /shop/2/, or ?product-page=2 without pretty permalinks.
+     */
+    public static function pageUrl(int $number): string
+    {
+        $pretty = get_option('permalink_structure') !== '';
+        $page = is_singular() && !is_front_page() ? get_queried_object() : null;
+        if (!$pretty) {
+            $url = remove_query_arg([self::PAGE_ARGUMENT, 'paged', 'page']);
+
+            return $number > 1 ? add_query_arg(self::PAGE_ARGUMENT, $number, $url) : $url;
+        }
+        $term = is_tax() ? get_queried_object() : null;
+        if ($page instanceof \WP_Post) {
+            $link = (string) get_permalink($page);
+            $base = $number > 1 ? user_trailingslashit(trailingslashit($link) . $number, 'single_paged') : $link;
+        } elseif ($term instanceof \WP_Term) {
+            $link = get_term_link($term);
+            $link = \is_string($link) ? $link : home_url('/');
+            $rewrite = $GLOBALS['wp_rewrite'] ?? null;
+            $paging = $rewrite instanceof \WP_Rewrite ? $rewrite->pagination_base : 'page';
+            $base = $number > 1 ? user_trailingslashit(trailingslashit($link) . $paging . '/' . $number, 'paged') : $link;
+        } else {
+            // WordPress's own paging reads the request, which a command line has not.
+            $base = isset($_SERVER['REQUEST_URI']) ? (string) strtok(get_pagenum_link($number, false), '?') : home_url('/');
+        }
+        $query = [];
+        parse_str((string) wp_parse_url(self::requestUri(), \PHP_URL_QUERY), $query);
+        unset($query[self::PAGE_ARGUMENT], $query['paged'], $query['page']);
+
+        return $query === [] ? $base : $base . '?' . http_build_query($query);
+    }
+
+    private static function requestUri(): string
+    {
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+
+        return \is_string($uri) ? wp_unslash($uri) : '';
     }
 
     /** The id of the term with the slug; an unknown one is 0, which finds nothing rather than everything. */

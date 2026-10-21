@@ -2,7 +2,7 @@
  # The shop: products in a grid, with categories, search, sorting and pages.
  #
  # products: [{offer, url, image (HTML), simple}]; categories: [{name, url, current, image (HTML or empty)}], the top ones,
- # current "page" for the one chosen, "true" above it; subcategories: [{name, url, current}], below the one chosen (or beside it); all_url; search; sort;
+ # current "page" for the one chosen, "true" above it; subcategories: [{name, url, current}], below the one chosen (or beside it); all_url, all_current; search; sort;
  # sorts: {value: label}; page; pages; page_urls: {number: url}; columns; cart_url (null without a cart page);
  # show_filters; panel (see _filters.html.twig); hidden: [{name, value}] the choices kept without the panel;
  # filtered (anything chosen); layout: grid or list; layout_urls: {grid, list}; view: the shopper's own, kept by the form.
@@ -12,7 +12,7 @@
     {% if categories %}
         <nav class="orillacart-categories" aria-label="{{ __('Product categories') }}">
             <ul>
-                <li><a href="{{ all_url }}"{{ current_category is empty ? ' aria-current="page"' }}>{{ __('All products') }}</a></li>
+                <li><a href="{{ all_url }}"{{ all_current ? ' aria-current="page"' }}>{{ __('All products') }}</a></li>
                 {% for category in categories %}
                     <li><a href="{{ category.url }}"{% if category.current %} aria-current="{{ category.current }}"{% endif %}>{{ category.image|raw }}{{ category.name }}</a></li>
                 {% endfor %}

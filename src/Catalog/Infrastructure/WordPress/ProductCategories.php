@@ -18,7 +18,7 @@ final readonly class ProductCategories
     /**
      * The top-level categories that have products, for the shop's links.
      *
-     * @return list<array{id: int, name: string, slug: string, image: string}> image: the picture's HTML, or empty
+     * @return list<array{id: int, name: string, slug: string, url: string, image: string}> image: the picture's HTML, or empty
      */
     public function ordered(): array
     {
@@ -26,6 +26,7 @@ final readonly class ProductCategories
             'id' => $category['id'],
             'name' => $category['name'],
             'slug' => $category['slug'],
+            'url' => $category['url'],
             'image' => self::image($category['image_id'], 'thumbnail', 'orillacart-categories__image'),
         ], $this->childrenOf(0));
     }

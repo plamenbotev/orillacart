@@ -44,6 +44,8 @@ final readonly class ProductsBlock implements BlockDefinition
         $perPage = max(1, min(60, \is_int($attributes['perPage'] ?? null) ? $attributes['perPage'] : 12));
         $columns = max(1, min(6, \is_int($attributes['columns'] ?? null) ? $attributes['columns'] : 3));
         $fixedCategory = \is_string($attributes['category'] ?? null) ? sanitize_title($attributes['category']) : '';
+        // A block that always shows one category has no links to the others.
+        $ownCategory = $fixedCategory !== '';
         $fixedTag = \is_string($attributes['tag'] ?? null) ? sanitize_title($attributes['tag']) : '';
         $fixedBrand = null;
         // On a category's, tag's or brand's own page, a block that names none shows that one's products.
@@ -73,35 +75,42 @@ final readonly class ProductsBlock implements BlockDefinition
         $layout = $choices['view'] !== '' ? $choices['view'] : ($categoryLayout ?? (($attributes['layout'] ?? 'grid') === 'list' ? 'list' : 'grid'));
         $products = $this->cards->cards($result->ids, $layout === 'list');
 
-        $base = remove_query_arg(['category', 'tag', 'q', 'sort', 'product-page', ...ShopListing::FILTER_ARGUMENTS]);
+        $base = remove_query_arg(['category', 'tag', 'q', 'sort', ...ShopListing::FILTER_ARGUMENTS], ShopListing::pageUrl(1));
         $pages = (int) ceil($result->total / $perPage);
         $pageUrls = [];
         for ($number = 1; $number <= $pages; ++$number) {
-            $pageUrls[$number] = $number === 1 ? remove_query_arg('product-page') : add_query_arg('product-page', $number);
+            $pageUrls[$number] = ShopListing::pageUrl($number);
         }
+        // A category's link is its own page, keeping only how the shopper sees the products.
+        $keep = static fn(string $url): string => $choices['view'] === '' ? $url : add_query_arg('view', $choices['view'], $url);
 
         // The category chosen, the one above it, and those below it or beside it: the second row of links.
-        $chosen = $fixedCategory === '' && (int) $choices['category_id'] > 0 ? (int) $choices['category_id'] : null;
+        $chosen = !$ownCategory && (int) $choices['category_id'] > 0 ? (int) $choices['category_id'] : null;
         $path = $chosen === null ? [] : [$chosen, ...array_map(intval(...), get_ancestors($chosen, ProductCategoryTaxonomy::NAME, 'taxonomy'))];
         $below = $chosen === null ? [] : $this->categories->childrenOf($chosen);
-        if ($chosen !== null && $below === [] && \count($path) > 1) {
+        // A category's own page shows those below it as tiles (ProductArchives); the row then repeats nothing.
+        if ($below !== [] && is_tax(ProductCategoryTaxonomy::NAME)) {
+            $below = [];
+        } elseif ($chosen !== null && $below === [] && \count($path) > 1) {
             $below = $this->categories->childrenOf($path[1]);
         }
 
         return $this->templates->render('storefront/products.html.twig', [
             'products' => $products,
-            'categories' => $fixedCategory !== '' ? [] : array_map(static fn(array $term): array => $term + [
-                'url' => add_query_arg('category', $term['slug'], $base),
+            'categories' => $ownCategory ? [] : array_map(static fn(array $term): array => $term + [
+                'url' => $keep($term['url']),
                 // The one chosen is this page; the one above it holds it.
                 'current' => $term['id'] === $chosen ? 'page' : (\in_array($term['id'], $path, true) ? 'true' : ''),
             ], $this->categories->ordered()),
             'subcategories' => array_map(static fn(array $term): array => [
                 'name' => $term['name'],
-                'url' => add_query_arg('category', $term['slug'], $base),
+                'url' => $keep($term['url']),
                 'current' => $term['id'] === $chosen,
             ], $below),
             'current_category' => $fixedCategory !== '' ? '' : $choices['category'],
-            'all_url' => $base,
+            'all_url' => $keep($this->links->pages()['shop'] ?? $base),
+            // The whole shop is this page when no category, tag or brand narrows it.
+            'all_current' => $chosen === null && $fixedTag === '' && $fixedBrand === null && $choices['tag'] === '',
             'base_url' => $base,
             'search' => $choices['search'],
             'sort' => $choices['sort'],
@@ -118,8 +127,8 @@ final readonly class ProductsBlock implements BlockDefinition
             'columns' => $columns,
             'layout' => $layout,
             'layout_urls' => [
-                'grid' => remove_query_arg('product-page', add_query_arg('view', 'grid')),
-                'list' => remove_query_arg('product-page', add_query_arg('view', 'list')),
+                'grid' => add_query_arg('view', 'grid', ShopListing::pageUrl(1)),
+                'list' => add_query_arg('view', 'list', ShopListing::pageUrl(1)),
             ],
             'view' => $choices['view'],
             'cart_url' => $this->links->pages()['cart'],

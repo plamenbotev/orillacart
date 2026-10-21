@@ -31,6 +31,12 @@ Decisions:
   chosen and add a row with those below it (or beside it).
 - Grid or list (item 101): the Products block's own, a category's ("Shown as", which those below it take), or
   the shopper's (`?view=list`, kept by the forms). Rows add a short description.
+- Addresses (item 103): a category's, tag's or brand's products are at its own page, laid out as the shop page
+  (its blocks, else the Products block); the shop's category links go there, and a listing page asked for
+  `?category=` or `?tag=` sends there for good (`ListingAddresses`). Pages are in the path
+  (`/product-category/lamps/page/2/`, `/shop/2/`; `?product-page=2` without pretty permalinks, and sent on
+  with them), never a 404 for WordPress's own list of posts. Listings narrowed by words, filters, sorting or
+  view, and the cart, checkout and account pages, are `noindex, follow`.
 - Sorts: the shop's order, newest, name, price both ways, and best match when searching.
 - The form is a plain GET form, so it works without JavaScript; the script swaps the list region over HTML and
   keeps the URL (`?q=lamp&category=lamps&f[size][]=m&price_min=10&price_max=50`), so results can be shared.
