@@ -76,12 +76,26 @@ final readonly class ProductsBlock implements BlockDefinition
             $pageUrls[$number] = $number === 1 ? remove_query_arg('product-page') : add_query_arg('product-page', $number);
         }
 
+        // The category chosen, the one above it, and those below it or beside it: the second row of links.
+        $chosen = $fixedCategory === '' && (int) $choices['category_id'] > 0 ? (int) $choices['category_id'] : null;
+        $path = $chosen === null ? [] : [$chosen, ...array_map(intval(...), get_ancestors($chosen, ProductCategoryTaxonomy::NAME, 'taxonomy'))];
+        $below = $chosen === null ? [] : $this->categories->childrenOf($chosen);
+        if ($chosen !== null && $below === [] && \count($path) > 1) {
+            $below = $this->categories->childrenOf($path[1]);
+        }
+
         return $this->templates->render('storefront/products.html.twig', [
             'products' => $products,
             'categories' => $fixedCategory !== '' ? [] : array_map(static fn(array $term): array => $term + [
                 'url' => add_query_arg('category', $term['slug'], $base),
-                'current' => $term['slug'] === $choices['category'],
+                // The one chosen is this page; the one above it holds it.
+                'current' => $term['id'] === $chosen ? 'page' : (\in_array($term['id'], $path, true) ? 'true' : ''),
             ], $this->categories->ordered()),
+            'subcategories' => array_map(static fn(array $term): array => [
+                'name' => $term['name'],
+                'url' => add_query_arg('category', $term['slug'], $base),
+                'current' => $term['id'] === $chosen,
+            ], $below),
             'current_category' => $fixedCategory !== '' ? '' : $choices['category'],
             'all_url' => $base,
             'base_url' => $base,

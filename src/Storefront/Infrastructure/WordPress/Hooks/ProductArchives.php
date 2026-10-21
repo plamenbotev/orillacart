@@ -11,7 +11,7 @@ use OrillaCart\Shared\WordPress\AsHook;
 
 /**
  * The pages of a product category, tag or brand show its products as the shop does (the Products block, with
- * its filters, sorting and pages), not as a blog's list of posts. Block themes get templates for them, which the
+ * its filters, sorting and pages), not as a blog's list of posts; a category's page leads to those below it first. Block themes get templates for them, which the
  * site editor can change; classic themes the plugin's own (templates/wordpress/product-archive.php). A theme's
  * own template for them takes the place of either.
  */
@@ -35,17 +35,17 @@ final readonly class ProductArchives
             register_block_template('orillacart//taxonomy-' . $taxonomy, [
                 'title' => $title,
                 'description' => $description,
-                'content' => <<<'HTML'
+                'content' => str_replace('{{below}}', $taxonomy === ProductCategoryTaxonomy::NAME ? "<!-- wp:orillacart/product-categories {\"align\":\"wide\"} /-->\n" : '', <<<'HTML'
                     <!-- wp:template-part {"slug":"header","tagName":"header"} /-->
                     <!-- wp:group {"tagName":"main","style":{"spacing":{"margin":{"top":"var:preset|spacing|60"}}},"layout":{"type":"constrained"}} -->
                     <main class="wp-block-group" style="margin-top:var(--wp--preset--spacing--60)">
                         <!-- wp:query-title {"type":"archive","showPrefix":false} /-->
                         <!-- wp:term-description /-->
-                        <!-- wp:orillacart/products {"align":"wide"} /-->
+                        {{below}}<!-- wp:orillacart/products {"align":"wide"} /-->
                     </main>
                     <!-- /wp:group -->
                     <!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->
-                    HTML,
+                    HTML),
             ]);
         }
     }

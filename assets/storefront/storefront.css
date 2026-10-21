@@ -2,7 +2,7 @@
  * Storefront styles: layout only. Fonts, colours and buttons come from the theme (buttons use the theme's
  * .wp-element-button style). Themes adjust the shop through these custom properties.
  */
-:where(.orillacart-products, .orillacart-product, .orillacart-product-row, .orillacart-wishlist-list, .orillacart-reviews, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart, .orillacart-product-filters, .orillacart-product-search) {
+:where(.orillacart-products, .orillacart-product, .orillacart-product-row, .orillacart-wishlist-list, .orillacart-reviews, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart, .orillacart-product-filters, .orillacart-product-search, .orillacart-category-tiles) {
 	--orillacart-gap: 1.5rem;
 	--orillacart-star: #d99a00;
 	--orillacart-border: color-mix(in srgb, currentColor 18%, transparent);
@@ -189,6 +189,13 @@ fieldset[aria-invalid="true"] {
 	list-style: none;
 }
 
+.orillacart-categories .orillacart-categories__below {
+	margin-top: 0.5rem;
+	padding-top: 0.5rem;
+	border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+	font-size: 0.9375em;
+}
+
 .orillacart-categories [aria-current],
 .orillacart-account__nav [aria-current] {
 	font-weight: 600;
@@ -287,6 +294,65 @@ fieldset[aria-invalid="true"] {
 	.orillacart-products__grid {
 		grid-template-columns: minmax(0, 1fr);
 	}
+}
+
+.orillacart-category-tiles {
+	margin-block: 0 var(--orillacart-gap);
+}
+
+.orillacart-category-tiles__grid {
+	display: grid;
+	grid-template-columns: repeat(var(--orillacart-columns, 4), minmax(0, 1fr));
+	gap: var(--orillacart-gap);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+@media (max-width: 781px) {
+	.orillacart-category-tiles__grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+.orillacart-category-tile__link {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	color: inherit;
+	text-decoration: none;
+}
+
+.orillacart-category-tile__image,
+.orillacart-category-tile__no-image {
+	display: block;
+	width: 100%;
+	height: auto;
+	aspect-ratio: 4 / 3;
+	object-fit: cover;
+	border-radius: var(--orillacart-radius);
+	background: color-mix(in srgb, currentColor 6%, transparent);
+}
+
+.orillacart-category-tile__name {
+	font-weight: 600;
+}
+
+/* Without pictures: each name in a frame of its own. */
+.orillacart-category-tile__link:not(:has(.orillacart-category-tile__image, .orillacart-category-tile__no-image)) {
+	padding: 1rem;
+	border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+	border-radius: var(--orillacart-radius);
+}
+
+.orillacart-category-tile__link:hover .orillacart-category-tile__name,
+.orillacart-category-tile__link:focus-visible .orillacart-category-tile__name {
+	text-decoration: underline;
+}
+
+.orillacart-category-tile__count {
+	font-size: 0.875em;
+	opacity: 0.75;
 }
 
 .orillacart-product-card {

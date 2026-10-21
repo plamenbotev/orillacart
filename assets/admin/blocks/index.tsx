@@ -12,7 +12,11 @@ import {
 	TextControl,
 	ToggleControl,
 } from '@wordpress/components';
+import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
+import ServerSideRender from '@wordpress/server-side-render';
+
+import { fetchTerms, type Named, TermTokens } from '../shared/CatalogTokens';
 
 type ProductsAttributes = {
 	perPage: number;
@@ -26,6 +30,17 @@ type ProductsAttributes = {
 };
 
 type SearchAttributes = { placeholder: string };
+
+type CategoriesAttributes = {
+	source: 'top' | 'below' | 'chosen';
+	parent: number;
+	include: number[];
+	followPage: boolean;
+	columns: number;
+	showImage: boolean;
+	showCount: boolean;
+	showEmpty: boolean;
+};
 
 const notes: Record< string, string > = {
 	'orillacart/cart': __( 'Shoppers see their cart here.', 'orillacart' ),
@@ -265,6 +280,160 @@ function SearchEdit( {
 	);
 }
 
+function CategoriesEdit( {
+	attributes,
+	setAttributes,
+}: {
+	attributes: CategoriesAttributes;
+	setAttributes: ( next: Partial< CategoriesAttributes > ) => void;
+} ) {
+	const [ categories, setCategories ] = useState< Named[] >( [] );
+	useEffect( () => {
+		fetchTerms( 'orillacart_category' )
+			.then( setCategories )
+			.catch( () => setCategories( [] ) );
+	}, [] );
+
+	return (
+		<div { ...useBlockProps() }>
+			<InspectorControls>
+				<PanelBody title={ __( 'Product categories', 'orillacart' ) }>
+					<SelectControl
+						__next40pxDefaultSize
+						label={ __( 'Show', 'orillacart' ) }
+						value={ attributes.source }
+						options={ [
+							{
+								label: __( 'The top categories', 'orillacart' ),
+								value: 'top',
+							},
+							{
+								label: __(
+									'The categories below one',
+									'orillacart'
+								),
+								value: 'below',
+							},
+							{
+								label: __(
+									'The categories I choose',
+									'orillacart'
+								),
+								value: 'chosen',
+							},
+						] }
+						onChange={ ( source ) =>
+							setAttributes( {
+								source: source as CategoriesAttributes[ 'source' ],
+							} )
+						}
+					/>
+					{ attributes.source === 'below' && (
+						<SelectControl
+							__next40pxDefaultSize
+							label={ __( 'Below', 'orillacart' ) }
+							value={ String( attributes.parent ) }
+							options={ [
+								{
+									label: __(
+										'Choose a category',
+										'orillacart'
+									),
+									value: '0',
+								},
+								...categories.map( ( category ) => ( {
+									label: category.name,
+									value: String( category.id ),
+								} ) ),
+							] }
+							onChange={ ( parent ) =>
+								setAttributes( {
+									parent: Number.parseInt( parent, 10 ) || 0,
+								} )
+							}
+						/>
+					) }
+					{ attributes.source === 'chosen' && (
+						<TermTokens
+							label={ __( 'Categories', 'orillacart' ) }
+							help={ __(
+								'Shown in the order chosen.',
+								'orillacart'
+							) }
+							terms={ categories }
+							ids={ attributes.include }
+							onChange={ ( include ) =>
+								setAttributes( { include } )
+							}
+						/>
+					) }
+					<ToggleControl
+						label={ __(
+							'On a category’s page, the categories below it',
+							'orillacart'
+						) }
+						help={ __(
+							'In a category template or a sidebar: shoppers go further into the category they are in.',
+							'orillacart'
+						) }
+						checked={ attributes.followPage }
+						onChange={ ( followPage ) =>
+							setAttributes( { followPage } )
+						}
+					/>
+					<RangeControl
+						__next40pxDefaultSize
+						label={ __( 'Columns', 'orillacart' ) }
+						value={ attributes.columns }
+						min={ 1 }
+						max={ 6 }
+						onChange={ ( columns ) =>
+							setAttributes( { columns: columns ?? 4 } )
+						}
+					/>
+					<ToggleControl
+						label={ __( 'Show pictures', 'orillacart' ) }
+						checked={ attributes.showImage }
+						onChange={ ( showImage ) =>
+							setAttributes( { showImage } )
+						}
+					/>
+					<ToggleControl
+						label={ __( 'Show how many products', 'orillacart' ) }
+						checked={ attributes.showCount }
+						onChange={ ( showCount ) =>
+							setAttributes( { showCount } )
+						}
+					/>
+					<ToggleControl
+						label={ __(
+							'Show categories without products',
+							'orillacart'
+						) }
+						checked={ attributes.showEmpty }
+						onChange={ ( showEmpty ) =>
+							setAttributes( { showEmpty } )
+						}
+					/>
+				</PanelBody>
+			</InspectorControls>
+			<ServerSideRender
+				block="orillacart/product-categories"
+				attributes={ attributes }
+				EmptyResponsePlaceholder={ () => (
+					<Placeholder
+						label={ __( 'Product categories', 'orillacart' ) }
+						instructions={ __(
+							'No categories with products to show here yet.',
+							'orillacart'
+						) }
+					/>
+				) }
+			/>
+		</div>
+	);
+}
+
 // Title, icon and attributes come from the server's registration.
 registerBlockType( 'orillacart/mini-cart', {
 	edit: MiniCartEdit,
@@ -272,6 +441,10 @@ registerBlockType( 'orillacart/mini-cart', {
 } as never );
 registerBlockType< ProductsAttributes >( 'orillacart/products', {
 	edit: ProductsEdit,
+	save: () => null,
+} as never );
+registerBlockType< CategoriesAttributes >( 'orillacart/product-categories', {
+	edit: CategoriesEdit,
 	save: () => null,
 } as never );
 registerBlockType< SearchAttributes >( 'orillacart/product-search', {

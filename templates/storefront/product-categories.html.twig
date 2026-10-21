@@ -1,0 +1,21 @@
+{#
+ # The shop's categories as tiles: each its picture (or an empty frame), name and, if asked, product count.
+ # categories: [{name, url, count, image (HTML or empty)}]; columns; show_image; show_count; label.
+ #}
+<nav class="orillacart-category-tiles" aria-label="{{ label }}">
+    <ul class="orillacart-category-tiles__grid" style="--orillacart-columns: {{ columns }}">
+        {% for category in categories %}
+            <li class="orillacart-category-tile">
+                <a class="orillacart-category-tile__link" href="{{ category.url }}">
+                    {% if show_image %}
+                        {% if category.image %}{{ category.image|raw }}{% else %}<span class="orillacart-category-tile__no-image" aria-hidden="true"></span>{% endif %}
+                    {% endif %}
+                    <span class="orillacart-category-tile__name">{{ category.name }}</span>
+                    {% if show_count %}
+                        <span class="orillacart-category-tile__count">{{ _n('%d product', '%d products', category.count)|format(category.count) }}</span>
+                    {% endif %}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</nav>

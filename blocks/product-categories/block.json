@@ -1,0 +1,66 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/product-categories",
+	"title": "Product categories",
+	"category": "widgets",
+	"icon": "category",
+	"description": "The shop’s categories as pictures with their names: the top ones, those below a category, or those chosen. On a category’s page, those below it.",
+	"keywords": [
+		"shop",
+		"categories",
+		"catalog"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"source": {
+			"type": "string",
+			"enum": [
+				"top",
+				"below",
+				"chosen"
+			],
+			"default": "top"
+		},
+		"parent": {
+			"type": "integer",
+			"default": 0
+		},
+		"include": {
+			"type": "array",
+			"items": {
+				"type": "integer"
+			},
+			"default": []
+		},
+		"followPage": {
+			"type": "boolean",
+			"default": true
+		},
+		"columns": {
+			"type": "integer",
+			"default": 4
+		},
+		"showImage": {
+			"type": "boolean",
+			"default": true
+		},
+		"showCount": {
+			"type": "boolean",
+			"default": false
+		},
+		"showEmpty": {
+			"type": "boolean",
+			"default": false
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		]
+	},
+	"editorScript": "orillacart-blocks",
+	"style": "orillacart-storefront"
+}
