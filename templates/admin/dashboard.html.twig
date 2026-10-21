@@ -1,0 +1,15 @@
+{#
+ # The dashboard's Shop box: sales today and in the last seven days, the orders that wait, items low in stock.
+ #}
+<div class="orillacart-dashboard">
+    <ul class="orillacart-dashboard__sales" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 12px">
+        <li style="margin:0"><span>{{ __('Today') }}</span><br><strong style="font-size:1.5em">{{ today.net|money }}</strong><br><small>{{ _n('%d order', '%d orders', today.orders)|format(today.orders) }}</small></li>
+        <li style="margin:0"><span>{{ __('Last 7 days') }}</span><br><strong style="font-size:1.5em">{{ week.net|money }}</strong><br><small>{{ _n('%d order', '%d orders', week.orders)|format(week.orders) }}</small></li>
+    </ul>
+    <ul class="orillacart-dashboard__waiting" style="margin:0">
+        <li><a href="{{ urls.ship }}">{{ _n('%d order to ship', '%d orders to ship', ship)|format(ship) }}</a></li>
+        <li><a href="{{ urls.attention }}">{{ _n('%d order needs attention', '%d orders need attention', attention)|format(attention) }}</a></li>
+        <li><a href="{{ urls.stock }}">{{ _n('%d item low in stock', '%d items low in stock', low_stock)|format(low_stock) }}</a></li>
+    </ul>
+    <p style="margin:12px 0 0"><a href="{{ urls.reports }}">{{ __('See the reports') }}</a></p>
+</div>
