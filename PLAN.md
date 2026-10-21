@@ -161,6 +161,8 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 | ⬜ | 97 | P3 | Combining options: price rules say whether coupons apply on top of their price and whether they stack with other price rules (today the lowest single price wins); decide which side owns the coupon ↔ price rule choice | |
 | ✅ | 98 | P2 | Privacy: the change log kept what shop managers sent (an order's address, a gift card's recipient) out of reach of the erase tool; erasing a person or anonymising an order now blanks those records and the gift cards' recipient. Quotes and previews are not logged; records keep the route's own path | b10d5e4, a9be362 |
 | ✅ | 99 | P3 | Shop filters by category: a category offers what the one above it does (the shop's filters at the top) or chooses its own on its edit screen, in its order, for its subcategories too; a setting hides a filter whose products in view leave one value; the Shop filters card is a table with a dialog | 4b47756, ddee0b7, 047fc55 |
+| ✅ | 100 | P3 | Categories on the storefront (from 1.x): a Product categories block (pictures, names, counts, columns; the top level, one category's subcategories, or chosen ones), and a category's page leads to its subcategories | 5637b7c |
+| ✅ | 101 | P3 | A list view beside the grid (from 1.x): the Products block's default, a category's own, and the shopper's switch, kept in the address | acc4dd7 |
 
 ## Waiting on others
 
@@ -173,4 +175,4 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO
 3166 comes complete); SEO fields (SEO plugins do this); image size and template settings (WordPress image sizes and
 theme templates); the old and/or/not shipping operators (replaced by item 17); shipping groups that affected nothing
-(replaced by item 15).
+(replaced by item 15). Each variation as its own card in the shop's lists (1.x "List variations in categories"): skipped (2026-10-21).

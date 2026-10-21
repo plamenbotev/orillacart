@@ -25,6 +25,12 @@ Decisions:
   `ShopSearch::filters()`). A filter whose products in view have a single value is left out unless the shopper
   chose it (Settings → Storefront, on by default). The Product filters block on a category's or tag's own page
   counts and sends its choices within that one.
+- Categories (item 100): the Product categories block shows categories as tiles (picture, name, product count
+  with those below), the top ones, those below one, or those chosen; on a category's page, those below it, and a
+  category's page template puts it above the products. The shop's links mark the top category holding the one
+  chosen and add a row with those below it (or beside it).
+- Grid or list (item 101): the Products block's own, a category's ("Shown as", which those below it take), or
+  the shopper's (`?view=list`, kept by the forms). Rows add a short description.
 - Sorts: the shop's order, newest, name, price both ways, and best match when searching.
 - The form is a plain GET form, so it works without JavaScript; the script swaps the list region over HTML and
   keeps the URL (`?q=lamp&category=lamps&f[size][]=m&price_min=10&price_max=50`), so results can be shared.
