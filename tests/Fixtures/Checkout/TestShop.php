@@ -103,6 +103,7 @@ use OrillaCart\Platform\Twig\Strictness;
 use OrillaCart\Platform\Twig\TwigFactory;
 use OrillaCart\Platform\Twig\TwigRenderer;
 use OrillaCart\Returns\Application\Returns;
+use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\SettingsChanged;
@@ -180,7 +181,9 @@ use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentMethodRepository;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentRepository;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryRefundRepository;
 use OrillaCart\Tests\Fixtures\Returns\InMemoryReturnRepository;
+use OrillaCart\Tests\Fixtures\Settings\ChosenCurrency;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
+use OrillaCart\Tests\Fixtures\Settings\MemoryCurrencySettings;
 use OrillaCart\Tests\Fixtures\Shared\FixedUserNames;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryConsignmentRepository;
@@ -201,6 +204,9 @@ final class TestShop
 {
     public readonly MockClock $clock;
     public readonly InMemoryGiftCards $giftCardRecords;
+    public readonly MemoryCurrencySettings $currencySettings;
+    public readonly ChosenCurrency $chosenCurrency;
+    public readonly Currencies $currencies;
     public readonly MemoryGiftCardSettings $giftCardSettings;
     public readonly SentGiftCards $giftCardMail;
     public readonly GiftCardService $giftCards;
@@ -356,7 +362,10 @@ final class TestShop
 
         $this->cartRecords = new InMemoryCartRepository($this->transactions);
         $this->abandonedCartRecords = new InMemoryAbandonedCartRepository($this->cartRecords);
-        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger);
+        $this->currencySettings = new MemoryCurrencySettings();
+        $this->chosenCurrency = new ChosenCurrency();
+        $this->currencies = new Currencies($this->currencySettings, $settings, $this->chosenCurrency);
+        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies);
         $this->abandonedCarts = new AbandonedCarts($this->cartRecords, $this->abandonedCartRecords, $this->carts, $settings, $this->clock);
         $this->orderRecords = new InMemoryOrderRepository($this->transactions);
         $this->receipts = new ReceiptLinks($this->signatures, $this->clock);
@@ -402,7 +411,7 @@ final class TestShop
         $this->events->addListener(OrderPaid::class, $withGiftCards->paid(...));
         $this->paymentOptions = $paymentOptions = new PaymentOptions($methodRecords, $gateways, $settings);
         $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
-        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees);
+        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts);
         $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures);
         $this->checkout = new CheckoutService(
@@ -427,6 +436,7 @@ final class TestShop
             $this->addressChecks = new AddressChecks($extensions, $this->logger),
             $this->newsletter,
             $this->giftCardPayments,
+            $this->currencies,
         );
         $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns(new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock);
@@ -441,7 +451,7 @@ final class TestShop
         $this->mail = new SentMail();
         $this->emailSettings = new InMemoryEmailSettingsRepository();
         $context = new PluginContext(\dirname(__DIR__, 3) . '/orillacart.php', 'test');
-        $shopExtension = new ShopExtension($settings, $geography, $taxes);
+        $shopExtension = new ShopExtension($settings, $geography, $taxes, $this->currencies);
         $twigFiles = new TwigFactory($context, $shopExtension);
         $this->templates = $templates = new TwigRenderer($twigFiles->create(), new SerializerFactory()->create(), $this->logger);
         $this->emailTemplateRecords = new InMemoryEmailTemplates();

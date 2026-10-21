@@ -1,0 +1,19 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/currency-switcher",
+	"title": "Currency switcher",
+	"category": "widgets",
+	"icon": "money-alt",
+	"description": "Lets shoppers see prices, and pay, in another currency the shop offers. Shows nothing while it offers only its own.",
+	"keywords": [
+		"shop",
+		"currency"
+	],
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false
+	},
+	"editorScript": "orillacart-blocks",
+	"style": "orillacart-storefront"
+}

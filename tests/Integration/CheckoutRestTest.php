@@ -10,6 +10,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Notifications\Application\CartReminders;
+use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\ShopperCurrency;
 
 /**
  * The store through the REST routes: the shop sets up shipping and payment, a visitor fills a cart (kept by a
@@ -288,6 +289,33 @@ final class CheckoutRestTest extends RestTestCase
         self::assertIsArray($detail);
 
         return $detail['balance'] ?? null;
+    }
+
+    public function testAShopperWhoChoseAnotherCurrencyOrdersInIt(): void
+    {
+        $this->actAs('administrator');
+        $saved = $this->request('PUT', '/currencies', ['offered' => [['code' => 'USD', 'rate' => '1.1', 'rounding' => 'ninety_nine']]], nonce: true);
+        self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
+        self::assertSame(422, $this->request('PUT', '/currencies', ['offered' => [['code' => 'USD', 'rate' => '0']]], nonce: true)->get_status());
+        wp_set_current_user(0);
+        $_COOKIE[ShopperCurrency::COOKIE] = 'USD';
+
+        try {
+            $added = $this->request('POST', '/cart/items', ['product_id' => $this->product, 'quantity' => 1], nonce: true);
+            $this->keepCookie($added);
+            $cart = $this->data($this->request('GET', '/cart'));
+            self::assertSame(['USD', '36.99'], [$cart['currency'], $cart['subtotal']], '33.33 EUR at 1.1, just under the next dollar');
+            $summary = $this->data($this->request('POST', '/checkout/summary', ['shipping_country' => 'BG'], nonce: true));
+            self::assertSame(['USD', '36.99', '5.5', '42.49'], [$summary['currency'], $summary['subtotal'], $summary['shipping'], $summary['total']]);
+
+            $placed = $this->request('POST', '/checkout', $this->order('cash_on_delivery'), nonce: true);
+            self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));
+            $receipt = $this->data($this->request('GET', "/receipts/{$this->key($this->data($placed))}"));
+            self::assertSame(['USD', '42.49'], [$receipt['currency'], $receipt['total']]);
+        } finally {
+            unset($_COOKIE[ShopperCurrency::COOKIE]);
+            delete_option('orillacart_currencies');
+        }
     }
 
     public function testAnOrderThatRunsOutOfStockWhilePlacedTakesNothing(): void

@@ -104,6 +104,7 @@ final readonly class Discounts
                 $request->email,
                 $firstOrder,
                 $subtotal,
+                $request->rate,
             );
             $refusal = $coupon->refusal($basket, $now, $known ? $this->redemptions->countByCustomer($coupon->id(), $request->customerId, $email) : 0);
             if ($refusal !== null) {

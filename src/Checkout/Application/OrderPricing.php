@@ -30,6 +30,7 @@ use OrillaCart\Ordering\Application\Dto\NewOrderLine;
 use OrillaCart\Ordering\Application\Dto\NewShipping;
 use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
+use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
@@ -63,6 +64,7 @@ final readonly class OrderPricing
         private SettingsService $settings,
         private Discounts $discounts,
         private OrderFees $fees,
+        private Currencies $currencies,
     ) {}
 
     /**
@@ -76,17 +78,20 @@ final readonly class OrderPricing
      * @param int|null     $orderId    the order being priced again, when the shop edits it
      * @param bool         $reverseCharge a business in another EU country buys without VAT
      * @param string|null  $payment    the way to pay chosen, for its fee
+     * @param string|null  $currency   what the order is priced in: the shop's prices converted, when it offers it;
+     *                                 the shop's own currency when null. Unit prices given are in it already.
      *
      * @return Priced
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null, ?string $currency = null): array
     {
-        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment);
+        $currency ??= $this->settings->current()->currency;
+        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency);
         $gifts = $this->gifts($priced['discounts']->gifts, $customerId);
 
-        return $gifts === [] ? $priced : $this->priceItems([...$items, ...$gifts], $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment);
+        return $gifts === [] ? $priced : $this->priceItems([...$items, ...$gifts], $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency);
     }
 
     /**
@@ -119,10 +124,10 @@ final readonly class OrderPricing
      *
      * @return Priced
      */
-    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment): array
+    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment, string $currency): array
     {
         $settings = $this->settings->current();
-        $decimals = $settings->priceDecimals;
+        $decimals = $this->currencies->decimals($currency);
         $inclusive = $this->tax->pricesIncludeTax();
         $bill = new Bill($decimals, $inclusive, $this->tax->roundsEachLine());
         $lines = [];
@@ -144,7 +149,8 @@ final readonly class OrderPricing
             }
             // A bundle is taxed per item: its price shared out by what its items cost, each share at its item's rates.
             $parts = [];
-            $units = self::shares(Money::of($line['unit_price'] ?? $quote->unitPrice), $quote->contents === [] ? [Money::of('1')] : array_map(static fn(QuotedBundleItem $item): Money => Money::of($item->price), $quote->contents));
+            $unitPrice = isset($line['unit_price']) ? Money::of($line['unit_price']) : $this->currencies->price(Money::of($quote->unitPrice), $currency);
+            $units = self::shares($unitPrice, $quote->contents === [] ? [Money::of('1')] : array_map(static fn(QuotedBundleItem $item): Money => Money::of($item->price), $quote->contents));
             foreach ($quote->contents === [] ? [[$quote->taxable, $quote->taxGroupId]] : array_map(static fn(QuotedBundleItem $item): array => [$item->taxable, $item->taxGroupId], $quote->contents) as $index => [$taxable, $groupId]) {
                 $taxes = $taxable && !$reverseCharge ? $this->taxes($groupId, $shipping, $billing) : [];
                 $unit = $units[$index];
@@ -164,11 +170,12 @@ final readonly class OrderPricing
         }
         $discounts = $lines === [] ? new AppliedDiscounts() : $this->discounts->apply($codes, new DiscountRequest(
             array_map(static fn(array $line): DiscountItem => new DiscountItem($line['quote']->productId, $line['quantity'], $line['total']->toFixed(), $line['quote']->onSale, $line['quote']->categoryIds, $line['quote']->brandIds), $lines),
-            $settings->currency,
+            $currency,
             $shipping?->country,
             $customerId,
             $email,
             $orderId,
+            $this->currencies->rate($currency),
         ));
         $places = [];
         foreach ($lines as $index => $line) {
@@ -191,13 +198,15 @@ final readonly class OrderPricing
         $freeFrom = null;
         $shipsFrom = null;
         if ($needsShipping) {
-            $query = new ShippingQuery($shipping?->country, $shipping?->state, $parcel, (string) $bill->subtotal()->subtract($bill->discount()), $postcode);
+            // Rates are the shop's: they look at what the order is worth in its currency.
+            $query = new ShippingQuery($shipping?->country, $shipping?->state, $parcel, (string) $this->currencies->back($bill->subtotal()->subtract($bill->discount()), $currency), $postcode);
             $offered = $this->shipping->options($query);
-            $freeFrom = $free ? null : $this->shipping->freeFrom($query);
-            $shipsFrom = $offered === [] ? $this->shipping->shipsFrom($query) : null;
+            $inCurrency = fn(?string $amount): ?string => $amount === null ? null : (string) $this->currencies->amount(Money::of($amount), $currency);
+            $freeFrom = $free ? null : $inCurrency($this->shipping->freeFrom($query));
+            $shipsFrom = $offered === [] ? $inCurrency($this->shipping->shipsFrom($query)) : null;
             foreach ($offered as $option) {
                 $taxes = $option->taxable && !$free && !$reverseCharge ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
-                $price = $free ? Money::zero() : Money::of($option->price);
+                $price = $free ? Money::zero() : $this->currencies->amount(Money::of($option->price), $currency);
                 if ($inclusive && $option->taxable && $taxes === [] && !$free) {
                     $price = Tax::without($price, $this->shopTaxes($option->taxGroupId));
                 }
@@ -215,16 +224,18 @@ final readonly class OrderPricing
             }
         }
         if ($lines !== []) {
+            // Fees are worked out in the shop's currency, then converted.
+            $back = fn(Money $amount): string => (string) $this->currencies->back($amount, $currency);
             $this->charge($bill, new FeeQuery(
-                array_map(static fn(array $line): FeeItem => new FeeItem($line['quote']->productId, $line['quote']->variationId, $line['quote']->name, $line['quantity'], (string) $line['total']->subtract($line['discount'])), $lines),
-                (string) $bill->subtotal()->subtract($bill->discount()),
-                (string) $bill->shipping(),
+                array_map(static fn(array $line): FeeItem => new FeeItem($line['quote']->productId, $line['quote']->variationId, $line['quote']->name, $line['quantity'], $back($line['total']->subtract($line['discount']))), $lines),
+                $back($bill->subtotal()->subtract($bill->discount())),
+                $back($bill->shipping()),
                 $chosen['view']->id ?? null,
                 $payment,
                 $needsShipping ? $shipping?->country : $billing?->country,
                 $customerId,
                 $settings->currency,
-            ), $shipping, $billing, $reverseCharge);
+            ), $shipping, $billing, $reverseCharge, $currency);
         }
 
         return ['lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
@@ -233,11 +244,11 @@ final readonly class OrderPricing
     /**
      * Adds the order's fees to the bill, taxed as items of their tax group are.
      */
-    private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge): void
+    private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge, string $currency): void
     {
         foreach ($this->fees->of($query) as $fee) {
             $taxes = $fee['taxable'] && !$reverseCharge ? $this->taxes($fee['tax_group_id'], $shipping, $billing) : [];
-            $amount = $fee['amount'];
+            $amount = $this->currencies->amount($fee['amount'], $currency);
             if ($bill->includesTax() && $fee['taxable'] && $taxes === []) {
                 $amount = Tax::without($amount, $this->shopTaxes($fee['tax_group_id']));
             }

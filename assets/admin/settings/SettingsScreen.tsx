@@ -17,6 +17,7 @@ import { toApiError, violationOf, type Violation } from '../shared/api';
 import { fetchCountries, type Country } from '../shared/geography';
 import { LocationFields } from '../shared/LocationFields';
 import { ArchiveCard } from './ArchiveCard';
+import { CurrenciesCard } from './CurrenciesCard';
 import { DownloadDeliveryCard } from './DownloadDeliveryCard';
 import { FiltersCard } from './FiltersCard';
 import { InvoicesCard } from './InvoicesCard';
@@ -472,6 +473,9 @@ export function SettingsScreen() {
 						</form>
 					</CardBody>
 				</Card>
+			) }
+			{ settings !== null && (
+				<CurrenciesCard currency={ settings.currency } />
 			) }
 			<ShopPagesCard />
 			<InvoicesCard />

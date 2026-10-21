@@ -44,6 +44,7 @@ use OrillaCart\Payment\Application\Dto\StartPayment;
 use OrillaCart\Payment\Application\PaymentOptions;
 use OrillaCart\Payment\Application\Payments;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
+use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -89,6 +90,7 @@ final readonly class CheckoutService
         private AddressChecks $addressChecks,
         private Newsletter $newsletter,
         private GiftCardPayments $giftCards,
+        private Currencies $currencies,
     ) {}
 
     /**
@@ -109,13 +111,13 @@ final readonly class CheckoutService
         $billing = $details->billingCountry === null ? $shipping : new TaxAddress($details->billingCountry, $details->billingState, $details->billingPostcode ?? ($details->billingCountry === $details->shippingCountry ? $details->shippingPostcode : null));
         $contents = $this->contents($owner);
         $reverse = $this->vatNumbers->reverseCharge($details->billingCountry, $details->vatNumber);
-        $currency = $this->settings->current()->currency;
+        $currency = $this->currencies->current();
         // The methods offered depend on where the order is billed, not on what it costs: the one chosen, or the
         // first, prices its fee in.
         $methods = $this->paymentOptions->available($billing?->country, $currency);
         $gateways = array_map(static fn(PaymentOptionView $method): string => $method->gateway, $methods);
         $payment = \in_array($details->payment, $gateways, true) ? $details->payment : ($gateways[0] ?? null);
-        $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment);
+        $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment, currency: $currency);
         $bill = $priced['bill'];
         $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency);
         $due = $bill->total()->subtract($plan->total());
@@ -171,10 +173,10 @@ final readonly class CheckoutService
             $due->isZero() ? null : $payment,
             array_map(static fn(array $fee): CheckoutFeeView => new CheckoutFeeView($fee['label'], (string) $fee['amount']), $bill->fees()),
             (string) $bill->feesTax(),
-            $due->isZero() ? [] : $this->paymentFees($gateways, $base),
+            $due->isZero() ? [] : $this->paymentFees($gateways, $base, $currency),
             $delivery = $priced['needs_shipping'] ? $this->deliveryDays->forOption($priced['chosen']?->id) : null,
             ...self::deliveryChosen($delivery, $details->deliveryDate, $details->deliverySlot),
-            ...$this->minimum($bill),
+            ...$this->minimum($bill, $currency),
             shipsFrom: $priced['ships_from'],
             giftCards: self::giftCardViews($contents->giftCards, $plan),
             giftCardTotal: (string) $plan->total(),
@@ -221,7 +223,7 @@ final readonly class CheckoutService
         $contents = $this->contents($owner);
         $code = strtoupper(trim($command->code));
         try {
-            $balance = $this->giftCards->balance($code, $this->settings->current()->currency);
+            $balance = $this->giftCards->balance($code, $this->currencies->current());
         } catch (GiftCardRuleViolation $e) {
             throw new CheckoutRuleViolation($e->getMessage(), 'orillacart_gift_card_refused', $e);
         }
@@ -266,10 +268,10 @@ final readonly class CheckoutService
      *
      * @return array{minimumOrder: ?string, minimumShort: ?string}
      */
-    private function minimum(Bill $bill): array
+    private function minimum(Bill $bill, string $currency): array
     {
         $least = $this->settings->current()->minimumOrder;
-        $minimum = $least === null ? null : Money::of($least);
+        $minimum = $least === null ? null : $this->currencies->amount(Money::of($least), $currency);
         $items = $bill->subtotal()->subtract($bill->discount());
         if ($minimum === null || $items->compare($minimum) >= 0) {
             return ['minimumOrder' => null, 'minimumShort' => null];
@@ -304,13 +306,14 @@ final readonly class CheckoutService
      *
      * @return array<string, string> by gateway, those without a fee left out
      */
-    private function paymentFees(array $gateways, Money $base): array
+    private function paymentFees(array $gateways, Money $base, string $currency): array
     {
         $fees = [];
         foreach ($gateways as $gateway) {
-            $fee = $this->fees->paymentFee($gateway, $base);
+            // Fees are the shop's: worked out on what the order is worth in its currency.
+            $fee = $this->fees->paymentFee($gateway, $this->currencies->back($base, $currency));
             if ($fee !== null) {
-                $fees[$gateway] = (string) $fee->rounded($this->settings->current()->priceDecimals);
+                $fees[$gateway] = (string) $this->currencies->amount($fee, $currency)->rounded($this->currencies->decimals($currency));
             }
         }
 
@@ -344,7 +347,7 @@ final readonly class CheckoutService
         $contents = $this->contents($owner);
         $code = Coupon::normalize($command->code);
         $codes = array_values(array_unique([...array_map(Coupon::normalize(...), $contents->coupons), $code]));
-        $priced = $this->pricing->price($contents->lines, null, null, null, null, $codes, $owner->customerId);
+        $priced = $this->pricing->price($contents->lines, null, null, null, null, $codes, $owner->customerId, currency: $this->currencies->current());
         $refused = $priced['discounts']->refused[$code] ?? null;
         if ($refused !== null) {
             throw new CheckoutRuleViolation($refused, 'orillacart_coupon_refused');
@@ -386,7 +389,8 @@ final readonly class CheckoutService
         $shippingTax = new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode);
 
         $reverse = $this->vatNumbers->reverseCharge($billingAddress->country, $command->vatNumber);
-        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment);
+        $currency = $this->currencies->current();
+        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment, currency: $currency);
         foreach ($priced['discounts']->refused as $code => $reason) {
             throw new CheckoutRuleViolation(\sprintf('The code %s does not apply: %s Remove it to order.', $code, $reason), 'orillacart_coupon_refused');
         }
@@ -398,14 +402,14 @@ final readonly class CheckoutService
             // A price, a rule, a coupon or a rate changed since the summary: the customer orders only what they saw.
             throw new CheckoutRuleViolation('The total of your order changed. Review it and place the order again.', 'orillacart_cart_changed');
         }
-        ['minimumOrder' => $minimum] = $this->minimum($bill);
+        ['minimumOrder' => $minimum] = $this->minimum($bill, $currency);
         if ($minimum !== null) {
-            throw new CheckoutRuleViolation(\sprintf('Orders start at %s %s. Add more items to order.', Money::of($minimum)->format($this->settings->current()->priceDecimals), $this->settings->current()->currency), 'orillacart_below_minimum_order');
+            throw new CheckoutRuleViolation(\sprintf('Orders start at %s %s. Add more items to order.', Money::of($minimum)->format($this->currencies->decimals($currency)), $currency), 'orillacart_below_minimum_order');
         }
         $chosen = $priced['chosen'];
         if ($priced['needs_shipping'] && ($chosen === null || $chosen->id !== $command->shippingOption)) {
             if ($priced['options'] === [] && $priced['ships_from'] !== null) {
-                throw new CheckoutRuleViolation(\sprintf('Delivery to this address needs an order of at least %s %s.', Money::of($priced['ships_from'])->format($this->settings->current()->priceDecimals), $this->settings->current()->currency), 'orillacart_shipping_required');
+                throw new CheckoutRuleViolation(\sprintf('Delivery to this address needs an order of at least %s %s.', Money::of($priced['ships_from'])->format($this->currencies->decimals($currency)), $currency), 'orillacart_shipping_required');
             }
             throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to this address.' : 'Choose how to ship the order.', 'orillacart_shipping_required');
         }
@@ -415,7 +419,6 @@ final readonly class CheckoutService
         } catch (ShippingRuleViolation $e) {
             throw new CheckoutRuleViolation($e->getMessage(), $e->errorCode, $e);
         }
-        $currency = $this->settings->current()->currency;
         $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency);
         foreach ($plan->refused as $code => $reason) {
             throw new CheckoutRuleViolation(\sprintf('The gift card %s cannot pay: %s Remove it to order.', $code, $reason), 'orillacart_gift_card_refused');

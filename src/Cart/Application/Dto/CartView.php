@@ -20,6 +20,8 @@ final readonly class CartView
         public string $subtotal,
         public bool $orderable,
         public array $refusals = [],
+        /** What the prices are in: the shopper's currency. Null for an empty cart. */
+        public ?string $currency = null,
     ) {}
 
     public static function empty(): self

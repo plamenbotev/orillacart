@@ -1,0 +1,13 @@
+{#
+ # The currency switcher. codes: the currencies offered, the shop's first; current: the shopper's; parameter: the
+ # query argument that chooses one. Without the storefront script, the button sends the form.
+ #}
+<form class="orillacart-currency-switcher" method="get" data-orillacart-currency-switcher>
+    <label for="orillacart-currency">{{ __('Currency') }}</label>
+    <select id="orillacart-currency" name="{{ parameter }}">
+        {% for code in codes %}
+            <option value="{{ code }}"{{ code == current ? ' selected' }}>{{ code }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="wp-element-button orillacart-button orillacart-currency-switcher__go">{{ __('Change') }}</button>
+</form>

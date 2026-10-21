@@ -30,6 +30,7 @@ use OrillaCart\Catalog\Domain\InvalidSelection;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Extension\Cart\CheckedCart;
 use OrillaCart\Extension\Cart\CheckedLine;
+use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
@@ -57,6 +58,7 @@ final readonly class CartService
         private InstalledExtensions $extensions,
         private EventDispatcherInterface $events,
         private LoggerInterface $logger,
+        private Currencies $currencies,
     ) {}
 
     public function cart(CartOwner $owner): CartResult
@@ -403,6 +405,8 @@ final readonly class CartService
         $items = 0;
         $subtotal = Money::zero();
         $orderable = !$cart->isEmpty() && $refusals === [];
+        // In the shopper's currency, as checkout prices it.
+        $currency = $this->currencies->current();
         foreach ($quoted as [$line, $quote]) {
             if ($quote === null) {
                 $lines[] = new CartLineView($line->id(), $line->productId(), null, '', null, [], $line->quantity(), '0', '0', 0, CartLineView::UNAVAILABLE);
@@ -416,7 +420,8 @@ final readonly class CartService
                 $message !== null => CartLineView::REFUSED,
                 default => null,
             };
-            $total = Money::of($quote->unitPrice)->times($line->quantity());
+            $unitPrice = $this->currencies->price(Money::of($quote->unitPrice), $currency);
+            $total = $unitPrice->times($line->quantity());
             $lines[] = new CartLineView(
                 $line->id(),
                 $quote->productId,
@@ -425,7 +430,7 @@ final readonly class CartService
                 $quote->sku,
                 array_map(static fn(QuotedOption $option): array => ['attribute' => $option->attribute, 'option' => $option->name], $quote->options),
                 $line->quantity(),
-                $quote->unitPrice,
+                (string) $unitPrice,
                 (string) $total,
                 $quote->available,
                 $problem,
@@ -438,7 +443,7 @@ final readonly class CartService
             $orderable = $orderable && $problem === null;
         }
 
-        return new CartView($lines, $items, (string) $subtotal, $orderable, $refusals);
+        return new CartView($lines, $items, (string) $subtotal, $orderable, $refusals, $currency);
     }
 
     /**

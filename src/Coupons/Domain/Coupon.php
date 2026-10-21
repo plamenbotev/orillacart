@@ -308,8 +308,8 @@ class Coupon
             $this->perCustomerLimit !== null && $customerUses >= $this->perCustomerLimit => 'You have already used this code.',
             $this->firstOrderOnly && !$basket->firstOrder => 'This code is for a first order only.',
             $this->countries !== [] && $basket->country !== null && !\in_array($basket->country, $this->countries, true) => 'This code is not valid for your country.',
-            $this->minSubtotal !== null && $subtotal->compare(Money::of($this->minSubtotal)) < 0 => \sprintf('This code needs an order of at least %s %s.', Money::of($this->minSubtotal), $basket->currency),
-            $this->maxSubtotal !== null && $subtotal->compare(Money::of($this->maxSubtotal)) > 0 => \sprintf('This code is for orders of up to %s %s.', Money::of($this->maxSubtotal), $basket->currency),
+            $this->minSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->minSubtotal))) < 0 => \sprintf('This code needs an order of at least %s %s.', $basket->inCurrency(Money::of($this->minSubtotal)), $basket->currency),
+            $this->maxSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->maxSubtotal))) > 0 => \sprintf('This code is for orders of up to %s %s.', $basket->inCurrency(Money::of($this->maxSubtotal)), $basket->currency),
             $matching === [] => 'This code does not apply to the items in your cart.',
             $units < max(1, $this->minQuantity, $this->buyQuantity) => \sprintf('This code needs at least %d of the items it applies to.', max($this->minQuantity, $this->buyQuantity)),
             $this->kind === CouponKind::BuyGet && !$this->givesOthers() && $units < $this->buyQuantity + $this->getQuantity => \sprintf('This code needs %d of the items it applies to: %d to buy and %d it gives.', $this->buyQuantity + $this->getQuantity, $this->buyQuantity, $this->getQuantity),
@@ -327,7 +327,8 @@ class Coupon
     public function discounts(Basket $basket): array
     {
         $matching = $this->matching($basket);
-        $amount = Money::of($this->amount);
+        // A percentage is the same in any currency; an amount is the shop's.
+        $amount = \in_array($this->kind, [CouponKind::OrderAmount, CouponKind::ItemAmount], true) ? $basket->inCurrency(Money::of($this->amount)) : Money::of($this->amount);
         $discounts = [];
         switch ($this->kind) {
             case CouponKind::FreeShipping:
@@ -343,7 +344,7 @@ class Coupon
                 return array_filter($discounts, static fn(Money $discount): bool => !$discount->isZero());
             case CouponKind::BuyGet:
                 $discounts = $this->buyGet($basket);
-                $cap = $this->cap === null ? null : Money::of($this->cap);
+                $cap = $this->cap === null ? null : $basket->inCurrency(Money::of($this->cap));
 
                 return $cap === null || $discounts === [] ? $discounts : self::spread(self::atMost(self::sum($discounts), $cap), $discounts);
             case CouponKind::ItemAmount:
@@ -356,7 +357,7 @@ class Coupon
                 foreach ($matching as $index => $line) {
                     $discounts[$index] = $line->total->percent($this->amount);
                 }
-                $cap = $this->cap === null ? null : Money::of($this->cap);
+                $cap = $this->cap === null ? null : $basket->inCurrency(Money::of($this->cap));
 
                 return $cap === null ? $discounts : self::spread(self::atMost(self::sum($discounts), $cap), $discounts);
             case CouponKind::OrderAmount:

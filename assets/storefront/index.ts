@@ -68,6 +68,19 @@ function start(): void {
 	document
 		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-confirm]' )
 		.forEach( bindConfirm );
+	// Choosing a currency reloads the page in it; the button is for browsers without the script.
+	document
+		.querySelectorAll< HTMLFormElement >(
+			'form[data-orillacart-currency-switcher]'
+		)
+		.forEach( ( form ) => {
+			form.querySelector< HTMLButtonElement >(
+				'.orillacart-currency-switcher__go'
+			)?.setAttribute( 'hidden', '' );
+			form.querySelector( 'select' )?.addEventListener( 'change', () =>
+				form.requestSubmit()
+			);
+		} );
 	document
 		.querySelectorAll< HTMLFormElement >(
 			'form[data-orillacart-find-order]'

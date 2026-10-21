@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 
+use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
@@ -13,12 +14,16 @@ use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
 /**
  * The cart, checkout and account pages show one shopper's things: browsers and page caches must not keep them. A
  * receipt, the page an account is made on, and a product's page opened from a receipt to review it, have a secret
- * in their address too: never stored at all, and the address never sent on to the sites their links go to.
+ * in their address too: never stored at all, and the address never sent on to the sites their links go to. A
+ * shopper who chose another currency than the shop's sees every page priced in it: those are theirs too.
  */
 #[AsHook('template_redirect')]
 final readonly class PrivatePages
 {
-    public function __construct(private ShopLinks $links) {}
+    public function __construct(
+        private ShopLinks $links,
+        private Currencies $currencies,
+    ) {}
 
     public function __invoke(): void
     {
@@ -27,6 +32,11 @@ final readonly class PrivatePages
             header('Cache-Control: no-store, private');
             header('Referrer-Policy: no-referrer');
             header('X-Robots-Tag: noindex, nofollow');
+
+            return;
+        }
+        if ($this->currencies->current() !== $this->currencies->codes()[0]) {
+            self::private();
 
             return;
         }

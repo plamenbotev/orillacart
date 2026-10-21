@@ -22,5 +22,7 @@ final readonly class DiscountRequest
         public ?int $customerId = null,
         public ?string $email = null,
         public ?int $orderId = null,
+        /** Units of the order's currency for one of the shop's: coupons' amounts are the shop's. */
+        public string $rate = '1',
     ) {}
 }

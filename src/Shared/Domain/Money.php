@@ -16,6 +16,7 @@ final readonly class Money implements \Stringable
     /** The largest amount the columns hold, with room left for sums. */
     public const string MAX = '99999999999.9999';
 
+    private const int RATE_UNIT = 100_000_000;
     private const int UNIT = 10 ** self::DECIMALS;
     private const int MAX_UNITS = 999_999_999_999_999;
 
@@ -107,6 +108,38 @@ final readonly class Money implements \Stringable
         }
 
         return new self(self::divideRounded($this->tenThousandths * $share, 100 * self::UNIT));
+    }
+
+    /**
+     * This amount at an exchange rate: 10 at 1.95583 is 19.5583. Exact to four decimals, rounded half away from
+     * zero.
+     *
+     * @param string $rate a positive decimal with up to eight decimals
+     */
+    public function at(string $rate): self
+    {
+        return new self(self::multiplyDivide($this->tenThousandths, self::rateUnits($rate), self::RATE_UNIT));
+    }
+
+    /**
+     * This amount back from an exchange rate: 19.5583 at 1.95583 is 10.
+     *
+     * @param string $rate as at() takes it
+     */
+    public function from(string $rate): self
+    {
+        return new self(self::multiplyDivide($this->tenThousandths, self::RATE_UNIT, self::rateUnits($rate)));
+    }
+
+    /** An exchange rate in hundred-millionths: "1.95583" is 195583000. */
+    private static function rateUnits(string $rate): int
+    {
+        $units = preg_match('/^(\d{1,8})(?:\.(\d{1,8}))?$/', $rate, $parts) === 1 ? (int) ($parts[1] . str_pad($parts[2] ?? '', 8, '0')) : 0;
+        if ($units === 0) {
+            throw new RuleViolation(\sprintf('"%s" is not an exchange rate.', $rate), 'orillacart_invalid_rate');
+        }
+
+        return $units;
     }
 
     /** A percentage in ten-thousandths of a percent: "20" is 200000, "7.5" is 75000. */

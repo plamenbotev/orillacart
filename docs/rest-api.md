@@ -467,6 +467,18 @@ Public: checkout and account forms list the countries before anyone logs in.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+## /currencies
+
+### `GET /currencies`
+
+- Who: shop managers
+
+### `PUT /currencies`
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `offered` (list<OfferedCurrencyView>): at most 20 items
+
 ## /customer-groups
 
 ### `GET /customer-groups`
@@ -1901,6 +1913,12 @@ The objects fields above take.
 - `option_ids` (list<int>): each more than 0
 - `unit_price` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
 - `bundle_choices` (list<int>): at most 100 items; each more than 0
+
+### OfferedCurrencyView
+
+- `code` (string): required; matches `/^[A-Z]{3}$/`
+- `rate` (string): required; matches `/^\d{1,8}(\.\d{1,8})?$/`
+- `rounding` (string): one of decimals, whole, ninety_nine; default 'decimals'
 
 ### PriceTierData
 

@@ -22,7 +22,9 @@ use OrillaCart\Reviews\Infrastructure\WordPress\OptionReviewSettingsRepository;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Infrastructure\WordPress\OptionEngineSettingsRepository;
 use OrillaCart\Settings\Application\SettingsArchive;
+use OrillaCart\Settings\Domain\CurrencySettingsRepository;
 use OrillaCart\Settings\Domain\SettingsRepository;
+use OrillaCart\Settings\Infrastructure\WordPress\OptionCurrencySettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Shared\Files\FileDelivery;
 use OrillaCart\Storefront\Domain\StorefrontSettingsRepository;
@@ -53,6 +55,7 @@ final readonly class OptionSettingsArchive implements SettingsArchive
         private NewsletterSettingsRepository $newsletter,
         private ReviewSettingsRepository $reviews,
         private StorefrontSettingsRepository $storefront,
+        private CurrencySettingsRepository $currencies,
         private ExportChoices $exportColumns,
         private FileDelivery $downloads,
         private EngineSettingsRepository $search,
@@ -132,6 +135,7 @@ final readonly class OptionSettingsArchive implements SettingsArchive
             'newsletter' => [OptionNewsletterSettingsRepository::OPTION, fn() => $this->newsletter->save($this->newsletter->load())],
             'reviews' => [OptionReviewSettingsRepository::OPTION, fn() => $this->reviews->save($this->reviews->load())],
             'storefront' => [OptionStorefrontSettingsRepository::OPTION, fn() => $this->storefront->save($this->storefront->load())],
+            'currencies' => [OptionCurrencySettingsRepository::OPTION, fn() => $this->currencies->save($this->currencies->load())],
             'export_columns' => [OptionExportChoices::OPTION, function (): void {
                 foreach (ExportKind::cases() as $kind) {
                     $columns = $this->exportColumns->chosen($kind);

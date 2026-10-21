@@ -6,8 +6,10 @@ namespace OrillaCart\Platform\Twig;
 
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Geography\Domain\AddressFormat;
+use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Settings\Domain\CurrencyPosition;
+use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Tax\Application\TaxCalculator;
 use Twig\Extension\AbstractExtension;
@@ -28,6 +30,7 @@ final class ShopExtension extends AbstractExtension
         private readonly SettingsService $settings,
         private readonly GeographyService $geography,
         private readonly ?TaxCalculator $taxes = null,
+        private readonly ?Currencies $currencies = null,
     ) {}
 
     public function getFunctions(): array
@@ -42,6 +45,9 @@ final class ShopExtension extends AbstractExtension
             // Whether shop prices include tax, for the "incl. tax" next to them.
             new TwigFunction('prices_include_tax', fn(): bool => $this->taxes?->pricesIncludeTax() ?? false),
             new TwigFunction('slot', $this->slot(...), ['is_safe' => ['html'], 'is_variadic' => true]),
+            // The currency switcher: {% for code in shop_currencies() %}, and the one the shopper is in.
+            new TwigFunction('shop_currencies', fn(): array => $this->currencies?->codes() ?? [$this->settings->current()->currency]),
+            new TwigFunction('shopper_currency', fn(): string => $this->currencies?->current() ?? $this->settings->current()->currency),
         ];
     }
 
@@ -101,11 +107,21 @@ final class ShopExtension extends AbstractExtension
      * An amount in the shop's number format, with the currency's sign (or code) where the shop puts it. An amount
      * in another currency, such as an old order's, shows that currency's code.
      */
+    /**
+     * An amount in its currency: {{ order.total|money(order.currency) }}. Without a currency it is one of the shop's
+     * prices, shown in the currency the shopper chose, converted as the shop set: {{ product.price|money }}.
+     */
     public function money(string $amount, ?string $currency = null): string
     {
         $settings = $this->settings->current();
+        $value = Money::of($amount);
+        if ($currency === null && $this->currencies !== null) {
+            $currency = $this->currencies->current();
+            $value = $this->currencies->price($value, $currency);
+        }
+        $decimals = $currency === null || $currency === $settings->currency ? $settings->priceDecimals : new Currency($currency)->decimals();
         // Exact to the last decimal, never through a float; WordPress's locale chooses the separators.
-        $fixed = Money::of($amount)->format($settings->priceDecimals);
+        $fixed = $value->format($decimals);
         [$whole, $fraction] = explode('.', $fixed . '.');
         $negative = str_starts_with($whole, '-');
         $whole = ltrim($whole, '-');

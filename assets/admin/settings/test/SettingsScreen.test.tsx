@@ -137,6 +137,13 @@ function serve( save?: () => Promise< unknown > ) {
 				data_layer: false,
 			} );
 		}
+		if ( path === '/orillacart/v1/currencies' ) {
+			return Promise.resolve( {
+				offered: [
+					{ code: 'USD', rate: '1.08', rounding: 'decimals' },
+				],
+			} );
+		}
 		if ( path === '/orillacart/v1/review-settings' ) {
 			return Promise.resolve( { policy: 'anyone' } );
 		}
@@ -168,6 +175,9 @@ describe( 'SettingsScreen', () => {
 			'EUR'
 		);
 		expect( screen.getByLabelText( 'Weight unit' ) ).toHaveValue( 'kg' );
+		expect(
+			await screen.findByLabelText( 'Offered currency' )
+		).toHaveValue( 'USD' );
 		expect( mockedFetch ).toHaveBeenCalledWith( {
 			path: '/orillacart/v1/settings',
 		} );

@@ -26,7 +26,15 @@ final readonly class Basket
         public ?string $email = null,
         public bool $firstOrder = true,
         public ?Money $itemsSubtotal = null,
+        /** Units of the basket's currency for one of the shop's: what coupons take off, and order sizes, are the shop's. */
+        public string $rate = '1',
     ) {}
+
+    /** An amount of the shop's, in the basket's currency. */
+    public function inCurrency(Money $amount): Money
+    {
+        return $this->rate === '1' ? $amount : $amount->at($this->rate);
+    }
 
     /** What the items cost before any discount, as order size rules judge it. */
     public function subtotal(): Money
