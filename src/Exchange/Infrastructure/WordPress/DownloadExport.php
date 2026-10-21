@@ -11,8 +11,8 @@ use OrillaCart\Exchange\Application\OrdersExport;
 use OrillaCart\Exchange\Application\ProductsExport;
 use OrillaCart\Exchange\Application\SubscribersExport;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
-use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AsHook;
@@ -43,8 +43,8 @@ final readonly class DownloadExport
         $parameters = wp_unslash($_GET);
         try {
             $query = $this->orderQuery(\is_array($parameters) ? $parameters : []);
-        } catch (InvalidFields $e) {
-            wp_die(esc_html(implode(' ', array_map(static fn(array $violation): string => "{$violation['field']}: {$violation['message']}", $e->violations))), esc_html__('Export', 'orillacart'), ['response' => 422, 'back_link' => true]);
+        } catch (HttpException $e) {
+            wp_die(esc_html(self::problems($e)), esc_html__('Export', 'orillacart'), ['response' => 422, 'back_link' => true]);
         } catch (RuleViolation $e) {
             wp_die(esc_html($e->getMessage()), esc_html__('Export', 'orillacart'), ['response' => 422, 'back_link' => true]);
         }
@@ -73,11 +73,26 @@ final readonly class DownloadExport
      *
      * @param array<array-key, mixed> $parameters
      *
-     * @throws RuleViolation for filters the list would refuse
+     * @throws HttpException for filters that are not valid
+     * @throws RuleViolation  for filters the list would refuse
      */
     public function orderQuery(array $parameters): OrderQuery
     {
         return $this->input->map(array_filter($parameters, static fn(mixed $value, int|string $name): bool => !\in_array($name, self::OWN_PARAMETERS, true) && $value !== '', ARRAY_FILTER_USE_BOTH), OrderQuery::class, 'csv');
+    }
+
+    /** What was wrong with the filters, field by field. */
+    public static function problems(HttpException $e): string
+    {
+        $violations = \is_array($e->details['violations'] ?? null) ? $e->details['violations'] : [];
+        $lines = [];
+        foreach ($violations as $violation) {
+            if (\is_array($violation) && \is_string($violation['field'] ?? null) && \is_string($violation['message'] ?? null)) {
+                $lines[] = "{$violation['field']}: {$violation['message']}";
+            }
+        }
+
+        return $lines === [] ? $e->getMessage() : implode(' ', $lines);
     }
 
     private function authorize(): void
