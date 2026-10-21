@@ -66,6 +66,32 @@ test.describe( 'The admin', () => {
 		await removeCoupons( requestUtils );
 	} );
 
+	test( 'makes a gift card and changes what it has left', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( 'admin.php', 'page=orillacart-gift-cards' );
+		await page.getByLabel( 'Worth' ).fill( '25' );
+		await page.getByLabel( 'For (name)' ).fill( 'E2E Ada' );
+		await page
+			.getByRole( 'button', { name: 'Make the gift card' } )
+			.click();
+
+		await expect(
+			page.getByText( /Copy the code now/ ).first()
+		).toBeVisible();
+		await expect( page.locator( '.orillacart-gift-card-code' ) ).toHaveText(
+			/^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/
+		);
+		await page.getByLabel( 'Add, or − to take off' ).fill( '-5' );
+		await page.getByLabel( 'Why', { exact: true } ).fill( 'E2E spent' );
+		await page
+			.getByRole( 'button', { name: 'Change the balance' } )
+			.click();
+		await expect( page.getByText( 'E2E spent' ) ).toBeVisible();
+		await expect( page.getByText( /left of/ ) ).toContainText( '20' );
+	} );
+
 	test( 'adds a price rule for more items on the Price rules screen', async ( {
 		admin,
 		page,

@@ -704,6 +704,88 @@ test.describe( 'A visitor', () => {
 		}
 	} );
 
+	test( 'pays part of the order with a gift card', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const issued = await requestUtils.rest< { code: string } >( {
+			method: 'POST',
+			path: '/orillacart/v1/gift-cards',
+			data: { amount: '20' },
+		} );
+		await page.goto( shop.miniCartUrl );
+		await page
+			.locator( '.orillacart-product-card', { hasText: 'E2E Lamp' } )
+			.getByRole( 'button', { name: /Add to cart/ } )
+			.click();
+		await expect(
+			page
+				.locator( '.orillacart-mini-cart--panel' )
+				.getByText( '1 item in cart.' )
+		).toBeVisible();
+		await page.goto( shop.urls.checkout );
+		await fillBilling( page, 'e2e-gift-card@example.com' );
+		await page
+			.getByLabel( 'Gift card', { exact: true } )
+			.fill( issued.code );
+		await page.locator( '[data-orillacart-apply-gift-card]' ).click();
+		await expect( page.locator( '.orillacart-amount-due' ) ).toContainText(
+			'15.00'
+		);
+		await page.getByRole( 'radio', { name: 'Bank transfer' } ).check();
+		await page.getByRole( 'button', { name: 'Place order' } ).click();
+		await expect(
+			page.getByRole( 'heading', { name: 'Thank you for your order' } )
+		).toBeVisible();
+		await expect(
+			page.locator( '.orillacart-gift-card-paid' ).first()
+		).toContainText( '20.00' );
+	} );
+
+	test( 'chooses another currency and sees the prices in it', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		await requestUtils.rest( {
+			method: 'PUT',
+			path: '/orillacart/v1/currencies',
+			data: {
+				offered: [ { code: 'USD', rate: '2', rounding: 'decimals' } ],
+			},
+		} );
+		try {
+			await page.goto(
+				`${ shop.miniCartUrl }${
+					shop.miniCartUrl.includes( '?' ) ? '&' : '?'
+				}orillacart_currency=USD`
+			);
+			await expect( page ).not.toHaveURL( /orillacart_currency/ );
+			const lamp = page.locator( '.orillacart-product-card', {
+				hasText: 'E2E Lamp',
+			} );
+			await expect( lamp.locator( '.orillacart-price' ) ).toContainText(
+				'60.00 USD'
+			);
+			await lamp.getByRole( 'button', { name: /Add to cart/ } ).click();
+			await expect(
+				page
+					.locator( '.orillacart-mini-cart--panel' )
+					.getByText( '1 item in cart.' )
+			).toBeVisible();
+			await page.goto( shop.urls.checkout );
+			await fillBilling( page, 'e2e-currency@example.com' );
+			await expect( page.locator( '.orillacart-total' ) ).toContainText(
+				'70.00 USD'
+			);
+		} finally {
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: '/orillacart/v1/currencies',
+				data: { offered: [] },
+			} );
+		}
+	} );
+
 	test( 'collects the order at one of the shop’s places', async ( {
 		page,
 		requestUtils,
