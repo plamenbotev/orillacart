@@ -18,6 +18,13 @@ Decisions:
 - Filters: category (with subcategories), brand, the shop's attribute filters (Size: M, L), price range, in stock
   only; the block can also be fixed to featured or on-sale products. Each value shows how many products it
   would leave; values within one filter are OR, filters are AND, and a filter's own counts ignore its own choice.
+- Filters by category (item 99): a filter shows only where the products in view have values for it, in every
+  category or only in those chosen (Settings → Shop filters, "Shows in") and those below them; the whole shop
+  shows only the filters for every category. A category may order its filters on its edit screen ("Filters
+  here"); one that orders none takes the order of the nearest category above it that does, or the shop's.
+  `ShopSearch::filters()` chooses and orders them. A filter whose products in view have a single value is left
+  out unless the shopper chose it (Settings → Storefront, on by default). The Product filters block on a
+  category's or tag's own page counts and sends its choices within that one.
 - Sorts: the shop's order, newest, name, price both ways, and best match when searching.
 - The form is a plain GET form, so it works without JavaScript; the script swaps the list region over HTML and
   keeps the URL (`?q=lamp&category=lamps&f[size][]=m&price_min=10&price_max=50`), so results can be shared.

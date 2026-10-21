@@ -134,6 +134,20 @@ export function StorefrontCard() {
 						/>
 						<CheckboxControl
 							label={ __(
+								'Leave out a shop filter with a single value',
+								'orillacart'
+							) }
+							help={ __(
+								'When every product in view has the same value for a filter, such as all lamps in Glass, the filter narrows nothing and is not shown.',
+								'orillacart'
+							) }
+							checked={ settings.hide_single_value_filters }
+							onChange={ ( checked ) =>
+								save( { hide_single_value_filters: checked } )
+							}
+						/>
+						<CheckboxControl
+							label={ __(
 								'Show the products a shopper viewed lately',
 								'orillacart'
 							) }

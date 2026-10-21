@@ -252,6 +252,71 @@ abstract class CatalogSearchContract extends RestTestCase
         unset($GLOBALS['post']);
     }
 
+    public function testAFilterShowsInItsCategoriesAndACategoryOrdersItsFilters(): void
+    {
+        $this->actAs('administrator');
+        $clothing = $this->term('Clothing', ProductCategoryTaxonomy::NAME);
+        $tops = $this->term('Tops', ProductCategoryTaxonomy::NAME, $clothing);
+        wp_set_object_terms($this->shirt, [$tops], ProductCategoryTaxonomy::NAME);
+        wp_set_object_terms($this->hoodie, [$clothing], ProductCategoryTaxonomy::NAME);
+        $this->work();
+        $this->request('POST', '/search-filters', ['label' => 'Size', 'key' => 'size', 'attributes' => ['Size', 'Размер']], nonce: true);
+        $colour = $this->data($this->request('POST', '/search-filters', ['label' => 'Colour', 'key' => 'colour', 'attributes' => ['Colour'], 'position' => 1, 'category_ids' => [$clothing]], nonce: true));
+        self::assertSame([$clothing], $colour['category_ids'] ?? null);
+        self::assertIsInt($colour['id']);
+        self::assertSame(422, $this->request('POST', '/search-filters', ['label' => 'Fit', 'key' => 'fit', 'attributes' => ['Fit'], 'category_ids' => [0]], nonce: true)->get_status());
+
+        ob_start();
+        do_action(ProductCategoryTaxonomy::NAME . '_edit_form_fields', get_term($tops));
+        $field = (string) ob_get_clean();
+        self::assertMatchesRegularExpression('#name="orillacart_filter_order\[\d+\]" value=""> Size.*> Colour#s', $field, 'both show in Tops, below Clothing');
+        $_POST = ['orillacart_filter_order' => [(string) $colour['id'] => '0', '999' => '1']];
+        do_action('edited_' . ProductCategoryTaxonomy::NAME, $clothing, 0, []);
+        $_POST = [];
+        wp_set_current_user(0);
+
+        $shop = do_blocks('<!-- wp:orillacart/products /-->');
+        self::assertStringContainsString('name="f[size][]"', $shop);
+        self::assertStringNotContainsString('name="f[colour][]"', $shop, 'colour is for clothing');
+        $_GET = ['category' => 'tops'];
+        $tops = do_blocks('<!-- wp:orillacart/products /-->');
+        $_GET = [];
+        self::assertSame(['Shirt'], self::names($tops));
+        $at = static fn(string $key): int|false => strpos($tops, "name=\"f[{$key}][]\"");
+        self::assertIsInt($at('colour'));
+        self::assertLessThan($at('size'), $at('colour'), 'Tops orders nothing: Clothing\'s order, colour first');
+
+        global $wp_query;
+        $shown = $wp_query;
+        $wp_query = new \WP_Query([ProductCategoryTaxonomy::NAME => 'clothing']);
+        $sidebar = do_blocks('<!-- wp:orillacart/product-filters /-->');
+        $wp_query = $shown;
+        self::assertStringContainsString('name="f[colour][]"', $sidebar, 'the filters block on Clothing\'s own page');
+        $link = get_term_link($clothing, ProductCategoryTaxonomy::NAME);
+        self::assertIsString($link);
+        self::assertStringContainsString('action="' . esc_url($link) . '"', $sidebar);
+    }
+
+    public function testAFilterWithASingleValueInViewIsLeftOutUnlessTheShopShowsIt(): void
+    {
+        $stored = get_option('orillacart_storefront');
+        $_GET = ['category' => 'lighting'];
+        try {
+            self::assertStringNotContainsString('name="brand[]"', do_blocks('<!-- wp:orillacart/products /-->'), 'every lamp is Acme');
+            $_GET = ['category' => 'lighting', 'brand' => [(string) $this->acme]];
+            self::assertStringContainsString('name="brand[]" value="' . $this->acme . '" checked', do_blocks('<!-- wp:orillacart/products /-->'), 'chosen, to be unchosen');
+
+            $this->actAs('administrator');
+            self::assertSame(200, $this->request('PUT', '/storefront-settings', ['hide_single_value_filters' => false], nonce: true)->get_status());
+            wp_set_current_user(0);
+            $_GET = ['category' => 'lighting'];
+            self::assertStringContainsString('name="brand[]"', do_blocks('<!-- wp:orillacart/products /-->'));
+        } finally {
+            $_GET = [];
+            $stored === false ? delete_option('orillacart_storefront') : update_option('orillacart_storefront', $stored);
+        }
+    }
+
     public function testUnpublishedAndDeletedProductsLeaveTheIndex(): void
     {
         wp_update_post(['ID' => $this->book, 'post_status' => 'draft']);
@@ -297,7 +362,6 @@ abstract class CatalogSearchContract extends RestTestCase
         self::assertSame(0, $this->indexing()->status()->due, 'still in stock: nothing the index shows changed');
     }
 
-    // Last: the shop reads its filters once a request, so a test that makes filters renders it before this does.
     public function testTagsAreWordsAndAFilterAndARenamedTagQueuesItsProducts(): void
     {
         $this->actAs('administrator');

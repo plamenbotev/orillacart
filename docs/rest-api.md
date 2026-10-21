@@ -1496,6 +1496,7 @@ Switches the search engine after checking OpenSearch answers; the view says what
   - `key` (string): required; matches `/^[a-z0-9][a-z0-9_-]{0,39}$/`
   - `attributes` (list<string>): required; 1 to 20 items; each at most 100 characters
   - `position` (int): 0 or more; default 0
+  - `category_ids` (list<int>): at most 100 items; each more than 0
 
 ### `GET /search-filters/attributes`
 
@@ -1509,6 +1510,7 @@ Switches the search engine after checking OpenSearch answers; the view says what
   - `key` (string): required; matches `/^[a-z0-9][a-z0-9_-]{0,39}$/`
   - `attributes` (list<string>): required; 1 to 20 items; each at most 100 characters
   - `position` (int): 0 or more; default 0
+  - `category_ids` (list<int>): at most 100 items; each more than 0
 
 ### `DELETE /search-filters/{id}`
 
@@ -1752,6 +1754,7 @@ Saves the cells of the stock sheet that changed, all or none.
   - `wishlist` (string): one of guests, accounts, off; default 'guests'
   - `recently_viewed` (bool): default true
   - `data_layer` (bool): default false
+  - `hide_single_value_filters` (bool): default true
 
 ## /tax
 

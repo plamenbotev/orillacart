@@ -7,6 +7,7 @@ export interface StorefrontSettings {
 	wishlist: 'guests' | 'accounts' | 'off';
 	recently_viewed: boolean;
 	data_layer: boolean;
+	hide_single_value_filters: boolean;
 }
 
 const PATH = '/orillacart/v1/storefront-settings';

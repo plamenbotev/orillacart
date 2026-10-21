@@ -87,6 +87,9 @@ function serve( save?: () => Promise< unknown > ) {
 				workers: 0,
 			} );
 		}
+		if ( path.startsWith( '/wp/v2/orillacart_category' ) ) {
+			return Promise.resolve( [ { id: 5, name: 'Clothing' } ] );
+		}
 		if ( path.startsWith( '/orillacart/v1/search-filters' ) ) {
 			if ( path.endsWith( '/attributes' ) ) {
 				return Promise.resolve( [ 'Colour', 'Size' ] );
@@ -101,6 +104,7 @@ function serve( save?: () => Promise< unknown > ) {
 								key: 'size',
 								attributes: [ 'Size', 'Размер' ],
 								position: 0,
+								category_ids: [],
 							},
 						]
 			);
@@ -135,6 +139,7 @@ function serve( save?: () => Promise< unknown > ) {
 				wishlist: 'guests',
 				recently_viewed: true,
 				data_layer: false,
+				hide_single_value_filters: true,
 			} );
 		}
 		if ( path === '/orillacart/v1/currencies' ) {
@@ -376,6 +381,13 @@ describe( 'SettingsScreen', () => {
 			attributes[ attributes.length - 1 ] as HTMLElement,
 			'Colour{Enter}'
 		);
+		const shows = screen.getAllByLabelText(
+			'Shows in (empty: every category)'
+		);
+		await user.type(
+			shows[ shows.length - 1 ] as HTMLElement,
+			'Clothing{Enter}'
+		);
 		await user.click(
 			screen.getByRole( 'button', { name: 'Add filter' } )
 		);
@@ -393,6 +405,7 @@ describe( 'SettingsScreen', () => {
 				key: 'colour',
 				attributes: [ 'Colour' ],
 				position: 0,
+				category_ids: [ 5 ],
 			},
 		} );
 	} );

@@ -15,6 +15,7 @@ use OrillaCart\Search\Application\Dto\SearchResult;
 use OrillaCart\Search\Application\Dto\SearchSort;
 use OrillaCart\Search\Application\ShopSearch;
 use OrillaCart\Search\Domain\Facets;
+use OrillaCart\Storefront\Application\StorefrontSettingsService;
 
 /**
  * What a shopper asks the shop page for, read from the address, as the Products and Product filters blocks
@@ -25,16 +26,16 @@ use OrillaCart\Search\Domain\Facets;
  * @phpstan-type Choices array{category: string, category_id: ?int, tag: string, tag_id: ?int, search: string, brands: list<int>, options: array<string, list<string>>, price_min: ?string, price_max: ?string, in_stock: bool, sort: string, page: int}
  * @phpstan-type Panel array{filters: list<array{label: string, name: string, values: list<array{value: string, label: string, count: int, checked: bool}>}>, price: array{min: ?string, max: ?string, low: string, high: string}|null, in_stock: bool, filtered: bool, clear_url: string}
  */
-final class ShopListing
+final readonly class ShopListing
 {
     public const array SORTS = ['order', 'newest', 'name', 'price_asc', 'price_desc'];
     /** The address's arguments for the shop's filters; the rest are words, category, tag, sort and page. */
     public const array FILTER_ARGUMENTS = ['brand', 'f', 'price_min', 'price_max', 'in_stock'];
 
-    /** @var list<SearchFilterView>|null the shop's filters, read once per request */
-    private ?array $definitions = null;
-
-    public function __construct(private readonly ShopSearch $search) {}
+    public function __construct(
+        private ShopSearch $search,
+        private StorefrontSettingsService $settings,
+    ) {}
 
     /**
      * @param string $fixedCategory a category slug the block always shows, instead of the address's
@@ -73,7 +74,7 @@ final class ShopListing
      */
     public function search(array $choices, int $offset, int $limit, bool $facets, bool $featuredOnly = false, bool $onSaleOnly = false): SearchResult
     {
-        $options = $this->definitions();
+        $options = $this->definitions($choices['category_id']);
 
         return $this->search->search(new SearchQuery(
             text: $choices['search'] === '' ? null : $choices['search'],
@@ -104,10 +105,11 @@ final class ShopListing
     public function panel(array $choices, SearchResult $result): array
     {
         $groups = [['label' => __('Brand', 'orillacart'), 'key' => Facet::BRANDS, 'name' => 'brand[]', 'chosen' => array_map(strval(...), $choices['brands'])]];
-        foreach ($this->definitions() as $filter) {
+        foreach ($this->definitions($choices['category_id']) as $filter) {
             $groups[] = ['label' => $filter->label, 'key' => $filter->key, 'name' => "f[{$filter->key}][]", 'chosen' => $choices['options'][$filter->key] ?? []];
         }
         $filters = [];
+        $hideSingle = $this->settings->current()->hideSingleValueFilters;
         foreach ($groups as $group) {
             $values = array_map(static fn(FacetCount $count): array => [
                 'value' => $count->value,
@@ -115,7 +117,9 @@ final class ShopListing
                 'count' => $count->count,
                 'checked' => \in_array($count->value, $group['chosen'], true),
             ], $result->facet($group['key'])->values ?? []);
-            if ($values !== []) {
+            // One value narrows nothing, unless the shopper chose it and may unchoose it.
+            $narrows = \count($values) > 1 || !$hideSingle || $group['chosen'] !== [];
+            if ($values !== [] && $narrows) {
                 $filters[] = ['label' => $group['label'], 'name' => $group['name'], 'values' => $values];
             }
         }
@@ -180,9 +184,13 @@ final class ShopListing
     /**
      * @return list<SearchFilterView>
      */
-    private function definitions(): array
+    private function definitions(?int $categoryId): array
     {
-        return $this->definitions ??= $this->search->filters();
+        if ($categoryId === null || $categoryId === 0) {
+            return $this->search->filters();
+        }
+
+        return $this->search->filters($categoryId, array_values(array_map(intval(...), get_ancestors($categoryId, ProductCategoryTaxonomy::NAME, 'taxonomy'))));
     }
 
     /** The id of the term with the slug; an unknown one is 0, which finds nothing rather than everything. */

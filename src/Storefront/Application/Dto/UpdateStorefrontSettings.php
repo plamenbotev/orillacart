@@ -16,5 +16,6 @@ final readonly class UpdateStorefrontSettings
         public string $wishlist = 'guests',
         public bool $recentlyViewed = true,
         public bool $dataLayer = false,
+        public bool $hideSingleValueFilters = true,
     ) {}
 }

@@ -17,10 +17,12 @@ final readonly class StorefrontSettingsView
         public string $wishlist,
         public bool $recentlyViewed,
         public bool $dataLayer,
+        /** The shop's filters leave out one whose products in view have a single value. */
+        public bool $hideSingleValueFilters,
     ) {}
 
     public static function of(StorefrontSettings $settings): self
     {
-        return new self($settings->structuredData, $settings->sharingTags->value, $settings->wishlist->value, $settings->recentlyViewed, $settings->dataLayer);
+        return new self($settings->structuredData, $settings->sharingTags->value, $settings->wishlist->value, $settings->recentlyViewed, $settings->dataLayer, $settings->hideSingleValueFilters);
     }
 }

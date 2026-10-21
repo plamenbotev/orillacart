@@ -14,6 +14,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toApiError } from '../shared/api';
+import { fetchTerms, type Named, TermTokens } from '../shared/CatalogTokens';
 import {
 	deleteFilter,
 	fetchAttributeNames,
@@ -28,6 +29,7 @@ const EMPTY: SearchFilterInput = {
 	key: '',
 	attributes: [],
 	position: 0,
+	category_ids: [],
 };
 
 /**
@@ -50,16 +52,22 @@ function keyOf( label: string ): string {
 export function FiltersCard() {
 	const [ filters, setFilters ] = useState< SearchFilter[] | null >( null );
 	const [ names, setNames ] = useState< string[] >( [] );
+	const [ categories, setCategories ] = useState< Named[] >( [] );
 	const [ message, setMessage ] = useState< {
 		status: 'success' | 'error';
 		text: string;
 	} | null >( null );
 
 	useEffect( () => {
-		Promise.all( [ fetchFilters(), fetchAttributeNames() ] )
-			.then( ( [ loaded, attributeNames ] ) => {
+		Promise.all( [
+			fetchFilters(),
+			fetchAttributeNames(),
+			fetchTerms( 'orillacart_category' ),
+		] )
+			.then( ( [ loaded, attributeNames, terms ] ) => {
 				setFilters( loaded );
 				setNames( attributeNames );
+				setCategories( terms );
 			} )
 			.catch( ( reason: unknown ) =>
 				setMessage( {
@@ -80,7 +88,7 @@ export function FiltersCard() {
 			<CardBody>
 				<p>
 					{ __(
-						'Shoppers narrow the shop page by these, with how many products each choice leaves. A filter covers attributes by name, such as Size and Размер, so products and attribute sets that name an attribute differently still share it.',
+						'Shoppers narrow the shop page by these, with how many products each choice leaves. A filter covers attributes by name, such as Size and Размер, so products and attribute sets that name an attribute differently still share it. A filter shows only where the products have values for it; it can also be kept to some categories, and a category can order its filters on its own edit screen.',
 						'orillacart'
 					) }
 				</p>
@@ -101,6 +109,7 @@ export function FiltersCard() {
 								key={ filter.id }
 								filter={ filter }
 								names={ names }
+								categories={ categories }
 								onSaved={ ( saved ) => {
 									setFilters(
 										filters.map( ( current ) =>
@@ -132,6 +141,7 @@ export function FiltersCard() {
 							key={ `new-${ filters.length }` }
 							filter={ null }
 							names={ names }
+							categories={ categories }
 							onSaved={ ( saved ) => {
 								setFilters( [ ...filters, saved ] );
 								setMessage( {
@@ -152,12 +162,14 @@ export function FiltersCard() {
 function FilterRow( {
 	filter,
 	names,
+	categories,
 	onSaved,
 	onDeleted,
 	onError,
 }: {
 	filter: SearchFilter | null;
 	names: string[];
+	categories: Named[];
 	onSaved: ( filter: SearchFilter ) => void;
 	onDeleted: () => void;
 	onError: ( reason: unknown ) => void;
@@ -211,6 +223,19 @@ function FilterRow( {
 					}
 				/>
 			</FlexItem>
+			<FlexItem isBlock>
+				<TermTokens
+					label={ __(
+						'Shows in (empty: every category)',
+						'orillacart'
+					) }
+					terms={ categories }
+					ids={ draft.category_ids }
+					onChange={ ( ids ) =>
+						setDraft( { ...draft, category_ids: ids } )
+					}
+				/>
+			</FlexItem>
 			<FlexItem>
 				<TextControl
 					__next40pxDefaultSize
@@ -242,6 +267,7 @@ function FilterRow( {
 							key: draft.key,
 							attributes: draft.attributes,
 							position: draft.position,
+							category_ids: draft.category_ids,
 						} )
 							.then( ( saved ) => {
 								setDraft( filter === null ? EMPTY : saved );

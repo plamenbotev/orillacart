@@ -28,6 +28,7 @@ final readonly class OptionStorefrontSettingsRepository implements StorefrontSet
             \is_string($stored['wishlist'] ?? null) ? WishlistPolicy::tryFrom($stored['wishlist']) ?? WishlistPolicy::Guests : WishlistPolicy::Guests,
             ($stored['recently_viewed'] ?? true) !== false,
             ($stored['data_layer'] ?? false) === true,
+            ($stored['hide_single_value_filters'] ?? true) !== false,
         );
     }
 
@@ -39,6 +40,7 @@ final readonly class OptionStorefrontSettingsRepository implements StorefrontSet
             'wishlist' => $settings->wishlist->value,
             'recently_viewed' => $settings->recentlyViewed,
             'data_layer' => $settings->dataLayer,
+            'hide_single_value_filters' => $settings->hideSingleValueFilters,
         ], true);
     }
 

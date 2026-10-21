@@ -47,7 +47,7 @@ final readonly class SearchFilters
     public function create(SaveSearchFilter $command): SearchFilterView
     {
         $this->requireFreeKey($command->key, null);
-        $filter = new SearchFilter($command->label, $command->key, $command->attributes, $command->position);
+        $filter = new SearchFilter($command->label, $command->key, $command->attributes, $command->position, $command->categoryIds);
         $this->filters->save($filter);
 
         return SearchFilterView::fromFilter($filter);
@@ -61,10 +61,46 @@ final readonly class SearchFilters
     {
         $filter = $this->get($id);
         $this->requireFreeKey($command->key, $id);
-        $filter->change($command->label, $command->key, $command->attributes, $command->position);
+        $filter->change($command->label, $command->key, $command->attributes, $command->position, $command->categoryIds);
         $this->filters->save($filter);
 
         return SearchFilterView::fromFilter($filter);
+    }
+
+    /**
+     * Each filter's place among a category's: by filter id, null for the shop's order there.
+     *
+     * @return array<int, int> those the category orders
+     */
+    public function orderIn(int $categoryId): array
+    {
+        $places = [];
+        foreach ($this->filters->all() as $filter) {
+            $place = $filter->positionIn($categoryId);
+            if ($place !== null) {
+                $places[$filter->id()] = $place;
+            }
+        }
+
+        return $places;
+    }
+
+    /**
+     * Orders a category's filters its own way; a filter given null, or not given, takes the shop's order there.
+     *
+     * @param array<int, ?int> $places by filter id
+     *
+     * @throws SearchRuleViolation
+     */
+    public function order(int $categoryId, array $places): void
+    {
+        foreach ($this->filters->all() as $filter) {
+            $place = $places[$filter->id()] ?? null;
+            if ($filter->positionIn($categoryId) !== $place) {
+                $filter->placeIn($categoryId, $place);
+                $this->filters->save($filter);
+            }
+        }
     }
 
     /**
