@@ -9,7 +9,7 @@ use OrillaCart\Payment\Domain\Refund;
 final readonly class RefundView
 {
     /**
-     * @param 'provider'|'manual'|'external' $method
+     * @param 'provider'|'manual'|'external'|'store_credit' $method
      * @param 'pending'|'accepted'|'done'|'failed'      $status
      * @param list<array{line: int, quantity: int}> $lines
      */

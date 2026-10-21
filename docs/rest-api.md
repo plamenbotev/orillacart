@@ -272,6 +272,16 @@ The checkout page tells of the customer at checkout with their cart: the email s
 
 - Who: anyone; needs a nonce (not with an API key)
 
+### `POST /cart/gift-cards`
+
+- Who: anyone; needs a nonce (not with an API key); at most 10 every ten minutes from each address
+- Body (JSON):
+  - `code` (string): required; not empty; at most 40 characters
+
+### `DELETE /cart/gift-cards/{code}`
+
+- Who: anyone; needs a nonce (not with an API key)
+
 ### `POST /cart/items`
 
 - Who: anyone; needs a nonce (not with an API key)
@@ -290,6 +300,12 @@ The checkout page tells of the customer at checkout with their cart: the email s
 ### `DELETE /cart/items/{id}`
 
 - Who: anyone; needs a nonce (not with an API key)
+
+### `PUT /cart/store-credit`
+
+- Who: anyone; needs a nonce (not with an API key)
+- Body (JSON):
+  - `use` (bool): default true
 
 ## /change-log
 
@@ -543,6 +559,17 @@ The shop saves a new address in a customer's address book, or changes one.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+### `GET /customers/{id}/store-credit`
+
+- Who: shop managers
+
+### `POST /customers/{id}/store-credit`
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `amount` (string): required; matches `/^-?\d{1,11}(\.\d{1,4})?$/`
+  - `note` (string): required; not empty; at most 255 characters
+
 ## /download-delivery
 
 ### `GET /download-delivery`
@@ -579,7 +606,7 @@ Where download files are kept and whether the web server would hand them out by 
   - `from_name` (string|null): at most 100 characters
   - `from_address` (string|null): an email
   - `shop_address` (string|null): an email
-  - `disabled` (list<string>): each one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, new_order, order_attention, payment_failed, refund_made, low_stock
+  - `disabled` (list<string>): each one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, gift_card, new_order, order_attention, payment_failed, refund_made, low_stock
   - `reminder_days` (int): 1 to 60; default 3
   - `cart_reminder_hours` (int): 1 to 168; default 4
   - `cart_reminder_coupon` (string|null): at most 100 characters
@@ -613,7 +640,7 @@ The email a template makes, saved or as edited; a template that fails as it rend
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `source` (string|null): at most 100000 characters
-  - `kind` (string|null): one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, new_order, order_attention, payment_failed, refund_made, low_stock, account_confirm, account_exists
+  - `kind` (string|null): one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, gift_card, new_order, order_attention, payment_failed, refund_made, low_stock, account_confirm, account_exists
   - `order` (int|null): more than 0
 
 ### `POST /email-templates/{name}/test`
@@ -623,7 +650,7 @@ Sends the preview to whoever asks.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `source` (string|null): at most 100000 characters
-  - `kind` (string|null): one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, new_order, order_attention, payment_failed, refund_made, low_stock, account_confirm, account_exists
+  - `kind` (string|null): one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, gift_card, new_order, order_attention, payment_failed, refund_made, low_stock, account_confirm, account_exists
   - `order` (int|null): more than 0
 
 ## /exports
@@ -647,6 +674,63 @@ Sends the preview to whoever asks.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `columns` (list<string>): at least 1 items
+
+## /gift-cards
+
+### `GET /gift-cards`
+
+- Who: shop managers
+- Query:
+  - `search` (string): at most 100 characters
+  - `page` (int): more than 0; default 1
+  - `per_page` (int): 1 to 100; default 20
+
+### `POST /gift-cards`
+
+A new gift card; the answer holds its code, shown this once.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `amount` (string): required; matches `/^\d{1,11}(\.\d{1,4})?$/`
+  - `expires_at` (string|null): date time
+  - `recipient_name` (string): at most 100 characters
+  - `recipient_email` (string): an email; at most 254 characters
+  - `message` (string): at most 500 characters
+
+### `GET /gift-cards/settings`
+
+- Who: shop managers
+
+### `PUT /gift-cards/settings`
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `product_ids` (list<int>): at most 100 items; each more than 0
+  - `valid_months` (int|null): 1 to 120
+
+### `GET /gift-cards/{id}`
+
+- Who: shop managers
+
+### `PUT /gift-cards/{id}`
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `active` (bool): default true
+  - `expires_at` (string|null): date time
+
+### `POST /gift-cards/{id}/adjustments`
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `amount` (string): required; matches `/^-?\d{1,11}(\.\d{1,4})?$/`
+  - `note` (string): required; not empty; at most 255 characters
+
+### `POST /gift-cards/{id}/code`
+
+A new code for a gift card, sent to whom it is for; the old one pays no more.
+
+- Who: shop managers; needs a nonce (not with an API key)
 
 ## /imports
 
@@ -911,6 +995,7 @@ Tells the customer the order is ready at the shop's place they collect it from.
   - `restock` (bool): default false
   - `reason` (string): at most 2000 characters
   - `outside` (bool): default false
+  - `store_credit` (bool): default false
 
 ### `POST /orders/{id}/restock`
 

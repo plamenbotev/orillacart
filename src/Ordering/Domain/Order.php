@@ -180,6 +180,14 @@ class Order
     #[ORM\Column(type: 'json')]
     private array $discounts = [];
 
+    /** What gift cards and store credit paid of the total; the rest is paid the way the customer chose. */
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+    private string $giftCardTotal = '0';
+
+    /** @var list<array{label: string, amount: string}> each gift card or store credit that paid, as the customer saw it */
+    #[ORM\Column(type: 'json')]
+    private array $giftCards = [];
+
     /** What was given back, in all. */
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
     private string $refundedTotal = '0';
@@ -371,6 +379,45 @@ class Order
     public function total(): Money
     {
         return Money::of($this->total);
+    }
+
+    /** What gift cards and store credit paid of the total. */
+    public function giftCardTotal(): Money
+    {
+        return Money::of($this->giftCardTotal);
+    }
+
+    /** @return list<array{label: string, amount: Money}> */
+    public function giftCards(): array
+    {
+        return array_map(static fn(array $row): array => ['label' => $row['label'], 'amount' => Money::of($row['amount'])], $this->giftCards);
+    }
+
+    /** What is left to pay the way the customer chose: the total, less what gift cards paid. */
+    public function amountDue(): Money
+    {
+        return $this->total()->subtract($this->giftCardTotal());
+    }
+
+    /**
+     * Gift cards or store credit pay part of the total, or all of it, as checkout took it from them. Only an order
+     * waiting for its payment takes them, once.
+     *
+     * @param list<array{label: string, amount: Money}> $cards
+     *
+     * @throws OrderRuleViolation
+     */
+    public function payWithGiftCards(array $cards): void
+    {
+        $sum = array_reduce($cards, static fn(Money $sum, array $card): Money => $sum->add($card['amount']), Money::zero());
+        if ($this->status !== OrderStatus::PendingPayment || $this->paidAt !== null || $this->giftCards !== []) {
+            throw new OrderRuleViolation(\sprintf('Order #%d takes gift cards only when it is placed.', $this->id()), 'orillacart_order_gift_cards');
+        }
+        if ($sum->isNegative() || $sum->compare($this->total()) > 0) {
+            throw new OrderRuleViolation('Gift cards pay no more than the order costs.', 'orillacart_order_gift_cards');
+        }
+        $this->giftCardTotal = $sum->toFixed();
+        $this->giftCards = array_map(static fn(array $card): array => ['label' => mb_substr($card['label'], 0, 100), 'amount' => $card['amount']->toFixed()], $cards);
     }
 
     /** What coupons took off the items, in all. */
@@ -858,7 +905,7 @@ class Order
      * @param list<OrderDiscount> $discounts the coupons, priced again
      * @param list<OrderFee>      $fees      the fees, priced again
      *
-     * @throws OrderRuleViolation for an order not on hold, or one without items
+     * @throws OrderRuleViolation for an order not on hold, one without items, or one gift cards paid part of
      */
     public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, array $taxes, Money $subtotal, Money $itemsTax, Money $total, ?Money $discountTotal = null, array $discounts = [], bool $pricesIncludeTax = false, array $fees = [], ?Money $feesTax = null): void
     {
@@ -867,6 +914,9 @@ class Order
         $this->requireOnHold();
         if ($lines === []) {
             throw new OrderRuleViolation('An order has at least one item.', 'orillacart_empty_order');
+        }
+        if ($this->giftCards !== []) {
+            throw new OrderRuleViolation(\sprintf('Gift cards paid part of order #%d: its items stay as they are; cancel it and place another to change them.', $this->id()), 'orillacart_order_gift_cards');
         }
         $shippingTotal = $shipping->price ?? Money::zero();
         $shippingTax = $shipping->tax ?? Money::zero();
@@ -945,7 +995,8 @@ class Order
         }
         $this->transactionId = $transactionId;
         $this->paidAt = $at;
-        $this->paidAmount = ($amount ?? $this->total())->toFixed();
+        // What a provider took, and what gift cards paid besides.
+        $this->paidAmount = ($amount === null ? $this->total() : $amount->add($this->giftCardTotal()))->toFixed();
 
         return true;
     }
@@ -1128,7 +1179,8 @@ class Order
         $this->status = OrderStatus::Processing;
         $this->transactionId = $transactionId;
         $this->paidAt = $at;
-        $this->paidAmount = ($amount ?? $this->total())->toFixed();
+        // What a provider took, and what gift cards paid besides.
+        $this->paidAmount = ($amount === null ? $this->total() : $amount->add($this->giftCardTotal()))->toFixed();
     }
 
     public function pricesIncludeTax(): bool

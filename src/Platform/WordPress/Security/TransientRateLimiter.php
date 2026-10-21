@@ -19,6 +19,7 @@ final readonly class TransientRateLimiter implements RateLimiter
         'accounts' => [5, 3600],
         'account_links' => [10, 3600],
         'coupons' => [20, 600],
+        'gift_cards' => [10, 600],
         'checkout' => [30, 600],
         'session' => [120, 600],
         'receipts' => [60, 600],

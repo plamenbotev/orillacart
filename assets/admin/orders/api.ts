@@ -123,6 +123,10 @@ export interface Order {
 	shipping_refunded: boolean;
 	/** What coupons took off the items; the subtotal is before it. */
 	discount_total: string;
+	/** What gift cards and store credit paid of the total, each of them, and the rest paid the chosen way. */
+	gift_card_total?: string;
+	gift_cards?: { label: string; amount: string }[];
+	amount_due?: string;
 	discounts: {
 		code: string;
 		description: string;
@@ -158,7 +162,7 @@ export interface OrderAction {
 export interface Refund {
 	id: number;
 	/** Through the gateway, recorded as made outside the shop, or made at the provider's own site. */
-	method: 'provider' | 'manual' | 'external';
+	method: 'provider' | 'manual' | 'external' | 'store_credit';
 	/**
 	 * Pending: the provider did not answer; trying again never refunds twice. Accepted: the provider sends the
 	 * money later; the order learns of it once it is done.
@@ -192,6 +196,8 @@ export interface NewRefund {
 	restock: boolean;
 	reason: string;
 	outside: boolean;
+	/** The money goes back as store credit, or for a guest as a gift card. */
+	store_credit: boolean;
 }
 
 export interface OrderQuery {

@@ -47,7 +47,7 @@
             </fieldset>
             <p class="orillacart-message" role="alert" data-orillacart-message></p>
             {# translators: %s: the order's total -#}
-            <button type="submit" class="wp-element-button orillacart-button">{{ __('Pay %s')|format(order.total|money(order.currency)) }}</button>
+            <button type="submit" class="wp-element-button orillacart-button">{{ __('Pay %s')|format(order.amount_due|money(order.currency)) }}</button>
         </form>
     {% endif %}
 
@@ -95,6 +95,10 @@
                 {% endfor %}
             {% endif %}
             <tr class="orillacart-total"><th scope="row">{{ __('Total') }}</th><td>{{ order.total|money(order.currency) }}</td></tr>
+            {% for card in order.gift_cards %}
+                <tr class="orillacart-gift-card-paid"><th scope="row">{{ card.label }}</th><td>−{{ card.amount|money(order.currency) }}</td></tr>
+            {% endfor %}
+            {% if order.gift_cards %}<tr class="orillacart-amount-due"><th scope="row">{{ __('Paid the way you chose') }}</th><td>{{ order.amount_due|money(order.currency) }}</td></tr>{% endif %}
             {% if order.prices_include_tax %}
                 {% for tax in order.taxes %}
                     {# translators: 1: tax name, 2: its rate -#}

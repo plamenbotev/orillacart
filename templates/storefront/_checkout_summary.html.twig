@@ -38,6 +38,12 @@
             {% endfor %}
         {% endif %}
         <tr class="orillacart-total"><th scope="row">{{ __('Total') }}</th><td>{{ summary.total|money(summary.currency) }}</td></tr>
+        {% if summary.gift_card_total > 0 %}
+            {% for card in summary.gift_cards|filter(card => not card.refused and card.amount > 0) %}
+                <tr class="orillacart-gift-card-paid"><th scope="row">{{ card.label }}</th><td>−{{ card.amount|money(summary.currency) }}</td></tr>
+            {% endfor %}
+            <tr class="orillacart-amount-due"><th scope="row">{{ __('To pay') }}</th><td>{{ summary.amount_due|money(summary.currency) }}</td></tr>
+        {% endif %}
         {% if summary.prices_include_tax %}
             {% for tax in summary.taxes %}
                 {# translators: 1: tax name, 2: its rate -#}
@@ -59,6 +65,7 @@
 {% endif %}
 
 {% include 'storefront/_coupons.html.twig' with {coupons: summary.coupons, currency: summary.currency} %}
+{% include 'storefront/_gift_cards.html.twig' with {summary: summary} %}
 
 {% if summary.needs_shipping %}
     <fieldset class="orillacart-choices" data-orillacart-field="shipping_option">

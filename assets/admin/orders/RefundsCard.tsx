@@ -75,6 +75,7 @@ const METHOD_LABELS: Record< Refund[ 'method' ], string > = {
 	provider: __( 'through the payment provider', 'orillacart' ),
 	manual: __( 'made outside the shop', 'orillacart' ),
 	external: __( 'made at the payment provider’s site', 'orillacart' ),
+	store_credit: __( 'as store credit', 'orillacart' ),
 };
 
 /**
@@ -100,7 +101,10 @@ export function RefundsCard( {
 	const [ amount, setAmount ] = useState< string | null >( null );
 	const [ reason, setReason ] = useState( '' );
 	const [ restock, setRestock ] = useState( true );
-	const [ outside, setOutside ] = useState( false );
+	const [ how, setHow ] = useState< 'provider' | 'outside' | 'store_credit' >(
+		'provider'
+	);
+	const outside = how === 'outside';
 	const [ busy, setBusy ] = useState( false );
 	const [ confirmation, confirm ] = useConfirm();
 
@@ -126,7 +130,7 @@ export function RefundsCard( {
 	);
 	const value = amount ?? decimal( suggested );
 	const items = Object.values( quantities ).some( ( count ) => count > 0 );
-	const throughProvider = state.provider !== null && ! outside;
+	const throughProvider = state.provider !== null && how === 'provider';
 
 	const run = ( work: Promise< OrderRefunds >, message: string ) => {
 		setBusy( true );
@@ -160,7 +164,10 @@ export function RefundsCard( {
 				shipping,
 				restock: items && restock,
 				reason,
-				outside,
+				outside:
+					outside ||
+					( state.provider === null && how === 'provider' ),
+				store_credit: how === 'store_credit',
 			} ),
 			sprintf(
 				/* translators: %s: amount */
@@ -331,50 +338,73 @@ export function RefundsCard( {
 								onChange={ setRestock }
 							/>
 						) }
-						{ state.provider !== null ? (
-							<RadioControl
-								label={ __(
-									'How the money goes back',
-									'orillacart'
-								) }
-								selected={ outside ? 'outside' : 'provider' }
-								options={ [
-									{
-										value: 'provider',
-										label: sprintf(
-											/* translators: %s: payment method, such as PayPal */
-											__( 'Through %s', 'orillacart' ),
-											state.provider
-										),
-									},
-									{
-										value: 'outside',
-										label: __(
-											'I gave it back outside the shop: only record it',
-											'orillacart'
-										),
-									},
-								] }
-								onChange={ ( choice ) =>
-									setOutside( choice === 'outside' )
-								}
-							/>
-						) : (
-							<p>
-								{ sprintf(
-									/* translators: %s: payment method */
-									__(
-										'%s cannot give money back from here. Give it back yourself, such as by bank transfer, and record it here.',
-										'orillacart'
-									),
-									order.payment_name ||
-										__(
-											'This payment method',
-											'orillacart'
-										)
-								) }
-							</p>
-						) }
+						<RadioControl
+							label={ __(
+								'How the money goes back',
+								'orillacart'
+							) }
+							selected={ how }
+							options={ [
+								state.provider !== null
+									? {
+											value: 'provider',
+											label: sprintf(
+												/* translators: %s: payment method, such as PayPal */
+												__(
+													'Through %s',
+													'orillacart'
+												),
+												state.provider
+											),
+										}
+									: {
+											value: 'provider',
+											label: sprintf(
+												/* translators: %s: payment method */
+												__(
+													'I gave it back outside the shop, as %s cannot from here: only record it',
+													'orillacart'
+												),
+												order.payment_name ||
+													__(
+														'this payment method',
+														'orillacart'
+													)
+											),
+										},
+								...( state.provider !== null
+									? [
+											{
+												value: 'outside',
+												label: __(
+													'I gave it back outside the shop: only record it',
+													'orillacart'
+												),
+											},
+										]
+									: [] ),
+								{
+									value: 'store_credit',
+									label:
+										order.customer_id !== null
+											? __(
+													'As store credit, to spend in the shop',
+													'orillacart'
+												)
+											: sprintf(
+													/* translators: %s: email address */
+													__(
+														'As a gift card, sent to %s',
+														'orillacart'
+													),
+													order.email
+												),
+								},
+							] }
+							onChange={ ( choice ) =>
+								setHow( choice as typeof how )
+							}
+						/>
 						<Button
 							variant="primary"
 							isBusy={ busy }

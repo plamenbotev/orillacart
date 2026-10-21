@@ -39,6 +39,8 @@ enum EmailKind: string
     case BackInStock = 'back_in_stock';
     /** To the customer: their account is made. */
     case AccountWelcome = 'account_welcome';
+    /** To whoever a gift card is for: its code, what it is worth and the message with it. */
+    case GiftCard = 'gift_card';
     /** To the shop: a new order to look at. */
     case NewOrder = 'new_order';
     /** To the shop: an order needs attention, such as a payment disputed after it was paid. */
@@ -74,6 +76,6 @@ enum EmailKind: string
      */
     public static function resendable(): array
     {
-        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::RefundMade, self::OrderAttention, self::ReceiptLink, self::AccountWelcome, self::LowStock, self::BackInStock, self::CartReminder], true)), 'value');
+        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::RefundMade, self::OrderAttention, self::ReceiptLink, self::AccountWelcome, self::LowStock, self::BackInStock, self::CartReminder, self::GiftCard], true)), 'value');
     }
 }

@@ -18,6 +18,8 @@ final readonly class MakeRefund
     /**
      * @param list<RefundLine> $lines   the items it covers, if any
      * @param bool             $outside the shop gave the money back itself; the gateway is not asked
+     * @param bool             $storeCredit the money goes back as store credit (a gift card for a guest); the
+     *                                      gateway is not asked
      */
     public function __construct(
         #[Assert\Regex('/^\d{1,11}(\.\d{1,4})?$/', message: 'Use an amount with up to four decimals, such as 19.90.')]
@@ -30,6 +32,7 @@ final readonly class MakeRefund
         #[Assert\Length(max: OrderNote::MAX_LENGTH)]
         public string $reason = '',
         public bool $outside = false,
+        public bool $storeCredit = false,
     ) {}
 
     public function forOrder(): RefundOrder

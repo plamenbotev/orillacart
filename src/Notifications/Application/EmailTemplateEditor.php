@@ -178,6 +178,7 @@ final readonly class EmailTemplateEditor
             EmailKind::AccountWelcome->value => $this->writer->write(EmailKind::AccountWelcome->template(), $kind, $to, null, ['first_name' => 'Ada', 'account_url' => $url]),
             EmailKind::LowStock->value => $this->lowStock->preview(),
             EmailKind::CartReminder->value => $this->cartReminders->preview($to),
+            EmailKind::GiftCard->value => $this->writer->write(EmailKind::GiftCard->template(), $kind, $to, null, ['card' => ['code' => 'ABCD-EFGH-JKLM-NPQR', 'amount' => '50', 'currency' => 'EUR', 'expires_at' => $this->clock->now()->modify('+1 year')->format('Y-m-d'), 'recipient_name' => 'Ada', 'message' => 'Happy birthday!', 'shop_url' => $url]]),
             EmailKind::BackInStock->value => $this->writer->write(EmailKind::BackInStock->template(), $kind, $to, null, ['product' => ['name' => 'Desk lamp', 'variation' => 'Green', 'url' => $url]]),
             default => $this->orderEmail(EmailKind::from($kind), $orderId),
         };

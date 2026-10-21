@@ -171,7 +171,22 @@ final readonly class CartService
             'option_ids' => $line->optionIds(),
             'bundle_choices' => $line->bundleChoices(),
             'quantity' => $line->quantity(),
-        ], $cart->lines()), $cart->coupons(), $refusals);
+        ], $cart->lines()), $cart->coupons(), $refusals, $cart->giftCards(), $cart->usesStoreCredit());
+    }
+
+    /**
+     * Keeps the gift card codes the customer entered, and whether they pay with their store credit.
+     *
+     * @param list<string> $codes
+     */
+    public function useGiftCards(int $cartId, array $codes, bool $storeCredit): void
+    {
+        $cart = $this->carts->find($cartId);
+        if ($cart !== null) {
+            $cart->useGiftCards($codes, $this->clock->now());
+            $cart->useStoreCredit($storeCredit, $this->clock->now());
+            $this->carts->save($cart);
+        }
     }
 
     /**

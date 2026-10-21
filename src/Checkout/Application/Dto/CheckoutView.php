@@ -74,5 +74,13 @@ final readonly class CheckoutView
         public ?string $minimumShort = null,
         /** When no way to ship takes the order to the address: the least order value at which one would. */
         public ?string $shipsFrom = null,
+        /** @var list<CheckoutGiftCardView> the gift cards entered, and the store credit when used */
+        public array $giftCards = [],
+        public string $giftCardTotal = '0',
+        /** What is left to pay the chosen way: the total, less the gift cards. */
+        public string $amountDue = '0',
+        /** What the logged-in customer has as store credit, and whether it pays. */
+        public string $storeCredit = '0',
+        public bool $usingStoreCredit = false,
     ) {}
 }

@@ -247,6 +247,49 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame('SPRING', $this->rows($this->data($this->request('GET', "/receipts/{$this->key($this->data($placed))}"))['discounts'])[0]['code'], 'the order keeps it');
     }
 
+    public function testAVisitorPaysPartWithAGiftCardAndCancellingGivesItBack(): void
+    {
+        $this->actAs('administrator');
+        $issued = $this->request('POST', '/gift-cards', ['amount' => '20', 'recipient_email' => 'ada@example.com'], nonce: true);
+        self::assertSame(201, $issued->get_status(), (string) wp_json_encode($issued->get_data()));
+        $code = $this->data($issued)['code'];
+        self::assertIsString($code);
+        $card = $this->data($issued)['card'];
+        self::assertIsArray($card);
+        self::assertIsInt($card['id']);
+        self::assertStringContainsString($code, $this->sentMail()[0]['message'] ?? '', 'the code went to whom it is for');
+        wp_set_current_user(0);
+
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product, 'quantity' => 1], nonce: true));
+        $refused = $this->request('POST', '/cart/gift-cards', ['code' => 'AAAA-BBBB-CCCC-DDDD'], nonce: true);
+        self::assertSame([422, 'This gift card is not valid.'], [$refused->get_status(), $this->data($refused)['message']]);
+        $applied = $this->request('POST', '/cart/gift-cards', ['code' => $code], nonce: true);
+        self::assertSame(200, $applied->get_status(), (string) wp_json_encode($applied->get_data()));
+
+        $summary = $this->data($this->request('POST', '/checkout/summary', ['shipping_country' => 'BG'], nonce: true));
+        self::assertSame(['38.33', '20', '18.33'], [$summary['total'], $summary['gift_card_total'], $summary['amount_due']]);
+        $placed = $this->request('POST', '/checkout', $this->order('cash_on_delivery'), nonce: true);
+        self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));
+        $receipt = $this->data($this->request('GET', "/receipts/{$this->key($this->data($placed))}"));
+        self::assertSame(['20', '18.33'], [$receipt['gift_card_total'], $receipt['amount_due']]);
+
+        $this->actAs('administrator');
+        self::assertSame('0', $this->balanceOf($card['id']));
+        $number = $this->data($placed)['number'];
+        self::assertIsInt($number);
+        self::assertSame(200, $this->request('PUT', "/orders/{$number}/status", ['status' => 'cancelled'], nonce: true)->get_status());
+        self::assertSame('20', $this->balanceOf($card['id']), 'the cancelled order gave it back');
+        self::assertCount(3, $this->rows($this->data($this->request('GET', "/gift-cards/{$card['id']}"))['entries']));
+    }
+
+    private function balanceOf(int $card): mixed
+    {
+        $detail = $this->data($this->request('GET', "/gift-cards/{$card}"))['card'];
+        self::assertIsArray($detail);
+
+        return $detail['balance'] ?? null;
+    }
+
     public function testAnOrderThatRunsOutOfStockWhilePlacedTakesNothing(): void
     {
         $this->actAs('administrator');
@@ -641,7 +684,7 @@ final class CheckoutRestTest extends RestTestCase
     private function clean(): void
     {
         $wpdb = $this->wpdb();
-        foreach (['abandoned_carts', 'invoices', 'refunds', 'coupon_redemptions', 'coupons', 'consignments', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'shipping_classes', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['abandoned_carts', 'invoices', 'refunds', 'coupon_redemptions', 'coupons', 'gift_card_entries', 'gift_cards', 'consignments', 'payments', 'payment_methods', 'order_lines', 'orders', 'cart_lines', 'carts', 'shipping_rates', 'carriers', 'shipping_classes', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
         foreach (array_keys(wp_load_alloptions()) as $option) {

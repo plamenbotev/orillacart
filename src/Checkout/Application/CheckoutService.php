@@ -11,6 +11,7 @@ use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Checkout\Application\Dto\CheckoutCouponView;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\CheckoutFeeView;
+use OrillaCart\Checkout\Application\Dto\CheckoutGiftCardView;
 use OrillaCart\Checkout\Application\Dto\CheckoutLineView;
 use OrillaCart\Checkout\Application\Dto\CheckoutTaxView;
 use OrillaCart\Checkout\Application\Dto\CheckoutView;
@@ -26,6 +27,11 @@ use OrillaCart\Coupons\Domain\Coupon;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Application\Dto\RegisterAccount;
 use OrillaCart\Extension\Checkout\FieldContext;
+use OrillaCart\GiftCards\Application\Dto\GiftCardCodeInput;
+use OrillaCart\GiftCards\Application\Dto\GiftCardPlan;
+use OrillaCart\GiftCards\Application\Dto\GiftCardUse;
+use OrillaCart\GiftCards\Application\GiftCardPayments;
+use OrillaCart\GiftCards\Domain\GiftCardRuleViolation;
 use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Newsletter\Domain\SignUpSource;
 use OrillaCart\Ordering\Application\Dto\AddressData;
@@ -82,6 +88,7 @@ final readonly class CheckoutService
         private DeliveryDays $deliveryDays,
         private AddressChecks $addressChecks,
         private Newsletter $newsletter,
+        private GiftCardPayments $giftCards,
     ) {}
 
     /**
@@ -110,6 +117,8 @@ final readonly class CheckoutService
         $payment = \in_array($details->payment, $gateways, true) ? $details->payment : ($gateways[0] ?? null);
         $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment);
         $bill = $priced['bill'];
+        $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency);
+        $due = $bill->total()->subtract($plan->total());
         $base = $bill->subtotal()->subtract($bill->discount())->add($bill->shipping());
         $applied = [];
         foreach ($priced['discounts']->coupons as $coupon) {
@@ -138,8 +147,8 @@ final readonly class CheckoutService
             $priced['needs_shipping'],
             $priced['options'],
             $priced['chosen']?->id,
-            !$bill->total()->isZero(),
-            $bill->total()->isZero() ? [] : $methods,
+            !$due->isZero(),
+            $due->isZero() ? [] : $methods,
             array_map(static fn(BilledTax $tax): CheckoutTaxView => new CheckoutTaxView($tax->name, $tax->percent, (string) $tax->items, (string) $tax->shipping, (string) $tax->total()), $bill->taxes()),
             (string) $bill->subtotal(),
             (string) $bill->itemsTax(),
@@ -159,15 +168,97 @@ final readonly class CheckoutService
             $reverse->message,
             $estimatedFor,
             $priced['free_from'] === null ? null : (string) Money::of($priced['free_from'])->subtract($bill->subtotal()->subtract($bill->discount())),
-            $bill->total()->isZero() ? null : $payment,
+            $due->isZero() ? null : $payment,
             array_map(static fn(array $fee): CheckoutFeeView => new CheckoutFeeView($fee['label'], (string) $fee['amount']), $bill->fees()),
             (string) $bill->feesTax(),
-            $bill->total()->isZero() ? [] : $this->paymentFees($gateways, $base),
+            $due->isZero() ? [] : $this->paymentFees($gateways, $base),
             $delivery = $priced['needs_shipping'] ? $this->deliveryDays->forOption($priced['chosen']?->id) : null,
             ...self::deliveryChosen($delivery, $details->deliveryDate, $details->deliverySlot),
             ...$this->minimum($bill),
             shipsFrom: $priced['ships_from'],
+            giftCards: self::giftCardViews($contents->giftCards, $plan),
+            giftCardTotal: (string) $plan->total(),
+            amountDue: (string) $due,
+            storeCredit: $plan->storeCredit,
+            usingStoreCredit: $contents->useStoreCredit && array_any($plan->uses, static fn(GiftCardUse $use): bool => $use->code === null),
         );
+    }
+
+    /**
+     * The codes as entered, each with what it pays or why it cannot, and the store credit when it pays.
+     *
+     * @param list<string> $codes
+     *
+     * @return list<CheckoutGiftCardView>
+     */
+    private static function giftCardViews(array $codes, GiftCardPlan $plan): array
+    {
+        $views = [];
+        foreach ($codes as $code) {
+            $use = array_find($plan->uses, static fn(GiftCardUse $use): bool => $use->code === $code);
+            if ($use !== null) {
+                $views[] = new CheckoutGiftCardView($code, $use->label, $use->amount, $use->balance);
+            } elseif (isset($plan->refused[$code])) {
+                $views[] = new CheckoutGiftCardView($code, $code, '0', refused: $plan->refused[$code]);
+            }
+        }
+        foreach ($plan->uses as $use) {
+            if ($use->code === null) {
+                $views[] = new CheckoutGiftCardView(null, $use->label, $use->amount, $use->balance);
+            }
+        }
+
+        return $views;
+    }
+
+    /**
+     * Enters a gift card code for the order, once it is one that can pay.
+     *
+     * @throws CheckoutRuleViolation for an empty cart, or a code that cannot pay
+     */
+    public function applyGiftCard(CartOwner $owner, GiftCardCodeInput $command): CheckoutView
+    {
+        $contents = $this->contents($owner);
+        $code = strtoupper(trim($command->code));
+        try {
+            $balance = $this->giftCards->balance($code, $this->settings->current()->currency);
+        } catch (GiftCardRuleViolation $e) {
+            throw new CheckoutRuleViolation($e->getMessage(), 'orillacart_gift_card_refused', $e);
+        }
+        if ($balance->refused !== null) {
+            throw new CheckoutRuleViolation($balance->refused, 'orillacart_gift_card_refused');
+        }
+        $this->carts->useGiftCards($contents->cartId, array_values(array_unique([...$contents->giftCards, $code])), $contents->useStoreCredit);
+
+        return $this->summary($owner, new CheckoutDetails());
+    }
+
+    /**
+     * @throws CheckoutRuleViolation for an empty cart
+     */
+    public function removeGiftCard(CartOwner $owner, string $code): CheckoutView
+    {
+        $contents = $this->contents($owner);
+        $code = strtoupper(trim($code));
+        $this->carts->useGiftCards($contents->cartId, array_values(array_filter($contents->giftCards, static fn(string $kept): bool => $kept !== $code)), $contents->useStoreCredit);
+
+        return $this->summary($owner, new CheckoutDetails());
+    }
+
+    /**
+     * The logged-in customer pays with their store credit, as far as it goes, or stops.
+     *
+     * @throws CheckoutRuleViolation for an empty cart, or a visitor who is not logged in
+     */
+    public function useStoreCredit(CartOwner $owner, bool $use): CheckoutView
+    {
+        if ($owner->customerId === null) {
+            throw new CheckoutRuleViolation('Log in to use your store credit.', 'orillacart_store_credit_login');
+        }
+        $contents = $this->contents($owner);
+        $this->carts->useGiftCards($contents->cartId, $contents->giftCards, $use);
+
+        return $this->summary($owner, new CheckoutDetails());
     }
 
     /**
@@ -325,7 +416,11 @@ final readonly class CheckoutService
             throw new CheckoutRuleViolation($e->getMessage(), $e->errorCode, $e);
         }
         $currency = $this->settings->current()->currency;
-        $needsPayment = !$bill->total()->isZero();
+        $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency);
+        foreach ($plan->refused as $code => $reason) {
+            throw new CheckoutRuleViolation(\sprintf('The gift card %s cannot pay: %s Remove it to order.', $code, $reason), 'orillacart_gift_card_refused');
+        }
+        $needsPayment = !$bill->total()->subtract($plan->total())->isZero();
         $gateway = null;
         if ($needsPayment) {
             if ($command->payment === null || !$this->paymentOptions->isAvailable($command->payment, $billingAddress->country, $currency)) {
@@ -337,7 +432,7 @@ final readonly class CheckoutService
         $answers = $this->fields->answers($command->fields, new FieldContext($command->email, $billingAddress->country, $priced['needs_shipping'] ? $shippingAddress->country : null, $owner->customerId), $priced['needs_shipping']);
         $registering = $this->registration($owner, $command);
 
-        $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents->cartId, fn(): OrderView => $this->redeemed($priced, $owner, $command->email, $this->orders->place(new NewOrder(
+        $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents->cartId, fn(): OrderView => $this->redeemed($priced, $plan, $owner, $command->email, $this->orders->place(new NewOrder(
             $owner->customerId,
             $command->email,
             $billingAddress,
@@ -456,13 +551,22 @@ final readonly class CheckoutService
     }
 
     /**
-     * Counts the coupons' uses for the order, in its transaction.
+     * Counts the coupons' uses for the order, and takes what gift cards pay, in its transaction.
      *
      * @param array{discounts: AppliedDiscounts} $priced
      */
-    private function redeemed(array $priced, CartOwner $owner, string $email, OrderView $order, bool $free = false): OrderView
+    private function redeemed(array $priced, GiftCardPlan $plan, CartOwner $owner, string $email, OrderView $order, bool $free = false): OrderView
     {
         $this->discounts->redeem($order->number, $priced['discounts']->coupons, $owner->customerId, $email);
+        if ($plan->uses !== []) {
+            try {
+                $this->giftCards->pay($order->number, $plan, $order->currency);
+            } catch (GiftCardRuleViolation $e) {
+                throw new CheckoutRuleViolation($e->getMessage(), $e->errorCode, $e);
+            }
+            // As the payment will be asked for: the rest the gift cards left.
+            $order = $this->orders->order($order->number);
+        }
         if ($free) {
             // Nothing to pay: paid with the order, in its transaction, so a free order is never left unpaid.
             $this->orders->markPaid($order->number, null);

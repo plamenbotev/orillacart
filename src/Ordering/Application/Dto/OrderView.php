@@ -88,6 +88,12 @@ final readonly class OrderView
         public ?string $deliverySlot = null,
         /** When it first left for the customer; returns count from it. */
         public ?string $fulfilledAt = null,
+        /** What gift cards and store credit paid of the total, and each of them. */
+        public string $giftCardTotal = '0',
+        /** @var list<array{label: string, amount: string}> */
+        public array $giftCards = [],
+        /** What is left to pay the way the customer chose. */
+        public string $amountDue = '0',
     ) {}
 
     /**
@@ -149,6 +155,9 @@ final readonly class OrderView
             $order->delivery()?->date->format('Y-m-d'),
             $order->delivery()?->slot,
             $order->fulfilledAt()?->format(\DATE_ATOM),
+            (string) $order->giftCardTotal(),
+            array_map(static fn(array $card): array => ['label' => $card['label'], 'amount' => (string) $card['amount']], $order->giftCards()),
+            (string) $order->amountDue(),
         );
     }
 }

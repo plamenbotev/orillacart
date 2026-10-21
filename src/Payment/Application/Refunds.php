@@ -11,6 +11,7 @@ use OrillaCart\Extension\Payment\RefundRequest;
 use OrillaCart\Extension\Payment\RefundsPayments;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Settings;
+use OrillaCart\GiftCards\Application\GiftCardService;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\RefundedView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
@@ -56,6 +57,7 @@ final readonly class Refunds
         private ClockInterface $clock,
         private LoggerInterface $logger,
         private Transactions $transactions,
+        private GiftCardService $giftCards,
         private EventDispatcherInterface $events,
     ) {}
 
@@ -94,7 +96,7 @@ final readonly class Refunds
                 throw new PaymentRuleViolation('The provider is still sending the money of a refund of this order; refund more once it is done.', 'orillacart_refund_pending');
             }
         }
-        $payment = $command->outside ? null : $this->refundablePayment($orderId);
+        $payment = $command->outside || $command->storeCredit ? null : $this->refundablePayment($orderId);
         if ($payment !== null) {
             $left = $this->leftOf($payment);
             if (Money::of($command->amount)->compare($left) > 0) {
@@ -105,7 +107,11 @@ final readonly class Refunds
             $orderId,
             $payment?->id(),
             $payment?->gateway() ?? $order->paymentGateway,
-            $payment === null ? RefundMethod::Manual : RefundMethod::Provider,
+            match (true) {
+                $command->storeCredit => RefundMethod::StoreCredit,
+                $payment === null => RefundMethod::Manual,
+                default => RefundMethod::Provider,
+            },
             Money::of($command->amount),
             $order->currency,
             self::quantities($command->forOrder()),
@@ -116,9 +122,12 @@ final readonly class Refunds
             $this->clock->now(),
         );
         if ($payment === null) {
-            $this->transactions->run(function () use ($refund, $orderId, $command, $userId): void {
+            $this->transactions->run(function () use ($refund, $order, $orderId, $command, $userId): void {
                 $this->refunds->save($refund);
-                $this->taxed($refund, $this->orders->refund($orderId, $command->forOrder(), 'outside the shop', $userId));
+                $how = $command->storeCredit
+                    ? $this->giftCards->refundAsCredit($orderId, $order->customerId, $order->email, $order->billing->firstName, Money::of($command->amount), $order->currency, $userId)
+                    : 'outside the shop';
+                $this->taxed($refund, $this->orders->refund($orderId, $command->forOrder(), $how, $userId));
             });
         } else {
             // Saved before the provider is asked: an answer lost on the way leaves it pending, never forgotten.

@@ -16,6 +16,8 @@
 {% for fee in order.fees %}<tr><td colspan="2">{{ fee.label }}</td><td style="text-align:right;">{{ fee.amount|money(order.currency) }}</td></tr>{% endfor %}
 {% if not order.prices_include_tax %}{% for tax in order.taxes %}<tr><td colspan="2">{{ tax.name }} ({{ tax.percent }} %)</td><td style="text-align:right;">{{ tax.amount|money(order.currency) }}</td></tr>{% endfor %}{% endif %}
 <tr style="font-weight:600;"><td colspan="2">{{ __('Total') }}</td><td style="text-align:right;">{{ order.total|money(order.currency) }}</td></tr>
+{% for card in order.gift_cards %}<tr><td colspan="2">{{ card.label }}</td><td style="text-align:right;">−{{ card.amount|money(order.currency) }}</td></tr>{% endfor %}
+{% if order.gift_cards %}<tr><td colspan="2">{{ __('To pay') }}</td><td style="text-align:right;">{{ order.amount_due|money(order.currency) }}</td></tr>{% endif %}
 {# translators: 1: tax name, 2: its rate -#}
 {% if order.prices_include_tax %}{% for tax in order.taxes %}<tr><td colspan="2">{{ __('Including %1$s (%2$s%%)')|format(tax.name, tax.percent) }}</td><td style="text-align:right;">{{ tax.amount|money(order.currency) }}</td></tr>{% endfor %}{% endif %}
 {% if order.refunded_total > 0 %}<tr><td colspan="2">{{ __('Refunded') }}</td><td style="text-align:right;">−{{ order.refunded_total|money(order.currency) }}</td></tr>{% endif %}

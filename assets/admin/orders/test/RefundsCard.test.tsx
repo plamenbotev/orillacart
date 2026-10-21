@@ -122,6 +122,7 @@ describe( 'RefundsCard', () => {
 				restock: true,
 				reason: 'Returned.',
 				outside: false,
+				store_credit: false,
 			},
 		} );
 		expect( refunded ).toHaveBeenCalled();

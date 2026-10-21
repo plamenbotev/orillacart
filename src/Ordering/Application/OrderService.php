@@ -260,6 +260,22 @@ final readonly class OrderService
     }
 
     /**
+     * Gift cards or store credit pay part of an order being placed, or all of it. Run it in the transaction that
+     * places the order and takes the money from them.
+     *
+     * @param list<array{label: string, amount: string}> $cards
+     *
+     * @throws OrderNotFound
+     * @throws OrderRuleViolation
+     */
+    public function payWithGiftCards(int $id, array $cards): void
+    {
+        $order = $this->get($id);
+        $order->payWithGiftCards(array_map(static fn(array $card): array => ['label' => $card['label'], 'amount' => Money::of($card['amount'])], $cards));
+        $this->orders->save($order);
+    }
+
+    /**
      * @throws OrderNotFound
      * @throws OrderRuleViolation for an order that was cancelled or failed before the money came
      */

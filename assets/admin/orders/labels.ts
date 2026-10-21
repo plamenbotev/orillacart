@@ -32,6 +32,7 @@ export const EMAIL_LABELS: Record< string, string > = {
 	),
 	account_welcome: __( 'Welcome to a new account', 'orillacart' ),
 	back_in_stock: __( 'Back in stock, to those who asked', 'orillacart' ),
+	gift_card: __( 'A gift card, to whom it is for', 'orillacart' ),
 	cart_reminder: __( 'Cart reminder, to those who asked', 'orillacart' ),
 	new_order: __( 'New order (to the shop)', 'orillacart' ),
 	order_attention: __(

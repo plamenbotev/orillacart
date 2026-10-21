@@ -43,14 +43,17 @@ final readonly class StartPayment
         $listed = array_reduce($items, static fn(Money $sum, PaymentItem $item): Money => $sum->add(Money::of($item->unitAmount)->times($item->quantity)), Money::zero());
         $address = $order->shippingAddress;
 
+        // Gift cards paid part of it: the provider is asked for the rest, without the items that would not add up to it.
+        $whole = Money::of($order->giftCardTotal)->isZero() && $parts->equals(Money::of($order->total));
+
         return new self(
             $order->number,
             $order->number,
             $gateway,
-            $order->total,
+            $order->amountDue,
             $order->currency,
-            $parts->equals(Money::of($order->total)) && $listed->equals(Money::of($order->subtotal)) ? $items : [],
-            $parts->equals(Money::of($order->total)) ? $breakdown : null,
+            $whole && $listed->equals(Money::of($order->subtotal)) ? $items : [],
+            $whole ? $breakdown : null,
             $address === null || $order->pickupPointId !== null ? null : new PaymentAddress(trim("{$address->firstName} {$address->lastName}"), $address->street, $address->city, $address->postcode, $address->country, $address->state),
         );
     }

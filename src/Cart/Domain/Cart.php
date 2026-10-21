@@ -47,6 +47,14 @@ class Cart
     #[ORM\Column(type: 'json')]
     private array $coupons = [];
 
+    /** @var list<string> gift card codes, as entered; checkout decides what each pays */
+    #[ORM\Column(type: 'json')]
+    private array $giftCards = [];
+
+    /** The customer pays with their store credit. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $useStoreCredit = false;
+
     /** The order being placed from the cart while its payment starts: checkout places no second one meanwhile. */
     #[ORM\Column(nullable: true)]
     private ?int $placingOrderId = null;
@@ -223,9 +231,37 @@ class Cart
         $this->updatedAt = $now;
     }
 
+    /** @return list<string> */
+    public function giftCards(): array
+    {
+        return $this->giftCards;
+    }
+
+    /**
+     * @param list<string> $codes
+     */
+    public function useGiftCards(array $codes, \DateTimeImmutable $now): void
+    {
+        $this->giftCards = \array_slice(array_values(array_unique($codes)), 0, 5);
+        $this->updatedAt = $now;
+    }
+
+    public function usesStoreCredit(): bool
+    {
+        return $this->useStoreCredit;
+    }
+
+    public function useStoreCredit(bool $use, \DateTimeImmutable $now): void
+    {
+        $this->useStoreCredit = $use;
+        $this->updatedAt = $now;
+    }
+
     public function clear(\DateTimeImmutable $now): void
     {
         $this->coupons = [];
+        $this->giftCards = [];
+        $this->useStoreCredit = false;
         $this->lines->clear();
         $this->updatedAt = $now;
         $this->notPlacing();
@@ -312,6 +348,7 @@ class Cart
             }
         }
         $this->useCoupons([...$this->coupons, ...$other->coupons()], $now);
+        $this->useGiftCards([...$this->giftCards, ...$other->giftCards()], $now);
     }
 
     /** An order was saved from the cart; its payment is about to start. */

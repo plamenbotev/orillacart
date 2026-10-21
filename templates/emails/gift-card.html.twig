@@ -1,0 +1,23 @@
+{% extends 'emails/layout.html.twig' %}
+{#
+ # To whoever a gift card is for. card: {code, amount, currency, expires_at ("2027-10-21", or null), recipient_name,
+ # message, shop_url}.
+ #}
+{# translators: 1: site name, 2: an amount of money -#}
+{% block subject %}{{ __('[%1$s] A gift card worth %2$s')|format(site_name, card.amount|money(card.currency)) }}{% endblock %}
+{% block heading %}{{ __('A gift card for you') }}{% endblock %}
+{% block intro %}
+{# translators: %s: the name of whom the gift card is for -#}
+<p>{{ card.recipient_name ? __('Hello %s,')|format(card.recipient_name) : __('Hello,') }}</p>
+{# translators: %s: an amount of money -#}
+<p>{{ __('Here is a gift card worth %s to spend in our shop.')|format(card.amount|money(card.currency)) }}</p>
+{% endblock %}
+{% block content %}
+{% if card.message %}<blockquote style="margin:0 0 16px;padding:12px 16px;border-left:4px solid #d4d4d8;color:#3f3f46;">{{ card.message|nl2br }}</blockquote>{% endif %}
+<p style="font-size:13px;color:#71717a;margin:0;">{{ __('Your code') }}</p>
+<p style="font-size:22px;font-family:monospace;letter-spacing:2px;margin:4px 0 16px;"><strong>{{ card.code }}</strong></p>
+{% if card.expires_at %}{# translators: %s: a date -#}<p>{{ __('Use it by %s.')|format(card.expires_at|shop_day) }}</p>{% endif %}
+<p>{{ __('Enter the code at checkout, in the gift card field. What you do not spend stays on the card for next time.') }}</p>
+<p><a href="{{ card.shop_url }}" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;border-radius:4px;text-decoration:none;">{{ __('Go to the shop') }}</a></p>
+<p style="color:#71717a;font-size:13px;">{{ __('Keep this email: whoever has the code can spend it.') }}</p>
+{% endblock %}

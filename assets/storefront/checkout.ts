@@ -6,6 +6,7 @@ import { __ } from '@wordpress/i18n';
 import { addressesConfirmed, confirmAddresses } from './address-check';
 import { api } from './api';
 import { bindCoupons } from './coupons';
+import { bindGiftCards } from './gift-cards';
 import {
 	bindStates,
 	clearErrors,
@@ -42,6 +43,10 @@ export function bindCheckout( form: HTMLFormElement ): void {
 	bindSavedAddresses( form );
 
 	bindCoupons( form, () => {
+		summary = summary.then( () => refreshSummary( form ) );
+		return summary;
+	} );
+	bindGiftCards( form, () => {
 		summary = summary.then( () => refreshSummary( form ) );
 		return summary;
 	} );

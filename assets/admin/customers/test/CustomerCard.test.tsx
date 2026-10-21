@@ -47,12 +47,45 @@ const ADA: Customer = {
 	newsletter: null,
 };
 
+const CREDIT = {
+	card: {
+		id: 0,
+		kind: 'store_credit',
+		label: 'Store credit',
+		code_end: '',
+		initial: '0',
+		balance: '20',
+		currency: 'EUR',
+		expires_at: null,
+		active: true,
+		recipient_name: '',
+		recipient_email: '',
+		message: '',
+		order_id: null,
+		customer_id: 3,
+		created_at: '2026-10-20T10:00:00+00:00',
+	},
+	entries: [
+		{
+			id: 1,
+			amount: '20',
+			note: 'Sorry for the wait',
+			at: '2026-10-20T10:00:00+00:00',
+			order_id: null,
+			user: 'Mara',
+		},
+	],
+};
+
 describe( 'CustomerCard', () => {
 	afterEach( () => mockedFetch.mockReset() );
 
 	it( 'adds an address for shipping and removes one', async () => {
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
+			if ( request.path.endsWith( '/store-credit' ) ) {
+				return Promise.resolve( CREDIT );
+			}
 			if ( request.path.startsWith( '/orillacart/v1/countries' ) ) {
 				return Promise.resolve( [] );
 			}
@@ -115,6 +148,9 @@ describe( 'CustomerCard', () => {
 	it( 'shows what the customer spent and keeps the shop’s notes', async () => {
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
+			if ( request.path.endsWith( '/store-credit' ) ) {
+				return Promise.resolve( CREDIT );
+			}
 			if ( request.path === '/orillacart/v1/customers/3/notes' ) {
 				return Promise.resolve(
 					request.method === 'POST'
@@ -153,6 +189,10 @@ describe( 'CustomerCard', () => {
 			screen.getByText( 'Paid orders' ).nextSibling
 		).toHaveTextContent( '2' );
 		expect( await screen.findByText( 'Prefers calls.' ) ).toBeVisible();
+		expect(
+			await screen.findByRole( 'heading', { name: /^Store credit: / } )
+		).toBeVisible();
+		expect( screen.getByText( 'Sorry for the wait' ) ).toBeVisible();
 		await user.type(
 			screen.getByLabelText( 'Note for the shop' ),
 			'Wholesale prices agreed.'

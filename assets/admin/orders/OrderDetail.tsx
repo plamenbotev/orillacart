@@ -556,6 +556,22 @@ function Summary( { order }: { order: Order } ) {
 							{ money( order.total, order.currency ) }
 						</strong>
 					</dd>
+					{ ( order.gift_cards ?? [] ).map( ( card, index ) => (
+						<FragmentRow
+							key={ `${ card.label }-${ index }` }
+							label={ card.label }
+							value={ `−${ money( card.amount, order.currency ) }` }
+						/>
+					) ) }
+					{ ( order.gift_cards ?? [] ).length > 0 && (
+						<FragmentRow
+							label={ __( 'Paid the way chosen', 'orillacart' ) }
+							value={ money(
+								order.amount_due ?? order.total,
+								order.currency
+							) }
+						/>
+					) }
 				</dl>
 				<p>
 					{ sprintf(

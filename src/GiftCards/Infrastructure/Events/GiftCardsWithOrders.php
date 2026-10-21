@@ -1,0 +1,46 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\GiftCards\Infrastructure\Events;
+
+use OrillaCart\GiftCards\Application\GiftCardPayments;
+use OrillaCart\GiftCards\Application\GiftCardSales;
+use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Domain\Event\OrderPaid;
+use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
+use OrillaCart\Ordering\Domain\OrderStatus;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+
+/**
+ * An order that is cancelled or fails gives its gift cards and store credit back what they paid; one opened
+ * again, paid after all, takes it again. A paid order makes the gift cards it bought.
+ */
+final readonly class GiftCardsWithOrders
+{
+    public function __construct(
+        private GiftCardPayments $payments,
+        private GiftCardSales $sales,
+        private OrderService $orders,
+    ) {}
+
+    #[AsEventListener]
+    public function statusChanged(OrderStatusChanged $event): void
+    {
+        $closed = [OrderStatus::Cancelled, OrderStatus::Failed];
+        if (\in_array($event->status, $closed, true)) {
+            $this->payments->giveBack($event->orderId);
+        } elseif (\in_array($event->previous, $closed, true)) {
+            $short = $this->payments->reclaim($event->orderId);
+            if (!$short->isZero()) {
+                $this->orders->note($event->orderId, \sprintf('The gift cards that paid this order had spent %s of it since it was cancelled: settle it with the customer.', $short), false);
+            }
+        }
+    }
+
+    #[AsEventListener]
+    public function paid(OrderPaid $event): void
+    {
+        $this->sales->issueFor($event->orderId);
+    }
+}

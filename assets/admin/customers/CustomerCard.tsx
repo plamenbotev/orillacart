@@ -12,6 +12,12 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { type Address, EMPTY_ADDRESS } from '../shared/address';
 import { AddressFields } from '../shared/AddressFields';
+import {
+	adjustStoreCredit,
+	fetchStoreCredit,
+	type GiftCardDetail,
+} from '../gift-cards/api';
+import { AdjustForm, BalanceEntries } from '../gift-cards/BalanceCard';
 import { useConfirm } from '../shared/useConfirm';
 import { money } from '../orders/labels';
 import {
@@ -102,8 +108,60 @@ export function CustomerCard( {
 					onSaved={ onSaved }
 					onError={ onError }
 				/>
+				<StoreCredit customer={ customer } onError={ onError } />
 			</CardBody>
 		</Card>
+	);
+}
+
+/**
+ * What the customer has to spend in the shop, and every change of it; the shop adds to it or takes off it.
+ * @param props
+ * @param props.customer
+ * @param props.onError
+ */
+function StoreCredit( {
+	customer,
+	onError,
+}: Pick< CustomerCardProps, 'customer' | 'onError' > ) {
+	const [ credit, setCredit ] = useState< GiftCardDetail | null >( null );
+	const failed = useRef( onError );
+	failed.current = onError;
+	useEffect( () => {
+		fetchStoreCredit( customer.id )
+			.then( setCredit )
+			.catch( ( failure: unknown ) => failed.current( failure ) );
+	}, [ customer.id ] );
+	if ( credit === null ) {
+		return null;
+	}
+	return (
+		<>
+			<h3>
+				{ sprintf(
+					/* translators: %s: an amount of money */
+					__( 'Store credit: %s', 'orillacart' ),
+					money( credit.card.balance, credit.card.currency )
+				) }
+			</h3>
+			<p>
+				{ __(
+					'The customer pays with it at checkout, logged in. Refunds can go to it.',
+					'orillacart'
+				) }
+			</p>
+			<AdjustForm
+				onAdjust={ ( change ) =>
+					adjustStoreCredit( customer.id, change )
+						.then( setCredit )
+						.catch( ( failure: unknown ) => {
+							onError( failure );
+							throw failure;
+						} )
+				}
+			/>
+			<BalanceEntries detail={ credit } />
+		</>
 	);
 }
 

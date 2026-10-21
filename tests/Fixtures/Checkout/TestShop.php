@@ -41,6 +41,10 @@ use OrillaCart\Customers\Domain\Event\PersonErased;
 use OrillaCart\Customers\Infrastructure\GroupsOfShoppers;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\GiftCards\Application\GiftCardPayments;
+use OrillaCart\GiftCards\Application\GiftCardSales;
+use OrillaCart\GiftCards\Application\GiftCardService;
+use OrillaCart\GiftCards\Infrastructure\Events\GiftCardsWithOrders;
 use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Invoicing\Application\InvoiceAttachments;
@@ -144,6 +148,9 @@ use OrillaCart\Tests\Fixtures\Customers\InMemoryPendingAccounts;
 use OrillaCart\Tests\Fixtures\Customers\RecordingAccountMail;
 use OrillaCart\Tests\Fixtures\FakeLanguages;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
+use OrillaCart\Tests\Fixtures\GiftCards\InMemoryGiftCards;
+use OrillaCart\Tests\Fixtures\GiftCards\MemoryGiftCardSettings;
+use OrillaCart\Tests\Fixtures\GiftCards\SentGiftCards;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockLevelRepository;
@@ -193,6 +200,11 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 final class TestShop
 {
     public readonly MockClock $clock;
+    public readonly InMemoryGiftCards $giftCardRecords;
+    public readonly MemoryGiftCardSettings $giftCardSettings;
+    public readonly SentGiftCards $giftCardMail;
+    public readonly GiftCardService $giftCards;
+    public readonly GiftCardPayments $giftCardPayments;
     public readonly DeliveryDays $deliveryDays;
     public readonly AddressChecks $addressChecks;
     public readonly Returns $returns;
@@ -351,7 +363,11 @@ final class TestShop
         $links = new FakeOrderLinks($this->receipts);
         $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, $links, $this->transactions, $this->receipts);
         $this->refundRecords = new InMemoryRefundRepository($this->transactions);
-        $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions, $this->events);
+        $this->giftCardRecords = new InMemoryGiftCards($this->transactions);
+        $this->giftCardSettings = new MemoryGiftCardSettings();
+        $this->giftCardMail = new SentGiftCards();
+        $this->giftCards = new GiftCardService($this->giftCardRecords, $this->giftCardSettings, $this->giftCardMail, $settings, $this->transactions, new FixedUserNames(), $this->clock);
+        $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions, $this->giftCards, $this->events);
         $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds, $this->transactions, $links, $this->signatures, $this->notifiedEvents = new InMemoryNotifiedEvents());
         $this->files = new TemporaryPrivateFiles();
         $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events);
@@ -380,6 +396,10 @@ final class TestShop
         $releasing = new ReleaseCouponUses($this->discounts);
         $this->events->addListener(OrderStatusChanged::class, $releasing->statusChanged(...));
         $this->events->addListener(OrderDeleted::class, $releasing->deleted(...));
+        $this->giftCardPayments = new GiftCardPayments($this->giftCardRecords, $this->orders, $this->clock);
+        $withGiftCards = new GiftCardsWithOrders($this->giftCardPayments, new GiftCardSales($this->giftCardRecords, $this->giftCardSettings, $this->orders, $this->giftCardMail, $this->transactions, $this->clock), $this->orders);
+        $this->events->addListener(OrderStatusChanged::class, $withGiftCards->statusChanged(...));
+        $this->events->addListener(OrderPaid::class, $withGiftCards->paid(...));
         $this->paymentOptions = $paymentOptions = new PaymentOptions($methodRecords, $gateways, $settings);
         $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
         $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees);
@@ -406,6 +426,7 @@ final class TestShop
             $this->deliveryDays = new DeliveryDays($carrierRecords, $this->orders, new SofiaCalendar(), $this->clock),
             $this->addressChecks = new AddressChecks($extensions, $this->logger),
             $this->newsletter,
+            $this->giftCardPayments,
         );
         $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns(new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock);

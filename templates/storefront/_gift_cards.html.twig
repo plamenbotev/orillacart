@@ -1,0 +1,32 @@
+{#
+ # Gift cards and store credit at checkout: the codes entered, what each pays or why it cannot, a field for
+ # another, and the logged-in customer's store credit. The storefront script sends them to the REST API and
+ # reloads the summary.
+ #
+ # summary: the checkout summary (gift_cards, store_credit, using_store_credit, currency).
+ #}
+<div class="orillacart-gift-cards" data-orillacart-gift-cards>
+    {% for card in summary.gift_cards %}
+        <p class="orillacart-gift-card{{ card.refused ? ' orillacart-gift-card--refused' }}">
+            <strong>{{ card.label }}</strong>:
+            {% if card.refused %}{{ card.refused }}{% else %}−{{ card.amount|money(summary.currency) }}{% endif %}
+            {% if card.code %}
+                {# translators: %s: how the gift card is named, "Gift card ····7KQ2" -#}
+                <button type="button" class="orillacart-remove" data-orillacart-remove-gift-card="{{ card.code }}" aria-label="{{ __('Remove %s')|format(card.label) }}">&times;</button>
+            {% endif %}
+        </p>
+    {% endfor %}
+    {% if summary.store_credit > 0 %}
+        <p class="orillacart-choice">
+            <input id="orillacart-store-credit" type="checkbox" data-orillacart-store-credit{{ summary.using_store_credit ? ' checked' }}>
+            {# translators: %s: an amount of money -#}
+            <label for="orillacart-store-credit">{{ __('Pay with my store credit (%s)')|format(summary.store_credit|money(summary.currency)) }}</label>
+        </p>
+    {% endif %}
+    <p class="orillacart-gift-cards__field">
+        <label for="orillacart-gift-card-code">{{ __('Gift card') }}</label>
+        <input id="orillacart-gift-card-code" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" data-orillacart-gift-card-code>
+        <button type="button" class="wp-element-button orillacart-button" data-orillacart-apply-gift-card>{{ __('Apply') }}</button>
+    </p>
+    <p class="orillacart-message" role="alert" data-orillacart-message></p>
+</div>
