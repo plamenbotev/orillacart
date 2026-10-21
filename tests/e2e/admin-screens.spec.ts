@@ -310,6 +310,53 @@ test.describe( 'The admin', () => {
 		}
 	} );
 
+	test( 'adds a webhook, sends it a test and sees the try', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage(
+			'admin.php',
+			'page=orillacart-integrations'
+		);
+		await page.getByRole( 'button', { name: 'Add a webhook' } ).click();
+		const name = `E2E hook ${ Date.now() }`;
+		await page.getByLabel( 'Name', { exact: true } ).fill( name );
+		await page
+			.getByLabel( 'Address' )
+			.fill( 'http://e2e.example.invalid/hook' );
+		await page.getByLabel( /Order placed/ ).check();
+		await page.getByRole( 'button', { name: 'Save the webhook' } ).click();
+		await expect(
+			page.getByText( 'A webhook goes to an https:// address' ).first()
+		).toBeVisible();
+		await page
+			.getByLabel( 'Address' )
+			.fill( 'https://e2e.example.invalid/hook' );
+		await page.getByRole( 'button', { name: 'Save the webhook' } ).click();
+		const row = page.getByRole( 'row', { name: new RegExp( name ) } );
+		await expect( row ).toContainText( 'Nothing sent yet' );
+
+		await row.getByRole( 'button', { name: 'Send a test' } ).click();
+		await expect(
+			page.getByText( 'A test is on its way' ).first()
+		).toBeVisible();
+		runJobs();
+		await row.getByRole( 'button', { name: 'Deliveries' } ).click();
+		await expect(
+			page.locator( '.orillacart-webhook__deliveries' )
+		).toContainText( 'webhook.ping' );
+		await expect(
+			page.locator( '.orillacart-webhook__deliveries' )
+		).toContainText( 'Failed' );
+
+		await row.getByRole( 'button', { name: 'Delete' } ).click();
+		await page
+			.getByRole( 'dialog' )
+			.getByRole( 'button', { name: 'Delete' } )
+			.click();
+		await expect( row ).toBeHidden();
+	} );
+
 	test( 'checks the shop on the Status screen', async ( { admin, page } ) => {
 		await admin.visitAdminPage( 'admin.php', 'page=orillacart-status' );
 		await expect(

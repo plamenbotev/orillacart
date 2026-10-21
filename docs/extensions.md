@@ -466,6 +466,37 @@ fields and would refuse every shop sign-up. The shop's forms carry a field peopl
 what comes with it filled in is refused, before `orillacart_verify_request` is asked. Signing up never says whether
 the email has an account: the link to make it, or word that it has one, goes to the email.
 
+## Webhooks
+
+Shop → Integrations sends webhooks: each event a webhook listens to is POSTed to its address as JSON, by the
+background jobs, and tried again (up to six times over about a day) until the address answers 2xx:
+
+```json
+{ "id": "6f1c…", "topic": "order.placed", "created_at": "2026-10-21T08:00:00+00:00", "data": { "order": { … } } }
+```
+
+The shop's topics are `order.placed`, `order.paid`, `order.status_changed` (with `status` and `previous_status`),
+`order.refunded` (with `amount` and `refunded_in_full`), `order.deleted`, `product.changed` and `stock.changed`
+(with `item`, `before` and `after`); orders and products come as the shop's API shows them, as they are when
+delivered. `webhook.ping` is the screen's test.
+
+Each request carries `X-OrillaCart-Event` (the event's id, the same on every try), `X-OrillaCart-Topic`,
+`X-OrillaCart-Attempt` and `X-OrillaCart-Signature: t=<unix time>,v1=<hex>`: the HMAC-SHA256, with the webhook's
+secret, of `<time>.<body>`. Check it, and refuse an old time, before trusting the body:
+
+```php
+[$time, $mac] = sscanf( $_SERVER['HTTP_X_ORILLACART_SIGNATURE'], 't=%d,v1=%s' );
+$ok = abs( time() - $time ) < 300 && hash_equals( hash_hmac( 'sha256', $time . '.' . $body, $secret ), $mac );
+```
+
+An add-on adds topics of its own and sends their events:
+
+```php
+add_filter( 'orillacart_webhook_topics', fn( array $topics ) => $topics + [ 'loyalty.points_earned' => 'Points earned' ] );
+
+do_action( 'orillacart_send_webhook', 'loyalty.points_earned', [ 'customer' => 12, 'points' => 50 ] );
+```
+
 ## Translations
 
 The plugin's text domain is `orillacart`. `npm run i18n:pot` writes `languages/orillacart.pot` from the PHP
