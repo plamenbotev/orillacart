@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\ProductCategories;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
@@ -12,10 +15,11 @@ use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopListing;
 
 /**
- * The shop: published products in a grid, which visitors narrow by category, tag, words, brand, the shop's filters,
- * price and stock, and sort. The products and the counts come from the search index; their cards show the
- * catalog's offers as they are now. The query string carries the choices (ShopListing), so pages can be linked
- * and work without the script. The filters show here, or (filters off) in a Product filters block elsewhere.
+ * The shop: published products in a grid, which visitors narrow by category, tag, words, brand, the shop's
+ * filters, price and stock, and sort; on a category's, tag's or brand's own page, that one's products. The
+ * products and the counts come from the search index; their cards show the catalog's offers as they are now.
+ * The query string carries the choices (ShopListing), so pages can be linked and work without the script. The
+ * filters show here, or (filters off) in a Product filters block elsewhere.
  */
 final readonly class ProductsBlock implements BlockDefinition
 {
@@ -40,9 +44,20 @@ final readonly class ProductsBlock implements BlockDefinition
         $columns = max(1, min(6, \is_int($attributes['columns'] ?? null) ? $attributes['columns'] : 3));
         $fixedCategory = \is_string($attributes['category'] ?? null) ? sanitize_title($attributes['category']) : '';
         $fixedTag = \is_string($attributes['tag'] ?? null) ? sanitize_title($attributes['tag']) : '';
+        $fixedBrand = null;
+        // On a category's, tag's or brand's own page, a block that names none shows that one's products.
+        $term = get_queried_object();
+        if ($fixedCategory === '' && $fixedTag === '' && $term instanceof \WP_Term && is_tax()) {
+            match ($term->taxonomy) {
+                ProductCategoryTaxonomy::NAME => $fixedCategory = $term->slug,
+                ProductTagTaxonomy::NAME => $fixedTag = $term->slug,
+                ProductBrandTaxonomy::NAME => $fixedBrand = $term->term_id,
+                default => null,
+            };
+        }
         $showFilters = ($attributes['filters'] ?? true) !== false;
 
-        $choices = $this->listing->choices($fixedCategory, \is_string($attributes['sort'] ?? null) ? $attributes['sort'] : 'order', $fixedTag);
+        $choices = $this->listing->choices($fixedCategory, \is_string($attributes['sort'] ?? null) ? $attributes['sort'] : 'order', $fixedTag, $fixedBrand);
         $result = $this->listing->search(
             $choices,
             ($choices['page'] - 1) * $perPage,

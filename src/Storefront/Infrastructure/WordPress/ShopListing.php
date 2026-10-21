@@ -41,7 +41,7 @@ final class ShopListing
      *
      * @return Choices
      */
-    public function choices(string $fixedCategory = '', string $defaultSort = 'order', string $fixedTag = ''): array
+    public function choices(string $fixedCategory = '', string $defaultSort = 'order', string $fixedTag = '', ?int $fixedBrand = null): array
     {
         $category = $fixedCategory !== '' ? $fixedCategory : self::query('category');
         $tag = $fixedTag !== '' ? $fixedTag : self::query('tag');
@@ -55,7 +55,7 @@ final class ShopListing
             'tag' => $tag,
             'tag_id' => self::termId($tag, ProductTagTaxonomy::NAME),
             'search' => $search,
-            'brands' => self::chosenIds('brand'),
+            'brands' => $fixedBrand !== null ? [$fixedBrand] : self::chosenIds('brand'),
             'options' => self::chosenOptions(),
             'price_min' => self::price('price_min'),
             'price_max' => self::price('price_max'),
