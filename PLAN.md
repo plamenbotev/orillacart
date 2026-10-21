@@ -160,6 +160,7 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 | ✅ | 96 | P3 | Commerce settings: a shop-wide minimum order amount (and per rate), gift cards and store credit, buy X get Y and free gifts, rounding settings, multi-currency (orders already store theirs), compound and postcode-level tax rates. Built as docs/designs/39-commerce-settings.md: rounding is the tax's (per line or per order); a rate's minimum is its order value range, now said aloud | 14ddd66, 5ed9bb8, 9c076d0, 04e6928, 1f7996b, 9372020, bebf549 |
 | ⬜ | 97 | P3 | Combining options: price rules say whether coupons apply on top of their price and whether they stack with other price rules (today the lowest single price wins); decide which side owns the coupon ↔ price rule choice | |
 | ✅ | 98 | P2 | Privacy: the change log kept what shop managers sent (an order's address, a gift card's recipient) out of reach of the erase tool; erasing a person or anonymising an order now blanks those records and the gift cards' recipient. Quotes and previews are not logged; records keep the route's own path | b10d5e4, a9be362 |
+| ✅ | 99 | P3 | Shop filters by category: a filter shows in all categories or the ones chosen (subcategories inherit), a category may order its filters (the shop's order otherwise), and a setting hides a filter whose products in view leave one value | 4b47756 |
 
 ## Waiting on others
 
