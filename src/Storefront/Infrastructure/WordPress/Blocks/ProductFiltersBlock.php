@@ -38,14 +38,15 @@ final readonly class ProductFiltersBlock implements BlockDefinition
             return '';
         }
         $fixedCategory = \is_string($products['category'] ?? null) ? sanitize_title($products['category']) : '';
-        $choices = $this->listing->choices($fixedCategory);
+        $fixedTag = \is_string($products['tag'] ?? null) ? sanitize_title($products['tag']) : '';
+        $choices = $this->listing->choices($fixedCategory, 'order', $fixedTag);
         // Counts only, within what the Products block always shows: it lists the products.
         $result = $this->listing->search($choices, 0, 0, true, ($products['featured'] ?? false) === true, ($products['onSale'] ?? false) === true);
 
         return $this->templates->render('storefront/product-filters.html.twig', [
             'action' => $action,
-            // A category the Products block always shows is not the address's to keep.
-            'hidden' => $this->listing->hidden($choices, false, $fixedCategory === ''),
+            // A category or tag the Products block always shows is not the address's to keep.
+            'hidden' => $this->listing->hidden($choices, false, $fixedCategory === '' && $fixedTag === ''),
             'panel' => $this->listing->panel($choices, $result),
         ]);
     }

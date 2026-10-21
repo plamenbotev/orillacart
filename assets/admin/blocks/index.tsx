@@ -18,6 +18,7 @@ type ProductsAttributes = {
 	perPage: number;
 	columns: number;
 	category: string;
+	tag: string;
 	sort: 'order' | 'newest' | 'name' | 'price_asc' | 'price_desc';
 	featured: boolean;
 	onSale: boolean;
@@ -98,6 +99,16 @@ function ProductsEdit( {
 						onChange={ ( category ) =>
 							setAttributes( { category } )
 						}
+					/>
+					<TextControl
+						__next40pxDefaultSize
+						label={ __( 'Only this tag (slug)', 'orillacart' ) }
+						help={ __(
+							'Empty: products with any tag.',
+							'orillacart'
+						) }
+						value={ attributes.tag }
+						onChange={ ( tag ) => setAttributes( { tag } ) }
 					/>
 					<SelectControl
 						__next40pxDefaultSize

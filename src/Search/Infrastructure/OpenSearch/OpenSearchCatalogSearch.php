@@ -118,6 +118,9 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
         if ($query->brandIds !== [] && $except !== Facet::BRANDS) {
             $filters[] = ['terms' => ['brands' => array_map(strval(...), $query->brandIds)]];
         }
+        if ($query->tagIds !== []) {
+            $filters[] = ['terms' => ['tags' => array_map(strval(...), $query->tagIds)]];
+        }
         $variant = self::variantFilters($query, $except);
         if ($variants && $variant !== []) {
             $filters[] = ['nested' => ['path' => 'variants', 'query' => ['bool' => ['filter' => $variant]]]];

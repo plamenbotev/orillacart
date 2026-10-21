@@ -12,6 +12,7 @@ final class Facets
 {
     public const string CATEGORY = 'category';
     public const string BRAND = 'brand';
+    public const string TAG = 'tag';
     public const string SKU = 'sku';
 
     private const string ATTRIBUTE_PREFIX = 'attr:';

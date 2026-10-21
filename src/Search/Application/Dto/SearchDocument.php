@@ -19,6 +19,7 @@ final readonly class SearchDocument
      * @param list<DocumentOption>  $options    options of the whole product, which has no variations
      * @param non-empty-list<DocumentVariant> $variants
      * @param \DateTimeImmutable|null $priceChangesAt when a sale starts or ends, so the document is built again then
+     * @param list<DocumentTerm>    $tags
      */
     public function __construct(
         public int $productId,
@@ -34,6 +35,7 @@ final readonly class SearchDocument
         public int $menuOrder,
         public \DateTimeImmutable $publishedAt,
         public ?\DateTimeImmutable $priceChangesAt = null,
+        public array $tags = [],
     ) {}
 
     /**

@@ -6,11 +6,12 @@ namespace OrillaCart\Search\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Search\Application\SearchIndexing;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
- * Queues the products of a category or brand that was renamed, moved or deleted: the index keeps their names,
+ * Queues the products of a category, brand or tag that was renamed, moved or deleted: the index keeps their names,
  * and a product is found under every category above its own. A change to anything else, such as the
  * description, queues nothing. A deleted category's products, its subcategories' too, are found before it goes,
  * while they still hang below it, and queued once the row is gone.
@@ -65,7 +66,7 @@ final class QueueTermProducts
 
     private static function shopTerm(int $termId, string $taxonomy): ?\WP_Term
     {
-        if (!\in_array($taxonomy, [ProductCategoryTaxonomy::NAME, ProductBrandTaxonomy::NAME], true)) {
+        if (!\in_array($taxonomy, [ProductCategoryTaxonomy::NAME, ProductBrandTaxonomy::NAME, ProductTagTaxonomy::NAME], true)) {
             return null;
         }
         $term = get_term($termId, $taxonomy);

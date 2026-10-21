@@ -85,6 +85,7 @@ final readonly class DocumentBuilder
             $text->menuOrder,
             $text->publishedAt,
             $this->catalog->nextPriceChange($productId),
+            $text->tags,
         );
     }
 

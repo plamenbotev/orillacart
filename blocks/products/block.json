@@ -24,6 +24,10 @@
 			"type": "string",
 			"default": ""
 		},
+		"tag": {
+			"type": "string",
+			"default": ""
+		},
 		"sort": {
 			"type": "string",
 			"default": "order"

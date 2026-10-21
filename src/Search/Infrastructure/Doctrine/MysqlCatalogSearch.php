@@ -142,7 +142,8 @@ final readonly class MysqlCatalogSearch implements CatalogSearch
         if ($query->onSaleOnly) {
             $conditions[] = 'd.on_sale = 1';
         }
-        foreach ([Facet::CATEGORIES => [Facets::CATEGORY, $query->categoryIds], Facet::BRANDS => [Facets::BRAND, $query->brandIds]] as $key => [$facet, $ids]) {
+        // Tags have no filter panel: their key is the facet's, which no count leaves out.
+        foreach ([Facet::CATEGORIES => [Facets::CATEGORY, $query->categoryIds], Facet::BRANDS => [Facets::BRAND, $query->brandIds], Facets::TAG => [Facets::TAG, $query->tagIds]] as $key => [$facet, $ids]) {
             if ($ids !== [] && $except !== $key) {
                 $conditions[] = \sprintf(
                     'EXISTS (SELECT 1 FROM %s t WHERE t.product_id = d.product_id AND t.variant_id IS NULL AND t.facet = %s AND t.value IN (%s))',

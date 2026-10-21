@@ -13,6 +13,7 @@ final readonly class SearchQuery
     /**
      * @param list<int>          $categoryIds products in one of the categories or below them
      * @param list<int>          $brandIds
+     * @param list<int>          $tagIds      products with one of the tags
      * @param list<OptionFilter> $options
      * @param string|null        $priceMin    today's price before tax, from
      * @param string|null        $priceMax    up to and including
@@ -33,5 +34,6 @@ final readonly class SearchQuery
         public int $offset = 0,
         public int $limit = 12,
         public bool $facets = false,
+        public array $tagIds = [],
     ) {}
 }

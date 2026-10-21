@@ -61,6 +61,7 @@ final readonly class OpenSearchIndex implements SearchIndex
             'skus' => $document->skus,
             'categories' => array_map(static fn(DocumentTerm $term): string => (string) $term->id, $document->categories),
             'brands' => array_map(static fn(DocumentTerm $term): string => (string) $term->id, $document->brands),
+            'tags' => array_map(static fn(DocumentTerm $term): string => (string) $term->id, $document->tags),
             'variants' => array_map(static fn(DocumentVariant $variant): array => [
                 'id' => $variant->id,
                 'price' => $variant->price === null ? null : (float) $variant->price,

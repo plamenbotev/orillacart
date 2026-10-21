@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Search\Application\Dto;
 
 /**
- * A category or brand a product is filed under.
+ * A category, brand or tag a product is filed under.
  */
 final readonly class DocumentTerm
 {

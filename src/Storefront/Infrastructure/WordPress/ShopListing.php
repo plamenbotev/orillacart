@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Search\Application\Dto\Facet;
 use OrillaCart\Search\Application\Dto\FacetCount;
 use OrillaCart\Search\Application\Dto\OptionFilter;
@@ -17,17 +18,17 @@ use OrillaCart\Search\Domain\Facets;
 
 /**
  * What a shopper asks the shop page for, read from the address, as the Products and Product filters blocks
- * share it: words, category, brands, the shop's filters, price, stock, sort and page. The address is the only
+ * share it: words, category, tag, brands, the shop's filters, price, stock, sort and page. The address is the only
  * state, so pages can be linked and work without the script; each form keeps, as hidden fields, the choices
  * the other one shows.
  *
- * @phpstan-type Choices array{category: string, category_id: ?int, search: string, brands: list<int>, options: array<string, list<string>>, price_min: ?string, price_max: ?string, in_stock: bool, sort: string, page: int}
+ * @phpstan-type Choices array{category: string, category_id: ?int, tag: string, tag_id: ?int, search: string, brands: list<int>, options: array<string, list<string>>, price_min: ?string, price_max: ?string, in_stock: bool, sort: string, page: int}
  * @phpstan-type Panel array{filters: list<array{label: string, name: string, values: list<array{value: string, label: string, count: int, checked: bool}>}>, price: array{min: ?string, max: ?string, low: string, high: string}|null, in_stock: bool, filtered: bool, clear_url: string}
  */
 final class ShopListing
 {
     public const array SORTS = ['order', 'newest', 'name', 'price_asc', 'price_desc'];
-    /** The address's arguments for the shop's filters; the rest are words, category, sort and page. */
+    /** The address's arguments for the shop's filters; the rest are words, category, tag, sort and page. */
     public const array FILTER_ARGUMENTS = ['brand', 'f', 'price_min', 'price_max', 'in_stock'];
 
     /** @var list<SearchFilterView>|null the shop's filters, read once per request */
@@ -40,22 +41,19 @@ final class ShopListing
      *
      * @return Choices
      */
-    public function choices(string $fixedCategory = '', string $defaultSort = 'order'): array
+    public function choices(string $fixedCategory = '', string $defaultSort = 'order', string $fixedTag = ''): array
     {
         $category = $fixedCategory !== '' ? $fixedCategory : self::query('category');
-        $categoryId = null;
-        if ($category !== '') {
-            $term = get_term_by('slug', $category, ProductCategoryTaxonomy::NAME);
-            // An unknown category finds nothing rather than everything.
-            $categoryId = $term instanceof \WP_Term ? $term->term_id : 0;
-        }
+        $tag = $fixedTag !== '' ? $fixedTag : self::query('tag');
         $search = self::query('q');
         $sorts = $search === '' ? self::SORTS : ['relevance', ...self::SORTS];
         $defaultSort = \in_array($defaultSort, self::SORTS, true) ? $defaultSort : 'order';
 
         return [
             'category' => $category,
-            'category_id' => $categoryId,
+            'category_id' => self::termId($category, ProductCategoryTaxonomy::NAME),
+            'tag' => $tag,
+            'tag_id' => self::termId($tag, ProductTagTaxonomy::NAME),
             'search' => $search,
             'brands' => self::chosenIds('brand'),
             'options' => self::chosenOptions(),
@@ -81,6 +79,7 @@ final class ShopListing
             text: $choices['search'] === '' ? null : $choices['search'],
             categoryIds: $choices['category_id'] === null ? [] : [$choices['category_id']],
             brandIds: $choices['brands'],
+            tagIds: $choices['tag_id'] === null ? [] : [$choices['tag_id']],
             options: array_map(static fn(SearchFilterView $filter): OptionFilter => new OptionFilter($filter->key, $filter->attributes, $choices['options'][$filter->key] ?? []), $options),
             priceMin: $choices['price_min'],
             priceMax: $choices['price_max'],
@@ -134,7 +133,8 @@ final class ShopListing
      * The choices a form does not show, as hidden fields, so sending it keeps them.
      *
      * @param Choices $choices
-     * @param bool    $filters the filters' choices (for the Products block's form without its panel); otherwise words, category and sort
+     * @param bool    $filters the filters' choices (for the Products block's form without its panel); otherwise words, category, tag and sort
+     * @param bool    $category keep the category and tag (not when the Products block always shows its own)
      *
      * @return list<array{name: string, value: string}>
      */
@@ -167,6 +167,9 @@ final class ShopListing
         if ($category && $choices['category'] !== '') {
             $fields[] = ['name' => 'category', 'value' => $choices['category']];
         }
+        if ($category && $choices['tag'] !== '') {
+            $fields[] = ['name' => 'tag', 'value' => $choices['tag']];
+        }
         if (self::query('sort') !== '') {
             $fields[] = ['name' => 'sort', 'value' => $choices['sort']];
         }
@@ -180,6 +183,17 @@ final class ShopListing
     private function definitions(): array
     {
         return $this->definitions ??= $this->search->filters();
+    }
+
+    /** The id of the term with the slug; an unknown one is 0, which finds nothing rather than everything. */
+    private static function termId(string $slug, string $taxonomy): ?int
+    {
+        if ($slug === '') {
+            return null;
+        }
+        $term = get_term_by('slug', $slug, $taxonomy);
+
+        return $term instanceof \WP_Term ? $term->term_id : 0;
     }
 
     private static function query(string $name): string

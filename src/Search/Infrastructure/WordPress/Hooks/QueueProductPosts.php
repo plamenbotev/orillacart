@@ -7,11 +7,12 @@ namespace OrillaCart\Search\Infrastructure\WordPress\Hooks;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Search\Application\SearchIndexing;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
- * Queues a product for the search index when its post changes: its words, status, order, categories or brands;
+ * Queues a product for the search index when its post changes: its words, status, order, categories, brands or tags;
  * or when it is deleted, so it leaves the index.
  */
 #[AsHook('save_post_' . ProductPostType::NAME, method: 'saved')]
@@ -43,7 +44,7 @@ final readonly class QueueProductPosts
 
     public function filed(int $objectId, mixed $terms, mixed $termTaxonomyIds, string $taxonomy): void
     {
-        if (\in_array($taxonomy, [ProductCategoryTaxonomy::NAME, ProductBrandTaxonomy::NAME], true) && get_post_type($objectId) === ProductPostType::NAME) {
+        if (\in_array($taxonomy, [ProductCategoryTaxonomy::NAME, ProductBrandTaxonomy::NAME, ProductTagTaxonomy::NAME], true) && get_post_type($objectId) === ProductPostType::NAME) {
             $this->indexing->queue([$objectId]);
         }
     }

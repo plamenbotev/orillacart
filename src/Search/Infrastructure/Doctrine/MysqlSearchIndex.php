@@ -110,7 +110,7 @@ final readonly class MysqlSearchIndex implements SearchIndex
                 $rows[$variantId . '|' . $facet . '|' . $value] = [$document->productId, $variantId, $facet, $value, mb_substr($label, 0, 255)];
             }
         };
-        foreach ([Facets::CATEGORY => $document->categories, Facets::BRAND => $document->brands] as $facet => $terms) {
+        foreach ([Facets::CATEGORY => $document->categories, Facets::BRAND => $document->brands, Facets::TAG => $document->tags] as $facet => $terms) {
             foreach ($terms as $term) {
                 \assert($term instanceof DocumentTerm);
                 $add(null, $facet, (string) $term->id, $term->name);

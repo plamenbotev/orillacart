@@ -27,6 +27,9 @@ final readonly class OpenSearchServer implements SearchServer
             $this->client->request($settings, 'GET', '/');
             if ($this->client->request($settings, 'GET', "/{$settings->index}", missingOk: true) === []) {
                 $this->client->request($settings, 'PUT', "/{$settings->index}", self::definition());
+            } else {
+                // An index made by an earlier version gets the fields added since; existing fields stay as they are.
+                $this->client->request($settings, 'PUT', "/{$settings->index}/_mapping", ['properties' => self::properties()]);
             }
         } catch (OpenSearchUnavailable $e) {
             return $e->getMessage();
@@ -40,8 +43,6 @@ final readonly class OpenSearchServer implements SearchServer
      */
     public static function definition(): array
     {
-        $keyword = ['type' => 'keyword'];
-
         return [
             'settings' => [
                 'analysis' => [
@@ -52,31 +53,42 @@ final readonly class OpenSearchServer implements SearchServer
             ],
             'mappings' => [
                 'dynamic' => 'strict',
+                'properties' => self::properties(),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function properties(): array
+    {
+        $keyword = ['type' => 'keyword'];
+
+        return [
+            'product_id' => ['type' => 'integer'],
+            'title' => ['type' => 'text', 'analyzer' => 'folded', 'fields' => ['sort' => ['type' => 'keyword', 'normalizer' => 'folded']]],
+            'text' => ['type' => 'text', 'analyzer' => 'folded'],
+            'skus' => ['type' => 'keyword', 'normalizer' => 'folded'],
+            'categories' => $keyword,
+            'brands' => $keyword,
+            'tags' => $keyword,
+            'variants' => [
+                'type' => 'nested',
                 'properties' => [
-                    'product_id' => ['type' => 'integer'],
-                    'title' => ['type' => 'text', 'analyzer' => 'folded', 'fields' => ['sort' => ['type' => 'keyword', 'normalizer' => 'folded']]],
-                    'text' => ['type' => 'text', 'analyzer' => 'folded'],
-                    'skus' => ['type' => 'keyword', 'normalizer' => 'folded'],
-                    'categories' => $keyword,
-                    'brands' => $keyword,
-                    'variants' => [
-                        'type' => 'nested',
-                        'properties' => [
-                            'id' => ['type' => 'integer'],
-                            'price' => ['type' => 'double'],
-                            'in_stock' => ['type' => 'boolean'],
-                            'options' => $keyword,
-                        ],
-                    ],
-                    'price_min' => ['type' => 'double'],
-                    'price_max' => ['type' => 'double'],
+                    'id' => ['type' => 'integer'],
+                    'price' => ['type' => 'double'],
                     'in_stock' => ['type' => 'boolean'],
-                    'featured' => ['type' => 'boolean'],
-                    'on_sale' => ['type' => 'boolean'],
-                    'menu_order' => ['type' => 'integer'],
-                    'published_at' => ['type' => 'date'],
+                    'options' => $keyword,
                 ],
             ],
+            'price_min' => ['type' => 'double'],
+            'price_max' => ['type' => 'double'],
+            'in_stock' => ['type' => 'boolean'],
+            'featured' => ['type' => 'boolean'],
+            'on_sale' => ['type' => 'boolean'],
+            'menu_order' => ['type' => 'integer'],
+            'published_at' => ['type' => 'date'],
         ];
     }
 }

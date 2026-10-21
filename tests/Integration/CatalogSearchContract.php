@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Integration;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Search\Application\Dto\Facet;
 use OrillaCart\Search\Application\Dto\FacetCount;
@@ -294,6 +295,31 @@ abstract class CatalogSearchContract extends RestTestCase
         $this->request('PUT', "/stock/product/{$this->tv}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 5]]], nonce: true);
         wp_set_current_user(0);
         self::assertSame(0, $this->indexing()->status()->due, 'still in stock: nothing the index shows changed');
+    }
+
+    // Last: the shop reads its filters once a request, so a test that makes filters renders it before this does.
+    public function testTagsAreWordsAndAFilterAndARenamedTagQueuesItsProducts(): void
+    {
+        $this->actAs('administrator');
+        $gift = $this->term('Gift idea', ProductTagTaxonomy::NAME);
+        wp_set_object_terms($this->book, [$gift], ProductTagTaxonomy::NAME);
+        self::assertSame([$this->book], $this->queued(), 'tagging a product');
+        $this->work();
+
+        self::assertSame([$this->book], $this->find('gift'), 'a tag\'s name finds its products');
+        self::assertSame([$this->book], $this->ids(new SearchQuery(tagIds: [$gift])));
+        self::assertSame([], $this->ids(new SearchQuery(categoryIds: [$this->lighting], tagIds: [$gift])), 'with the other filters');
+
+        wp_update_term($gift, ProductTagTaxonomy::NAME, ['name' => 'Present']);
+        self::assertSame([$this->book], $this->queued(), 'a tag renamed');
+        $this->work();
+        self::assertSame([$this->book], $this->find('present'));
+        self::assertSame([], $this->find('gift'));
+
+        $_GET = ['tag' => 'gift-idea'];
+        self::assertSame(['Lamps of the world'], self::names(do_blocks('<!-- wp:orillacart/products /-->')), 'the shop page narrows by ?tag=');
+        $_GET = [];
+        self::assertSame(['Lamps of the world'], self::names(do_blocks('<!-- wp:orillacart/products {"tag":"gift-idea"} /-->')), 'or a block by its own');
     }
 
     /**

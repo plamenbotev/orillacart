@@ -7,12 +7,13 @@ namespace OrillaCart\Search\Infrastructure\WordPress;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Search\Application\Dto\DocumentTerm;
 use OrillaCart\Search\Application\Dto\ProductText;
 use OrillaCart\Search\Application\ProductTexts;
 
 /**
- * Reads products' posts and terms. The content is taken as stored, without the_content's filters: those render
+ * Reads products' posts and terms (categories, brands, tags). The content is taken as stored, without the_content's filters: those render
  * blocks and shortcodes for a page, which a search index does not need.
  */
 final readonly class WordPressProductTexts implements ProductTexts
@@ -44,14 +45,17 @@ final readonly class WordPressProductTexts implements ProductTexts
         }
 
         $published = $post->post_date_gmt !== '0000-00-00 00:00:00' ? $post->post_date_gmt : $post->post_date;
+        $tags = self::terms($productId, ProductTagTaxonomy::NAME);
 
+        // The tags' names are words shoppers find the product by.
         return new ProductText(
             self::plain($post->post_title),
-            self::plain($post->post_excerpt . ' ' . strip_shortcodes($post->post_content)),
+            self::plain(implode(' ', [$post->post_excerpt, strip_shortcodes($post->post_content), ...array_map(static fn(DocumentTerm $tag): string => $tag->name, $tags)])),
             $post->menu_order,
             new \DateTimeImmutable($published, new \DateTimeZone('UTC')),
             self::terms($productId, ProductCategoryTaxonomy::NAME),
             self::terms($productId, ProductBrandTaxonomy::NAME),
+            $tags,
         );
     }
 

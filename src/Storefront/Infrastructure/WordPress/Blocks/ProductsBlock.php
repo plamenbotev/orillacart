@@ -13,7 +13,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\ShopListing;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
 /**
- * The shop: published products in a grid, which visitors narrow by category, words, brand, the shop's filters,
+ * The shop: published products in a grid, which visitors narrow by category, tag, words, brand, the shop's filters,
  * price and stock, and sort. The products and the counts come from the search index; their cards show the
  * catalog's offers as they are now. The query string carries the choices (ShopListing), so pages can be linked
  * and work without the script. The filters show here, or (filters off) in a Product filters block elsewhere.
@@ -41,9 +41,10 @@ final readonly class ProductsBlock implements BlockDefinition
         $perPage = max(1, min(60, \is_int($attributes['perPage'] ?? null) ? $attributes['perPage'] : 12));
         $columns = max(1, min(6, \is_int($attributes['columns'] ?? null) ? $attributes['columns'] : 3));
         $fixedCategory = \is_string($attributes['category'] ?? null) ? sanitize_title($attributes['category']) : '';
+        $fixedTag = \is_string($attributes['tag'] ?? null) ? sanitize_title($attributes['tag']) : '';
         $showFilters = ($attributes['filters'] ?? true) !== false;
 
-        $choices = $this->listing->choices($fixedCategory, \is_string($attributes['sort'] ?? null) ? $attributes['sort'] : 'order');
+        $choices = $this->listing->choices($fixedCategory, \is_string($attributes['sort'] ?? null) ? $attributes['sort'] : 'order', $fixedTag);
         $result = $this->listing->search(
             $choices,
             ($choices['page'] - 1) * $perPage,
@@ -67,7 +68,7 @@ final readonly class ProductsBlock implements BlockDefinition
             ];
         }
 
-        $base = remove_query_arg(['category', 'q', 'sort', 'product-page', ...ShopListing::FILTER_ARGUMENTS]);
+        $base = remove_query_arg(['category', 'tag', 'q', 'sort', 'product-page', ...ShopListing::FILTER_ARGUMENTS]);
         $pages = (int) ceil($result->total / $perPage);
         $pageUrls = [];
         for ($number = 1; $number <= $pages; ++$number) {
