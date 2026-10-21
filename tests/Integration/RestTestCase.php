@@ -48,6 +48,8 @@ abstract class RestTestCase extends TestCase
             remove_filter('pre_wp_mail', $this->mailCatcher);
         }
         wp_set_current_user(0);
+        // A test that showed an admin screen would leave is_admin() true for the tests after it.
+        $GLOBALS['current_screen'] = null;
     }
 
     /**
