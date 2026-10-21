@@ -187,6 +187,30 @@ test.describe( 'The admin', () => {
 		await expect( row ).toHaveCount( 0 );
 	} );
 
+	test( 'saves a product to its own wishlist and finds it in the account page', async ( {
+		page,
+	} ) => {
+		await page.goto( shop.lampUrl );
+		const save = page.getByRole( 'button', { name: /wishlist/ } );
+		if ( ( await save.getAttribute( 'aria-pressed' ) ) !== 'true' ) {
+			await save.click();
+		}
+		await expect(
+			page.getByRole( 'button', { name: 'Saved to your wishlist' } )
+		).toHaveAttribute( 'aria-pressed', 'true' );
+
+		// Read with the logged-in user's nonce: without it WordPress answers as to a visitor.
+		await page.goto( `${ shop.urls.account }?section=wishlist` );
+		const wishlist = page.locator( '[data-orillacart-wishlist-list]' );
+		await expect(
+			wishlist.locator( '.orillacart-product-card__name' )
+		).toHaveText( [ 'E2E Lamp' ] );
+		await wishlist.getByRole( 'button', { name: 'Remove' } ).click();
+		await expect(
+			page.getByText( 'Nothing saved yet.', { exact: false } )
+		).toBeVisible();
+	} );
+
 	test( 'chooses the page the cart is on', async ( { admin, page } ) => {
 		await admin.visitAdminPage( 'admin.php', 'page=orillacart-settings' );
 		const cart = page.getByRole( 'combobox', {

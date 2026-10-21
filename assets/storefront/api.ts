@@ -3,7 +3,7 @@
  *
  * Visitors' pages carry no nonce, since a page cache would serve one that has expired: the first change asks
  * GET /session for one, keeps it, and asks again once when the server refuses it. Logged-in users' pages,
- * which caches do not keep, carry theirs.
+ * which caches do not keep, carry theirs, which every call sends: without it WordPress answers as to a visitor.
  */
 
 import { __ } from '@wordpress/i18n';
@@ -120,7 +120,13 @@ async function call< T >(
 	};
 
 	const changes = method !== 'GET';
-	let response = await send( changes ? await currentNonce() : null );
+	// WordPress takes a request without its nonce for a visitor's: a logged-in user's reads carry the page's
+	// too (a visitor's page has none, and a read asks for none).
+	let response = await send(
+		changes
+			? await currentNonce()
+			: ( nonce ?? window.orillacartStorefront?.nonce ?? null )
+	);
 	let data = await readJson( response );
 	if (
 		changes &&

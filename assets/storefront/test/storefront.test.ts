@@ -102,22 +102,33 @@ describe( 'api', () => {
 		} );
 	} );
 
-	it( 'uses the nonce a logged-in page carries, and sends none to read', async () => {
+	it( 'sends the nonce a logged-in page carries with every call, reads too', async () => {
 		window.orillacartStorefront = { api: '/api', nonce: 'mine' };
 		const calls = serve( [
-			[ 200, { items: 0 } ],
+			[ 200, { product_ids: [] } ],
 			[ 201, { items: 1 } ],
 		] );
 
-		await api( 'GET', '/cart' );
+		// Without it WordPress answers a logged-in customer's read as a visitor's: 401.
+		await api( 'GET', '/account/wishlist' );
 		await api( 'POST', '/cart/items', {} );
 
 		expect( calls.map( ( call ) => call.url ) ).toEqual( [
-			'/api/cart',
+			'/api/account/wishlist',
 			'/api/cart/items',
 		] );
-		expect( header( calls[ 0 ], 'X-WP-Nonce' ) ).toBeUndefined();
+		expect( header( calls[ 0 ], 'X-WP-Nonce' ) ).toBe( 'mine' );
 		expect( header( calls[ 1 ], 'X-WP-Nonce' ) ).toBe( 'mine' );
+	} );
+
+	it( 'reads without a nonce on a page for visitors', async () => {
+		window.orillacartStorefront = { api: '/api', nonce: null };
+		const calls = serve( [ [ 200, { items: 0 } ] ] );
+
+		await api( 'GET', '/cart' );
+
+		expect( calls.map( ( call ) => call.url ) ).toEqual( [ '/api/cart' ] );
+		expect( header( calls[ 0 ], 'X-WP-Nonce' ) ).toBeUndefined();
 	} );
 
 	it( 'returns the problems the server found', async () => {
