@@ -8,6 +8,8 @@ export const TYPE_LABELS: Record< string, string > = {
 	'reports.order': __( 'Report figures', 'orillacart' ),
 	'reports.rebuild': __( 'Counting every order again', 'orillacart' ),
 	'exchange.import_products': __( 'Products import', 'orillacart' ),
+	'newsletter.sync': __( 'Mailing lists', 'orillacart' ),
+	'webhook.deliver': __( 'Webhooks', 'orillacart' ),
 };
 
 export const LANE_LABELS: Record< string, string > = {
@@ -16,6 +18,7 @@ export const LANE_LABELS: Record< string, string > = {
 	shipping: __( 'Shipping', 'orillacart' ),
 	reports: __( 'Reports', 'orillacart' ),
 	imports: __( 'Imports', 'orillacart' ),
+	webhooks: __( 'Webhooks', 'orillacart' ),
 };
 
 export const typeLabel = ( type: string ) => TYPE_LABELS[ type ] ?? type;

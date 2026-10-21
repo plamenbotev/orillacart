@@ -68,6 +68,7 @@ final class SettingsArchiveTest extends RestTestCase
 
     public function testASectionTheShopCannotUseIsLeftAsItWas(): void
     {
+        update_option('orillacart_settings', ['currency' => 'EUR', 'weight_unit' => 'kg', 'dimension_unit' => 'cm']);
         $before = get_option('orillacart_settings');
         $file = $this->data($this->request('GET', '/settings-archive'));
         self::assertIsArray($file['settings']);

@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Security;
 
+use OrillaCart\Integrations\Infrastructure\WordPress\ApiKeyRequest;
 use OrillaCart\Shared\Http\Security\CsrfProtection;
 
 final readonly class WordPressCsrfProtection implements CsrfProtection
 {
+    public function __construct(private ApiKeyRequest $apiKey) {}
+
     public function isRequired(): bool
     {
-        // Set when the request authenticated with an application password, or one of the shop's API keys, instead
-        // of a cookie.
-        return did_action('application_password_did_authenticate') === 0 && did_action('orillacart_api_key_did_authenticate') === 0;
+        // Not when the request authenticated with an application password (WordPress says so), or with one of the
+        // shop's API keys (this request's, not any earlier one's), instead of a cookie.
+        return did_action('application_password_did_authenticate') === 0 && $this->apiKey->key === null;
     }
 
     public function isTokenValid(string $token, string $action): bool
