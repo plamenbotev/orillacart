@@ -17,8 +17,10 @@ import { bindCheckout } from './checkout';
 import { bindGallery } from './gallery';
 import { bindPayNow, bindReceiptLink, bindReorder, bindReturn } from './paynow';
 import { bindAddToCart, refreshCartCount } from './product';
+import { startRecentlyViewed } from './recent';
 import { bindReviewForm } from './reviews';
 import { bindShop } from './shop';
+import { startWishlist } from './wishlist';
 
 function start(): void {
 	// Products that cannot be bought here still have pictures to look through.
@@ -77,6 +79,8 @@ function start(): void {
 		.querySelectorAll< HTMLElement >( '.orillacart-account__addresses' )
 		.forEach( bindAddressBook );
 	bindShop();
+	void startWishlist();
+	void startRecentlyViewed();
 	if ( document.querySelector( '[data-orillacart-region="cart"]' ) ) {
 		bindCart( document );
 	} else {

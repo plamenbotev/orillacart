@@ -46,6 +46,16 @@ final class PersonalDataTest extends TestCase
         self::assertSame(['#' . $ordered->number, 'ada@example.com', '1 × E-book'], [$order['Order'], $order['Email'], $order['Items']]);
     }
 
+    public function testTheWishlistIsExportedByProductName(): void
+    {
+        $ada = $this->shop->accounts->add('ada@example.com', 'Ada');
+        $this->shop->accounts->saveWishlist($ada, [20, 999]);
+
+        $items = array_column($this->shop->personalData->export('ada@example.com', 1)['items'], null, 'id');
+
+        self::assertSame([['name' => 'Wishlist', 'value' => 'E-book, #999']], $items['orillacart-account-wishlist']['data'] ?? null, 'a product gone since by its number');
+    }
+
     public function testErasingAnonymisesOrdersAndForgetsTheRest(): void
     {
         $ada = $this->shop->accounts->add('ada@example.com', 'Ada');

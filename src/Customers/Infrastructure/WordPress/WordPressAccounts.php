@@ -23,6 +23,7 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
     public const string ROLE = 'orillacart_customer';
     public const string ADDRESSES = 'orillacart_addresses';
     public const string NO_CART_REMINDERS = 'orillacart_no_cart_reminders';
+    public const string WISHLIST = 'orillacart_wishlist';
 
     public function __construct(
         private NormalizerInterface $normalizer,
@@ -96,6 +97,22 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
             delete_user_meta($id, self::NO_CART_REMINDERS);
         } else {
             update_user_meta($id, self::NO_CART_REMINDERS, '1');
+        }
+    }
+
+    public function wishlist(int $id): array
+    {
+        $stored = get_user_meta($id, self::WISHLIST, true);
+
+        return \is_array($stored) ? array_values(array_filter(array_map(static fn(mixed $productId): int => is_numeric($productId) ? (int) $productId : 0, $stored), static fn(int $productId): bool => $productId > 0)) : [];
+    }
+
+    public function saveWishlist(int $id, array $productIds): void
+    {
+        if ($productIds === []) {
+            delete_user_meta($id, self::WISHLIST);
+        } else {
+            update_user_meta($id, self::WISHLIST, $productIds);
         }
     }
 

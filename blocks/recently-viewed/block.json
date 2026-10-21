@@ -1,0 +1,30 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/recently-viewed",
+	"title": "Recently viewed products",
+	"category": "widgets",
+	"icon": "visibility",
+	"description": "The products the shopper viewed lately, kept in their browser. Product pages show them by themselves.",
+	"keywords": [
+		"shop",
+		"history"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"count": {
+			"type": "integer",
+			"default": 4
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		]
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

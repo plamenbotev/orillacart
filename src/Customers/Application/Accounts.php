@@ -32,6 +32,18 @@ interface Accounts
     public function saveCartReminders(int $id, bool $on): void;
 
     /**
+     * The products the customer saved for later, newest first.
+     *
+     * @return list<int>
+     */
+    public function wishlist(int $id): array;
+
+    /**
+     * @param list<int> $productIds newest first
+     */
+    public function saveWishlist(int $id, array $productIds): void;
+
+    /**
      * Customers newest first, and how many match in all. The search matches email and names.
      *
      * @return array{list<CustomerRecord>, int}

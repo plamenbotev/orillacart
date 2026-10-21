@@ -13,10 +13,13 @@ final readonly class StorefrontSettingsView
         public bool $structuredData,
         /** auto (unless an SEO plugin does), always or never: Open Graph tags for social sites. */
         public string $sharingTags,
+        /** guests, accounts or off */
+        public string $wishlist,
+        public bool $recentlyViewed,
     ) {}
 
     public static function of(StorefrontSettings $settings): self
     {
-        return new self($settings->structuredData, $settings->sharingTags->value);
+        return new self($settings->structuredData, $settings->sharingTags->value, $settings->wishlist->value, $settings->recentlyViewed);
     }
 }

@@ -26,9 +26,24 @@ const SHARING = [
 	{ value: 'never', label: __( 'Never', 'orillacart' ) },
 ];
 
+const WISHLISTS = [
+	{
+		value: 'guests',
+		label: __(
+			'Everyone: visitors’ wishlists stay in their browser and join their account when they log in',
+			'orillacart'
+		),
+	},
+	{
+		value: 'accounts',
+		label: __( 'Customers with an account', 'orillacart' ),
+	},
+	{ value: 'off', label: __( 'No wishlists', 'orillacart' ) },
+];
+
 /**
- * What product pages tell search engines (structured data) and social sites (link previews). Each choice saves
- * at once.
+ * What product pages tell search engines (structured data) and social sites (link previews), and what the shop
+ * keeps for shoppers: wishlists and the products they viewed. Each choice saves at once.
  */
 export function StorefrontCard() {
 	const [ settings, setSettings ] = useState< StorefrontSettings | null >(
@@ -60,7 +75,7 @@ export function StorefrontCard() {
 	return (
 		<Card className="orillacart-settings-card">
 			<CardHeader>
-				<h2>{ __( 'Search engines and sharing', 'orillacart' ) }</h2>
+				<h2>{ __( 'Storefront', 'orillacart' ) }</h2>
 			</CardHeader>
 			<CardBody>
 				{ message !== null && (
@@ -101,6 +116,34 @@ export function StorefrontCard() {
 									sharing_tags:
 										sharing as StorefrontSettings[ 'sharing_tags' ],
 								} )
+							}
+						/>
+						<RadioControl
+							label={ __(
+								'Who may keep a wishlist',
+								'orillacart'
+							) }
+							selected={ settings.wishlist }
+							options={ WISHLISTS }
+							onChange={ ( wishlist ) =>
+								save( {
+									wishlist:
+										wishlist as StorefrontSettings[ 'wishlist' ],
+								} )
+							}
+						/>
+						<CheckboxControl
+							label={ __(
+								'Show the products a shopper viewed lately',
+								'orillacart'
+							) }
+							help={ __(
+								'Under each product, and wherever the Recently viewed products block is. Their browser keeps the list.',
+								'orillacart'
+							) }
+							checked={ settings.recently_viewed }
+							onChange={ ( checked ) =>
+								save( { recently_viewed: checked } )
 							}
 						/>
 					</>

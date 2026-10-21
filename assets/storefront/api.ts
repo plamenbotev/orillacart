@@ -10,7 +10,13 @@ import { __ } from '@wordpress/i18n';
 
 declare global {
 	interface Window {
-		orillacartStorefront?: { api: string; nonce?: string | null };
+		orillacartStorefront?: {
+			api: string;
+			nonce?: string | null;
+			wishlist?: 'guests' | 'accounts' | 'off';
+			recentlyViewed?: boolean;
+			account?: string | null;
+		};
 	}
 }
 

@@ -16,6 +16,7 @@ use OrillaCart\Reviews\Application\Dto\ReviewInvitationView;
 use OrillaCart\Reviews\Application\Reviews;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
+use OrillaCart\Storefront\Application\StorefrontSettingsService;
 use OrillaCart\Storefront\Infrastructure\WordPress\Merchandise;
 use OrillaCart\Storefront\Infrastructure\WordPress\ProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
@@ -39,6 +40,7 @@ final readonly class ProductPanel
         private Reviews $reviews,
         private Merchandise $merchandise,
         private ProductCards $cards,
+        private StorefrontSettingsService $storefront,
     ) {}
 
     public function content(string $content): string
@@ -55,6 +57,8 @@ final readonly class ProductPanel
         } catch (ProductNotFound) {
             return $content;
         }
+
+        $storefront = $this->storefront->current();
 
         return $content . $this->templates->render('storefront/product.html.twig', [
             'offer' => $offer,
@@ -75,7 +79,11 @@ final readonly class ProductPanel
             'cart_url' => $this->links->pages()['cart'],
             'back_in_stock' => $this->emails->load()->sends(EmailKind::BackInStock),
             'email' => is_user_logged_in() ? wp_get_current_user()->user_email : '',
-        ]) . $this->beside($id) . $this->reviews($id);
+            'wishlist' => $storefront->wishlist->value,
+            'recently_viewed' => $storefront->recentlyViewed,
+        ]) . $this->beside($id)
+            . ($storefront->recentlyViewed ? $this->templates->render('storefront/_recently_viewed.html.twig', ['count' => Merchandise::SHOWN, 'exclude' => $id]) : '')
+            . $this->reviews($id);
     }
 
     /**

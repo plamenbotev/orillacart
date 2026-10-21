@@ -1,0 +1,8 @@
+{#
+ # The products the shopper viewed lately, newest first: their browser keeps the list, and the script fills the
+ # section in and shows it. count: how many; exclude: the product of the page, if any.
+ #}
+<section class="orillacart-product-row orillacart-recently-viewed" aria-labelledby="orillacart-recently-viewed-title" data-orillacart-recently-viewed data-count="{{ count }}"{% if exclude %} data-exclude="{{ exclude }}"{% endif %} hidden>
+    <h2 id="orillacart-recently-viewed-title" class="orillacart-product-row__title">{{ __('Recently viewed') }}</h2>
+    <ul class="orillacart-products__grid" style="--orillacart-columns: 4" data-orillacart-cards></ul>
+</section>

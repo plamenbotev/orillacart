@@ -15,6 +15,8 @@ final class InMemoryAccounts implements Accounts
     /** @var array<int, string> */
     public array $passwords = [];
     public ?int $loggedIn = null;
+    /** @var array<int, list<int>> */
+    public array $wishlists = [];
     private int $nextId = 100;
 
     public function add(string $email, string $firstName = 'Ada', string $lastName = 'Lovelace'): int
@@ -75,6 +77,16 @@ final class InMemoryAccounts implements Accounts
     {
         $account = $this->accounts[$id];
         $this->accounts[$id] = new CustomerRecord($id, $account->email, $account->firstName, $account->lastName, $account->registeredAt, $account->addresses, $on);
+    }
+
+    public function wishlist(int $id): array
+    {
+        return $this->wishlists[$id] ?? [];
+    }
+
+    public function saveWishlist(int $id, array $productIds): void
+    {
+        $this->wishlists[$id] = $productIds;
     }
 
     public function search(?string $text, int $offset, int $limit): array

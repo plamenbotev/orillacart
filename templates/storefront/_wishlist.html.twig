@@ -1,0 +1,8 @@
+{#
+ # The shopper's wishlist: their account's, or their browser's for a visitor. The script fills it in.
+ #}
+<section class="orillacart-wishlist-list" id="wishlist" aria-labelledby="orillacart-wishlist-title">
+    <h2 id="orillacart-wishlist-title">{{ __('Wishlist') }}</h2>
+    <ul class="orillacart-products__grid" style="--orillacart-columns: 4" data-orillacart-wishlist-list></ul>
+    <p data-orillacart-wishlist-empty hidden>{{ __('Nothing saved yet. Save products from their pages to find them here.') }}</p>
+</section>

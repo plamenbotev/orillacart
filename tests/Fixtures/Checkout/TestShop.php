@@ -369,7 +369,7 @@ final class TestShop
         $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)(...));
         $this->events->addListener(CustomerErased::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)->erased(...));
         $this->events->addListener(PersonErased::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)->personErased(...));
-        $this->personalData = new PersonalData($this->orders, $this->customers, $this->customerNotes, $this->newsletter);
+        $this->personalData = new PersonalData($this->orders, $this->customers, $this->customerNotes, $this->newsletter, $this->accounts, $this->catalog);
         $this->customerGroups = new CustomerGroups($this->customerGroupRecords, $this->accounts);
         $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger);
         $this->couponRecords = new InMemoryCouponRepository($this->transactions);

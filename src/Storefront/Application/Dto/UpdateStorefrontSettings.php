@@ -12,5 +12,8 @@ final readonly class UpdateStorefrontSettings
         public bool $structuredData = true,
         #[Assert\Choice(choices: ['auto', 'always', 'never'])]
         public string $sharingTags = 'auto',
+        #[Assert\Choice(choices: ['guests', 'accounts', 'off'])]
+        public string $wishlist = 'guests',
+        public bool $recentlyViewed = true,
     ) {}
 }

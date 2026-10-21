@@ -9,6 +9,8 @@ use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Platform\WordPress\Translations;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Storefront\Application\StorefrontSettingsService;
+use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 
 /**
  * The storefront script and stylesheet (built from assets/storefront), which the shop's blocks and product pages
@@ -19,7 +21,11 @@ final readonly class StorefrontScripts implements Registrar
     public const string HANDLE = 'orillacart-storefront';
     public const string EDITOR = 'orillacart-blocks';
 
-    public function __construct(private PluginContext $context) {}
+    public function __construct(
+        private PluginContext $context,
+        private StorefrontSettingsService $storefront,
+        private ShopLinks $links,
+    ) {}
 
     public function register(): void
     {
@@ -56,9 +62,14 @@ final readonly class StorefrontScripts implements Registrar
             wp_enqueue_script(self::HANDLE);
             wp_enqueue_style(self::HANDLE);
         }
+        $settings = $this->storefront->current();
         wp_add_inline_script(self::HANDLE, 'window.orillacartStorefront = ' . wp_json_encode([
             'api' => rest_url('orillacart/v1'),
             'nonce' => is_user_logged_in() ? wp_create_nonce(Route::REST_NONCE) : null,
+            // What the browser keeps for the shopper: the same for everyone, so cached pages carry it too.
+            'wishlist' => $settings->wishlist->value,
+            'recentlyViewed' => $settings->recentlyViewed,
+            'account' => $this->links->pages()['account'],
         ]) . ';', 'before');
     }
 

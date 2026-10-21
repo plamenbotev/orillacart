@@ -61,6 +61,9 @@
                     <button type="submit" class="wp-element-button orillacart-button">{{ __('Email me the link') }}</button>
                 </form>
             </section>
+            {% if wishlist ?? false %}
+                {% include 'storefront/_wishlist.html.twig' %}
+            {% endif %}
         </div>
     {% else %}
         <nav class="orillacart-account__nav" aria-label="{{ __('Account') }}">
@@ -69,6 +72,7 @@
                 <li><a href="{{ urls.downloads }}"{{ section == 'downloads' ? ' aria-current="page"' }}>{{ __('Downloads') }}</a></li>
                 <li><a href="{{ urls.addresses }}"{{ section == 'addresses' ? ' aria-current="page"' }}>{{ __('Addresses') }}</a></li>
                 <li><a href="{{ urls.emails }}"{{ section == 'emails' ? ' aria-current="page"' }}>{{ __('Emails') }}</a></li>
+                {% if wishlist ?? false %}<li><a href="{{ urls.wishlist }}"{{ section == 'wishlist' ? ' aria-current="page"' }}>{{ __('Wishlist') }}</a></li>{% endif %}
                 <li><a href="{{ urls.logout }}">{{ __('Log out') }}</a></li>
             </ul>
         </nav>
@@ -83,6 +87,9 @@
                 {% else %}
                     <p class="orillacart-notice orillacart-notice--error">{{ __('There is no such order in your account.') }}</p>
                 {% endif %}
+
+            {% elseif section == 'wishlist' %}
+                {% include 'storefront/_wishlist.html.twig' %}
 
             {% elseif section == 'downloads' %}
                 {% if downloads %}

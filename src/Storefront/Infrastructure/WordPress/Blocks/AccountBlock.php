@@ -20,6 +20,8 @@ use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
+use OrillaCart\Storefront\Application\StorefrontSettingsService;
+use OrillaCart\Storefront\Domain\WishlistPolicy;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
@@ -50,6 +52,7 @@ final readonly class AccountBlock implements BlockDefinition
         private Newsletter $newsletter,
         private EmailSettingsService $emails,
         private ReviewLinks $reviewLinks,
+        private StorefrontSettingsService $storefront,
     ) {}
 
     public static function name(): string
@@ -62,9 +65,12 @@ final readonly class AccountBlock implements BlockDefinition
         $here = (string) get_permalink();
         $links = $this->links->pages();
         $customerId = $this->shopper->customerId();
+        $wishlist = $this->storefront->current()->wishlist;
         if ($customerId === null) {
             return $this->templates->render('storefront/account.html.twig', [
                 'logged_in' => false,
+                // A visitor's wishlist is in their browser, when the shop keeps visitors' too.
+                'wishlist' => $wishlist === WishlistPolicy::Guests,
                 'accounts' => $this->customers->accountMode(),
                 // The theme's button style for WordPress's login button, like the shop's own buttons.
                 'login_form' => str_replace('class="button button-primary"', 'class="button button-primary wp-element-button"', (string) wp_login_form(['echo' => false, 'redirect' => $here, 'form_id' => 'orillacart-login', 'remember' => true])),
@@ -76,16 +82,18 @@ final readonly class AccountBlock implements BlockDefinition
 
         $orderId = self::number('order');
         $section = $orderId > 0 ? 'order' : (\is_string($_GET['section'] ?? null) ? sanitize_key($_GET['section']) : 'orders');
-        $section = \in_array($section, ['orders', 'order', 'downloads', 'addresses', 'emails'], true) ? $section : 'orders';
+        $section = \in_array($section, ['orders', 'order', 'downloads', 'addresses', 'emails', ...($wishlist === WishlistPolicy::Off ? [] : ['wishlist'])], true) ? $section : 'orders';
         $context = [
             'logged_in' => true,
             'section' => $section,
+            'wishlist' => $wishlist !== WishlistPolicy::Off,
             'links' => $links,
             'urls' => [
                 'orders' => $here,
                 'downloads' => add_query_arg('section', 'downloads', $here),
                 'addresses' => add_query_arg('section', 'addresses', $here),
                 'emails' => add_query_arg('section', 'emails', $here),
+                'wishlist' => add_query_arg('section', 'wishlist', $here),
                 // wp_logout_url() returns the address escaped for HTML (&amp;); the template escapes it.
                 'logout' => html_entity_decode(wp_logout_url($here), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             ],
@@ -96,6 +104,7 @@ final readonly class AccountBlock implements BlockDefinition
             'downloads' => ['downloads' => $this->downloads->ofCustomer($customerId)],
             'addresses' => $this->addressForm($customerId),
             'emails' => $this->emailChoices($customerId),
+            'wishlist' => [],
             default => $this->orderList($customerId, $here),
         });
     }

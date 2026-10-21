@@ -132,6 +132,8 @@ function serve( save?: () => Promise< unknown > ) {
 			return Promise.resolve( {
 				structured_data: true,
 				sharing_tags: 'auto',
+				wishlist: 'guests',
+				recently_viewed: true,
 			} );
 		}
 		if ( path === '/orillacart/v1/review-settings' ) {

@@ -3,7 +3,7 @@
  # product (ProductCards), cart_url, heading (h2, h3), script (false: the form posts and the page reloads).
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
-<li class="orillacart-product-card">
+<li class="orillacart-product-card" data-product="{{ product.offer.id }}">
     <a class="orillacart-product-card__link" href="{{ product.url }}">
         {% if product.image %}{{ product.image|raw }}{% else %}<span class="orillacart-product-card__no-image" aria-hidden="true"></span>{% endif %}
         <{{ heading }} class="orillacart-product-card__name">{{ product.offer.name }}</{{ heading }}>

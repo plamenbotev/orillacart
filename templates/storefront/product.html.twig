@@ -10,7 +10,7 @@
  # when the page has none.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
-<section class="orillacart-product" aria-label="{{ __('Buy') }}">
+<section class="orillacart-product" aria-label="{{ __('Buy') }}"{% if recently_viewed ?? false %} data-orillacart-viewed="{{ offer.id }}"{% endif %}>
     <div class="orillacart-gallery__stage" data-orillacart-stage hidden></div>
     <div class="orillacart-gallery" data-orillacart-gallery data-images="{{ gallery|json_encode }}"{{ gallery|length < 2 ? ' hidden' }}>
         {% for image in gallery %}
@@ -131,6 +131,15 @@
             </div>
             <p class="orillacart-message" role="status" data-orillacart-message></p>
         </form>
+    {% endif %}
+    {% if (wishlist ?? 'off') != 'off' %}
+        {# The script says whether it is saved, and saves it: the page itself is the same for everyone. #}
+        <p class="orillacart-wishlist">
+            <button type="button" class="orillacart-wishlist__button" data-orillacart-wishlist="{{ offer.id }}" aria-pressed="false" hidden>
+                <span aria-hidden="true">♡</span> <span data-orillacart-wishlist-label>{{ __('Save to wishlist') }}</span>
+            </button>
+            <span class="orillacart-message" role="status" data-orillacart-message></span>
+        </p>
     {% endif %}
     {{ slot('product_after_form', offer.id) }}
 

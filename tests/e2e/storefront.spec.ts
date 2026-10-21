@@ -449,6 +449,39 @@ test.describe( 'A visitor', () => {
 		).toBeVisible();
 	} );
 
+	test( 'saves a product to the wishlist as a visitor, and sees it in the account page', async ( {
+		page,
+	} ) => {
+		await page.goto( shop.lampUrl );
+		const save = page.getByRole( 'button', { name: 'Save to wishlist' } );
+		await save.click();
+		await expect(
+			page.getByRole( 'button', { name: 'Saved to your wishlist' } )
+		).toHaveAttribute( 'aria-pressed', 'true' );
+
+		await page.goto( shop.urls.account );
+		const wishlist = page.locator( '[data-orillacart-wishlist-list]' );
+		await expect(
+			wishlist.locator( '.orillacart-product-card__name' )
+		).toHaveText( [ 'E2E Lamp' ] );
+		await wishlist.getByRole( 'button', { name: 'Remove' } ).click();
+		await expect(
+			page.getByText( 'Nothing saved yet.', { exact: false } )
+		).toBeVisible();
+	} );
+
+	test( 'sees the products it viewed lately under another product', async ( {
+		page,
+	} ) => {
+		await page.goto( shop.lampUrl );
+		await page.goto( shop.hoodieUrl );
+		const recent = page.locator( '.orillacart-recently-viewed' );
+		// Not the page's own product.
+		await expect(
+			recent.locator( '.orillacart-product-card__name' )
+		).toHaveText( [ 'E2E Lamp' ] );
+	} );
+
 	test( 'reviews a product, and the review waits for the shop', async ( {
 		page,
 	} ) => {

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Customers\Application;
 
+use OrillaCart\Catalog\Application\Dto\ProductOffer;
+use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Customers\Domain\Event\PersonErased;
 use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Ordering\Application\Dto\AddressData;
@@ -27,6 +29,8 @@ final readonly class PersonalData
         private CustomerService $customers,
         private CustomerNotes $notes,
         private Newsletter $newsletter,
+        private Accounts $accounts,
+        private ShopCatalog $catalog,
         private ?EventDispatcherInterface $events = null,
     ) {}
 
@@ -49,6 +53,11 @@ final readonly class PersonalData
                     ['name' => 'Agreed to', 'value' => $subscription->consent],
                     $subscription->unsubscribedAt === null ? null : ['name' => 'Unsubscribed', 'value' => $subscription->unsubscribedAt],
                 ]))];
+            }
+            $wishlist = $id === null ? [] : $this->accounts->wishlist($id);
+            if ($wishlist !== []) {
+                $names = array_map(static fn(ProductOffer $offer): string => $offer->name, $this->catalog->offers($wishlist, $id));
+                $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-wishlist', 'data' => [['name' => 'Wishlist', 'value' => implode(', ', array_map(static fn(int $productId): string => $names[$productId] ?? "#{$productId}", $wishlist))]]];
             }
             foreach ($id === null ? [] : $this->notes->of($id) as $note) {
                 $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-note-' . $note->id, 'data' => [['name' => 'The shop\'s note', 'value' => $note->text]]];

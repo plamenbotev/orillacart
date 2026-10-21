@@ -61,6 +61,8 @@ final class RouteSecurityGateTest extends TestCase
         'POST /back-in-stock',
         // Published reviews anyone may read; writing one is as the shop's policy and the site's discussion settings allow.
         'GET /products/{id}/reviews',
+        // The cards of published products, as any list of the shop shows them.
+        'GET /product-cards',
         'POST /products/{id}/reviews',
         'GET /session',
         'GET /payments/{gateway}/return',

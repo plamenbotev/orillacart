@@ -37,6 +37,10 @@ const notes: Record< string, string > = {
 		'Customers log in here and see their orders, files and addresses.',
 		'orillacart'
 	),
+	'orillacart/recently-viewed': __(
+		'Shoppers see the products they viewed lately here, which their browser keeps. Product pages show them by themselves.',
+		'orillacart'
+	),
 	'orillacart/product-filters': __(
 		'Shoppers narrow the products by brand, the shop’s filters, price and stock here, with how many products each choice leaves. Place it beside a Products block whose own filters are off; it counts within that block’s category, featured or sale products.',
 		'orillacart'

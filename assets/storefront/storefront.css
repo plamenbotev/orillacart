@@ -2,7 +2,7 @@
  * Storefront styles: layout only. Fonts, colours and buttons come from the theme (buttons use the theme's
  * .wp-element-button style). Themes adjust the shop through these custom properties.
  */
-:where(.orillacart-products, .orillacart-product, .orillacart-product-row, .orillacart-reviews, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart, .orillacart-product-filters, .orillacart-product-search) {
+:where(.orillacart-products, .orillacart-product, .orillacart-product-row, .orillacart-wishlist-list, .orillacart-reviews, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart, .orillacart-product-filters, .orillacart-product-search) {
 	--orillacart-gap: 1.5rem;
 	--orillacart-star: #d99a00;
 	--orillacart-border: color-mix(in srgb, currentColor 18%, transparent);
@@ -656,6 +656,35 @@ fieldset[aria-invalid="true"] {
 .orillacart-product__tiers caption {
 	text-align: left;
 	font-weight: 600;
+}
+
+/* Wishlist */
+.orillacart-wishlist {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em;
+	align-items: center;
+	margin: 0;
+}
+
+.orillacart-wishlist__button,
+.orillacart-wishlist__remove {
+	padding: 0.375em 0.75em;
+	border: 1px solid var(--orillacart-border);
+	border-radius: var(--orillacart-radius);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+}
+
+.orillacart-wishlist__button[aria-pressed="true"] [aria-hidden] {
+	color: var(--orillacart-error);
+}
+
+.orillacart-wishlist-list {
+	display: grid;
+	gap: 1rem;
 }
 
 /* Products beside others: upsells, related products, cross-sells */
