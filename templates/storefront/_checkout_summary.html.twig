@@ -48,6 +48,10 @@
 {% if summary.estimated_for %}
     <p class="orillacart-notice">{{ __('Tax and shipping are estimated until you enter your address.') }}</p>
 {% endif %}
+{% if summary.minimum_short %}
+    {# translators: 1: the least order, 2: how much more is needed -#}
+    <p class="orillacart-notice orillacart-notice--error orillacart-minimum-order">{{ __('Orders start at %1$s. Add %2$s more to order.')|format(summary.minimum_order|money(summary.currency), summary.minimum_short|money(summary.currency)) }}</p>
+{% endif %}
 {% if summary.free_shipping_short %}
     {# translators: %s: an amount of money -#}
     <p class="orillacart-notice orillacart-free-shipping">{{ __('Add %s more to your order for free shipping.')|format(summary.free_shipping_short|money(summary.currency)) }}</p>
@@ -67,7 +71,12 @@
                 </label>
             </p>
         {% else %}
-            <p class="orillacart-notice">{{ address_known ? __('We cannot ship your order to this address.') : __('Enter your address to see the ways to ship.') }}</p>
+            {% if address_known and summary.ships_from %}
+                {# translators: %s: an amount of money -#}
+                <p class="orillacart-notice">{{ __('Delivery to this address needs an order of at least %s.')|format(summary.ships_from|money(summary.currency)) }}</p>
+            {% else %}
+                <p class="orillacart-notice">{{ address_known ? __('We cannot ship your order to this address.') : __('Enter your address to see the ways to ship.') }}</p>
+            {% endif %}
         {% endfor %}
         {% if summary.delivery %}
             {% if summary.delivery.days %}

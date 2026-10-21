@@ -426,6 +426,27 @@ export function SettingsScreen() {
 									)
 								}
 							/>
+							<TextControl
+								__next40pxDefaultSize
+								inputMode="decimal"
+								label={ __( 'Minimum order', 'orillacart' ) }
+								help={
+									fieldError( 'minimum_order' ) ??
+									__(
+										'The least the items must come to, after discounts, for a customer to order; the cart says how much more is needed. Empty: any amount. A shipping rate can ask for more with its own order value.',
+										'orillacart'
+									)
+								}
+								value={ form.minimum_order ?? '' }
+								onChange={ ( value ) =>
+									update(
+										'minimum_order',
+										value.trim() === ''
+											? null
+											: value.trim()
+									)
+								}
+							/>
 							<CheckboxControl
 								label={ __(
 									'Remove all shop data when the plugin is deleted',

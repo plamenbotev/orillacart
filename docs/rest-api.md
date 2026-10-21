@@ -1442,6 +1442,7 @@ A visitor's nonce for the storefront script: visitors' pages carry none, since a
   - `low_stock_threshold` (int): 0 or more; default 2
   - `unpaid_hold_days` (int|null): 1 to 365
   - `return_days` (int|null): 1 to 365
+  - `minimum_order` (string|null): matches `/^(\d{1,11}(\.\d{1,4})?)?$/`
 
 ## /settings-archive
 

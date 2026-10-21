@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Settings\Domain;
 
 use OrillaCart\Shared\Domain\Currency;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 
 /**
@@ -54,7 +55,12 @@ final readonly class StoreSettings
         public ?int $unpaidHoldDays = null,
         /** Customers may ask to return items this many days after their order shipped; null takes no returns. */
         public ?int $returnDays = null,
+        /** The least the items may come to, after discounts, for the customer to order; null for no least. */
+        public ?Money $minimumOrder = null,
     ) {
+        if ($minimumOrder !== null && ($minimumOrder->isNegative() || $minimumOrder->isZero())) {
+            throw new RuleViolation('A minimum order is more than nothing; leave it empty for none.', 'orillacart_invalid_minimum_order');
+        }
         if ($unpaidHoldDays !== null && ($unpaidHoldDays < 1 || $unpaidHoldDays > 365)) {
             throw new RuleViolation('Unpaid orders are cancelled after 1 to 365 days, or never.', 'orillacart_invalid_unpaid_days');
         }
@@ -121,6 +127,7 @@ final readonly class StoreSettings
             && $this->removeDataOnUninstall === $other->removeDataOnUninstall
             && $this->lowStockThreshold === $other->lowStockThreshold
             && $this->unpaidHoldDays === $other->unpaidHoldDays
-            && $this->returnDays === $other->returnDays;
+            && $this->returnDays === $other->returnDays
+            && $this->minimumOrder?->toFixed() === $other->minimumOrder?->toFixed();
     }
 }

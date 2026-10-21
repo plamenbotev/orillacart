@@ -26,6 +26,7 @@ use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentNotFound;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Domain\StoreSettings;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveRange;
 use OrillaCart\Shipping\Application\Dto\SaveShippingClass;
@@ -562,6 +563,42 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame('25.34', $this->shop->checkout->summary($owner, new CheckoutDetails('BG'))->freeShippingShort, 'the items before tax, 74.66, are 25.34 short');
         $owner = new CartOwner($this->shop->carts->add($owner, new AddToCart(10))->newToken ?? $owner->token);
         self::assertNull($this->shop->checkout->summary($owner, new CheckoutDetails('BG'))->freeShippingShort, 'free now');
+    }
+
+    public function testAnOrderBelowTheShopsMinimumIsNotPlaced(): void
+    {
+        $settings = $this->shop->settings->load();
+        $this->shop->settings->save(new StoreSettings($settings->currency, 2, $settings->weightUnit, $settings->dimensionUnit, 'BG', minimumOrder: Money::of('100')));
+        $owner = $this->cart([10, 2], [20, 1]);
+
+        $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG'));
+        self::assertSame(['100', '25.34'], [$summary->minimumOrder, $summary->minimumShort], 'the items before tax, 74.66, are 25.34 short');
+        try {
+            $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
+            self::fail('An order below the minimum was placed.');
+        } catch (CheckoutRuleViolation $violation) {
+            self::assertSame('orillacart_below_minimum_order', $violation->errorCode);
+            self::assertSame('Orders start at 100.00 EUR. Add more items to order.', $violation->getMessage());
+        }
+
+        $owner = new CartOwner($this->shop->carts->add($owner, new AddToCart(10))->newToken ?? $owner->token);
+        self::assertNull($this->shop->checkout->summary($owner, new CheckoutDetails('BG'))->minimumShort);
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
+        self::assertSame('on_hold', $this->shop->orders->order($placed->number)->status, 'placed above the minimum');
+    }
+
+    public function testWhenNoRateShipsTheOrderYetTheSummarySaysFromHowMuchOneWould(): void
+    {
+        $germany = $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Germany', '9', regions: ['DE'], subtotal: new SaveRange('50'))]))->rates[0]->id;
+        $owner = $this->cart([20, 1], [10, 1]);
+
+        $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('DE'));
+        self::assertSame([[], '50'], [$summary->shippingOptions, $summary->shipsFrom]);
+        self::assertNull($this->shop->checkout->summary($owner, new CheckoutDetails('FR'))->shipsFrom, 'no rate ships there at any value');
+        self::assertNull($this->shop->checkout->summary($owner, new CheckoutDetails('BG'))->shipsFrom, 'a rate ships there now');
+
+        $this->expectExceptionMessage('Delivery to this address needs an order of at least 50.00 EUR.');
+        $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery', $germany, 'DE'));
     }
 
     public function testAProductsShippingClassChoosesTheRatesUntilTheClassIsDeleted(): void

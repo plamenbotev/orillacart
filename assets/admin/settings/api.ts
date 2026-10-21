@@ -33,6 +33,8 @@ export interface Settings {
 	unpaid_hold_days: number | null;
 	/** Customers ask to return items this many days after their order shipped; null takes no returns. */
 	return_days: number | null;
+	/** The least the items may come to, after discounts, to order; null for no least. */
+	minimum_order: string | null;
 	weight_units: string[];
 	dimension_units: string[];
 	currency_positions: string[];
@@ -58,6 +60,7 @@ export type SettingsInput = Pick<
 	| 'low_stock_threshold'
 	| 'unpaid_hold_days'
 	| 'return_days'
+	| 'minimum_order'
 >;
 
 /**
@@ -83,6 +86,7 @@ export function settingsInput( settings: Settings ): SettingsInput {
 		low_stock_threshold: settings.low_stock_threshold,
 		unpaid_hold_days: settings.unpaid_hold_days,
 		return_days: settings.return_days,
+		minimum_order: settings.minimum_order,
 		sell_to: settings.sell_to,
 	};
 }

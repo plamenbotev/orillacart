@@ -10,6 +10,7 @@ use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
@@ -50,6 +51,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
                 self::optionalInt($stored, 'low_stock_threshold') ?? StoreSettings::DEFAULT_LOW_STOCK_THRESHOLD,
                 self::optionalInt($stored, 'unpaid_hold_days'),
                 self::optionalInt($stored, 'return_days'),
+                ($minimum = self::optionalString($stored, 'minimum_order')) === null ? null : Money::of($minimum),
             );
         } catch (RuleViolation|\ValueError|\UnexpectedValueException $e) {
             $this->logger->warning('Stored shop settings are not valid, using the defaults: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
@@ -78,6 +80,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
             'low_stock_threshold' => $settings->lowStockThreshold,
             'unpaid_hold_days' => $settings->unpaidHoldDays,
             'return_days' => $settings->returnDays,
+            'minimum_order' => $settings->minimumOrder === null ? null : (string) $settings->minimumOrder,
         ], true);
     }
 

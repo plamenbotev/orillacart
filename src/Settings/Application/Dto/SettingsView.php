@@ -47,6 +47,7 @@ final readonly class SettingsView
         public int $lowStockThreshold = StoreSettings::DEFAULT_LOW_STOCK_THRESHOLD,
         public ?int $unpaidHoldDays = null,
         public ?int $returnDays = null,
+        public ?string $minimumOrder = null,
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -74,6 +75,7 @@ final readonly class SettingsView
             $settings->lowStockThreshold,
             $settings->unpaidHoldDays,
             $settings->returnDays,
+            $settings->minimumOrder === null ? null : (string) $settings->minimumOrder,
         );
     }
 }

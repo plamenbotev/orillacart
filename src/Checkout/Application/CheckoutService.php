@@ -17,6 +17,7 @@ use OrillaCart\Checkout\Application\Dto\CheckoutView;
 use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Checkout\Domain\Bill;
 use OrillaCart\Checkout\Domain\BilledTax;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Discounts;
@@ -163,7 +164,26 @@ final readonly class CheckoutService
             $bill->total()->isZero() ? [] : $this->paymentFees($gateways, $base),
             $delivery = $priced['needs_shipping'] ? $this->deliveryDays->forOption($priced['chosen']?->id) : null,
             ...self::deliveryChosen($delivery, $details->deliveryDate, $details->deliverySlot),
+            ...$this->minimum($bill),
+            shipsFrom: $priced['ships_from'],
         );
+    }
+
+    /**
+     * The shop's least order and how much more the items need, when they come to less after discounts.
+     *
+     * @return array{minimumOrder: ?string, minimumShort: ?string}
+     */
+    private function minimum(Bill $bill): array
+    {
+        $least = $this->settings->current()->minimumOrder;
+        $minimum = $least === null ? null : Money::of($least);
+        $items = $bill->subtotal()->subtract($bill->discount());
+        if ($minimum === null || $items->compare($minimum) >= 0) {
+            return ['minimumOrder' => null, 'minimumShort' => null];
+        }
+
+        return ['minimumOrder' => (string) $minimum, 'minimumShort' => (string) $minimum->subtract($items)];
     }
 
     /**
@@ -286,8 +306,15 @@ final readonly class CheckoutService
             // A price, a rule, a coupon or a rate changed since the summary: the customer orders only what they saw.
             throw new CheckoutRuleViolation('The total of your order changed. Review it and place the order again.', 'orillacart_cart_changed');
         }
+        ['minimumOrder' => $minimum] = $this->minimum($bill);
+        if ($minimum !== null) {
+            throw new CheckoutRuleViolation(\sprintf('Orders start at %s %s. Add more items to order.', Money::of($minimum)->format($this->settings->current()->priceDecimals), $this->settings->current()->currency), 'orillacart_below_minimum_order');
+        }
         $chosen = $priced['chosen'];
         if ($priced['needs_shipping'] && ($chosen === null || $chosen->id !== $command->shippingOption)) {
+            if ($priced['options'] === [] && $priced['ships_from'] !== null) {
+                throw new CheckoutRuleViolation(\sprintf('Delivery to this address needs an order of at least %s %s.', Money::of($priced['ships_from'])->format($this->settings->current()->priceDecimals), $this->settings->current()->currency), 'orillacart_shipping_required');
+            }
             throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to this address.' : 'Choose how to ship the order.', 'orillacart_shipping_required');
         }
         $pickupPoint = $this->pricing->pickupPoint($priced, $shippingAddress->country, $shippingAddress->postcode, $command->pickupPoint);

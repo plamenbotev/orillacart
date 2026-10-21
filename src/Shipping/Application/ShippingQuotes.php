@@ -24,6 +24,7 @@ use OrillaCart\Shipping\Domain\Measure;
 use OrillaCart\Shipping\Domain\Parcel;
 use OrillaCart\Shipping\Domain\ShippingClass;
 use OrillaCart\Shipping\Domain\ShippingClassRepository;
+use OrillaCart\Shipping\Domain\ShippingRate;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -116,6 +117,27 @@ final readonly class ShippingQuotes
      */
     public function freeFrom(ShippingQuery $query): ?string
     {
+        return $this->leastFrom($query, static fn(ShippingRate $rate): bool => $rate->details()->price->isZero());
+    }
+
+    /**
+     * When none of the shop's own rates ships the parcel there now, the least order value at which one would:
+     * "delivery to this address needs an order of at least 30". Null when one ships it now, or none would at any
+     * value. Rates a shipping method quotes are the courier's, and not looked at.
+     */
+    public function shipsFrom(ShippingQuery $query): ?string
+    {
+        return $this->leastFrom($query, static fn(ShippingRate $rate): bool => true);
+    }
+
+    /**
+     * The least order value at which one of the shop's own rates of a kind takes the parcel, when that is more
+     * than the order is worth now; null when one takes it already, or none would.
+     *
+     * @param \Closure(ShippingRate): bool $kind
+     */
+    private function leastFrom(ShippingQuery $query, \Closure $kind): ?string
+    {
         $destination = self::destination($query);
         $subtotal = Money::of($query->subtotal);
         $least = null;
@@ -124,11 +146,10 @@ final readonly class ShippingQuotes
                 continue;
             }
             foreach ($carrier->rates() as $rate) {
-                $details = $rate->details();
-                if (!$details->price->isZero()) {
+                if (!$kind($rate)) {
                     continue;
                 }
-                $from = Money::of((string) $details->subtotal->min());
+                $from = Money::of((string) $rate->details()->subtotal->min());
                 if ($from->compare($subtotal) <= 0) {
                     if ($rate->accepts($destination, $this->parcel($query, $subtotal))) {
                         return null;

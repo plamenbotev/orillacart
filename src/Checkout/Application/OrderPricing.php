@@ -50,7 +50,7 @@ use OrillaCart\Tax\Application\TaxCalculator;
  * Coupons take money off the items before tax is charged, and free shipping makes every way to ship cost nothing.
  *
  * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money}
- * @phpstan-type Priced array{lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, free_from: ?string}
+ * @phpstan-type Priced array{lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, free_from: ?string, ships_from: ?string}
  */
 final readonly class OrderPricing
 {
@@ -150,10 +150,12 @@ final readonly class OrderPricing
         $options = [];
         $chosen = null;
         $freeFrom = null;
+        $shipsFrom = null;
         if ($needsShipping) {
             $query = new ShippingQuery($shipping?->country, $shipping?->state, $parcel, (string) $bill->subtotal()->subtract($bill->discount()), $postcode);
             $offered = $this->shipping->options($query);
             $freeFrom = $free ? null : $this->shipping->freeFrom($query);
+            $shipsFrom = $offered === [] ? $this->shipping->shipsFrom($query) : null;
             foreach ($offered as $option) {
                 $taxes = $option->taxable && !$free && !$reverseCharge ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
                 $price = $free ? Money::zero() : Money::of($option->price);
@@ -186,7 +188,7 @@ final readonly class OrderPricing
             ), $shipping, $billing, $reverseCharge);
         }
 
-        return ['lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'free_from' => $freeFrom];
+        return ['lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
     }
 
     /**

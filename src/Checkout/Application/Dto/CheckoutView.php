@@ -69,5 +69,10 @@ final readonly class CheckoutView
         /** The day and the time of day chosen, as the form sends them back. */
         public ?string $deliveryDate = null,
         public ?string $deliverySlot = null,
+        /** The shop's least order, when the items come to less after discounts, and how much more they need. */
+        public ?string $minimumOrder = null,
+        public ?string $minimumShort = null,
+        /** When no way to ship takes the order to the address: the least order value at which one would. */
+        public ?string $shipsFrom = null,
     ) {}
 }

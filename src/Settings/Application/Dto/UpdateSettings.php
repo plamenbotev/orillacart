@@ -51,5 +51,8 @@ final readonly class UpdateSettings
         public ?int $unpaidHoldDays = null,
         #[Assert\Range(min: 1, max: 365)]
         public ?int $returnDays = null,
+        /** The least the items may come to, after discounts; null or empty for no least. */
+        #[Assert\Regex('/^(\d{1,11}(\.\d{1,4})?)?$/', message: 'Use an amount with up to four decimals, such as 19.90.')]
+        public ?string $minimumOrder = null,
     ) {}
 }

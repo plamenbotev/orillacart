@@ -14,6 +14,7 @@ use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -65,6 +66,7 @@ final readonly class SettingsService
             $command->lowStockThreshold,
             $command->unpaidHoldDays,
             $command->returnDays,
+            $command->minimumOrder === null || $command->minimumOrder === '' ? null : Money::of($command->minimumOrder),
         );
 
         if (!$current->equals($previous)) {
