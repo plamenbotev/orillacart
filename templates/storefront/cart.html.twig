@@ -118,6 +118,8 @@
                 <a class="wp-element-button orillacart-button" href="{{ links.checkout }}">{{ __('Check out') }}</a>
             {% endif %}
         </div>
+        {# The form posts and the page shows the cart with it: the cart's own script does not redraw the table for it. #}
+        {% include 'storefront/_product_row.html.twig' with {title: __('You may also need'), products: cross_sells ?? [], cart_url: links.cart, class: 'orillacart-cross-sells', script: false} only %}
     {% endif %}
     {{ slot('cart_after') }}
 </div>

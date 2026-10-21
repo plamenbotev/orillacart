@@ -16,12 +16,14 @@ use OrillaCart\Reviews\Application\Dto\ReviewInvitationView;
 use OrillaCart\Reviews\Application\Reviews;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
+use OrillaCart\Storefront\Infrastructure\WordPress\Merchandise;
+use OrillaCart\Storefront\Infrastructure\WordPress\ProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
 /**
- * Puts the buying form and the reviews under a product's description on its page, and its price under it in
+ * Puts the buying form, the products to buy instead or besides, and the reviews under a product's description on its page, and its price under it in
  * lists of posts, such as category pages. Through the content filter, so classic and block themes both show it.
  */
 #[AsHook('the_content', method: 'content', filter: true, priority: 20)]
@@ -35,6 +37,8 @@ final readonly class ProductPanel
         private Shopper $shopper,
         private EmailSettingsRepository $emails,
         private Reviews $reviews,
+        private Merchandise $merchandise,
+        private ProductCards $cards,
     ) {}
 
     public function content(string $content): string
@@ -71,7 +75,27 @@ final readonly class ProductPanel
             'cart_url' => $this->links->pages()['cart'],
             'back_in_stock' => $this->emails->load()->sends(EmailKind::BackInStock),
             'email' => is_user_logged_in() ? wp_get_current_user()->user_email : '',
-        ]) . $this->reviews($id);
+        ]) . $this->beside($id) . $this->reviews($id);
+    }
+
+    /**
+     * The products the shop offers instead (upsells), and those like it.
+     */
+    private function beside(int $id): string
+    {
+        $cart = $this->links->pages()['cart'];
+
+        return $this->templates->render('storefront/_product_row.html.twig', [
+            'title' => __('You may also like', 'orillacart'),
+            'products' => $this->cards->cards($this->merchandise->upsells($id)),
+            'cart_url' => $cart,
+            'class' => 'orillacart-upsells',
+        ]) . $this->templates->render('storefront/_product_row.html.twig', [
+            'title' => __('Related products', 'orillacart'),
+            'products' => $this->cards->cards($this->merchandise->related($id)),
+            'cart_url' => $cart,
+            'class' => 'orillacart-related',
+        ]);
     }
 
     /**

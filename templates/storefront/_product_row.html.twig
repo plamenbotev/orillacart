@@ -1,0 +1,14 @@
+{#
+ # Products beside others under a heading: a product's upsells and related products, the cart's cross-sells.
+ # title, products (ProductCards), cart_url, class, script.
+ #}
+{% if products %}
+    <section class="orillacart-product-row {{ class }}" aria-labelledby="{{ class }}-title">
+        <h2 id="{{ class }}-title" class="orillacart-product-row__title">{{ title }}</h2>
+        <ul class="orillacart-products__grid" style="--orillacart-columns: 4">
+            {% for product in products %}
+                {% include 'storefront/_product_card.html.twig' with {product: product, cart_url: cart_url, heading: 'h3', script: script ?? true} only %}
+            {% endfor %}
+        </ul>
+    </section>
+{% endif %}

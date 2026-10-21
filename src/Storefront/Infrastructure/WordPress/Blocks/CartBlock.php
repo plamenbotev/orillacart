@@ -12,11 +12,14 @@ use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
+use OrillaCart\Storefront\Infrastructure\WordPress\Merchandise;
+use OrillaCart\Storefront\Infrastructure\WordPress\ProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
 /**
- * The cart page: what is in the cart, changing quantities, and the way to the checkout.
+ * The cart page: what is in the cart, changing quantities, the products the shop offers with them (cross-sells),
+ * and the way to the checkout.
  */
 final readonly class CartBlock implements BlockDefinition
 {
@@ -27,6 +30,8 @@ final readonly class CartBlock implements BlockDefinition
         private TemplateRenderer $templates,
         private CheckoutService $checkout,
         private AddressChoices $addresses,
+        private Merchandise $merchandise,
+        private ProductCards $cards,
     ) {}
 
     public static function name(): string
@@ -52,13 +57,16 @@ final readonly class CartBlock implements BlockDefinition
             }
         }
 
+        $productIds = array_map(static fn(CartLineView $line): int => $line->productId, $cart->lines);
+
         return $this->templates->render('storefront/cart.html.twig', [
             'cart' => $cart,
+            'cross_sells' => $this->cards->cards($this->merchandise->crossSells($productIds)),
             'coupons' => $priced->coupons ?? [],
             'discount' => $priced->discount ?? '0',
             'estimate' => $priced?->estimatedFor === null ? null : $priced,
             'estimated_for' => $priced?->estimatedFor === null ? null : $this->addresses->countryName($priced->estimatedFor),
-            'product_urls' => $this->links->products(array_map(static fn(CartLineView $line): int => $line->productId, $cart->lines)),
+            'product_urls' => $this->links->products($productIds),
             'links' => $links,
         ]);
     }

@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
-use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Infrastructure\WordPress\ProductCategories;
-use OrillaCart\Reviews\Application\Reviews;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
+use OrillaCart\Storefront\Infrastructure\WordPress\ProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopListing;
-use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
 /**
  * The shop: published products in a grid, which visitors narrow by category, tag, words, brand, the shop's filters,
@@ -24,13 +22,11 @@ final readonly class ProductsBlock implements BlockDefinition
     public const array SORTS = ShopListing::SORTS;
 
     public function __construct(
-        private ShopCatalog $catalog,
         private ShopListing $listing,
         private ProductCategories $categories,
         private ShopLinks $links,
         private TemplateRenderer $templates,
-        private Shopper $shopper,
-        private Reviews $reviews,
+        private ProductCards $cards,
     ) {}
 
     public static function name(): string
@@ -56,21 +52,7 @@ final readonly class ProductsBlock implements BlockDefinition
             ($attributes['onSale'] ?? false) === true,
         );
         $panel = $this->listing->panel($choices, $result);
-        $ids = $result->ids;
-        $offers = $this->catalog->offers($ids, $this->shopper->customerId());
-        $urls = $this->links->products($ids);
-        $ratings = $this->reviews->ratings($ids);
-
-        $products = [];
-        foreach ($offers as $id => $offer) {
-            $products[] = [
-                'offer' => $offer,
-                'simple' => $offer->isSimple(),
-                'url' => $urls[$id] ?? '',
-                'image' => get_the_post_thumbnail($id, 'medium', ['class' => 'orillacart-product-card__image', 'loading' => 'lazy']),
-                'rating' => $ratings[$id] ?? null,
-            ];
-        }
+        $products = $this->cards->cards($result->ids);
 
         $base = remove_query_arg(['category', 'tag', 'q', 'sort', 'product-page', ...ShopListing::FILTER_ARGUMENTS]);
         $pages = (int) ceil($result->total / $perPage);

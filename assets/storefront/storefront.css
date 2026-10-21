@@ -2,7 +2,7 @@
  * Storefront styles: layout only. Fonts, colours and buttons come from the theme (buttons use the theme's
  * .wp-element-button style). Themes adjust the shop through these custom properties.
  */
-:where(.orillacart-products, .orillacart-product, .orillacart-reviews, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart, .orillacart-product-filters, .orillacart-product-search) {
+:where(.orillacart-products, .orillacart-product, .orillacart-product-row, .orillacart-reviews, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart, .orillacart-product-filters, .orillacart-product-search) {
 	--orillacart-gap: 1.5rem;
 	--orillacart-star: #d99a00;
 	--orillacart-border: color-mix(in srgb, currentColor 18%, transparent);
@@ -656,6 +656,18 @@ fieldset[aria-invalid="true"] {
 .orillacart-product__tiers caption {
 	text-align: left;
 	font-weight: 600;
+}
+
+/* Products beside others: upsells, related products, cross-sells */
+.orillacart-product-row {
+	display: grid;
+	gap: 1rem;
+	margin-block: 2em;
+}
+
+.orillacart-product-row__title {
+	margin: 0;
+	font-size: 1.25em;
 }
 
 /* Stars: five, filled to the rating (--orillacart-rating, 0 to 5) */
