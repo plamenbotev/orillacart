@@ -159,6 +159,7 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 | ✅ | 95 | P3 | Operations: a setup wizard, a status screen (with item 79), a dashboard widget and admin-bar order count, an audit log of settings changes, outgoing webhooks and API keys for integrations, settings export, REST route documentation, a sample-data importer, `wp orillacart export|anonymise|doctor` | 37cdc55, 14d536b, 31236f9, 35650ce, 410ac39, e79add8, a3bd5a8, a0c9f2a, e6a12c4, f7c2ade, fa7fa66, 293c622 |
 | ✅ | 96 | P3 | Commerce settings: a shop-wide minimum order amount (and per rate), gift cards and store credit, buy X get Y and free gifts, rounding settings, multi-currency (orders already store theirs), compound and postcode-level tax rates. Built as docs/designs/39-commerce-settings.md: rounding is the tax's (per line or per order); a rate's minimum is its order value range, now said aloud | 14ddd66, 5ed9bb8, 9c076d0, 04e6928, 1f7996b, 9372020, bebf549 |
 | ⬜ | 97 | P3 | Combining options: price rules say whether coupons apply on top of their price and whether they stack with other price rules (today the lowest single price wins); decide which side owns the coupon ↔ price rule choice | |
+| ✅ | 98 | P2 | Privacy: the change log kept what shop managers sent (an order's address, a gift card's recipient) out of reach of the erase tool; erasing a person or anonymising an order now blanks those records and the gift cards' recipient. Quotes and previews are not logged; records keep the route's own path | b10d5e4, a9be362 |
 
 ## Waiting on others
 
