@@ -14,8 +14,14 @@
 }
 
 /* Fields side by side line up at the bottom; nested controls keep their own spacing. */
-[id^="orillacart-admin-"] .components-card-body .components-flex .components-base-control,
-[id^="orillacart-admin-"] .components-card-body .components-base-control .components-base-control {
+[id^="orillacart-admin-"]
+	.components-card-body
+	.components-flex
+	.components-base-control,
+[id^="orillacart-admin-"]
+	.components-card-body
+	.components-base-control
+	.components-base-control {
 	margin-bottom: 0;
 }
 
@@ -146,4 +152,46 @@
 [id^="orillacart-admin-"] .orillacart-notes p {
 	margin: 0 0 4px;
 	white-space: pre-wrap;
+}
+
+/* Status: the shop's checks */
+[id^="orillacart-admin-"] .orillacart-checks {
+	display: grid;
+	gap: 12px;
+	margin: 0;
+}
+
+[id^="orillacart-admin-"] .orillacart-check {
+	display: grid;
+	grid-template-columns: 8em 1fr;
+	gap: 2px 12px;
+	margin: 0;
+	padding: 8px 12px;
+	border-left: 4px solid #00a32a;
+	background: #f6f7f7;
+}
+
+[id^="orillacart-admin-"] .orillacart-check > :not(.orillacart-check__status) {
+	grid-column: 2;
+}
+
+[id^="orillacart-admin-"] .orillacart-check p {
+	margin: 4px 0 0;
+}
+
+[id^="orillacart-admin-"] .orillacart-check--recommended {
+	border-left-color: #dba617;
+}
+
+[id^="orillacart-admin-"] .orillacart-check--critical {
+	border-left-color: #d63638;
+}
+
+[id^="orillacart-admin-"] .orillacart-check__status {
+	grid-row: 1 / span 4;
+	font-weight: 600;
+}
+
+[id^="orillacart-admin-"] .orillacart-card table th {
+	width: 30%;
 }

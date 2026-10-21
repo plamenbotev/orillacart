@@ -259,6 +259,19 @@ test.describe( 'The admin', () => {
 		await expect( page ).toHaveURL( /report=carts/ );
 	} );
 
+	test( 'checks the shop on the Status screen', async ( { admin, page } ) => {
+		await admin.visitAdminPage( 'admin.php', 'page=orillacart-status' );
+		await expect(
+			page.getByText( 'The shop’s tables are up to date' )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'heading', { name: 'Server' } )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'button', { name: 'Copy the report for support' } )
+		).toBeVisible();
+	} );
+
 	test( 'writes, previews and resets an email template on the Emails screen', async ( {
 		admin,
 		page,
