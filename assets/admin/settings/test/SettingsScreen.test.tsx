@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
@@ -373,23 +373,27 @@ describe( 'SettingsScreen', () => {
 		const user = userEvent.setup();
 		render( <SettingsScreen /> );
 
-		await screen.findByDisplayValue( 'size' );
-		const labels = screen.getAllByLabelText( 'Label' );
-		await user.type( labels[ labels.length - 1 ] as HTMLElement, 'Colour' );
-		const attributes = screen.getAllByLabelText( 'Attributes it covers' );
+		expect( await screen.findByText( 'f[size]' ) ).toBeVisible();
+		expect( screen.getByText( 'Size, Размер' ) ).toBeVisible();
+		expect( screen.getByText( 'Every category' ) ).toBeVisible();
+		await user.click(
+			screen.getByRole( 'button', { name: 'Add filter' } )
+		);
+		const dialog = within( await screen.findByRole( 'dialog' ) );
+		await user.type( dialog.getByLabelText( 'Label' ), 'Colour' );
+		expect( dialog.getByLabelText( 'Key in the address' ) ).toHaveValue(
+			'colour'
+		);
 		await user.type(
-			attributes[ attributes.length - 1 ] as HTMLElement,
+			dialog.getByLabelText( 'Attributes it covers' ),
 			'Colour{Enter}'
 		);
-		const shows = screen.getAllByLabelText(
-			'Shows in (empty: every category)'
-		);
 		await user.type(
-			shows[ shows.length - 1 ] as HTMLElement,
+			dialog.getByLabelText( 'Shows in' ),
 			'Clothing{Enter}'
 		);
 		await user.click(
-			screen.getByRole( 'button', { name: 'Add filter' } )
+			dialog.getByRole( 'button', { name: 'Save filter' } )
 		);
 
 		expect(
@@ -404,7 +408,7 @@ describe( 'SettingsScreen', () => {
 				label: 'Colour',
 				key: 'colour',
 				attributes: [ 'Colour' ],
-				position: 0,
+				position: 1,
 				category_ids: [ 5 ],
 			},
 		} );

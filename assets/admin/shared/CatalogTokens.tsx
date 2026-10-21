@@ -66,11 +66,14 @@ export async function fetchProducts(
 
 export function TermTokens( {
 	label,
+	help,
 	terms,
 	ids,
 	onChange,
 }: {
 	label: string;
+	/** In place of the field's own "Separate with commas" hint. */
+	help?: string;
 	terms: Named[];
 	ids: number[];
 	onChange: ( ids: number[] ) => void;
@@ -84,6 +87,7 @@ export function TermTokens( {
 			value={ ids.map( name ) }
 			suggestions={ terms.map( ( term ) => term.name ) }
 			__experimentalExpandOnFocus
+			help={ help }
 			onChange={ ( tokens ) =>
 				onChange(
 					tokens

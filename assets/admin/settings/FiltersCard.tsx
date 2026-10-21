@@ -3,47 +3,31 @@ import {
 	Card,
 	CardBody,
 	CardHeader,
-	Flex,
-	FlexItem,
-	FormTokenField,
 	Notice,
 	Spinner,
-	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toApiError } from '../shared/api';
-import { fetchTerms, type Named, TermTokens } from '../shared/CatalogTokens';
+import { fetchTerms, type Named } from '../shared/CatalogTokens';
+import { useConfirm } from '../shared/useConfirm';
+import { FilterModal } from './FilterModal';
 import {
 	deleteFilter,
 	fetchAttributeNames,
 	fetchFilters,
-	saveFilter,
 	type SearchFilter,
-	type SearchFilterInput,
 } from './filters';
 
-const EMPTY: SearchFilterInput = {
-	label: '',
-	key: '',
-	attributes: [],
-	position: 0,
-	category_ids: [],
-};
-
 /**
- * "Size" becomes "size": the key the shop's addresses use.
- * @param label
+ * In the shop's order, as the storefront lists them.
+ * @param filters
  */
-function keyOf( label: string ): string {
-	return label
-		.toLowerCase()
-		.normalize( 'NFKD' )
-		.replace( /[^a-z0-9]+/g, '-' )
-		.replace( /^-+|-+$/g, '' )
-		.slice( 0, 40 );
-}
+const ordered = ( filters: SearchFilter[] ): SearchFilter[] =>
+	[ ...filters ].sort(
+		( a, b ) => a.position - b.position || a.label.localeCompare( b.label )
+	);
 
 /**
  * The filters shoppers see on the shop page, beside brand, price and stock. Attributes belong to one product
@@ -53,10 +37,13 @@ export function FiltersCard() {
 	const [ filters, setFilters ] = useState< SearchFilter[] | null >( null );
 	const [ names, setNames ] = useState< string[] >( [] );
 	const [ categories, setCategories ] = useState< Named[] >( [] );
+	/** The filter being edited, null for a new one; undefined when the dialog is closed. */
+	const [ editing, setEditing ] = useState< SearchFilter | null >();
 	const [ message, setMessage ] = useState< {
 		status: 'success' | 'error';
 		text: string;
 	} | null >( null );
+	const [ confirmation, confirm ] = useConfirm();
 
 	useEffect( () => {
 		Promise.all( [
@@ -65,7 +52,7 @@ export function FiltersCard() {
 			fetchTerms( 'orillacart_category' ),
 		] )
 			.then( ( [ loaded, attributeNames, terms ] ) => {
-				setFilters( loaded );
+				setFilters( ordered( loaded ) );
 				setNames( attributeNames );
 				setCategories( terms );
 			} )
@@ -79,16 +66,27 @@ export function FiltersCard() {
 
 	const fail = ( reason: unknown ) =>
 		setMessage( { status: 'error', text: toApiError( reason ).message } );
+	const categoryName = ( id: number ) =>
+		categories.find( ( category ) => category.id === id )?.name ??
+		`#${ id }`;
 
 	return (
 		<Card className="orillacart-card">
+			{ confirmation }
 			<CardHeader>
 				<h2>{ __( 'Shop filters', 'orillacart' ) }</h2>
+				<Button
+					variant="secondary"
+					disabled={ filters === null }
+					onClick={ () => setEditing( null ) }
+				>
+					{ __( 'Add filter', 'orillacart' ) }
+				</Button>
 			</CardHeader>
 			<CardBody>
 				<p>
 					{ __(
-						'Shoppers narrow the shop page by these, with how many products each choice leaves. A filter covers attributes by name, such as Size and Размер, so products and attribute sets that name an attribute differently still share it. A filter shows only where the products have values for it; it can also be kept to some categories, and a category can order its filters on its own edit screen.',
+						'Shoppers narrow the shop page by these, with how many products each choice leaves. A filter shows only where the products in view have values for it, and only in the categories it is kept to.',
 						'orillacart'
 					) }
 				</p>
@@ -100,207 +98,143 @@ export function FiltersCard() {
 						{ message.text }
 					</Notice>
 				) }
-				{ filters === null ? (
-					<Spinner />
-				) : (
-					<>
-						{ filters.map( ( filter ) => (
-							<FilterRow
-								key={ filter.id }
-								filter={ filter }
-								names={ names }
-								categories={ categories }
-								onSaved={ ( saved ) => {
-									setFilters(
-										filters.map( ( current ) =>
-											current.id === saved.id
-												? saved
-												: current
-										)
-									);
-									setMessage( {
-										status: 'success',
-										text: __(
-											'Filter saved.',
-											'orillacart'
-										),
-									} );
-								} }
-								onDeleted={ () =>
-									setFilters(
-										filters.filter(
-											( current ) =>
-												current.id !== filter.id
-										)
-									)
-								}
-								onError={ fail }
-							/>
-						) ) }
-						<FilterRow
-							key={ `new-${ filters.length }` }
-							filter={ null }
-							names={ names }
-							categories={ categories }
-							onSaved={ ( saved ) => {
-								setFilters( [ ...filters, saved ] );
-								setMessage( {
-									status: 'success',
-									text: __( 'Filter added.', 'orillacart' ),
-								} );
-							} }
-							onDeleted={ () => undefined }
-							onError={ fail }
-						/>
-					</>
+				{ filters === null && message === null && <Spinner /> }
+				{ filters !== null && filters.length === 0 && (
+					<p>
+						<em>
+							{ __(
+								'No filters yet: shoppers can narrow by brand, price and stock.',
+								'orillacart'
+							) }
+						</em>
+					</p>
+				) }
+				{ filters !== null && filters.length > 0 && (
+					<table className="widefat striped orillacart-filters">
+						<thead>
+							<tr>
+								<th>{ __( 'Filter', 'orillacart' ) }</th>
+								<th>
+									{ __(
+										'Attributes it covers',
+										'orillacart'
+									) }
+								</th>
+								<th>{ __( 'Shows in', 'orillacart' ) }</th>
+								<th className="num">
+									{ __( 'Order', 'orillacart' ) }
+								</th>
+								<th>
+									<span className="screen-reader-text">
+										{ __( 'Actions', 'orillacart' ) }
+									</span>
+								</th>
+							</tr>
+						</thead>
+						<tbody>
+							{ filters.map( ( filter ) => (
+								<tr key={ filter.id }>
+									<td>
+										<strong>{ filter.label }</strong>
+										<br />
+										<code>{ `f[${ filter.key }]` }</code>
+									</td>
+									<td>{ filter.attributes.join( ', ' ) }</td>
+									<td>
+										{ filter.category_ids.length === 0
+											? __(
+													'Every category',
+													'orillacart'
+												)
+											: filter.category_ids
+													.map( categoryName )
+													.join( ', ' ) }
+									</td>
+									<td className="num">{ filter.position }</td>
+									<td className="orillacart-filters__actions">
+										<Button
+											variant="link"
+											onClick={ () =>
+												setEditing( filter )
+											}
+										>
+											{ __( 'Edit', 'orillacart' ) }
+										</Button>
+										<Button
+											variant="link"
+											isDestructive
+											onClick={ () =>
+												confirm(
+													sprintf(
+														/* translators: %s: filter label */
+														__(
+															'Remove the %s filter? Links that use it show every product again.',
+															'orillacart'
+														),
+														filter.label
+													),
+													() =>
+														void deleteFilter(
+															filter.id
+														)
+															.then( () =>
+																setFilters(
+																	filters.filter(
+																		(
+																			current
+																		) =>
+																			current.id !==
+																			filter.id
+																	)
+																)
+															)
+															.catch( fail ),
+													__( 'Remove', 'orillacart' )
+												)
+											}
+										>
+											{ __( 'Remove', 'orillacart' ) }
+										</Button>
+									</td>
+								</tr>
+							) ) }
+						</tbody>
+					</table>
+				) }
+				{ editing !== undefined && filters !== null && (
+					<FilterModal
+						filter={ editing }
+						names={ names }
+						categories={ categories }
+						nextPosition={
+							filters.reduce(
+								( highest, filter ) =>
+									Math.max( highest, filter.position ),
+								0
+							) + 1
+						}
+						onClose={ () => setEditing( undefined ) }
+						onSaved={ ( saved ) => {
+							setFilters(
+								ordered( [
+									...filters.filter(
+										( current ) => current.id !== saved.id
+									),
+									saved,
+								] )
+							);
+							setEditing( undefined );
+							setMessage( {
+								status: 'success',
+								text:
+									editing === null
+										? __( 'Filter added.', 'orillacart' )
+										: __( 'Filter saved.', 'orillacart' ),
+							} );
+						} }
+					/>
 				) }
 			</CardBody>
 		</Card>
-	);
-}
-
-function FilterRow( {
-	filter,
-	names,
-	categories,
-	onSaved,
-	onDeleted,
-	onError,
-}: {
-	filter: SearchFilter | null;
-	names: string[];
-	categories: Named[];
-	onSaved: ( filter: SearchFilter ) => void;
-	onDeleted: () => void;
-	onError: ( reason: unknown ) => void;
-} ) {
-	const [ draft, setDraft ] = useState< SearchFilterInput >(
-		filter ?? EMPTY
-	);
-	const [ keyEdited, setKeyEdited ] = useState( filter !== null );
-
-	return (
-		<Flex align="flex-end" wrap className="orillacart-row">
-			<FlexItem>
-				<TextControl
-					__next40pxDefaultSize
-					label={ __( 'Label', 'orillacart' ) }
-					value={ draft.label }
-					onChange={ ( label ) =>
-						setDraft( {
-							...draft,
-							label,
-							key: keyEdited ? draft.key : keyOf( label ),
-						} )
-					}
-				/>
-			</FlexItem>
-			<FlexItem>
-				<TextControl
-					__next40pxDefaultSize
-					label={ __( 'Key in the address', 'orillacart' ) }
-					value={ draft.key }
-					onChange={ ( key ) => {
-						setKeyEdited( true );
-						setDraft( { ...draft, key } );
-					} }
-				/>
-			</FlexItem>
-			<FlexItem isBlock>
-				<FormTokenField
-					__next40pxDefaultSize
-					__experimentalExpandOnFocus
-					label={ __( 'Attributes it covers', 'orillacart' ) }
-					value={ draft.attributes }
-					suggestions={ names }
-					onChange={ ( tokens ) =>
-						setDraft( {
-							...draft,
-							attributes: tokens.map( ( token ) =>
-								typeof token === 'string' ? token : token.value
-							),
-						} )
-					}
-				/>
-			</FlexItem>
-			<FlexItem isBlock>
-				<TermTokens
-					label={ __(
-						'Shows in (empty: every category)',
-						'orillacart'
-					) }
-					terms={ categories }
-					ids={ draft.category_ids }
-					onChange={ ( ids ) =>
-						setDraft( { ...draft, category_ids: ids } )
-					}
-				/>
-			</FlexItem>
-			<FlexItem>
-				<TextControl
-					__next40pxDefaultSize
-					type="number"
-					min={ 0 }
-					label={ __( 'Order', 'orillacart' ) }
-					value={ String( draft.position ) }
-					onChange={ ( value ) =>
-						setDraft( {
-							...draft,
-							position: Math.max(
-								0,
-								Number.parseInt( value, 10 ) || 0
-							),
-						} )
-					}
-				/>
-			</FlexItem>
-			<FlexItem>
-				<Button
-					variant="primary"
-					disabled={
-						draft.label.trim() === '' ||
-						draft.attributes.length === 0
-					}
-					onClick={ () =>
-						saveFilter( filter?.id ?? null, {
-							label: draft.label,
-							key: draft.key,
-							attributes: draft.attributes,
-							position: draft.position,
-							category_ids: draft.category_ids,
-						} )
-							.then( ( saved ) => {
-								setDraft( filter === null ? EMPTY : saved );
-								setKeyEdited( filter !== null );
-								onSaved( saved );
-							} )
-							.catch( onError )
-					}
-				>
-					{ filter === null
-						? __( 'Add filter', 'orillacart' )
-						: sprintf(
-								/* translators: %s: filter label */
-								__( 'Save %s', 'orillacart' ),
-								filter.label
-							) }
-				</Button>
-			</FlexItem>
-			{ filter !== null && (
-				<FlexItem>
-					<Button
-						variant="tertiary"
-						isDestructive
-						onClick={ () =>
-							deleteFilter( filter.id )
-								.then( onDeleted )
-								.catch( onError )
-						}
-					>
-						{ __( 'Remove', 'orillacart' ) }
-					</Button>
-				</FlexItem>
-			) }
-		</Flex>
 	);
 }

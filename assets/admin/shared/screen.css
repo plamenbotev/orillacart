@@ -227,3 +227,36 @@
 	color: #1d2327;
 	font-weight: 600;
 }
+
+[id^="orillacart-admin-"] .orillacart-filters td {
+	vertical-align: top;
+}
+
+[id^="orillacart-admin-"] .orillacart-filters .num {
+	text-align: right;
+}
+
+[id^="orillacart-admin-"] .orillacart-filters__actions {
+	text-align: right;
+	white-space: nowrap;
+}
+
+[id^="orillacart-admin-"] .orillacart-filters__actions .components-button + .components-button {
+	margin-left: 12px;
+}
+
+.orillacart-filter-form {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	width: min(560px, 100%);
+}
+
+.orillacart-filter-form .components-base-control,
+.orillacart-filter-form .components-base-control__field {
+	margin-bottom: 0;
+}
+
+[id^="orillacart-admin-"] .orillacart-card table.orillacart-filters th {
+	width: auto;
+}
