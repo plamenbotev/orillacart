@@ -19,7 +19,7 @@ final class ProductArchivesTest extends RestTestCase
 
     /** @var list<int> */
     private array $posts = [];
-    /** @var array<string, int> by taxonomy */
+    /** @var array<non-empty-string, int> by taxonomy */
     private array $terms = [];
 
     protected function setUp(): void
