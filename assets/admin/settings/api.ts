@@ -60,6 +60,33 @@ export type SettingsInput = Pick<
 	| 'return_days'
 >;
 
+/**
+ * What of the settings a save takes back: the read-only fields (units, decimals) left out.
+ *
+ * @param settings The settings as read.
+ */
+export function settingsInput( settings: Settings ): SettingsInput {
+	return {
+		currency: settings.currency,
+		fewer_decimals: settings.fewer_decimals,
+		weight_unit: settings.weight_unit,
+		dimension_unit: settings.dimension_unit,
+		shop_country: settings.shop_country,
+		shop_state: settings.shop_state,
+		shop_postcode: settings.shop_postcode,
+		currency_sign: settings.currency_sign,
+		currency_position: settings.currency_position,
+		catalog_only: settings.catalog_only,
+		hide_prices: settings.hide_prices,
+		show_lowest_price: settings.show_lowest_price,
+		remove_data_on_uninstall: settings.remove_data_on_uninstall,
+		low_stock_threshold: settings.low_stock_threshold,
+		unpaid_hold_days: settings.unpaid_hold_days,
+		return_days: settings.return_days,
+		sell_to: settings.sell_to,
+	};
+}
+
 const PATH = '/orillacart/v1/settings';
 
 export function fetchSettings(): Promise< Settings > {

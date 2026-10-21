@@ -1330,6 +1330,26 @@ Refuses a return, telling the customer why.
 - Body (JSON):
   - `policy` (string): one of off, anyone, buyers; default 'anyone'
 
+## /sample-data
+
+### `GET /sample-data`
+
+Whether the sample products are in the shop (GET), adds them (POST), or takes them away (DELETE).
+
+- Who: shop managers
+
+### `POST /sample-data`
+
+Whether the sample products are in the shop (GET), adds them (POST), or takes them away (DELETE).
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+### `DELETE /sample-data`
+
+Whether the sample products are in the shop (GET), adds them (POST), or takes them away (DELETE).
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ## /search-engine
 
 ### `GET /search-engine`
@@ -1432,6 +1452,20 @@ The shop's settings as a file (GET /settings-archive), and a file of them taken 
 ### `PUT /settings-archive`
 
 The shop's settings as a file (GET /settings-archive), and a file of them taken in (PUT), section by section.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+## /setup
+
+### `GET /setup`
+
+Whether the setup is finished (GET), and that it is (PUT), so the admin stops offering it.
+
+- Who: shop managers
+
+### `PUT /setup`
+
+Whether the setup is finished (GET), and that it is (PUT), so the admin stops offering it.
 
 - Who: shop managers; needs a nonce (not with an API key)
 

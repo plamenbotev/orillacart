@@ -202,3 +202,28 @@
 	overflow: auto;
 	white-space: pre-wrap;
 }
+
+/* Setup: the steps */
+[id^="orillacart-admin-"] .orillacart-setup__steps {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 24px;
+	margin: 16px 0;
+	padding: 0;
+	list-style: none;
+	counter-reset: step;
+}
+
+[id^="orillacart-admin-"] .orillacart-setup__steps li {
+	color: #646970;
+	counter-increment: step;
+}
+
+[id^="orillacart-admin-"] .orillacart-setup__steps li::before {
+	content: counter(step) ". ";
+}
+
+[id^="orillacart-admin-"] .orillacart-setup__steps [aria-current] {
+	color: #1d2327;
+	font-weight: 600;
+}

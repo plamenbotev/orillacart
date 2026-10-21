@@ -29,6 +29,7 @@ import {
 	saveSettings,
 	type Settings,
 	type SettingsInput,
+	settingsInput,
 } from './api';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
@@ -37,28 +38,6 @@ type Status =
 	| { kind: 'saving' }
 	| { kind: 'saved' }
 	| { kind: 'error'; message: string };
-
-function inputOf( settings: Settings ): SettingsInput {
-	return {
-		currency: settings.currency,
-		fewer_decimals: settings.fewer_decimals,
-		weight_unit: settings.weight_unit,
-		dimension_unit: settings.dimension_unit,
-		shop_country: settings.shop_country,
-		shop_state: settings.shop_state,
-		shop_postcode: settings.shop_postcode,
-		currency_sign: settings.currency_sign,
-		currency_position: settings.currency_position,
-		catalog_only: settings.catalog_only,
-		hide_prices: settings.hide_prices,
-		show_lowest_price: settings.show_lowest_price,
-		remove_data_on_uninstall: settings.remove_data_on_uninstall,
-		low_stock_threshold: settings.low_stock_threshold,
-		unpaid_hold_days: settings.unpaid_hold_days,
-		return_days: settings.return_days,
-		sell_to: settings.sell_to,
-	};
-}
 
 /**
  * The choices of price decimals: the currency's own, or fewer.
@@ -105,7 +84,7 @@ export function SettingsScreen() {
 	useUnsavedChanges(
 		form !== null &&
 			settings !== null &&
-			differs( form, inputOf( settings ) )
+			differs( form, settingsInput( settings ) )
 	);
 
 	useEffect( () => {
@@ -113,7 +92,7 @@ export function SettingsScreen() {
 			.then( ( [ loaded, list ] ) => {
 				setSettings( loaded );
 				setCountries( list );
-				setForm( inputOf( loaded ) );
+				setForm( settingsInput( loaded ) );
 			} )
 			.catch( ( error: unknown ) =>
 				setStatus( {
@@ -141,7 +120,7 @@ export function SettingsScreen() {
 		saveSettings( form )
 			.then( ( saved ) => {
 				setSettings( saved );
-				setForm( inputOf( saved ) );
+				setForm( settingsInput( saved ) );
 				setStatus( { kind: 'saved' } );
 			} )
 			.catch( ( error: unknown ) => {

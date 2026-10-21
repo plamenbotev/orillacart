@@ -35,8 +35,6 @@ export function ApiKeysCard() {
 
 	useEffect( () => {
 		fetchApiKeys().then( setKeys ).catch( fail );
-		// Once, when the screen opens; changes load again themselves.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [] );
 
 	return (
