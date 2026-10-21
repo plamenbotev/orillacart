@@ -227,7 +227,11 @@ page_of() { wp option pluck orillacart_shop_pages "$1"; }
 for part in shop cart checkout account; do
     [ "$(wp post get "$(page_of "$part")" --field=post_status 2> /dev/null)" = publish ] || fail "activation made no $part page"
 done
-html() { docker exec "$WP" curl -s "$(wp eval "echo get_permalink($1);")${2:-}"; }
+# A page's address, with a query argument when one is given.
+link_to() {
+    if [ $# -gt 1 ]; then wp eval "echo add_query_arg('$2', '$3', get_permalink($1));"; else wp eval "echo get_permalink($1);"; fi
+}
+html() { docker exec "$WP" curl -s "$(link_to "$@")"; }
 for asset in build/storefront/storefront.js build/storefront/storefront.css build/admin/blocks.js build/admin/dataviews.js; do
     docker exec "$WP" test -f "/var/www/html/wp-content/plugins/orillacart/$asset" || fail "$asset missing"
 done
@@ -239,10 +243,18 @@ grep -q '"nonce":null' <<< "$shop_page" || fail "a visitor's page carries a nonc
 product_page="$(html "$product")"
 grep -q 'data-orillacart-add-to-cart' <<< "$product_page" \
     || fail "the product page has no way to buy: $(echo "$product_page" | grep -o 'orillacart-[a-z-]*' | sort -u | tr '\n' ' ')"
-receipt_page="$(html "$(page_of checkout)" "&orillacart_order=$key")"
-grep -q "#$number" <<< "$receipt_page" || fail "the receipt page does not show the order"
-cart_headers="$(docker exec "$WP" curl -s -D - -o /dev/null "$(wp eval "echo get_permalink($(page_of cart));")")"
-grep -qi '^cache-control:.*no-store' <<< "$cart_headers" || fail "the cart page may be cached"
+receipt_page="$(html "$(page_of checkout)" orillacart_order "$key")"
+grep -q "<strong>#$number</strong>" <<< "$receipt_page" || fail "the receipt page does not show the order"
+headers() { docker exec "$WP" curl -s -D - -o /dev/null "$(link_to "$@")"; }
+for part in cart checkout account; do
+    grep -qi '^cache-control:.*no-store' <<< "$(headers "$(page_of "$part")")" || fail "the $part page may be cached"
+done
+for secret in "$(page_of checkout) orillacart_order $key" "$(page_of account) orillacart_account token"; do
+    # shellcheck disable=SC2086 # the page, the query and its value
+    link_headers="$(headers $secret)"
+    grep -qi '^cache-control:.*no-store' <<< "$link_headers" || fail "a page opened with ${secret#* } may be cached"
+    grep -qi '^referrer-policy: no-referrer' <<< "$link_headers" || fail "a page opened with ${secret#* } sends its address on"
+done
 
 echo "==> Upgrade on an admin request"
 wp option update orillacart_version 0.0.1 > /dev/null
