@@ -19,6 +19,7 @@ import { LocationFields } from '../shared/LocationFields';
 import { DownloadDeliveryCard } from './DownloadDeliveryCard';
 import { FiltersCard } from './FiltersCard';
 import { InvoicesCard } from './InvoicesCard';
+import { ReviewsCard } from './ReviewsCard';
 import { SearchEngineCard } from './SearchEngineCard';
 import { ShopPagesCard } from './ShopPagesCard';
 import {
@@ -472,6 +473,7 @@ export function SettingsScreen() {
 			) }
 			<ShopPagesCard />
 			<InvoicesCard />
+			<ReviewsCard />
 			<DownloadDeliveryCard />
 			<FiltersCard />
 			<SearchEngineCard />

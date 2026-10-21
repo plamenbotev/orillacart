@@ -28,6 +28,7 @@ final readonly class TransientRateLimiter implements RateLimiter
         // Each may cost the shop a lookup at an address register.
         'address_check' => [30, 3600],
         'returns' => [10, 3600],
+        'reviews' => [10, 3600],
     ];
 
     public function hit(string $guard, string $caller): ?int

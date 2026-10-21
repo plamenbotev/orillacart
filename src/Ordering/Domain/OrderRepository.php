@@ -44,6 +44,15 @@ interface OrderRepository
     public function hasStandingOrder(?int $customerId, string $email, ?int $exceptOrderId = null): bool;
 
     /**
+     * Which of the products the customer paid for, by account or by email, in an order not cancelled or failed.
+     *
+     * @param list<int> $productIds
+     *
+     * @return list<int>
+     */
+    public function boughtProducts(?int $customerId, string $email, array $productIds): array;
+
+    /**
      * The ids of the orders after the given id, in order: for going through every order a batch at a time.
      *
      * @return list<int>

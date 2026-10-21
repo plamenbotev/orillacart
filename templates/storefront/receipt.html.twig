@@ -72,6 +72,7 @@
                         {% if line.contents %}<br><small class="orillacart-bundle">{{ __('Holds') }}: {% for item in line.contents %}{{ item.quantity }} × {{ item.name }}{{ not loop.last ? ', ' }}{% endfor %}</small>{% endif %}
                         {# translators: %d: quantity -#}
                         {% if line.refunded_quantity > 0 %}<br><small>{{ __('%d refunded')|format(line.refunded_quantity) }}</small>{% endif %}
+                        {% if (review_links ?? {})[line.product_id] is defined %}<br><a class="orillacart-receipt__review" href="{{ review_links[line.product_id] }}">{{ __('Review it') }}</a>{% endif %}
                     </td>
                     <td>{{ line.total|money(order.currency) }}</td>
                 </tr>

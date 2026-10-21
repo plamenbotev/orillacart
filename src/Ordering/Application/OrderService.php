@@ -765,6 +765,18 @@ final readonly class OrderService
     }
 
     /**
+     * Which of the products the customer paid for, by account or by email.
+     *
+     * @param list<int> $productIds
+     *
+     * @return list<int>
+     */
+    public function boughtProducts(?int $customerId, string $email, array $productIds): array
+    {
+        return $this->orders->boughtProducts($customerId, $email, $productIds);
+    }
+
+    /**
      * Whether the refund fits the order, before any money moves.
      *
      * @throws OrderNotFound

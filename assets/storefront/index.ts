@@ -17,6 +17,7 @@ import { bindCheckout } from './checkout';
 import { bindGallery } from './gallery';
 import { bindPayNow, bindReceiptLink, bindReorder, bindReturn } from './paynow';
 import { bindAddToCart, refreshCartCount } from './product';
+import { bindReviewForm } from './reviews';
 import { bindShop } from './shop';
 
 function start(): void {
@@ -39,6 +40,11 @@ function start(): void {
 			'form[data-orillacart-back-in-stock]'
 		)
 		.forEach( bindBackInStock );
+	document
+		.querySelectorAll< HTMLFormElement >(
+			'form[data-orillacart-review-form]'
+		)
+		.forEach( bindReviewForm );
 	document
 		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-pay-now]' )
 		.forEach( bindPayNow );

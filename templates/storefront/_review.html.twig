@@ -1,0 +1,15 @@
+<li class="orillacart-review" id="review-{{ review.id }}">
+    <p class="orillacart-review__head">
+        {% include 'storefront/_stars.html.twig' with {rating: review.rating} only %}
+        <strong class="orillacart-review__author">{{ review.author }}</strong>
+        {%- if review.verified %} <span class="orillacart-review__verified">{{ __('Verified buyer') }}</span>{% endif %}
+        <time class="orillacart-review__date" datetime="{{ review.written_at }}">{{ review.written_at|shop_date(false) }}</time>
+    </p>
+    <div class="orillacart-review__text">{{ review.text|nl2br }}</div>
+    {% for reply in review.replies %}
+        <div class="orillacart-review__reply">
+            <p class="orillacart-review__head"><strong>{{ reply.author }}</strong> <time datetime="{{ reply.written_at }}">{{ reply.written_at|shop_date(false) }}</time></p>
+            <div class="orillacart-review__text">{{ reply.text|nl2br }}</div>
+        </div>
+    {% endfor %}
+</li>

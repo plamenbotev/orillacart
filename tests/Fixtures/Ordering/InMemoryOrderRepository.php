@@ -125,6 +125,24 @@ final class InMemoryOrderRepository implements OrderRepository
         return false;
     }
 
+    public function boughtProducts(?int $customerId, string $email, array $productIds): array
+    {
+        $bought = [];
+        foreach ($this->orders as $order) {
+            if ($order->paidAt() === null || \in_array($order->status(), [OrderStatus::Cancelled, OrderStatus::Failed], true)
+                || (strcasecmp($order->email(), $email) !== 0 && ($customerId === null || $order->customerId() !== $customerId))) {
+                continue;
+            }
+            foreach ($order->lines() as $line) {
+                if (\in_array($line->productId(), $productIds, true)) {
+                    $bought[$line->productId()] = $line->productId();
+                }
+            }
+        }
+
+        return array_values($bought);
+    }
+
     public function search(OrderSearch $search, int $offset, int $limit): array
     {
         $text = $search->text;

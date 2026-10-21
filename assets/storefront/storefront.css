@@ -2,8 +2,9 @@
  * Storefront styles: layout only. Fonts, colours and buttons come from the theme (buttons use the theme's
  * .wp-element-button style). Themes adjust the shop through these custom properties.
  */
-:where(.orillacart-products, .orillacart-product, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart, .orillacart-product-filters, .orillacart-product-search) {
+:where(.orillacart-products, .orillacart-product, .orillacart-reviews, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart, .orillacart-product-filters, .orillacart-product-search) {
 	--orillacart-gap: 1.5rem;
+	--orillacart-star: #d99a00;
 	--orillacart-border: color-mix(in srgb, currentColor 18%, transparent);
 	--orillacart-muted: color-mix(in srgb, currentColor 65%, transparent);
 	--orillacart-error: #b32d2e;
@@ -655,4 +656,138 @@ fieldset[aria-invalid="true"] {
 .orillacart-product__tiers caption {
 	text-align: left;
 	font-weight: 600;
+}
+
+/* Stars: five, filled to the rating (--orillacart-rating, 0 to 5) */
+.orillacart-stars {
+	display: inline-block;
+	line-height: 1;
+	letter-spacing: 0.1em;
+	vertical-align: -0.1em;
+}
+
+.orillacart-stars::before {
+	content: "★★★★★";
+	background: linear-gradient(90deg, var(--orillacart-star, #d99a00) calc(var(--orillacart-rating, 0) / 5 * 100%), var(--orillacart-border, #ccc) 0);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+/* Reviews */
+.orillacart-reviews {
+	display: grid;
+	gap: var(--orillacart-gap);
+	margin-block: 2em;
+}
+
+.orillacart-reviews__bars {
+	display: grid;
+	gap: 0.25em;
+	max-width: 20rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.orillacart-reviews__bars li {
+	display: grid;
+	grid-template-columns: 5em 1fr 2em;
+	gap: 0.5em;
+	align-items: center;
+}
+
+.orillacart-reviews__bars meter {
+	width: 100%;
+}
+
+.orillacart-reviews__list {
+	display: grid;
+	gap: var(--orillacart-gap);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.orillacart-review {
+	padding-block-end: var(--orillacart-gap);
+	border-block-end: 1px solid var(--orillacart-border);
+}
+
+.orillacart-review__head {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em;
+	align-items: baseline;
+	margin: 0 0 0.5em;
+}
+
+.orillacart-review__verified {
+	color: var(--orillacart-success);
+	font-size: 0.875em;
+}
+
+.orillacart-review__date {
+	color: var(--orillacart-muted);
+	font-size: 0.875em;
+}
+
+.orillacart-review__reply {
+	margin: 1em 0 0 1.5em;
+	padding-inline-start: 1em;
+	border-inline-start: 3px solid var(--orillacart-border);
+}
+
+.orillacart-reviews__pages {
+	display: flex;
+	justify-content: space-between;
+}
+
+.orillacart-review-form {
+	display: grid;
+	gap: 1em;
+	max-width: 40rem;
+}
+
+.orillacart-stars-input {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+/* Five radios, the highest first, shown lowest first: a chosen star lights those before it. */
+.orillacart-stars-input__choices {
+	display: inline-flex;
+	flex-direction: row-reverse;
+	justify-content: flex-end;
+}
+
+.orillacart-stars-input__choices input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+}
+
+.orillacart-stars-input__choices label {
+	padding: 0 0.1em;
+	color: var(--orillacart-border, #ccc);
+	font-size: 1.75em;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.orillacart-stars-input__choices label::before {
+	content: "★";
+}
+
+.orillacart-stars-input__choices input:checked ~ label,
+.orillacart-stars-input__choices label:hover,
+.orillacart-stars-input__choices label:hover ~ label {
+	color: var(--orillacart-star, #d99a00);
+}
+
+.orillacart-stars-input__choices input:focus-visible + label {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
 }

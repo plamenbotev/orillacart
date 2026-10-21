@@ -6,6 +6,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Infrastructure\WordPress\ProductCategories;
+use OrillaCart\Reviews\Application\Reviews;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
@@ -29,6 +30,7 @@ final readonly class ProductsBlock implements BlockDefinition
         private ShopLinks $links,
         private TemplateRenderer $templates,
         private Shopper $shopper,
+        private Reviews $reviews,
     ) {}
 
     public static function name(): string
@@ -57,6 +59,7 @@ final readonly class ProductsBlock implements BlockDefinition
         $ids = $result->ids;
         $offers = $this->catalog->offers($ids, $this->shopper->customerId());
         $urls = $this->links->products($ids);
+        $ratings = $this->reviews->ratings($ids);
 
         $products = [];
         foreach ($offers as $id => $offer) {
@@ -65,6 +68,7 @@ final readonly class ProductsBlock implements BlockDefinition
                 'simple' => $offer->isSimple(),
                 'url' => $urls[$id] ?? '',
                 'image' => get_the_post_thumbnail($id, 'medium', ['class' => 'orillacart-product-card__image', 'loading' => 'lazy']),
+                'rating' => $ratings[$id] ?? null,
             ];
         }
 

@@ -449,6 +449,30 @@ test.describe( 'A visitor', () => {
 		).toBeVisible();
 	} );
 
+	test( 'reviews a product, and the review waits for the shop', async ( {
+		page,
+	} ) => {
+		await page.goto( shop.lampUrl );
+		const form = page.locator( 'form[data-orillacart-review-form]' );
+		await form.getByRole( 'button', { name: 'Send the review' } ).click();
+		await expect( form.getByRole( 'status' ) ).toHaveClass( /--error/ );
+
+		await form.getByText( '4 stars' ).click( { force: true } );
+		await form
+			.getByLabel( 'Your review' )
+			.fill( 'Warm light for reading.' );
+		await form.getByLabel( 'Name' ).fill( 'E2E Reviewer' );
+		await form
+			.getByLabel( 'Email' )
+			.fill( `e2e-review-${ Date.now() }@example.com` );
+		await form.getByRole( 'button', { name: 'Send the review' } ).click();
+		// WordPress holds a first comment from someone until the shop approves one.
+		await expect( form.getByRole( 'status' ) ).toHaveText(
+			/shows once the shop has approved it/
+		);
+		await expect( form.getByLabel( 'Your review' ) ).toBeHidden();
+	} );
+
 	test( 'makes an account on the account page and logs out', async ( {
 		page,
 	} ) => {

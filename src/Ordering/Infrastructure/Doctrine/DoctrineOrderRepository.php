@@ -7,6 +7,7 @@ namespace OrillaCart\Ordering\Infrastructure\Doctrine;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Ordering\Domain\Order;
+use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Ordering\Domain\OrderStatus;
@@ -235,6 +236,24 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         }
 
         return $query->getQuery()->getOneOrNullResult() !== null;
+    }
+
+    public function boughtProducts(?int $customerId, string $email, array $productIds): array
+    {
+        if ($productIds === []) {
+            return [];
+        }
+        $query = $this->entityManager->createQueryBuilder()->select('DISTINCT l.productId')->from(OrderLine::class, 'l')->join('l.order', 'o')
+            ->where('l.productId IN (:products)')->setParameter('products', $productIds)
+            ->andWhere('o.paidAt IS NOT NULL')
+            ->andWhere('o.status NOT IN (:closed)')->setParameter('closed', [OrderStatus::Cancelled, OrderStatus::Failed])
+            ->andWhere($customerId === null ? 'o.email = :email' : '(o.email = :email OR o.customerId = :customer)')
+            ->setParameter('email', $email);
+        if ($customerId !== null) {
+            $query->setParameter('customer', $customerId);
+        }
+
+        return array_values(array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $query->getQuery()->getSingleColumnResult()));
     }
 
     public function idsAfter(int $afterId, int $limit): array

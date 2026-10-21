@@ -1,0 +1,80 @@
+{#
+ # A product's reviews under its buying form: its stars, a page of reviews (newest first), and the form to write
+ # one, or why the visitor cannot. Themes may copy this file to orillacart/storefront/reviews.html.twig.
+ #}
+<section class="orillacart-reviews" id="reviews" aria-labelledby="orillacart-reviews-title">
+    <h2 id="orillacart-reviews-title">{{ __('Reviews') }}</h2>
+    {% if page.rating %}
+        <div class="orillacart-reviews__summary">
+            <p>
+                {% include 'storefront/_stars.html.twig' with {rating: page.rating.average} only %}
+                <strong>{{ __('%s out of 5')|format(page.rating.average) }}</strong>
+                · {{ _n('%d review', '%d reviews', page.rating.count)|format(page.rating.count) }}
+            </p>
+            <ul class="orillacart-reviews__bars">
+                {% for stars, count in page.rating.stars %}
+                    <li>
+                        <span>{{ _n('%d star', '%d stars', stars)|format(stars) }}</span>
+                        <meter min="0" max="{{ page.rating.count }}" value="{{ count }}">{{ count }}</meter>
+                        <span>{{ count }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <ol class="orillacart-reviews__list">
+            {% for review in page.reviews %}
+                {% include 'storefront/_review.html.twig' %}
+            {% endfor %}
+        </ol>
+        {% if page.pages > 1 %}
+            <nav class="orillacart-reviews__pages" aria-label="{{ __('More reviews') }}">
+                {% if page.page > 1 %}<a href="{{ page_urls[page.page - 1] }}#reviews" rel="prev">{{ __('Newer reviews') }}</a>{% endif %}
+                {% if page.page < page.pages %}<a href="{{ page_urls[page.page + 1] }}#reviews" rel="next">{{ __('Older reviews') }}</a>{% endif %}
+            </nav>
+        {% endif %}
+    {% elseif invitation.open %}
+        <p>{{ __('No reviews yet. Be the first to review it.') }}</p>
+    {% endif %}
+
+    {% if invitation.open %}
+        <form class="orillacart-review-form" data-orillacart-review-form data-product="{{ product_id }}" novalidate>
+            <h3>{{ __('Write a review') }}</h3>
+            {% if invitation.author %}
+                <p>{{ __('Your review goes out as %s.')|format(invitation.author) }}{% if invitation.verified %} <span class="orillacart-review__verified">{{ __('Verified buyer') }}</span>{% endif %}</p>
+            {% endif %}
+            <fieldset class="orillacart-field orillacart-stars-input" data-orillacart-field="rating">
+                <legend>{{ __('Your rating') }} <span aria-hidden="true">*</span></legend>
+                <span class="orillacart-stars-input__choices">
+                    {% for stars in 5..1 %}
+                        <input type="radio" id="orillacart-rating-{{ stars }}" name="rating" value="{{ stars }}" required>
+                        <label for="orillacart-rating-{{ stars }}" title="{{ _n('%d star', '%d stars', stars)|format(stars) }}"><span class="screen-reader-text">{{ _n('%d star', '%d stars', stars)|format(stars) }}</span></label>
+                    {% endfor %}
+                </span>
+            </fieldset>
+            <p class="orillacart-field" data-orillacart-field="text">
+                <label for="orillacart-review-text">{{ __('Your review') }} <span aria-hidden="true">*</span></label>
+                <textarea id="orillacart-review-text" name="text" rows="5" maxlength="5000" required></textarea>
+            </p>
+            {% if not invitation.author %}
+                <p class="orillacart-field" data-orillacart-field="name">
+                    <label for="orillacart-review-name">{{ __('Name') }} <span aria-hidden="true">*</span></label>
+                    <input id="orillacart-review-name" type="text" name="name" maxlength="100" autocomplete="name" required>
+                </p>
+                <p class="orillacart-field" data-orillacart-field="email">
+                    <label for="orillacart-review-email">{{ __('Email') }} <span aria-hidden="true">*</span></label>
+                    <input id="orillacart-review-email" type="email" name="email" maxlength="100" autocomplete="email" required>
+                    <small>{{ __('Not shown with the review.') }}</small>
+                </p>
+            {% endif %}
+            {% if receipt %}<input type="hidden" name="receipt" value="{{ receipt }}">{% endif %}
+            <p class="orillacart-message" role="status" data-orillacart-message></p>
+            <button type="submit" class="wp-element-button">{{ __('Send the review') }}</button>
+        </form>
+    {% elseif invitation.reason == 'log_in' %}
+        <p class="orillacart-notice">{{ __('Log in to review this product.') }}{% if account_url %} <a href="{{ account_url }}">{{ __('Log in') }}</a>{% endif %}</p>
+    {% elseif invitation.reason == 'buyers_only' %}
+        <p class="orillacart-notice">{{ __('Only customers who bought this product can review it.') }}</p>
+    {% elseif invitation.reason == 'reviewed' %}
+        <p class="orillacart-notice">{{ __('Thank you for reviewing this product.') }}</p>
+    {% endif %}
+</section>

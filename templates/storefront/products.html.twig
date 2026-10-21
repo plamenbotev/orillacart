@@ -49,6 +49,9 @@
                         {% if product.image %}{{ product.image|raw }}{% else %}<span class="orillacart-product-card__no-image" aria-hidden="true"></span>{% endif %}
                         <h2 class="orillacart-product-card__name">{{ product.offer.name }}</h2>
                     </a>
+                    {% if product.rating %}
+                        <p class="orillacart-product-card__rating">{% include 'storefront/_stars.html.twig' with {rating: product.rating.average} only %} <small>({{ product.rating.count }})</small></p>
+                    {% endif %}
                     <p class="orillacart-product-card__price">{{ shop.price(product.offer) }}</p>
                     {% if product.offer.price_hidden %}
                         <a class="wp-element-button orillacart-button" href="{{ product.url }}">{{ __('Details') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></a>

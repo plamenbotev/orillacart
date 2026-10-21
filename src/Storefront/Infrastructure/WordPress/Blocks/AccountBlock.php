@@ -21,6 +21,7 @@ use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
+use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
@@ -48,6 +49,7 @@ final readonly class AccountBlock implements BlockDefinition
         private SettingsService $settings,
         private Newsletter $newsletter,
         private EmailSettingsService $emails,
+        private ReviewLinks $reviewLinks,
     ) {}
 
     public static function name(): string
@@ -127,7 +129,12 @@ final readonly class AccountBlock implements BlockDefinition
             $order = null;
         }
 
-        return $order === null ? ['order' => null] : ['order' => $order, 'receipt' => $this->receipts->issue($order->number), 'pay_methods' => $this->payNow->methods($order), 'invoices' => $this->invoices->ofOrder($order->number)];
+        if ($order === null) {
+            return ['order' => null];
+        }
+        $receipt = $this->receipts->issue($order->number);
+
+        return ['order' => $order, 'receipt' => $receipt, 'pay_methods' => $this->payNow->methods($order), 'invoices' => $this->invoices->ofOrder($order->number), 'review_links' => $this->reviewLinks->forOrder($order, $receipt)];
     }
 
     /**

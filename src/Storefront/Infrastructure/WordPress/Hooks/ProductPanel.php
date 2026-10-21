@@ -11,14 +11,18 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\ProductGallery;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
+use OrillaCart\Ordering\Application\ReceiptLinks;
+use OrillaCart\Reviews\Application\Dto\ReviewInvitationView;
+use OrillaCart\Reviews\Application\Reviews;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
+use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
 /**
- * Puts the buying form under a product's description on its page, and its price under it in lists of posts,
- * such as category pages. Through the content filter, so classic and block themes both show it.
+ * Puts the buying form and the reviews under a product's description on its page, and its price under it in
+ * lists of posts, such as category pages. Through the content filter, so classic and block themes both show it.
  */
 #[AsHook('the_content', method: 'content', filter: true, priority: 20)]
 #[AsHook('get_the_excerpt', method: 'excerpt', filter: true, priority: 20, arguments: 2)]
@@ -30,6 +34,7 @@ final readonly class ProductPanel
         private TemplateRenderer $templates,
         private Shopper $shopper,
         private EmailSettingsRepository $emails,
+        private Reviews $reviews,
     ) {}
 
     public function content(string $content): string
@@ -66,6 +71,38 @@ final readonly class ProductPanel
             'cart_url' => $this->links->pages()['cart'],
             'back_in_stock' => $this->emails->load()->sends(EmailKind::BackInStock),
             'email' => is_user_logged_in() ? wp_get_current_user()->user_email : '',
+        ]) . $this->reviews($id);
+    }
+
+    /**
+     * The product's reviews and the form to write one; nothing while the shop takes no reviews, or the product
+     * takes none and has none.
+     */
+    private function reviews(int $id): string
+    {
+        if (!$this->reviews->shown()) {
+            return '';
+        }
+        $receipt = $_GET[ReviewLinks::QUERY] ?? null;
+        $receipt = \is_string($receipt) && preg_match('/^' . ReceiptLinks::PATTERN . '$/', $receipt) === 1 ? $receipt : null;
+        $invitation = $this->reviews->invitation($id, $this->shopper->customerId(), $receipt);
+        $number = $_GET['review-page'] ?? '1';
+        $page = $this->reviews->page($id, \is_string($number) && ctype_digit($number) ? (int) $number : 1);
+        if ($page->rating === null && !$invitation->open && \in_array($invitation->reason, [ReviewInvitationView::OFF, ReviewInvitationView::CLOSED], true)) {
+            return '';
+        }
+        $pageUrls = [];
+        for ($number = 1; $number <= $page->pages; ++$number) {
+            $pageUrls[$number] = $number === 1 ? remove_query_arg('review-page') : add_query_arg('review-page', $number);
+        }
+
+        return $this->templates->render('storefront/reviews.html.twig', [
+            'product_id' => $id,
+            'page' => $page,
+            'page_urls' => $pageUrls,
+            'invitation' => $invitation,
+            'receipt' => $invitation->open ? $receipt : null,
+            'account_url' => $this->links->pages()['account'] ?? '',
         ]);
     }
 
