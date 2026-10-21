@@ -22,6 +22,7 @@ import { InvoicesCard } from './InvoicesCard';
 import { ReviewsCard } from './ReviewsCard';
 import { SearchEngineCard } from './SearchEngineCard';
 import { ShopPagesCard } from './ShopPagesCard';
+import { StorefrontCard } from './StorefrontCard';
 import {
 	fetchSettings,
 	saveSettings,
@@ -474,6 +475,7 @@ export function SettingsScreen() {
 			<ShopPagesCard />
 			<InvoicesCard />
 			<ReviewsCard />
+			<StorefrontCard />
 			<DownloadDeliveryCard />
 			<FiltersCard />
 			<SearchEngineCard />

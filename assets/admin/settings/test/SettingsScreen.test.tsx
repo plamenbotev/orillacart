@@ -128,6 +128,12 @@ function serve( save?: () => Promise< unknown > ) {
 				attach_to_emails: true,
 			} );
 		}
+		if ( path === '/orillacart/v1/storefront-settings' ) {
+			return Promise.resolve( {
+				structured_data: true,
+				sharing_tags: 'auto',
+			} );
+		}
 		if ( path === '/orillacart/v1/review-settings' ) {
 			return Promise.resolve( { policy: 'anyone' } );
 		}
@@ -272,13 +278,13 @@ describe( 'SettingsScreen', () => {
 
 		render( <SettingsScreen /> );
 
-		// Every card says so: the settings, the shop pages, the invoices, reviews, the downloads, filters and search.
+		// Every card says so: the settings, the shop pages, the invoices, reviews, sharing, the downloads, filters and search.
 		expect(
 			await screen.findAllByText(
 				'You are not allowed to do this.',
 				NOTICE
 			)
-		).toHaveLength( 7 );
+		).toHaveLength( 8 );
 	} );
 
 	it( 'saves the page each part of the shop is on', async () => {

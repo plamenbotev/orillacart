@@ -185,8 +185,10 @@ use OrillaCart\Shipping\Infrastructure\Doctrine\DoctrineConsignmentRepository;
 use OrillaCart\Shipping\Infrastructure\Doctrine\DoctrineShippingClassRepository;
 use OrillaCart\Shipping\Infrastructure\WordPress\TransientRateCache;
 use OrillaCart\Storefront\Domain\ShopPagesRepository;
+use OrillaCart\Storefront\Domain\StorefrontSettingsRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\CartFromReminder;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionShopPagesRepository;
+use OrillaCart\Storefront\Infrastructure\WordPress\OptionStorefrontSettingsRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
 use OrillaCart\Tax\Application\VatRegistry;
@@ -326,6 +328,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(NewsletterSettingsRepository::class, OptionNewsletterSettingsRepository::class);
     $services->alias(ReviewSettingsRepository::class, OptionReviewSettingsRepository::class);
     $services->alias(ReviewStore::class, CommentReviewStore::class);
+    $services->alias(StorefrontSettingsRepository::class, OptionStorefrontSettingsRepository::class);
     $services->alias(PendingAccountRepository::class, DoctrinePendingAccountRepository::class);
     $services->alias(AccountMail::class, AccountEmails::class);
     $services->alias(AccountLinks::class, StorefrontAccountLinks::class);

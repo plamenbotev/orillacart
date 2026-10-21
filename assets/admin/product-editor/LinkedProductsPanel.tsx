@@ -3,6 +3,7 @@ import {
 	PluginDocumentSettingPanel,
 	store as editorStore,
 } from '@wordpress/editor';
+import { TextControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
@@ -12,6 +13,8 @@ import { ProductTokens } from '../shared/CatalogTokens';
 type LinkedMeta = {
 	orillacart_upsells?: number[];
 	orillacart_cross_sells?: number[];
+	orillacart_gtin?: string;
+	orillacart_mpn?: string;
 };
 
 /**
@@ -65,6 +68,47 @@ export function LinkedProductsPanel() {
 					'orillacart'
 				) }
 			</p>
+		</PluginDocumentSettingPanel>
+	);
+}
+
+/**
+ * What the product is known by outside the shop, for search engines: its barcode and the maker's part number.
+ */
+export function IdentifiersPanel() {
+	const meta = useSelect(
+		( select ) =>
+			( select( editorStore ).getEditedPostAttribute( 'meta' ) as
+				LinkedMeta | undefined ) ?? {},
+		[]
+	);
+	const { editPost } = useDispatch( editorStore );
+
+	return (
+		<PluginDocumentSettingPanel
+			name="orillacart-identifiers"
+			title={ __( 'Barcode and part number', 'orillacart' ) }
+		>
+			<TextControl
+				__next40pxDefaultSize
+				label={ __( 'Barcode (GTIN, EAN, UPC, ISBN)', 'orillacart' ) }
+				help={ __( '8, 12, 13 or 14 digits.', 'orillacart' ) }
+				inputMode="numeric"
+				value={ meta.orillacart_gtin ?? '' }
+				onChange={ ( value ) =>
+					editPost( {
+						meta: { orillacart_gtin: value.replace( /\D/g, '' ) },
+					} )
+				}
+			/>
+			<TextControl
+				__next40pxDefaultSize
+				label={ __( 'Manufacturer part number (MPN)', 'orillacart' ) }
+				value={ meta.orillacart_mpn ?? '' }
+				onChange={ ( value ) =>
+					editPost( { meta: { orillacart_mpn: value } } )
+				}
+			/>
 		</PluginDocumentSettingPanel>
 	);
 }

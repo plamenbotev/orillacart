@@ -432,6 +432,8 @@ lets plugins adjust a few things through filters. Arguments are ids and plain va
 | `orillacart_email_headers` | header lines | email kind, order number |
 | `orillacart_template_paths` | template folders an add-on brings | |
 | `orillacart_address_format` | a country's address layout | country code |
+| `orillacart_product_structured_data` | the schema.org Product a product's page gives search engines; empty leaves it out | product id |
+| `orillacart_seo_plugin_active` | whether an SEO plugin writes Open Graph tags, so the shop's are left out (Settings → Storefront: unless an SEO plugin adds them) | |
 
 The page slots above are actions too.
 
