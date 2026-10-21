@@ -40,7 +40,10 @@ final class EmailTemplatesRestTest extends RestTestCase
     public function testTheShopSavesPreviewsTestsAndResetsATemplate(): void
     {
         $user = $this->actAs('administrator');
+        // WordPress tells the old address of a change, on a fresh site the first mail: not the one tested here.
+        add_filter('send_email_change_email', '__return_false');
         wp_update_user(['ID' => $user, 'user_email' => 'owner@example.com']);
+        remove_filter('send_email_change_email', '__return_false');
 
         $listed = array_column($this->rows($this->data($this->request('GET', '/email-templates'))), 'previews', 'name');
         self::assertSame('account_welcome', $listed['account-welcome'] ?? null);
