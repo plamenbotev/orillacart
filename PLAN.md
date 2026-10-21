@@ -164,6 +164,7 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 | ✅ | 100 | P3 | Categories on the storefront (from 1.x): a Product categories block (pictures, names, counts, columns; the top level, one category's subcategories, or chosen ones), and a category's page leads to its subcategories | 5637b7c |
 | ✅ | 101 | P3 | A list view beside the grid (from 1.x): the Products block's default, a category's own, and the shopper's switch, kept in the address | acc4dd7 |
 | ✅ | 103 | P2 | Addresses: the shop's category links go to each category's own page (laid out as the shop page; ?category= sent there), pages in the path (/page/2/), narrowed listings and the shopper's pages noindex | 863fda2 |
+| ✅ | 104 | P2 | One database connection: Doctrine uses WordPress's own mysqli connection (wpdb->dbh) instead of a second one, so the shop's transactions hold WordPress's writes and the session settings match; a connection of its own only where WordPress has none | b7fada1 |
 
 ## Waiting on others
 
