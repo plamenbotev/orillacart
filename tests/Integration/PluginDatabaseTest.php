@@ -65,6 +65,25 @@ final class PluginDatabaseTest extends TestCase
         self::assertSame($this->wpdb()->get_var('SELECT DATABASE()'), $this->connection->fetchOne('SELECT DATABASE()'));
     }
 
+    public function testDoctrineSharesWordPressesConnectionAndItsTransactions(): void
+    {
+        $wpdb = $this->wpdb();
+        self::assertSame($wpdb->__get('dbh'), $this->connection->getNativeConnection(), 'one connection, not two');
+
+        $option = 'orillacart_test_' . uniqid();
+        $this->connection->beginTransaction();
+        update_option($option, 'kept', false);
+        $this->connection->rollBack();
+        wp_cache_delete($option, 'options');
+        self::assertFalse(get_option($option), 'what WordPress wrote in the shop\'s transaction went with it');
+
+        // wpdb connects again after the server dropped it: Doctrine follows.
+        $wpdb->close();
+        $wpdb->db_connect();
+        self::assertEquals(1, $this->connection->fetchOne('SELECT 1'));
+        self::assertSame($wpdb->__get('dbh'), $this->connection->getNativeConnection());
+    }
+
     public function testSchemaToolsSeeOnlyThePluginsTables(): void
     {
         $tables = $this->connection->createSchemaManager()->listTableNames();
