@@ -7,6 +7,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
+use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\CategoryLayout;
 use OrillaCart\Catalog\Infrastructure\WordPress\ProductCategories;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
@@ -67,7 +68,10 @@ final readonly class ProductsBlock implements BlockDefinition
             ($attributes['onSale'] ?? false) === true,
         );
         $panel = $this->listing->panel($choices, $result);
-        $products = $this->cards->cards($result->ids);
+        // The shopper's way to see them, else the category's (or one above it), else the block's.
+        $categoryLayout = (int) $choices['category_id'] > 0 ? CategoryLayout::of((int) $choices['category_id']) : null;
+        $layout = $choices['view'] !== '' ? $choices['view'] : ($categoryLayout ?? (($attributes['layout'] ?? 'grid') === 'list' ? 'list' : 'grid'));
+        $products = $this->cards->cards($result->ids, $layout === 'list');
 
         $base = remove_query_arg(['category', 'tag', 'q', 'sort', 'product-page', ...ShopListing::FILTER_ARGUMENTS]);
         $pages = (int) ceil($result->total / $perPage);
@@ -112,6 +116,12 @@ final readonly class ProductsBlock implements BlockDefinition
             'pages' => $pages,
             'page_urls' => $pageUrls,
             'columns' => $columns,
+            'layout' => $layout,
+            'layout_urls' => [
+                'grid' => remove_query_arg('product-page', add_query_arg('view', 'grid')),
+                'list' => remove_query_arg('product-page', add_query_arg('view', 'list')),
+            ],
+            'view' => $choices['view'],
             'cart_url' => $this->links->pages()['cart'],
             'show_filters' => $showFilters,
             'panel' => $panel,

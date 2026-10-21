@@ -21,6 +21,7 @@ import { fetchTerms, type Named, TermTokens } from '../shared/CatalogTokens';
 type ProductsAttributes = {
 	perPage: number;
 	columns: number;
+	layout: 'grid' | 'list';
 	category: string;
 	tag: string;
 	sort: 'order' | 'newest' | 'name' | 'price_asc' | 'price_desc';
@@ -96,6 +97,30 @@ function ProductsEdit( {
 						max={ 60 }
 						onChange={ ( perPage ) =>
 							setAttributes( { perPage: perPage ?? 12 } )
+						}
+					/>
+					<SelectControl
+						__next40pxDefaultSize
+						label={ __( 'Shown as', 'orillacart' ) }
+						help={ __(
+							'A category can choose its own on its edit screen, and shoppers can switch.',
+							'orillacart'
+						) }
+						value={ attributes.layout }
+						options={ [
+							{
+								label: __( 'A grid of cards', 'orillacart' ),
+								value: 'grid',
+							},
+							{
+								label: __( 'A list of rows', 'orillacart' ),
+								value: 'list',
+							},
+						] }
+						onChange={ ( layout ) =>
+							setAttributes( {
+								layout: layout as ProductsAttributes[ 'layout' ],
+							} )
 						}
 					/>
 					<RangeControl

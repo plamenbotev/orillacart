@@ -22,10 +22,11 @@ final readonly class ProductCards
 
     /**
      * @param list<int> $ids
+     * @param bool      $excerpts with a short description each, for rows
      *
      * @return list<array<string, mixed>> in the order of the ids
      */
-    public function cards(array $ids): array
+    public function cards(array $ids, bool $excerpts = false): array
     {
         $ids = array_values(array_filter($ids, static fn(int $id): bool => get_post_status($id) === 'publish'));
         if ($ids === []) {
@@ -45,9 +46,25 @@ final readonly class ProductCards
                 'url' => $urls[$id] ?? '',
                 'image' => get_the_post_thumbnail($id, 'medium', ['class' => 'orillacart-product-card__image', 'loading' => 'lazy']),
                 'rating' => $ratings[$id] ?? null,
+                'excerpt' => $excerpts ? self::excerpt($id) : '',
             ];
         }
 
         return $cards;
+    }
+
+    /**
+     * The product's excerpt, or the start of its text: its own words, not what the page adds to them (WordPress's
+     * own excerpt runs the text through the page's filters, which add the product's price and buttons).
+     */
+    private static function excerpt(int $id): string
+    {
+        $post = get_post($id);
+        if (!$post instanceof \WP_Post) {
+            return '';
+        }
+        $text = trim($post->post_excerpt) !== '' ? $post->post_excerpt : excerpt_remove_blocks(strip_shortcodes($post->post_content));
+
+        return wp_trim_words(wp_strip_all_tags($text), 30);
     }
 }

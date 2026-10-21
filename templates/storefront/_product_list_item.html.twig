@@ -1,0 +1,21 @@
+{#
+ # One product as a row of the shop's list: its picture, name, stars and short description, then its price and
+ # the way to buy it. product (ProductCards, with excerpt), cart_url, heading (h2, h3).
+ #}
+{% import 'storefront/_macros.html.twig' as shop %}
+<li class="orillacart-product-row-item" data-product="{{ product.offer.id }}">
+    <a class="orillacart-product-row-item__image" href="{{ product.url }}" tabindex="-1" aria-hidden="true">
+        {% if product.image %}{{ product.image|raw }}{% else %}<span class="orillacart-product-card__no-image"></span>{% endif %}
+    </a>
+    <div class="orillacart-product-row-item__text">
+        <{{ heading }} class="orillacart-product-card__name"><a href="{{ product.url }}">{{ product.offer.name }}</a></{{ heading }}>
+        {% if product.rating %}
+            <p class="orillacart-product-card__rating">{% include 'storefront/_stars.html.twig' with {rating: product.rating.average} only %} <small>({{ product.rating.count }})</small></p>
+        {% endif %}
+        {% if product.excerpt %}<p class="orillacart-product-row-item__excerpt">{{ product.excerpt }}</p>{% endif %}
+    </div>
+    <div class="orillacart-product-row-item__buy">
+        <p class="orillacart-product-card__price">{{ shop.price(product.offer) }}</p>
+        {% include 'storefront/_product_buy.html.twig' with {product: product, cart_url: cart_url} only %}
+    </div>
+</li>

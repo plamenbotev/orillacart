@@ -20,6 +20,14 @@
 			"type": "integer",
 			"default": 3
 		},
+		"layout": {
+			"type": "string",
+			"enum": [
+				"grid",
+				"list"
+			],
+			"default": "grid"
+		},
 		"category": {
 			"type": "string",
 			"default": ""

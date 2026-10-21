@@ -5,7 +5,7 @@
  # current "page" for the one chosen, "true" above it; subcategories: [{name, url, current}], below the one chosen (or beside it); all_url; search; sort;
  # sorts: {value: label}; page; pages; page_urls: {number: url}; columns; cart_url (null without a cart page);
  # show_filters; panel (see _filters.html.twig); hidden: [{name, value}] the choices kept without the panel;
- # filtered (anything chosen).
+ # filtered (anything chosen); layout: grid or list; layout_urls: {grid, list}; view: the shopper's own, kept by the form.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-products" data-orillacart-region="products">
@@ -43,6 +43,7 @@
         </p>
         <button type="submit" class="wp-element-button orillacart-button">{{ __('Show') }}</button>
 
+        {% if view %}<input type="hidden" name="view" value="{{ view }}">{% endif %}
         {% for field in hidden %}<input type="hidden" name="{{ field.name }}" value="{{ field.value }}">{% endfor %}
         {% if show_filters %}
             {% include 'storefront/_filters.html.twig' with {panel: panel} %}
@@ -50,11 +51,23 @@
     </form>
 
     {% if products %}
-        <ul class="orillacart-products__grid" style="--orillacart-columns: {{ columns }}">
-            {% for product in products %}
-                {% include 'storefront/_product_card.html.twig' with {product: product, cart_url: cart_url, heading: 'h2'} only %}
-            {% endfor %}
-        </ul>
+        <nav class="orillacart-layouts" aria-label="{{ __('Show products as') }}">
+            <a href="{{ layout_urls.grid }}"{{ layout == 'grid' ? ' aria-current="true"' }}>{{ __('Grid') }}</a>
+            <a href="{{ layout_urls.list }}"{{ layout == 'list' ? ' aria-current="true"' }}>{{ __('List') }}</a>
+        </nav>
+        {% if layout == 'list' %}
+            <ul class="orillacart-products__list">
+                {% for product in products %}
+                    {% include 'storefront/_product_list_item.html.twig' with {product: product, cart_url: cart_url, heading: 'h2'} only %}
+                {% endfor %}
+            </ul>
+        {% else %}
+            <ul class="orillacart-products__grid" style="--orillacart-columns: {{ columns }}">
+                {% for product in products %}
+                    {% include 'storefront/_product_card.html.twig' with {product: product, cart_url: cart_url, heading: 'h2'} only %}
+                {% endfor %}
+            </ul>
+        {% endif %}
 
         {% if pages > 1 %}
             <nav class="orillacart-pagination" aria-label="{{ __('Product pages') }}">

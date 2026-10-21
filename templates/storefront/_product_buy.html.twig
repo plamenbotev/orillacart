@@ -1,0 +1,21 @@
+{#
+ # The way to buy a product from a list: add it to the cart, choose its options, or see its details.
+ # product (ProductCards), cart_url, script (false: the form posts and the page reloads).
+ #}
+{% if product.offer.price_hidden %}
+    <a class="wp-element-button orillacart-button" href="{{ product.url }}">{{ __('Details') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></a>
+{% elseif not product.offer.for_sale %}
+    <p class="orillacart-stock orillacart-stock--out">{{ __('Not available') }}</p>
+{% elseif product.simple and cart_url %}
+    <form class="orillacart-add-to-cart orillacart-add-to-cart--card" method="post" action="{{ cart_url }}"{% if script ?? true %} data-orillacart-add-to-cart data-cart-url="{{ cart_url }}"{% endif %}>
+        <input type="hidden" name="orillacart_add_to_cart" value="1">
+        <input type="hidden" name="product_id" value="{{ product.offer.id }}">
+        <input type="hidden" name="quantity" value="1">
+        <button type="submit" class="wp-element-button orillacart-button">{{ __('Add to cart') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></button>
+        <p class="orillacart-message" role="status" data-orillacart-message></p>
+    </form>
+{% elseif cart_url %}
+    <a class="wp-element-button orillacart-button" href="{{ product.url }}">{{ __('Choose options') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></a>
+{% else %}
+    <a class="wp-element-button orillacart-button" href="{{ product.url }}">{{ __('Details') }}<span class="screen-reader-text">: {{ product.offer.name }}</span></a>
+{% endif %}

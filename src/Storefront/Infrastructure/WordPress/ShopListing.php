@@ -23,7 +23,7 @@ use OrillaCart\Storefront\Application\StorefrontSettingsService;
  * state, so pages can be linked and work without the script; each form keeps, as hidden fields, the choices
  * the other one shows.
  *
- * @phpstan-type Choices array{category: string, category_id: ?int, tag: string, tag_id: ?int, search: string, brands: list<int>, options: array<string, list<string>>, price_min: ?string, price_max: ?string, in_stock: bool, sort: string, page: int}
+ * @phpstan-type Choices array{category: string, category_id: ?int, tag: string, tag_id: ?int, search: string, brands: list<int>, options: array<string, list<string>>, price_min: ?string, price_max: ?string, in_stock: bool, sort: string, page: int, view: string}
  * @phpstan-type Panel array{filters: list<array{label: string, name: string, values: list<array{value: string, label: string, count: int, checked: bool}>}>, price: array{min: ?string, max: ?string, low: string, high: string}|null, in_stock: bool, filtered: bool, clear_url: string}
  */
 final readonly class ShopListing
@@ -64,6 +64,8 @@ final readonly class ShopListing
             // Searching sorts by best match unless the shopper chose otherwise.
             'sort' => \in_array(self::query('sort'), $sorts, true) ? self::query('sort') : ($search === '' ? $defaultSort : 'relevance'),
             'page' => max(1, ctype_digit(self::query('product-page')) ? (int) self::query('product-page') : 1),
+            // The shopper's own way to see the products, grid or list; empty for the shop's.
+            'view' => \in_array(self::query('view'), ['grid', 'list'], true) ? self::query('view') : '',
         ];
     }
 
@@ -137,7 +139,7 @@ final readonly class ShopListing
      * The choices a form does not show, as hidden fields, so sending it keeps them.
      *
      * @param Choices $choices
-     * @param bool    $filters the filters' choices (for the Products block's form without its panel); otherwise words, category, tag and sort
+     * @param bool    $filters the filters' choices (for the Products block's form without its panel); otherwise words, category, tag, sort and view
      * @param bool    $category keep the category and tag (not when the Products block always shows its own)
      *
      * @return list<array{name: string, value: string}>
@@ -176,6 +178,9 @@ final readonly class ShopListing
         }
         if (self::query('sort') !== '') {
             $fields[] = ['name' => 'sort', 'value' => $choices['sort']];
+        }
+        if ($choices['view'] !== '') {
+            $fields[] = ['name' => 'view', 'value' => $choices['view']];
         }
 
         return $fields;
