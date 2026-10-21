@@ -163,6 +163,7 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 | ✅ | 99 | P3 | Shop filters by category: a category offers what the one above it does (the shop's filters at the top) or chooses its own on its edit screen, in its order, for its subcategories too; a setting hides a filter whose products in view leave one value; the Shop filters card is a table with a dialog | 4b47756, ddee0b7, 047fc55 |
 | ✅ | 100 | P3 | Categories on the storefront (from 1.x): a Product categories block (pictures, names, counts, columns; the top level, one category's subcategories, or chosen ones), and a category's page leads to its subcategories | 5637b7c |
 | ✅ | 101 | P3 | A list view beside the grid (from 1.x): the Products block's default, a category's own, and the shopper's switch, kept in the address | acc4dd7 |
+| ✅ | 103 | P2 | Addresses: the shop's category links go to each category's own page (laid out as the shop page; ?category= sent there), pages in the path (/page/2/), narrowed listings and the shopper's pages noindex | 863fda2 |
 
 ## Waiting on others
 
