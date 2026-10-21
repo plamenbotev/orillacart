@@ -11,7 +11,6 @@ import { __ } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
 import { toApiError, violationOf, type Violation } from '../shared/api';
-import { type Named, TermTokens } from '../shared/CatalogTokens';
 import { saveFilter, type SearchFilter } from './filters';
 
 interface Props {
@@ -19,7 +18,6 @@ interface Props {
 	filter: SearchFilter | null;
 	/** The attribute names products and attribute sets use. */
 	names: string[];
-	categories: Named[];
 	/** Where a new filter goes in the shop's order. */
 	nextPosition: number;
 	onSaved: ( filter: SearchFilter ) => void;
@@ -41,17 +39,16 @@ function keyOf( label: string ): string {
 
 /**
  * Adds a shop filter or changes one: its label, its key in the shop's addresses, the attributes it covers,
- * the categories it shows in and its place in the shop's order.
+ * and its place in the shop's order.
  * @param props
  */
 export function FilterModal( props: Props ) {
-	const { filter, names, categories, nextPosition, onSaved, onClose } = props;
+	const { filter, names, nextPosition, onSaved, onClose } = props;
 	const [ form, setForm ] = useState( {
 		label: filter?.label ?? '',
 		key: filter?.key ?? '',
 		attributes: filter?.attributes ?? [],
 		position: filter?.position ?? nextPosition,
-		category_ids: filter?.category_ids ?? [],
 	} );
 	const [ keyEdited, setKeyEdited ] = useState( filter !== null );
 	const [ violations, setViolations ] = useState< Violation[] >( [] );
@@ -142,21 +139,6 @@ export function FilterModal( props: Props ) {
 						} )
 					}
 				/>
-				<TermTokens
-					label={ __( 'Shows in', 'orillacart' ) }
-					help={
-						violationOf( violations, 'category_ids' ) ??
-						__(
-							'Empty for every category. A category chosen holds its subcategories too.',
-							'orillacart'
-						)
-					}
-					terms={ categories }
-					ids={ form.category_ids }
-					onChange={ ( ids ) =>
-						setForm( { ...form, category_ids: ids } )
-					}
-				/>
 				<TextControl
 					__next40pxDefaultSize
 					type="number"
@@ -165,7 +147,7 @@ export function FilterModal( props: Props ) {
 					help={
 						violationOf( violations, 'position' ) ??
 						__(
-							'Filters are listed from the lowest number up. A category can order its own on its edit screen.',
+							'Filters are listed from the lowest number up. A category can choose its own, in its own order.',
 							'orillacart'
 						)
 					}

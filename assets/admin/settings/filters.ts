@@ -8,8 +8,6 @@ export interface SearchFilter {
 	key: string;
 	attributes: string[];
 	position: number;
-	/** The categories it shows in, with those below them; none for every one. */
-	category_ids: number[];
 }
 
 export type SearchFilterInput = Omit< SearchFilter, 'id' >;

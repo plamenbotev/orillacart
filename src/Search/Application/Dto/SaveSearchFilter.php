@@ -13,8 +13,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 final readonly class SaveSearchFilter
 {
     /**
-     * @param list<string> $attributes  attribute names, such as "Size" and "Размер"
-     * @param list<int>    $categoryIds the categories it shows in, with those below them; none for every one
+     * @param list<string> $attributes attribute names, such as "Size" and "Размер"
      */
     public function __construct(
         #[Assert\NotBlank]
@@ -27,8 +26,5 @@ final readonly class SaveSearchFilter
         public array $attributes,
         #[Assert\PositiveOrZero]
         public int $position = 0,
-        #[Assert\Count(max: SearchFilter::MAX_CATEGORIES)]
-        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
-        public array $categoryIds = [],
     ) {}
 }

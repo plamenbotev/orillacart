@@ -1496,7 +1496,6 @@ Switches the search engine after checking OpenSearch answers; the view says what
   - `key` (string): required; matches `/^[a-z0-9][a-z0-9_-]{0,39}$/`
   - `attributes` (list<string>): required; 1 to 20 items; each at most 100 characters
   - `position` (int): 0 or more; default 0
-  - `category_ids` (list<int>): at most 100 items; each more than 0
 
 ### `GET /search-filters/attributes`
 
@@ -1510,7 +1509,6 @@ Switches the search engine after checking OpenSearch answers; the view says what
   - `key` (string): required; matches `/^[a-z0-9][a-z0-9_-]{0,39}$/`
   - `attributes` (list<string>): required; 1 to 20 items; each at most 100 characters
   - `position` (int): 0 or more; default 0
-  - `category_ids` (list<int>): at most 100 items; each more than 0
 
 ### `DELETE /search-filters/{id}`
 

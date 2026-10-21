@@ -7,6 +7,7 @@ namespace OrillaCart\Search\Application;
 use OrillaCart\Search\Application\Dto\SearchFilterView;
 use OrillaCart\Search\Application\Dto\SearchQuery;
 use OrillaCart\Search\Application\Dto\SearchResult;
+use OrillaCart\Search\Domain\CategoryFiltersRepository;
 use OrillaCart\Search\Domain\SearchFilter;
 use OrillaCart\Search\Domain\SearchFilterRepository;
 
@@ -18,12 +19,12 @@ final readonly class ShopSearch
     public function __construct(
         private CatalogSearch $engine,
         private SearchFilterRepository $filters,
+        private CategoryFiltersRepository $categories,
     ) {}
 
     /**
-     * The filters the shop offers among the products of a category, or of none: those for every category and
-     * those chosen for it or a category above it. They come in the order of the nearest of these categories that
-     * orders its filters, those it leaves out after them; otherwise in the shop's order.
+     * The filters the shop offers among the products of a category, or of none: those the nearest of it and the
+     * categories above it that chooses its own offers, in its order; otherwise every filter, in the shop's.
      *
      * @param list<int> $above the categories above it, nearest first
      *
@@ -31,20 +32,22 @@ final readonly class ShopSearch
      */
     public function filters(?int $categoryId = null, array $above = []): array
     {
-        $shown = array_values(array_filter($this->filters->all(), static fn(SearchFilter $filter): bool => $filter->showsIn($categoryId, ...$above)));
-        foreach ($categoryId === null ? [] : [$categoryId, ...$above] as $ordering) {
-            $places = array_map(static fn(SearchFilter $filter): ?int => $filter->positionIn($ordering), $shown);
-            if (array_filter($places, static fn(?int $place): bool => $place !== null) === []) {
-                continue;
+        $all = $this->filters->all();
+        $path = $categoryId === null ? [] : [$categoryId, ...$above];
+        $chosen = $this->categories->ofCategories($path);
+        foreach ($path as $category) {
+            if (isset($chosen[$category])) {
+                $byId = [];
+                foreach ($all as $filter) {
+                    $byId[$filter->id()] = $filter;
+                }
+                // A filter since removed is left out.
+                $all = array_values(array_filter(array_map(static fn(int $id): ?SearchFilter => $byId[$id] ?? null, $chosen[$category]->filterIds())));
+                break;
             }
-            // Stable: those the category leaves out keep the shop's order, after the others.
-            $order = array_keys($shown);
-            usort($order, static fn(int $a, int $b): int => [$places[$a] === null, $places[$a] ?? 0, $a] <=> [$places[$b] === null, $places[$b] ?? 0, $b]);
-            $shown = array_map(static fn(int $i): SearchFilter => $shown[$i], $order);
-            break;
         }
 
-        return array_map(SearchFilterView::fromFilter(...), $shown);
+        return array_map(SearchFilterView::fromFilter(...), $all);
     }
 
     public function search(SearchQuery $query): SearchResult

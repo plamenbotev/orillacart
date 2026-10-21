@@ -7,6 +7,8 @@ namespace OrillaCart\Search\Application;
 use OrillaCart\Catalog\Application\ProductLookup;
 use OrillaCart\Search\Application\Dto\SaveSearchFilter;
 use OrillaCart\Search\Application\Dto\SearchFilterView;
+use OrillaCart\Search\Domain\CategoryFilters;
+use OrillaCart\Search\Domain\CategoryFiltersRepository;
 use OrillaCart\Search\Domain\SearchFilter;
 use OrillaCart\Search\Domain\SearchFilterNotFound;
 use OrillaCart\Search\Domain\SearchFilterRepository;
@@ -21,6 +23,7 @@ final readonly class SearchFilters
     public function __construct(
         private SearchFilterRepository $filters,
         private ProductLookup $products,
+        private CategoryFiltersRepository $categories,
     ) {}
 
     /**
@@ -47,7 +50,7 @@ final readonly class SearchFilters
     public function create(SaveSearchFilter $command): SearchFilterView
     {
         $this->requireFreeKey($command->key, null);
-        $filter = new SearchFilter($command->label, $command->key, $command->attributes, $command->position, $command->categoryIds);
+        $filter = new SearchFilter($command->label, $command->key, $command->attributes, $command->position);
         $this->filters->save($filter);
 
         return SearchFilterView::fromFilter($filter);
@@ -61,46 +64,45 @@ final readonly class SearchFilters
     {
         $filter = $this->get($id);
         $this->requireFreeKey($command->key, $id);
-        $filter->change($command->label, $command->key, $command->attributes, $command->position, $command->categoryIds);
+        $filter->change($command->label, $command->key, $command->attributes, $command->position);
         $this->filters->save($filter);
 
         return SearchFilterView::fromFilter($filter);
     }
 
     /**
-     * Each filter's place among a category's: by filter id, null for the shop's order there.
+     * The filters a category chose to offer, in their order; null when it offers what the one above it does.
      *
-     * @return array<int, int> those the category orders
+     * @return list<int>|null filter ids
      */
-    public function orderIn(int $categoryId): array
+    public function chosenIn(int $categoryId): ?array
     {
-        $places = [];
-        foreach ($this->filters->all() as $filter) {
-            $place = $filter->positionIn($categoryId);
-            if ($place !== null) {
-                $places[$filter->id()] = $place;
-            }
-        }
-
-        return $places;
+        return ($this->categories->ofCategories([$categoryId])[$categoryId] ?? null)?->filterIds();
     }
 
     /**
-     * Orders a category's filters its own way; a filter given null, or not given, takes the shop's order there.
+     * The category offers only these filters, in this order; null for what the category above it offers.
      *
-     * @param array<int, ?int> $places by filter id
+     * @param list<int>|null $filterIds
      *
      * @throws SearchRuleViolation
      */
-    public function order(int $categoryId, array $places): void
+    public function choose(int $categoryId, ?array $filterIds): void
     {
-        foreach ($this->filters->all() as $filter) {
-            $place = $places[$filter->id()] ?? null;
-            if ($filter->positionIn($categoryId) !== $place) {
-                $filter->placeIn($categoryId, $place);
-                $this->filters->save($filter);
-            }
+        if ($filterIds === null) {
+            $this->categories->remove($categoryId);
+
+            return;
         }
+        $known = array_map(static fn(SearchFilter $filter): int => $filter->id(), $this->filters->all());
+        $filterIds = array_values(array_filter($filterIds, static fn(int $id): bool => \in_array($id, $known, true)));
+        $chosen = $this->categories->ofCategories([$categoryId])[$categoryId] ?? null;
+        if ($chosen === null) {
+            $chosen = new CategoryFilters($categoryId, $filterIds);
+        } else {
+            $chosen->choose($filterIds);
+        }
+        $this->categories->save($chosen);
     }
 
     /**

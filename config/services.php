@@ -173,8 +173,10 @@ use OrillaCart\Search\Application\CatalogSearch;
 use OrillaCart\Search\Application\ProductTexts;
 use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Application\SearchServer;
+use OrillaCart\Search\Domain\CategoryFiltersRepository;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchFilterRepository;
+use OrillaCart\Search\Infrastructure\Doctrine\DoctrineCategoryFiltersRepository;
 use OrillaCart\Search\Infrastructure\Doctrine\DoctrineSearchFilterRepository;
 use OrillaCart\Search\Infrastructure\EngineCatalogSearch;
 use OrillaCart\Search\Infrastructure\EngineSearchIndex;
@@ -349,6 +351,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(Accounts::class, WordPressAccounts::class);
     $services->alias(CustomerSettingsRepository::class, OptionCustomerSettingsRepository::class);
     $services->alias(SearchFilterRepository::class, DoctrineSearchFilterRepository::class);
+    $services->alias(CategoryFiltersRepository::class, DoctrineCategoryFiltersRepository::class);
     $services->alias(ProductTexts::class, WordPressProductTexts::class);
     $services->alias(RateCache::class, TransientRateCache::class);
     $services->alias(ConsignmentRepository::class, DoctrineConsignmentRepository::class);

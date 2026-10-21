@@ -9,6 +9,8 @@ use OrillaCart\Search\Application\CatalogSearch;
 use OrillaCart\Search\Application\Dto\SearchFilterView;
 use OrillaCart\Search\Application\SearchFilters;
 use OrillaCart\Search\Application\ShopSearch;
+use OrillaCart\Search\Domain\CategoryFilters;
+use OrillaCart\Search\Domain\CategoryFiltersRepository;
 use OrillaCart\Search\Domain\SearchFilter;
 use OrillaCart\Search\Domain\SearchFilterRepository;
 use OrillaCart\Search\Domain\SearchRuleViolation;
@@ -16,58 +18,81 @@ use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Clothing (10) holds Shirts (11); Lamps (20) stands apart. Size shows in clothing, Wattage in lamps, Colour
- * everywhere.
+ * Clothing (10) holds Shirts (11); Lamps (20) stands apart. The shop offers Colour, Size and Wattage.
  */
 final class FiltersByCategoryTest extends TestCase
 {
     private InMemorySearchFilters $repository;
+    private InMemoryCategoryFilters $categories;
     private ShopSearch $search;
+    private SearchFilters $filters;
 
     protected function setUp(): void
     {
         $this->repository = new InMemorySearchFilters();
         $this->repository->save(new SearchFilter('Colour', 'colour', ['Colour'], 1));
-        $this->repository->save(new SearchFilter('Size', 'size', ['Size'], 2, [10]));
-        $this->repository->save(new SearchFilter('Wattage', 'wattage', ['Wattage'], 3, [20]));
-        $this->search = new ShopSearch(self::createStub(CatalogSearch::class), $this->repository);
-    }
-
-    public function testAFilterShowsInTheCategoriesChosenAndBelowThem(): void
-    {
-        self::assertSame(['colour'], $this->keys(null), 'the whole shop: only those for every category');
-        self::assertSame(['colour', 'size'], $this->keys(10));
-        self::assertSame(['colour', 'size'], $this->keys(11, 10), 'shirts, below clothing');
-        self::assertSame(['colour', 'wattage'], $this->keys(20));
-    }
-
-    public function testACategoryOrdersItsFiltersAndThoseBelowItTakeThatOrder(): void
-    {
+        $this->repository->save(new SearchFilter('Size', 'size', ['Size'], 2));
+        $this->repository->save(new SearchFilter('Wattage', 'wattage', ['Wattage'], 3));
+        $this->categories = new InMemoryCategoryFilters();
+        $this->search = new ShopSearch(self::createStub(CatalogSearch::class), $this->repository, $this->categories);
         $shop = new TestShop();
-        $filters = new SearchFilters($this->repository, new ProductLookup($shop->productRecords, $shop->content));
-        $filters->order(10, [2 => 0]);
-
-        self::assertSame(['size', 'colour'], $this->keys(10), 'size first, colour after in the shop\'s order');
-        self::assertSame(['size', 'colour'], $this->keys(11, 10), 'shirts order nothing: clothing\'s order');
-        self::assertSame([2 => 0], $filters->orderIn(10));
-        self::assertSame([], $filters->orderIn(11));
-
-        $filters->order(11, [1 => 0, 2 => 1]);
-        self::assertSame(['colour', 'size'], $this->keys(11, 10), 'their own');
-        $filters->order(10, []);
-        self::assertSame(['colour', 'size'], $this->keys(10), 'back to the shop\'s order');
+        $this->filters = new SearchFilters($this->repository, new ProductLookup($shop->productRecords, $shop->content), $this->categories);
     }
 
-    public function testAFilterShowsInAtMostAHundredCategories(): void
+    public function testACategoryWithoutAChoiceOffersEveryFilterInTheShopsOrder(): void
+    {
+        self::assertSame(['colour', 'size', 'wattage'], $this->keys(null));
+        self::assertSame(['colour', 'size', 'wattage'], $this->keys(11, 10));
+        self::assertNull($this->filters->chosenIn(10));
+    }
+
+    public function testACategoryOffersOnlyTheFiltersItChoseInItsOrderAndThoseBelowItTheSame(): void
+    {
+        $this->filters->choose(10, [2, 1, 999]);
+
+        self::assertSame(['size', 'colour'], $this->keys(10), 'an unknown filter is left out');
+        self::assertSame([2, 1], $this->filters->chosenIn(10));
+        self::assertSame(['size', 'colour'], $this->keys(11, 10), 'shirts choose nothing: clothing\'s');
+        self::assertSame(['colour', 'size', 'wattage'], $this->keys(20), 'lamps: the shop\'s');
+
+        $this->filters->choose(11, []);
+        self::assertSame([], $this->keys(11, 10), 'shirts offer none');
+        $this->filters->choose(11, null);
+        $this->filters->choose(10, null);
+        self::assertSame(['colour', 'size', 'wattage'], $this->keys(11, 10), 'back to the shop\'s');
+    }
+
+    public function testACategoryOffersAtMostAHundredFilters(): void
     {
         $this->expectException(SearchRuleViolation::class);
-        new SearchFilter('Size', 'size', ['Size'], 0, range(1, 101));
+        new CategoryFilters(10, range(1, 101));
     }
 
     /** @return list<string> */
     private function keys(?int $categoryId, int ...$above): array
     {
         return array_map(static fn(SearchFilterView $filter): string => $filter->key, $this->search->filters($categoryId, array_values($above)));
+    }
+}
+
+final class InMemoryCategoryFilters implements CategoryFiltersRepository
+{
+    /** @var array<int, CategoryFilters> */
+    private array $chosen = [];
+
+    public function ofCategories(array $categoryIds): array
+    {
+        return array_intersect_key($this->chosen, array_flip($categoryIds));
+    }
+
+    public function save(CategoryFilters $filters): void
+    {
+        $this->chosen[$filters->categoryId()] = $filters;
+    }
+
+    public function remove(int $categoryId): void
+    {
+        unset($this->chosen[$categoryId]);
     }
 }
 

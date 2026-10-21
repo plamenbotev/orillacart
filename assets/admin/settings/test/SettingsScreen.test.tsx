@@ -87,9 +87,6 @@ function serve( save?: () => Promise< unknown > ) {
 				workers: 0,
 			} );
 		}
-		if ( path.startsWith( '/wp/v2/orillacart_category' ) ) {
-			return Promise.resolve( [ { id: 5, name: 'Clothing' } ] );
-		}
 		if ( path.startsWith( '/orillacart/v1/search-filters' ) ) {
 			if ( path.endsWith( '/attributes' ) ) {
 				return Promise.resolve( [ 'Colour', 'Size' ] );
@@ -104,7 +101,6 @@ function serve( save?: () => Promise< unknown > ) {
 								key: 'size',
 								attributes: [ 'Size', 'Размер' ],
 								position: 0,
-								category_ids: [],
 							},
 						]
 			);
@@ -375,7 +371,6 @@ describe( 'SettingsScreen', () => {
 
 		expect( await screen.findByText( 'f[size]' ) ).toBeVisible();
 		expect( screen.getByText( 'Size, Размер' ) ).toBeVisible();
-		expect( screen.getByText( 'Every category' ) ).toBeVisible();
 		await user.click(
 			screen.getByRole( 'button', { name: 'Add filter' } )
 		);
@@ -387,10 +382,6 @@ describe( 'SettingsScreen', () => {
 		await user.type(
 			dialog.getByLabelText( 'Attributes it covers' ),
 			'Colour{Enter}'
-		);
-		await user.type(
-			dialog.getByLabelText( 'Shows in' ),
-			'Clothing{Enter}'
 		);
 		await user.click(
 			dialog.getByRole( 'button', { name: 'Save filter' } )
@@ -409,7 +400,6 @@ describe( 'SettingsScreen', () => {
 				key: 'colour',
 				attributes: [ 'Colour' ],
 				position: 1,
-				category_ids: [ 5 ],
 			},
 		} );
 	} );

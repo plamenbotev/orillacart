@@ -10,7 +10,6 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toApiError } from '../shared/api';
-import { fetchTerms, type Named } from '../shared/CatalogTokens';
 import { useConfirm } from '../shared/useConfirm';
 import { FilterModal } from './FilterModal';
 import {
@@ -36,7 +35,6 @@ const ordered = ( filters: SearchFilter[] ): SearchFilter[] =>
 export function FiltersCard() {
 	const [ filters, setFilters ] = useState< SearchFilter[] | null >( null );
 	const [ names, setNames ] = useState< string[] >( [] );
-	const [ categories, setCategories ] = useState< Named[] >( [] );
 	/** The filter being edited, null for a new one; undefined when the dialog is closed. */
 	const [ editing, setEditing ] = useState< SearchFilter | null >();
 	const [ message, setMessage ] = useState< {
@@ -46,15 +44,10 @@ export function FiltersCard() {
 	const [ confirmation, confirm ] = useConfirm();
 
 	useEffect( () => {
-		Promise.all( [
-			fetchFilters(),
-			fetchAttributeNames(),
-			fetchTerms( 'orillacart_category' ),
-		] )
-			.then( ( [ loaded, attributeNames, terms ] ) => {
+		Promise.all( [ fetchFilters(), fetchAttributeNames() ] )
+			.then( ( [ loaded, attributeNames ] ) => {
 				setFilters( ordered( loaded ) );
 				setNames( attributeNames );
-				setCategories( terms );
 			} )
 			.catch( ( reason: unknown ) =>
 				setMessage( {
@@ -66,9 +59,6 @@ export function FiltersCard() {
 
 	const fail = ( reason: unknown ) =>
 		setMessage( { status: 'error', text: toApiError( reason ).message } );
-	const categoryName = ( id: number ) =>
-		categories.find( ( category ) => category.id === id )?.name ??
-		`#${ id }`;
 
 	return (
 		<Card className="orillacart-card">
@@ -86,9 +76,13 @@ export function FiltersCard() {
 			<CardBody>
 				<p>
 					{ __(
-						'Shoppers narrow the shop page by these, with how many products each choice leaves. A filter shows only where the products in view have values for it, and only in the categories it is kept to.',
+						'Shoppers narrow the shop page by these, with how many products each choice leaves. A filter shows only where the products in view have values for it. Every category offers these, in this order, unless it chooses its own on its edit screen:',
 						'orillacart'
-					) }
+					) }{ ' ' }
+					<a href="edit-tags.php?taxonomy=orillacart_category&post_type=orillacart_product">
+						{ __( 'Products → Categories', 'orillacart' ) }
+					</a>
+					.
 				</p>
 				{ message !== null && (
 					<Notice
@@ -120,7 +114,6 @@ export function FiltersCard() {
 										'orillacart'
 									) }
 								</th>
-								<th>{ __( 'Shows in', 'orillacart' ) }</th>
 								<th className="num">
 									{ __( 'Order', 'orillacart' ) }
 								</th>
@@ -140,16 +133,6 @@ export function FiltersCard() {
 										<code>{ `f[${ filter.key }]` }</code>
 									</td>
 									<td>{ filter.attributes.join( ', ' ) }</td>
-									<td>
-										{ filter.category_ids.length === 0
-											? __(
-													'Every category',
-													'orillacart'
-												)
-											: filter.category_ids
-													.map( categoryName )
-													.join( ', ' ) }
-									</td>
 									<td className="num">{ filter.position }</td>
 									<td className="orillacart-filters__actions">
 										<Button
@@ -205,7 +188,6 @@ export function FiltersCard() {
 					<FilterModal
 						filter={ editing }
 						names={ names }
-						categories={ categories }
 						nextPosition={
 							filters.reduce(
 								( highest, filter ) =>

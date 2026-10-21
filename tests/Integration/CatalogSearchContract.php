@@ -23,7 +23,7 @@ use OrillaCart\Search\Application\ShopSearch;
  */
 abstract class CatalogSearchContract extends RestTestCase
 {
-    private const array TABLES = ['price_rules', 'search_filters', 'jobs', 'failed_jobs', 'search_values', 'search_variants', 'search_documents', 'stock_levels', 'stockrooms', 'variations', 'products'];
+    private const array TABLES = ['price_rules', 'search_category_filters', 'search_filters', 'jobs', 'failed_jobs', 'search_values', 'search_variants', 'search_documents', 'stock_levels', 'stockrooms', 'variations', 'products'];
 
     /** @var list<int> */
     private array $posts = [];
@@ -252,7 +252,7 @@ abstract class CatalogSearchContract extends RestTestCase
         unset($GLOBALS['post']);
     }
 
-    public function testAFilterShowsInItsCategoriesAndACategoryOrdersItsFilters(): void
+    public function testACategoryChoosesItsFiltersAndThoseBelowItOfferTheSame(): void
     {
         $this->actAs('administrator');
         $clothing = $this->term('Clothing', ProductCategoryTaxonomy::NAME);
@@ -260,31 +260,43 @@ abstract class CatalogSearchContract extends RestTestCase
         wp_set_object_terms($this->shirt, [$tops], ProductCategoryTaxonomy::NAME);
         wp_set_object_terms($this->hoodie, [$clothing], ProductCategoryTaxonomy::NAME);
         $this->work();
-        $this->request('POST', '/search-filters', ['label' => 'Size', 'key' => 'size', 'attributes' => ['Size', 'Размер']], nonce: true);
-        $colour = $this->data($this->request('POST', '/search-filters', ['label' => 'Colour', 'key' => 'colour', 'attributes' => ['Colour'], 'position' => 1, 'category_ids' => [$clothing]], nonce: true));
-        self::assertSame([$clothing], $colour['category_ids'] ?? null);
-        self::assertIsInt($colour['id']);
-        self::assertSame(422, $this->request('POST', '/search-filters', ['label' => 'Fit', 'key' => 'fit', 'attributes' => ['Fit'], 'category_ids' => [0]], nonce: true)->get_status());
+        $size = $this->data($this->request('POST', '/search-filters', ['label' => 'Size', 'key' => 'size', 'attributes' => ['Size', 'Размер']], nonce: true))['id'] ?? null;
+        $colour = $this->data($this->request('POST', '/search-filters', ['label' => 'Colour', 'key' => 'colour', 'attributes' => ['Colour'], 'position' => 1], nonce: true))['id'] ?? null;
+        self::assertIsInt($size);
+        self::assertIsInt($colour);
 
         ob_start();
-        do_action(ProductCategoryTaxonomy::NAME . '_edit_form_fields', get_term($tops));
+        do_action(ProductCategoryTaxonomy::NAME . '_edit_form_fields', get_term($clothing));
         $field = (string) ob_get_clean();
-        self::assertMatchesRegularExpression('#name="orillacart_filter_order\[\d+\]" value=""> Size.*> Colour#s', $field, 'both show in Tops, below Clothing');
-        $_POST = ['orillacart_filter_order' => [(string) $colour['id'] => '0', '999' => '1']];
+        self::assertMatchesRegularExpression('#value="inherit" checked> The shop&\#039;s filters</label> <span class="description">\(Size, Colour\)#', $field);
+        // Clothing offers colour first, then size.
+        $_POST = ['orillacart_filters_mode' => 'own', 'orillacart_filters' => [(string) $size, (string) $colour], 'orillacart_filter_order' => [(string) $size => '2', (string) $colour => '1']];
         do_action('edited_' . ProductCategoryTaxonomy::NAME, $clothing, 0, []);
         $_POST = [];
+        ob_start();
+        do_action(ProductCategoryTaxonomy::NAME . '_edit_form_fields', get_term($tops));
+        self::assertStringContainsString('The same as Clothing</label> <span class="description">(Colour, Size)', (string) ob_get_clean());
         wp_set_current_user(0);
 
         $shop = do_blocks('<!-- wp:orillacart/products /-->');
-        self::assertStringContainsString('name="f[size][]"', $shop);
-        self::assertStringNotContainsString('name="f[colour][]"', $shop, 'colour is for clothing');
+        $at = static fn(string $html, string $key): int|false => strpos($html, "name=\"f[{$key}][]\"");
+        self::assertLessThan($at($shop, 'colour'), $at($shop, 'size'), 'the shop\'s order: size first');
         $_GET = ['category' => 'tops'];
-        $tops = do_blocks('<!-- wp:orillacart/products /-->');
+        $topsPage = do_blocks('<!-- wp:orillacart/products /-->');
         $_GET = [];
-        self::assertSame(['Shirt'], self::names($tops));
-        $at = static fn(string $key): int|false => strpos($tops, "name=\"f[{$key}][]\"");
-        self::assertIsInt($at('colour'));
-        self::assertLessThan($at('size'), $at('colour'), 'Tops orders nothing: Clothing\'s order, colour first');
+        self::assertSame(['Shirt'], self::names($topsPage));
+        self::assertIsInt($at($topsPage, 'colour'));
+        self::assertLessThan($at($topsPage, 'size'), $at($topsPage, 'colour'), 'Tops chooses nothing: Clothing\'s order, colour first');
+
+        $this->actAs('administrator');
+        $_POST = ['orillacart_filters_mode' => 'own', 'orillacart_filters' => [(string) $size]];
+        do_action('edited_' . ProductCategoryTaxonomy::NAME, $tops, 0, []);
+        $_POST = [];
+        wp_set_current_user(0);
+        $_GET = ['category' => 'tops'];
+        $topsPage = do_blocks('<!-- wp:orillacart/products /-->');
+        $_GET = [];
+        self::assertStringNotContainsString('name="f[colour][]"', $topsPage, 'Tops offers only size');
 
         global $wp_query;
         $shown = $wp_query;
