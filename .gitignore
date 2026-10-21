@@ -13,8 +13,13 @@
 /.deptrac.cache
 /.playwright-mcp/
 
-# Local environment
+# Local environment: settings of one machine, one editor or one assistant
 /.wp-env.override.json
+/.claude/
+/.phpactor.json
+/.idea/
+/.vscode/
+.DS_Store
 
 # Code graph
 /graphify-out/
