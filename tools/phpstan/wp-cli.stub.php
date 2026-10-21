@@ -21,6 +21,13 @@ namespace {
         public static function log(string $message): void {}
 
         /**
+         * Asks yes or no; ends the command on no, unless the options hold yes.
+         *
+         * @param array<string, mixed> $assoc_args
+         */
+        public static function confirm(string $question, array $assoc_args = []): void {}
+
+        /**
          * @return never
          */
         public static function error(string $message): void

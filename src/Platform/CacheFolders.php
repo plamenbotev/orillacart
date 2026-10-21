@@ -34,6 +34,14 @@ final readonly class CacheFolders implements LifecycleListener
         return is_writable($dir) ? $dir : null;
     }
 
+    /** Forgets what this version compiled: the next request compiles it again. */
+    public static function clear(string $version): void
+    {
+        foreach (self::KINDS as $kind) {
+            self::remove(self::root() . '/' . $kind . '/' . self::versionFolder($version));
+        }
+    }
+
     /** The folder's name for a version of the plugin. */
     private static function versionFolder(string $version): string
     {

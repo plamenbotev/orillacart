@@ -4,27 +4,19 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Admin;
 
+use OrillaCart\Platform\Health\ShopHealth;
 use OrillaCart\Platform\WordPress\Registrar;
-use OrillaCart\Shared\WordPress\HealthCheck;
 use OrillaCart\Shared\WordPress\HealthStatus;
-use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
-use Symfony\Component\DependencyInjection\ServiceLocator;
 
 /**
  * Adds the shop's checks to Tools → Site Health, each run as a direct test, and what they know to its Info tab
- * under "OrillaCart". A check that breaks says so as its finding instead of breaking the screen.
+ * under "OrillaCart" (ShopHealth).
  */
 final readonly class SiteHealthRegistrar implements Registrar
 {
     private const string PREFIX = 'orillacart_';
 
-    /**
-     * @param ServiceLocator<HealthCheck> $checks by id
-     */
-    public function __construct(
-        #[AutowireLocator(HealthCheck::TAG, defaultIndexMethod: 'id')]
-        private ServiceLocator $checks,
-    ) {}
+    public function __construct(private ShopHealth $health) {}
 
     public function register(): void
     {
@@ -38,9 +30,7 @@ final readonly class SiteHealthRegistrar implements Registrar
             return $tests;
         }
         $direct = \is_array($tests['direct'] ?? null) ? $tests['direct'] : [];
-        foreach ($this->checks->getProvidedServices() as $id => $class) {
-            $class = ltrim($class, '?');
-            $label = is_subclass_of($class, HealthCheck::class) ? $class::label() : $id;
+        foreach ($this->health->labels() as $id => $label) {
             $direct[self::PREFIX . $id] = ['label' => $label, 'test' => fn(): array => $this->result($id)];
         }
         $tests['direct'] = $direct;
@@ -53,11 +43,7 @@ final readonly class SiteHealthRegistrar implements Registrar
      */
     private function result(string $id): array
     {
-        try {
-            $status = $this->checks->get($id)->check();
-        } catch (\Throwable $e) {
-            $status = HealthStatus::recommended(__('A shop check could not run', 'orillacart'), $e->getMessage());
-        }
+        $status = $this->health->check($id);
 
         return [
             'label' => $status->label,
@@ -74,16 +60,7 @@ final readonly class SiteHealthRegistrar implements Registrar
         if (!\is_array($info)) {
             return $info;
         }
-        $fields = [];
-        foreach (array_keys($this->checks->getProvidedServices()) as $id) {
-            try {
-                foreach ($this->checks->get($id)->info() as $key => $field) {
-                    $fields[$id . '_' . $key] = $field;
-                }
-            } catch (\Throwable $e) {
-                $fields[$id . '_error'] = ['label' => $id, 'value' => $e->getMessage()];
-            }
-        }
+        $fields = $this->health->info();
         $info['orillacart'] = ['label' => 'OrillaCart', 'fields' => $fields];
 
         return $info;
