@@ -16,6 +16,7 @@ import type { FormEvent } from 'react';
 import { toApiError, violationOf, type Violation } from '../shared/api';
 import { fetchCountries, type Country } from '../shared/geography';
 import { LocationFields } from '../shared/LocationFields';
+import { ArchiveCard } from './ArchiveCard';
 import { DownloadDeliveryCard } from './DownloadDeliveryCard';
 import { FiltersCard } from './FiltersCard';
 import { InvoicesCard } from './InvoicesCard';
@@ -479,6 +480,7 @@ export function SettingsScreen() {
 			<DownloadDeliveryCard />
 			<FiltersCard />
 			<SearchEngineCard />
+			<ArchiveCard />
 		</>
 	);
 }
