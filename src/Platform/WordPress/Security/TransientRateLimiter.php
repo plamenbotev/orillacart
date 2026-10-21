@@ -31,6 +31,16 @@ final readonly class TransientRateLimiter implements RateLimiter
         'reviews' => [10, 3600],
     ];
 
+    /**
+     * The limits before sites change them: how many tries, in how many seconds, by guard.
+     *
+     * @return array<string, array{int, int}>
+     */
+    public static function limits(): array
+    {
+        return self::LIMITS;
+    }
+
     public function hit(string $guard, string $caller): ?int
     {
         $limits = apply_filters('orillacart_rate_limits', self::LIMITS);

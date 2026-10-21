@@ -1,0 +1,11 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Writes docs/rest-api.md from the plugin's routes. Run after adding or changing a route.
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+$markdown = OrillaCart\Platform\Http\RouteDocumentation::ofPlugin(dirname(__DIR__))->markdown();
+file_put_contents(dirname(__DIR__) . '/docs/rest-api.md', $markdown);
+echo 'Wrote docs/rest-api.md: ', substr_count($markdown, "\n### `"), " routes.\n";
