@@ -16,10 +16,11 @@ final readonly class StorefrontSettingsView
         /** guests, accounts or off */
         public string $wishlist,
         public bool $recentlyViewed,
+        public bool $dataLayer,
     ) {}
 
     public static function of(StorefrontSettings $settings): self
     {
-        return new self($settings->structuredData, $settings->sharingTags->value, $settings->wishlist->value, $settings->recentlyViewed);
+        return new self($settings->structuredData, $settings->sharingTags->value, $settings->wishlist->value, $settings->recentlyViewed, $settings->dataLayer);
     }
 }

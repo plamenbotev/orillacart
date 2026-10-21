@@ -27,6 +27,7 @@ final readonly class OptionStorefrontSettingsRepository implements StorefrontSet
             \is_string($stored['sharing_tags'] ?? null) ? SharingTags::tryFrom($stored['sharing_tags']) ?? SharingTags::Auto : SharingTags::Auto,
             \is_string($stored['wishlist'] ?? null) ? WishlistPolicy::tryFrom($stored['wishlist']) ?? WishlistPolicy::Guests : WishlistPolicy::Guests,
             ($stored['recently_viewed'] ?? true) !== false,
+            ($stored['data_layer'] ?? false) === true,
         );
     }
 
@@ -37,6 +38,7 @@ final readonly class OptionStorefrontSettingsRepository implements StorefrontSet
             'sharing_tags' => $settings->sharingTags->value,
             'wishlist' => $settings->wishlist->value,
             'recently_viewed' => $settings->recentlyViewed,
+            'data_layer' => $settings->dataLayer,
         ], true);
     }
 

@@ -423,6 +423,8 @@ lets plugins adjust a few things through filters. Arguments are ids and plain va
 | `orillacart_cart_item_added` | product id, variation id (null for none), how many were added, customer id (null for a guest) |
 | `orillacart_cart_item_changed` | product id, variation id, the new quantity, the previous one, customer id |
 | `orillacart_cart_item_removed` | product id, variation id, the quantity it had, customer id |
+| `orillacart_order_paid` | order number |
+| `orillacart_product_viewed` | product id, customer id (null for a guest); not for pages a page cache serves: count those in the browser (below) |
 
 | filter | value | arguments |
 |---|---|---|
@@ -436,6 +438,28 @@ lets plugins adjust a few things through filters. Arguments are ids and plain va
 | `orillacart_seo_plugin_active` | whether an SEO plugin writes Open Graph tags, so the shop's are left out (Settings → Storefront: unless an SEO plugin adds them) | |
 
 The page slots above are actions too.
+
+### Events in the browser
+
+The storefront script fires events on `document` as shoppers go, for analytics and marketing add-ons, each with
+the event's data as Google Analytics 4 names it (`currency`, `value`, `items` of `item_id`, `item_name`,
+`item_variant`, `price` and `quantity`):
+
+| event | when |
+|---|---|
+| `orillacart:view_item` | a product's page shows |
+| `orillacart:add_to_cart` | a product goes in the cart, from its page or a list |
+| `orillacart:begin_checkout` | the checkout shows the cart |
+| `orillacart:purchase` | the receipt of an order placed shows, once per browser (with `transaction_id`, `tax`, `shipping`, `coupon`) |
+
+```js
+document.addEventListener( 'orillacart:purchase', ( event ) => {
+	myPixel.track( 'Purchase', { value: event.detail.value, currency: event.detail.currency } );
+} );
+```
+
+With Settings → Storefront → "Send the shop's events to Google Tag Manager", the same events are also pushed to
+`window.dataLayer` as GA4 ecommerce events (`{ event: 'add_to_cart', ecommerce: { … } }`).
 
 WordPress's own `registration_errors` is left to the wp-login.php form: captcha plugins on it expect that form's
 fields and would refuse every shop sign-up. The shop's forms carry a field people never see, `orillacart_website`:

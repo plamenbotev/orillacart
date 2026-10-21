@@ -6,7 +6,8 @@
 import { __ } from '@wordpress/i18n';
 
 import { api } from './api';
-import { showCards, storedIds, storeIds } from './cards';
+import { showCards } from './cards';
+import { storedIds, storeIds } from './storage';
 import { showMessage } from './dom';
 
 const KEY = 'orillacart_wishlist';

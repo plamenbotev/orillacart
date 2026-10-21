@@ -8,6 +8,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Platform\WordPress\Translations;
+use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
@@ -25,6 +26,7 @@ final readonly class StorefrontScripts implements Registrar
         private PluginContext $context,
         private StorefrontSettingsService $storefront,
         private ShopLinks $links,
+        private SettingsService $shop,
     ) {}
 
     public function register(): void
@@ -70,6 +72,8 @@ final readonly class StorefrontScripts implements Registrar
             'wishlist' => $settings->wishlist->value,
             'recentlyViewed' => $settings->recentlyViewed,
             'account' => $this->links->pages()['account'],
+            'dataLayer' => $settings->dataLayer,
+            'currency' => $this->shop->current()->currency,
         ]) . ';', 'before');
     }
 

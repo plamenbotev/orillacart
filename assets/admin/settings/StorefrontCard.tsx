@@ -146,6 +146,20 @@ export function StorefrontCard() {
 								save( { recently_viewed: checked } )
 							}
 						/>
+						<CheckboxControl
+							label={ __(
+								'Send the shop’s events to Google Tag Manager',
+								'orillacart'
+							) }
+							help={ __(
+								'Products viewed, added to the cart, checkouts begun and orders placed go to the dataLayer as Google Analytics 4 ecommerce events. Add the Tag Manager container with its own plugin.',
+								'orillacart'
+							) }
+							checked={ settings.data_layer }
+							onChange={ ( checked ) =>
+								save( { data_layer: checked } )
+							}
+						/>
 					</>
 				) }
 			</CardBody>

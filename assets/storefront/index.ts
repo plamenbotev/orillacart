@@ -11,6 +11,7 @@ import {
 	bindFindOrder,
 	bindRegister,
 } from './account';
+import { startAnalytics } from './analytics';
 import { bindBackInStock } from './backinstock';
 import { bindCart } from './cart';
 import { bindCheckout } from './checkout';
@@ -79,6 +80,7 @@ function start(): void {
 		.querySelectorAll< HTMLElement >( '.orillacart-account__addresses' )
 		.forEach( bindAddressBook );
 	bindShop();
+	startAnalytics();
 	void startWishlist();
 	void startRecentlyViewed();
 	if ( document.querySelector( '[data-orillacart-region="cart"]' ) ) {

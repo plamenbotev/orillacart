@@ -3,12 +3,16 @@
  */
 import { __, _n, sprintf } from '@wordpress/i18n';
 
+import { trackAdded } from './analytics';
 import { api } from './api';
 import { showBackInStock } from './backinstock';
 import { clearErrors, failure, formBody, showErrors, showMessage } from './dom';
 import { bindGallery, type Gallery, type Picture } from './gallery';
 
-type CartSummary = { items: number };
+type CartSummary = {
+	items: number;
+	lines: Parameters< typeof trackAdded >[ 0 ];
+};
 
 type BundleQuote = {
 	price: string | null;
@@ -136,6 +140,11 @@ export function bindAddToCart( form: HTMLFormElement ): void {
 		}
 		if ( result.ok ) {
 			setCartCount( result.data.items );
+			trackAdded(
+				result.data.lines,
+				Number( body.product_id ),
+				Number( body.quantity ?? 1 )
+			);
 			const cart = form.dataset.cartUrl;
 			showMessage(
 				form,

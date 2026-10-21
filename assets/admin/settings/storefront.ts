@@ -6,6 +6,7 @@ export interface StorefrontSettings {
 	sharing_tags: 'auto' | 'always' | 'never';
 	wishlist: 'guests' | 'accounts' | 'off';
 	recently_viewed: boolean;
+	data_layer: boolean;
 }
 
 const PATH = '/orillacart/v1/storefront-settings';

@@ -16,6 +16,8 @@ declare global {
 			wishlist?: 'guests' | 'accounts' | 'off';
 			recentlyViewed?: boolean;
 			account?: string | null;
+			dataLayer?: boolean;
+			currency?: string;
 		};
 	}
 }

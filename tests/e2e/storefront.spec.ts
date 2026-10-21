@@ -449,6 +449,59 @@ test.describe( 'A visitor', () => {
 		).toBeVisible();
 	} );
 
+	test( 'tells Google Tag Manager what it views, adds and buys, when the shop says so', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const settings = await requestUtils.rest< Record< string, unknown > >( {
+			path: '/orillacart/v1/storefront-settings',
+		} );
+		await requestUtils.rest( {
+			method: 'PUT',
+			path: '/orillacart/v1/storefront-settings',
+			data: { ...settings, data_layer: true },
+		} );
+		const events = () =>
+			page.evaluate( () =>
+				(
+					(
+						window as unknown as {
+							dataLayer?: { event?: string }[];
+						}
+					 ).dataLayer ?? []
+				)
+					.map( ( entry ) => entry.event )
+					.filter( Boolean )
+			);
+		try {
+			await page.goto( shop.lampUrl );
+			await page.getByRole( 'button', { name: 'Add to cart' } ).click();
+			await expect( page.getByRole( 'status' ).first() ).toHaveText(
+				/Added/
+			);
+			expect( await events() ).toEqual( [ 'view_item', 'add_to_cart' ] );
+
+			await page.goto( shop.urls.checkout );
+			expect( await events() ).toEqual( [ 'begin_checkout' ] );
+			await fillBilling( page, `e2e-tag-${ Date.now() }@example.com` );
+			await page.getByRole( 'button', { name: 'Place order' } ).click();
+			await expect(
+				page.getByRole( 'heading', {
+					name: 'Thank you for your order',
+				} )
+			).toBeVisible();
+			expect( await events() ).toEqual( [ 'purchase' ] );
+			await page.reload();
+			expect( await events() ).toEqual( [] );
+		} finally {
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: '/orillacart/v1/storefront-settings',
+				data: settings,
+			} );
+		}
+	} );
+
 	test( 'saves a product to the wishlist as a visitor, and sees it in the account page', async ( {
 		page,
 	} ) => {

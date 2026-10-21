@@ -2,7 +2,8 @@
  * The products the shopper viewed lately, newest first, kept in their browser: product pages add theirs, and
  * the "Recently viewed" sections show the others.
  */
-import { showCards, storedIds, storeIds } from './cards';
+import { showCards } from './cards';
+import { storedIds, storeIds } from './storage';
 
 const KEY = 'orillacart_viewed';
 const MOST = 12;

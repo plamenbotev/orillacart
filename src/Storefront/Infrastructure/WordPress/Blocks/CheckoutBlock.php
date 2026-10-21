@@ -26,6 +26,7 @@ use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Shipping\Application\Dto\ShippingOptionView;
 use OrillaCart\Shipping\Application\ShipmentTracking;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
+use OrillaCart\Storefront\Infrastructure\WordPress\AnalyticsEvents;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
@@ -57,6 +58,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         private Returns $returns,
         private Newsletter $newsletter,
         private ReviewLinks $reviewLinks,
+        private AnalyticsEvents $analytics,
     ) {}
 
     public static function name(): string
@@ -115,7 +117,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'address_checks' => $this->addressChecks->any(),
             'login_url' => wp_login_url((string) get_permalink()),
             'links' => $links,
-        ] + $this->addresses->all());
+        ] + $this->addresses->all()) . ($summary !== null && $summary->lines !== [] ? $this->analytics->beginCheckout($summary) : '');
     }
 
     /**
@@ -143,7 +145,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'invoices' => $this->invoices->ofOrder($order->number),
             'returns' => $this->returns->forOrder($order->number),
             'review_links' => $this->reviewLinks->forOrder($order, $receipt),
-        ]);
+        ]) . (\in_array($order->status, ['cancelled', 'failed'], true) ? '' : $this->analytics->purchase($order));
     }
 
     private function customer(): ?CustomerView

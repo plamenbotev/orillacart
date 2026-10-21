@@ -17,6 +17,7 @@ use OrillaCart\Reviews\Application\Reviews;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
+use OrillaCart\Storefront\Infrastructure\WordPress\AnalyticsEvents;
 use OrillaCart\Storefront\Infrastructure\WordPress\Merchandise;
 use OrillaCart\Storefront\Infrastructure\WordPress\ProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
@@ -41,6 +42,7 @@ final readonly class ProductPanel
         private Merchandise $merchandise,
         private ProductCards $cards,
         private StorefrontSettingsService $storefront,
+        private AnalyticsEvents $analytics,
     ) {}
 
     public function content(string $content): string
@@ -81,7 +83,7 @@ final readonly class ProductPanel
             'email' => is_user_logged_in() ? wp_get_current_user()->user_email : '',
             'wishlist' => $storefront->wishlist->value,
             'recently_viewed' => $storefront->recentlyViewed,
-        ]) . $this->beside($id)
+        ]) . $this->analytics->viewItem($id, $offer) . $this->beside($id)
             . ($storefront->recentlyViewed ? $this->templates->render('storefront/_recently_viewed.html.twig', ['count' => Merchandise::SHOWN, 'exclude' => $id]) : '')
             . $this->reviews($id);
     }

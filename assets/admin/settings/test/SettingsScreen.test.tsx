@@ -134,6 +134,7 @@ function serve( save?: () => Promise< unknown > ) {
 				sharing_tags: 'auto',
 				wishlist: 'guests',
 				recently_viewed: true,
+				data_layer: false,
 			} );
 		}
 		if ( path === '/orillacart/v1/review-settings' ) {

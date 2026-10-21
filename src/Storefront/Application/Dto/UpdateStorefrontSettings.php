@@ -15,5 +15,6 @@ final readonly class UpdateStorefrontSettings
         #[Assert\Choice(choices: ['guests', 'accounts', 'off'])]
         public string $wishlist = 'guests',
         public bool $recentlyViewed = true,
+        public bool $dataLayer = false,
     ) {}
 }
