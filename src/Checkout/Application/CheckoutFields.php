@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace OrillaCart\Checkout\Application;
 
-use OrillaCart\Checkout\Application\Dto\CheckoutFieldView;
+use OrillaCart\Catalog\Application\Dto\ItemQuote;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\FieldContext;
 use OrillaCart\Extension\FailsClosed;
+use OrillaCart\Forms\Application\Dto\AskedField;
+use OrillaCart\Forms\Application\Dto\GivenAnswer;
+use OrillaCart\Forms\Application\FieldAnswers;
+use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Ordering\Application\Dto\OrderFieldView;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Extension\ExtensionFailures;
@@ -15,35 +19,31 @@ use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Log\LoggerInterface;
 
 /**
- * The questions add-ons ask at checkout: which the form shows, and the answers an order keeps. A shipping
- * question is asked only of an order that ships.
+ * The questions checkout asks besides the shop's own: add-ons' fields, then the shop's checkout forms for the
+ * products in the cart. Which the form shows, and the answers an order keeps. A shipping question is asked only of
+ * an order that ships.
  */
 final readonly class CheckoutFields
 {
     /** What a ticked box is kept as. */
-    public const string YES = 'Yes';
+    public const string YES = FieldAnswers::YES;
 
     public function __construct(
         private InstalledExtensions $extensions,
         private LoggerInterface $logger,
         private ExtensionFailures $failures,
+        private ShopForms $forms,
+        private FieldAnswers $answers,
     ) {}
 
     /**
-     * @return list<CheckoutFieldView>
+     * @param list<ItemQuote> $items what the order holds
+     *
+     * @return list<AskedField>
      */
-    public function asked(bool $ships): array
+    public function asked(array $items, bool $ships): array
     {
-        return array_map(static fn(CheckoutField $field): CheckoutFieldView => new CheckoutFieldView(
-            $field->id,
-            $field->label,
-            $field->kind,
-            $field->section,
-            $field->required,
-            array_map(static fn(string $value, string $label): array => ['value' => $value, 'label' => $label], array_map('strval', array_keys($field->choices)), array_values($field->choices)),
-            $field->help,
-            $field->longest,
-        ), $this->fields($ships));
+        return array_map(static fn(array $field): AskedField => $field[0], $this->fields($items, $ships));
     }
 
     /**
@@ -51,56 +51,55 @@ final readonly class CheckoutFields
      * question left unanswered is not kept.
      *
      * @param array<array-key, mixed> $answers by field id, as the form sent them
+     * @param list<ItemQuote>         $items   what the order holds
      *
      * @return list<OrderFieldView>
      *
      * @throws InvalidFields with each refused answer next to its field, as fields.vat_number
      */
-    public function answers(array $answers, FieldContext $context, bool $ships): array
+    public function answers(array $answers, FieldContext $context, array $items, bool $ships): array
     {
-        $kept = [];
-        $violations = [];
-        foreach ($this->fields($ships) as $field) {
-            $answer = self::answer($field, $answers[$field->id] ?? null);
-            $problem = match (true) {
-                $answer === null => 'This answer is not one of the choices.',
-                $answer === '' => $field->required ? ($field->kind === CheckoutField::CHECKBOX ? 'Tick this to order.' : 'This field is required.') : null,
-                mb_strlen($answer) > $field->longest => \sprintf('Up to %d characters.', $field->longest),
-                default => $this->check($field, $answer, $context),
-            };
-            if ($problem !== null) {
-                $violations[] = ['field' => 'fields.' . $field->id, 'message' => $problem];
-            } elseif ($answer !== null && $answer !== '') {
-                $kept[] = new OrderFieldView($field->id, $field->label, $field->kind === CheckoutField::CHOICE ? $field->choices[$answer] : $answer);
+        $addOns = [];
+        $fields = [];
+        foreach ($this->fields($items, $ships) as [$asked, $field]) {
+            $fields[] = $asked;
+            if ($field !== null) {
+                $addOns[$asked->id] = $field;
             }
         }
-        if ($violations !== []) {
-            throw new InvalidFields($violations);
-        }
+        $given = $this->answers->check($fields, $answers, 'fields.', check: fn(AskedField $asked, string $answer): ?string => isset($addOns[$asked->id]) ? $this->check($addOns[$asked->id], $answer, $context) : null);
 
-        return $kept;
+        return array_map(static fn(GivenAnswer $answer): OrderFieldView => new OrderFieldView($answer->id, $answer->label, $answer->answer), $given);
     }
 
     /**
-     * @return list<CheckoutField>
+     * Each field as asked, with the add-on's own when it is one.
+     *
+     * @param list<ItemQuote> $items
+     *
+     * @return list<array{AskedField, ?CheckoutField}>
      */
-    private function fields(bool $ships): array
+    private function fields(array $items, bool $ships): array
     {
-        return array_values(array_filter($this->extensions->checkoutFields(), static fn(CheckoutField $field): bool => $ships || $field->section !== CheckoutField::SHIPPING));
-    }
-
-    /** The answer as text, '' for none; null for a choice the field does not offer. */
-    private static function answer(CheckoutField $field, mixed $raw): ?string
-    {
-        if ($field->kind === CheckoutField::CHECKBOX) {
-            return \in_array($raw, [true, 1, '1', 'yes', 'on', 'true'], true) ? self::YES : '';
+        $fields = [];
+        foreach ($this->extensions->checkoutFields() as $field) {
+            $fields[] = [new AskedField(
+                $field->id,
+                $field->label,
+                $field->kind,
+                $field->required,
+                $field->help,
+                longest: $field->longest,
+                choices: array_map(static fn(string $value, string $label): array => ['value' => $value, 'label' => $label, 'price' => null], array_map('strval', array_keys($field->choices)), array_values($field->choices)),
+                section: $field->section,
+            ), $field];
         }
-        $text = \is_string($raw) || \is_int($raw) || \is_float($raw) ? trim((string) $raw) : '';
-        if ($field->kind === CheckoutField::CHOICE && $text !== '' && !\array_key_exists($text, $field->choices)) {
-            return null;
+        $products = array_map(static fn(ItemQuote $item): array => ['product_id' => $item->productId, 'category_ids' => $item->categoryIds], $items);
+        foreach ($this->forms->checkoutFields($products) as $field) {
+            $fields[] = [$field, null];
         }
 
-        return $text;
+        return array_values(array_filter($fields, static fn(array $field): bool => $ships || $field[0]->section !== CheckoutField::SHIPPING));
     }
 
     /**

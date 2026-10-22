@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Checkout\Application\Dto;
 
+use OrillaCart\Forms\Application\Dto\AskedField;
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
 use OrillaCart\Shipping\Application\Dto\DeliveryChoiceView;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
@@ -21,7 +22,7 @@ final readonly class CheckoutView
      * @param list<PickupPointView>   $pickupPoints where the chosen service can deliver, when it delivers to offices or lockers
      * @param string                  $subtotal     the items before tax and before the discount
      * @param list<CheckoutCouponView> $coupons     the codes entered, those that hold and those that do not
-     * @param list<CheckoutFieldView> $fields      the questions add-ons ask, for this order
+     * @param list<AskedField>        $fields      the questions add-ons and the shop's checkout forms ask, for this order
      */
     public function __construct(
         public array $lines,

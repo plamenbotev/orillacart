@@ -40,6 +40,9 @@ use OrillaCart\Customers\Domain\Event\CustomerErased;
 use OrillaCart\Customers\Domain\Event\PersonErased;
 use OrillaCart\Customers\Infrastructure\GroupsOfShoppers;
 use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Forms\Application\FieldAnswers;
+use OrillaCart\Forms\Application\FormService;
+use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\GiftCards\Application\GiftCardPayments;
 use OrillaCart\GiftCards\Application\GiftCardSales;
@@ -148,6 +151,8 @@ use OrillaCart\Tests\Fixtures\Customers\InMemoryCustomerSettingsRepository;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryPendingAccounts;
 use OrillaCart\Tests\Fixtures\Customers\RecordingAccountMail;
 use OrillaCart\Tests\Fixtures\FakeLanguages;
+use OrillaCart\Tests\Fixtures\Forms\InMemoryFormRepository;
+use OrillaCart\Tests\Fixtures\Forms\InMemoryFormUploadRepository;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\GiftCards\InMemoryGiftCards;
 use OrillaCart\Tests\Fixtures\GiftCards\MemoryGiftCardSettings;
@@ -302,6 +307,11 @@ final class TestShop
     public readonly TemporaryPrivateFiles $files;
     public readonly DownloadService $downloadFiles;
     public readonly Downloads $downloads;
+    public readonly InMemoryFormRepository $formRecords;
+    public readonly InMemoryFormUploadRepository $uploadRecords;
+    public readonly FormService $forms;
+    public readonly ShopForms $shopForms;
+    public readonly FieldAnswers $fieldAnswers;
 
     /**
      * @param list<ShippingMethod> $shippingMethods as add-ons would register them
@@ -318,6 +328,11 @@ final class TestShop
         $this->languages = new FakeLanguages();
         $this->settings = new InMemorySettingsRepository(new StoreSettings(new Currency('EUR'), 2, WeightUnit::Kilogram, DimensionUnit::Centimetre, 'BG'));
         $this->settingsService = $settings = new SettingsService($this->settings, $this->events, $geography);
+        $this->formRecords = new InMemoryFormRepository();
+        $this->uploadRecords = new InMemoryFormUploadRepository();
+        $this->forms = new FormService($this->formRecords);
+        $this->fieldAnswers = new FieldAnswers($this->uploadRecords);
+        $this->shopForms = new ShopForms($this->formRecords, $this->fieldAnswers);
 
         $taxGroupRecords = new InMemoryTaxGroupRepository();
         $this->taxSettings = new InMemoryTaxSettingsRepository(new TaxSettings(TaxBasis::ShippingAddress, null));
@@ -427,7 +442,7 @@ final class TestShop
             $this->customers,
             $this->logger,
             $this->discounts,
-            new CheckoutFields($extensions, $this->logger, $this->failures),
+            new CheckoutFields($extensions, $this->logger, $this->failures, $this->shopForms, $this->fieldAnswers),
             new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography),
             $this->languages,
             $this->failures,

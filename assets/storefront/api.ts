@@ -72,7 +72,7 @@ export function forgetNonce(): void {
  * result that is not ok, with a message for the customer, so every caller can show it and re-enable its button.
  * @param method
  * @param path
- * @param body
+ * @param body   JSON, or FormData for a file.
  */
 export async function api< T >(
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
@@ -104,7 +104,9 @@ async function call< T >(
 		const headers: Record< string, string > = {
 			Accept: 'application/json',
 		};
-		if ( body !== undefined ) {
+		// A file goes as multipart, whose boundary the browser sets.
+		const multipart = body instanceof FormData;
+		if ( body !== undefined && ! multipart ) {
 			headers[ 'Content-Type' ] = 'application/json';
 		}
 		if ( token !== null ) {
@@ -115,7 +117,14 @@ async function call< T >(
 			headers,
 			credentials: 'same-origin',
 			cache: 'no-store',
-			...( body === undefined ? {} : { body: JSON.stringify( body ) } ),
+			...( body === undefined
+				? {}
+				: {
+						body:
+							body instanceof FormData
+								? body
+								: JSON.stringify( body ),
+					} ),
 		} );
 	};
 

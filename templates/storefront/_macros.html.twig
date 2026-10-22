@@ -102,39 +102,69 @@
 {% endmacro %}
 
 {#
- # The questions add-ons ask in one part of checkout (billing, shipping or order), named fields.<id> for the
- # REST API.
+ # One question, the shop's or an add-on's, named <prefix>.<id> for the REST API: fields at checkout,
+ # personalisation on the product page. A field asked only when another is answered carries data-orillacart-when
+ # (forms.ts shows it then; its inputs are off, so not sent, while it is hidden). A file field sends its file as
+ # soon as it is chosen; the hidden input keeps the token the shop gave back.
  #}
-{% macro extra_fields(fields, section) %}
-    {%- for field in fields %}{% if field.section == section %}
-        {%- set id = 'orillacart-field-' ~ field.id -%}
-        {%- set required = field.required ? ' <span aria-hidden="true">*</span>' : '' -%}
-        {% if field.kind == 'checkbox' %}
-            <p class="orillacart-field orillacart-field--check">
-                <input id="{{ id }}" type="checkbox" name="fields.{{ field.id }}" value="1" data-orillacart-field="fields.{{ field.id }}"{{ field.required ? ' required' }}>
-                <label for="{{ id }}">{{ field.label }}{{ required|raw }}</label>
-                {% if field.help %}<small>{{ field.help }}</small>{% endif %}
-            </p>
-        {% else %}
-            <p class="orillacart-field">
-                <label for="{{ id }}">{{ field.label }}{{ required|raw }}</label>
-                {% if field.kind == 'textarea' %}
-                    <textarea id="{{ id }}" name="fields.{{ field.id }}" rows="3" maxlength="{{ field.longest }}" data-orillacart-field="fields.{{ field.id }}"{{ field.required ? ' required' }}></textarea>
-                {% elseif field.kind == 'choice' %}
-                    <select id="{{ id }}" name="fields.{{ field.id }}" data-orillacart-field="fields.{{ field.id }}"{{ field.required ? ' required' }}>
-                        <option value="">{{ __('Choose') }}</option>
-                        {% for choice in field.choices %}<option value="{{ choice.value }}">{{ choice.label }}</option>{% endfor %}
-                    </select>
-                {% else %}
-                    <input id="{{ id }}" type="text" name="fields.{{ field.id }}" maxlength="{{ field.longest }}" data-orillacart-field="fields.{{ field.id }}"{{ field.required ? ' required' }}>
-                {% endif %}
-                {% if field.help %}<small>{{ field.help }}</small>{% endif %}
-            </p>
-        {% endif %}
-    {% endif %}{% endfor -%}
+{% macro form_field(field, prefix) %}
+    {%- set name = prefix ~ '.' ~ field.id -%}
+    {%- set id = 'orillacart-' ~ (prefix == 'fields' ? 'field' : prefix) ~ '-' ~ field.id -%}
+    {%- set required = field.required ? ' <span aria-hidden="true">*</span>' : '' -%}
+    {%- set price = field.price is not null and field.price != '0' ? ' (+' ~ field.price|money ~ ')' : '' -%}
+    {%- set help_id = field.help ? id ~ '-help' : null -%}
+    {%- set prices = field.kind == 'choice' ? field.choices|filter(c => c.price is not null)|reduce((map, c) => map|merge({(c.value): c.price}), {}) : (field.price is not null ? {'*': field.price} : {}) -%}
+    {%- set attributes = (prices ? ' data-orillacart-price-of="' ~ name|e('html_attr') ~ '" data-orillacart-prices="' ~ prices|json_encode|e('html_attr') ~ '"' : '') ~ (field.condition ? ' data-orillacart-when="' ~ (prefix ~ '.' ~ field.condition.field)|e('html_attr') ~ '" data-orillacart-when-values="' ~ field.condition.values|join(' ')|e('html_attr') ~ '"' : '') -%}
+    {% if field.kind == 'checkbox' %}
+        <p class="orillacart-field orillacart-field--check"{{ attributes|raw }}>
+            <input id="{{ id }}" type="checkbox" name="{{ name }}" value="1" data-orillacart-field="{{ name }}"{{ field.required ? ' required' }}{{ help_id ? (' aria-describedby="' ~ help_id ~ '"')|raw }}>
+            <label for="{{ id }}">{{ field.label }}{{ price }}{{ required|raw }}</label>
+            {% if field.help %}<small id="{{ help_id }}">{{ field.help }}</small>{% endif %}
+        </p>
+    {% elseif field.kind == 'choice' and field.display == 'buttons' %}
+        <fieldset class="orillacart-field orillacart-field--buttons" data-orillacart-field="{{ name }}"{{ attributes|raw }}>
+            <legend>{{ field.label }}{{ required|raw }}</legend>
+            {% for choice in field.choices %}
+                <label class="orillacart-choice">
+                    <input type="radio" name="{{ name }}" value="{{ choice.value }}"{{ field.required ? ' required' }}>
+                    <span>{{ choice.label }}{% if choice.price is not null and choice.price != '0' %} (+{{ choice.price|money }}){% endif %}</span>
+                </label>
+            {% endfor %}
+            {% if field.help %}<small>{{ field.help }}</small>{% endif %}
+        </fieldset>
+    {% else %}
+        <p class="orillacart-field"{{ attributes|raw }}>
+            <label for="{{ id }}">{{ field.label }}{{ field.kind != 'choice' ? price }}{{ required|raw }}</label>
+            {% set common = ' data-orillacart-field="' ~ name|e('html_attr') ~ '"' ~ (field.required ? ' required' : '') ~ (help_id ? ' aria-describedby="' ~ help_id ~ '"' : '') ~ (field.placeholder|default('') ? ' placeholder="' ~ field.placeholder|e('html_attr') ~ '"' : '') %}
+            {% if field.kind == 'textarea' %}
+                <textarea id="{{ id }}" name="{{ name }}" rows="3" maxlength="{{ field.longest }}"{{ common|raw }}></textarea>
+            {% elseif field.kind == 'choice' %}
+                <select id="{{ id }}" name="{{ name }}"{{ common|raw }}>
+                    <option value="">{{ __('Choose') }}</option>
+                    {% for choice in field.choices %}<option value="{{ choice.value }}">{{ choice.label }}{% if choice.price is not null and choice.price != '0' %} (+{{ choice.price|money }}){% endif %}</option>{% endfor %}
+                </select>
+            {% elseif field.kind == 'number' %}
+                <input id="{{ id }}" type="number" name="{{ name }}" inputmode="{{ field.whole ? 'numeric' : 'decimal' }}" step="{{ field.whole ? '1' : 'any' }}"{% if field.min is not null %} min="{{ field.min }}"{% endif %}{% if field.max is not null %} max="{{ field.max }}"{% endif %}{{ common|raw }}>
+            {% elseif field.kind == 'date' %}
+                <input id="{{ id }}" type="date" name="{{ name }}" min="1900-01-01" max="2200-12-31"{{ common|raw }}>
+            {% elseif field.kind == 'file' %}
+                <input id="{{ id }}" type="file" accept="{{ field.types|join(',') }}" data-orillacart-upload="{{ field.id }}" data-orillacart-largest="{{ field.largest }}"{{ field.required ? ' aria-required="true"' }}{{ help_id ? (' aria-describedby="' ~ help_id ~ '"')|raw }}>
+                <input type="hidden" name="{{ name }}" value="" data-orillacart-field="{{ name }}">
+                <span class="orillacart-upload__status" role="status" data-orillacart-upload-status></span>
+            {% else %}
+                <input id="{{ id }}" type="text" name="{{ name }}" maxlength="{{ field.longest }}"{{ common|raw }}>
+            {% endif %}
+            {% if field.help %}<small id="{{ help_id }}">{{ field.help }}</small>{% endif %}
+        </p>
+    {% endif %}
 {% endmacro %}
 
-{# The answers an order keeps to add-ons' questions. #}
+{# The questions add-ons and the shop's checkout forms ask in one part of checkout (billing, shipping or order). #}
+{% macro extra_fields(fields, section) %}
+    {%- for field in fields %}{% if field.section == section %}{{ _self.form_field(field, 'fields') }}{% endif %}{% endfor -%}
+{% endmacro %}
+
+{# The answers an order keeps to the questions asked at checkout. #}
 {% macro field_answers(fields) %}
     {%- if fields %}
         <dl class="orillacart-answers">

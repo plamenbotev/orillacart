@@ -16,11 +16,13 @@ import {
 	showErrors,
 	showMessage,
 } from './dom';
+import { bindConditions } from './forms';
 
 type PlacedOrder = { receipt_url: string; redirect_url: string | null };
 
 export function bindCheckout( form: HTMLFormElement ): void {
 	bindStates( form );
+	bindConditions( form );
 	const shipping = form.querySelector< HTMLElement >(
 		'[data-orillacart-shipping-address]'
 	);

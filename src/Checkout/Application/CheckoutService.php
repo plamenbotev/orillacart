@@ -7,6 +7,7 @@ namespace OrillaCart\Checkout\Application;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\CartContents;
 use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Catalog\Application\Dto\ItemQuote;
 use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Checkout\Application\Dto\CheckoutCouponView;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
@@ -163,7 +164,7 @@ final readonly class CheckoutService
             \in_array($details->pickupPoint, array_map(static fn(PickupPointView $point): string => $point->id, $pickupPoints), true) ? $details->pickupPoint : null,
             (string) $bill->discount(),
             $coupons,
-            $this->fields->asked($priced['needs_shipping']),
+            $this->fields->asked(array_map(static fn(array $line): ItemQuote => $line['quote'], $priced['lines']), $priced['needs_shipping']),
             $bill->includesTax(),
             $this->vatNumbers->asked(),
             $reverse->applies,
@@ -432,7 +433,7 @@ final readonly class CheckoutService
             $gateway = $command->payment;
         }
 
-        $answers = $this->fields->answers($command->fields, new FieldContext($command->email, $billingAddress->country, $priced['needs_shipping'] ? $shippingAddress->country : null, $owner->customerId), $priced['needs_shipping']);
+        $answers = $this->fields->answers($command->fields, new FieldContext($command->email, $billingAddress->country, $priced['needs_shipping'] ? $shippingAddress->country : null, $owner->customerId), array_map(static fn(array $line): ItemQuote => $line['quote'], $priced['lines']), $priced['needs_shipping']);
         $registering = $this->registration($owner, $command);
 
         $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents->cartId, fn(): OrderView => $this->redeemed($priced, $plan, $owner, $command->email, $this->orders->place(new NewOrder(

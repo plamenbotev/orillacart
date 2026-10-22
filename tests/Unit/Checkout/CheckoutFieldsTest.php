@@ -8,12 +8,14 @@ use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
-use OrillaCart\Checkout\Application\Dto\CheckoutFieldView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\FieldCheck;
 use OrillaCart\Extension\Checkout\FieldContext;
 use OrillaCart\Extension\FailsClosed;
+use OrillaCart\Forms\Application\Dto\AskedField;
+use OrillaCart\Forms\Application\Dto\SaveForm;
+use OrillaCart\Forms\Application\Dto\SaveFormField;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\OrderFieldView;
@@ -54,8 +56,8 @@ final class CheckoutFieldsTest extends TestCase
     {
         $summary = $this->shop->checkout->summary($this->cart(), new CheckoutDetails(billingCountry: 'BG'));
 
-        self::assertSame(['vat_number', 'wrap', 'terms'], array_map(static fn(CheckoutFieldView $field): string => $field->id, $summary->fields), 'nothing ships, so no door code');
-        self::assertSame([['value' => 'paper', 'label' => 'Paper'], ['value' => 'box', 'label' => 'A box']], $summary->fields[1]->choices);
+        self::assertSame(['vat_number', 'wrap', 'terms'], array_map(static fn(AskedField $field): string => $field->id, $summary->fields), 'nothing ships, so no door code');
+        self::assertSame([['value' => 'paper', 'label' => 'Paper', 'price' => null], ['value' => 'box', 'label' => 'A box', 'price' => null]], $summary->fields[1]->choices);
     }
 
     public function testEachRefusedAnswerIsReportedNextToItsField(): void
@@ -67,7 +69,7 @@ final class CheckoutFieldsTest extends TestCase
             self::assertSame([
                 ['field' => 'fields.vat_number', 'message' => 'A VAT number starts with the country code.'],
                 ['field' => 'fields.wrap', 'message' => 'This answer is not one of the choices.'],
-                ['field' => 'fields.terms', 'message' => 'Tick this to order.'],
+                ['field' => 'fields.terms', 'message' => 'Tick this to go on.'],
             ], $e->violations);
         }
         self::assertSame([], $this->shop->orderRecords->orders, 'no order');
@@ -94,6 +96,32 @@ final class CheckoutFieldsTest extends TestCase
         self::assertSame(['vat_number' => 'BG999', 'wrap' => 'A box', 'terms' => 'Yes'], $summary->fields);
         self::assertSame([$number, 'on_hold', 'ada@example.com', 'Sofia', '8', 'E-book'], [$summary->number, $summary->status, $summary->email, $summary->billing->city, $summary->total, $summary->lines[0]->name]);
         self::assertNull(new OrderSummaries($this->shop->orders)->find(999));
+    }
+
+    public function testTheShopsCheckoutFormsAreAskedForTheProductsInTheCartAfterAddOnsFields(): void
+    {
+        $this->shop->extensions->fields = [new CheckoutField('vat_number', 'VAT number')];
+        $this->shop->content->terms[20] = ['categories' => [4], 'brands' => []];
+        $books = $this->shop->forms->create(new SaveForm('Books', 'checkout', scope: 'categories', categoryIds: [4], fields: [
+            new SaveFormField('Dedication', 'textarea', 'dedication', section: 'order'),
+            new SaveFormField('Delivery day', 'date', 'day', required: true, section: 'billing'),
+        ]));
+        $this->shop->forms->create(new SaveForm('Shoes', 'checkout', scope: 'categories', categoryIds: [9], fields: [new SaveFormField('Size', key: 'size')]));
+
+        $summary = $this->shop->checkout->summary($this->cart(), new CheckoutDetails(billingCountry: 'BG'));
+        self::assertSame(['vat_number', "f{$books->id}_dedication", "f{$books->id}_day"], array_map(static fn(AskedField $field): string => $field->id, $summary->fields));
+
+        try {
+            $this->place(["f{$books->id}_day" => '2026-13-01']);
+            self::fail('a day that is not one');
+        } catch (InvalidFields $e) {
+            self::assertSame([['field' => "fields.f{$books->id}_day", 'message' => 'Enter a date.']], $e->violations);
+        }
+        $number = $this->place(["f{$books->id}_day" => '2026-10-30', "f{$books->id}_dedication" => "For Ada\u{202E},\nwith love"]);
+        self::assertEquals([
+            new OrderFieldView("f{$books->id}_dedication", 'Dedication', "For Ada,\nwith love"),
+            new OrderFieldView("f{$books->id}_day", 'Delivery day', '2026-10-30'),
+        ], $this->shop->orders->order($number)->fields);
     }
 
     public function testACheckThatFailsTakesTheAnswerAndTellsTheShopUnlessItFailsClosed(): void
