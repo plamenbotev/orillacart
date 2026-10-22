@@ -75,6 +75,9 @@ final class RouteSecurityGateTest extends TestCase
         'GET /countries/{code}/states',
         // A published bundle's price and stock with the visitor's choices, as its page shows them.
         'POST /products/{id}/bundle-quote',
+        // A file for a published product's file field: checked, written again and kept privately, rate limited; it
+        // gives back only a token to answer with, and no route serves the file to visitors.
+        'POST /form-uploads',
     ];
 
     private static ContainerBuilder $container;

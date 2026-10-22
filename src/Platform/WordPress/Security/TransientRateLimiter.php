@@ -30,6 +30,7 @@ final readonly class TransientRateLimiter implements RateLimiter
         'address_check' => [30, 3600],
         'returns' => [10, 3600],
         'reviews' => [10, 3600],
+        'form_uploads' => [20, 3600],
     ];
 
     /**

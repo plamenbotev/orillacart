@@ -28,6 +28,9 @@ abstract class RestTestCase extends TestCase
     /** @var list<array{to: string, subject: string, message: string, headers: list<string>, attachments: list<string>, named: array<string, string>}> mail the plugin sent during the test */
     protected array $mails = [];
     private ?\Closure $mailCatcher = null;
+    /** @var list<string> files the test hands the REST API as if PHP had received them */
+    private array $uploaded = [];
+    private ?\Closure $uploadCheck = null;
 
     protected function setUp(): void
     {
@@ -47,6 +50,11 @@ abstract class RestTestCase extends TestCase
         if ($this->mailCatcher !== null) {
             remove_filter('pre_wp_mail', $this->mailCatcher);
         }
+        if ($this->uploadCheck !== null) {
+            remove_filter('orillacart_genuine_upload', $this->uploadCheck);
+            $this->uploadCheck = null;
+        }
+        $this->uploaded = [];
         wp_set_current_user(0);
         // A test that showed an admin screen would leave is_admin() true for the tests after it.
         $GLOBALS['current_screen'] = null;
@@ -113,6 +121,38 @@ abstract class RestTestCase extends TestCase
         if ($nonce !== false) {
             $request->set_header('X-WP-Nonce', $nonce === true ? wp_create_nonce('wp_rest') : $nonce);
         }
+
+        return rest_do_request($request);
+    }
+
+    /**
+     * The REST API takes only files PHP received as uploads; a test's own file stands in for one.
+     */
+    protected function treatAsUploaded(string $path): void
+    {
+        $this->uploaded[] = $path;
+        if ($this->uploadCheck === null) {
+            $this->uploadCheck = fn(bool $genuine, string $file): bool => $genuine || \in_array($file, $this->uploaded, true);
+            add_filter('orillacart_genuine_upload', $this->uploadCheck, 10, 2);
+        }
+    }
+
+    /**
+     * A multipart request with one file, as a browser sends it.
+     *
+     * @param array<string, string> $fields
+     * @param non-empty-string $path
+     * @param non-empty-string $name
+     */
+    protected function upload(string $route, string $path, string $name, array $fields = [], bool $genuine = true): \WP_REST_Response
+    {
+        if ($genuine) {
+            $this->treatAsUploaded($path);
+        }
+        $request = new \WP_REST_Request('POST', self::NAMESPACE . $route);
+        $request->set_header('X-WP-Nonce', wp_create_nonce('wp_rest'));
+        $request->set_body_params($fields);
+        $request->set_file_params(['file' => ['name' => $name, 'type' => 'application/octet-stream', 'tmp_name' => $path, 'error' => UPLOAD_ERR_OK, 'size' => max(0, (int) filesize($path))]]);
 
         return rest_do_request($request);
     }

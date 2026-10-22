@@ -408,6 +408,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         file_put_contents($file, '%PDF guide');
         $upload = new \WP_REST_Request('POST', self::NAMESPACE . "/products/{$this->guide}/downloads");
         $upload->set_header('X-WP-Nonce', wp_create_nonce('wp_rest'));
+        $this->treatAsUploaded($file);
         $upload->set_file_params(['file' => ['name' => 'guide.pdf', 'type' => 'application/pdf', 'tmp_name' => $file, 'error' => UPLOAD_ERR_OK, 'size' => 10]]);
         $uploaded = rest_do_request($upload);
         self::assertSame(201, $uploaded->get_status(), (string) wp_json_encode($uploaded->get_data()));

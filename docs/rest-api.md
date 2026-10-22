@@ -687,6 +687,54 @@ Sends the preview to whoever asks.
 - Body (JSON):
   - `columns` (list<string>): at least 1 items
 
+## /form-uploads
+
+### `POST /form-uploads`
+
+A shopper sends a file for a product's file field: multipart, with product_id, field and the file in "file". The answer is the token it gives back; the file itself is never served to visitors.
+
+- Who: anyone; needs a nonce (not with an API key); at most 20 an hour from each address
+
+## /forms
+
+### `GET /forms`
+
+- Who: shop managers
+
+### `POST /forms`
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `name` (string): required; not empty; at most 100 characters
+  - `placement` (string): one of product, checkout; default 'product'
+  - `active` (bool): default true
+  - `position` (int): default 0
+  - `scope` (string): one of all, categories, products; default 'all'
+  - `category_ids` (list<int>): each more than 0
+  - `product_ids` (list<int>): each more than 0
+  - `fields` (list<SaveFormField>): at most 30 items
+
+### `GET /forms/{id}`
+
+- Who: shop managers
+
+### `PUT /forms/{id}`
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `name` (string): required; not empty; at most 100 characters
+  - `placement` (string): one of product, checkout; default 'product'
+  - `active` (bool): default true
+  - `position` (int): default 0
+  - `scope` (string): one of all, categories, products; default 'all'
+  - `category_ids` (list<int>): each more than 0
+  - `product_ids` (list<int>): each more than 0
+  - `fields` (list<SaveFormField>): at most 30 items
+
+### `DELETE /forms/{id}`
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ## /gift-cards
 
 ### `GET /gift-cards`
@@ -1974,6 +2022,37 @@ The objects fields above take.
 - `from` (string): required; matches `/^([01]\d|2[0-3]):[0-5]\d$/`
 - `to` (string): required; matches `/^([01]\d|2[0-3]):[0-5]\d$/`
 - `limit` (int|null): more than 0
+
+### SaveFieldChoice
+
+- `label` (string): required; not empty; at most 100 characters
+- `value` (string): at most 40 characters
+- `price` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
+
+### SaveFieldCondition
+
+- `field` (string): required; not empty
+- `values` (list<string>)
+
+### SaveFormField
+
+- `label` (string): required; not empty; at most 100 characters
+- `kind` (string): one of text, textarea, number, date, checkbox, choice, file; default 'text'
+- `key` (string): at most 30 characters
+- `required` (bool): default false
+- `help` (string): at most 300 characters
+- `placeholder` (string): at most 100 characters
+- `longest` (int): 1 to 2000; default 200
+- `choices` (list<SaveFieldChoice>): at most 50 items
+- `display` (string): one of list, buttons; default 'list'
+- `price` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
+- `min` (string|null): matches `/^-?\d{1,11}(\.\d{1,4})?$/`
+- `max` (string|null): matches `/^-?\d{1,11}(\.\d{1,4})?$/`
+- `whole` (bool): default false
+- `section` (string): one of billing, shipping, order; default 'order'
+- `condition` (SaveFieldCondition|null)
+- `types` (list<string>): each one of image/jpeg, image/png, image/webp, image/gif, application/pdf
+- `largest` (int): 1 to 20; default 10
 
 ### SaveOption
 

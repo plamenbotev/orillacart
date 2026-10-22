@@ -52,10 +52,12 @@ final readonly class RestBridge
         $files = [];
         foreach ($request->get_file_params() as $name => $file) {
             if (\is_array($file) && \is_string($file['tmp_name'] ?? null) && \is_int($file['error'] ?? null)) {
+                // Only what PHP received as an upload: a path from anywhere else would read the server's own files.
+                $genuine = $file['tmp_name'] !== '' && (bool) apply_filters('orillacart_genuine_upload', is_uploaded_file($file['tmp_name']), $file['tmp_name']);
                 $files[(string) $name] = $this->uploads->createUploadedFile(
-                    $this->streams->createStreamFromFile($file['tmp_name'] === '' ? 'php://memory' : $file['tmp_name']),
+                    $this->streams->createStreamFromFile($genuine ? $file['tmp_name'] : 'php://memory'),
                     \is_int($file['size'] ?? null) ? $file['size'] : null,
-                    $file['error'],
+                    $genuine ? $file['error'] : ($file['error'] === \UPLOAD_ERR_OK ? \UPLOAD_ERR_NO_FILE : $file['error']),
                     \is_string($file['name'] ?? null) ? $file['name'] : null,
                     \is_string($file['type'] ?? null) ? $file['type'] : null,
                 );

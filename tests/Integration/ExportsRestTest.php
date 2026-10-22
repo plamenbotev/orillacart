@@ -102,6 +102,7 @@ final class ExportsRestTest extends RestTestCase
         file_put_contents($file, "\u{FEFF}id,name,price,status,categories,short_description\n{$lamp},Brass lamp,35,draft,Lighting > Desk lamps,Bright\n,Bulb,3,,,\n");
         $upload = new \WP_REST_Request('POST', self::NAMESPACE . '/imports/products');
         $upload->set_header('X-WP-Nonce', wp_create_nonce('wp_rest'));
+        $this->treatAsUploaded($file);
         $upload->set_file_params(['file' => ['name' => 'products.csv', 'type' => 'text/csv', 'tmp_name' => $file, 'error' => UPLOAD_ERR_OK, 'size' => max(0, (int) filesize($file))]]);
         $uploaded = rest_do_request($upload);
         self::assertSame(201, $uploaded->get_status(), (string) wp_json_encode($uploaded->get_data()));
