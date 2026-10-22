@@ -22,6 +22,26 @@ final readonly class DoctrineFormUploadRepository implements FormUploadRepositor
         return $this->entityManager->getRepository(FormUpload::class)->findOneBy(['tokenHash' => FormUpload::hash($token)]);
     }
 
+    public function withTokenHash(string $hash): ?FormUpload
+    {
+        return $this->entityManager->getRepository(FormUpload::class)->findOneBy(['tokenHash' => $hash]);
+    }
+
+    public function sentBy(string $sender, \DateTimeImmutable $since): int
+    {
+        $bytes = $this->entityManager->createQueryBuilder()
+            ->select('COALESCE(SUM(u.size), 0)')
+            ->from(FormUpload::class, 'u')
+            ->where('u.sender = :sender')
+            ->andWhere('u.createdAt >= :since')
+            ->setParameter('sender', $sender)
+            ->setParameter('since', $since, 'datetime_immutable')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return is_numeric($bytes) ? (int) $bytes : 0;
+    }
+
     public function ofOrder(int $orderId): array
     {
         /** @var list<FormUpload> */
@@ -45,6 +65,19 @@ final readonly class DoctrineFormUploadRepository implements FormUploadRepositor
     }
 
     public function untakenBytes(): int
+    {
+        $bytes = $this->entityManager->createQueryBuilder()
+            ->select('COALESCE(SUM(u.size), 0)')
+            ->from(FormUpload::class, 'u')
+            ->where('u.orderId IS NULL')
+            ->andWhere('u.heldAt IS NULL')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return is_numeric($bytes) ? (int) $bytes : 0;
+    }
+
+    public function unorderedBytes(): int
     {
         $bytes = $this->entityManager->createQueryBuilder()
             ->select('COALESCE(SUM(u.size), 0)')

@@ -24,14 +24,22 @@ use Psr\Clock\ClockInterface;
  */
 final readonly class FormUploads
 {
+    /** What temporary files of uploads are called. */
+    public const string TEMPORARY_PREFIX = 'orillacart-upload';
     /** The largest file any field takes. */
     public const int MAX_MEGABYTES = FormField::MAX_MEGABYTES;
-    /** While the uploads no order took come to this, no more are taken: nobody fills the disk. */
+    /** While the uploads no cart or order took come to this, no more are taken: nobody fills the disk. */
     public const int MAX_UNTAKEN_BYTES = 500 * 1024 * 1024;
+    /** And while every upload no order took, in carts too, comes to this: the most disk they ever take. */
+    public const int MAX_UNORDERED_BYTES = 2 * 1024 * 1024 * 1024;
+    /** What one sender (an address, or an IPv6 network) may send in a day. */
+    public const int MAX_SENT_A_DAY = 100 * 1024 * 1024;
+    /** The most files one cart holds. */
+    public const int MAX_HELD = 10;
     /** How long an upload no cart or order took is kept. */
     public const string KEPT_FOR = '-2 days';
-    /** How long one in a cart is kept: as long as the cart (CartService forgets carts after a month). */
-    public const string HELD_FOR = '-35 days';
+    /** How long one in a cart is kept, from when the cart last took it: a week, so carts cannot keep the disk full. */
+    public const string HELD_FOR = '-7 days';
 
     private const array EXTENSIONS = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif', 'application/pdf' => 'pdf'];
 
@@ -71,7 +79,11 @@ final readonly class FormUploads
             if ($size > $field->largest * 1024 * 1024) {
                 throw self::refused(\sprintf('The file is larger than %d MB.', $field->largest));
             }
-            if ($this->uploads->untakenBytes() + $size > self::MAX_UNTAKEN_BYTES) {
+            $sender = self::sender($command->address);
+            if ($this->uploads->sentBy($sender, $this->clock->now()->modify('-1 day')) + $size > self::MAX_SENT_A_DAY) {
+                throw self::refused('That is as many files as one visitor may send in a day. Try again tomorrow.');
+            }
+            if ($this->uploads->untakenBytes() + $size > self::MAX_UNTAKEN_BYTES || $this->uploads->unorderedBytes() + $size > self::MAX_UNORDERED_BYTES) {
                 throw self::refused('Files cannot be sent right now. Try again later.');
             }
             $type = $this->inspector->type($command->temporaryPath);
@@ -85,13 +97,17 @@ final readonly class FormUploads
                 throw self::refused($e->getMessage());
             }
             $size = (int) filesize($clean);
+            // A picture written again may come out larger; not by much more than it was allowed.
+            if ($size > 2 * $field->largest * 1024 * 1024) {
+                throw self::refused(\sprintf('The file is larger than %d MB.', $field->largest));
+            }
             $name = CleanText::filename($command->filename);
             $name = (string) preg_replace('/\.[^.]*$/', '', $name);
             $name = ($name === '' ? 'file' : $name) . '.' . self::EXTENSIONS[$type];
             $stored = $this->files->store($clean, $name);
             $clean = null;
             $token = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
-            $upload = new FormUpload($token, $stored->key, $name, $type, $size, $this->clock->now());
+            $upload = new FormUpload($token, $stored->key, $name, $type, $size, $this->clock->now(), $sender);
             $this->uploads->save($upload);
 
             return new SentUpload($token, $upload->filename(), $type, $size);
@@ -178,6 +194,17 @@ final readonly class FormUploads
     {
         $this->files->delete($upload->storageKey());
         $this->uploads->remove($upload);
+    }
+
+    /** The sender's address as a hash: an IPv6 address by its /64 network, which one machine can fill. */
+    private static function sender(string $address): string
+    {
+        $packed = @inet_pton($address);
+        if ($packed !== false && \strlen($packed) === 16) {
+            $address = bin2hex(substr($packed, 0, 8)) . '::/64';
+        }
+
+        return hash('sha256', 'orillacart-upload-sender|' . $address);
     }
 
     private static function refused(string $message): InvalidFields

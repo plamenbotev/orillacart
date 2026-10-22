@@ -25,7 +25,7 @@ final readonly class FieldAnswers
 
     private const string NUMBER = '/^-?\d{1,11}(?:\.\d{1,4})?$/';
     private const string TOKEN = '/^[A-Za-z0-9_-]{43}$/';
-    private const string KEPT_FILE = '/^#([1-9]\d{0,18})$/';
+    private const string KEPT_FILE = '/^#([a-f0-9]{64})$/';
 
     public function __construct(private FormUploadRepository $uploads) {}
 
@@ -33,8 +33,8 @@ final readonly class FieldAnswers
      * @param list<AskedField>                              $fields  in the order asked
      * @param mixed                                         $sent    by field id, as the form sent them
      * @param string                                        $prefix  names a refused answer: "fields." or "personalisation."
-     * @param bool                                          $kept    the values a cart kept from an earlier check: files as #<id>,
-     *                                                               not a shopper's token
+     * @param bool                                          $kept    the values a cart kept from an earlier check: files as
+     *                                                               #<the token's hash>, not a shopper's token
      * @param (\Closure(AskedField, string): ?string)|null  $check   more checks of an answer, such as an add-on's; a message refuses it
      *
      * @return list<GivenAnswer> the answered fields, in order
@@ -239,18 +239,19 @@ final readonly class FieldAnswers
     private function file(AskedField $field, string $text, bool $kept): array
     {
         $upload = null;
-        if ($kept && preg_match(self::KEPT_FILE, $text, $id) === 1) {
-            $upload = $this->uploads->find((int) $id[1]);
+        if ($kept && preg_match(self::KEPT_FILE, $text, $hash) === 1) {
+            $upload = $this->uploads->withTokenHash($hash[1]);
         } elseif (!$kept && preg_match(self::TOKEN, $text) === 1) {
             $upload = $this->uploads->withToken($text);
         }
-        if ($upload === null) {
+        // One another order took belongs to that order.
+        if ($upload === null || $upload->orderId() !== null) {
             return ['', '', null, 'This file is no longer here; send it again.'];
         }
         if (!\in_array($upload->mimeType(), $field->types, true) || $upload->size() > $field->largest * 1024 * 1024) {
             return ['', '', null, 'This file is not one this field takes; send another.'];
         }
 
-        return [$upload->filename(), '#' . $upload->id(), $upload->id(), null];
+        return [$upload->filename(), '#' . $upload->tokenHash(), $upload->id(), null];
     }
 }

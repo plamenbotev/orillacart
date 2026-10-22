@@ -15,6 +15,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'form_uploads')]
 #[ORM\UniqueConstraint(name: 'form_upload_token', columns: ['token_hash'])]
 #[ORM\Index(name: 'form_upload_order', columns: ['order_id'])]
+#[ORM\Index(name: 'form_upload_sender', columns: ['sender', 'created_at'])]
 class FormUpload
 {
     #[ORM\Id]
@@ -27,6 +28,10 @@ class FormUpload
 
     #[ORM\Column(nullable: true)]
     private ?int $orderId = null;
+
+    /** Who sent it, as a hash of their address (an IPv6 network, not one address of it): for each sender's limit. */
+    #[ORM\Column(length: 64, options: ['default' => ''])]
+    private string $sender = '';
 
     /** When a cart last took it: kept as long as carts are, not just the days of one never added. */
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
@@ -44,8 +49,10 @@ class FormUpload
         private int $size,
         #[ORM\Column(type: 'datetime_immutable')]
         private \DateTimeImmutable $createdAt,
+        string $sender = '',
     ) {
         $this->tokenHash = self::hash($token);
+        $this->sender = $sender;
         $this->filename = CleanText::filename($filename);
     }
 
@@ -57,6 +64,12 @@ class FormUpload
     public function id(): int
     {
         return $this->id ?? throw new \LogicException('The upload has no id until it is saved.');
+    }
+
+    /** Names the upload in the answers a cart keeps: never the token itself, which only its sender holds. */
+    public function tokenHash(): string
+    {
+        return $this->tokenHash;
     }
 
     public function storageKey(): string

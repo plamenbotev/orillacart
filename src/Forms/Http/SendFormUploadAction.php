@@ -39,12 +39,14 @@ final readonly class SendFormUploadAction implements RequestHandlerInterface
         if (($file->getSize() ?? PHP_INT_MAX) > FormUploads::MAX_MEGABYTES * 1024 * 1024) {
             throw HttpException::invalidInput([['field' => 'file', 'message' => \sprintf('The file is larger than %d MB.', FormUploads::MAX_MEGABYTES)]]);
         }
-        $temporary = tempnam(sys_get_temp_dir(), 'orillacart-upload');
+        $temporary = tempnam(sys_get_temp_dir(), FormUploads::TEMPORARY_PREFIX);
         if ($temporary === false) {
             throw new \RuntimeException('No temporary file for the upload.');
         }
         $file->moveTo($temporary);
 
-        return $this->responder->ok($this->uploads->send(new SendUpload($productId, $field, $temporary, $file->getClientFilename() ?? 'file')), 201);
+        $address = $request->getServerParams()['REMOTE_ADDR'] ?? '';
+
+        return $this->responder->ok($this->uploads->send(new SendUpload($productId, $field, $temporary, $file->getClientFilename() ?? 'file', \is_string($address) ? $address : '')), 201);
     }
 }

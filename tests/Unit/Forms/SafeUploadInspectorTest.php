@@ -40,6 +40,16 @@ final class SafeUploadInspectorTest extends TestCase
         self::assertSame($pdf, file_get_contents($clean));
     }
 
+    public function testAPdfWithCompressedPagesAndPicturesIsTaken(): void
+    {
+        $pdf = "%PDF-1.5\n4 0 obj << /Length 20 /Filter /FlateDecode >>\nstream\n" . gzcompress('BT /F1 12 Tf (Hello) Tj ET') . "\nendstream\nendobj\n"
+            . "5 0 obj << /Type /XObject /Subtype /Image /Width 1 /Height 1 /Filter /DCTDecode >>\nstream\n\xFF\xD8\xFF\xE0 jpeg \xFF\xD9\nendstream\nendobj\n%%EOF\n";
+        $clean = new SafeUploadInspector()->clean($this->file($pdf), 'application/pdf');
+        $this->paths[] = $clean;
+
+        self::assertSame($pdf, file_get_contents($clean));
+    }
+
     /**
      * @return iterable<string, array{string}>
      */
@@ -54,6 +64,13 @@ final class SafeUploadInspectorTest extends TestCase
         yield 'form' => ["%PDF-1.4\n1 0 obj << /AcroForm 4 0 R >> endobj"];
         yield 'in a compressed stream' => ["%PDF-1.5\n1 0 obj << /Type /ObjStm /Filter /FlateDecode >>\nstream\n" . gzcompress('<< /S /JavaScript /JS (x) >>') . "\nendstream\nendobj"];
         yield 'not a PDF' => ['<html>%PDF-1.4</html>'];
+        yield 'too big to unpack' => ["%PDF-1.5\n1 0 obj << /Type /ObjStm /Filter /FlateDecode >>\nstream\n" . self::bomb() . "\nendstream\nendobj"];
+        yield 'another encoding' => ["%PDF-1.5\n1 0 obj << /Filter /ASCIIHexDecode >>\nstream\n2F4A532028782920>\nendstream\nendobj"];
+        yield 'encodings in a chain' => ["%PDF-1.5\n1 0 obj << /Filter [/ASCII85Decode /FlateDecode] >>\nstream\nabc\nendstream\nendobj"];
+        yield 'a filter behind a nested dictionary' => ["%PDF-1.5\n1 0 obj << /DecodeParms << /Predictor 1 >> /F#69lter /ASCII85Decode >>\nstream\nabc\nendstream\nendobj"];
+        yield 'cut short by a false end' => ["%PDF-1.5\n1 0 obj << /Filter /FlateDecode >>\nstream\n" . substr((string) gzcompress(str_repeat('q ', 500) . '<< /S /Launch >>'), 0, 8) . "endstream\nendobj"];
+        yield 'a stream that does not unpack' => ["%PDF-1.5\n1 0 obj << /Filter /FlateDecode >>\nstream\nnot zlib at all\nendstream\nendobj"];
+        yield 'a stream without its object' => ["%PDF-1.5\n<< /Filter /FlateDecode >>\nstream\n" . gzcompress('BT ET') . "\nendstream"];
     }
 
     #[DataProvider('actingPdfs')]
@@ -88,6 +105,20 @@ final class SafeUploadInspectorTest extends TestCase
         }
         $this->expectException(FormRuleViolation::class);
         new SafeUploadInspector()->clean($this->file("\x89PNG\r\n\x1a\nnot really"), 'image/png');
+    }
+
+    /** 65 MB of spaces after a script, packed a megabyte at a time: about 65 KB, never 65 MB in memory. */
+    private static function bomb(): string
+    {
+        $deflater = deflate_init(\ZLIB_ENCODING_DEFLATE);
+        self::assertNotFalse($deflater);
+        $packed = (string) deflate_add($deflater, str_repeat(' ', 1024 * 1024) . '<< /OpenAction << /S /JavaScript /JS (x) >> >>', \ZLIB_NO_FLUSH);
+        $megabyte = str_repeat(' ', 1024 * 1024);
+        for ($i = 0; $i < 65; ++$i) {
+            $packed .= (string) deflate_add($deflater, $megabyte, \ZLIB_NO_FLUSH);
+        }
+
+        return $packed . (string) deflate_add($deflater, '', \ZLIB_FINISH);
     }
 
     private function file(string $bytes, string $suffix = ''): string

@@ -56,11 +56,11 @@ fields (extension API), checked by the same code.
 - The product page sends the file as soon as it is chosen (`POST /form-uploads`, see Security), and the
   answer is the upload's token. The shop reads the file's type from its content, not its name, and keeps it among
   its private files (`PrivateFiles`, as downloads are), never in the media library.
-- The token is a random secret only the visitor who sent the file holds (the shop keeps its hash), so an answer
-  cannot name another's upload. The line shows its file name; the order line keeps the name and the upload, which the order screen downloads and the
+- The token is a random secret only the visitor who sent the file holds (the shop keeps its hash, and the cart
+  line keeps the hash, never the token), so an answer cannot name another's upload, nor one an order took. The line shows its file name; the order line keeps the name and the upload, which the order screen downloads and the
   customer's account names.
-- Uploads are deleted by a daily job when no order took them: two days after they were sent, or, once a cart
-  took them, 35 days after (carts are forgotten after a month). Anonymising or deleting an order deletes its
+- Uploads are deleted by a daily job when no order took them: two days after they were sent, or a week after a
+  cart last took them. A file in an older cart has to be sent again (the line says its choices changed). Anonymising or deleting an order deletes its
   files; the personal data export names them.
 
 ## Security
@@ -81,15 +81,24 @@ Answers
 
 Uploads
 - `POST /form-uploads` takes one file under the field's limit and the shop's (whichever is smaller), with a REST
-  nonce for a logged-in visitor, and a rate guard by address and cart (20 an hour). The shop stops taking uploads
-  while those no order took come to more than 500 MB together, so nobody can fill the disk.
+  nonce for a logged-in visitor, and a rate guard by address and cart (20 an hour). Each sender (an address; an
+  IPv6 /64 network as one) sends up to 100 MB a day; a cart holds up to 10 files, for a week; and the shop stops
+  taking uploads while those in no cart or order come to 500 MB, or all those no order took to 2 GB: the most
+  disk they take, however many addresses send them. Someone who fills that with many addresses stops uploads
+  for at most a week, until the carts' files expire. A shop that takes no orders takes no files.
 - PHP's own upload checks first (`is_uploaded_file`, the upload error, the size), then the type read from the
   content (`finfo`), never the name or what the browser says; it has to be one the field takes.
 - Pictures are checked for their size in pixels before they are opened (up to 25 megapixels, 10 000 a side, so
   a small file cannot unpack to gigabytes), then decoded and written again as a new file of the same type. That
   drops anything hidden after or inside the picture (scripts, a second file) and the metadata (a phone's GPS
-  position). A picture that does not decode is refused. A photo is turned upright first, as its camera noted. Without GD, file fields take PDFs only, and
+  position). A picture that does not decode is refused. A photo up to 12 megapixels is turned upright first, as its camera noted (turning holds it twice in memory). Without GD, file fields take PDFs only, and
   the status screen says so.
+- The check fails closed: a PDF the shop cannot read through is refused. Every stream is found (up to 10 000) and
+  every stream filtered with FlateDecode alone is unpacked to its end, piece by piece within 64 MB together; a
+  picture's own encodings (DCT, JPX, CCITT, JBIG2) are taken for pictures only; any other encoding (ASCIIHex,
+  ASCII85, LZW, RunLength, chains), a stream that does not unpack or stops early (a false `endstream`), and a
+  stream outside an object refuse the file. Every `/Filter` of a stream's dictionary counts, so a nested
+  dictionary cannot hide one.
 - A PDF must start as one and not ask to run anything. One naming scripts, launch or remote actions, attached
   files, actions on opening, forms or encryption (`/JavaScript`, `/JS`, `/Launch`, `/GoToR`, `/GoToE`,
   `/EmbeddedFile`, `/OpenAction`, `/AA`, `/RichMedia`, `/XFA`, `/AcroForm`, `/SubmitForm`, `/ImportData`,
@@ -102,7 +111,12 @@ Uploads
   no address a shopper or visitor can download a file from, so the shop cannot be used to host files.
 - Only shop managers download a file, from the order screen: sent as an attachment, with the type it was stored
   as, `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox`, so a browser never runs it.
-- Uploads no order took are deleted (see Uploads); an order deleted or anonymised deletes its files.
+- Uploads no order took are deleted (see Uploads); an order deleted or anonymised deletes its files; temporary
+  copies a request that failed on the way left behind are swept daily.
+
+An independent review (2026-10-22) found the first PDF check skipped streams it could not unpack, the disk
+budget could be held by one sender for a month, a large photo turned upright could run out of memory, and carts
+named files by id; each is fixed as described above.
 
 ## Not in this round
 

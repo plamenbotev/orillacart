@@ -14,5 +14,7 @@ final readonly class SendUpload
         public string $fieldId,
         public string $temporaryPath,
         public string $filename,
+        /** The sender's address, for their own limit. */
+        public string $address = '',
     ) {}
 }

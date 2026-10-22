@@ -115,18 +115,24 @@ final class FieldAnswersTest extends TestCase
         $this->answers->check($fields, ['f1_engrave' => 'yes'], 'personalisation.');
     }
 
-    public function testShoppersNameFilesByTokenAndCartsByTheIdKept(): void
+    public function testShoppersNameFilesByTokenAndCartsByItsHash(): void
     {
         $upload = new FormUpload(self::TOKEN, 'key', 'logo.png', 'image/png', 2048, new \DateTimeImmutable());
         $this->uploads->save($upload);
         $field = new AskedField('f1_logo', 'Logo', 'file', price: '2', types: ['image/png', 'application/pdf'], largest: 1);
 
         $sent = $this->answers->check([$field], ['f1_logo' => self::TOKEN], 'personalisation.');
-        self::assertEquals([new GivenAnswer('f1_logo', 'Logo', 'logo.png', '#' . $upload->id(), '2', $upload->id())], $sent);
+        self::assertEquals([new GivenAnswer('f1_logo', 'Logo', 'logo.png', '#' . $upload->tokenHash(), '2', $upload->id())], $sent);
         self::assertEquals($sent, $this->answers->check([$field], FieldAnswers::values($sent), 'personalisation.', kept: true));
 
+        try {
+            $this->answers->check([$field], ['f1_logo' => self::TOKEN], 'personalisation.', kept: true);
+            self::fail('a token where the cart keeps a hash');
+        } catch (InvalidFields) {
+        }
+        $upload->takenBy(9);
         $this->expectException(InvalidFields::class);
-        $this->answers->check([$field], ['f1_logo' => self::TOKEN], 'personalisation.', kept: true);
+        $this->answers->check([$field], FieldAnswers::values($sent), 'personalisation.', kept: true);
     }
 
     public function testAFileTheFieldDoesNotTakeIsRefused(): void

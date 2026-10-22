@@ -8,6 +8,7 @@ use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartLineView;
 use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Cart\Domain\CartRuleViolation;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\EditOrderItems;
@@ -18,6 +19,7 @@ use OrillaCart\Forms\Application\Dto\SaveFieldCondition;
 use OrillaCart\Forms\Application\Dto\SaveForm;
 use OrillaCart\Forms\Application\Dto\SaveFormField;
 use OrillaCart\Forms\Application\Dto\SendUpload;
+use OrillaCart\Forms\Application\FormUploads;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shared\Domain\InvalidFields;
@@ -148,9 +150,45 @@ final class PersonalisedItemsTest extends TestCase
 
         $this->shop->clock->modify('+3 days');
         self::assertSame(0, $this->shop->uploads->forgetUntaken(), 'a cart still holds it');
-        $this->shop->clock->modify('+33 days');
+        $this->shop->clock->modify('+5 days');
         self::assertSame(1, $this->shop->uploads->forgetUntaken());
         self::assertSame(CartLineView::CHANGED, $this->shop->carts->cart($owner)->cart->lines[0]->problem, 'the file is gone');
+    }
+
+    public function testEachSenderSendsSoMuchADayAndACartHoldsTenFiles(): void
+    {
+        $logo = $this->shop->forms->create(new SaveForm('Print', scope: 'products', productIds: [30], fields: [
+            new SaveFormField('Logo', 'file', 'logo', types: ['application/pdf'], largest: 1),
+        ]))->id;
+        $send = function (string $address) use ($logo): string {
+            $path = (string) tempnam(sys_get_temp_dir(), 'logo');
+            file_put_contents($path, "%PDF-1.4\n%%EOF\n");
+
+            return $this->shop->uploads->send(new SendUpload(30, "f{$logo}_logo", $path, 'logo.pdf', $address))->token;
+        };
+        $tokens = [$send('2001:db8:1:2::5')];
+        $first = array_values($this->shop->uploadRecords->uploads)[0];
+        new \ReflectionProperty($first, 'size')->setValue($first, FormUploads::MAX_SENT_A_DAY - 10);
+        foreach (['2001:db8:1:2::5', '2001:db8:1:2:ffff::1'] as $same) {
+            try {
+                $send($same);
+                self::fail('past the sender\'s day');
+            } catch (InvalidFields $e) {
+                self::assertSame('That is as many files as one visitor may send in a day. Try again tomorrow.', $e->violations[0]['message'], 'an IPv6 network counts as one sender');
+            }
+        }
+        new \ReflectionProperty($first, 'size')->setValue($first, 10);
+        for ($i = 0; $i < FormUploads::MAX_HELD; ++$i) {
+            $tokens[] = $send('203.0.113.' . $i);
+        }
+
+        $owner = new CartOwner(null);
+        foreach (\array_slice($tokens, 0, FormUploads::MAX_HELD) as $token) {
+            $owner = new CartOwner($this->shop->carts->add($owner, new AddToCart(30, personalisation: ["f{$logo}_logo" => $token]))->newToken ?? $owner->token);
+        }
+        self::assertSame(\strlen("%PDF-1.4\n%%EOF\n"), $this->shop->uploadRecords->untakenBytes(), 'only the file no cart took takes the room of new ones');
+        $this->expectExceptionObject(new CartRuleViolation('A cart holds up to 10 files sent with its items.', 'orillacart_cart_files'));
+        $this->shop->carts->add($owner, new AddToCart(30, personalisation: ["f{$logo}_logo" => $tokens[FormUploads::MAX_HELD]]));
     }
 
     /**

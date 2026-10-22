@@ -61,10 +61,10 @@ final readonly class UploadsHealth implements HealthCheck
                 __('Pictures are written again as new files before they are kept, which needs PHP’s GD extension; without it file fields take PDFs only. Ask the host to turn it on.', 'orillacart'),
             );
         }
-        if ($this->uploads->untakenBytes() > FormUploads::MAX_UNTAKEN_BYTES * 0.8) {
+        if ($this->uploads->untakenBytes() > FormUploads::MAX_UNTAKEN_BYTES * 0.8 || $this->uploads->unorderedBytes() > FormUploads::MAX_UNORDERED_BYTES * 0.8) {
             return HealthStatus::recommended(
-                __('Files no order took fill most of their room', 'orillacart'),
-                __('The shop stops taking files while those no order took come to 500 MB. They are deleted after two days, or after a month once in a cart.', 'orillacart'),
+                __('Files no cart or order took fill most of their room', 'orillacart'),
+                __('The shop stops taking files while those no cart or order took come to 500 MB, or all those no order took to 2 GB; each visitor sends up to 100 MB a day. They are deleted after two days, or a week after a cart last took them.', 'orillacart'),
             );
         }
 
@@ -76,7 +76,7 @@ final readonly class UploadsHealth implements HealthCheck
         return [
             'fileinfo' => ['label' => 'fileinfo', 'value' => $this->inspector->readsTypes() ? __('yes', 'orillacart') : __('no', 'orillacart')],
             'gd' => ['label' => 'GD', 'value' => $this->inspector->takesImages() ? __('yes', 'orillacart') : __('no', 'orillacart')],
-            'untaken' => ['label' => __('Files no order took', 'orillacart'), 'value' => (string) size_format($this->uploads->untakenBytes())],
+            'untaken' => ['label' => __('Files no cart or order took', 'orillacart'), 'value' => (string) size_format($this->uploads->untakenBytes())],
             'largest' => ['label' => __('Largest file a field may take', 'orillacart'), 'value' => FormField::MAX_MEGABYTES . ' MB'],
         ];
     }

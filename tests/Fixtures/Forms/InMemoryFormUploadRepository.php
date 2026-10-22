@@ -20,14 +20,31 @@ final class InMemoryFormUploadRepository implements FormUploadRepository
 
     public function withToken(string $token): ?FormUpload
     {
-        $hash = new \ReflectionProperty(FormUpload::class, 'tokenHash');
         foreach ($this->uploads as $upload) {
-            if ($hash->getValue($upload) === FormUpload::hash($token)) {
+            if ($upload->tokenHash() === FormUpload::hash($token)) {
                 return $upload;
             }
         }
 
         return null;
+    }
+
+    public function withTokenHash(string $hash): ?FormUpload
+    {
+        foreach ($this->uploads as $upload) {
+            if ($upload->tokenHash() === $hash) {
+                return $upload;
+            }
+        }
+
+        return null;
+    }
+
+    public function sentBy(string $sender, \DateTimeImmutable $since): int
+    {
+        $sent = new \ReflectionProperty(FormUpload::class, 'sender');
+
+        return array_sum(array_map(static fn(FormUpload $upload): int => $sent->getValue($upload) === $sender && $upload->createdAt() >= $since ? $upload->size() : 0, $this->uploads));
     }
 
     public function ofOrder(int $orderId): array
@@ -41,6 +58,11 @@ final class InMemoryFormUploadRepository implements FormUploadRepository
     }
 
     public function untakenBytes(): int
+    {
+        return array_sum(array_map(static fn(FormUpload $upload): int => $upload->orderId() === null && $upload->heldAt() === null ? $upload->size() : 0, $this->uploads));
+    }
+
+    public function unorderedBytes(): int
     {
         return array_sum(array_map(static fn(FormUpload $upload): int => $upload->orderId() === null ? $upload->size() : 0, $this->uploads));
     }

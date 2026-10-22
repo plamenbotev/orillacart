@@ -108,6 +108,10 @@ final readonly class CartService
         [$cart, $newToken] = $this->find($owner);
         // Checked before the cart changes, so a refused change is never saved by whatever saves later.
         $existing = $cart?->lineFor($command->productId, $command->optionIds, $command->bundleChoices, $values);
+        $files = FieldAnswers::uploadIds($answers);
+        if ($files !== [] && $existing === null && self::files($cart) + \count($files) > FormUploads::MAX_HELD) {
+            throw new CartRuleViolation(\sprintf('A cart holds up to %d files sent with its items.', FormUploads::MAX_HELD), 'orillacart_cart_files');
+        }
         $quantity = ($existing?->quantity() ?? 0) + $command->quantity;
         self::checkStock($quote, $quantity);
         $this->checkRules($cart, $owner->customerId, $existing, $quantity, $command->productId, $command->optionIds, $command->bundleChoices);
@@ -118,7 +122,7 @@ final readonly class CartService
         $cart->add($command->productId, $command->optionIds, $command->quantity, $this->clock->now(), $command->bundleChoices, $values);
         $this->carts->save($cart);
         // Files in a cart last as long as it does.
-        $this->uploads->hold(FieldAnswers::uploadIds($answers));
+        $this->uploads->hold($files);
         $this->events->dispatch(new CartItemAdded($quote->productId, $quote->variationId, $command->quantity, $cart->customerId()));
 
         return new CartResult($this->view($cart), $newToken);
@@ -480,6 +484,17 @@ final readonly class CartService
         }
 
         return new CartView($lines, $items, (string) $subtotal, $orderable, $refusals, $currency);
+    }
+
+    /** How many files the cart's lines name. */
+    private static function files(?Cart $cart): int
+    {
+        $files = 0;
+        foreach ($cart?->lines() ?? [] as $line) {
+            $files += \count(array_filter($line->answers(), static fn(string $value): bool => preg_match('/^#[a-f0-9]{64}$/', $value) === 1));
+        }
+
+        return $files;
     }
 
     /**

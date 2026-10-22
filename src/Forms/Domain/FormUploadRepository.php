@@ -10,6 +10,11 @@ interface FormUploadRepository
 
     public function withToken(string $token): ?FormUpload;
 
+    public function withTokenHash(string $hash): ?FormUpload;
+
+    /** What the sender sent since the time, in bytes. */
+    public function sentBy(string $sender, \DateTimeImmutable $since): int;
+
     /**
      * @return list<FormUpload>
      */
@@ -20,8 +25,11 @@ interface FormUploadRepository
      */
     public function untakenBefore(\DateTimeImmutable $sent, \DateTimeImmutable $held, int $limit): array;
 
-    /** What the uploads no order took come to, in bytes. */
+    /** What the uploads no cart or order took come to, in bytes. */
     public function untakenBytes(): int;
+
+    /** What every upload no order took, in carts or not, comes to, in bytes. */
+    public function unorderedBytes(): int;
 
     public function save(FormUpload $upload): void;
 

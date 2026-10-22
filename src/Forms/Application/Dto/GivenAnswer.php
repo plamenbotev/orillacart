@@ -11,7 +11,7 @@ namespace OrillaCart\Forms\Application\Dto;
 final readonly class GivenAnswer
 {
     /**
-     * @param string      $value    a choice's value, a number as written plainly, a file as #<upload id>
+     * @param string      $value    a choice's value, a number as written plainly, a file as #<its token's hash>
      * @param string|null $price    added to each item, in the shop's currency
      * @param int|null    $uploadId the file sent, for a file field
      */
