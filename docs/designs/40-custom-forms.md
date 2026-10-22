@@ -1,6 +1,6 @@
 # 40 · Custom forms: personalised products and checkout questions
 
-Status: building (2026-10-22), PLAN item 106.
+Status: built (2026-10-22), PLAN item 106.
 
 One way to ask shoppers questions, used in two places: on the product page, where the answers belong to the item
 bought (an engraving, a name on a shirt, a gift message), and at checkout, where they belong to the order (a
