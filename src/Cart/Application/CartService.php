@@ -27,11 +27,17 @@ use OrillaCart\Catalog\Application\Dto\QuotedOption;
 use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Catalog\Domain\InvalidSelection;
+use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Extension\Cart\CheckedCart;
 use OrillaCart\Extension\Cart\CheckedLine;
+use OrillaCart\Forms\Application\Dto\GivenAnswer;
+use OrillaCart\Forms\Application\FieldAnswers;
+use OrillaCart\Forms\Application\FormUploads;
+use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -46,6 +52,9 @@ use Psr\Log\LoggerInterface;
  */
 final readonly class CartService
 {
+    /** Why a line whose answers no longer hold cannot be ordered. */
+    public const string CHANGED = 'Its choices changed: remove it and add it again.';
+
     /** Carts nobody changed for this long are deleted. */
     public const string KEEP_FOR = 'P30D';
 
@@ -59,6 +68,9 @@ final readonly class CartService
         private EventDispatcherInterface $events,
         private LoggerInterface $logger,
         private Currencies $currencies,
+        private ShopForms $forms,
+        private ProductContent $content,
+        private FormUploads $uploads,
     ) {}
 
     public function cart(CartOwner $owner): CartResult
@@ -85,14 +97,17 @@ final readonly class CartService
         if ($this->settings->current()->catalogOnly) {
             throw new CartRuleViolation('The shop does not take orders online.', 'orillacart_catalog_only');
         }
-        $quote = $this->quotes->quote(new QuoteRequest($command->productId, $command->optionIds, bundleChoices: $command->bundleChoices));
+        // Only the questions the product's forms ask are read; files by the token their sender was given.
+        $answers = $this->forms->productAnswers($command->productId, $this->content->termIds($command->productId)['categories'], $command->personalisation);
+        $values = FieldAnswers::values($answers);
+        $quote = $this->quotes->quote(new QuoteRequest($command->productId, $command->optionIds, bundleChoices: $command->bundleChoices, extra: (string) FieldAnswers::price($answers)));
         if (!$quote->forSale) {
             throw new CartRuleViolation(\sprintf('%s is not for sale right now.', $quote->name), 'orillacart_not_for_sale');
         }
 
         [$cart, $newToken] = $this->find($owner);
         // Checked before the cart changes, so a refused change is never saved by whatever saves later.
-        $existing = $cart?->lineFor($command->productId, $command->optionIds, $command->bundleChoices);
+        $existing = $cart?->lineFor($command->productId, $command->optionIds, $command->bundleChoices, $values);
         $quantity = ($existing?->quantity() ?? 0) + $command->quantity;
         self::checkStock($quote, $quantity);
         $this->checkRules($cart, $owner->customerId, $existing, $quantity, $command->productId, $command->optionIds, $command->bundleChoices);
@@ -100,8 +115,10 @@ final readonly class CartService
             $newToken = self::token();
             $cart = new Cart($newToken, $owner->customerId, $this->clock->now());
         }
-        $cart->add($command->productId, $command->optionIds, $command->quantity, $this->clock->now(), $command->bundleChoices);
+        $cart->add($command->productId, $command->optionIds, $command->quantity, $this->clock->now(), $command->bundleChoices, $values);
         $this->carts->save($cart);
+        // Files in a cart last as long as it does.
+        $this->uploads->hold(FieldAnswers::uploadIds($answers));
         $this->events->dispatch(new CartItemAdded($quote->productId, $quote->variationId, $command->quantity, $cart->customerId()));
 
         return new CartResult($this->view($cart), $newToken);
@@ -167,13 +184,25 @@ final readonly class CartService
             array_push($refusals, ...$view->refusals);
         }
 
-        return new CartContents($cart->id(), array_map(static fn(CartLine $line): array => [
-            'line' => $line->id(),
-            'product_id' => $line->productId(),
-            'option_ids' => $line->optionIds(),
-            'bundle_choices' => $line->bundleChoices(),
-            'quantity' => $line->quantity(),
-        ], $cart->lines()), $cart->coupons(), $refusals, $cart->giftCards(), $cart->usesStoreCredit());
+        $lines = [];
+        foreach ($cart->lines() as $line) {
+            $answers = $this->answersOf($line);
+            if ($answers === null) {
+                $refusals[] = \sprintf('%s: %s', $this->content->name($line->productId()), self::CHANGED);
+                $answers = [];
+            }
+            $lines[] = [
+                'line' => $line->id(),
+                'product_id' => $line->productId(),
+                'option_ids' => $line->optionIds(),
+                'bundle_choices' => $line->bundleChoices(),
+                'quantity' => $line->quantity(),
+                'extra' => (string) FieldAnswers::price($answers),
+                'personalisation' => FieldAnswers::rows($answers),
+            ];
+        }
+
+        return new CartContents($cart->id(), $lines, $cart->coupons(), array_values(array_unique($refusals)), $cart->giftCards(), $cart->usesStoreCredit());
     }
 
     /**
@@ -389,12 +418,13 @@ final readonly class CartService
             $ofProduct[$line->productId()] = ($ofProduct[$line->productId()] ?? 0) + $line->quantity();
         }
         foreach ($cart->lines() as $line) {
+            $answers = $this->answersOf($line);
             try {
-                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), $ofProduct[$line->productId()], $cart->customerId(), $line->bundleChoices()));
+                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), $ofProduct[$line->productId()], $cart->customerId(), $line->bundleChoices(), (string) FieldAnswers::price($answers ?? [])));
             } catch (NotFound|RuleViolation) {
                 $quote = null;
             }
-            $quoted[] = [$line, $quote];
+            $quoted[] = [$line, $quote, $answers];
             if ($quote !== null) {
                 $checked[] = self::checkedLine($line, $quote);
             }
@@ -407,7 +437,7 @@ final readonly class CartService
         $orderable = !$cart->isEmpty() && $refusals === [];
         // In the shopper's currency, as checkout prices it.
         $currency = $this->currencies->current();
-        foreach ($quoted as [$line, $quote]) {
+        foreach ($quoted as [$line, $quote, $answers]) {
             if ($quote === null) {
                 $lines[] = new CartLineView($line->id(), $line->productId(), null, '', null, [], $line->quantity(), '0', '0', 0, CartLineView::UNAVAILABLE);
                 $orderable = false;
@@ -417,6 +447,7 @@ final readonly class CartService
             $problem = match (true) {
                 !$quote->forSale => CartLineView::UNAVAILABLE,
                 $quote->available !== null && $quote->available < $line->quantity() => CartLineView::INSUFFICIENT_STOCK,
+                $answers === null => CartLineView::CHANGED,
                 $message !== null => CartLineView::REFUSED,
                 default => null,
             };
@@ -436,7 +467,12 @@ final readonly class CartService
                 $problem,
                 $quote->shownBackorder($line->quantity()),
                 array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $quote->contents),
-                $problem === CartLineView::REFUSED ? $message : null,
+                match ($problem) {
+                    CartLineView::REFUSED => $message,
+                    CartLineView::CHANGED => self::CHANGED,
+                    default => null,
+                },
+                array_map(fn(GivenAnswer $answer): array => ['label' => $answer->label, 'answer' => $answer->answer, 'price' => $answer->price === null ? null : (string) $this->currencies->price(Money::of($answer->price), $currency)], $answers ?? []),
             );
             $items += $line->quantity();
             $subtotal = $subtotal->add($total);
@@ -444,6 +480,21 @@ final readonly class CartService
         }
 
         return new CartView($lines, $items, (string) $subtotal, $orderable, $refusals, $currency);
+    }
+
+    /**
+     * The line's answers checked against the product's forms as they are now; null when they no longer hold (a
+     * required question added, a choice or a file gone).
+     *
+     * @return list<GivenAnswer>|null
+     */
+    private function answersOf(CartLine $line): ?array
+    {
+        try {
+            return $this->forms->productAnswers($line->productId(), $this->content->termIds($line->productId())['categories'], $line->answers(), kept: true);
+        } catch (InvalidFields) {
+            return null;
+        }
     }
 
     /**

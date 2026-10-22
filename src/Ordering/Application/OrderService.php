@@ -954,6 +954,7 @@ final readonly class OrderService
             Money::of($line->discount),
             $line->contents,
             $line->bundleChoices,
+            $line->personalisation,
         ), $lines);
     }
 

@@ -29,8 +29,9 @@ fields (extension API), checked by the same code.
 
 ## Product page and cart
 
-- The product page shows the forms for the product under its options, with each price; the price shown adds what
-  the answers cost. Add to cart sends them as `personalisation` (the REST API and the form without script).
+- The product page shows the forms for the product under its options, each price in its label as options show
+  theirs; the cart shows the item's price with them. Add to cart sends them as `personalisation` (the REST API,
+  and the form without script, which cannot send files).
 - A cart line keeps the answers. The same product with other answers is another line. The line shows each
   "Label: answer" and its unit price includes their prices; quantity counts every item with those answers.
 - Answers are checked again whenever the cart is priced, against the forms as they are then: a form changed so

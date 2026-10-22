@@ -118,6 +118,8 @@ final readonly class ProductQuotes
             $weight = $weight === null ? ($itemsWeight->isZero() ? null : (string) $itemsWeight) : (string) Money::of($weight)->add($extrasWeight);
             $backorders = Backorders::No;
         }
+        // What the answers to the product's forms cost comes on top, as the shop priced it (an engraving).
+        $unitPrice = $unitPrice->add(Money::of($request->extra));
         // After every adjustment, in the shop's decimals: what the cart shows is what the order charges.
         $unitPrice = $unitPrice->rounded($this->settings->current()->priceDecimals);
 

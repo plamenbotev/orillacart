@@ -1207,6 +1207,9 @@ class Order
         $this->customerId = null;
         $this->note = '';
         $this->fields = [];
+        foreach ($this->lines as $line) {
+            $line->forgetPersonalisation();
+        }
         $this->grants->clear();
         $this->anonymisedAt = $at;
 

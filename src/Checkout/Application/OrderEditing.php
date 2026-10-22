@@ -17,6 +17,7 @@ use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Shipping\Application\ShippingQuotes;
@@ -51,7 +52,7 @@ final readonly class OrderEditing
         $order = $this->orders->order($orderId);
         $billing = new TaxAddress($order->billing->country, $order->billing->state, $order->billing->postcode);
         $shippingAddress = $order->shippingAddress ?? $order->billing;
-        $items = array_map(static fn(OrderLineView $line): array => ['product_id' => $line->productId, 'option_ids' => $line->optionIds, 'bundle_choices' => $line->bundleChoices, 'quantity' => $line->quantity, 'unit_price' => $line->unitPrice], $order->lines);
+        $items = array_map(static fn(OrderLineView $line): array => ['product_id' => $line->productId, 'option_ids' => $line->optionIds, 'bundle_choices' => $line->bundleChoices, 'quantity' => $line->quantity, 'unit_price' => $line->unitPrice, 'personalisation' => $line->personalisation], $order->lines);
 
         $codes = array_map(static fn(OrderDiscountView $discount): string => $discount->code, $order->discounts);
 
@@ -87,7 +88,12 @@ final readonly class OrderEditing
         $billing = new TaxAddress($order->billing->country, $order->billing->state, $order->billing->postcode);
         $shippingAddress = $order->shippingAddress ?? $order->billing;
         $shipping = new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode);
-        $items = array_map(static fn(EditedItem $item): array => ['product_id' => $item->productId, 'option_ids' => $item->optionIds, 'bundle_choices' => $item->bundleChoices, 'quantity' => $item->quantity, 'unit_price' => $item->unitPrice], $command->items);
+        // A line the shop keeps keeps its answers, and what they cost when the catalog's price applies again.
+        $items = array_map(static function (EditedItem $item) use ($order): array {
+            $answers = $item->line !== null && ($order->lines[$item->line] ?? null)?->productId === $item->productId ? $order->lines[$item->line]->personalisation : [];
+
+            return ['product_id' => $item->productId, 'option_ids' => $item->optionIds, 'bundle_choices' => $item->bundleChoices, 'quantity' => $item->quantity, 'unit_price' => $item->unitPrice, 'personalisation' => $answers, 'extra' => (string) array_reduce($answers, static fn(Money $sum, array $answer): Money => $answer['price'] === null ? $sum : $sum->add(Money::of($answer['price'])), Money::zero())];
+        }, $command->items);
 
         $keptPoint = $order->pickupPointId;
         $codes = array_map(static fn(OrderDiscountView $discount): string => $discount->code, $order->discounts);

@@ -16,7 +16,7 @@ final readonly class OrderSummary
      * @param list<OrderLine>       $lines
      * @param string|null           $payment    the payment gateway's id, null for an order with nothing to pay
      * @param string|null           $shipping   how it ships, as the customer chose it: "Courier – Express"
-     * @param array<string, string> $fields     the answers to add-ons' checkout fields, by field id
+     * @param array<string, string> $fields     the answers to checkout's questions (add-ons' and the shop's forms), by field id
      * @param array<string, string> $fees       what it pays besides its items and shipping, amount by label, as its
      *                                          prices are (since version 5)
      */

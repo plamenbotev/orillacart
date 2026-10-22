@@ -92,6 +92,37 @@ final readonly class FieldAnswers
     }
 
     /**
+     * The answers as an order line keeps them.
+     *
+     * @param list<GivenAnswer> $answers
+     *
+     * @return list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>
+     */
+    public static function rows(array $answers): array
+    {
+        return array_map(static fn(GivenAnswer $answer): array => ['id' => $answer->id, 'label' => $answer->label, 'answer' => $answer->answer, 'value' => $answer->value, 'price' => $answer->price, 'upload_id' => $answer->uploadId], $answers);
+    }
+
+    /**
+     * The files the answers name.
+     *
+     * @param list<GivenAnswer> $answers
+     *
+     * @return list<int>
+     */
+    public static function uploadIds(array $answers): array
+    {
+        $ids = [];
+        foreach ($answers as $answer) {
+            if ($answer->uploadId !== null) {
+                $ids[] = $answer->uploadId;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * The values to keep, by field id: what check() takes again with $kept.
      *
      * @param list<GivenAnswer> $answers

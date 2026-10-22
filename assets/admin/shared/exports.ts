@@ -83,3 +83,20 @@ export function exportUrl(
 		_wpnonce: target.nonce,
 	} );
 }
+
+/**
+ * The address a file a shopper sent with an item downloads from, for shop managers.
+ *
+ * @param orderId  The order.
+ * @param uploadId The file.
+ */
+export function orderUploadUrl( orderId: number, uploadId: number ): string {
+	const target = window.orillacartExport ?? { url: '', nonce: '' };
+
+	return addQueryArgs( target.url, {
+		action: 'orillacart_order_upload',
+		order: orderId,
+		upload: uploadId,
+		_wpnonce: target.nonce,
+	} );
+}

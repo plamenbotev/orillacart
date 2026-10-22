@@ -45,5 +45,7 @@ final readonly class NewOrderLine
         public array $contents = [],
         /** @var list<int> for a bundle, the variations chosen and the optional products added */
         public array $bundleChoices = [],
+        /** @var list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}> the answers to the product's forms, as sold */
+        public array $personalisation = [],
     ) {}
 }

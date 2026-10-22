@@ -7,6 +7,7 @@ import { trackAdded } from './analytics';
 import { api } from './api';
 import { showBackInStock } from './backinstock';
 import { clearErrors, failure, formBody, showErrors, showMessage } from './dom';
+import { bindConditions, bindUploads } from './forms';
 import { bindGallery, type Gallery, type Picture } from './gallery';
 
 type CartSummary = {
@@ -112,6 +113,15 @@ export function bindAddToCart( form: HTMLFormElement ): void {
 		} );
 		void showBundle( form, bundle );
 	}
+
+	bindConditions( form );
+	bindUploads(
+		form,
+		Number(
+			form.querySelector< HTMLInputElement >( '[name="product_id"]' )
+				?.value ?? 0
+		)
+	);
 
 	form.addEventListener( 'submit', async ( event ) => {
 		event.preventDefault();

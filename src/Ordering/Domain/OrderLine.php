@@ -93,6 +93,10 @@ class OrderLine
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $bundleChoices = null;
 
+    /** @var list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>|null the answers to the product's forms, as sold */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $personalisation = null;
+
     /** How many of the items were refunded. */
     #[ORM\Column(options: ['default' => 0])]
     private int $refundedQuantity = 0;
@@ -138,7 +142,39 @@ class OrderLine
         $this->discount = $discount->toFixed();
         $this->contents = $draft->contents === [] ? null : $draft->contents;
         $this->bundleChoices = $draft->bundleChoices === [] ? null : $draft->bundleChoices;
+        $this->personalisation = $draft->personalisation === [] ? null : $draft->personalisation;
         $this->stockTaken = array_map(static fn(TakenItem $taken): array => ['item' => $taken->item, 'stockroom_id' => $taken->stockroomId, 'quantity' => $taken->quantity], $draft->taken);
+    }
+
+    /** @return list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}> */
+    public function personalisation(): array
+    {
+        return $this->personalisation ?? [];
+    }
+
+    /**
+     * The files the answers sent.
+     *
+     * @return list<int>
+     */
+    public function uploadIds(): array
+    {
+        $ids = [];
+        foreach ($this->personalisation() as $answer) {
+            if ($answer['upload_id'] !== null) {
+                $ids[] = $answer['upload_id'];
+            }
+        }
+
+        return $ids;
+    }
+
+    /** The answers may name people: anonymising keeps the questions and what they cost, not the answers. */
+    public function forgetPersonalisation(): void
+    {
+        if ($this->personalisation !== null) {
+            $this->personalisation = array_map(static fn(array $answer): array => ['answer' => '', 'value' => '', 'upload_id' => null] + $answer, $this->personalisation);
+        }
     }
 
     public function order(): Order

@@ -290,6 +290,7 @@ The checkout page tells of the customer at checkout with their cart: the email s
   - `option_ids` (list<int>): each more than 0
   - `quantity` (int): 1 to 9999; default 1
   - `bundle_choices` (list<int>): at most 100 items; each more than 0
+  - `personalisation` (array): at most 100 items
 
 ### `PUT /cart/items/{id}`
 
@@ -1962,6 +1963,7 @@ The objects fields above take.
 - `option_ids` (list<int>): each more than 0
 - `unit_price` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
 - `bundle_choices` (list<int>): at most 100 items; each more than 0
+- `line` (int|null): 0 or more
 
 ### OfferedCurrencyView
 

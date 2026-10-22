@@ -1001,6 +1001,140 @@ test.describe( 'A visitor', () => {
 		}
 	} );
 
+	test( 'personalises an item on its page, sends a logo, and answers a question at checkout', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const mug = await product( requestUtils, 'E2E Mug', {
+			price: '10',
+			stock_mode: 'always_available',
+		} );
+		await requestUtils.rest( {
+			method: 'POST',
+			path: '/orillacart/v1/forms',
+			data: {
+				name: 'E2E Mug print',
+				scope: 'products',
+				product_ids: [ mug.id ],
+				fields: [
+					{
+						label: 'Engrave it',
+						key: 'engrave',
+						kind: 'choice',
+						display: 'buttons',
+						required: true,
+						choices: [
+							{ label: 'Yes', value: 'yes', price: '5' },
+							{ label: 'No', value: 'no' },
+						],
+					},
+					{
+						label: 'Engraving',
+						key: 'text',
+						required: true,
+						longest: 20,
+						condition: { field: 'engrave', values: [ 'yes' ] },
+					},
+					{
+						label: 'Logo',
+						key: 'logo',
+						kind: 'file',
+						types: [ 'image/png' ],
+						largest: 1,
+						price: '2',
+					},
+				],
+			},
+		} );
+		await requestUtils.rest( {
+			method: 'POST',
+			path: '/orillacart/v1/forms',
+			data: {
+				name: 'E2E Mug order',
+				placement: 'checkout',
+				scope: 'products',
+				product_ids: [ mug.id ],
+				fields: [
+					{
+						label: 'PO number',
+						key: 'po',
+						section: 'billing',
+					},
+				],
+			},
+		} );
+
+		await page.goto( mug.link );
+		const engraving = page.getByLabel( 'Engraving' );
+		await expect( engraving ).toBeHidden();
+		await page.getByRole( 'radio', { name: /Yes/ } ).check();
+		await expect( engraving ).toBeVisible();
+		await engraving.fill( 'For Ada' );
+		await page.getByLabel( /Logo/ ).setInputFiles( {
+			name: 'logo.png',
+			mimeType: 'image/png',
+			buffer: Buffer.from(
+				'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+				'base64'
+			),
+		} );
+		await expect( page.getByText( 'Sent: logo.png' ) ).toBeVisible();
+		await page.getByRole( 'button', { name: 'Add to cart' } ).click();
+		await expect( page.getByText( 'Added to your cart.' ) ).toBeVisible();
+
+		await page.goto( shop.urls.cart );
+		const line = page.locator( '[data-orillacart-line]', {
+			hasText: 'E2E Mug',
+		} );
+		await expect( line ).toContainText( 'Engrave it: Yes' );
+		await expect( line ).toContainText( 'Engraving: For Ada' );
+		await expect( line ).toContainText( 'Logo: logo.png' );
+		await expect( line ).toContainText( '17.00' );
+
+		await page.goto( shop.urls.checkout );
+		await fillBilling( page, 'e2e-mug@example.com' );
+		await page.getByLabel( 'PO number' ).fill( 'PO-42' );
+		await page.getByRole( 'radio', { name: 'Bank transfer' } ).check();
+		await page.getByRole( 'button', { name: 'Place order' } ).click();
+		await expect(
+			page.getByRole( 'heading', { name: 'Thank you for your order' } )
+		).toBeVisible();
+		const receipt = page.locator( '.orillacart-receipt' );
+		await expect( receipt ).toContainText( 'Engraving: For Ada' );
+		await expect( receipt ).toContainText( 'PO-42' );
+		const number = Number(
+			/orillacart_order=(\d+)-/.exec( page.url() )?.[ 1 ] ?? 0
+		);
+
+		// The shop manager downloads the logo, as an attachment the browser runs nothing of; a visitor cannot.
+		const order = await requestUtils.rest< {
+			lines: { personalisation: { upload_id: number | null }[] }[];
+		} >( { path: `/orillacart/v1/orders/${ number }` } );
+		const upload = order.lines[ 0 ]?.personalisation.find(
+			( answer ) => answer.upload_id !== null
+		)?.upload_id;
+		expect( upload ).toBeGreaterThan( 0 );
+		const address = `${
+			new URL( '/wp-admin/admin-post.php', shop.urls.shop ).href
+		}?action=orillacart_order_upload&order=${ number }&upload=${ upload }`;
+		const file = await requestUtils.request.get(
+			`${ address }&_wpnonce=${ requestUtils.storageState?.nonce ?? '' }`
+		);
+		expect( file.status() ).toBe( 200 );
+		expect( file.headers()[ 'content-disposition' ] ).toContain(
+			'attachment; filename="logo.png"'
+		);
+		expect( file.headers()[ 'x-content-type-options' ] ).toBe( 'nosniff' );
+		expect( file.headers()[ 'content-security-policy' ] ).toContain(
+			'sandbox'
+		);
+		expect( ( await file.body() ).subarray( 1, 4 ).toString() ).toBe(
+			'PNG'
+		);
+		const visitor = await page.request.get( `${ address }&_wpnonce=x` );
+		expect( visitor.status() ).not.toBe( 200 );
+	} );
+
 	test( 'asks to hear when a sold-out product is back', async ( {
 		page,
 		requestUtils,

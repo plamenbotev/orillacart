@@ -1,7 +1,7 @@
 {% extends 'emails/layout.html.twig' %}
 {#
  # To a customer who asked at checkout to be reminded of the cart they left there.
- # cart: {lines: [{name, options: [{attribute, option}], quantity, total}], subtotal, currency}; cart_url: the link
+ # cart: {lines: [{name, options: [{attribute, option}], personalisation: [{label, answer}], quantity, total}], subtotal, currency}; cart_url: the link
  # that brings the cart back; coupon: {code, description} the shop offers, or null.
  #}
 {# translators: %s: site name -#}
@@ -12,7 +12,7 @@
 <table role="presentation" width="100%" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
 {% for line in cart.lines %}
 <tr style="border-bottom:1px solid #e4e4e7;">
-<td>{{ line.name }}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}</td>
+<td>{{ line.name }}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}{% for answer in line.personalisation|default([]) %}{% if answer.answer != '' %}<br><small>{{ answer.label }}: {{ answer.answer }}</small>{% endif %}{% endfor %}</td>
 <td style="text-align:right;white-space:nowrap;">× {{ line.quantity }}</td>
 <td style="text-align:right;white-space:nowrap;">{{ line.total|money(cart.currency) }}</td>
 </tr>

@@ -42,7 +42,9 @@ use OrillaCart\Customers\Infrastructure\GroupsOfShoppers;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Forms\Application\FieldAnswers;
 use OrillaCart\Forms\Application\FormService;
+use OrillaCart\Forms\Application\FormUploads;
 use OrillaCart\Forms\Application\ShopForms;
+use OrillaCart\Forms\Infrastructure\SafeUploadInspector;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\GiftCards\Application\GiftCardPayments;
 use OrillaCart\GiftCards\Application\GiftCardSales;
@@ -312,6 +314,7 @@ final class TestShop
     public readonly FormService $forms;
     public readonly ShopForms $shopForms;
     public readonly FieldAnswers $fieldAnswers;
+    public readonly FormUploads $uploads;
 
     /**
      * @param list<ShippingMethod> $shippingMethods as add-ons would register them
@@ -380,7 +383,9 @@ final class TestShop
         $this->currencySettings = new MemoryCurrencySettings();
         $this->chosenCurrency = new ChosenCurrency();
         $this->currencies = new Currencies($this->currencySettings, $settings, $this->chosenCurrency);
-        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies);
+        $this->files = new TemporaryPrivateFiles();
+        $this->uploads = new FormUploads($this->shopForms, $this->content, new SafeUploadInspector(), $this->files, $this->uploadRecords, $this->clock);
+        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads);
         $this->abandonedCarts = new AbandonedCarts($this->cartRecords, $this->abandonedCartRecords, $this->carts, $settings, $this->clock);
         $this->orderRecords = new InMemoryOrderRepository($this->transactions);
         $this->receipts = new ReceiptLinks($this->signatures, $this->clock);
@@ -393,7 +398,6 @@ final class TestShop
         $this->giftCards = new GiftCardService($this->giftCardRecords, $this->giftCardSettings, $this->giftCardMail, $settings, $this->transactions, new FixedUserNames(), $this->clock);
         $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions, $this->giftCards, $this->events);
         $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds, $this->transactions, $links, $this->signatures, $this->notifiedEvents = new InMemoryNotifiedEvents());
-        $this->files = new TemporaryPrivateFiles();
         $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events);
         $this->downloads = new Downloads(new InMemoryDownloadGrantRepository($this->orderRecords), $this->files, $links, $this->clock, $this->logger);
         $this->events->addListener(DownloadRemoved::class, new ForgetRemovedDownloads($this->downloads)(...));

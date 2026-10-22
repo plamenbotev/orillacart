@@ -6,9 +6,11 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Catalog\Application\Dto\OfferedVariation;
 use OrillaCart\Catalog\Application\ShopCatalog;
+use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\ProductGallery;
+use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
 use OrillaCart\Ordering\Application\ReceiptLinks;
@@ -43,6 +45,8 @@ final readonly class ProductPanel
         private ProductCards $cards,
         private StorefrontSettingsService $storefront,
         private AnalyticsEvents $analytics,
+        private ShopForms $forms,
+        private ProductContent $content,
     ) {}
 
     public function content(string $content): string
@@ -83,6 +87,7 @@ final readonly class ProductPanel
             'email' => is_user_logged_in() ? wp_get_current_user()->user_email : '',
             'wishlist' => $storefront->wishlist->value,
             'recently_viewed' => $storefront->recentlyViewed,
+            'personalisation' => $this->forms->productFields($id, $this->content->termIds($id)['categories']),
         ]) . $this->analytics->viewItem($id, $offer) . $this->beside($id)
             . ($storefront->recentlyViewed ? $this->templates->render('storefront/_recently_viewed.html.twig', ['count' => Merchandise::SHOWN, 'exclude' => $id]) : '')
             . $this->reviews($id);

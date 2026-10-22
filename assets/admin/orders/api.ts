@@ -70,6 +70,14 @@ export interface OrderLine {
 	discount: string;
 	/** What one bundle holds, for a bundle. */
 	contents?: { name: string; quantity: number }[];
+	/** The answers to the shop's product forms, as sold: a file by its name, with the upload to download. */
+	personalisation?: {
+		id: string;
+		label: string;
+		answer: string;
+		price: string | null;
+		upload_id: number | null;
+	}[];
 }
 
 export interface OrderNote {
@@ -226,6 +234,8 @@ export interface EditedItem {
 	bundle_choices?: number[];
 	quantity: number;
 	unit_price: string | null;
+	/** The order's line it continues, by its place from 0: it keeps that line's answers to the product's forms. */
+	line?: number;
 }
 
 export const EMAILS = [

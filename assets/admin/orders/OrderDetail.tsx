@@ -18,6 +18,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import type { Address } from '../shared/address';
 import { AddressFields } from '../shared/AddressFields';
 import { toApiError } from '../shared/api';
+import { orderUploadUrl } from '../shared/exports';
 import { useBusy } from '../shared/useBusy';
 import { useConfirm } from '../shared/useConfirm';
 import {
@@ -447,6 +448,31 @@ function Summary( { order }: { order: Order } ) {
 											</small>
 										</div>
 									) ) }
+									{ ( line.personalisation ?? [] )
+										.filter(
+											( answer ) => answer.answer !== ''
+										)
+										.map( ( answer ) => (
+											<div key={ answer.id }>
+												<small>
+													{ answer.label }:{ ' ' }
+													{ answer.upload_id !==
+													null ? (
+														<a
+															href={ orderUploadUrl(
+																order.number,
+																answer.upload_id
+															) }
+															download
+														>
+															{ answer.answer }
+														</a>
+													) : (
+														answer.answer
+													) }
+												</small>
+											</div>
+										) ) }
 									{ line.sku !== null && (
 										<div>
 											<small>SKU { line.sku }</small>
@@ -986,13 +1012,14 @@ function NotesCard( { order, onSaved, onError }: CardProps ) {
 function ItemsCard( { order, onSaved, onError }: CardProps ) {
 	const [ busy, run ] = useBusy();
 	const [ rows, setRows ] = useState< ItemRow[] >(
-		order.lines.map( ( line ) => ( {
+		order.lines.map( ( line, index ) => ( {
 			item: {
 				product_id: line.product_id,
 				option_ids: line.option_ids,
 				bundle_choices: line.bundle_choices ?? [],
 				quantity: line.quantity,
 				unit_price: line.unit_price,
+				line: index,
 			},
 			name: line.name,
 		} ) )

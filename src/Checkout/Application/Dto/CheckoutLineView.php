@@ -27,5 +27,7 @@ final readonly class CheckoutLineView
         public array $contents = [],
         /** A free gift a discount added to the order. */
         public bool $gift = false,
+        /** @var list<array{label: string, answer: string}> the answers to the product's forms */
+        public array $personalisation = [],
     ) {}
 }

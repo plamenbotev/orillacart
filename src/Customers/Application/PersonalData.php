@@ -122,6 +122,17 @@ final readonly class PersonalData
         if ($order->note !== '') {
             $data[] = ['name' => 'Note', 'value' => $order->note];
         }
+        // What they answered at checkout and for each item, which may name people or carry their files.
+        foreach ($order->fields as $field) {
+            $data[] = ['name' => $field->label, 'value' => $field->answer];
+        }
+        foreach ($order->lines as $line) {
+            foreach ($line->personalisation as $answer) {
+                if ($answer['answer'] !== '') {
+                    $data[] = ['name' => "{$line->name}: {$answer['label']}", 'value' => $answer['answer']];
+                }
+            }
+        }
 
         return $data;
     }

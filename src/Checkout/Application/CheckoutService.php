@@ -146,6 +146,7 @@ final readonly class CheckoutService
                 (string) $line['discount'],
                 array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
                 $line['gift'],
+                array_map(static fn(array $answer): array => ['label' => $answer['label'], 'answer' => $answer['answer']], $line['personalisation']),
             ), $priced['lines']),
             $priced['needs_shipping'],
             $priced['options'],

@@ -8,6 +8,7 @@ use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Cart\Domain\Cart;
+use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\WordPress\AsHook;
@@ -41,7 +42,10 @@ final readonly class AddToCartWithoutScript
                 self::ids($fields['option_ids'] ?? []),
                 max(1, min(Cart::MAX_QUANTITY, (int) ($fields['quantity'][0] ?? 1))),
                 \array_slice(self::ids($fields['bundle_choices'] ?? []), 0, 100),
+                self::answers($fields),
             ));
+        } catch (InvalidFields $e) {
+            wp_die(esc_html(implode(' ', array_map(static fn(array $violation): string => $violation['message'], $e->violations))), esc_html__('Not added to the cart', 'orillacart'), ['response' => 422, 'back_link' => true]);
         } catch (RuleViolation|NotFound $e) {
             wp_die(esc_html($e->getMessage()), esc_html__('Not added to the cart', 'orillacart'), ['response' => 422, 'back_link' => true]);
         }
@@ -73,6 +77,25 @@ final readonly class AddToCartWithoutScript
         }
 
         return $fields;
+    }
+
+    /**
+     * The answers to the product's forms, named personalisation.<field id>; the cart reads only the fields asked.
+     *
+     * @param array<string, list<string>> $fields
+     *
+     * @return array<string, string>
+     */
+    private static function answers(array $fields): array
+    {
+        $answers = [];
+        foreach ($fields as $name => $values) {
+            if (str_starts_with($name, 'personalisation.') && \count($answers) < 100) {
+                $answers[substr($name, \strlen('personalisation.'))] = $values[0] ?? '';
+            }
+        }
+
+        return $answers;
     }
 
     /**

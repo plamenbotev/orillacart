@@ -7,8 +7,8 @@ namespace OrillaCart\Cart\Domain;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * A product with the customer's choice of options, and how many. Prices are not kept: the cart shows the
- * catalog's current ones.
+ * A product with the customer's choice of options (and answers to its forms), and how many. Prices are not kept:
+ * the cart shows the catalog's current ones.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'cart_lines')]
@@ -30,9 +30,14 @@ class CartLine
     #[ORM\Column(type: 'json')]
     private array $bundleChoices;
 
+    /** @var array<string, string> answers to the product's forms, by field id, sorted: as FieldAnswers::values() keeps them */
+    #[ORM\Column(type: 'json')]
+    private array $answers;
+
     /**
-     * @param list<int> $optionIds
-     * @param list<int> $bundleChoices
+     * @param list<int>             $optionIds
+     * @param list<int>             $bundleChoices
+     * @param array<string, string> $answers
      */
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Cart::class, inversedBy: 'lines')]
@@ -45,9 +50,12 @@ class CartLine
         #[ORM\Column]
         private int $position,
         array $bundleChoices = [],
+        array $answers = [],
     ) {
         $this->optionIds = self::normalized($optionIds);
         $this->bundleChoices = self::normalized($bundleChoices);
+        ksort($answers, SORT_STRING);
+        $this->answers = $answers;
         $this->setQuantity($quantity);
     }
 
@@ -83,6 +91,12 @@ class CartLine
         return $this->bundleChoices;
     }
 
+    /** @return array<string, string> */
+    public function answers(): array
+    {
+        return $this->answers;
+    }
+
     public function quantity(): int
     {
         return $this->quantity;
@@ -94,12 +108,15 @@ class CartLine
     }
 
     /**
-     * @param list<int> $optionIds
-     * @param list<int> $bundleChoices
+     * @param list<int>             $optionIds
+     * @param list<int>             $bundleChoices
+     * @param array<string, string> $answers
      */
-    public function isFor(int $productId, array $optionIds, array $bundleChoices = []): bool
+    public function isFor(int $productId, array $optionIds, array $bundleChoices = [], array $answers = []): bool
     {
-        return $this->productId === $productId && $this->optionIds === self::normalized($optionIds) && $this->bundleChoices === self::normalized($bundleChoices);
+        ksort($answers, SORT_STRING);
+
+        return $this->productId === $productId && $this->optionIds === self::normalized($optionIds) && $this->bundleChoices === self::normalized($bundleChoices) && $this->answers === $answers;
     }
 
     /** @internal for Cart */

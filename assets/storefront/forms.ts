@@ -1,7 +1,7 @@
 /**
  * The shop's questions on a page (form_field in _macros.html.twig): a question asked only when another is
  * answered shows then, and its inputs are off while it is hidden, so they are not sent; a file is sent as soon as
- * it is chosen, and the answer is the token the shop gives back.
+ * it is chosen, and the answer is the token the shop gives back. Prices show in the labels, as options' do.
  */
 
 import { __, sprintf } from '@wordpress/i18n';
@@ -139,27 +139,4 @@ export function bindUploads( scope: HTMLElement, productId: number ): void {
 				scope.dispatchEvent( new Event( 'orillacart:answers' ) );
 			} );
 		} );
-}
-
-/**
- * What the answers given add to each item, from the prices the page shows: a field's own, or its choice's.
- * @param scope The form.
- */
-export function answersPrice( scope: HTMLElement ): number {
-	let total = 0;
-	scope
-		.querySelectorAll< HTMLElement >( '[data-orillacart-price-of]' )
-		.forEach( ( holder ) => {
-			const name = holder.dataset.orillacartPriceOf ?? '';
-			const answer = answerOf( scope, name );
-			if ( answer === '' ) {
-				return;
-			}
-			const prices = JSON.parse(
-				holder.dataset.orillacartPrices ?? '{}'
-			) as Record< string, string >;
-			const price = prices[ answer ] ?? prices[ '*' ];
-			total += price === undefined ? 0 : Number( price );
-		} );
-	return total;
 }

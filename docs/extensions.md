@@ -219,6 +219,8 @@ $registry->checkoutField(new CheckoutField('terms', 'I accept the terms', Checko
 - The order keeps each answer with the label it had: a choice by its label, a ticked box as "Yes". The receipt,
   the emails and the order screen show them, the order screen corrects them, and `OrderSummary::$fields` gives
   them to add-ons by field id. Orders the shop makes by hand do not ask them.
+- The shop's own checkout forms (Shop → Forms) are asked after add-ons' fields and checked the same way. Their ids
+  are `f<form id>_<key>`; an add-on's id must not start that way.
 
 ## Order fees
 
@@ -261,7 +263,9 @@ which the order's history records with the button's label. Throw `ProviderUnavai
 shop manager sees the message and nothing is recorded.
 
 `$registry->orders()->find($number)` gives an `OrderSummary`: number, status, dates, email, customer,
-addresses, lines, totals, refunds, currency, payment, shipping, the customer's note and the field answers. Use it
+addresses, lines, totals, refunds, currency, payment, shipping, the customer's note and the field answers. Each
+`OrderLine` has, from API 7, `personalisation`: the answers to the shop's product forms (an engraving, a file by
+its name), each with its label and what it added to an item. Use it
 from the `orillacart_order_…` actions listed below, which pass only the number; keep the registry the
 `orillacart_extensions` action gave you.
 

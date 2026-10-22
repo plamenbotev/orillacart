@@ -18,7 +18,8 @@ final class Version
      * refunds at the provider (ChecksPayments, ChecksRefunds). 4: columns of the orders export and the products
      * file (OrderColumn, ProductColumn, ImportsProductColumn). 5: fees on orders (OrderFee), the handling of a
      * PaymentBreakdown, an order's fees in its OrderSummary, checking addresses (AddressCheck), each parcel's number
-     * of a BookedShipment. 6: mailing lists for the newsletter's sign-ups (MailingList).
+     * of a BookedShipment. 6: mailing lists for the newsletter's sign-ups (MailingList). 7: the answers to the shop's product forms on
+     * each OrderLine.
      */
-    public const int CURRENT = 6;
+    public const int CURRENT = 7;
 }

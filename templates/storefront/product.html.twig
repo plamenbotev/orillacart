@@ -4,7 +4,9 @@
  # offer: the product (price, sale, stock, choices); gallery: its images, featured first ({src, srcset, sizes,
  # alt, thumb}); variations: each variation with its price already formatted, image, gallery and description,
  # for the script that shows the chosen one; cart_url: null when the shop has no cart page; back_in_stock: whether
- # visitors may ask to hear when a sold-out item is back (email: the logged-in customer's, to fill in).
+ # visitors may ask to hear when a sold-out item is back (email: the logged-in customer's, to fill in);
+ # personalisation: the questions the shop's forms ask for the product (an engraving, a logo to print), whose
+ # answers go with the item.
  #
  # The script shows a chosen picture in the theme's featured image (img.wp-post-image), or in the stage here
  # when the page has none.
@@ -122,6 +124,14 @@
                     </p>
                 {% endif %}
             {% endfor %}
+            {% if personalisation|default([]) %}
+                <div class="orillacart-personalisation">
+                    {% for field in personalisation %}{{ shop.form_field(field, 'personalisation') }}{% endfor %}
+                    {% if personalisation|filter(field => field.kind == 'file') %}
+                        <noscript><p class="orillacart-message">{{ __('Sending a file needs JavaScript in your browser.') }}</p></noscript>
+                    {% endif %}
+                </div>
+            {% endif %}
             <div class="orillacart-add-to-cart__buy">
                 <p class="orillacart-field orillacart-field--quantity">
                     <label for="orillacart-quantity-{{ offer.id }}">{{ __('Quantity') }}</label>

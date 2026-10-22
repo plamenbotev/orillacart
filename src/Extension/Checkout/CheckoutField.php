@@ -26,7 +26,8 @@ final readonly class CheckoutField
     public const string ORDER = 'order';
 
     /**
-     * @param string                $id      lowercase letters, digits and underscores, up to 40; unique among fields
+     * @param string                $id      lowercase letters, digits and underscores, up to 40; unique among fields, and
+     *                                       not as the shop's forms name theirs (f12_size)
      * @param array<string, string> $choices for CHOICE: value => label, in the order to show
      * @param int                   $longest the most characters an answer may have
      * @param FieldCheck|null       $check   checks an answer beyond what the field says, such as a VAT number with the tax office
@@ -44,6 +45,9 @@ final readonly class CheckoutField
     ) {
         if (preg_match('/^[a-z][a-z0-9_]{0,39}$/', $id) !== 1) {
             throw new \InvalidArgumentException(\sprintf('"%s" is not a field id: lowercase letters, digits and underscores, up to 40.', $id));
+        }
+        if (preg_match('/^f\d+_/', $id) === 1) {
+            throw new \InvalidArgumentException(\sprintf('"%s" is named as the shop names its own forms\' fields (f<form>_<key>); choose another id.', $id));
         }
         if (trim($label) === '') {
             throw new \InvalidArgumentException(\sprintf('The field "%s" has no label.', $id));

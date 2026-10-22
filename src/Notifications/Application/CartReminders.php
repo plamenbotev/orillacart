@@ -94,7 +94,7 @@ final readonly class CartReminders
         return $this->writer->write(EmailKind::CartReminder->template(), EmailKind::CartReminder->value, $to, null, [
             'cart' => [
                 'lines' => [
-                    ['name' => 'Desk lamp', 'options' => [['attribute' => 'Colour', 'option' => 'Green']], 'quantity' => 1, 'total' => '40.00'],
+                    ['name' => 'Desk lamp', 'options' => [['attribute' => 'Colour', 'option' => 'Green']], 'personalisation' => [['label' => 'Engraving', 'answer' => 'For Ada', 'price' => '5.00']], 'quantity' => 1, 'total' => '40.00'],
                     ['name' => 'Light bulb', 'options' => [], 'quantity' => 2, 'total' => '9.00'],
                 ],
                 'subtotal' => '49.00',
@@ -113,7 +113,7 @@ final readonly class CartReminders
         $lines = array_values(array_filter($cart->lines, static fn(CartLineView $line): bool => $line->problem !== CartLineView::UNAVAILABLE));
 
         return [
-            'lines' => array_map(static fn(CartLineView $line): array => ['name' => $line->name, 'options' => $line->options, 'quantity' => $line->quantity, 'total' => $line->total], $lines),
+            'lines' => array_map(static fn(CartLineView $line): array => ['name' => $line->name, 'options' => $line->options, 'personalisation' => $line->personalisation, 'quantity' => $line->quantity, 'total' => $line->total], $lines),
             'subtotal' => $cart->subtotal,
             'currency' => $currency,
         ];

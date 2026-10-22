@@ -384,6 +384,14 @@ export async function tearDownShop(
 	) ) {
 		await remove( requestUtils, `/orillacart/v1/carriers/${ carrier.id }` );
 	}
+	const forms = await requestUtils.rest< { id: number; name: string }[] >( {
+		path: '/orillacart/v1/forms',
+	} );
+	for ( const form of forms.filter( ( item ) =>
+		item.name.startsWith( 'E2E' )
+	) ) {
+		await remove( requestUtils, `/orillacart/v1/forms/${ form.id }` );
+	}
 	const users = await requestUtils.rest< { id: number }[] >( {
 		path: '/wp/v2/users?search=e2e-&context=edit&per_page=100&_fields=id',
 	} );

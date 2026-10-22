@@ -28,5 +28,8 @@ final readonly class EditedItem
         #[Assert\Count(max: 100)]
         #[Assert\All([new Assert\Positive()])]
         public array $bundleChoices = [],
+        /** The order's line it continues, by its place from 0: it keeps that line's answers to the product's forms. */
+        #[Assert\PositiveOrZero]
+        public ?int $line = null,
     ) {}
 }

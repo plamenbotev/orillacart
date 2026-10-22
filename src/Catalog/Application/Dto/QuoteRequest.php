@@ -16,6 +16,8 @@ final readonly class QuoteRequest
      * @param list<int>|null $bundleChoices for a bundle, the variations the customer chose and the optional products
      *                                      added; null shows it before any choice: the first variation of each choice,
      *                                      without optional items
+     * @param string         $extra         what the shopper's answers to the product's forms add to each item, in the
+     *                                      shop's currency
      */
     public function __construct(
         public int $productId,
@@ -23,5 +25,6 @@ final readonly class QuoteRequest
         public int $quantity = 1,
         public ?int $customerId = null,
         public ?array $bundleChoices = null,
+        public string $extra = '0',
     ) {}
 }

@@ -150,15 +150,16 @@ class Cart
     }
 
     /**
-     * The line that holds the product with these options (and bundle choices), if any.
+     * The line that holds the product with these options (and bundle choices, and answers), if any.
      *
-     * @param list<int> $optionIds
-     * @param list<int> $bundleChoices
+     * @param list<int>             $optionIds
+     * @param list<int>             $bundleChoices
+     * @param array<string, string> $answers       to the product's forms, by field id
      */
-    public function lineFor(int $productId, array $optionIds, array $bundleChoices = []): ?CartLine
+    public function lineFor(int $productId, array $optionIds, array $bundleChoices = [], array $answers = []): ?CartLine
     {
         foreach ($this->lines as $line) {
-            if ($line->isFor($productId, $optionIds, $bundleChoices)) {
+            if ($line->isFor($productId, $optionIds, $bundleChoices, $answers)) {
                 return $line;
             }
         }
@@ -167,17 +168,18 @@ class Cart
     }
 
     /**
-     * Adds items; the same product with the same options (and bundle choices) adds to its line.
+     * Adds items; the same product with the same options (and bundle choices, and answers) adds to its line.
      *
-     * @param list<int> $optionIds
-     * @param list<int> $bundleChoices
+     * @param list<int>             $optionIds
+     * @param list<int>             $bundleChoices
+     * @param array<string, string> $answers       to the product's forms, by field id, as checked
      *
      * @return CartLine the line now holding them
      */
-    public function add(int $productId, array $optionIds, int $quantity, \DateTimeImmutable $now, array $bundleChoices = []): CartLine
+    public function add(int $productId, array $optionIds, int $quantity, \DateTimeImmutable $now, array $bundleChoices = [], array $answers = []): CartLine
     {
         foreach ($this->lines as $line) {
-            if ($line->isFor($productId, $optionIds, $bundleChoices)) {
+            if ($line->isFor($productId, $optionIds, $bundleChoices, $answers)) {
                 $line->setQuantity($line->quantity() + $quantity);
                 $this->updatedAt = $now;
 
@@ -191,7 +193,7 @@ class Cart
         foreach ($this->lines as $line) {
             $position = max($position, $line->position() + 1);
         }
-        $line = new CartLine($this, $productId, $optionIds, $quantity, $position, $bundleChoices);
+        $line = new CartLine($this, $productId, $optionIds, $quantity, $position, $bundleChoices, $answers);
         $this->lines->add($line);
         $this->updatedAt = $now;
 
@@ -340,11 +342,11 @@ class Cart
     public function takeFrom(self $other, \DateTimeImmutable $now): void
     {
         foreach ($other->lines() as $line) {
-            $mine = $this->lineFor($line->productId(), $line->optionIds(), $line->bundleChoices());
+            $mine = $this->lineFor($line->productId(), $line->optionIds(), $line->bundleChoices(), $line->answers());
             if ($mine !== null) {
                 $mine->setQuantity(min(self::MAX_QUANTITY, $mine->quantity() + $line->quantity()));
             } elseif ($this->lines->count() < self::MAX_LINES) {
-                $this->add($line->productId(), $line->optionIds(), $line->quantity(), $now, $line->bundleChoices());
+                $this->add($line->productId(), $line->optionIds(), $line->quantity(), $now, $line->bundleChoices(), $line->answers());
             }
         }
         $this->useCoupons([...$this->coupons, ...$other->coupons()], $now);

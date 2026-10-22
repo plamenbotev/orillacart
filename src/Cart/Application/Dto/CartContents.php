@@ -10,7 +10,8 @@ namespace OrillaCart\Cart\Application\Dto;
 final readonly class CartContents
 {
     /**
-     * @param list<array{line: int, product_id: int, option_ids: list<int>, bundle_choices: list<int>, quantity: int}> $lines
+     * @param list<array{line: int, product_id: int, option_ids: list<int>, bundle_choices: list<int>, quantity: int, extra: string, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $lines
+     *                                                                                                                                       extra: what the answers add to each item
      * @param list<string> $coupons  the codes entered, checked or not
      * @param list<string> $refusals why add-ons' cart rules refuse the cart, for the customer; it cannot be ordered
      * @param list<string> $giftCards the gift card codes entered, checked or not

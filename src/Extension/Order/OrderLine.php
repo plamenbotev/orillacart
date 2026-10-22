@@ -13,6 +13,8 @@ final readonly class OrderLine
      * @param string $name      with the variation's or options' names: "T-shirt – Red / M"
      * @param string $unitPrice before tax and discounts
      * @param string $total     before tax, after the line's discount
+     * @param list<array{label: string, answer: string, price: ?string}> $personalisation the answers to the shop's
+     *                                                                   product forms, as sold (API 7): a file by its name
      */
     public function __construct(
         public int $productId,
@@ -23,5 +25,6 @@ final readonly class OrderLine
         public string $unitPrice,
         public string $total,
         public string $tax,
+        public array $personalisation = [],
     ) {}
 }

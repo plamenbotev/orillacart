@@ -40,10 +40,12 @@ final readonly class OrderLineView
         public int $restockable = 0,
         /** Something to send: not a download or a service. */
         public bool $ships = true,
+        /** @var list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}> the answers to the product's forms, as sold */
+        public array $personalisation = [],
     ) {}
 
     public static function fromLine(OrderLine $line): self
     {
-        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount(), $line->order()->status() === OrderStatus::Refunded ? $line->restockable() : 0, $line->ships());
+        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount(), $line->order()->status() === OrderStatus::Refunded ? $line->restockable() : 0, $line->ships(), $line->personalisation());
     }
 }

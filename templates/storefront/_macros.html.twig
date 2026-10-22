@@ -113,8 +113,7 @@
     {%- set required = field.required ? ' <span aria-hidden="true">*</span>' : '' -%}
     {%- set price = field.price is not null and field.price != '0' ? ' (+' ~ field.price|money ~ ')' : '' -%}
     {%- set help_id = field.help ? id ~ '-help' : null -%}
-    {%- set prices = field.kind == 'choice' ? field.choices|filter(c => c.price is not null)|reduce((map, c) => map|merge({(c.value): c.price}), {}) : (field.price is not null ? {'*': field.price} : {}) -%}
-    {%- set attributes = (prices ? ' data-orillacart-price-of="' ~ name|e('html_attr') ~ '" data-orillacart-prices="' ~ prices|json_encode|e('html_attr') ~ '"' : '') ~ (field.condition ? ' data-orillacart-when="' ~ (prefix ~ '.' ~ field.condition.field)|e('html_attr') ~ '" data-orillacart-when-values="' ~ field.condition.values|join(' ')|e('html_attr') ~ '"' : '') -%}
+    {%- set attributes = (field.condition ? ' data-orillacart-when="' ~ (prefix ~ '.' ~ field.condition.field)|e('html_attr') ~ '" data-orillacart-when-values="' ~ field.condition.values|join(' ')|e('html_attr') ~ '"' : '') -%}
     {% if field.kind == 'checkbox' %}
         <p class="orillacart-field orillacart-field--check"{{ attributes|raw }}>
             <input id="{{ id }}" type="checkbox" name="{{ name }}" value="1" data-orillacart-field="{{ name }}"{{ field.required ? ' required' }}{{ help_id ? (' aria-describedby="' ~ help_id ~ '"')|raw }}>
@@ -162,6 +161,11 @@
 {# The questions add-ons and the shop's checkout forms ask in one part of checkout (billing, shipping or order). #}
 {% macro extra_fields(fields, section) %}
     {%- for field in fields %}{% if field.section == section %}{{ _self.form_field(field, 'fields') }}{% endif %}{% endfor -%}
+{% endmacro %}
+
+{# An item's answers to the product's forms, under its name: "Engraving: For Ada"; a file by its name. #}
+{% macro line_answers(answers) %}
+    {%- for answer in answers|default([]) %}{% if answer.answer != '' %}<br><small class="orillacart-line-answer">{{ answer.label }}: {{ answer.answer }}</small>{% endif %}{% endfor -%}
 {% endmacro %}
 
 {# The answers an order keeps to the questions asked at checkout. #}

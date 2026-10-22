@@ -102,18 +102,19 @@ final readonly class FormUploads
     }
 
     /**
-     * The orders take the files their lines name; one taken by another order is refused.
+     * A placed order takes the files its lines name. One another order took first stays that order's; the shop keeps
+     * one file per answer, and a cart is placed once.
      *
      * @param list<int> $uploadIds
-     *
-     * @throws FormRuleViolation
      */
     public function take(int $orderId, array $uploadIds): void
     {
         foreach (array_unique($uploadIds) as $id) {
-            $upload = $this->uploads->find($id) ?? throw new FormRuleViolation('A file sent with an item is no longer here; send it again.', 'orillacart_upload_gone');
-            $upload->takenBy($orderId);
-            $this->uploads->save($upload);
+            $upload = $this->uploads->find($id);
+            if ($upload !== null && $upload->orderId() === null) {
+                $upload->takenBy($orderId);
+                $this->uploads->save($upload);
+            }
         }
     }
 

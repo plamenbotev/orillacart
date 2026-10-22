@@ -60,6 +60,19 @@ final readonly class OrderColumns
             new Column('transaction_id', 'Transaction', static fn(OrderSummary $order): string => $order->transactionId ?? ''),
             new Column('shipping', 'Shipping method', static fn(OrderSummary $order): string => $order->shipping ?? ''),
             new Column('note', 'Customer note', static fn(OrderSummary $order): string => $order->note),
+            new Column('answers', 'Checkout answers', static fn(OrderSummary $order): string => implode('; ', array_map(static fn(string $id, string $answer): string => "{$id}: {$answer}", array_keys($order->fields), array_values($order->fields)))),
+            new Column('personalisation', 'Item answers', static function (OrderSummary $order): string {
+                $answers = [];
+                foreach ($order->lines as $line) {
+                    foreach ($line->personalisation as $answer) {
+                        if ($answer['answer'] !== '') {
+                            $answers[] = "{$line->name}: {$answer['label']}: {$answer['answer']}";
+                        }
+                    }
+                }
+
+                return implode('; ', $answers);
+            }),
         ];
 
         return $columns;

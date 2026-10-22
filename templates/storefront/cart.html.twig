@@ -31,6 +31,7 @@
                             {% for option in line.options %}
                                 <br><small>{{ option.attribute }}: {{ option.option }}</small>
                             {% endfor %}
+                            {{ shop.line_answers(line.personalisation) }}
                             {# translators: %d: how many of the item wait for stock -#}
                             {% if line.backordered > 0 %}<br><small class="orillacart-backorder">{{ __('%d on backorder: they ship when back in stock')|format(line.backordered) }}</small>{% endif %}
                             {% if line.contents %}<br><small class="orillacart-bundle">{{ __('Holds') }}: {% for item in line.contents %}{{ item.quantity }} × {{ item.name }}{{ not loop.last ? ', ' }}{% endfor %}</small>{% endif %}
@@ -38,6 +39,8 @@
                                 <p class="orillacart-notice orillacart-notice--error">
                                     {%- if line.problem == 'unavailable' -%}
                                         {{ __('This is no longer for sale; remove it to check out.') }}
+                                    {%- elseif line.problem == 'changed' -%}
+                                        {{ __('Its choices changed: remove it and add it again.') }}
                                     {%- elseif line.problem == 'insufficient_stock' -%}
                                         {% if line.available > 0 %}{# translators: %d: how many are in stock -#}{{ __('Only %d in stock; lower the quantity to check out.')|format(line.available) }}{% else %}{{ __('Out of stock; remove it to check out.') }}{% endif %}
                                     {%- else -%}
