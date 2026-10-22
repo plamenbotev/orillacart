@@ -107,7 +107,7 @@ final readonly class HealthStatusReport implements StatusReport
             ['label' => __('PHP memory limit', 'orillacart'), 'value' => (string) \ini_get('memory_limit')],
             ['label' => __('PHP time limit', 'orillacart'), 'value' => (string) \ini_get('max_execution_time')],
             ['label' => __('Largest upload', 'orillacart'), 'value' => (string) size_format(wp_max_upload_size())],
-            ['label' => __('PHP extensions the shop uses', 'orillacart'), 'value' => implode(', ', array_map(static fn(string $extension): string => $extension . (\extension_loaded($extension) ? '' : ' (missing)'), ['mbstring', 'dom', 'simplexml', 'gd', 'curl']))],
+            ['label' => __('PHP extensions the shop uses', 'orillacart'), 'value' => implode(', ', array_map(static fn(string $extension): string => $extension . (\extension_loaded($extension) ? '' : ' (missing)'), ['mbstring', 'dom', 'simplexml', 'gd', 'curl', 'fileinfo', 'intl']))],
         ];
     }
 }

@@ -24,9 +24,18 @@ final readonly class SafeUploadInspector implements UploadInspector
 
     public function type(string $path): ?string
     {
+        // Without fileinfo nothing tells what a file is, so none is taken.
+        if (!$this->readsTypes()) {
+            return null;
+        }
         $type = new \finfo(\FILEINFO_MIME_TYPE)->file($path);
 
         return \is_string($type) ? $type : null;
+    }
+
+    public function readsTypes(): bool
+    {
+        return class_exists(\finfo::class);
     }
 
     public function takesImages(): bool

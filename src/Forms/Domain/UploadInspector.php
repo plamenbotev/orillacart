@@ -20,6 +20,9 @@ interface UploadInspector
      */
     public function clean(string $path, string $type): string;
 
+    /** Types can be read from content: fileinfo is there. Without, no file is taken. */
+    public function readsTypes(): bool;
+
     /** Pictures can be written again: GD or Imagick is there. Without, file fields take PDFs only. */
     public function takesImages(): bool;
 }

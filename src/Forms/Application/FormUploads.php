@@ -13,6 +13,7 @@ use OrillaCart\Forms\Domain\FormRuleViolation;
 use OrillaCart\Forms\Domain\FormUpload;
 use OrillaCart\Forms\Domain\FormUploadRepository;
 use OrillaCart\Forms\Domain\UploadInspector;
+use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Files\PrivateFiles;
 use Psr\Clock\ClockInterface;
@@ -41,6 +42,7 @@ final readonly class FormUploads
         private PrivateFiles $files,
         private FormUploadRepository $uploads,
         private ClockInterface $clock,
+        private SettingsService $settings,
     ) {}
 
     /**
@@ -51,7 +53,8 @@ final readonly class FormUploads
         $clean = null;
         try {
             $field = null;
-            if ($this->products->isPublished($command->productId)) {
+            // A shop that takes no orders has no use for files: taking them would only store strangers' files.
+            if (!$this->settings->current()->catalogOnly && $this->products->isPublished($command->productId)) {
                 foreach ($this->forms->productFields($command->productId, $this->products->termIds($command->productId)['categories']) as $asked) {
                     if ($asked->id === $command->fieldId && $asked->kind === 'file') {
                         $field = $asked;
