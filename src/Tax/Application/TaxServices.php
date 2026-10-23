@@ -32,7 +32,11 @@ final class TaxServices
         private readonly LoggerInterface $logger,
         private readonly ExtensionFailures $failures,
         private readonly TaxGroupRepository $groups,
+        private readonly TaxQuoteCache $cache,
     ) {}
+
+    /** How long a service's answer is kept: long enough for one checkout. */
+    public const int KEPT_SECONDS = 600;
 
     /**
      * What tax services call the goods of a tax group, by its id; null for the shop's default group.
@@ -73,9 +77,16 @@ final class TaxServices
         if ($provider === null) {
             return null;
         }
-        $key = hash('sha256', serialize($request));
+        $key = hash('sha256', $provider->id() . "\0" . serialize($request));
         if (isset($this->quoted[$key])) {
             return $this->quoted[$key];
+        }
+        $kept = $this->cache->get($key);
+        if ($kept !== null) {
+            $result = self::fromRows($kept);
+            if ($result !== null && self::problem($request, $result) === null) {
+                return $this->quoted[$key] = $result;
+            }
         }
         try {
             $result = $provider->quote($request);
@@ -98,7 +109,42 @@ final class TaxServices
             return null;
         }
 
+        $this->cache->put($key, self::rows($result), self::KEPT_SECONDS);
+
         return $this->quoted[$key] = $result;
+    }
+
+    /** @return list<array<string, string|bool|null>> */
+    private static function rows(TaxResult $result): array
+    {
+        $rows = [];
+        foreach ($result->lines as $line => $taxes) {
+            foreach ($taxes as $tax) {
+                $rows[] = ['line' => (string) $line, 'name' => $tax->name, 'percent' => $tax->percent, 'country' => $tax->country, 'region' => $tax->region, 'level' => $tax->level, 'code' => $tax->code, 'jurisdiction' => $tax->jurisdiction, 'taxable' => $tax->taxable, 'amount' => $tax->amount, 'exempt' => $tax->exempt];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param list<array<string, string|bool|null>> $rows
+     *
+     * @return TaxResult|null null for rows that are not an answer
+     */
+    private static function fromRows(array $rows): ?TaxResult
+    {
+        $lines = [];
+        foreach ($rows as $row) {
+            $text = static fn(string $name): ?string => \is_string($row[$name] ?? null) ? $row[$name] : null;
+            [$line, $name, $percent, $country, $level, $code, $jurisdiction, $taxable, $amount] = array_map($text, ['line', 'name', 'percent', 'country', 'level', 'code', 'jurisdiction', 'taxable', 'amount']);
+            if ($line === null || $name === null || $percent === null || $country === null || $level === null || $code === null || $jurisdiction === null || $taxable === null || $amount === null) {
+                return null;
+            }
+            $lines[$line][] = new TaxLine($name, $percent, $country, $text('region'), $level, $code, $jurisdiction, $taxable, $amount, ($row['exempt'] ?? false) === true);
+        }
+
+        return new TaxResult($lines);
     }
 
     /** What is wrong with a service's answer; null when nothing. */

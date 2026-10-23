@@ -233,6 +233,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\OptionStorefrontSettingsRepos
 use OrillaCart\Storefront\Infrastructure\WordPress\RenderedProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
+use OrillaCart\Tax\Application\TaxQuoteCache;
 use OrillaCart\Tax\Application\VatRegistry;
 use OrillaCart\Tax\Domain\NexusThresholdsRepository;
 use OrillaCart\Tax\Domain\TaxExemptionRepository;
@@ -242,6 +243,7 @@ use OrillaCart\Tax\Infrastructure\Doctrine\DoctrineTaxExemptionRepository;
 use OrillaCart\Tax\Infrastructure\Doctrine\DoctrineTaxGroupRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionNexusThresholdsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
+use OrillaCart\Tax\Infrastructure\WordPress\TransientTaxQuoteCache;
 use OrillaCart\Tax\Infrastructure\WordPress\ViesVatRegistry;
 use Psr\Clock\ClockInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
@@ -320,6 +322,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(TaxGroupRepository::class, DoctrineTaxGroupRepository::class);
     $services->alias(TaxSettingsRepository::class, OptionTaxSettingsRepository::class);
     $services->alias(NexusThresholdsRepository::class, OptionNexusThresholdsRepository::class);
+    $services->alias(TaxQuoteCache::class, TransientTaxQuoteCache::class);
     $services->alias(TaxExemptionRepository::class, DoctrineTaxExemptionRepository::class);
     $services->alias(ProductRepository::class, DoctrineProductRepository::class);
     $services->alias(AttributeSetRepository::class, DoctrineAttributeSetRepository::class);

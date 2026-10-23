@@ -176,7 +176,7 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 | ✅ | 113 | P2 | Tax codes for tax services: a tax code on each tax group (Shop → Tax), overridden per product (product editor, imports and exports), sent with each line as TaxRequestLine::$serviceCode; shipping and fees take their tax group's | |
 | ✅ | 114 | P2 | Economic nexus: reported orders keep their state; Shop → Tax shows each US state's sales before tax and orders over the last twelve months, this calendar year and the last, against thresholds the shop keeps (every state, $100,000 to start, and states with their own), with those crossed and not collected first (GET /reports/nexus, GET/PUT /tax/nexus-thresholds) | |
 | ⬜ | 115 | P2 | Exemptions at checkout: a business buyer enters a certificate (number, state, file) at checkout or in their account, the shop reviews it; the file kept privately; a reminder before a certificate expires | |
-| ⬜ | 116 | P3 | Fewer calls to a tax service: its answer cached for a few minutes by what was asked | |
+| ✅ | 116 | P3 | Fewer calls to a tax service: its answer kept ten minutes in a transient by the service and the whole request, as plain values rebuilt and checked again when read | |
 
 ## Waiting on others
 

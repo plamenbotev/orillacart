@@ -210,6 +210,7 @@ use OrillaCart\Tests\Fixtures\Tax\FakeVatRegistry;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
+use OrillaCart\Tests\Fixtures\Tax\MemoryTaxQuoteCache;
 use OrillaCart\Tests\Fixtures\TemporaryPrivateFiles;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -310,6 +311,8 @@ final class TestShop
     public readonly InMemoryAccounts $accounts;
     public readonly TaxExemptions $taxExemptions;
     public readonly TaxServices $taxServices;
+    public readonly MemoryTaxQuoteCache $taxQuotes;
+    public readonly InMemoryTaxGroupRepository $taxGroupRecords;
     public readonly InMemoryPendingAccounts $pendingAccounts;
     public readonly RecordingAccountMail $accountMail;
     public readonly PaymentOptions $paymentOptions;
@@ -353,7 +356,7 @@ final class TestShop
         $this->fieldAnswers = new FieldAnswers($this->uploadRecords);
         $this->shopForms = new ShopForms($this->formRecords, $this->fieldAnswers);
 
-        $taxGroupRecords = new InMemoryTaxGroupRepository();
+        $this->taxGroupRecords = $taxGroupRecords = new InMemoryTaxGroupRepository();
         $this->taxSettings = new InMemoryTaxSettingsRepository(new TaxSettings(TaxBasis::ShippingAddress, null));
         $this->taxGroups = new TaxGroupService($taxGroupRecords, $this->taxSettings, $geography, $this->events);
         $this->accounts = new InMemoryAccounts();
@@ -449,7 +452,7 @@ final class TestShop
         $this->events->addListener(OrderPaid::class, $withGiftCards->paid(...));
         $this->paymentOptions = $paymentOptions = new PaymentOptions($methodRecords, $gateways, $settings);
         $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
-        $this->taxServices = new TaxServices($this->taxSettings, $extensions, $this->logger, $this->failures, $taxGroupRecords);
+        $this->taxServices = new TaxServices($this->taxSettings, $extensions, $this->logger, $this->failures, $taxGroupRecords, $this->taxQuotes = new MemoryTaxQuoteCache());
         $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts);
         $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures);

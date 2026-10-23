@@ -378,7 +378,8 @@ own rates and note it on the order, or ask the customer to try again (a provider
   certificate when the shop has one on file, and the order being edited. Answer a `TaxResult` of `TaxLine`s by
   line id: each rate's name, percent, jurisdiction (country, region, level, the code returns are filed under,
   its name), what it was charged on, the amount, and `exempt` for a rate the exemption covers (amount 0). The
-  shop asks once per request for the same lines; answers it cannot use (unknown lines, numbers that are not,
+  shop keeps an answer ten minutes for the same request (lines, addresses, customer, day), so the cart,
+  checkout and placing the order ask once; answers it cannot use (unknown lines, numbers that are not,
   tax below zero) count as a failure.
 - `commit(TaxedOrder)`: the order was paid; record the sale with the taxes it charged and return your reference,
   which the order keeps. `refund(TaxedOrder, TaxRefund)` reports the tax inside money given back, and

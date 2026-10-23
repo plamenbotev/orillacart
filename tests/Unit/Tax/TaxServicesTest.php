@@ -26,6 +26,7 @@ use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tax\Application\RecordTaxes;
+use OrillaCart\Tax\Application\TaxServices;
 use OrillaCart\Tax\Application\TaxServiceUnavailable;
 use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxSettings;
@@ -85,6 +86,23 @@ final class TaxServicesTest extends TestCase
 
         $this->expectException(RuleViolation::class);
         $this->shop->taxGroups->rename($this->group, new SaveTaxGroup('Standard', 'not a code'));
+    }
+
+    public function testTheServicesAnswerIsKeptAFewMinutesForTheSameLines(): void
+    {
+        $this->place();
+        $asked = \count($this->service->asked);
+        $request = $this->service->asked[$asked - 1];
+        $later = new TaxServices($this->shop->taxSettings, $this->shop->extensions, $this->shop->logger, $this->shop->failures, $this->shop->taxGroupRecords, $this->shop->taxQuotes);
+
+        $this->service->down = true;
+        self::assertSame('8', (string) array_sum(array_map(static fn(TaxLine $tax): float => (float) $tax->amount, $later->quote($request)?->lines['item:0'] ?? [])), 'from what was kept, as the service is down');
+        self::assertCount($asked, $this->service->asked, 'not asked again');
+
+        $this->shop->taxQuotes->rows = array_map(static fn(array $rows): array => [['line' => 'item:0', 'name' => 'Made up']], $this->shop->taxQuotes->rows);
+        $this->expectException(TaxServiceUnavailable::class);
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::ShippingAddress, $this->group, provider: 'fake_tax', whenProviderFails: TaxSettings::REFUSE));
+        new TaxServices($this->shop->taxSettings, $this->shop->extensions, $this->shop->logger, $this->shop->failures, $this->shop->taxGroupRecords, $this->shop->taxQuotes)->quote($request);
     }
 
     public function testWhenTheServiceFailsTheShopsRatesTaxTheOrderOrCheckoutRefusesAsTheShopChose(): void
