@@ -9,6 +9,11 @@
          failOnWarning="true"
          failOnRisky="true"
          beStrictAboutOutputDuringTests="true">
+    <php>
+        <!-- One process runs the whole integration suite on one Doctrine session, which grows test by test past
+             PHP's default 128M; a shop's requests are processes of their own. -->
+        <ini name="memory_limit" value="512M"/>
+    </php>
     <testsuites>
         <testsuite name="unit">
             <directory>tests/Unit</directory>
