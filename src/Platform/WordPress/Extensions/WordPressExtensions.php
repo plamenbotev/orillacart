@@ -14,6 +14,7 @@ use OrillaCart\Extension\Catalog\Products;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Invoice\EInvoiceSender;
 use OrillaCart\Extension\Log;
 use OrillaCart\Extension\Marketing\MailingList;
 use OrillaCart\Extension\Order\FindsOrders;
@@ -78,6 +79,9 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $productSearches = [];
     /** @var array<string, TaxProvider> */
     private array $taxProviders = [];
+
+    /** @var array<string, EInvoiceSender> */
+    private array $eInvoiceSenders = [];
     /** @var array<string, OrderAdjuster> */
     private array $orderAdjusters = [];
     private bool $collected = false;
@@ -221,6 +225,20 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     public function orderPrices(): OrderPrices
     {
         return ($this->orderPrices)();
+    }
+
+    public function eInvoiceSender(EInvoiceSender $sender): void
+    {
+        if ($this->accepts('e-invoice sender', $sender->id(), $this->eInvoiceSenders[$sender->id()] ?? null, $sender)) {
+            $this->eInvoiceSenders[$sender->id()] = $sender;
+        }
+    }
+
+    public function eInvoiceSenders(): array
+    {
+        $this->collect();
+
+        return array_values($this->eInvoiceSenders);
     }
 
     public function taxProvider(TaxProvider $provider): void

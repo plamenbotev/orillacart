@@ -31,5 +31,8 @@ final readonly class UpdateInvoiceSettings
         public string $creditNotePrefix = 'CN-',
         public bool $yearly = true,
         public bool $attachToEmails = true,
+        /** Also as EN 16931 XML: none, ubl (Peppol BIS 3.0) or cii (XRechnung). */
+        #[Assert\Choice(choices: InvoiceSettings::EINVOICE_FORMATS)]
+        public string $eInvoices = InvoiceSettings::NO_EINVOICES,
     ) {}
 }

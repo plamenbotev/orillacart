@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Notifications\Application;
 
+use OrillaCart\Invoicing\Application\Dto\InvoiceFile;
 use OrillaCart\Invoicing\Application\InvoiceAttachments;
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Invoicing\Domain\InvoiceKind;
@@ -257,13 +258,13 @@ final readonly class OrderEmails
             return $this->writer->write($kind->template(), $kind->value, $this->writer->shopAddress(), null, $context, $order->email, $order->number);
         }
         $email = $this->writer->write($kind->template(), $kind->value, $order->email, $order->locale, $context, null, $order->number);
-        $invoice = match ($kind) {
-            EmailKind::OrderProcessing, EmailKind::OrderCompleted => $this->attachments->file($order->number, InvoiceKind::Invoice, $order->locale),
-            EmailKind::OrderRefunded => $this->attachments->file($order->number, InvoiceKind::CreditNote, $order->locale),
-            default => null,
+        $files = match ($kind) {
+            EmailKind::OrderProcessing, EmailKind::OrderCompleted => $this->attachments->files($order->number, InvoiceKind::Invoice, $order->locale),
+            EmailKind::OrderRefunded => $this->attachments->files($order->number, InvoiceKind::CreditNote, $order->locale),
+            default => [],
         };
 
-        return $invoice === null ? $email : $email->with([new EmailAttachment($invoice->filename, $invoice->content)]);
+        return $files === [] ? $email : $email->with(array_map(static fn(InvoiceFile $file): EmailAttachment => new EmailAttachment($file->filename, $file->content), $files));
     }
 
     /**

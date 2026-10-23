@@ -11,6 +11,7 @@ use OrillaCart\Extension\Catalog\ProductFilter;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Invoice\EInvoiceSender;
 use OrillaCart\Extension\Marketing\MailingList;
 use OrillaCart\Extension\Order\FindsOrders;
 use OrillaCart\Extension\Order\OrderAction;
@@ -57,6 +58,8 @@ final class FixedExtensions implements InstalledExtensions
     public array $productSearches = [];
     /** @var list<TaxProvider> */
     public array $taxProviders = [];
+    /** @var list<EInvoiceSender> */
+    public array $eInvoiceSenders = [];
     /** @var list<OrderAdjuster> */
     public array $orderAdjusters = [];
 
@@ -139,6 +142,11 @@ final class FixedExtensions implements InstalledExtensions
     public function productSearches(): array
     {
         return $this->productSearches;
+    }
+
+    public function eInvoiceSenders(): array
+    {
+        return $this->eInvoiceSenders;
     }
 
     public function taxProviders(): array

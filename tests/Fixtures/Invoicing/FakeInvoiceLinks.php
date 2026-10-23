@@ -12,4 +12,9 @@ final class FakeInvoiceLinks implements InvoiceLinks
     {
         return "https://shop.test/?orillacart_invoice={$number}&receipt={$receipt}";
     }
+
+    public function xmlUrl(string $number, string $receipt): string
+    {
+        return "https://shop.test/?orillacart_invoice={$number}&receipt={$receipt}&format=xml";
+    }
 }

@@ -26,7 +26,12 @@ final readonly class InvoiceSettings
         public bool $yearly = true,
         /** The customer's emails carry the invoice, or the credit note, as a PDF. */
         public bool $attachToEmails = true,
+        /** Invoices and credit notes also as EN 16931 XML: NO_EINVOICES, UBL (Peppol BIS 3.0) or CII (XRechnung). */
+        public string $eInvoices = self::NO_EINVOICES,
     ) {
+        if (!\in_array($eInvoices, self::EINVOICE_FORMATS, true)) {
+            throw new RuleViolation('Choose the format of the e-invoices: UBL, CII or none.', 'orillacart_invalid_invoice_settings');
+        }
         foreach (['legal name' => $legalName, 'address' => $address, 'VAT number' => $vatNumber, 'company number' => $companyNumber, 'bank details' => $bankDetails, 'footer' => $footer] as $what => $text) {
             if (mb_strlen($text) > self::MAX_TEXT) {
                 throw new RuleViolation(\sprintf('The %s has up to %d characters.', $what, self::MAX_TEXT), 'orillacart_invalid_invoice_settings');
@@ -41,6 +46,11 @@ final readonly class InvoiceSettings
             throw new RuleViolation('Invoices and credit notes need different prefixes, so their numbers never meet.', 'orillacart_invalid_invoice_settings');
         }
     }
+
+    public const string NO_EINVOICES = 'none';
+    public const string UBL = 'ubl';
+    public const string CII = 'cii';
+    public const array EINVOICE_FORMATS = [self::NO_EINVOICES, self::UBL, self::CII];
 
     public function prefix(InvoiceKind $kind): string
     {

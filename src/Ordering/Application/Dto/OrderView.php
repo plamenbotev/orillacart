@@ -113,6 +113,8 @@ final readonly class OrderView
         /** Priced in another currency than the shop's: the shop's, and units of the order's currency per one of it. */
         public ?string $shopCurrency = null,
         public ?string $exchangeRate = null,
+        /** The business customer's own reference for the order. */
+        public ?string $buyerReference = null,
     ) {}
 
     /**
@@ -187,6 +189,7 @@ final readonly class OrderView
             $order->importNumber(),
             $order->shopCurrency(),
             $order->exchangeRate(),
+            $order->buyerReference(),
         );
     }
 }

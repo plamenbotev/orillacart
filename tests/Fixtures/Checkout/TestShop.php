@@ -57,9 +57,11 @@ use OrillaCart\GiftCards\Application\GiftCardService;
 use OrillaCart\GiftCards\Infrastructure\Events\GiftCardsWithOrders;
 use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Invoicing\Application\EInvoices;
 use OrillaCart\Invoicing\Application\InvoiceAttachments;
 use OrillaCart\Invoicing\Application\InvoiceNumbers;
 use OrillaCart\Invoicing\Application\Invoices;
+use OrillaCart\Invoicing\Application\SendEInvoices;
 use OrillaCart\Invoicing\Infrastructure\Events\IssueInvoices;
 use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Newsletter\Application\SyncSubscriber;
@@ -306,6 +308,9 @@ final class TestShop
     public readonly MemoryLogger $logger;
     /** What add-ons registered: tests add price adjusters, cart rules, checkout fields and order actions. */
     public readonly FixedExtensions $extensions;
+    public readonly EInvoices $eInvoices;
+    public readonly SendEInvoices $sendEInvoices;
+    public readonly InvoiceAttachments $invoiceAttachments;
     public readonly EventDispatcher $events;
     public readonly SentMail $mail;
     public readonly InMemoryEmailSettingsRepository $emailSettings;
@@ -497,9 +502,6 @@ final class TestShop
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
         $this->invoiceSettings = new MemoryInvoiceSettings();
         $this->invoices = new Invoices($this->invoiceRecords, $this->invoiceSettings, $this->orders, new FakeInvoiceLinks(), new SofiaCalendar(), $this->clock, $this->receipts);
-        $issuing = new IssueInvoices($this->invoices);
-        $this->events->addListener(OrderPaid::class, $issuing->paid(...));
-        $this->events->addListener(OrderRefunded::class, $issuing->refunded(...));
 
         $this->mail = new SentMail();
         $this->emailSettings = new InMemoryEmailSettingsRepository();
@@ -525,7 +527,13 @@ final class TestShop
         $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger, $this->events);
         $this->sentEmails = new InMemorySentEmails();
         $this->writer = new EmailWriter($this->emailTemplates, $this->emailSettings, $this->site = new FakeSite(), $this->languages);
-        $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $this->writer, $this->mail, $this->logger, new ShipmentTracking($this->consignmentRecords, $this->orders), $this->jobs->jobs, $this->invoices, $this->receipts, new InvoiceAttachments($this->invoices, $this->invoiceSettings, $this->invoicePdfs = new FakeInvoicePdfs(), $this->languages, $this->logger));
+        $this->eInvoices = new EInvoices($this->invoiceSettings, $settings, $geography, $this->writer);
+        $this->sendEInvoices = new SendEInvoices($this->invoices, $this->eInvoices, $this->extensions, $this->jobs->jobs);
+        $this->jobs->with($this->sendEInvoices);
+        $issuing = new IssueInvoices($this->invoices, $this->sendEInvoices);
+        $this->events->addListener(OrderPaid::class, $issuing->paid(...));
+        $this->events->addListener(OrderRefunded::class, $issuing->refunded(...));
+        $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $this->writer, $this->mail, $this->logger, new ShipmentTracking($this->consignmentRecords, $this->orders), $this->jobs->jobs, $this->invoices, $this->receipts, $this->invoiceAttachments = new InvoiceAttachments($this->invoices, $this->invoiceSettings, $this->invoicePdfs = new FakeInvoicePdfs(), $this->languages, $this->logger, $this->eInvoices));
         $this->cartReminders = new CartReminders($this->abandonedCarts, new FakeCartLinks(), $this->coupons, $this->emailSettings, $settings, $this->writer, $this->mail, $this->jobs->jobs, $this->clock);
         $this->jobs->with(new SendCartReminder($this->cartReminders));
         $this->jobs->with(new SendOrderEmails($this->emails, $this->sentEmails, $this->clock, $this->logger), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));

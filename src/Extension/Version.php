@@ -21,7 +21,8 @@ final class Version
      * of a BookedShipment. 6: mailing lists for the newsletter's sign-ups (MailingList). 7: the answers to the shop's product forms on
      * each OrderLine. 8: filters and searches of the Orders screen and the products list (OrderFilter, FindsOrders,
      * ProductFilter, FindsProducts), and Orders::mark(). 9: tax services (TaxProvider), changes to
-     * order prices at checkout (OrderAdjuster) and on orders on hold (OrderPrices).
+     * order prices at checkout (OrderAdjuster) and on orders on hold (OrderPrices). 10: sending e-invoices on
+     * (EInvoiceSender).
      */
-    public const int CURRENT = 9;
+    public const int CURRENT = 10;
 }

@@ -12,6 +12,7 @@ use OrillaCart\Extension\Catalog\Products;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Invoice\EInvoiceSender;
 use OrillaCart\Extension\Marketing\MailingList;
 use OrillaCart\Extension\Order\FindsOrders;
 use OrillaCart\Extension\Order\OrderAction;
@@ -89,6 +90,9 @@ interface Registry
 
     /** A tax service the shop manager may choose to work out and record the taxes. Since version 9. */
     public function taxProvider(TaxProvider $provider): void;
+
+    /** Sends each e-invoice on once it is issued, as through a Peppol access point. Since version 10. */
+    public function eInvoiceSender(EInvoiceSender $sender): void;
 
     /** Reads the shop's orders, and marks them for order filters (since version 8). Since version 2. */
     public function orders(): Orders;

@@ -46,6 +46,10 @@ final readonly class PlaceOrder
         /** A business customer's VAT number, for the reverse charge. */
         #[Assert\Length(max: 20)]
         public ?string $vatNumber = null,
+        /** A business customer's own reference for the order, such as its purchase order number or Leitweg-ID. */
+        #[Assert\Length(max: 100)]
+        #[Assert\Regex('/^[^\x00-\x1F<>]*$/', message: 'Use plain text.')]
+        public ?string $buyerReference = null,
         /** The total the customer saw: an order that would cost anything else is refused, for them to look again. */
         #[Assert\Regex(pattern: '/^\d{1,11}(\.\d{1,4})?$/')]
         public ?string $expectedTotal = null,

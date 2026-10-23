@@ -16,4 +16,9 @@ final readonly class WordPressInvoiceLinks implements InvoiceLinks
     {
         return add_query_arg([ShowInvoice::QUERY => rawurlencode($number), ShowInvoice::KEY => rawurlencode($receipt)], home_url('/'));
     }
+
+    public function xmlUrl(string $number, string $receipt): string
+    {
+        return add_query_arg([ShowInvoice::QUERY => rawurlencode($number), ShowInvoice::KEY => rawurlencode($receipt), ShowInvoice::FORMAT => 'xml'], home_url('/'));
+    }
 }

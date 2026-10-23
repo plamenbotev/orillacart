@@ -17,5 +17,7 @@ final readonly class InvoiceView
         public string $currency,
         public string $issuedAt,
         public string $url,
+        /** The same document as an e-invoice, when the shop makes them. */
+        public ?string $xmlUrl = null,
     ) {}
 }

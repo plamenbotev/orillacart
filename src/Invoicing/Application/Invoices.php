@@ -41,19 +41,21 @@ final readonly class Invoices
     ) {}
 
     /**
-     * The invoice of an order that was just paid; nothing when it has one. Run it in the payment's transaction.
+     * The invoice of an order that was just paid, by its number; nothing when it has one. Run it in the payment's
+     * transaction.
      *
      * @throws OrderNotFound
      */
-    public function invoice(int $orderId): void
+    public function invoice(int $orderId): ?string
     {
         foreach ($this->invoices->ofOrder($orderId) as $issued) {
             if ($issued->kind() === InvoiceKind::Invoice) {
-                return;
+                return null;
             }
         }
         $order = $this->orders->order($orderId);
-        $this->issue($orderId, InvoiceKind::Invoice, Money::of($order->total), $order->currency, []);
+
+        return $this->issue($orderId, InvoiceKind::Invoice, Money::of($order->total), $order->currency, []);
     }
 
     /**
@@ -64,10 +66,11 @@ final readonly class Invoices
      *
      * @throws OrderNotFound
      */
-    public function creditNote(int $orderId, string $amount, array $lines, array $taxes = []): void
+    public function creditNote(int $orderId, string $amount, array $lines, array $taxes = []): string
     {
         $order = $this->orders->order($orderId);
-        $this->issue($orderId, InvoiceKind::CreditNote, Money::of($amount), $order->currency, $lines, $taxes);
+
+        return $this->issue($orderId, InvoiceKind::CreditNote, Money::of($amount), $order->currency, $lines, $taxes);
     }
 
     /**
@@ -95,6 +98,32 @@ final readonly class Invoices
         if ($read === null || $read[1] || $read[0] !== $invoice->orderId()) {
             throw new InvoiceNotFound();
         }
+
+        return $this->documentOf($invoice, $receipt);
+    }
+
+    /**
+     * A document by its number, for the shop's own work (sending it on); its link carries a new key.
+     *
+     * @throws InvoiceNotFound
+     */
+    public function issued(string $number): InvoiceDocument
+    {
+        $invoice = $this->invoices->findByNumber($number) ?? throw new InvoiceNotFound();
+        try {
+            $receipt = $this->receipts->issue($invoice->orderId());
+        } catch (OrderNotFound) {
+            throw new InvoiceNotFound();
+        }
+
+        return $this->documentOf($invoice, $receipt);
+    }
+
+    /**
+     * @throws InvoiceNotFound
+     */
+    private function documentOf(Invoice $invoice, string $receipt): InvoiceDocument
+    {
         try {
             $order = $this->orders->order($invoice->orderId());
         } catch (OrderNotFound) {
@@ -172,6 +201,7 @@ final readonly class Invoices
             $command->creditNotePrefix,
             $command->yearly,
             $command->attachToEmails,
+            $command->eInvoices,
         );
         $this->settings->save($settings);
 
@@ -182,7 +212,7 @@ final readonly class Invoices
      * @param list<array{line: int, quantity: int}>                       $lines
      * @param list<array{name: string, percent: string, amount: string}> $taxes
      */
-    private function issue(int $orderId, InvoiceKind $kind, Money $amount, string $currency, array $lines, array $taxes = []): void
+    private function issue(int $orderId, InvoiceKind $kind, Money $amount, string $currency, array $lines, array $taxes = []): string
     {
         $settings = $this->settings->load();
         $now = $this->clock->now();
@@ -192,10 +222,20 @@ final readonly class Invoices
         $this->invoices->saveCounter($counter);
         $number = $settings->prefix($kind) . ($settings->yearly ? $year . '-' : '') . str_pad((string) $sequence, 5, '0', \STR_PAD_LEFT);
         $this->invoices->save(new Invoice($orderId, $kind, $number, $amount, $currency, $settings->seller(), $now, $lines, $taxes));
+
+        return $number;
     }
 
     private function view(Invoice $invoice, string $receipt): InvoiceView
     {
-        return new InvoiceView($invoice->number(), $invoice->kind()->value, (string) $invoice->amount(), $invoice->currency(), $invoice->issuedAt()->format(\DATE_ATOM), $this->links->documentUrl($invoice->number(), $receipt));
+        return new InvoiceView(
+            $invoice->number(),
+            $invoice->kind()->value,
+            (string) $invoice->amount(),
+            $invoice->currency(),
+            $invoice->issuedAt()->format(\DATE_ATOM),
+            $this->links->documentUrl($invoice->number(), $receipt),
+            $this->settings->load()->eInvoices === InvoiceSettings::NO_EINVOICES ? null : $this->links->xmlUrl($invoice->number(), $receipt),
+        );
     }
 }

@@ -478,6 +478,7 @@ final readonly class CheckoutService
             $priced['import']->charges ? $priced['import']->number : null,
             $currency === $this->settings->current()->currency ? null : $this->settings->current()->currency,
             $currency === $this->settings->current()->currency ? null : $this->currencies->rate($currency),
+            $command->buyerReference,
         )), $gateway === null)));
         foreach ([...$this->failures->since($failed), ...$this->addressChecks->kept($billingAddress, $priced['needs_shipping'] && $command->shippingAddress !== null ? $shippingAddress : null)] as $failure) {
             $this->orders->note($order->number, $failure, false);

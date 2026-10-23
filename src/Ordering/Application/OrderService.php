@@ -125,6 +125,7 @@ final readonly class OrderService
             $command->importNumber,
             $command->shopCurrency,
             $command->exchangeRate,
+            $command->buyerReference,
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);

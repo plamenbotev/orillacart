@@ -401,6 +401,8 @@ export interface Invoice {
 	currency: string;
 	issued_at: string;
 	url: string;
+	/** The same document as an e-invoice (EN 16931 XML), when the shop makes them. */
+	xml_url: string | null;
 }
 
 export function fetchInvoices( id: number ): Promise< Invoice[] > {

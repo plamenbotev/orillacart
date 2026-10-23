@@ -14,6 +14,8 @@ export interface InvoiceSettings {
 	yearly: boolean;
 	/** The customer's emails carry the invoice, or the credit note, as a PDF. */
 	attach_to_emails: boolean;
+	/** Also as EN 16931 XML: UBL (Peppol BIS 3.0) or CII (XRechnung). */
+	e_invoices: 'none' | 'ubl' | 'cii';
 }
 
 const PATH = '/orillacart/v1/invoice-settings';

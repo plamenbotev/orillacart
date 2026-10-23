@@ -49,5 +49,7 @@ final readonly class NewOrder
         /** Priced in another currency than the shop's: the shop's, and how many units of the order's one of it made. */
         public ?string $shopCurrency = null,
         public ?string $exchangeRate = null,
+        /** The business customer's own reference for the order, for its invoice. */
+        public ?string $buyerReference = null,
     ) {}
 }

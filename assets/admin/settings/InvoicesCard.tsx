@@ -5,6 +5,7 @@ import {
 	CardHeader,
 	CheckboxControl,
 	Notice,
+	SelectControl,
 	Spinner,
 	TextControl,
 	TextareaControl,
@@ -203,6 +204,41 @@ export function InvoicesCard() {
 							checked={ settings.attach_to_emails }
 							onChange={ ( value ) =>
 								field( 'attach_to_emails', value )
+							}
+						/>
+						<SelectControl
+							__next40pxDefaultSize
+							label={ __( 'E-invoices', 'orillacart' ) }
+							help={ __(
+								'Each invoice and credit note also as an EN 16931 XML file, as business customers and public bodies in the EU increasingly ask for: downloaded from its page, and with the PDF on the customer’s emails. UBL suits Peppol (Belgium, the Netherlands, the Nordics); CII suits Germany’s XRechnung and France. Sending through Peppol needs an access point: an add-on can take the file from here.',
+								'orillacart'
+							) }
+							value={ settings.e_invoices }
+							options={ [
+								{
+									label: __( 'None', 'orillacart' ),
+									value: 'none',
+								},
+								{
+									label: __(
+										'UBL (Peppol BIS Billing 3.0)',
+										'orillacart'
+									),
+									value: 'ubl',
+								},
+								{
+									label: __(
+										'CII (XRechnung)',
+										'orillacart'
+									),
+									value: 'cii',
+								},
+							] }
+							onChange={ ( value ) =>
+								field(
+									'e_invoices',
+									value as InvoiceSettings[ 'e_invoices' ]
+								)
 							}
 						/>
 						<Button

@@ -11,6 +11,7 @@ use OrillaCart\Extension\Catalog\ProductFilter;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Invoice\EInvoiceSender;
 use OrillaCart\Extension\Marketing\MailingList;
 use OrillaCart\Extension\Order\FindsOrders;
 use OrillaCart\Extension\Order\OrderAction;
@@ -108,6 +109,11 @@ interface InstalledExtensions
      * @return list<TaxProvider>
      */
     public function taxProviders(): array;
+
+    /**
+     * @return list<EInvoiceSender>
+     */
+    public function eInvoiceSenders(): array;
 
     /**
      * @return list<OrderAdjuster>

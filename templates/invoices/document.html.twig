@@ -62,6 +62,7 @@
                 <div>{{ __('Date') }}: {{ invoice.issued_at|shop_date }}</div>
                 {% if credit and document.corrects %}<div>{{ __('Corrects invoice') }}: {{ document.corrects }}</div>{% endif %}
                 <div>{{ __('Order') }}: #{{ order.number }} ({{ order.placed_at|shop_date }})</div>
+                {% if order.buyer_reference %}<div>{{ __('Your reference') }}: {{ order.buyer_reference }}</div>{% endif %}
             </div>
             <div>
                 <strong>{{ seller.legal_name }}</strong>

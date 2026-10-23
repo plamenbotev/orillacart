@@ -780,6 +780,14 @@ function InvoicesList( { order }: { order: Order } ) {
 									invoice.number
 								) }
 					</a>
+					{ invoice.xml_url !== null && (
+						<>
+							{ ' ' }
+							<a href={ invoice.xml_url }>
+								{ __( '(XML)', 'orillacart' ) }
+							</a>
+						</>
+					) }
 				</span>
 			) ) }
 		</p>

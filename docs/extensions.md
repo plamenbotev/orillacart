@@ -28,7 +28,7 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   rules, checkout fields, order actions and `orders()` came; 4 since export columns; 5 since order fees and
   address checks; 6 since mailing lists; 7 since the answers to product forms on order lines; 8 since filters and
   searches of the orders and products lists, and `products()`; 9 since tax services, order adjusters and
-  `orderPrices()`.
+  `orderPrices()`; 10 since e-invoice senders.
 - `$registry->log()` writes to the shop's log. Never log secrets or card data.
 - Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
 
@@ -388,6 +388,19 @@ own rates and note it on the order, or ask the customer to try again (a provider
 
 Only orders your service taxed are committed to it; orders taxed at the shop's own rates, and prices that
 include tax, never reach it.
+
+## E-invoices
+
+When the shop makes e-invoices (Settings → Invoices: UBL as Peppol BIS Billing 3.0, or CII as XRechnung), each
+invoice and credit note is also an EN 16931 XML file: downloaded from its page (`&format=xml`), and on the
+customer's emails next to the PDF. Version 10 lets an add-on send them on, through a Peppol access point or a
+country's own platform: register an `OrillaCart\Extension\Invoice\EInvoiceSender` with
+`$registry->eInvoiceSender()`.
+
+- `send(EInvoiceFile)`: a document was issued (an order paid, money given back). The file has its number, kind
+  (`invoice` or `credit_note`), the order, the format, the file name and the XML, and the buyer's email, country,
+  tax number and own reference to find the recipient. It runs as a background job (lane `invoices`), one for each
+  sender, and is tried again when it throws.
 
 ## Mailing lists
 

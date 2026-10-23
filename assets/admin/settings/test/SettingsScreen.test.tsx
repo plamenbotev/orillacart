@@ -126,6 +126,7 @@ function serve( save?: () => Promise< unknown > ) {
 				credit_note_prefix: 'CN-',
 				yearly: true,
 				attach_to_emails: true,
+				e_invoices: 'none',
 			} );
 		}
 		if ( path === '/orillacart/v1/storefront-settings' ) {

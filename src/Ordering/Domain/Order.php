@@ -182,6 +182,10 @@ class Order
     #[ORM\Column(type: 'decimal', precision: 18, scale: 8, nullable: true)]
     private ?string $exchangeRate = null;
 
+    /** The business customer's own reference for the order (a purchase order number, a Leitweg-ID). */
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $buyerReference = null;
+
     /** The tax service's own reference of the sale, once it recorded it. */
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $taxReference = null;
@@ -261,6 +265,8 @@ class Order
         $this->taxProvider = $draft->taxProvider === null ? null : mb_substr($draft->taxProvider, 0, 40);
         $this->importScheme = $draft->importScheme === null ? null : mb_substr($draft->importScheme, 0, 10);
         $this->importNumber = $draft->importScheme === null || $draft->importNumber === null ? null : mb_substr($draft->importNumber, 0, 20);
+        $reference = $draft->buyerReference === null ? '' : trim((string) preg_replace('/[\x00-\x1F<>]/u', '', $draft->buyerReference));
+        $this->buyerReference = $reference === '' ? null : mb_substr($reference, 0, 100);
         if ($draft->shopCurrency !== null && $draft->exchangeRate !== null && $draft->shopCurrency !== $draft->currency) {
             if (preg_match('/^[A-Z]{3}$/', $draft->shopCurrency) !== 1 || preg_match('/^\d{1,10}(\.\d{1,8})?$/', $draft->exchangeRate) !== 1 || (float) $draft->exchangeRate <= 0) {
                 throw new OrderRuleViolation('An exchange rate is a positive number with up to eight decimals.', 'orillacart_invalid_exchange_rate');
@@ -446,6 +452,11 @@ class Order
     public function taxExemption(): ?array
     {
         return $this->taxExemption;
+    }
+
+    public function buyerReference(): ?string
+    {
+        return $this->buyerReference;
     }
 
     public function shopCurrency(): ?string

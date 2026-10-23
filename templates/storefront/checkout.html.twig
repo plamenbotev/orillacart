@@ -57,6 +57,11 @@
                         <input id="orillacart-vat-number" type="text" name="vat_number" maxlength="20" autocomplete="off" data-orillacart-field="vat_number" aria-describedby="orillacart-vat-help">
                         <small id="orillacart-vat-help">{{ __('It goes on your invoice. Businesses in another EU country with a valid VAT number buy without VAT.') }}</small>
                     </p>
+                    <p class="orillacart-field">
+                        <label for="orillacart-buyer-reference">{{ __('Your reference (businesses)') }}</label>
+                        <input id="orillacart-buyer-reference" type="text" name="buyer_reference" maxlength="100" autocomplete="off" aria-describedby="orillacart-buyer-reference-help">
+                        <small id="orillacart-buyer-reference-help">{{ __('Optional: your purchase order number, or the Leitweg-ID of a German public body. It goes on your invoice.') }}</small>
+                    </p>
                 {% endif %}
                 {{ shop.extra_fields(summary.fields, 'billing') }}
                 {{ slot('checkout_after_billing') }}

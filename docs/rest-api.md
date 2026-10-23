@@ -358,6 +358,7 @@ The change log, newest first: ?area=payment-methods&user_id=1&page=2.
   - `pickup_point` (string|null): at most 64 characters
   - `fields` (array): at most 100 items
   - `vat_number` (string|null): at most 20 characters
+  - `buyer_reference` (string|null): at most 100 characters; matches `/^[^\x00-\x1F<>]*$/`
   - `expected_total` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
   - `delivery_date` (string|null): a date, Y-m-d
   - `delivery_slot` (string|null): at most 40 characters
@@ -899,6 +900,7 @@ The newest import, or null: the screen shows what came of it.
   - `credit_note_prefix` (string): matches `/^[A-Za-z0-9\/._-]{0,20}$/`; default 'CN-'
   - `yearly` (bool): default true
   - `attach_to_emails` (bool): default true
+  - `e_invoices` (string): one of none, ubl, cii; default 'none'
 
 ## /jobs
 
