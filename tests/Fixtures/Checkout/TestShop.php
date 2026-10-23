@@ -140,6 +140,7 @@ use OrillaCart\Shipping\Infrastructure\Events\KeepShippedOrders;
 use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Application\TaxExemptions;
 use OrillaCart\Tax\Application\TaxGroupService;
+use OrillaCart\Tax\Application\TaxServices;
 use OrillaCart\Tax\Application\VatNumbers;
 use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxSettings;
@@ -308,6 +309,7 @@ final class TestShop
     public readonly InMemorySentEmails $sentEmails;
     public readonly InMemoryAccounts $accounts;
     public readonly TaxExemptions $taxExemptions;
+    public readonly TaxServices $taxServices;
     public readonly InMemoryPendingAccounts $pendingAccounts;
     public readonly RecordingAccountMail $accountMail;
     public readonly PaymentOptions $paymentOptions;
@@ -447,7 +449,8 @@ final class TestShop
         $this->events->addListener(OrderPaid::class, $withGiftCards->paid(...));
         $this->paymentOptions = $paymentOptions = new PaymentOptions($methodRecords, $gateways, $settings);
         $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
-        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies);
+        $this->taxServices = new TaxServices($this->taxSettings, $extensions, $this->logger, $this->failures);
+        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts);
         $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures);
         $this->checkout = new CheckoutService(

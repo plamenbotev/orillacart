@@ -22,6 +22,7 @@ use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tax\Application\TaxSettingsService;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryAccounts;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
+use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
@@ -52,7 +53,7 @@ final class TaxCalculatorTest extends TestCase
         $service->addRate($this->standard, new SaveTaxRate('DE', null, '19', 'MwSt'));
         $service->addRate($this->reduced, new SaveTaxRate('BG', null, '9', 'VAT'));
 
-        $this->settings = new TaxSettingsService($taxSettings, $groups);
+        $this->settings = new TaxSettingsService($taxSettings, $groups, new FixedExtensions());
         $this->calculator = new TaxCalculator($groups, $taxSettings, new SettingsService($shop, new RecordingDispatcher(), $geography), $geography, new TaxExemptions(new InMemoryTaxExemptionRepository(), new InMemoryAccounts(), new MockClock()));
     }
 
@@ -69,7 +70,7 @@ final class TaxCalculatorTest extends TestCase
         $service->addRate($group, new SaveTaxRate('US', 'TX', '2', 'Austin', postcodes: ['787*'], code: 'TX-2227013'));
         $service->addRate($group, new SaveTaxRate('US', 'TX', '1', 'Houston', postcodes: ['770*']));
         $service->addRate($group, new SaveTaxRate('US', 'CA', '7.25', 'California'));
-        $settings = new TaxSettingsService($taxSettings, $groups);
+        $settings = new TaxSettingsService($taxSettings, $groups, new FixedExtensions());
         $calculator = new TaxCalculator($groups, $taxSettings, new SettingsService($shop, new RecordingDispatcher(), $geography), $geography, new TaxExemptions(new InMemoryTaxExemptionRepository(), new InMemoryAccounts(), new MockClock()));
         $houston = new TaxQuery($group, new TaxAddress('US', 'TX', '77002'));
         $california = new TaxQuery($group, new TaxAddress('US', 'CA', '90001'));

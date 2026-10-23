@@ -63,6 +63,9 @@ function serve( write: ( request: Request ) => Promise< unknown > ) {
 					reverse_charge: false,
 					rounds_each_line: false,
 					origin_regions: [],
+					provider: null,
+					when_provider_fails: 'shop_rates',
+					providers: [],
 					bases: [
 						'shipping_address',
 						'billing_address',
@@ -115,7 +118,11 @@ describe( 'TaxScreen', () => {
 
 	it( 'saves the basis and the default group', async () => {
 		const write = jest.fn( ( request: Request ) =>
-			Promise.resolve( { ...( request.data as object ), bases: [] } )
+			Promise.resolve( {
+				...( request.data as object ),
+				bases: [],
+				providers: [],
+			} )
 		);
 		serve( write );
 		const user = userEvent.setup();
@@ -149,6 +156,8 @@ describe( 'TaxScreen', () => {
 				reverse_charge: false,
 				rounds_each_line: false,
 				origin_regions: [],
+				provider: null,
+				when_provider_fails: 'shop_rates',
 			},
 		} );
 		expect( screen.queryByText( untaxed, NOTICE ) ).toBeNull();

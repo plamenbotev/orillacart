@@ -120,6 +120,7 @@ final readonly class OrderService
             $command->locale,
             $command->deliveryDate === null ? null : new DeliveryChoice(new \DateTimeImmutable($command->deliveryDate), $command->deliverySlot, $command->deliveryKey),
             $command->taxExemption,
+            $command->taxProvider,
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);
@@ -208,6 +209,21 @@ final readonly class OrderService
         }
 
         return $this->view($order);
+    }
+
+    /**
+     * A tax service recorded the order's sale under its reference, for later refunds.
+     *
+     * @throws OrderNotFound
+     */
+    public function taxRecorded(int $number, string $provider, string $reference): void
+    {
+        $this->transactions->run(function () use ($number, $provider, $reference): void {
+            $order = $this->orders->find($number, true) ?? throw new OrderNotFound();
+            $order->taxRecorded($provider, $reference);
+            $order->addNote(\sprintf('The tax service %s recorded the sale as %s.', $provider, $reference), NoteAuthor::System, false, $this->clock->now());
+            $this->orders->save($order);
+        });
     }
 
     /**

@@ -22,6 +22,10 @@ use OrillaCart\Coupons\Application\Dto\DiscountItem;
 use OrillaCart\Coupons\Application\Dto\DiscountRequest;
 use OrillaCart\Extension\Checkout\FeeItem;
 use OrillaCart\Extension\Checkout\FeeQuery;
+use OrillaCart\Extension\Tax\TaxAddress as ExtensionTaxAddress;
+use OrillaCart\Extension\Tax\TaxLine;
+use OrillaCart\Extension\Tax\TaxRequest;
+use OrillaCart\Extension\Tax\TaxRequestLine;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockService;
@@ -45,8 +49,12 @@ use OrillaCart\Shipping\Application\Dto\ShippingQuery;
 use OrillaCart\Shipping\Application\ShippingQuotes;
 use OrillaCart\Tax\Application\Dto\AppliedTaxView;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
+use OrillaCart\Tax\Application\Dto\TaxExemptionView;
 use OrillaCart\Tax\Application\Dto\TaxQuery;
 use OrillaCart\Tax\Application\TaxCalculator;
+use OrillaCart\Tax\Application\TaxServices;
+use OrillaCart\Tax\Application\TaxServiceUnavailable;
+use Psr\Clock\ClockInterface;
 
 /**
  * Prices items as an order: catalog prices, taxes at the customer's address, shipping, fees and the bill; and turns
@@ -69,6 +77,8 @@ final readonly class OrderPricing
         private Discounts $discounts,
         private OrderFees $fees,
         private Currencies $currencies,
+        private TaxServices $taxServices,
+        private ClockInterface $clock,
     ) {}
 
     /**
@@ -139,6 +149,8 @@ final readonly class OrderPricing
         // A customer's exemption covers the sale where it is taxed: the rates still apply, at nothing.
         $exemption = $reverseCharge ? null : $this->tax->exemption($customerId, $shipping, $billing);
         $exempt = $exemption !== null;
+        /** @var list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string}> $asked */
+        $asked = [];
         $lines = [];
         $parcel = [];
         $taxesOf = [];
@@ -167,11 +179,11 @@ final readonly class OrderPricing
                     // A price including tax, for a customer who owes none (an export): the shop's own tax comes off.
                     $unit = Tax::without($unit, $this->shopTaxes($groupId));
                 }
-                $parts[] = ['unit' => $unit, 'taxes' => $taxes];
+                $parts[] = ['unit' => $unit, 'taxes' => $taxes, 'group' => $groupId];
             }
             $unitPrice = (string) array_reduce($parts, static fn(Money $sum, array $part): Money => $sum->add($part['unit']), Money::zero());
             $total = Money::of($unitPrice)->times($line['quantity']);
-            $taxesOf[] = array_map(static fn(array $part): array => ['total' => $part['unit']->times($line['quantity']), 'taxes' => $part['taxes']], $parts);
+            $taxesOf[] = array_map(static fn(array $part): array => ['total' => $part['unit']->times($line['quantity']), 'taxes' => $part['taxes'], 'group' => $part['group']], $parts);
             $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero(), 'places' => [], 'gift' => $line['gift'] ?? false, 'personalisation' => $line['personalisation'] ?? []];
             if ($quote->type === 'physical') {
                 $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
@@ -192,8 +204,9 @@ final readonly class OrderPricing
             $lines[$index]['discount'] = array_reduce($couponLines, static fn(Money $sum, array $taken): Money => $sum->add($taken[$index]), Money::zero());
             $parts = $taxesOf[$index];
             $discountShares = self::shares($lines[$index]['discount'], array_map(static fn(array $part): Money => $part['total'], $parts));
-            foreach ($parts as $part => ['total' => $partTotal, 'taxes' => $taxes]) {
+            foreach ($parts as $part => ['total' => $partTotal, 'taxes' => $taxes, 'group' => $groupId]) {
                 $places[$index][] = $bill->addItem($partTotal, $taxes, $discountShares[$part], $line['quote']->name);
+                $asked[] = ['kind' => TaxRequestLine::ITEM, 'code' => $groupId, 'quantity' => $line['quantity'], 'product' => $line['quote']->productId, 'sku' => $line['quote']->sku];
             }
         }
         $lineTaxes = $bill->lineTaxes();
@@ -227,11 +240,12 @@ final readonly class OrderPricing
                 $options[] = $view;
                 // The customer's choice when it is offered, otherwise the first rate, so the totals include shipping.
                 if ($chosen === null || $option->id === $shippingOption) {
-                    $chosen = $chosen !== null && $chosen['view']->id === $shippingOption ? $chosen : ['view' => $view, 'price' => $price, 'taxes' => $taxes];
+                    $chosen = $chosen !== null && $chosen['view']->id === $shippingOption ? $chosen : ['view' => $view, 'price' => $price, 'taxes' => $taxes, 'group' => $option->taxGroupId, 'free' => $free || !$option->taxable];
                 }
             }
             if ($chosen !== null) {
                 $bill->ship($chosen['price'], $chosen['taxes'], "{$chosen['view']->carrier} – {$chosen['view']->name}");
+                $asked[] = ['kind' => TaxRequestLine::SHIPPING, 'code' => $chosen['free'] ? 'none' : $chosen['group'], 'quantity' => 1, 'product' => null, 'sku' => null];
             }
         }
         if ($lines !== []) {
@@ -246,7 +260,10 @@ final readonly class OrderPricing
                 $needsShipping ? $shipping?->country : $billing?->country,
                 $customerId,
                 $settings->currency,
-            ), $shipping, $billing, $reverseCharge, $currency, $exempt);
+            ), $shipping, $billing, $reverseCharge, $currency, $exempt, $asked);
+            if (!$inclusive && !$reverseCharge) {
+                $this->provideTaxes($bill, $asked, $shipping ?? $billing, $currency, $customerId, $exemption, $orderId);
+            }
         }
 
         return ['exemption' => $exemption === null ? null : ['reason' => $exemption->reason, 'certificate' => $exemption->certificate], 'lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
@@ -255,7 +272,11 @@ final readonly class OrderPricing
     /**
      * Adds the order's fees to the bill, taxed as items of their tax group are.
      */
-    private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge, string $currency, bool $exempt = false): void
+    /**
+     * @param list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string}> $asked
+     *        what each charge is, for a tax service, in the bill's order; the fees are added to it
+     */
+    private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge, string $currency, bool $exempt = false, array &$asked = []): void
     {
         foreach ($this->fees->of($query) as $fee) {
             $taxes = $fee['taxable'] && !$reverseCharge ? $this->taxes($fee['tax_group_id'], $shipping, $billing, $exempt) : [];
@@ -264,7 +285,60 @@ final readonly class OrderPricing
                 $amount = Tax::without($amount, $this->shopTaxes($fee['tax_group_id']));
             }
             $bill->addFee($fee['label'], $amount, $taxes);
+            $asked[] = ['kind' => TaxRequestLine::FEE, 'code' => $fee['taxable'] ? $fee['tax_group_id'] : 'none', 'quantity' => 1, 'product' => null, 'sku' => null];
         }
+    }
+
+    /**
+     * Asks the shop's tax service, when it chose one, for the tax of every charge; its taxes stand in for the
+     * shop's rates. Without an answer the shop's rates stay, or checkout is refused, as the shop chose.
+     *
+     * @param list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string}> $asked
+     *
+     * @throws TaxServiceUnavailable
+     */
+    private function provideTaxes(Bill $bill, array $asked, ?TaxAddress $to, string $currency, ?int $customerId, ?TaxExemptionView $exemption, ?int $orderId): void
+    {
+        if ($this->taxServices->active() === null || $to?->country === null) {
+            return;
+        }
+        $charges = $bill->charges();
+        $lines = [];
+        $counts = [];
+        foreach ($charges as $index => $charge) {
+            $what = $asked[$index] ?? ['kind' => $charge->kind, 'code' => null, 'quantity' => 1, 'product' => null, 'sku' => null];
+            $number = $counts[$charge->kind] = ($counts[$charge->kind] ?? -1) + 1;
+            $lines[] = new TaxRequestLine(
+                $charge->kind === BilledCharge::SHIPPING ? 'shipping' : "{$charge->kind}:{$number}",
+                $charge->kind,
+                $charge->label,
+                $what['code'] === null ? null : (string) $what['code'],
+                $what['quantity'],
+                (string) $charge->amount,
+                $what['product'],
+                $what['sku'],
+            );
+        }
+        $shop = $this->settings->current();
+        $result = $this->taxServices->quote(new TaxRequest(
+            $currency,
+            $this->clock->now()->format('Y-m-d'),
+            new ExtensionTaxAddress($shop->shopCountry ?? '', $shop->shopState, $shop->shopPostcode ?? ''),
+            new ExtensionTaxAddress($to->country, $to->state, $to->postcode ?? '', $to->city ?? '', $to->street ?? ''),
+            $lines,
+            $customerId,
+            $exemption?->certificate,
+            $exemption?->reason,
+            $orderId,
+        ));
+        if ($result === null) {
+            return;
+        }
+        $bill->provide(array_map(static fn(TaxRequestLine $line): array => array_map(static fn(TaxLine $tax): ChargedTax => new ChargedTax(
+            new Tax("{$tax->code}|{$tax->percent}", $tax->name, $tax->percent, false, new TaxJurisdiction($tax->country, $tax->region, $tax->level, $tax->code, $tax->jurisdiction), $tax->exempt),
+            Money::of($tax->taxable),
+            Money::of($tax->amount),
+        ), $result->lines[$line->id] ?? []), $lines));
     }
 
     /**
@@ -448,6 +522,16 @@ final readonly class OrderPricing
     public function exemption(array $priced): ?array
     {
         return $priced['exemption'];
+    }
+
+    /**
+     * The tax service that worked out the order's taxes, by its id; null when the shop's own rates did.
+     *
+     * @param Priced $priced
+     */
+    public function taxProvider(array $priced): ?string
+    {
+        return $priced['bill']->isProvided() ? $this->taxServices->active()?->id() : null;
     }
 
     /**

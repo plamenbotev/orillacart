@@ -38,12 +38,24 @@ final readonly class OptionTaxSettingsRepository implements TaxSettingsRepositor
         $regions = $stored['origin_regions'] ?? [];
         $regions = \is_array($regions) ? array_values(array_filter($regions, static fn(mixed $region): bool => \is_string($region) && preg_match(TaxSettings::REGION, $region) === 1)) : [];
 
-        return new TaxSettings($basis, $group, ($stored['prices_include_tax'] ?? false) === true, ($stored['reverse_charge'] ?? false) === true, ($stored['rounds_each_line'] ?? false) === true, $regions);
+        $provider = $stored['provider'] ?? null;
+        $fails = $stored['when_provider_fails'] ?? TaxSettings::SHOP_RATES;
+
+        return new TaxSettings(
+            $basis,
+            $group,
+            ($stored['prices_include_tax'] ?? false) === true,
+            ($stored['reverse_charge'] ?? false) === true,
+            ($stored['rounds_each_line'] ?? false) === true,
+            $regions,
+            \is_string($provider) && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $provider) === 1 ? $provider : null,
+            $fails === TaxSettings::REFUSE ? TaxSettings::REFUSE : TaxSettings::SHOP_RATES,
+        );
     }
 
     public function save(TaxSettings $settings): void
     {
-        update_option(self::OPTION, ['basis' => $settings->basis->value, 'default_group_id' => $settings->defaultGroupId, 'prices_include_tax' => $settings->pricesIncludeTax, 'reverse_charge' => $settings->reverseCharge, 'rounds_each_line' => $settings->roundsEachLine, 'origin_regions' => $settings->originRegions], true);
+        update_option(self::OPTION, ['basis' => $settings->basis->value, 'default_group_id' => $settings->defaultGroupId, 'prices_include_tax' => $settings->pricesIncludeTax, 'reverse_charge' => $settings->reverseCharge, 'rounds_each_line' => $settings->roundsEachLine, 'origin_regions' => $settings->originRegions, 'provider' => $settings->provider, 'when_provider_fails' => $settings->whenProviderFails], true);
     }
 
     public function activate(): void {}

@@ -24,6 +24,7 @@ use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Registry;
 use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Extension\Tax\TaxProvider;
 use OrillaCart\Extension\Version;
 use OrillaCart\Ordering\Application\OrderSummaries;
 use OrillaCart\Shared\Extension\InstalledExtensions;
@@ -72,6 +73,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $productFilters = [];
     /** @var array<string, FindsProducts> */
     private array $productSearches = [];
+    /** @var array<string, TaxProvider> */
+    private array $taxProviders = [];
     private bool $collected = false;
     private bool $collecting = false;
 
@@ -200,6 +203,13 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         }
     }
 
+    public function taxProvider(TaxProvider $provider): void
+    {
+        if ($this->accepts('tax provider', $provider->id(), $this->taxProviders[$provider->id()] ?? null, $provider)) {
+            $this->taxProviders[$provider->id()] = $provider;
+        }
+    }
+
     public function orders(): Orders
     {
         return ($this->orders)();
@@ -318,6 +328,13 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->productSearches);
+    }
+
+    public function taxProviders(): array
+    {
+        $this->collect();
+
+        return array_values($this->taxProviders);
     }
 
     /**

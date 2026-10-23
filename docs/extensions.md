@@ -27,7 +27,7 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
 - `$registry->version()` is the API's version (`OrillaCart\Extension\Version`): 2 since price adjusters, cart
   rules, checkout fields, order actions and `orders()` came; 4 since export columns; 5 since order fees and
   address checks; 6 since mailing lists; 7 since the answers to product forms on order lines; 8 since filters and
-  searches of the orders and products lists, and `products()`.
+  searches of the orders and products lists, and `products()`; 9 since tax services.
 - `$registry->log()` writes to the shop's log. Never log secrets or card data.
 - Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
 
@@ -334,6 +334,32 @@ if ($registry->version() >= 8) {
     });
 }
 ```
+
+## Tax services
+
+Version 9 lets an add-on work out the shop's taxes with a tax service (Avalara, TaxJar, Stripe Tax, Vertex),
+as shops selling across US states need: rates below the state (counties, cities, districts) follow street
+addresses, not postcodes. Register an `OrillaCart\Extension\Tax\TaxProvider` with `$registry->taxProvider()`;
+the shop manager chooses it in Shop → Tax, and what checkout does when it cannot be reached: tax at the shop's
+own rates and note it on the order, or ask the customer to try again (a provider that implements
+`FailsClosed` always refuses).
+
+- `quote(TaxRequest)`: checkout, manual and edited orders ask for the tax of every line, the items, the shipping
+  and each fee (`TaxRequestLine`: an id such as `item:0`, `shipping` or `fee:1`, its kind, the shop's tax group
+  id as `taxCode`, the quantity and what it costs before tax after its discounts). The request has the ship-from
+  and ship-to addresses (street and city once the customer typed them), the customer, their exemption
+  certificate when the shop has one on file, and the order being edited. Answer a `TaxResult` of `TaxLine`s by
+  line id: each rate's name, percent, jurisdiction (country, region, level, the code returns are filed under,
+  its name), what it was charged on, the amount, and `exempt` for a rate the exemption covers (amount 0). The
+  shop asks once per request for the same lines; answers it cannot use (unknown lines, numbers that are not,
+  tax below zero) count as a failure.
+- `commit(TaxedOrder)`: the order was paid; record the sale with the taxes it charged and return your reference,
+  which the order keeps. `refund(TaxedOrder, TaxRefund)` reports the tax inside money given back, and
+  `void(TaxedOrder)` a recorded order cancelled. They run as background jobs (lane `tax`) and are tried again
+  when they throw.
+
+Only orders your service taxed are committed to it; orders taxed at the shop's own rates, and prices that
+include tax, never reach it.
 
 ## Mailing lists
 

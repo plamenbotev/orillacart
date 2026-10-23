@@ -13,5 +13,8 @@ final readonly class TaxAddress
         public ?string $country,
         public ?string $state = null,
         public ?string $postcode = null,
+        /** For tax services, which rate the street address. */
+        public ?string $city = null,
+        public ?string $street = null,
     ) {}
 }

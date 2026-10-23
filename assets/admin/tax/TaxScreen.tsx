@@ -185,6 +185,10 @@ function SettingsCard( {
 		settings.reverse_charge
 	);
 	const [ eachLine, setEachLine ] = useState( settings.rounds_each_line );
+	const [ provider, setProvider ] = useState( settings.provider );
+	const [ whenFails, setWhenFails ] = useState(
+		settings.when_provider_fails
+	);
 	const [ originRegions, setOriginRegions ] = useState(
 		settings.origin_regions.join( ', ' )
 	);
@@ -202,6 +206,8 @@ function SettingsCard( {
 				reverseCharge,
 				eachLine,
 				regions.join( ',' ),
+				provider,
+				whenFails,
 			],
 			[
 				settings.basis,
@@ -210,6 +216,8 @@ function SettingsCard( {
 				settings.reverse_charge,
 				settings.rounds_each_line,
 				settings.origin_regions.join( ',' ),
+				settings.provider,
+				settings.when_provider_fails,
 			]
 		)
 	);
@@ -224,6 +232,8 @@ function SettingsCard( {
 			reverse_charge: reverseCharge,
 			rounds_each_line: eachLine,
 			origin_regions: regions,
+			provider,
+			when_provider_fails: whenFails,
 		} )
 			.then( onSaved )
 			.catch( onError )
@@ -338,6 +348,74 @@ function SettingsCard( {
 						value={ originRegions }
 						onChange={ setOriginRegions }
 					/>
+					{ ( settings.providers.length > 0 ||
+						settings.provider !== null ) && (
+						<>
+							<SelectControl
+								__next40pxDefaultSize
+								label={ __(
+									'Taxes worked out by',
+									'orillacart'
+								) }
+								help={ __(
+									'A tax service rates every line by the street address and records the sales for the returns it files. Your own rates are used otherwise.',
+									'orillacart'
+								) }
+								value={ provider ?? '' }
+								options={ [
+									{
+										label: __(
+											'Your own rates',
+											'orillacart'
+										),
+										value: '',
+									},
+									...settings.providers.map(
+										( offered ) => ( {
+											label: offered.label,
+											value: offered.id,
+										} )
+									),
+								] }
+								onChange={ ( value ) =>
+									setProvider( value === '' ? null : value )
+								}
+							/>
+							{ provider !== null && (
+								<SelectControl
+									__next40pxDefaultSize
+									label={ __(
+										'When the tax service cannot be reached',
+										'orillacart'
+									) }
+									value={ whenFails }
+									options={ [
+										{
+											label: __(
+												'Tax at your own rates, and note it on the order',
+												'orillacart'
+											),
+											value: 'shop_rates',
+										},
+										{
+											label: __(
+												'Ask the customer to try again',
+												'orillacart'
+											),
+											value: 'refuse',
+										},
+									] }
+									onChange={ ( value ) =>
+										setWhenFails(
+											value === 'refuse'
+												? 'refuse'
+												: 'shop_rates'
+										)
+									}
+								/>
+							) }
+						</>
+					) }
 					<CheckboxControl
 						label={ __(
 							'Round the tax of each line',

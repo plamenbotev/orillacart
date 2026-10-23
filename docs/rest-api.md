@@ -1936,6 +1936,8 @@ Fills a tax group with the standard VAT rate of every EU country it has none for
   - `reverse_charge` (bool): default false
   - `rounds_each_line` (bool): default false
   - `origin_regions` (array): at most 100 items
+  - `provider` (string|null): matches `/^[a-z][a-z0-9_]{0,39}$/`
+  - `when_provider_fails` (string): one of shop_rates, refuse; default 'shop_rates'
 
 ## /webhooks
 

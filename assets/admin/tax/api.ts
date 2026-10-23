@@ -39,9 +39,15 @@ export interface TaxSettings {
 	rounds_each_line: boolean;
 	/** Regions ("US-TX") taxing sales within them at the seller's address. */
 	origin_regions: string[];
+	/** The tax service working out the taxes, by its id; null for the shop's own rates. */
+	provider: string | null;
+	/** When the service cannot be reached at checkout: tax at the shop's rates, or refuse the order. */
+	when_provider_fails: 'shop_rates' | 'refuse';
+	/** The tax services add-ons offer. */
+	providers: { id: string; label: string }[];
 }
 
-export type TaxSettingsInput = Omit< TaxSettings, 'bases' >;
+export type TaxSettingsInput = Omit< TaxSettings, 'bases' | 'providers' >;
 
 const BASE = '/orillacart/v1/tax';
 

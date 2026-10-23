@@ -387,8 +387,8 @@ final readonly class CheckoutService
         $contents = $this->contents($owner);
         $billingAddress = $this->addresses->require($command->billing, 'billing');
         $shippingAddress = $command->shippingAddress === null ? $billingAddress : $this->addresses->require($command->shippingAddress, 'shipping');
-        $billingTax = new TaxAddress($billingAddress->country, $billingAddress->state, $billingAddress->postcode);
-        $shippingTax = new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode);
+        $billingTax = new TaxAddress($billingAddress->country, $billingAddress->state, $billingAddress->postcode, $billingAddress->city, $billingAddress->street);
+        $shippingTax = new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode, $shippingAddress->city, $shippingAddress->street);
 
         $reverse = $this->vatNumbers->reverseCharge($billingAddress->country, $command->vatNumber);
         $currency = $this->currencies->current();
@@ -459,6 +459,7 @@ final readonly class CheckoutService
             $delivery?->slot,
             $delivery?->key,
             $this->pricing->exemption($priced),
+            $this->pricing->taxProvider($priced),
         )), $gateway === null)));
         foreach ([...$this->failures->since($failed), ...$this->addressChecks->kept($billingAddress, $priced['needs_shipping'] && $command->shippingAddress !== null ? $shippingAddress : null)] as $failure) {
             $this->orders->note($order->number, $failure, false);

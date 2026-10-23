@@ -33,13 +33,25 @@ final readonly class TaxSettings
          * @var list<string>
          */
         public array $originRegions = [],
+        /** The tax service working out the taxes, by its id; null for the shop's own rates. */
+        public ?string $provider = null,
+        /** When the service cannot be reached at checkout: SHOP_RATES to tax at the shop's own rates, or REFUSE. */
+        public string $whenProviderFails = self::SHOP_RATES,
     ) {
+        if (!\in_array($whenProviderFails, [self::SHOP_RATES, self::REFUSE], true)) {
+            throw new RuleViolation('Choose what checkout does when the tax service cannot be reached.', 'orillacart_invalid_tax_settings');
+        }
         foreach ($originRegions as $region) {
             if (preg_match(self::REGION, $region) !== 1) {
                 throw new RuleViolation(\sprintf('"%s" is not a region: a country and a state code, such as US-TX.', $region), 'orillacart_invalid_region');
             }
         }
     }
+
+    /** The order is taxed at the shop's own rates, and the shop is told. */
+    public const string SHOP_RATES = 'shop_rates';
+    /** Checkout asks the customer to try again: no order goes out with tax the service did not work out. */
+    public const string REFUSE = 'refuse';
 
     /** A country's code and one of its states': "US-TX". */
     public const string REGION = '/^[A-Z]{2}-[A-Z0-9]{1,3}$/';
@@ -67,6 +79,7 @@ final readonly class TaxSettings
     public function equals(self $other): bool
     {
         return $this->basis === $other->basis && $this->defaultGroupId === $other->defaultGroupId && $this->pricesIncludeTax === $other->pricesIncludeTax
-            && $this->reverseCharge === $other->reverseCharge && $this->roundsEachLine === $other->roundsEachLine && $this->originRegions === $other->originRegions;
+            && $this->reverseCharge === $other->reverseCharge && $this->roundsEachLine === $other->roundsEachLine && $this->originRegions === $other->originRegions
+            && $this->provider === $other->provider && $this->whenProviderFails === $other->whenProviderFails;
     }
 }

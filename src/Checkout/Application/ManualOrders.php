@@ -107,8 +107,8 @@ final readonly class ManualOrders
         $order = $this->transactions->run(function () use ($command, $billingAddress, $shippingAddress, $currency, $userId, $failed): OrderView {
             $priced = $this->pricing->price(
                 self::items($command->items),
-                new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode),
-                new TaxAddress($billingAddress->country, $billingAddress->state, $billingAddress->postcode),
+                new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode, $shippingAddress->city, $shippingAddress->street),
+                new TaxAddress($billingAddress->country, $billingAddress->state, $billingAddress->postcode, $billingAddress->city, $billingAddress->street),
                 $command->shippingOption,
                 $shippingAddress->postcode,
                 [],
@@ -141,6 +141,7 @@ final readonly class ManualOrders
                 [],
                 $bill->includesTax(),
                 taxExemption: $this->pricing->exemption($priced),
+                taxProvider: $this->pricing->taxProvider($priced),
             ));
             // The shop's automatic discounts count their uses as at checkout; the shop enters no codes.
             $this->discounts->redeem($order->number, $priced['discounts']->coupons, $command->customerId, $command->email);

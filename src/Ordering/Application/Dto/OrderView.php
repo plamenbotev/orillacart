@@ -101,6 +101,10 @@ final readonly class OrderView
         public string $tax = '0',
         /** @var array{reason: string, certificate: string}|null the customer's exemption from tax that covered it */
         public ?array $taxExemption = null,
+        /** The tax service that worked out its taxes; null for the shop's own rates. */
+        public ?string $taxProvider = null,
+        /** The tax service's reference of the sale, once it recorded it. */
+        public ?string $taxReference = null,
     ) {}
 
     /**
@@ -168,6 +172,8 @@ final readonly class OrderView
             array_map(OrderLineView::fromLine(...), array_values(array_filter($order->allLines(), static fn(OrderLine $line): bool => !$line->isItem()))),
             (string) $order->tax(),
             $order->taxExemption(),
+            $order->taxProvider(),
+            $order->taxReference(),
         );
     }
 }

@@ -19,6 +19,7 @@ use OrillaCart\Extension\Order\OrderFilter;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Extension\Tax\TaxProvider;
 
 /**
  * What the shop has through the extension API: its own payment gateways and those add-ons registered, and the
@@ -101,4 +102,9 @@ interface InstalledExtensions
      * @return list<FindsProducts>
      */
     public function productSearches(): array;
+
+    /**
+     * @return list<TaxProvider>
+     */
+    public function taxProviders(): array;
 }

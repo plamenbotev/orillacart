@@ -45,6 +45,9 @@ final class Bill
      */
     private array $charges = [];
 
+    /** @var list<list<ChargedTax>>|null the taxes a tax service worked out, by charge, in place of the rates' */
+    private ?array $provided = null;
+
     public function __construct(
         private readonly int $decimals,
         private readonly bool $includesTax = false,
@@ -111,6 +114,26 @@ final class Bill
     }
 
     /**
+     * Taxes a tax service worked out take the place of the rates': each charge's, in the order charges() lists
+     * them. The bill's tax and total are theirs from then on.
+     *
+     * @param list<list<ChargedTax>> $taxes
+     */
+    public function provide(array $taxes): void
+    {
+        if (\count($taxes) !== \count($this->charges)) {
+            throw new \LogicException('A tax service names the taxes of every charge.');
+        }
+        $this->provided = $taxes;
+    }
+
+    /** Whether a tax service's taxes stand in for the rates'. */
+    public function isProvided(): bool
+    {
+        return $this->provided !== null;
+    }
+
+    /**
      * The charges with their taxes: the items in the order they were added, then the shipping, then the fees.
      *
      * @param string|null $kind only those of this kind
@@ -119,6 +142,17 @@ final class Bill
      */
     public function charges(?string $kind = null): array
     {
+        if ($this->provided !== null) {
+            $charges = [];
+            foreach ($this->order() as $place => $index) {
+                $charge = $this->charges[$index];
+                if ($kind === null || $kind === $charge['kind']) {
+                    $charges[] = new BilledCharge($charge['kind'], $charge['label'], $charge['amount'], $this->provided[$place]);
+                }
+            }
+
+            return $charges;
+        }
         $shares = [];
         foreach ([BilledCharge::ITEM, BilledCharge::SHIPPING, BilledCharge::FEE] as $of) {
             foreach (array_keys($this->bases) as $key) {
@@ -178,6 +212,26 @@ final class Bill
      */
     public function taxes(): array
     {
+        if ($this->provided !== null) {
+            $rates = [];
+            $sums = [];
+            foreach ($this->charges() as $charge) {
+                foreach ($charge->taxes as $tax) {
+                    $rates[$tax->tax->key] = $tax->tax;
+                    $sums[$tax->tax->key][$charge->kind] = ($sums[$tax->tax->key][$charge->kind] ?? Money::zero())->add($tax->amount);
+                }
+            }
+            $taxes = [];
+            foreach ($rates as $key => $rate) {
+                $of = static fn(string $kind): Money => $sums[$key][$kind] ?? Money::zero();
+                $billed = new BilledTax($rate->name, $rate->percent, $of(BilledCharge::ITEM), $of(BilledCharge::SHIPPING), $of(BilledCharge::FEE));
+                if (!$billed->total()->isZero()) {
+                    $taxes[] = $billed;
+                }
+            }
+
+            return $taxes;
+        }
         $taxes = [];
         foreach ($this->bases as $key => ['tax' => $tax]) {
             $billed = new BilledTax(
@@ -215,6 +269,25 @@ final class Bill
         $total = $this->subtotal()->subtract($this->discount())->add($this->shipping())->add($this->feesTotal());
 
         return $this->includesTax ? $total : $total->add($this->itemsTax())->add($this->shippingTax())->add($this->feesTax());
+    }
+
+    /**
+     * The charges' places among $this->charges, in the order charges() lists them: items, shipping, fees.
+     *
+     * @return list<int>
+     */
+    private function order(): array
+    {
+        $order = [];
+        foreach ([BilledCharge::ITEM, BilledCharge::SHIPPING, BilledCharge::FEE] as $kind) {
+            foreach ($this->charges as $index => $charge) {
+                if ($charge['kind'] === $kind) {
+                    $order[] = $index;
+                }
+            }
+        }
+
+        return $order;
     }
 
     /**

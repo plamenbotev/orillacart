@@ -26,5 +26,10 @@ final readonly class UpdateTaxSettings
         #[Assert\Count(max: 100)]
         #[Assert\All([new Assert\Type('string'), new Assert\Regex(TaxSettings::REGION, message: 'Use a country and a state code, such as US-TX.')])]
         public array $originRegions = [],
+        /** A tax service's id; null for the shop's own rates. */
+        #[Assert\Regex('/^[a-z][a-z0-9_]{0,39}$/')]
+        public ?string $provider = null,
+        #[Assert\Choice(choices: [TaxSettings::SHOP_RATES, TaxSettings::REFUSE])]
+        public string $whenProviderFails = TaxSettings::SHOP_RATES,
     ) {}
 }

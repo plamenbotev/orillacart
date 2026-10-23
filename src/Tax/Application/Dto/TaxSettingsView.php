@@ -21,10 +21,17 @@ final readonly class TaxSettingsView
         public bool $roundsEachLine = false,
         /** @var list<string> */
         public array $originRegions = [],
+        public ?string $provider = null,
+        public string $whenProviderFails = TaxSettings::SHOP_RATES,
+        /** @var list<array{id: string, label: string}> the tax services add-ons offer */
+        public array $providers = [],
     ) {}
 
-    public static function fromSettings(TaxSettings $settings): self
+    /**
+     * @param list<array{id: string, label: string}> $providers
+     */
+    public static function fromSettings(TaxSettings $settings, array $providers = []): self
     {
-        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine, $settings->originRegions);
+        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine, $settings->originRegions, $settings->provider, $settings->whenProviderFails, $providers);
     }
 }

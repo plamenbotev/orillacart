@@ -21,6 +21,7 @@ use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Extension\Tax\TaxProvider;
 
 /**
  * Where add-ons register what they bring. The shop passes it once per request, when it first needs something
@@ -80,6 +81,9 @@ interface Registry
 
     /** Finds products for the products list's search box by the add-on's own text. Since version 8. */
     public function productSearch(FindsProducts $search): void;
+
+    /** A tax service the shop manager may choose to work out and record the taxes. Since version 9. */
+    public function taxProvider(TaxProvider $provider): void;
 
     /** Reads the shop's orders, and marks them for order filters (since version 8). Since version 2. */
     public function orders(): Orders;

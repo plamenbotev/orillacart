@@ -38,5 +38,7 @@ final readonly class OrderDraft
         public ?string $locale = null,
         public ?DeliveryChoice $delivery = null,
         public ?array $taxExemption = null,
+        /** The tax service that worked out its taxes, by its id; null for the shop's own rates. */
+        public ?string $taxProvider = null,
     ) {}
 }

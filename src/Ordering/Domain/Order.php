@@ -238,6 +238,7 @@ class Order
         $this->deliveryKey = $draft->delivery?->key;
         $this->total = $draft->total->toFixed();
         $this->taxExemption = $draft->taxExemption;
+        $this->taxProvider = $draft->taxProvider === null ? null : mb_substr($draft->taxProvider, 0, 40);
         $this->currency = $draft->currency;
         $this->paymentGateway = $draft->paymentGateway;
         $this->paymentName = mb_substr($draft->paymentName, 0, 100);
