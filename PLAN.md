@@ -177,6 +177,15 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 | ✅ | 114 | P2 | Economic nexus: reported orders keep their state; Shop → Tax shows each US state's sales before tax and orders over the last twelve months, this calendar year and the last, against thresholds the shop keeps (every state, $100,000 to start, and states with their own), with those crossed and not collected first (GET /reports/nexus, GET/PUT /tax/nexus-thresholds) | 1590e7c |
 | ✅ | 115 | P2 | Exemptions at checkout: when the shop turns it on, a signed-in customer sends a certificate (reason, number, states, last day, a copy) at checkout or in their account; the copy is checked like other uploads and kept in the private files; the shop approves or refuses it on the customer's page and only approved ones exempt; emails to the shop when one comes, to the customer when it is checked and a month before it runs out | 3f1597d |
 | ✅ | 116 | P3 | Fewer calls to a tax service: its answer kept ten minutes in a transient by the service and the whole request, as plain values rebuilt and checked again when read | 1fcf01d |
+| ⬜ | 117 | P2 | Showing prices with or without tax (docs/designs/43-global-tax.md): in the shop and in the cart and checkout, whatever way they are entered, and a suffix such as "incl. VAT" with {price_including_tax}/{price_excluding_tax} | |
+| ⬜ | 118 | P2 | Prices with tax for a customer elsewhere: a setting, the same price everywhere (today) or the same price before tax (WooCommerce's default) | |
+| ⬜ | 119 | P2 | Shipping taxed like the items: a way to ship names a tax group or follows the items, its price shared out by the items' taxable amounts and each share taxed at its items' rates | |
+| ⬜ | 120 | P2 | Rates in bulk: cities and "not on shipping" on a rate; a group's rates imported and exported as CSV in WooCommerce's columns, every row checked before any is saved | |
+| ⬜ | 121 | P2 | The EU's €10,000 threshold: a shop in the EU sees its sales to consumers in other EU countries this year and last against the threshold, warned when crossed while taxes go by its address | |
+| ⬜ | 122 | P2 | Import schemes for low-value goods (IOSS, UK, Norway's VOEC, Australia, New Zealand): the shop's number and limit; under it the destination's rates are charged and invoices show the number, over it no tax and checkout says import charges may be due | |
+| ⬜ | 123 | P2 | Tax numbers outside the EU: business customers give a tax number for any country, its format and checksum checked (UK, CH, NO, AU, NZ, CA), kept on the order and the invoice; reverse charge stays for the EU | |
+| ⬜ | 124 | P2 | VAT in the seller's currency: an order keeps its exchange rate and an invoice in another currency also shows its taxes in the shop's | |
+| ⬜ | 125 | P2 | E-invoices: each invoice and credit note as EN 16931 XML, UBL (Peppol BIS 3.0) or CII (XRechnung), downloaded from the order and optionally attached to emails; the buyer's reference asked at checkout | |
 
 ## Waiting on others
 
