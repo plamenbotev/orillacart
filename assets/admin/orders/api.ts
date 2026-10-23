@@ -68,7 +68,9 @@ export interface LineTax {
 export interface Adjustment {
 	/** Null on a quote, before the order is saved. */
 	id: number | null;
-	kind: 'coupon' | 'automatic' | 'manual' | 'add_on';
+	kind: 'coupon' | 'automatic' | 'manual' | 'add_on' | 'adjuster';
+	/** The change it is a share of, the same on every line it was spread over; null for coupons. */
+	change: string | null;
 	/** The coupon's code, the add-on's id, or the shop manager's user id. */
 	source: string;
 	label: string;
@@ -204,6 +206,8 @@ export interface Order {
 	refundable?: string;
 	/** The shipping and the fees, as lines with their taxes and adjustments. */
 	charges?: OrderLine[];
+	/** The shop's and add-ons' changes to its price, each once. */
+	price_changes?: PriceChangeMade[];
 	/** All the tax charged: on the items, the shipping and the fees. */
 	tax?: string;
 	/** The customer's exemption from tax that covered the order. */
@@ -517,6 +521,22 @@ export function editItems(
 	} );
 }
 
+/** One change the shop or an add-on made to an order's price, once however many lines it was spread over. */
+export interface PriceChangeMade {
+	change: string;
+	kind: 'manual' | 'add_on' | 'adjuster';
+	/** The shop manager's user id, or the add-on's id. */
+	source: string;
+	label: string;
+	/** What all its shares add up to. */
+	amount: string;
+	/** The item's place among the order's items; null for the whole order. */
+	line: number | null;
+	reason: string | null;
+	/** An add-on's order adjuster works its own out again, so it cannot be taken off. */
+	removable: boolean;
+}
+
 /** A change to the price of an order on hold: below zero to lower it; `line` is an item's place, null for the whole order. */
 export interface PriceChange {
 	amount: string;
@@ -538,10 +558,10 @@ export function adjustPrice(
 
 export function removeAdjustment(
 	id: number,
-	adjustment: number
+	change: string
 ): Promise< Order > {
 	return apiFetch< Order >( {
-		path: `${ BASE }/orders/${ id }/adjustments/${ adjustment }`,
+		path: `${ BASE }/orders/${ id }/adjustments/${ change }`,
 		method: 'DELETE',
 	} );
 }

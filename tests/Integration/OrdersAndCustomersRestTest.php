@@ -163,9 +163,10 @@ final class OrdersAndCustomersRestTest extends RestTestCase
             self::assertSame(422, $this->request('POST', $path, $refused, nonce: true)->get_status(), (string) wp_json_encode($refused));
         }
 
-        $lines = $this->rows($raised['lines']);
-        $wrap = $this->rows($lines[1]['adjustments']);
-        $id = self::int(array_values(array_filter($wrap, static fn(array $adjustment): bool => $adjustment['label'] === 'Gift wrap'))[0]['id']);
+        $changes = $this->rows($raised['price_changes']);
+        self::assertSame([['Loyal customer', '-5', null, true], ['Gift wrap', '2.5', 1, true]], array_map(static fn(array $change): array => [$change['label'], $change['amount'], $change['line'], $change['removable']], $changes));
+        $id = $this->text($changes[1]['change']);
+        self::assertSame(404, $this->request('DELETE', "{$path}/12", nonce: true)->get_status(), 'not a change\'s key');
         $taken = $this->request('DELETE', "{$path}/{$id}", nonce: true);
         self::assertSame(200, $taken->get_status(), (string) wp_json_encode($taken->get_data()));
         self::assertSame('33', $this->data($taken)['total']);
@@ -178,7 +179,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     public function testOnlyShopManagersWorkOrdersAndOnlyCustomersSeeTheirAccount(): void
     {
         $shop = [['GET', '/orders'], ['GET', '/orders/1'], ['PUT', '/orders/1/status'], ['PUT', '/orders/1/contact'], ['POST', '/orders/1/notes'],
-            ['PUT', '/orders/1/items'], ['POST', '/orders/1/adjustments'], ['DELETE', '/orders/1/adjustments/1'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['GET', '/customers/1'],
+            ['PUT', '/orders/1/items'], ['POST', '/orders/1/adjustments'], ['DELETE', '/orders/1/adjustments/0123456789abcdef'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['GET', '/customers/1'],
             ['POST', '/customers/1/addresses'], ['PUT', '/customers/1/addresses/ab12cd34'], ['DELETE', '/customers/1/addresses/ab12cd34'], ['GET', '/customers/1/notes'], ['POST', '/customers/1/notes'], ['DELETE', '/customers/1/notes/1'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/newsletter-settings'], ['PUT', '/newsletter-settings'], ['GET', '/email-settings'],
             ['PUT', '/email-settings'], ['POST', '/products/1/downloads'], ['DELETE', '/products/1/downloads/1'], ['GET', '/download-storage'],
             ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1'], ['POST', '/orders'], ['POST', '/orders/quote'],

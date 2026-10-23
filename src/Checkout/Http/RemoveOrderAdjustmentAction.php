@@ -15,7 +15,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Takes a change to the price off an order on hold; one for the whole order goes from every item. */
-#[Route('/orders/{id}/adjustments/{adjustment}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'adjustment' => '\d+'])]
+#[Route('/orders/{id}/adjustments/{change}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'change' => '[0-9a-f]{16}'])]
 final readonly class RemoveOrderAdjustmentAction implements RequestHandlerInterface
 {
     public function __construct(
@@ -26,6 +26,6 @@ final readonly class RemoveOrderAdjustmentAction implements RequestHandlerInterf
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->editing->removeAdjustment(PathParameter::id($request), PathParameter::id($request, 'adjustment'), $this->authorization->userId()));
+        return $this->responder->ok($this->editing->removeAdjustment(PathParameter::id($request), PathParameter::string($request, 'change'), $this->authorization->userId()));
     }
 }

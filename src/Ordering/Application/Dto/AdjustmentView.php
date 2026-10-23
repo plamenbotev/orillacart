@@ -11,7 +11,7 @@ namespace OrillaCart\Ordering\Application\Dto;
 final readonly class AdjustmentView
 {
     public function __construct(
-        /** "coupon", "automatic", "manual" or "add_on". */
+        /** "coupon", "automatic", "manual", "add_on" (an add-on changed it later) or "adjuster" (an add-on's order adjuster, worked out again at each pricing). */
         public string $kind,
         /** What made it: the coupon's code, the add-on's id, the shop manager's user id. */
         public string $source,
@@ -24,5 +24,7 @@ final readonly class AdjustmentView
         public ?string $reason = null,
         /** The order's record of it, to remove it by; null for one not saved yet. */
         public ?int $id = null,
+        /** The change it is a share of, the same on every line it was spread over; null for coupons. */
+        public ?string $change = null,
     ) {}
 }

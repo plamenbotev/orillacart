@@ -1014,7 +1014,7 @@ Changes the price of an order on hold, or of one of its items; its taxes are wor
   - `line` (int|null): 0 or more
   - `reason` (string): at most 200 characters
 
-### `DELETE /orders/{id}/adjustments/{adjustment}`
+### `DELETE /orders/{id}/adjustments/{change}`
 
 Takes a change to the price off an order on hold; one for the whole order goes from every item.
 

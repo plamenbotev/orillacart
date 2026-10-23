@@ -199,7 +199,9 @@ a business customer, a handling surcharge. `adjust(AdjustmentQuery $query)` gets
 currency, the customer and, when the shop edits an order, its number. Return `Adjustment`s: a label the
 customer and the invoice show, an amount below zero to lower the price, the line's index or null for the whole
 order (spread over its items, rounded so the shares add up), and a reason for the shop's records. The order
-keeps each one with your adjuster's id, and its tax is worked out on what is left, so it is filed right.
+keeps each one with your adjuster's id (kind `adjuster`), and its tax is worked out on what is left, so it is
+filed right. Whenever the shop prices the order again (its items changed, or another change was made), your
+adjuster is asked again and its answer replaces what it said before; the shop cannot take it off by hand.
 
 An adjustment that takes off more than its line costs refuses checkout with `orillacart_invalid_price_change`;
 an adjuster that throws, or answers with something that is not a number, is logged and skipped, unless it
@@ -208,8 +210,9 @@ implements `FailsClosed`.
 `$registry->orderPrices()->adjust($number, $source, $label, $amount, $line, $reason)` changes the price of an
 order later, such as when an ERP agrees a discount on an order waiting for a bank transfer. Only orders on
 hold change: a paid order keeps its prices, and money goes back by refunds. The order is priced again, its
-taxes with it, and its history says who changed it. The shop manager does the same on the order screen, and
-can take off the shop's and add-ons' changes there.
+taxes with it, and its history says who changed it. Such a change (kind `add_on`) stays as it was made when the
+order is priced again, and two alike stay two. The shop manager does the same on the order screen, and can take
+off the shop's and add-ons' changes there.
 
 ## Cart rules
 

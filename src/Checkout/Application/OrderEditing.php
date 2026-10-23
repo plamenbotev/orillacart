@@ -15,6 +15,7 @@ use OrillaCart\Ordering\Application\Dto\NewOrderItems;
 use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
+use OrillaCart\Ordering\Application\Dto\PriceChangeView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
@@ -119,6 +120,7 @@ final readonly class OrderEditing
             'amount' => $command->amount,
             'line' => $command->line,
             'reason' => trim($command->reason) === '' ? null : trim($command->reason),
+            'change' => null,
         ];
         $view = $this->reprice($order, self::asItIs($order), $changes, $userId);
         $this->orders->addNote($orderId, new AddOrderNote(\sprintf(
@@ -137,29 +139,22 @@ final readonly class OrderEditing
      * Takes a change to the price off an order on hold, and prices it again; one for the whole order goes from
      * every item.
      *
+     * @param string $change the change's key
+     *
      * @throws OrderNotFound
      * @throws OrderRuleViolation    for an order not on hold
      * @throws CheckoutRuleViolation for a change the order does not have, or one that is not the shop's or an add-on's
      */
-    public function removeAdjustment(int $orderId, int $adjustmentId, ?int $userId): OrderView
+    public function removeAdjustment(int $orderId, string $change, ?int $userId): OrderView
     {
         $order = $this->orderOnHold($orderId);
-        $gone = null;
-        foreach ($order->lines as $position => $line) {
-            foreach ($line->adjustments as $adjustment) {
-                if ($adjustment->id === $adjustmentId) {
-                    $gone = [$adjustment, $position];
-                }
-            }
-        }
-        if ($gone === null || !\in_array($gone[0]->kind, [PriceAdjustment::MANUAL, PriceAdjustment::ADD_ON], true)) {
+        $removed = array_values(array_filter($order->priceChanges, static fn(PriceChangeView $made): bool => $made->change === $change && $made->removable))[0] ?? null;
+        if ($removed === null) {
             throw new CheckoutRuleViolation('The order has no such change to its price; coupons go with their codes.', 'orillacart_unknown_price_change');
         }
-        [$removed, $position] = $gone;
         $changes = array_values(array_filter(
             self::changesOf($order, array_combine(array_keys($order->lines), array_keys($order->lines))),
-            static fn(array $change): bool => !($change['kind'] === $removed->kind && $change['source'] === $removed->source && $change['label'] === $removed->label && $change['reason'] === $removed->reason
-                && ($removed->scope === PriceAdjustment::ORDER ? $change['line'] === null : $change['line'] === $position)),
+            static fn(array $kept): bool => $kept['change'] !== $change,
         ));
         $this->reprice($order, self::asItIs($order), $changes, $userId);
         $this->orders->addNote($orderId, new AddOrderNote(\sprintf('The change "%s" to the price was taken off.', $removed->label)), $userId);
@@ -168,7 +163,7 @@ final readonly class OrderEditing
     }
 
     /**
-     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string}> $changes
+     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
      */
     private function reprice(OrderView $order, EditOrderItems $command, array $changes, ?int $userId): OrderView
     {
@@ -239,45 +234,23 @@ final readonly class OrderEditing
 
     /**
      * The shop's and add-ons' changes to the order's prices, as pricing takes them again: one for a kept item at
-     * its new place, one for the whole order once with its whole amount. An item no longer kept loses its own.
+     * its new place, one for the whole order with its whole amount, each with its key. An item no longer kept
+     * loses its own; the add-ons' order adjusters work theirs out again.
      *
      * @param array<int, int> $kept the new place of each kept item, by its place in the order
      *
-     * @return list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string}>
+     * @return list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}>
      */
     private static function changesOf(OrderView $order, array $kept): array
     {
-        /** @var list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, id: int}> $changes */
         $changes = [];
-        // An order-wide change keeps the place it first had, with its shares added up again.
-        $whole = [];
-        /** @var array<int, Money> $sums */
-        $sums = [];
-        foreach ($order->lines as $position => $line) {
-            foreach ($line->adjustments as $adjustment) {
-                if (!\in_array($adjustment->kind, [PriceAdjustment::MANUAL, PriceAdjustment::ADD_ON], true)) {
-                    continue;
-                }
-                if ($adjustment->scope === PriceAdjustment::LINE) {
-                    if (isset($kept[$position])) {
-                        $changes[] = ['kind' => $adjustment->kind, 'source' => $adjustment->source, 'label' => $adjustment->label, 'amount' => $adjustment->amount, 'line' => $kept[$position], 'reason' => $adjustment->reason, 'id' => $adjustment->id ?? 0];
-                    }
-                    continue;
-                }
-                $key = implode("\0", [$adjustment->kind, $adjustment->source, $adjustment->label, $adjustment->reason ?? '']);
-                if (!isset($whole[$key])) {
-                    $whole[$key] = \count($changes);
-                    $changes[] = ['kind' => $adjustment->kind, 'source' => $adjustment->source, 'label' => $adjustment->label, 'amount' => '0', 'line' => null, 'reason' => $adjustment->reason, 'id' => $adjustment->id ?? 0];
-                }
-                $sums[$whole[$key]] = ($sums[$whole[$key]] ?? Money::zero())->add(Money::of($adjustment->amount));
+        foreach ($order->priceChanges as $change) {
+            if (!$change->removable || ($change->line !== null && !isset($kept[$change->line]))) {
+                continue;
             }
+            $changes[] = ['kind' => $change->kind, 'source' => $change->source, 'label' => $change->label, 'amount' => $change->amount, 'line' => $change->line === null ? null : $kept[$change->line], 'reason' => $change->reason, 'change' => $change->change];
         }
-        foreach ($sums as $index => $sum) {
-            $changes[$index] = ['amount' => (string) $sum] + $changes[$index];
-        }
-        // In the order they were made: the order's records of them come in that order.
-        usort($changes, static fn(array $a, array $b): int => $a['id'] <=> $b['id']);
 
-        return array_map(static fn(array $change): array => ['kind' => $change['kind'], 'source' => $change['source'], 'label' => $change['label'], 'amount' => $change['amount'], 'line' => $change['line'], 'reason' => $change['reason']], $changes);
+        return $changes;
     }
 }

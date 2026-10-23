@@ -105,6 +105,8 @@ final readonly class OrderView
         public ?string $taxProvider = null,
         /** The tax service's reference of the sale, once it recorded it. */
         public ?string $taxReference = null,
+        /** @var list<PriceChangeView> the shop's and add-ons' changes to its price, each once */
+        public array $priceChanges = [],
     ) {}
 
     /**
@@ -174,6 +176,7 @@ final readonly class OrderView
             $order->taxExemption(),
             $order->taxProvider(),
             $order->taxReference(),
+            PriceChangeView::of($lines),
         );
     }
 }

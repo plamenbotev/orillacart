@@ -41,6 +41,9 @@ class OrderAdjustment
     #[ORM\Column(length: 200, nullable: true)]
     private ?string $reason;
 
+    #[ORM\Column(name: 'change_key', length: 16, nullable: true)]
+    private ?string $change;
+
     public function __construct(
         #[ORM\ManyToOne(targetEntity: OrderLine::class, inversedBy: 'adjustments')]
         #[ORM\JoinColumn(name: 'line_id', nullable: false, onDelete: 'CASCADE')]
@@ -54,6 +57,7 @@ class OrderAdjustment
         $this->scope = $adjustment->scope;
         $this->freeShipping = $adjustment->freeShipping;
         $this->reason = $adjustment->reason === null ? null : mb_substr($adjustment->reason, 0, 200);
+        $this->change = $adjustment->change;
     }
 
     public function id(): ?int
@@ -68,7 +72,7 @@ class OrderAdjustment
 
     public function adjustment(): PriceAdjustment
     {
-        return new PriceAdjustment($this->kind, $this->source, $this->label, Money::of($this->amount), $this->scope, $this->freeShipping, $this->reason);
+        return new PriceAdjustment($this->kind, $this->source, $this->label, Money::of($this->amount), $this->scope, $this->freeShipping, $this->reason, $this->change);
     }
 
     public function amount(): Money

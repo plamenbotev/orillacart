@@ -23,7 +23,6 @@ import { useBusy } from '../shared/useBusy';
 import { useConfirm } from '../shared/useConfirm';
 import {
 	adjustPrice,
-	type Adjustment,
 	addNote,
 	anonymiseOrder,
 	changeContact,
@@ -494,7 +493,8 @@ function Summary( { order }: { order: Order } ) {
 										.filter(
 											( adjustment ) =>
 												adjustment.kind === 'manual' ||
-												adjustment.kind === 'add_on'
+												adjustment.kind === 'add_on' ||
+												adjustment.kind === 'adjuster'
 										)
 										.map( ( adjustment, place ) => (
 											<div key={ place }>
@@ -967,41 +967,6 @@ function PriceChangesCard( { order, onSaved, onError }: CardProps ) {
 	const [ label, setLabel ] = useState( '' );
 	const [ line, setLine ] = useState( '' );
 	const [ reason, setReason ] = useState( '' );
-	// A change to the whole order shows once, with its shares added up.
-	const changes: Array< {
-		adjustment: Adjustment;
-		total: number;
-		item: string | null;
-	} > = [];
-	order.lines.forEach( ( orderLine ) =>
-		( orderLine.adjustments ?? [] )
-			.filter(
-				( adjustment ) =>
-					adjustment.id !== null &&
-					( adjustment.kind === 'manual' ||
-						adjustment.kind === 'add_on' )
-			)
-			.forEach( ( adjustment ) => {
-				const same = changes.find(
-					( change ) =>
-						adjustment.scope === 'order' &&
-						change.item === null &&
-						change.adjustment.kind === adjustment.kind &&
-						change.adjustment.source === adjustment.source &&
-						change.adjustment.label === adjustment.label &&
-						change.adjustment.reason === adjustment.reason
-				);
-				if ( same !== undefined ) {
-					same.total += Number( adjustment.amount );
-					return;
-				}
-				changes.push( {
-					adjustment,
-					total: Number( adjustment.amount ),
-					item: adjustment.scope === 'order' ? null : orderLine.name,
-				} );
-			} )
-	);
 	const valid =
 		/^-?\d{1,11}(\.\d{1,4})?$/.test( amount.trim() ) &&
 		Number( amount ) !== 0 &&
@@ -1014,50 +979,61 @@ function PriceChangesCard( { order, onSaved, onError }: CardProps ) {
 				<h2>{ __( 'Price changes', 'orillacart' ) }</h2>
 			</CardHeader>
 			<CardBody>
-				{ changes.map( ( { adjustment, total, item } ) => (
-					<Flex key={ adjustment.id } justify="space-between">
+				{ ( order.price_changes ?? [] ).map( ( change ) => (
+					<Flex key={ change.change } justify="space-between">
 						<FlexItem>
-							{ adjustment.label }:{ ' ' }
-							{ money( total.toFixed( 2 ), order.currency ) }{ ' ' }
+							{ change.label }:{ ' ' }
+							{ money( change.amount, order.currency ) }{ ' ' }
 							<small>
-								{ item ?? __( 'whole order', 'orillacart' ) }
-								{ adjustment.kind === 'add_on' &&
-									` · ${ adjustment.source }` }
-								{ adjustment.reason !== null &&
-									adjustment.reason !== '' &&
-									` · ${ adjustment.reason }` }
+								{ change.line === null
+									? __( 'whole order', 'orillacart' )
+									: order.lines[ change.line ]?.name }
+								{ change.kind !== 'manual' &&
+									` · ${ change.source }` }
+								{ change.reason !== null &&
+									change.reason !== '' &&
+									` · ${ change.reason }` }
 							</small>
 						</FlexItem>
 						<FlexItem>
-							<Button
-								variant="tertiary"
-								isDestructive
-								disabled={ busy }
-								onClick={ () =>
-									confirm(
-										sprintf(
-											/* translators: %s: the change's label */
-											__(
-												'Take "%s" off the price? The taxes are worked out again.',
-												'orillacart'
+							{ change.removable ? (
+								<Button
+									variant="tertiary"
+									isDestructive
+									disabled={ busy }
+									onClick={ () =>
+										confirm(
+											sprintf(
+												/* translators: %s: the change's label */
+												__(
+													'Take "%s" off the price? The taxes are worked out again.',
+													'orillacart'
+												),
+												change.label
 											),
-											adjustment.label
-										),
-										() =>
-											run( () =>
-												removeAdjustment(
-													order.number,
-													adjustment.id ?? 0
-												)
-													.then( onSaved )
-													.catch( onError )
-											),
-										__( 'Take off', 'orillacart' )
-									)
-								}
-							>
-								{ __( 'Take off', 'orillacart' ) }
-							</Button>
+											() =>
+												run( () =>
+													removeAdjustment(
+														order.number,
+														change.change
+													)
+														.then( onSaved )
+														.catch( onError )
+												),
+											__( 'Take off', 'orillacart' )
+										)
+									}
+								>
+									{ __( 'Take off', 'orillacart' ) }
+								</Button>
+							) : (
+								<small>
+									{ __(
+										'Worked out by the add-on',
+										'orillacart'
+									) }
+								</small>
+							) }
 						</FlexItem>
 					</Flex>
 				) ) }

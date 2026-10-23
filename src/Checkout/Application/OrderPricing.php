@@ -103,7 +103,7 @@ final readonly class OrderPricing
      * @param int|null     $orderId    the order being priced again, when the shop edits it
      * @param bool         $reverseCharge a business in another EU country buys without VAT
      * @param string|null  $payment    the way to pay chosen, for its fee
-     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string}> $changes
+     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
      *                                    changes to the prices besides coupons: the shop's or add-ons', for a line by
      *                                    its index among the items, or for the whole order (line null)
      * @param string|null  $currency   what the order is priced in: the shop's prices converted, when it offers it;
@@ -149,7 +149,7 @@ final readonly class OrderPricing
     /**
      * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, gift?: bool, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
      *                                    extra: what the answers to the product's forms add to each item; personalisation: those answers
-     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string}> $changes
+     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
      * @param list<string> $codes
      *
      * @return Priced
@@ -648,7 +648,7 @@ final readonly class OrderPricing
      * add-ons' order adjusters make now. One for the whole order is spread over the items by what they cost after
      * the coupons, rounded to the currency so they add up to it.
      *
-     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string}> $changes
+     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
      * @param list<PricedLine> $lines
      *
      * @return array<int, list<AdjustmentView>>
@@ -684,22 +684,23 @@ final readonly class OrderPricing
                     $this->logger->error('The order adjuster {adjuster} answered an adjustment that cannot be; it is left out.', ['adjuster' => $adjuster->id()]);
                     continue;
                 }
-                $changes[] = ['kind' => PriceAdjustment::ADD_ON, 'source' => $adjuster->id(), 'label' => trim($adjustment->label), 'amount' => $adjustment->amount, 'line' => $adjustment->line, 'reason' => trim($adjustment->reason) === '' ? null : trim($adjustment->reason)];
+                $changes[] = ['kind' => PriceAdjustment::ADJUSTER, 'source' => $adjuster->id(), 'label' => trim($adjustment->label), 'amount' => $adjustment->amount, 'line' => $adjustment->line, 'reason' => trim($adjustment->reason) === '' ? null : trim($adjustment->reason), 'change' => null];
             }
         }
         $adjusted = [];
         foreach ($changes as $change) {
             $amount = Money::of($change['amount']);
+            $key = $change['change'] ?? PriceAdjustment::newChange();
             if ($change['line'] !== null) {
                 if (!isset($lines[$change['line']])) {
                     throw new CheckoutRuleViolation('The order has no such line to change the price of.', 'orillacart_invalid_price_change');
                 }
-                $adjusted[$change['line']][] = new AdjustmentView($change['kind'], $change['source'], $change['label'], (string) $amount->rounded($decimals), PriceAdjustment::LINE, false, $change['reason']);
+                $adjusted[$change['line']][] = new AdjustmentView($change['kind'], $change['source'], $change['label'], (string) $amount->rounded($decimals), PriceAdjustment::LINE, false, $change['reason'], change: $key);
                 continue;
             }
             foreach (self::spread($amount, $nets, $decimals) as $index => $share) {
                 if (!$share->isZero()) {
-                    $adjusted[$index][] = new AdjustmentView($change['kind'], $change['source'], $change['label'], (string) $share, PriceAdjustment::ORDER, false, $change['reason']);
+                    $adjusted[$index][] = new AdjustmentView($change['kind'], $change['source'], $change['label'], (string) $share, PriceAdjustment::ORDER, false, $change['reason'], change: $key);
                 }
             }
         }

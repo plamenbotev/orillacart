@@ -13,6 +13,7 @@ use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\EditOrderItems;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Extension\Checkout\Fee;
 use OrillaCart\Extension\Checkout\FeeQuery;
@@ -142,10 +143,23 @@ final class OrderMoneyTest extends TestCase
         $order = $this->shop->editing->edit($number, new EditOrderItems([new EditedItem(10, 3, line: 0)], "rate:{$this->rate}"), 7);
         self::assertSame(['-30', '-30', '5'], array_map(static fn($adjustment): string => $adjustment->amount, $order->lines[0]->adjustments), 'three lamps keep both changes; the coupon is priced again');
 
-        $manual = $order->lines[0]->adjustments[1];
-        self::assertNotNull($manual->id);
-        $order = $this->shop->editing->removeAdjustment($number, $manual->id, 7);
+        self::assertSame([['Loyal customer', '-30', null], ['Engraving by hand', '5', 0]], array_map(static fn($change): array => [$change->label, $change->amount, $change->line], $order->priceChanges), 'each change once, with its total');
+        $order = $this->shop->editing->removeAdjustment($number, $order->priceChanges[0]->change, 7);
         self::assertSame(['-30', '5'], array_map(static fn($adjustment): string => $adjustment->amount, $order->lines[0]->adjustments));
+    }
+
+    public function testTwoChangesAlikeStayTwoAndOneComesOffAlone(): void
+    {
+        $number = $this->place();
+        $this->shop->editing->adjust($number, new AdjustOrderPrice('-5', 'Goodwill'), 7);
+        $order = $this->shop->editing->adjust($number, new AdjustOrderPrice('-5', 'Goodwill'), 7);
+        self::assertSame(['-5', '-5'], array_column($order->priceChanges, 'amount'));
+        self::assertNotSame($order->priceChanges[0]->change, $order->priceChanges[1]->change);
+
+        $order = $this->shop->editing->removeAdjustment($number, $order->priceChanges[1]->change, 7);
+        self::assertSame(['-5'], array_column($order->priceChanges, 'amount'), 'the other stays');
+        $this->expectException(CheckoutRuleViolation::class);
+        $this->shop->editing->removeAdjustment($number, 'ffffffffffffffff', 7);
     }
 
     public function testAddOnsChangePricesAtCheckoutAndOnOrdersOnHold(): void
@@ -163,11 +177,13 @@ final class OrderMoneyTest extends TestCase
         };
         $number = $this->place();
         $lamp = $this->shop->orders->order($number)->lines[0];
-        self::assertSame([['coupon', '-20'], ['add_on', '-5']], array_map(static fn($adjustment): array => [$adjustment->kind, $adjustment->amount], $lamp->adjustments));
+        self::assertSame([['coupon', '-20'], ['adjuster', '-5']], array_map(static fn($adjustment): array => [$adjustment->kind, $adjustment->amount], $lamp->adjustments));
 
         new AddOnOrderPrices($this->shop->editing)->adjust($number, 'b2b_prices', 'Trade price', '-10');
-        $lamp = $this->shop->orders->order($number)->lines[0];
-        self::assertSame(['b2b_prices', '-10'], [$lamp->adjustments[2]->source, $lamp->adjustments[2]->amount]);
+        $order = $this->shop->orders->order($number);
+        self::assertSame([['add_on', 'b2b_prices', '-10', true], ['adjuster', 'loyalty', '-5', false]], array_map(static fn($change): array => [$change->kind, $change->source, $change->amount, $change->removable], $order->priceChanges), 'the adjuster\'s is worked out again, not kept twice');
+        $order = $this->shop->editing->edit($number, new EditOrderItems([new EditedItem(10, 3, line: 0)], "rate:{$this->rate}"), 7);
+        self::assertSame(['-10', '-5'], array_column($order->priceChanges, 'amount'));
 
         $this->shop->orders->markPaidByShop($number, '', 7);
         $this->expectException(\InvalidArgumentException::class);

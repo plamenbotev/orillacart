@@ -987,7 +987,7 @@ final readonly class OrderService
             $line->downloadExpiryDays,
             $line->backordered,
             $line->backorderShown,
-            array_map(static fn(AdjustmentView $adjustment): PriceAdjustment => new PriceAdjustment($adjustment->kind, $adjustment->source, $adjustment->label, Money::of($adjustment->amount), $adjustment->scope, $adjustment->freeShipping, $adjustment->reason), $line->adjustments),
+            array_map(static fn(AdjustmentView $adjustment): PriceAdjustment => new PriceAdjustment($adjustment->kind, $adjustment->source, $adjustment->label, Money::of($adjustment->amount), $adjustment->scope, $adjustment->freeShipping, $adjustment->reason, $adjustment->change), $line->adjustments),
             $line->contents,
             $line->bundleChoices,
             $line->personalisation,
