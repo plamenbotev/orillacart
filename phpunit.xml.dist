@@ -18,6 +18,10 @@
         <testsuite name="unit">
             <directory>tests/Unit</directory>
         </testsuite>
+        <!-- The e-invoices through the official validators, which need Java: npm run test:einvoices -->
+        <testsuite name="einvoices">
+            <directory>tests/EInvoices</directory>
+        </testsuite>
         <!-- Runs inside wp-env against a real WordPress and database: npm run test:integration -->
         <testsuite name="integration">
             <directory>tests/Integration</directory>

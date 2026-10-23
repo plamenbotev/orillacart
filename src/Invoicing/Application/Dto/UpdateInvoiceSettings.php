@@ -34,5 +34,12 @@ final readonly class UpdateInvoiceSettings
         /** Also as EN 16931 XML: none, ubl (Peppol BIS 3.0) or cii (XRechnung). */
         #[Assert\Choice(choices: InvoiceSettings::EINVOICE_FORMATS)]
         public string $eInvoices = InvoiceSettings::NO_EINVOICES,
+        #[Assert\Regex(pattern: InvoiceSettings::PHONE, message: 'Write the phone number with its digits, spaces, brackets, dots, dashes and a leading +.')]
+        public string $phone = '',
+        #[Assert\Length(max: 254)]
+        #[Assert\Email]
+        public string $email = '',
+        #[Assert\Regex(pattern: InvoiceSettings::PEPPOL_ID, message: 'A Peppol ID is its four-digit scheme, a colon and the identifier, such as 0208:0123456789.')]
+        public string $peppolId = '',
     ) {}
 }

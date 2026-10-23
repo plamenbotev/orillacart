@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Fetches the official e-invoice validators into var/einvoice-validators, for tests/EInvoices only: KoSIT's
+# validator with the XRechnung rules (CII), and OpenPeppol's BIS Billing 3.0 Schematron (UBL), compiled to XSLT with
+# SchXslt and run by the Saxon inside KoSIT's jar. They need Java and never ship: shops do not run them.
+#
+# Pinned versions, each checked against its SHA-256; a second run does nothing.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+DIR=var/einvoice-validators
+READY="$DIR/ready-1"
+
+if [ -f "$READY" ]; then
+	exit 0
+fi
+command -v java >/dev/null || { echo "The e-invoice validators need Java (17 or later)." >&2; exit 1; }
+
+rm -rf "$DIR"
+mkdir -p "$DIR/dl"
+
+fetch() { # url file sha256
+	curl -fsSL --proto '=https' -o "$DIR/dl/$2" "$1"
+	echo "$3  $DIR/dl/$2" | sha256sum -c --quiet - || { echo "$2 is not the file pinned here." >&2; rm -f "$DIR/dl/$2"; exit 1; }
+}
+
+fetch https://github.com/itplr-kosit/validator/releases/download/v1.6.3/validator-1.6.3-standalone.jar \
+	validator.jar 799e64befca97d4080e03608c80b85dd5a5ecc5f4ae4f35d1116ec2855b9a7c9
+fetch https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/v2026-08-31/xrechnung-3.0.2-validator-configuration-2026-08-31.zip \
+	xrechnung.zip 2530cd107c414511c5d0462ec10f886910395abfca820db82e83d70bf01221a8
+fetch https://github.com/OpenPEPPOL/peppol-bis-invoice-3/archive/refs/tags/v3.0.20.tar.gz \
+	peppol.tar.gz 54b9ada9b866338c629789d30593162f90f1d76654d978266244932aabe02802
+fetch https://repo1.maven.org/maven2/name/dmaus/schxslt/schxslt2/1.1.1/schxslt2-1.1.1.jar \
+	schxslt2.jar b6ed968edb5e79f82f6a9384f5f54a50e2ddf43fdd23fe21b2d90e4e4cef5421
+
+mkdir -p "$DIR/xrechnung" "$DIR/peppol/src" "$DIR/peppol/xsl"
+unzip -q "$DIR/dl/xrechnung.zip" -d "$DIR/xrechnung"
+tar xzf "$DIR/dl/peppol.tar.gz" -C "$DIR/peppol/src" --strip-components=1
+unzip -q -j "$DIR/dl/schxslt2.jar" content/transpile.xsl -d "$DIR/peppol"
+for rules in CEN-EN16931-UBL PEPPOL-EN16931-UBL; do
+	java -cp "$DIR/dl/validator.jar" net.sf.saxon.Transform -s:"$DIR/peppol/src/rules/sch/$rules.sch" \
+		-xsl:"$DIR/peppol/transpile.xsl" -o:"$DIR/peppol/xsl/$rules.xsl"
+done
+
+touch "$READY"
+echo "E-invoice validators ready in $DIR."

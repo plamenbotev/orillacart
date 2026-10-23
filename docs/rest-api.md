@@ -901,6 +901,9 @@ The newest import, or null: the screen shows what came of it.
   - `yearly` (bool): default true
   - `attach_to_emails` (bool): default true
   - `e_invoices` (string): one of none, ubl, cii; default 'none'
+  - `phone` (string): matches `/^\+?[0-9 ().\/-]{3,30}$/`
+  - `email` (string): at most 254 characters; an email
+  - `peppol_id` (string): matches `/^\d{4}:[A-Za-z0-9._-]{1,50}$/`
 
 ## /jobs
 

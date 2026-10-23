@@ -399,7 +399,9 @@ country's own platform: register an `OrillaCart\Extension\Invoice\EInvoiceSender
 
 - `send(EInvoiceFile)`: a document was issued (an order paid, money given back). The file has its number, kind
   (`invoice` or `credit_note`), the order, the format, the file name and the XML, and the buyer's email, country,
-  tax number and own reference to find the recipient. It runs as a background job (lane `invoices`), one for each
+  tax number and own reference to find the recipient. `buyerPeppolId` (such as `9930:DE123456789`) is set when
+  the file is for Peppol: UBL, and both the shop (its Peppol ID in Settings → Invoices, or its VAT number's) and
+  the buyer (their VAT number's) have one; a consumer's invoice is plain EN 16931 and has none. It runs as a background job (lane `invoices`), one for each
   sender, and is tried again when it throws.
 
 ## Mailing lists

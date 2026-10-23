@@ -108,8 +108,21 @@ point, a service, so it is left to add-ons. The XML is offered through the exten
 - **124** (1b9f880): as designed.
 - **125** (9959a3c): the seller's postal address is read from the invoice address's lines (the first the street,
   the last the city) with the shop's postcode and country; a line taxed by several rates of one place goes with
-  their sum. The files are built to EN 16931's rules but were not run through the official validators (Peppol's
-  and KoSIT's schematrons), which would need downloading them; XRechnung also asks for the seller's phone, which
-  the shop has nowhere to enter yet. The buyer's reference is asked of business customers whenever the tax number
+  their sum. The files are built to EN 16931's rules; 126 runs them through the official validators. The buyer's reference is asked of business customers whenever the tax number
   is.
+- **126**: the files go through the official validators, in a suite of their own that needs Java and never ships
+  (`npm run test:einvoices`; bin/einvoice-validators fetches pinned versions of KoSIT's validator 1.6.3 with
+  XRechnung 3.0.2's rules, OpenPeppol's BIS Billing 3.0.20 Schematron compiled with SchXslt, and checks their
+  SHA-256). Sixteen documents, in both formats: two rates, the reverse charge, a certificate's exemption, an export,
+  a seller not subject to VAT, another currency, credit notes, and a domestic business sale. Warnings fail too.
+  What they found, and how it was fixed:
+  - Peppol takes participant IDs, not emails: the seller's own Peppol ID (a setting) or its VAT number's under its
+    country's scheme, and the buyer's VAT number's. A document is for Peppol only when both have one; a consumer's
+    invoice is plain EN 16931 (`urn:cen.eu:en16931:2017`, email addresses), which Peppol would refuse anyway. An
+    add-on is told the buyer's Peppol ID when the file is for Peppol, and finds the access point by it.
+  - Lines not subject to VAT (O) carry no rate; the VAT breakdown keeps its 0, which XRechnung asks for.
+  - The seller's postcode is read from the invoice address when the shop has none of its own.
+  - XRechnung needs the seller's phone: Settings → Invoices has it (refused empty with CII), and an invoice email
+    (the shop's when empty).
+  Checking each document as it is issued is for an add-on (typical hosting has no Java), or the access point's.
 

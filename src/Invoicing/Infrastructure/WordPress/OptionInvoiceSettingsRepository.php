@@ -41,6 +41,9 @@ final readonly class OptionInvoiceSettingsRepository implements InvoiceSettingsR
                 ($stored['yearly'] ?? true) === true,
                 ($stored['attach_to_emails'] ?? true) === true,
                 $text('e_invoices', InvoiceSettings::NO_EINVOICES),
+                $text('phone'),
+                $text('email'),
+                $text('peppol_id'),
             );
         } catch (RuleViolation) {
             $this->logger->warning('Stored invoice settings are not valid, using the defaults.');
@@ -63,6 +66,9 @@ final readonly class OptionInvoiceSettingsRepository implements InvoiceSettingsR
             'yearly' => $settings->yearly,
             'attach_to_emails' => $settings->attachToEmails,
             'e_invoices' => $settings->eInvoices,
+            'phone' => $settings->phone,
+            'email' => $settings->email,
+            'peppol_id' => $settings->peppolId,
         ], false);
     }
 

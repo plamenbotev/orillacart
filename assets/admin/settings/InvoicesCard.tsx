@@ -130,6 +130,28 @@ export function InvoicesCard() {
 								field( 'company_number', value )
 							}
 						/>
+						<TextControl
+							__next40pxDefaultSize
+							type="tel"
+							label={ __( 'Phone', 'orillacart' ) }
+							help={ __(
+								'For customers with a question about an invoice. XRechnung needs it.',
+								'orillacart'
+							) }
+							value={ settings.phone }
+							onChange={ ( value ) => field( 'phone', value ) }
+						/>
+						<TextControl
+							__next40pxDefaultSize
+							type="email"
+							label={ __( 'Invoice email', 'orillacart' ) }
+							help={ __(
+								'The shop’s email when empty.',
+								'orillacart'
+							) }
+							value={ settings.email }
+							onChange={ ( value ) => field( 'email', value ) }
+						/>
 						<TextareaControl
 							label={ __( 'Bank details', 'orillacart' ) }
 							value={ settings.bank_details }
@@ -241,6 +263,20 @@ export function InvoicesCard() {
 								)
 							}
 						/>
+						{ settings.e_invoices === 'ubl' && (
+							<TextControl
+								__next40pxDefaultSize
+								label={ __( 'Peppol ID', 'orillacart' ) }
+								help={ __(
+									'Your Peppol participant ID: its scheme, a colon and the identifier, such as 0208:0123456789 for a Belgian company. When empty, your VAT number’s is used. An invoice says it is for Peppol only when both you and the customer have one.',
+									'orillacart'
+								) }
+								value={ settings.peppol_id }
+								onChange={ ( value ) =>
+									field( 'peppol_id', value )
+								}
+							/>
+						) }
 						<Button
 							variant="primary"
 							isBusy={ busy }

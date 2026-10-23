@@ -16,6 +16,12 @@ export interface InvoiceSettings {
 	attach_to_emails: boolean;
 	/** Also as EN 16931 XML: UBL (Peppol BIS 3.0) or CII (XRechnung). */
 	e_invoices: 'none' | 'ubl' | 'cii';
+	/** Who the customer reaches about an invoice; XRechnung needs the phone. */
+	phone: string;
+	/** The shop's email when empty. */
+	email: string;
+	/** The seller's Peppol participant ID, such as 0208:0123456789; the VAT number's when empty. */
+	peppol_id: string;
 }
 
 const PATH = '/orillacart/v1/invoice-settings';

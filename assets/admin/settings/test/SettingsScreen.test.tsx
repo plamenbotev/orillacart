@@ -127,6 +127,9 @@ function serve( save?: () => Promise< unknown > ) {
 				yearly: true,
 				attach_to_emails: true,
 				e_invoices: 'none',
+				phone: '',
+				email: '',
+				peppol_id: '',
 			} );
 		}
 		if ( path === '/orillacart/v1/storefront-settings' ) {

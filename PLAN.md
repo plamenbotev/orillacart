@@ -186,6 +186,7 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 | ✅ | 123 | P2 | Tax numbers outside the EU: business customers give a tax number for any country, its format and checksum checked (UK, CH, NO, AU, NZ, CA), kept on the order and the invoice; reverse charge stays for the EU | a50a75f |
 | ✅ | 124 | P2 | VAT in the seller's currency: an order keeps its exchange rate and an invoice in another currency also shows its taxes in the shop's | 1b9f880 |
 | ✅ | 125 | P2 | E-invoices: each invoice and credit note as EN 16931 XML, UBL (Peppol BIS 3.0) or CII (XRechnung), downloaded from the order and optionally attached to emails; the buyer's reference asked at checkout | 9959a3c |
+| 🚧 | 126 | P2 | E-invoices through the official validators (KoSIT with XRechnung's rules, OpenPeppol's BIS 3.0 Schematron) in a dev-only suite, `npm run test:einvoices`; what they found fixed: Peppol IDs instead of emails, plain EN 16931 for consumers, no rate on lines not subject to VAT, the seller's postcode; the seller's phone, invoice email and Peppol ID in Settings → Invoices | |
 
 ## Waiting on others
 

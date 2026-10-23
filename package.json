@@ -20,6 +20,7 @@
 		"db:diff": "wp-env run cli --env-cwd=wp-content/plugins/orillacart wp eval-file bin/make-migration.php",
 		"start:storefront": "wp-scripts start storefront=./assets/storefront/index.ts --output-path=build/storefront",
 		"test:e2e": "wp-scripts test-playwright",
+		"test:einvoices": "bin/einvoice-validators && vendor/bin/phpunit --testsuite einvoices",
 		"i18n:pot": "bin/make-pot"
 	},
 	"devDependencies": {

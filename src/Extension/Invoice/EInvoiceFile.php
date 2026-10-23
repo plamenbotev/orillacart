@@ -31,5 +31,11 @@ final readonly class EInvoiceFile
         public ?string $buyerTaxNumber,
         /** The customer's own reference for the order, or null. */
         public ?string $buyerReference,
+        /**
+         * The buyer's Peppol participant ID the file names, scheme and identifier (9930:DE123456789), when it is
+         * for Peppol: UBL, with a Peppol ID for both the shop and the buyer. Null for anything else, a consumer's
+         * invoice among them, which goes by email.
+         */
+        public ?string $buyerPeppolId = null,
     ) {}
 }

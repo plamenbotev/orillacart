@@ -202,6 +202,9 @@ final readonly class Invoices
             $command->yearly,
             $command->attachToEmails,
             $command->eInvoices,
+            trim($command->phone),
+            trim($command->email),
+            trim($command->peppolId),
         );
         $this->settings->save($settings);
 

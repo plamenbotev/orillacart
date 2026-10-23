@@ -117,6 +117,7 @@ final readonly class SendEInvoices implements JobHandler
                 $order->billing->country,
                 $order->vatNumber,
                 $order->buyerReference,
+                $this->eInvoices->peppolRecipient($document, $format),
             ));
         } catch (\Throwable $e) {
             return JobOutcome::retry($e->getMessage());

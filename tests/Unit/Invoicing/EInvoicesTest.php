@@ -19,6 +19,7 @@ use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
@@ -60,7 +61,7 @@ final class EInvoicesTest extends TestCase
         $order = $this->paid(3, buyerReference: '04011000-1234512345-06');
         $xml = $this->xpath($this->xml($order), ['u' => 'urn:oasis:names:specification:ubl:schema:xsd:Invoice-2', 'cac' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2', 'cbc' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2']);
 
-        self::assertSame('urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0', $xml->evaluate('string(/u:Invoice/cbc:CustomizationID)'));
+        self::assertSame(['urn:cen.eu:en16931:2017', ''], [$xml->evaluate('string(/u:Invoice/cbc:CustomizationID)'), $xml->evaluate('string(/u:Invoice/cbc:ProfileID)')], 'a consumer has no Peppol ID: plain EN 16931');
         self::assertSame(['380', 'EUR', '04011000-1234512345-06'], [$xml->evaluate('string(//cbc:InvoiceTypeCode)'), $xml->evaluate('string(//cbc:DocumentCurrencyCode)'), $xml->evaluate('string(/u:Invoice/cbc:BuyerReference)')]);
         self::assertSame(['Lamps Ltd', 'BG123456789', '1 Vitosha Blvd', 'Sofia', 'BG'], [
             $xml->evaluate('string(//cac:AccountingSupplierParty//cac:PartyLegalEntity/cbc:RegistrationName)'),
@@ -104,7 +105,7 @@ final class EInvoicesTest extends TestCase
 
     public function testTheSameInvoiceInCiiForXRechnung(): void
     {
-        $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Lamps Ltd', "1 Vitosha Blvd\n1000 Sofia", 'BG123456789', eInvoices: 'cii'));
+        $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Lamps Ltd', "1 Vitosha Blvd\n1000 Sofia", 'BG123456789', eInvoices: 'cii', phone: '+359 2 000 0000'));
         $order = $this->paid(3);
         $xml = $this->xpath($this->xml($order), ['rsm' => 'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100', 'ram' => 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100', 'udt' => 'urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100']);
 
@@ -112,6 +113,7 @@ final class EInvoicesTest extends TestCase
         self::assertSame(['380', 'EUR', (string) $order->number], [$xml->evaluate('string(//rsm:ExchangedDocument/ram:TypeCode)'), $xml->evaluate('string(//ram:InvoiceCurrencyCode)'), $xml->evaluate('string(//ram:BuyerReference)')], 'the order number stands in for the buyer\'s reference');
         self::assertSame(3.0, $xml->evaluate('count(//ram:IncludedSupplyChainTradeLineItem)'));
         self::assertSame(['BG123456789', 'VA'], [$xml->evaluate('string(//ram:SellerTradeParty/ram:SpecifiedTaxRegistration/ram:ID)'), $xml->evaluate('string(//ram:SellerTradeParty/ram:SpecifiedTaxRegistration/ram:ID/@schemeID)')]);
+        self::assertSame(['+359 2 000 0000', '1000', 'Sofia'], [$xml->evaluate('string(//ram:SellerTradeParty//ram:TelephoneUniversalCommunication/ram:CompleteNumber)'), $xml->evaluate('string(//ram:SellerTradeParty//ram:PostcodeCode)'), $xml->evaluate('string(//ram:SellerTradeParty//ram:CityName)')], 'the postcode from the address');
         self::assertSame(['114.99', '20.65', '135.64', '135.64', '0.00'], [
             $xml->evaluate('string(//ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:LineTotalAmount)'),
             $xml->evaluate('string(//ram:SpecifiedTradeSettlementHeaderMonetarySummation/ram:TaxTotalAmount)'),
@@ -136,6 +138,44 @@ final class EInvoicesTest extends TestCase
             $xml->evaluate('string(//cac:TaxSubtotal/cbc:TaxAmount)'),
         ]);
         self::assertSame('DE123456789', $xml->evaluate('string(//cac:AccountingCustomerParty//cac:PartyTaxScheme/cbc:CompanyID)'));
+        // Both have VAT numbers, so both have Peppol IDs: for Peppol.
+        self::assertSame(['urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0', '9926:BG123456789', '9930:DE123456789'], [
+            $xml->evaluate('string(//cbc:CustomizationID)'),
+            $xml->evaluate('concat(//cac:AccountingSupplierParty//cbc:EndpointID/@schemeID, ":", //cac:AccountingSupplierParty//cbc:EndpointID)'),
+            $xml->evaluate('concat(//cac:AccountingCustomerParty//cbc:EndpointID/@schemeID, ":", //cac:AccountingCustomerParty//cbc:EndpointID)'),
+        ]);
+    }
+
+    public function testTheSellersOwnPeppolIdAndContactGoFirst(): void
+    {
+        $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Lamps Ltd', "1 Vitosha Blvd\n1000 Sofia", 'BG123456789', eInvoices: 'ubl', phone: '+359 2 000 0000', email: 'billing@lamps.example', peppolId: '0088:5790000435968'));
+        $xml = $this->xpath($this->xml($this->paid(1, vatNumber: 'DE123456789')), ['cac' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2', 'cbc' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2']);
+
+        self::assertSame(['0088', '5790000435968', '+359 2 000 0000', 'billing@lamps.example'], [
+            $xml->evaluate('string(//cac:AccountingSupplierParty//cbc:EndpointID/@schemeID)'),
+            $xml->evaluate('string(//cac:AccountingSupplierParty//cbc:EndpointID)'),
+            $xml->evaluate('string(//cac:AccountingSupplierParty//cac:Contact/cbc:Telephone)'),
+            $xml->evaluate('string(//cac:AccountingSupplierParty//cac:Contact/cbc:ElectronicMail)'),
+        ]);
+    }
+
+    public function testXRechnungNeedsAPhoneAndTheDetailsAreChecked(): void
+    {
+        foreach ([
+            new UpdateInvoiceSettings('Lamps Ltd', eInvoices: 'cii'),
+            new UpdateInvoiceSettings('Lamps Ltd', phone: 'call us'),
+            new UpdateInvoiceSettings('Lamps Ltd', phone: '+-'),
+            new UpdateInvoiceSettings('Lamps Ltd', email: 'not an email'),
+            new UpdateInvoiceSettings('Lamps Ltd', peppolId: 'BG123456789'),
+            new UpdateInvoiceSettings('Lamps Ltd', peppolId: '0088:<x>'),
+        ] as $index => $refused) {
+            try {
+                $this->shop->invoices->updateSettings($refused);
+                self::fail("case {$index} was taken");
+            } catch (RuleViolation) {
+            }
+        }
+        self::assertSame('ubl', $this->shop->invoices->settings()->eInvoices);
     }
 
     public function testACreditNoteGivesBackTheTaxAndCorrectsTheInvoice(): void
@@ -179,6 +219,7 @@ final class EInvoicesTest extends TestCase
         $sent = $sender->sent;
         self::assertCount(1, $sent);
         self::assertSame([$this->shop->invoices->ofOrder($order->number)[0]->number, 'invoice', 'ubl', 'DE123456789', 'DE'], [$sent[0]->number, $sent[0]->kind, $sent[0]->format, $sent[0]->buyerTaxNumber, $sent[0]->buyerCountry]);
+        self::assertSame('9930:DE123456789', $sent[0]->buyerPeppolId);
         self::assertStringStartsWith('<?xml', $sent[0]->xml);
         self::assertNotNull($this->shop->invoices->ofOrder($order->number)[0]->xmlUrl);
 

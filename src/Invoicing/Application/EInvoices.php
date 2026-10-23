@@ -25,10 +25,13 @@ use OrillaCart\Shared\Domain\Money;
  * rates it was charged (added up when a place charges several), E for a sale under the customer's exemption, AE
  * under the reverse charge, G for an export, O when the shop charges no VAT at all. A credit note gives back, at
  * each rate, the tax it gave back and what that tax was on. The shop's own email is its electronic address and the
- * customer's theirs; sending the file through Peppol is an access point's job, for an add-on.
+ * customer's theirs, except in Peppol, which takes participant IDs: the seller's own, or the VAT number's under its
+ * country's scheme, and the buyer's VAT number's. An invoice says it is for Peppol only when both have one (a
+ * consumer has none), and is plain EN 16931 otherwise. Sending the file through Peppol is an access point's job,
+ * for an add-on.
  *
  * @phpstan-type Line array{id: string, name: string, sku: ?string, quantity: int, net: Money, category: string, percent: string, tax: Money}
- * @phpstan-type Party array{name: string, street: string, city: string, postcode: string, country: string, state?: ?string, vat: ?string, company?: ?string, email: string}
+ * @phpstan-type Party array{name: string, street: string, city: string, postcode: string, country: string, state?: ?string, vat: ?string, company?: ?string, email: string, phone?: ?string, peppol: ?array{string, string}}
  * @phpstan-type Model array{credit: bool, number: string, issued: string, currency: string, decimals: int, corrects: ?string, buyerReference: string, salesOrder: string, delivered: string, seller: Party, buyer: Party, payment: string, paid: bool, lines: list<Line>, breakdown: list<array{category: string, percent: string, net: Money, tax: Money, reason: ?string, reasonCode: ?string}>, net: Money, tax: Money, gross: Money, prepaid: Money, rounding: Money, taxCurrency: ?array{currency: string, total: string}}
  */
 final readonly class EInvoices
@@ -40,6 +43,7 @@ final readonly class EInvoices
     public const string CII = 'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100';
     private const string RAM = 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100';
     private const string UDT = 'urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100';
+    private const string EN16931 = 'urn:cen.eu:en16931:2017';
     private const string PEPPOL = 'urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0';
     private const string XRECHNUNG = 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0';
     private const string PROCESS = 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0';
@@ -49,6 +53,19 @@ final readonly class EInvoices
         'AE' => ['VATEX-EU-AE', 'Reverse charge'],
         'G' => ['VATEX-EU-G', 'Export outside the EU'],
         'O' => ['VATEX-EU-O', 'Not subject to VAT'],
+    ];
+
+    /**
+     * Peppol's schemes for a VAT number, by country (the Electronic Address Scheme list); Belgium's companies are
+     * found by their enterprise number, the VAT number's digits.
+     */
+    private const array VAT_SCHEMES = [
+        'AD' => '9922', 'AL' => '9923', 'AT' => '9914', 'BA' => '9924', 'BE' => '0208', 'BG' => '9926', 'CH' => '9927',
+        'CY' => '9928', 'CZ' => '9929', 'DE' => '9930', 'EE' => '9931', 'ES' => '9920', 'FR' => '9957', 'GB' => '9932',
+        'GR' => '9933', 'HR' => '9934', 'HU' => '9910', 'IE' => '9935', 'LI' => '9936', 'LT' => '9937', 'LU' => '9938',
+        'LV' => '9939', 'MC' => '9940', 'ME' => '9941', 'MK' => '9942', 'MT' => '9943', 'NL' => '9944', 'PL' => '9945',
+        'PT' => '9946', 'RO' => '9947', 'RS' => '9948', 'SI' => '9949', 'SK' => '9950', 'SM' => '9951', 'TR' => '9952',
+        'VA' => '9953',
     ];
 
     public function __construct(
@@ -85,6 +102,18 @@ final readonly class EInvoices
     }
 
     /**
+     * The buyer's Peppol participant ID, scheme:identifier, when the document in that format is for Peppol.
+     */
+    public function peppolRecipient(InvoiceDocument $document, string $format): ?string
+    {
+        $model = $this->model($document);
+
+        return $format === InvoiceSettings::UBL && $model['seller']['peppol'] !== null && $model['buyer']['peppol'] !== null
+            ? implode(':', $model['buyer']['peppol'])
+            : null;
+    }
+
+    /**
      * What both syntaxes say, worked out once.
      *
      * @return Model
@@ -118,7 +147,11 @@ final readonly class EInvoices
         $total = Money::of($invoice->amount);
         $shop = $this->shop->current();
         $seller = $document->seller;
-        [$street, $city] = self::addressLines($seller['address'] ?? '');
+        [$street, $city, $postcode] = self::addressLines($seller['address'] ?? '');
+        $country = $shop->shopCountry ?? '';
+        $vat = ($seller['vat_number'] ?? '') === '' ? null : $seller['vat_number'];
+        $peppolId = $seller['peppol_id'] ?? '';
+        $buyer = self::party($order->billing, $order->vatNumber, $order->email);
         $fulfilled = $order->fulfilledAt ?? $order->paidAt ?? $invoice->issuedAt;
 
         return [
@@ -135,13 +168,15 @@ final readonly class EInvoices
                 'name' => ($seller['legal_name'] ?? '') !== '' ? $seller['legal_name'] : $this->emails->shopAddress(),
                 'street' => $street,
                 'city' => $city,
-                'postcode' => $shop->shopPostcode ?? '',
-                'country' => $shop->shopCountry ?? '',
-                'vat' => ($seller['vat_number'] ?? '') === '' ? null : $seller['vat_number'],
+                'postcode' => $shop->shopPostcode ?? $postcode,
+                'country' => $country,
+                'vat' => $vat,
                 'company' => ($seller['company_number'] ?? '') === '' ? null : $seller['company_number'],
-                'email' => $this->emails->shopAddress(),
+                'email' => ($seller['email'] ?? '') !== '' ? $seller['email'] : $this->emails->shopAddress(),
+                'phone' => ($seller['phone'] ?? '') === '' ? null : $seller['phone'],
+                'peppol' => $peppolId !== '' ? self::participant($peppolId) : self::vatParticipant($country, $vat),
             ],
-            'buyer' => self::party($order->billing, $order->vatNumber, $order->email),
+            'buyer' => $buyer,
             'payment' => self::paymentMeans($order->paymentGateway),
             'paid' => $order->paidAt !== null,
             'lines' => $lines,
@@ -249,7 +284,34 @@ final readonly class EInvoices
      */
     private static function party(AddressData $address, ?string $vat, string $email): array
     {
-        return ['name' => trim($address->firstName . ' ' . $address->lastName), 'street' => $address->street, 'city' => $address->city, 'postcode' => $address->postcode, 'country' => $address->country, 'state' => $address->state, 'vat' => $vat, 'email' => $email];
+        return ['name' => trim($address->firstName . ' ' . $address->lastName), 'street' => $address->street, 'city' => $address->city, 'postcode' => $address->postcode, 'country' => $address->country, 'state' => $address->state, 'vat' => $vat, 'email' => $email, 'peppol' => self::vatParticipant($address->country, $vat)];
+    }
+
+    /**
+     * A Peppol participant ID as the settings keep it, scheme:identifier, in its two parts.
+     *
+     * @return array{string, string}
+     */
+    private static function participant(string $id): array
+    {
+        $parts = explode(':', $id, 2);
+
+        return [$parts[0], $parts[1] ?? ''];
+    }
+
+    /**
+     * A VAT number as a Peppol participant ID: its country's scheme and the number (Belgium's without its prefix).
+     *
+     * @return ?array{string, string}
+     */
+    private static function vatParticipant(string $country, ?string $vat): ?array
+    {
+        $scheme = self::VAT_SCHEMES[$country] ?? null;
+        if ($vat === null || $scheme === null) {
+            return null;
+        }
+
+        return [$scheme, $country === 'BE' ? (string) preg_replace('/^BE/i', '', $vat) : $vat];
     }
 
     /** UNCL 4461: cash, cheque, an online payment service, or not said. */
@@ -264,19 +326,20 @@ final readonly class EInvoices
     }
 
     /**
-     * The seller's address as the shop wrote it: its first line the street, its last the city (without a postcode
-     * written before it).
+     * The seller's address as the shop wrote it: its first line the street, its last the city, with the postcode
+     * written before it.
      *
-     * @return array{string, string}
+     * @return array{string, string, string}
      */
     private static function addressLines(string $address): array
     {
         $parts = preg_split('/\R|,/', $address);
         $lines = array_values(array_filter(array_map(trim(...), $parts === false ? [] : $parts), static fn(string $line): bool => $line !== ''));
         $street = $lines[0] ?? '';
-        $city = \count($lines) > 1 ? (string) preg_replace('/^\d[\d\s-]*\s+/', '', $lines[\count($lines) - 1]) : '';
+        $last = \count($lines) > 1 ? $lines[\count($lines) - 1] : '';
+        $postcode = preg_match('/^(\d[\d\s-]*?)\s+\D/', $last, $match) === 1 ? trim($match[1]) : '';
 
-        return [$street, $city];
+        return [$street, trim(substr($last, \strlen($postcode))), $postcode];
     }
 
     private static function decimal(float $value): string
@@ -316,8 +379,11 @@ final readonly class EInvoices
         $amount = static fn(Money $value): string => $value->format($model['decimals']);
         $money = static fn(\DOMElement $parent, string $name, Money $value) => $cbc($parent, $name, $amount($value), 'currencyID', $currency);
 
-        $cbc($root, 'CustomizationID', self::PEPPOL);
-        $cbc($root, 'ProfileID', self::PROCESS);
+        $peppol = $model['seller']['peppol'] !== null && $model['buyer']['peppol'] !== null;
+        $cbc($root, 'CustomizationID', $peppol ? self::PEPPOL : self::EN16931);
+        if ($peppol) {
+            $cbc($root, 'ProfileID', self::PROCESS);
+        }
         $cbc($root, 'ID', $model['number']);
         $cbc($root, 'IssueDate', $model['issued']);
         $cbc($root, $credit ? 'CreditNoteTypeCode' : 'InvoiceTypeCode', $credit ? '381' : '380');
@@ -334,7 +400,11 @@ final readonly class EInvoices
         }
         foreach (['AccountingSupplierParty' => $model['seller'], 'AccountingCustomerParty' => $model['buyer']] as $role => $who) {
             $party = $cac($cac($root, $role), 'Party');
-            $cbc($party, 'EndpointID', $who['email'], 'schemeID', 'EM');
+            if ($peppol && $who['peppol'] !== null) {
+                $cbc($party, 'EndpointID', $who['peppol'][1], 'schemeID', $who['peppol'][0]);
+            } else {
+                $cbc($party, 'EndpointID', $who['email'], 'schemeID', 'EM');
+            }
             $cbc($cac($party, 'PartyName'), 'Name', $who['name']);
             $address = $cac($party, 'PostalAddress');
             if ($who['street'] !== '') {
@@ -360,7 +430,11 @@ final readonly class EInvoices
             if (($who['company'] ?? null) !== null) {
                 $cbc($legal, 'CompanyID', $who['company']);
             }
-            $cbc($cac($party, 'Contact'), 'ElectronicMail', $who['email']);
+            $contact = $cac($party, 'Contact');
+            if (($who['phone'] ?? null) !== null) {
+                $cbc($contact, 'Telephone', $who['phone']);
+            }
+            $cbc($contact, 'ElectronicMail', $who['email']);
         }
         $cbc($cac($root, 'Delivery'), 'ActualDeliveryDate', $model['delivered']);
         $cbc($cac($root, 'PaymentMeans'), 'PaymentMeansCode', $model['payment']);
@@ -408,7 +482,9 @@ final readonly class EInvoices
             }
             $category = $cac($item, 'ClassifiedTaxCategory');
             $cbc($category, 'ID', $line['category']);
-            $cbc($category, 'Percent', $line['percent']);
+            if ($line['category'] !== 'O') {
+                $cbc($category, 'Percent', $line['percent']);
+            }
             $cbc($cac($category, 'TaxScheme'), 'ID', 'VAT');
             $cbc($cac($element, 'Price'), 'PriceAmount', self::unitPrice($line['net'], $line['quantity']), 'currencyID', $currency);
         }
@@ -471,7 +547,9 @@ final readonly class EInvoices
             $tax = $add($settlement, 'ram:ApplicableTradeTax');
             $add($tax, 'ram:TypeCode', 'VAT');
             $add($tax, 'ram:CategoryCode', $line['category']);
-            $add($tax, 'ram:RateApplicablePercent', $line['percent']);
+            if ($line['category'] !== 'O') {
+                $add($tax, 'ram:RateApplicablePercent', $line['percent']);
+            }
             $add($add($settlement, 'ram:SpecifiedTradeSettlementLineMonetarySummation'), 'ram:LineTotalAmount', $amount($line['net']->rounded($model['decimals'])));
         }
 
@@ -485,6 +563,9 @@ final readonly class EInvoices
             }
             $contact = $add($party, 'ram:DefinedTradeContact');
             $add($contact, 'ram:PersonName', $who['name']);
+            if (($who['phone'] ?? null) !== null) {
+                $add($add($contact, 'ram:TelephoneUniversalCommunication'), 'ram:CompleteNumber', $who['phone']);
+            }
             $add($add($contact, 'ram:EmailURIUniversalCommunication'), 'ram:URIID', $who['email']);
             $address = $add($party, 'ram:PostalTradeAddress');
             if ($who['postcode'] !== '') {
