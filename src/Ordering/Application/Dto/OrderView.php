@@ -107,6 +107,9 @@ final readonly class OrderView
         public ?string $taxReference = null,
         /** @var list<PriceChangeView> the shop's and add-ons' changes to its price, each once */
         public array $priceChanges = [],
+        /** The import scheme its goods came under, and the shop's number there when it charged the tax. */
+        public ?string $importScheme = null,
+        public ?string $importNumber = null,
     ) {}
 
     /**
@@ -177,6 +180,8 @@ final readonly class OrderView
             $order->taxProvider(),
             $order->taxReference(),
             PriceChangeView::of($lines),
+            $order->importScheme(),
+            $order->importNumber(),
         );
     }
 }

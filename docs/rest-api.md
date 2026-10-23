@@ -2009,6 +2009,20 @@ Adds the rates of a CSV file (WooCommerce's columns) to a tax group, or puts the
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+### `GET /tax/import-schemes`
+
+The import schemes there are for low-value goods, and those the shop sells under.
+
+- Who: shop managers
+
+### `PUT /tax/import-schemes`
+
+Replaces the import schemes the shop sells under: those as they are then.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `schemes` (array): at most 10 items
+
 ### `GET /tax/nexus-thresholds`
 
 The economic nexus thresholds the shop goes by.

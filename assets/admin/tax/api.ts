@@ -280,6 +280,46 @@ export function saveEuThreshold( threshold: string ): Promise< TaxSettings > {
 	} );
 }
 
+export interface ImportSchemeKnown {
+	scheme: string;
+	label: string;
+	/** The limit the law sets, in its own currency. */
+	legal_limit: string;
+	currency: string;
+	/** The limit is for each item, not the order. */
+	per_item: boolean;
+	/** What the shop's number there looks like. */
+	example: string;
+}
+
+export interface ImportRegistration {
+	scheme: string;
+	/** The shop's number there; null when it ships as exports. */
+	number: string | null;
+	/** In the shop's currency. */
+	limit: string;
+}
+
+export interface ImportSchemes {
+	shop_currency: string;
+	known: ImportSchemeKnown[];
+	schemes: ImportRegistration[];
+}
+
+export function fetchImportSchemes(): Promise< ImportSchemes > {
+	return apiFetch< ImportSchemes >( { path: `${ BASE }/import-schemes` } );
+}
+
+export function saveImportSchemes(
+	schemes: ImportRegistration[]
+): Promise< ImportSchemes > {
+	return apiFetch< ImportSchemes >( {
+		path: `${ BASE }/import-schemes`,
+		method: 'PUT',
+		data: { schemes },
+	} );
+}
+
 export function fetchNexusThresholds(): Promise< NexusThresholds > {
 	return apiFetch< NexusThresholds >( {
 		path: `${ BASE }/nexus-thresholds`,

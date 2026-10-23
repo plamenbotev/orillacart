@@ -121,6 +121,8 @@ final readonly class OrderService
             $command->deliveryDate === null ? null : new DeliveryChoice(new \DateTimeImmutable($command->deliveryDate), $command->deliverySlot, $command->deliveryKey),
             $command->taxExemption,
             $command->taxProvider,
+            $command->importScheme,
+            $command->importNumber,
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);

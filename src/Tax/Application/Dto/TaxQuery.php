@@ -16,5 +16,7 @@ final readonly class TaxQuery
         public ?TaxAddress $billing = null,
         /** For shipping: rates that leave shipping alone do not apply. */
         public bool $forShipping = false,
+        /** Taxed at the shipping address whatever the shop's basis, as goods under an import scheme are. */
+        public bool $atShipping = false,
     ) {}
 }

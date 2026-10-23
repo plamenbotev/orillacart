@@ -83,5 +83,11 @@ final readonly class CheckoutView
         /** What the logged-in customer has as store credit, and whether it pays. */
         public string $storeCredit = '0',
         public bool $usingStoreCredit = false,
+        /**
+         * The import scheme the goods come under ("ioss"), when one does; with importCharges, the customer pays the
+         * tax and duties at the border instead of here.
+         */
+        public ?string $importScheme = null,
+        public bool $importCharges = false,
     ) {}
 }

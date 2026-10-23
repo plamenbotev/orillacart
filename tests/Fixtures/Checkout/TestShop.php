@@ -138,6 +138,7 @@ use OrillaCart\Shipping\Domain\Event\OrderReadyForPickup;
 use OrillaCart\Shipping\Domain\Event\ShippingClassDeleted;
 use OrillaCart\Shipping\Infrastructure\Events\ConvertMeasures as ConvertRateMeasures;
 use OrillaCart\Shipping\Infrastructure\Events\KeepShippedOrders;
+use OrillaCart\Tax\Application\ImportSchemes;
 use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Application\TaxExemptions;
 use OrillaCart\Tax\Application\TaxGroupService;
@@ -209,6 +210,7 @@ use OrillaCart\Tests\Fixtures\Shipping\InMemoryConsignmentRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
 use OrillaCart\Tests\Fixtures\Shipping\MemoryRateCache;
 use OrillaCart\Tests\Fixtures\Tax\FakeVatRegistry;
+use OrillaCart\Tests\Fixtures\Tax\InMemoryImportRegistrations;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
@@ -318,6 +320,7 @@ final class TestShop
     public readonly InMemoryTaxGroupRepository $taxGroupRecords;
     public readonly TaxRatesCsv $taxRatesCsv;
     public readonly TaxCalculator $taxCalculator;
+    public readonly ImportSchemes $importSchemes;
     public readonly InMemoryPendingAccounts $pendingAccounts;
     public readonly RecordingAccountMail $accountMail;
     public readonly PaymentOptions $paymentOptions;
@@ -459,7 +462,8 @@ final class TestShop
         $this->paymentOptions = $paymentOptions = new PaymentOptions($methodRecords, $gateways, $settings);
         $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
         $this->taxServices = new TaxServices($this->taxSettings, $extensions, $this->logger, $this->failures, $taxGroupRecords, $this->taxQuotes = new MemoryTaxQuoteCache());
-        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures);
+        $this->importSchemes = new ImportSchemes(new InMemoryImportRegistrations(), $settings, $geography);
+        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures, $this->importSchemes);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts);
         $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures);
         $this->checkout = new CheckoutService(

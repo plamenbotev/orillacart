@@ -54,9 +54,11 @@ use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Shipping\Application\Dto\ShippingQuery;
 use OrillaCart\Shipping\Application\ShippingQuotes;
 use OrillaCart\Tax\Application\Dto\AppliedTaxView;
+use OrillaCart\Tax\Application\Dto\ImportDecision;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Application\Dto\TaxExemptionView;
 use OrillaCart\Tax\Application\Dto\TaxQuery;
+use OrillaCart\Tax\Application\ImportSchemes;
 use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Application\TaxServices;
 use OrillaCart\Tax\Application\TaxServiceUnavailable;
@@ -71,7 +73,7 @@ use Psr\Log\LoggerInterface;
  * A free gift that holds is added to the items, when it is for sale, and the order priced again with it.
  *
  * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, gift: bool, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
- * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, changes: array<int, list<AdjustmentView>>, free_from: ?string, ships_from: ?string}
+ * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, import: ImportDecision, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, changes: array<int, list<AdjustmentView>>, free_from: ?string, ships_from: ?string}
  */
 final readonly class OrderPricing
 {
@@ -89,6 +91,7 @@ final readonly class OrderPricing
         private InstalledExtensions $extensions,
         private LoggerInterface $logger,
         private ExtensionFailures $failures,
+        private ImportSchemes $importSchemes,
     ) {}
 
     /**
@@ -174,7 +177,8 @@ final readonly class OrderPricing
         foreach ($items as $line) {
             $ofProduct[$line['product_id']] = ($ofProduct[$line['product_id']] ?? 0) + $line['quantity'];
         }
-        foreach ($items as $line) {
+        $quoted = [];
+        foreach ($items as $index => $line) {
             try {
                 $quote = $this->quotes->quote(new QuoteRequest($line['product_id'], $line['option_ids'], $ofProduct[$line['product_id']], $customerId, $line['bundle_choices'] ?? [], $line['extra'] ?? '0'));
             } catch (NotFound|RuleViolation) {
@@ -183,12 +187,19 @@ final readonly class OrderPricing
             if (!$quote->forSale || ($quote->available !== null && $quote->available < $line['quantity'])) {
                 throw new CheckoutRuleViolation(\sprintf('%s is not available in that quantity. Review the items and try again.', $quote->name), 'orillacart_cart_changed');
             }
+            $quoted[$index] = $quote;
+        }
+        $import = $reverseCharge ? new ImportDecision() : $this->importDecision($items, $quoted, $shipping, $currency, $inclusive);
+        foreach ($items as $index => $line) {
+            $quote = $quoted[$index];
+            // Goods shipped under an import scheme: taxed at the destination when the shop charges it, otherwise not.
+            $imported = $import->applies() && $quote->type === 'physical';
             // A bundle is taxed per item: its price shared out by what its items cost, each share at its item's rates.
             $parts = [];
             $unitPrice = isset($line['unit_price']) ? Money::of($line['unit_price']) : $this->currencies->price(Money::of($quote->unitPrice), $currency);
             $units = self::shares($unitPrice, $quote->contents === [] ? [Money::of('1')] : array_map(static fn(QuotedBundleItem $item): Money => Money::of($item->price), $quote->contents));
             foreach ($quote->contents === [] ? [[$quote->taxable, $quote->taxGroupId, $quote->taxCode]] : array_map(static fn(QuotedBundleItem $item): array => [$item->taxable, $item->taxGroupId, $item->taxCode], $quote->contents) as $index => [$taxable, $groupId, $taxCode]) {
-                $taxes = $taxable && !$reverseCharge ? $this->taxes($groupId, $shipping, $billing, $exempt) : [];
+                $taxes = $taxable && !$reverseCharge && (!$imported || $import->charges) ? $this->taxes($groupId, $shipping, $billing, $exempt, atShipping: $imported) : [];
                 $unit = $units[$index];
                 if ($inclusive && $taxable) {
                     // A price including tax: what this customer pays for it, as the shop chose (Tax::asPaid()).
@@ -252,9 +263,9 @@ final readonly class OrderPricing
             $inCurrency = fn(?string $amount): ?string => $amount === null ? null : (string) $this->currencies->amount(Money::of($amount), $currency);
             $freeFrom = $free ? null : $inCurrency($this->shipping->freeFrom($query));
             $shipsFrom = $offered === [] ? $inCurrency($this->shipping->shipsFrom($query)) : null;
-            $asItems = $this->tax->shippingTaxedAsItems() ? self::itemTaxShares($taxesOf) : null;
+            $asItems = $this->tax->shippingTaxedAsItems() && !$import->applies() ? self::itemTaxShares($taxesOf) : null;
             foreach ($offered as $option) {
-                $taxes = $option->taxable && !$free && !$reverseCharge ? $this->taxes($option->taxGroupId, $shipping, $billing, $exempt, true) : [];
+                $taxes = $option->taxable && !$free && !$reverseCharge && (!$import->applies() || $import->charges) ? $this->taxes($option->taxGroupId, $shipping, $billing, $exempt, true, $import->applies()) : [];
                 $price = $free ? Money::zero() : $this->currencies->amount(Money::of($option->price), $currency);
                 $shares = null;
                 if ($asItems !== null && $option->taxable && !$free) {
@@ -304,7 +315,7 @@ final readonly class OrderPricing
             }
         }
 
-        return ['exemption' => $exemption === null ? null : ['reason' => $exemption->reason, 'certificate' => $exemption->certificate], 'lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'changes' => $adjusted, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
+        return ['exemption' => $exemption === null ? null : ['reason' => $exemption->reason, 'certificate' => $exemption->certificate], 'import' => $import, 'lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'changes' => $adjusted, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
     }
 
     /**
@@ -638,12 +649,41 @@ final readonly class OrderPricing
     /**
      * @return list<Tax>
      */
-    private function taxes(?int $groupId, ?TaxAddress $shipping, ?TaxAddress $billing, bool $exempt = false, bool $forShipping = false): array
+    private function taxes(?int $groupId, ?TaxAddress $shipping, ?TaxAddress $billing, bool $exempt = false, bool $forShipping = false, bool $atShipping = false): array
     {
         return array_map(
             static fn(AppliedTaxView $tax): Tax => self::tax($tax, $exempt),
-            $this->tax->taxes(new TaxQuery($groupId, $shipping, $billing, $forShipping))->taxes,
+            $this->tax->taxes(new TaxQuery($groupId, $shipping, $billing, $forShipping, $atShipping))->taxes,
         );
+    }
+
+    /**
+     * Whether an import scheme takes the order's goods: what they are worth before shipping and tax, in the shop's
+     * currency (a price entered with tax without the shop's), and the dearest of them for limits per item.
+     *
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, gift?: bool, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
+     * @param array<int, ItemQuote> $quoted
+     */
+    private function importDecision(array $items, array $quoted, ?TaxAddress $shipping, string $currency, bool $inclusive): ImportDecision
+    {
+        $goods = Money::zero();
+        $highest = Money::zero();
+        $any = false;
+        foreach ($items as $index => $line) {
+            $quote = $quoted[$index];
+            if ($quote->type !== 'physical') {
+                continue;
+            }
+            $any = true;
+            $unit = isset($line['unit_price']) ? $this->currencies->back(Money::of($line['unit_price']), $currency) : Money::of($quote->unitPrice);
+            if ($inclusive && $quote->taxable) {
+                $unit = Tax::without($unit, $this->shopTaxes($quote->taxGroupId));
+            }
+            $goods = $goods->add($unit->times($line['quantity']));
+            $highest = $unit->compare($highest) > 0 ? $unit : $highest;
+        }
+
+        return $any ? $this->importSchemes->decide($shipping, $goods, $highest) : new ImportDecision();
     }
 
     public static function tax(AppliedTaxView $tax, bool $exempt = false): Tax

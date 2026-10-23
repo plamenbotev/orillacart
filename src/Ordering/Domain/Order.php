@@ -162,6 +162,16 @@ class Order
     #[ORM\Column(length: 40, nullable: true)]
     private ?string $taxProvider = null;
 
+    /**
+     * The import scheme its goods came under ("ioss"), and the shop's number there when it charged the tax at
+     * checkout; without a number the customer pays it at the border.
+     */
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $importScheme = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $importNumber = null;
+
     /** The tax service's own reference of the sale, once it recorded it. */
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $taxReference = null;
@@ -239,6 +249,8 @@ class Order
         $this->total = $draft->total->toFixed();
         $this->taxExemption = $draft->taxExemption;
         $this->taxProvider = $draft->taxProvider === null ? null : mb_substr($draft->taxProvider, 0, 40);
+        $this->importScheme = $draft->importScheme === null ? null : mb_substr($draft->importScheme, 0, 10);
+        $this->importNumber = $draft->importScheme === null || $draft->importNumber === null ? null : mb_substr($draft->importNumber, 0, 20);
         $this->currency = $draft->currency;
         $this->paymentGateway = $draft->paymentGateway;
         $this->paymentName = mb_substr($draft->paymentName, 0, 100);
@@ -417,6 +429,16 @@ class Order
     public function taxExemption(): ?array
     {
         return $this->taxExemption;
+    }
+
+    public function importScheme(): ?string
+    {
+        return $this->importScheme;
+    }
+
+    public function importNumber(): ?string
+    {
+        return $this->importNumber;
     }
 
     public function taxProvider(): ?string

@@ -68,6 +68,8 @@
                 {% if seller.address %}<div class="note">{{ seller.address }}</div>{% endif %}
                 {% if seller.vat_number %}<div>{{ __('VAT number') }}: {{ seller.vat_number }}</div>{% endif %}
                 {% if seller.company_number %}<div>{{ __('Company number') }}: {{ seller.company_number }}</div>{% endif %}
+                {%- set import_labels = {ioss: __('IOSS number'), uk: __('UK VAT number'), voec: __('VOEC number'), au: __('Australian GST number'), nz: __('New Zealand GST number')} -%}
+                {% if order.import_number %}<div>{{ import_labels[order.import_scheme] ?? __('Import scheme number') }}: {{ order.import_number }}</div>{% endif %}
             </div>
         </header>
 
@@ -152,6 +154,7 @@
             {% if order.paid_at %}<p>{{ __('Paid %1$s by %2$s.')|format(order.paid_at|shop_date, order.payment_name ?: __('nothing (free)')) }}</p>{% endif %}
         {% endif %}
 
+        {% if order.import_scheme and not order.import_number %}<p>{{ __('Shipped as an export: import VAT and duties, where due, are paid by the customer on delivery.') }}</p>{% endif %}
         {% if order.reverse_charge %}<p><strong>{{ __('Reverse charge: VAT to be accounted for by the customer (Article 196 of Directive 2006/112/EC).') }}</strong></p>{% endif %}
         {% if order.tax_exemption %}<p><strong>{# translators: %s: the customer's exemption certificate's number -#}{{ __('Sold without tax under exemption certificate %s')|format(order.tax_exemption.certificate) }}</strong></p>{% endif %}
         {% if seller.bank_details %}<p class="note"><span class="label">{{ __('Bank details') }}</span><br>{{ seller.bank_details }}</p>{% endif %}

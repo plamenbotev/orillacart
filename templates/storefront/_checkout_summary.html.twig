@@ -146,6 +146,9 @@
     </fieldset>
 {% endif %}
 
+{% if summary.import_charges %}
+    <p class="orillacart-notice orillacart-import-charges">{{ __('Your order ships from abroad: import VAT and duties may be due on delivery, paid to the carrier or customs.') }}</p>
+{% endif %}
 {% if summary.reverse_charge %}
     <p class="orillacart-notice">{{ __('Reverse charge: your business accounts for the VAT, so none is charged.') }}</p>
 {% elseif summary.vat_message %}

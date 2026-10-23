@@ -40,5 +40,7 @@ final readonly class OrderDraft
         public ?array $taxExemption = null,
         /** The tax service that worked out its taxes, by its id; null for the shop's own rates. */
         public ?string $taxProvider = null,
+        public ?string $importScheme = null,
+        public ?string $importNumber = null,
     ) {}
 }

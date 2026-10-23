@@ -43,5 +43,8 @@ final readonly class NewOrder
         public ?array $taxExemption = null,
         /** The tax service that worked out its taxes, by its id; null for the shop's own rates. */
         public ?string $taxProvider = null,
+        /** The import scheme its goods came under (ImportScheme), and the shop's number there when it charged the tax. */
+        public ?string $importScheme = null,
+        public ?string $importNumber = null,
     ) {}
 }

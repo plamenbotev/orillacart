@@ -49,7 +49,7 @@ final class TaxRestTest extends RestTestCase
     {
         $routes = [['GET', '/tax/groups'], ['POST', '/tax/groups'], ['GET', '/tax/groups/1'], ['PUT', '/tax/groups/1'], ['DELETE', '/tax/groups/1'],
             ['POST', '/tax/groups/1/rates'], ['PUT', '/tax/groups/1/rates/1'], ['DELETE', '/tax/groups/1/rates/1'], ['GET', '/tax/settings'], ['PUT', '/tax/settings'],
-            ['GET', '/tax/nexus-thresholds'], ['PUT', '/tax/nexus-thresholds'], ['GET', '/reports/nexus'], ['GET', '/reports/eu-distance-sales'], ['PUT', '/tax/eu-threshold'], ['GET', '/tax/groups/1/rates/csv'], ['POST', '/tax/groups/1/rates/csv']];
+            ['GET', '/tax/nexus-thresholds'], ['PUT', '/tax/nexus-thresholds'], ['GET', '/reports/nexus'], ['GET', '/reports/eu-distance-sales'], ['PUT', '/tax/eu-threshold'], ['GET', '/tax/import-schemes'], ['PUT', '/tax/import-schemes'], ['GET', '/tax/groups/1/rates/csv'], ['POST', '/tax/groups/1/rates/csv']];
 
         foreach ($routes as [$method, $route]) {
             self::assertSame(401, $this->request($method, $route)->get_status(), "visitor: {$method} {$route}");
@@ -155,6 +155,22 @@ final class TaxRestTest extends RestTestCase
         $refused = $this->request('POST', "/tax/groups/{$copy}/rates/csv", ['csv' => "US,ZZ,,,4,X,0,0,1,\n"], nonce: true);
         self::assertSame(422, $refused->get_status());
         self::assertSame(422, $this->request('POST', "/tax/groups/{$copy}/rates/csv", ['csv' => ''], nonce: true)->get_status());
+    }
+
+    public function testTheShopListsTheImportSchemesItSellsUnder(): void
+    {
+        $this->actAs('administrator');
+        $known = $this->data($this->request('GET', '/tax/import-schemes'))['known'];
+        self::assertIsArray($known);
+        self::assertSame(['ioss', 'uk', 'voec', 'au', 'nz'], array_column($known, 'scheme'));
+
+        $saved = $this->request('PUT', '/tax/import-schemes', ['schemes' => [['scheme' => 'ioss', 'number' => 'IM 276 000 0001', 'limit' => '150'], ['scheme' => 'voec', 'number' => '', 'limit' => '300']]], nonce: true);
+        self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
+        self::assertSame([['scheme' => 'ioss', 'number' => 'IM2760000001', 'limit' => '150'], ['scheme' => 'voec', 'number' => null, 'limit' => '300']], $this->data($saved)['schemes']);
+        foreach ([[['scheme' => 'mars', 'limit' => '1']], [['scheme' => 'uk', 'number' => 'FR123', 'limit' => '135']], [['scheme' => 'uk', 'limit' => 'lots']]] as $refused) {
+            self::assertSame(422, $this->request('PUT', '/tax/import-schemes', ['schemes' => $refused], nonce: true)->get_status(), (string) wp_json_encode($refused));
+        }
+        delete_option(\OrillaCart\Tax\Infrastructure\WordPress\OptionImportRegistrationsRepository::OPTION);
     }
 
     public function testTheDefaultGroupStaysUntilAnotherIsChosen(): void

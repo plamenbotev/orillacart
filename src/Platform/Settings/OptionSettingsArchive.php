@@ -29,8 +29,10 @@ use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Shared\Files\FileDelivery;
 use OrillaCart\Storefront\Domain\StorefrontSettingsRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionStorefrontSettingsRepository;
+use OrillaCart\Tax\Domain\ImportRegistrationsRepository;
 use OrillaCart\Tax\Domain\NexusThresholdsRepository;
 use OrillaCart\Tax\Domain\TaxSettingsRepository;
+use OrillaCart\Tax\Infrastructure\WordPress\OptionImportRegistrationsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionNexusThresholdsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
 
@@ -62,6 +64,7 @@ final readonly class OptionSettingsArchive implements SettingsArchive
         private FileDelivery $downloads,
         private EngineSettingsRepository $search,
         private NexusThresholdsRepository $nexus,
+        private ImportRegistrationsRepository $importSchemes,
     ) {}
 
     public function export(): array
@@ -133,6 +136,7 @@ final readonly class OptionSettingsArchive implements SettingsArchive
             'shop' => [OptionSettingsRepository::OPTION, fn() => $this->shop->save($this->shop->load())],
             'tax' => [OptionTaxSettingsRepository::OPTION, fn() => $this->tax->save($this->tax->load())],
             'nexus' => [OptionNexusThresholdsRepository::OPTION, fn() => $this->nexus->save($this->nexus->load())],
+            'import_schemes' => [OptionImportRegistrationsRepository::OPTION, fn() => $this->importSchemes->save($this->importSchemes->load())],
             'emails' => [OptionEmailSettingsRepository::OPTION, fn() => $this->emails->save($this->emails->load())],
             'invoices' => [OptionInvoiceSettingsRepository::OPTION, fn() => $this->invoices->save($this->invoices->load())],
             'customers' => [OptionCustomerSettingsRepository::OPTION, fn() => $this->customers->save($this->customers->load())],

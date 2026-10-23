@@ -197,6 +197,8 @@ final readonly class CheckoutService
             amountDue: (string) $due,
             storeCredit: $plan->storeCredit,
             usingStoreCredit: $contents->useStoreCredit && array_any($plan->uses, static fn(GiftCardUse $use): bool => $use->code === null),
+            importScheme: $priced['import']->scheme,
+            importCharges: $priced['import']->applies() && !$priced['import']->charges,
         );
     }
 
@@ -472,6 +474,8 @@ final readonly class CheckoutService
             $delivery?->key,
             $this->pricing->exemption($priced),
             $this->pricing->taxProvider($priced),
+            $priced['import']->scheme,
+            $priced['import']->charges ? $priced['import']->number : null,
         )), $gateway === null)));
         foreach ([...$this->failures->since($failed), ...$this->addressChecks->kept($billingAddress, $priced['needs_shipping'] && $command->shippingAddress !== null ? $shippingAddress : null)] as $failure) {
             $this->orders->note($order->number, $failure, false);
