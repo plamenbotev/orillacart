@@ -20,6 +20,9 @@ class TaxGroup
 {
     public const int MAX_NAME_LENGTH = 100;
 
+    /** Every rate is read to price an order; more than this belongs with a tax service. */
+    public const int MAX_RATES = 5000;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -89,8 +92,14 @@ class TaxGroup
         return $rates;
     }
 
+    /**
+     * @throws RuleViolation once the group has MAX_RATES
+     */
     public function addRate(TaxRateDetails $details): TaxRate
     {
+        if ($this->rates->count() >= self::MAX_RATES) {
+            throw new RuleViolation(\sprintf('A tax group holds up to %d rates; a tax service suits rates by street address.', self::MAX_RATES), 'orillacart_too_many_tax_rates');
+        }
         $rate = new TaxRate($this, $details);
         $this->rates->add($rate);
 
@@ -129,11 +138,12 @@ class TaxGroup
      * The taxes of this group at a location: every rate for the whole country, plus the rates for the
      * location's state and postcode. They add up, listed by priority; a compound one on top of those before it.
      */
-    public function taxesAt(TaxLocation $location): AppliedTaxes
+    /** The rates that apply at the location: to the items, or to shipping. */
+    public function taxesAt(TaxLocation $location, bool $toShipping = false): AppliedTaxes
     {
         $taxes = [];
         foreach ($this->rates() as $rate) {
-            if ($rate->appliesAt($location)) {
+            if ($rate->appliesAt($location, $toShipping)) {
                 $taxes[] = new AppliedTax($rate->isSaved() ? $rate->id() : null, $rate->details()->name, $rate->details()->percent, $rate->details()->compound, $rate->jurisdiction());
             }
         }

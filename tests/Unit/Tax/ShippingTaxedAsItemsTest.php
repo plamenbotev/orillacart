@@ -76,6 +76,23 @@ final class ShippingTaxedAsItemsTest extends TestCase
         self::assertSame(['8', [['VAT', '1'], ['VAT reduced', '0.17']]], [$summary->shipping, $this->shippingTaxes()]);
     }
 
+    public function testARateThatLeavesShippingAloneIsNotChargedOnIt(): void
+    {
+        $this->shop->taxGroups->addRate($this->standard, new SaveTaxRate('US', 'NY', '4', 'NY', shipping: false));
+
+        self::assertSame(['0', '1.2'], $this->taxedInNewYork(), 'the lamp at 4 %; the atlas\'s group has no rate there');
+        $this->settings(true);
+        self::assertSame(['0', '1.2'], $this->taxedInNewYork(), 'nor on the items\' share of it');
+    }
+
+    /** @return array{string, string} the shipping's tax and the items' */
+    private function taxedInNewYork(): array
+    {
+        $summary = $this->shop->checkout->summary($this->owner, new CheckoutDetails('US', 'NY'));
+
+        return [$summary->shippingTax, $summary->itemsTax];
+    }
+
     private function settings(bool $asItems, bool $includesTax = false): void
     {
         $this->shop->taxSettings->save(new TaxSettings(TaxBasis::ShippingAddress, $this->standard, $includesTax, shippingTaxedAsItems: $asItems));

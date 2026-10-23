@@ -6,7 +6,7 @@ namespace OrillaCart\Tax\Domain;
 
 /**
  * Where tax is charged: a country, a state only when it belongs to that country, whether the country is in the
- * EU, and the postcode as the customer gave it. Built from addresses the Geography area has checked.
+ * EU, and the postcode and city as the customer gave them. Built from addresses the Geography area has checked.
  */
 final readonly class TaxLocation
 {
@@ -15,5 +15,6 @@ final readonly class TaxLocation
         public ?string $state = null,
         public bool $inEu = false,
         public ?string $postcode = null,
+        public ?string $city = null,
     ) {}
 }

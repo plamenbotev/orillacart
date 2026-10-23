@@ -38,7 +38,7 @@ use OrillaCart\Tax\Application\ExemptionCertificates;
  * The checkout page, and the receipt customers come back to after ordering (?orillacart_order=a signed link).
  *
  * The summary is priced for the addresses in the query string (shipping_country, shipping_state,
- * shipping_postcode, billing_country, billing_state, billing_postcode, rate), which the storefront script sends when the customer changes them;
+ * shipping_postcode, shipping_city, billing_country, billing_state, billing_postcode, billing_city, rate), which the storefront script sends when the customer changes them;
  * the first view uses the customer's saved addresses, or the shop's country.
  */
 final readonly class CheckoutBlock implements BlockDefinition
@@ -95,6 +95,8 @@ final readonly class CheckoutBlock implements BlockDefinition
             $billingState,
             shippingPostcode: $shipping?->postcode,
             billingPostcode: $billing?->postcode,
+            shippingCity: $shipping?->city,
+            billingCity: $billing?->city,
         );
         try {
             $summary = $this->checkout->summary($this->shopper->cart(), $details);
@@ -190,7 +192,16 @@ final readonly class CheckoutBlock implements BlockDefinition
             \is_string($_GET['delivery_date'] ?? null) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['delivery_date']) === 1 ? $_GET['delivery_date'] : null,
             \is_string($_GET['delivery_slot'] ?? null) && preg_match('/^[a-z0-9][a-z0-9-]{0,39}$/', $_GET['delivery_slot']) === 1 ? $_GET['delivery_slot'] : null,
             self::postcode('billing_postcode'),
+            self::city($shippingCountry === null ? 'billing_city' : 'shipping_city'),
+            self::city('billing_city'),
         );
+    }
+
+    private static function city(string $name): ?string
+    {
+        $value = $_GET[$name] ?? null;
+
+        return \is_string($value) && $value !== '' ? mb_substr(sanitize_text_field(wp_unslash($value)), 0, 100) : null;
     }
 
     private static function postcode(string $name): ?string

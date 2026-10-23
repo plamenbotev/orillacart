@@ -10,7 +10,7 @@ use OrillaCart\Shared\Domain\TaxJurisdiction;
 
 /**
  * One rate of a tax group: a percentage charged in a country, or only in one of its states, or only at some
- * postcodes.
+ * postcodes or in some cities; on shipping too, unless it says not.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'tax_rates')]
@@ -49,6 +49,14 @@ class TaxRate
     #[ORM\Column(length: 40, nullable: true)]
     private ?string $code = null;
 
+    /** @var list<string> the cities it applies to, as TaxRateDetails::city() writes them; empty for every city */
+    #[ORM\Column(type: 'json')]
+    private array $cities = [];
+
+    /** Charged on shipping too. */
+    #[ORM\Column(options: ['default' => true])]
+    private bool $shipping = true;
+
     /**
      * Created through TaxGroup::addRate().
      */
@@ -78,7 +86,7 @@ class TaxRate
 
     public function details(): TaxRateDetails
     {
-        return new TaxRateDetails($this->country, $this->state, Percentage::of($this->percent), $this->name, $this->priority, array_map(PostcodePattern::of(...), $this->postcodes), $this->compound, $this->code);
+        return new TaxRateDetails($this->country, $this->state, Percentage::of($this->percent), $this->name, $this->priority, array_map(PostcodePattern::of(...), $this->postcodes), $this->compound, $this->code, $this->cities, $this->shipping);
     }
 
     public function change(TaxRateDetails $details): void
@@ -91,6 +99,8 @@ class TaxRate
         $this->postcodes = array_values(array_map(strval(...), $details->postcodes));
         $this->compound = $details->compound;
         $this->code = $details->code;
+        $this->cities = array_values($details->cities);
+        $this->shipping = $details->shipping;
     }
 
     /**
@@ -99,7 +109,7 @@ class TaxRate
     public function jurisdiction(): TaxJurisdiction
     {
         $level = match (true) {
-            $this->postcodes !== [] => TaxJurisdiction::LOCAL,
+            $this->postcodes !== [] || $this->cities !== [] => TaxJurisdiction::LOCAL,
             $this->state !== null => TaxJurisdiction::REGION,
             default => TaxJurisdiction::COUNTRY,
         };
@@ -110,16 +120,20 @@ class TaxRate
     }
 
     /**
-     * A rate for some postcodes applies only once the postcode is known.
+     * A rate for some postcodes or cities applies only once they are known; one that leaves shipping alone does not
+     * apply to it.
      */
-    public function appliesAt(TaxLocation $location): bool
+    public function appliesAt(TaxLocation $location, bool $toShipping = false): bool
     {
-        if ($this->country !== $location->country || ($this->state !== null && $this->state !== $location->state)) {
+        if ($this->country !== $location->country || ($this->state !== null && $this->state !== $location->state) || ($toShipping && !$this->shipping)) {
             return false;
         }
         $postcode = $location->postcode;
+        if ($this->postcodes !== [] && ($postcode === null || $postcode === '' || array_filter($this->postcodes, static fn(string $pattern): bool => PostcodePattern::of($pattern)->matches($postcode)) === [])) {
+            return false;
+        }
 
-        return $this->postcodes === [] || ($postcode !== null && $postcode !== '' && array_filter($this->postcodes, static fn(string $pattern): bool => PostcodePattern::of($pattern)->matches($postcode)) !== []);
+        return $this->cities === [] || ($location->city !== null && \in_array(TaxRateDetails::city($location->city), $this->cities, true));
     }
 
     /**

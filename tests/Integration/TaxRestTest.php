@@ -49,7 +49,7 @@ final class TaxRestTest extends RestTestCase
     {
         $routes = [['GET', '/tax/groups'], ['POST', '/tax/groups'], ['GET', '/tax/groups/1'], ['PUT', '/tax/groups/1'], ['DELETE', '/tax/groups/1'],
             ['POST', '/tax/groups/1/rates'], ['PUT', '/tax/groups/1/rates/1'], ['DELETE', '/tax/groups/1/rates/1'], ['GET', '/tax/settings'], ['PUT', '/tax/settings'],
-            ['GET', '/tax/nexus-thresholds'], ['PUT', '/tax/nexus-thresholds'], ['GET', '/reports/nexus']];
+            ['GET', '/tax/nexus-thresholds'], ['PUT', '/tax/nexus-thresholds'], ['GET', '/reports/nexus'], ['GET', '/tax/groups/1/rates/csv'], ['POST', '/tax/groups/1/rates/csv']];
 
         foreach ($routes as [$method, $route]) {
             self::assertSame(401, $this->request($method, $route)->get_status(), "visitor: {$method} {$route}");
@@ -72,7 +72,7 @@ final class TaxRestTest extends RestTestCase
         $federal = $this->id($this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'US', 'state' => null, 'percent' => '2', 'name' => 'Federal', 'priority' => 2], nonce: true));
         $california = $this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'US', 'state' => 'CA', 'percent' => '7.25', 'name' => 'California', 'priority' => 1], nonce: true);
         self::assertSame(201, $california->get_status());
-        self::assertSame(['country' => 'US', 'state' => 'CA', 'percent' => '7.25', 'name' => 'California', 'priority' => 1, 'postcodes' => [], 'compound' => false, 'code' => null, 'jurisdiction' => ['country' => 'US', 'region' => 'CA', 'level' => 'region', 'code' => 'US-CA', 'name' => 'California']], array_diff_key($this->data($california), ['id' => true]));
+        self::assertSame(['country' => 'US', 'state' => 'CA', 'percent' => '7.25', 'name' => 'California', 'priority' => 1, 'postcodes' => [], 'compound' => false, 'code' => null, 'jurisdiction' => ['country' => 'US', 'region' => 'CA', 'level' => 'region', 'code' => 'US-CA', 'name' => 'California'], 'cities' => [], 'shipping' => true], array_diff_key($this->data($california), ['id' => true]));
 
         $settings = $this->request('PUT', '/tax/settings', ['basis' => 'shipping_address', 'default_group_id' => $group], nonce: true);
         self::assertSame(200, $settings->get_status());
@@ -131,6 +131,30 @@ final class TaxRestTest extends RestTestCase
 
         self::assertSame(404, $this->request('PUT', "/tax/groups/{$group}/rates/999999", ['country' => 'DE', 'state' => null, 'percent' => '19'], nonce: true)->get_status());
         self::assertSame(404, $this->request('GET', '/tax/groups/999999')->get_status());
+    }
+
+    public function testRatesGoOutAndComeInAsCsv(): void
+    {
+        $this->actAs('administrator');
+        $group = $this->id($this->request('POST', '/tax/groups', ['name' => 'Standard'], nonce: true));
+        $this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'US', 'state' => 'NY', 'percent' => '4', 'name' => 'NY', 'cities' => ['New York'], 'shipping' => false], nonce: true);
+
+        $export = $this->request('GET', "/tax/groups/{$group}/rates/csv");
+        self::assertSame(200, $export->get_status());
+        $csv = $this->data($export)['csv'];
+        self::assertIsString($csv);
+        self::assertStringContainsString('US,NY,,"NEW YORK",4,NY,0,0,0,Standard,', $csv);
+
+        $copy = $this->id($this->request('POST', '/tax/groups', ['name' => 'Copy'], nonce: true));
+        $imported = $this->request('POST', "/tax/groups/{$copy}/rates/csv", ['csv' => $csv], nonce: true);
+        self::assertSame(200, $imported->get_status());
+        $rates = $this->data($imported)['rates'];
+        self::assertIsArray($rates);
+        self::assertSame([['US', 'NY', ['NEW YORK'], false]], array_map(static fn(mixed $rate): array => \is_array($rate) ? [$rate['country'] ?? null, $rate['state'] ?? null, $rate['cities'] ?? null, $rate['shipping'] ?? null] : [], $rates));
+
+        $refused = $this->request('POST', "/tax/groups/{$copy}/rates/csv", ['csv' => "US,ZZ,,,4,X,0,0,1,\n"], nonce: true);
+        self::assertSame(422, $refused->get_status());
+        self::assertSame(422, $this->request('POST', "/tax/groups/{$copy}/rates/csv", ['csv' => ''], nonce: true)->get_status());
     }
 
     public function testTheDefaultGroupStaysUntilAnotherIsChosen(): void

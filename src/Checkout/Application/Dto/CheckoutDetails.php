@@ -43,5 +43,10 @@ final readonly class CheckoutDetails
         /** For taxes charged at some postcodes only, when the billing address decides. */
         #[Assert\Length(max: 20)]
         public ?string $billingPostcode = null,
+        /** For taxes charged in some cities only. */
+        #[Assert\Length(max: 100)]
+        public ?string $shippingCity = null,
+        #[Assert\Length(max: 100)]
+        public ?string $billingCity = null,
     ) {}
 }

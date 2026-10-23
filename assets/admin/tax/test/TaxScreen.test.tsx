@@ -23,6 +23,8 @@ const standard = {
 			priority: 1,
 			postcodes: [],
 			compound: false,
+			cities: [],
+			shipping: true,
 			code: null,
 		},
 		{
@@ -34,6 +36,8 @@ const standard = {
 			priority: 2,
 			postcodes: [],
 			compound: false,
+			cities: [],
+			shipping: true,
 			code: null,
 		},
 	],
@@ -232,6 +236,8 @@ describe( 'TaxScreen', () => {
 				priority: 0,
 				postcodes: [],
 				compound: false,
+				cities: [],
+				shipping: true,
 				code: null,
 			},
 		} );

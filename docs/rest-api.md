@@ -390,6 +390,8 @@ The totals for the addresses and shipping the customer has chosen so far. Change
   - `delivery_date` (string|null): a date, Y-m-d
   - `delivery_slot` (string|null): at most 40 characters
   - `billing_postcode` (string|null): at most 20 characters
+  - `shipping_city` (string|null): at most 100 characters
+  - `billing_city` (string|null): at most 100 characters
 
 ## /countries
 
@@ -1956,6 +1958,23 @@ Fills a tax group with the standard VAT rate of every EU country it has none for
   - `postcodes` (array): at most 500 items; each at most 21 characters
   - `compound` (bool): default false
   - `code` (string|null): matches `/^[A-Za-z0-9._-]{1,40}$/`
+  - `cities` (array): at most 100 items; each at most 64 characters
+  - `shipping` (bool): default true
+
+### `GET /tax/groups/{id}/rates/csv`
+
+A tax group's rates as CSV, in WooCommerce's columns: {csv}, for the browser to save as a file.
+
+- Who: shop managers
+
+### `POST /tax/groups/{id}/rates/csv`
+
+Adds the rates of a CSV file (WooCommerce's columns) to a tax group, or puts them in place of its rates: the group, as it is then. Every row is checked first; one that cannot be is named and nothing is saved.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `csv` (string): required; not empty; at most 2000000 characters
+  - `replace` (bool): default false
 
 ### `PUT /tax/groups/{id}/rates/{rate}`
 
@@ -1969,6 +1988,8 @@ Fills a tax group with the standard VAT rate of every EU country it has none for
   - `postcodes` (array): at most 500 items; each at most 21 characters
   - `compound` (bool): default false
   - `code` (string|null): matches `/^[A-Za-z0-9._-]{1,40}$/`
+  - `cities` (array): at most 100 items; each at most 64 characters
+  - `shipping` (bool): default true
 
 ### `DELETE /tax/groups/{id}/rates/{rate}`
 

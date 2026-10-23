@@ -141,6 +141,7 @@ use OrillaCart\Shipping\Infrastructure\Events\KeepShippedOrders;
 use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Application\TaxExemptions;
 use OrillaCart\Tax\Application\TaxGroupService;
+use OrillaCart\Tax\Application\TaxRatesCsv;
 use OrillaCart\Tax\Application\TaxServices;
 use OrillaCart\Tax\Application\VatNumbers;
 use OrillaCart\Tax\Domain\TaxBasis;
@@ -315,6 +316,8 @@ final class TestShop
     public readonly TaxServices $taxServices;
     public readonly MemoryTaxQuoteCache $taxQuotes;
     public readonly InMemoryTaxGroupRepository $taxGroupRecords;
+    public readonly TaxRatesCsv $taxRatesCsv;
+    public readonly TaxCalculator $taxCalculator;
     public readonly InMemoryPendingAccounts $pendingAccounts;
     public readonly RecordingAccountMail $accountMail;
     public readonly PaymentOptions $paymentOptions;
@@ -361,9 +364,10 @@ final class TestShop
         $this->taxGroupRecords = $taxGroupRecords = new InMemoryTaxGroupRepository();
         $this->taxSettings = new InMemoryTaxSettingsRepository(new TaxSettings(TaxBasis::ShippingAddress, null));
         $this->taxGroups = new TaxGroupService($taxGroupRecords, $this->taxSettings, $geography, $this->events);
+        $this->taxRatesCsv = new TaxRatesCsv($taxGroupRecords, $geography, $this->events);
         $this->accounts = new InMemoryAccounts();
         $this->taxExemptions = new TaxExemptions(new InMemoryTaxExemptionRepository(), $this->accounts, $this->clock);
-        $taxes = new TaxCalculator($taxGroupRecords, $this->taxSettings, $settings, $geography, $this->taxExemptions);
+        $this->taxCalculator = $taxes = new TaxCalculator($taxGroupRecords, $this->taxSettings, $settings, $geography, $this->taxExemptions);
 
         $carrierRecords = new InMemoryCarrierRepository();
         $classRecords = new InMemoryShippingClassRepository();

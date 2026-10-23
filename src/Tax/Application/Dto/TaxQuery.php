@@ -14,5 +14,7 @@ final readonly class TaxQuery
         public ?int $groupId = null,
         public ?TaxAddress $shipping = null,
         public ?TaxAddress $billing = null,
+        /** For shipping: rates that leave shipping alone do not apply. */
+        public bool $forShipping = false,
     ) {}
 }

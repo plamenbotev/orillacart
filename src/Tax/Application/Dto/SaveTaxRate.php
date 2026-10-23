@@ -32,5 +32,11 @@ final readonly class SaveTaxRate
         /** The code the shop files this tax under (a county's, a city's); empty to build one from the place. */
         #[Assert\Regex('/^[A-Za-z0-9._-]{1,40}$/', message: 'Use up to 40 letters, digits, dots, dashes or underscores.')]
         public ?string $code = null,
+        /** @var list<string> the cities it applies to; empty for every city */
+        #[Assert\Count(max: TaxRateDetails::MAX_CITIES)]
+        #[Assert\All([new Assert\Type('string'), new Assert\Length(max: TaxRateDetails::MAX_CITY_LENGTH)])]
+        public array $cities = [],
+        /** Charged on shipping too. */
+        public bool $shipping = true,
     ) {}
 }

@@ -34,6 +34,7 @@ import {
 	type TaxSettings,
 } from './api';
 import { NexusCard } from './NexusCard';
+import { RatesCsv } from './RatesCsv';
 import { RateModal } from './RateModal';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
@@ -811,11 +812,22 @@ function GroupCard( {
 									{ rate.postcodes.length === 0
 										? __( 'All postcodes', 'orillacart' )
 										: rate.postcodes.join( ', ' ) }
+									{ rate.cities.length > 0 && (
+										<>
+											<br />
+											{ rate.cities.join( ', ' ) }
+										</>
+									) }
 								</td>
 								<td>
 									{ rate.percent } %
 									{ rate.compound &&
 										` ${ __( '(compound)', 'orillacart' ) }` }
+									{ ! rate.shipping &&
+										` ${ __(
+											'(not on shipping)',
+											'orillacart'
+										) }` }
 								</td>
 								<td>{ rate.name }</td>
 								<td>{ rate.priority }</td>
@@ -870,6 +882,11 @@ function GroupCard( {
 						'orillacart'
 					) }
 				</p>
+				<RatesCsv
+					group={ group }
+					onImported={ onChanged }
+					onError={ onError }
+				/>
 			</CardBody>
 			{ editing !== null && (
 				<RateModal

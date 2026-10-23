@@ -14,6 +14,10 @@ export interface TaxRate {
 	compound: boolean;
 	/** The code the shop files this tax under, such as a county's or a city's; null to build one from the place. */
 	code: string | null;
+	/** Cities it applies to, in capitals; empty for every city. */
+	cities: string[];
+	/** Charged on shipping too. */
+	shipping: boolean;
 }
 
 export interface TaxGroup {
@@ -25,6 +29,9 @@ export interface TaxGroup {
 }
 
 export type TaxRateInput = Omit< TaxRate, 'id' >;
+
+/** A file the shop imports is at most this large. */
+export const MAX_CSV_BYTES = 2_000_000;
 
 /** Regions, "US-TX", whose sales within them are taxed at the seller's address. */
 export const REGION = /^[A-Z]{2}-[A-Z0-9]{1,3}$/;
@@ -133,6 +140,34 @@ export function addEuStandardRates( id: number ): Promise< TaxGroup > {
 	return apiFetch< TaxGroup >( {
 		path: `${ BASE }/groups/${ id }/eu-standard-rates`,
 		method: 'POST',
+	} );
+}
+
+/**
+ * The group's rates as CSV, in WooCommerce's columns.
+ * @param id
+ */
+export function exportRates( id: number ): Promise< { csv: string } > {
+	return apiFetch< { csv: string } >( {
+		path: `${ BASE }/groups/${ id }/rates/csv`,
+	} );
+}
+
+/**
+ * Adds a CSV file's rates to the group, or puts them in place of its rates; every row is checked first.
+ * @param id
+ * @param csv
+ * @param replace
+ */
+export function importRates(
+	id: number,
+	csv: string,
+	replace: boolean
+): Promise< TaxGroup > {
+	return apiFetch< TaxGroup >( {
+		path: `${ BASE }/groups/${ id }/rates/csv`,
+		method: 'POST',
+		data: { csv, replace },
 	} );
 }
 

@@ -44,9 +44,14 @@ export function RateModal( {
 		postcodes: rate?.postcodes ?? [],
 		compound: rate?.compound ?? false,
 		code: rate?.code ?? null,
+		cities: rate?.cities ?? [],
+		shipping: rate?.shipping ?? true,
 	} );
 	const [ postcodes, setPostcodes ] = useState(
 		( rate?.postcodes ?? [] ).join( ', ' )
+	);
+	const [ cities, setCities ] = useState(
+		( rate?.cities ?? [] ).join( ', ' )
 	);
 	const [ violations, setViolations ] = useState< Violation[] >( [] );
 	const [ error, setError ] = useState< string | null >( null );
@@ -63,6 +68,10 @@ export function RateModal( {
 				.split( ',' )
 				.map( ( postcode ) => postcode.trim() )
 				.filter( ( postcode ) => postcode !== '' ),
+			cities: cities
+				.split( ',' )
+				.map( ( city ) => city.trim() )
+				.filter( ( city ) => city !== '' ),
 		} )
 			.then( onSaved )
 			.catch( ( failure: unknown ) => {
@@ -116,6 +125,19 @@ export function RateModal( {
 					}
 					value={ postcodes }
 					onChange={ setPostcodes }
+				/>
+				<TextControl
+					__next40pxDefaultSize
+					label={ __( 'Cities', 'orillacart' ) }
+					help={
+						violationOf( violations, 'cities' ) ??
+						__(
+							'Only in these cities, separated by commas, as customers write them; capitals and spaces do not matter. Empty for every city.',
+							'orillacart'
+						)
+					}
+					value={ cities }
+					onChange={ setCities }
 				/>
 				<TextControl
 					__next40pxDefaultSize
@@ -185,6 +207,17 @@ export function RateModal( {
 					checked={ form.compound }
 					onChange={ ( compound ) =>
 						setForm( { ...form, compound } )
+					}
+				/>
+				<CheckboxControl
+					label={ __( 'Charged on shipping', 'orillacart' ) }
+					help={ __(
+						'Clear it where shipping is not taxed, as in some US states.',
+						'orillacart'
+					) }
+					checked={ form.shipping }
+					onChange={ ( shipping ) =>
+						setForm( { ...form, shipping } )
 					}
 				/>
 				<Flex justify="flex-end">

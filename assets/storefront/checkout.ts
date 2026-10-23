@@ -73,7 +73,7 @@ export function bindCheckout( form: HTMLFormElement ): void {
 		}
 		if (
 			target.matches(
-				'[data-orillacart-country], [data-orillacart-state], [name$=".postcode"], [data-orillacart-ship-elsewhere], [data-orillacart-rate], [data-orillacart-payment], [data-orillacart-delivery], [name="vat_number"]'
+				'[data-orillacart-country], [data-orillacart-state], [name$=".postcode"], [name$=".city"], [data-orillacart-ship-elsewhere], [data-orillacart-rate], [data-orillacart-payment], [data-orillacart-delivery], [name="vat_number"]'
 			)
 		) {
 			// After this change's other listeners: the state list follows a new country first.
@@ -256,9 +256,11 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 		billing_country: value( 'billing.country' ),
 		billing_state: value( 'billing.state' ),
 		billing_postcode: value( 'billing.postcode' ),
+		billing_city: value( 'billing.city' ),
 		shipping_country: value( 'shipping_address.country' ),
 		shipping_state: value( 'shipping_address.state' ),
 		shipping_postcode: value( 'shipping_address.postcode' ),
+		shipping_city: value( 'shipping_address.city' ),
 		shipping: chosen( form, 'shipping_option' ) ?? '',
 		pickup_point: value( 'pickup_point' ),
 		vat_number: value( 'vat_number' ),

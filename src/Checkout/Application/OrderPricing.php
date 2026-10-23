@@ -254,20 +254,21 @@ final readonly class OrderPricing
             $shipsFrom = $offered === [] ? $inCurrency($this->shipping->shipsFrom($query)) : null;
             $asItems = $this->tax->shippingTaxedAsItems() ? self::itemTaxShares($taxesOf) : null;
             foreach ($offered as $option) {
-                $taxes = $option->taxable && !$free && !$reverseCharge ? $this->taxes($option->taxGroupId, $shipping, $billing, $exempt) : [];
+                $taxes = $option->taxable && !$free && !$reverseCharge ? $this->taxes($option->taxGroupId, $shipping, $billing, $exempt, true) : [];
                 $price = $free ? Money::zero() : $this->currencies->amount(Money::of($option->price), $currency);
                 $shares = null;
                 if ($asItems !== null && $option->taxable && !$free) {
                     // Taxed as the items it carries: each share of the price at the rates of the items it is for.
                     $shares = [];
                     foreach (self::shares($price, array_column($asItems, 'weight')) as $index => $share) {
-                        $shareTaxes = $reverseCharge ? [] : $asItems[$index]['taxes'];
-                        $shares[] = [$inclusive ? Tax::asPaid($share, $shareTaxes, $this->shopTaxes($asItems[$index]['group']), $samePrice) : $share, $shareTaxes];
+                        // The rates of the items' group that apply to shipping; none for untaxed items.
+                        $shareTaxes = $reverseCharge || $asItems[$index]['taxes'] === [] ? [] : $this->taxes($asItems[$index]['group'], $shipping, $billing, $exempt, true);
+                        $shares[] = [$inclusive ? Tax::asPaid($share, $shareTaxes, $this->shopTaxes($asItems[$index]['group'], true), $samePrice) : $share, $shareTaxes];
                     }
                     $price = array_reduce($shares, static fn(Money $sum, array $share): Money => $sum->add($share[0]), Money::zero());
                     $taxes = [];
                 } elseif ($inclusive && $option->taxable && !$free) {
-                    $price = Tax::asPaid($price, $taxes, $this->shopTaxes($option->taxGroupId), $samePrice);
+                    $price = Tax::asPaid($price, $taxes, $this->shopTaxes($option->taxGroupId, true), $samePrice);
                 }
                 $tax = $shares === null
                     ? array_reduce(Tax::parts($price, $taxes, $inclusive), static fn(Money $sum, Money $part): Money => $sum->add($part->rounded($decimals)), Money::zero())
@@ -637,11 +638,11 @@ final readonly class OrderPricing
     /**
      * @return list<Tax>
      */
-    private function taxes(?int $groupId, ?TaxAddress $shipping, ?TaxAddress $billing, bool $exempt = false): array
+    private function taxes(?int $groupId, ?TaxAddress $shipping, ?TaxAddress $billing, bool $exempt = false, bool $forShipping = false): array
     {
         return array_map(
             static fn(AppliedTaxView $tax): Tax => self::tax($tax, $exempt),
-            $this->tax->taxes(new TaxQuery($groupId, $shipping, $billing))->taxes,
+            $this->tax->taxes(new TaxQuery($groupId, $shipping, $billing, $forShipping))->taxes,
         );
     }
 
@@ -831,9 +832,9 @@ final readonly class OrderPricing
      *
      * @return list<Tax>
      */
-    private function shopTaxes(?int $groupId): array
+    private function shopTaxes(?int $groupId, bool $forShipping = false): array
     {
-        return array_map(static fn(AppliedTaxView $tax): Tax => self::tax($tax), $this->tax->shopTaxes($groupId)->taxes);
+        return array_map(static fn(AppliedTaxView $tax): Tax => self::tax($tax), $this->tax->shopTaxes($groupId, $forShipping)->taxes);
     }
 
     /**

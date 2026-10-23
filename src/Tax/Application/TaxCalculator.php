@@ -95,7 +95,7 @@ final readonly class TaxCalculator
      * The taxes of the group at the shop's own address, whoever buys: what a price entered including tax holds
      * when the customer owes none, as for an export.
      */
-    public function shopTaxes(?int $groupId): AppliedTaxesView
+    public function shopTaxes(?int $groupId, bool $shipping = false): AppliedTaxesView
     {
         $settings = $this->settings->load();
         $groupId ??= $settings->defaultGroupId;
@@ -103,7 +103,7 @@ final readonly class TaxCalculator
         $shop = $this->shop->current();
         $location = $this->locate(new TaxAddress($shop->shopCountry, $shop->shopState, $shop->shopPostcode));
 
-        return AppliedTaxesView::fromTaxes($group === null || $location === null ? AppliedTaxes::none() : $group->taxesAt($location));
+        return AppliedTaxesView::fromTaxes($group === null || $location === null ? AppliedTaxes::none() : $group->taxesAt($location, $shipping));
     }
 
     private function applied(TaxQuery $query): AppliedTaxes
@@ -122,13 +122,13 @@ final readonly class TaxCalculator
             $this->locate(new TaxAddress($shop->shopCountry, $shop->shopState, $shop->shopPostcode)),
         );
 
-        return $location === null ? AppliedTaxes::none() : $group->taxesAt($location);
+        return $location === null ? AppliedTaxes::none() : $group->taxesAt($location, $query->forShipping);
     }
 
     private function locate(?TaxAddress $address): ?TaxLocation
     {
         $location = $address === null ? null : $this->geography->locate($address->country, $address->state);
 
-        return $location instanceof LocationView ? new TaxLocation($location->country, $location->state, $location->inEu, $address?->postcode) : null;
+        return $location instanceof LocationView ? new TaxLocation($location->country, $location->state, $location->inEu, $address?->postcode, $address?->city) : null;
     }
 }

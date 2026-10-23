@@ -107,11 +107,11 @@ final readonly class CheckoutService
             $at = $this->estimateAt($owner);
             if ($at !== null) {
                 $estimatedFor = $at['country'];
-                $details = new CheckoutDetails($at['country'], $at['state'], $at['country'], $at['state'], $details->shippingOption, $at['postcode'], payment: $details->payment, billingPostcode: $at['postcode']);
+                $details = new CheckoutDetails($at['country'], $at['state'], $at['country'], $at['state'], $details->shippingOption, $at['postcode'], payment: $details->payment, billingPostcode: $at['postcode'], shippingCity: $at['city'], billingCity: $at['city']);
             }
         }
-        $shipping = $details->shippingCountry === null ? null : new TaxAddress($details->shippingCountry, $details->shippingState, $details->shippingPostcode);
-        $billing = $details->billingCountry === null ? $shipping : new TaxAddress($details->billingCountry, $details->billingState, $details->billingPostcode ?? ($details->billingCountry === $details->shippingCountry ? $details->shippingPostcode : null));
+        $shipping = $details->shippingCountry === null ? null : new TaxAddress($details->shippingCountry, $details->shippingState, $details->shippingPostcode, $details->shippingCity);
+        $billing = $details->billingCountry === null ? $shipping : new TaxAddress($details->billingCountry, $details->billingState, $details->billingPostcode ?? ($details->billingCountry === $details->shippingCountry ? $details->shippingPostcode : null), $details->billingCity ?? ($details->billingCountry === $details->shippingCountry ? $details->shippingCity : null));
         $contents = $this->contents($owner);
         $reverse = $this->vatNumbers->reverseCharge($details->billingCountry, $details->vatNumber);
         $currency = $this->currencies->current();
@@ -337,17 +337,17 @@ final readonly class CheckoutService
     /**
      * Where to estimate tax and shipping for a customer who has not entered an address.
      *
-     * @return array{country: string, state: ?string, postcode: ?string}|null
+     * @return array{country: string, state: ?string, postcode: ?string, city: ?string}|null
      */
     private function estimateAt(CartOwner $owner): ?array
     {
         $address = $owner->customerId === null ? null : $this->customers->savedAddress($owner->customerId);
         if ($address !== null) {
-            return ['country' => $address->country, 'state' => $address->state, 'postcode' => $address->postcode];
+            return ['country' => $address->country, 'state' => $address->state, 'postcode' => $address->postcode, 'city' => $address->city];
         }
         $shop = $this->settings->current();
 
-        return $shop->shopCountry === null || $shop->shopCountry === '' ? null : ['country' => $shop->shopCountry, 'state' => $shop->shopState, 'postcode' => $shop->shopPostcode];
+        return $shop->shopCountry === null || $shop->shopCountry === '' ? null : ['country' => $shop->shopCountry, 'state' => $shop->shopState, 'postcode' => $shop->shopPostcode, 'city' => null];
     }
 
     /**
