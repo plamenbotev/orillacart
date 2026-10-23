@@ -90,6 +90,10 @@ class Coupon
     #[ORM\Column]
     private bool $excludeSaleItems;
 
+    /** It comes off prices whose price rule keeps coupons out. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $overridesPriceRules = false;
+
     #[ORM\Column]
     private bool $combines;
 
@@ -198,6 +202,7 @@ class Coupon
         $this->excludedProductIds = self::ids($terms->excludedProductIds);
         $this->excludedCategoryIds = self::ids($terms->excludedCategoryIds);
         $this->excludeSaleItems = $terms->excludeSaleItems;
+        $this->overridesPriceRules = $terms->overridesPriceRules;
         $this->combines = $terms->combines;
         $this->usageLimit = $terms->usageLimit;
         $this->perCustomerLimit = $terms->perCustomerLimit;
@@ -270,6 +275,7 @@ class Coupon
             $this->getProductIds,
             $this->getCategoryIds,
             $this->giftProductId,
+            $this->overridesPriceRules,
         );
     }
 
@@ -529,7 +535,7 @@ class Coupon
             $excluded = \in_array($line->productId, $this->excludedProductIds, true)
                 || array_intersect($line->categoryIds, $this->excludedCategoryIds) !== []
                 || ($this->excludeSaleItems && $line->onSale)
-                || !$line->coupons;
+                || (!$line->coupons && !$this->overridesPriceRules);
             $gift = $this->kind === CouponKind::FreeGift && $line->productId === $this->giftProductId;
             if ($targeted && !$excluded && !$gift && !$line->total->isZero()) {
                 $matching[$index] = $line;

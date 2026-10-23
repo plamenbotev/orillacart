@@ -82,5 +82,7 @@ final readonly class SaveCoupon
         /** A free gift: the product given, one without variations or options. */
         #[Assert\Positive]
         public ?int $giftProductId = null,
+        /** It comes off prices whose price rule keeps codes and automatic discounts out. */
+        public bool $overridesPriceRules = false,
     ) {}
 }

@@ -30,6 +30,8 @@ export interface CouponFields {
 	excluded_product_ids: number[];
 	excluded_category_ids: number[];
 	exclude_sale_items: boolean;
+	/** It comes off prices whose price rule keeps codes and automatic discounts out. */
+	overrides_price_rules: boolean;
 	combines: boolean;
 	usage_limit: number | null;
 	per_customer_limit: number | null;
@@ -78,6 +80,7 @@ export const NEW_COUPON: CouponFields = {
 	excluded_product_ids: [],
 	excluded_category_ids: [],
 	exclude_sale_items: false,
+	overrides_price_rules: false,
 	combines: false,
 	usage_limit: null,
 	per_customer_limit: null,

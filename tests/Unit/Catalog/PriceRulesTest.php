@@ -114,7 +114,12 @@ final class PriceRulesTest extends TestCase
         $summary = $this->shop->checkout->summary($owner, new CheckoutDetails());
         self::assertSame('0', $summary->lines[0]->discount, 'nor does an automatic discount come off it');
 
+        // A code the shop made to apply even there (a staff code) comes off it.
         $only = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        $this->shop->coupons->create(new SaveCoupon('STAFF', 'percent', '20', 'Staff', overridesPriceRules: true));
+        self::assertSame('6', $this->shop->checkout->applyCoupon($only, new CouponCode('STAFF'))->lines[0]->discount, '20 % of the trade price');
+        $this->shop->checkout->removeCoupon($only, 'STAFF');
+
         $this->expectExceptionMessage('This code does not apply to the items in your cart.');
         $this->shop->checkout->applyCoupon($only, new CouponCode('TEN'));
     }

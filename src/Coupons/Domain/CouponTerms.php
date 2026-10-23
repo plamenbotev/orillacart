@@ -55,5 +55,7 @@ final readonly class CouponTerms
         public array $getProductIds = [],
         public array $getCategoryIds = [],
         public ?int $giftProductId = null,
+        /** It comes off prices whose price rule keeps codes and automatic discounts out (a staff or apology code). */
+        public bool $overridesPriceRules = false,
     ) {}
 }

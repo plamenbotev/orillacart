@@ -49,6 +49,7 @@ final readonly class CouponView
         /** @var list<int> */
         public array $getCategoryIds = [],
         public ?int $giftProductId = null,
+        public bool $overridesPriceRules = false,
     ) {}
 
     public static function fromCoupon(Coupon $coupon): self
@@ -86,6 +87,7 @@ final readonly class CouponView
             $terms->getProductIds,
             $terms->getCategoryIds,
             $terms->giftProductId,
+            $terms->overridesPriceRules,
         );
     }
 }

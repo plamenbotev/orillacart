@@ -630,6 +630,20 @@ export function CouponForm( {
 							set( 'exclude_sale_items', value )
 						}
 					/>
+					<CheckboxControl
+						label={ __(
+							'Also on prices whose price rule keeps discounts out',
+							'orillacart'
+						) }
+						help={ __(
+							'For a code that must always work, such as a staff or apology code, even on a trade price.',
+							'orillacart'
+						) }
+						checked={ fields.overrides_price_rules }
+						onChange={ ( value ) =>
+							set( 'overrides_price_rules', value )
+						}
+					/>
 
 					<h3>{ __( 'When it holds', 'orillacart' ) }</h3>
 					<Flex align="flex-start" wrap>

@@ -25,5 +25,9 @@ exclude every rule's prices. A coupon keeps "not on items on sale" for sale pric
   lowers it (a combining "price of its own" above the price leaves it). Tiers by quantity work as before, and the
   product page's table shows the combined prices.
 
+A coupon can still come off those prices when it says so: **"Also on prices whose price rule keeps discounts
+out"** (off by default), for a code that must always work, such as a staff or apology code. The rule decides for
+every coupon; a coupon made to override it is the shop's deliberate exception.
+
 A rule keeps coupons out only when it set the price: the winning rule, or a combining one that lowered it. A rule
 that holds but did not price the item (a higher price lost, or its quantity not reached) changes nothing.

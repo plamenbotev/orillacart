@@ -449,6 +449,7 @@ Public: checkout and account forms list the countries before anyone logs in.
   - `get_product_ids` (list<int>): at most 1000 items
   - `get_category_ids` (list<int>): at most 1000 items
   - `gift_product_id` (int|null): more than 0
+  - `overrides_price_rules` (bool): default false
 
 ### `GET /coupons/{id}`
 
@@ -486,6 +487,7 @@ Public: checkout and account forms list the countries before anyone logs in.
   - `get_product_ids` (list<int>): at most 1000 items
   - `get_category_ids` (list<int>): at most 1000 items
   - `gift_product_id` (int|null): more than 0
+  - `overrides_price_rules` (bool): default false
 
 ### `DELETE /coupons/{id}`
 

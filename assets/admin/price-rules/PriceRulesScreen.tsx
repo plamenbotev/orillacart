@@ -632,7 +632,7 @@ function RuleForm( {
 							'orillacart'
 						) }
 						help={ __(
-							'Off: when several rules apply, the lowest price wins. On: this rule takes its amount off the price the other rules give, such as 5% more for members on top of a sale rule.',
+							'Off: when several rules apply, the lowest price wins. On: this rule takes its amount off the price the other rules give, such as 5% more for members on top of a sale rule. Rules that combine apply in the order they were made, which matters when one takes a percentage and another an amount off.',
 							'orillacart'
 						) }
 						checked={ fields.combines }

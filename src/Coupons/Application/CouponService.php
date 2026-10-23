@@ -130,6 +130,7 @@ final readonly class CouponService
             $ids($command->getProductIds),
             $ids($command->getCategoryIds),
             $command->giftProductId,
+            $command->overridesPriceRules,
         );
     }
 }
