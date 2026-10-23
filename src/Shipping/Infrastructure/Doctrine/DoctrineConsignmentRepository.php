@@ -18,6 +18,21 @@ final readonly class DoctrineConsignmentRepository implements ConsignmentReposit
         return $this->entityManager->find(Consignment::class, $id);
     }
 
+    public function orderIdsNumbered(string $text, int $limit): array
+    {
+        $ids = $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT c.orderId')
+            ->from(Consignment::class, 'c')
+            // Parcels keep their numbers as JSON text: a number found in it is a parcel's.
+            ->where('c.number LIKE :text OR c.parcels LIKE :text')
+            ->setParameter('text', '%' . addcslashes($text, '%_\\') . '%')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        return array_values(array_map(intval(...), array_filter($ids, is_numeric(...))));
+    }
+
     public function forOrder(int $orderId): array
     {
         /** @var list<Consignment> */

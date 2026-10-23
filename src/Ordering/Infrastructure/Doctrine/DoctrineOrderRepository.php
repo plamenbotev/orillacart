@@ -6,6 +6,7 @@ namespace OrillaCart\Ordering\Infrastructure\Doctrine;
 
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\OrderRepository;
@@ -94,11 +95,12 @@ final readonly class DoctrineOrderRepository implements OrderRepository
     {
         $query = $this->entityManager->createQueryBuilder()->from(Order::class, 'o');
         $text = $search->text;
+        $lines = 'SELECT 1 FROM ' . OrderLine::class . ' %1$s WHERE %1$s.order = o AND (%2$s)';
         if ($search->attentionOnly) {
             $query->andWhere('o.attention IS NOT NULL');
         }
-        if ($search->status !== null) {
-            $query->andWhere('o.status = :status')->setParameter('status', $search->status);
+        if ($search->statuses !== []) {
+            $query->andWhere('o.status IN (:statuses)')->setParameter('statuses', array_map(static fn(OrderStatus $status): string => $status->value, $search->statuses));
         }
         if ($search->customerId !== null) {
             $query->andWhere('o.customerId = :customer')->setParameter('customer', $search->customerId);
@@ -121,13 +123,62 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         if ($search->maxTotal !== null) {
             $query->andWhere('o.total <= :max')->setParameter('max', $search->maxTotal->toFixed());
         }
+        match ($search->paid) {
+            OrderSearch::UNPAID => $query->andWhere('o.paidAt IS NULL'),
+            OrderSearch::PAID => $query->andWhere('o.paidAt IS NOT NULL AND o.refundedTotal = 0'),
+            OrderSearch::PARTLY_REFUNDED => $query->andWhere('o.refundedTotal > 0 AND o.refundedTotal < o.total'),
+            OrderSearch::REFUNDED => $query->andWhere('o.refundedTotal > 0 AND o.refundedTotal >= o.total'),
+            default => null,
+        };
+        if ($search->shipped !== null) {
+            $query->andWhere($search->shipped ? 'o.fulfilledAt IS NOT NULL' : 'o.fulfilledAt IS NULL AND o.shippingName IS NOT NULL');
+        }
+        if ($search->shippingName !== null) {
+            $query->andWhere('o.shippingName = :shipping')->setParameter('shipping', $search->shippingName);
+        }
+        if ($search->country !== null) {
+            $query->andWhere('o.billing.country = :country OR o.shippingAddress.country = :country')->setParameter('country', $search->country);
+        }
+        if ($search->deliveryFrom !== null) {
+            $query->andWhere('o.deliveryDate >= :deliveryFrom')->setParameter('deliveryFrom', $search->deliveryFrom, 'date_immutable');
+        }
+        if ($search->deliveryUntil !== null) {
+            $query->andWhere('o.deliveryDate <= :deliveryUntil')->setParameter('deliveryUntil', $search->deliveryUntil, 'date_immutable');
+        }
+        if ($search->currency !== null) {
+            $query->andWhere('o.currency = :currency')->setParameter('currency', $search->currency);
+        }
+        foreach ($search->facts as $fact) {
+            match ($fact) {
+                OrderSearch::GIFT_CARD => $query->andWhere('o.giftCardTotal > 0'),
+                OrderSearch::BACKORDER => $query->andWhere('EXISTS (' . \sprintf($lines, 'bl', 'bl.backordered > 0') . ')'),
+                OrderSearch::PERSONALISED => $query->andWhere('EXISTS (' . \sprintf($lines, 'pl', 'pl.personalisation IS NOT NULL') . ')'),
+                OrderSearch::CUSTOMER_NOTE => $query->andWhere("o.note <> ''"),
+                OrderSearch::DOWNLOADS => $query->andWhere('EXISTS (SELECT 1 FROM ' . DownloadGrant::class . ' g WHERE g.order = o)'),
+                default => null,
+            };
+        }
+        foreach (array_values($search->markedIds) as $index => $ids) {
+            // None marked matches none: 0 is no order's id.
+            $query->andWhere("o.id IN (:marked{$index})")->setParameter("marked{$index}", $ids === [] ? [0] : $ids);
+        }
         if ($text !== null) {
             $like = '%' . addcslashes($text, '%_\\') . '%';
-            $matches = ['o.email LIKE :text', 'o.billing.firstName LIKE :text', 'o.billing.lastName LIKE :text', 'o.billing.phone LIKE :text'];
+            $matches = ['o.email LIKE :text', 'o.vatNumber LIKE :text', 'o.transactionId LIKE :text'];
+            foreach (['billing', 'shippingAddress'] as $address) {
+                foreach (['firstName', 'lastName', 'phone', 'street', 'city', 'postcode'] as $field) {
+                    $matches[] = "o.{$address}.{$field} LIKE :text";
+                }
+            }
+            $matches[] = 'EXISTS (' . \sprintf($lines, 'tl', 'tl.name LIKE :text OR tl.sku LIKE :text') . ')';
             $number = ltrim($text, '#');
             if (ctype_digit($number) && \strlen($number) <= 9) {
                 $matches[] = 'o.id = :number';
                 $query->setParameter('number', (int) $number);
+            }
+            if ($search->foundIds !== []) {
+                $matches[] = 'o.id IN (:found)';
+                $query->setParameter('found', $search->foundIds);
             }
             $query->andWhere(implode(' OR ', $matches))->setParameter('text', $like);
         }
@@ -147,6 +198,18 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             ->getResult();
 
         return [$orders, $total];
+    }
+
+    public function facets(): array
+    {
+        $distinct = fn(string $field): array => array_values(array_filter(
+            $this->entityManager->createQueryBuilder()->select("DISTINCT {$field} AS value")->from(Order::class, 'o')->where("{$field} IS NOT NULL AND {$field} <> ''")->orderBy('value')->getQuery()->getSingleColumnResult(),
+            \is_string(...),
+        ));
+        $countries = array_values(array_unique([...$distinct('o.billing.country'), ...$distinct('o.shippingAddress.country')]));
+        sort($countries);
+
+        return ['shipping' => $distinct('o.shippingName'), 'countries' => $countries, 'currencies' => $distinct('o.currency')];
     }
 
     public function ofPerson(string $email, ?int $customerId, int $offset, int $limit): array

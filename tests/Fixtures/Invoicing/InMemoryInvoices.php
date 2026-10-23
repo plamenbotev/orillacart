@@ -35,6 +35,18 @@ final class InMemoryInvoices implements InvoiceRepository
         return array_values(array_filter($this->invoices, static fn(Invoice $invoice): bool => $invoice->orderId() === $orderId));
     }
 
+    public function orderIdsNumbered(string $text, int $limit): array
+    {
+        $ids = [];
+        foreach ($this->invoices as $invoice) {
+            if (stripos($invoice->number(), $text) !== false) {
+                $ids[$invoice->orderId()] = true;
+            }
+        }
+
+        return \array_slice(array_keys($ids), 0, $limit);
+    }
+
     public function lockedCounter(string $series): InvoiceCounter
     {
         $this->transactions?->requireOpen();

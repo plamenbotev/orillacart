@@ -38,6 +38,20 @@ final readonly class DoctrineRedemptionRepository implements RedemptionRepositor
         return $this->entityManager->getRepository(CouponRedemption::class)->findBy(['orderId' => $orderId]);
     }
 
+    public function orderIds(?array $couponIds = null): array
+    {
+        if ($couponIds === []) {
+            return [];
+        }
+        $query = $this->entityManager->createQueryBuilder()->select('DISTINCT r.orderId')->from(CouponRedemption::class, 'r');
+        if ($couponIds !== null) {
+            $query->where('r.couponId IN (:coupons)')->setParameter('coupons', $couponIds);
+        }
+        $ids = $query->getQuery()->getSingleColumnResult();
+
+        return array_values(array_map(intval(...), array_filter($ids, is_numeric(...))));
+    }
+
     public function save(CouponRedemption $redemption): void
     {
         $this->entityManager->persist($redemption);

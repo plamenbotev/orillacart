@@ -1,4 +1,4 @@
-import type { View } from '@wordpress/dataviews';
+import type { Filter, View } from '@wordpress/dataviews';
 
 import { ordersQuery, viewArgs, viewFromArgs } from '../listView';
 
@@ -50,6 +50,58 @@ describe( 'the orders list view', () => {
 		} );
 	} );
 
+	it( 'asks for several statuses, what the order has and its delivery days', () => {
+		const query = ( filters: Filter[] ) =>
+			ordersQuery( { ...DEFAULT, filters } );
+
+		expect(
+			query( [
+				{
+					field: 'status',
+					operator: 'isAny',
+					value: [ 'processing', 'lost', 'shipped' ],
+				},
+				{
+					field: 'has',
+					operator: 'isAll',
+					value: [ 'coupon', 'note' ],
+				},
+				{ field: 'shipped', operator: 'is', value: 'no' },
+				{ field: 'paid', operator: 'is', value: 'nonsense' },
+				{
+					field: 'delivery',
+					operator: 'between',
+					value: [ '2026-11-01', '2026-11-07' ],
+				},
+			] )
+		).toMatchObject( {
+			status: 'processing,shipped',
+			has: 'coupon,note',
+			shipped: 'no',
+			paid: undefined,
+			delivery_from: '2026-11-01',
+			delivery_until: '2026-11-07',
+		} );
+		expect(
+			query( [
+				{ field: 'delivery', operator: 'on', value: '2026-11-03' },
+			] )
+		).toMatchObject( {
+			delivery_from: '2026-11-03',
+			delivery_until: '2026-11-03',
+		} );
+		expect(
+			query( [
+				{ field: 'delivery', operator: 'before', value: '2026-03-01' },
+			] ).delivery_until
+		).toBe( '2026-02-28' );
+		expect(
+			query( [
+				{ field: 'delivery', operator: 'after', value: '2026-12-31' },
+			] ).delivery_from
+		).toBe( '2027-01-01' );
+	} );
+
 	it( 'keeps the view in the address and reads it back', () => {
 		const view: View = {
 			...DEFAULT,
@@ -57,7 +109,18 @@ describe( 'the orders list view', () => {
 			page: 3,
 			sort: { field: 'number', direction: 'asc' },
 			filters: [
-				{ field: 'status', operator: 'is', value: 'processing' },
+				{
+					field: 'status',
+					operator: 'isAny',
+					value: [ 'processing', 'on_hold' ],
+				},
+				{
+					field: 'has',
+					operator: 'isAll',
+					value: [ 'coupon', 'note' ],
+				},
+				{ field: 'paid', operator: 'is', value: 'unpaid' },
+				{ field: 'country', operator: 'is', value: 'BG' },
 				{
 					field: 'placed_at',
 					operator: 'between',
@@ -69,7 +132,10 @@ describe( 'the orders list view', () => {
 		const args = viewArgs( view );
 
 		expect( args ).toEqual( {
-			status: 'processing',
+			status: 'processing,on_hold',
+			paid: 'unpaid',
+			country: 'BG',
+			has: 'coupon,note',
 			placed: 'between:2026-03-01..2026-03-31',
 			total: 'lessThanOrEqual:20',
 			s: 'ada',

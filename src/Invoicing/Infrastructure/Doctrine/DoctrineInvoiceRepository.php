@@ -25,6 +25,20 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         return $this->entityManager->getRepository(Invoice::class)->findBy(['orderId' => $orderId], ['id' => 'ASC']);
     }
 
+    public function orderIdsNumbered(string $text, int $limit): array
+    {
+        $ids = $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT i.orderId')
+            ->from(Invoice::class, 'i')
+            ->where('i.number LIKE :text')
+            ->setParameter('text', '%' . addcslashes($text, '%_\\') . '%')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        return array_values(array_map(intval(...), array_filter($ids, is_numeric(...))));
+    }
+
     public function lockedCounter(string $series): InvoiceCounter
     {
         // A new series starts at 1; two requests starting it together both find the one row then.

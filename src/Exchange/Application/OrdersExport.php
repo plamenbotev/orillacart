@@ -62,22 +62,7 @@ final readonly class OrdersExport
         $file->start(array_map(ColumnChoice::id(...), $columns), array_map($this->choice->label(...), $columns));
         $page = 1;
         do {
-            $found = $this->orders->orders(new OrderQuery(
-                $query->status,
-                $query->search,
-                $query->customerId,
-                $page,
-                self::BATCH,
-                $query->attention,
-                $query->placedFrom,
-                $query->placedBefore,
-                $query->payment,
-                $query->minTotal,
-                $query->maxTotal,
-                $query->placedBy,
-                $query->orderBy,
-                $query->order,
-            ), forShop: true);
+            $found = $this->orders->orders($query->withPage($page, self::BATCH), forShop: true);
             foreach ($found->orders as $listed) {
                 $order = $this->summaries->find($listed->number);
                 if ($order !== null) {

@@ -18,6 +18,19 @@ final class InMemoryConsignmentRepository implements ConsignmentRepository
         return $this->consignments[$id] ?? null;
     }
 
+    public function orderIdsNumbered(string $text, int $limit): array
+    {
+        $ids = [];
+        foreach ($this->consignments as $consignment) {
+            $numbers = [$consignment->number(), ...array_column($consignment->parcels(), 'number')];
+            if (array_filter($numbers, static fn(string $number): bool => stripos($number, $text) !== false) !== []) {
+                $ids[$consignment->orderId()] = true;
+            }
+        }
+
+        return \array_slice(array_keys($ids), 0, $limit);
+    }
+
     public function forOrder(int $orderId): array
     {
         return array_values(array_filter($this->consignments, static fn(Consignment $consignment): bool => $consignment->orderId() === $orderId));

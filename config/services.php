@@ -117,10 +117,12 @@ use OrillaCart\Notifications\Infrastructure\WordPress\OptionEmailSettingsReposit
 use OrillaCart\Notifications\Infrastructure\WordPress\WordPressMailer;
 use OrillaCart\Notifications\Infrastructure\WordPress\WordPressSite;
 use OrillaCart\Ordering\Application\OrderLinks;
+use OrillaCart\Ordering\Application\OrderLookups;
 use OrillaCart\Ordering\Domain\DownloadGrantRepository;
 use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Infrastructure\Doctrine\DoctrineDownloadGrantRepository;
 use OrillaCart\Ordering\Infrastructure\Doctrine\DoctrineOrderRepository;
+use OrillaCart\Ordering\Infrastructure\TaggedOrderLookups;
 use OrillaCart\Payment\Application\Gateway\BankTransfer;
 use OrillaCart\Payment\Application\Gateway\CashOnDelivery;
 use OrillaCart\Payment\Application\Gateway\Cheque;
@@ -405,6 +407,7 @@ return static function (ContainerConfigurator $container): void {
     // Background jobs: one queue for every area's work, run by WP-Cron, the end of requests and workers.
     $services->alias(JobQueue::class, DbalJobQueue::class);
     $services->alias(JobHandlers::class, LocatedJobHandlers::class);
+    $services->alias(OrderLookups::class, TaggedOrderLookups::class);
     $services->alias(WorkerRegistry::class, TableWorkerRegistry::class);
 
     $services->alias(Transactions::class, DoctrineTransactions::class);

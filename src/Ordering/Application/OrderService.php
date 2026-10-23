@@ -21,6 +21,7 @@ use OrillaCart\Ordering\Application\Dto\NewOrderItems;
 use OrillaCart\Ordering\Application\Dto\NewOrderLine;
 use OrillaCart\Ordering\Application\Dto\NewShipping;
 use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
+use OrillaCart\Ordering\Application\Dto\OrderFacetsView;
 use OrillaCart\Ordering\Application\Dto\OrderFieldView;
 use OrillaCart\Ordering\Application\Dto\OrderPageView;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
@@ -87,6 +88,7 @@ final readonly class OrderService
         private OrderLinks $links,
         private Transactions $transactions,
         private ReceiptLinks $receipts,
+        private OrderLookups $lookups,
     ) {}
 
     public function place(NewOrder $command): OrderView
@@ -214,27 +216,65 @@ final readonly class OrderService
     }
 
     /**
-     * @param bool $forShop the shop's list, which marks orders it has to look at
+     * The choices the shop's order filters offer.
+     */
+    public function facets(): OrderFacetsView
+    {
+        $facets = $this->orders->facets();
+        $has = [
+            ['value' => OrderSearch::GIFT_CARD, 'label' => 'Paid with a gift card'],
+            ['value' => OrderSearch::BACKORDER, 'label' => 'Backordered items'],
+            ['value' => OrderSearch::PERSONALISED, 'label' => 'Personalised items'],
+            ['value' => OrderSearch::CUSTOMER_NOTE, 'label' => 'A note from the customer'],
+            ['value' => OrderSearch::DOWNLOADS, 'label' => 'Downloads'],
+        ];
+        foreach ($this->lookups->marks() as $key => $label) {
+            $has[] = ['value' => $key, 'label' => $label];
+        }
+
+        return new OrderFacetsView($facets['shipping'], $facets['countries'], $facets['currencies'], $has);
+    }
+
+    /**
+     * @param bool $forShop the shop's list, which marks orders it has to look at, and finds them by what other
+     *                      areas keep (tracking, invoice and coupon numbers)
      */
     public function orders(OrderQuery $query, bool $forShop = false): OrderPageView
     {
         $search = $query->search === null || trim($query->search) === '' ? null : trim($query->search);
         // Orders keep when they were placed in UTC.
         $moment = static fn(?string $at): ?\DateTimeImmutable => $at === null ? null : new \DateTimeImmutable($at)->setTimezone(new \DateTimeZone('UTC'));
+        $date = static fn(?string $day): ?\DateTimeImmutable => $day === null ? null : new \DateTimeImmutable($day);
+        $has = $query->has();
+        $markedIds = [];
+        foreach (array_diff($has, OrderSearch::FACTS) as $mark) {
+            // A mark no area gives finds nothing.
+            $markedIds[] = $this->lookups->marked($mark) ?? [];
+        }
         [$orders, $total] = $this->orders->search(
             new OrderSearch(
-                $query->status === null ? null : OrderStatus::from($query->status),
-                $search,
-                $query->customerId,
-                $forShop && $query->attention,
-                $moment($query->placedFrom),
-                $moment($query->placedBefore),
-                $query->payment,
-                $query->minTotal === null ? null : Money::of($query->minTotal),
-                $query->maxTotal === null ? null : Money::of($query->maxTotal),
-                $query->placedBy,
-                $query->orderBy,
-                $query->order === 'asc',
+                statuses: array_map(OrderStatus::from(...), $query->statuses()),
+                text: $search,
+                customerId: $query->customerId,
+                attentionOnly: $forShop && $query->attention,
+                placedFrom: $moment($query->placedFrom),
+                placedBefore: $moment($query->placedBefore),
+                gateway: $query->payment,
+                minTotal: $query->minTotal === null ? null : Money::of($query->minTotal),
+                maxTotal: $query->maxTotal === null ? null : Money::of($query->maxTotal),
+                who: $query->placedBy,
+                sortBy: $query->orderBy,
+                ascending: $query->order === 'asc',
+                foundIds: $search === null || !$forShop ? [] : $this->lookups->ordersMatching($search),
+                paid: $query->paid,
+                shipped: $query->shipped === null ? null : $query->shipped === 'yes',
+                shippingName: $query->shipping,
+                country: $query->country,
+                deliveryFrom: $date($query->deliveryFrom),
+                deliveryUntil: $date($query->deliveryUntil),
+                facts: array_values(array_intersect($has, OrderSearch::FACTS)),
+                markedIds: $markedIds,
+                currency: $query->currency,
             ),
             ($query->page - 1) * $query->perPage,
             $query->perPage,

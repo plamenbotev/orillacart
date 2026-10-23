@@ -76,7 +76,7 @@ The logged-in customer's orders, newest first. Whatever customer the query names
 
 - Who: logged-in customers
 - Query:
-  - `status` (string|null): one of pending_payment, on_hold, processing, shipped, completed, cancelled, failed, refunded
+  - `status` (string|null): matches `/^(pending_payment|on_hold|processing|shipped|completed|cancelled|failed|refunded)(,(pending_payment|on_hold|processing|shipped|completed|cancelled|failed|refunded)){0,7}$/`
   - `search` (string|null): at most 100 characters
   - `customer_id` (int|null): more than 0
   - `page` (int): more than 0; default 1
@@ -90,6 +90,14 @@ The logged-in customer's orders, newest first. Whatever customer the query names
   - `placed_by` (string|null): one of account, guest
   - `order_by` (string): one of number, total; default 'number'
   - `order` (string): one of asc, desc; default 'desc'
+  - `paid` (string|null): one of unpaid, paid, partly_refunded, refunded
+  - `shipped` (string|null): one of yes, no
+  - `shipping` (string|null): at most 200 characters
+  - `country` (string|null): matches `/^[A-Z]{2}$/`
+  - `delivery_from` (string|null): a date, Y-m-d
+  - `delivery_until` (string|null): a date, Y-m-d
+  - `has` (string|null): matches `/^[a-z][a-z0-9_]{0,39}(,[a-z][a-z0-9_]{0,39}){0,19}$/`
+  - `currency` (string|null): matches `/^[A-Z]{3}$/`
 
 ### `GET /account/orders/{id}`
 
@@ -892,7 +900,7 @@ The newest import, or null: the screen shows what came of it.
 
 - Who: shop managers
 - Query:
-  - `status` (string|null): one of pending_payment, on_hold, processing, shipped, completed, cancelled, failed, refunded
+  - `status` (string|null): matches `/^(pending_payment|on_hold|processing|shipped|completed|cancelled|failed|refunded)(,(pending_payment|on_hold|processing|shipped|completed|cancelled|failed|refunded)){0,7}$/`
   - `search` (string|null): at most 100 characters
   - `customer_id` (int|null): more than 0
   - `page` (int): more than 0; default 1
@@ -906,6 +914,14 @@ The newest import, or null: the screen shows what came of it.
   - `placed_by` (string|null): one of account, guest
   - `order_by` (string): one of number, total; default 'number'
   - `order` (string): one of asc, desc; default 'desc'
+  - `paid` (string|null): one of unpaid, paid, partly_refunded, refunded
+  - `shipped` (string|null): one of yes, no
+  - `shipping` (string|null): at most 200 characters
+  - `country` (string|null): matches `/^[A-Z]{2}$/`
+  - `delivery_from` (string|null): a date, Y-m-d
+  - `delivery_until` (string|null): a date, Y-m-d
+  - `has` (string|null): matches `/^[a-z][a-z0-9_]{0,39}(,[a-z][a-z0-9_]{0,39}){0,19}$/`
+  - `currency` (string|null): matches `/^[A-Z]{3}$/`
 
 ### `POST /orders`
 
@@ -922,6 +938,12 @@ The newest import, or null: the screen shows what came of it.
   - `note` (string): at most 2000 characters
   - `email_customer` (bool): default false
   - `pickup_point` (string|null): at most 64 characters
+
+### `GET /orders/facets`
+
+The choices the orders list's filters offer: the ways orders shipped, their countries and currencies, and what an order may have.
+
+- Who: shop managers
 
 ### `POST /orders/quote`
 

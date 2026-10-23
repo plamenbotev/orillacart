@@ -11,5 +11,10 @@ interface ReturnRepository
     /** @return list<ItemReturn> the order's, oldest first */
     public function forOrder(int $orderId): array;
 
+    /**
+     * @return list<int> ids of the orders with a return
+     */
+    public function orderIds(): array;
+
     public function save(ItemReturn $return): void;
 }

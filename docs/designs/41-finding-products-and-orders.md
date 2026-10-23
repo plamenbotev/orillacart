@@ -1,6 +1,6 @@
 # 41 · Finding products and orders in the admin
 
-Status: building (2026-10-23), PLAN items 107 (products) and 108 (orders).
+Status: built (2026-10-23), PLAN items 107 (products) and 108 (orders).
 
 The shop's people look things up all day: a product to correct, the order a customer calls about. Both lists find
 them by what the person has at hand (a SKU, a tracking number, an invoice number, a postcode) and narrow by the
@@ -45,10 +45,13 @@ the back button or a link sent to a colleague shows the same list.
   - **shipping**: the way it ships (the methods orders have used);
   - **country**: billing or shipping country (the countries orders have);
   - **delivery day**: the day chosen at checkout, from and to;
-  - **has**: a coupon, a gift card, backordered items, personalised items, a return, a customer's note,
-    downloads;
+  - **details** (each narrows): a coupon, a gift card, backordered items, personalised items, a return, a
+    customer's note, downloads. Coupons and returns are other areas' `OrderMark`s: an area adds a mark without
+    Ordering knowing it (add-ons cannot yet: that would be an extension API addition);
   - currency, when the shop has orders in more than one.
-- The choices offered (methods, countries, currencies) come from the orders themselves, so the lists stay short.
+- The choices offered (methods, countries, currencies) come from the orders themselves (`GET /orders/facets`), so
+  the lists stay short. The search box looks elsewhere only for three characters or more, up to 500 orders per
+  area; a customer's own order list never does. The export takes every filter the list has.
 
 ## Not in this round
 

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Fixtures\Ordering;
 
+use OrillaCart\Ordering\Domain\Address;
 use OrillaCart\Ordering\Domain\Order;
+use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Ordering\Domain\OrderStatus;
@@ -145,17 +147,7 @@ final class InMemoryOrderRepository implements OrderRepository
 
     public function search(OrderSearch $search, int $offset, int $limit): array
     {
-        $text = $search->text;
-        $found = array_values(array_filter($this->orders, static fn(Order $order): bool => ($search->status === null || $order->status() === $search->status)
-            && (!$search->attentionOnly || $order->attention() !== null)
-            && ($search->customerId === null || $order->customerId() === $search->customerId)
-            && ($search->who === null || ($search->who === OrderSearch::GUESTS) === ($order->customerId() === null))
-            && ($search->placedFrom === null || $order->placedAt() >= $search->placedFrom)
-            && ($search->placedBefore === null || $order->placedAt() < $search->placedBefore)
-            && ($search->gateway === null || $order->paymentGateway() === $search->gateway)
-            && ($search->minTotal === null || $order->total()->compare($search->minTotal) >= 0)
-            && ($search->maxTotal === null || $order->total()->compare($search->maxTotal) <= 0)
-            && ($text === null || str_contains(strtolower($order->email() . ' ' . $order->billing()->firstName() . ' ' . $order->billing()->lastName()), strtolower($text)) || ltrim($text, '#') === (string) $order->id())));
+        $found = array_values(array_filter($this->orders, static fn(Order $order): bool => self::matches($order, $search)));
         usort($found, static function (Order $a, Order $b) use ($search): int {
             $by = $search->sortBy === OrderSearch::BY_TOTAL ? $a->total()->compare($b->total()) : 0;
             $by = $by !== 0 ? $by : $a->id() <=> $b->id();
@@ -164,6 +156,91 @@ final class InMemoryOrderRepository implements OrderRepository
         });
 
         return [\array_slice($found, $offset, $limit), \count($found)];
+    }
+
+    public function facets(): array
+    {
+        $shipping = [];
+        $countries = [];
+        $currencies = [];
+        foreach ($this->orders as $order) {
+            if (($order->shippingName() ?? '') !== '') {
+                $shipping[] = (string) $order->shippingName();
+            }
+            $countries[] = $order->billing()->country();
+            if ($order->shippingAddress() !== null) {
+                $countries[] = $order->shippingAddress()->country();
+            }
+            $currencies[] = $order->currency();
+        }
+        return ['shipping' => self::each($shipping), 'countries' => self::each($countries), 'currencies' => self::each($currencies)];
+    }
+
+    /**
+     * @param list<string> $values
+     *
+     * @return list<string> each once, in order
+     */
+    private static function each(array $values): array
+    {
+        $values = array_values(array_unique(array_filter($values, static fn(string $value): bool => $value !== '')));
+        sort($values);
+
+        return $values;
+    }
+
+    private static function matches(Order $order, OrderSearch $search): bool
+    {
+        $text = $search->text === null ? null : mb_strtolower($search->text);
+        $paid = $order->paidAt() !== null;
+        $refunded = $order->refundedTotal();
+        $lines = $order->lines();
+        $addresses = array_filter([$order->billing(), $order->shippingAddress()]);
+        $haystack = [$order->email(), $order->vatNumber() ?? '', $order->transactionId() ?? ''];
+        foreach ($addresses as $address) {
+            array_push($haystack, $address->firstName(), $address->lastName(), $address->phone(), $address->street(), $address->city(), $address->postcode());
+        }
+        foreach ($lines as $line) {
+            array_push($haystack, $line->name(), $line->sku() ?? '');
+        }
+        $has = static fn(string $fact): bool => match ($fact) {
+            OrderSearch::GIFT_CARD => !$order->giftCardTotal()->isZero(),
+            OrderSearch::BACKORDER => array_filter($lines, static fn(OrderLine $line): bool => $line->backordered() > 0) !== [],
+            OrderSearch::PERSONALISED => array_filter($lines, static fn(OrderLine $line): bool => $line->personalisation() !== []) !== [],
+            OrderSearch::CUSTOMER_NOTE => $order->note() !== '',
+            OrderSearch::DOWNLOADS => $order->grants() !== [],
+            default => true,
+        };
+        $delivery = $order->delivery()?->date->format('Y-m-d');
+
+        return ($search->statuses === [] || \in_array($order->status(), $search->statuses, true))
+            && (!$search->attentionOnly || $order->attention() !== null)
+            && ($search->customerId === null || $order->customerId() === $search->customerId)
+            && ($search->who === null || ($search->who === OrderSearch::GUESTS) === ($order->customerId() === null))
+            && ($search->placedFrom === null || $order->placedAt() >= $search->placedFrom)
+            && ($search->placedBefore === null || $order->placedAt() < $search->placedBefore)
+            && ($search->gateway === null || $order->paymentGateway() === $search->gateway)
+            && ($search->minTotal === null || $order->total()->compare($search->minTotal) >= 0)
+            && ($search->maxTotal === null || $order->total()->compare($search->maxTotal) <= 0)
+            && match ($search->paid) {
+                OrderSearch::UNPAID => !$paid,
+                OrderSearch::PAID => $paid && $refunded->isZero(),
+                OrderSearch::PARTLY_REFUNDED => !$refunded->isZero() && $refunded->compare($order->total()) < 0,
+                OrderSearch::REFUNDED => !$refunded->isZero() && $refunded->compare($order->total()) >= 0,
+                default => true,
+            }
+        && ($search->shipped === null || ($search->shipped ? $order->fulfilledAt() !== null : $order->fulfilledAt() === null && $order->shippingName() !== null))
+        && ($search->shippingName === null || $order->shippingName() === $search->shippingName)
+        && ($search->country === null || array_filter($addresses, static fn(Address $address): bool => $address->country() === $search->country) !== [])
+        && ($search->deliveryFrom === null || ($delivery !== null && $delivery >= $search->deliveryFrom->format('Y-m-d')))
+        && ($search->deliveryUntil === null || ($delivery !== null && $delivery <= $search->deliveryUntil->format('Y-m-d')))
+        && ($search->currency === null || $order->currency() === $search->currency)
+        && array_filter($search->facts, static fn(string $fact): bool => !$has($fact)) === []
+        && array_filter($search->markedIds, static fn(array $ids): bool => !\in_array($order->id(), $ids, true)) === []
+        && ($text === null
+            || array_filter($haystack, static fn(string $value): bool => $value !== '' && str_contains(mb_strtolower($value), $text)) !== []
+            || ltrim($text, '#') === (string) $order->id()
+            || \in_array($order->id(), $search->foundIds, true));
     }
 
     public function remove(Order $order): void

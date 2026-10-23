@@ -29,6 +29,18 @@ final class InMemoryRedemptionRepository implements RedemptionRepository
         return array_values(array_filter($this->redemptions, static fn(CouponRedemption $redemption): bool => $redemption->orderId() === $orderId));
     }
 
+    public function orderIds(?array $couponIds = null): array
+    {
+        $ids = [];
+        foreach ($this->redemptions as $redemption) {
+            if ($couponIds === null || \in_array($redemption->couponId(), $couponIds, true)) {
+                $ids[$redemption->orderId()] = true;
+            }
+        }
+
+        return array_keys($ids);
+    }
+
     public function save(CouponRedemption $redemption): void
     {
         if (!\in_array($redemption, $this->redemptions, true)) {

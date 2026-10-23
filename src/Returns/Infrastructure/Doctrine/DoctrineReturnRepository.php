@@ -17,6 +17,13 @@ final readonly class DoctrineReturnRepository implements ReturnRepository
         return $this->entityManager->find(ItemReturn::class, $id);
     }
 
+    public function orderIds(): array
+    {
+        $ids = $this->entityManager->createQueryBuilder()->select('DISTINCT r.orderId')->from(ItemReturn::class, 'r')->getQuery()->getSingleColumnResult();
+
+        return array_values(array_map(intval(...), array_filter($ids, is_numeric(...))));
+    }
+
     public function forOrder(int $orderId): array
     {
         /** @var list<ItemReturn> */

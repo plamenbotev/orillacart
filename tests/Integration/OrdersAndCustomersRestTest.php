@@ -67,6 +67,47 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(422, $this->request('GET', '/orders?min_total=lots')->get_status());
     }
 
+    public function testTheOrdersListFindsAnOrderByWhatIsAtHandAndNarrowsByWhatItIs(): void
+    {
+        $lamp = $this->order([[$this->lamp, 1]], ['note' => 'Ring twice.', 'billing' => ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '12 Analytical Row', 'city' => 'Sofia', 'postcode' => '1404', 'country' => 'BG', 'phone' => '+359 2 000 0000']])['number'];
+        $guide = $this->order([[$this->guide, 1]])['number'];
+        $this->actAs('administrator');
+        $vase = $this->product('Vase', ['price' => '20', 'weight' => '1', 'stock_mode' => 'always_available']);
+        $rate = $this->data($this->request('POST', '/carriers', ['name' => 'Post', 'rates' => [['name' => 'Anywhere', 'price' => '4']]], nonce: true))['rates'];
+        self::assertIsArray($rate);
+        self::assertIsArray($rate[0]);
+        wp_set_current_user(0);
+        $vase = $this->order([[$vase, 1]], ['shipping_option' => 'rate:' . self::int($rate[0]['id'])])['number'];
+        $this->actAs('administrator');
+        $this->request('PUT', "/orders/{$vase}/status", ['status' => 'processing'], nonce: true);
+        $sent = $this->request('POST', "/orders/{$vase}/shipments/sent", ['carrier' => 'Speedy', 'parcels' => [['number' => 'SPD-778812'], ['number' => 'SPD-778813']]], nonce: true);
+        self::assertSame(201, $sent->get_status(), (string) wp_json_encode($sent->get_data()));
+        $found = function (string $query): array {
+            $listed = $this->request('GET', '/orders?' . $query);
+            self::assertSame(200, $listed->get_status(), (string) wp_json_encode($listed->get_data()));
+
+            return array_map(static fn(array $order): mixed => $order['number'], $this->rows($this->data($listed)['orders']));
+        };
+
+        self::assertSame([$lamp], $found('search=analytical'), 'the street');
+        self::assertSame([$lamp], $found('search=1404'), 'the postcode');
+        self::assertSame([$guide], $found('search=guid'), 'a line\'s name');
+        self::assertSame([$vase], $found('search=778813'), 'a parcel\'s tracking number, which Shipping keeps');
+        self::assertSame([$guide, $lamp], $found('status=on_hold,pending_payment&paid=unpaid&country=BG&currency=' . $this->currency()));
+        self::assertSame([$lamp], $found('has=note'));
+        self::assertSame([], $found('has=gift_card,backorder,personalised,downloads,coupon,return'));
+        self::assertSame([$vase], $found('shipped=yes&shipping=' . rawurlencode('Post – Anywhere')));
+        self::assertSame([], $found('shipped=no'), 'the vase left; the others do not ship');
+        self::assertSame([], $found('delivery_from=2030-01-01&delivery_until=2030-01-31'));
+        self::assertSame([], $found('paid=refunded'));
+        self::assertSame(422, $this->request('GET', '/orders?status=on_hold,lost')->get_status());
+
+        $facets = $this->data($this->request('GET', '/orders/facets'));
+        self::assertSame([['BG'], ['Post – Anywhere']], [$facets['countries'], $facets['shipping']]);
+        self::assertContains(['value' => 'return', 'label' => 'A return'], $this->rows($facets['has']));
+        self::assertContains(['value' => 'coupon', 'label' => 'Used a coupon'], $this->rows($facets['has']));
+    }
+
     public function testTheShopSendsAnOrderInTwoShipmentsAndItCompletesWhenBothArrived(): void
     {
         $this->actAs('administrator');
@@ -277,6 +318,9 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $named = array_merge(...array_map(static fn(array $mail): array => $mail['named'], $this->sentMail()));
         self::assertSame('%PDF-', $named["{$next}.pdf"] ?? null, 'the paid order\'s email carries its invoice');
         self::assertSame('%PDF-', $named["{$creditNote}.pdf"] ?? null, 'the refund\'s its credit note');
+        $found = $this->rows($this->data($this->request('GET', '/orders?search=' . rawurlencode($creditNote)))['orders']);
+        self::assertSame([$first['number']], array_column($found, 'number'), 'the orders list finds an order by its credit note\'s number');
+        self::assertSame([$first['number']], array_column($this->rows($this->data($this->request('GET', '/orders?paid=partly_refunded'))['orders']), 'number'));
     }
 
     public function testWordPressPrivacyToolsExportAndEraseAPersonsOrders(): void
@@ -605,11 +649,11 @@ final class OrdersAndCustomersRestTest extends RestTestCase
                 $_COOKIE[CartCookie::NAME] = substr($cookie, \strlen(CartCookie::NAME) + 1, 64);
             }
         }
-        $placed = $this->request('POST', '/checkout', [
+        $placed = $this->request('POST', '/checkout', $extra + [
             'email' => 'ada@example.com',
             'billing' => ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Vitosha Blvd', 'city' => 'Sofia', 'postcode' => '1000', 'country' => 'BG', 'phone' => '+359 2 000 0000'],
             'payment' => 'bank_transfer',
-        ] + $extra, nonce: true);
+        ], nonce: true);
         self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));
         $order = $this->data($placed);
         self::assertIsInt($order['number']);
@@ -632,6 +676,14 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
 
         return $id;
+    }
+
+    private function currency(): string
+    {
+        $currency = $this->rows($this->data($this->request('GET', '/orders?per_page=1'))['orders'])[0]['currency'] ?? null;
+        self::assertIsString($currency);
+
+        return $currency;
     }
 
     /**

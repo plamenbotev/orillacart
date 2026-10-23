@@ -87,12 +87,22 @@ const order = {
 
 type Request = { path: string; method?: string; data?: unknown };
 
+const FACETS = {
+	shipping: [],
+	countries: [ 'BG' ],
+	currencies: [ 'EUR' ],
+	has: [],
+};
+
 describe( 'OrdersScreen', () => {
 	afterEach( () => mockedFetch.mockReset() );
 
 	it( 'lists orders and moves one along', async () => {
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
+			if ( request.path === '/orillacart/v1/orders/facets' ) {
+				return Promise.resolve( FACETS );
+			}
 			if ( request.path.includes( '/customers' ) ) {
 				return Promise.resolve( { customers: [], total: 0 } );
 			}
@@ -206,6 +216,9 @@ describe( 'OrdersScreen', () => {
 	it( "shows the answers to add-ons' questions and runs their actions", async () => {
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
+			if ( request.path === '/orillacart/v1/orders/facets' ) {
+				return Promise.resolve( FACETS );
+			}
 			if ( request.path.includes( '/customers' ) ) {
 				return Promise.resolve( { customers: [], total: 0 } );
 			}
@@ -264,6 +277,9 @@ describe( 'OrdersScreen', () => {
 		};
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
+			if ( request.path === '/orillacart/v1/orders/facets' ) {
+				return Promise.resolve( FACETS );
+			}
 			if ( request.path.includes( '/customers' ) ) {
 				return Promise.resolve( { customers: [], total: 0 } );
 			}
@@ -333,6 +349,9 @@ describe( 'OrdersScreen', () => {
 		};
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
+			if ( request.path === '/orillacart/v1/orders/facets' ) {
+				return Promise.resolve( FACETS );
+			}
 			if ( request.path.includes( '/customers' ) ) {
 				return Promise.resolve( { customers: [], total: 0 } );
 			}

@@ -9,9 +9,13 @@ import { fetchPaymentMethods } from '../payments/api';
 import { toApiError } from '../shared/api';
 import {
 	deleteOrder,
+	fetchOrderFacets,
 	fetchOrders,
+	type OrderFacets,
 	type OrderPage,
 	type OrderSummary,
+	PAID,
+	type Paid,
 	STATUSES,
 } from './api';
 import { ordersQuery, viewArgs, viewFromArgs } from './listView';
@@ -23,7 +27,58 @@ import { ExportDialog } from '../shared/ExportDialog';
 
 type Payments = { value: string; label: string }[];
 
-const fields = ( payments: Payments ): Field< OrderSummary >[] => [
+const NO_FACETS: OrderFacets = {
+	shipping: [],
+	countries: [],
+	currencies: [],
+	has: [],
+};
+
+const PAID_LABELS: Record< Paid, string > = {
+	unpaid: __( 'Not paid', 'orillacart' ),
+	paid: __( 'Paid', 'orillacart' ),
+	partly_refunded: __( 'Partly refunded', 'orillacart' ),
+	refunded: __( 'Refunded', 'orillacart' ),
+};
+
+/** What an order may have, as the shop reads it; an add-on's own marks keep the label it gives. */
+const HAS_LABELS: Record< string, string > = {
+	gift_card: __( 'Paid with a gift card', 'orillacart' ),
+	backorder: __( 'Backordered items', 'orillacart' ),
+	personalised: __( 'Personalised items', 'orillacart' ),
+	note: __( 'A note from the customer', 'orillacart' ),
+	downloads: __( 'Downloads', 'orillacart' ),
+	coupon: __( 'Used a coupon', 'orillacart' ),
+	return: __( 'A return', 'orillacart' ),
+};
+
+/**
+ * A country's name in the admin's language, its code where the browser knows none.
+ * @param code ISO 3166 code.
+ */
+const countryName = ( code: string ): string => {
+	try {
+		return (
+			new Intl.DisplayNames( [ document.documentElement.lang || 'en' ], {
+				type: 'region',
+			} ).of( code ) ?? code
+		);
+	} catch {
+		return code;
+	}
+};
+
+/** Fields the list filters by but does not show as columns. */
+const filterOnly = {
+	enableHiding: false,
+	enableSorting: false,
+	render: () => null,
+} as const;
+
+const fields = (
+	payments: Payments,
+	facets: OrderFacets
+): Field< OrderSummary >[] => [
 	{
 		id: 'number',
 		label: __( 'Order', 'orillacart' ),
@@ -58,7 +113,7 @@ const fields = ( payments: Payments ): Field< OrderSummary >[] => [
 			value: status,
 			label: STATUS_LABELS[ status ],
 		} ) ),
-		filterBy: { operators: [ 'is' ] },
+		filterBy: { operators: [ 'isAny' ] },
 		render: ( { item } ) => STATUS_LABELS[ item.status ],
 	},
 	{
@@ -107,6 +162,77 @@ const fields = ( payments: Payments ): Field< OrderSummary >[] => [
 				? __( 'A guest', 'orillacart' )
 				: __( 'A customer', 'orillacart' ),
 	},
+	{
+		...filterOnly,
+		id: 'paid',
+		label: __( 'Paid', 'orillacart' ),
+		elements: PAID.map( ( value ) => ( {
+			value,
+			label: PAID_LABELS[ value ],
+		} ) ),
+		filterBy: { operators: [ 'is' ] },
+	},
+	{
+		...filterOnly,
+		id: 'shipped',
+		label: __( 'Shipped', 'orillacart' ),
+		elements: [
+			{ value: 'yes', label: __( 'Shipped', 'orillacart' ) },
+			{ value: 'no', label: __( 'Not shipped yet', 'orillacart' ) },
+		],
+		filterBy: { operators: [ 'is' ] },
+	},
+	{
+		...filterOnly,
+		id: 'shipping',
+		label: __( 'Shipping', 'orillacart' ),
+		elements: facets.shipping.map( ( name ) => ( {
+			value: name,
+			label: name,
+		} ) ),
+		filterBy: { operators: [ 'is' ] },
+	},
+	{
+		...filterOnly,
+		id: 'country',
+		label: __( 'Country', 'orillacart' ),
+		elements: facets.countries.map( ( code ) => ( {
+			value: code,
+			label: countryName( code ),
+		} ) ),
+		filterBy: { operators: [ 'is' ] },
+	},
+	{
+		...filterOnly,
+		id: 'delivery',
+		label: __( 'Delivery day', 'orillacart' ),
+		type: 'date',
+		filterBy: { operators: [ 'on', 'before', 'after', 'between' ] },
+	},
+	{
+		...filterOnly,
+		id: 'has',
+		label: __( 'Details', 'orillacart' ),
+		elements: facets.has.map( ( { value, label } ) => ( {
+			value,
+			label: HAS_LABELS[ value ] ?? label,
+		} ) ),
+		filterBy: { operators: [ 'isAll' ] },
+	},
+	...( facets.currencies.length > 1
+		? [
+				{
+					...filterOnly,
+					id: 'currency',
+					label: __( 'Currency', 'orillacart' ),
+					elements: facets.currencies.map( ( code ) => ( {
+						value: code,
+						label: code,
+					} ) ),
+					filterBy: { operators: [ 'is' as const ] },
+				},
+			]
+		: [] ),
 ];
 
 const DEFAULT_VIEW: View = {
@@ -135,7 +261,11 @@ export function OrdersScreen() {
 		viewFromArgs( window.location.search, DEFAULT_VIEW )
 	);
 	const [ payments, setPayments ] = useState< Payments >( [] );
-	const fieldList = useMemo( () => fields( payments ), [ payments ] );
+	const [ facets, setFacets ] = useState< OrderFacets >( NO_FACETS );
+	const fieldList = useMemo(
+		() => fields( payments, facets ),
+		[ payments, facets ]
+	);
 	const [ page, setPage ] = useState< OrderPage | null >( null );
 	const [ selected, setSelected ] = useState< number | null >( null );
 	const [ creating, setCreating ] = useState( false );
@@ -154,6 +284,9 @@ export function OrdersScreen() {
 				)
 			)
 			.catch( () => setPayments( [] ) );
+		fetchOrderFacets()
+			.then( setFacets )
+			.catch( () => setFacets( NO_FACETS ) );
 	}, [] );
 
 	// The address keeps the list as it is, for a reload, the back button or a link to it.
@@ -249,7 +382,7 @@ export function OrdersScreen() {
 				} }
 				defaultLayouts={ { table: {} } }
 				searchLabel={ __(
-					'Search by number, email or name',
+					'Number, name, email, phone, address, SKU, tracking, invoice or coupon',
 					'orillacart'
 				) }
 				onClickItem={ ( item ) => setSelected( item.number ) }

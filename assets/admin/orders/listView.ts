@@ -5,7 +5,7 @@
 import type { Filter, View } from '@wordpress/dataviews';
 
 import { fromLocal } from '../shared/dates';
-import { type OrderQuery, type Status, STATUSES } from './api';
+import { type OrderQuery, PAID, type Paid, STATUSES } from './api';
 
 /** The address's query arguments the list keeps, by the filter or setting they hold. */
 const ARGS = {
@@ -15,6 +15,13 @@ const ARGS = {
 	placed_by: 'placed_by',
 	placed_at: 'placed',
 	total: 'total',
+	paid: 'paid',
+	shipped: 'shipped',
+	shipping: 'shipping',
+	country: 'country',
+	delivery: 'delivery',
+	has: 'has',
+	currency: 'currency',
 	search: 's',
 	page: 'paged',
 	sort: 'orderby',
@@ -25,6 +32,30 @@ const one = ( filter: Filter | undefined ): string | undefined =>
 	typeof filter?.value === 'string' && filter.value !== ''
 		? filter.value
 		: undefined;
+
+/** Filters that take one value of a list: "is". */
+const SINGLE = [
+	'attention',
+	'payment',
+	'placed_by',
+	'paid',
+	'shipped',
+	'shipping',
+	'country',
+	'currency',
+] as const;
+/** Filters that take several: the statuses it may be in, what it has. Read back in this order: MANY, SINGLE, COMPARED. */
+const MANY = [ 'status', 'has' ] as const;
+/** Filters by an operator and a value: days and amounts. */
+const COMPARED = [ 'placed_at', 'total', 'delivery' ] as const;
+
+const many = ( filter: Filter | undefined ): string[] =>
+	Array.isArray( filter?.value )
+		? filter.value.filter(
+				( value ): value is string =>
+					typeof value === 'string' && value !== ''
+			)
+		: [];
 
 const pair = ( filter: Filter | undefined ): [ string, string ] | undefined =>
 	Array.isArray( filter?.value ) &&
@@ -46,6 +77,19 @@ const nextDay = ( day: string ): string => {
 	return next.toISOString().slice( 0, 10 );
 };
 
+/**
+ * The day before a Y-m-d day.
+ * @param day The day.
+ */
+const dayBefore = ( day: string ): string => {
+	const [ year, month, date ] = day.split( '-' ).map( Number );
+	const before = new Date(
+		Date.UTC( year ?? 1970, ( month ?? 1 ) - 1, date ?? 1 )
+	);
+	before.setUTCDate( before.getUTCDate() - 1 );
+	return before.toISOString().slice( 0, 10 );
+};
+
 const startOf = ( day: string ): string | undefined =>
 	fromLocal( `${ day }T00:00` ) ?? undefined;
 
@@ -56,26 +100,47 @@ const startOf = ( day: string ): string | undefined =>
 export function ordersQuery( view: View ): OrderQuery {
 	const filter = ( field: string ) =>
 		view.filters?.find( ( item ) => item.field === field );
-	const status = one( filter( 'status' ) );
+	const statuses = many( filter( 'status' ) ).filter( ( status ) =>
+		( STATUSES as readonly string[] ).includes( status )
+	);
+	const has = many( filter( 'has' ) );
 	const placedBy = one( filter( 'placed_by' ) );
+	const paid = one( filter( 'paid' ) );
+	const shipped = one( filter( 'shipped' ) );
 	const placed = filter( 'placed_at' );
 	const total = filter( 'total' );
+	const delivery = filter( 'delivery' );
 	const query: OrderQuery = {
-		status:
-			status !== undefined &&
-			( STATUSES as readonly string[] ).includes( status )
-				? ( status as Status )
-				: undefined,
+		status: statuses.length > 0 ? statuses.join( ',' ) : undefined,
 		attention: one( filter( 'attention' ) ) === 'yes' ? true : undefined,
 		payment: one( filter( 'payment' ) ),
 		placed_by:
 			placedBy === 'account' || placedBy === 'guest'
 				? placedBy
 				: undefined,
+		paid: PAID.includes( paid as Paid ) ? ( paid as Paid ) : undefined,
+		shipped: shipped === 'yes' || shipped === 'no' ? shipped : undefined,
+		shipping: one( filter( 'shipping' ) ),
+		country: one( filter( 'country' ) ),
+		has: has.length > 0 ? has.join( ',' ) : undefined,
+		currency: one( filter( 'currency' ) ),
 		search: view.search === '' ? undefined : view.search,
 		page: view.page ?? 1,
 		per_page: view.perPage ?? 20,
 	};
+	const deliveryDays = pair( delivery );
+	const deliveryDay = one( delivery );
+	if ( delivery?.operator === 'between' && deliveryDays ) {
+		query.delivery_from = deliveryDays[ 0 ];
+		query.delivery_until = deliveryDays[ 1 ];
+	} else if ( delivery?.operator === 'on' && deliveryDay ) {
+		query.delivery_from = deliveryDay;
+		query.delivery_until = deliveryDay;
+	} else if ( delivery?.operator === 'after' && deliveryDay ) {
+		query.delivery_from = nextDay( deliveryDay );
+	} else if ( delivery?.operator === 'before' && deliveryDay ) {
+		query.delivery_until = dayBefore( deliveryDay );
+	}
 	const days = pair( placed );
 	if ( placed?.operator === 'between' && days ) {
 		query.placed_from = startOf( days[ 0 ] );
@@ -116,10 +181,18 @@ export function viewArgs( view: View ): Record< string, string > {
 		const value = Array.isArray( filter.value )
 			? filter.value.join( '..' )
 			: String( filter.value );
-		args[ name ] =
-			filter.field === 'placed_at' || filter.field === 'total'
-				? `${ filter.operator }:${ value }`
-				: value;
+		if ( ( MANY as readonly string[] ).includes( filter.field ) ) {
+			const values = many( filter );
+			if ( values.length > 0 ) {
+				args[ name ] = values.join( ',' );
+			}
+			continue;
+		}
+		args[ name ] = ( COMPARED as readonly string[] ).includes(
+			filter.field
+		)
+			? `${ filter.operator }:${ value }`
+			: value;
 	}
 	if ( view.search ) {
 		args[ ARGS.search ] = view.search;
@@ -142,18 +215,22 @@ export function viewArgs( view: View ): Record< string, string > {
 export function viewFromArgs( search: string, defaults: View ): View {
 	const args = new URLSearchParams( search );
 	const filters: Filter[] = [];
-	for ( const field of [
-		'status',
-		'attention',
-		'payment',
-		'placed_by',
-	] as const ) {
+	for ( const field of [ ...MANY, ...SINGLE ] ) {
 		const value = args.get( ARGS[ field ] );
-		if ( value ) {
+		if ( ! value ) {
+			continue;
+		}
+		if ( field === 'status' || field === 'has' ) {
+			filters.push( {
+				field,
+				operator: field === 'has' ? 'isAll' : 'isAny',
+				value: value.split( ',' ).filter( Boolean ),
+			} );
+		} else {
 			filters.push( { field, operator: 'is', value } );
 		}
 	}
-	for ( const field of [ 'placed_at', 'total' ] as const ) {
+	for ( const field of COMPARED ) {
 		const [ operator, value ] = ( args.get( ARGS[ field ] ) ?? '' ).split(
 			':'
 		);

@@ -94,6 +94,13 @@ interface OrderRepository
      */
     public function deliveriesBooked(string $carrier, \DateTimeImmutable $from, \DateTimeImmutable $until): array;
 
+    /**
+     * What the shop's orders have used, for the list's filters: each once, in order.
+     *
+     * @return array{shipping: list<string>, countries: list<string>, currencies: list<string>}
+     */
+    public function facets(): array;
+
     public function save(Order $order): void;
 
     public function remove(Order $order): void;

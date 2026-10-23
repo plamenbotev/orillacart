@@ -208,8 +208,27 @@ export interface NewRefund {
 	store_credit: boolean;
 }
 
+/** Whether it was paid, and given back since. */
+export const PAID = [
+	'unpaid',
+	'paid',
+	'partly_refunded',
+	'refunded',
+] as const;
+export type Paid = ( typeof PAID )[ number ];
+
+/** The choices the list's filters offer, from what the shop's orders have used. */
+export interface OrderFacets {
+	shipping: string[];
+	countries: string[];
+	currencies: string[];
+	/** The order's own facts, then what other areas and add-ons mark. */
+	has: { value: string; label: string }[];
+}
+
 export interface OrderQuery {
-	status?: Status | undefined;
+	/** One status or several, comma-separated. */
+	status?: string | undefined;
 	search?: string | undefined;
 	/** Only orders the shop has to look at. */
 	attention?: boolean | undefined;
@@ -223,6 +242,19 @@ export interface OrderQuery {
 	placed_by?: 'account' | 'guest' | undefined;
 	order_by?: 'number' | 'total' | undefined;
 	order?: 'asc' | 'desc' | undefined;
+	paid?: Paid | undefined;
+	/** Whether it has left for the customer; "no" only for orders that ship. */
+	shipped?: 'yes' | 'no' | undefined;
+	/** The way it ships, as orders name it. */
+	shipping?: string | undefined;
+	/** The billing or shipping country. */
+	country?: string | undefined;
+	/** The delivery day chosen at checkout, Y-m-d, both ends included. */
+	delivery_from?: string | undefined;
+	delivery_until?: string | undefined;
+	/** What it has, comma-separated: each narrows the list. */
+	has?: string | undefined;
+	currency?: string | undefined;
 	page: number;
 	per_page: number;
 }
@@ -255,6 +287,10 @@ export function fetchOrders( query: OrderQuery ): Promise< OrderPage > {
 	return apiFetch< OrderPage >( {
 		path: addQueryArgs( `${ BASE }/orders`, { ...query } ),
 	} );
+}
+
+export function fetchOrderFacets(): Promise< OrderFacets > {
+	return apiFetch< OrderFacets >( { path: `${ BASE }/orders/facets` } );
 }
 
 export function fetchOrder( id: number ): Promise< Order > {
