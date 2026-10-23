@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Reports\Infrastructure\Doctrine;
 
 use OrillaCart\Reports\Application\ReportStore;
+use OrillaCart\Reports\Domain\CollectedTax;
 use OrillaCart\Reports\Domain\GivenRefund;
 use OrillaCart\Reports\Domain\OrderFacts;
 use OrillaCart\Reports\Domain\SoldLine;
@@ -31,7 +32,7 @@ final readonly class DbalReportStore implements ReportStore
         $connection->transactional(function () use ($connection, $orderIds, $facts): void {
             foreach (array_chunk($orderIds, self::CHUNK) as $ids) {
                 $in = implode(', ', array_fill(0, \count($ids), '?'));
-                foreach ([$this->tables->orders(), $this->tables->lines(), $this->tables->coupons(), $this->tables->refunds()] as $table) {
+                foreach ([$this->tables->orders(), $this->tables->lines(), $this->tables->coupons(), $this->tables->refunds(), $this->tables->taxes()] as $table) {
                     $connection->executeStatement("DELETE FROM {$table} WHERE order_id IN ({$in})", $ids);
                 }
             }
@@ -64,6 +65,9 @@ final readonly class DbalReportStore implements ReportStore
             $this->insert($this->tables->refunds(), ['refund_id', 'order_id', 'day', 'currency', 'amount', 'tax'], array_map(static fn(GivenRefund $refund): array => [
                 $refund->refundId, $refund->orderId, $refund->day->format(self::DAY), $refund->currency, $refund->amount, $refund->tax,
             ], array_merge(...array_map(static fn(OrderFacts $facts): array => $facts->refunds, $facts))));
+            $this->insert($this->tables->taxes(), ['order_id', 'day', 'counted', 'currency', 'country', 'region', 'level', 'code', 'jurisdiction', 'percent', 'kind', 'taxable', 'amount', 'refunded', 'exempt'], array_map(static fn(CollectedTax $tax): array => [
+                $tax->orderId, $tax->day->format(self::DAY), (int) $tax->counted, $tax->currency, $tax->country, $tax->region, $tax->level, $tax->code, $tax->jurisdiction, $tax->percent, $tax->kind, $tax->taxable, $tax->amount, $tax->refunded, (int) $tax->exempt,
+            ], array_merge(...array_map(static fn(OrderFacts $facts): array => $facts->taxes, $facts))));
         });
     }
 

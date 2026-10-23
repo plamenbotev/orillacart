@@ -25,5 +25,7 @@ final readonly class LineTaxView
         public string $amount,
         public bool $compound = false,
         public string $refunded = '0',
+        /** Not charged: the customer's exemption covered the sale. */
+        public bool $exempt = false,
     ) {}
 }

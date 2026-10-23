@@ -36,6 +36,7 @@ import {
 	type SalesReport,
 	type Share,
 	type Tab,
+	type TaxRow,
 	type Totals,
 } from './api';
 import {
@@ -55,6 +56,7 @@ const TABS: { name: Tab; title: string }[] = [
 	{ name: 'coupons', title: __( 'Coupons', 'orillacart' ) },
 	{ name: 'customers', title: __( 'Customers', 'orillacart' ) },
 	{ name: 'carts', title: __( 'Carts', 'orillacart' ) },
+	{ name: 'taxes', title: __( 'Taxes', 'orillacart' ) },
 ];
 
 /**
@@ -391,6 +393,8 @@ function TabContent( {
 			);
 		case 'customers':
 			return <CustomersTab report={ report as CustomersReport } />;
+		case 'taxes':
+			return <TaxesTab report={ report as RankingReport< TaxRow > } />;
 		case 'carts':
 			return (
 				<CartsTab
@@ -1073,6 +1077,66 @@ function CouponsTab( {
 	);
 }
 
+const TAX_LEVELS: Record< TaxRow[ 'level' ], string > = {
+	country: __( 'Country', 'orillacart' ),
+	region: __( 'State', 'orillacart' ),
+	local: __( 'Local', 'orillacart' ),
+};
+
+/**
+ * The tax of the period's paid sales by jurisdiction and rate, for filing returns: taxable and exempt sales,
+ * the tax, and what refunds gave back.
+ * @param props
+ * @param props.report
+ */
+function TaxesTab( { report }: { report: RankingReport< TaxRow > } ) {
+	const currency = report.frame.currency;
+	return (
+		<Card>
+			<CardHeader>
+				<h2>{ __( 'Tax by jurisdiction', 'orillacart' ) }</h2>
+			</CardHeader>
+			<CardBody>
+				<RankingTable
+					empty={ report.rows.length === 0 }
+					header={ [
+						__( 'Jurisdiction', 'orillacart' ),
+						__( 'Code', 'orillacart' ),
+						__( 'Rate', 'orillacart' ),
+						__( 'Orders', 'orillacart' ),
+						__( 'Taxable sales', 'orillacart' ),
+						__( 'Exempt sales', 'orillacart' ),
+						__( 'Tax', 'orillacart' ),
+						__( 'Refunded tax', 'orillacart' ),
+					] }
+					rows={ report.rows.map( ( row ) => ( {
+						key: `${ row.code }|${ row.percent }`,
+						cells: [
+							<span key="name">
+								{ row.jurisdiction }
+								<br />
+								<small>
+									{ TAX_LEVELS[ row.level ] } ·{ ' ' }
+									{ [ row.country, row.region ]
+										.filter( Boolean )
+										.join( '-' ) }
+								</small>
+							</span>,
+							<code key="code">{ row.code }</code>,
+							`${ row.percent } %`,
+							number( row.orders ),
+							money( row.taxable, currency ),
+							money( row.exempt, currency ),
+							money( row.tax, currency ),
+							money( row.refunded, currency ),
+						],
+					} ) ) }
+				/>
+			</CardBody>
+		</Card>
+	);
+}
+
 /**
  * Carts left at checkout: how many, worth what, reminded, and ordered after all; and the latest of them.
  * @param props
@@ -1491,6 +1555,41 @@ function exportCsv( tab: Tab, report: Reports[ Tab ] ): void {
 						row.amount,
 						row.previous_orders,
 						row.previous_amount,
+					] )
+				)
+			);
+			return;
+		}
+		case 'taxes': {
+			const taxes = report as RankingReport< TaxRow >;
+			download(
+				name,
+				toCsv(
+					[
+						'country',
+						'region',
+						'level',
+						'code',
+						'jurisdiction',
+						'rate',
+						'orders',
+						'taxable_sales',
+						'exempt_sales',
+						'tax',
+						'refunded_tax',
+					],
+					taxes.rows.map( ( row ) => [
+						row.country,
+						row.region,
+						row.level,
+						row.code,
+						row.jurisdiction,
+						row.percent,
+						row.orders,
+						row.taxable,
+						row.exempt,
+						row.tax,
+						row.refunded,
 					] )
 				)
 			);

@@ -279,6 +279,32 @@ final readonly class DbalReportQueries implements ReportQueries
         return $titles;
     }
 
+    public function taxes(Period $period, string $currency): array
+    {
+        return array_map(static fn(array $row): array => [
+            'country' => self::string($row['country']),
+            'region' => $row['region'] === null ? null : self::string($row['region']),
+            'level' => self::string($row['level']),
+            'code' => self::string($row['code']),
+            'jurisdiction' => self::string($row['jurisdiction']),
+            'percent' => self::money($row['percent']),
+            'orders' => self::int($row['orders']),
+            'taxable' => self::money($row['taxable']),
+            'exempt' => self::money($row['exempt']),
+            'tax' => self::money($row['tax']),
+            'refunded' => self::money($row['refunded']),
+        ], $this->tables->connection()->fetchAllAssociative(
+            "SELECT t.country, t.region, t.level, t.code, MAX(t.jurisdiction) AS jurisdiction, t.percent, COUNT(DISTINCT t.order_id) AS orders,
+                    SUM(CASE WHEN t.exempt = 1 THEN 0 ELSE t.taxable END) AS taxable, SUM(CASE WHEN t.exempt = 1 THEN t.taxable ELSE 0 END) AS exempt,
+                    SUM(t.amount) AS tax, SUM(t.refunded) AS refunded
+             FROM {$this->tables->taxes()} t
+             WHERE t.counted = 1 AND t.currency = ? AND t.day BETWEEN ? AND ?
+             GROUP BY t.country, t.region, t.level, t.code, t.percent
+             ORDER BY t.country, t.region, FIELD(t.level, 'country', 'region', 'local'), t.code, t.percent",
+            [$currency, ...$this->days($period)],
+        ));
+    }
+
     /** @return array{string, string} */
     private function days(Period $period): array
     {

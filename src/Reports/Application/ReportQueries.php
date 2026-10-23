@@ -80,4 +80,12 @@ interface ReportQueries
      * @return list<string>
      */
     public function currencies(Period $period): array;
+
+    /**
+     * The tax of the period's sales by jurisdiction and rate, as returns are filed: what it was charged on, what was
+     * sold exempt there, the tax, and what refunds gave back.
+     *
+     * @return list<array{country: string, region: ?string, level: string, code: string, jurisdiction: string, percent: string, orders: int, taxable: string, exempt: string, tax: string, refunded: string}>
+     */
+    public function taxes(Period $period, string $currency): array;
 }

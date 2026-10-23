@@ -9,6 +9,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Reports\Domain\CollectedTax;
 use OrillaCart\Reports\Domain\GivenRefund;
 use OrillaCart\Reports\Domain\Interval;
 use OrillaCart\Reports\Domain\OrderFacts;
@@ -108,11 +109,45 @@ final class ReportQueriesTest extends RestTestCase
         );
     }
 
+    public function testTaxesAddUpByJurisdictionAndRateWithExemptSalesApart(): void
+    {
+        $tax = static fn(int $order, string $code, string $level, string $percent, string $kind, string $taxable, string $amount, string $refunded = '0', bool $exempt = false, bool $counted = true): CollectedTax => new CollectedTax(
+            $order,
+            new \DateTimeImmutable('2030-04-02'),
+            $counted,
+            'USD',
+            'US',
+            'CA',
+            $level,
+            $code,
+            $code === 'US-CA' ? 'California' : 'Los Angeles',
+            $percent,
+            $kind,
+            $taxable,
+            $amount,
+            $refunded,
+            $exempt,
+        );
+        $this->store->replace(self::ORDERS, [
+            $this->facts(990001, '2030-04-02', 'c7', '100', currency: 'USD', taxes: [$tax(990001, 'US-CA', 'region', '6', 'item', '100', '6', '1.2'), $tax(990001, 'CA-LA', 'local', '2.5', 'item', '100', '2.5'), $tax(990001, 'US-CA', 'region', '6', 'shipping', '10', '0.6')]),
+            $this->facts(990002, '2030-04-02', 'c8', '40', currency: 'USD', taxes: [$tax(990002, 'US-CA', 'region', '6', 'item', '40', '0', exempt: true)]),
+            $this->facts(990003, '2030-04-02', 'c9', '50', currency: 'USD', counted: false, taxes: [$tax(990003, 'US-CA', 'region', '6', 'item', '50', '3', counted: false)]),
+        ]);
+
+        $rows = $this->queries->taxes(new Period(new \DateTimeImmutable('2030-04-01'), new \DateTimeImmutable('2030-04-30')), 'USD');
+
+        self::assertSame([
+            ['US-CA', 'region', '6', 2, '110', '40', '6.6', '1.2'],
+            ['CA-LA', 'local', '2.5', 1, '100', '0', '2.5', '0'],
+        ], array_map(static fn(array $row): array => [$row['code'], $row['level'], $row['percent'], $row['orders'], $row['taxable'], $row['exempt'], $row['tax'], $row['refunded']], $rows), 'the state first, then its places; unpaid orders do not count');
+    }
+
     /**
      * @param array{string, string}|null $refund
      * @param array{string, string}|null $coupon
+     * @param list<CollectedTax>         $taxes
      */
-    private function facts(int $id, string $day, string $customer, string $gross, bool $counted = true, string $currency = 'EUR', ?array $refund = null, ?array $coupon = null): OrderFacts
+    private function facts(int $id, string $day, string $customer, string $gross, bool $counted = true, string $currency = 'EUR', ?array $refund = null, ?array $coupon = null, array $taxes = []): OrderFacts
     {
         $date = new \DateTimeImmutable($day);
         $discount = $coupon[1] ?? '0';
@@ -122,6 +157,7 @@ final class ReportQueriesTest extends RestTestCase
             [new SoldLine($id, $date, $counted, $currency, $this->product, null, 'Report lamp', 2, (string) ((float) $gross - (float) $discount))],
             $coupon === null ? [] : [new UsedCoupon($id, $date, $counted, $currency, $coupon[0], $coupon[1])],
             $refund === null ? [] : [new GivenRefund($id, $id, new \DateTimeImmutable($refund[0]), $currency, $refund[1])],
+            $taxes,
         );
     }
 }

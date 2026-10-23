@@ -6,6 +6,7 @@ namespace OrillaCart\Reports\Application;
 
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -13,6 +14,7 @@ use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\RefundView;
 use OrillaCart\Payment\Application\Refunds;
+use OrillaCart\Reports\Domain\CollectedTax;
 use OrillaCart\Reports\Domain\GivenRefund;
 use OrillaCart\Reports\Domain\OrderFacts;
 use OrillaCart\Reports\Domain\SoldLine;
@@ -155,6 +157,23 @@ final readonly class ProjectOrders implements JobHandler
                 (string) Money::of($refund->amount)->subtract(Money::of($refund->tax)),
                 $refund->tax,
             ), array_filter($this->refunds->forOrder($order->number)->refunds, static fn(RefundView $refund): bool => $refund->status === 'done'))),
+            array_merge([], ...array_map(static fn(OrderLineView $line): array => array_map(static fn(LineTaxView $tax): CollectedTax => new CollectedTax(
+                $order->number,
+                $day,
+                $counted,
+                $order->currency,
+                $tax->country,
+                $tax->region,
+                $tax->level,
+                $tax->code,
+                $tax->jurisdiction,
+                $tax->percent,
+                $line->kind,
+                $tax->taxable,
+                $tax->amount,
+                $tax->refunded,
+                $tax->exempt,
+            ), $line->taxes), [...$order->lines, ...$order->charges])),
         );
     }
 

@@ -20,5 +20,7 @@ final readonly class LineTax
         public Money $taxable,
         public Money $amount,
         public bool $compound = false,
+        /** Not charged: the customer's exemption covered the sale, which returns still report. */
+        public bool $exempt = false,
     ) {}
 }

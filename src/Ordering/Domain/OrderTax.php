@@ -55,6 +55,10 @@ class OrderTax
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
     private string $refunded = '0';
 
+    /** Not charged: the customer's exemption covered the sale. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $exempt;
+
     public function __construct(
         #[ORM\ManyToOne(targetEntity: OrderLine::class, inversedBy: 'taxes')]
         #[ORM\JoinColumn(name: 'line_id', nullable: false, onDelete: 'CASCADE')]
@@ -71,6 +75,12 @@ class OrderTax
         $this->jurisdiction = mb_substr($tax->jurisdiction->name, 0, 100);
         $this->taxable = $tax->taxable->toFixed();
         $this->amount = $tax->amount->toFixed();
+        $this->exempt = $tax->exempt;
+    }
+
+    public function isExempt(): bool
+    {
+        return $this->exempt;
     }
 
     public function line(): OrderLine

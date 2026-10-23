@@ -1490,6 +1490,17 @@ Counts every order again, in the background.
   - `limit` (int): 1 to 100; default 10
   - `sort` (string): one of net, quantity; default 'net'
 
+### `GET /reports/taxes`
+
+- Who: shop managers
+- Query:
+  - `from` (string|null): a date, Y-m-d
+  - `to` (string|null): a date, Y-m-d
+  - `interval` (string|null): one of day, week, month
+  - `compare` (string): one of previous, year, none; default 'previous'
+  - `limit` (int): 1 to 100; default 10
+  - `sort` (string): one of net, quantity; default 'net'
+
 ## /returns
 
 ### `POST /returns/{id}/approve`

@@ -63,7 +63,7 @@ final readonly class OrderLineView
     {
         $place = $tax->jurisdiction();
 
-        return new LineTaxView($tax->name(), $tax->percent(), $place->country, $place->region, $place->level, $place->code, $place->name, (string) $tax->taxable(), (string) $tax->amount(), $tax->isCompound(), (string) $tax->refunded());
+        return new LineTaxView($tax->name(), $tax->percent(), $place->country, $place->region, $place->level, $place->code, $place->name, (string) $tax->taxable(), (string) $tax->amount(), $tax->isCompound(), (string) $tax->refunded(), $tax->isExempt());
     }
 
     private static function adjustment(OrderAdjustment $row): AdjustmentView

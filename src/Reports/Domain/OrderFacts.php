@@ -13,11 +13,13 @@ final readonly class OrderFacts
      * @param list<SoldLine>    $lines
      * @param list<UsedCoupon>  $coupons
      * @param list<GivenRefund> $refunds
+     * @param list<CollectedTax>  $taxes
      */
     public function __construct(
         public SoldOrder $order,
         public array $lines = [],
         public array $coupons = [],
         public array $refunds = [],
+        public array $taxes = [],
     ) {}
 }

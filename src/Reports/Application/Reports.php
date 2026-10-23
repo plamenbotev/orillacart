@@ -130,6 +130,18 @@ final readonly class Reports
     }
 
     /**
+     * The period's tax by jurisdiction and rate, for filing returns: taxable and exempt sales, tax, refunds.
+     *
+     * @throws InvalidPeriod
+     */
+    public function taxes(ReportQuery $query): RankingReport
+    {
+        [$frame, $period] = $this->frame($query);
+
+        return new RankingReport($frame, $this->queries->taxes($period, $frame->currency));
+    }
+
+    /**
      * @throws InvalidPeriod
      */
     public function customers(ReportQuery $query): CustomersReport

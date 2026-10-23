@@ -4,7 +4,13 @@ import { addQueryArgs } from '@wordpress/url';
 export type Interval = 'day' | 'week' | 'month';
 export type Compare = 'previous' | 'year' | 'none';
 export type Tab =
-	'sales' | 'products' | 'categories' | 'coupons' | 'customers' | 'carts';
+	| 'sales'
+	| 'products'
+	| 'categories'
+	| 'coupons'
+	| 'customers'
+	| 'carts'
+	| 'taxes';
 
 /** What a report covers: days of the shop's calendar, Y-m-d, the last one included. */
 export interface ReportQuery {
@@ -99,6 +105,24 @@ export interface CouponRow {
 	previous_amount: string | null;
 }
 
+/** One rate of one jurisdiction over the period, as returns are filed. */
+export interface TaxRow {
+	country: string;
+	region: string | null;
+	level: 'country' | 'region' | 'local';
+	/** The code it is filed under. */
+	code: string;
+	jurisdiction: string;
+	percent: string;
+	orders: number;
+	/** Sales it was charged on, before tax. */
+	taxable: string;
+	/** Sales made there without tax, under customers' exemptions. */
+	exempt: string;
+	tax: string;
+	refunded: string;
+}
+
 export interface RankingReport< Row > {
 	frame: Frame;
 	rows: Row[];
@@ -158,6 +182,7 @@ export interface Reports {
 	coupons: RankingReport< CouponRow >;
 	customers: CustomersReport;
 	carts: CartsReport;
+	taxes: RankingReport< TaxRow >;
 }
 
 /**

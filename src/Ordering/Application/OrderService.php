@@ -963,7 +963,7 @@ final readonly class OrderService
             $line->quantity,
             Money::of($line->unitPrice),
             Money::of($line->total),
-            array_map(static fn(LineTaxView $tax): LineTax => new LineTax($tax->name, $tax->percent, new TaxJurisdiction($tax->country, $tax->region, $tax->level, $tax->code, $tax->jurisdiction), Money::of($tax->taxable), Money::of($tax->amount), $tax->compound), $line->taxes),
+            array_map(static fn(LineTaxView $tax): LineTax => new LineTax($tax->name, $tax->percent, new TaxJurisdiction($tax->country, $tax->region, $tax->level, $tax->code, $tax->jurisdiction), Money::of($tax->taxable), Money::of($tax->amount), $tax->compound, $tax->exempt), $line->taxes),
             $line->ships,
             array_map(static fn(TakenStock $taken): TakenItem => new TakenItem($taken->item, $taken->stockroomId, $taken->quantity), $line->taken),
             array_map(static fn(QuotedDownload $file): LineDownload => new LineDownload($file->fileId, $file->name, $file->storageKey, $file->mimeType), $line->downloads),

@@ -6,6 +6,7 @@ namespace OrillaCart\Reports\Infrastructure\Doctrine;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
+use OrillaCart\Reports\Domain\CollectedTax;
 use OrillaCart\Reports\Domain\GivenRefund;
 use OrillaCart\Reports\Domain\SoldLine;
 use OrillaCart\Reports\Domain\SoldOrder;
@@ -37,6 +38,11 @@ final readonly class ReportTables
     public function coupons(): string
     {
         return $this->entityManager->getClassMetadata(UsedCoupon::class)->getTableName();
+    }
+
+    public function taxes(): string
+    {
+        return $this->entityManager->getClassMetadata(CollectedTax::class)->getTableName();
     }
 
     public function refunds(): string
