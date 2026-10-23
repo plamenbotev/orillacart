@@ -113,7 +113,7 @@ point, a service, so it is left to add-ons. The XML is offered through the exten
 - **126**: the files go through the official validators, in a suite of their own that needs Java and never ships
   (`npm run test:einvoices`; bin/einvoice-validators fetches pinned versions of KoSIT's validator 1.6.3 with
   XRechnung 3.0.2's rules, OpenPeppol's BIS Billing 3.0.20 Schematron compiled with SchXslt, and checks their
-  SHA-256). Sixteen documents, in both formats: two rates, the reverse charge, a certificate's exemption, an export,
+  SHA-256). Eighteen documents, in both formats: two rates, the reverse charge, a certificate's exemption, an export,
   a seller not subject to VAT, another currency, credit notes, and a domestic business sale. Warnings fail too.
   What they found, and how it was fixed:
   - Peppol takes participant IDs, not emails: the seller's own Peppol ID (a setting) or its VAT number's under its
