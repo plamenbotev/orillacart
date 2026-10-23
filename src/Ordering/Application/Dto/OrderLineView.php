@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Application\Dto;
 
+use OrillaCart\Ordering\Domain\OrderAdjustment;
 use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\OrderStatus;
+use OrillaCart\Ordering\Domain\OrderTax;
 
 final readonly class OrderLineView
 {
     /**
      * @param list<array{attribute: string, option: string}> $options
      * @param list<int>                                    $optionIds
+     * @param list<LineTaxView>    $taxes       each rate charged on it
+     * @param list<AdjustmentView> $adjustments the changes to its price after its unit price
      */
     public function __construct(
         public int $productId,
@@ -28,7 +32,7 @@ final readonly class OrderLineView
         public int $backordered = 0,
         public bool $backorderShown = false,
         public int $refundedQuantity = 0,
-        /** What coupons took off the total; the tax is on what is left. */
+        /** What the changes to its price took off, in all; the tax is on what is left. */
         public string $discount = '0',
         /** @var list<array{name: string, quantity: int}> what one bundle holds */
         public array $contents = [],
@@ -42,10 +46,30 @@ final readonly class OrderLineView
         public bool $ships = true,
         /** @var list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}> the answers to the product's forms, as sold */
         public array $personalisation = [],
+        /** "item", "shipping" or "fee". */
+        public string $kind = 'item',
+        public array $taxes = [],
+        public array $adjustments = [],
+        /** The line's place in the order, as refunds and edits name it. */
+        public int $position = 0,
     ) {}
 
     public static function fromLine(OrderLine $line): self
     {
-        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount(), $line->order()->status() === OrderStatus::Refunded ? $line->restockable() : 0, $line->ships(), $line->personalisation());
+        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount(), $line->order()->status() === OrderStatus::Refunded ? $line->restockable() : 0, $line->ships(), $line->personalisation(), $line->kind(), array_map(self::tax(...), $line->taxes()), array_map(self::adjustment(...), $line->adjustments()), $line->position());
+    }
+
+    private static function tax(OrderTax $tax): LineTaxView
+    {
+        $place = $tax->jurisdiction();
+
+        return new LineTaxView($tax->name(), $tax->percent(), $place->country, $place->region, $place->level, $place->code, $place->name, (string) $tax->taxable(), (string) $tax->amount(), $tax->isCompound(), (string) $tax->refunded());
+    }
+
+    private static function adjustment(OrderAdjustment $row): AdjustmentView
+    {
+        $adjustment = $row->adjustment();
+
+        return new AdjustmentView($adjustment->kind, $adjustment->source, $adjustment->label, (string) $adjustment->amount, $adjustment->scope, $adjustment->freeShipping, $adjustment->reason);
     }
 }

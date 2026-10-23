@@ -72,15 +72,8 @@ class Order
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $pickupPoint = null;
 
-    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
-    private string $shippingTotal;
 
-    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
-    private string $shippingTax;
 
-    /** @var list<array{name: string, percent: string, amount: string}> */
-    #[ORM\Column(type: 'json')]
-    private array $taxes;
 
     /** The day the customer chose for delivery, in the shop's calendar. */
     #[ORM\Column(type: 'date_immutable', nullable: true)]
@@ -94,21 +87,10 @@ class Order
     #[ORM\Column(length: 60, nullable: true)]
     private ?string $deliveryKey = null;
 
-    /** @var list<array{label: string, amount: string}> the fees it pays besides its items and shipping */
-    #[ORM\Column(type: 'json')]
-    private array $fees = [];
 
-    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
-    private string $feesTotal = '0';
 
-    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
-    private string $feesTax = '0';
 
-    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
-    private string $subtotal;
 
-    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
-    private string $itemsTax;
 
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
     private string $total;
@@ -172,13 +154,17 @@ class Order
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $attentionSince = null;
 
-    /** What coupons took off the items, in all. */
-    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
-    private string $discountTotal = '0';
+    /** @var array{reason: string, certificate: string}|null the customer's exemption from tax that covered the order */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $taxExemption = null;
 
-    /** @var list<array{code: string, description: string, amount: string, free_shipping: bool, automatic?: bool}> the coupons it used */
-    #[ORM\Column(type: 'json')]
-    private array $discounts = [];
+    /** The tax service that taxed the order, by its id; null for the shop's own rates. */
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $taxProvider = null;
+
+    /** The tax service's own reference of the sale, once it recorded it. */
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $taxReference = null;
 
     /** What gift cards and store credit paid of the total; the rest is paid the way the customer chose. */
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
@@ -200,9 +186,6 @@ class Order
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, nullable: true)]
     private ?string $paidAmount = null;
 
-    #[ORM\Column(options: ['default' => false])]
-    private bool $shippingRefunded = false;
-
     /** @var list<array{id: string, label: string, answer: string}>|null answers to add-ons' checkout fields, with the labels they had */
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $fields = null;
@@ -218,12 +201,15 @@ class Order
         if (mb_strlen($draft->note) > self::MAX_NOTE_LENGTH) {
             throw new OrderRuleViolation(\sprintf('A note has up to %d characters.', self::MAX_NOTE_LENGTH), 'orillacart_invalid_note');
         }
-        $shippingTotal = $draft->shipping->price ?? Money::zero();
-        $shippingTax = $draft->shipping->tax ?? Money::zero();
-        $discountTotal = $draft->discountTotal ?? Money::zero();
-        $feesTax = $draft->feesTax ?? Money::zero();
-        if (!self::addsUp($draft->subtotal, $discountTotal, $draft->itemsTax, $shippingTotal->add(self::sumOf($draft->fees)), $shippingTax->add($feesTax), $draft->total, $draft->pricesIncludeTax)) {
+        $items = array_filter($draft->lines, static fn(LineDraft $line): bool => $line->kind === OrderLine::ITEM);
+        if ($items === []) {
+            throw new OrderRuleViolation('An order has at least one item.', 'orillacart_empty_order');
+        }
+        if (!self::addsUp($draft->lines, $draft->total, $draft->pricesIncludeTax)) {
             throw new \LogicException('The order total is not the sum of its parts.');
+        }
+        if ((array_filter($draft->lines, static fn(LineDraft $line): bool => $line->kind === OrderLine::SHIPPING) === []) !== ($draft->shipping === null)) {
+            throw new \LogicException('An order that ships has a shipping line, one that does not has none.');
         }
         if (($draft->shipping === null) !== ($draft->shippingAddress === null)) {
             throw new \LogicException('An order that ships has a shipping address and a way to ship, one that does not has neither.');
@@ -237,28 +223,21 @@ class Order
         $this->lines = new ArrayCollection();
         $this->notes = new ArrayCollection();
         $this->grants = new ArrayCollection();
-        foreach ($draft->lines as $position => $line) {
+        foreach (self::ordered($draft->lines) as $position => $line) {
             $this->lines->add(new OrderLine($this, $line, $position));
         }
         $this->shippingOption = $draft->shipping?->option;
         $this->shippingName = $draft->shipping === null ? null : mb_substr("{$draft->shipping->carrier} – {$draft->shipping->rate}", 0, 200);
         $this->pickupPointId = $draft->shipping?->pickupPointId;
         $this->pickupPoint = $draft->shipping?->pickupPoint === null ? null : mb_substr($draft->shipping->pickupPoint, 0, 255);
-        $this->shippingTotal = $shippingTotal->toFixed();
-        $this->shippingTax = $shippingTax->toFixed();
-        $this->charge($draft->fees, $feesTax);
         if ($draft->delivery !== null && $draft->shipping === null) {
             throw new \LogicException('An order that ships nothing has no delivery day.');
         }
         $this->deliveryDate = $draft->delivery?->date;
         $this->deliverySlot = $draft->delivery?->slot;
         $this->deliveryKey = $draft->delivery?->key;
-        $this->taxes = array_map(static fn(TaxLine $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount->toFixed()], $draft->taxes);
-        $this->subtotal = $draft->subtotal->toFixed();
-        $this->itemsTax = $draft->itemsTax->toFixed();
         $this->total = $draft->total->toFixed();
-        $this->discountTotal = $discountTotal->toFixed();
-        $this->discounts = self::discountRows($draft->discounts);
+        $this->taxExemption = $draft->taxExemption;
         $this->currency = $draft->currency;
         $this->paymentGateway = $draft->paymentGateway;
         $this->paymentName = mb_substr($draft->paymentName, 0, 100);
@@ -303,13 +282,45 @@ class Order
         return $this->shippingAddress->isEmpty() ? null : $this->shippingAddress;
     }
 
-    /** @return list<OrderLine> */
+    /**
+     * The items, in their order.
+     *
+     * @return list<OrderLine>
+     */
     public function lines(): array
+    {
+        return array_values(array_filter($this->allLines(), static fn(OrderLine $line): bool => $line->isItem()));
+    }
+
+    /**
+     * Every line: the items, then the shipping, then the fees.
+     *
+     * @return list<OrderLine>
+     */
+    public function allLines(): array
     {
         $lines = $this->lines->toArray();
         usort($lines, static fn(OrderLine $a, OrderLine $b): int => $a->position() <=> $b->position());
 
         return $lines;
+    }
+
+    /** What shipping costs, as a line; null for an order that ships nothing. */
+    public function shippingLine(): ?OrderLine
+    {
+        foreach ($this->allLines() as $line) {
+            if ($line->kind() === OrderLine::SHIPPING) {
+                return $line;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return list<OrderLine> */
+    public function feeLines(): array
+    {
+        return array_values(array_filter($this->allLines(), static fn(OrderLine $line): bool => $line->kind() === OrderLine::FEE));
     }
 
     public function shippingName(): ?string
@@ -330,12 +341,12 @@ class Order
 
     public function shippingTotal(): Money
     {
-        return Money::of($this->shippingTotal);
+        return $this->shippingLine()?->net() ?? Money::zero();
     }
 
     public function shippingTax(): Money
     {
-        return Money::of($this->shippingTax);
+        return $this->shippingLine()?->tax() ?? Money::zero();
     }
 
     /** The day and time of day the customer chose for delivery; null when they chose none. */
@@ -347,33 +358,81 @@ class Order
     /** @return list<OrderFee> */
     public function fees(): array
     {
-        return array_map(static fn(array $fee): OrderFee => new OrderFee($fee['label'], Money::of($fee['amount'])), $this->fees);
+        return array_map(static fn(OrderLine $line): OrderFee => new OrderFee($line->name(), $line->net()), $this->feeLines());
     }
 
     public function feesTotal(): Money
     {
-        return Money::of($this->feesTotal);
+        return self::sum($this->feeLines(), static fn(OrderLine $line): Money => $line->net());
     }
 
     public function feesTax(): Money
     {
-        return Money::of($this->feesTax);
+        return self::sum($this->feeLines(), static fn(OrderLine $line): Money => $line->tax());
     }
 
-    /** @return list<TaxLine> */
+    /**
+     * The taxes of the whole order, one per rate as invoices list them: the lines' added up.
+     *
+     * @return list<TaxLine>
+     */
     public function taxes(): array
     {
-        return array_map(static fn(array $tax): TaxLine => new TaxLine($tax['name'], $tax['percent'], Money::of($tax['amount'])), $this->taxes);
+        $taxes = [];
+        foreach ($this->allLines() as $line) {
+            foreach ($line->taxes() as $tax) {
+                $key = $tax->name() . '|' . $tax->percent();
+                $taxes[$key] = new TaxLine($tax->name(), $tax->percent(), ($taxes[$key]->amount ?? Money::zero())->add($tax->amount()));
+            }
+        }
+
+        return array_values(array_filter($taxes, static fn(TaxLine $tax): bool => !$tax->amount->isZero()));
     }
 
+    /** @return list<OrderTax> every rate on every line */
+    public function taxRows(): array
+    {
+        return array_merge([], ...array_map(static fn(OrderLine $line): array => $line->taxes(), $this->allLines()));
+    }
+
+    /** The items before tax and before the changes to their prices. */
     public function subtotal(): Money
     {
-        return Money::of($this->subtotal);
+        return self::sum($this->lines(), static fn(OrderLine $line): Money => $line->total());
     }
 
     public function itemsTax(): Money
     {
-        return Money::of($this->itemsTax);
+        return self::sum($this->lines(), static fn(OrderLine $line): Money => $line->tax());
+    }
+
+    /** All the tax charged: on the items, the shipping and the fees. */
+    public function tax(): Money
+    {
+        return self::sum($this->allLines(), static fn(OrderLine $line): Money => $line->tax());
+    }
+
+    /** @return array{reason: string, certificate: string}|null */
+    public function taxExemption(): ?array
+    {
+        return $this->taxExemption;
+    }
+
+    public function taxProvider(): ?string
+    {
+        return $this->taxProvider;
+    }
+
+    public function taxReference(): ?string
+    {
+        return $this->taxReference;
+    }
+
+    /** A tax service recorded the sale under its reference. */
+    public function taxRecorded(string $provider, string $reference): void
+    {
+        $this->taxProvider = mb_substr($provider, 0, 40);
+        $this->taxReference = mb_substr($reference, 0, 100);
     }
 
     public function total(): Money
@@ -420,16 +479,49 @@ class Order
         $this->giftCards = array_map(static fn(array $card): array => ['label' => mb_substr($card['label'], 0, 100), 'amount' => $card['amount']->toFixed()], $cards);
     }
 
-    /** What coupons took off the items, in all. */
+    /** What the changes to the items' prices took off, in all: coupons and the shop's. */
     public function discountTotal(): Money
     {
-        return Money::of($this->discountTotal);
+        return self::sum($this->lines(), static fn(OrderLine $line): Money => $line->discount());
     }
 
-    /** @return list<OrderDiscount> */
+    /**
+     * The coupons and automatic discounts, each once with what it took off the whole order.
+     *
+     * @return list<OrderDiscount>
+     */
     public function discounts(): array
     {
-        return array_map(static fn(array $row): OrderDiscount => new OrderDiscount($row['code'], $row['description'], Money::of($row['amount']), $row['free_shipping'], $row['automatic'] ?? false), $this->discounts);
+        $discounts = [];
+        foreach ($this->allLines() as $line) {
+            foreach ($line->adjustments() as $row) {
+                $adjustment = $row->adjustment();
+                if (!$adjustment->isDiscount()) {
+                    continue;
+                }
+                $key = $adjustment->kind . '|' . $adjustment->source;
+                $before = $discounts[$key] ?? null;
+                $discounts[$key] = new OrderDiscount(
+                    $adjustment->source,
+                    $adjustment->label,
+                    ($before->amount ?? Money::zero())->subtract($adjustment->amount),
+                    ($before->freeShipping ?? false) || $adjustment->freeShipping,
+                    $adjustment->kind === PriceAdjustment::AUTOMATIC,
+                );
+            }
+        }
+
+        return array_values($discounts);
+    }
+
+    /**
+     * Every change to a line's price, with its line.
+     *
+     * @return list<OrderAdjustment>
+     */
+    public function adjustments(): array
+    {
+        return array_merge([], ...array_map(static fn(OrderLine $line): array => $line->adjustments(), $this->allLines()));
     }
 
     public function currency(): string
@@ -545,7 +637,7 @@ class Order
 
     public function isShippingRefunded(): bool
     {
-        return $this->shippingRefunded;
+        return ($this->shippingLine()?->refundedQuantity() ?? 0) > 0;
     }
 
     /**
@@ -566,7 +658,7 @@ class Order
             throw new OrderRuleViolation(\sprintf('At most %s %s is left to refund.', $this->refundable(), $this->currency), 'orillacart_invalid_refund_amount');
         }
         $lines = [];
-        foreach ($this->lines as $line) {
+        foreach ($this->lines() as $line) {
             $lines[$line->position()] = $line;
         }
         foreach ($refund->quantities as $position => $quantity) {
@@ -575,7 +667,7 @@ class Order
                 throw new OrderRuleViolation(\sprintf('Line "%s" has %d items left to refund.', $line->name(), $line->refundableQuantity()), 'orillacart_invalid_refund_quantity');
             }
         }
-        if ($refund->shipping && ($this->shippingRefunded || $this->shippingName === null)) {
+        if ($refund->shipping && ($this->shippingLine() === null || $this->isShippingRefunded())) {
             throw new OrderRuleViolation('The shipping was refunded before, or the order ships nothing.', 'orillacart_invalid_refund_shipping');
         }
     }
@@ -584,17 +676,18 @@ class Order
      * Records money given back. Refunded items stop their downloads once none of the line is left; an order
      * refunded in full becomes Refunded, and the stock of what was not refunded item by item stays sold.
      *
-     * @return RefundShare the tax given back, and the stock to put back: the refunded items', when the refund
-     *                     restocks
+     * @return RefundShare the tax given back, by rate, and the stock to put back: the refunded items', when the
+     *                     refund restocks
      *
      * @throws OrderRuleViolation as checkRefund()
      */
     public function refund(OrderRefund $refund): RefundShare
     {
         $this->checkRefund($refund);
+        $before = array_map(static fn(OrderTax $row): Money => $row->refunded(), $this->taxRows());
         $tax = $this->refundTax($refund);
         $taken = [];
-        foreach ($this->lines as $line) {
+        foreach ($this->lines() as $line) {
             $quantity = $refund->quantities[$line->position()] ?? 0;
             if ($quantity > 0) {
                 array_push($taken, ...$line->refund($quantity, $refund->restock));
@@ -607,7 +700,9 @@ class Order
                 }
             }
         }
-        $this->shippingRefunded = $this->shippingRefunded || $refund->shipping;
+        if ($refund->shipping) {
+            $this->shippingLine()?->refund(1, false);
+        }
         $this->refundedTotal = $this->refundedTotal()->add($refund->amount)->toFixed();
         $this->refundedTax = $this->refundedTax()->add($tax)->toFixed();
         if ($this->refundable()->isZero()) {
@@ -616,46 +711,57 @@ class Order
             $this->grants->clear();
         }
 
-        return new RefundShare($tax, $this->taxShares($tax), $taken);
+        return new RefundShare($tax, $this->givenBack($before), $taken);
     }
 
     /**
-     * The tax inside a refund's amount, and the amount spread over the lines: the share the tax is of what the
-     * refund covers, the refunded items (by quantity) and shipping, or the whole order when it names neither.
-     * Never more than is left of the order's tax; the refund that empties the order gives back all of it.
+     * The tax inside a refund's amount, given back on the lines it covers: the refunded items (by quantity) and
+     * shipping, or every line when it names neither, each line's rates by what they charged. The refund's tax
+     * is the share the lines' tax is of what they cost; never more than is left of the order's tax, and the
+     * refund that empties the order gives back all of it.
      */
     private function refundTax(OrderRefund $refund): Money
     {
-        $gross = Money::zero();
-        $tax = Money::zero();
         $covered = [];
-        foreach ($this->lines as $line) {
+        foreach ($this->lines() as $line) {
             $quantity = $refund->quantities[$line->position()] ?? 0;
             if ($quantity > 0) {
-                [$lineGross, $lineTax] = $this->lineShare($line, $quantity);
-                $covered[] = [$line, $lineGross];
-                $gross = $gross->add($lineGross);
-                $tax = $tax->add($lineTax);
+                $covered[] = [$line, ...$this->lineShare($line, $quantity)];
             }
         }
-        if ($refund->shipping) {
-            $gross = $gross->add($this->shippingTotal())->add($this->pricesIncludeTax ? Money::zero() : $this->shippingTax());
-            $tax = $tax->add($this->shippingTax());
+        $shipping = $this->shippingLine();
+        if ($refund->shipping && $shipping !== null) {
+            $covered[] = [$shipping, ...$this->lineShare($shipping, 1)];
         }
-        if ($gross->isZero()) {
-            foreach ($this->lines as $line) {
-                $covered[] = [$line, $this->lineShare($line, $line->quantity())[0]];
+        if ($covered === []) {
+            foreach ($this->allLines() as $line) {
+                $covered[] = [$line, ...$this->lineShare($line, $line->quantity())];
             }
-            [$gross, $tax] = [$this->total(), $this->itemsTax()->add($this->shippingTax())->add($this->feesTax())];
         }
+        $gross = self::sum($covered, static fn(array $share): Money => $share[1]);
+        $tax = self::sum($covered, static fn(array $share): Money => $share[2]);
         foreach ($covered as [$line, $lineGross]) {
-            $line->refunded($refund->amount->proportion($lineGross, $gross));
+            $line->refunded($gross->isZero() ? Money::zero() : $refund->amount->proportion($lineGross, $gross));
         }
 
-        $taxLeft = $this->itemsTax()->add($this->shippingTax())->add($this->feesTax())->subtract($this->refundedTax())->atLeastZero();
-        $share = $refund->amount->compare($this->refundable()) >= 0 ? $taxLeft : $tax->proportion($refund->amount, $gross);
+        $taxLeft = $this->tax()->subtract($this->refundedTax())->atLeastZero();
+        if ($refund->amount->compare($this->refundable()) >= 0) {
+            foreach ($this->taxRows() as $row) {
+                $row->giveBack($row->amount()->subtract($row->refunded())->atLeastZero());
+            }
 
-        return $share->compare($taxLeft) > 0 ? $taxLeft : $share;
+            return $taxLeft;
+        }
+        $share = $gross->isZero() ? Money::zero() : $tax->proportion($refund->amount, $gross);
+        $share = $share->compare($taxLeft) > 0 ? $taxLeft : $share;
+        $left = $share;
+        foreach ($covered as $index => [$line, , $lineTax]) {
+            $part = $index === \count($covered) - 1 ? $left : ($tax->isZero() ? Money::zero() : $share->proportion($lineTax, $tax));
+            $left = $left->subtract($part);
+            $line->refundTax($part);
+        }
+
+        return $share;
     }
 
     /**
@@ -666,7 +772,7 @@ class Order
     private function lineShare(OrderLine $line, int $quantity): array
     {
         $lineTax = $line->tax();
-        $lineGross = $line->total()->subtract($line->discount())->add($this->pricesIncludeTax ? Money::zero() : $lineTax);
+        $lineGross = $line->net()->add($this->pricesIncludeTax ? Money::zero() : $lineTax);
         $part = Money::of((string) $quantity);
         $whole = Money::of((string) $line->quantity());
 
@@ -674,27 +780,25 @@ class Order
     }
 
     /**
-     * A refund's tax spread over the order's tax lines, in the share each holds of the order's tax; the last takes
-     * what rounding leaves.
+     * What a refund gave back of each rate: the order's tax rows now, less what they had given back before.
+     *
+     * @param list<Money> $before each row's refunded amount before the refund, as taxRows() lists them
      *
      * @return list<TaxLine>
      */
-    private function taxShares(Money $tax): array
+    private function givenBack(array $before): array
     {
-        $lines = array_values(array_filter($this->taxes(), static fn(TaxLine $line): bool => !$line->amount->isZero()));
-        if ($tax->isZero() || $lines === []) {
-            return [];
-        }
-        $whole = array_reduce($lines, static fn(Money $sum, TaxLine $line): Money => $sum->add($line->amount), Money::zero());
         $shares = [];
-        $left = $tax;
-        foreach ($lines as $index => $line) {
-            $amount = $index === \count($lines) - 1 ? $left : $tax->proportion($line->amount, $whole);
-            $left = $left->subtract($amount);
-            $shares[] = new TaxLine($line->name, $line->percent, $amount);
+        foreach ($this->taxRows() as $index => $row) {
+            $given = $row->refunded()->subtract($before[$index] ?? Money::zero());
+            if ($given->isZero()) {
+                continue;
+            }
+            $key = $row->name() . '|' . $row->percent();
+            $shares[$key] = new TaxLine($row->name(), $row->percent(), ($shares[$key]->amount ?? Money::zero())->add($given));
         }
 
-        return $shares;
+        return array_values($shares);
     }
 
     /**
@@ -900,34 +1004,28 @@ class Order
      * Replaces what an order on hold contains, as the shop repriced it. Only orders waiting for an offline
      * payment change: a paid order, or one being paid at a provider, keeps what was paid for.
      *
-     * @param list<LineDraft>     $lines
-     * @param list<TaxLine>       $taxes
-     * @param list<OrderDiscount> $discounts the coupons, priced again
-     * @param list<OrderFee>      $fees      the fees, priced again
+     * @param list<LineDraft> $lines the items, the shipping and the fees, priced again
      *
      * @throws OrderRuleViolation for an order not on hold, one without items, or one gift cards paid part of
      */
-    public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, array $taxes, Money $subtotal, Money $itemsTax, Money $total, ?Money $discountTotal = null, array $discounts = [], bool $pricesIncludeTax = false, array $fees = [], ?Money $feesTax = null): void
+    public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, Money $total, bool $pricesIncludeTax = false): void
     {
-        $feesTax ??= Money::zero();
-        $discountTotal ??= Money::zero();
         $this->requireOnHold();
-        if ($lines === []) {
+        if (array_filter($lines, static fn(LineDraft $line): bool => $line->kind === OrderLine::ITEM) === []) {
             throw new OrderRuleViolation('An order has at least one item.', 'orillacart_empty_order');
         }
         if ($this->giftCards !== []) {
             throw new OrderRuleViolation(\sprintf('Gift cards paid part of order #%d: its items stay as they are; cancel it and place another to change them.', $this->id()), 'orillacart_order_gift_cards');
         }
-        $shippingTotal = $shipping->price ?? Money::zero();
-        $shippingTax = $shipping->tax ?? Money::zero();
-        if (!self::addsUp($subtotal, $discountTotal, $itemsTax, $shippingTotal->add(self::sumOf($fees)), $shippingTax->add($feesTax), $total, $pricesIncludeTax)) {
+        if (!self::addsUp($lines, $total, $pricesIncludeTax)) {
             throw new \LogicException('The order total is not the sum of its parts.');
         }
-        if (($shipping === null) !== ($shippingAddress === null)) {
-            throw new \LogicException('An order that ships has a shipping address and a way to ship, one that does not has neither.');
+        if (($shipping === null) !== ($shippingAddress === null)
+            || (array_filter($lines, static fn(LineDraft $line): bool => $line->kind === OrderLine::SHIPPING) === []) !== ($shipping === null)) {
+            throw new \LogicException('An order that ships has a shipping address, a way to ship and a shipping line; one that does not has none.');
         }
         $this->lines->clear();
-        foreach ($lines as $position => $line) {
+        foreach (self::ordered($lines) as $position => $line) {
             $this->lines->add(new OrderLine($this, $line, $position));
         }
         $this->shippingAddress = $shippingAddress ?? Address::none();
@@ -935,26 +1033,8 @@ class Order
         $this->shippingName = $shipping === null ? null : mb_substr("{$shipping->carrier} – {$shipping->rate}", 0, 200);
         $this->pickupPointId = $shipping?->pickupPointId;
         $this->pickupPoint = $shipping?->pickupPoint === null ? null : mb_substr($shipping->pickupPoint, 0, 255);
-        $this->shippingTotal = $shippingTotal->toFixed();
-        $this->shippingTax = $shippingTax->toFixed();
-        $this->charge($fees, $feesTax);
-        $this->taxes = array_map(static fn(TaxLine $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount->toFixed()], $taxes);
-        $this->subtotal = $subtotal->toFixed();
-        $this->itemsTax = $itemsTax->toFixed();
         $this->total = $total->toFixed();
         $this->pricesIncludeTax = $pricesIncludeTax;
-        $this->discountTotal = $discountTotal->toFixed();
-        $this->discounts = self::discountRows($discounts);
-    }
-
-    /**
-     * @param list<OrderDiscount> $discounts
-     *
-     * @return list<array{code: string, description: string, amount: string, free_shipping: bool, automatic: bool}>
-     */
-    private static function discountRows(array $discounts): array
-    {
-        return array_map(static fn(OrderDiscount $discount): array => ['code' => $discount->code, 'description' => $discount->description, 'amount' => $discount->amount->toFixed(), 'free_shipping' => $discount->freeShipping, 'automatic' => $discount->automatic], $discounts);
     }
 
     public function shippingOption(): ?string
@@ -1238,29 +1318,51 @@ class Order
     }
 
     /**
-     * @param list<OrderFee> $fees
+     * The items first, then the shipping, then the fees: items keep the places refunds and downloads name them by.
+     *
+     * @param list<LineDraft> $lines
+     *
+     * @return list<LineDraft>
      */
-    private function charge(array $fees, Money $tax): void
+    private static function ordered(array $lines): array
     {
-        $this->fees = array_map(static fn(OrderFee $fee): array => ['label' => mb_substr($fee->label, 0, 100), 'amount' => $fee->amount->toFixed()], $fees);
-        $this->feesTotal = self::sumOf($fees)->toFixed();
-        $this->feesTax = $tax->toFixed();
+        $of = static fn(string $kind): array => array_values(array_filter($lines, static fn(LineDraft $line): bool => $line->kind === $kind));
+
+        return [...$of(OrderLine::ITEM), ...$of(OrderLine::SHIPPING), ...$of(OrderLine::FEE)];
     }
 
     /**
-     * @param list<OrderFee> $fees
+     * @template T
+     *
+     * @param list<T>          $of
+     * @param \Closure(T): Money $amount
      */
-    private static function sumOf(array $fees): Money
+    private static function sum(array $of, \Closure $amount): Money
     {
-        return array_reduce($fees, static fn(Money $sum, OrderFee $fee): Money => $sum->add($fee->amount), Money::zero());
+        return array_reduce($of, static fn(Money $sum, mixed $one): Money => $sum->add($amount($one)), Money::zero());
     }
 
-    /** The total is the subtotal less discounts plus shipping and fees, and plus tax unless the amounts include it. */
-    private static function addsUp(Money $subtotal, Money $discount, Money $itemsTax, Money $shipping, Money $shippingTax, Money $total, bool $includesTax): bool
+    /**
+     * The total is what the lines cost with their adjustments, and plus their tax unless the amounts include it.
+     *
+     * @param list<LineDraft> $lines
+     */
+    private static function addsUp(array $lines, Money $total, bool $includesTax): bool
     {
-        $sum = $subtotal->subtract($discount)->add($shipping);
+        $sum = Money::zero();
+        foreach ($lines as $line) {
+            $sum = $sum->add($line->total);
+            foreach ($line->adjustments as $adjustment) {
+                $sum = $sum->add($adjustment->amount);
+            }
+            if (!$includesTax) {
+                foreach ($line->taxes as $tax) {
+                    $sum = $sum->add($tax->amount);
+                }
+            }
+        }
 
-        return ($includesTax ? $sum : $sum->add($itemsTax)->add($shippingTax))->equals($total);
+        return $sum->equals($total);
     }
 
     private function requireOnHold(): void

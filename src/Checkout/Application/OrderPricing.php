@@ -11,7 +11,8 @@ use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Checkout\Application\Dto\ShippingChoiceView;
 use OrillaCart\Checkout\Domain\Bill;
-use OrillaCart\Checkout\Domain\BilledTax;
+use OrillaCart\Checkout\Domain\BilledCharge;
+use OrillaCart\Checkout\Domain\ChargedTax;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Checkout\Domain\Tax;
 use OrillaCart\Coupons\Application\Discounts;
@@ -25,16 +26,19 @@ use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Inventory\Domain\InsufficientStock;
-use OrillaCart\Ordering\Application\Dto\NewOrderFee;
+use OrillaCart\Ordering\Application\Dto\AdjustmentView;
+use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\NewOrderLine;
 use OrillaCart\Ordering\Application\Dto\NewShipping;
 use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
-use OrillaCart\Ordering\Application\Dto\TaxLineView;
+use OrillaCart\Ordering\Domain\OrderLine;
+use OrillaCart\Ordering\Domain\PriceAdjustment;
 use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Domain\TaxJurisdiction;
 use OrillaCart\Shipping\Application\Dto\ParcelItem;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Shipping\Application\Dto\ShippingQuery;
@@ -51,8 +55,8 @@ use OrillaCart\Tax\Application\TaxCalculator;
  * Coupons take money off the items before tax is charged, and free shipping makes every way to ship cost nothing.
  * A free gift that holds is added to the items, when it is for sale, and the order priced again with it.
  *
- * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, gift: bool, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
- * @phpstan-type Priced array{lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, free_from: ?string, ships_from: ?string}
+ * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, gift: bool, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
+ * @phpstan-type Priced array{lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, free_from: ?string, ships_from: ?string}
  */
 final readonly class OrderPricing
 {
@@ -165,7 +169,7 @@ final readonly class OrderPricing
             $unitPrice = (string) array_reduce($parts, static fn(Money $sum, array $part): Money => $sum->add($part['unit']), Money::zero());
             $total = Money::of($unitPrice)->times($line['quantity']);
             $taxesOf[] = array_map(static fn(array $part): array => ['total' => $part['unit']->times($line['quantity']), 'taxes' => $part['taxes']], $parts);
-            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero(), 'gift' => $line['gift'] ?? false, 'personalisation' => $line['personalisation'] ?? []];
+            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero(), 'places' => [], 'gift' => $line['gift'] ?? false, 'personalisation' => $line['personalisation'] ?? []];
             if ($quote->type === 'physical') {
                 $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
             }
@@ -179,18 +183,20 @@ final readonly class OrderPricing
             $orderId,
             $this->currencies->rate($currency),
         ));
+        $couponLines = self::roundedCoupons($discounts, \count($lines), $decimals);
         $places = [];
         foreach ($lines as $index => $line) {
-            $lines[$index]['discount'] = $discounts->forLine($index);
+            $lines[$index]['discount'] = array_reduce($couponLines, static fn(Money $sum, array $taken): Money => $sum->add($taken[$index]), Money::zero());
             $parts = $taxesOf[$index];
             $discountShares = self::shares($lines[$index]['discount'], array_map(static fn(array $part): Money => $part['total'], $parts));
             foreach ($parts as $part => ['total' => $partTotal, 'taxes' => $taxes]) {
-                $places[$index][] = $bill->addItem($partTotal, $taxes, $discountShares[$part]);
+                $places[$index][] = $bill->addItem($partTotal, $taxes, $discountShares[$part], $line['quote']->name);
             }
         }
         $lineTaxes = $bill->lineTaxes();
         foreach ($lines as $index => $line) {
             $lines[$index]['tax'] = array_reduce($places[$index] ?? [], static fn(Money $sum, int $place): Money => $sum->add($lineTaxes[$place]), Money::zero());
+            $lines[$index]['places'] = $places[$index] ?? [];
         }
         $free = $discounts->freeShipping();
 
@@ -222,7 +228,7 @@ final readonly class OrderPricing
                 }
             }
             if ($chosen !== null) {
-                $bill->ship($chosen['price'], $chosen['taxes']);
+                $bill->ship($chosen['price'], $chosen['taxes'], "{$chosen['view']->carrier} – {$chosen['view']->name}");
             }
         }
         if ($lines !== []) {
@@ -240,7 +246,7 @@ final readonly class OrderPricing
             ), $shipping, $billing, $reverseCharge, $currency);
         }
 
-        return ['lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
+        return ['lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
     }
 
     /**
@@ -259,18 +265,6 @@ final readonly class OrderPricing
     }
 
     /**
-     * The fees the order pays, as it records them.
-     *
-     * @param Priced $priced
-     *
-     * @return list<NewOrderFee>
-     */
-    public function orderFees(array $priced): array
-    {
-        return array_map(static fn(array $fee): NewOrderFee => new NewOrderFee($fee['label'], (string) $fee['amount']), $priced['bill']->fees());
-    }
-
-    /**
      * Order lines for the priced items, taking their stock. Run it inside the transaction that saves the order.
      *
      * @param Priced $priced
@@ -283,19 +277,129 @@ final readonly class OrderPricing
     {
         $this->stock->lock(array_merge(...array_map(static fn(array $line): array => self::stockRefs($line['quote']), $priced['lines'])));
 
-        return array_map(function (array $line): NewOrderLine {
-            $quote = $line['quote'];
-            $taken = $this->take($quote, $line['quantity']);
+        $items = $priced['bill']->charges(BilledCharge::ITEM);
+        $lines = [];
+        foreach ($priced['lines'] as $index => $line) {
+            $taken = $this->take($line['quote'], $line['quantity']);
+            $charged = array_merge([], ...array_map(static fn(int $place): array => isset($items[$place]) ? $items[$place]->taxes : [], $line['places']));
+            $lines[] = $this->line($line, $taken, self::lineTaxes($charged), self::couponAdjustments($priced['discounts'], $priced['coupon_lines'], $index));
+        }
 
-            return $this->line($line, $taken);
-        }, $priced['lines']);
+        return $lines;
     }
 
     /**
-     * @param PricedLine       $line
-     * @param list<TakenStock> $taken
+     * The order's shipping and fees as lines, each with its taxes: what checkout charges besides the items. A
+     * coupon that made shipping free, or took nothing off any item, is kept on the shipping line or the first
+     * item at nothing, so the order still names it.
+     *
+     * @param Priced $priced
+     *
+     * @return list<NewOrderLine>
      */
-    private function line(array $line, array $taken): NewOrderLine
+    public function charges(array $priced): array
+    {
+        $bill = $priced['bill'];
+        $lines = [];
+        $shipping = $this->shipping($priced) === null ? [] : $bill->charges(BilledCharge::SHIPPING);
+        foreach ($shipping as $charge) {
+            $free = array_values(array_filter($priced['discounts']->coupons, static fn(AppliedCoupon $coupon): bool => $coupon->freeShipping));
+            $lines[] = self::chargeLine($charge, OrderLine::SHIPPING, array_map(
+                static fn(AppliedCoupon $coupon): AdjustmentView => new AdjustmentView($coupon->automatic ? PriceAdjustment::AUTOMATIC : PriceAdjustment::COUPON, $coupon->code, $coupon->description, '0', PriceAdjustment::ORDER, true),
+                $free,
+            ));
+        }
+        foreach ($bill->charges(BilledCharge::FEE) as $charge) {
+            $lines[] = self::chargeLine($charge, OrderLine::FEE, []);
+        }
+
+        return $lines;
+    }
+
+    /**
+     * The order's lines: the items, taking their stock, then the shipping and fees. Run it inside the transaction
+     * that saves the order.
+     *
+     * @param Priced $priced
+     *
+     * @return list<NewOrderLine>
+     *
+     * @throws CheckoutRuleViolation when stock ran out since the items were priced
+     */
+    public function orderLines(array $priced): array
+    {
+        return [...$this->lines($priced), ...$this->charges($priced)];
+    }
+
+    /**
+     * @param list<AdjustmentView> $adjustments
+     */
+    private static function chargeLine(BilledCharge $charge, string $kind, array $adjustments): NewOrderLine
+    {
+        return new NewOrderLine(null, null, [], [], $charge->label, null, 1, (string) $charge->amount, (string) $charge->amount, self::lineTaxes($charge->taxes), false, [], adjustments: $adjustments, kind: $kind);
+    }
+
+    /**
+     * A line's taxes, one per rate: the shares of its charges (a bundle's parts) added up.
+     *
+     * @param list<ChargedTax> $charged
+     *
+     * @return list<LineTaxView>
+     */
+    private static function lineTaxes(array $charged): array
+    {
+        $taxes = [];
+        foreach ($charged as $tax) {
+            $key = $tax->tax->key;
+            $place = $tax->tax->jurisdiction ?? new TaxJurisdiction('', null, TaxJurisdiction::COUNTRY, $tax->tax->name, $tax->tax->name);
+            $before = $taxes[$key] ?? null;
+            $taxes[$key] = new LineTaxView(
+                $tax->tax->name,
+                $tax->tax->percent,
+                $place->country,
+                $place->region,
+                $place->level,
+                $place->code,
+                $place->name,
+                (string) Money::of($before->taxable ?? '0')->add($tax->taxable),
+                (string) Money::of($before->amount ?? '0')->add($tax->amount),
+                $tax->tax->compound,
+            );
+        }
+
+        return array_values(array_filter($taxes, static fn(LineTaxView $tax): bool => !Money::of($tax->amount)->isZero() || !Money::of($tax->taxable)->isZero()));
+    }
+
+    /**
+     * What each coupon took off an item, as its adjustments; a coupon that took nothing off any item and does not
+     * make shipping free is kept on the first item at nothing, so the order still names it.
+     *
+     * @param list<list<Money>> $couponLines what each coupon takes off each item, in the currency's decimals
+     *
+     * @return list<AdjustmentView>
+     */
+    private static function couponAdjustments(AppliedDiscounts $discounts, array $couponLines, int $index): array
+    {
+        $adjustments = [];
+        foreach ($discounts->coupons as $number => $coupon) {
+            $amount = $couponLines[$number][$index] ?? Money::zero();
+            $named = $index === 0 && !$coupon->freeShipping && array_filter($couponLines[$number] ?? [], static fn(Money $taken): bool => !$taken->isZero()) === [];
+            if ($amount->isZero() && !$named) {
+                continue;
+            }
+            $adjustments[] = new AdjustmentView($coupon->automatic ? PriceAdjustment::AUTOMATIC : PriceAdjustment::COUPON, $coupon->code, $coupon->description, (string) Money::zero()->subtract($amount), PriceAdjustment::ORDER, $coupon->freeShipping);
+        }
+
+        return $adjustments;
+    }
+
+    /**
+     * @param PricedLine           $line
+     * @param list<TakenStock>     $taken
+     * @param list<LineTaxView>    $taxes
+     * @param list<AdjustmentView> $adjustments
+     */
+    private function line(array $line, array $taken, array $taxes, array $adjustments): NewOrderLine
     {
         // An item owes as many as its scarcest part: the product, or one of its options.
         $owed = [];
@@ -315,7 +419,7 @@ final readonly class OrderPricing
             $line['quantity'],
             $line['unit_price'],
             (string) $line['total'],
-            (string) $line['tax'],
+            $taxes,
             $line['quote']->type === 'physical',
             $taken,
             $line['quote']->downloads,
@@ -323,7 +427,7 @@ final readonly class OrderPricing
             $line['quote']->downloadExpiryDays,
             $backordered,
             $backordered > 0 && $line['quote']->backorders === 'notify',
-            (string) $line['discount'],
+            $adjustments,
             array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
             $line['quote']->contents === [] ? [] : $line['bundle_choices'],
             $line['personalisation'],
@@ -331,7 +435,7 @@ final readonly class OrderPricing
     }
 
     /**
-     * The coupons the order uses, as it records them.
+     * The coupons the order uses, as a quote shows them.
      *
      * @param Priced $priced
      *
@@ -348,13 +452,12 @@ final readonly class OrderPricing
     public function shipping(array $priced, ?PickupPointView $pickupPoint = null): ?NewShipping
     {
         $chosen = $priced['chosen'];
-        $bill = $priced['bill'];
 
         // Collected from the shop: the place, with when it is open, is where the order goes.
         $pickupPoint ??= $chosen?->collectAt;
         $label = $pickupPoint === null ? null : ($chosen?->collectAt !== null && $pickupPoint->hours !== '' ? "{$pickupPoint->label()} ({$pickupPoint->hours})" : $pickupPoint->label());
 
-        return $chosen === null || !$priced['needs_shipping'] ? null : new NewShipping($chosen->id, $chosen->carrier, $chosen->name, (string) $bill->shipping(), (string) $bill->shippingTax(), $pickupPoint?->id, $label);
+        return $chosen === null || !$priced['needs_shipping'] ? null : new NewShipping($chosen->id, $chosen->carrier, $chosen->name, $pickupPoint?->id, $label);
     }
 
     /**
@@ -393,16 +496,6 @@ final readonly class OrderPricing
     }
 
     /**
-     * @param Priced $priced
-     *
-     * @return list<TaxLineView>
-     */
-    public function taxLines(array $priced): array
-    {
-        return array_map(static fn(BilledTax $tax): TaxLineView => new TaxLineView($tax->name, $tax->percent, (string) $tax->total()), $priced['bill']->taxes());
-    }
-
-    /**
      * @return list<Tax>
      */
     private function taxes(?int $groupId, ?TaxAddress $shipping, ?TaxAddress $billing): array
@@ -415,7 +508,44 @@ final readonly class OrderPricing
 
     private static function tax(AppliedTaxView $tax): Tax
     {
-        return new Tax($tax->rateId === null ? "{$tax->name}|{$tax->percent}" : (string) $tax->rateId, $tax->name, $tax->percent, $tax->compound);
+        $place = $tax->jurisdiction;
+
+        return new Tax(
+            $tax->rateId === null ? "{$tax->name}|{$tax->percent}" : (string) $tax->rateId,
+            $tax->name,
+            $tax->percent,
+            $tax->compound,
+            $place === null ? null : new TaxJurisdiction($place->country, $place->region, $place->level, $place->code, $place->name),
+        );
+    }
+
+    /**
+     * What each coupon takes off each item, in the currency's decimals: its whole amount rounded, shared over the
+     * items by what it takes off each, the cents rounding leaves to the items that lost the most, so an order's
+     * lines add up to it.
+     *
+     * @return list<list<Money>> by coupon, then by item
+     */
+    private static function roundedCoupons(AppliedDiscounts $discounts, int $items, int $decimals): array
+    {
+        $rounded = [];
+        $step = 10 ** (Money::DECIMALS - $decimals);
+        foreach ($discounts->coupons as $coupon) {
+            $exact = [];
+            for ($index = 0; $index < $items; ++$index) {
+                $exact[] = Money::of($coupon->lines[$index] ?? '0')->tenThousandths;
+            }
+            $whole = Money::fromTenThousandths(array_sum($exact))->rounded($decimals)->tenThousandths;
+            $floors = array_map(static fn(int $part): int => intdiv($part, $step) * $step, $exact);
+            $order = array_keys($exact);
+            usort($order, static fn(int $a, int $b): int => [$exact[$b] - $floors[$b], $a] <=> [$exact[$a] - $floors[$a], $b]);
+            for ($left = intdiv($whole - array_sum($floors), $step), $i = 0; $left > 0 && $order !== []; --$left, ++$i) {
+                $floors[$order[$i % \count($order)]] += $step;
+            }
+            $rounded[] = array_values(array_map(Money::fromTenThousandths(...), $floors));
+        }
+
+        return $rounded;
     }
 
     /**

@@ -8,6 +8,7 @@ use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderDiscount;
 use OrillaCart\Ordering\Domain\OrderFee;
+use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\OrderNote;
 use OrillaCart\Ordering\Domain\OrderStatus;
 use OrillaCart\Ordering\Domain\TaxLine;
@@ -94,6 +95,12 @@ final readonly class OrderView
         public array $giftCards = [],
         /** What is left to pay the way the customer chose. */
         public string $amountDue = '0',
+        /** @var list<OrderLineView> the shipping and the fees, as lines with their taxes and adjustments */
+        public array $charges = [],
+        /** All the tax charged: on the items, the shipping and the fees. */
+        public string $tax = '0',
+        /** @var array{reason: string, certificate: string}|null the customer's exemption from tax that covered it */
+        public ?array $taxExemption = null,
     ) {}
 
     /**
@@ -158,6 +165,9 @@ final readonly class OrderView
             (string) $order->giftCardTotal(),
             array_map(static fn(array $card): array => ['label' => $card['label'], 'amount' => (string) $card['amount']], $order->giftCards()),
             (string) $order->amountDue(),
+            array_map(OrderLineView::fromLine(...), array_values(array_filter($order->allLines(), static fn(OrderLine $line): bool => !$line->isItem()))),
+            (string) $order->tax(),
+            $order->taxExemption(),
         );
     }
 }

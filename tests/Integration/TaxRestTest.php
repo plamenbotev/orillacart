@@ -63,11 +63,11 @@ final class TaxRestTest extends RestTestCase
         $federal = $this->id($this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'US', 'state' => null, 'percent' => '2', 'name' => 'Federal', 'priority' => 2], nonce: true));
         $california = $this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'US', 'state' => 'CA', 'percent' => '7.25', 'name' => 'California', 'priority' => 1], nonce: true);
         self::assertSame(201, $california->get_status());
-        self::assertSame(['country' => 'US', 'state' => 'CA', 'percent' => '7.25', 'name' => 'California', 'priority' => 1, 'postcodes' => [], 'compound' => false], array_diff_key($this->data($california), ['id' => true]));
+        self::assertSame(['country' => 'US', 'state' => 'CA', 'percent' => '7.25', 'name' => 'California', 'priority' => 1, 'postcodes' => [], 'compound' => false, 'code' => null, 'jurisdiction' => ['country' => 'US', 'region' => 'CA', 'level' => 'region', 'code' => 'US-CA', 'name' => 'California']], array_diff_key($this->data($california), ['id' => true]));
 
         $settings = $this->request('PUT', '/tax/settings', ['basis' => 'shipping_address', 'default_group_id' => $group], nonce: true);
         self::assertSame(200, $settings->get_status());
-        self::assertSame(['basis' => 'shipping_address', 'default_group_id' => $group, 'bases' => ['shipping_address', 'billing_address', 'shop_address', 'eu_origin', 'eu_destination'], 'prices_include_tax' => false, 'reverse_charge' => false, 'rounds_each_line' => false], $this->data($settings));
+        self::assertSame(['basis' => 'shipping_address', 'default_group_id' => $group, 'bases' => ['shipping_address', 'billing_address', 'shop_address', 'eu_origin', 'eu_destination'], 'prices_include_tax' => false, 'reverse_charge' => false, 'rounds_each_line' => false, 'origin_regions' => []], $this->data($settings));
 
         $calculator = self::kernel()->container()->get(TaxCalculator::class);
         self::assertInstanceOf(TaxCalculator::class, $calculator);

@@ -11,16 +11,16 @@ use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Inventory\Domain\InsufficientStock;
 use OrillaCart\Inventory\Domain\StockReason;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
+use OrillaCart\Ordering\Application\Dto\AdjustmentView;
 use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Application\Dto\LifetimeValueView;
+use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
-use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\Dto\NewOrderItems;
 use OrillaCart\Ordering\Application\Dto\NewOrderLine;
 use OrillaCart\Ordering\Application\Dto\NewShipping;
-use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\Dto\OrderFacetsView;
 use OrillaCart\Ordering\Application\Dto\OrderFieldView;
 use OrillaCart\Ordering\Application\Dto\OrderPageView;
@@ -49,22 +49,23 @@ use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
 use OrillaCart\Ordering\Domain\FieldAnswer;
 use OrillaCart\Ordering\Domain\LineDownload;
 use OrillaCart\Ordering\Domain\LineDraft;
+use OrillaCart\Ordering\Domain\LineTax;
 use OrillaCart\Ordering\Domain\NoteAuthor;
 use OrillaCart\Ordering\Domain\Order;
-use OrillaCart\Ordering\Domain\OrderDiscount;
 use OrillaCart\Ordering\Domain\OrderDraft;
-use OrillaCart\Ordering\Domain\OrderFee;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRefund;
 use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
 use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Ordering\Domain\OrderStatus;
+use OrillaCart\Ordering\Domain\PriceAdjustment;
 use OrillaCart\Ordering\Domain\ShippingChoice;
 use OrillaCart\Ordering\Domain\TakenItem;
 use OrillaCart\Ordering\Domain\TaxLine;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Domain\TaxJurisdiction;
 use OrillaCart\Shared\Persistence\Transactions;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -105,9 +106,6 @@ final readonly class OrderService
             $command->shippingAddress?->toAddress(),
             self::lineDrafts($command->lines),
             self::shippingChoice($command->shipping),
-            self::taxLines($command->taxes),
-            Money::of($command->subtotal),
-            Money::of($command->itemsTax),
             Money::of($command->total),
             $command->currency,
             $command->paymentGateway,
@@ -115,16 +113,13 @@ final readonly class OrderService
             $command->paymentNote,
             $command->note,
             $this->clock->now(),
-            Money::of($command->discountTotal),
-            self::discounts($command->discounts),
             array_map(static fn(OrderFieldView $field): FieldAnswer => $field->toAnswer(), $command->fields),
             $command->pricesIncludeTax,
             $command->vatNumber,
             $command->reverseCharge,
             $command->locale,
-            self::fees($command->fees),
-            Money::of($command->feesTax),
             $command->deliveryDate === null ? null : new DeliveryChoice(new \DateTimeImmutable($command->deliveryDate), $command->deliverySlot, $command->deliveryKey),
+            $command->taxExemption,
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);
@@ -940,15 +935,8 @@ final readonly class OrderService
             self::lineDrafts($command->lines),
             self::shippingChoice($command->shipping),
             $command->shippingAddress?->toAddress(),
-            self::taxLines($command->taxes),
-            Money::of($command->subtotal),
-            Money::of($command->itemsTax),
             Money::of($command->total),
-            Money::of($command->discountTotal),
-            self::discounts($command->discounts),
             $command->pricesIncludeTax,
-            self::fees($command->fees),
-            Money::of($command->feesTax),
         );
         $order->addNote(\sprintf('The items were changed; the total went from %s to %s %s.', $before, (string) $order->total(), $order->currency()), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
         $this->orders->save($order);
@@ -956,16 +944,6 @@ final readonly class OrderService
         $this->events->dispatch(new OrderChanged($order->id()));
 
         return $this->view($order, true);
-    }
-
-    /**
-     * @param list<NewOrderFee> $fees
-     *
-     * @return list<OrderFee>
-     */
-    private static function fees(array $fees): array
-    {
-        return array_map(static fn(NewOrderFee $fee): OrderFee => new OrderFee($fee->label, Money::of($fee->amount)), $fees);
     }
 
     /**
@@ -985,7 +963,7 @@ final readonly class OrderService
             $line->quantity,
             Money::of($line->unitPrice),
             Money::of($line->total),
-            Money::of($line->tax),
+            array_map(static fn(LineTaxView $tax): LineTax => new LineTax($tax->name, $tax->percent, new TaxJurisdiction($tax->country, $tax->region, $tax->level, $tax->code, $tax->jurisdiction), Money::of($tax->taxable), Money::of($tax->amount), $tax->compound), $line->taxes),
             $line->ships,
             array_map(static fn(TakenStock $taken): TakenItem => new TakenItem($taken->item, $taken->stockroomId, $taken->quantity), $line->taken),
             array_map(static fn(QuotedDownload $file): LineDownload => new LineDownload($file->fileId, $file->name, $file->storageKey, $file->mimeType), $line->downloads),
@@ -993,36 +971,17 @@ final readonly class OrderService
             $line->downloadExpiryDays,
             $line->backordered,
             $line->backorderShown,
-            Money::of($line->discount),
+            array_map(static fn(AdjustmentView $adjustment): PriceAdjustment => new PriceAdjustment($adjustment->kind, $adjustment->source, $adjustment->label, Money::of($adjustment->amount), $adjustment->scope, $adjustment->freeShipping, $adjustment->reason), $line->adjustments),
             $line->contents,
             $line->bundleChoices,
             $line->personalisation,
+            $line->kind,
         ), $lines);
     }
 
     private static function shippingChoice(?NewShipping $shipping): ?ShippingChoice
     {
-        return $shipping === null ? null : new ShippingChoice($shipping->option, $shipping->carrier, $shipping->rate, Money::of($shipping->price), Money::of($shipping->tax), $shipping->pickupPointId, $shipping->pickupPoint);
-    }
-
-    /**
-     * @param list<TaxLineView> $taxes
-     *
-     * @return list<TaxLine>
-     */
-    private static function taxLines(array $taxes): array
-    {
-        return array_map(static fn(TaxLineView $tax): TaxLine => new TaxLine($tax->name, $tax->percent, Money::of($tax->amount)), $taxes);
-    }
-
-    /**
-     * @param list<OrderDiscountView> $discounts
-     *
-     * @return list<OrderDiscount>
-     */
-    private static function discounts(array $discounts): array
-    {
-        return array_map(static fn(OrderDiscountView $discount): OrderDiscount => new OrderDiscount($discount->code, $discount->description, Money::of($discount->amount), $discount->freeShipping, $discount->automatic), $discounts);
+        return $shipping === null ? null : new ShippingChoice($shipping->option, $shipping->carrier, $shipping->rate, $shipping->pickupPointId, $shipping->pickupPoint);
     }
 
     private static function orderRefund(RefundOrder $command): OrderRefund

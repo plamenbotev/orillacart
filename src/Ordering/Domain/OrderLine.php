@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Domain;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\Money;
 
 /**
- * One item of an order, kept as it was sold: name, options and prices do not follow later catalog changes.
+ * One line of an order, kept as it was sold: an item (name, options and prices do not follow later catalog
+ * changes), the shipping, or a fee. Each keeps the taxes charged on it, per rate and jurisdiction, and the changes
+ * made to its price after its unit price.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'order_lines')]
@@ -19,8 +23,16 @@ class OrderLine
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column]
-    private int $productId;
+    public const string ITEM = 'item';
+    public const string SHIPPING = 'shipping';
+    public const string FEE = 'fee';
+
+    #[ORM\Column(length: 10, options: ['default' => self::ITEM])]
+    private string $kind;
+
+    /** Null for the shipping and fees. */
+    #[ORM\Column(nullable: true)]
+    private ?int $productId;
 
     #[ORM\Column(nullable: true)]
     private ?int $variationId;
@@ -47,9 +59,6 @@ class OrderLine
 
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
     private string $total;
-
-    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
-    private string $tax;
 
     #[ORM\Column]
     private bool $ships;
@@ -81,9 +90,15 @@ class OrderLine
     #[ORM\Column(options: ['default' => false])]
     private bool $backorderShown = false;
 
-    /** What coupons took off the total; the tax is on what is left. */
-    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
-    private string $discount = '0';
+    /** @var Collection<int, OrderTax> */
+    #[ORM\OneToMany(targetEntity: OrderTax::class, mappedBy: 'line', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $taxes;
+
+    /** @var Collection<int, OrderAdjustment> */
+    #[ORM\OneToMany(targetEntity: OrderAdjustment::class, mappedBy: 'line', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $adjustments;
 
     /** @var list<array{name: string, quantity: int}> what one bundle held, for a bundle */
     #[ORM\Column(type: 'json', nullable: true)]
@@ -116,6 +131,10 @@ class OrderLine
         if ($draft->quantity < 1) {
             throw new OrderRuleViolation('An order line has at least one item.', 'orillacart_invalid_quantity');
         }
+        if (!\in_array($draft->kind, [self::ITEM, self::SHIPPING, self::FEE], true) || ($draft->kind === self::ITEM) !== ($draft->productId !== null)) {
+            throw new \LogicException('An item line names its product; the shipping and fees do not.');
+        }
+        $this->kind = $draft->kind;
         $this->productId = $draft->productId;
         $this->variationId = $draft->variationId;
         $this->optionIds = $draft->optionIds;
@@ -125,7 +144,6 @@ class OrderLine
         $this->quantity = $draft->quantity;
         $this->unitPrice = $draft->unitPrice->toFixed();
         $this->total = $draft->total->toFixed();
-        $this->tax = $draft->tax->toFixed();
         $this->ships = $draft->ships;
         $this->downloads = array_map(static fn(LineDownload $file): array => ['file_id' => $file->fileId, 'name' => $file->name, 'storage_key' => $file->storageKey, 'mime_type' => $file->mimeType], $draft->downloads);
         $this->downloadLimit = $draft->downloadLimit;
@@ -135,11 +153,17 @@ class OrderLine
         }
         $this->backordered = $draft->backordered;
         $this->backorderShown = $draft->backorderShown;
-        $discount = $draft->discount ?? Money::zero();
-        if ($discount->isNegative() || $discount->compare($draft->total) > 0) {
-            throw new OrderRuleViolation('A discount takes off no more than the line costs.', 'orillacart_invalid_discount');
+        $this->taxes = new ArrayCollection();
+        $this->adjustments = new ArrayCollection();
+        foreach ($draft->taxes as $tax) {
+            $this->taxes->add(new OrderTax($this, $tax));
         }
-        $this->discount = $discount->toFixed();
+        foreach ($draft->adjustments as $adjustment) {
+            $this->adjustments->add(new OrderAdjustment($this, $adjustment));
+        }
+        if ($this->net()->isNegative()) {
+            throw new OrderRuleViolation('Changes to a price take off no more than the line costs.', 'orillacart_invalid_discount');
+        }
         $this->contents = $draft->contents === [] ? null : $draft->contents;
         $this->bundleChoices = $draft->bundleChoices === [] ? null : $draft->bundleChoices;
         $this->personalisation = $draft->personalisation === [] ? null : $draft->personalisation;
@@ -187,9 +211,20 @@ class OrderLine
         return $this->position;
     }
 
+    public function kind(): string
+    {
+        return $this->kind;
+    }
+
+    public function isItem(): bool
+    {
+        return $this->kind === self::ITEM;
+    }
+
+    /** The product sold; 0 for the shipping and fees. */
     public function productId(): int
     {
-        return $this->productId;
+        return $this->productId ?? 0;
     }
 
     public function variationId(): ?int
@@ -246,14 +281,55 @@ class OrderLine
         return $this->bundleChoices ?? [];
     }
 
+    /** What the changes to its price took off, in all: coupons and the shop's, less any that added to it. */
     public function discount(): Money
     {
-        return Money::of($this->discount);
+        return Money::zero()->subtract($this->adjustment());
+    }
+
+    /** What the changes to its price came to: below zero when they lowered it. */
+    public function adjustment(): Money
+    {
+        return array_reduce($this->adjustments->toArray(), static fn(Money $sum, OrderAdjustment $adjustment): Money => $sum->add($adjustment->amount()), Money::zero());
+    }
+
+    /** What the line costs before tax, or with prices that include tax, as charged: its total and adjustments. */
+    public function net(): Money
+    {
+        return $this->total()->add($this->adjustment());
+    }
+
+    /** @return list<OrderAdjustment> */
+    public function adjustments(): array
+    {
+        return array_values($this->adjustments->toArray());
+    }
+
+    /** @return list<OrderTax> */
+    public function taxes(): array
+    {
+        return array_values($this->taxes->toArray());
     }
 
     public function tax(): Money
     {
-        return Money::of($this->tax);
+        return array_reduce($this->taxes->toArray(), static fn(Money $sum, OrderTax $tax): Money => $sum->add($tax->amount()), Money::zero());
+    }
+
+    /** @internal for Order: the line's share of a refund's tax, spread over its rates by what each charged. */
+    public function refundTax(Money $tax): void
+    {
+        $whole = $this->tax();
+        $taxes = array_values(array_filter($this->taxes(), static fn(OrderTax $row): bool => !$row->amount()->isZero()));
+        if ($tax->isZero() || $whole->isZero() || $taxes === []) {
+            return;
+        }
+        $left = $tax;
+        foreach ($taxes as $index => $row) {
+            $share = $index === \count($taxes) - 1 ? $left : $tax->proportion($row->amount(), $whole);
+            $left = $left->subtract($share);
+            $row->giveBack($share);
+        }
     }
 
     /** How many of the quantity the shop owes: they were not in stock when the order was placed. */

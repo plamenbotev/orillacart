@@ -116,18 +116,11 @@ final readonly class OrderEditing
             }
 
             return $this->orders->replaceItems($orderId, new NewOrderItems(
-                $this->pricing->lines($priced),
+                $this->pricing->orderLines($priced),
                 $this->pricing->shipping($priced, $pickupPoint),
                 $priced['needs_shipping'] ? $shippingAddress : null,
-                $this->pricing->taxLines($priced),
-                (string) $bill->subtotal(),
-                (string) $bill->itemsTax(),
                 (string) $bill->total(),
-                (string) $bill->discount(),
-                $this->pricing->discounts($priced),
                 $bill->includesTax(),
-                $this->pricing->orderFees($priced),
-                (string) $bill->feesTax(),
             ), $userId);
         });
     }
