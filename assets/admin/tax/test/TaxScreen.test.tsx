@@ -23,6 +23,7 @@ const standard = {
 			priority: 1,
 			postcodes: [],
 			compound: false,
+			code: null,
 		},
 		{
 			id: 11,
@@ -33,6 +34,7 @@ const standard = {
 			priority: 2,
 			postcodes: [],
 			compound: false,
+			code: null,
 		},
 	],
 };
@@ -60,6 +62,7 @@ function serve( write: ( request: Request ) => Promise< unknown > ) {
 					prices_include_tax: false,
 					reverse_charge: false,
 					rounds_each_line: false,
+					origin_regions: [],
 					bases: [
 						'shipping_address',
 						'billing_address',
@@ -145,6 +148,7 @@ describe( 'TaxScreen', () => {
 				prices_include_tax: false,
 				reverse_charge: false,
 				rounds_each_line: false,
+				origin_regions: [],
 			},
 		} );
 		expect( screen.queryByText( untaxed, NOTICE ) ).toBeNull();
@@ -195,6 +199,7 @@ describe( 'TaxScreen', () => {
 				priority: 0,
 				postcodes: [],
 				compound: false,
+				code: null,
 			},
 		} );
 	} );

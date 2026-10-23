@@ -44,6 +44,10 @@ class TaxRate
     #[ORM\Column(options: ['default' => false])]
     private bool $compound = false;
 
+    /** The code the shop files it under; null to build one from the place. */
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $code = null;
+
     /**
      * Created through TaxGroup::addRate().
      */
@@ -73,7 +77,7 @@ class TaxRate
 
     public function details(): TaxRateDetails
     {
-        return new TaxRateDetails($this->country, $this->state, Percentage::of($this->percent), $this->name, $this->priority, array_map(PostcodePattern::of(...), $this->postcodes), $this->compound);
+        return new TaxRateDetails($this->country, $this->state, Percentage::of($this->percent), $this->name, $this->priority, array_map(PostcodePattern::of(...), $this->postcodes), $this->compound, $this->code);
     }
 
     public function change(TaxRateDetails $details): void
@@ -85,6 +89,23 @@ class TaxRate
         $this->priority = $details->priority;
         $this->postcodes = array_values(array_map(strval(...), $details->postcodes));
         $this->compound = $details->compound;
+        $this->code = $details->code;
+    }
+
+    /**
+     * Who the tax is owed to: the country, the state, or a place within it when the rate is for some postcodes.
+     */
+    public function jurisdiction(): TaxJurisdiction
+    {
+        $level = match (true) {
+            $this->postcodes !== [] => TaxJurisdiction::LOCAL,
+            $this->state !== null => TaxJurisdiction::REGION,
+            default => TaxJurisdiction::COUNTRY,
+        };
+        $place = $this->state === null ? $this->country : "{$this->country}-{$this->state}";
+        $code = $this->code ?? ($level === TaxJurisdiction::LOCAL ? $place . '-' . ($this->id ?? 'new') : $place);
+
+        return new TaxJurisdiction($this->country, $this->state, $level, $code, $this->name !== '' ? $this->name : $place);
     }
 
     /**

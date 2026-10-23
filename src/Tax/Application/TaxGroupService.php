@@ -178,6 +178,6 @@ final readonly class TaxGroupService
 
         $postcodes = array_values(array_filter(array_map(trim(...), $command->postcodes), static fn(string $postcode): bool => $postcode !== ''));
 
-        return new TaxRateDetails($location->country, $location->state, Percentage::of($command->percent), trim($command->name), $command->priority, array_map(PostcodePattern::of(...), $postcodes), $command->compound);
+        return new TaxRateDetails($location->country, $location->state, Percentage::of($command->percent), trim($command->name), $command->priority, array_map(PostcodePattern::of(...), $postcodes), $command->compound, $command->code === null || trim($command->code) === '' ? null : trim($command->code));
     }
 }

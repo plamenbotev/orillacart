@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Unit\Tax;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Geography\Domain\UnknownState;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Tax\Application\Dto\JurisdictionView;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tax\Application\Dto\TaxRateView;
@@ -52,14 +53,14 @@ final class TaxGroupServiceTest extends TestCase
         $group = $this->service->create(new SaveTaxGroup('Standard'));
 
         $rate = $this->service->addRate($group->id, new SaveTaxRate('US', 'CA', '7.25', ' California ', 1));
-        self::assertEquals(new TaxRateView($rate->id, 'US', 'CA', '7.25', 'California', 1, [], false), $rate);
+        self::assertEquals(new TaxRateView($rate->id, 'US', 'CA', '7.25', 'California', 1, [], false, null, new JurisdictionView('US', 'CA', 'region', 'US-CA', 'California')), $rate);
 
         $changed = $this->service->changeRate($group->id, $rate->id, new SaveTaxRate('US', null, '2', 'Federal'));
-        self::assertEquals(new TaxRateView($rate->id, 'US', null, '2', 'Federal', 0, [], false), $changed);
+        self::assertEquals(new TaxRateView($rate->id, 'US', null, '2', 'Federal', 0, [], false, null, new JurisdictionView('US', null, 'country', 'US', 'Federal')), $changed);
         self::assertEquals([$changed], $this->service->group($group->id)->rates);
 
         $local = $this->service->changeRate($group->id, $rate->id, new SaveTaxRate('US', 'CA', '1.25', 'Local', 1, [' 900* ', '', '91000-91999'], true));
-        self::assertEquals(new TaxRateView($rate->id, 'US', 'CA', '1.25', 'Local', 1, ['900*', '91000-91999'], true), $local);
+        self::assertEquals(new TaxRateView($rate->id, 'US', 'CA', '1.25', 'Local', 1, ['900*', '91000-91999'], true, null, new JurisdictionView('US', 'CA', 'local', 'US-CA-' . $rate->id, 'Local')), $local);
 
         $this->service->removeRate($group->id, $rate->id);
         self::assertSame([], $this->service->group($group->id)->rates);

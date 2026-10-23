@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tax\Application\Dto;
 
 use OrillaCart\Tax\Domain\TaxBasis;
+use OrillaCart\Tax\Domain\TaxSettings;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -21,5 +22,9 @@ final readonly class UpdateTaxSettings
         public bool $reverseCharge = false,
         /** Each line's tax rounded, instead of each rate once over the order. */
         public bool $roundsEachLine = false,
+        /** @var list<string> regions taxing sales within them at the seller's address: "US-TX" */
+        #[Assert\Count(max: 100)]
+        #[Assert\All([new Assert\Type('string'), new Assert\Regex(TaxSettings::REGION, message: 'Use a country and a state code, such as US-TX.')])]
+        public array $originRegions = [],
     ) {}
 }

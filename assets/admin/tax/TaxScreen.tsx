@@ -25,6 +25,7 @@ import {
 	deleteRate,
 	fetchGroups,
 	fetchTaxSettings,
+	REGION,
 	renameGroup,
 	saveTaxSettings,
 	type TaxGroup,
@@ -184,16 +185,31 @@ function SettingsCard( {
 		settings.reverse_charge
 	);
 	const [ eachLine, setEachLine ] = useState( settings.rounds_each_line );
+	const [ originRegions, setOriginRegions ] = useState(
+		settings.origin_regions.join( ', ' )
+	);
+	const regions = originRegions
+		.split( ',' )
+		.map( ( region ) => region.trim().toUpperCase() )
+		.filter( ( region ) => region !== '' );
 	const [ saving, setSaving ] = useState( false );
 	useUnsavedChanges(
 		differs(
-			[ basis, defaultGroup, includeTax, reverseCharge, eachLine ],
+			[
+				basis,
+				defaultGroup,
+				includeTax,
+				reverseCharge,
+				eachLine,
+				regions.join( ',' ),
+			],
 			[
 				settings.basis,
 				settings.default_group_id,
 				settings.prices_include_tax,
 				settings.reverse_charge,
 				settings.rounds_each_line,
+				settings.origin_regions.join( ',' ),
 			]
 		)
 	);
@@ -207,6 +223,7 @@ function SettingsCard( {
 			prices_include_tax: includeTax,
 			reverse_charge: reverseCharge,
 			rounds_each_line: eachLine,
+			origin_regions: regions,
 		} )
 			.then( onSaved )
 			.catch( onError )
@@ -298,6 +315,28 @@ function SettingsCard( {
 						) }
 						checked={ reverseCharge }
 						onChange={ setReverseCharge }
+					/>
+					<TextControl
+						__next40pxDefaultSize
+						label={ __(
+							'States that tax at the seller’s address',
+							'orillacart'
+						) }
+						help={
+							regions.some(
+								( region ) => ! REGION.test( region )
+							)
+								? __(
+										'Use a country and a state code, such as US-TX.',
+										'orillacart'
+									)
+								: __(
+										'For sales within your own state, when it is one of these (such as US-TX, US-AZ), tax is charged at your shop’s address instead of the customer’s. Sales into other states follow the setting above. Separate them with commas.',
+										'orillacart'
+									)
+						}
+						value={ originRegions }
+						onChange={ setOriginRegions }
 					/>
 					<CheckboxControl
 						label={ __(

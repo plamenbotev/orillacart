@@ -15,5 +15,6 @@ final readonly class AppliedTax
         public string $name,
         public Percentage $percent,
         public bool $compound = false,
+        public ?TaxJurisdiction $jurisdiction = null,
     ) {}
 }

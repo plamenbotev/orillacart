@@ -43,6 +43,7 @@ export function RateModal( {
 		priority: rate?.priority ?? 0,
 		postcodes: rate?.postcodes ?? [],
 		compound: rate?.compound ?? false,
+		code: rate?.code ?? null,
 	} );
 	const [ postcodes, setPostcodes ] = useState(
 		( rate?.postcodes ?? [] ).join( ', ' )
@@ -115,6 +116,24 @@ export function RateModal( {
 					}
 					value={ postcodes }
 					onChange={ setPostcodes }
+				/>
+				<TextControl
+					__next40pxDefaultSize
+					label={ __( 'Filing code', 'orillacart' ) }
+					help={
+						violationOf( violations, 'code' ) ??
+						__(
+							'Optional: the code you file this tax under, such as a county’s or a city’s. Orders keep it with the tax, and reports sum by it.',
+							'orillacart'
+						)
+					}
+					value={ form.code ?? '' }
+					onChange={ ( code ) =>
+						setForm( {
+							...form,
+							code: code.trim() === '' ? null : code.trim(),
+						} )
+					}
 				/>
 				<TextControl
 					__next40pxDefaultSize

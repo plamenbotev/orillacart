@@ -10,6 +10,7 @@ use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Tax\Application\Dto\AppliedTaxesView;
 use OrillaCart\Tax\Application\Dto\AppliedTaxView;
+use OrillaCart\Tax\Application\Dto\JurisdictionView;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
@@ -51,6 +52,33 @@ final class TaxCalculatorTest extends TestCase
         $this->calculator = new TaxCalculator($groups, $taxSettings, new SettingsService($shop, new RecordingDispatcher(), $geography), $geography);
     }
 
+    public function testARegionTaxingAtTheSellersAddressTaxesSalesWithinItThereAndOthersAtTheBuyers(): void
+    {
+        $groups = new InMemoryTaxGroupRepository();
+        $taxSettings = new InMemoryTaxSettingsRepository();
+        $geography = new GeographyService(new InMemoryCountryRepository());
+        $defaults = StoreSettings::defaults();
+        $shop = new InMemorySettingsRepository(new StoreSettings($defaults->currency, 2, $defaults->weightUnit, $defaults->dimensionUnit, 'US', shopState: 'TX', shopPostcode: '78701'));
+        $service = new TaxGroupService($groups, $taxSettings, $geography, new RecordingDispatcher());
+        $group = $service->create(new SaveTaxGroup('Standard'))->id;
+        $service->addRate($group, new SaveTaxRate('US', 'TX', '6.25', 'Texas'));
+        $service->addRate($group, new SaveTaxRate('US', 'TX', '2', 'Austin', postcodes: ['787*'], code: 'TX-2227013'));
+        $service->addRate($group, new SaveTaxRate('US', 'TX', '1', 'Houston', postcodes: ['770*']));
+        $service->addRate($group, new SaveTaxRate('US', 'CA', '7.25', 'California'));
+        $settings = new TaxSettingsService($taxSettings, $groups);
+        $calculator = new TaxCalculator($groups, $taxSettings, new SettingsService($shop, new RecordingDispatcher(), $geography), $geography);
+        $houston = new TaxQuery($group, new TaxAddress('US', 'TX', '77002'));
+        $california = new TaxQuery($group, new TaxAddress('US', 'CA', '90001'));
+
+        self::assertSame('7.25', $calculator->taxes($houston)->total, 'at the buyer\'s: Texas and Houston');
+        $settings->update(new UpdateTaxSettings('shipping_address', $group, originRegions: ['US-TX']));
+
+        $taxes = $calculator->taxes($houston);
+        self::assertSame(['8.25', ['US-TX', 'TX-2227013']], [$taxes->total, array_map(static fn(AppliedTaxView $tax): ?string => $tax->jurisdiction?->code, $taxes->taxes)], 'at the shop\'s: Texas and Austin');
+        self::assertSame('7.25', $calculator->taxes($california)->total, 'a sale into another state is the buyer\'s');
+        self::assertSame(['US-TX'], $settings->current()->originRegions);
+    }
+
     public function testItemsWithoutAGroupUseTheDefaultGroupOrAreNotTaxed(): void
     {
         $germany = new TaxQuery(shipping: new TaxAddress('DE'));
@@ -58,7 +86,7 @@ final class TaxCalculatorTest extends TestCase
         self::assertEquals(new AppliedTaxesView('0', []), $this->calculator->taxes($germany));
 
         $this->settings->update(new UpdateTaxSettings('shipping_address', $this->standard));
-        self::assertEquals(new AppliedTaxesView('19', [new AppliedTaxView(2, 'MwSt', '19')]), $this->calculator->taxes($germany));
+        self::assertEquals(new AppliedTaxesView('19', [new AppliedTaxView(2, 'MwSt', '19', jurisdiction: new JurisdictionView('DE', null, 'country', 'DE', 'MwSt'))]), $this->calculator->taxes($germany));
         self::assertSame('0', $this->calculator->taxes(new TaxQuery($this->reduced, new TaxAddress('DE')))->total);
     }
 

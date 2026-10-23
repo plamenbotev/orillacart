@@ -12,6 +12,8 @@ export interface TaxRate {
 	postcodes: string[];
 	/** Charged on the price and the taxes listed before it. */
 	compound: boolean;
+	/** The code the shop files this tax under, such as a county's or a city's; null to build one from the place. */
+	code: string | null;
 }
 
 export interface TaxGroup {
@@ -21,6 +23,9 @@ export interface TaxGroup {
 }
 
 export type TaxRateInput = Omit< TaxRate, 'id' >;
+
+/** Regions, "US-TX", whose sales within them are taxed at the seller's address. */
+export const REGION = /^[A-Z]{2}-[A-Z0-9]{1,3}$/;
 
 export interface TaxSettings {
 	basis: string;
@@ -32,6 +37,8 @@ export interface TaxSettings {
 	reverse_charge: boolean;
 	/** Each line's tax rounded, instead of each rate once over the order. */
 	rounds_each_line: boolean;
+	/** Regions ("US-TX") taxing sales within them at the seller's address. */
+	origin_regions: string[];
 }
 
 export type TaxSettingsInput = Omit< TaxSettings, 'bases' >;

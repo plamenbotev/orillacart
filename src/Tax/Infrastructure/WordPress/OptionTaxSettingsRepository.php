@@ -35,12 +35,15 @@ final readonly class OptionTaxSettingsRepository implements TaxSettingsRepositor
             return TaxSettings::defaults();
         }
 
-        return new TaxSettings($basis, $group, ($stored['prices_include_tax'] ?? false) === true, ($stored['reverse_charge'] ?? false) === true, ($stored['rounds_each_line'] ?? false) === true);
+        $regions = $stored['origin_regions'] ?? [];
+        $regions = \is_array($regions) ? array_values(array_filter($regions, static fn(mixed $region): bool => \is_string($region) && preg_match(TaxSettings::REGION, $region) === 1)) : [];
+
+        return new TaxSettings($basis, $group, ($stored['prices_include_tax'] ?? false) === true, ($stored['reverse_charge'] ?? false) === true, ($stored['rounds_each_line'] ?? false) === true, $regions);
     }
 
     public function save(TaxSettings $settings): void
     {
-        update_option(self::OPTION, ['basis' => $settings->basis->value, 'default_group_id' => $settings->defaultGroupId, 'prices_include_tax' => $settings->pricesIncludeTax, 'reverse_charge' => $settings->reverseCharge, 'rounds_each_line' => $settings->roundsEachLine], true);
+        update_option(self::OPTION, ['basis' => $settings->basis->value, 'default_group_id' => $settings->defaultGroupId, 'prices_include_tax' => $settings->pricesIncludeTax, 'reverse_charge' => $settings->reverseCharge, 'rounds_each_line' => $settings->roundsEachLine, 'origin_regions' => $settings->originRegions], true);
     }
 
     public function activate(): void {}

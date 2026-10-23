@@ -1868,6 +1868,7 @@ Fills a tax group with the standard VAT rate of every EU country it has none for
   - `priority` (int): 0 to 1000; default 0
   - `postcodes` (array): at most 500 items; each at most 21 characters
   - `compound` (bool): default false
+  - `code` (string|null): matches `/^[A-Za-z0-9._-]{1,40}$/`
 
 ### `PUT /tax/groups/{id}/rates/{rate}`
 
@@ -1880,6 +1881,7 @@ Fills a tax group with the standard VAT rate of every EU country it has none for
   - `priority` (int): 0 to 1000; default 0
   - `postcodes` (array): at most 500 items; each at most 21 characters
   - `compound` (bool): default false
+  - `code` (string|null): matches `/^[A-Za-z0-9._-]{1,40}$/`
 
 ### `DELETE /tax/groups/{id}/rates/{rate}`
 
@@ -1898,6 +1900,7 @@ Fills a tax group with the standard VAT rate of every EU country it has none for
   - `prices_include_tax` (bool): default false
   - `reverse_charge` (bool): default false
   - `rounds_each_line` (bool): default false
+  - `origin_regions` (array): at most 100 items
 
 ## /webhooks
 

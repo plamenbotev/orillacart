@@ -32,6 +32,8 @@ final readonly class TaxRateDetails
         public int $priority = 0,
         public array $postcodes = [],
         public bool $compound = false,
+        /** The code the shop files this tax under, such as a county's or city's; null to build one from the place. */
+        public ?string $code = null,
     ) {
         if (preg_match('/^[A-Z]{2}$/', $country) !== 1) {
             throw new RuleViolation(\sprintf('"%s" is not a country code.', $country), 'orillacart_invalid_country');
@@ -44,6 +46,9 @@ final readonly class TaxRateDetails
         }
         if ($priority < 0) {
             throw new RuleViolation('The priority cannot be negative.', 'orillacart_invalid_priority');
+        }
+        if ($code !== null && preg_match('/^[A-Za-z0-9._-]{1,40}$/', $code) !== 1) {
+            throw new RuleViolation('A tax code has 1 to 40 letters, digits, dots, dashes or underscores.', 'orillacart_invalid_tax_code');
         }
         if (\count($postcodes) > self::MAX_POSTCODES) {
             throw new RuleViolation(\sprintf('A tax rate can list up to %d postcodes.', self::MAX_POSTCODES), 'orillacart_too_many_postcodes');

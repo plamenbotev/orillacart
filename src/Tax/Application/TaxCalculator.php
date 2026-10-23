@@ -69,7 +69,7 @@ final readonly class TaxCalculator
         }
 
         $shop = $this->shop->current();
-        $location = $settings->basis->location(
+        $location = $settings->locate(
             $this->locate($query->shipping),
             $this->locate($query->billing),
             $this->locate(new TaxAddress($shop->shopCountry, $shop->shopState, $shop->shopPostcode)),

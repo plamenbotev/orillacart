@@ -19,10 +19,12 @@ final readonly class TaxSettingsView
         public bool $pricesIncludeTax = false,
         public bool $reverseCharge = false,
         public bool $roundsEachLine = false,
+        /** @var list<string> */
+        public array $originRegions = [],
     ) {}
 
     public static function fromSettings(TaxSettings $settings): self
     {
-        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine);
+        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine, $settings->originRegions);
     }
 }

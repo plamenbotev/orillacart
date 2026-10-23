@@ -29,5 +29,8 @@ final readonly class SaveTaxRate
         #[Assert\All([new Assert\Type('string'), new Assert\Length(max: 21)])]
         public array $postcodes = [],
         public bool $compound = false,
+        /** The code the shop files this tax under (a county's, a city's); empty to build one from the place. */
+        #[Assert\Regex('/^[A-Za-z0-9._-]{1,40}$/', message: 'Use up to 40 letters, digits, dots, dashes or underscores.')]
+        public ?string $code = null,
     ) {}
 }

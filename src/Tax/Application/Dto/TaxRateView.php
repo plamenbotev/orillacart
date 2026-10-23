@@ -18,12 +18,15 @@ final readonly class TaxRateView
         /** @var list<string> */
         public array $postcodes,
         public bool $compound,
+        /** The code it is filed under, as the shop entered it; null when built from the place. */
+        public ?string $code = null,
+        public ?JurisdictionView $jurisdiction = null,
     ) {}
 
     public static function fromRate(TaxRate $rate): self
     {
         $details = $rate->details();
 
-        return new self($rate->id(), $details->country, $details->state, (string) $details->percent, $details->name, $details->priority, array_map(strval(...), $details->postcodes), $details->compound);
+        return new self($rate->id(), $details->country, $details->state, (string) $details->percent, $details->name, $details->priority, array_map(strval(...), $details->postcodes), $details->compound, $details->code, JurisdictionView::fromJurisdiction($rate->jurisdiction()));
     }
 }

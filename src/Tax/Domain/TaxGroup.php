@@ -112,7 +112,7 @@ class TaxGroup
         $taxes = [];
         foreach ($this->rates() as $rate) {
             if ($rate->appliesAt($location)) {
-                $taxes[] = new AppliedTax($rate->isSaved() ? $rate->id() : null, $rate->details()->name, $rate->details()->percent, $rate->details()->compound);
+                $taxes[] = new AppliedTax($rate->isSaved() ? $rate->id() : null, $rate->details()->name, $rate->details()->percent, $rate->details()->compound, $rate->jurisdiction());
             }
         }
 
