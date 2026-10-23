@@ -56,6 +56,8 @@ final readonly class ProductView
         public ?BundleView $bundle = null,
         public ?int $backorderLimit = null,
         public ?int $lowStockThreshold = null,
+        /** What tax services call it, over its tax group's code. */
+        public ?string $taxCode = null,
     ) {}
 
     /**
@@ -96,6 +98,7 @@ final readonly class ProductView
             $bundle === null ? null : BundleView::fromBundle($bundle, $itemName ?? static fn(int $productId, ?int $variationId): string => '#' . ($variationId ?? $productId)),
             $details->backorderLimit,
             $details->lowStockThreshold,
+            $details->taxCode,
         );
     }
 

@@ -72,6 +72,9 @@ class Product
     #[ORM\Column(nullable: true)]
     private ?int $lowStockThreshold = null;
 
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $taxCode = null;
+
     #[ORM\Column(nullable: true)]
     private ?int $downloadLimit = null;
 
@@ -147,6 +150,7 @@ class Product
             $this->backorders,
             $this->backorderLimit,
             $this->lowStockThreshold,
+            $this->taxCode,
         );
     }
 
@@ -171,6 +175,7 @@ class Product
         $this->backorders = $details->backorders;
         $this->backorderLimit = $details->backorderLimit;
         $this->lowStockThreshold = $details->lowStockThreshold;
+        $this->taxCode = $details->taxCode;
     }
 
     /** Its shipping class is gone; it ships as an item without one. */

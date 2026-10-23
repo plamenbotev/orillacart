@@ -20,6 +20,8 @@ export interface TaxGroup {
 	id: number;
 	name: string;
 	rates: TaxRate[];
+	/** What tax services call the group's goods, such as PC040100. */
+	tax_code: string | null;
 }
 
 export type TaxRateInput = Omit< TaxRate, 'id' >;
@@ -63,11 +65,15 @@ export function createGroup( name: string ): Promise< TaxGroup > {
 	} );
 }
 
-export function renameGroup( id: number, name: string ): Promise< TaxGroup > {
+export function renameGroup(
+	id: number,
+	name: string,
+	taxCode: string | null
+): Promise< TaxGroup > {
 	return apiFetch< TaxGroup >( {
 		path: `${ BASE }/groups/${ id }`,
 		method: 'PUT',
-		data: { name },
+		data: { name, tax_code: taxCode },
 	} );
 }
 

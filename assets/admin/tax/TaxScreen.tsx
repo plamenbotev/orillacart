@@ -535,6 +535,7 @@ function GroupCard( {
 	onError: ( error: unknown ) => void;
 } ) {
 	const [ name, setName ] = useState( group.name );
+	const [ taxCode, setTaxCode ] = useState( group.tax_code ?? '' );
 	const [ editing, setEditing ] = useState< TaxRate | 'new' | null >( null );
 	const [ confirming, setConfirming ] = useState( false );
 	const [ busy, run ] = useBusy();
@@ -582,7 +583,11 @@ function GroupCard( {
 				<form
 					onSubmit={ ( event ) => {
 						event.preventDefault();
-						renameGroup( group.id, name )
+						renameGroup(
+							group.id,
+							name,
+							taxCode.trim() === '' ? null : taxCode.trim()
+						)
 							.then( onChanged )
 							.catch( onError );
 					} }
@@ -596,14 +601,33 @@ function GroupCard( {
 								onChange={ setName }
 							/>
 						</FlexItem>
+						<FlexItem isBlock>
+							<TextControl
+								__next40pxDefaultSize
+								label={ __(
+									'Tax code for tax services',
+									'orillacart'
+								) }
+								help={ __(
+									'What your tax service calls these goods, such as PC040100 or txcd_99999999. Products can have their own.',
+									'orillacart'
+								) }
+								value={ taxCode }
+								maxLength={ 40 }
+								onChange={ setTaxCode }
+							/>
+						</FlexItem>
 						<Button
 							variant="secondary"
 							type="submit"
 							disabled={
-								name.trim() === '' || name === group.name
+								name.trim() === '' ||
+								( name === group.name &&
+									taxCode.trim() ===
+										( group.tax_code ?? '' ) )
 							}
 						>
-							{ __( 'Rename', 'orillacart' ) }
+							{ __( 'Save', 'orillacart' ) }
 						</Button>
 					</Flex>
 				</form>

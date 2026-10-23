@@ -9,6 +9,7 @@ use OrillaCart\Catalog\Domain\PriceVisibility;
 use OrillaCart\Catalog\Domain\ProductDetails;
 use OrillaCart\Catalog\Domain\ProductType;
 use OrillaCart\Catalog\Domain\StockMode;
+use OrillaCart\Shared\Domain\TaxCode;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -76,13 +77,16 @@ final readonly class SaveProduct
         /** The shop hears when a stockroom holds this many or fewer; null for the stockroom's or the shop's. */
         #[Assert\PositiveOrZero]
         public ?int $lowStockThreshold = null,
+        /** What tax services call it, over its tax group's code; null for the group's. */
+        #[Assert\Regex(TaxCode::PATTERN, message: TaxCode::MESSAGE)]
+        public ?string $taxCode = null,
     ) {}
 
     /**
      * The command that saves the product as it is, but for the changes, by argument name: what an import row
      * changes of it.
      *
-     * @param array{price?: string, type?: string, sale?: ?SaveSale, sku?: ?string, taxable?: bool, stockMode?: string, purchasable?: bool, featured?: bool, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: string, backorderLimit?: ?int, lowStockThreshold?: ?int, attributes?: list<SaveAttribute>} $changes
+     * @param array{price?: string, type?: string, sale?: ?SaveSale, sku?: ?string, taxable?: bool, stockMode?: string, purchasable?: bool, featured?: bool, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: string, backorderLimit?: ?int, lowStockThreshold?: ?int, taxCode?: ?string, attributes?: list<SaveAttribute>} $changes
      */
     public static function unchanged(ProductView $view, array $changes = []): self
     {
@@ -121,6 +125,7 @@ final readonly class SaveProduct
             'backorderLimit' => $view->backorderLimit,
             'bundle' => $bundle,
             'lowStockThreshold' => $view->lowStockThreshold,
+            'taxCode' => $view->taxCode,
         ];
 
         return new self(...array_merge($arguments, $changes));

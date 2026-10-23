@@ -11,6 +11,7 @@ use OrillaCart\Extension\Tax\TaxRequest;
 use OrillaCart\Extension\Tax\TaxResult;
 use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Extension\InstalledExtensions;
+use OrillaCart\Tax\Domain\TaxGroupRepository;
 use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tax\Domain\TaxSettingsRepository;
 use Psr\Log\LoggerInterface;
@@ -30,7 +31,18 @@ final class TaxServices
         private readonly InstalledExtensions $extensions,
         private readonly LoggerInterface $logger,
         private readonly ExtensionFailures $failures,
+        private readonly TaxGroupRepository $groups,
     ) {}
+
+    /**
+     * What tax services call the goods of a tax group, by its id; null for the shop's default group.
+     */
+    public function codeOf(?int $groupId): ?string
+    {
+        $groupId ??= $this->settings->load()->defaultGroupId;
+
+        return $groupId === null ? null : $this->groups->find($groupId)?->taxCode();
+    }
 
     /** The chosen service; null for the shop's own rates, or when its add-on is off. */
     public function active(): ?TaxProvider

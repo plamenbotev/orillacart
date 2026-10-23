@@ -15,10 +15,12 @@ final readonly class TaxGroupView
         public int $id,
         public string $name,
         public array $rates,
+        /** What tax services call the group's goods. */
+        public ?string $taxCode = null,
     ) {}
 
     public static function fromGroup(TaxGroup $group): self
     {
-        return new self($group->id(), $group->name(), array_map(TaxRateView::fromRate(...), $group->rates()));
+        return new self($group->id(), $group->name(), array_map(TaxRateView::fromRate(...), $group->rates()), $group->taxCode());
     }
 }

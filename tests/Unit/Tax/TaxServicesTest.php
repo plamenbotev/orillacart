@@ -20,6 +20,7 @@ use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
@@ -66,6 +67,24 @@ final class TaxServicesTest extends TestCase
         $asked = $this->service->asked[0];
         self::assertSame([['item:0', 'item', null, '100'], ['shipping', 'shipping', null, '10']], array_map(static fn($line): array => [$line->id, $line->kind, $line->taxCode, $line->amount], $asked->lines));
         self::assertSame(['US', 'CA', '90012', 'Los Angeles', '1 Main St'], [$asked->shipTo->country, $asked->shipTo->region, $asked->shipTo->postcode, $asked->shipTo->city, $asked->shipTo->street]);
+    }
+
+    public function testTheServiceHearsWhatItCallsEachLinesGoods(): void
+    {
+        $this->shop->taxGroups->rename($this->group, new SaveTaxGroup('Standard', 'P0000000'));
+        $this->shop->content->add(11, 'Scarf');
+        $this->shop->products->save(11, new SaveProduct('20', weight: '1', stockMode: 'always_available', taxCode: 'PC040100'));
+        $owner = $this->cart();
+        $this->shop->carts->add($owner, new AddToCart(11));
+        $address = new AddressData('Ada', 'Lovelace', '1 Main St', 'Los Angeles', '90012', 'US', '+1 213 000 0000', 'CA');
+        $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', $address, shippingOption: "rate:{$this->rate}", payment: 'bank_transfer'));
+
+        $asked = array_pop($this->service->asked);
+        self::assertNotNull($asked);
+        self::assertSame(['item:0' => 'P0000000', 'item:1' => 'PC040100', 'shipping' => 'P0000000'], array_column(array_map(static fn($line): array => ['id' => $line->id, 'code' => $line->serviceCode], $asked->lines), 'code', 'id'), 'the group\'s, the scarf\'s own, and the default group\'s for shipping');
+
+        $this->expectException(RuleViolation::class);
+        $this->shop->taxGroups->rename($this->group, new SaveTaxGroup('Standard', 'not a code'));
     }
 
     public function testWhenTheServiceFailsTheShopsRatesTaxTheOrderOrCheckoutRefusesAsTheShopChose(): void

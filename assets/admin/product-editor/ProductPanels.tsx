@@ -314,6 +314,24 @@ export function ProductPanels() {
 						}
 					/>
 				) }
+				{ draft.taxable && (
+					<TextControl
+						__next40pxDefaultSize
+						label={ __(
+							'Tax code for tax services',
+							'orillacart'
+						) }
+						help={ __(
+							'Only when it differs from its tax group’s, such as clothing in a group of general goods.',
+							'orillacart'
+						) }
+						value={ draft.tax_code ?? '' }
+						maxLength={ 40 }
+						onChange={ ( code ) =>
+							change( { tax_code: orNull( code.trim() ) } )
+						}
+					/>
+				) }
 				<CheckboxControl
 					label={ __( 'Can be bought', 'orillacart' ) }
 					checked={ draft.purchasable }

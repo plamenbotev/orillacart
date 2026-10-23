@@ -371,7 +371,9 @@ own rates and note it on the order, or ask the customer to try again (a provider
 
 - `quote(TaxRequest)`: checkout, manual and edited orders ask for the tax of every line, the items, the shipping
   and each fee (`TaxRequestLine`: an id such as `item:0`, `shipping` or `fee:1`, its kind, the shop's tax group
-  id as `taxCode`, the quantity and what it costs before tax after its discounts). The request has the ship-from
+  id as `taxCode`, the quantity and what it costs before tax after its discounts). `serviceCode` is what your
+  service calls the goods (`PC040100`, `txcd_99999999`): the shop manager sets it on each tax group in Shop → Tax,
+  and on a product whose goods differ from its group's; null when they set none. The request has the ship-from
   and ship-to addresses (street and city once the customer typed them), the customer, their exemption
   certificate when the shop has one on file, and the order being edited. Answer a `TaxResult` of `TaxLine`s by
   line id: each rate's name, percent, jurisdiction (country, region, level, the code returns are filed under,

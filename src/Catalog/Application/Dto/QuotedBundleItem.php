@@ -27,5 +27,7 @@ final readonly class QuotedBundleItem
         public string $price = '0',
         public bool $taxable = true,
         public ?int $taxGroupId = null,
+        /** What tax services call it; null for its tax group's code. */
+        public ?string $taxCode = null,
     ) {}
 }

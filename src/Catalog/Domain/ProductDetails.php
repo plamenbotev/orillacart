@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Catalog\Domain;
 
+use OrillaCart\Shared\Domain\TaxCode;
+
 /**
  * What the shop sells a product as. Its name, description and images are the WordPress post's.
  */
@@ -22,6 +24,7 @@ final readonly class ProductDetails
      * @param int|null    $backorderLimit      how many it may owe at most, as variations do unless they say; null for no limit
      * @param int|null    $lowStockThreshold   the shop hears when a stockroom holds this many or fewer, as of variations
      *                                         unless they say; null for the stockroom's or the shop's
+     * @param string|null $taxCode             what tax services call it, over its tax group's; null for the group's
      */
     public function __construct(
         public ProductType $type,
@@ -43,8 +46,12 @@ final readonly class ProductDetails
         public Backorders $backorders = Backorders::No,
         public ?int $backorderLimit = null,
         public ?int $lowStockThreshold = null,
+        public ?string $taxCode = null,
     ) {
         self::validSku($sku);
+        if ($taxCode !== null && preg_match(TaxCode::PATTERN, $taxCode) !== 1) {
+            throw new CatalogRuleViolation(TaxCode::MESSAGE, 'orillacart_invalid_tax_code');
+        }
         self::validBackorderLimit($backorderLimit);
         self::validLowStockThreshold($lowStockThreshold);
         if (($downloadLimit !== null && $downloadLimit < 1) || ($downloadExpiryDays !== null && $downloadExpiryDays < 1)) {
@@ -76,6 +83,7 @@ final readonly class ProductDetails
             $this->backorders,
             $this->backorderLimit,
             $this->lowStockThreshold,
+            $this->taxCode,
         );
     }
 

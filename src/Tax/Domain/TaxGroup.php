@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Domain\TaxCode;
 
 /**
  * A set of tax rates that products and shipping rates refer to, such as "Standard" or "Reduced".
@@ -26,6 +27,10 @@ class TaxGroup
 
     #[ORM\Column(length: self::MAX_NAME_LENGTH)]
     private string $name;
+
+    /** What tax services call the goods of the group; products may say otherwise. */
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $taxCode = null;
 
     /** @var Collection<int, TaxRate> */
     #[ORM\OneToMany(targetEntity: TaxRate::class, mappedBy: 'group', cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -54,6 +59,23 @@ class TaxGroup
     public function rename(string $name): void
     {
         $this->name = self::validName($name);
+    }
+
+    public function taxCode(): ?string
+    {
+        return $this->taxCode;
+    }
+
+    /**
+     * @throws RuleViolation for one that cannot be a tax code
+     */
+    public function changeTaxCode(?string $code): void
+    {
+        try {
+            $this->taxCode = TaxCode::valid($code);
+        } catch (\InvalidArgumentException $e) {
+            throw new RuleViolation($e->getMessage(), 'orillacart_invalid_tax_code');
+        }
     }
 
     /**

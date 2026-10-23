@@ -76,6 +76,7 @@ const product = {
 	sku: 'MUG',
 	taxable: true,
 	tax_group_id: null,
+	tax_code: null,
 	stock_mode: 'tracked',
 	purchasable: true,
 	featured: false,

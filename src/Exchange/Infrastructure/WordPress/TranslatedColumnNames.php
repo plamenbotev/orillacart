@@ -76,6 +76,7 @@ final class TranslatedColumnNames implements ColumnNames
             'width' => __('Width', 'orillacart'),
             'height' => __('Height', 'orillacart'),
             'taxable' => __('Taxable', 'orillacart'),
+            'tax_code' => __('Tax code', 'orillacart'),
             'purchasable' => __('Purchasable', 'orillacart'),
             'featured' => __('Featured', 'orillacart'),
             'categories' => __('Categories', 'orillacart'),

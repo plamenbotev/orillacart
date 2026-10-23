@@ -1293,6 +1293,7 @@ The cards of published products, by id (?ids=12,30), as the shop's lists show th
   - `backorder_limit` (int|null): more than 0
   - `bundle` (SaveBundle|null)
   - `low_stock_threshold` (int|null): 0 or more
+  - `tax_code` (string|null): matches `/^[A-Za-z0-9][A-Za-z0-9._:-]{0,39}$/`
 
 ### `POST /products/{id}/bundle-quote`
 
@@ -1888,6 +1889,7 @@ Saves the cells of the stock sheet that changed, all or none.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `name` (string): required; not empty; at most 100 characters
+  - `tax_code` (string|null): matches `/^[A-Za-z0-9][A-Za-z0-9._:-]{0,39}$/`
 
 ### `GET /tax/groups/{id}`
 
@@ -1898,6 +1900,7 @@ Saves the cells of the stock sheet that changed, all or none.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `name` (string): required; not empty; at most 100 characters
+  - `tax_code` (string|null): matches `/^[A-Za-z0-9][A-Za-z0-9._:-]{0,39}$/`
 
 ### `DELETE /tax/groups/{id}`
 

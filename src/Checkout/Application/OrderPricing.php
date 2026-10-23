@@ -163,7 +163,7 @@ final readonly class OrderPricing
         // A customer's exemption covers the sale where it is taxed: the rates still apply, at nothing.
         $exemption = $reverseCharge ? null : $this->tax->exemption($customerId, $shipping, $billing);
         $exempt = $exemption !== null;
-        /** @var list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string}> $asked */
+        /** @var list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string, tax_code: ?string}> $asked */
         $asked = [];
         $lines = [];
         $parcel = [];
@@ -186,18 +186,18 @@ final readonly class OrderPricing
             $parts = [];
             $unitPrice = isset($line['unit_price']) ? Money::of($line['unit_price']) : $this->currencies->price(Money::of($quote->unitPrice), $currency);
             $units = self::shares($unitPrice, $quote->contents === [] ? [Money::of('1')] : array_map(static fn(QuotedBundleItem $item): Money => Money::of($item->price), $quote->contents));
-            foreach ($quote->contents === [] ? [[$quote->taxable, $quote->taxGroupId]] : array_map(static fn(QuotedBundleItem $item): array => [$item->taxable, $item->taxGroupId], $quote->contents) as $index => [$taxable, $groupId]) {
+            foreach ($quote->contents === [] ? [[$quote->taxable, $quote->taxGroupId, $quote->taxCode]] : array_map(static fn(QuotedBundleItem $item): array => [$item->taxable, $item->taxGroupId, $item->taxCode], $quote->contents) as $index => [$taxable, $groupId, $taxCode]) {
                 $taxes = $taxable && !$reverseCharge ? $this->taxes($groupId, $shipping, $billing, $exempt) : [];
                 $unit = $units[$index];
                 if ($inclusive && $taxable && $taxes === []) {
                     // A price including tax, for a customer who owes none (an export): the shop's own tax comes off.
                     $unit = Tax::without($unit, $this->shopTaxes($groupId));
                 }
-                $parts[] = ['unit' => $unit, 'taxes' => $taxes, 'group' => $groupId];
+                $parts[] = ['unit' => $unit, 'taxes' => $taxes, 'group' => $groupId, 'tax_code' => $taxCode];
             }
             $unitPrice = (string) array_reduce($parts, static fn(Money $sum, array $part): Money => $sum->add($part['unit']), Money::zero());
             $total = Money::of($unitPrice)->times($line['quantity']);
-            $taxesOf[] = array_map(static fn(array $part): array => ['total' => $part['unit']->times($line['quantity']), 'taxes' => $part['taxes'], 'group' => $part['group']], $parts);
+            $taxesOf[] = array_map(static fn(array $part): array => ['total' => $part['unit']->times($line['quantity']), 'taxes' => $part['taxes'], 'group' => $part['group'], 'tax_code' => $part['tax_code']], $parts);
             $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero(), 'places' => [], 'gift' => $line['gift'] ?? false, 'personalisation' => $line['personalisation'] ?? []];
             if ($quote->type === 'physical') {
                 $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
@@ -227,9 +227,9 @@ final readonly class OrderPricing
             }
             $parts = $taxesOf[$index];
             $discountShares = self::shares($lines[$index]['discount'], array_map(static fn(array $part): Money => $part['total'], $parts));
-            foreach ($parts as $part => ['total' => $partTotal, 'taxes' => $taxes, 'group' => $groupId]) {
+            foreach ($parts as $part => ['total' => $partTotal, 'taxes' => $taxes, 'group' => $groupId, 'tax_code' => $taxCode]) {
                 $places[$index][] = $bill->addItem($partTotal, $taxes, $discountShares[$part], $line['quote']->name);
-                $asked[] = ['kind' => TaxRequestLine::ITEM, 'code' => $groupId, 'quantity' => $line['quantity'], 'product' => $line['quote']->productId, 'sku' => $line['quote']->sku];
+                $asked[] = ['kind' => TaxRequestLine::ITEM, 'code' => $groupId, 'quantity' => $line['quantity'], 'product' => $line['quote']->productId, 'sku' => $line['quote']->sku, 'tax_code' => $taxCode];
             }
         }
         $lineTaxes = $bill->lineTaxes();
@@ -268,7 +268,7 @@ final readonly class OrderPricing
             }
             if ($chosen !== null) {
                 $bill->ship($chosen['price'], $chosen['taxes'], "{$chosen['view']->carrier} – {$chosen['view']->name}");
-                $asked[] = ['kind' => TaxRequestLine::SHIPPING, 'code' => $chosen['free'] ? 'none' : $chosen['group'], 'quantity' => 1, 'product' => null, 'sku' => null];
+                $asked[] = ['kind' => TaxRequestLine::SHIPPING, 'code' => $chosen['free'] ? 'none' : $chosen['group'], 'quantity' => 1, 'product' => null, 'sku' => null, 'tax_code' => null];
             }
         }
         if ($lines !== []) {
@@ -296,7 +296,7 @@ final readonly class OrderPricing
      * Adds the order's fees to the bill, taxed as items of their tax group are.
      */
     /**
-     * @param list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string}> $asked
+     * @param list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string, tax_code: ?string}> $asked
      *        what each charge is, for a tax service, in the bill's order; the fees are added to it
      */
     private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge, string $currency, bool $exempt = false, array &$asked = []): void
@@ -308,7 +308,7 @@ final readonly class OrderPricing
                 $amount = Tax::without($amount, $this->shopTaxes($fee['tax_group_id']));
             }
             $bill->addFee($fee['label'], $amount, $taxes);
-            $asked[] = ['kind' => TaxRequestLine::FEE, 'code' => $fee['taxable'] ? $fee['tax_group_id'] : 'none', 'quantity' => 1, 'product' => null, 'sku' => null];
+            $asked[] = ['kind' => TaxRequestLine::FEE, 'code' => $fee['taxable'] ? $fee['tax_group_id'] : 'none', 'quantity' => 1, 'product' => null, 'sku' => null, 'tax_code' => null];
         }
     }
 
@@ -316,7 +316,7 @@ final readonly class OrderPricing
      * Asks the shop's tax service, when it chose one, for the tax of every charge; its taxes stand in for the
      * shop's rates. Without an answer the shop's rates stay, or checkout is refused, as the shop chose.
      *
-     * @param list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string}> $asked
+     * @param list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string, tax_code: ?string}> $asked
      *
      * @throws TaxServiceUnavailable
      */
@@ -329,7 +329,7 @@ final readonly class OrderPricing
         $lines = [];
         $counts = [];
         foreach ($charges as $index => $charge) {
-            $what = $asked[$index] ?? ['kind' => $charge->kind, 'code' => null, 'quantity' => 1, 'product' => null, 'sku' => null];
+            $what = $asked[$index] ?? ['kind' => $charge->kind, 'code' => null, 'quantity' => 1, 'product' => null, 'sku' => null, 'tax_code' => null];
             $number = $counts[$charge->kind] = ($counts[$charge->kind] ?? -1) + 1;
             $lines[] = new TaxRequestLine(
                 $charge->kind === BilledCharge::SHIPPING ? 'shipping' : "{$charge->kind}:{$number}",
@@ -340,6 +340,8 @@ final readonly class OrderPricing
                 (string) $charge->amount,
                 $what['product'],
                 $what['sku'],
+                // The product's own code, else its tax group's; none for what is not taxed.
+                $what['tax_code'] ?? ($what['code'] === 'none' ? null : $this->taxServices->codeOf($what['code'] === null ? null : (int) $what['code'])),
             );
         }
         $shop = $this->settings->current();

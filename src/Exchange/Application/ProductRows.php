@@ -23,6 +23,7 @@ use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\StockNote;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Inventory\Domain\StockReason;
+use OrillaCart\Shared\Domain\TaxCode;
 
 /**
  * Imports one row of a products file. The row finds its product by variation_id, id or SKU, in that order, and
@@ -109,7 +110,7 @@ final readonly class ProductRows
     /**
      * @param array<string, string> $row
      *
-     * @return array{price?: string, type?: string, sale?: ?SaveSale, sku?: ?string, taxable?: bool, stockMode?: string, purchasable?: bool, featured?: bool, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: string, backorderLimit?: ?int, lowStockThreshold?: ?int}
+     * @return array{price?: string, type?: string, sale?: ?SaveSale, sku?: ?string, taxable?: bool, stockMode?: string, purchasable?: bool, featured?: bool, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: string, backorderLimit?: ?int, lowStockThreshold?: ?int, taxCode?: ?string}
      */
     private static function productChanges(array $row, ProductView $product): array
     {
@@ -124,6 +125,14 @@ final readonly class ProductRows
         }
         if (($row['backorders'] ?? '') !== '') {
             $changes['backorders'] = self::choice($row['backorders'], Backorders::values(), 'backorders');
+        }
+        // An empty cell takes the code off: the product goes by its tax group's again.
+        if (\array_key_exists('tax_code', $row)) {
+            try {
+                $changes['taxCode'] = TaxCode::valid($row['tax_code']);
+            } catch (\InvalidArgumentException $e) {
+                throw new \InvalidArgumentException('tax_code: ' . $e->getMessage(), 0, $e);
+            }
         }
 
         return $changes;

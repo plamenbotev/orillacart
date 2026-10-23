@@ -96,6 +96,8 @@ export interface Product {
 	sku: string | null;
 	taxable: boolean;
 	tax_group_id: number | null;
+	/** What tax services call it, over its tax group's code; null for the group's. */
+	tax_code: string | null;
 	stock_mode: StockMode;
 	backorders: Backorders;
 	/** How many it may owe at most when it takes backorders; null for no limit. */
@@ -209,6 +211,7 @@ export function toProductInput( product: Product ): ProductInput {
 		sku: product.sku,
 		taxable: product.taxable,
 		tax_group_id: product.tax_group_id,
+		tax_code: product.tax_code,
 		stock_mode: product.stock_mode,
 		backorders: product.backorders,
 		backorder_limit: product.backorder_limit,

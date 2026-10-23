@@ -57,6 +57,7 @@ final readonly class ProductColumns
             new Column('width', 'Width', self::either(static fn(ProductRow $row): string => $row->product->width ?? '', static fn(ProductRow $row): string => $row->variation->width ?? ''), true),
             new Column('height', 'Height', self::either(static fn(ProductRow $row): string => $row->product->height ?? '', static fn(ProductRow $row): string => $row->variation->height ?? ''), true),
             new Column('taxable', 'Taxable', self::productOnly(static fn(ProductRow $row): string => $bool($row->product->taxable)), true),
+            new Column('tax_code', 'Tax code', self::productOnly(static fn(ProductRow $row): string => $row->product->taxCode ?? ''), true),
             new Column('purchasable', 'Purchasable', self::productOnly(static fn(ProductRow $row): string => $bool($row->product->purchasable)), true),
             new Column('featured', 'Featured', self::productOnly(static fn(ProductRow $row): string => $bool($row->product->featured)), true),
             new Column('categories', 'Categories', self::productOnly(static fn(ProductRow $row): string => implode(self::LIST, $row->post->categories)), true),

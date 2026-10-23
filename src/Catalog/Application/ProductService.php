@@ -109,6 +109,7 @@ final readonly class ProductService
             Backorders::from($command->backorders),
             $command->backorderLimit,
             $command->lowStockThreshold,
+            $command->taxCode === null || trim($command->taxCode) === '' ? null : trim($command->taxCode),
         );
         $product = $this->products->find($id);
         if ($product === null) {

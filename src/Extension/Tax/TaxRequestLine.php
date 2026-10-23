@@ -19,6 +19,9 @@ final readonly class TaxRequestLine
      * @param string|null $taxCode   the shop's tax group of the line, by its id; null for the default group
      * @param string      $amount    what the line costs before tax, all of its quantity, decimal: "180.00"
      * @param int|null    $productId the product, for items
+     * @param string|null $serviceCode what tax services call the goods, as the shop set it on the product or its
+     *                                 tax group (Avalara's "PC040100", Stripe's "txcd_99999999"); null when it set
+     *                                 none. Since version 9.
      */
     public function __construct(
         public string $id,
@@ -29,5 +32,6 @@ final readonly class TaxRequestLine
         public string $amount,
         public ?int $productId = null,
         public ?string $sku = null,
+        public ?string $serviceCode = null,
     ) {}
 }

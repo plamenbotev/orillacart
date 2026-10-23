@@ -50,6 +50,8 @@ final readonly class ItemQuote
         public array $contents = [],
         /** How many it may owe at most when it takes backorders; null for no limit. */
         public ?int $backorderLimit = null,
+        /** What tax services call it; null for its tax group's code. */
+        public ?string $taxCode = null,
     ) {}
 
     /** How many of this quantity the customer is told are on backorder: none unless the product says so. */

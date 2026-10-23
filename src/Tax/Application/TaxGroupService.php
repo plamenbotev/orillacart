@@ -58,6 +58,7 @@ final readonly class TaxGroupService
     public function create(SaveTaxGroup $command): TaxGroupView
     {
         $group = new TaxGroup($command->name);
+        $group->changeTaxCode($command->taxCode);
         $this->groups->save($group);
 
         return TaxGroupView::fromGroup($group);
@@ -70,6 +71,7 @@ final readonly class TaxGroupService
     {
         $group = $this->get($id);
         $group->rename($command->name);
+        $group->changeTaxCode($command->taxCode);
         $this->groups->save($group);
 
         return TaxGroupView::fromGroup($group);
