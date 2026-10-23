@@ -482,11 +482,11 @@ function SettingsCard( {
 					/>
 					<CheckboxControl
 						label={ __(
-							'Ask businesses for their EU VAT number',
+							'Ask businesses for their VAT or tax number',
 							'orillacart'
 						) }
 						help={ __(
-							'Businesses in another EU country than yours, with a VAT number the EU’s VIES service confirms, buy without VAT and account for it themselves (reverse charge). When VIES cannot be asked, VAT is charged.',
+							'The number goes on the order and the invoice. Businesses in another EU country than yours, with a VAT number the EU’s VIES service confirms, buy without VAT and account for it themselves (reverse charge); when VIES cannot be asked, VAT is charged. Numbers from the UK, Switzerland, Norway, Australia, New Zealand and Canada are checked by their check digit, and one that fails is left out.',
 							'orillacart'
 						) }
 						checked={ reverseCharge }

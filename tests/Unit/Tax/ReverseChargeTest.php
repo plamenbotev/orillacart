@@ -75,6 +75,26 @@ final class ReverseChargeTest extends TestCase
         self::assertSame([], $this->shop->vies->asked, 'VIES is not asked');
     }
 
+    public function testABusinessOutsideTheEuKeepsANumberWhoseCheckDigitHolds(): void
+    {
+        $summary = $this->shop->checkout->summary($this->owner, new CheckoutDetails(null, null, 'GB', vatNumber: '980 7806 84'));
+        self::assertSame([false, null], [$summary->reverseCharge, $summary->vatMessage]);
+
+        $wrong = $this->shop->checkout->summary($this->owner, new CheckoutDetails(null, null, 'GB', vatNumber: 'GB980780685'));
+        self::assertSame('This is not a valid VAT number, so it is not on the order. Check it and try again, or leave it out.', $wrong->vatMessage);
+        self::assertSame([], $this->shop->vies->asked, 'VIES is not asked');
+
+        $placed = $this->shop->checkout->placeOrder($this->owner, new PlaceOrder('buyer@example.ca', new AddressData('Jo', 'Tremblay', '1 Rue Sainte-Catherine', 'Montreal', 'H2X 1Y4', 'CA', '+1 514 000 0000', 'QC'), payment: 'bank_transfer', vatNumber: '123456782 RT0001'));
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame('123456782RT0001', $order->vatNumber);
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $this->shop->invoices->document($this->shop->invoices->ofOrder($order->number)[0]->number, $this->shop->receipts->issue($order->number)), 'locale' => 'en-US']);
+        self::assertStringContainsString('Business number: 123456782RT0001', $html);
+
+        $dropped = $this->shop->checkout->placeOrder(new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken), new PlaceOrder('buyer@example.ca', new AddressData('Jo', 'Tremblay', '1 Rue Sainte-Catherine', 'Montreal', 'H2X 1Y4', 'CA', '+1 514 000 0000', 'QC'), payment: 'bank_transfer', vatNumber: '123456789'));
+        self::assertNull($this->shop->orders->order($dropped->number)->vatNumber, 'a number whose check digit fails is not kept');
+    }
+
     public function testTheOrderAndItsInvoiceSayTheCustomerAccountsForTheVat(): void
     {
         $placed = $this->shop->checkout->placeOrder($this->owner, new PlaceOrder('buyer@muster.de', new AddressData('Max', 'Muster', 'Hauptstr. 1', 'Berlin', '10115', 'DE', '+49 30 000000'), payment: 'bank_transfer', vatNumber: 'DE123456789'));

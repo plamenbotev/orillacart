@@ -30,7 +30,7 @@ final readonly class EmailTwig
         'striptags', 'title', 'trim', 'upper', 'url_encode',
         'money', 'shop_date', 'shop_day', 'address_lines',
     ];
-    public const array FUNCTIONS = ['block', 'cycle', 'date', 'include', 'max', 'min', 'parent', 'range', '__', '_n', 'prices_include_tax', 'slot'];
+    public const array FUNCTIONS = ['block', 'cycle', 'date', 'include', 'max', 'min', 'parent', 'range', '__', '_n', 'prices_include_tax', 'slot', 'tax_number_label'];
     public const array TESTS = ['defined', 'divisible by', 'empty', 'even', 'iterable', 'mapping', 'none', 'null', 'odd', 'same as', 'sequence', 'true'];
 
     public function __construct(

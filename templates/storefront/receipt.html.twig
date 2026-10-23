@@ -19,7 +19,7 @@
         <li>{{ __('Total') }}: <strong>{{ order.total|money(order.currency) }}</strong></li>
         {% if order.refunded_total > 0 %}<li>{{ __('Refunded') }}: <strong>{{ order.refunded_total|money(order.currency) }}</strong></li>{% endif %}
         {% if order.payment_name %}<li>{{ __('Payment') }}: <strong>{{ order.payment_name }}</strong></li>{% endif %}
-        {% if order.vat_number %}<li>{{ __('VAT number') }}: <strong>{{ order.vat_number }}</strong>{% if order.reverse_charge %} ({{ __('reverse charge: no VAT') }}){% endif %}</li>{% endif %}
+        {% if order.vat_number %}<li>{{ tax_number_label(order.billing.country) }}: <strong>{{ order.vat_number }}</strong>{% if order.reverse_charge %} ({{ __('reverse charge: no VAT') }}){% endif %}</li>{% endif %}
         {% if order.import_scheme and not order.import_number %}<li>{{ __('Import VAT and duties may be due on delivery.') }}</li>{% endif %}
         {% if order.tax_exemption %}<li>{# translators: %s: the customer's exemption certificate's number -#}{{ __('Sold without tax under exemption certificate %s')|format(order.tax_exemption.certificate) }}</li>{% endif %}
         {% for invoice in invoices ?? [] %}

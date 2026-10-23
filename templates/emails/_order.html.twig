@@ -27,7 +27,7 @@
 {% if order.delivery_date %}<p style="margin:16px 0 0;">{{ __('Delivery') }}: {{ order.delivery_date|shop_day }}{% if order.delivery_slot %}, {{ order.delivery_slot }}{% endif %}</p>{% endif %}
 {% if order.pickup_point %}<p style="margin:16px 0 0;">{{ __('Pickup point') }}: {{ order.pickup_point }}</p>{% endif %}
 {% if order.payment_name %}<p style="margin:16px 0 0;">{{ __('Payment') }}: {{ order.payment_name }}</p>{% endif %}
-{% if order.vat_number %}<p style="margin:8px 0 0;">{{ __('VAT number') }}: {{ order.vat_number }}{% if order.reverse_charge %} ({{ __('reverse charge: no VAT') }}){% endif %}</p>{% endif %}
+{% if order.vat_number %}<p style="margin:8px 0 0;">{{ tax_number_label(order.billing.country) }}: {{ order.vat_number }}{% if order.reverse_charge %} ({{ __('reverse charge: no VAT') }}){% endif %}</p>{% endif %}
 {% if order.import_scheme and not order.import_number %}<p style="margin:8px 0 0;">{{ __('Import VAT and duties may be due on delivery.') }}</p>{% endif %}
 {% if order.tax_exemption %}<p style="margin:8px 0 0;">{# translators: %s: the customer's exemption certificate's number -#}{{ __('Sold without tax under exemption certificate %s')|format(order.tax_exemption.certificate) }}</p>{% endif %}
 {% if order.payment_note and order.status == 'on_hold' %}<p style="margin:8px 0 0;white-space:pre-line;">{{ order.payment_note }}</p>{% endif %}

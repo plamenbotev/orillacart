@@ -9,12 +9,14 @@ use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Tax\Application\Dto\ReverseCharge;
 use OrillaCart\Tax\Application\Dto\VatCheck;
+use OrillaCart\Tax\Domain\TaxNumber;
 use OrillaCart\Tax\Domain\TaxSettingsRepository;
 
 /**
- * Business customers' VAT numbers and the reverse charge: a business in another EU country than the shop's, with
+ * Business customers' tax numbers and the reverse charge: a business in another EU country than the shop's, with
  * a number VIES confirms, buys without VAT and accounts for it itself. A number that cannot be confirmed, because
- * VIES is down, is never trusted: VAT is charged, and the customer is told why.
+ * VIES is down, is never trusted: VAT is charged, and the customer is told why. Outside the EU (TaxNumber), a number
+ * whose check digit holds goes on the order and the invoice; one that does not is left out, and the customer told.
  */
 final readonly class VatNumbers
 {
@@ -40,15 +42,23 @@ final readonly class VatNumbers
         if ($entered === '' || $billingCountry === null || !$this->asked()) {
             return ReverseCharge::none();
         }
+        $location = $this->geography->locate($billingCountry, null);
+        if (!$location instanceof LocationView || !$location->inEu) {
+            // Outside the EU the number goes on the order and the invoice, once its check digit holds.
+            $checked = TaxNumber::check($billingCountry, $entered);
+
+            return $checked === null
+                ? new ReverseCharge(false, null, \sprintf('This is not a valid %s, so it is not on the order. Check it and try again, or leave it out.', TaxNumber::label($billingCountry)))
+                : new ReverseCharge(false, $checked);
+        }
         $prefix = self::PREFIXES[$billingCountry] ?? $billingCountry;
         $number = str_starts_with($entered, $prefix) ? substr($entered, \strlen($prefix)) : $entered;
         if (preg_match('/^[0-9A-Z]{2,12}$/', $number) !== 1) {
             return new ReverseCharge(false, $entered, 'This is not a VAT number of the billing country, so VAT is charged.');
         }
-        $location = $this->geography->locate($billingCountry, null);
         $shopCountry = $this->shop->current()->shopCountry;
-        if (!$location instanceof LocationView || !$location->inEu || $billingCountry === $shopCountry) {
-            // Reverse charge is for businesses in another EU country; others keep their number on the order.
+        if ($billingCountry === $shopCountry) {
+            // Reverse charge is for businesses in another EU country; those at home keep their number on the order.
             return new ReverseCharge(false, $prefix . $number);
         }
         $check = $this->registry->check($prefix, $number);

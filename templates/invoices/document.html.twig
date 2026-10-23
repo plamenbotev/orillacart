@@ -78,7 +78,7 @@
                 <div class="label">{{ __('Billed to') }}</div>
                 {% for line in order.billing|address_lines %}{{ not loop.first ? '<br>' }}{{ line }}{% endfor %}
                 <br>{{ order.email }}
-                {% if order.vat_number %}<br>{{ __('VAT number') }}: {{ order.vat_number }}{% endif %}
+                {% if order.vat_number %}<br>{{ tax_number_label(order.billing.country) }}: {{ order.vat_number }}{% endif %}
             </div>
             {% if order.shipping_address %}
                 <div>

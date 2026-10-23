@@ -12,6 +12,7 @@ use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Tax\Application\TaxCalculator;
+use OrillaCart\Tax\Domain\TaxNumber;
 use OrillaCart\Tax\Domain\TaxSettings;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
@@ -47,6 +48,8 @@ final class ShopExtension extends AbstractExtension
             new TwigFunction('prices_include_tax', fn(): bool => $this->taxes?->showsTax(false) ?? false),
             // {{ price_suffix(offer) }}: what follows a catalog price: the shop's text, or "incl. tax"
             new TwigFunction('price_suffix', $this->priceSuffix(...), ['is_safe' => ['html']]),
+            // {{ tax_number_label(order.billing.country) }}: "ABN", "VAT number"
+            new TwigFunction('tax_number_label', static fn(?string $country): string => \function_exists('__') ? __(TaxNumber::label($country ?? ''), 'orillacart') : TaxNumber::label($country ?? '')),
             new TwigFunction('slot', $this->slot(...), ['is_safe' => ['html'], 'is_variadic' => true]),
             // The currency switcher: {% for code in shop_currencies() %}, and the one the shopper is in.
             new TwigFunction('shop_currencies', fn(): array => $this->currencies?->codes() ?? [$this->settings->current()->currency]),
