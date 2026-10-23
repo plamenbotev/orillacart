@@ -39,6 +39,9 @@ final class PluginDatabaseTest extends TestCase
     private DatabaseConfig $database;
     private Connection $connection;
 
+    /** Where ids start after a test dropped the tables: past any the run used before. */
+    private static int $ids = 0;
+
     protected function setUp(): void
     {
         $context = new PluginContext(\dirname(__DIR__, 2) . '/orillacart.php', ORILLACART_VERSION);
@@ -52,6 +55,18 @@ final class PluginDatabaseTest extends TestCase
         $this->wpdb()->query('DROP TABLE IF EXISTS ' . $this->wpdb()->prefix . self::OTHER_PLUGIN_TABLE);
         // Leave the schema as activation left it for the next test.
         $this->migrator()->migrate();
+        // The plugin running these tests keeps one Doctrine session for the whole run, which still holds rows of
+        // the tables dropped here: new rows must not take their ids, or it refuses them as already known.
+        self::$ids += 1_000_000;
+        $tables = $this->connection->fetchFirstColumn(
+            'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE ? AND AUTO_INCREMENT IS NOT NULL',
+            [addcslashes($this->database->tablePrefix, '_%\\') . '%'],
+        );
+        foreach ($tables as $table) {
+            if (\is_string($table) && preg_match('/^\w+$/', $table) === 1) {
+                $this->connection->executeStatement(\sprintf('ALTER TABLE %s AUTO_INCREMENT = %d', $table, self::$ids));
+            }
+        }
     }
 
     public function testActivationCreatedTheMigrationsTable(): void
