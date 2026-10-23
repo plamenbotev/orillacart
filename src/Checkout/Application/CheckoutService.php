@@ -476,6 +476,8 @@ final readonly class CheckoutService
             $this->pricing->taxProvider($priced),
             $priced['import']->scheme,
             $priced['import']->charges ? $priced['import']->number : null,
+            $currency === $this->settings->current()->currency ? null : $this->settings->current()->currency,
+            $currency === $this->settings->current()->currency ? null : $this->currencies->rate($currency),
         )), $gateway === null)));
         foreach ([...$this->failures->since($failed), ...$this->addressChecks->kept($billingAddress, $priced['needs_shipping'] && $command->shippingAddress !== null ? $shippingAddress : null)] as $failure) {
             $this->orders->note($order->number, $failure, false);

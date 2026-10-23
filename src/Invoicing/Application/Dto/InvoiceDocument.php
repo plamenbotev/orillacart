@@ -24,5 +24,11 @@ final readonly class InvoiceDocument
         /** For a credit note: the invoice it corrects. */
         public ?string $corrects,
         public array $taxes = [],
+        /**
+         * @var array{currency: string, rate: string, taxes: list<array{name: string, percent: string, amount: string}>, total: string}|null
+         *      for a document in another currency than the shop's: its taxes in the shop's, at the order's exchange
+         *      rate, as VAT law asks of invoices in another currency
+         */
+        public ?array $inShopCurrency = null,
     ) {}
 }

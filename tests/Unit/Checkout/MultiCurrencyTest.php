@@ -12,6 +12,8 @@ use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\RefundLine;
+use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Settings\Application\Dto\CurrencySettingsView;
 use OrillaCart\Settings\Application\Dto\OfferedCurrencyView;
@@ -57,6 +59,43 @@ final class MultiCurrencyTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($owner, $this->order());
         $order = $this->shop->orders->order($placed->number);
         self::assertSame(['USD', '94.58'], [$order->currency, $order->total]);
+    }
+
+    public function testTheOrderKeepsItsExchangeRateAndItsInvoiceShowsTheTaxInTheShopsCurrency(): void
+    {
+        $this->shop->chosenCurrency->currency = 'USD';
+        $placed = $this->shop->checkout->placeOrder($this->cart(2), $this->order());
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame(['EUR', '1.1'], [$order->shopCurrency, $order->exchangeRate]);
+
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $invoice = $this->shop->invoices->ofOrder($order->number)[0]->number;
+        $document = $this->shop->invoices->document($invoice, $this->shop->receipts->issue($order->number));
+        // 15.76 USD of tax (14.66 on the items, 1.10 on shipping) is 14.33 EUR at 1.1.
+        self::assertSame(['EUR', '1.1', [['VAT', '20', '14.33']], '14.33'], [
+            $document->inShopCurrency['currency'] ?? null,
+            $document->inShopCurrency['rate'] ?? null,
+            array_map(static fn(array $tax): array => array_values($tax), $document->inShopCurrency['taxes'] ?? []),
+            $document->inShopCurrency['total'] ?? null,
+        ]);
+        $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $document, 'locale' => 'en-US']);
+        self::assertStringContainsString('Tax in EUR, at 1 EUR = 1.1 USD', $html);
+
+        // A credit note gives back its own tax, in the shop's currency at the same rate.
+        $this->shop->refunds->refund($order->number, new MakeRefund('44', [new RefundLine(0, 1)]), 7);
+        $credit = array_values(array_filter($this->shop->invoices->ofOrder($order->number), static fn($issued): bool => $issued->kind === 'credit_note'))[0]->number;
+        $given = $this->shop->invoices->document($credit, $this->shop->receipts->issue($order->number))->inShopCurrency;
+        self::assertSame('1.1', $given['rate'] ?? null);
+        self::assertNotSame('0', $given['total'] ?? '0');
+    }
+
+    public function testAnOrderInTheShopsCurrencyKeepsNoRate(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart(1), $this->order());
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame([null, null], [$order->shopCurrency, $order->exchangeRate]);
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        self::assertNull($this->shop->invoices->document($this->shop->invoices->ofOrder($order->number)[0]->number, $this->shop->receipts->issue($order->number))->inShopCurrency);
     }
 
     public function testCouponAmountsAndTheMinimumAreConvertedPercentagesAreNot(): void

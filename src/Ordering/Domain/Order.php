@@ -172,6 +172,16 @@ class Order
     #[ORM\Column(length: 20, nullable: true)]
     private ?string $importNumber = null;
 
+    /**
+     * Priced in another currency than the shop's: the shop's then, and how many units of the order's currency one
+     * of it made, so its invoices can show the VAT in the shop's currency too.
+     */
+    #[ORM\Column(length: 3, nullable: true)]
+    private ?string $shopCurrency = null;
+
+    #[ORM\Column(type: 'decimal', precision: 18, scale: 8, nullable: true)]
+    private ?string $exchangeRate = null;
+
     /** The tax service's own reference of the sale, once it recorded it. */
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $taxReference = null;
@@ -251,6 +261,13 @@ class Order
         $this->taxProvider = $draft->taxProvider === null ? null : mb_substr($draft->taxProvider, 0, 40);
         $this->importScheme = $draft->importScheme === null ? null : mb_substr($draft->importScheme, 0, 10);
         $this->importNumber = $draft->importScheme === null || $draft->importNumber === null ? null : mb_substr($draft->importNumber, 0, 20);
+        if ($draft->shopCurrency !== null && $draft->exchangeRate !== null && $draft->shopCurrency !== $draft->currency) {
+            if (preg_match('/^[A-Z]{3}$/', $draft->shopCurrency) !== 1 || preg_match('/^\d{1,10}(\.\d{1,8})?$/', $draft->exchangeRate) !== 1 || (float) $draft->exchangeRate <= 0) {
+                throw new OrderRuleViolation('An exchange rate is a positive number with up to eight decimals.', 'orillacart_invalid_exchange_rate');
+            }
+            $this->shopCurrency = $draft->shopCurrency;
+            $this->exchangeRate = $draft->exchangeRate;
+        }
         $this->currency = $draft->currency;
         $this->paymentGateway = $draft->paymentGateway;
         $this->paymentName = mb_substr($draft->paymentName, 0, 100);
@@ -429,6 +446,16 @@ class Order
     public function taxExemption(): ?array
     {
         return $this->taxExemption;
+    }
+
+    public function shopCurrency(): ?string
+    {
+        return $this->shopCurrency;
+    }
+
+    public function exchangeRate(): ?string
+    {
+        return $this->exchangeRate === null ? null : rtrim(rtrim($this->exchangeRate, '0'), '.');
     }
 
     public function importScheme(): ?string

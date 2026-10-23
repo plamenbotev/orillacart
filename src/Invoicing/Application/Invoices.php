@@ -14,10 +14,13 @@ use OrillaCart\Invoicing\Domain\InvoiceNotFound;
 use OrillaCart\Invoicing\Domain\InvoiceRepository;
 use OrillaCart\Invoicing\Domain\InvoiceSettings;
 use OrillaCart\Invoicing\Domain\InvoiceSettingsRepository;
+use OrillaCart\Ordering\Application\Dto\OrderView;
+use OrillaCart\Ordering\Application\Dto\TaxLineView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
 use Psr\Clock\ClockInterface;
 
@@ -106,7 +109,30 @@ final readonly class Invoices
             }
         }
 
-        return new InvoiceDocument($this->view($invoice, $receipt), $invoice->seller(), $order, $invoice->lines(), $corrects, $invoice->taxes());
+        return new InvoiceDocument($this->view($invoice, $receipt), $invoice->seller(), $order, $invoice->lines(), $corrects, $invoice->taxes(), self::inShopCurrency($order, $invoice->kind() === InvoiceKind::CreditNote ? $invoice->taxes() : array_map(static fn(TaxLineView $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount], $order->taxes)));
+    }
+
+    /**
+     * A document's taxes in the shop's currency, at the order's exchange rate; null for one in the shop's currency.
+     *
+     * @param list<array{name: string, percent: string, amount: string}> $taxes
+     *
+     * @return array{currency: string, rate: string, taxes: list<array{name: string, percent: string, amount: string}>, total: string}|null
+     */
+    private static function inShopCurrency(OrderView $order, array $taxes): ?array
+    {
+        if ($order->shopCurrency === null || $order->exchangeRate === null) {
+            return null;
+        }
+        $decimals = new Currency($order->shopCurrency)->decimals();
+        $converted = array_map(static fn(array $tax): array => ['name' => $tax['name'], 'percent' => $tax['percent'], 'amount' => (string) Money::of($tax['amount'])->from($order->exchangeRate)->rounded($decimals)], $taxes);
+
+        return [
+            'currency' => $order->shopCurrency,
+            'rate' => $order->exchangeRate,
+            'taxes' => $converted,
+            'total' => (string) array_reduce($converted, static fn(Money $sum, array $tax): Money => $sum->add(Money::of($tax['amount'])), Money::zero()),
+        ];
     }
 
     /**

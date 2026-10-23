@@ -46,5 +46,8 @@ final readonly class NewOrder
         /** The import scheme its goods came under (ImportScheme), and the shop's number there when it charged the tax. */
         public ?string $importScheme = null,
         public ?string $importNumber = null,
+        /** Priced in another currency than the shop's: the shop's, and how many units of the order's one of it made. */
+        public ?string $shopCurrency = null,
+        public ?string $exchangeRate = null,
     ) {}
 }

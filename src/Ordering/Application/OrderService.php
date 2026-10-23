@@ -123,6 +123,8 @@ final readonly class OrderService
             $command->taxProvider,
             $command->importScheme,
             $command->importNumber,
+            $command->shopCurrency,
+            $command->exchangeRate,
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);

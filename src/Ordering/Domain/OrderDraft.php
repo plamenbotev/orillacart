@@ -42,5 +42,7 @@ final readonly class OrderDraft
         public ?string $taxProvider = null,
         public ?string $importScheme = null,
         public ?string $importNumber = null,
+        public ?string $shopCurrency = null,
+        public ?string $exchangeRate = null,
     ) {}
 }

@@ -154,6 +154,14 @@
             {% if order.paid_at %}<p>{{ __('Paid %1$s by %2$s.')|format(order.paid_at|shop_date, order.payment_name ?: __('nothing (free)')) }}</p>{% endif %}
         {% endif %}
 
+        {% if document.in_shop_currency %}
+            {% set converted = document.in_shop_currency %}
+            {# translators: 1: the shop's currency, 2: the order's currency, 3: units of it per one of the shop's -#}
+            <p class="note"><span class="label">{{ __('Tax in %1$s, at 1 %1$s = %3$s %2$s')|format(converted.currency, invoice.currency, converted.rate) }}</span><br>
+                {% for tax in converted.taxes %}{{ tax.name }} ({{ tax.percent }}%): {{ (credit ? '−' : '') ~ tax.amount|money(converted.currency) }}<br>{% endfor %}
+                {{ __('Total tax') }}: {{ (credit ? '−' : '') ~ converted.total|money(converted.currency) }}
+            </p>
+        {% endif %}
         {% if order.import_scheme and not order.import_number %}<p>{{ __('Shipped as an export: import VAT and duties, where due, are paid by the customer on delivery.') }}</p>{% endif %}
         {% if order.reverse_charge %}<p><strong>{{ __('Reverse charge: VAT to be accounted for by the customer (Article 196 of Directive 2006/112/EC).') }}</strong></p>{% endif %}
         {% if order.tax_exemption %}<p><strong>{# translators: %s: the customer's exemption certificate's number -#}{{ __('Sold without tax under exemption certificate %s')|format(order.tax_exemption.certificate) }}</strong></p>{% endif %}

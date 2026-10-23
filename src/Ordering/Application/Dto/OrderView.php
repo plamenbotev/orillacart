@@ -110,6 +110,9 @@ final readonly class OrderView
         /** The import scheme its goods came under, and the shop's number there when it charged the tax. */
         public ?string $importScheme = null,
         public ?string $importNumber = null,
+        /** Priced in another currency than the shop's: the shop's, and units of the order's currency per one of it. */
+        public ?string $shopCurrency = null,
+        public ?string $exchangeRate = null,
     ) {}
 
     /**
@@ -182,6 +185,8 @@ final readonly class OrderView
             PriceChangeView::of($lines),
             $order->importScheme(),
             $order->importNumber(),
+            $order->shopCurrency(),
+            $order->exchangeRate(),
         );
     }
 }
