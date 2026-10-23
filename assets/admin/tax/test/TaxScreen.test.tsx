@@ -67,6 +67,10 @@ function serve( write: ( request: Request ) => Promise< unknown > ) {
 					when_provider_fails: 'shop_rates',
 					providers: [],
 					accepts_certificates: false,
+					shown_in_shop: 'as_entered',
+					shown_in_cart: 'as_entered',
+					price_suffix: '',
+					same_price_everywhere: true,
 					bases: [
 						'shipping_address',
 						'billing_address',
@@ -172,6 +176,10 @@ describe( 'TaxScreen', () => {
 				provider: null,
 				when_provider_fails: 'shop_rates',
 				accepts_certificates: false,
+				shown_in_shop: 'as_entered',
+				shown_in_cart: 'as_entered',
+				price_suffix: '',
+				same_price_everywhere: true,
 			},
 		} );
 		expect( screen.queryByText( untaxed, NOTICE ) ).toBeNull();

@@ -30,6 +30,7 @@ use OrillaCart\Checkout\Application\OrderFees;
 use OrillaCart\Checkout\Application\OrderPricing;
 use OrillaCart\Checkout\Application\PayNow;
 use OrillaCart\Checkout\Application\Reorder;
+use OrillaCart\Checkout\Application\ShownPrices;
 use OrillaCart\Coupons\Application\CouponOrders;
 use OrillaCart\Coupons\Application\CouponService;
 use OrillaCart\Coupons\Application\Discounts;
@@ -250,6 +251,7 @@ final class TestShop
     public readonly StockroomService $stockrooms;
     public readonly TaxGroupService $taxGroups;
     public readonly InMemoryTaxSettingsRepository $taxSettings;
+    public readonly ShownPrices $shownPrices;
     public readonly InMemorySettingsRepository $settings;
     public readonly CarrierService $carriers;
     public readonly SettingsService $settingsService;
@@ -479,6 +481,7 @@ final class TestShop
             $this->newsletter,
             $this->giftCardPayments,
             $this->currencies,
+            $this->shownPrices = new ShownPrices($taxes, $this->customers, $settings),
         );
         $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock);

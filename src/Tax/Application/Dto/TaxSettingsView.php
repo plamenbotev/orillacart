@@ -26,6 +26,10 @@ final readonly class TaxSettingsView
         /** @var list<array{id: string, label: string}> the tax services add-ons offer */
         public array $providers = [],
         public bool $acceptsCertificates = false,
+        public string $shownInShop = TaxSettings::AS_ENTERED,
+        public string $shownInCart = TaxSettings::AS_ENTERED,
+        public string $priceSuffix = '',
+        public bool $samePriceEverywhere = true,
     ) {}
 
     /**
@@ -33,6 +37,6 @@ final readonly class TaxSettingsView
      */
     public static function fromSettings(TaxSettings $settings, array $providers = []): self
     {
-        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine, $settings->originRegions, $settings->provider, $settings->whenProviderFails, $providers, $settings->acceptsCertificates);
+        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine, $settings->originRegions, $settings->provider, $settings->whenProviderFails, $providers, $settings->acceptsCertificates, $settings->shownInShop, $settings->shownInCart, $settings->priceSuffix, $settings->samePriceEverywhere);
     }
 }

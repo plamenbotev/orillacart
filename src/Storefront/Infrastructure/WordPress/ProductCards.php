@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
 use OrillaCart\Catalog\Application\ShopCatalog;
+use OrillaCart\Checkout\Application\ShownPrices;
 use OrillaCart\Reviews\Application\Reviews;
 
 /**
@@ -18,6 +19,7 @@ final readonly class ProductCards
         private ShopLinks $links,
         private Shopper $shopper,
         private Reviews $reviews,
+        private ShownPrices $shownPrices,
     ) {}
 
     /**
@@ -32,7 +34,7 @@ final readonly class ProductCards
         if ($ids === []) {
             return [];
         }
-        $offers = $this->catalog->offers($ids, $this->shopper->customerId());
+        $offers = $this->shownPrices->offers($this->catalog->offers($ids, $this->shopper->customerId()), $this->shopper->customerId());
         $urls = $this->links->products($ids);
         $ratings = $this->reviews->ratings($ids);
         $cards = [];

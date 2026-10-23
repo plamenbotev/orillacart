@@ -33,5 +33,15 @@ final readonly class UpdateTaxSettings
         public string $whenProviderFails = TaxSettings::SHOP_RATES,
         /** Customers send their exemption certificates for the shop to check. */
         public bool $acceptsCertificates = false,
+        #[Assert\Choice(choices: TaxSettings::SHOWN)]
+        public string $shownInShop = TaxSettings::AS_ENTERED,
+        #[Assert\Choice(choices: TaxSettings::SHOWN)]
+        public string $shownInCart = TaxSettings::AS_ENTERED,
+        /** Text after the catalog's prices: "incl. VAT", "{price_excluding_tax} excl. VAT". */
+        #[Assert\Length(max: TaxSettings::SUFFIX_LENGTH)]
+        #[Assert\Regex('/^[^<>\x00-\x1F]*$/', message: 'Use plain text.')]
+        public string $priceSuffix = '',
+        /** Prices including tax: the same price everywhere, or the same price before tax. */
+        public bool $samePriceEverywhere = true,
     ) {}
 }

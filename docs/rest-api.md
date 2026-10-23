@@ -2006,6 +2006,10 @@ Saves the economic nexus thresholds: for every US state, and for those whose own
   - `provider` (string|null): matches `/^[a-z][a-z0-9_]{0,39}$/`
   - `when_provider_fails` (string): one of shop_rates, refuse; default 'shop_rates'
   - `accepts_certificates` (bool): default false
+  - `shown_in_shop` (string): one of as_entered, with_tax, without_tax; default 'as_entered'
+  - `shown_in_cart` (string): one of as_entered, with_tax, without_tax; default 'as_entered'
+  - `price_suffix` (string): at most 80 characters; matches `/^[^<>\x00-\x1F]*$/`
+  - `same_price_everywhere` (bool): default true
 
 ## /webhooks
 

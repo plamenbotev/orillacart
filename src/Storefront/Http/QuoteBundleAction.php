@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Http;
 
 use OrillaCart\Catalog\Application\ShopCatalog;
+use OrillaCart\Checkout\Application\ShownPrices;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
@@ -29,12 +30,13 @@ final readonly class QuoteBundleAction implements RequestHandlerInterface
         private TemplateRenderer $templates,
         private RequestMapper $input,
         private JsonResponder $responder,
+        private ShownPrices $shownPrices,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $chosen = $this->input->body($request, ChosenBundle::class);
-        $offer = $this->catalog->bundleOffer(PathParameter::id($request), $chosen->bundleChoices, $this->authorization->userId());
+        $offer = $this->shownPrices->offer($this->catalog->bundleOffer(PathParameter::id($request), $chosen->bundleChoices, $this->authorization->userId()), $this->authorization->userId());
 
         return $this->responder->ok([
             'price' => $offer->priceHidden ? null : $offer->price,

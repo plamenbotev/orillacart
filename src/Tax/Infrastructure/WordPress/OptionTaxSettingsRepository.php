@@ -51,12 +51,21 @@ final readonly class OptionTaxSettingsRepository implements TaxSettingsRepositor
             \is_string($provider) && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $provider) === 1 ? $provider : null,
             $fails === TaxSettings::REFUSE ? TaxSettings::REFUSE : TaxSettings::SHOP_RATES,
             ($stored['accepts_certificates'] ?? false) === true,
+            self::shown($stored['shown_in_shop'] ?? null),
+            self::shown($stored['shown_in_cart'] ?? null),
+            \is_string($stored['price_suffix'] ?? null) && mb_strlen($stored['price_suffix']) <= TaxSettings::SUFFIX_LENGTH && preg_match('/[<>\x00-\x1F]/', $stored['price_suffix']) !== 1 ? $stored['price_suffix'] : '',
+            ($stored['same_price_everywhere'] ?? true) !== false,
         );
     }
 
     public function save(TaxSettings $settings): void
     {
-        update_option(self::OPTION, ['basis' => $settings->basis->value, 'default_group_id' => $settings->defaultGroupId, 'prices_include_tax' => $settings->pricesIncludeTax, 'reverse_charge' => $settings->reverseCharge, 'rounds_each_line' => $settings->roundsEachLine, 'origin_regions' => $settings->originRegions, 'provider' => $settings->provider, 'when_provider_fails' => $settings->whenProviderFails, 'accepts_certificates' => $settings->acceptsCertificates], true);
+        update_option(self::OPTION, ['basis' => $settings->basis->value, 'default_group_id' => $settings->defaultGroupId, 'prices_include_tax' => $settings->pricesIncludeTax, 'reverse_charge' => $settings->reverseCharge, 'rounds_each_line' => $settings->roundsEachLine, 'origin_regions' => $settings->originRegions, 'provider' => $settings->provider, 'when_provider_fails' => $settings->whenProviderFails, 'accepts_certificates' => $settings->acceptsCertificates, 'shown_in_shop' => $settings->shownInShop, 'shown_in_cart' => $settings->shownInCart, 'price_suffix' => $settings->priceSuffix, 'same_price_everywhere' => $settings->samePriceEverywhere], true);
+    }
+
+    private static function shown(mixed $stored): string
+    {
+        return \is_string($stored) && \in_array($stored, TaxSettings::SHOWN, true) ? $stored : TaxSettings::AS_ENTERED;
     }
 
     public function activate(): void {}

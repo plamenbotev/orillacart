@@ -49,7 +49,17 @@ export interface TaxSettings {
 	providers: { id: string; label: string }[];
 	/** Customers send their exemption certificates for the shop to check. */
 	accepts_certificates: boolean;
+	/** How the catalog shows prices. */
+	shown_in_shop: PriceShown;
+	/** How the cart and checkout show prices. */
+	shown_in_cart: PriceShown;
+	/** Text after the catalog's prices: "incl. VAT", with {price_including_tax} and {price_excluding_tax}. */
+	price_suffix: string;
+	/** Prices including tax: every customer pays them as entered (true), or the price before the shop's tax stays (false). */
+	same_price_everywhere: boolean;
 }
+
+export type PriceShown = 'as_entered' | 'with_tax' | 'without_tax';
 
 export type TaxSettingsInput = Omit< TaxSettings, 'bases' | 'providers' >;
 

@@ -61,6 +61,30 @@ final readonly class TaxCalculator
         return $this->settings->load()->pricesIncludeTax;
     }
 
+    /** With prices entered including tax: whether every customer pays the price as entered; see TaxSettings. */
+    public function samePriceEverywhere(): bool
+    {
+        return $this->settings->load()->samePriceEverywhere;
+    }
+
+    /** Whether prices show with tax: in the cart and checkout, or in the catalog; see TaxSettings. */
+    public function showsTax(bool $inCart): bool
+    {
+        return $this->settings->load()->showsTax($inCart);
+    }
+
+    /** How the catalog shows prices: TaxSettings::AS_ENTERED, WITH_TAX or WITHOUT_TAX. */
+    public function shownInShop(): string
+    {
+        return $this->settings->load()->shownInShop;
+    }
+
+    /** The text after the catalog's prices; see TaxSettings. */
+    public function priceSuffix(): string
+    {
+        return $this->settings->load()->priceSuffix;
+    }
+
     /**
      * The taxes of the group at the shop's own address, whoever buys: what a price entered including tax holds
      * when the customer owes none, as for an export.

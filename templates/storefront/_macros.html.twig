@@ -16,7 +16,7 @@
         {%- else -%}
             <span class="orillacart-price">{{ offer.price|money }}</span>
         {%- endif -%}
-        {%- if prices_include_tax() %} <small class="orillacart-price__tax">{{ __('incl. tax') }}</small>{% endif -%}
+        {{- price_suffix(offer) -}}
     {%- endif -%}
 {% endmacro %}
 

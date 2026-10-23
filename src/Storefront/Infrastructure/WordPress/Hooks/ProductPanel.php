@@ -10,6 +10,7 @@ use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\ProductGallery;
+use OrillaCart\Checkout\Application\ShownPrices;
 use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
@@ -47,6 +48,7 @@ final readonly class ProductPanel
         private AnalyticsEvents $analytics,
         private ShopForms $forms,
         private ProductContent $content,
+        private ShownPrices $shownPrices,
     ) {}
 
     public function content(string $content): string
@@ -59,7 +61,7 @@ final readonly class ProductPanel
             return $content . $this->price($id);
         }
         try {
-            $offer = $this->catalog->offer($id, $this->shopper->customerId());
+            $offer = $this->shownPrices->offer($this->catalog->offer($id, $this->shopper->customerId()), $this->shopper->customerId());
         } catch (ProductNotFound) {
             return $content;
         }
@@ -186,7 +188,7 @@ final readonly class ProductPanel
 
     private function price(int $id): string
     {
-        $offers = $this->catalog->offers([$id], $this->shopper->customerId());
+        $offers = $this->shownPrices->offers($this->catalog->offers([$id], $this->shopper->customerId()), $this->shopper->customerId());
 
         return isset($offers[$id]) ? $this->templates->render('storefront/_list_price.html.twig', ['offer' => $offers[$id]]) : '';
     }

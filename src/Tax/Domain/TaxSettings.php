@@ -39,7 +39,29 @@ final readonly class TaxSettings
         public string $whenProviderFails = self::SHOP_RATES,
         /** Customers send their exemption certificates, at checkout or in their account, for the shop to check. */
         public bool $acceptsCertificates = false,
+        /** How prices show in the shop's catalog: AS_ENTERED, WITH_TAX or WITHOUT_TAX. */
+        public string $shownInShop = self::AS_ENTERED,
+        /** How the cart and checkout show prices: AS_ENTERED, WITH_TAX or WITHOUT_TAX. */
+        public string $shownInCart = self::AS_ENTERED,
+        /**
+         * Text after the catalog's prices, such as "incl. VAT"; {price_including_tax} and {price_excluding_tax} stand
+         * for the price with and without tax.
+         */
+        public string $priceSuffix = '',
+        /**
+         * With prices entered including tax: every customer pays the price as entered and the tax in it is their own
+         * rate's (true); or the price before the shop's own tax stays and the customer's rate goes on top (false).
+         */
+        public bool $samePriceEverywhere = true,
     ) {
+        foreach ([$shownInShop, $shownInCart] as $shown) {
+            if (!\in_array($shown, self::SHOWN, true)) {
+                throw new RuleViolation('Choose whether prices show with tax, without it, or as they are entered.', 'orillacart_invalid_tax_settings');
+            }
+        }
+        if (mb_strlen($priceSuffix) > self::SUFFIX_LENGTH || preg_match('/[<>\x00-\x1F]/', $priceSuffix) === 1) {
+            throw new RuleViolation(\sprintf('The text after prices is plain text of up to %d characters.', self::SUFFIX_LENGTH), 'orillacart_invalid_price_suffix');
+        }
         if (!\in_array($whenProviderFails, [self::SHOP_RATES, self::REFUSE], true)) {
             throw new RuleViolation('Choose what checkout does when the tax service cannot be reached.', 'orillacart_invalid_tax_settings');
         }
@@ -54,6 +76,12 @@ final readonly class TaxSettings
     public const string SHOP_RATES = 'shop_rates';
     /** Checkout asks the customer to try again: no order goes out with tax the service did not work out. */
     public const string REFUSE = 'refuse';
+
+    public const string AS_ENTERED = 'as_entered';
+    public const string WITH_TAX = 'with_tax';
+    public const string WITHOUT_TAX = 'without_tax';
+    public const array SHOWN = [self::AS_ENTERED, self::WITH_TAX, self::WITHOUT_TAX];
+    public const int SUFFIX_LENGTH = 80;
 
     /** A country's code and one of its states': "US-TX". */
     public const string REGION = '/^[A-Z]{2}-[A-Z0-9]{1,3}$/';
@@ -73,6 +101,14 @@ final readonly class TaxSettings
         return $location;
     }
 
+    /** Whether prices show with tax: in the cart and checkout, or in the catalog. */
+    public function showsTax(bool $inCart): bool
+    {
+        $shown = $inCart ? $this->shownInCart : $this->shownInShop;
+
+        return $shown === self::AS_ENTERED ? $this->pricesIncludeTax : $shown === self::WITH_TAX;
+    }
+
     public static function defaults(): self
     {
         return new self(TaxBasis::ShippingAddress, null);
@@ -82,6 +118,8 @@ final readonly class TaxSettings
     {
         return $this->basis === $other->basis && $this->defaultGroupId === $other->defaultGroupId && $this->pricesIncludeTax === $other->pricesIncludeTax
             && $this->reverseCharge === $other->reverseCharge && $this->roundsEachLine === $other->roundsEachLine && $this->originRegions === $other->originRegions
-            && $this->provider === $other->provider && $this->whenProviderFails === $other->whenProviderFails && $this->acceptsCertificates === $other->acceptsCertificates;
+            && $this->provider === $other->provider && $this->whenProviderFails === $other->whenProviderFails && $this->acceptsCertificates === $other->acceptsCertificates
+            && $this->shownInShop === $other->shownInShop && $this->shownInCart === $other->shownInCart && $this->priceSuffix === $other->priceSuffix
+            && $this->samePriceEverywhere === $other->samePriceEverywhere;
     }
 }

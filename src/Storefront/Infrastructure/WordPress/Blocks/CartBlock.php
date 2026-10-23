@@ -16,6 +16,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\Merchandise;
 use OrillaCart\Storefront\Infrastructure\WordPress\ProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
+use OrillaCart\Tax\Application\TaxCalculator;
 
 /**
  * The cart page: what is in the cart, changing quantities, the products the shop offers with them (cross-sells),
@@ -32,6 +33,7 @@ final readonly class CartBlock implements BlockDefinition
         private AddressChoices $addresses,
         private Merchandise $merchandise,
         private ProductCards $cards,
+        private TaxCalculator $taxes,
     ) {}
 
     public static function name(): string
@@ -65,6 +67,8 @@ final readonly class CartBlock implements BlockDefinition
             'coupons' => $priced->coupons ?? [],
             'discount' => $priced->discount ?? '0',
             'estimate' => $priced?->estimatedFor === null ? null : $priced,
+            // When the cart shows prices otherwise than they are entered: the lines and subtotal as checkout shows them.
+            'shown' => $priced !== null && $priced->pricesIncludeTax !== $this->taxes->pricesIncludeTax() && \count($priced->lines) >= \count($cart->lines) ? $priced : null,
             'estimated_for' => $priced?->estimatedFor === null ? null : $this->addresses->countryName($priced->estimatedFor),
             'product_urls' => $this->links->products($productIds),
             'links' => $links,

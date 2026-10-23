@@ -75,6 +75,29 @@ final readonly class Tax
     }
 
     /**
+     * What a customer pays for a price entered including tax, the tax in it being $taxes, at their address:
+     * - owing none of it (an export, or an exemption): the price without the tax in it: their address's rates for
+     *   the same price everywhere, otherwise the shop's;
+     * - owing it: the price as entered for the same price everywhere; otherwise the price before the shop's own
+     *   tax, with theirs on top.
+     *
+     * @param list<self> $taxes     at the customer's address
+     * @param list<self> $shopTaxes at the shop's own address
+     */
+    public static function asPaid(Money $price, array $taxes, array $shopTaxes, bool $samePrice): Money
+    {
+        if (array_all($taxes, static fn(self $tax): bool => $tax->exempt)) {
+            return self::without($price, $samePrice && $taxes !== [] ? array_map(static fn(self $tax): self => new self($tax->key, $tax->name, $tax->percent, $tax->compound, $tax->jurisdiction), $taxes) : $shopTaxes);
+        }
+        if ($samePrice) {
+            return $price;
+        }
+        $net = self::without($price, $shopTaxes);
+
+        return array_reduce(self::parts($net, $taxes), static fn(Money $sum, Money $part): Money => $sum->add($part), $net);
+    }
+
+    /**
      * An amount that includes the rates, without them.
      *
      * @param list<self> $taxes

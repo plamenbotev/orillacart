@@ -12,6 +12,7 @@ use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Tax\Application\TaxCalculator;
+use OrillaCart\Tax\Domain\TaxSettings;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
@@ -43,7 +44,9 @@ final class ShopExtension extends AbstractExtension
                 : ($number === 1 ? $single : $plural)),
             // {{ slot('product_after_form', product.id) }}: what add-ons print there (docs/extensions.md lists them)
             // Whether shop prices include tax, for the "incl. tax" next to them.
-            new TwigFunction('prices_include_tax', fn(): bool => $this->taxes?->pricesIncludeTax() ?? false),
+            new TwigFunction('prices_include_tax', fn(): bool => $this->taxes?->showsTax(false) ?? false),
+            // {{ price_suffix(offer) }}: what follows a catalog price: the shop's text, or "incl. tax"
+            new TwigFunction('price_suffix', $this->priceSuffix(...), ['is_safe' => ['html']]),
             new TwigFunction('slot', $this->slot(...), ['is_safe' => ['html'], 'is_variadic' => true]),
             // The currency switcher: {% for code in shop_currencies() %}, and the one the shopper is in.
             new TwigFunction('shop_currencies', fn(): array => $this->currencies?->codes() ?? [$this->settings->current()->currency]),
@@ -135,6 +138,41 @@ final class ShopExtension extends AbstractExtension
             : ($settings->currencySign !== '' ? $settings->currencySign : $settings->currency);
 
         return CurrencyPosition::from($settings->currencyPosition)->place($number, $sign);
+    }
+
+    /**
+     * What follows a catalog price (an offer or a variation, as ShownPrices showed it): the shop's text, with
+     * {price_including_tax} and {price_excluding_tax} as amounts; without one, "incl. tax" when prices show with
+     * tax, and "excl. tax" when the shop chose to show them without.
+     *
+     * @param array<string, mixed> $offer
+     */
+    public function priceSuffix(array $offer): string
+    {
+        if ($this->taxes === null) {
+            return '';
+        }
+        $text = $this->taxes->priceSuffix();
+        $withTax = $this->taxes->showsTax(false);
+        $escape = static fn(string $text): string => htmlspecialchars($text, \ENT_QUOTES | \ENT_SUBSTITUTE, 'UTF-8');
+        if ($text === '') {
+            if ($withTax) {
+                $text = \function_exists('__') ? __('incl. tax', 'orillacart') : 'incl. tax';
+            } elseif ($this->taxes->shownInShop() === TaxSettings::WITHOUT_TAX) {
+                $text = \function_exists('__') ? __('excl. tax', 'orillacart') : 'excl. tax';
+            } else {
+                return '';
+            }
+
+            return ' <small class="orillacart-price__tax">' . $escape($text) . '</small>';
+        }
+        $price = \is_string($offer['price'] ?? null) ? $offer['price'] : '0';
+        $amount = fn(string $key): string => $escape($this->money(\is_string($offer[$key] ?? null) ? $offer[$key] : $price));
+
+        return ' <small class="orillacart-price__tax">' . strtr($escape($text), [
+            '{price_including_tax}' => $amount('price_with_tax'),
+            '{price_excluding_tax}' => $amount('price_without_tax'),
+        ]) . '</small>';
     }
 
     /**

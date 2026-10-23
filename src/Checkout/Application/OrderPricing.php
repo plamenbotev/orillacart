@@ -159,6 +159,7 @@ final readonly class OrderPricing
         $settings = $this->settings->current();
         $decimals = $this->currencies->decimals($currency);
         $inclusive = $this->tax->pricesIncludeTax();
+        $samePrice = $this->tax->samePriceEverywhere();
         $bill = new Bill($decimals, $inclusive, $this->tax->roundsEachLine());
         // A customer's exemption covers the sale where it is taxed: the rates still apply, at nothing.
         $exemption = $reverseCharge ? null : $this->tax->exemption($customerId, $shipping, $billing);
@@ -189,9 +190,9 @@ final readonly class OrderPricing
             foreach ($quote->contents === [] ? [[$quote->taxable, $quote->taxGroupId, $quote->taxCode]] : array_map(static fn(QuotedBundleItem $item): array => [$item->taxable, $item->taxGroupId, $item->taxCode], $quote->contents) as $index => [$taxable, $groupId, $taxCode]) {
                 $taxes = $taxable && !$reverseCharge ? $this->taxes($groupId, $shipping, $billing, $exempt) : [];
                 $unit = $units[$index];
-                if ($inclusive && $taxable && $taxes === []) {
-                    // A price including tax, for a customer who owes none (an export): the shop's own tax comes off.
-                    $unit = Tax::without($unit, $this->shopTaxes($groupId));
+                if ($inclusive && $taxable) {
+                    // A price including tax: what this customer pays for it, as the shop chose (Tax::asPaid()).
+                    $unit = Tax::asPaid($unit, $taxes, $this->shopTaxes($groupId), $samePrice);
                 }
                 $parts[] = ['unit' => $unit, 'taxes' => $taxes, 'group' => $groupId, 'tax_code' => $taxCode];
             }
@@ -254,8 +255,8 @@ final readonly class OrderPricing
             foreach ($offered as $option) {
                 $taxes = $option->taxable && !$free && !$reverseCharge ? $this->taxes($option->taxGroupId, $shipping, $billing, $exempt) : [];
                 $price = $free ? Money::zero() : $this->currencies->amount(Money::of($option->price), $currency);
-                if ($inclusive && $option->taxable && $taxes === [] && !$free) {
-                    $price = Tax::without($price, $this->shopTaxes($option->taxGroupId));
+                if ($inclusive && $option->taxable && !$free) {
+                    $price = Tax::asPaid($price, $taxes, $this->shopTaxes($option->taxGroupId), $samePrice);
                 }
                 $tax = array_reduce(Tax::parts($price, $taxes, $inclusive), static fn(Money $sum, Money $part): Money => $sum->add($part->rounded($decimals)), Money::zero());
                 $total = $inclusive ? $price->rounded($decimals) : $price->rounded($decimals)->add($tax);
@@ -304,8 +305,8 @@ final readonly class OrderPricing
         foreach ($this->fees->of($query) as $fee) {
             $taxes = $fee['taxable'] && !$reverseCharge ? $this->taxes($fee['tax_group_id'], $shipping, $billing, $exempt) : [];
             $amount = $this->currencies->amount($fee['amount'], $currency);
-            if ($bill->includesTax() && $fee['taxable'] && $taxes === []) {
-                $amount = Tax::without($amount, $this->shopTaxes($fee['tax_group_id']));
+            if ($bill->includesTax() && $fee['taxable']) {
+                $amount = Tax::asPaid($amount, $taxes, $this->shopTaxes($fee['tax_group_id']), $this->tax->samePriceEverywhere());
             }
             $bill->addFee($fee['label'], $amount, $taxes);
             $asked[] = ['kind' => TaxRequestLine::FEE, 'code' => $fee['taxable'] ? $fee['tax_group_id'] : 'none', 'quantity' => 1, 'product' => null, 'sku' => null, 'tax_code' => null];
@@ -631,7 +632,7 @@ final readonly class OrderPricing
         );
     }
 
-    private static function tax(AppliedTaxView $tax, bool $exempt = false): Tax
+    public static function tax(AppliedTaxView $tax, bool $exempt = false): Tax
     {
         $place = $tax->jurisdiction;
 

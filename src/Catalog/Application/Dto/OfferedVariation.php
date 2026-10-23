@@ -29,5 +29,20 @@ final readonly class OfferedVariation
         public ?string $lowestPrice = null,
         /** For sale but none in stock: a visitor may ask to hear when it is back. */
         public bool $soldOut = false,
+        /** Once ShownPrices showed it: its price with and without tax. */
+        public ?string $priceWithTax = null,
+        public ?string $priceWithoutTax = null,
     ) {}
+
+    /**
+     * The variation with its prices as the shop shows them.
+     *
+     * @param \Closure(string): string $shown a price as shown
+     */
+    public function shown(\Closure $shown, string $withTax, string $withoutTax): self
+    {
+        $optional = static fn(?string $price): ?string => $price === null ? null : $shown($price);
+
+        return new self($this->id, $this->optionIds, $this->label, $this->sku, $shown($this->price), $optional($this->regularPrice), $this->forSale, $this->available, $this->onBackorder, $optional($this->lowestPrice), $this->soldOut, $withTax, $withoutTax);
+    }
 }

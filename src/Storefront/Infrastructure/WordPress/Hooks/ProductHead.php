@@ -11,6 +11,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\ProductGallery;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\ProductIdentifiers;
+use OrillaCart\Checkout\Application\ShownPrices;
 use OrillaCart\Reviews\Application\Dto\ReviewView;
 use OrillaCart\Reviews\Application\Reviews;
 use OrillaCart\Settings\Application\SettingsService;
@@ -38,6 +39,7 @@ final readonly class ProductHead
         private Reviews $reviews,
         private SettingsService $shop,
         private StorefrontSettingsService $settings,
+        private ShownPrices $shownPrices,
     ) {}
 
     public function __invoke(): void
@@ -47,7 +49,7 @@ final readonly class ProductHead
         }
         $id = get_queried_object_id();
         try {
-            $offer = $this->catalog->offer($id, $this->shopper->customerId());
+            $offer = $this->shownPrices->offer($this->catalog->offer($id, $this->shopper->customerId()), $this->shopper->customerId());
         } catch (ProductNotFound) {
             return;
         }

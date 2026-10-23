@@ -5,3 +5,4 @@
 {%- else -%}
     <span class="orillacart-price">{{ variation.price|money }}</span>
 {%- endif -%}
+{{- price_suffix(variation) -}}

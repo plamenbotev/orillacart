@@ -215,6 +215,7 @@ final readonly class ShopCatalog
                 $variations,
                 $downloads,
                 $priceHidden,
+                taxParts: [['taxable' => $details->taxable, 'group' => $details->taxGroupId, 'weight' => '1']],
             );
         }
 
@@ -242,6 +243,7 @@ final readonly class ShopCatalog
             $prices->tiers($own, $item($details->pricing), regular: $details->pricing->price()),
             lowestPrice: $regular === null ? null : ($lowest["product:{$product->id()}"] ?? null),
             soldOut: $sellable && $available === 0,
+            taxParts: [['taxable' => $details->taxable, 'group' => $details->taxGroupId, 'weight' => '1']],
         );
     }
 
@@ -287,6 +289,9 @@ final readonly class ShopCatalog
             [],
             array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $quote->contents ?? []),
             $choices === null ? $this->bundleChoices($bundle, $customerId) : [],
+            taxParts: $quote === null || $quote->contents === []
+                ? [['taxable' => $details->taxable, 'group' => $details->taxGroupId, 'weight' => '1']]
+                : array_map(static fn(QuotedBundleItem $item): array => ['taxable' => $item->taxable, 'group' => $item->taxGroupId, 'weight' => $item->price], $quote->contents),
         );
     }
 

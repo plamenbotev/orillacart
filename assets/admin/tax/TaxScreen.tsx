@@ -30,6 +30,7 @@ import {
 	saveTaxSettings,
 	type TaxGroup,
 	type TaxRate,
+	type PriceShown,
 	type TaxSettings,
 } from './api';
 import { NexusCard } from './NexusCard';
@@ -173,6 +174,17 @@ export function TaxScreen() {
 	);
 }
 
+function shownOptions(): { label: string; value: PriceShown }[] {
+	return [
+		{
+			label: __( 'As they are entered', 'orillacart' ),
+			value: 'as_entered',
+		},
+		{ label: __( 'With tax', 'orillacart' ), value: 'with_tax' },
+		{ label: __( 'Without tax', 'orillacart' ), value: 'without_tax' },
+	];
+}
+
 function SettingsCard( {
 	settings,
 	groups,
@@ -202,6 +214,12 @@ function SettingsCard( {
 	const [ certificates, setCertificates ] = useState(
 		settings.accepts_certificates
 	);
+	const [ shownInShop, setShownInShop ] = useState( settings.shown_in_shop );
+	const [ shownInCart, setShownInCart ] = useState( settings.shown_in_cart );
+	const [ suffix, setSuffix ] = useState( settings.price_suffix );
+	const [ samePrice, setSamePrice ] = useState(
+		settings.same_price_everywhere
+	);
 	const [ originRegions, setOriginRegions ] = useState(
 		settings.origin_regions.join( ', ' )
 	);
@@ -222,6 +240,10 @@ function SettingsCard( {
 				provider,
 				whenFails,
 				certificates,
+				shownInShop,
+				shownInCart,
+				suffix,
+				samePrice,
 			],
 			[
 				settings.basis,
@@ -233,6 +255,10 @@ function SettingsCard( {
 				settings.provider,
 				settings.when_provider_fails,
 				settings.accepts_certificates,
+				settings.shown_in_shop,
+				settings.shown_in_cart,
+				settings.price_suffix,
+				settings.same_price_everywhere,
 			]
 		)
 	);
@@ -250,6 +276,10 @@ function SettingsCard( {
 			provider,
 			when_provider_fails: whenFails,
 			accepts_certificates: certificates,
+			shown_in_shop: shownInShop,
+			shown_in_cart: shownInCart,
+			price_suffix: suffix,
+			same_price_everywhere: samePrice,
 		} )
 			.then( onSaved )
 			.catch( onError )
@@ -341,6 +371,75 @@ function SettingsCard( {
 						) }
 						checked={ includeTax }
 						onChange={ setIncludeTax }
+					/>
+					{ includeTax && (
+						<SelectControl
+							__next40pxDefaultSize
+							label={ __(
+								'For customers taxed at another rate',
+								'orillacart'
+							) }
+							value={ samePrice ? 'same' : 'net' }
+							options={ [
+								{
+									label: __(
+										'They pay the price as entered',
+										'orillacart'
+									),
+									value: 'same',
+								},
+								{
+									label: __(
+										'They pay the price before your tax, with theirs on top',
+										'orillacart'
+									),
+									value: 'net',
+								},
+							] }
+							help={ __(
+								'The same price everywhere is what EU customers expect; the tax in it is their country’s. Otherwise the price changes with their rate. A customer who owes no tax pays the price without it either way.',
+								'orillacart'
+							) }
+							onChange={ ( value ) =>
+								setSamePrice( value === 'same' )
+							}
+						/>
+					) }
+					<SelectControl
+						__next40pxDefaultSize
+						label={ __( 'Prices in the shop', 'orillacart' ) }
+						value={ shownInShop }
+						options={ shownOptions() }
+						onChange={ ( value ) =>
+							setShownInShop( value as PriceShown )
+						}
+					/>
+					<SelectControl
+						__next40pxDefaultSize
+						label={ __(
+							'Prices in the cart and checkout',
+							'orillacart'
+						) }
+						help={ __(
+							'Prices with tax are worked out at the customer’s saved address, or at your shop’s for visitors. The totals and the tax lines are the same either way.',
+							'orillacart'
+						) }
+						value={ shownInCart }
+						options={ shownOptions() }
+						onChange={ ( value ) =>
+							setShownInCart( value as PriceShown )
+						}
+					/>
+					<TextControl
+						__next40pxDefaultSize
+						label={ __( 'Text after prices', 'orillacart' ) }
+						help={ __(
+							'Such as “incl. VAT” or “{price_excluding_tax} excl. VAT”: {price_including_tax} and {price_excluding_tax} stand for the price with and without tax. Without text, prices with tax say “incl. tax”.',
+							'orillacart'
+						) }
+						maxLength={ 80 }
+						value={ suffix }
+						onChange={ setSuffix }
 					/>
 					<CheckboxControl
 						label={ __(

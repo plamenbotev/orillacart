@@ -20,6 +20,7 @@ use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\Bill;
+use OrillaCart\Checkout\Domain\BilledCharge;
 use OrillaCart\Checkout\Domain\BilledTax;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Discounts;
@@ -92,6 +93,7 @@ final readonly class CheckoutService
         private Newsletter $newsletter,
         private GiftCardPayments $giftCards,
         private Currencies $currencies,
+        private ShownPrices $shownPrices,
     ) {}
 
     /**
@@ -133,47 +135,57 @@ final readonly class CheckoutService
             $contents->coupons,
         );
         $coupons = [...$automatic, ...$coupons];
+        // The amounts shown with tax or without, as the shop chose for the cart and checkout; the totals stay.
+        $includesTax = $bill->includesTax();
+        $withTax = $this->shownPrices->cartShowsTax();
+        $lines = array_map(static fn(array $line): array => [$line, ...ShownPrices::line($line['quote']->unitPrice, $line['quantity'], (string) $line['total'], (string) $line['discount'], (string) $line['tax'], $includesTax, $withTax)], $priced['lines']);
+        $subtotal = $withTax === $includesTax ? $bill->subtotal() : array_reduce($lines, static fn(Money $sum, array $line): Money => $sum->add(Money::of($line[2])), Money::zero());
+        $discount = $withTax === $includesTax ? $bill->discount() : array_reduce($lines, static fn(Money $sum, array $line): Money => $sum->add(Money::of($line[3])), Money::zero());
 
         return new CheckoutView(
-            array_map(static fn(array $line): CheckoutLineView => new CheckoutLineView(
-                $line['quote']->name,
-                OrderPricing::options($line['quote']),
-                $line['quantity'],
-                $line['quote']->unitPrice,
-                (string) $line['total'],
-                (string) $line['tax'],
-                $line['quote']->shownBackorder($line['quantity']),
-                (string) $line['discount'],
-                array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
-                $line['gift'],
-                array_map(static fn(array $answer): array => ['label' => $answer['label'], 'answer' => $answer['answer']], $line['personalisation']),
-            ), $priced['lines']),
+            array_map(static function (array $shown): CheckoutLineView {
+                [$line, $unitPrice, $total, $discount] = $shown;
+
+                return new CheckoutLineView(
+                    $line['quote']->name,
+                    OrderPricing::options($line['quote']),
+                    $line['quantity'],
+                    $unitPrice,
+                    $total,
+                    (string) $line['tax'],
+                    $line['quote']->shownBackorder($line['quantity']),
+                    $discount,
+                    array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
+                    $line['gift'],
+                    array_map(static fn(array $answer): array => ['label' => $answer['label'], 'answer' => $answer['answer']], $line['personalisation']),
+                );
+            }, $lines),
             $priced['needs_shipping'],
             $priced['options'],
             $priced['chosen']?->id,
             !$due->isZero(),
             $due->isZero() ? [] : $methods,
             array_map(static fn(BilledTax $tax): CheckoutTaxView => new CheckoutTaxView($tax->name, $tax->percent, (string) $tax->items, (string) $tax->shipping, (string) $tax->total()), $bill->taxes()),
-            (string) $bill->subtotal(),
+            (string) $subtotal,
             (string) $bill->itemsTax(),
-            (string) $bill->shipping(),
+            (string) ShownPrices::amount((string) $bill->shipping(), (string) $bill->shippingTax(), $includesTax, $withTax),
             (string) $bill->shippingTax(),
             (string) $bill->total(),
             $currency,
             $this->customers->accountMode(),
             $pickupPoints = $this->pricing->pickupPoints($priced, $details->shippingCountry, $details->shippingPostcode),
             \in_array($details->pickupPoint, array_map(static fn(PickupPointView $point): string => $point->id, $pickupPoints), true) ? $details->pickupPoint : null,
-            (string) $bill->discount(),
+            (string) $discount,
             $coupons,
             $this->fields->asked(array_map(static fn(array $line): ItemQuote => $line['quote'], $priced['lines']), $priced['needs_shipping']),
-            $bill->includesTax(),
+            $withTax,
             $this->vatNumbers->asked(),
             $reverse->applies,
             $reverse->message,
             $estimatedFor,
             $priced['free_from'] === null ? null : (string) Money::of($priced['free_from'])->subtract($bill->subtotal()->subtract($bill->discount())),
             $due->isZero() ? null : $payment,
-            array_map(static fn(array $fee): CheckoutFeeView => new CheckoutFeeView($fee['label'], (string) $fee['amount']), $bill->fees()),
+            array_map(static fn(BilledCharge $fee): CheckoutFeeView => new CheckoutFeeView($fee->label, (string) ShownPrices::amount((string) $fee->amount, (string) $fee->tax(), $includesTax, $withTax)), $bill->charges(BilledCharge::FEE)),
             (string) $bill->feesTax(),
             $due->isZero() ? [] : $this->paymentFees($gateways, $base, $currency),
             $delivery = $priced['needs_shipping'] ? $this->deliveryDays->forOption($priced['chosen']?->id) : null,

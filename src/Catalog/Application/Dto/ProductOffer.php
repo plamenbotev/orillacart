@@ -47,7 +47,60 @@ final readonly class ProductOffer
         public ?string $lowestPrice = null,
         /** For sale but none in stock: a visitor may ask to hear when it is back. */
         public bool $soldOut = false,
+        /**
+         * @var list<array{taxable: bool, group: ?int, weight: string}> how its price is taxed: one part, or a bundle's
+         *      items, each weighing what it costs
+         */
+        public array $taxParts = [],
+        /** Once ShownPrices showed it: whether its prices include tax, and its price with and without. */
+        public ?bool $shownWithTax = null,
+        public ?string $priceWithTax = null,
+        public ?string $priceWithoutTax = null,
     ) {}
+
+    /**
+     * The offer with its prices as the shop shows them.
+     *
+     * @param \Closure(string): string                 $shown      a price as shown
+     * @param list<OfferedVariation>                  $variations shown already
+     */
+    public function shown(\Closure $shown, array $variations, bool $withTax, string $priceWithTax, string $priceWithoutTax): self
+    {
+        $optional = static fn(?string $price): ?string => $price === null ? null : $shown($price);
+
+        return new self(
+            $this->id,
+            $this->name,
+            $this->type,
+            $this->sku,
+            $shown($this->price),
+            $optional($this->regularPrice),
+            $optional($this->highestPrice),
+            $this->forSale,
+            $this->available,
+            $this->featured,
+            $this->attributes,
+            $variations,
+            $this->downloads,
+            $this->priceHidden,
+            $this->onBackorder,
+            array_map(static fn(array $tier): array => ['min_quantity' => $tier['min_quantity'], 'price' => $shown($tier['price'])], $this->tiers),
+            $this->contents,
+            array_map(static fn(array $item): array => [
+                'product_id' => $item['product_id'],
+                'name' => $item['name'],
+                'quantity' => $item['quantity'],
+                'optional' => $item['optional'],
+                'choices' => array_map(static fn(array $choice): array => ['id' => $choice['id'], 'name' => $choice['name'], 'for_sale' => $choice['for_sale'], 'price' => $optional($choice['price'])], $item['choices']),
+            ], $this->bundleChoices),
+            $optional($this->lowestPrice),
+            $this->soldOut,
+            $this->taxParts,
+            $withTax,
+            $priceWithTax,
+            $priceWithoutTax,
+        );
+    }
 
     /** Whether the product goes in the cart as it is, with no options to choose. */
     public function isSimple(): bool
