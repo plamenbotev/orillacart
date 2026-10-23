@@ -9,8 +9,6 @@ use OrillaCart\Catalog\Application\Dto\BulkEdit;
 use OrillaCart\Catalog\Application\Dto\ProductOffer;
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Application\ShopCatalog;
-use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
-use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -19,14 +17,13 @@ use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
- * WordPress's list of products, as the old one was: a picture, SKU, price and order beside each name, filters by
- * category and brand, and the price in quick edit (the order is there already). Bulk edit changes prices, sales
+ * WordPress's list of products, as the old one was: a picture, SKU, price and order beside each name (its filters
+ * are ProductListFilters'), and the price in quick edit (the order is there already). Bulk edit changes prices, sales
  * and stock (BulkEdits); "Duplicate" copies a product as a draft.
  */
 #[AsHook('manage_' . ProductPostType::NAME . '_posts_columns', method: 'columns', filter: true)]
 #[AsHook('manage_' . ProductPostType::NAME . '_posts_custom_column', method: 'column', arguments: 2)]
 #[AsHook('manage_edit-' . ProductPostType::NAME . '_sortable_columns', method: 'sortable', filter: true)]
-#[AsHook('restrict_manage_posts', method: 'filters')]
 #[AsHook('quick_edit_custom_box', method: 'quickEdit', arguments: 2)]
 #[AsHook('save_post_' . ProductPostType::NAME, method: 'saveQuickEdit', priority: 20)]
 #[AsHook('admin_enqueue_scripts', method: 'scripts')]
@@ -109,27 +106,6 @@ final class ProductList
     public function sortable(array $columns): array
     {
         return $columns + ['orillacart_order' => 'menu_order'];
-    }
-
-    public function filters(string $postType): void
-    {
-        if ($postType !== ProductPostType::NAME) {
-            return;
-        }
-        foreach ([ProductCategoryTaxonomy::NAME => __('All categories', 'orillacart'), ProductBrandTaxonomy::NAME => __('All brands', 'orillacart')] as $taxonomy => $all) {
-            $chosen = $_GET[$taxonomy] ?? '';
-            wp_dropdown_categories([
-                'taxonomy' => $taxonomy,
-                'name' => $taxonomy,
-                'value_field' => 'slug',
-                // "None" with an empty value, not "all": WordPress prints the "all" option only when there are terms.
-                'show_option_none' => $all,
-                'option_none_value' => '',
-                'hierarchical' => true,
-                'hide_empty' => false,
-                'selected' => \is_string($chosen) ? sanitize_title($chosen) : '',
-            ]);
-        }
     }
 
     public function quickEdit(string $column, string $postType): void

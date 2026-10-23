@@ -33,6 +33,21 @@ interface StockLevelRepository
      */
     public function atMost(int $quantity): array;
 
+    /**
+     * How many of each item active stockrooms, or the one given (active or not), hold in all; items without a
+     * level are left out.
+     *
+     * @return array<string, int> by item ("variation:12")
+     */
+    public function totals(?int $stockroomId = null): array;
+
+    /**
+     * The items an active stockroom, or the one given, owes: its level is below zero.
+     *
+     * @return list<StockItem>
+     */
+    public function itemsOwed(?int $stockroomId = null): array;
+
     public function add(StockLevel $level): void;
 
     public function remove(StockLevel $level): void;

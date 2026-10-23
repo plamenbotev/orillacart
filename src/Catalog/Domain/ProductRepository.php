@@ -65,6 +65,28 @@ interface ProductRepository
      */
     public function optionsWithIds(array $ids): array;
 
+    /**
+     * Ids of the products that meet every criterion given, in ascending order.
+     *
+     * @return list<int>
+     */
+    public function idsMatching(ProductCriteria $criteria): array;
+
+    /**
+     * What each product's stock rests on, bundles left out (their items' stock is theirs): a product with
+     * variations sells its variations, each with its own stock mode; one without sells itself.
+     *
+     * @return list<array{product: int, variation: ?int, mode: StockMode}>
+     */
+    public function stockedItems(): array;
+
+    /**
+     * The bundles, with their own stock modes: their stock is their items'.
+     *
+     * @return list<array{product: int, mode: StockMode, bundle: Bundle}> by id
+     */
+    public function bundles(): array;
+
     /** The highest low stock threshold a product or variation has; null when none has one. */
     public function highestLowStockThreshold(): ?int;
 

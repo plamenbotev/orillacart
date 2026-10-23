@@ -9,6 +9,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use OrillaCart\Inventory\Domain\Stock;
 use OrillaCart\Inventory\Domain\StockItem;
+use OrillaCart\Inventory\Domain\StockItemKind;
 use OrillaCart\Inventory\Domain\StockLevel;
 use OrillaCart\Inventory\Domain\StockLevelRepository;
 use OrillaCart\Shared\Persistence\Transactions;
@@ -43,6 +44,32 @@ final readonly class DoctrineStockLevelRepository implements StockLevelRepositor
             ->orderBy('l.id')
             ->getQuery()
             ->getResult();
+    }
+
+    public function totals(?int $stockroomId = null): array
+    {
+        $rows = $this->scoped($stockroomId)
+            ->select('l.itemKind AS kind, l.itemId AS id, SUM(l.quantity) AS total')
+            ->groupBy('l.itemKind, l.itemId')
+            ->getQuery()
+            ->getArrayResult();
+        $totals = [];
+        foreach ($rows as $row) {
+            if (!\is_array($row) || !is_numeric($row['id'] ?? null) || !is_numeric($row['total'] ?? null)) {
+                continue;
+            }
+            $kind = $row['kind'] instanceof StockItemKind ? $row['kind'] : StockItemKind::tryFrom(\is_string($row['kind']) ? $row['kind'] : '');
+            if ($kind !== null) {
+                $totals[(string) new StockItem($kind, (int) $row['id'])] = (int) $row['total'];
+            }
+        }
+
+        return $totals;
+    }
+
+    public function itemsOwed(?int $stockroomId = null): array
+    {
+        return $this->items($this->scoped($stockroomId)->andWhere('l.quantity < 0'));
     }
 
     public function add(StockLevel $level): void
@@ -92,6 +119,35 @@ final readonly class DoctrineStockLevelRepository implements StockLevelRepositor
 
         /** @var list<StockLevel> */
         return $query->getResult();
+    }
+
+    private function scoped(?int $stockroomId): QueryBuilder
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT l.itemKind AS kind, l.itemId AS id')
+            ->from(StockLevel::class, 'l')
+            ->join('l.stockroom', 's');
+
+        return $stockroomId === null
+            ? $query->where('s.active = true')
+            : $query->where('s.id = :stockroom')->setParameter('stockroom', $stockroomId);
+    }
+
+    /** @return list<StockItem> */
+    private function items(QueryBuilder $query): array
+    {
+        $items = [];
+        foreach ($query->getQuery()->getArrayResult() as $row) {
+            if (!\is_array($row) || !is_numeric($row['id'] ?? null)) {
+                continue;
+            }
+            $kind = $row['kind'] instanceof StockItemKind ? $row['kind'] : StockItemKind::tryFrom(\is_string($row['kind']) ? $row['kind'] : '');
+            if ($kind !== null) {
+                $items[] = new StockItem($kind, (int) $row['id']);
+            }
+        }
+
+        return $items;
     }
 
     /**

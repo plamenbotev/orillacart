@@ -83,6 +83,26 @@ final readonly class StockService
     }
 
     /**
+     * How many of each item active stockrooms, or the one given, hold in all: below zero when they owe it.
+     *
+     * @return array<string, int> by item ("variation:12"); items never stocked are left out
+     */
+    public function totals(?int $stockroomId = null): array
+    {
+        return $this->levels->totals($stockroomId);
+    }
+
+    /**
+     * The items sold below zero, by an active stockroom or the one given: owed to customers who ordered them.
+     *
+     * @return list<StockItemRef>
+     */
+    public function itemsOwed(?int $stockroomId = null): array
+    {
+        return array_map(static fn(StockItem $item): StockItemRef => new StockItemRef($item->kind->value, $item->id), $this->levels->itemsOwed($stockroomId));
+    }
+
+    /**
      * A page of the stock history, newest first, and how many movements match in all.
      *
      * @return array{list<MovementView>, int}

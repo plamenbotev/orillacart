@@ -8,12 +8,15 @@ use OrillaCart\Cart\Application\AbandonedCarts;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Infrastructure\Events\ForgetDeletedCustomers as ForgetDeletedCarts;
 use OrillaCart\Catalog\Application\DownloadService;
+use OrillaCart\Catalog\Application\LowStock;
 use OrillaCart\Catalog\Application\PriceHistory;
 use OrillaCart\Catalog\Application\PriceResolver;
 use OrillaCart\Catalog\Application\PriceRules;
+use OrillaCart\Catalog\Application\ProductFinder;
 use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Application\ShopCatalog;
+use OrillaCart\Catalog\Application\StockItemNames;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
 use OrillaCart\Catalog\Infrastructure\Events\ConvertMeasures as ConvertProductMeasures;
 use OrillaCart\Catalog\Infrastructure\Events\ForgetDeletedShippingClass;
@@ -232,6 +235,7 @@ final class TestShop
     public readonly InMemoryProductRepository $productRecords;
     public readonly ProductService $products;
     public readonly ShopCatalog $catalog;
+    public readonly ProductFinder $productFinder;
     public readonly StockService $stock;
     public readonly InMemoryStockMovements $stockMovements;
     public readonly StockroomService $stockrooms;
@@ -369,6 +373,7 @@ final class TestShop
         $this->quotes = $quotes;
         $this->priceHistory = new PriceHistory($this->pricePoints = new InMemoryPriceHistory(), $this->clock);
         $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $quotes, $this->priceHistory);
+        $this->productFinder = new ProductFinder($productRecords, $this->stock, new LowStock($productRecords, new StockItemNames($productRecords, $this->content), $this->stock, $this->stockrooms, $settings), $settings);
 
         $methodRecords = new InMemoryPaymentMethodRepository();
         $this->paymentRecords = new InMemoryPaymentRepository($this->transactions);

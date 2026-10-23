@@ -9,10 +9,16 @@ use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Catalog\Domain\Attribute;
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\AttributeSet;
+use OrillaCart\Catalog\Domain\Bundle;
 use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Catalog\Domain\ClaimedSku;
+use OrillaCart\Catalog\Domain\DownloadFile;
+use OrillaCart\Catalog\Domain\PriceVisibility;
 use OrillaCart\Catalog\Domain\Product;
+use OrillaCart\Catalog\Domain\ProductCriteria;
 use OrillaCart\Catalog\Domain\ProductRepository;
+use OrillaCart\Catalog\Domain\ProductType;
+use OrillaCart\Catalog\Domain\StockMode;
 use OrillaCart\Catalog\Domain\Variation;
 
 final readonly class DoctrineProductRepository implements ProductRepository
@@ -206,6 +212,123 @@ final readonly class DoctrineProductRepository implements ProductRepository
         sort($ids);
 
         return $ids;
+    }
+
+    public function idsMatching(ProductCriteria $criteria): array
+    {
+        $query = $this->entityManager->createQueryBuilder()->select('p.id')->from(Product::class, 'p')->orderBy('p.id');
+        $variations = 'SELECT 1 FROM ' . Variation::class . ' %1$s WHERE %1$s.product = p';
+        $anyVariation = static fn(string $alias, string $condition): string => \sprintf('EXISTS (' . $variations . ' AND (%2$s))', $alias, str_replace('{v}', $alias, $condition));
+        $noVariations = static fn(string $alias): string => 'NOT EXISTS (' . \sprintf($variations, $alias) . ')';
+        $onSale = '{v}.pricing.salePrice IS NOT NULL AND ({v}.pricing.saleFrom IS NULL OR {v}.pricing.saleFrom <= :now) AND ({v}.pricing.saleUntil IS NULL OR {v}.pricing.saleUntil > :now)';
+        $charged = 'CASE WHEN ' . $onSale . ' THEN {v}.pricing.salePrice ELSE {v}.pricing.price END';
+        $usesNow = false;
+
+        match ($criteria->kind) {
+            ProductCriteria::SHIPS => $query->andWhere('p.type = :type')->setParameter('type', ProductType::Physical->value),
+            ProductCriteria::DOES_NOT_SHIP => $query->andWhere('p.type = :type')->setParameter('type', ProductType::Virtual->value),
+            ProductCriteria::WITH_VARIATIONS => $query->andWhere(\sprintf('EXISTS (' . $variations . ')', 'kv')),
+            ProductCriteria::BUNDLE => $query->andWhere('p.bundle IS NOT NULL'),
+            ProductCriteria::WITH_DOWNLOADS => $query->andWhere('EXISTS (SELECT 1 FROM ' . DownloadFile::class . ' d WHERE d.product = p)'),
+            default => null,
+        };
+        switch ($criteria->shown) {
+            case ProductCriteria::FEATURED:
+                $query->andWhere('p.featured = true');
+                break;
+            case ProductCriteria::NOT_PURCHASABLE:
+                $query->andWhere('p.purchasable = false');
+                break;
+            case ProductCriteria::PRICE_HIDDEN:
+                $query->andWhere($criteria->shopHidesPrices ? 'p.priceVisibility IN (:hidden)' : 'p.priceVisibility = :hidden')
+                    ->setParameter('hidden', $criteria->shopHidesPrices ? [PriceVisibility::Hidden->value, PriceVisibility::Shop->value] : PriceVisibility::Hidden->value);
+                break;
+            case ProductCriteria::ON_SALE:
+                $query->andWhere('(' . str_replace('{v}', 'p', $onSale) . ') OR ' . $anyVariation('sv', $onSale));
+                $usesNow = true;
+                break;
+        }
+        foreach (['>=' => $criteria->minPrice, '<=' => $criteria->maxPrice] as $operator => $price) {
+            if ($price === null) {
+                continue;
+            }
+            $name = $operator === '>=' ? 'min' : 'max';
+            $query->andWhere(\sprintf('(%s AND %s %s :%s) OR %s', $noVariations($name . 'n'), str_replace('{v}', 'p', $charged), $operator, $name, $anyVariation($name . 'v', "{$charged} {$operator} :{$name}")))
+                ->setParameter($name, $price->toFixed());
+            $usesNow = true;
+        }
+        if ($criteria->shippingClass !== null) {
+            $criteria->shippingClass === 0
+                ? $query->andWhere('p.shippingClassId IS NULL')
+                : $query->andWhere('p.shippingClassId = :class')->setParameter('class', $criteria->shippingClass);
+        }
+        if ($criteria->attributeSet !== null) {
+            $query->andWhere(':set MEMBER OF p.sets')->setParameter('set', $criteria->attributeSet);
+        }
+        match ($criteria->missing) {
+            ProductCriteria::NO_SKU => $query->andWhere('p.sku IS NULL OR ' . $anyVariation('mv', '{v}.sku IS NULL')),
+            // A bundle priced by its items has no price of its own to miss.
+            ProductCriteria::NO_PRICE => $query->andWhere('(' . $noVariations('mn') . ' AND p.pricing.price = 0 AND (p.bundle IS NULL OR p.id IN (:fixed))) OR ' . $anyVariation('mv', '{v}.pricing.price = 0'))
+                ->setParameter('fixed', [0, ...array_column(array_filter($this->bundles(), static fn(array $row): bool => $row['bundle']->pricing === Bundle::FIXED), 'product')]),
+            // A variation without its own weight has its product's.
+            ProductCriteria::NO_WEIGHT => $query->andWhere('p.type = :type AND p.bundle IS NULL AND p.weight IS NULL')
+                ->andWhere($noVariations('mn') . ' OR ' . $anyVariation('mv', '{v}.weight IS NULL'))
+                ->setParameter('type', ProductType::Physical->value),
+            default => null,
+        };
+        if ($usesNow) {
+            $query->setParameter('now', $criteria->now, 'datetime_immutable');
+        }
+
+        return self::intList($query->getQuery()->getSingleColumnResult());
+    }
+
+    public function stockedItems(): array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('p.id AS product', 'v.id AS variation', 'p.stockMode AS productMode', 'v.stockMode AS variationMode')
+            ->from(Product::class, 'p')
+            ->leftJoin('p.variations', 'v')
+            ->where('p.bundle IS NULL')
+            ->orderBy('p.id')
+            ->addOrderBy('v.id')
+            ->getQuery()
+            ->getArrayResult();
+        $items = [];
+        foreach ($rows as $row) {
+            if (!\is_array($row) || !is_numeric($row['product'] ?? null)) {
+                continue;
+            }
+            $variation = is_numeric($row['variation'] ?? null) ? (int) $row['variation'] : null;
+            $mode = $variation === null ? $row['productMode'] : $row['variationMode'];
+            $mode = $mode instanceof StockMode ? $mode : StockMode::tryFrom(\is_string($mode) ? $mode : '');
+            if ($mode !== null) {
+                $items[] = ['product' => (int) $row['product'], 'variation' => $variation, 'mode' => $mode];
+            }
+        }
+
+        return $items;
+    }
+
+    public function bundles(): array
+    {
+        /** @var list<Product> $products */
+        $products = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Product::class, 'p')
+            ->where('p.bundle IS NOT NULL')
+            ->orderBy('p.id')
+            ->getQuery()
+            ->getResult();
+        $bundles = [];
+        foreach ($products as $product) {
+            $bundle = $product->bundle();
+            if ($bundle !== null) {
+                $bundles[] = ['product' => $product->id(), 'mode' => $product->details()->stockMode, 'bundle' => $bundle];
+            }
+        }
+
+        return $bundles;
     }
 
     public function findByVariation(int $variationId): ?Product

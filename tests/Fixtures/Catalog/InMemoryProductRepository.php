@@ -6,8 +6,13 @@ namespace OrillaCart\Tests\Fixtures\Catalog;
 
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\AttributeSet;
+use OrillaCart\Catalog\Domain\Bundle;
+use OrillaCart\Catalog\Domain\Pricing;
 use OrillaCart\Catalog\Domain\Product;
+use OrillaCart\Catalog\Domain\ProductCriteria;
 use OrillaCart\Catalog\Domain\ProductRepository;
+use OrillaCart\Catalog\Domain\ProductType;
+use OrillaCart\Catalog\Domain\Variation;
 
 final class InMemoryProductRepository implements ProductRepository
 {
@@ -139,6 +144,88 @@ final class InMemoryProductRepository implements ProductRepository
     public function optionsWithIds(array $ids): array
     {
         return array_values(array_filter($this->options(null, 0, PHP_INT_MAX)[0], static fn(AttributeOption $option): bool => \in_array($option->id(), $ids, true)));
+    }
+
+    public function idsMatching(ProductCriteria $criteria): array
+    {
+        $ids = [];
+        foreach ($this->products as $product) {
+            if (self::meets($product, $criteria)) {
+                $ids[] = $product->id();
+            }
+        }
+        sort($ids);
+
+        return $ids;
+    }
+
+    public function stockedItems(): array
+    {
+        $items = [];
+        $products = $this->products;
+        ksort($products);
+        foreach ($products as $product) {
+            if ($product->isBundle()) {
+                continue;
+            }
+            if (!$product->hasVariations()) {
+                $items[] = ['product' => $product->id(), 'variation' => null, 'mode' => $product->details()->stockMode];
+            }
+            foreach ($product->variations() as $variation) {
+                $items[] = ['product' => $product->id(), 'variation' => $variation->id(), 'mode' => $variation->stockMode()];
+            }
+        }
+
+        return $items;
+    }
+
+    public function bundles(): array
+    {
+        $bundles = [];
+        $products = $this->products;
+        ksort($products);
+        foreach ($products as $product) {
+            $bundle = $product->bundle();
+            if ($bundle !== null) {
+                $bundles[] = ['product' => $product->id(), 'mode' => $product->details()->stockMode, 'bundle' => $bundle];
+            }
+        }
+
+        return $bundles;
+    }
+
+    private static function meets(Product $product, ProductCriteria $criteria): bool
+    {
+        $details = $product->details();
+        $variations = $product->variations();
+        $sellable = $variations === [] ? [$details->pricing] : array_map(static fn(Variation $variation): Pricing => $variation->pricing(), $variations);
+        $any = static fn(\Closure $test): bool => array_filter($sellable, $test) !== [];
+        $onSale = static fn(Pricing $pricing): bool => $pricing->sale()?->isActiveAt($criteria->now) ?? false;
+
+        return match ($criteria->kind) {
+            ProductCriteria::SHIPS => $details->type === ProductType::Physical,
+            ProductCriteria::DOES_NOT_SHIP => $details->type === ProductType::Virtual,
+            ProductCriteria::WITH_VARIATIONS => $variations !== [],
+            ProductCriteria::BUNDLE => $product->isBundle(),
+            ProductCriteria::WITH_DOWNLOADS => $product->downloads() !== [],
+            default => true,
+        } && match ($criteria->shown) {
+            ProductCriteria::FEATURED => $details->featured,
+            ProductCriteria::NOT_PURCHASABLE => !$details->purchasable,
+            ProductCriteria::PRICE_HIDDEN => $details->priceVisibility->isHidden($criteria->shopHidesPrices),
+            ProductCriteria::ON_SALE => $onSale($details->pricing) || array_filter($variations, static fn(Variation $variation): bool => $onSale($variation->pricing())) !== [],
+            default => true,
+        } && ($criteria->minPrice === null || $any(static fn(Pricing $pricing): bool => $pricing->priceAt($criteria->now)->compare($criteria->minPrice) >= 0))
+        && ($criteria->maxPrice === null || $any(static fn(Pricing $pricing): bool => $pricing->priceAt($criteria->now)->compare($criteria->maxPrice) <= 0))
+        && ($criteria->shippingClass === null || $details->shippingClassId === ($criteria->shippingClass === 0 ? null : $criteria->shippingClass))
+        && ($criteria->attributeSet === null || array_filter($product->sets(), static fn(AttributeSet $set): bool => $set->id() === $criteria->attributeSet) !== [])
+        && match ($criteria->missing) {
+            ProductCriteria::NO_SKU => $details->sku === null || array_filter($variations, static fn(Variation $variation): bool => $variation->sku() === null) !== [],
+            ProductCriteria::NO_PRICE => $any(static fn(Pricing $pricing): bool => $pricing->price()->isZero()) && $product->bundle()?->pricing !== Bundle::SUM,
+            ProductCriteria::NO_WEIGHT => $details->type === ProductType::Physical && !$product->isBundle() && $details->weight === null
+                && ($variations === [] || array_filter($variations, static fn(Variation $variation): bool => $variation->weight() === null) !== []),
+            default => true,
+        };
     }
 
     public function highestLowStockThreshold(): ?int

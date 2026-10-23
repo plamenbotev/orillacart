@@ -33,6 +33,34 @@ final class InMemoryStockLevelRepository implements StockLevelRepository
         return array_values(array_filter($this->levels, static fn(StockLevel $level): bool => $level->quantity() <= $quantity && $level->stockroom()->isActive()));
     }
 
+    public function totals(?int $stockroomId = null): array
+    {
+        $totals = [];
+        foreach ($this->scoped($stockroomId) as $level) {
+            $totals[(string) $level->item()] = ($totals[(string) $level->item()] ?? 0) + $level->quantity();
+        }
+
+        return $totals;
+    }
+
+    public function itemsOwed(?int $stockroomId = null): array
+    {
+        $owed = [];
+        foreach ($this->scoped($stockroomId) as $level) {
+            if ($level->quantity() < 0) {
+                $owed[(string) $level->item()] = $level->item();
+            }
+        }
+
+        return array_values($owed);
+    }
+
+    /** @return list<StockLevel> */
+    private function scoped(?int $stockroomId): array
+    {
+        return array_values(array_filter($this->levels, static fn(StockLevel $level): bool => $stockroomId === null ? $level->stockroom()->isActive() : $level->stockroom()->id() === $stockroomId));
+    }
+
     public function add(StockLevel $level): void
     {
         $this->levels[] = $level;
