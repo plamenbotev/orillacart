@@ -56,7 +56,7 @@ use OrillaCart\Tax\Application\TaxCalculator;
  * A free gift that holds is added to the items, when it is for sale, and the order priced again with it.
  *
  * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, gift: bool, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
- * @phpstan-type Priced array{lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, free_from: ?string, ships_from: ?string}
+ * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, free_from: ?string, ships_from: ?string}
  */
 final readonly class OrderPricing
 {
@@ -136,6 +136,9 @@ final readonly class OrderPricing
         $decimals = $this->currencies->decimals($currency);
         $inclusive = $this->tax->pricesIncludeTax();
         $bill = new Bill($decimals, $inclusive, $this->tax->roundsEachLine());
+        // A customer's exemption covers the sale where it is taxed: the rates still apply, at nothing.
+        $exemption = $reverseCharge ? null : $this->tax->exemption($customerId, $shipping, $billing);
+        $exempt = $exemption !== null;
         $lines = [];
         $parcel = [];
         $taxesOf = [];
@@ -158,7 +161,7 @@ final readonly class OrderPricing
             $unitPrice = isset($line['unit_price']) ? Money::of($line['unit_price']) : $this->currencies->price(Money::of($quote->unitPrice), $currency);
             $units = self::shares($unitPrice, $quote->contents === [] ? [Money::of('1')] : array_map(static fn(QuotedBundleItem $item): Money => Money::of($item->price), $quote->contents));
             foreach ($quote->contents === [] ? [[$quote->taxable, $quote->taxGroupId]] : array_map(static fn(QuotedBundleItem $item): array => [$item->taxable, $item->taxGroupId], $quote->contents) as $index => [$taxable, $groupId]) {
-                $taxes = $taxable && !$reverseCharge ? $this->taxes($groupId, $shipping, $billing) : [];
+                $taxes = $taxable && !$reverseCharge ? $this->taxes($groupId, $shipping, $billing, $exempt) : [];
                 $unit = $units[$index];
                 if ($inclusive && $taxable && $taxes === []) {
                     // A price including tax, for a customer who owes none (an export): the shop's own tax comes off.
@@ -213,7 +216,7 @@ final readonly class OrderPricing
             $freeFrom = $free ? null : $inCurrency($this->shipping->freeFrom($query));
             $shipsFrom = $offered === [] ? $inCurrency($this->shipping->shipsFrom($query)) : null;
             foreach ($offered as $option) {
-                $taxes = $option->taxable && !$free && !$reverseCharge ? $this->taxes($option->taxGroupId, $shipping, $billing) : [];
+                $taxes = $option->taxable && !$free && !$reverseCharge ? $this->taxes($option->taxGroupId, $shipping, $billing, $exempt) : [];
                 $price = $free ? Money::zero() : $this->currencies->amount(Money::of($option->price), $currency);
                 if ($inclusive && $option->taxable && $taxes === [] && !$free) {
                     $price = Tax::without($price, $this->shopTaxes($option->taxGroupId));
@@ -243,19 +246,19 @@ final readonly class OrderPricing
                 $needsShipping ? $shipping?->country : $billing?->country,
                 $customerId,
                 $settings->currency,
-            ), $shipping, $billing, $reverseCharge, $currency);
+            ), $shipping, $billing, $reverseCharge, $currency, $exempt);
         }
 
-        return ['lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
+        return ['exemption' => $exemption === null ? null : ['reason' => $exemption->reason, 'certificate' => $exemption->certificate], 'lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
     }
 
     /**
      * Adds the order's fees to the bill, taxed as items of their tax group are.
      */
-    private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge, string $currency): void
+    private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge, string $currency, bool $exempt = false): void
     {
         foreach ($this->fees->of($query) as $fee) {
-            $taxes = $fee['taxable'] && !$reverseCharge ? $this->taxes($fee['tax_group_id'], $shipping, $billing) : [];
+            $taxes = $fee['taxable'] && !$reverseCharge ? $this->taxes($fee['tax_group_id'], $shipping, $billing, $exempt) : [];
             $amount = $this->currencies->amount($fee['amount'], $currency);
             if ($bill->includesTax() && $fee['taxable'] && $taxes === []) {
                 $amount = Tax::without($amount, $this->shopTaxes($fee['tax_group_id']));
@@ -364,6 +367,7 @@ final readonly class OrderPricing
                 (string) Money::of($before->taxable ?? '0')->add($tax->taxable),
                 (string) Money::of($before->amount ?? '0')->add($tax->amount),
                 $tax->tax->compound,
+                exempt: $tax->tax->exempt,
             );
         }
 
@@ -435,6 +439,18 @@ final readonly class OrderPricing
     }
 
     /**
+     * The customer's exemption from tax that covered the order, as it keeps it.
+     *
+     * @param Priced $priced
+     *
+     * @return array{reason: string, certificate: string}|null
+     */
+    public function exemption(array $priced): ?array
+    {
+        return $priced['exemption'];
+    }
+
+    /**
      * The coupons the order uses, as a quote shows them.
      *
      * @param Priced $priced
@@ -498,15 +514,15 @@ final readonly class OrderPricing
     /**
      * @return list<Tax>
      */
-    private function taxes(?int $groupId, ?TaxAddress $shipping, ?TaxAddress $billing): array
+    private function taxes(?int $groupId, ?TaxAddress $shipping, ?TaxAddress $billing, bool $exempt = false): array
     {
         return array_map(
-            self::tax(...),
+            static fn(AppliedTaxView $tax): Tax => self::tax($tax, $exempt),
             $this->tax->taxes(new TaxQuery($groupId, $shipping, $billing))->taxes,
         );
     }
 
-    private static function tax(AppliedTaxView $tax): Tax
+    private static function tax(AppliedTaxView $tax, bool $exempt = false): Tax
     {
         $place = $tax->jurisdiction;
 
@@ -516,6 +532,7 @@ final readonly class OrderPricing
             $tax->percent,
             $tax->compound,
             $place === null ? null : new TaxJurisdiction($place->country, $place->region, $place->level, $place->code, $place->name),
+            $exempt,
         );
     }
 
@@ -582,7 +599,7 @@ final readonly class OrderPricing
      */
     private function shopTaxes(?int $groupId): array
     {
-        return array_map(self::tax(...), $this->tax->shopTaxes($groupId)->taxes);
+        return array_map(static fn(AppliedTaxView $tax): Tax => self::tax($tax), $this->tax->shopTaxes($groupId)->taxes);
     }
 
     /**

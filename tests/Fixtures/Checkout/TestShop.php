@@ -138,6 +138,7 @@ use OrillaCart\Shipping\Domain\Event\ShippingClassDeleted;
 use OrillaCart\Shipping\Infrastructure\Events\ConvertMeasures as ConvertRateMeasures;
 use OrillaCart\Shipping\Infrastructure\Events\KeepShippedOrders;
 use OrillaCart\Tax\Application\TaxCalculator;
+use OrillaCart\Tax\Application\TaxExemptions;
 use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tax\Application\VatNumbers;
 use OrillaCart\Tax\Domain\TaxBasis;
@@ -205,6 +206,7 @@ use OrillaCart\Tests\Fixtures\Shipping\InMemoryConsignmentRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
 use OrillaCart\Tests\Fixtures\Shipping\MemoryRateCache;
 use OrillaCart\Tests\Fixtures\Tax\FakeVatRegistry;
+use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use OrillaCart\Tests\Fixtures\TemporaryPrivateFiles;
@@ -305,6 +307,7 @@ final class TestShop
     public readonly TestJobs $jobs;
     public readonly InMemorySentEmails $sentEmails;
     public readonly InMemoryAccounts $accounts;
+    public readonly TaxExemptions $taxExemptions;
     public readonly InMemoryPendingAccounts $pendingAccounts;
     public readonly RecordingAccountMail $accountMail;
     public readonly PaymentOptions $paymentOptions;
@@ -351,7 +354,9 @@ final class TestShop
         $taxGroupRecords = new InMemoryTaxGroupRepository();
         $this->taxSettings = new InMemoryTaxSettingsRepository(new TaxSettings(TaxBasis::ShippingAddress, null));
         $this->taxGroups = new TaxGroupService($taxGroupRecords, $this->taxSettings, $geography, $this->events);
-        $taxes = new TaxCalculator($taxGroupRecords, $this->taxSettings, $settings, $geography);
+        $this->accounts = new InMemoryAccounts();
+        $this->taxExemptions = new TaxExemptions(new InMemoryTaxExemptionRepository(), $this->accounts, $this->clock);
+        $taxes = new TaxCalculator($taxGroupRecords, $this->taxSettings, $settings, $geography, $this->taxExemptions);
 
         $carrierRecords = new InMemoryCarrierRepository();
         $classRecords = new InMemoryShippingClassRepository();
@@ -414,7 +419,6 @@ final class TestShop
         $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events);
         $this->downloads = new Downloads(new InMemoryDownloadGrantRepository($this->orderRecords), $this->files, $links, $this->clock, $this->logger);
         $this->events->addListener(DownloadRemoved::class, new ForgetRemovedDownloads($this->downloads)(...));
-        $this->accounts = new InMemoryAccounts();
         $this->customerSettings = new InMemoryCustomerSettingsRepository();
         $this->pendingAccounts = new InMemoryPendingAccounts();
         $this->accountMail = new RecordingAccountMail();

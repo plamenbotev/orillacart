@@ -458,6 +458,7 @@ final readonly class CheckoutService
             $delivery?->date,
             $delivery?->slot,
             $delivery?->key,
+            $this->pricing->exemption($priced),
         )), $gateway === null)));
         foreach ([...$this->failures->since($failed), ...$this->addressChecks->kept($billingAddress, $priced['needs_shipping'] && $command->shippingAddress !== null ? $shippingAddress : null)] as $failure) {
             $this->orders->note($order->number, $failure, false);

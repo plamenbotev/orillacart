@@ -9,6 +9,7 @@ use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Tax\Application\Dto\AppliedTaxesView;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
+use OrillaCart\Tax\Application\Dto\TaxExemptionView;
 use OrillaCart\Tax\Application\Dto\TaxQuery;
 use OrillaCart\Tax\Domain\AppliedTaxes;
 use OrillaCart\Tax\Domain\TaxGroupRepository;
@@ -25,7 +26,23 @@ final readonly class TaxCalculator
         private TaxSettingsRepository $settings,
         private SettingsService $shop,
         private GeographyService $geography,
+        private TaxExemptions $exemptions,
     ) {}
+
+    /**
+     * The customer's exemption that covers a sale to these addresses today, where its tax would be charged; null
+     * for a guest or a customer without one that holds there.
+     */
+    public function exemption(?int $customerId, ?TaxAddress $shipping, ?TaxAddress $billing): ?TaxExemptionView
+    {
+        if ($customerId === null) {
+            return null;
+        }
+        $shop = $this->shop->current();
+        $location = $this->settings->load()->locate($this->locate($shipping), $this->locate($billing), $this->locate(new TaxAddress($shop->shopCountry, $shop->shopState, $shop->shopPostcode)));
+
+        return $location === null ? null : $this->exemptions->covering($customerId, $location);
+    }
 
     public function taxes(TaxQuery $query): AppliedTaxesView
     {

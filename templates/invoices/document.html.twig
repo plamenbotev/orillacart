@@ -153,6 +153,7 @@
         {% endif %}
 
         {% if order.reverse_charge %}<p><strong>{{ __('Reverse charge: VAT to be accounted for by the customer (Article 196 of Directive 2006/112/EC).') }}</strong></p>{% endif %}
+        {% if order.tax_exemption %}<p><strong>{# translators: %s: the customer's exemption certificate's number -#}{{ __('Sold without tax under exemption certificate %s')|format(order.tax_exemption.certificate) }}</strong></p>{% endif %}
         {% if seller.bank_details %}<p class="note"><span class="label">{{ __('Bank details') }}</span><br>{{ seller.bank_details }}</p>{% endif %}
         {% if seller.footer %}<footer>{{ seller.footer }}</footer>{% endif %}
     </main>

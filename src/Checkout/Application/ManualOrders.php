@@ -140,6 +140,7 @@ final readonly class ManualOrders
                 $command->note,
                 [],
                 $bill->includesTax(),
+                taxExemption: $this->pricing->exemption($priced),
             ));
             // The shop's automatic discounts count their uses as at checkout; the shop enters no codes.
             $this->discounts->redeem($order->number, $priced['discounts']->coupons, $command->customerId, $command->email);

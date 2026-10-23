@@ -17,14 +17,18 @@ use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Application\Dto\TaxQuery;
 use OrillaCart\Tax\Application\Dto\UpdateTaxSettings;
 use OrillaCart\Tax\Application\TaxCalculator;
+use OrillaCart\Tax\Application\TaxExemptions;
 use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tax\Application\TaxSettingsService;
+use OrillaCart\Tests\Fixtures\Customers\InMemoryAccounts;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
+use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 
 final class TaxCalculatorTest extends TestCase
 {
@@ -49,7 +53,7 @@ final class TaxCalculatorTest extends TestCase
         $service->addRate($this->reduced, new SaveTaxRate('BG', null, '9', 'VAT'));
 
         $this->settings = new TaxSettingsService($taxSettings, $groups);
-        $this->calculator = new TaxCalculator($groups, $taxSettings, new SettingsService($shop, new RecordingDispatcher(), $geography), $geography);
+        $this->calculator = new TaxCalculator($groups, $taxSettings, new SettingsService($shop, new RecordingDispatcher(), $geography), $geography, new TaxExemptions(new InMemoryTaxExemptionRepository(), new InMemoryAccounts(), new MockClock()));
     }
 
     public function testARegionTaxingAtTheSellersAddressTaxesSalesWithinItThereAndOthersAtTheBuyers(): void
@@ -66,7 +70,7 @@ final class TaxCalculatorTest extends TestCase
         $service->addRate($group, new SaveTaxRate('US', 'TX', '1', 'Houston', postcodes: ['770*']));
         $service->addRate($group, new SaveTaxRate('US', 'CA', '7.25', 'California'));
         $settings = new TaxSettingsService($taxSettings, $groups);
-        $calculator = new TaxCalculator($groups, $taxSettings, new SettingsService($shop, new RecordingDispatcher(), $geography), $geography);
+        $calculator = new TaxCalculator($groups, $taxSettings, new SettingsService($shop, new RecordingDispatcher(), $geography), $geography, new TaxExemptions(new InMemoryTaxExemptionRepository(), new InMemoryAccounts(), new MockClock()));
         $houston = new TaxQuery($group, new TaxAddress('US', 'TX', '77002'));
         $california = new TaxQuery($group, new TaxAddress('US', 'CA', '90001'));
 

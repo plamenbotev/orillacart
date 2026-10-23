@@ -20,6 +20,8 @@ final readonly class Tax
         public bool $compound = false,
         /** Who it is owed to, as orders keep it per line and returns are filed. */
         public ?TaxJurisdiction $jurisdiction = null,
+        /** Not charged: the customer's exemption covers the sale; the bill still records what it was on. */
+        public bool $exempt = false,
     ) {}
 
     /**
@@ -35,7 +37,7 @@ final readonly class Tax
         if (!$included) {
             $parts = [];
             foreach ($taxes as $rate) {
-                $parts[] = ($rate->compound ? array_reduce($parts, static fn(Money $sum, Money $part): Money => $sum->add($part), $amount) : $amount)->percent($rate->percent);
+                $parts[] = $rate->exempt ? Money::zero() : ($rate->compound ? array_reduce($parts, static fn(Money $sum, Money $part): Money => $sum->add($part), $amount) : $amount)->percent($rate->percent);
             }
 
             return $parts;

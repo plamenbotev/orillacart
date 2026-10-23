@@ -230,9 +230,13 @@ final class Bill
         $parts = [];
         $on = [];
         foreach ($taxes as $index => $rate) {
+            $on[$rate->key] = $taxable[$index];
+            if ($rate->exempt) {
+                // Not charged: only what it was on is kept, for exempt sales.
+                continue;
+            }
             $this->base($rate)['on'][$kind] = ($this->base($rate)['on'][$kind] ?? Money::zero())->add($bases[$index]);
             $parts[$rate->key] = ($parts[$rate->key] ?? Money::zero())->add($exact[$index]);
-            $on[$rate->key] = $taxable[$index];
         }
         $this->charges[] = ['kind' => $kind, 'label' => $label, 'amount' => $amount, 'rates' => $taxes, 'parts' => $parts, 'taxable' => $on];
     }

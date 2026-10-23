@@ -21,6 +21,7 @@ use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
+use OrillaCart\Tax\Application\Dto\SaveTaxExemption;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tax\Domain\TaxBasis;
@@ -104,9 +105,21 @@ final class OrderMoneyTest extends TestCase
         self::assertSame('refunded', $order->status);
     }
 
-    private function place(): int
+    public function testAnExemptCustomerIsChargedNoTaxAndTheOrderKeepsWhatWasExempt(): void
     {
-        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10, quantity: 2))->newToken);
+        $buyer = $this->shop->accounts->add('reseller@example.com');
+        $this->shop->taxExemptions->add($buyer, new SaveTaxExemption('resale', 'CA-RESALE-7', ['US-CA']));
+
+        $order = $this->shop->orders->order($this->place($buyer));
+
+        self::assertSame(['0', '194', ['reason' => 'resale', 'certificate' => 'CA-RESALE-7']], [$order->tax, $order->total, $order->taxExemption]);
+        self::assertSame([['US-CA', '180', '0', true], ['CA-LA', '180', '0', true]], array_map(static fn(LineTaxView $tax): array => [$tax->code, (string) Money::of($tax->taxable), (string) Money::of($tax->amount), $tax->exempt], $order->lines[0]->taxes));
+        self::assertSame([], $order->taxes, 'no tax to list');
+    }
+
+    private function place(?int $customerId = null): int
+    {
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null, $customerId), new AddToCart(10, quantity: 2))->newToken, $customerId);
         $this->shop->checkout->applyCoupon($owner, new CouponCode('SPRING'));
         $address = new AddressData('Ada', 'Lovelace', '1 Main St', 'Los Angeles', '90012', 'US', '+1 213 000 0000', 'CA');
 

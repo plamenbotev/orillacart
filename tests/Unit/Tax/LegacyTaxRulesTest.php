@@ -10,17 +10,21 @@ use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Application\Dto\TaxQuery;
 use OrillaCart\Tax\Application\TaxCalculator;
+use OrillaCart\Tax\Application\TaxExemptions;
 use OrillaCart\Tax\Domain\Percentage;
 use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxGroup;
 use OrillaCart\Tax\Domain\TaxRateDetails;
 use OrillaCart\Tax\Domain\TaxSettings;
+use OrillaCart\Tests\Fixtures\Customers\InMemoryAccounts;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
+use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 
 /**
  * The rebuilt tax rules against what the old plugin returned on the same data (legacy-tax.json, recorded
@@ -90,6 +94,7 @@ final class LegacyTaxRulesTest extends TestCase
                     new GeographyService(new InMemoryCountryRepository()),
                 ),
                 new GeographyService(new InMemoryCountryRepository()),
+                new TaxExemptions(new InMemoryTaxExemptionRepository(), new InMemoryAccounts(), new MockClock()),
             );
             $result = $calculator->taxes(new TaxQuery(
                 $case['group'] === null ? null : $groupIds[$case['group']],
