@@ -17,8 +17,10 @@ use OrillaCart\Extension\Order\FindsOrders;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\OrderFilter;
+use OrillaCart\Extension\Order\OrderPrices;
 use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Payment\PaymentGateway;
+use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Extension\Tax\TaxProvider;
@@ -45,6 +47,9 @@ interface Registry
 
     /** Since version 2. */
     public function priceAdjuster(PriceAdjuster $adjuster): void;
+
+    /** Changes an order's prices as checkout prices it, after the coupons. Since version 9. */
+    public function orderAdjuster(OrderAdjuster $adjuster): void;
 
     /** Since version 2. */
     public function cartRule(CartRule $rule): void;
@@ -90,6 +95,9 @@ interface Registry
 
     /** Marks the shop's products for product filters. Since version 8. */
     public function products(): Products;
+
+    /** Changes the prices of orders the shop keeps on hold. Since version 9. */
+    public function orderPrices(): OrderPrices;
 
     /** Writes to the shop's log, where the shop manager looks when something went wrong. */
     public function log(): Log;

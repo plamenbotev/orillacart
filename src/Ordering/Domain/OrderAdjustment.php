@@ -56,6 +56,11 @@ class OrderAdjustment
         $this->reason = $adjustment->reason === null ? null : mb_substr($adjustment->reason, 0, 200);
     }
 
+    public function id(): ?int
+    {
+        return $this->id;
+    }
+
     public function line(): OrderLine
     {
         return $this->line;

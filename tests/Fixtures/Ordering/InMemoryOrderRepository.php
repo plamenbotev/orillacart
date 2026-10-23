@@ -18,6 +18,7 @@ final class InMemoryOrderRepository implements OrderRepository
 {
     private int $lastGrantId = 0;
     private int $lastNoteId = 0;
+    private int $lastAdjustmentId = 0;
 
     /** @var array<int, Order> */
     public array $orders = [];
@@ -280,6 +281,12 @@ final class InMemoryOrderRepository implements OrderRepository
             $id = new \ReflectionProperty($note, 'id');
             if ($id->getValue($note) === null) {
                 $id->setValue($note, ++$this->lastNoteId);
+            }
+        }
+        foreach ($order->adjustments() as $adjustment) {
+            $id = new \ReflectionProperty($adjustment, 'id');
+            if ($id->getValue($adjustment) === null) {
+                $id->setValue($adjustment, ++$this->lastAdjustmentId);
             }
         }
         foreach ($order->grants() as $grant) {

@@ -17,6 +17,7 @@ use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\OrderFilter;
 use OrillaCart\Extension\Payment\PaymentGateway;
+use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Extension\Tax\TaxProvider;
@@ -107,4 +108,9 @@ interface InstalledExtensions
      * @return list<TaxProvider>
      */
     public function taxProviders(): array;
+
+    /**
+     * @return list<OrderAdjuster>
+     */
+    public function orderAdjusters(): array;
 }

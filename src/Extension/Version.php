@@ -20,7 +20,8 @@ final class Version
      * PaymentBreakdown, an order's fees in its OrderSummary, checking addresses (AddressCheck), each parcel's number
      * of a BookedShipment. 6: mailing lists for the newsletter's sign-ups (MailingList). 7: the answers to the shop's product forms on
      * each OrderLine. 8: filters and searches of the Orders screen and the products list (OrderFilter, FindsOrders,
-     * ProductFilter, FindsProducts), and Orders::mark(). 9: tax services (TaxProvider).
+     * ProductFilter, FindsProducts), and Orders::mark(). 9: tax services (TaxProvider), changes to
+     * order prices at checkout (OrderAdjuster) and on orders on hold (OrderPrices).
      */
     public const int CURRENT = 9;
 }

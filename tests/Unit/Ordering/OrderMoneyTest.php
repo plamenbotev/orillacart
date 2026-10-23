@@ -7,12 +7,19 @@ namespace OrillaCart\Tests\Unit\Ordering;
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Checkout\Application\AddOnOrderPrices;
+use OrillaCart\Checkout\Application\Dto\AdjustOrderPrice;
 use OrillaCart\Checkout\Application\Dto\CouponCode;
+use OrillaCart\Checkout\Application\Dto\EditedItem;
+use OrillaCart\Checkout\Application\Dto\EditOrderItems;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Extension\Checkout\Fee;
 use OrillaCart\Extension\Checkout\FeeQuery;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Pricing\Adjustment;
+use OrillaCart\Extension\Pricing\AdjustmentQuery;
+use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
@@ -115,6 +122,56 @@ final class OrderMoneyTest extends TestCase
         self::assertSame(['0', '194', ['reason' => 'resale', 'certificate' => 'CA-RESALE-7']], [$order->tax, $order->total, $order->taxExemption]);
         self::assertSame([['US-CA', '180', '0', true], ['CA-LA', '180', '0', true]], array_map(static fn(LineTaxView $tax): array => [$tax->code, (string) Money::of($tax->taxable), (string) Money::of($tax->amount), $tax->exempt], $order->lines[0]->taxes));
         self::assertSame([], $order->taxes, 'no tax to list');
+    }
+
+    public function testTheShopChangesThePriceOfAnOrderOnHoldOrOfAnItemAndItsTaxFollows(): void
+    {
+        $number = $this->place();
+        self::assertSame('on_hold', $this->shop->orders->order($number)->status);
+
+        $order = $this->shop->editing->adjust($number, new AdjustOrderPrice('-30', 'Loyal customer', reason: 'Tenth order'), 7);
+        $lamp = $order->lines[0];
+        self::assertSame(['-20', '-30'], array_map(static fn($adjustment): string => $adjustment->amount, $lamp->adjustments), 'the coupon, then the shop\'s');
+        self::assertSame(['manual', '7', 'Loyal customer', 'order', 'Tenth order'], [$lamp->adjustments[1]->kind, $lamp->adjustments[1]->source, $lamp->adjustments[1]->label, $lamp->adjustments[1]->scope, $lamp->adjustments[1]->reason]);
+        self::assertSame(['150', '12.75', '177.94'], [(string) Money::of($lamp->total)->subtract(Money::of($lamp->discount)), $lamp->tax, $order->total], 'tax on 150 now');
+        self::assertContains('Loyal customer: -30 EUR on the whole order (Tenth order).', array_column($order->notes, 'text'));
+
+        $order = $this->shop->editing->adjust($number, new AdjustOrderPrice('5', 'Engraving by hand', 0), 7);
+        self::assertSame('155', (string) Money::of($order->lines[0]->total)->subtract(Money::of($order->lines[0]->discount)));
+
+        $order = $this->shop->editing->edit($number, new EditOrderItems([new EditedItem(10, 3, line: 0)], "rate:{$this->rate}"), 7);
+        self::assertSame(['-30', '-30', '5'], array_map(static fn($adjustment): string => $adjustment->amount, $order->lines[0]->adjustments), 'three lamps keep both changes; the coupon is priced again');
+
+        $manual = $order->lines[0]->adjustments[1];
+        self::assertNotNull($manual->id);
+        $order = $this->shop->editing->removeAdjustment($number, $manual->id, 7);
+        self::assertSame(['-30', '5'], array_map(static fn($adjustment): string => $adjustment->amount, $order->lines[0]->adjustments));
+    }
+
+    public function testAddOnsChangePricesAtCheckoutAndOnOrdersOnHold(): void
+    {
+        $this->shop->extensions->orderAdjusters[] = new class implements OrderAdjuster {
+            public function id(): string
+            {
+                return 'loyalty';
+            }
+
+            public function adjust(AdjustmentQuery $query): array
+            {
+                return [new Adjustment('Loyalty points', '-5', 0, '50 points')];
+            }
+        };
+        $number = $this->place();
+        $lamp = $this->shop->orders->order($number)->lines[0];
+        self::assertSame([['coupon', '-20'], ['add_on', '-5']], array_map(static fn($adjustment): array => [$adjustment->kind, $adjustment->amount], $lamp->adjustments));
+
+        new AddOnOrderPrices($this->shop->editing)->adjust($number, 'b2b_prices', 'Trade price', '-10');
+        $lamp = $this->shop->orders->order($number)->lines[0];
+        self::assertSame(['b2b_prices', '-10'], [$lamp->adjustments[2]->source, $lamp->adjustments[2]->amount]);
+
+        $this->shop->orders->markPaidByShop($number, '', 7);
+        $this->expectException(\InvalidArgumentException::class);
+        new AddOnOrderPrices($this->shop->editing)->adjust($number, 'b2b_prices', 'Too late', '-1');
     }
 
     private function place(?int $customerId = null): int

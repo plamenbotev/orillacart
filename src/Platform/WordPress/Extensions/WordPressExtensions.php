@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\WordPress\Extensions;
 
 use OrillaCart\Catalog\Application\AddOnProducts;
+use OrillaCart\Checkout\Application\AddOnOrderPrices;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
@@ -19,8 +20,10 @@ use OrillaCart\Extension\Order\FindsOrders;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\OrderFilter;
+use OrillaCart\Extension\Order\OrderPrices;
 use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Payment\PaymentGateway;
+use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Registry;
 use OrillaCart\Extension\Shipping\ShippingMethod;
@@ -75,6 +78,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $productSearches = [];
     /** @var array<string, TaxProvider> */
     private array $taxProviders = [];
+    /** @var array<string, OrderAdjuster> */
+    private array $orderAdjusters = [];
     private bool $collected = false;
     private bool $collecting = false;
 
@@ -82,6 +87,7 @@ final class WordPressExtensions implements Registry, InstalledExtensions
      * @param iterable<PaymentGateway> $builtInGateways
      * @param \Closure(): Orders        $orders          a closure: reading orders needs services that need this registry
      * @param \Closure(): Products      $products        a closure, as orders
+     * @param \Closure(): OrderPrices   $orderPrices     a closure, as orders
      */
     public function __construct(
         #[AutowireIterator(self::GATEWAY_TAG)]
@@ -91,6 +97,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         private readonly \Closure $orders,
         #[AutowireServiceClosure(AddOnProducts::class)]
         private readonly \Closure $products,
+        #[AutowireServiceClosure(AddOnOrderPrices::class)]
+        private readonly \Closure $orderPrices,
     ) {}
 
     public function version(): int
@@ -201,6 +209,18 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         if ($this->accepts('product search', $search->id(), $this->productSearches[$search->id()] ?? null, $search)) {
             $this->productSearches[$search->id()] = $search;
         }
+    }
+
+    public function orderAdjuster(OrderAdjuster $adjuster): void
+    {
+        if ($this->accepts('order adjuster', $adjuster->id(), $this->orderAdjusters[$adjuster->id()] ?? null, $adjuster)) {
+            $this->orderAdjusters[$adjuster->id()] = $adjuster;
+        }
+    }
+
+    public function orderPrices(): OrderPrices
+    {
+        return ($this->orderPrices)();
     }
 
     public function taxProvider(TaxProvider $provider): void
@@ -335,6 +355,13 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->taxProviders);
+    }
+
+    public function orderAdjusters(): array
+    {
+        $this->collect();
+
+        return array_values($this->orderAdjusters);
     }
 
     /**

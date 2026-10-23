@@ -70,6 +70,6 @@ final readonly class OrderLineView
     {
         $adjustment = $row->adjustment();
 
-        return new AdjustmentView($adjustment->kind, $adjustment->source, $adjustment->label, (string) $adjustment->amount, $adjustment->scope, $adjustment->freeShipping, $adjustment->reason);
+        return new AdjustmentView($adjustment->kind, $adjustment->source, $adjustment->label, (string) $adjustment->amount, $adjustment->scope, $adjustment->freeShipping, $adjustment->reason, $row->id());
     }
 }

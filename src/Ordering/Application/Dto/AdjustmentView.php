@@ -22,5 +22,7 @@ final readonly class AdjustmentView
         /** A coupon that made shipping free too. */
         public bool $freeShipping = false,
         public ?string $reason = null,
+        /** The order's record of it, to remove it by; null for one not saved yet. */
+        public ?int $id = null,
     ) {}
 }

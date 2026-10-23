@@ -22,6 +22,10 @@ use OrillaCart\Coupons\Application\Dto\DiscountItem;
 use OrillaCart\Coupons\Application\Dto\DiscountRequest;
 use OrillaCart\Extension\Checkout\FeeItem;
 use OrillaCart\Extension\Checkout\FeeQuery;
+use OrillaCart\Extension\FailsClosed;
+use OrillaCart\Extension\Pricing\AdjustedLine;
+use OrillaCart\Extension\Pricing\Adjustment;
+use OrillaCart\Extension\Pricing\AdjustmentQuery;
 use OrillaCart\Extension\Tax\TaxAddress as ExtensionTaxAddress;
 use OrillaCart\Extension\Tax\TaxLine;
 use OrillaCart\Extension\Tax\TaxRequest;
@@ -43,6 +47,8 @@ use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Domain\TaxJurisdiction;
+use OrillaCart\Shared\Extension\ExtensionFailures;
+use OrillaCart\Shared\Extension\InstalledExtensions;
 use OrillaCart\Shipping\Application\Dto\ParcelItem;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Shipping\Application\Dto\ShippingQuery;
@@ -55,6 +61,7 @@ use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Application\TaxServices;
 use OrillaCart\Tax\Application\TaxServiceUnavailable;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Prices items as an order: catalog prices, taxes at the customer's address, shipping, fees and the bill; and turns
@@ -64,7 +71,7 @@ use Psr\Clock\ClockInterface;
  * A free gift that holds is added to the items, when it is for sale, and the order priced again with it.
  *
  * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, gift: bool, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
- * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, free_from: ?string, ships_from: ?string}
+ * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, changes: array<int, list<AdjustmentView>>, free_from: ?string, ships_from: ?string}
  */
 final readonly class OrderPricing
 {
@@ -79,6 +86,9 @@ final readonly class OrderPricing
         private Currencies $currencies,
         private TaxServices $taxServices,
         private ClockInterface $clock,
+        private InstalledExtensions $extensions,
+        private LoggerInterface $logger,
+        private ExtensionFailures $failures,
     ) {}
 
     /**
@@ -93,6 +103,9 @@ final readonly class OrderPricing
      * @param int|null     $orderId    the order being priced again, when the shop edits it
      * @param bool         $reverseCharge a business in another EU country buys without VAT
      * @param string|null  $payment    the way to pay chosen, for its fee
+     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string}> $changes
+     *                                    changes to the prices besides coupons: the shop's or add-ons', for a line by
+     *                                    its index among the items, or for the whole order (line null)
      * @param string|null  $currency   what the order is priced in: the shop's prices converted, when it offers it;
      *                                 the shop's own currency when null. Unit prices given are in it already.
      *
@@ -100,13 +113,13 @@ final readonly class OrderPricing
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null, ?string $currency = null): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null, ?string $currency = null, array $changes = []): array
     {
         $currency ??= $this->settings->current()->currency;
-        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency);
+        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes);
         $gifts = $this->gifts($priced['discounts']->gifts, $customerId);
 
-        return $gifts === [] ? $priced : $this->priceItems([...$items, ...$gifts], $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency);
+        return $gifts === [] ? $priced : $this->priceItems([...$items, ...$gifts], $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes);
     }
 
     /**
@@ -136,11 +149,12 @@ final readonly class OrderPricing
     /**
      * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, gift?: bool, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
      *                                    extra: what the answers to the product's forms add to each item; personalisation: those answers
+     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string}> $changes
      * @param list<string> $codes
      *
      * @return Priced
      */
-    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment, string $currency): array
+    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment, string $currency, array $changes = []): array
     {
         $settings = $this->settings->current();
         $decimals = $this->currencies->decimals($currency);
@@ -199,9 +213,18 @@ final readonly class OrderPricing
             $this->currencies->rate($currency),
         ));
         $couponLines = self::roundedCoupons($discounts, \count($lines), $decimals);
-        $places = [];
         foreach ($lines as $index => $line) {
             $lines[$index]['discount'] = array_reduce($couponLines, static fn(Money $sum, array $taken): Money => $sum->add($taken[$index]), Money::zero());
+        }
+        $adjusted = $this->priceChanges($changes, $lines, $decimals, $currency, $customerId, $email, $orderId);
+        $places = [];
+        foreach ($lines as $index => $line) {
+            foreach ($adjusted[$index] ?? [] as $change) {
+                $lines[$index]['discount'] = $lines[$index]['discount']->subtract(Money::of($change->amount));
+            }
+            if ($lines[$index]['discount']->compare($lines[$index]['total']) > 0) {
+                throw new CheckoutRuleViolation(\sprintf('The changes to the price of %s take off more than it costs.', $lines[$index]['quote']->name), 'orillacart_invalid_price_change');
+            }
             $parts = $taxesOf[$index];
             $discountShares = self::shares($lines[$index]['discount'], array_map(static fn(array $part): Money => $part['total'], $parts));
             foreach ($parts as $part => ['total' => $partTotal, 'taxes' => $taxes, 'group' => $groupId]) {
@@ -266,7 +289,7 @@ final readonly class OrderPricing
             }
         }
 
-        return ['exemption' => $exemption === null ? null : ['reason' => $exemption->reason, 'certificate' => $exemption->certificate], 'lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
+        return ['exemption' => $exemption === null ? null : ['reason' => $exemption->reason, 'certificate' => $exemption->certificate], 'lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'changes' => $adjusted, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
     }
 
     /**
@@ -359,7 +382,7 @@ final readonly class OrderPricing
         foreach ($priced['lines'] as $index => $line) {
             $taken = $this->take($line['quote'], $line['quantity']);
             $charged = array_merge([], ...array_map(static fn(int $place): array => isset($items[$place]) ? $items[$place]->taxes : [], $line['places']));
-            $lines[] = $this->line($line, $taken, self::lineTaxes($charged), self::couponAdjustments($priced['discounts'], $priced['coupon_lines'], $index));
+            $lines[] = $this->line($line, $taken, self::lineTaxes($charged), [...self::couponAdjustments($priced['discounts'], $priced['coupon_lines'], $index), ...$priced['changes'][$index] ?? []]);
         }
 
         return $lines;
@@ -618,6 +641,94 @@ final readonly class OrderPricing
             $place === null ? null : new TaxJurisdiction($place->country, $place->region, $place->level, $place->code, $place->name),
             $exempt,
         );
+    }
+
+    /**
+     * The changes to the items' prices besides coupons, by item: the shop's and add-ons' given, and what the
+     * add-ons' order adjusters make now. One for the whole order is spread over the items by what they cost after
+     * the coupons, rounded to the currency so they add up to it.
+     *
+     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string}> $changes
+     * @param list<PricedLine> $lines
+     *
+     * @return array<int, list<AdjustmentView>>
+     *
+     * @throws CheckoutRuleViolation for a change to a line the order does not have, or an adjuster that failed closed
+     */
+    private function priceChanges(array $changes, array $lines, int $decimals, string $currency, ?int $customerId, ?string $email, ?int $orderId): array
+    {
+        if ($lines === []) {
+            return [];
+        }
+        $nets = array_map(static fn(array $line): Money => $line['total']->subtract($line['discount']), $lines);
+        foreach ($this->extensions->orderAdjusters() as $adjuster) {
+            $query = new AdjustmentQuery(
+                array_map(static fn(int $index, array $line): AdjustedLine => new AdjustedLine($index, $line['quote']->productId, $line['quote']->variationId, $line['quote']->name, $line['quantity'], (string) $nets[$index]), array_keys($lines), $lines),
+                $currency,
+                $customerId,
+                $email,
+                $orderId,
+            );
+            try {
+                $made = $adjuster->adjust($query);
+            } catch (\Throwable $e) {
+                $this->logger->error('The order adjuster {adjuster} failed: {message}', ['adjuster' => $adjuster->id(), 'message' => $e->getMessage(), 'exception' => $e]);
+                if ($adjuster instanceof FailsClosed) {
+                    throw new CheckoutRuleViolation('The prices could not be worked out just now. Try again in a moment.', 'orillacart_adjuster_failed');
+                }
+                $this->failures->record(\sprintf('The order adjuster %s failed; the order was priced without it.', $adjuster->id()), false);
+                continue;
+            }
+            foreach ($made as $adjustment) {
+                if (!$adjustment instanceof Adjustment || preg_match('/^-?\d{1,11}(\.\d{1,4})?$/', $adjustment->amount) !== 1 || ($adjustment->line !== null && !isset($lines[$adjustment->line])) || trim($adjustment->label) === '') {
+                    $this->logger->error('The order adjuster {adjuster} answered an adjustment that cannot be; it is left out.', ['adjuster' => $adjuster->id()]);
+                    continue;
+                }
+                $changes[] = ['kind' => PriceAdjustment::ADD_ON, 'source' => $adjuster->id(), 'label' => trim($adjustment->label), 'amount' => $adjustment->amount, 'line' => $adjustment->line, 'reason' => trim($adjustment->reason) === '' ? null : trim($adjustment->reason)];
+            }
+        }
+        $adjusted = [];
+        foreach ($changes as $change) {
+            $amount = Money::of($change['amount']);
+            if ($change['line'] !== null) {
+                if (!isset($lines[$change['line']])) {
+                    throw new CheckoutRuleViolation('The order has no such line to change the price of.', 'orillacart_invalid_price_change');
+                }
+                $adjusted[$change['line']][] = new AdjustmentView($change['kind'], $change['source'], $change['label'], (string) $amount->rounded($decimals), PriceAdjustment::LINE, false, $change['reason']);
+                continue;
+            }
+            foreach (self::spread($amount, $nets, $decimals) as $index => $share) {
+                if (!$share->isZero()) {
+                    $adjusted[$index][] = new AdjustmentView($change['kind'], $change['source'], $change['label'], (string) $share, PriceAdjustment::ORDER, false, $change['reason']);
+                }
+            }
+        }
+
+        return $adjusted;
+    }
+
+    /**
+     * An amount, above or below zero, shared over weights in the currency's decimals: rounded once, the cents
+     * rounding leaves to the shares that lost the most, so the shares add up to it.
+     *
+     * @param list<Money> $weights
+     *
+     * @return list<Money>
+     */
+    private static function spread(Money $amount, array $weights, int $decimals): array
+    {
+        $negative = $amount->isNegative();
+        $whole = ($negative ? Money::zero()->subtract($amount) : $amount)->rounded($decimals);
+        $exact = self::shares($whole, $weights === [] ? [Money::of('1')] : $weights);
+        $step = 10 ** (Money::DECIMALS - $decimals);
+        $floors = array_map(static fn(Money $part): int => intdiv($part->tenThousandths, $step) * $step, $exact);
+        $order = array_keys($exact);
+        usort($order, static fn(int $a, int $b): int => [$exact[$b]->tenThousandths - $floors[$b], $a] <=> [$exact[$a]->tenThousandths - $floors[$a], $b]);
+        for ($left = intdiv($whole->tenThousandths - array_sum($floors), $step), $i = 0; $left > 0 && $order !== []; --$left, ++$i) {
+            $floors[$order[$i % \count($order)]] += $step;
+        }
+
+        return array_values(array_map(static fn(int $share): Money => Money::fromTenThousandths($negative ? -$share : $share), $floors));
     }
 
     /**

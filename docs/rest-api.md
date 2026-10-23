@@ -1003,6 +1003,23 @@ Prices an order the shop is taking, before it creates it. POST, since the items 
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+### `POST /orders/{id}/adjustments`
+
+Changes the price of an order on hold, or of one of its items; its taxes are worked out again.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `amount` (string): required; matches `/^-?\d{1,11}(\.\d{1,4})?$/`; not equal to
+  - `label` (string): required; not empty; at most 200 characters
+  - `line` (int|null): 0 or more
+  - `reason` (string): at most 200 characters
+
+### `DELETE /orders/{id}/adjustments/{adjustment}`
+
+Takes a change to the price off an order on hold; one for the whole order goes from every item.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ### `POST /orders/{id}/anonymise`
 
 The customer asked to be forgotten: the order keeps its sums for the books, without their details.

@@ -27,7 +27,8 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
 - `$registry->version()` is the API's version (`OrillaCart\Extension\Version`): 2 since price adjusters, cart
   rules, checkout fields, order actions and `orders()` came; 4 since export columns; 5 since order fees and
   address checks; 6 since mailing lists; 7 since the answers to product forms on order lines; 8 since filters and
-  searches of the orders and products lists, and `products()`; 9 since tax services.
+  searches of the orders and products lists, and `products()`; 9 since tax services, order adjusters and
+  `orderPrices()`.
 - `$registry->log()` writes to the shop's log. Never log secrets or card data.
 - Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
 
@@ -188,6 +189,27 @@ shop makes by hand) refuses the order with `orillacart_prices_unavailable` and a
 
 The search index sorts and filters by the price a guest sees (`customerId` null). An adjuster whose answer
 changes with time, not only with the product, quantity and customer, has to have the products reindexed then.
+
+### Order prices
+
+A price adjuster prices one product. `OrillaCart\Extension\Pricing\OrderAdjuster` (version 9, registered with
+`$registry->orderAdjuster()`) prices the order as a whole: a loyalty discount on the basket, a price agreed with
+a business customer, a handling surcharge. `adjust(AdjustmentQuery $query)` gets the order's items
+(`AdjustedLine`: product, variation, name, quantity and what the line costs after its coupons, before tax), the
+currency, the customer and, when the shop edits an order, its number. Return `Adjustment`s: a label the
+customer and the invoice show, an amount below zero to lower the price, the line's index or null for the whole
+order (spread over its items, rounded so the shares add up), and a reason for the shop's records. The order
+keeps each one with your adjuster's id, and its tax is worked out on what is left, so it is filed right.
+
+An adjustment that takes off more than its line costs refuses checkout with `orillacart_invalid_price_change`;
+an adjuster that throws, or answers with something that is not a number, is logged and skipped, unless it
+implements `FailsClosed`.
+
+`$registry->orderPrices()->adjust($number, $source, $label, $amount, $line, $reason)` changes the price of an
+order later, such as when an ERP agrees a discount on an order waiting for a bank transfer. Only orders on
+hold change: a paid order keeps its prices, and money goes back by refunds. The order is priced again, its
+taxes with it, and its history says who changed it. The shop manager does the same on the order screen, and
+can take off the shop's and add-ons' changes there.
 
 ## Cart rules
 

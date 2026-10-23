@@ -66,6 +66,8 @@ export interface LineTax {
 
 /** A change to a line's price after its unit price; below zero when it lowered it. */
 export interface Adjustment {
+	/** Null on a quote, before the order is saved. */
+	id: number | null;
 	kind: 'coupon' | 'automatic' | 'manual' | 'add_on';
 	/** The coupon's code, the add-on's id, or the shop manager's user id. */
 	source: string;
@@ -512,6 +514,35 @@ export function editItems(
 			shipping_option: shippingOption,
 			pickup_point: pickupPoint,
 		},
+	} );
+}
+
+/** A change to the price of an order on hold: below zero to lower it; `line` is an item's place, null for the whole order. */
+export interface PriceChange {
+	amount: string;
+	label: string;
+	line: number | null;
+	reason: string;
+}
+
+export function adjustPrice(
+	id: number,
+	change: PriceChange
+): Promise< Order > {
+	return apiFetch< Order >( {
+		path: `${ BASE }/orders/${ id }/adjustments`,
+		method: 'POST',
+		data: change,
+	} );
+}
+
+export function removeAdjustment(
+	id: number,
+	adjustment: number
+): Promise< Order > {
+	return apiFetch< Order >( {
+		path: `${ BASE }/orders/${ id }/adjustments/${ adjustment }`,
+		method: 'DELETE',
 	} );
 }
 

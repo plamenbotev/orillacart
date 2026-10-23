@@ -17,6 +17,7 @@ use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\OrderFilter;
 use OrillaCart\Extension\Payment\PaymentGateway;
+use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Extension\Tax\TaxProvider;
@@ -56,6 +57,8 @@ final class FixedExtensions implements InstalledExtensions
     public array $productSearches = [];
     /** @var list<TaxProvider> */
     public array $taxProviders = [];
+    /** @var list<OrderAdjuster> */
+    public array $orderAdjusters = [];
 
     /**
      * @param list<PaymentGateway> $gateways
@@ -141,5 +144,10 @@ final class FixedExtensions implements InstalledExtensions
     public function taxProviders(): array
     {
         return $this->taxProviders;
+    }
+
+    public function orderAdjusters(): array
+    {
+        return $this->orderAdjusters;
     }
 }

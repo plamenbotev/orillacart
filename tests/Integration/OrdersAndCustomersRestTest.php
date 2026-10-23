@@ -148,10 +148,37 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame([], $orders->unpaidOnHold($now->modify('+1 hour'), $now->modify('+2 hours'), ['bank_transfer']));
     }
 
+    public function testTheShopChangesThePriceOfAnOrderOnHoldAndTakesTheChangeOff(): void
+    {
+        $order = $this->order([[$this->lamp, 1], [$this->guide, 1]]);
+        $this->actAs('administrator');
+        $path = "/orders/{$order['number']}/adjustments";
+
+        $lowered = $this->request('POST', $path, ['amount' => '-5', 'label' => 'Loyal customer', 'reason' => 'Asked by phone'], nonce: true);
+        self::assertSame(201, $lowered->get_status(), (string) wp_json_encode($lowered->get_data()));
+        self::assertSame('33', $this->data($lowered)['total'], '38 less 5, spread over both items');
+        $raised = $this->data($this->request('POST', $path, ['amount' => '2.50', 'label' => 'Gift wrap', 'line' => 1], nonce: true));
+        self::assertSame('35.5', $raised['total']);
+        foreach ([['amount' => '0', 'label' => 'Nothing'], ['amount' => '-5', 'label' => ''], ['amount' => '1e3', 'label' => 'X'], ['amount' => '-1', 'label' => 'X', 'line' => 7], ['amount' => '-99', 'label' => 'X', 'line' => 1]] as $refused) {
+            self::assertSame(422, $this->request('POST', $path, $refused, nonce: true)->get_status(), (string) wp_json_encode($refused));
+        }
+
+        $lines = $this->rows($raised['lines']);
+        $wrap = $this->rows($lines[1]['adjustments']);
+        $id = self::int(array_values(array_filter($wrap, static fn(array $adjustment): bool => $adjustment['label'] === 'Gift wrap'))[0]['id']);
+        $taken = $this->request('DELETE', "{$path}/{$id}", nonce: true);
+        self::assertSame(200, $taken->get_status(), (string) wp_json_encode($taken->get_data()));
+        self::assertSame('33', $this->data($taken)['total']);
+        self::assertSame(422, $this->request('DELETE', "{$path}/{$id}", nonce: true)->get_status(), 'gone already');
+
+        $this->request('POST', "/orders/{$order['number']}/paid", [], nonce: true);
+        self::assertSame(422, $this->request('POST', $path, ['amount' => '-1', 'label' => 'Late'], nonce: true)->get_status(), 'a paid order keeps its prices');
+    }
+
     public function testOnlyShopManagersWorkOrdersAndOnlyCustomersSeeTheirAccount(): void
     {
         $shop = [['GET', '/orders'], ['GET', '/orders/1'], ['PUT', '/orders/1/status'], ['PUT', '/orders/1/contact'], ['POST', '/orders/1/notes'],
-            ['PUT', '/orders/1/items'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['GET', '/customers/1'],
+            ['PUT', '/orders/1/items'], ['POST', '/orders/1/adjustments'], ['DELETE', '/orders/1/adjustments/1'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['GET', '/customers/1'],
             ['POST', '/customers/1/addresses'], ['PUT', '/customers/1/addresses/ab12cd34'], ['DELETE', '/customers/1/addresses/ab12cd34'], ['GET', '/customers/1/notes'], ['POST', '/customers/1/notes'], ['DELETE', '/customers/1/notes/1'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/newsletter-settings'], ['PUT', '/newsletter-settings'], ['GET', '/email-settings'],
             ['PUT', '/email-settings'], ['POST', '/products/1/downloads'], ['DELETE', '/products/1/downloads/1'], ['GET', '/download-storage'],
             ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1'], ['POST', '/orders'], ['POST', '/orders/quote'],

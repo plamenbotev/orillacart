@@ -22,6 +22,8 @@ import { orderUploadUrl } from '../shared/exports';
 import { useBusy } from '../shared/useBusy';
 import { useConfirm } from '../shared/useConfirm';
 import {
+	adjustPrice,
+	type Adjustment,
 	addNote,
 	anonymiseOrder,
 	changeContact,
@@ -37,6 +39,7 @@ import {
 	type Invoice,
 	markHandled,
 	markPaid,
+	removeAdjustment,
 	restockOrder,
 	type Order,
 	type PickupPoint,
@@ -180,6 +183,15 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 					order={ order }
 					onSaved={ done(
 						__( 'The items were changed.', 'orillacart' )
+					) }
+					onError={ fail }
+				/>
+			) }
+			{ order.status === 'on_hold' && (
+				<PriceChangesCard
+					order={ order }
+					onSaved={ done(
+						__( 'The price was changed.', 'orillacart' )
 					) }
 					onError={ fail }
 				/>
@@ -934,6 +946,191 @@ function StatusCard( { order, onSaved, onError }: CardProps ) {
 					}
 				>
 					{ __( 'Change status', 'orillacart' ) }
+				</Button>
+			</CardBody>
+		</Card>
+	);
+}
+
+/**
+ * The shop's and add-ons' changes to the price of an order on hold, and a form to add one, for the whole order
+ * (spread over its items) or one item: taxes are worked out again.
+ * @param props
+ * @param props.order
+ * @param props.onSaved
+ * @param props.onError
+ */
+function PriceChangesCard( { order, onSaved, onError }: CardProps ) {
+	const [ busy, run ] = useBusy();
+	const [ confirmation, confirm ] = useConfirm();
+	const [ amount, setAmount ] = useState( '' );
+	const [ label, setLabel ] = useState( '' );
+	const [ line, setLine ] = useState( '' );
+	const [ reason, setReason ] = useState( '' );
+	// A change to the whole order shows once, with its shares added up.
+	const changes: Array< {
+		adjustment: Adjustment;
+		total: number;
+		item: string | null;
+	} > = [];
+	order.lines.forEach( ( orderLine ) =>
+		( orderLine.adjustments ?? [] )
+			.filter(
+				( adjustment ) =>
+					adjustment.id !== null &&
+					( adjustment.kind === 'manual' ||
+						adjustment.kind === 'add_on' )
+			)
+			.forEach( ( adjustment ) => {
+				const same = changes.find(
+					( change ) =>
+						adjustment.scope === 'order' &&
+						change.item === null &&
+						change.adjustment.kind === adjustment.kind &&
+						change.adjustment.source === adjustment.source &&
+						change.adjustment.label === adjustment.label &&
+						change.adjustment.reason === adjustment.reason
+				);
+				if ( same !== undefined ) {
+					same.total += Number( adjustment.amount );
+					return;
+				}
+				changes.push( {
+					adjustment,
+					total: Number( adjustment.amount ),
+					item: adjustment.scope === 'order' ? null : orderLine.name,
+				} );
+			} )
+	);
+	const valid =
+		/^-?\d{1,11}(\.\d{1,4})?$/.test( amount.trim() ) &&
+		Number( amount ) !== 0 &&
+		label.trim() !== '';
+
+	return (
+		<Card className="orillacart-card">
+			{ confirmation }
+			<CardHeader>
+				<h2>{ __( 'Price changes', 'orillacart' ) }</h2>
+			</CardHeader>
+			<CardBody>
+				{ changes.map( ( { adjustment, total, item } ) => (
+					<Flex key={ adjustment.id } justify="space-between">
+						<FlexItem>
+							{ adjustment.label }:{ ' ' }
+							{ money( total.toFixed( 2 ), order.currency ) }{ ' ' }
+							<small>
+								{ item ?? __( 'whole order', 'orillacart' ) }
+								{ adjustment.kind === 'add_on' &&
+									` · ${ adjustment.source }` }
+								{ adjustment.reason !== null &&
+									adjustment.reason !== '' &&
+									` · ${ adjustment.reason }` }
+							</small>
+						</FlexItem>
+						<FlexItem>
+							<Button
+								variant="tertiary"
+								isDestructive
+								disabled={ busy }
+								onClick={ () =>
+									confirm(
+										sprintf(
+											/* translators: %s: the change's label */
+											__(
+												'Take "%s" off the price? The taxes are worked out again.',
+												'orillacart'
+											),
+											adjustment.label
+										),
+										() =>
+											run( () =>
+												removeAdjustment(
+													order.number,
+													adjustment.id ?? 0
+												)
+													.then( onSaved )
+													.catch( onError )
+											),
+										__( 'Take off', 'orillacart' )
+									)
+								}
+							>
+								{ __( 'Take off', 'orillacart' ) }
+							</Button>
+						</FlexItem>
+					</Flex>
+				) ) }
+				<p>
+					{ __(
+						'Lower or raise the price before the order is paid: below zero lowers it. The taxes follow.',
+						'orillacart'
+					) }
+				</p>
+				<TextControl
+					__next40pxDefaultSize
+					label={ __( 'Amount', 'orillacart' ) }
+					help={ __( 'Such as -5.00 or 2.50.', 'orillacart' ) }
+					value={ amount }
+					onChange={ setAmount }
+				/>
+				<TextControl
+					__next40pxDefaultSize
+					label={ __( 'What the customer sees', 'orillacart' ) }
+					value={ label }
+					maxLength={ 100 }
+					onChange={ setLabel }
+				/>
+				<SelectControl
+					__next40pxDefaultSize
+					label={ __( 'On', 'orillacart' ) }
+					value={ line }
+					options={ [
+						{
+							label: __(
+								'The whole order, spread over its items',
+								'orillacart'
+							),
+							value: '',
+						},
+						...order.lines.map( ( orderLine, index ) => ( {
+							label: `${ orderLine.quantity } × ${ orderLine.name }`,
+							value: String( index ),
+						} ) ),
+					] }
+					onChange={ setLine }
+				/>
+				<TextControl
+					__next40pxDefaultSize
+					label={ __( 'Why (for the shop’s records)', 'orillacart' ) }
+					value={ reason }
+					maxLength={ 200 }
+					onChange={ setReason }
+				/>
+				<Button
+					variant="secondary"
+					isBusy={ busy }
+					disabled={ busy || ! valid }
+					onClick={ () =>
+						run( () =>
+							adjustPrice( order.number, {
+								amount: amount.trim(),
+								label: label.trim(),
+								line: line === '' ? null : Number( line ),
+								reason: reason.trim(),
+							} )
+								.then( ( saved ) => {
+									setAmount( '' );
+									setLabel( '' );
+									setReason( '' );
+									setLine( '' );
+									onSaved( saved );
+								} )
+								.catch( onError )
+						)
+					}
+				>
+					{ __( 'Change the price', 'orillacart' ) }
 				</Button>
 			</CardBody>
 		</Card>
