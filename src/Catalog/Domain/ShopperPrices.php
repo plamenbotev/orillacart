@@ -8,7 +8,8 @@ use OrillaCart\Shared\Domain\Money;
 
 /**
  * The price rules as they hold for one shopper now. Each rule that holds gives a price for the quantity; the
- * lowest wins, and never more than the price itself, so rules never add up by surprise.
+ * lowest wins, and never more than the price itself, so rules never add up by surprise. Rules that say they combine
+ * then apply on top, in the order they were made, each only when it lowers the price.
  */
 final readonly class ShopperPrices
 {
@@ -25,17 +26,44 @@ final readonly class ShopperPrices
     /** The price of each of this many items. */
     public function price(Money $price, PricedItem $item, int $quantity = 1): Money
     {
+        return $this->priced($price, $item, $quantity)[0];
+    }
+
+    /**
+     * The price of each of this many items, and whether codes and automatic discounts still come off it: not when
+     * a rule that set it says they do not.
+     *
+     * @return array{Money, bool}
+     */
+    public function priced(Money $price, PricedItem $item, int $quantity = 1): array
+    {
         $best = $price;
+        $coupons = true;
+        $combining = [];
         foreach ($this->rules as $rule) {
-            if ($rule->holdsFor($item, $this->groups, $this->now)) {
-                $candidate = $rule->priceFor($price, $quantity);
-                if ($candidate !== null && $candidate->compare($best) < 0) {
-                    $best = $candidate;
-                }
+            if (!$rule->holdsFor($item, $this->groups, $this->now)) {
+                continue;
+            }
+            if ($rule->combines()) {
+                $combining[] = $rule;
+                continue;
+            }
+            $candidate = $rule->priceFor($price, $quantity);
+            if ($candidate !== null && $candidate->compare($best) < 0) {
+                $best = $candidate;
+                $coupons = $rule->goesWithCoupons();
+            }
+        }
+        usort($combining, static fn(PriceRule $a, PriceRule $b): int => $a->id() <=> $b->id());
+        foreach ($combining as $rule) {
+            $candidate = $rule->priceFor($best, $quantity);
+            if ($candidate !== null && $candidate->compare($best) < 0) {
+                $best = $candidate;
+                $coupons = $coupons && $rule->goesWithCoupons();
             }
         }
 
-        return $best;
+        return [$best, $coupons];
     }
 
     /**

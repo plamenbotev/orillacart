@@ -40,7 +40,19 @@ final readonly class ShopperPricing
      */
     public function price(Money $price, PricedItem $item, int $quantity = 1, ?int $variationId = null, ?Money $regular = null): Money
     {
-        return $this->adjusted($this->rules->price($price, $item, $quantity), $item->productId, $variationId, $quantity, $regular ?? $price)->rounded($this->decimals);
+        return $this->priced($price, $item, $quantity, $variationId, $regular)[0];
+    }
+
+    /**
+     * The price of each of this many items, and whether codes and automatic discounts still come off it.
+     *
+     * @return array{Money, bool}
+     */
+    public function priced(Money $price, PricedItem $item, int $quantity = 1, ?int $variationId = null, ?Money $regular = null): array
+    {
+        [$ruled, $coupons] = $this->rules->priced($price, $item, $quantity);
+
+        return [$this->adjusted($ruled, $item->productId, $variationId, $quantity, $regular ?? $price)->rounded($this->decimals), $coupons];
     }
 
     /**

@@ -28,6 +28,8 @@ final readonly class PriceRuleView
         public ?string $endsAt,
         public bool $withSales,
         public bool $active,
+        public bool $withCoupons = true,
+        public bool $combines = false,
     ) {}
 
     public static function fromRule(PriceRule $rule): self
@@ -44,6 +46,8 @@ final readonly class PriceRuleView
             $rule->endsAt()?->format(\DATE_ATOM),
             $rule->goesWithSales(),
             $rule->isActive(),
+            $rule->goesWithCoupons(),
+            $rule->combines(),
         );
     }
 }

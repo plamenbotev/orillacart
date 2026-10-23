@@ -13,6 +13,8 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveSale;
 use OrillaCart\Catalog\Domain\Event\PriceRulesChanged;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
+use OrillaCart\Checkout\Application\Dto\CouponCode;
+use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Customers\Application\Dto\SaveCustomerGroup;
 use OrillaCart\Customers\Application\Dto\SetCustomerGroups;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
@@ -81,6 +83,54 @@ final class PriceRulesTest extends TestCase
         self::assertSame('2', $this->unit(20, 1), 'half the sale price');
     }
 
+    public function testARuleThatCombinesTakesItsShareOffThePriceTheOthersGive(): void
+    {
+        $this->rule('Ten off', [new PriceTierData(1, 'percent', '10')]);
+        $this->rule('Twenty off', [new PriceTierData(1, 'percent', '20')], productIds: [10]);
+        $this->rule('Two off', [new PriceTierData(1, 'amount_off', '2')], combines: true);
+        $this->rule('Half off from 5', [new PriceTierData(5, 'percent', '50')], combines: true);
+
+        // 40 less 20 % is 32, less 2 is 30; the bulb: 5 less 10 % is 4.5, less 2 is 2.5.
+        self::assertSame(['30', '2.5'], [$this->unit(10, 1), $this->unit(20, 1)]);
+        self::assertSame('15', $this->unit(10, 5), 'half of 30 from 5');
+        self::assertSame([['min_quantity' => 1, 'price' => '30'], ['min_quantity' => 5, 'price' => '15']], $this->shop->catalog->offer(10)->tiers);
+
+        // A combining price of its own that is not lower leaves the price alone.
+        $this->rule('Thirty-five', [new PriceTierData(1, 'fixed_price', '35')], productIds: [10], combines: true);
+        self::assertSame('30', $this->unit(10, 1));
+    }
+
+    public function testARuleCanKeepCodesAndAutomaticDiscountsOffItsPrice(): void
+    {
+        $this->shop->coupons->create(new SaveCoupon('TEN', 'percent', '10', '10 % off'));
+        $this->rule('Trade price', [new PriceTierData(1, 'fixed_price', '30')], productIds: [10], withCoupons: false);
+
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        $this->shop->carts->add($owner, new AddToCart(20));
+        $summary = $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'));
+        self::assertSame(['0', '0.5'], [$summary->lines[0]->discount, $summary->lines[1]->discount], 'the lamp at its trade price keeps the code out; the bulb takes it');
+
+        $this->shop->coupons->create(new SaveCoupon('', 'order_amount', '5', '5 off', automatic: true, combines: true));
+        $summary = $this->shop->checkout->summary($owner, new CheckoutDetails());
+        self::assertSame('0', $summary->lines[0]->discount, 'nor does an automatic discount come off it');
+
+        $only = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        $this->expectExceptionMessage('This code does not apply to the items in your cart.');
+        $this->shop->checkout->applyCoupon($only, new CouponCode('TEN'));
+    }
+
+    public function testCodesComeOffWhenACombiningRuleThatKeepsThemOutDoesNotLowerThePrice(): void
+    {
+        $this->shop->coupons->create(new SaveCoupon('TEN', 'percent', '10', '10 % off'));
+        $this->rule('Ten off', [new PriceTierData(1, 'percent', '10')]);
+        $this->rule('Members from 3', [new PriceTierData(3, 'percent', '5')], combines: true, withCoupons: false);
+
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        self::assertSame('3.6', $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'))->lines[0]->discount, 'one lamp: the members\' rule does not price it');
+        $this->shop->carts->add($owner, new AddToCart(10, quantity: 2));
+        self::assertSame('0', $this->shop->checkout->summary($owner, new CheckoutDetails())->lines[0]->discount, 'three: it does');
+    }
+
     public function testARuleWaitsForItsDatesAndTheIndexLearnsWhenTheGuestPriceChanges(): void
     {
         $changed = 0;
@@ -104,9 +154,9 @@ final class PriceRulesTest extends TestCase
      * @param list<int>           $productIds
      * @param list<int>           $categoryIds
      */
-    private function rule(string $name, array $tiers, array $groupIds = [], array $productIds = [], array $categoryIds = [], bool $withSales = false, ?string $startsAt = null): void
+    private function rule(string $name, array $tiers, array $groupIds = [], array $productIds = [], array $categoryIds = [], bool $withSales = false, ?string $startsAt = null, bool $withCoupons = true, bool $combines = false): void
     {
-        $this->shop->priceRules->create(new SavePriceRule($name, $tiers, $groupIds, $productIds, $categoryIds, startsAt: $startsAt, withSales: $withSales));
+        $this->shop->priceRules->create(new SavePriceRule($name, $tiers, $groupIds, $productIds, $categoryIds, startsAt: $startsAt, withSales: $withSales, withCoupons: $withCoupons, combines: $combines));
     }
 
     private function unit(int $product, int $quantity, ?int $customer = null): string

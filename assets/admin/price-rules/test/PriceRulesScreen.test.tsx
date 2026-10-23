@@ -66,6 +66,14 @@ describe( 'PriceRulesScreen', () => {
 			screen.getByRole( 'button', { name: 'Add a price for more items' } )
 		);
 		await user.click(
+			screen.getByLabelText(
+				'Discount codes and automatic discounts still apply on top'
+			)
+		);
+		await user.click(
+			screen.getByLabelText( 'Combine with other price rules' )
+		);
+		await user.click(
 			screen.getByRole( 'button', { name: 'Save the rule' } )
 		);
 
@@ -81,6 +89,8 @@ describe( 'PriceRulesScreen', () => {
 				{ min_quantity: 1, kind: 'percent', value: '10' },
 				{ min_quantity: 10, kind: 'percent', value: '15' },
 			],
+			with_coupons: false,
+			combines: true,
 		} );
 	} );
 } );

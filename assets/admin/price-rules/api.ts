@@ -21,6 +21,10 @@ export interface PriceRuleFields {
 	/** It applies on top of a sale price too. */
 	with_sales: boolean;
 	active: boolean;
+	/** Codes and automatic discounts still come off the price it sets. */
+	with_coupons: boolean;
+	/** It applies on top of the price the other rules give, instead of competing with them. */
+	combines: boolean;
 }
 
 export interface PriceRule extends PriceRuleFields {
@@ -44,6 +48,8 @@ export const NEW_RULE: PriceRuleFields = {
 	ends_at: null,
 	with_sales: false,
 	active: true,
+	with_coupons: true,
+	combines: false,
 };
 
 const BASE = '/orillacart/v1';

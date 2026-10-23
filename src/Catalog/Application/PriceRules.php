@@ -76,7 +76,7 @@ final readonly class PriceRules
     }
 
     /**
-     * @return array{string, list<PriceTier>, list<int>, list<int>, list<int>, list<int>, ?\DateTimeImmutable, ?\DateTimeImmutable, bool, bool}
+     * @return array{string, list<PriceTier>, list<int>, list<int>, list<int>, list<int>, ?\DateTimeImmutable, ?\DateTimeImmutable, bool, bool, bool, bool}
      */
     private static function arguments(SavePriceRule $command): array
     {
@@ -94,6 +94,8 @@ final readonly class PriceRules
             $moment($command->endsAt),
             $command->withSales,
             $command->active,
+            $command->withCoupons,
+            $command->combines,
         ];
     }
 }

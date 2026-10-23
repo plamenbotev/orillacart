@@ -528,7 +528,8 @@ class Coupon
                 || array_intersect($line->brandIds, $this->brandIds) !== [];
             $excluded = \in_array($line->productId, $this->excludedProductIds, true)
                 || array_intersect($line->categoryIds, $this->excludedCategoryIds) !== []
-                || ($this->excludeSaleItems && $line->onSale);
+                || ($this->excludeSaleItems && $line->onSale)
+                || !$line->coupons;
             $gift = $this->kind === CouponKind::FreeGift && $line->productId === $this->giftProductId;
             if ($targeted && !$excluded && !$gift && !$line->total->isZero()) {
                 $matching[$index] = $line;

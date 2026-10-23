@@ -171,7 +171,7 @@ export function PriceRulesScreen() {
 			</h1>
 			<p>
 				{ __(
-					'Where several rules hold for an item, the shopper gets the lowest price. A rule leaves items on sale alone unless it says it goes with sales.',
+					'Where several rules hold for an item, the shopper gets the lowest price, then the rules that combine take their amount off it. A rule leaves items on sale alone unless it says it goes with sales; discount codes still apply on top unless it says they do not.',
 					'orillacart'
 				) }
 			</p>
@@ -613,6 +613,30 @@ function RuleForm( {
 						) }
 						checked={ fields.with_sales }
 						onChange={ ( value ) => set( 'with_sales', value ) }
+					/>
+					<CheckboxControl
+						label={ __(
+							'Discount codes and automatic discounts still apply on top',
+							'orillacart'
+						) }
+						help={ __(
+							'Turn off for a price that is already the best deal, such as a trade price.',
+							'orillacart'
+						) }
+						checked={ fields.with_coupons }
+						onChange={ ( value ) => set( 'with_coupons', value ) }
+					/>
+					<CheckboxControl
+						label={ __(
+							'Combine with other price rules',
+							'orillacart'
+						) }
+						help={ __(
+							'Off: when several rules apply, the lowest price wins. On: this rule takes its amount off the price the other rules give, such as 5% more for members on top of a sale rule.',
+							'orillacart'
+						) }
+						checked={ fields.combines }
+						onChange={ ( value ) => set( 'combines', value ) }
 					/>
 
 					<h3>{ __( 'When', 'orillacart' ) }</h3>

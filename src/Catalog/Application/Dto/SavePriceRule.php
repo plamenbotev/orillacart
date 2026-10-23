@@ -40,5 +40,9 @@ final readonly class SavePriceRule
         public ?string $endsAt = null,
         public bool $withSales = false,
         public bool $active = true,
+        /** Codes and automatic discounts still come off the price it sets. */
+        public bool $withCoupons = true,
+        /** It applies on top of the price the other rules give, instead of competing with them. */
+        public bool $combines = false,
     ) {}
 }

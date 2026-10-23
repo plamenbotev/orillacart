@@ -21,5 +21,7 @@ final readonly class DiscountItem
         public bool $onSale = false,
         public array $categoryIds = [],
         public array $brandIds = [],
+        /** Codes and automatic discounts may come off it: not when a price rule that set its price says so. */
+        public bool $coupons = true,
     ) {}
 }

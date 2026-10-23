@@ -10,7 +10,8 @@ use OrillaCart\Shared\Domain\Money;
 /**
  * A price of the shop's own making: for everyone or some customer groups, on the whole catalog or some products,
  * categories or brands, between dates, by how many items are bought. A rule that does not say it goes with sales
- * leaves items on sale alone.
+ * leaves items on sale alone. Rules compete, the lowest price winning, unless one says it combines: it then applies
+ * on top of the price the others give. A rule can keep codes and automatic discounts off the prices it sets.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'price_rules')]
@@ -59,6 +60,14 @@ class PriceRule
     #[ORM\Column]
     private bool $withSales;
 
+    /** Codes and automatic discounts still come off the price it sets. */
+    #[ORM\Column(options: ['default' => true])]
+    private bool $withCoupons = true;
+
+    /** It applies on top of the price the other rules give, instead of competing with them. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $combines = false;
+
     /**
      * @param list<int>       $groupIds
      * @param list<int>       $productIds
@@ -66,9 +75,9 @@ class PriceRule
      * @param list<int>       $brandIds
      * @param list<PriceTier> $tiers
      */
-    public function __construct(string $name, array $tiers, array $groupIds = [], array $productIds = [], array $categoryIds = [], array $brandIds = [], ?\DateTimeImmutable $startsAt = null, ?\DateTimeImmutable $endsAt = null, bool $withSales = false, bool $active = true)
+    public function __construct(string $name, array $tiers, array $groupIds = [], array $productIds = [], array $categoryIds = [], array $brandIds = [], ?\DateTimeImmutable $startsAt = null, ?\DateTimeImmutable $endsAt = null, bool $withSales = false, bool $active = true, bool $withCoupons = true, bool $combines = false)
     {
-        $this->change($name, $tiers, $groupIds, $productIds, $categoryIds, $brandIds, $startsAt, $endsAt, $withSales, $active);
+        $this->change($name, $tiers, $groupIds, $productIds, $categoryIds, $brandIds, $startsAt, $endsAt, $withSales, $active, $withCoupons, $combines);
     }
 
     /**
@@ -80,7 +89,7 @@ class PriceRule
      *
      * @throws CatalogRuleViolation
      */
-    public function change(string $name, array $tiers, array $groupIds = [], array $productIds = [], array $categoryIds = [], array $brandIds = [], ?\DateTimeImmutable $startsAt = null, ?\DateTimeImmutable $endsAt = null, bool $withSales = false, bool $active = true): void
+    public function change(string $name, array $tiers, array $groupIds = [], array $productIds = [], array $categoryIds = [], array $brandIds = [], ?\DateTimeImmutable $startsAt = null, ?\DateTimeImmutable $endsAt = null, bool $withSales = false, bool $active = true, bool $withCoupons = true, bool $combines = false): void
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
@@ -107,6 +116,8 @@ class PriceRule
         $this->endsAt = $endsAt;
         $this->withSales = $withSales;
         $this->active = $active;
+        $this->withCoupons = $withCoupons;
+        $this->combines = $combines;
     }
 
     /**
@@ -187,6 +198,16 @@ class PriceRule
     public function goesWithSales(): bool
     {
         return $this->withSales;
+    }
+
+    public function goesWithCoupons(): bool
+    {
+        return $this->withCoupons;
+    }
+
+    public function combines(): bool
+    {
+        return $this->combines;
     }
 
     /**

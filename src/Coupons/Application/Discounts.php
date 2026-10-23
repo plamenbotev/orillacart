@@ -97,7 +97,7 @@ final readonly class Discounts
             }
             $firstOrder ??= !$known || !$this->orders->hasOrdered($request->customerId, $email, $request->orderId);
             $basket = new Basket(
-                array_map(static fn(DiscountItem $item, Money $total): BasketLine => new BasketLine($item->productId, $item->quantity, $total, $item->onSale, $item->categoryIds, $item->brandIds), $request->items, $left),
+                array_map(static fn(DiscountItem $item, Money $total): BasketLine => new BasketLine($item->productId, $item->quantity, $total, $item->onSale, $item->categoryIds, $item->brandIds, $item->coupons), $request->items, $left),
                 $request->currency,
                 $request->country,
                 $request->customerId,

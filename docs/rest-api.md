@@ -1265,6 +1265,8 @@ Providers' notifications (webhooks). They carry no nonce: the gateway checks wit
   - `ends_at` (string|null): date time
   - `with_sales` (bool): default false
   - `active` (bool): default true
+  - `with_coupons` (bool): default true
+  - `combines` (bool): default false
 
 ### `PUT /price-rules/{id}`
 
@@ -1280,6 +1282,8 @@ Providers' notifications (webhooks). They carry no nonce: the gateway checks wit
   - `ends_at` (string|null): date time
   - `with_sales` (bool): default false
   - `active` (bool): default true
+  - `with_coupons` (bool): default true
+  - `combines` (bool): default false
 
 ### `DELETE /price-rules/{id}`
 

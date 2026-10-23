@@ -74,7 +74,7 @@ final readonly class ProductQuotes
         // The shop's price rules change the product's (or variation's) price; options add their amounts, and
         // their percentages of the price the shopper pays.
         $own = $pricing->priceAt($now);
-        $ruled = $this->prices->forShopper($request->customerId)->price($own, new PricedItem($product->id(), $onSale, $terms['categories'], $terms['brands']), max(1, $request->quantity), $configuration->variation?->id(), $pricing->price());
+        [$ruled, $coupons] = $this->prices->forShopper($request->customerId)->priced($own, new PricedItem($product->id(), $onSale, $terms['categories'], $terms['brands']), max(1, $request->quantity), $configuration->variation?->id(), $pricing->price());
         $unitPrice = array_reduce($configuration->options, static fn(Money $price, AttributeOption $option): Money => $price->add($option->adjustmentOn($ruled)), $ruled)->atLeastZero();
         $weight = $measures['weight'];
         $downloads = array_map(static fn(DownloadFile $file): QuotedDownload => new QuotedDownload($file->id(), $file->name(), $file->storageKey(), $file->mimeType()), $product->downloads());
@@ -94,6 +94,7 @@ final readonly class ProductQuotes
             foreach ($bundle->select($request->bundleChoices) as [$item, $variationId]) {
                 $quote = $this->quote(new QuoteRequest($item->productId, $this->signature($item->productId, $variationId), $item->quantity * max(1, $request->quantity), $request->customerId));
                 $forSale = $forSale && $quote->forSale;
+                $coupons = $coupons && $quote->coupons;
                 if ($quote->available !== null) {
                     $available = min($available ?? PHP_INT_MAX, intdiv(max(0, $quote->available), $item->quantity));
                 }
@@ -157,6 +158,7 @@ final readonly class ProductQuotes
             $contents,
             $bundle === null ? $backorderLimit : null,
             $details->taxCode,
+            $coupons,
         );
     }
 
