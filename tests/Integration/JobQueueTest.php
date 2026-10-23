@@ -125,9 +125,10 @@ final class JobQueueTest extends RestTestCase
         self::assertInstanceOf(\wpdb::class, $wpdb);
         $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_failed_jobs");
         $now = new \DateTimeImmutable();
+        // In a lane no handler serves, so WP-Cron's runner, which may be at work in the site meanwhile, leaves them.
         foreach (['41', '42'] as $order) {
-            $this->queue->push([new NewJob('mail', 'mail.order', ['order' => (int) $order, 'kind' => 'order_received'], "{$order}:order_received", $now)], $now);
-            $job = $this->queue->claim(['mail'], 1, 'one', $now, $now->modify('+5 minutes'))[0];
+            $this->queue->push([new NewJob('test', 'mail.order', ['order' => (int) $order, 'kind' => 'order_received'], "{$order}:order_received", $now)], $now);
+            $job = $this->queue->claim(['test'], 1, 'one', $now, $now->modify('+5 minutes'))[0];
             $this->queue->fail($job, 'The mail system refused it.', $now);
         }
         $this->actAs('administrator');
