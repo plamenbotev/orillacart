@@ -32,6 +32,7 @@ import {
 	saveAddress,
 	setCustomerGroups,
 } from './api';
+import { TaxExemptions } from './TaxExemptions';
 
 interface CustomerCardProps {
 	groups: CustomerGroup[];
@@ -42,7 +43,8 @@ interface CustomerCardProps {
 }
 
 /**
- * One customer: what they are worth to the shop, its notes about them, their groups and their address book.
+ * One customer: what they are worth to the shop, its notes about them, their tax exemptions, their groups and
+ * their address book.
  * @param props
  * @param props.groups
  * @param props.customer
@@ -79,6 +81,7 @@ export function CustomerCard( {
 			<CardBody>
 				<Value customer={ customer } />
 				<Notes customer={ customer } onError={ onError } />
+				<TaxExemptions customerId={ customer.id } onError={ onError } />
 				{ groups.length > 0 && (
 					<>
 						<h3>{ __( 'Customer groups', 'orillacart' ) }</h3>

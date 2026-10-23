@@ -154,6 +154,59 @@ export function removeNote( id: number, noteId: number ): Promise< unknown > {
 	} );
 }
 
+export const EXEMPTION_REASONS = [
+	'resale',
+	'nonprofit',
+	'government',
+	'other',
+] as const;
+
+/** A customer's exemption from tax, from the certificate they gave the shop. */
+export interface TaxExemption {
+	id: number;
+	customer_id: number;
+	reason: ( typeof EXEMPTION_REASONS )[ number ];
+	certificate: string;
+	/** Countries ("US") and states ("US-TX") it holds in; empty for everywhere. */
+	regions: string[];
+	/** Its last day, Y-m-d; null when it does not expire. */
+	expires_on: string | null;
+	note: string;
+	created_at: string;
+}
+
+export type TaxExemptionInput = Pick<
+	TaxExemption,
+	'reason' | 'certificate' | 'regions' | 'expires_on' | 'note'
+>;
+
+export function fetchTaxExemptions( id: number ): Promise< TaxExemption[] > {
+	return apiFetch< TaxExemption[] >( {
+		path: `${ BASE }/customers/${ id }/tax-exemptions`,
+	} );
+}
+
+export function addTaxExemption(
+	id: number,
+	exemption: TaxExemptionInput
+): Promise< TaxExemption > {
+	return apiFetch< TaxExemption >( {
+		path: `${ BASE }/customers/${ id }/tax-exemptions`,
+		method: 'POST',
+		data: exemption,
+	} );
+}
+
+export function removeTaxExemption(
+	id: number,
+	exemptionId: number
+): Promise< unknown > {
+	return apiFetch( {
+		path: `${ BASE }/customers/${ id }/tax-exemptions/${ exemptionId }`,
+		method: 'DELETE',
+	} );
+}
+
 export function fetchNewsletterSettings(): Promise< NewsletterSettings > {
 	return apiFetch< NewsletterSettings >( {
 		path: `${ BASE }/newsletter-settings`,

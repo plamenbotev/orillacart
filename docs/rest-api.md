@@ -591,6 +591,30 @@ The shop saves a new address in a customer's address book, or changes one.
   - `amount` (string): required; matches `/^-?\d{1,11}(\.\d{1,4})?$/`
   - `note` (string): required; not empty; at most 255 characters
 
+### `GET /customers/{id}/tax-exemptions`
+
+A customer's exemptions from tax, newest first.
+
+- Who: shop managers
+
+### `POST /customers/{id}/tax-exemptions`
+
+Records a customer's exemption from tax, from their certificate.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `reason` (string): required; one of resale, nonprofit, government, other
+  - `certificate` (string): required; not empty; at most 64 characters
+  - `regions` (array): at most 100 items
+  - `expires_on` (string|null): a date, Y-m-d
+  - `note` (string): at most 200 characters
+
+### `DELETE /customers/{id}/tax-exemptions/{exemption}`
+
+Removes a customer's exemption; orders it covered keep it.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ## /download-delivery
 
 ### `GET /download-delivery`

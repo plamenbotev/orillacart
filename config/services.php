@@ -234,8 +234,10 @@ use OrillaCart\Storefront\Infrastructure\WordPress\RenderedProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
 use OrillaCart\Tax\Application\VatRegistry;
+use OrillaCart\Tax\Domain\TaxExemptionRepository;
 use OrillaCart\Tax\Domain\TaxGroupRepository;
 use OrillaCart\Tax\Domain\TaxSettingsRepository;
+use OrillaCart\Tax\Infrastructure\Doctrine\DoctrineTaxExemptionRepository;
 use OrillaCart\Tax\Infrastructure\Doctrine\DoctrineTaxGroupRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\ViesVatRegistry;
@@ -315,6 +317,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CountryRepository::class, DoctrineCountryRepository::class);
     $services->alias(TaxGroupRepository::class, DoctrineTaxGroupRepository::class);
     $services->alias(TaxSettingsRepository::class, OptionTaxSettingsRepository::class);
+    $services->alias(TaxExemptionRepository::class, DoctrineTaxExemptionRepository::class);
     $services->alias(ProductRepository::class, DoctrineProductRepository::class);
     $services->alias(AttributeSetRepository::class, DoctrineAttributeSetRepository::class);
     $services->alias(FormRepository::class, DoctrineFormRepository::class);

@@ -89,7 +89,10 @@ describe( 'CustomerCard', () => {
 			if ( request.path.startsWith( '/orillacart/v1/countries' ) ) {
 				return Promise.resolve( [] );
 			}
-			if ( request.path.endsWith( '/notes' ) ) {
+			if (
+				request.path.endsWith( '/notes' ) ||
+				request.path.endsWith( '/tax-exemptions' )
+			) {
 				return Promise.resolve( [] );
 			}
 			return Promise.resolve( ADA );
@@ -150,6 +153,9 @@ describe( 'CustomerCard', () => {
 			const request = options as Request;
 			if ( request.path.endsWith( '/store-credit' ) ) {
 				return Promise.resolve( CREDIT );
+			}
+			if ( request.path.endsWith( '/tax-exemptions' ) ) {
+				return Promise.resolve( [] );
 			}
 			if ( request.path === '/orillacart/v1/customers/3/notes' ) {
 				return Promise.resolve(
