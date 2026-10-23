@@ -1,6 +1,7 @@
 # 42 · US sales tax, tax services, and how an order holds its prices
 
-Status: proposal for discussion (2026-10-23). Nothing is built. The questions at the end are for the user.
+Status: built (2026-10-23), PLAN item 110. The user left the decisions to me; they are at the end, with what
+was built differently from the proposal.
 
 The user asked:
 - whether the tax model supports US taxation;
@@ -179,13 +180,24 @@ There are no users, so the old order columns go and nothing is migrated. Estimat
 
 A US filing report by jurisdiction comes with A.
 
-## Questions for the user
+## Decisions and what was built
 
-1. **Model:** adopt A (order lines of every kind, plus `order_adjustments`, plus `order_taxes` per jurisdiction)?
-   It is the larger change but the one that makes everything after it compliant.
-2. **Tax service built in?** Build only the extension point and leave Avalara, TaxJar and Stripe Tax to add-ons,
-   or also ship one adapter (Stripe Tax is the simplest API)?
-3. **Per-state sourcing in the built-in rates:** worth adding (origin or destination per state), or do US shops
-   with several states use a service anyway?
-4. **Raising a paid order's price** (C, after payment): allowed through an extra payment document, or never:
-   a paid order only goes down by refunds?
+1. **Model A.** Orders hold lines of every kind (item, shipping, fee), each with its `order_adjustments` and its
+   `order_taxes` per jurisdiction (country, region, level, filing code, taxable, amount, refunded, exempt). The
+   order's totals are worked out from them; the old aggregate columns are gone (3d62dd7, a04d612). The Taxes
+   report sums them by jurisdiction and rate for returns (16668a2).
+2. **Tax services:** only the extension point, `TaxProvider` in extension API 9 (bdecbb2). The shop's own rates
+   stay the default, and the shop chooses what happens when the service fails: tax at the shop's rates with a
+   note, or refuse checkout. No adapter for a particular service ships with the shop.
+3. **Per-state sourcing:** built. Tax settings list the states that tax at the seller's address (62f30a9).
+4. **Raising a paid order's price:** not for now. Only orders on hold change price; a paid order goes down by
+   refunds and credit notes. An extra-payment document can come later, on the same adjustment rows.
+
+Differences from the proposal:
+- Prices change on orders **on hold**, as order editing already did, not on orders pending an online payment
+  (the customer may be paying the old amount at that moment).
+- The extension calls are `Registry::orderPrices()->adjust(...)` and the `OrderAdjuster` at checkout (691cb38).
+  Taking a change off is for the shop manager (REST and the order screen); an add-on adds a change of the other
+  sign.
+- Exemptions are kept per customer (e0bd0ae, c390e62), with the certificate's number, not its file, and apply at
+  checkout and when an order is edited. Setting one on a single order by hand is not built.
