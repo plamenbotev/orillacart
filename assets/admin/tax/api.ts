@@ -47,6 +47,8 @@ export interface TaxSettings {
 	when_provider_fails: 'shop_rates' | 'refuse';
 	/** The tax services add-ons offer. */
 	providers: { id: string; label: string }[];
+	/** Customers send their exemption certificates for the shop to check. */
+	accepts_certificates: boolean;
 }
 
 export type TaxSettingsInput = Omit< TaxSettings, 'bases' | 'providers' >;

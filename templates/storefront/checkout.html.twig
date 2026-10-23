@@ -17,6 +17,12 @@
         <p class="orillacart-notice orillacart-notice--error">{{ problem }}</p>
         {% if links.cart %}<p><a class="wp-element-button orillacart-button" href="{{ links.cart }}">{{ __('Back to the cart') }}</a></p>{% endif %}
     {% else %}
+        {% if exemption_states ?? false %}
+            <details class="orillacart-checkout__exemption">
+                <summary>{{ __('Buying without tax, for resale or as a nonprofit? Send your certificate') }}</summary>
+                {% include 'storefront/_tax_exemption_form.html.twig' with {prefix: 'checkout-exemption'} %}
+            </details>
+        {% endif %}
         <form class="orillacart-checkout__form" data-orillacart-checkout{{ address_checks ?? false ? ' data-orillacart-address-checks' }} novalidate>
             <div class="orillacart-checkout__details">
                 {{ slot('checkout_before_details') }}

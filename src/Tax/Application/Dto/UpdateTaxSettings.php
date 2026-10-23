@@ -31,5 +31,7 @@ final readonly class UpdateTaxSettings
         public ?string $provider = null,
         #[Assert\Choice(choices: [TaxSettings::SHOP_RATES, TaxSettings::REFUSE])]
         public string $whenProviderFails = TaxSettings::SHOP_RATES,
+        /** Customers send their exemption certificates for the shop to check. */
+        public bool $acceptsCertificates = false,
     ) {}
 }

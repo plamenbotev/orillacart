@@ -1,0 +1,23 @@
+{% extends 'emails/layout.html.twig' %}
+{#
+ # To the customer: the shop approved or refused their tax exemption certificate. first_name, account_url;
+ # exemption: certificate, regions, status ("approved" or "refused"), refusal.
+ #}
+{# translators: %s: site name -#}
+{% block subject %}{{ (exemption.status == 'approved' ? __('[%s] Your tax exemption certificate is approved') : __('[%s] Your tax exemption certificate was not approved'))|format(site_name) }}{% endblock %}
+{% block heading %}{{ exemption.status == 'approved' ? __('Your certificate is approved') : __('Your certificate was not approved') }}{% endblock %}
+{% block intro %}
+{# translators: %s: the customer's first name -#}
+<p>{{ __('Hello %s,')|format(first_name) }}</p>
+{% if exemption.status == 'approved' %}
+{# translators: %s: the certificate's number -#}
+<p>{{ __('Certificate %s is approved: your orders into its states are no longer taxed.')|format(exemption.certificate) }}</p>
+{% else %}
+{# translators: %s: the certificate's number -#}
+<p>{{ __('Certificate %s was not approved, so your orders are still taxed.')|format(exemption.certificate) }}</p>
+<p>{{ exemption.refusal }}</p>
+{% endif %}
+{% endblock %}
+{% block content %}
+<p><a href="{{ account_url }}" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;border-radius:4px;text-decoration:none;">{{ __('Go to your account') }}</a></p>
+{% endblock %}

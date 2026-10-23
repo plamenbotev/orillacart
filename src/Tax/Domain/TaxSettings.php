@@ -37,6 +37,8 @@ final readonly class TaxSettings
         public ?string $provider = null,
         /** When the service cannot be reached at checkout: SHOP_RATES to tax at the shop's own rates, or REFUSE. */
         public string $whenProviderFails = self::SHOP_RATES,
+        /** Customers send their exemption certificates, at checkout or in their account, for the shop to check. */
+        public bool $acceptsCertificates = false,
     ) {
         if (!\in_array($whenProviderFails, [self::SHOP_RATES, self::REFUSE], true)) {
             throw new RuleViolation('Choose what checkout does when the tax service cannot be reached.', 'orillacart_invalid_tax_settings');
@@ -80,6 +82,6 @@ final readonly class TaxSettings
     {
         return $this->basis === $other->basis && $this->defaultGroupId === $other->defaultGroupId && $this->pricesIncludeTax === $other->pricesIncludeTax
             && $this->reverseCharge === $other->reverseCharge && $this->roundsEachLine === $other->roundsEachLine && $this->originRegions === $other->originRegions
-            && $this->provider === $other->provider && $this->whenProviderFails === $other->whenProviderFails;
+            && $this->provider === $other->provider && $this->whenProviderFails === $other->whenProviderFails && $this->acceptsCertificates === $other->acceptsCertificates;
     }
 }

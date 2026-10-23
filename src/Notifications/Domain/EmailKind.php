@@ -51,6 +51,12 @@ enum EmailKind: string
     case RefundMade = 'refund_made';
     /** To the shop, daily when an item ran low since: what the stockrooms hold few of. */
     case LowStock = 'low_stock';
+    /** To the shop: a customer sent a tax exemption certificate to check. */
+    case ExemptionReceived = 'exemption_received';
+    /** To the customer: the shop approved or refused their tax exemption certificate. */
+    case ExemptionReviewed = 'exemption_reviewed';
+    /** To the customer, a month before: their tax exemption certificate runs out. */
+    case ExemptionExpiring = 'exemption_expiring';
 
     public function template(): string
     {
@@ -59,7 +65,7 @@ enum EmailKind: string
 
     public function isForShop(): bool
     {
-        return \in_array($this, [self::NewOrder, self::OrderAttention, self::PaymentFailed, self::RefundMade, self::LowStock], true);
+        return \in_array($this, [self::NewOrder, self::OrderAttention, self::PaymentFailed, self::RefundMade, self::LowStock, self::ExemptionReceived], true);
     }
 
     /** @return list<string> */
@@ -76,6 +82,6 @@ enum EmailKind: string
      */
     public static function resendable(): array
     {
-        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::RefundMade, self::OrderAttention, self::ReceiptLink, self::AccountWelcome, self::LowStock, self::BackInStock, self::CartReminder, self::GiftCard], true)), 'value');
+        return array_column(array_filter(self::cases(), static fn(self $kind): bool => !\in_array($kind, [self::CustomerNote, self::OrderRefunded, self::RefundMade, self::OrderAttention, self::ReceiptLink, self::AccountWelcome, self::LowStock, self::BackInStock, self::CartReminder, self::GiftCard, self::ExemptionReceived, self::ExemptionReviewed, self::ExemptionExpiring], true)), 'value');
     }
 }

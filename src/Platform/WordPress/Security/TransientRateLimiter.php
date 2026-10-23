@@ -31,6 +31,7 @@ final readonly class TransientRateLimiter implements RateLimiter
         'returns' => [10, 3600],
         'reviews' => [10, 3600],
         'form_uploads' => [20, 3600],
+        'tax_certificates' => [10, 3600],
     ];
 
     /**

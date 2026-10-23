@@ -199,5 +199,15 @@ Differences from the proposal:
 - The extension calls are `Registry::orderPrices()->adjust(...)` and the `OrderAdjuster` at checkout (691cb38).
   Taking a change off is for the shop manager (REST and the order screen); an add-on adds a change of the other
   sign.
-- Exemptions are kept per customer (e0bd0ae, c390e62), with the certificate's number, not its file, and apply at
-  checkout and when an order is edited. Setting one on a single order by hand is not built.
+- Exemptions are kept per customer (e0bd0ae, c390e62) and apply at checkout and when an order is edited. Setting
+  one on a single order by hand is not built.
+
+Closing the gaps (PLAN 111–116):
+- Each price change has its own key, so two alike stay two; an add-on's order adjuster is asked again at each
+  pricing instead of being kept (111).
+- Tax groups and products carry the tax code a service prices their goods by (113).
+- Economic nexus: Shop → Tax measures each US state's sales against thresholds the shop keeps (114).
+- Customers send certificates with a copy, at checkout or in their account, when the shop turns it on; the shop
+  approves or refuses them on the customer's page, and only approved ones exempt. The copy is kept in the shop's
+  private files; the customer hears the outcome, and again a month before the certificate runs out (115).
+- A tax service's answer is kept ten minutes for the same request (116).

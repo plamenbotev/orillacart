@@ -252,3 +252,41 @@ export function bindEmails( form: HTMLFormElement ): void {
 		);
 	} );
 }
+
+/**
+ * Sends a tax exemption certificate with its copy, from the account or checkout: the shop checks it and emails
+ * the customer. On the account page the list shows it once sent.
+ * @param form The certificate form.
+ */
+export function bindTaxExemption( form: HTMLFormElement ): void {
+	form.addEventListener( 'submit', async ( event ) => {
+		event.preventDefault();
+		clearErrors( form );
+		const result = await busy( form, () =>
+			api( 'POST', '/account/tax-exemptions', new FormData( form ) )
+		);
+		if ( result === null ) {
+			return;
+		}
+		if ( result.ok ) {
+			form.reset();
+			if ( form.hasAttribute( 'data-orillacart-reload' ) ) {
+				window.location.reload();
+				return;
+			}
+			showMessage(
+				form,
+				__(
+					'Sent. The shop checks it and emails you; this order is taxed until then.',
+					'orillacart'
+				)
+			);
+			return;
+		}
+		showMessage(
+			form,
+			failure( result, showErrors( form, result.violations ) ),
+			'error'
+		);
+	} );
+}

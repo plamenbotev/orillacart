@@ -42,6 +42,30 @@ class TaxExemption
     #[ORM\Column(length: self::MAX_NOTE_LENGTH)]
     private string $note;
 
+    #[ORM\Column(length: 20, enumType: ExemptionStatus::class)]
+    private ExemptionStatus $status = ExemptionStatus::Approved;
+
+    /** Why the shop refused it, for the customer. */
+    #[ORM\Column(length: self::MAX_NOTE_LENGTH, nullable: true)]
+    private ?string $refusal = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $reviewedAt = null;
+
+    /** The customer was told it runs out soon. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $remindedAt = null;
+
+    /** The copy of the certificate the customer sent, in the shop's private files: its key, name and type. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $fileKey = null;
+
+    #[ORM\Column(length: 200, nullable: true)]
+    private ?string $fileName = null;
+
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $fileType = null;
+
     /**
      * @param list<string> $regions countries and states it holds in; empty for everywhere
      */
@@ -116,12 +140,93 @@ class TaxExemption
         return $this->createdAt;
     }
 
+    public function status(): ExemptionStatus
+    {
+        return $this->status;
+    }
+
+    public function refusal(): ?string
+    {
+        return $this->refusal;
+    }
+
+    public function reviewedAt(): ?\DateTimeImmutable
+    {
+        return $this->reviewedAt;
+    }
+
+    public function remindedAt(): ?\DateTimeImmutable
+    {
+        return $this->remindedAt;
+    }
+
+    /** @return array{key: string, name: string, type: string}|null */
+    public function file(): ?array
+    {
+        return $this->fileKey === null ? null : ['key' => $this->fileKey, 'name' => $this->fileName ?? 'certificate', 'type' => $this->fileType ?? 'application/octet-stream'];
+    }
+
+    /** A certificate the customer sent, with its copy: it waits for the shop to check it. */
+    public function sentByCustomer(string $fileKey, string $fileName, string $fileType): void
+    {
+        $this->status = ExemptionStatus::Pending;
+        $this->fileKey = $fileKey;
+        $this->fileName = mb_substr($fileName, 0, 200);
+        $this->fileType = $fileType;
+    }
+
     /**
-     * Whether it holds for a sale taxed at the location on the day: not expired (it holds through its last day), and
+     * @throws RuleViolation for one that is not waiting
+     */
+    public function approve(\DateTimeImmutable $now): void
+    {
+        $this->review($now);
+        $this->status = ExemptionStatus::Approved;
+    }
+
+    /**
+     * @throws RuleViolation for one that is not waiting, or a reason too long
+     */
+    public function refuse(string $reason, \DateTimeImmutable $now): void
+    {
+        $reason = trim($reason);
+        if ($reason === '' || mb_strlen($reason) > self::MAX_NOTE_LENGTH) {
+            throw new RuleViolation(\sprintf('Tell the customer why, in up to %d characters.', self::MAX_NOTE_LENGTH), 'orillacart_invalid_exemption');
+        }
+        $this->review($now);
+        $this->status = ExemptionStatus::Refused;
+        $this->refusal = $reason;
+    }
+
+    public function reminded(\DateTimeImmutable $now): void
+    {
+        $this->remindedAt = $now;
+    }
+
+    /** It runs out within the days given from today, and the customer was not told yet. */
+    public function expiresSoon(\DateTimeImmutable $today, int $days): bool
+    {
+        return $this->status === ExemptionStatus::Approved && $this->remindedAt === null && $this->expiresOn !== null
+            && $this->expiresOn->format('Y-m-d') >= $today->format('Y-m-d') && $this->expiresOn->format('Y-m-d') <= $today->modify("+{$days} days")->format('Y-m-d');
+    }
+
+    private function review(\DateTimeImmutable $now): void
+    {
+        if ($this->status !== ExemptionStatus::Pending) {
+            throw new RuleViolation('The certificate was checked already.', 'orillacart_exemption_reviewed');
+        }
+        $this->reviewedAt = $now;
+    }
+
+    /**
+     * Whether it holds for a sale taxed at the location on the day: approved, not expired (it holds through its last day), and
      * for that country or state.
      */
     public function covers(TaxLocation $location, \DateTimeImmutable $on): bool
     {
+        if ($this->status !== ExemptionStatus::Approved) {
+            return false;
+        }
         if ($this->expiresOn !== null && $on->format('Y-m-d') > $this->expiresOn->format('Y-m-d')) {
             return false;
         }

@@ -1,0 +1,38 @@
+{#
+ # The form a signed-in customer sends a tax exemption certificate with, and its copy. exemption_states: the US
+ # states, code and name; prefix: makes the fields' ids unique on the page.
+ #}
+<form class="orillacart-tax-exemption" data-orillacart-tax-exemption{{ reload ?? false ? ' data-orillacart-reload' }} enctype="multipart/form-data" novalidate>
+    <p class="orillacart-field">
+        <label for="{{ prefix }}-reason">{{ __('Why you buy without tax') }}</label>
+        <select id="{{ prefix }}-reason" name="reason" data-orillacart-field="reason" required>
+            <option value="resale">{{ __('To sell again (resale certificate)') }}</option>
+            <option value="nonprofit">{{ __('A nonprofit organisation') }}</option>
+            <option value="government">{{ __('A government body') }}</option>
+            <option value="other">{{ __('Another exemption') }}</option>
+        </select>
+    </p>
+    <p class="orillacart-field">
+        <label for="{{ prefix }}-certificate">{{ __('Certificate number') }}</label>
+        <input id="{{ prefix }}-certificate" name="certificate" maxlength="64" required data-orillacart-field="certificate">
+    </p>
+    <p class="orillacart-field">
+        <label for="{{ prefix }}-regions">{{ __('States it holds in') }}</label>
+        <select id="{{ prefix }}-regions" name="regions[]" multiple size="6" required data-orillacart-field="regions">
+            {% for state in exemption_states %}
+                <option value="US-{{ state.code }}">{{ state.name }}</option>
+            {% endfor %}
+        </select>
+    </p>
+    <p class="orillacart-field">
+        <label for="{{ prefix }}-expires">{{ __('Last day it holds (optional)') }}</label>
+        <input id="{{ prefix }}-expires" name="expires_on" type="date" data-orillacart-field="expires_on">
+    </p>
+    <p class="orillacart-field">
+        <label for="{{ prefix }}-file">{{ __('A copy of the certificate: a PDF or a photo, up to 10 MB') }}</label>
+        <input id="{{ prefix }}-file" name="file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required data-orillacart-field="file">
+    </p>
+    <p><small>{{ __('The shop checks it and emails you. Until it approves it, your orders are taxed.') }}</small></p>
+    <p class="orillacart-message" role="status" data-orillacart-message></p>
+    <button type="submit" class="wp-element-button orillacart-button">{{ __('Send the certificate') }}</button>
+</form>

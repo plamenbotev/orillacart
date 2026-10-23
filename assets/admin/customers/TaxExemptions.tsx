@@ -2,9 +2,12 @@ import { Button, SelectControl, TextControl } from '@wordpress/components';
 import { useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
+import { exemptionFileUrl } from '../shared/exports';
 import { useConfirm } from '../shared/useConfirm';
 import {
 	addTaxExemption,
+	approveTaxExemption,
+	refuseTaxExemption,
 	EXEMPTION_REASONS,
 	fetchTaxExemptions,
 	removeTaxExemption,
@@ -17,6 +20,12 @@ const REASON_LABELS: Record< TaxExemption[ 'reason' ], string > = {
 	nonprofit: __( 'Nonprofit', 'orillacart' ),
 	government: __( 'Government', 'orillacart' ),
 	other: __( 'Other', 'orillacart' ),
+};
+
+const STATUS_LABELS: Record< TaxExemption[ 'status' ], string > = {
+	pending: __( 'Sent by the customer: check it', 'orillacart' ),
+	approved: __( 'Approved', 'orillacart' ),
+	refused: __( 'Refused', 'orillacart' ),
 };
 
 const EMPTY: TaxExemptionInput = {
@@ -76,6 +85,43 @@ export function TaxExemptions( {
 									exemption.expires_on
 								}` }
 						</p>
+						<p>
+							<strong>
+								{ STATUS_LABELS[ exemption.status ] }
+							</strong>
+							{ exemption.refusal !== null &&
+								` · ${ exemption.refusal }` }
+							{ exemption.file !== null && (
+								<>
+									{ ' · ' }
+									<a
+										href={ exemptionFileUrl(
+											customerId,
+											exemption.id
+										) }
+										download
+									>
+										{ exemption.file }
+									</a>
+								</>
+							) }
+						</p>
+						{ exemption.status === 'pending' && (
+							<Review
+								customerId={ customerId }
+								exemption={ exemption }
+								onReviewed={ ( reviewed ) =>
+									setExemptions( ( shown ) =>
+										shown.map( ( other ) =>
+											other.id === reviewed.id
+												? reviewed
+												: other
+										)
+									)
+								}
+								onError={ onError }
+							/>
+						) }
 						{ exemption.note !== '' && (
 							<small>{ exemption.note }</small>
 						) }{ ' ' }
@@ -188,5 +234,75 @@ export function TaxExemptions( {
 				{ __( 'Add exemption', 'orillacart' ) }
 			</Button>
 		</>
+	);
+}
+
+/**
+ * Approves a certificate the customer sent, or refuses it with the reason they are told.
+ * @param props
+ * @param props.customerId
+ * @param props.exemption
+ * @param props.onReviewed
+ * @param props.onError
+ */
+function Review( {
+	customerId,
+	exemption,
+	onReviewed,
+	onError,
+}: {
+	customerId: number;
+	exemption: TaxExemption;
+	onReviewed: ( reviewed: TaxExemption ) => void;
+	onError: ( error: unknown ) => void;
+} ) {
+	const [ reason, setReason ] = useState( '' );
+	const [ busy, setBusy ] = useState( false );
+	const run = ( work: Promise< TaxExemption > ) => {
+		setBusy( true );
+		work.then( onReviewed )
+			.catch( onError )
+			.finally( () => setBusy( false ) );
+	};
+
+	return (
+		<div>
+			<Button
+				variant="primary"
+				isBusy={ busy }
+				disabled={ busy }
+				onClick={ () =>
+					run( approveTaxExemption( customerId, exemption.id ) )
+				}
+			>
+				{ __( 'Approve', 'orillacart' ) }
+			</Button>
+			<TextControl
+				__next40pxDefaultSize
+				label={ __(
+					'Or refuse it, telling the customer why',
+					'orillacart'
+				) }
+				value={ reason }
+				maxLength={ 200 }
+				onChange={ setReason }
+			/>
+			<Button
+				variant="secondary"
+				isDestructive
+				disabled={ busy || reason.trim() === '' }
+				onClick={ () =>
+					run(
+						refuseTaxExemption(
+							customerId,
+							exemption.id,
+							reason.trim()
+						)
+					)
+				}
+			>
+				{ __( 'Refuse', 'orillacart' ) }
+			</Button>
+		</div>
 	);
 }

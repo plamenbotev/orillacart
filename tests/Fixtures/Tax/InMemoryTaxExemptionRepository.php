@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Fixtures\Tax;
 
+use OrillaCart\Tax\Domain\ExemptionStatus;
 use OrillaCart\Tax\Domain\TaxExemption;
 use OrillaCart\Tax\Domain\TaxExemptionRepository;
 
@@ -38,6 +39,12 @@ final class InMemoryTaxExemptionRepository implements TaxExemptionRepository
     public function remove(TaxExemption $exemption): void
     {
         unset($this->exemptions[$exemption->id()]);
+    }
+
+    public function expiringBetween(\DateTimeImmutable $from, \DateTimeImmutable $to, int $limit): array
+    {
+        return \array_slice(array_values(array_filter($this->exemptions, static fn(TaxExemption $exemption): bool => $exemption->status() === ExemptionStatus::Approved && $exemption->remindedAt() === null
+            && $exemption->expiresOn() !== null && $exemption->expiresOn()->format('Y-m-d') >= $from->format('Y-m-d') && $exemption->expiresOn()->format('Y-m-d') <= $to->format('Y-m-d'))), 0, $limit);
     }
 
     public function removeOfCustomer(int $customerId): void

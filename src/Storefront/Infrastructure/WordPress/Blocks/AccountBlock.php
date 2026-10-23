@@ -8,6 +8,7 @@ use OrillaCart\Checkout\Application\PayNow;
 use OrillaCart\Customers\Application\AddressBook;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Domain\CustomerNotFound;
+use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Notifications\Application\EmailSettingsService;
@@ -27,6 +28,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
+use OrillaCart\Tax\Application\ExemptionCertificates;
 
 /**
  * The customer's account page. Visitors see WordPress's login form and, unless the shop makes no accounts,
@@ -53,6 +55,8 @@ final readonly class AccountBlock implements BlockDefinition
         private EmailSettingsService $emails,
         private ReviewLinks $reviewLinks,
         private StorefrontSettingsService $storefront,
+        private ExemptionCertificates $certificates,
+        private GeographyService $geography,
     ) {}
 
     public static function name(): string
@@ -82,11 +86,15 @@ final readonly class AccountBlock implements BlockDefinition
 
         $orderId = self::number('order');
         $section = $orderId > 0 ? 'order' : (\is_string($_GET['section'] ?? null) ? sanitize_key($_GET['section']) : 'orders');
-        $section = \in_array($section, ['orders', 'order', 'downloads', 'addresses', 'emails', ...($wishlist === WishlistPolicy::Off ? [] : ['wishlist'])], true) ? $section : 'orders';
+        $exemptions = $this->certificates->mine($customerId);
+        // Customers who sent certificates still see them when the shop no longer takes new ones.
+        $taxExemptions = $this->certificates->accepts() || $exemptions !== [];
+        $section = \in_array($section, ['orders', 'order', 'downloads', 'addresses', 'emails', ...($wishlist === WishlistPolicy::Off ? [] : ['wishlist']), ...($taxExemptions ? ['tax-exemptions'] : [])], true) ? $section : 'orders';
         $context = [
             'logged_in' => true,
             'section' => $section,
             'wishlist' => $wishlist !== WishlistPolicy::Off,
+            'tax_exemptions' => $taxExemptions,
             'links' => $links,
             'urls' => [
                 'orders' => $here,
@@ -94,6 +102,7 @@ final readonly class AccountBlock implements BlockDefinition
                 'addresses' => add_query_arg('section', 'addresses', $here),
                 'emails' => add_query_arg('section', 'emails', $here),
                 'wishlist' => add_query_arg('section', 'wishlist', $here),
+                'tax_exemptions' => add_query_arg('section', 'tax-exemptions', $here),
                 // wp_logout_url() returns the address escaped for HTML (&amp;); the template escapes it.
                 'logout' => html_entity_decode(wp_logout_url($here), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             ],
@@ -105,6 +114,7 @@ final readonly class AccountBlock implements BlockDefinition
             'addresses' => $this->addressForm($customerId),
             'emails' => $this->emailChoices($customerId),
             'wishlist' => [],
+            'tax-exemptions' => ['exemptions' => $exemptions, 'accepts_certificates' => $this->certificates->accepts(), 'exemption_states' => $this->geography->states('US')],
             default => $this->orderList($customerId, $here),
         });
     }

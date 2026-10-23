@@ -85,6 +85,26 @@ export function exportUrl(
 }
 
 /**
+ * The address the copy of a customer's tax exemption certificate downloads from, for shop managers.
+ *
+ * @param customerId  The customer.
+ * @param exemptionId The certificate.
+ */
+export function exemptionFileUrl(
+	customerId: number,
+	exemptionId: number
+): string {
+	const target = window.orillacartExport ?? { url: '', nonce: '' };
+
+	return addQueryArgs( target.url, {
+		action: 'orillacart_exemption_file',
+		customer: customerId,
+		exemption: exemptionId,
+		_wpnonce: target.nonce,
+	} );
+}
+
+/**
  * The address a file a shopper sent with an item downloads from, for shop managers.
  *
  * @param orderId  The order.

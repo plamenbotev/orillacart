@@ -8,6 +8,7 @@ import {
 	bindAddressBook,
 	bindConfirm,
 	bindEmails,
+	bindTaxExemption,
 	bindFindOrder,
 	bindRegister,
 } from './account';
@@ -89,6 +90,11 @@ function start(): void {
 	document
 		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-emails]' )
 		.forEach( bindEmails );
+	document
+		.querySelectorAll< HTMLFormElement >(
+			'form[data-orillacart-tax-exemption]'
+		)
+		.forEach( bindTaxExemption );
 	document
 		.querySelectorAll< HTMLElement >( '.orillacart-account__addresses' )
 		.forEach( bindAddressBook );

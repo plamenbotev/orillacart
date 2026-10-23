@@ -1,0 +1,17 @@
+{% extends 'emails/layout.html.twig' %}
+{#
+ # To the customer, a month before: their tax exemption certificate runs out. first_name, account_url;
+ # exemption: certificate, regions, expires_on.
+ #}
+{# translators: %s: site name -#}
+{% block subject %}{{ __('[%s] Your tax exemption certificate runs out soon')|format(site_name) }}{% endblock %}
+{% block heading %}{{ __('Your certificate runs out soon') }}{% endblock %}
+{% block intro %}
+{# translators: %s: the customer's first name -#}
+<p>{{ __('Hello %s,')|format(first_name) }}</p>
+{# translators: 1: the certificate's number, 2: its last day -#}
+<p>{{ __('Certificate %1$s runs out on %2$s. After that day your orders are taxed again; send the new certificate from your account before then.')|format(exemption.certificate, exemption.expires_on) }}</p>
+{% endblock %}
+{% block content %}
+<p><a href="{{ account_url }}" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;border-radius:4px;text-decoration:none;">{{ __('Go to your account') }}</a></p>
+{% endblock %}

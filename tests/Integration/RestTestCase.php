@@ -140,7 +140,7 @@ abstract class RestTestCase extends TestCase
     /**
      * A multipart request with one file, as a browser sends it.
      *
-     * @param array<string, string> $fields
+     * @param array<string, string|list<string>> $fields
      * @param non-empty-string $path
      * @param non-empty-string $name
      */

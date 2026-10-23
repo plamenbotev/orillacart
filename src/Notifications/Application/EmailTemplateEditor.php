@@ -179,6 +179,12 @@ final readonly class EmailTemplateEditor
             EmailKind::LowStock->value => $this->lowStock->preview(),
             EmailKind::CartReminder->value => $this->cartReminders->preview($to),
             EmailKind::GiftCard->value => $this->writer->write(EmailKind::GiftCard->template(), $kind, $to, null, ['card' => ['code' => 'ABCD-EFGH-JKLM-NPQR', 'amount' => '50', 'currency' => 'EUR', 'expires_at' => $this->clock->now()->modify('+1 year')->format('Y-m-d'), 'recipient_name' => 'Ada', 'message' => 'Happy birthday!', 'shop_url' => $url]]),
+            EmailKind::ExemptionReceived->value, EmailKind::ExemptionReviewed->value, EmailKind::ExemptionExpiring->value => $this->writer->write(EmailKind::from($kind)->template(), $kind, $to, null, [
+                'customer' => ['name' => 'Ada Lovelace', 'email' => $to],
+                'first_name' => 'Ada',
+                'account_url' => $url,
+                'exemption' => ['certificate' => 'TX-RESALE-12345', 'regions' => ['US-TX'], 'expires_on' => $this->clock->now()->modify('+30 days')->format('Y-m-d'), 'status' => 'approved', 'refusal' => null, 'reason' => 'resale'],
+            ]),
             EmailKind::BackInStock->value => $this->writer->write(EmailKind::BackInStock->template(), $kind, $to, null, ['product' => ['name' => 'Desk lamp', 'variation' => 'Green', 'url' => $url]]),
             default => $this->orderEmail(EmailKind::from($kind), $orderId),
         };

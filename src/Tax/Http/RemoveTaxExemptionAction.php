@@ -8,7 +8,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Security\Capability;
-use OrillaCart\Tax\Application\TaxExemptions;
+use OrillaCart\Tax\Application\ExemptionCertificates;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -18,7 +18,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 final readonly class RemoveTaxExemptionAction implements RequestHandlerInterface
 {
     public function __construct(
-        private TaxExemptions $exemptions,
+        private ExemptionCertificates $exemptions,
         private JsonResponder $responder,
     ) {}
 

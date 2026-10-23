@@ -23,6 +23,13 @@ final readonly class TaxExemptionView
         public ?string $expiresOn,
         public string $note,
         public string $createdAt,
+        /** "pending" while the shop checks one the customer sent, "approved" or "refused". */
+        public string $status = 'approved',
+        /** Why the shop refused it. */
+        public ?string $refusal = null,
+        public ?string $reviewedAt = null,
+        /** The name of the copy of the certificate the customer sent, kept privately; null for none. */
+        public ?string $file = null,
     ) {}
 
     public static function fromExemption(TaxExemption $exemption): self
@@ -36,6 +43,10 @@ final readonly class TaxExemptionView
             $exemption->expiresOn()?->format('Y-m-d'),
             $exemption->note(),
             $exemption->createdAt()->format(\DATE_ATOM),
+            $exemption->status()->value,
+            $exemption->refusal(),
+            $exemption->reviewedAt()?->format(\DATE_ATOM),
+            $exemption->file()['name'] ?? null,
         );
     }
 }

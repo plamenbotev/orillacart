@@ -173,6 +173,13 @@ export interface TaxExemption {
 	expires_on: string | null;
 	note: string;
 	created_at: string;
+	/** "pending" while the shop checks one the customer sent; only an approved one exempts. */
+	status: 'pending' | 'approved' | 'refused';
+	/** Why the shop refused it, as the customer was told. */
+	refusal: string | null;
+	reviewed_at: string | null;
+	/** The name of the copy the customer sent; null for none. */
+	file: string | null;
 }
 
 export type TaxExemptionInput = Pick<
@@ -204,6 +211,28 @@ export function removeTaxExemption(
 	return apiFetch( {
 		path: `${ BASE }/customers/${ id }/tax-exemptions/${ exemptionId }`,
 		method: 'DELETE',
+	} );
+}
+
+export function approveTaxExemption(
+	id: number,
+	exemptionId: number
+): Promise< TaxExemption > {
+	return apiFetch< TaxExemption >( {
+		path: `${ BASE }/customers/${ id }/tax-exemptions/${ exemptionId }/approve`,
+		method: 'POST',
+	} );
+}
+
+export function refuseTaxExemption(
+	id: number,
+	exemptionId: number,
+	reason: string
+): Promise< TaxExemption > {
+	return apiFetch< TaxExemption >( {
+		path: `${ BASE }/customers/${ id }/tax-exemptions/${ exemptionId }/refuse`,
+		method: 'POST',
+		data: { reason },
 	} );
 }
 

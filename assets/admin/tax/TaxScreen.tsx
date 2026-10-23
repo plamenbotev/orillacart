@@ -199,6 +199,9 @@ function SettingsCard( {
 	const [ whenFails, setWhenFails ] = useState(
 		settings.when_provider_fails
 	);
+	const [ certificates, setCertificates ] = useState(
+		settings.accepts_certificates
+	);
 	const [ originRegions, setOriginRegions ] = useState(
 		settings.origin_regions.join( ', ' )
 	);
@@ -218,6 +221,7 @@ function SettingsCard( {
 				regions.join( ',' ),
 				provider,
 				whenFails,
+				certificates,
 			],
 			[
 				settings.basis,
@@ -228,6 +232,7 @@ function SettingsCard( {
 				settings.origin_regions.join( ',' ),
 				settings.provider,
 				settings.when_provider_fails,
+				settings.accepts_certificates,
 			]
 		)
 	);
@@ -244,6 +249,7 @@ function SettingsCard( {
 			origin_regions: regions,
 			provider,
 			when_provider_fails: whenFails,
+			accepts_certificates: certificates,
 		} )
 			.then( onSaved )
 			.catch( onError )
@@ -314,6 +320,18 @@ function SettingsCard( {
 									: Number.parseInt( value, 10 )
 							)
 						}
+					/>
+					<CheckboxControl
+						label={ __(
+							'Customers send their tax exemption certificates',
+							'orillacart'
+						) }
+						help={ __(
+							'Signed-in customers send a certificate (resale, nonprofit, government) with a copy of it, at checkout or in their account. You check it on the customer’s page; once you approve it, their orders into its states are not taxed.',
+							'orillacart'
+						) }
+						checked={ certificates }
+						onChange={ setCertificates }
 					/>
 					<CheckboxControl
 						label={ __( 'Prices include tax', 'orillacart' ) }

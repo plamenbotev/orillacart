@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tax\Infrastructure\Doctrine;
 
 use Doctrine\ORM\EntityManagerInterface;
+use OrillaCart\Tax\Domain\ExemptionStatus;
 use OrillaCart\Tax\Domain\TaxExemption;
 use OrillaCart\Tax\Domain\TaxExemptionRepository;
 
@@ -33,6 +34,20 @@ final readonly class DoctrineTaxExemptionRepository implements TaxExemptionRepos
     {
         $this->entityManager->remove($exemption);
         $this->entityManager->flush();
+    }
+
+    public function expiringBetween(\DateTimeImmutable $from, \DateTimeImmutable $to, int $limit): array
+    {
+        /** @var list<TaxExemption> */
+        return $this->entityManager->createQueryBuilder()->select('e')->from(TaxExemption::class, 'e')
+            ->where('e.status = :approved AND e.remindedAt IS NULL AND e.expiresOn BETWEEN :from AND :to')
+            ->setParameter('approved', ExemptionStatus::Approved->value)
+            ->setParameter('from', $from->format('Y-m-d'))
+            ->setParameter('to', $to->format('Y-m-d'))
+            ->orderBy('e.id')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
     }
 
     public function removeOfCustomer(int $customerId): void

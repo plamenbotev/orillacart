@@ -66,6 +66,7 @@ function serve( write: ( request: Request ) => Promise< unknown > ) {
 					provider: null,
 					when_provider_fails: 'shop_rates',
 					providers: [],
+					accepts_certificates: false,
 					bases: [
 						'shipping_address',
 						'billing_address',
@@ -170,6 +171,7 @@ describe( 'TaxScreen', () => {
 				origin_regions: [],
 				provider: null,
 				when_provider_fails: 'shop_rates',
+				accepts_certificates: false,
 			},
 		} );
 		expect( screen.queryByText( untaxed, NOTICE ) ).toBeNull();

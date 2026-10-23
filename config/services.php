@@ -101,6 +101,7 @@ use OrillaCart\Newsletter\Infrastructure\Doctrine\DoctrineSubscriberRepository;
 use OrillaCart\Newsletter\Infrastructure\WordPress\OptionNewsletterSettingsRepository;
 use OrillaCart\Notifications\Application\AccountEmails;
 use OrillaCart\Notifications\Application\EmailWriter;
+use OrillaCart\Notifications\Application\ExemptionEmails;
 use OrillaCart\Notifications\Application\GiftCardEmails;
 use OrillaCart\Notifications\Application\Mailer;
 use OrillaCart\Notifications\Application\Site;
@@ -233,6 +234,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\OptionStorefrontSettingsRepos
 use OrillaCart\Storefront\Infrastructure\WordPress\RenderedProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
+use OrillaCart\Tax\Application\ExemptionMail;
 use OrillaCart\Tax\Application\TaxQuoteCache;
 use OrillaCart\Tax\Application\VatRegistry;
 use OrillaCart\Tax\Domain\NexusThresholdsRepository;
@@ -397,6 +399,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ViewNormalizer::class, SerializerViewNormalizer::class);
     $services->alias(PendingAccountRepository::class, DoctrinePendingAccountRepository::class);
     $services->alias(AccountMail::class, AccountEmails::class);
+    $services->alias(ExemptionMail::class, ExemptionEmails::class);
     $services->alias(GiftCardRepository::class, DoctrineGiftCardRepository::class);
     $services->alias(CurrencySettingsRepository::class, OptionCurrencySettingsRepository::class);
     $services->alias(CurrencyChoice::class, ShopperCurrency::class);

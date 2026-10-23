@@ -12,6 +12,7 @@ use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Application\Dto\CustomerView;
 use OrillaCart\Customers\Domain\CustomerNotFound;
+use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Notifications\Application\EmailSettingsService;
@@ -31,6 +32,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
+use OrillaCart\Tax\Application\ExemptionCertificates;
 
 /**
  * The checkout page, and the receipt customers come back to after ordering (?orillacart_order=a signed link).
@@ -59,6 +61,8 @@ final readonly class CheckoutBlock implements BlockDefinition
         private Newsletter $newsletter,
         private ReviewLinks $reviewLinks,
         private AnalyticsEvents $analytics,
+        private ExemptionCertificates $certificates,
+        private GeographyService $geography,
     ) {}
 
     public static function name(): string
@@ -118,6 +122,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'address_checks' => $this->addressChecks->any(),
             'login_url' => wp_login_url((string) get_permalink()),
             'links' => $links,
+            'exemption_states' => $this->shopper->customerId() !== null && $this->certificates->accepts() ? $this->geography->states('US') : [],
         ] + $this->addresses->all()) . ($summary !== null && $summary->lines !== [] ? $this->analytics->beginCheckout($summary) : '');
     }
 

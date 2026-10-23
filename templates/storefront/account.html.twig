@@ -72,6 +72,7 @@
                 <li><a href="{{ urls.downloads }}"{{ section == 'downloads' ? ' aria-current="page"' }}>{{ __('Downloads') }}</a></li>
                 <li><a href="{{ urls.addresses }}"{{ section == 'addresses' ? ' aria-current="page"' }}>{{ __('Addresses') }}</a></li>
                 <li><a href="{{ urls.emails }}"{{ section == 'emails' ? ' aria-current="page"' }}>{{ __('Emails') }}</a></li>
+                {% if tax_exemptions ?? false %}<li><a href="{{ urls.tax_exemptions }}"{{ section == 'tax-exemptions' ? ' aria-current="page"' }}>{{ __('Tax exemption') }}</a></li>{% endif %}
                 {% if wishlist ?? false %}<li><a href="{{ urls.wishlist }}"{{ section == 'wishlist' ? ' aria-current="page"' }}>{{ __('Wishlist') }}</a></li>{% endif %}
                 <li><a href="{{ urls.logout }}">{{ __('Log out') }}</a></li>
             </ul>
@@ -96,6 +97,33 @@
                     {% include 'storefront/_downloads.html.twig' with {show_order: true} %}
                 {% else %}
                     <p class="orillacart-empty">{{ __('You have no files to download yet.') }}</p>
+                {% endif %}
+
+            {% elseif section == 'tax-exemptions' %}
+                {% if exemptions %}
+                    <table class="orillacart-table">
+                        <thead><tr><th>{{ __('Certificate') }}</th><th>{{ __('States') }}</th><th>{{ __('Last day') }}</th><th>{{ __('Status') }}</th></tr></thead>
+                        <tbody>
+                            {% for exemption in exemptions %}
+                                <tr>
+                                    <td>{{ exemption.certificate }}</td>
+                                    <td>{{ exemption.regions ? exemption.regions|join(', ') : __('Everywhere') }}</td>
+                                    <td>{{ exemption.expires_on ?? '—' }}</td>
+                                    <td>
+                                        {% if exemption.status == 'pending' %}{{ __('The shop is checking it') }}
+                                        {% elseif exemption.status == 'approved' %}{{ __('Approved: your orders into its states are not taxed') }}
+                                        {% else %}{{ __('Not approved') }}{% if exemption.refusal %}: {{ exemption.refusal }}{% endif %}{% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="orillacart-empty">{{ __('You have sent no tax exemption certificate.') }}</p>
+                {% endif %}
+                {% if accepts_certificates %}
+                    <h2 class="orillacart-heading">{{ __('Send a certificate') }}</h2>
+                    {% include 'storefront/_tax_exemption_form.html.twig' with {prefix: 'account-exemption', reload: true} %}
                 {% endif %}
 
             {% elseif section == 'emails' %}

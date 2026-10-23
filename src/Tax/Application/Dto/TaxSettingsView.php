@@ -25,6 +25,7 @@ final readonly class TaxSettingsView
         public string $whenProviderFails = TaxSettings::SHOP_RATES,
         /** @var list<array{id: string, label: string}> the tax services add-ons offer */
         public array $providers = [],
+        public bool $acceptsCertificates = false,
     ) {}
 
     /**
@@ -32,6 +33,6 @@ final readonly class TaxSettingsView
      */
     public static function fromSettings(TaxSettings $settings, array $providers = []): self
     {
-        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine, $settings->originRegions, $settings->provider, $settings->whenProviderFails, $providers);
+        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine, $settings->originRegions, $settings->provider, $settings->whenProviderFails, $providers, $settings->acceptsCertificates);
     }
 }

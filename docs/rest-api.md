@@ -103,6 +103,18 @@ The logged-in customer's orders, newest first. Whatever customer the query names
 
 - Who: logged-in customers
 
+### `GET /account/tax-exemptions`
+
+The signed-in customer's tax exemption certificates, and whether the shop takes them online.
+
+- Who: logged-in customers
+
+### `POST /account/tax-exemptions`
+
+The signed-in customer sends a tax exemption certificate for the shop to check: multipart, with reason, certificate, regions[] ("US-TX"), expires_on, and its copy in "file". The copy is never served to visitors.
+
+- Who: logged-in customers; needs a nonce (not with an API key); at most 10 an hour from each address
+
 ### `GET /account/wishlist`
 
 The products the customer saved for later, newest first.
@@ -615,6 +627,20 @@ Removes a customer's exemption; orders it covered keep it.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+### `POST /customers/{id}/tax-exemptions/{exemption}/approve`
+
+The shop approves a certificate the customer sent: their orders into its states are no longer taxed.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+### `POST /customers/{id}/tax-exemptions/{exemption}/refuse`
+
+The shop refuses a certificate the customer sent, and tells them why.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `reason` (string): required; not empty; at most 200 characters
+
 ## /download-delivery
 
 ### `GET /download-delivery`
@@ -651,7 +677,7 @@ Where download files are kept and whether the web server would hand them out by 
   - `from_name` (string|null): at most 100 characters
   - `from_address` (string|null): an email
   - `shop_address` (string|null): an email
-  - `disabled` (list<string>): each one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, gift_card, new_order, order_attention, payment_failed, refund_made, low_stock
+  - `disabled` (list<string>): each one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, gift_card, new_order, order_attention, payment_failed, refund_made, low_stock, exemption_received, exemption_reviewed, exemption_expiring
   - `reminder_days` (int): 1 to 60; default 3
   - `cart_reminder_hours` (int): 1 to 168; default 4
   - `cart_reminder_coupon` (string|null): at most 100 characters
@@ -685,7 +711,7 @@ The email a template makes, saved or as edited; a template that fails as it rend
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `source` (string|null): at most 100000 characters
-  - `kind` (string|null): one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, gift_card, new_order, order_attention, payment_failed, refund_made, low_stock, account_confirm, account_exists
+  - `kind` (string|null): one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, gift_card, new_order, order_attention, payment_failed, refund_made, low_stock, exemption_received, exemption_reviewed, exemption_expiring, account_confirm, account_exists
   - `order` (int|null): more than 0
 
 ### `POST /email-templates/{name}/test`
@@ -695,7 +721,7 @@ Sends the preview to whoever asks.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `source` (string|null): at most 100000 characters
-  - `kind` (string|null): one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, gift_card, new_order, order_attention, payment_failed, refund_made, low_stock, account_confirm, account_exists
+  - `kind` (string|null): one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, gift_card, new_order, order_attention, payment_failed, refund_made, low_stock, exemption_received, exemption_reviewed, exemption_expiring, account_confirm, account_exists
   - `order` (int|null): more than 0
 
 ## /exports
@@ -1979,6 +2005,7 @@ Saves the economic nexus thresholds: for every US state, and for those whose own
   - `origin_regions` (array): at most 100 items
   - `provider` (string|null): matches `/^[a-z][a-z0-9_]{0,39}$/`
   - `when_provider_fails` (string): one of shop_rates, refuse; default 'shop_rates'
+  - `accepts_certificates` (bool): default false
 
 ## /webhooks
 

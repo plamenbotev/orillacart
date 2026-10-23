@@ -16,4 +16,11 @@ interface TaxExemptionRepository
     public function remove(TaxExemption $exemption): void;
 
     public function removeOfCustomer(int $customerId): void;
+
+    /**
+     * Approved exemptions running out on these days whose customers were not reminded yet.
+     *
+     * @return list<TaxExemption>
+     */
+    public function expiringBetween(\DateTimeImmutable $from, \DateTimeImmutable $to, int $limit): array;
 }

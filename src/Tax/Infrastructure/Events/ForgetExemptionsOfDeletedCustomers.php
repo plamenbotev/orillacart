@@ -6,7 +6,7 @@ namespace OrillaCart\Tax\Infrastructure\Events;
 
 use OrillaCart\Customers\Domain\Event\CustomerDeleted;
 use OrillaCart\Customers\Domain\Event\CustomerErased;
-use OrillaCart\Tax\Application\TaxExemptions;
+use OrillaCart\Tax\Application\ExemptionCertificates;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
@@ -14,7 +14,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  */
 final readonly class ForgetExemptionsOfDeletedCustomers
 {
-    public function __construct(private TaxExemptions $exemptions) {}
+    public function __construct(private ExemptionCertificates $exemptions) {}
 
     #[AsEventListener]
     public function __invoke(CustomerDeleted $event): void

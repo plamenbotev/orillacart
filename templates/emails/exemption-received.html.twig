@@ -1,0 +1,16 @@
+{% extends 'emails/layout.html.twig' %}
+{#
+ # To the shop: a customer sent a tax exemption certificate to check. customer: name, email; exemption: reason,
+ # certificate, regions, expires_on.
+ #}
+{# translators: %s: site name -#}
+{% block subject %}{{ __('[%s] A tax exemption certificate to check')|format(site_name) }}{% endblock %}
+{% block heading %}{{ __('A tax exemption certificate to check') }}{% endblock %}
+{# translators: 1: the customer's name, 2: their email address -#}
+{% block intro %}<p>{{ __('%1$s (%2$s) sent a certificate, with a copy of it. Their orders are taxed until you approve it.')|format(customer.name, customer.email) }}</p>{% endblock %}
+{% block content %}
+<p>{{ __('Certificate') }}: <strong>{{ exemption.certificate }}</strong><br>
+{{ __('States') }}: {{ exemption.regions|join(', ') }}<br>
+{% if exemption.expires_on %}{{ __('Runs out') }}: {{ exemption.expires_on }}{% else %}{{ __('Does not run out') }}{% endif %}</p>
+<p>{{ __('Check it on the customer’s page in Shop → Customers, where the copy is.') }}</p>
+{% endblock %}
