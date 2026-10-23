@@ -185,7 +185,7 @@ P2 = wrong or fragile under real traffic; P3 = polish, operations and tests. All
 | ✅ | 122 | P2 | Import schemes for low-value goods (IOSS, UK, Norway's VOEC, Australia, New Zealand): the shop's number and limit; under it the destination's rates are charged and invoices show the number, over it no tax and checkout says import charges may be due | 6ed67e3 |
 | ✅ | 123 | P2 | Tax numbers outside the EU: business customers give a tax number for any country, its format and checksum checked (UK, CH, NO, AU, NZ, CA), kept on the order and the invoice; reverse charge stays for the EU | a50a75f |
 | ✅ | 124 | P2 | VAT in the seller's currency: an order keeps its exchange rate and an invoice in another currency also shows its taxes in the shop's | 1b9f880 |
-| ⬜ | 125 | P2 | E-invoices: each invoice and credit note as EN 16931 XML, UBL (Peppol BIS 3.0) or CII (XRechnung), downloaded from the order and optionally attached to emails; the buyer's reference asked at checkout | |
+| ✅ | 125 | P2 | E-invoices: each invoice and credit note as EN 16931 XML, UBL (Peppol BIS 3.0) or CII (XRechnung), downloaded from the order and optionally attached to emails; the buyer's reference asked at checkout | 9959a3c |
 
 ## Waiting on others
 

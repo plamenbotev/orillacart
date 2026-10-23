@@ -1,6 +1,6 @@
 # 43 · Tax outside the US: how OrillaCart compares with WooCommerce, and the gaps closed
 
-Status: proposed (2026-10-23), PLAN items 117–125. The user asked where OrillaCart stands on tax compliance
+Status: built (2026-10-23), PLAN items 117–125; what was decided and built differently is at the end. The user asked where OrillaCart stands on tax compliance
 worldwide and how it compares with WooCommerce, and then to close the gaps. None of the items calls a service
 the shop does not call today (VIES for EU VAT numbers is the only one, and stays).
 
@@ -84,3 +84,32 @@ BIS Billing 3.0) or UN/CEFACT CII (XRechnung). The shop downloads it from the or
 carry it next to the PDF. Checkout can ask business customers for their own reference (the buyer reference,
 Germany's Leitweg-ID), and the order number stands in for it otherwise. Sending through Peppol needs an access
 point, a service, so it is left to add-ons. The XML is offered through the extension API for them.
+
+## Decisions and what was built
+
+- **117, 118** (982f4af): the catalog's shown prices use the customer's saved address, or the shop's for visitors,
+  as checkout's estimate does; a page cache therefore serves visitors the shop's prices, as WooCommerce's does.
+  The cart and checkout convert each line, the shipping and the fees from the bill's own tax, so the totals and tax
+  lines never move. Without a text after prices, prices with tax say "incl. tax" as before, and prices the shop
+  chose to show without tax say "excl. tax". Price filters and sorting stay on the entered prices. Found on the
+  way: an exempt customer with prices entered with tax paid the price with tax and no tax charged; they now pay it
+  without the tax in it (Tax::asPaid()).
+- **119** (d6683fa): a shop-wide setting, as WooCommerce's is, rather than one per way to ship; shares are by what
+  the items cost before their discounts. With an import scheme in play, shipping follows the scheme instead.
+- **120** (9ef91bd): a group holds up to 5,000 rates; more belongs with a tax service. WooCommerce's "tax class"
+  column is not read: the file goes into the group chosen. Checkout sends the city for the totals now.
+- **121** (3eaccbc): sales in the shop's other currencies count at today's exchange rate; orders reported before
+  read as sales to consumers until the reports are rebuilt. "Passed" is more than the threshold, as the law says.
+- **122** (6ed67e3): the decision is per order, for the physical goods and their shipping; services stay taxed as
+  the settings say. The value compared is the goods' price before shipping and tax, before coupons, in the shop's
+  currency. Limits are kept in the shop's currency, the law's prefilled when it is the scheme's.
+- **123** (a50a75f): an invalid number outside the EU is left off the order (and the customer told), rather than
+  refusing the order.
+- **124** (1b9f880): as designed.
+- **125** (9959a3c): the seller's postal address is read from the invoice address's lines (the first the street,
+  the last the city) with the shop's postcode and country; a line taxed by several rates of one place goes with
+  their sum. The files are built to EN 16931's rules but were not run through the official validators (Peppol's
+  and KoSIT's schematrons), which would need downloading them; XRechnung also asks for the seller's phone, which
+  the shop has nowhere to enter yet. The buyer's reference is asked of business customers whenever the tax number
+  is.
+
