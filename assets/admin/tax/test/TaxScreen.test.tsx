@@ -71,6 +71,7 @@ function serve( write: ( request: Request ) => Promise< unknown > ) {
 					shown_in_cart: 'as_entered',
 					price_suffix: '',
 					same_price_everywhere: true,
+					shipping_taxed_as_items: false,
 					bases: [
 						'shipping_address',
 						'billing_address',
@@ -180,6 +181,7 @@ describe( 'TaxScreen', () => {
 				shown_in_cart: 'as_entered',
 				price_suffix: '',
 				same_price_everywhere: true,
+				shipping_taxed_as_items: false,
 			},
 		} );
 		expect( screen.queryByText( untaxed, NOTICE ) ).toBeNull();

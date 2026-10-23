@@ -252,23 +252,36 @@ final readonly class OrderPricing
             $inCurrency = fn(?string $amount): ?string => $amount === null ? null : (string) $this->currencies->amount(Money::of($amount), $currency);
             $freeFrom = $free ? null : $inCurrency($this->shipping->freeFrom($query));
             $shipsFrom = $offered === [] ? $inCurrency($this->shipping->shipsFrom($query)) : null;
+            $asItems = $this->tax->shippingTaxedAsItems() ? self::itemTaxShares($taxesOf) : null;
             foreach ($offered as $option) {
                 $taxes = $option->taxable && !$free && !$reverseCharge ? $this->taxes($option->taxGroupId, $shipping, $billing, $exempt) : [];
                 $price = $free ? Money::zero() : $this->currencies->amount(Money::of($option->price), $currency);
-                if ($inclusive && $option->taxable && !$free) {
+                $shares = null;
+                if ($asItems !== null && $option->taxable && !$free) {
+                    // Taxed as the items it carries: each share of the price at the rates of the items it is for.
+                    $shares = [];
+                    foreach (self::shares($price, array_column($asItems, 'weight')) as $index => $share) {
+                        $shareTaxes = $reverseCharge ? [] : $asItems[$index]['taxes'];
+                        $shares[] = [$inclusive ? Tax::asPaid($share, $shareTaxes, $this->shopTaxes($asItems[$index]['group']), $samePrice) : $share, $shareTaxes];
+                    }
+                    $price = array_reduce($shares, static fn(Money $sum, array $share): Money => $sum->add($share[0]), Money::zero());
+                    $taxes = [];
+                } elseif ($inclusive && $option->taxable && !$free) {
                     $price = Tax::asPaid($price, $taxes, $this->shopTaxes($option->taxGroupId), $samePrice);
                 }
-                $tax = array_reduce(Tax::parts($price, $taxes, $inclusive), static fn(Money $sum, Money $part): Money => $sum->add($part->rounded($decimals)), Money::zero());
+                $tax = $shares === null
+                    ? array_reduce(Tax::parts($price, $taxes, $inclusive), static fn(Money $sum, Money $part): Money => $sum->add($part->rounded($decimals)), Money::zero())
+                    : array_reduce($shares, static fn(Money $sum, array $share): Money => array_reduce(Tax::parts($share[0], $share[1], $inclusive), static fn(Money $sum, Money $part): Money => $sum->add($part), $sum), Money::zero())->rounded($decimals);
                 $total = $inclusive ? $price->rounded($decimals) : $price->rounded($decimals)->add($tax);
                 $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $total, $option->toPickupPoint, $option->collectAt);
                 $options[] = $view;
                 // The customer's choice when it is offered, otherwise the first rate, so the totals include shipping.
                 if ($chosen === null || $option->id === $shippingOption) {
-                    $chosen = $chosen !== null && $chosen['view']->id === $shippingOption ? $chosen : ['view' => $view, 'price' => $price, 'taxes' => $taxes, 'group' => $option->taxGroupId, 'free' => $free || !$option->taxable];
+                    $chosen = $chosen !== null && $chosen['view']->id === $shippingOption ? $chosen : ['view' => $view, 'price' => $price, 'taxes' => $taxes, 'shares' => $shares, 'group' => $option->taxGroupId, 'free' => $free || !$option->taxable];
                 }
             }
             if ($chosen !== null) {
-                $bill->ship($chosen['price'], $chosen['taxes'], "{$chosen['view']->carrier} – {$chosen['view']->name}");
+                $bill->ship($chosen['price'], $chosen['taxes'], "{$chosen['view']->carrier} – {$chosen['view']->name}", $chosen['shares']);
                 $asked[] = ['kind' => TaxRequestLine::SHIPPING, 'code' => $chosen['free'] ? 'none' : $chosen['group'], 'quantity' => 1, 'product' => null, 'sku' => null, 'tax_code' => null];
             }
         }
@@ -789,6 +802,28 @@ final readonly class OrderPricing
         $shares[$largest] = $shares[$largest]->add($left);
 
         return array_values($shares);
+    }
+
+    /**
+     * The items' rates, for shipping taxed as the items it carries: each set of rates with what the items at it cost,
+     * untaxed items too (their share of shipping is untaxed); the first item's group stands for the set's.
+     *
+     * @param list<list<array{total: Money, taxes: list<Tax>, group: ?int, tax_code: ?string}>> $taxesOf
+     *
+     * @return non-empty-list<array{weight: Money, taxes: list<Tax>, group: ?int}>
+     */
+    private static function itemTaxShares(array $taxesOf): array
+    {
+        $sets = [];
+        foreach ($taxesOf as $parts) {
+            foreach ($parts as $part) {
+                $key = implode('|', array_map(static fn(Tax $tax): string => $tax->key . ($tax->exempt ? '!' : ''), $part['taxes']));
+                $sets[$key] ??= ['weight' => Money::zero(), 'taxes' => $part['taxes'], 'group' => $part['group']];
+                $sets[$key]['weight'] = $sets[$key]['weight']->add($part['total']);
+            }
+        }
+
+        return $sets === [] ? [['weight' => Money::of('1'), 'taxes' => [], 'group' => null]] : array_values($sets);
     }
 
     /**

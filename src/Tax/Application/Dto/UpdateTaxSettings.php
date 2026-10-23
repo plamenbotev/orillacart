@@ -43,5 +43,7 @@ final readonly class UpdateTaxSettings
         public string $priceSuffix = '',
         /** Prices including tax: the same price everywhere, or the same price before tax. */
         public bool $samePriceEverywhere = true,
+        /** Shipping taxed as the items it carries, instead of at its own tax group. */
+        public bool $shippingTaxedAsItems = false,
     ) {}
 }

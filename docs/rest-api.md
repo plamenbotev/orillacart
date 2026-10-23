@@ -2010,6 +2010,7 @@ Saves the economic nexus thresholds: for every US state, and for those whose own
   - `shown_in_cart` (string): one of as_entered, with_tax, without_tax; default 'as_entered'
   - `price_suffix` (string): at most 80 characters; matches `/^[^<>\x00-\x1F]*$/`
   - `same_price_everywhere` (bool): default true
+  - `shipping_taxed_as_items` (bool): default false
 
 ## /webhooks
 

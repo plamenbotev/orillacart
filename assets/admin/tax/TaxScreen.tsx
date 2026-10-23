@@ -220,6 +220,9 @@ function SettingsCard( {
 	const [ samePrice, setSamePrice ] = useState(
 		settings.same_price_everywhere
 	);
+	const [ shippingAsItems, setShippingAsItems ] = useState(
+		settings.shipping_taxed_as_items
+	);
 	const [ originRegions, setOriginRegions ] = useState(
 		settings.origin_regions.join( ', ' )
 	);
@@ -244,6 +247,7 @@ function SettingsCard( {
 				shownInCart,
 				suffix,
 				samePrice,
+				shippingAsItems,
 			],
 			[
 				settings.basis,
@@ -259,6 +263,7 @@ function SettingsCard( {
 				settings.shown_in_cart,
 				settings.price_suffix,
 				settings.same_price_everywhere,
+				settings.shipping_taxed_as_items,
 			]
 		)
 	);
@@ -280,6 +285,7 @@ function SettingsCard( {
 			shown_in_cart: shownInCart,
 			price_suffix: suffix,
 			same_price_everywhere: samePrice,
+			shipping_taxed_as_items: shippingAsItems,
 		} )
 			.then( onSaved )
 			.catch( onError )
@@ -440,6 +446,18 @@ function SettingsCard( {
 						maxLength={ 80 }
 						value={ suffix }
 						onChange={ setSuffix }
+					/>
+					<CheckboxControl
+						label={ __(
+							'Tax shipping like the items it carries',
+							'orillacart'
+						) }
+						help={ __(
+							'Shipping’s price is shared out by what the items cost, and each share is taxed at those items’ rates, as EU VAT asks: shipping books and lamps together is taxed partly at the books’ rate. Untaxed items’ share is not taxed. Otherwise shipping is taxed at the tax group of its way to ship.',
+							'orillacart'
+						) }
+						checked={ shippingAsItems }
+						onChange={ setShippingAsItems }
 					/>
 					<CheckboxControl
 						label={ __(

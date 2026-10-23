@@ -57,6 +57,8 @@ export interface TaxSettings {
 	price_suffix: string;
 	/** Prices including tax: every customer pays them as entered (true), or the price before the shop's tax stays (false). */
 	same_price_everywhere: boolean;
+	/** Shipping taxed as the items it carries, instead of at its own tax group. */
+	shipping_taxed_as_items: boolean;
 }
 
 export type PriceShown = 'as_entered' | 'with_tax' | 'without_tax';

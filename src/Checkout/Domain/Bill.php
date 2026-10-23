@@ -90,15 +90,20 @@ final class Bill
     }
 
     /**
-     * @param list<Tax> $taxes the rates charged on shipping
+     * @param list<Tax>                         $taxes  the rates charged on shipping
+     * @param list<array{Money, list<Tax>}>|null $shares shipping taxed as the items it carries: the price shared out,
+     *                                                   each share with its rates, adding up to the price
      */
-    public function ship(Money $price, array $taxes, string $label = ''): void
+    public function ship(Money $price, array $taxes, string $label = '', ?array $shares = null): void
     {
         if (array_filter($this->charges, static fn(array $charge): bool => $charge['kind'] === BilledCharge::SHIPPING) !== []) {
             throw new \LogicException('A bill ships once.');
         }
+        if ($shares !== null && !array_reduce($shares, static fn(Money $sum, array $share): Money => $sum->add($share[0]), Money::zero())->equals($price)) {
+            throw new \LogicException('The shares of shipping add up to its price.');
+        }
         $this->shipping = $price;
-        $this->charge(BilledCharge::SHIPPING, $label, $price, $taxes);
+        $this->charge(BilledCharge::SHIPPING, $label, $price, $taxes, $shares);
     }
 
     /**
@@ -291,27 +296,32 @@ final class Bill
     }
 
     /**
-     * @param list<Tax> $taxes
+     * @param list<Tax>                         $taxes
+     * @param list<array{Money, list<Tax>}>|null $shares the amount in shares taxed each at its rates, instead of all at $taxes
      */
-    private function charge(string $kind, string $label, Money $amount, array $taxes): void
+    private function charge(string $kind, string $label, Money $amount, array $taxes, ?array $shares = null): void
     {
-        $exact = Tax::parts($amount, $taxes, $this->includesTax);
-        $bases = Tax::bases($amount, $taxes, $exact, $this->includesTax);
-        // What each rate is charged on before tax, as returns report it.
-        $net = $this->includesTax ? array_reduce($exact, static fn(Money $left, Money $part): Money => $left->subtract($part), $amount) : $amount;
-        $taxable = $this->includesTax ? Tax::bases($net, $taxes, Tax::parts($net, $taxes), false) : $bases;
+        $rates = [];
         $parts = [];
         $on = [];
-        foreach ($taxes as $index => $rate) {
-            $on[$rate->key] = $taxable[$index];
-            if ($rate->exempt) {
-                // Not charged: only what it was on is kept, for exempt sales.
-                continue;
+        foreach ($shares ?? [[$amount, $taxes]] as [$share, $shareTaxes]) {
+            $exact = Tax::parts($share, $shareTaxes, $this->includesTax);
+            $bases = Tax::bases($share, $shareTaxes, $exact, $this->includesTax);
+            // What each rate is charged on before tax, as returns report it.
+            $net = $this->includesTax ? array_reduce($exact, static fn(Money $left, Money $part): Money => $left->subtract($part), $share) : $share;
+            $taxable = $this->includesTax ? Tax::bases($net, $shareTaxes, Tax::parts($net, $shareTaxes), false) : $bases;
+            foreach ($shareTaxes as $index => $rate) {
+                $rates[$rate->key] ??= $rate;
+                $on[$rate->key] = ($on[$rate->key] ?? Money::zero())->add($taxable[$index]);
+                if ($rate->exempt) {
+                    // Not charged: only what it was on is kept, for exempt sales.
+                    continue;
+                }
+                $this->base($rate)['on'][$kind] = ($this->base($rate)['on'][$kind] ?? Money::zero())->add($bases[$index]);
+                $parts[$rate->key] = ($parts[$rate->key] ?? Money::zero())->add($exact[$index]);
             }
-            $this->base($rate)['on'][$kind] = ($this->base($rate)['on'][$kind] ?? Money::zero())->add($bases[$index]);
-            $parts[$rate->key] = ($parts[$rate->key] ?? Money::zero())->add($exact[$index]);
         }
-        $this->charges[] = ['kind' => $kind, 'label' => $label, 'amount' => $amount, 'rates' => $taxes, 'parts' => $parts, 'taxable' => $on];
+        $this->charges[] = ['kind' => $kind, 'label' => $label, 'amount' => $amount, 'rates' => array_values($rates), 'parts' => $parts, 'taxable' => $on];
     }
 
     /**

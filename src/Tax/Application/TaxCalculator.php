@@ -67,6 +67,12 @@ final readonly class TaxCalculator
         return $this->settings->load()->samePriceEverywhere;
     }
 
+    /** Whether shipping is taxed as the items it carries; see TaxSettings. */
+    public function shippingTaxedAsItems(): bool
+    {
+        return $this->settings->load()->shippingTaxedAsItems;
+    }
+
     /** Whether prices show with tax: in the cart and checkout, or in the catalog; see TaxSettings. */
     public function showsTax(bool $inCart): bool
     {

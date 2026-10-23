@@ -53,6 +53,11 @@ final readonly class TaxSettings
          * rate's (true); or the price before the shop's own tax stays and the customer's rate goes on top (false).
          */
         public bool $samePriceEverywhere = true,
+        /**
+         * Shipping taxed as the items it carries: its price shared out by what they cost, each share at their rates,
+         * as EU VAT treats it; otherwise at the tax group of the way to ship.
+         */
+        public bool $shippingTaxedAsItems = false,
     ) {
         foreach ([$shownInShop, $shownInCart] as $shown) {
             if (!\in_array($shown, self::SHOWN, true)) {
@@ -120,6 +125,6 @@ final readonly class TaxSettings
             && $this->reverseCharge === $other->reverseCharge && $this->roundsEachLine === $other->roundsEachLine && $this->originRegions === $other->originRegions
             && $this->provider === $other->provider && $this->whenProviderFails === $other->whenProviderFails && $this->acceptsCertificates === $other->acceptsCertificates
             && $this->shownInShop === $other->shownInShop && $this->shownInCart === $other->shownInCart && $this->priceSuffix === $other->priceSuffix
-            && $this->samePriceEverywhere === $other->samePriceEverywhere;
+            && $this->samePriceEverywhere === $other->samePriceEverywhere && $this->shippingTaxedAsItems === $other->shippingTaxedAsItems;
     }
 }
