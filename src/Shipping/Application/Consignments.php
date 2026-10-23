@@ -159,7 +159,7 @@ final readonly class Consignments
                 $address->state,
                 $order->pickupPointId,
                 $this->contents($order, $items),
-                $order->paymentGateway === self::CASH_ON_DELIVERY && $order->paidAt === null && !$this->hasShipments($orderId) ? $order->total : null,
+                $order->paymentGateway === self::CASH_ON_DELIVERY && $order->paidAt === null && !$this->hasShipments($orderId) ? $order->amountDue : null,
                 $order->subtotal,
                 $command->parcels,
             ), $booking['settings']);

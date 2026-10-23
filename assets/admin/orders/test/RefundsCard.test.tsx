@@ -67,6 +67,14 @@ describe( 'RefundsCard', () => {
 	it( 'suggests what the chosen items and shipping cost, tax included', () => {
 		expect( suggestedAmount( order, { 0: 2 }, true ) ).toBe( 30 );
 		expect( suggestedAmount( order, {}, false ) ).toBe( 0 );
+		// With prices that include tax, it is in them already: two thirds of 30, and 5 of shipping.
+		expect(
+			suggestedAmount(
+				{ ...order, prices_include_tax: true },
+				{ 0: 2 },
+				true
+			)
+		).toBe( 25 );
 	} );
 
 	it( 'lists the refunds and refunds two items through PayPal', async () => {

@@ -57,7 +57,7 @@ final readonly class AnalyticsEvents
             'transaction_id' => (string) $order->number,
             'currency' => $order->currency,
             'value' => (float) $order->total,
-            'tax' => (float) $order->itemsTax + (float) $order->shippingTax,
+            'tax' => (float) $order->tax,
             'shipping' => (float) $order->shippingTotal,
             'coupon' => $coupons,
             'items' => array_map(static fn(OrderLineView $line): array => ['item_id' => $line->sku ?? (string) $line->productId] + self::item($line->name, $line->unitPrice, $line->quantity), $order->lines),

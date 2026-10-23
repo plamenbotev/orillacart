@@ -46,7 +46,44 @@ export interface OrderPage {
 	pages: number;
 }
 
+/** One rate charged on a line, by jurisdiction, as returns are filed. */
+export interface LineTax {
+	name: string;
+	percent: string;
+	country: string;
+	region: string | null;
+	level: 'country' | 'region' | 'local';
+	/** The code it is filed under. */
+	code: string;
+	jurisdiction: string;
+	/** What it was charged on, before tax. */
+	taxable: string;
+	amount: string;
+	compound: boolean;
+	/** What refunds gave back of it. */
+	refunded: string;
+}
+
+/** A change to a line's price after its unit price; below zero when it lowered it. */
+export interface Adjustment {
+	kind: 'coupon' | 'automatic' | 'manual' | 'add_on';
+	/** The coupon's code, the add-on's id, or the shop manager's user id. */
+	source: string;
+	label: string;
+	amount: string;
+	/** A share of one amount for the whole order, or this line's own. */
+	scope: 'order' | 'line';
+	free_shipping: boolean;
+	reason: string | null;
+}
+
 export interface OrderLine {
+	/** An item, the shipping or a fee. */
+	kind?: 'item' | 'shipping' | 'fee';
+	/** Its place in the order, as refunds and edits name it. */
+	position?: number;
+	taxes?: LineTax[];
+	adjustments?: Adjustment[];
 	product_id: number;
 	variation_id: number | null;
 	name: string;
@@ -159,6 +196,16 @@ export interface Order {
 	reverse_charge: boolean;
 	/** The customer's details were erased, as a privacy request asked. */
 	anonymised: boolean;
+	/** The amounts include tax: the taxes are in the total, not added to it. */
+	prices_include_tax?: boolean;
+	/** What is left to give back. */
+	refundable?: string;
+	/** The shipping and the fees, as lines with their taxes and adjustments. */
+	charges?: OrderLine[];
+	/** All the tax charged: on the items, the shipping and the fees. */
+	tax?: string;
+	/** The customer's exemption from tax that covered the order. */
+	tax_exemption?: { reason: string; certificate: string } | null;
 }
 
 /** A button an add-on puts on the order screen. */

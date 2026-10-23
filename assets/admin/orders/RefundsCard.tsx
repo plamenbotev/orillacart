@@ -42,7 +42,7 @@ const decimal = ( value: number ) =>
 
 /**
  * What the chosen items and shipping cost the customer, tax included and discounts taken off: the amount the
- * form suggests.
+ * form suggests. With prices that include tax, the tax is in them already.
  *
  * @param order      The order.
  * @param quantities Items to refund by line position.
@@ -53,6 +53,7 @@ export function suggestedAmount(
 	quantities: Record< number, number >,
 	shipping: boolean
 ): number {
+	const added = order.prices_include_tax ? 0 : 1;
 	let amount = 0;
 	order.lines.forEach( ( line, position ) => {
 		const quantity = quantities[ position ] ?? 0;
@@ -60,13 +61,15 @@ export function suggestedAmount(
 			amount +=
 				( ( Number( line.total ) -
 					Number( line.discount ?? 0 ) +
-					Number( line.tax ) ) *
+					added * Number( line.tax ) ) *
 					quantity ) /
 				line.quantity;
 		}
 	} );
 	if ( shipping ) {
-		amount += Number( order.shipping_total ) + Number( order.shipping_tax );
+		amount +=
+			Number( order.shipping_total ) +
+			added * Number( order.shipping_tax );
 	}
 	return amount;
 }

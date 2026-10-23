@@ -478,6 +478,26 @@ function Summary( { order }: { order: Order } ) {
 											<small>SKU { line.sku }</small>
 										</div>
 									) }
+									{ ( line.adjustments ?? [] )
+										.filter(
+											( adjustment ) =>
+												adjustment.kind === 'manual' ||
+												adjustment.kind === 'add_on'
+										)
+										.map( ( adjustment, place ) => (
+											<div key={ place }>
+												<small>
+													{ adjustment.label }:{ ' ' }
+													{ money(
+														adjustment.amount,
+														order.currency
+													) }
+													{ adjustment.reason !==
+														null &&
+														` (${ adjustment.reason })` }
+												</small>
+											</div>
+										) ) }
 									{ ( line.contents ?? [] ).length > 0 && (
 										<div>
 											<small>
@@ -567,13 +587,14 @@ function Summary( { order }: { order: Order } ) {
 							value={ money( fee.amount, order.currency ) }
 						/>
 					) ) }
-					{ order.taxes.map( ( tax ) => (
-						<FragmentRow
-							key={ tax.name + tax.percent }
-							label={ `${ tax.name } (${ tax.percent } %)` }
-							value={ money( tax.amount, order.currency ) }
-						/>
-					) ) }
+					{ ! order.prices_include_tax &&
+						order.taxes.map( ( tax ) => (
+							<FragmentRow
+								key={ tax.name + tax.percent }
+								label={ `${ tax.name } (${ tax.percent } %)` }
+								value={ money( tax.amount, order.currency ) }
+							/>
+						) ) }
 					<dt>
 						<strong>{ __( 'Total', 'orillacart' ) }</strong>
 					</dt>
@@ -582,6 +603,22 @@ function Summary( { order }: { order: Order } ) {
 							{ money( order.total, order.currency ) }
 						</strong>
 					</dd>
+					{ order.prices_include_tax &&
+						order.taxes.map( ( tax ) => (
+							<FragmentRow
+								key={ tax.name + tax.percent }
+								label={ sprintf(
+									/* translators: 1: tax name, 2: its rate */
+									__(
+										'Includes %1$s (%2$s %%)',
+										'orillacart'
+									),
+									tax.name,
+									tax.percent
+								) }
+								value={ money( tax.amount, order.currency ) }
+							/>
+						) ) }
 					{ ( order.gift_cards ?? [] ).map( ( card, index ) => (
 						<FragmentRow
 							key={ `${ card.label }-${ index }` }
@@ -599,6 +636,20 @@ function Summary( { order }: { order: Order } ) {
 						/>
 					) }
 				</dl>
+				{ order.tax_exemption && (
+					<p>
+						{ sprintf(
+							/* translators: 1: why the customer buys without tax, 2: their certificate's number */
+							__(
+								'Sold without tax: %1$s, certificate %2$s.',
+								'orillacart'
+							),
+							order.tax_exemption.reason,
+							order.tax_exemption.certificate
+						) }
+					</p>
+				) }
+				<TaxByJurisdiction order={ order } />
 				<p>
 					{ sprintf(
 						/* translators: 1: date, 2: payment method */
@@ -720,6 +771,84 @@ function InvoicesList( { order }: { order: Order } ) {
 				</span>
 			) ) }
 		</p>
+	);
+}
+
+/**
+ * The order's tax by who it is owed to, as returns are filed: each jurisdiction's taxable amount, tax and what
+ * refunds gave back, over the items, the shipping and the fees.
+ * @param props
+ * @param props.order
+ */
+function TaxByJurisdiction( { order }: { order: Order } ) {
+	const rows = new Map<
+		string,
+		{
+			name: string;
+			level: string;
+			taxable: number;
+			amount: number;
+			refunded: number;
+		}
+	>();
+	for ( const line of [ ...order.lines, ...( order.charges ?? [] ) ] ) {
+		for ( const tax of line.taxes ?? [] ) {
+			const key = `${ tax.code }|${ tax.percent }`;
+			const row = rows.get( key ) ?? {
+				name: `${ tax.jurisdiction } (${ tax.percent } %)`,
+				level: tax.level,
+				taxable: 0,
+				amount: 0,
+				refunded: 0,
+			};
+			row.taxable += Number( tax.taxable );
+			row.amount += Number( tax.amount );
+			row.refunded += Number( tax.refunded );
+			rows.set( key, row );
+		}
+	}
+	if ( rows.size === 0 ) {
+		return null;
+	}
+	const LEVELS: Record< string, string > = {
+		country: __( 'Country', 'orillacart' ),
+		region: __( 'State', 'orillacart' ),
+		local: __( 'Local', 'orillacart' ),
+	};
+	const amount = ( value: number ) =>
+		money( value.toFixed( 4 ), order.currency );
+	return (
+		<details className="orillacart-tax-jurisdictions">
+			<summary>{ __( 'Tax by jurisdiction', 'orillacart' ) }</summary>
+			<table className="widefat striped">
+				<thead>
+					<tr>
+						<th>{ __( 'Jurisdiction', 'orillacart' ) }</th>
+						<th>{ __( 'Code', 'orillacart' ) }</th>
+						<th>{ __( 'Taxable', 'orillacart' ) }</th>
+						<th>{ __( 'Tax', 'orillacart' ) }</th>
+						<th>{ __( 'Refunded', 'orillacart' ) }</th>
+					</tr>
+				</thead>
+				<tbody>
+					{ [ ...rows.entries() ].map( ( [ key, row ] ) => (
+						<tr key={ key }>
+							<td>
+								{ row.name }
+								<br />
+								<small>
+									{ LEVELS[ row.level ] ?? row.level }
+								</small>
+							</td>
+							<td>{ key.split( '|' )[ 0 ] }</td>
+							<td>{ amount( row.taxable ) }</td>
+							<td>{ amount( row.amount ) }</td>
+							<td>{ amount( row.refunded ) }</td>
+						</tr>
+					) ) }
+				</tbody>
+			</table>
+		</details>
 	);
 }
 
