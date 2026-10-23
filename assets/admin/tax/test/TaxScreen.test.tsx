@@ -89,6 +89,18 @@ function serve( write: ( request: Request ) => Promise< unknown > ) {
 						has_states: true,
 					},
 				] );
+			case '/orillacart/v1/tax/nexus-thresholds':
+				return Promise.resolve( {
+					everywhere: { sales: '100000', orders: null },
+					states: [],
+				} );
+			case '/orillacart/v1/reports/nexus':
+				return Promise.resolve( {
+					currency: 'USD',
+					states: [],
+					tax_service: false,
+					pending: 0,
+				} );
 			case '/orillacart/v1/countries/US/states':
 				return Promise.resolve( [
 					{ code: 'CA', name: 'California' },

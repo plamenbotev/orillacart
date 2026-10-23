@@ -20,6 +20,7 @@ use OrillaCart\Reports\Domain\UsedCoupon;
 use OrillaCart\Reports\Infrastructure\Doctrine\DbalReportQueries;
 use OrillaCart\Reports\Infrastructure\Doctrine\DbalReportStore;
 use OrillaCart\Reports\Infrastructure\Doctrine\ReportTables;
+use OrillaCart\Shared\Domain\Money;
 
 /**
  * The reports' SQL on MySQL: sales of paid orders in the shop's currency, refunds on their own day, products by
@@ -142,18 +143,36 @@ final class ReportQueriesTest extends RestTestCase
         ], array_map(static fn(array $row): array => [$row['code'], $row['level'], $row['percent'], $row['orders'], $row['taxable'], $row['exempt'], $row['tax'], $row['refunded']], $rows), 'the state first, then its places; unpaid orders do not count');
     }
 
+    public function testSalesAddUpByStateBeforeTaxForEconomicNexus(): void
+    {
+        $this->store->replace(self::ORDERS, [
+            $this->facts(990001, '2030-04-02', 'c7', '100', currency: 'USD', country: 'US', region: 'TX', tax: '8.25'),
+            $this->facts(990002, '2030-05-02', 'c8', '40', currency: 'USD', country: 'US', region: 'TX'),
+            $this->facts(990003, '2030-04-02', 'c9', '50', currency: 'USD', country: 'US', region: 'CA'),
+            $this->facts(990004, '2030-04-02', 'c9', '70', counted: false, currency: 'USD', country: 'US', region: 'CA'),
+            $this->facts(990005, '2031-01-02', 'c9', '70', currency: 'USD', country: 'US', region: 'CA'),
+        ]);
+
+        self::assertSame(
+            ['CA' => ['sales' => '50', 'orders' => 1], 'TX' => ['sales' => '140', 'orders' => 2]],
+            $this->queries->stateSales(new Period(new \DateTimeImmutable('2030-01-01'), new \DateTimeImmutable('2030-12-31')), 'USD', 'US'),
+            'before tax; unpaid orders and other years do not count',
+        );
+        self::assertSame([], $this->queries->stateSales(new Period(new \DateTimeImmutable('2030-01-01'), new \DateTimeImmutable('2030-12-31')), 'EUR', 'US'));
+    }
+
     /**
      * @param array{string, string}|null $refund
      * @param array{string, string}|null $coupon
      * @param list<CollectedTax>         $taxes
      */
-    private function facts(int $id, string $day, string $customer, string $gross, bool $counted = true, string $currency = 'EUR', ?array $refund = null, ?array $coupon = null, array $taxes = []): OrderFacts
+    private function facts(int $id, string $day, string $customer, string $gross, bool $counted = true, string $currency = 'EUR', ?array $refund = null, ?array $coupon = null, array $taxes = [], string $country = 'BG', ?string $region = null, string $tax = '0'): OrderFacts
     {
         $date = new \DateTimeImmutable($day);
         $discount = $coupon[1] ?? '0';
 
         return new OrderFacts(
-            new SoldOrder($id, $date, $date->setTime(10, 0), $counted, $counted ? 'processing' : 'pending_payment', $currency, $customer, str_starts_with($customer, 'c') ? (int) substr($customer, 1) : null, 'Ada Lovelace', 'BG', 'Bank transfer', '', 2, $gross, $discount, '0', '0', $gross),
+            new SoldOrder($id, $date, $date->setTime(10, 0), $counted, $counted ? 'processing' : 'pending_payment', $currency, $customer, str_starts_with($customer, 'c') ? (int) substr($customer, 1) : null, 'Ada Lovelace', $country, 'Bank transfer', '', 2, $gross, $discount, '0', $tax, (string) Money::of($gross)->add(Money::of($tax)), $region),
             [new SoldLine($id, $date, $counted, $currency, $this->product, null, 'Report lamp', 2, (string) ((float) $gross - (float) $discount))],
             $coupon === null ? [] : [new UsedCoupon($id, $date, $counted, $currency, $coupon[0], $coupon[1])],
             $refund === null ? [] : [new GivenRefund($id, $id, new \DateTimeImmutable($refund[0]), $currency, $refund[1])],

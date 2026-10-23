@@ -305,6 +305,22 @@ final readonly class DbalReportQueries implements ReportQueries
         ));
     }
 
+    public function stateSales(Period $period, string $currency, string $country): array
+    {
+        $sales = [];
+        foreach ($this->tables->connection()->fetchAllAssociative(
+            "SELECT region, COUNT(*) AS orders, SUM(total - tax) AS sales
+             FROM {$this->tables->orders()}
+             WHERE counted = 1 AND currency = ? AND country = ? AND region IS NOT NULL AND day BETWEEN ? AND ?
+             GROUP BY region",
+            [$currency, $country, ...$this->days($period)],
+        ) as $row) {
+            $sales[self::string($row['region'])] = ['sales' => self::money($row['sales']), 'orders' => self::int($row['orders'])];
+        }
+
+        return $sales;
+    }
+
     /** @return array{string, string} */
     private function days(Period $period): array
     {

@@ -4,10 +4,18 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Platform\Doctrine\DatabaseConfig;
+use OrillaCart\Platform\Doctrine\EntityManagerFactory;
+use OrillaCart\Platform\PluginContext;
+use OrillaCart\Reports\Domain\OrderFacts;
+use OrillaCart\Reports\Domain\SoldOrder;
+use OrillaCart\Reports\Infrastructure\Doctrine\DbalReportStore;
+use OrillaCart\Reports\Infrastructure\Doctrine\ReportTables;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Application\Dto\TaxQuery;
 use OrillaCart\Tax\Application\TaxCalculator;
+use OrillaCart\Tax\Infrastructure\WordPress\OptionNexusThresholdsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
 
 /**
@@ -40,7 +48,8 @@ final class TaxRestTest extends RestTestCase
     public function testOnlyShopManagersReachTheTaxRoutes(): void
     {
         $routes = [['GET', '/tax/groups'], ['POST', '/tax/groups'], ['GET', '/tax/groups/1'], ['PUT', '/tax/groups/1'], ['DELETE', '/tax/groups/1'],
-            ['POST', '/tax/groups/1/rates'], ['PUT', '/tax/groups/1/rates/1'], ['DELETE', '/tax/groups/1/rates/1'], ['GET', '/tax/settings'], ['PUT', '/tax/settings']];
+            ['POST', '/tax/groups/1/rates'], ['PUT', '/tax/groups/1/rates/1'], ['DELETE', '/tax/groups/1/rates/1'], ['GET', '/tax/settings'], ['PUT', '/tax/settings'],
+            ['GET', '/tax/nexus-thresholds'], ['PUT', '/tax/nexus-thresholds'], ['GET', '/reports/nexus']];
 
         foreach ($routes as [$method, $route]) {
             self::assertSame(401, $this->request($method, $route)->get_status(), "visitor: {$method} {$route}");
@@ -170,6 +179,57 @@ final class TaxRestTest extends RestTestCase
         self::assertInstanceOf(\wpdb::class, $wpdb);
 
         return $wpdb;
+    }
+
+    public function testTheShopSeesWhichStatesItsSalesCrossedTheThresholdsOf(): void
+    {
+        $this->actAs('administrator');
+        update_option(OptionSettingsRepository::OPTION, ['currency' => 'USD', 'fewer_decimals' => null, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY']);
+        self::assertSame(['everywhere' => ['sales' => '100000', 'orders' => null], 'states' => []], $this->data($this->request('GET', '/tax/nexus-thresholds')), 'the usual $100,000');
+
+        $saved = $this->request('PUT', '/tax/nexus-thresholds', ['everywhere' => ['sales' => '100.00', 'orders' => null], 'states' => [['state' => 'TX', 'sales' => null, 'orders' => 2]]], nonce: true);
+        self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
+        self::assertSame(['everywhere' => ['sales' => '100', 'orders' => null], 'states' => [['state' => 'TX', 'sales' => null, 'orders' => 2]]], $this->data($saved));
+        foreach ([['everywhere' => ['sales' => '0']], ['everywhere' => ['sales' => 'lots']], ['everywhere' => [], 'states' => [['state' => 'Texas', 'orders' => 1]]], ['everywhere' => [], 'states' => [['state' => 'TX'], ['state' => 'TX']]], ['everywhere' => [], 'states' => [['orders' => 1]]]] as $refused) {
+            self::assertSame(422, $this->request('PUT', '/tax/nexus-thresholds', $refused, nonce: true)->get_status(), (string) wp_json_encode($refused));
+        }
+        $group = $this->id($this->request('POST', '/tax/groups', ['name' => 'Standard'], nonce: true));
+        $this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'US', 'state' => 'CA', 'percent' => '7.25', 'name' => 'California'], nonce: true);
+
+        $tables = new ReportTables(new EntityManagerFactory(DatabaseConfig::fromWordPress(), new PluginContext(\dirname(__DIR__, 2) . '/orillacart.php', ORILLACART_VERSION))->create());
+        $store = new DbalReportStore($tables);
+        $today = new \DateTimeImmutable((string) wp_date('Y-m-d'));
+        $sold = static fn(int $id, string $state, string $total): OrderFacts => new OrderFacts(new SoldOrder($id, $today, $today, true, 'processing', 'USD', "c{$id}", null, 'Ada Lovelace', 'US', 'Bank transfer', '', 1, $total, '0', '0', '0', $total, $state), [], [], [], []);
+        $orders = [990101, 990102, 990103, 990104];
+        $store->replace($orders, [$sold(990101, 'TX', '30'), $sold(990102, 'TX', '30'), $sold(990103, 'CA', '150'), $sold(990104, 'NV', '60')]);
+        try {
+            $report = $this->data($this->request('GET', '/reports/nexus'));
+            self::assertSame('USD', $report['currency']);
+            self::assertSame(
+                [['TX', 'Texas', '60', 2, true, false], ['CA', 'California', '150', 1, true, true], ['NV', 'Nevada', '60', 1, false, false]],
+                array_map(static function (array $state): array {
+                    $year = $state['this_year'];
+                    self::assertIsArray($year);
+
+                    return [$state['state'], $state['name'], $year['sales'], $year['orders'], $state['crossed'], $state['collecting']];
+                }, self::rows($report['states'])),
+                'Texas counts orders and the shop collects nothing there: it comes first',
+            );
+        } finally {
+            $store->replace($orders, []);
+            delete_option(OptionNexusThresholdsRepository::OPTION);
+        }
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private static function rows(mixed $value): array
+    {
+        self::assertIsList($value);
+
+        /** @var list<array<string, mixed>> */
+        return $value;
     }
 
     private function clean(): void

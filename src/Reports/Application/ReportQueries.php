@@ -88,4 +88,12 @@ interface ReportQueries
      * @return list<array{country: string, region: ?string, level: string, code: string, jurisdiction: string, percent: string, orders: int, taxable: string, exempt: string, tax: string, refunded: string}>
      */
     public function taxes(Period $period, string $currency): array;
+
+    /**
+     * The period's sales before tax and orders in each state of a country, for economic nexus: what the
+     * customers paid, before refunds.
+     *
+     * @return array<string, array{sales: string, orders: int}> by state code
+     */
+    public function stateSales(Period $period, string $currency, string $country): array;
 }

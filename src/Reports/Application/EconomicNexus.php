@@ -1,0 +1,101 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Reports\Application;
+
+use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\Jobs\Application\Jobs;
+use OrillaCart\Reports\Application\Dto\NexusReport;
+use OrillaCart\Reports\Domain\Period;
+use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Tax\Application\NexusThresholdSettings;
+use OrillaCart\Tax\Application\TaxGroupService;
+use OrillaCart\Tax\Application\TaxServices;
+use OrillaCart\Tax\Domain\NexusThreshold;
+use Psr\Clock\ClockInterface;
+
+/**
+ * Measures the shop's sales in each US state against the economic nexus thresholds it set: a state whose
+ * threshold its sales crossed in the last twelve months, this calendar year or the last may be owed sales tax,
+ * which the shop collects once it registered there.
+ */
+final readonly class EconomicNexus
+{
+    private const string COUNTRY = 'US';
+
+    public function __construct(
+        private ReportQueries $queries,
+        private ShopCalendar $calendar,
+        private ClockInterface $clock,
+        private SettingsService $settings,
+        private NexusThresholdSettings $thresholds,
+        private TaxGroupService $groups,
+        private TaxServices $taxServices,
+        private GeographyService $geography,
+        private Jobs $jobs,
+    ) {}
+
+    public function report(): NexusReport
+    {
+        $zone = $this->calendar->timezone();
+        $today = $this->clock->now()->setTimezone($zone);
+        $windows = [
+            'last_twelve_months' => Period::of($today->modify('-1 year +1 day')->format('Y-m-d'), $today->format('Y-m-d'), $zone),
+            'this_year' => Period::of($today->format('Y-01-01'), $today->format('Y-m-d'), $zone),
+            'last_year' => Period::of($today->modify('-1 year')->format('Y-01-01'), $today->modify('-1 year')->format('Y-12-31'), $zone),
+        ];
+        $currency = $this->settings->current()->currency;
+        $sales = array_map(fn(Period $period): array => $this->queries->stateSales($period, $currency, self::COUNTRY), $windows);
+        $thresholds = $this->thresholds->current();
+        $own = array_column($thresholds->states, null, 'state');
+        $names = array_column(array_map(static fn($state): array => ['code' => $state->code, 'name' => $state->name], $this->geography->states(self::COUNTRY)), 'name', 'code');
+        $collecting = [];
+        foreach ($this->groups->groups() as $group) {
+            foreach ($group->rates as $rate) {
+                if ($rate->country === self::COUNTRY && $rate->state !== null) {
+                    $collecting[$rate->state] = true;
+                }
+            }
+        }
+
+        $states = [];
+        foreach (array_unique(array_merge(...array_map(array_keys(...), array_values($sales)))) as $state) {
+            $state = (string) $state;
+            $limit = $own[$state] ?? $thresholds->everywhere;
+            $threshold = new NexusThreshold($limit['sales'], $limit['orders']);
+            $measured = array_map(static fn(array $window): array => $window[$state] ?? ['sales' => '0', 'orders' => 0], $sales);
+            $states[] = [
+                'state' => $state,
+                'name' => $names[$state] ?? $state,
+                'last_twelve_months' => $measured['last_twelve_months'],
+                'this_year' => $measured['this_year'],
+                'last_year' => $measured['last_year'],
+                'threshold' => ['sales' => $limit['sales'], 'orders' => $limit['orders']],
+                'crossed' => array_any($measured, static fn(array $window): bool => $threshold->crossedBy(Money::of($window['sales']), $window['orders'])),
+                'collecting' => isset($collecting[$state]),
+            ];
+        }
+        // What may be owed and is not collected first, then by what was sold.
+        usort($states, static fn(array $a, array $b): int => [$b['crossed'] && !$b['collecting'], $b['crossed'], Money::of($b['last_twelve_months']['sales'])->compare(Money::of($a['last_twelve_months']['sales']))]
+            <=> [$a['crossed'] && !$a['collecting'], $a['crossed'], 0]);
+        $waiting = $this->jobs->waiting(ProjectOrders::TYPE);
+
+        return new NexusReport(
+            $currency,
+            self::days($windows['last_twelve_months']),
+            self::days($windows['this_year']),
+            self::days($windows['last_year']),
+            $states,
+            $this->taxServices->active() !== null,
+            $waiting->due + $waiting->running + $this->jobs->pending(RebuildReports::TYPE),
+        );
+    }
+
+    /** @return array{from: string, to: string} */
+    private static function days(Period $period): array
+    {
+        return ['from' => $period->from->format('Y-m-d'), 'to' => $period->to->format('Y-m-d')];
+    }
+}

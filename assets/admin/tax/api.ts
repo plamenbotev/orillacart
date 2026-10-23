@@ -135,3 +135,68 @@ export function saveTaxSettings(
 		data: input,
 	} );
 }
+
+/** What a US state counts before a seller from elsewhere owes it sales tax: either one crossed is enough. */
+export interface NexusThreshold {
+	/** Sales in a year, in the shop's currency; null when not counted. */
+	sales: string | null;
+	/** Orders in a year; null when not counted. */
+	orders: number | null;
+}
+
+export interface NexusThresholds {
+	everywhere: NexusThreshold;
+	/** States whose own threshold differs, by code such as "TX". */
+	states: ( NexusThreshold & { state: string } )[];
+}
+
+export interface NexusWindow {
+	sales: string;
+	orders: number;
+}
+
+export interface NexusState {
+	state: string;
+	name: string;
+	last_twelve_months: NexusWindow;
+	this_year: NexusWindow;
+	last_year: NexusWindow;
+	threshold: NexusThreshold;
+	/** Its sales crossed the threshold in one of the windows. */
+	crossed: boolean;
+	/** The shop has a tax rate for the state. */
+	collecting: boolean;
+}
+
+export interface NexusReport {
+	currency: string;
+	last_twelve_months: { from: string; to: string };
+	this_year: { from: string; to: string };
+	last_year: { from: string; to: string };
+	/** What may be owed and is not collected first. */
+	states: NexusState[];
+	/** A tax service works out the taxes. */
+	tax_service: boolean;
+	/** Orders not counted yet. */
+	pending: number;
+}
+
+export function fetchNexusThresholds(): Promise< NexusThresholds > {
+	return apiFetch< NexusThresholds >( {
+		path: `${ BASE }/nexus-thresholds`,
+	} );
+}
+
+export function saveNexusThresholds(
+	thresholds: NexusThresholds
+): Promise< NexusThresholds > {
+	return apiFetch< NexusThresholds >( {
+		path: `${ BASE }/nexus-thresholds`,
+		method: 'PUT',
+		data: thresholds,
+	} );
+}
+
+export function fetchNexusReport(): Promise< NexusReport > {
+	return apiFetch< NexusReport >( { path: '/orillacart/v1/reports/nexus' } );
+}

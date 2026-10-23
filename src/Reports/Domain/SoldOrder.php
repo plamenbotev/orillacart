@@ -16,6 +16,7 @@ use OrillaCart\Shared\Domain\Money;
 #[ORM\Table(name: 'report_orders')]
 #[ORM\Index(name: 'report_order_day', columns: ['counted', 'currency', 'day'])]
 #[ORM\Index(name: 'report_order_customer', columns: ['customer_key', 'placed_at'])]
+#[ORM\Index(name: 'report_order_region', columns: ['country', 'region', 'day'])]
 class SoldOrder
 {
     /**
@@ -64,5 +65,8 @@ class SoldOrder
         public readonly string $tax,
         #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
         public readonly string $total,
+        /** The state it went to, "TX", where the country has them; the economic nexus report counts by it. */
+        #[ORM\Column(length: 3, nullable: true)]
+        public readonly ?string $region = null,
     ) {}
 }

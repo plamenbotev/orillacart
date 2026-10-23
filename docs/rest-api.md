@@ -1480,6 +1480,12 @@ The customer holding the order's receipt asks to send some of its items back.
   - `limit` (int): 1 to 100; default 10
   - `sort` (string): one of net, quantity; default 'net'
 
+### `GET /reports/nexus`
+
+The shop's sales in each US state against its economic nexus thresholds.
+
+- Who: shop managers
+
 ### `GET /reports/products`
 
 - Who: shop managers
@@ -1942,6 +1948,21 @@ Fills a tax group with the standard VAT rate of every EU country it has none for
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+### `GET /tax/nexus-thresholds`
+
+The economic nexus thresholds the shop goes by.
+
+- Who: shop managers
+
+### `PUT /tax/nexus-thresholds`
+
+Saves the economic nexus thresholds: for every US state, and for those whose own differ.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `everywhere` (SaveNexusThreshold): required
+  - `states` (list<SaveNexusThreshold>): at most 60 items
+
 ### `GET /tax/settings`
 
 - Who: shop managers
@@ -2137,6 +2158,12 @@ The objects fields above take.
 - `condition` (SaveFieldCondition|null)
 - `types` (list<string>): each one of image/jpeg, image/png, image/webp, image/gif, application/pdf
 - `largest` (int): 1 to 20; default 10
+
+### SaveNexusThreshold
+
+- `sales` (string|null): matches `/^\d{1,11}(\.\d{1,2})?$/`
+- `orders` (int|null): more than 0
+- `state` (string|null): matches `/^[A-Z]{2}$/`
 
 ### SaveOption
 

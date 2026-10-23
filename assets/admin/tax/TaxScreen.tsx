@@ -32,6 +32,7 @@ import {
 	type TaxRate,
 	type TaxSettings,
 } from './api';
+import { NexusCard } from './NexusCard';
 import { RateModal } from './RateModal';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
@@ -159,6 +160,15 @@ export function TaxScreen() {
 					onError={ fail }
 				/>
 			) }
+			<NexusCard
+				onSaved={ () =>
+					setMessage( {
+						status: 'success',
+						text: __( 'Thresholds saved.', 'orillacart' ),
+					} )
+				}
+				onError={ fail }
+			/>
 		</>
 	);
 }
