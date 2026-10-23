@@ -1177,3 +1177,112 @@ test.describe( 'A visitor', () => {
 		}
 	} );
 } );
+
+test.describe( 'Templates', () => {
+	test( 'show a product in the template it chose, and a category or a product in one made for it alone', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const made: string[] = [];
+		const terms: number[] = [];
+		const template = async ( slug: string, text: string ) => {
+			const saved = await requestUtils.rest< { id: string } >( {
+				method: 'POST',
+				path: '/wp/v2/templates',
+				data: {
+					slug,
+					title: slug,
+					content: `<!-- wp:paragraph --><p>${ text }</p><!-- /wp:paragraph -->`,
+				},
+			} );
+			made.push( saved.id );
+		};
+		const category = async ( name: string ) => {
+			const term = await requestUtils.rest< {
+				id: number;
+				slug: string;
+				link: string;
+			} >( {
+				method: 'POST',
+				path: '/wp/v2/orillacart_category',
+				data: { name },
+			} );
+			terms.push( term.id );
+			return term;
+		};
+		try {
+			// A template the product chose in the editor's Template panel: the wide image, the buying form kept.
+			await requestUtils.rest( {
+				method: 'POST',
+				path: `/wp/v2/orillacart_product/${ shop.lamp }`,
+				data: { template: 'orillacart-product-wide' },
+			} );
+			await page.goto( shop.lampUrl );
+			await expect(
+				page.locator( 'main.orillacart-product--wide' )
+			).toBeVisible();
+			await expect(
+				page.getByRole( 'button', { name: 'Add to cart' } )
+			).toBeVisible();
+
+			// A template the site editor made for one category wins over the plugin's for all of them.
+			const lamps = await category( 'E2E Lamps' );
+			const other = await category( 'E2E Other' );
+			await requestUtils.rest( {
+				method: 'POST',
+				path: `/wp/v2/orillacart_product/${ shop.lamp }`,
+				data: { orillacart_category: [ lamps.id, other.id ] },
+			} );
+			await template(
+				`taxonomy-orillacart_category-${ lamps.slug }`,
+				'Only the lamps here.'
+			);
+			await page.goto( lamps.link );
+			await expect(
+				page.getByText( 'Only the lamps here.' )
+			).toBeVisible();
+			await page.goto( other.link );
+			await expect(
+				page.getByText( 'Only the lamps here.' )
+			).toHaveCount( 0 );
+			await expect(
+				page.getByRole( 'link', { name: 'E2E Lamp' } ).first()
+			).toBeVisible();
+
+			// One made for one product wins over the plugin's for all of them (a template the product chose wins
+			// over both, as WordPress has it).
+			await requestUtils.rest( {
+				method: 'POST',
+				path: `/wp/v2/orillacart_product/${ shop.lamp }`,
+				data: { template: '' },
+			} );
+			const lamp = await requestUtils.rest< { slug: string } >( {
+				path: `/wp/v2/orillacart_product/${ shop.lamp }`,
+			} );
+			await template(
+				`single-orillacart_product-${ lamp.slug }`,
+				'This lamp alone.'
+			);
+			await page.goto( shop.lampUrl );
+			await expect( page.getByText( 'This lamp alone.' ) ).toBeVisible();
+		} finally {
+			for ( const id of made ) {
+				await remove(
+					requestUtils,
+					`/wp/v2/templates/${ id }?force=true`
+				);
+			}
+			for ( const id of terms ) {
+				await remove(
+					requestUtils,
+					`/wp/v2/orillacart_category/${ id }?force=true`
+				);
+			}
+			await requestUtils.rest( {
+				method: 'POST',
+				path: `/wp/v2/orillacart_product/${ shop.lamp }`,
+				data: { template: '' },
+			} );
+		}
+	} );
+} );
