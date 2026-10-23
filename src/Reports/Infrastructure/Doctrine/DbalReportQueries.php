@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Reports\Infrastructure\Doctrine;
 
+use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\ParameterType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Reports\Application\Dto\SalesTotals;
 use OrillaCart\Reports\Application\ReportQueries;
@@ -319,6 +321,28 @@ final readonly class DbalReportQueries implements ReportQueries
         }
 
         return $sales;
+    }
+
+    public function consumerSales(Period $period, array $countries): array
+    {
+        if ($countries === []) {
+            return [];
+        }
+
+        return array_map(static fn(array $row): array => [
+            'currency' => self::string($row['currency']),
+            'country' => self::string($row['country']),
+            'sales' => self::money($row['sales']),
+            'orders' => self::int($row['orders']),
+        ], $this->tables->connection()->fetchAllAssociative(
+            "SELECT currency, country, COUNT(*) AS orders, SUM(total - tax) AS sales
+             FROM {$this->tables->orders()}
+             WHERE counted = 1 AND reverse_charge = 0 AND day BETWEEN ? AND ? AND country IN (?)
+             GROUP BY currency, country
+             ORDER BY country, currency",
+            [...$this->days($period), $countries],
+            [ParameterType::STRING, ParameterType::STRING, ArrayParameterType::STRING],
+        ));
     }
 
     /** @return array{string, string} */

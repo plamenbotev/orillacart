@@ -7,6 +7,7 @@ namespace OrillaCart\Tax\Application;
 use OrillaCart\Extension\Tax\TaxProvider;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Extension\InstalledExtensions;
+use OrillaCart\Tax\Application\Dto\SaveEuThreshold;
 use OrillaCart\Tax\Application\Dto\TaxSettingsView;
 use OrillaCart\Tax\Application\Dto\UpdateTaxSettings;
 use OrillaCart\Tax\Domain\TaxBasis;
@@ -39,7 +40,18 @@ final readonly class TaxSettingsService
         if ($command->provider !== null && !\in_array($command->provider, array_column($this->providers(), 'id'), true)) {
             throw new RuleViolation(\sprintf('There is no tax service "%s": its add-on may be off.', $command->provider), 'orillacart_unknown_tax_provider');
         }
-        $settings = new TaxSettings(TaxBasis::from($command->basis), $command->defaultGroupId, $command->pricesIncludeTax, $command->reverseCharge, $command->roundsEachLine, array_values(array_unique($command->originRegions)), $command->provider, $command->whenProviderFails, $command->acceptsCertificates, $command->shownInShop, $command->shownInCart, trim($command->priceSuffix), $command->samePriceEverywhere, $command->shippingTaxedAsItems);
+        $settings = new TaxSettings(TaxBasis::from($command->basis), $command->defaultGroupId, $command->pricesIncludeTax, $command->reverseCharge, $command->roundsEachLine, array_values(array_unique($command->originRegions)), $command->provider, $command->whenProviderFails, $command->acceptsCertificates, $command->shownInShop, $command->shownInCart, trim($command->priceSuffix), $command->samePriceEverywhere, $command->shippingTaxedAsItems, $command->euThreshold ?? $this->settings->load()->euThreshold);
+        $this->settings->save($settings);
+
+        return TaxSettingsView::fromSettings($settings, $this->providers());
+    }
+
+    /**
+     * @throws RuleViolation for an amount that is not one
+     */
+    public function changeEuThreshold(SaveEuThreshold $command): TaxSettingsView
+    {
+        $settings = $this->settings->load()->withEuThreshold($command->threshold);
         $this->settings->save($settings);
 
         return TaxSettingsView::fromSettings($settings, $this->providers());

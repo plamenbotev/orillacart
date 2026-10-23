@@ -33,6 +33,7 @@ import {
 	type PriceShown,
 	type TaxSettings,
 } from './api';
+import { EuSalesCard } from './EuSalesCard';
 import { NexusCard } from './NexusCard';
 import { RatesCsv } from './RatesCsv';
 import { RateModal } from './RateModal';
@@ -167,6 +168,15 @@ export function TaxScreen() {
 					setMessage( {
 						status: 'success',
 						text: __( 'Thresholds saved.', 'orillacart' ),
+					} )
+				}
+				onError={ fail }
+			/>
+			<EuSalesCard
+				onSaved={ () =>
+					setMessage( {
+						status: 'success',
+						text: __( 'Threshold saved.', 'orillacart' ),
 					} )
 				}
 				onError={ fail }

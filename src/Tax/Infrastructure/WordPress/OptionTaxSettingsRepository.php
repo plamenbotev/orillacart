@@ -56,12 +56,13 @@ final readonly class OptionTaxSettingsRepository implements TaxSettingsRepositor
             \is_string($stored['price_suffix'] ?? null) && mb_strlen($stored['price_suffix']) <= TaxSettings::SUFFIX_LENGTH && preg_match('/[<>\x00-\x1F]/', $stored['price_suffix']) !== 1 ? $stored['price_suffix'] : '',
             ($stored['same_price_everywhere'] ?? true) !== false,
             ($stored['shipping_taxed_as_items'] ?? false) === true,
+            \is_string($stored['eu_threshold'] ?? null) && preg_match('/^\d{1,12}(\.\d{1,2})?$/', $stored['eu_threshold']) === 1 ? $stored['eu_threshold'] : TaxSettings::EU_THRESHOLD,
         );
     }
 
     public function save(TaxSettings $settings): void
     {
-        update_option(self::OPTION, ['basis' => $settings->basis->value, 'default_group_id' => $settings->defaultGroupId, 'prices_include_tax' => $settings->pricesIncludeTax, 'reverse_charge' => $settings->reverseCharge, 'rounds_each_line' => $settings->roundsEachLine, 'origin_regions' => $settings->originRegions, 'provider' => $settings->provider, 'when_provider_fails' => $settings->whenProviderFails, 'accepts_certificates' => $settings->acceptsCertificates, 'shown_in_shop' => $settings->shownInShop, 'shown_in_cart' => $settings->shownInCart, 'price_suffix' => $settings->priceSuffix, 'same_price_everywhere' => $settings->samePriceEverywhere, 'shipping_taxed_as_items' => $settings->shippingTaxedAsItems], true);
+        update_option(self::OPTION, ['basis' => $settings->basis->value, 'default_group_id' => $settings->defaultGroupId, 'prices_include_tax' => $settings->pricesIncludeTax, 'reverse_charge' => $settings->reverseCharge, 'rounds_each_line' => $settings->roundsEachLine, 'origin_regions' => $settings->originRegions, 'provider' => $settings->provider, 'when_provider_fails' => $settings->whenProviderFails, 'accepts_certificates' => $settings->acceptsCertificates, 'shown_in_shop' => $settings->shownInShop, 'shown_in_cart' => $settings->shownInCart, 'price_suffix' => $settings->priceSuffix, 'same_price_everywhere' => $settings->samePriceEverywhere, 'shipping_taxed_as_items' => $settings->shippingTaxedAsItems, 'eu_threshold' => $settings->euThreshold], true);
     }
 
     private static function shown(mixed $stored): string

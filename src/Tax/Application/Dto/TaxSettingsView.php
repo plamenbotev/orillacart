@@ -31,6 +31,7 @@ final readonly class TaxSettingsView
         public string $priceSuffix = '',
         public bool $samePriceEverywhere = true,
         public bool $shippingTaxedAsItems = false,
+        public string $euThreshold = TaxSettings::EU_THRESHOLD,
     ) {}
 
     /**
@@ -38,6 +39,6 @@ final readonly class TaxSettingsView
      */
     public static function fromSettings(TaxSettings $settings, array $providers = []): self
     {
-        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine, $settings->originRegions, $settings->provider, $settings->whenProviderFails, $providers, $settings->acceptsCertificates, $settings->shownInShop, $settings->shownInCart, $settings->priceSuffix, $settings->samePriceEverywhere, $settings->shippingTaxedAsItems);
+        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine, $settings->originRegions, $settings->provider, $settings->whenProviderFails, $providers, $settings->acceptsCertificates, $settings->shownInShop, $settings->shownInCart, $settings->priceSuffix, $settings->samePriceEverywhere, $settings->shippingTaxedAsItems, $settings->euThreshold);
     }
 }

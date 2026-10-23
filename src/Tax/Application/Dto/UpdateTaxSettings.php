@@ -45,5 +45,8 @@ final readonly class UpdateTaxSettings
         public bool $samePriceEverywhere = true,
         /** Shipping taxed as the items it carries, instead of at its own tax group. */
         public bool $shippingTaxedAsItems = false,
+        /** The EU's threshold of distance sales in the shop's currency: 10000 for €10,000; null keeps it. */
+        #[Assert\Regex('/^\d{1,12}(\.\d{1,2})?$/', message: 'Use an amount such as 10000.')]
+        public ?string $euThreshold = null,
     ) {}
 }

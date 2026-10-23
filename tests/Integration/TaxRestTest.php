@@ -49,7 +49,7 @@ final class TaxRestTest extends RestTestCase
     {
         $routes = [['GET', '/tax/groups'], ['POST', '/tax/groups'], ['GET', '/tax/groups/1'], ['PUT', '/tax/groups/1'], ['DELETE', '/tax/groups/1'],
             ['POST', '/tax/groups/1/rates'], ['PUT', '/tax/groups/1/rates/1'], ['DELETE', '/tax/groups/1/rates/1'], ['GET', '/tax/settings'], ['PUT', '/tax/settings'],
-            ['GET', '/tax/nexus-thresholds'], ['PUT', '/tax/nexus-thresholds'], ['GET', '/reports/nexus'], ['GET', '/tax/groups/1/rates/csv'], ['POST', '/tax/groups/1/rates/csv']];
+            ['GET', '/tax/nexus-thresholds'], ['PUT', '/tax/nexus-thresholds'], ['GET', '/reports/nexus'], ['GET', '/reports/eu-distance-sales'], ['PUT', '/tax/eu-threshold'], ['GET', '/tax/groups/1/rates/csv'], ['POST', '/tax/groups/1/rates/csv']];
 
         foreach ($routes as [$method, $route]) {
             self::assertSame(401, $this->request($method, $route)->get_status(), "visitor: {$method} {$route}");
@@ -76,7 +76,7 @@ final class TaxRestTest extends RestTestCase
 
         $settings = $this->request('PUT', '/tax/settings', ['basis' => 'shipping_address', 'default_group_id' => $group], nonce: true);
         self::assertSame(200, $settings->get_status());
-        self::assertSame(['basis' => 'shipping_address', 'default_group_id' => $group, 'bases' => ['shipping_address', 'billing_address', 'shop_address', 'eu_origin', 'eu_destination'], 'prices_include_tax' => false, 'reverse_charge' => false, 'rounds_each_line' => false, 'origin_regions' => [], 'provider' => null, 'when_provider_fails' => 'shop_rates', 'providers' => [], 'accepts_certificates' => false, 'shown_in_shop' => 'as_entered', 'shown_in_cart' => 'as_entered', 'price_suffix' => '', 'same_price_everywhere' => true, 'shipping_taxed_as_items' => false], $this->data($settings));
+        self::assertSame(['basis' => 'shipping_address', 'default_group_id' => $group, 'bases' => ['shipping_address', 'billing_address', 'shop_address', 'eu_origin', 'eu_destination'], 'prices_include_tax' => false, 'reverse_charge' => false, 'rounds_each_line' => false, 'origin_regions' => [], 'provider' => null, 'when_provider_fails' => 'shop_rates', 'providers' => [], 'accepts_certificates' => false, 'shown_in_shop' => 'as_entered', 'shown_in_cart' => 'as_entered', 'price_suffix' => '', 'same_price_everywhere' => true, 'shipping_taxed_as_items' => false, 'eu_threshold' => '10000'], $this->data($settings));
 
         $calculator = self::kernel()->container()->get(TaxCalculator::class);
         self::assertInstanceOf(TaxCalculator::class, $calculator);
@@ -242,6 +242,54 @@ final class TaxRestTest extends RestTestCase
         } finally {
             $store->replace($orders, []);
             delete_option(OptionNexusThresholdsRepository::OPTION);
+        }
+    }
+
+    public function testAShopInTheEuSeesItsSalesToConsumersElsewhereInTheEuAgainstTheThreshold(): void
+    {
+        $this->actAs('administrator');
+        update_option(OptionSettingsRepository::OPTION, ['currency' => 'EUR', 'fewer_decimals' => null, 'weight_unit' => 'kg', 'dimension_unit' => 'cm', 'shop_country' => 'BG', 'shop_state' => null]);
+        $this->request('PUT', '/tax/settings', ['basis' => 'eu_origin', 'default_group_id' => null], nonce: true);
+        $group = $this->id($this->request('POST', '/tax/groups', ['name' => 'Standard'], nonce: true));
+        $this->request('POST', "/tax/groups/{$group}/rates", ['country' => 'DE', 'state' => null, 'percent' => '19', 'name' => 'MwSt'], nonce: true);
+
+        $tables = new ReportTables(new EntityManagerFactory(DatabaseConfig::fromWordPress(), new PluginContext(\dirname(__DIR__, 2) . '/orillacart.php', ORILLACART_VERSION))->create());
+        $store = new DbalReportStore($tables);
+        $today = new \DateTimeImmutable((string) wp_date('Y-m-d'));
+        $lastYear = $today->modify('-1 year');
+        $sold = static fn(int $id, \DateTimeImmutable $day, string $country, string $total, string $tax, bool $reverse = false): OrderFacts => new OrderFacts(new SoldOrder($id, $day, $day, true, 'processing', 'EUR', "c{$id}", null, 'Ada Lovelace', $country, 'Bank transfer', '', 1, $total, '0', '0', $tax, $total, null, $reverse), [], [], [], []);
+        $orders = [990201, 990202, 990203, 990204, 990205];
+        $store->replace($orders, [
+            $sold(990201, $today, 'DE', '7141', '1140'),
+            $sold(990202, $today, 'FR', '4800', '800'),
+            $sold(990203, $today, 'BG', '50000', '0'),
+            $sold(990204, $today, 'AT', '90000', '0', true),
+            $sold(990205, $lastYear, 'DE', '1190', '190'),
+        ]);
+        try {
+            $report = $this->data($this->request('GET', '/reports/eu-distance-sales'));
+            self::assertTrue($report['applies']);
+            self::assertSame(['10000', true, true], [$report['threshold'], $report['crossed'], $report['taxed_at_origin']], '6001 + 4000 before tax passes 10000; 10000 itself would not');
+            $year = $report['this_year'];
+            self::assertIsArray($year);
+            self::assertSame(['10001', 2], [$year['sales'], $year['orders']], 'not the sale at home, nor the one to a business');
+            self::assertSame(
+                [['FR', '4000', '0', false], ['DE', '6001', '1000', true]],
+                array_map(static fn(array $country): array => [$country['country'], $country['this_year'], $country['last_year'], $country['collecting']], self::rows($report['countries'])),
+                'France has no rate: it comes first',
+            );
+
+            $saved = $this->request('PUT', '/tax/eu-threshold', ['threshold' => '10001'], nonce: true);
+            self::assertSame('10001', $this->data($saved)['eu_threshold']);
+            self::assertFalse($this->data($this->request('GET', '/reports/eu-distance-sales'))['crossed']);
+            self::assertSame(422, $this->request('PUT', '/tax/eu-threshold', ['threshold' => 'ten thousand'], nonce: true)->get_status());
+            $this->request('PUT', '/tax/settings', ['basis' => 'eu_destination', 'default_group_id' => null], nonce: true);
+            self::assertSame('10001', $this->data($this->request('GET', '/tax/settings'))['eu_threshold'], 'saving the other settings keeps it');
+
+            update_option(OptionSettingsRepository::OPTION, ['currency' => 'USD', 'fewer_decimals' => null, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY']);
+            self::assertFalse($this->data($this->request('GET', '/reports/eu-distance-sales'))['applies'], 'a shop outside the EU');
+        } finally {
+            $store->replace($orders, []);
         }
     }
 

@@ -128,6 +128,7 @@ final readonly class ProjectOrders implements JobHandler
                 (string) Money::of($order->itemsTax)->add(Money::of($order->shippingTax))->add(Money::of($order->feesTax)),
                 $order->total,
                 $address->state === null || trim($address->state) === '' ? null : mb_strtoupper(mb_substr(trim($address->state), 0, 3)),
+                $order->reverseCharge,
             ),
             array_map(static fn(OrderLineView $line): SoldLine => new SoldLine(
                 $order->number,

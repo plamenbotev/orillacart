@@ -1508,6 +1508,12 @@ The customer holding the order's receipt asks to send some of its items back.
   - `limit` (int): 1 to 100; default 10
   - `sort` (string): one of net, quantity; default 'net'
 
+### `GET /reports/eu-distance-sales`
+
+A shop in the EU against the EU's threshold of distance sales.
+
+- Who: shop managers
+
 ### `GET /reports/nexus`
 
 The shop's sales in each US state against its economic nexus thresholds.
@@ -1914,6 +1920,14 @@ Saves the cells of the stock sheet that changed, all or none.
 
 ## /tax
 
+### `PUT /tax/eu-threshold`
+
+Changes the EU's threshold of distance sales the shop measures against, alone: the tax settings then.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `threshold` (string): required; matches `/^\d{1,12}(\.\d{1,2})?$/`
+
 ### `GET /tax/groups`
 
 - Who: shop managers
@@ -2032,6 +2046,7 @@ Saves the economic nexus thresholds: for every US state, and for those whose own
   - `price_suffix` (string): at most 80 characters; matches `/^[^<>\x00-\x1F]*$/`
   - `same_price_everywhere` (bool): default true
   - `shipping_taxed_as_items` (bool): default false
+  - `eu_threshold` (string|null): matches `/^\d{1,12}(\.\d{1,2})?$/`
 
 ## /webhooks
 

@@ -66,11 +66,16 @@ export interface TaxSettings {
 	same_price_everywhere: boolean;
 	/** Shipping taxed as the items it carries, instead of at its own tax group. */
 	shipping_taxed_as_items: boolean;
+	/** The EU's threshold of distance sales in the shop's currency; changed on its own (saveEuThreshold). */
+	eu_threshold: string;
 }
 
 export type PriceShown = 'as_entered' | 'with_tax' | 'without_tax';
 
-export type TaxSettingsInput = Omit< TaxSettings, 'bases' | 'providers' >;
+export type TaxSettingsInput = Omit<
+	TaxSettings,
+	'bases' | 'providers' | 'eu_threshold'
+>;
 
 const BASE = '/orillacart/v1/tax';
 
@@ -228,6 +233,51 @@ export interface NexusReport {
 	tax_service: boolean;
 	/** Orders not counted yet. */
 	pending: number;
+}
+
+export interface EuSalesYear {
+	from: string;
+	to: string;
+	sales: string;
+	orders: number;
+}
+
+/** A shop in the EU against the EU's threshold of sales to consumers in other EU countries. */
+export interface EuSalesReport {
+	/** The shop is in the EU; otherwise the rest is empty. */
+	applies: boolean;
+	currency: string;
+	threshold: string;
+	this_year: EuSalesYear;
+	last_year: EuSalesYear;
+	/** Where it sold, those it has no rate for first. */
+	countries: {
+		country: string;
+		name: string;
+		this_year: string;
+		last_year: string;
+		collecting: boolean;
+	}[];
+	crossed: boolean;
+	/** Taxes go by the shop's address, as below the threshold. */
+	taxed_at_origin: boolean;
+	/** Sales in other currencies were counted at today's exchange rates. */
+	converted: boolean;
+	pending: number;
+}
+
+export function fetchEuSalesReport(): Promise< EuSalesReport > {
+	return apiFetch< EuSalesReport >( {
+		path: '/orillacart/v1/reports/eu-distance-sales',
+	} );
+}
+
+export function saveEuThreshold( threshold: string ): Promise< TaxSettings > {
+	return apiFetch< TaxSettings >( {
+		path: `${ BASE }/eu-threshold`,
+		method: 'PUT',
+		data: { threshold },
+	} );
 }
 
 export function fetchNexusThresholds(): Promise< NexusThresholds > {

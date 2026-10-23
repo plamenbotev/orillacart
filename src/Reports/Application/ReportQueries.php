@@ -96,4 +96,14 @@ interface ReportQueries
      * @return array<string, array{sales: string, orders: int}> by state code
      */
     public function stateSales(Period $period, string $currency, string $country): array;
+
+    /**
+     * What the shop sold to consumers in each of these countries before tax (reverse charge sales left out), by
+     * currency, for the EU's threshold of distance sales.
+     *
+     * @param list<string> $countries
+     *
+     * @return list<array{currency: string, country: string, sales: string, orders: int}>
+     */
+    public function consumerSales(Period $period, array $countries): array;
 }

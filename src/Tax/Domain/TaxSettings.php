@@ -58,7 +58,15 @@ final readonly class TaxSettings
          * as EU VAT treats it; otherwise at the tax group of the way to ship.
          */
         public bool $shippingTaxedAsItems = false,
+        /**
+         * The EU's threshold of sales to consumers in other EU countries in a calendar year, €10,000, in the shop's
+         * currency: below it a shop in the EU may charge its own VAT; above it, the customer's country's (OSS).
+         */
+        public string $euThreshold = self::EU_THRESHOLD,
     ) {
+        if (preg_match('/^\d{1,12}(\.\d{1,2})?$/', $euThreshold) !== 1) {
+            throw new RuleViolation('The EU threshold is an amount such as 10000.', 'orillacart_invalid_tax_settings');
+        }
         foreach ([$shownInShop, $shownInCart] as $shown) {
             if (!\in_array($shown, self::SHOWN, true)) {
                 throw new RuleViolation('Choose whether prices show with tax, without it, or as they are entered.', 'orillacart_invalid_tax_settings');
@@ -87,6 +95,7 @@ final readonly class TaxSettings
     public const string WITHOUT_TAX = 'without_tax';
     public const array SHOWN = [self::AS_ENTERED, self::WITH_TAX, self::WITHOUT_TAX];
     public const int SUFFIX_LENGTH = 80;
+    public const string EU_THRESHOLD = '10000';
 
     /** A country's code and one of its states': "US-TX". */
     public const string REGION = '/^[A-Z]{2}-[A-Z0-9]{1,3}$/';
@@ -114,6 +123,11 @@ final readonly class TaxSettings
         return $shown === self::AS_ENTERED ? $this->pricesIncludeTax : $shown === self::WITH_TAX;
     }
 
+    public function withEuThreshold(string $threshold): self
+    {
+        return new self($this->basis, $this->defaultGroupId, $this->pricesIncludeTax, $this->reverseCharge, $this->roundsEachLine, $this->originRegions, $this->provider, $this->whenProviderFails, $this->acceptsCertificates, $this->shownInShop, $this->shownInCart, $this->priceSuffix, $this->samePriceEverywhere, $this->shippingTaxedAsItems, $threshold);
+    }
+
     public static function defaults(): self
     {
         return new self(TaxBasis::ShippingAddress, null);
@@ -125,6 +139,7 @@ final readonly class TaxSettings
             && $this->reverseCharge === $other->reverseCharge && $this->roundsEachLine === $other->roundsEachLine && $this->originRegions === $other->originRegions
             && $this->provider === $other->provider && $this->whenProviderFails === $other->whenProviderFails && $this->acceptsCertificates === $other->acceptsCertificates
             && $this->shownInShop === $other->shownInShop && $this->shownInCart === $other->shownInCart && $this->priceSuffix === $other->priceSuffix
-            && $this->samePriceEverywhere === $other->samePriceEverywhere && $this->shippingTaxedAsItems === $other->shippingTaxedAsItems;
+            && $this->samePriceEverywhere === $other->samePriceEverywhere && $this->shippingTaxedAsItems === $other->shippingTaxedAsItems
+            && $this->euThreshold === $other->euThreshold;
     }
 }

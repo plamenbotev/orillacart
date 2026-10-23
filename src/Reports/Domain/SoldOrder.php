@@ -68,5 +68,8 @@ class SoldOrder
         /** The state it went to, "TX", where the country has them; the economic nexus report counts by it. */
         #[ORM\Column(length: 3, nullable: true)]
         public readonly ?string $region = null,
+        /** Sold to a business that accounts for the VAT itself (EU reverse charge): not a sale to a consumer. */
+        #[ORM\Column(options: ['default' => false])]
+        public readonly bool $reverseCharge = false,
     ) {}
 }
