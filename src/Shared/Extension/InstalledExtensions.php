@@ -5,20 +5,24 @@ declare(strict_types=1);
 namespace OrillaCart\Shared\Extension;
 
 use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
+use OrillaCart\Extension\Catalog\ProductFilter;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Marketing\MailingList;
+use OrillaCart\Extension\Order\FindsOrders;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
+use OrillaCart\Extension\Order\OrderFilter;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 
 /**
  * What the shop has through the extension API: its own payment gateways and those add-ons registered, and the
- * add-ons' shipping methods, price adjusters, cart rules, checkout fields, address checks, order fees, order actions and export columns, each
+ * add-ons' shipping methods, price adjusters, cart rules, checkout fields, address checks, order fees, order actions export columns, and the filters and searches of the orders and products lists, each
  * in the order they were registered.
  */
 interface InstalledExtensions
@@ -77,4 +81,24 @@ interface InstalledExtensions
      * @return list<ProductColumn>
      */
     public function productColumns(): array;
+
+    /**
+     * @return list<OrderFilter>
+     */
+    public function orderFilters(): array;
+
+    /**
+     * @return list<FindsOrders>
+     */
+    public function orderSearches(): array;
+
+    /**
+     * @return list<ProductFilter>
+     */
+    public function productFilters(): array;
+
+    /**
+     * @return list<FindsProducts>
+     */
+    public function productSearches(): array;
 }

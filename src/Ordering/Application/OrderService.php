@@ -228,7 +228,7 @@ final readonly class OrderService
             ['value' => OrderSearch::CUSTOMER_NOTE, 'label' => 'A note from the customer'],
             ['value' => OrderSearch::DOWNLOADS, 'label' => 'Downloads'],
         ];
-        foreach ($this->lookups->marks() as $key => $label) {
+        foreach ([...$this->lookups->marks(), ...$this->lookups->addOnFilters()] as $key => $label) {
             $has[] = ['value' => $key, 'label' => $label];
         }
 
@@ -246,8 +246,9 @@ final readonly class OrderService
         $moment = static fn(?string $at): ?\DateTimeImmutable => $at === null ? null : new \DateTimeImmutable($at)->setTimezone(new \DateTimeZone('UTC'));
         $date = static fn(?string $day): ?\DateTimeImmutable => $day === null ? null : new \DateTimeImmutable($day);
         $has = $query->has();
+        $addOnFilters = $forShop ? $this->lookups->addOnFilters() : [];
         $markedIds = [];
-        foreach (array_diff($has, OrderSearch::FACTS) as $mark) {
+        foreach (array_diff($has, OrderSearch::FACTS, array_keys($addOnFilters)) as $mark) {
             // A mark no area gives finds nothing.
             $markedIds[] = $this->lookups->marked($mark) ?? [];
         }
@@ -275,6 +276,7 @@ final readonly class OrderService
                 facts: array_values(array_intersect($has, OrderSearch::FACTS)),
                 markedIds: $markedIds,
                 currency: $query->currency,
+                addOnMarks: array_values(array_intersect($has, array_keys($addOnFilters))),
             ),
             ($query->page - 1) * $query->perPage,
             $query->perPage,

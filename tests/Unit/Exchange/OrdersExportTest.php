@@ -39,7 +39,7 @@ final class OrdersExportTest extends TestCase
         $this->shop->content->add(20, 'E-book');
         $this->shop->products->save(20, new SaveProduct('8', 'virtual'));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
-        $this->export = new OrdersExport(new OrderColumns($this->shop->extensions, $this->shop->logger), new ColumnChoice(new InMemoryExportChoices(), new EnglishColumnNames()), $this->shop->orders, new OrderSummaries($this->shop->orders), $this->shop->logger);
+        $this->export = new OrdersExport(new OrderColumns($this->shop->extensions, $this->shop->logger), new ColumnChoice(new InMemoryExportChoices(), new EnglishColumnNames()), $this->shop->orders, new OrderSummaries($this->shop->orders, $this->shop->orderRecords), $this->shop->logger);
     }
 
     public function testTheChosenColumnsOfEveryOrderTheListFindsGoToTheFile(): void

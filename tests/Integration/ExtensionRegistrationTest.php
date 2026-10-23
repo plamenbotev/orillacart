@@ -25,7 +25,7 @@ final class ExtensionRegistrationTest extends TestCase
         // A copy: adding to the action changes the hook in place.
         $before = $hook instanceof \WP_Hook ? clone $hook : null;
         $logger = new MemoryLogger();
-        $registry = new WordPressExtensions([], $logger, static fn() => throw new \LogicException('not read'));
+        $registry = new WordPressExtensions([], $logger, static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'));
         try {
             add_action(WordPressExtensions::ACTION, static function (): void {
                 throw new \RuntimeException('Broken add-on');

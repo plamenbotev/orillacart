@@ -9,7 +9,6 @@ use OrillaCart\Catalog\Application\Dto\AttributeSetView;
 use OrillaCart\Catalog\Application\Dto\ProductFilter;
 use OrillaCart\Catalog\Application\ProductFinder;
 use OrillaCart\Catalog\Domain\ProductCriteria;
-use OrillaCart\Catalog\Domain\ProductRepository;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
@@ -20,9 +19,10 @@ use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Shipping\Application\ShippingClassService;
 
 /**
- * Finding a product on WordPress's list of them: the search box matches SKUs (variations' too) and product
- * numbers besides names, and filters narrow by category, brand and tag, kind, stock (in a stockroom), what is
- * shown, price, shipping class, attribute set, and what is still missing. Every filter is in the address.
+ * Finding a product on WordPress's list of them: the search box matches SKUs (variations' too), product numbers
+ * and what add-ons find besides names, and filters narrow by category, brand and tag, kind, stock (in a
+ * stockroom), what is shown, price, shipping class, attribute set, what is still missing, and an add-on's
+ * filter. Every filter is in the address.
  */
 #[AsHook('restrict_manage_posts', method: 'filters')]
 #[AsHook('pre_get_posts', method: 'narrow')]
@@ -39,6 +39,7 @@ final class ProductListFilters
     private const string MAX_PRICE = 'orillacart_max_price';
     private const string SHIPPING_CLASS = 'orillacart_class';
     private const string ATTRIBUTE_SET = 'orillacart_set';
+    private const string ADD_ON = 'orillacart_addon';
     /** What the product's content misses, not its commerce details. */
     private const string NO_PICTURE = 'picture';
     private const string NO_CATEGORY = 'category';
@@ -46,7 +47,6 @@ final class ProductListFilters
 
     public function __construct(
         private readonly ProductFinder $finder,
-        private readonly ProductRepository $products,
         private readonly StockroomService $stockrooms,
         private readonly ShippingClassService $shippingClasses,
         private readonly AttributeSetService $attributeSets,
@@ -83,6 +83,10 @@ final class ProductListFilters
         }
         self::select(self::SHOWN, __('Filter by what is shown', 'orillacart'), self::shown(), __('On sale, featured…', 'orillacart'));
         self::select(self::MISSING, __('Filter by what is missing', 'orillacart'), self::missing(), __('Missing anything', 'orillacart'));
+        $addOns = $this->finder->addOnFilters();
+        if ($addOns !== []) {
+            self::select(self::ADD_ON, __('Filter by an add-on', 'orillacart'), $addOns, __('Add-on filters', 'orillacart'));
+        }
 
         $more = [self::MIN_PRICE, self::MAX_PRICE, self::SHIPPING_CLASS, self::ATTRIBUTE_SET];
         $open = array_filter($more, static fn(string $name): bool => self::text($name) !== '') !== [];
@@ -102,7 +106,7 @@ final class ProductListFilters
         self::select(self::SHIPPING_CLASS, __('Filter by shipping class', 'orillacart'), $classes, __('Any shipping class', 'orillacart'));
         self::select(self::ATTRIBUTE_SET, __('Filter by attribute set', 'orillacart'), array_column(array_map(static fn(AttributeSetView $set): array => [$set->id, $set->name], $this->attributeSets->sets()), 1, 0), __('Any attribute set', 'orillacart'));
         echo '</details>';
-        $filters = [self::KIND, self::STOCK, self::STOCKROOM, self::SHOWN, self::MISSING, ...$more, ProductCategoryTaxonomy::NAME, ProductBrandTaxonomy::NAME, ProductTagTaxonomy::NAME, 's'];
+        $filters = [self::ADD_ON, self::KIND, self::STOCK, self::STOCKROOM, self::SHOWN, self::MISSING, ...$more, ProductCategoryTaxonomy::NAME, ProductBrandTaxonomy::NAME, ProductTagTaxonomy::NAME, 's'];
         if (array_filter($filters, static fn(string $name): bool => self::text($name) !== '') !== []) {
             printf('<a class="orillacart-clear-filters" href="%s">%s</a>', esc_url(admin_url('edit.php?post_type=' . ProductPostType::NAME)), esc_html__('Clear filters', 'orillacart'));
         }
@@ -136,6 +140,7 @@ final class ProductListFilters
             ctype_digit($class) ? (int) $class : null,
             ctype_digit($set) && (int) $set > 0 ? (int) $set : null,
             \in_array($missing, ProductCriteria::MISSING, true) ? $missing : null,
+            self::chosen(self::ADD_ON, $this->finder->addOnFilters()),
         ));
         if ($ids === null) {
             return;
@@ -158,7 +163,7 @@ final class ProductListFilters
             return $search;
         }
         $text = trim($text);
-        $ids = $this->products->idsWithSku($text);
+        $ids = $this->finder->matching($text);
         if (ctype_digit($text) && \strlen($text) <= 18) {
             $ids[] = (int) $text;
         }

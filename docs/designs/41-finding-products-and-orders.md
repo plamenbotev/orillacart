@@ -47,11 +47,23 @@ the back button or a link sent to a colleague shows the same list.
   - **delivery day**: the day chosen at checkout, from and to;
   - **details** (each narrows): a coupon, a gift card, backordered items, personalised items, a return, a
     customer's note, downloads. Coupons and returns are other areas' `OrderMark`s: an area adds a mark without
-    Ordering knowing it (add-ons cannot yet: that would be an extension API addition);
+    Ordering knowing it. Add-ons add theirs through the extension API (see below);
   - currency, when the shop has orders in more than one.
 - The choices offered (methods, countries, currencies) come from the orders themselves (`GET /orders/facets`), so
   the lists stay short. The search box looks elsewhere only for three characters or more, up to 500 orders per
   area; a customer's own order list never does. The export takes every filter the list has.
+
+## Add-ons (extension API 8)
+
+- `OrderFilter` and `ProductFilter` only name a filter. The add-on marks the orders or products it applies to
+  when that happens (`Orders::mark()`, `Products::mark()`); the shop keeps the marks (`order_marks`,
+  `product_marks`, gone with their order or product) and filters by them in the database. Asking the add-on for
+  every order it applies to on each page load was the first design; the user pointed out that a filter on tens
+  of thousands of orders would pass that whole list around each time, and the API only grows, so it could
+  never be taken back. Marks cost the same for ten orders or a hundred thousand.
+- `FindsOrders` and `FindsProducts` answer the search boxes by the add-on's own text, up to 500 each, as the
+  shop's own lookups do. One that fails or answers with something other than ids is logged and finds nothing.
+- An add-on's order filter cannot take an id the shop uses (its facts and the areas' marks).
 
 ## Not in this round
 

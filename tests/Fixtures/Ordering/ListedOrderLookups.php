@@ -8,9 +8,12 @@ use OrillaCart\Ordering\Application\OrderLookup;
 use OrillaCart\Ordering\Application\OrderLookups;
 use OrillaCart\Ordering\Application\OrderMark;
 use OrillaCart\Ordering\Infrastructure\TaggedOrderLookups;
+use OrillaCart\Shared\Extension\InstalledExtensions;
+use Psr\Log\LoggerInterface;
 
 /**
- * The lookups and marks a test shop adds as it builds the areas that give them, used as the container's are.
+ * The lookups and marks a test shop adds as it builds the areas that give them, with its add-ons', used as the
+ * container's are.
  */
 final class ListedOrderLookups implements OrderLookups
 {
@@ -18,6 +21,11 @@ final class ListedOrderLookups implements OrderLookups
     private array $lookups = [];
     /** @var list<OrderMark> */
     private array $marks = [];
+
+    public function __construct(
+        private readonly InstalledExtensions $extensions,
+        private readonly LoggerInterface $logger,
+    ) {}
 
     public function add(OrderLookup|OrderMark ...$found): void
     {
@@ -46,8 +54,13 @@ final class ListedOrderLookups implements OrderLookups
         return $this->tagged()->marked($key);
     }
 
+    public function addOnFilters(): array
+    {
+        return $this->tagged()->addOnFilters();
+    }
+
     private function tagged(): TaggedOrderLookups
     {
-        return new TaggedOrderLookups($this->lookups, $this->marks);
+        return new TaggedOrderLookups($this->lookups, $this->marks, $this->extensions, $this->logger);
     }
 }

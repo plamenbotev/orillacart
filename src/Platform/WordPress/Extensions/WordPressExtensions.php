@@ -4,15 +4,21 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Extensions;
 
+use OrillaCart\Catalog\Application\AddOnProducts;
 use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
+use OrillaCart\Extension\Catalog\ProductFilter;
+use OrillaCart\Extension\Catalog\Products;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Log;
 use OrillaCart\Extension\Marketing\MailingList;
+use OrillaCart\Extension\Order\FindsOrders;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
+use OrillaCart\Extension\Order\OrderFilter;
 use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
@@ -58,12 +64,21 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $orderColumns = [];
     /** @var array<string, ProductColumn> */
     private array $productColumns = [];
+    /** @var array<string, OrderFilter> */
+    private array $orderFilters = [];
+    /** @var array<string, FindsOrders> */
+    private array $orderSearches = [];
+    /** @var array<string, ProductFilter> */
+    private array $productFilters = [];
+    /** @var array<string, FindsProducts> */
+    private array $productSearches = [];
     private bool $collected = false;
     private bool $collecting = false;
 
     /**
      * @param iterable<PaymentGateway> $builtInGateways
      * @param \Closure(): Orders        $orders          a closure: reading orders needs services that need this registry
+     * @param \Closure(): Products      $products        a closure, as orders
      */
     public function __construct(
         #[AutowireIterator(self::GATEWAY_TAG)]
@@ -71,6 +86,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         private readonly LoggerInterface $logger,
         #[AutowireServiceClosure(OrderSummaries::class)]
         private readonly \Closure $orders,
+        #[AutowireServiceClosure(AddOnProducts::class)]
+        private readonly \Closure $products,
     ) {}
 
     public function version(): int
@@ -155,9 +172,42 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         }
     }
 
+    public function orderFilter(OrderFilter $filter): void
+    {
+        if ($this->accepts('order filter', $filter->id(), $this->orderFilters[$filter->id()] ?? null, $filter)) {
+            $this->orderFilters[$filter->id()] = $filter;
+        }
+    }
+
+    public function orderSearch(FindsOrders $search): void
+    {
+        if ($this->accepts('order search', $search->id(), $this->orderSearches[$search->id()] ?? null, $search)) {
+            $this->orderSearches[$search->id()] = $search;
+        }
+    }
+
+    public function productFilter(ProductFilter $filter): void
+    {
+        if ($this->accepts('product filter', $filter->id(), $this->productFilters[$filter->id()] ?? null, $filter)) {
+            $this->productFilters[$filter->id()] = $filter;
+        }
+    }
+
+    public function productSearch(FindsProducts $search): void
+    {
+        if ($this->accepts('product search', $search->id(), $this->productSearches[$search->id()] ?? null, $search)) {
+            $this->productSearches[$search->id()] = $search;
+        }
+    }
+
     public function orders(): Orders
     {
         return ($this->orders)();
+    }
+
+    public function products(): Products
+    {
+        return ($this->products)();
     }
 
     public function log(): Log
@@ -240,6 +290,34 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->productColumns);
+    }
+
+    public function orderFilters(): array
+    {
+        $this->collect();
+
+        return array_values($this->orderFilters);
+    }
+
+    public function orderSearches(): array
+    {
+        $this->collect();
+
+        return array_values($this->orderSearches);
+    }
+
+    public function productFilters(): array
+    {
+        $this->collect();
+
+        return array_values($this->productFilters);
+    }
+
+    public function productSearches(): array
+    {
+        $this->collect();
+
+        return array_values($this->productSearches);
     }
 
     /**

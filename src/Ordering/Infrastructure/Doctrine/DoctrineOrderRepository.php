@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Infrastructure\Doctrine;
 
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Ordering\Domain\DownloadGrant;
+use OrillaCart\Ordering\Domain\MarkedOrder;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\OrderRepository;
@@ -158,6 +160,10 @@ final readonly class DoctrineOrderRepository implements OrderRepository
                 default => null,
             };
         }
+        foreach (array_values($search->addOnMarks) as $index => $mark) {
+            $query->andWhere('EXISTS (SELECT 1 FROM ' . MarkedOrder::class . " am{$index} WHERE am{$index}.orderId = o.id AND am{$index}.mark = :addOnMark{$index})")
+                ->setParameter("addOnMark{$index}", $mark);
+        }
         foreach (array_values($search->markedIds) as $index => $ids) {
             // None marked matches none: 0 is no order's id.
             $query->andWhere("o.id IN (:marked{$index})")->setParameter("marked{$index}", $ids === [] ? [0] : $ids);
@@ -198,6 +204,39 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             ->getResult();
 
         return [$orders, $total];
+    }
+
+    public function mark(int $orderId, string $mark): bool
+    {
+        $marked = new MarkedOrder($orderId, $mark);
+        if ($this->entityManager->find(Order::class, $orderId) === null) {
+            return false;
+        }
+        if (!$this->isMarked($orderId, $mark)) {
+            try {
+                $this->entityManager->persist($marked);
+                $this->entityManager->flush();
+            } catch (UniqueConstraintViolationException) {
+                // Marked by another request meanwhile: it is marked.
+            }
+        }
+
+        return true;
+    }
+
+    public function unmark(int $orderId, string $mark): void
+    {
+        $this->entityManager->createQueryBuilder()->delete(MarkedOrder::class, 'm')
+            ->where('m.orderId = :order AND m.mark = :mark')
+            ->setParameter('order', $orderId)
+            ->setParameter('mark', $mark)
+            ->getQuery()
+            ->execute();
+    }
+
+    public function isMarked(int $orderId, string $mark): bool
+    {
+        return $this->entityManager->getRepository(MarkedOrder::class)->count(['orderId' => $orderId, 'mark' => $mark]) > 0;
     }
 
     public function facets(): array

@@ -87,6 +87,17 @@ interface ProductRepository
      */
     public function bundles(): array;
 
+    /**
+     * Marks the product for an add-on's filter; marking it again changes nothing.
+     *
+     * @return bool false when the product has no commerce details
+     */
+    public function mark(int $productId, string $mark): bool;
+
+    public function unmark(int $productId, string $mark): void;
+
+    public function isMarked(int $productId, string $mark): bool;
+
     /** The highest low stock threshold a product or variation has; null when none has one. */
     public function highestLowStockThreshold(): ?int;
 

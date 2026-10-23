@@ -13,6 +13,7 @@ use OrillaCart\Catalog\Domain\Bundle;
 use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Catalog\Domain\ClaimedSku;
 use OrillaCart\Catalog\Domain\DownloadFile;
+use OrillaCart\Catalog\Domain\MarkedProduct;
 use OrillaCart\Catalog\Domain\PriceVisibility;
 use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Catalog\Domain\ProductCriteria;
@@ -276,11 +277,48 @@ final readonly class DoctrineProductRepository implements ProductRepository
                 ->setParameter('type', ProductType::Physical->value),
             default => null,
         };
+        if ($criteria->addOnMark !== null) {
+            $query->andWhere('EXISTS (SELECT 1 FROM ' . MarkedProduct::class . ' am WHERE am.productId = p.id AND am.mark = :addOnMark)')
+                ->setParameter('addOnMark', $criteria->addOnMark);
+        }
         if ($usesNow) {
             $query->setParameter('now', $criteria->now, 'datetime_immutable');
         }
 
         return self::intList($query->getQuery()->getSingleColumnResult());
+    }
+
+    public function mark(int $productId, string $mark): bool
+    {
+        $marked = new MarkedProduct($productId, $mark);
+        if ($this->entityManager->find(Product::class, $productId) === null) {
+            return false;
+        }
+        if (!$this->isMarked($productId, $mark)) {
+            try {
+                $this->entityManager->persist($marked);
+                $this->entityManager->flush();
+            } catch (UniqueConstraintViolationException) {
+                // Marked by another request meanwhile: it is marked.
+            }
+        }
+
+        return true;
+    }
+
+    public function unmark(int $productId, string $mark): void
+    {
+        $this->entityManager->createQueryBuilder()->delete(MarkedProduct::class, 'm')
+            ->where('m.productId = :product AND m.mark = :mark')
+            ->setParameter('product', $productId)
+            ->setParameter('mark', $mark)
+            ->getQuery()
+            ->execute();
+    }
+
+    public function isMarked(int $productId, string $mark): bool
+    {
+        return $this->entityManager->getRepository(MarkedProduct::class)->count(['productId' => $productId, 'mark' => $mark]) > 0;
     }
 
     public function stockedItems(): array

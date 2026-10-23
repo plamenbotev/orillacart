@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Fixtures\Payment;
 
 use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
+use OrillaCart\Extension\Catalog\ProductFilter;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Marketing\MailingList;
+use OrillaCart\Extension\Order\FindsOrders;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
+use OrillaCart\Extension\Order\OrderFilter;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
@@ -19,7 +23,7 @@ use OrillaCart\Shared\Extension\InstalledExtensions;
 
 /**
  * What a test gives the shop, as if built in or registered by add-ons. Tests add adjusters, rules, fields, fees,
- * actions and columns as they go.
+ * actions, columns, filters and searches as they go.
  */
 final class FixedExtensions implements InstalledExtensions
 {
@@ -41,6 +45,14 @@ final class FixedExtensions implements InstalledExtensions
     public array $orderColumns = [];
     /** @var list<ProductColumn> */
     public array $productColumns = [];
+    /** @var list<OrderFilter> */
+    public array $orderFilters = [];
+    /** @var list<FindsOrders> */
+    public array $orderSearches = [];
+    /** @var list<ProductFilter> */
+    public array $productFilters = [];
+    /** @var list<FindsProducts> */
+    public array $productSearches = [];
 
     /**
      * @param list<PaymentGateway> $gateways
@@ -101,5 +113,25 @@ final class FixedExtensions implements InstalledExtensions
     public function productColumns(): array
     {
         return $this->productColumns;
+    }
+
+    public function orderFilters(): array
+    {
+        return $this->orderFilters;
+    }
+
+    public function orderSearches(): array
+    {
+        return $this->orderSearches;
+    }
+
+    public function productFilters(): array
+    {
+        return $this->productFilters;
+    }
+
+    public function productSearches(): array
+    {
+        return $this->productSearches;
     }
 }

@@ -26,7 +26,8 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   methods. Price adjusters, cart rules, checkout fields and order actions follow (version 2).
 - `$registry->version()` is the API's version (`OrillaCart\Extension\Version`): 2 since price adjusters, cart
   rules, checkout fields, order actions and `orders()` came; 4 since export columns; 5 since order fees and
-  address checks; 6 since mailing lists.
+  address checks; 6 since mailing lists; 7 since the answers to product forms on order lines; 8 since filters and
+  searches of the orders and products lists, and `products()`.
 - `$registry->log()` writes to the shop's log. Never log secrets or card data.
 - Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
 
@@ -295,6 +296,41 @@ if ($registry->version() >= 4) {
         {
             return (string) get_option('my_warehouse_of_' . $order->number, '');
         }
+    });
+}
+```
+
+## Filters and searches of the lists
+
+Version 8 lets an add-on help the shop find orders and products by what the add-on knows about them.
+
+- `OrillaCart\Extension\Order\OrderFilter` is a filter of the Orders screen, under "Details" ("Exported to the
+  warehouse"): only `id()` and `label()`. The add-on marks the orders it applies to when that happens, with
+  `$registry->orders()->mark($number, 'filter_id')`, and takes the mark off with `unmark()` (`isMarked()` reads
+  it). The shop keeps the marks and filters by them in the database, so a filter on a hundred thousand orders
+  costs what one on ten does, and the add-on is not asked while the list loads. A mark goes with its order.
+- `OrillaCart\Extension\Catalog\ProductFilter` is the same for the products list, which offers the add-ons'
+  filters in one list: mark with `$registry->products()->mark($productId, 'filter_id')`.
+- `OrillaCart\Extension\Order\FindsOrders` and `OrillaCart\Extension\Catalog\FindsProducts` answer the search
+  boxes by the add-on's own text (a warehouse's reference, a barcode): `findOrders(string)` gives order numbers,
+  `findProducts(string)` product ids, of which the shop takes 500 and lists them beside what it finds itself.
+  Orders are searched from three characters.
+
+Register them with `$registry->orderFilter()`, `orderSearch()`, `productFilter()` and `productSearch()`. Ids are
+lowercase letters, digits and underscores, up to 40; an order filter cannot take the id of one of the shop's own
+(`coupon`, `return`, `gift_card`, `backorder`, `personalised`, `note`, `downloads`): it is logged and left out.
+A search that throws or answers with something other than ids is logged and finds nothing; the list still shows.
+Marking with an id that cannot be one throws `InvalidArgumentException`; marking an order or product the shop
+does not have returns false.
+
+```php
+if ($registry->version() >= 8) {
+    $registry->orderFilter(new class implements OrillaCart\Extension\Order\OrderFilter {
+        public function id(): string { return 'warehouse_sent'; }
+        public function label(): string { return __('Sent to the warehouse', 'my-add-on'); }
+    });
+    add_action('my_warehouse_accepted', static function (int $number) use ($registry): void {
+        $registry->orders()->mark($number, 'warehouse_sent');
     });
 }
 ```

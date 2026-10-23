@@ -380,7 +380,7 @@ final class TestShop
         $this->quotes = $quotes;
         $this->priceHistory = new PriceHistory($this->pricePoints = new InMemoryPriceHistory(), $this->clock);
         $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $quotes, $this->priceHistory);
-        $this->productFinder = new ProductFinder($productRecords, $this->stock, new LowStock($productRecords, new StockItemNames($productRecords, $this->content), $this->stock, $this->stockrooms, $settings), $settings);
+        $this->productFinder = new ProductFinder($productRecords, $this->stock, new LowStock($productRecords, new StockItemNames($productRecords, $this->content), $this->stock, $this->stockrooms, $settings), $settings, $extensions, $this->logger);
 
         $methodRecords = new InMemoryPaymentMethodRepository();
         $this->paymentRecords = new InMemoryPaymentRepository($this->transactions);
@@ -402,7 +402,7 @@ final class TestShop
         $this->orderRecords = new InMemoryOrderRepository($this->transactions);
         $this->receipts = new ReceiptLinks($this->signatures, $this->clock);
         $links = new FakeOrderLinks($this->receipts);
-        $this->orderLookups = new ListedOrderLookups();
+        $this->orderLookups = new ListedOrderLookups($this->extensions, $this->logger);
         $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, $links, $this->transactions, $this->receipts, $this->orderLookups);
         $this->refundRecords = new InMemoryRefundRepository($this->transactions);
         $this->giftCardRecords = new InMemoryGiftCards($this->transactions);

@@ -34,5 +34,8 @@ final readonly class ProductFilter
         public ?int $attributeSet = null,
         #[Assert\Choice(choices: ProductCriteria::MISSING)]
         public ?string $missing = null,
+        /** An add-on's filter, by its id. */
+        #[Assert\Regex(pattern: '/^[a-z][a-z0-9_]{0,39}$/')]
+        public ?string $addOn = null,
     ) {}
 }

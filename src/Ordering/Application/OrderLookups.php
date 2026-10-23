@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Ordering\Application;
 
 /**
- * Every area's lookups and marks together, as the order search uses them.
+ * Every area's lookups and marks together, with the add-ons' searches and filters, as the order search uses them.
  */
 interface OrderLookups
 {
@@ -23,4 +23,12 @@ interface OrderLookups
      * @return list<int>|null ids of the orders the mark is on; null for no such mark
      */
     public function marked(string $key): ?array;
+
+    /**
+     * The add-ons' order filters whose ids neither the order's facts nor the areas' marks use; the orders they
+     * apply to are those marked with their id (MarkedOrder).
+     *
+     * @return array<string, string> labels by id
+     */
+    public function addOnFilters(): array;
 }

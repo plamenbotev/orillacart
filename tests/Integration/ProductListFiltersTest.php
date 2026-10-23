@@ -11,6 +11,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Tests\Fixtures\Extension\TestAddOn;
 
 /**
  * Finding products on the admin list: the database's answers to each filter, and the list itself searching SKUs
@@ -138,6 +139,25 @@ final class ProductListFiltersTest extends RestTestCase
         self::assertSame($this->names(['Poster', 'Kit']), $this->listed(['orillacart_stock' => 'out_of_stock', 'orillacart_missing' => 'category']));
         self::assertSame([], $this->listed(['orillacart_stock' => 'owed', 'orillacart_kind' => 'bundle']), 'none found lists none');
         self::assertCount(\count($this->ids) - 1, $this->listed(['orillacart_stock' => 'nonsense', 'orillacart_min_price' => '1e3']), 'what is not a filter narrows nothing');
+    }
+
+    public function testAnAddOnsFilterAndSearchNarrowTheList(): void
+    {
+        $registry = TestAddOn::$registry;
+        self::assertNotNull($registry);
+        self::assertTrue($registry->products()->mark($this->ids['Camera'], 'test_marketplace'));
+        self::assertTrue($registry->products()->mark($this->ids['Shirt'], 'test_marketplace'));
+        self::assertFalse($registry->products()->mark(999999, 'test_marketplace'));
+        TestAddOn::$barcodes = ['EAN3800123' => [$this->ids['Speaker']]];
+        try {
+            self::assertSame($this->names(['Camera', 'Shirt']), $this->listed(['orillacart_addon' => 'test_marketplace']));
+            self::assertSame($this->names(['Shirt']), $this->listed(['orillacart_addon' => 'test_marketplace', 'orillacart_kind' => 'variations']));
+            self::assertSame($this->names(['Speaker']), $this->listed(['s' => 'EAN3800123']), 'the add-on\'s barcode');
+        } finally {
+            TestAddOn::$barcodes = [];
+        }
+        wp_delete_post($this->ids['Camera'], true);
+        self::assertFalse($registry->products()->isMarked($this->ids['Camera'], 'test_marketplace'), 'gone with the product');
     }
 
     /**

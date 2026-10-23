@@ -19,7 +19,8 @@ final class Version
      * file (OrderColumn, ProductColumn, ImportsProductColumn). 5: fees on orders (OrderFee), the handling of a
      * PaymentBreakdown, an order's fees in its OrderSummary, checking addresses (AddressCheck), each parcel's number
      * of a BookedShipment. 6: mailing lists for the newsletter's sign-ups (MailingList). 7: the answers to the shop's product forms on
-     * each OrderLine.
+     * each OrderLine. 8: filters and searches of the Orders screen and the products list (OrderFilter, FindsOrders,
+     * ProductFilter, FindsProducts).
      */
-    public const int CURRENT = 7;
+    public const int CURRENT = 8;
 }

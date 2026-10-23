@@ -41,6 +41,7 @@ final readonly class OrderSearch
      * @param string|null        $country      the billing or shipping country
      * @param list<string>       $facts        each of FACTS given
      * @param list<list<int>>    $markedIds    the orders each chosen mark is on: the order is in every list
+     * @param list<string>       $addOnMarks   add-ons' marks (MarkedOrder) the order has, each of them
      * @param string             $sortBy       BY_NUMBER (the order it was placed in) or BY_TOTAL
      */
     public function __construct(
@@ -66,6 +67,7 @@ final readonly class OrderSearch
         public array $facts = [],
         public array $markedIds = [],
         public ?string $currency = null,
+        public array $addOnMarks = [],
     ) {}
 
     public static function ofCustomer(int $customerId): self

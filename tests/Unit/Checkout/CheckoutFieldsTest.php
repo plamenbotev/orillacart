@@ -91,11 +91,11 @@ final class CheckoutFieldsTest extends TestCase
         self::assertSame(['BG999', 'A box'], [$changed->fields[0]->answer, $changed->fields[1]->answer], 'answers are corrected after the field is gone');
         self::assertCount(3, $changed->fields);
 
-        $summary = new OrderSummaries($this->shop->orders)->find($number);
+        $summary = new OrderSummaries($this->shop->orders, $this->shop->orderRecords)->find($number);
         self::assertNotNull($summary);
         self::assertSame(['vat_number' => 'BG999', 'wrap' => 'A box', 'terms' => 'Yes'], $summary->fields);
         self::assertSame([$number, 'on_hold', 'ada@example.com', 'Sofia', '8', 'E-book'], [$summary->number, $summary->status, $summary->email, $summary->billing->city, $summary->total, $summary->lines[0]->name]);
-        self::assertNull(new OrderSummaries($this->shop->orders)->find(999));
+        self::assertNull(new OrderSummaries($this->shop->orders, $this->shop->orderRecords)->find(999));
     }
 
     public function testTheShopsCheckoutFormsAreAskedForTheProductsInTheCartAfterAddOnsFields(): void

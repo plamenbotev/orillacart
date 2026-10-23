@@ -13,15 +13,39 @@ use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\Dto\OrderFieldView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
+use OrillaCart\Ordering\Domain\MarkedOrder;
 use OrillaCart\Ordering\Domain\OrderNotFound;
+use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Shared\Domain\Money;
 
 /**
- * Orders as the extension API shows them to add-ons.
+ * Orders as the extension API shows them to add-ons, and the marks add-ons put on them for their filters.
  */
 final readonly class OrderSummaries implements Orders
 {
-    public function __construct(private OrderService $orders) {}
+    public function __construct(
+        private OrderService $orders,
+        private OrderRepository $records,
+    ) {}
+
+    public function mark(int $number, string $filterId): bool
+    {
+        if (preg_match(MarkedOrder::MARK, $filterId) !== 1) {
+            throw new \InvalidArgumentException(\sprintf('"%s" is not an order filter\'s id: lowercase letters, digits and underscores, up to 40.', $filterId));
+        }
+
+        return $this->records->mark($number, $filterId);
+    }
+
+    public function unmark(int $number, string $filterId): void
+    {
+        $this->records->unmark($number, $filterId);
+    }
+
+    public function isMarked(int $number, string $filterId): bool
+    {
+        return $this->records->isMarked($number, $filterId);
+    }
 
     public function find(int $number): ?OrderSummary
     {

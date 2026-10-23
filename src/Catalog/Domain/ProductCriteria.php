@@ -49,11 +49,13 @@ final readonly class ProductCriteria
         /** The shop's setting: a product that follows it hides its price too. */
         public bool $shopHidesPrices = false,
         public \DateTimeImmutable $now = new \DateTimeImmutable(),
+        /** An add-on's mark (MarkedProduct) the product has. */
+        public ?string $addOnMark = null,
     ) {}
 
     public function narrows(): bool
     {
         return $this->kind !== null || $this->shown !== null || $this->minPrice !== null || $this->maxPrice !== null
-            || $this->shippingClass !== null || $this->attributeSet !== null || $this->missing !== null;
+            || $this->shippingClass !== null || $this->attributeSet !== null || $this->missing !== null || $this->addOnMark !== null;
     }
 }

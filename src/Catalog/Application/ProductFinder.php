@@ -13,6 +13,8 @@ use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Extension\InstalledExtensions;
+use Psr\Log\LoggerInterface;
 
 /**
  * The products the shop's admin list narrows to. A product's stock is its variations' when it has them, else its
@@ -28,6 +30,8 @@ final readonly class ProductFinder
     public const string OWED = 'owed';
     public const string ALWAYS_AVAILABLE = 'always_available';
     public const string NOT_FOR_SALE = 'not_for_sale';
+    /** The most products one add-on's search gives. */
+    public const int MAX_FOUND = 500;
     public const array STOCK = [self::IN_STOCK, self::LOW_STOCK, self::SOME_OUT, self::OUT_OF_STOCK, self::OWED, self::ALWAYS_AVAILABLE, self::NOT_FOR_SALE];
 
     public function __construct(
@@ -35,7 +39,43 @@ final readonly class ProductFinder
         private StockService $stock,
         private LowStock $lowStock,
         private SettingsService $settings,
+        private InstalledExtensions $extensions,
+        private LoggerInterface $logger,
     ) {}
+
+    /**
+     * The add-ons' filters, for the list to offer.
+     *
+     * @return array<string, string> labels by id
+     */
+    public function addOnFilters(): array
+    {
+        $filters = [];
+        // Their products are those marked with their ids (MarkedProduct).
+        foreach ($this->extensions->productFilters() as $filter) {
+            $filters[$filter->id()] = $filter->label();
+        }
+
+        return $filters;
+    }
+
+    /**
+     * The products a search finds besides by name: by SKU, the product's or a variation's, and by what add-ons
+     * keep about them.
+     *
+     * @return list<int>
+     */
+    public function matching(string $text): array
+    {
+        $ids = array_fill_keys($this->products->idsWithSku($text), true);
+        foreach ($this->extensions->productSearches() as $search) {
+            foreach (\array_slice($this->asked(\sprintf('The product search %s', $search->id()), static fn(): mixed => $search->findProducts($text)), 0, self::MAX_FOUND) as $id) {
+                $ids[$id] = true;
+            }
+        }
+
+        return array_keys($ids);
+    }
 
     /**
      * @param ProductFilter $filter checked as its constraints say, as the list's request is
@@ -53,6 +93,7 @@ final readonly class ProductFinder
             $filter->attributeSet,
             $filter->missing,
             $filter->shown === ProductCriteria::PRICE_HIDDEN && $this->settings->current()->hidePrices,
+            addOnMark: $filter->addOn,
         );
         $ids = $criteria->narrows() ? $this->products->idsMatching($criteria) : null;
         $stock = $filter->stock ?? ($filter->stockroom === null ? null : self::IN_STOCK);
@@ -144,6 +185,37 @@ final readonly class ProductFinder
         sort($ids);
 
         return $ids;
+    }
+
+    /**
+     * What an add-on's search answered, when it is product ids; one that fails or answers otherwise finds nothing,
+     * and the list still shows.
+     *
+     * @param \Closure(): mixed $ask
+     *
+     * @return list<int>
+     */
+    private function asked(string $what, \Closure $ask): array
+    {
+        try {
+            $answer = $ask();
+        } catch (\Throwable $e) {
+            $this->logger->error('{what} failed: {message}', ['what' => $what, 'message' => $e->getMessage(), 'exception' => $e]);
+
+            return [];
+        }
+        $ids = [];
+        foreach (\is_array($answer) ? $answer : [null] as $id) {
+            if (!\is_int($id) || $id < 1) {
+                $this->logger->error('{what} answered something other than a list of product ids; it finds nothing.', ['what' => $what]);
+
+                return [];
+            }
+            $ids[$id] = $id;
+        }
+        ksort($ids);
+
+        return array_values($ids);
     }
 
     /**

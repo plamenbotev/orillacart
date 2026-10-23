@@ -10,10 +10,13 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
+use OrillaCart\Extension\Order\FindsOrders;
+use OrillaCart\Extension\Order\OrderFilter;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderMark;
+use OrillaCart\Ordering\Application\OrderSummaries;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
@@ -134,6 +137,76 @@ final class FindingOrdersTest extends TestCase
         self::assertSame([$second], $this->found(new OrderQuery(has: 'gift_wrapped')));
         self::assertSame([], $this->found(new OrderQuery(has: 'gift_wrapped,note')), 'each thing it has narrows');
         self::assertSame([$second, $first], $this->found(new OrderQuery()));
+    }
+
+    public function testAnAddOnsFilterListsTheOrdersItMarkedAndItsSearchFindsByItsOwnText(): void
+    {
+        $first = $this->place(20, 'ada@example.com', self::address());
+        $second = $this->place(20, 'bo@example.com', self::address());
+        $this->shop->extensions->orderFilters = [self::filter('warehouse', 'Sent to the warehouse'), self::filter('coupon', 'Taken')];
+        $this->shop->extensions->orderSearches = [
+            new class ($second) implements FindsOrders {
+                public function __construct(private int $order) {}
+
+                public function id(): string
+                {
+                    return 'warehouse_refs';
+                }
+
+                public function findOrders(string $text): array
+                {
+                    return $text === 'WH-2231' ? [$this->order] : [];
+                }
+            },
+            new class implements FindsOrders {
+                public function id(): string
+                {
+                    return 'broken';
+                }
+
+                public function findOrders(string $text): array
+                {
+                    throw new \RuntimeException('The warehouse is down.');
+                }
+            },
+        ];
+        $orders = new OrderSummaries($this->shop->orders, $this->shop->orderRecords);
+
+        self::assertTrue($orders->mark($first, 'warehouse'));
+        self::assertTrue($orders->mark($first, 'warehouse'), 'marking again changes nothing');
+        self::assertFalse($orders->mark(999, 'warehouse'), 'no such order');
+        self::assertSame([$first], $this->found(new OrderQuery(has: 'warehouse')));
+        self::assertSame([], $this->found(new OrderQuery(has: 'warehouse,note')));
+        $orders->unmark($first, 'warehouse');
+        self::assertFalse($orders->isMarked($first, 'warehouse'));
+        self::assertSame([], $this->found(new OrderQuery(has: 'warehouse')));
+
+        self::assertSame([$second], $this->found(new OrderQuery(search: 'WH-2231')), 'the add-on\'s search; the failing one finds nothing');
+        self::assertContains(['The order search broken', 'The warehouse is down.'], array_map(static fn(array $record): array => [$record['context']['what'] ?? null, $record['context']['message'] ?? null], $this->shop->logger->records));
+
+        $has = $this->shop->orders->facets()->has;
+        self::assertContains(['value' => 'warehouse', 'label' => 'Sent to the warehouse'], $has);
+        self::assertCount(1, array_filter($has, static fn(array $choice): bool => $choice['value'] === 'coupon'), 'an add-on cannot take the shop\'s own');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $orders->mark($first, 'Not An Id');
+    }
+
+    private static function filter(string $id, string $label): OrderFilter
+    {
+        return new class ($id, $label) implements OrderFilter {
+            public function __construct(private string $id, private string $label) {}
+
+            public function id(): string
+            {
+                return $this->id;
+            }
+
+            public function label(): string
+            {
+                return $this->label;
+            }
+        };
     }
 
     /**

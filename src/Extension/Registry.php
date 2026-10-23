@@ -5,13 +5,18 @@ declare(strict_types=1);
 namespace OrillaCart\Extension;
 
 use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
+use OrillaCart\Extension\Catalog\ProductFilter;
+use OrillaCart\Extension\Catalog\Products;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Marketing\MailingList;
+use OrillaCart\Extension\Order\FindsOrders;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
+use OrillaCart\Extension\Order\OrderFilter;
 use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
@@ -64,8 +69,23 @@ interface Registry
     /** A mailing list the shop's newsletter sign-ups may go to. Since version 6. */
     public function mailingList(MailingList $list): void;
 
-    /** Reads the shop's orders. Since version 2. */
+    /** A filter of the Orders screen. Since version 8. */
+    public function orderFilter(OrderFilter $filter): void;
+
+    /** Finds orders for the Orders screen's search box by the add-on's own text. Since version 8. */
+    public function orderSearch(FindsOrders $search): void;
+
+    /** A filter of the products list. Since version 8. */
+    public function productFilter(ProductFilter $filter): void;
+
+    /** Finds products for the products list's search box by the add-on's own text. Since version 8. */
+    public function productSearch(FindsProducts $search): void;
+
+    /** Reads the shop's orders, and marks them for order filters (since version 8). Since version 2. */
     public function orders(): Orders;
+
+    /** Marks the shop's products for product filters. Since version 8. */
+    public function products(): Products;
 
     /** Writes to the shop's log, where the shop manager looks when something went wrong. */
     public function log(): Log;

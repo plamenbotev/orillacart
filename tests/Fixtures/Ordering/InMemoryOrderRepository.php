@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Fixtures\Ordering;
 
 use OrillaCart\Ordering\Domain\Address;
+use OrillaCart\Ordering\Domain\MarkedOrder;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\OrderRepository;
@@ -20,6 +21,8 @@ final class InMemoryOrderRepository implements OrderRepository
 
     /** @var array<int, Order> */
     public array $orders = [];
+    /** @var array<int, array<string, true>> add-ons' marks, by order */
+    private array $marks = [];
     private int $nextId = 1;
 
     public function __construct(private readonly ?ImmediateTransactions $transactions = null) {}
@@ -147,7 +150,8 @@ final class InMemoryOrderRepository implements OrderRepository
 
     public function search(OrderSearch $search, int $offset, int $limit): array
     {
-        $found = array_values(array_filter($this->orders, static fn(Order $order): bool => self::matches($order, $search)));
+        $found = array_values(array_filter($this->orders, fn(Order $order): bool => self::matches($order, $search)
+            && array_filter($search->addOnMarks, fn(string $mark): bool => !$this->isMarked($order->id(), $mark)) === []));
         usort($found, static function (Order $a, Order $b) use ($search): int {
             $by = $search->sortBy === OrderSearch::BY_TOTAL ? $a->total()->compare($b->total()) : 0;
             $by = $by !== 0 ? $by : $a->id() <=> $b->id();
@@ -156,6 +160,27 @@ final class InMemoryOrderRepository implements OrderRepository
         });
 
         return [\array_slice($found, $offset, $limit), \count($found)];
+    }
+
+    public function mark(int $orderId, string $mark): bool
+    {
+        new MarkedOrder($orderId, $mark);
+        if (!isset($this->orders[$orderId])) {
+            return false;
+        }
+        $this->marks[$orderId][$mark] = true;
+
+        return true;
+    }
+
+    public function unmark(int $orderId, string $mark): void
+    {
+        unset($this->marks[$orderId][$mark]);
+    }
+
+    public function isMarked(int $orderId, string $mark): bool
+    {
+        return isset($this->marks[$orderId][$mark]);
     }
 
     public function facets(): array

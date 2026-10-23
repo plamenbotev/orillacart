@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Fixtures\Catalog;
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\AttributeSet;
 use OrillaCart\Catalog\Domain\Bundle;
+use OrillaCart\Catalog\Domain\MarkedProduct;
 use OrillaCart\Catalog\Domain\Pricing;
 use OrillaCart\Catalog\Domain\Product;
 use OrillaCart\Catalog\Domain\ProductCriteria;
@@ -18,6 +19,8 @@ final class InMemoryProductRepository implements ProductRepository
 {
     /** @var array<int, Product> */
     private array $products = [];
+    /** @var array<int, array<string, true>> add-ons' marks, by product */
+    private array $marks = [];
 
     public function __construct(private readonly CatalogIds $ids = new CatalogIds()) {}
 
@@ -150,13 +153,34 @@ final class InMemoryProductRepository implements ProductRepository
     {
         $ids = [];
         foreach ($this->products as $product) {
-            if (self::meets($product, $criteria)) {
+            if (self::meets($product, $criteria) && ($criteria->addOnMark === null || $this->isMarked($product->id(), $criteria->addOnMark))) {
                 $ids[] = $product->id();
             }
         }
         sort($ids);
 
         return $ids;
+    }
+
+    public function mark(int $productId, string $mark): bool
+    {
+        new MarkedProduct($productId, $mark);
+        if (!isset($this->products[$productId])) {
+            return false;
+        }
+        $this->marks[$productId][$mark] = true;
+
+        return true;
+    }
+
+    public function unmark(int $productId, string $mark): void
+    {
+        unset($this->marks[$productId][$mark]);
+    }
+
+    public function isMarked(int $productId, string $mark): bool
+    {
+        return isset($this->marks[$productId][$mark]);
     }
 
     public function stockedItems(): array

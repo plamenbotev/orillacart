@@ -95,6 +95,17 @@ interface OrderRepository
     public function deliveriesBooked(string $carrier, \DateTimeImmutable $from, \DateTimeImmutable $until): array;
 
     /**
+     * Marks the order for an add-on's filter; marking it again changes nothing.
+     *
+     * @return bool false when there is no such order
+     */
+    public function mark(int $orderId, string $mark): bool;
+
+    public function unmark(int $orderId, string $mark): void;
+
+    public function isMarked(int $orderId, string $mark): bool;
+
+    /**
      * What the shop's orders have used, for the list's filters: each once, in order.
      *
      * @return array{shipping: list<string>, countries: list<string>, currencies: list<string>}

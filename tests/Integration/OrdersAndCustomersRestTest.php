@@ -539,6 +539,17 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(200, $ran->get_status(), (string) wp_json_encode($ran->get_data()));
         self::assertSame("Exported #{$order['number']} for ada@example.com.", $this->data($ran)['message']);
         self::assertSame(404, $this->request('POST', "/orders/{$order['number']}/actions/nothing", nonce: true)->get_status());
+
+        $other = $this->order([[$this->guide, 1]])['number'];
+        $this->actAs('administrator');
+        $numbers = fn(string $query): array => array_column($this->rows($this->data($this->request('GET', '/orders?' . $query))['orders']), 'number');
+        self::assertSame([$order['number']], $numbers('has=test_exported'), 'the add-on marked the order it exported');
+        self::assertSame([$other], $numbers('search=EXP-' . $other), 'the add-on\'s search');
+        self::assertContains(['value' => 'test_exported', 'label' => 'Exported'], $this->rows($this->data($this->request('GET', '/orders/facets'))['has']));
+        $registry = TestAddOn::$registry;
+        self::assertNotNull($registry);
+        $registry->orders()->unmark($order['number'], 'test_exported');
+        self::assertSame([], $numbers('has=test_exported'));
     }
 
     public function testAnAddOnAttachesFilesAndHeadersToOrderEmails(): void

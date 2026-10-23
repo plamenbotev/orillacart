@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Catalog;
 
+use OrillaCart\Catalog\Application\AddOnProducts;
 use OrillaCart\Catalog\Application\Dto\ProductFilter;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveBundle;
@@ -14,6 +15,8 @@ use OrillaCart\Catalog\Application\Dto\SaveSale;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Catalog\Application\ProductFinder;
 use OrillaCart\Catalog\Domain\ProductCriteria;
+use OrillaCart\Extension\Catalog\FindsProducts;
+use OrillaCart\Extension\Catalog\ProductFilter as AddOnFilter;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
@@ -117,6 +120,60 @@ final class ProductFinderTest extends TestCase
 
         self::assertContains(self::KIT, $this->shop->productFinder->ids(new ProductFilter(stock: ProductFinder::IN_STOCK)) ?? []);
         self::assertContains(self::KIT, $this->shop->productFinder->ids(new ProductFilter(stock: ProductFinder::SOME_OUT)) ?? [], 'the large shirt and the batteries are out');
+    }
+
+    public function testAnAddOnsFilterListsTheProductsItMarkedAndItsSearchFindsByItsOwnText(): void
+    {
+        $this->shop->extensions->productFilters = [new class implements AddOnFilter {
+            public function id(): string
+            {
+                return 'marketplace';
+            }
+
+            public function label(): string
+            {
+                return 'Listed on the marketplace';
+            }
+        }];
+        $this->shop->extensions->productSearches = [
+            new class implements FindsProducts {
+                public function id(): string
+                {
+                    return 'barcodes';
+                }
+
+                public function findProducts(string $text): array
+                {
+                    return $text === '3800123' ? [40, 10, 40] : [];
+                }
+            },
+            new class implements FindsProducts {
+                public function id(): string
+                {
+                    return 'odd';
+                }
+
+                public function findProducts(string $text): array
+                {
+                    return [0];
+                }
+            },
+        ];
+        $products = new AddOnProducts($this->shop->productRecords);
+        $finder = $this->shop->productFinder;
+
+        self::assertTrue($products->mark(self::CAMERA, 'marketplace'));
+        self::assertTrue($products->mark(self::SHIRT, 'marketplace'));
+        self::assertFalse($products->mark(999, 'marketplace'), 'no such product');
+        self::assertSame(['marketplace' => 'Listed on the marketplace'], $finder->addOnFilters());
+        self::assertSame([self::CAMERA, self::SHIRT], $finder->ids(new ProductFilter(addOn: 'marketplace')));
+        self::assertSame([self::CAMERA], $finder->ids(new ProductFilter(stock: ProductFinder::IN_STOCK, shown: ProductCriteria::FEATURED, addOn: 'marketplace')));
+        $products->unmark(self::CAMERA, 'marketplace');
+        self::assertSame([self::SHIRT], $finder->ids(new ProductFilter(addOn: 'marketplace')));
+
+        self::assertSame([self::CAMERA, self::POSTER], $finder->matching('3800123'), 'each once; the odd answer finds nothing');
+        self::assertSame([self::BATTERY], $finder->matching('BAT'), 'by SKU, as before');
+        self::assertContains('The product search odd', array_map(static fn(array $record): mixed => $record['context']['what'] ?? null, $this->shop->logger->records));
     }
 
     /**
