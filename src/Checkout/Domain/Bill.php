@@ -16,8 +16,9 @@ use OrillaCart\Shared\Domain\Money;
  * of what it applies to, rounded once, and the total is the subtotal less discounts plus shipping and fees, as
  * entered.
  *
- * Each line's tax is its share of what each rate bills on the items, in the currency's decimals, so the lines
- * add up to the bill to the cent.
+ * Every charge, an item, the shipping or a fee, gets its share of what each rate bills on its kind of charge, in
+ * the currency's decimals, so the charges add up to the bill to the cent: orders keep each rate on each line, as
+ * returns are filed by jurisdiction and refunds give back what each line paid.
  *
  * A shop may round each line's tax instead: then each rate bills the sum of the lines' rounded taxes.
  *
@@ -33,14 +34,16 @@ final class Bill
     private array $fees = [];
 
     /**
-     * @var array<string, array{tax: Tax, items: Money, shipping: Money, fees: Money}> what each rate is charged on,
-     *                                                                                 or with prices that include
-     *                                                                                 tax, its exact part
+     * @var array<string, array{tax: Tax, on: array<string, Money>}> what each rate is charged on, by kind of charge,
+     *                                                               or with prices that include tax, its exact part
      */
     private array $bases = [];
 
-    /** @var list<array<string, Money>> each line's exact tax, by rate */
-    private array $lineParts = [];
+    /**
+     * @var list<array{kind: string, label: string, amount: Money, rates: list<Tax>, parts: array<string, Money>, taxable: array<string, Money>}>
+     *      each charge, with its exact tax and what it is charged on, by rate
+     */
+    private array $charges = [];
 
     public function __construct(
         private readonly int $decimals,
@@ -53,74 +56,29 @@ final class Bill
     }
 
     /**
-     * @param list<Tax> $taxes    the rates charged on the line
+     * @param list<Tax>  $taxes    the rates charged on the line
      * @param Money|null $discount what coupons take off the line's total
      *
      * @return int the line's place, for its tax among lineTaxes()
      */
-    public function addItem(Money $total, array $taxes, ?Money $discount = null): int
+    public function addItem(Money $total, array $taxes, ?Money $discount = null, string $label = ''): int
     {
         $discount ??= Money::zero();
         $this->subtotal = $this->subtotal->add($total);
         $this->discount = $this->discount->add($discount);
-        $taxed = $total->subtract($discount);
-        $exact = Tax::parts($taxed, $taxes, $this->includesTax);
-        $bases = Tax::bases($taxed, $taxes, $exact, $this->includesTax);
-        $parts = [];
-        foreach ($taxes as $index => $rate) {
-            $this->base($rate)['items'] = $this->base($rate)['items']->add($bases[$index]);
-            $parts[$rate->key] = ($parts[$rate->key] ?? Money::zero())->add($exact[$index]);
-        }
-        $this->lineParts[] = $parts;
+        $this->charge(BilledCharge::ITEM, $label, $total->subtract($discount), $taxes);
 
-        return \count($this->lineParts) - 1;
+        return \count(array_filter($this->charges, static fn(array $charge): bool => $charge['kind'] === BilledCharge::ITEM)) - 1;
     }
 
     /**
-     * Each line's tax, in the order the lines were added: its share of each rate's billed items tax. A rate's
-     * tax goes to the lines by their exact parts, rounded down to the currency, and the cents left over go to
-     * the lines whose parts lost the most to rounding.
+     * Each line's tax, in the order the lines were added.
      *
      * @return list<Money>
      */
     public function lineTaxes(): array
     {
-        $taxes = array_fill(0, \count($this->lineParts), Money::zero());
-        if ($this->roundsEachLine) {
-            foreach ($this->lineParts as $line => $parts) {
-                foreach ($parts as $part) {
-                    $taxes[$line] = $taxes[$line]->add($part->rounded($this->decimals));
-                }
-            }
-
-            return array_values($taxes);
-        }
-        $step = 10 ** (Money::DECIMALS - $this->decimals);
-        foreach (array_keys($this->bases) as $key) {
-            $billed = $this->billedItems((string) $key)->tenThousandths;
-            $floors = [];
-            $remainders = [];
-            foreach ($this->lineParts as $line => $parts) {
-                $exact = ($parts[$key] ?? Money::zero())->tenThousandths;
-                $floors[$line] = intdiv($exact, $step) * $step;
-                $remainders[$line] = $exact - $floors[$line];
-            }
-            $left = intdiv($billed - array_sum($floors), $step);
-            // Largest remainders first for cents to give, smallest first for cents to take back; ties by line.
-            $order = array_keys($remainders);
-            usort($order, static fn(int $a, int $b): int => [$remainders[$b], $a] <=> [$remainders[$a], $b]);
-            if ($left < 0) {
-                $order = array_reverse(array_filter($order, static fn(int $line): bool => $floors[$line] > 0));
-            }
-            for ($i = 0; $i < abs($left) && $order !== []; ++$i) {
-                $floors[$order[$i % \count($order)]] += $left > 0 ? $step : -$step;
-            }
-            foreach ($floors as $line => $share) {
-                $taxes[$line] = $taxes[$line]->add(Money::fromTenThousandths($share));
-            }
-        }
-
-        return array_values($taxes);
+        return array_map(static fn(BilledCharge $charge): Money => $charge->tax(), $this->charges(BilledCharge::ITEM));
     }
 
     public function includesTax(): bool
@@ -131,13 +89,13 @@ final class Bill
     /**
      * @param list<Tax> $taxes the rates charged on shipping
      */
-    public function ship(Money $price, array $taxes): void
+    public function ship(Money $price, array $taxes, string $label = ''): void
     {
-        $this->shipping = $price;
-        $bases = Tax::bases($price, $taxes, Tax::parts($price, $taxes, $this->includesTax), $this->includesTax);
-        foreach ($taxes as $index => $rate) {
-            $this->base($rate)['shipping'] = $this->base($rate)['shipping']->add($bases[$index]);
+        if (array_filter($this->charges, static fn(array $charge): bool => $charge['kind'] === BilledCharge::SHIPPING) !== []) {
+            throw new \LogicException('A bill ships once.');
         }
+        $this->shipping = $price;
+        $this->charge(BilledCharge::SHIPPING, $label, $price, $taxes);
     }
 
     /**
@@ -149,10 +107,41 @@ final class Bill
     {
         $amount = $amount->rounded($this->decimals);
         $this->fees[] = ['label' => $label, 'amount' => $amount];
-        $bases = Tax::bases($amount, $taxes, Tax::parts($amount, $taxes, $this->includesTax), $this->includesTax);
-        foreach ($taxes as $index => $rate) {
-            $this->base($rate)['fees'] = $this->base($rate)['fees']->add($bases[$index]);
+        $this->charge(BilledCharge::FEE, $label, $amount, $taxes);
+    }
+
+    /**
+     * The charges with their taxes: the items in the order they were added, then the shipping, then the fees.
+     *
+     * @param string|null $kind only those of this kind
+     *
+     * @return list<BilledCharge>
+     */
+    public function charges(?string $kind = null): array
+    {
+        $shares = [];
+        foreach ([BilledCharge::ITEM, BilledCharge::SHIPPING, BilledCharge::FEE] as $of) {
+            foreach (array_keys($this->bases) as $key) {
+                foreach ($this->shares($this->billed((string) $key, $of), (string) $key, $of) as $index => $share) {
+                    $shares[$index][$key] = $share;
+                }
+            }
         }
+        $charges = [];
+        foreach ([BilledCharge::ITEM, BilledCharge::SHIPPING, BilledCharge::FEE] as $of) {
+            foreach ($this->charges as $index => $charge) {
+                if ($charge['kind'] !== $of || ($kind !== null && $kind !== $of)) {
+                    continue;
+                }
+                $taxes = [];
+                foreach ($charge['rates'] as $rate) {
+                    $taxes[] = new ChargedTax($rate, $charge['taxable'][$rate->key] ?? Money::zero(), $shares[$index][$rate->key] ?? Money::zero());
+                }
+                $charges[] = new BilledCharge($of, $charge['label'], $charge['amount'], $taxes);
+            }
+        }
+
+        return $charges;
     }
 
     /**
@@ -190,13 +179,13 @@ final class Bill
     public function taxes(): array
     {
         $taxes = [];
-        foreach ($this->bases as $key => ['tax' => $tax, 'shipping' => $shipping, 'fees' => $fees]) {
+        foreach ($this->bases as $key => ['tax' => $tax]) {
             $billed = new BilledTax(
                 $tax->name,
                 $tax->percent,
-                $this->billedItems((string) $key),
-                ($this->includesTax ? $shipping : $shipping->percent($tax->percent))->rounded($this->decimals),
-                ($this->includesTax ? $fees : $fees->percent($tax->percent))->rounded($this->decimals),
+                $this->billed((string) $key, BilledCharge::ITEM),
+                $this->billed((string) $key, BilledCharge::SHIPPING),
+                $this->billed((string) $key, BilledCharge::FEE),
             );
             if (!$billed->total()->isZero()) {
                 $taxes[] = $billed;
@@ -229,25 +218,85 @@ final class Bill
     }
 
     /**
-     * What a rate bills on the items, in the currency's decimals: once on their sum, or the sum of each line's
-     * rounded tax.
+     * @param list<Tax> $taxes
      */
-    private function billedItems(string $key): Money
+    private function charge(string $kind, string $label, Money $amount, array $taxes): void
     {
-        if ($this->roundsEachLine) {
-            return array_reduce($this->lineParts, fn(Money $sum, array $parts): Money => $sum->add(($parts[$key] ?? Money::zero())->rounded($this->decimals)), Money::zero());
+        $exact = Tax::parts($amount, $taxes, $this->includesTax);
+        $bases = Tax::bases($amount, $taxes, $exact, $this->includesTax);
+        // What each rate is charged on before tax, as returns report it.
+        $net = $this->includesTax ? array_reduce($exact, static fn(Money $left, Money $part): Money => $left->subtract($part), $amount) : $amount;
+        $taxable = $this->includesTax ? Tax::bases($net, $taxes, Tax::parts($net, $taxes), false) : $bases;
+        $parts = [];
+        $on = [];
+        foreach ($taxes as $index => $rate) {
+            $this->base($rate)['on'][$kind] = ($this->base($rate)['on'][$kind] ?? Money::zero())->add($bases[$index]);
+            $parts[$rate->key] = ($parts[$rate->key] ?? Money::zero())->add($exact[$index]);
+            $on[$rate->key] = $taxable[$index];
         }
-        ['tax' => $tax, 'items' => $items] = $this->bases[$key];
-
-        return ($this->includesTax ? $items : $items->percent($tax->percent))->rounded($this->decimals);
+        $this->charges[] = ['kind' => $kind, 'label' => $label, 'amount' => $amount, 'rates' => $taxes, 'parts' => $parts, 'taxable' => $on];
     }
 
     /**
-     * @return array{tax: Tax, items: Money, shipping: Money, fees: Money}
+     * What a rate bills on a kind of charge, in the currency's decimals: once on their sum, or for items with
+     * each line rounded, the sum of each line's rounded tax.
+     */
+    private function billed(string $key, string $kind): Money
+    {
+        if ($kind === BilledCharge::ITEM && $this->roundsEachLine) {
+            return array_reduce(
+                array_filter($this->charges, static fn(array $charge): bool => $charge['kind'] === BilledCharge::ITEM),
+                fn(Money $sum, array $charge): Money => $sum->add(($charge['parts'][$key] ?? Money::zero())->rounded($this->decimals)),
+                Money::zero(),
+            );
+        }
+        $base = $this->bases[$key]['on'][$kind] ?? Money::zero();
+
+        return ($this->includesTax ? $base : $base->percent($this->bases[$key]['tax']->percent))->rounded($this->decimals);
+    }
+
+    /**
+     * A rate's billed tax on a kind of charge, shared out by their exact parts: rounded down to the currency, and
+     * the cents left over go to the charges whose parts lost the most to rounding.
+     *
+     * @return array<int, Money> by the charge's place among all charges
+     */
+    private function shares(Money $billed, string $key, string $kind): array
+    {
+        $step = 10 ** (Money::DECIMALS - $this->decimals);
+        $floors = [];
+        $remainders = [];
+        foreach ($this->charges as $index => $charge) {
+            if ($charge['kind'] !== $kind || !isset($charge['parts'][$key])) {
+                continue;
+            }
+            $exact = $charge['parts'][$key]->tenThousandths;
+            $floors[$index] = $kind === BilledCharge::ITEM && $this->roundsEachLine ? $charge['parts'][$key]->rounded($this->decimals)->tenThousandths : intdiv($exact, $step) * $step;
+            $remainders[$index] = $exact - $floors[$index];
+        }
+        if ($floors === []) {
+            return [];
+        }
+        $left = intdiv($billed->tenThousandths - array_sum($floors), $step);
+        // Largest remainders first for cents to give, smallest first for cents to take back; ties by charge.
+        $order = array_keys($remainders);
+        usort($order, static fn(int $a, int $b): int => [$remainders[$b], $a] <=> [$remainders[$a], $b]);
+        if ($left < 0) {
+            $order = array_values(array_reverse(array_filter($order, static fn(int $index): bool => $floors[$index] > 0)));
+        }
+        for ($i = 0; $i < abs($left) && $order !== []; ++$i) {
+            $floors[$order[$i % \count($order)]] += $left > 0 ? $step : -$step;
+        }
+
+        return array_map(Money::fromTenThousandths(...), $floors);
+    }
+
+    /**
+     * @return array{tax: Tax, on: array<string, Money>}
      */
     private function &base(Tax $tax): array
     {
-        $this->bases[$tax->key] ??= ['tax' => $tax, 'items' => Money::zero(), 'shipping' => Money::zero(), 'fees' => Money::zero()];
+        $this->bases[$tax->key] ??= ['tax' => $tax, 'on' => []];
 
         return $this->bases[$tax->key];
     }

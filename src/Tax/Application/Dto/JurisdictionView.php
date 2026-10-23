@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tax\Application\Dto;
 
-use OrillaCart\Tax\Domain\TaxJurisdiction;
+use OrillaCart\Shared\Domain\TaxJurisdiction;
 
 /**
  * Who a tax is owed to, as orders keep it and returns are filed.

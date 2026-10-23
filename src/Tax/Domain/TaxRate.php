@@ -6,6 +6,7 @@ namespace OrillaCart\Tax\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\PostcodePattern;
+use OrillaCart\Shared\Domain\TaxJurisdiction;
 
 /**
  * One rate of a tax group: a percentage charged in a country, or only in one of its states, or only at some

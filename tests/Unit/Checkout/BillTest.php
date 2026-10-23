@@ -22,6 +22,44 @@ final class BillTest extends TestCase
         self::assertSame('9', (string) Tax::without(Money::of('9'), []));
     }
 
+    public function testEachChargeGetsItsShareOfEachRateAndTheyAddUpToTheBill(): void
+    {
+        $state = self::tax('6.25', 'Texas');
+        $city = self::tax('2', 'Austin', key: 'city');
+        $bill = new Bill(2);
+        $bill->addItem(Money::of('9.99'), [$state, $city], label: 'Mug');
+        $bill->addItem(Money::of('9.99'), [$state, $city], Money::of('1'), 'Mug');
+        $bill->addItem(Money::of('5.01'), [$state], label: 'Card');
+        $bill->ship(Money::of('4.99'), [$state], 'Courier');
+        $bill->addFee('Wrapping', Money::of('1.33'), [$state, $city]);
+        $bill->addFee('Insurance', Money::of('2.11'), [$state, $city]);
+
+        $charges = $bill->charges();
+        self::assertSame(['item', 'item', 'item', 'shipping', 'fee', 'fee'], array_map(static fn($charge): string => $charge->kind, $charges));
+        foreach ($bill->taxes() as $billed) {
+            $shared = Money::zero();
+            foreach ($charges as $charge) {
+                foreach ($charge->taxes as $tax) {
+                    if ($tax->tax->name === $billed->name) {
+                        $shared = $shared->add($tax->amount);
+                    }
+                }
+            }
+            self::assertSame((string) $billed->total(), (string) $shared, "{$billed->name} adds up");
+        }
+        self::assertSame('8.99', (string) $charges[1]->taxes[0]->taxable, 'what tax is charged on: less the discount');
+        self::assertSame(['0.31', '0.09', '0.03', '0.04'], array_map(static fn($tax): string => $tax->amount->format(2), [...$charges[3]->taxes, ...$charges[4]->taxes, $charges[5]->taxes[1]]));
+        self::assertSame(array_map(static fn($charge): string => (string) $charge->tax(), $bill->charges('item')), array_map(strval(...), $bill->lineTaxes()));
+    }
+
+    public function testWithPricesIncludingTaxAChargeIsTaxedOnWhatIsLeftWithoutTheTax(): void
+    {
+        $bill = new Bill(2, includesTax: true);
+        $bill->addItem(Money::of('12'), [self::tax('20')]);
+
+        self::assertSame(['10', '2'], [(string) $bill->charges()[0]->taxes[0]->taxable, (string) $bill->charges()[0]->tax()]);
+    }
+
     public function testACompoundRateIsChargedOnTheTaxesBeforeIt(): void
     {
         $taxes = [self::tax('5', 'GST'), self::tax('9.975', 'QST', compound: true)];

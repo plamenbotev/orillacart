@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Tax\Domain;
+namespace OrillaCart\Shared\Domain;
 
 /**
  * Who a tax is owed to, as a return is filed: a country, one of its states or regions, or a place within one (a

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Checkout\Domain;
 
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\TaxJurisdiction;
 
 /**
  * A tax rate charged on part of a bill. Rates with the same key are one line of the invoice. A compound rate is
@@ -17,6 +18,8 @@ final readonly class Tax
         public string $name,
         public string $percent,
         public bool $compound = false,
+        /** Who it is owed to, as orders keep it per line and returns are filed. */
+        public ?TaxJurisdiction $jurisdiction = null,
     ) {}
 
     /**
