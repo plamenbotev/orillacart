@@ -20,7 +20,9 @@ import {
 	TermTokens,
 	type Named,
 } from '../shared/CatalogTokens';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
+import { useLeaveGuard } from '../shared/useLeaveGuard';
+import { useUnsavedChanges } from '../shared/useUnsavedChanges';
 import {
 	deleteForm,
 	fetchForms,
@@ -48,20 +50,17 @@ const PLACES: Record< Placement, string > = {
 export function FormsScreen() {
 	const [ forms, setForms ] = useState< ShopForm[] | null >( null );
 	const [ categories, setCategories ] = useState< Named[] >( [] );
-	const [ selected, setSelected ] = useState< number | typeof NEW | null >(
+	const [ selected, setSelectedNow ] = useState< number | typeof NEW | null >(
 		null
 	);
+	const [ leaving, guard ] = useLeaveGuard();
+	// Another form, or none, only once unsaved changes are let go.
+	const setSelected = ( next: number | typeof NEW | null ) =>
+		guard( () => setSelectedNow( next ) );
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) => {
-		const { message: text, data } = toApiError( error );
-		const details = ( data?.violations ?? [] ).map(
-			( violation ) => `${ violation.field }: ${ violation.message }`
-		);
-		setMessage( {
-			status: 'error',
-			text: [ text, ...details ].join( ' ' ),
-		} );
+		setMessage( { status: 'error', text: errorMessage( error ) } );
 	};
 
 	useEffect( () => {
@@ -112,6 +111,7 @@ export function FormsScreen() {
 
 	return (
 		<>
+			{ leaving }
 			<h1>{ __( 'Forms', 'orillacart' ) }</h1>
 			<p>
 				{ __(
@@ -197,7 +197,7 @@ export function FormsScreen() {
 									a.position - b.position || a.id - b.id
 							)
 						);
-						setSelected( saved.id );
+						setSelectedNow( saved.id );
 						setMessage( {
 							status: 'success',
 							text: __( 'Form saved.', 'orillacart' ),
@@ -207,7 +207,7 @@ export function FormsScreen() {
 						setForms(
 							forms.filter( ( candidate ) => candidate.id !== id )
 						);
-						setSelected( null );
+						setSelectedNow( null );
 						setMessage( {
 							status: 'success',
 							text: __( 'Form deleted.', 'orillacart' ),
@@ -253,8 +253,13 @@ function FormCard( {
 	);
 	const [ saving, setSaving ] = useState( false );
 	const [ confirming, setConfirming ] = useState( false );
-	const set = ( changes: Partial< typeof draft > ) =>
+	// Changed since it opened or was last saved.
+	const [ touched, setTouched ] = useState( false );
+	useUnsavedChanges( touched );
+	const set = ( changes: Partial< typeof draft > ) => {
 		setDraft( { ...draft, ...changes } );
+		setTouched( true );
+	};
 
 	const submit = ( event: FormEvent ) => {
 		event.preventDefault();
@@ -263,7 +268,10 @@ function FormCard( {
 			...draft,
 			fields: fields.map( ( field ) => field.field ),
 		} )
-			.then( onSaved )
+			.then( ( saved ) => {
+				setTouched( false );
+				onSaved( saved );
+			} )
 			.catch( onError )
 			.finally( () => setSaving( false ) );
 	};
@@ -425,7 +433,10 @@ function FormCard( {
 					<FieldsEditor
 						placement={ draft.placement }
 						drafts={ fields }
-						onChange={ setFields }
+						onChange={ ( changed ) => {
+							setFields( changed );
+							setTouched( true );
+						} }
 					/>
 					<Flex justify="flex-start" style={ { marginTop: 16 } }>
 						<Button

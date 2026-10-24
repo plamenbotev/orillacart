@@ -10,7 +10,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { useConfirm } from '../shared/useConfirm';
 import {
 	deleteWebhook,
@@ -76,7 +76,7 @@ export function WebhooksCard() {
 		}
 	};
 	const fail = ( failure: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( failure ).message } );
+		setMessage( { status: 'error', text: errorMessage( failure ) } );
 	const load = () =>
 		fetchWebhooks()
 			.then( ( loaded ) => {

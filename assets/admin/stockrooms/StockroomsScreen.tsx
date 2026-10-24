@@ -23,7 +23,7 @@ import {
 	type Stockroom,
 	type StockroomInput,
 } from '../inventory/api';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -47,7 +47,7 @@ export function StockroomsScreen() {
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( error ).message } );
+		setMessage( { status: 'error', text: errorMessage( error ) } );
 
 	useEffect( () => {
 		fetchStockrooms().then( setStockrooms ).catch( fail );

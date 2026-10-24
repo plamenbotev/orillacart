@@ -10,7 +10,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { useConfirm } from '../shared/useConfirm';
 import { type ApiKey, createApiKey, fetchApiKeys, revokeApiKey } from './api';
 
@@ -29,8 +29,7 @@ export function ApiKeysCard() {
 	const [ made, setMade ] = useState< string | null >( null );
 	const [ error, setError ] = useState< string | null >( null );
 	const [ confirmation, confirm ] = useConfirm();
-	const fail = ( failure: unknown ) =>
-		setError( toApiError( failure ).message );
+	const fail = ( failure: unknown ) => setError( errorMessage( failure ) );
 	const load = () => fetchApiKeys().then( setKeys ).catch( fail );
 
 	useEffect( () => {

@@ -11,7 +11,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import {
 	discardImport,
 	fetchImport,
@@ -36,8 +36,7 @@ export function ImportCard( { interval = POLL }: { interval?: number } ) {
 	const [ current, setCurrent ] = useState< ProductImport | null >( null );
 	const [ error, setError ] = useState< string | null >( null );
 	const [ busy, setBusy ] = useState( false );
-	const fail = ( reason: unknown ) =>
-		setError( toApiError( reason ).message );
+	const fail = ( reason: unknown ) => setError( errorMessage( reason ) );
 
 	useEffect( () => {
 		latestImport().then( setCurrent ).catch( fail );

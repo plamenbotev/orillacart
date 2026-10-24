@@ -17,10 +17,12 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import type { Address } from '../shared/address';
 import { AddressFields } from '../shared/AddressFields';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { orderUploadUrl } from '../shared/exports';
 import { useBusy } from '../shared/useBusy';
 import { useConfirm } from '../shared/useConfirm';
+import { useLeaveGuard } from '../shared/useLeaveGuard';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import {
 	adjustPrice,
 	addNote,
@@ -116,9 +118,10 @@ function AttentionNotice( {
 export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 	const [ order, setOrder ] = useState< Order | null >( null );
 	const [ message, setMessage ] = useState< Message >( null );
+	const [ leaving, guard ] = useLeaveGuard();
 
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( error ).message } );
+		setMessage( { status: 'error', text: errorMessage( error ) } );
 	const done = ( text: string ) => ( saved: Order ) => {
 		setOrder( saved );
 		setMessage( { status: 'success', text } );
@@ -129,7 +132,7 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 	}, [ id ] );
 
 	const back = (
-		<Button variant="link" onClick={ onBack }>
+		<Button variant="link" onClick={ () => guard( onBack ) }>
 			{ __( '← All orders', 'orillacart' ) }
 		</Button>
 	);
@@ -150,6 +153,7 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 
 	return (
 		<>
+			{ leaving }
 			{ back }
 			<h1>
 				{ sprintf(
@@ -1265,6 +1269,7 @@ function NotesCard( { order, onSaved, onError }: CardProps ) {
 	const [ busy, run ] = useBusy();
 	const [ text, setText ] = useState( '' );
 	const [ forCustomer, setForCustomer ] = useState( false );
+	useUnsavedChanges( text.trim() !== '' );
 
 	return (
 		<Card className="orillacart-card">
@@ -1342,6 +1347,11 @@ function ItemsCard( { order, onSaved, onError }: CardProps ) {
 	const [ points, setPoints ] = useState< PickupPoint[] >( [] );
 	const [ pickupPoint, setPickupPoint ] = useState(
 		order.pickup_point_id ?? ''
+	);
+	// The card opens anew with each saved change (its key), so what it opened with is what is saved.
+	const [ opened ] = useState( () => [ rows, shippingOption, pickupPoint ] );
+	useUnsavedChanges(
+		differs( [ rows, shippingOption, pickupPoint ], opened )
 	);
 	const toPickupPoint =
 		rates.find( ( rate ) => rate.id === shippingOption )
@@ -1443,6 +1453,10 @@ function ContactCard( { order, onSaved, onError }: CardProps ) {
 		Object.fromEntries(
 			order.fields.map( ( field ) => [ field.id, field.answer ] )
 		)
+	);
+	const [ opened ] = useState( () => [ email, billing, shipping, answers ] );
+	useUnsavedChanges(
+		differs( [ email, billing, shipping, answers ], opened )
 	);
 
 	return (

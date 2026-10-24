@@ -10,6 +10,7 @@ import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import { toApiError, violationOf, type Violation } from '../shared/api';
 import { saveFilter, type SearchFilter } from './filters';
 
@@ -50,6 +51,8 @@ export function FilterModal( props: Props ) {
 		attributes: filter?.attributes ?? [],
 		position: filter?.position ?? nextPosition,
 	} );
+	const [ opened ] = useState( form );
+	useUnsavedChanges( differs( form, opened ) );
 	const [ keyEdited, setKeyEdited ] = useState( filter !== null );
 	const [ violations, setViolations ] = useState< Violation[] >( [] );
 	const [ error, setError ] = useState< string | null >( null );

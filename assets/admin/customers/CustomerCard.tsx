@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import { type Address, EMPTY_ADDRESS } from '../shared/address';
 import { AddressFields } from '../shared/AddressFields';
 import {
@@ -221,6 +222,7 @@ function Notes( {
 	const [ notes, setNotes ] = useState< CustomerNote[] >( [] );
 	const [ text, setText ] = useState( '' );
 	const [ busy, setBusy ] = useState( false );
+	useUnsavedChanges( text.trim() !== '' );
 	const [ confirmation, confirm ] = useConfirm();
 	// The screen hands a new onError each render: the notes load again only for another customer.
 	const failed = useRef( onError );
@@ -435,6 +437,8 @@ function AddressForm( {
 	const [ billing, setBilling ] = useState( saved?.billing ?? false );
 	const [ shipping, setShipping ] = useState( saved?.shipping ?? false );
 	const [ busy, setBusy ] = useState( false );
+	const [ opened ] = useState( () => [ address, billing, shipping ] );
+	useUnsavedChanges( differs( [ address, billing, shipping ], opened ) );
 
 	return (
 		<div className="orillacart-saved-address">

@@ -9,7 +9,8 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { useLeaveGuard } from '../shared/useLeaveGuard';
+import { errorMessage } from '../shared/api';
 import { useConfirm } from '../shared/useConfirm';
 import { FilterModal } from './FilterModal';
 import {
@@ -36,7 +37,11 @@ export function FiltersCard() {
 	const [ filters, setFilters ] = useState< SearchFilter[] | null >( null );
 	const [ names, setNames ] = useState< string[] >( [] );
 	/** The filter being edited, null for a new one; undefined when the dialog is closed. */
-	const [ editing, setEditing ] = useState< SearchFilter | null >();
+	const [ editing, setEditingNow ] = useState< SearchFilter | null >();
+	const [ leaving, guard ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go.
+	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
+		guard( () => setEditingNow( next ) );
 	const [ message, setMessage ] = useState< {
 		status: 'success' | 'error';
 		text: string;
@@ -52,17 +57,18 @@ export function FiltersCard() {
 			.catch( ( reason: unknown ) =>
 				setMessage( {
 					status: 'error',
-					text: toApiError( reason ).message,
+					text: errorMessage( reason ),
 				} )
 			);
 	}, [] );
 
 	const fail = ( reason: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( reason ).message } );
+		setMessage( { status: 'error', text: errorMessage( reason ) } );
 
 	return (
 		<Card className="orillacart-card">
 			{ confirmation }
+			{ leaving }
 			<CardHeader>
 				<h2>{ __( 'Shop filters', 'orillacart' ) }</h2>
 				<Button
@@ -205,7 +211,7 @@ export function FiltersCard() {
 									saved,
 								] )
 							);
-							setEditing( undefined );
+							setEditingNow( undefined );
 							setMessage( {
 								status: 'success',
 								text:

@@ -16,9 +16,10 @@ import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { type Named, ProductTokens, TermTokens } from '../shared/CatalogTokens';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { fromLocal, toLocal } from '../shared/dates';
 import { useConfirm } from '../shared/useConfirm';
+import { useLeaveGuard } from '../shared/useLeaveGuard';
 import {
 	type Coupon,
 	type CouponFields,
@@ -167,11 +168,17 @@ export function CouponsScreen() {
 		layout: {},
 	} );
 	const [ page, setPage ] = useState< CouponPage | null >( null );
-	const [ editing, setEditing ] = useState< Coupon | 'new' | null >( null );
+	const [ editing, setEditingNow ] = useState< Coupon | 'new' | null >(
+		null
+	);
+	const [ leaving, guard ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go.
+	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
+		guard( () => setEditingNow( next ) );
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( error ).message } );
+		setMessage( { status: 'error', text: errorMessage( error ) } );
 	const load = useCallback( () => {
 		fetchCoupons( {
 			search: view.search === '' ? undefined : view.search,
@@ -186,6 +193,7 @@ export function CouponsScreen() {
 	return (
 		<>
 			{ confirmation }
+			{ leaving }
 			<h1>
 				{ __( 'Coupons', 'orillacart' ) }{ ' ' }
 				{ editing === null && (
@@ -211,7 +219,7 @@ export function CouponsScreen() {
 					coupon={ editing === 'new' ? null : editing }
 					onClose={ () => setEditing( null ) }
 					onSaved={ ( saved ) => {
-						setEditing( null );
+						setEditingNow( null );
 						load();
 						setMessage( {
 							status: 'success',

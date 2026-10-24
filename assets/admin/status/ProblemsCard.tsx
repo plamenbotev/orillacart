@@ -8,7 +8,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { useConfirm } from '../shared/useConfirm';
 import { clearProblems, fetchProblems, type ProblemPage } from './api';
 
@@ -26,7 +26,7 @@ export function ProblemsCard() {
 		fetchProblems( page )
 			.then( setProblems )
 			.catch( ( failure: unknown ) =>
-				setError( toApiError( failure ).message )
+				setError( errorMessage( failure ) )
 			);
 
 	useEffect( () => {
@@ -136,8 +136,7 @@ export function ProblemsCard() {
 												} )
 												.catch( ( failure: unknown ) =>
 													setError(
-														toApiError( failure )
-															.message
+														errorMessage( failure )
 													)
 												),
 										__( 'Clear', 'orillacart' )

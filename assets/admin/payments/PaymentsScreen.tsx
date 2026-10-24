@@ -15,7 +15,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { SettingFields } from '../shared/SettingFields';
 import {
 	fetchPaymentMethods,
@@ -35,7 +35,7 @@ export function PaymentsScreen() {
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( error ).message } );
+		setMessage( { status: 'error', text: errorMessage( error ) } );
 
 	useEffect( () => {
 		fetchPaymentMethods().then( setMethods ).catch( fail );

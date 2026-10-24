@@ -15,7 +15,7 @@ import { addQueryArgs } from '@wordpress/url';
 import { fetchStockrooms } from '../inventory/api';
 import { when } from '../orders/labels';
 import { searchProducts } from '../orders/products';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { fromLocal } from '../shared/dates';
 import { useLatest } from '../shared/useLatest';
 import {
@@ -67,9 +67,7 @@ export function HistoryTab() {
 		setHistory( null );
 		latest( fetchStockHistory( query ) )
 			.then( setHistory )
-			.catch( ( reason: unknown ) =>
-				setError( toApiError( reason ).message )
-			);
+			.catch( ( reason: unknown ) => setError( errorMessage( reason ) ) );
 	}, [ query, latest ] );
 
 	const change = ( changes: Partial< StockHistoryQuery > ) =>

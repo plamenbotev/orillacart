@@ -11,7 +11,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import {
 	fetchPageChoices,
 	fetchShopPages,
@@ -75,7 +75,7 @@ export function ShopPagesCard() {
 			.catch( ( error: unknown ) =>
 				setStatus( {
 					kind: 'error',
-					message: toApiError( error ).message,
+					message: errorMessage( error ),
 				} )
 			);
 	}, [] );
@@ -94,7 +94,7 @@ export function ShopPagesCard() {
 			.catch( ( error: unknown ) =>
 				setStatus( {
 					kind: 'error',
-					message: toApiError( error ).message,
+					message: errorMessage( error ),
 				} )
 			);
 	};

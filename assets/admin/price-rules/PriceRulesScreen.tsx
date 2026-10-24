@@ -17,7 +17,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { type Coupon, deleteCoupon, fetchCoupons } from '../coupons/api';
 import { CouponForm, discountLabel } from '../coupons/CouponsScreen';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import {
 	fetchTerms,
 	type Named,
@@ -26,6 +26,7 @@ import {
 } from '../shared/CatalogTokens';
 import { fromLocal, toLocal } from '../shared/dates';
 import { useConfirm } from '../shared/useConfirm';
+import { useLeaveGuard } from '../shared/useLeaveGuard';
 import {
 	type CustomerGroup,
 	deleteRule,
@@ -96,9 +97,13 @@ export function PriceRulesScreen() {
 	const [ confirmation, confirm ] = useConfirm();
 	const [ rules, setRules ] = useState< PriceRule[] | null >( null );
 	const [ groups, setGroups ] = useState< CustomerGroup[] >( [] );
-	const [ editing, setEditing ] = useState< PriceRule | 'new' | null >(
+	const [ editing, setEditingNow ] = useState< PriceRule | 'new' | null >(
 		null
 	);
+	const [ leaving, guard ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go.
+	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
+		guard( () => setEditingNow( next ) );
 	const [ message, setMessage ] = useState< Message >( null );
 	const [ view, setView ] = useState< View >( {
 		type: 'table',
@@ -110,7 +115,7 @@ export function PriceRulesScreen() {
 	} );
 
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( error ).message } );
+		setMessage( { status: 'error', text: errorMessage( error ) } );
 	const load = () => {
 		fetchRules().then( setRules ).catch( fail );
 	};
@@ -158,6 +163,7 @@ export function PriceRulesScreen() {
 	return (
 		<>
 			{ confirmation }
+			{ leaving }
 			<h1>
 				{ __( 'Price rules', 'orillacart' ) }{ ' ' }
 				{ editing === null && (
@@ -190,7 +196,7 @@ export function PriceRulesScreen() {
 					groups={ groups }
 					onClose={ () => setEditing( null ) }
 					onSaved={ ( saved ) => {
-						setEditing( null );
+						setEditingNow( null );
 						load();
 						setMessage( {
 							status: 'success',
@@ -280,7 +286,13 @@ function AutomaticDiscounts( {
 	onError: ( error: unknown ) => void;
 } ) {
 	const [ discounts, setDiscounts ] = useState< Coupon[] | null >( null );
-	const [ editing, setEditing ] = useState< Coupon | 'new' | null >( null );
+	const [ editing, setEditingNow ] = useState< Coupon | 'new' | null >(
+		null
+	);
+	const [ leaving, guard ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go.
+	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
+		guard( () => setEditingNow( next ) );
 	const load = () =>
 		fetchCoupons( { page: 1, per_page: 100, automatic: true } )
 			.then( ( page ) => setDiscounts( page.coupons ) )
@@ -292,6 +304,7 @@ function AutomaticDiscounts( {
 
 	return (
 		<Card className="orillacart-card">
+			{ leaving }
 			<CardHeader>
 				<h2>{ __( 'Automatic discounts', 'orillacart' ) }</h2>
 				{ editing === null && (
@@ -317,7 +330,7 @@ function AutomaticDiscounts( {
 						coupon={ editing === 'new' ? null : editing }
 						onClose={ () => setEditing( null ) }
 						onSaved={ ( saved ) => {
-							setEditing( null );
+							setEditingNow( null );
 							void load();
 							onMessage(
 								sprintf(

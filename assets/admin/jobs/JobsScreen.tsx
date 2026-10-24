@@ -10,7 +10,7 @@ import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { shopClock } from '../shared/dates';
 import {
 	type Choice,
@@ -104,7 +104,7 @@ export function JobsScreen() {
 	const [ failedChanged, setFailedChanged ] = useState( 0 );
 
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( error ).message } );
+		setMessage( { status: 'error', text: errorMessage( error ) } );
 
 	const latestOverview = useLatest();
 	const load = useCallback( () => {

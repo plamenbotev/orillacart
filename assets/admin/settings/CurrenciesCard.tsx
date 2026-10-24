@@ -13,7 +13,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import {
 	type CurrencySettings,
 	fetchCurrencies,
@@ -47,7 +47,7 @@ export function CurrenciesCard( { currency }: { currency: string } ) {
 		text: string;
 	} | null >( null );
 	const fail = ( failure: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( failure ).message } );
+		setMessage( { status: 'error', text: errorMessage( failure ) } );
 
 	useEffect( () => {
 		fetchCurrencies().then( setSettings ).catch( fail );

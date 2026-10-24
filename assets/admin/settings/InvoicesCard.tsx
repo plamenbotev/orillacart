@@ -13,7 +13,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { useBusy } from '../shared/useBusy';
 import {
 	fetchInvoiceSettings,
@@ -41,7 +41,7 @@ export function InvoicesCard() {
 			.catch( ( failure: unknown ) =>
 				setMessage( {
 					status: 'error',
-					text: toApiError( failure ).message,
+					text: errorMessage( failure ),
 				} )
 			);
 	}, [] );
@@ -68,7 +68,7 @@ export function InvoicesCard() {
 				.catch( ( failure: unknown ) =>
 					setMessage( {
 						status: 'error',
-						text: toApiError( failure ).message,
+						text: errorMessage( failure ),
 					} )
 				)
 		);

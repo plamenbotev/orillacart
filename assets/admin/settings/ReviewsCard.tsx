@@ -9,7 +9,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import {
 	fetchReviewSettings,
 	type ReviewSettings,
@@ -42,7 +42,7 @@ export function ReviewsCard() {
 		text: string;
 	} | null >( null );
 	const fail = ( failure: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( failure ).message } );
+		setMessage( { status: 'error', text: errorMessage( failure ) } );
 
 	useEffect( () => {
 		fetchReviewSettings().then( setSettings ).catch( fail );

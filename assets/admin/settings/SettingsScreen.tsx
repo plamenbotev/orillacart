@@ -13,7 +13,12 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
-import { toApiError, violationOf, type Violation } from '../shared/api';
+import {
+	errorMessage,
+	toApiError,
+	type Violation,
+	violationOf,
+} from '../shared/api';
 import { fetchCountries, type Country } from '../shared/geography';
 import { LocationFields } from '../shared/LocationFields';
 import { ArchiveCard } from './ArchiveCard';
@@ -98,7 +103,7 @@ export function SettingsScreen() {
 			.catch( ( error: unknown ) =>
 				setStatus( {
 					kind: 'error',
-					message: toApiError( error ).message,
+					message: errorMessage( error ),
 				} )
 			);
 	}, [] );

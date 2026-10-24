@@ -11,7 +11,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import {
 	changeDownloadDelivery,
 	type DeliveryMethod,
@@ -62,7 +62,7 @@ export function DownloadDeliveryCard() {
 				setMethod( loaded.method );
 			} )
 			.catch( ( failure: unknown ) =>
-				setError( toApiError( failure ).message )
+				setError( errorMessage( failure ) )
 			);
 	}, [] );
 
@@ -72,7 +72,7 @@ export function DownloadDeliveryCard() {
 		changeDownloadDelivery( method, prefix )
 			.then( show )
 			.catch( ( failure: unknown ) =>
-				setError( toApiError( failure ).message )
+				setError( errorMessage( failure ) )
 			)
 			.finally( () => setTesting( false ) );
 	};

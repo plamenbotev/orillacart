@@ -15,7 +15,8 @@ import type { FormEvent } from 'react';
 
 import { fetchCoupons } from '../coupons/api';
 import { EMAIL_LABELS } from '../orders/labels';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
+import { useLeaveGuard } from '../shared/useLeaveGuard';
 import {
 	type EmailSettings,
 	type EmailTemplate,
@@ -37,6 +38,7 @@ export function EmailsScreen() {
 	const [ settings, setSettings ] = useState< EmailSettings | null >( null );
 	const [ templates, setTemplates ] = useState< EmailTemplate[] >( [] );
 	const [ editing, setEditing ] = useState< string | null >( null );
+	const [ leaving, guard ] = useLeaveGuard();
 	const [ message, setMessage ] = useState< Message >( null );
 	const [ coupons, setCoupons ] = useState< string[] >( [] );
 
@@ -54,7 +56,7 @@ export function EmailsScreen() {
 			.catch( ( error: unknown ) =>
 				setMessage( {
 					status: 'error',
-					text: toApiError( error ).message,
+					text: errorMessage( error ),
 				} )
 			);
 	}, [] );
@@ -69,10 +71,11 @@ export function EmailsScreen() {
 	if ( editing !== null ) {
 		return (
 			<>
+				{ leaving }
 				<h1>{ __( 'Emails', 'orillacart' ) }</h1>
 				<TemplateEditor
 					name={ editing }
-					onClose={ () => setEditing( null ) }
+					onClose={ () => guard( () => setEditing( null ) ) }
 				/>
 			</>
 		);
@@ -115,7 +118,7 @@ export function EmailsScreen() {
 			.catch( ( error: unknown ) =>
 				setMessage( {
 					status: 'error',
-					text: toApiError( error ).message,
+					text: errorMessage( error ),
 				} )
 			);
 	};

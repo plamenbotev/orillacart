@@ -6,7 +6,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { addQueryArgs } from '@wordpress/url';
 
 import { fetchPaymentMethods } from '../payments/api';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import {
 	deleteOrder,
 	fetchOrderFacets,
@@ -307,9 +307,7 @@ export function OrdersScreen() {
 	const load = useCallback( () => {
 		latest( fetchOrders( ordersQuery( view ) ) )
 			.then( setPage )
-			.catch( ( reason: unknown ) =>
-				setError( toApiError( reason ).message )
-			);
+			.catch( ( reason: unknown ) => setError( errorMessage( reason ) ) );
 	}, [ view, latest ] );
 
 	useEffect( load, [ load ] );
@@ -448,7 +446,7 @@ function DeleteOrders( {
 			try {
 				await deleteOrder( order.number );
 			} catch ( reason ) {
-				failure ??= toApiError( reason ).message;
+				failure ??= errorMessage( reason );
 			}
 		}
 		onDone( failure );

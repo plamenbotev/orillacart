@@ -11,8 +11,9 @@ import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { useConfirm } from '../shared/useConfirm';
+import { useLeaveGuard } from '../shared/useLeaveGuard';
 import {
 	type Customer,
 	type CustomerGroup,
@@ -101,12 +102,16 @@ export function CustomersScreen() {
 		layout: {},
 	} );
 	const [ page, setPage ] = useState< CustomerPage | null >( null );
-	const [ selected, setSelected ] = useState< Customer | null >( null );
+	const [ selected, setSelectedNow ] = useState< Customer | null >( null );
+	const [ leaving, guard ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go.
+	const setSelected = ( next: Parameters< typeof setSelectedNow >[ 0 ] ) =>
+		guard( () => setSelectedNow( next ) );
 	const [ groups, setGroups ] = useState< CustomerGroup[] >( [] );
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( error ).message } );
+		setMessage( { status: 'error', text: errorMessage( error ) } );
 
 	useEffect( () => {
 		fetchCustomerSettings().then( setSettings ).catch( fail );
@@ -129,6 +134,7 @@ export function CustomersScreen() {
 
 	return (
 		<>
+			{ leaving }
 			<h1>{ __( 'Customers', 'orillacart' ) }</h1>
 			{ message !== null && (
 				<Notice
@@ -190,7 +196,7 @@ export function CustomersScreen() {
 					groups={ groups }
 					onClose={ () => setSelected( null ) }
 					onSaved={ ( saved ) => {
-						setSelected( saved );
+						setSelectedNow( saved );
 						load();
 						setMessage( {
 							status: 'success',

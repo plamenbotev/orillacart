@@ -7,7 +7,7 @@ import { TextControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { ProductTokens } from '../shared/CatalogTokens';
 
 type LinkedMeta = {
@@ -31,7 +31,7 @@ export function LinkedProductsPanel() {
 	const { editPost } = useDispatch( editorStore );
 	const { createErrorNotice } = useDispatch( noticesStore );
 	const onError = ( error: unknown ) =>
-		void createErrorNotice( toApiError( error ).message, {
+		void createErrorNotice( errorMessage( error ), {
 			type: 'snackbar',
 		} );
 

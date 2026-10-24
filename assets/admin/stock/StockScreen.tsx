@@ -12,7 +12,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { searchProducts } from '../orders/products';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import {
 	changeLevels,
 	fetchCategories,
@@ -105,7 +105,7 @@ export function StockScreen() {
 			.catch( ( error: unknown ) =>
 				setStatus( {
 					kind: 'error',
-					message: toApiError( error ).message,
+					message: errorMessage( error ),
 				} )
 			);
 	}, [ query, latest ] );
@@ -138,7 +138,7 @@ export function StockScreen() {
 			.catch( ( error: unknown ) =>
 				setStatus( {
 					kind: 'error',
-					message: toApiError( error ).message,
+					message: errorMessage( error ),
 				} )
 			);
 	};

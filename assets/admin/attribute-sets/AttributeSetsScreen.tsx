@@ -22,7 +22,9 @@ import {
 	type AttributeSet,
 	type AttributeSetInput,
 } from '../catalog/api';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
+import { useLeaveGuard } from '../shared/useLeaveGuard';
+import { useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -33,27 +35,24 @@ const NEW = 'new';
  */
 export function AttributeSetsScreen() {
 	const [ sets, setSets ] = useState< AttributeSet[] | null >( null );
-	const [ selected, setSelected ] = useState< number | typeof NEW | null >(
+	const [ selected, setSelectedNow ] = useState< number | typeof NEW | null >(
 		null
 	);
+	const [ leaving, guard ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go.
+	const setSelected = ( next: Parameters< typeof setSelectedNow >[ 0 ] ) =>
+		guard( () => setSelectedNow( next ) );
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) => {
-		const { message: text, data } = toApiError( error );
-		const details = ( data?.violations ?? [] ).map(
-			( violation ) => `${ violation.field }: ${ violation.message }`
-		);
-		setMessage( {
-			status: 'error',
-			text: [ text, ...details ].join( ' ' ),
-		} );
+		setMessage( { status: 'error', text: errorMessage( error ) } );
 	};
 
 	useEffect( () => {
 		fetchAttributeSets()
 			.then( ( loaded ) => {
 				setSets( loaded );
-				setSelected( loaded[ 0 ]?.id ?? NEW );
+				setSelectedNow( loaded[ 0 ]?.id ?? NEW );
 			} )
 			.catch( fail );
 	}, [] );
@@ -77,6 +76,7 @@ export function AttributeSetsScreen() {
 
 	return (
 		<>
+			{ leaving }
 			<h1>{ __( 'Attribute sets', 'orillacart' ) }</h1>
 			<p>
 				{ __(
@@ -122,7 +122,7 @@ export function AttributeSetsScreen() {
 							),
 							saved,
 						] );
-						setSelected( saved.id );
+						setSelectedNow( saved.id );
 						setMessage( {
 							status: 'success',
 							text: __( 'Attribute set saved.', 'orillacart' ),
@@ -133,7 +133,7 @@ export function AttributeSetsScreen() {
 							( candidate ) => candidate.id !== id
 						);
 						setSets( rest );
-						setSelected( rest[ 0 ]?.id ?? NEW );
+						setSelectedNow( rest[ 0 ]?.id ?? NEW );
 						setMessage( null );
 					} }
 					onError={ fail }
@@ -152,11 +152,18 @@ interface SetCardProps {
 }
 
 function SetCard( { set, onSaved, onDeleted, onError }: SetCardProps ) {
-	const [ draft, setDraft ] = useState< AttributeSetInput >( {
+	const [ draft, setDraftNow ] = useState< AttributeSetInput >( {
 		name: set?.name ?? '',
 		active: set?.active ?? true,
 		attributes: ( set?.attributes ?? [] ).map( toAttributeInput ),
 	} );
+	// Changed since it opened or was last saved.
+	const [ touched, setTouched ] = useState( false );
+	useUnsavedChanges( touched );
+	const setDraft = ( next: Parameters< typeof setDraftNow >[ 0 ] ) => {
+		setDraftNow( next );
+		setTouched( true );
+	};
 	const [ saving, setSaving ] = useState( false );
 	const [ confirming, setConfirming ] = useState( false );
 
@@ -164,7 +171,10 @@ function SetCard( { set, onSaved, onDeleted, onError }: SetCardProps ) {
 		event.preventDefault();
 		setSaving( true );
 		saveAttributeSet( set?.id ?? null, draft )
-			.then( onSaved )
+			.then( ( saved ) => {
+				setTouched( false );
+				onSaved( saved );
+			} )
 			.catch( onError )
 			.finally( () => setSaving( false ) );
 	};

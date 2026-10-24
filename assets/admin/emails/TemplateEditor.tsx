@@ -14,9 +14,10 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { EMAIL_LABELS } from '../orders/labels';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { useBusy } from '../shared/useBusy';
 import { useConfirm } from '../shared/useConfirm';
+import { useUnsavedChanges } from '../shared/useUnsavedChanges';
 import {
 	type EmailPreview,
 	type EmailTemplateSource,
@@ -57,7 +58,7 @@ export function TemplateEditor( { name, onClose }: TemplateEditorProps ) {
 	const [ busy, run ] = useBusy();
 	const [ dialog, confirm ] = useConfirm();
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( error ).message } );
+		setMessage( { status: 'error', text: errorMessage( error ) } );
 
 	useEffect( () => {
 		fetchEmailTemplate( name )
@@ -67,6 +68,7 @@ export function TemplateEditor( { name, onClose }: TemplateEditorProps ) {
 			} )
 			.catch( fail );
 	}, [ name ] );
+	useUnsavedChanges( template !== null && source !== template.source );
 
 	if ( template === null ) {
 		return message === null ? (

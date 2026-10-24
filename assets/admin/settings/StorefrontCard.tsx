@@ -10,7 +10,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import {
 	fetchStorefrontSettings,
 	saveStorefrontSettings,
@@ -54,7 +54,7 @@ export function StorefrontCard() {
 		text: string;
 	} | null >( null );
 	const fail = ( failure: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( failure ).message } );
+		setMessage( { status: 'error', text: errorMessage( failure ) } );
 
 	useEffect( () => {
 		fetchStorefrontSettings().then( setSettings ).catch( fail );

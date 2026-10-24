@@ -9,7 +9,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { type Check, fetchStatus, reportText, type Status } from './api';
 import { ChangeLogCard } from './ChangeLogCard';
 import { ProblemsCard } from './ProblemsCard';
@@ -33,7 +33,7 @@ export function StatusScreen() {
 		fetchStatus()
 			.then( setStatus )
 			.catch( ( failure: unknown ) =>
-				setError( toApiError( failure ).message )
+				setError( errorMessage( failure ) )
 			);
 	}, [] );
 

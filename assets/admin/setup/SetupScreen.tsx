@@ -24,7 +24,7 @@ import {
 	settingsInput,
 } from '../settings/api';
 import { fetchCarriers } from '../shipping/api';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import {
 	type Country,
 	fetchCountries,
@@ -57,8 +57,7 @@ const OFFLINE = [ 'bank_transfer', 'cash_on_delivery', 'cheque' ];
 export function SetupScreen() {
 	const [ step, setStep ] = useState( 0 );
 	const [ error, setError ] = useState< string | null >( null );
-	const fail = ( failure: unknown ) =>
-		setError( toApiError( failure ).message );
+	const fail = ( failure: unknown ) => setError( errorMessage( failure ) );
 
 	return (
 		<>

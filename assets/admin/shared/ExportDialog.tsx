@@ -11,7 +11,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
-import { toApiError } from './api';
+import { errorMessage } from './api';
 import {
 	chooseExportColumns,
 	type ExportColumn,
@@ -60,9 +60,7 @@ export function ExportDialog( {
 	useEffect( () => {
 		fetchExportColumns( kind )
 			.then( setColumns )
-			.catch( ( reason: unknown ) =>
-				setError( toApiError( reason ).message )
-			);
+			.catch( ( reason: unknown ) => setError( errorMessage( reason ) ) );
 	}, [ kind ] );
 
 	const move = ( index: number, by: number ) => {
@@ -87,9 +85,7 @@ export function ExportDialog( {
 				download( exportUrl( kind, format, query ) );
 				onClose();
 			} )
-			.catch( ( reason: unknown ) =>
-				setError( toApiError( reason ).message )
-			)
+			.catch( ( reason: unknown ) => setError( errorMessage( reason ) ) )
 			.finally( () => setBusy( false ) );
 	};
 

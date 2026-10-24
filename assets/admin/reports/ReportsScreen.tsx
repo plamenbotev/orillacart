@@ -16,7 +16,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { money } from '../orders/labels';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { shopToday } from '../shared/dates';
 import {
 	type CartsReport,
@@ -142,7 +142,7 @@ export function ReportsScreen() {
 			} )
 			.catch( ( caught: unknown ) => {
 				if ( current ) {
-					setError( toApiError( caught ).message );
+					setError( errorMessage( caught ) );
 				}
 			} )
 			.finally( () => {
@@ -317,7 +317,7 @@ export function ReportsScreen() {
 								setReload( reload + 1 );
 							} )
 							.catch( ( caught: unknown ) =>
-								setError( toApiError( caught ).message )
+								setError( errorMessage( caught ) )
 							)
 					}
 				/>

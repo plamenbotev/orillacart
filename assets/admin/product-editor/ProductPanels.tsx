@@ -26,7 +26,7 @@ import {
 	type ProductInput,
 } from '../catalog/api';
 import { fetchStockrooms, type Stockroom } from '../inventory/api';
-import { toApiError } from '../shared/api';
+import { errorMessage, toApiError } from '../shared/api';
 import { fetchShippingClasses, type ShippingClass } from '../shipping/api';
 import { fetchGroups, type TaxGroup } from '../tax/api';
 import {
@@ -131,7 +131,7 @@ export function ProductPanels() {
 				}
 			)
 			.catch( ( error: unknown ) =>
-				setLoadError( toApiError( error ).message )
+				setLoadError( errorMessage( error ) )
 			);
 	}, [ postId ] );
 

@@ -15,7 +15,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { money } from '../orders/labels';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { ProductTokens } from '../shared/CatalogTokens';
 import { MoneyControl } from '../shared/MoneyControl';
 import { useConfirm } from '../shared/useConfirm';
@@ -47,7 +47,7 @@ export function GiftCardsScreen() {
 	const [ selected, setSelected ] = useState< number | null >( null );
 	const [ version, setVersion ] = useState( 0 );
 	const fail = ( failure: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( failure ).message } );
+		setMessage( { status: 'error', text: errorMessage( failure ) } );
 	const shown = ( made: IssuedGiftCard ) => {
 		setIssued( made );
 		setSelected( made.card.id );

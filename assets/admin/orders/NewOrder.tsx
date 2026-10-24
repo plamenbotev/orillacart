@@ -16,7 +16,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { type Customer, fetchCustomers } from '../customers/api';
 import { type Address, EMPTY_ADDRESS } from '../shared/address';
 import { AddressFields } from '../shared/AddressFields';
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { createOrder, type OrderQuote, quoteOrder } from './api';
 import { type ItemRow, ItemRows } from './ItemRows';
 import { money } from './labels';
@@ -111,7 +111,7 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 					setError( null );
 				} )
 				.catch( ( reason: unknown ) =>
-					setError( toApiError( reason ).message )
+					setError( errorMessage( reason ) )
 				);
 		}, 300 );
 		return () => window.clearTimeout( timer );
@@ -152,7 +152,7 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 			.then( ( order ) => onCreated( order.number ) )
 			.catch( ( reason: unknown ) => {
 				setSaving( false );
-				setError( toApiError( reason ).message );
+				setError( errorMessage( reason ) );
 			} );
 	};
 

@@ -9,7 +9,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { type ChangeLogPage, fetchChangeLog } from './api';
 
 /**
@@ -28,7 +28,7 @@ export function ChangeLogCard() {
 			.then( ( loaded ) => current && setLog( loaded ) )
 			.catch(
 				( failure: unknown ) =>
-					current && setError( toApiError( failure ).message )
+					current && setError( errorMessage( failure ) )
 			);
 		return () => {
 			current = false;

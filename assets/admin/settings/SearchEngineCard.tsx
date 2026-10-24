@@ -13,7 +13,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import {
 	changeSearchEngine,
 	type Engine,
@@ -48,17 +48,13 @@ export function SearchEngineCard() {
 	useEffect( () => {
 		fetchSearchEngine()
 			.then( show )
-			.catch( ( reason: unknown ) =>
-				setError( toApiError( reason ).message )
-			);
+			.catch( ( reason: unknown ) => setError( errorMessage( reason ) ) );
 	}, [] );
 	const run = ( work: Promise< SearchEngine > ) => {
 		setBusy( true );
 		setError( null );
 		work.then( show )
-			.catch( ( reason: unknown ) =>
-				setError( toApiError( reason ).message )
-			)
+			.catch( ( reason: unknown ) => setError( errorMessage( reason ) ) )
 			.finally( () => setBusy( false ) );
 	};
 	const parked = Object.entries( state?.parked ?? {} );

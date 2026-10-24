@@ -15,7 +15,7 @@ import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
-import { toApiError } from '../shared/api';
+import { errorMessage } from '../shared/api';
 import { useBusy } from '../shared/useBusy';
 import { fetchCountries, type Country } from '../shared/geography';
 import {
@@ -39,6 +39,7 @@ import { NexusCard } from './NexusCard';
 import { RatesCsv } from './RatesCsv';
 import { RateModal } from './RateModal';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
+import { useLeaveGuard } from '../shared/useLeaveGuard';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -67,7 +68,7 @@ export function TaxScreen() {
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: toApiError( error ).message } );
+		setMessage( { status: 'error', text: errorMessage( error ) } );
 
 	const reload = useCallback(
 		() =>
@@ -76,7 +77,7 @@ export function TaxScreen() {
 				.catch( ( error: unknown ) =>
 					setMessage( {
 						status: 'error',
-						text: toApiError( error ).message,
+						text: errorMessage( error ),
 					} )
 				),
 		[]
@@ -93,7 +94,7 @@ export function TaxScreen() {
 			.catch( ( error: unknown ) =>
 				setMessage( {
 					status: 'error',
-					text: toApiError( error ).message,
+					text: errorMessage( error ),
 				} )
 			);
 	}, [] );
@@ -702,7 +703,13 @@ function GroupCard( {
 } ) {
 	const [ name, setName ] = useState( group.name );
 	const [ taxCode, setTaxCode ] = useState( group.tax_code ?? '' );
-	const [ editing, setEditing ] = useState< TaxRate | 'new' | null >( null );
+	const [ editing, setEditingNow ] = useState< TaxRate | 'new' | null >(
+		null
+	);
+	const [ leaving, guard ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go.
+	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
+		guard( () => setEditingNow( next ) );
 	const [ confirming, setConfirming ] = useState( false );
 	const [ busy, run ] = useBusy();
 	const countryName = ( code: string ) =>
@@ -710,6 +717,7 @@ function GroupCard( {
 
 	return (
 		<Card className="orillacart-card">
+			{ leaving }
 			<CardHeader>
 				<h2>{ group.name }</h2>
 				{ confirming ? (
@@ -914,7 +922,7 @@ function GroupCard( {
 					rate={ editing === 'new' ? null : editing }
 					countries={ countries }
 					onSaved={ () => {
-						setEditing( null );
+						setEditingNow( null );
 						onChanged();
 					} }
 					onClose={ () => setEditing( null ) }
