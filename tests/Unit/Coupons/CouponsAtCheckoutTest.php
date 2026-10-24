@@ -19,7 +19,10 @@ use OrillaCart\Coupons\Domain\CouponRuleViolation;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Settings\Domain\StoreSettings;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
+use OrillaCart\Shipping\Application\Dto\SavePickupLocation;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
@@ -295,6 +298,29 @@ final class CouponsAtCheckoutTest extends TestCase
         $owner = $this->cart([10, 1]);
         $this->shop->checkout->applyCoupon($owner, new CouponCode('ALLSHIP'));
         self::assertSame('0', $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$express}"))->shipping, 'unless the code gives every way');
+    }
+
+    public function testAFreePickupIsNoWayToShipForFreeShipping(): void
+    {
+        $this->shop->carriers->create(new SaveCarrier('Pickup', pickupLocations: [new SavePickupLocation('shop', 'The shop', 'Main St')]));
+        $this->coupon('SHIP', 'free_shipping', '0');
+        $owner = $this->cart([10, 1]);
+        $this->shop->checkout->applyCoupon($owner, new CouponCode('SHIP'));
+
+        self::assertSame('0', $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"))->shipping, 'delivery is free, though collecting costs nothing too');
+    }
+
+    public function testAGuestsFirstOrderDiscountThatWouldTakeTheOrderBelowTheMinimumIsLeftOutNotAnEndlessRefusal(): void
+    {
+        $settings = $this->shop->settings->load();
+        $this->shop->settings->save(new StoreSettings($settings->currency, 2, $settings->weightUnit, $settings->dimensionUnit, 'BG', minimumOrder: Money::of('38')));
+        $this->shop->coupons->create(new SaveCoupon('', 'percent', '10', 'Welcome: 10 % off a first order', firstOrderOnly: true, automatic: true));
+        $owner = $this->cart([10, 1]);
+
+        $seen = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
+        self::assertSame(['0', null], [$seen->discount, $seen->minimumShort], '40, above the minimum of 38');
+        $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$this->rate}", payment: 'bank_transfer', expectedTotal: $seen->total));
+        self::assertSame($seen->total, $this->shop->orders->order($placed->number)->total, 'at what she saw: 10 % off would leave 36, below the minimum');
     }
 
     public function testAFreeGiftIsAddedOnceTheOrderHoldsAndTheOrderKeepsIt(): void

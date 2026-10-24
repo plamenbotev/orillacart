@@ -274,10 +274,11 @@ final readonly class OrderPricing
             $shipsFrom = $offered === [] ? $inCurrency($this->shipping->shipsFrom($query)) : null;
             $asItems = $this->tax->shippingTaxedAsItems() && !$import->applies() ? self::itemTaxShares($taxesOf) : null;
             // Free shipping makes the cheapest way to ship free, unless the coupon gives every one: the customer
-            // would otherwise choose express, or abroad, at the shop's cost.
+            // would otherwise choose express, or abroad, at the shop's cost. Collecting from the shop is no way to
+            // ship: a free pickup would leave every delivery charged.
             $cheapest = null;
             foreach ($offered as $option) {
-                if ($cheapest === null || Money::of($option->price)->compare(Money::of($cheapest->price)) < 0) {
+                if ($option->collectAt === null && ($cheapest === null || Money::of($option->price)->compare(Money::of($cheapest->price)) < 0)) {
                     $cheapest = $option;
                 }
             }

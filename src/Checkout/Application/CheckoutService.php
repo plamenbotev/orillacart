@@ -19,6 +19,7 @@ use OrillaCart\Checkout\Application\Dto\CheckoutView;
 use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Checkout\Application\Dto\ShippingChoiceView;
 use OrillaCart\Checkout\Domain\Bill;
 use OrillaCart\Checkout\Domain\BilledCharge;
 use OrillaCart\Checkout\Domain\BilledTax;
@@ -419,12 +420,24 @@ final readonly class CheckoutService
 
         $reverse = $this->vatNumbers->reverseCharge($billingAddress->country, $command->vatNumber);
         $currency = $this->currencies->current();
-        $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment, currency: $currency);
+        // Every automatic discount, or only those that hold whoever orders.
+        $price = fn(bool $forAnyone = false): array => $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment, currency: $currency, automatic: $forAnyone ? $this->discounts->automaticForAnyone() : null);
+        $priced = $price();
         // Goods delivered at home, or out of the EU, are not sold under the reverse charge.
         $goods = $priced['needs_shipping'] ? $this->vatNumbers->forGoodsTo($reverse, $shippingAddress->country) : $reverse;
         if ($goods !== $reverse) {
             $reverse = $goods;
-            $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment, currency: $currency);
+            $priced = $price();
+        }
+        // A guest's summary was priced before it knew the email, so without an automatic discount for first orders
+        // or once per customer. When that discount would make the order other than they saw (shipping no longer
+        // free under a threshold, below the minimum, a code it does not combine with), the order is what they saw:
+        // without it. Codes still go by the email.
+        if ($owner->customerId === null && !$this->fits($priced, $command, $currency)) {
+            $seen = $price(true);
+            if ($this->fits($seen, $command, $currency)) {
+                $priced = $seen;
+            }
         }
         foreach ($priced['discounts']->refused as $code => $reason) {
             throw new CheckoutRuleViolation('The code %1$s does not apply: %2$s Remove it to order.', 'orillacart_coupon_refused', values: [$code, $reason]);
@@ -619,6 +632,20 @@ final readonly class CheckoutService
         $order = $this->orders->order($number);
 
         return new PlacedOrderView($order->number, $order->status, $order->total, $receiptUrl, $redirectUrl);
+    }
+
+    /**
+     * Whether the order, priced so, can be placed as the customer saw it: every code holds, it costs no more than
+     * the summary said, it reaches the minimum, and the way to ship chosen is offered.
+     *
+     * @param array{bill: Bill, discounts: AppliedDiscounts, needs_shipping: bool, chosen: ?ShippingChoiceView, ...} $priced
+     */
+    private function fits(array $priced, PlaceOrder $command, string $currency): bool
+    {
+        return $priced['discounts']->refused === []
+            && ($command->expectedTotal === null || $priced['bill']->total()->compare(Money::of($command->expectedTotal)) <= 0)
+            && $this->minimum($priced['bill'], $currency)['minimumOrder'] === null
+            && (!$priced['needs_shipping'] || $priced['chosen']?->id === $command->shippingOption);
     }
 
     private function contents(CartOwner $owner): CartContents

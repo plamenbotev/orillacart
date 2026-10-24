@@ -147,6 +147,16 @@ final readonly class Discounts
     }
 
     /**
+     * The automatic discounts that hold whoever orders: not those for first orders or once per customer.
+     *
+     * @return list<string> their codes
+     */
+    public function automaticForAnyone(): array
+    {
+        return array_values(array_map(static fn(Coupon $coupon): string => $coupon->code(), array_filter($this->coupons->automatic(), static fn(Coupon $coupon): bool => !$coupon->dependsOnWho())));
+    }
+
+    /**
      * Counts the order's uses of its coupons. Run it in the transaction that saves the order.
      *
      * @param list<AppliedCoupon> $coupons
