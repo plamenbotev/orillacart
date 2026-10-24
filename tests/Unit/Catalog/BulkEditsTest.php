@@ -29,7 +29,7 @@ final class BulkEditsTest extends TestCase
     protected function setUp(): void
     {
         $this->shop = new TestShop();
-        $this->edits = new BulkEdits($this->shop->products, $this->shop->stock, $this->shop->settingsService);
+        $this->edits = new BulkEdits($this->shop->products, $this->shop->stock, $this->shop->settingsService, $this->shop->transactions);
         $this->room = $this->shop->stockrooms->create(new SaveStockroom('Sofia'))->id;
         $this->shop->content->add(10, 'Lamp');
         $this->shop->products->save(10, new SaveProduct('30', sale: new SaveSale('25', new \DateTimeImmutable('2026-10-01T00:00:00+00:00'))));
@@ -48,6 +48,17 @@ final class BulkEditsTest extends TestCase
         self::assertEquals(new \DateTimeImmutable('2026-10-01T00:00:00+00:00'), $lamp->sale?->from, 'the sale keeps its dates');
         $hoodie = $this->shop->products->product(11);
         self::assertSame(['44', '45.1', '36.08'], [$hoodie->price, $hoodie->variations[0]->price, $hoodie->variations[0]->sale?->price]);
+    }
+
+    public function testStockAddedInOneStockroomLeavesWhatAnotherOwes(): void
+    {
+        $berlin = $this->shop->stockrooms->create(new SaveStockroom('Berlin'))->id;
+        $this->shop->stock->take([StockItemRef::product(10)], 6, backorders: true);
+        self::assertSame([$this->room => -2], $this->shop->stock->levelsOf([StockItemRef::product(10)])['product:10'], 'Sofia owes two');
+
+        self::assertSame([], $this->edits->apply([10], new BulkEdit(stock: 'add', stockroomId: $berlin, stockBy: 3)));
+
+        self::assertSame([$this->room => -2, $berlin => 3], $this->shop->stock->levelsOf([StockItemRef::product(10)])['product:10'], 'still owed: the next ones that come in go to those customers');
     }
 
     public function testAPriceLoweredToItsSaleIsRefusedForThatProduct(): void

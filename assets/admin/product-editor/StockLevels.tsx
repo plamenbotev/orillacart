@@ -4,11 +4,11 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import {
 	fetchStock,
-	saveStock,
 	type Stock,
 	type StockItemKind,
 	type Stockroom,
 } from '../inventory/api';
+import { changeLevels } from '../stock/api';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 interface Props {
@@ -20,7 +20,8 @@ interface Props {
 
 /**
  * How many of one item each stockroom holds. An empty field means the stockroom holds none of it;
- * with every field empty, stock does not limit the item.
+ * with every field empty, stock does not limit the item. Saving sends only the stockrooms changed here, as the
+ * stock sheet does: another stockroom's level, owed items (below zero) and sales made meanwhile stay as they are.
  * @param root0
  * @param root0.kind
  * @param root0.id
@@ -67,28 +68,43 @@ export function StockLevels( { kind, id, stockrooms, onError }: Props ) {
 		);
 	}
 
-	const save = () =>
-		saveStock(
-			kind,
-			id,
-			stockrooms
-				.filter(
-					( stockroom ) =>
-						( quantities[ stockroom.id ] ?? '' ).trim() !== ''
-				)
-				.map( ( stockroom ) => ( {
+	const saved = savedQuantities( stock );
+	const save = () => {
+		const changes = stockrooms
+			.filter(
+				( stockroom ) =>
+					( quantities[ stockroom.id ] ?? '' ).trim() !==
+					( saved[ stockroom.id ] ?? '' )
+			)
+			.map( ( stockroom ) => {
+				const typed = ( quantities[ stockroom.id ] ?? '' ).trim();
+				return {
+					kind,
+					id,
 					stockroom_id: stockroom.id,
-					quantity: Math.max(
-						0,
-						Number.parseInt(
-							quantities[ stockroom.id ] ?? '0',
-							10
-						) || 0
-					),
-				} ) )
-		)
+					quantity: typed === '' ? null : Number( typed ),
+				};
+			} );
+		if (
+			changes.some(
+				( change ) =>
+					change.quantity !== null &&
+					! Number.isInteger( change.quantity )
+			)
+		) {
+			onError(
+				new Error( __( 'Count stock in whole numbers.', 'orillacart' ) )
+			);
+			return;
+		}
+		if ( changes.length === 0 ) {
+			return;
+		}
+		changeLevels( changes )
+			.then( () => fetchStock( kind, id ) )
 			.then( show )
 			.catch( onError );
+	};
 
 	return (
 		<div className="orillacart-stock">
