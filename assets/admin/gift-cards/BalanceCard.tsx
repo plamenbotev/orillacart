@@ -4,6 +4,7 @@ import { __ } from '@wordpress/i18n';
 
 import { money } from '../orders/labels';
 import type { GiftCardDetail } from './api';
+import { shopDateTime } from '../shared/dates';
 
 /**
  * A balance with every change of it, newest first, and a form to add to it or take off it with a reason: a gift
@@ -29,7 +30,7 @@ export function BalanceEntries( { detail }: { detail: GiftCardDetail } ) {
 			<tbody>
 				{ detail.entries.map( ( entry ) => (
 					<tr key={ entry.id }>
-						<td>{ new Date( entry.at ).toLocaleString() }</td>
+						<td>{ shopDateTime( entry.at ) }</td>
 						<td>
 							{ entry.amount.startsWith( '-' )
 								? `−${ money(

@@ -108,6 +108,27 @@ export function fetchCoupons( query: {
 	} );
 }
 
+/**
+ * Every coupon the query finds, page after page: for lists the shop keeps short, such as the automatic discounts.
+ *
+ * @param query           What to find.
+ * @param query.search
+ * @param query.automatic
+ */
+export async function fetchAllCoupons( query: {
+	search?: string | undefined;
+	automatic?: boolean;
+} ): Promise< Coupon[] > {
+	const coupons: Coupon[] = [];
+	for ( let page = 1; ; page++ ) {
+		const found = await fetchCoupons( { ...query, page, per_page: 100 } );
+		coupons.push( ...found.coupons );
+		if ( page >= found.pages ) {
+			return coupons;
+		}
+	}
+}
+
 export function saveCoupon(
 	id: number | null,
 	coupon: CouponFields

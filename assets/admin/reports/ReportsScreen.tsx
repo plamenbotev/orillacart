@@ -17,7 +17,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { money } from '../orders/labels';
 import { errorMessage } from '../shared/api';
-import { shopToday } from '../shared/dates';
+import { shopDateTime, shopToday } from '../shared/dates';
 import {
 	type CartsReport,
 	type CartTotals,
@@ -1258,9 +1258,7 @@ function CartsTab( {
 							rows={ report.latest.map( ( row ) => ( {
 								key: String( row.id ),
 								cells: [
-									new Date(
-										row.abandoned_at
-									).toLocaleString(),
+									shopDateTime( row.abandoned_at ),
 									row.email ??
 										( row.customer_id !== null
 											? sprintf(

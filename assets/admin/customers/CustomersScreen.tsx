@@ -30,6 +30,7 @@ import { CustomerCard } from './CustomerCard';
 import { NewsletterCard } from './NewsletterCard';
 import { money } from '../orders/labels';
 import { useLatest } from '../shared/useLatest';
+import { shopDate } from '../shared/dates';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -59,8 +60,7 @@ const FIELDS: Field< Customer >[] = [
 		id: 'registered_at',
 		label: __( 'Since', 'orillacart' ),
 		enableSorting: false,
-		render: ( { item } ) =>
-			new Date( item.registered_at ).toLocaleDateString(),
+		render: ( { item } ) => shopDate( item.registered_at ),
 	},
 ];
 

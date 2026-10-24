@@ -124,3 +124,35 @@ export const shopClock = (
 	iso: string,
 	timeZone: string | undefined = shopZone()
 ): string => toLocal( iso, timeZone ).slice( 11, 16 );
+
+/**
+ * A moment on the shop's clock, in the browser's language: "24 Oct 2026, 14:00".
+ *
+ * @param iso      The moment.
+ * @param options  What to show; the date and the time by default.
+ * @param timeZone The time zone; the shop's when not given.
+ */
+export const shopDateTime = (
+	iso: string,
+	options: Intl.DateTimeFormatOptions = {
+		dateStyle: 'medium',
+		timeStyle: 'short',
+	},
+	timeZone: string | undefined = shopZone()
+): string => {
+	const at = new Date( iso );
+	// The shop's wall clock, read as UTC: works for a zone's name and for a fixed offset alike.
+	const wall = new Date( at.getTime() + offsetAt( at, timeZone ) );
+	return wall.toLocaleString( undefined, { ...options, timeZone: 'UTC' } );
+};
+
+/**
+ * The day of a moment in the shop's calendar, in the browser's language: "24 Oct 2026".
+ *
+ * @param iso      The moment.
+ * @param timeZone The time zone; the shop's when not given.
+ */
+export const shopDate = (
+	iso: string,
+	timeZone: string | undefined = shopZone()
+): string => shopDateTime( iso, { dateStyle: 'medium' }, timeZone );

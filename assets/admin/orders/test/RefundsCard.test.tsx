@@ -103,7 +103,7 @@ describe( 'RefundsCard', () => {
 		await user.clear( items );
 		await user.type( items, '2' );
 		expect( screen.getByLabelText( 'Amount to refund' ) ).toHaveValue(
-			'24'
+			'24.00'
 		);
 		await user.type(
 			screen.getByLabelText( 'Reason (for the history)' ),
@@ -124,7 +124,7 @@ describe( 'RefundsCard', () => {
 			path: '/orillacart/v1/orders/7/refunds',
 			method: 'POST',
 			data: {
-				amount: '24',
+				amount: '24.00',
 				lines: [ { line: 0, quantity: 2 } ],
 				shipping: false,
 				restock: true,

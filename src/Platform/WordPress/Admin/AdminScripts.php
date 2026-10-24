@@ -23,12 +23,17 @@ final readonly class AdminScripts
     {
         $handle = $this->load($script);
         $settings = $this->settings->current();
-        // How the shop shows amounts, for the screens' own formatting (orders/labels.ts).
+        // How the shop shows amounts, for the screens' own formatting (orders/labels.ts): as the storefront does,
+        // with the separators of the site's language.
+        $locale = $GLOBALS['wp_locale'] ?? null;
+        $format = $locale instanceof \WP_Locale ? $locale->number_format : [];
         wp_add_inline_script($handle, 'window.orillacartMoney = ' . wp_json_encode([
             'currency' => $settings->currency,
             'sign' => $settings->currencySign,
             'position' => $settings->currencyPosition,
             'decimals' => $settings->priceDecimals,
+            'thousands' => \is_string($format['thousands_sep'] ?? null) ? $format['thousands_sep'] : ',',
+            'point' => \is_string($format['decimal_point'] ?? null) ? $format['decimal_point'] : '.',
         ]) . ';', 'before');
         // The shop's time zone, in which dates are entered and shown (shared/dates.ts): a name or an offset.
         wp_add_inline_script($handle, 'window.orillacartTimeZone = ' . wp_json_encode(wp_timezone_string()) . ';', 'before');

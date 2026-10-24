@@ -34,6 +34,7 @@ import {
 	saveGiftCardSettings,
 } from './api';
 import { AdjustForm, BalanceEntries } from './BalanceCard';
+import { shopDate } from '../shared/dates';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -307,9 +308,7 @@ function ListCard( {
 									<td>
 										{ card.expires_at === null
 											? '—'
-											: new Date(
-													card.expires_at
-												).toLocaleDateString() }
+											: shopDate( card.expires_at ) }
 									</td>
 									<td>
 										{ card.order_id === null

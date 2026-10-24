@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
+import { shopDateTime } from '../shared/dates';
 import { errorMessage } from '../shared/api';
 import { useConfirm } from '../shared/useConfirm';
 import { type ApiKey, createApiKey, fetchApiKeys, revokeApiKey } from './api';
@@ -97,9 +98,7 @@ export function ApiKeysCard() {
 									<td>{ key.user || `#${ key.user_id }` }</td>
 									<td>
 										{ key.last_used_at
-											? new Date(
-													key.last_used_at
-												).toLocaleString()
+											? shopDateTime( key.last_used_at )
 											: __( 'Never', 'orillacart' ) }
 									</td>
 									<td>

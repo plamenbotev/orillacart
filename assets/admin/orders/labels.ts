@@ -1,6 +1,7 @@
 import { __ } from '@wordpress/i18n';
 
 import type { Status } from './api';
+import { shopDateTime } from '../shared/dates';
 
 export const STATUS_LABELS: Record< Status, string > = {
 	pending_payment: __( 'Pending payment', 'orillacart' ),
@@ -64,13 +65,35 @@ declare global {
 			sign: string;
 			position: string;
 			decimals: number;
+			/** The site language's separators, as the storefront uses them. */
+			thousands?: string;
+			point?: string;
 		};
 	}
 }
 
 /**
- * An amount as the shop shows it: its decimals, and the currency sign where the shop puts it. An amount in
- * another currency, such as an old order's, shows that currency's code.
+ * The decimals of a currency's amounts, as ISO 4217 has them (yen none, Kuwaiti dinars three).
+ *
+ * @param currency The currency code.
+ */
+export function currencyDecimals( currency: string ): number {
+	try {
+		return (
+			new Intl.NumberFormat( 'en', {
+				style: 'currency',
+				currency,
+			} ).resolvedOptions().maximumFractionDigits ?? 2
+		);
+	} catch {
+		return 2;
+	}
+}
+
+/**
+ * An amount as the shop shows it, as the storefront does: the shop's decimals for its own currency and the
+ * currency's for another (an old order's), the site language's separators, and the currency sign where the shop
+ * puts it (another currency shows its code).
  *
  * @param amount   A decimal string from the API.
  * @param currency The amount's currency code.
@@ -83,13 +106,25 @@ export function money( amount: string, currency: string ): string {
 		position: 'after_space',
 		decimals: 2,
 	};
+	const decimals =
+		currency === shop.currency
+			? shop.decimals
+			: currencyDecimals( currency );
 	const number = Number( amount );
-	const digits = Number.isFinite( number )
-		? number.toLocaleString( undefined, {
-				minimumFractionDigits: shop.decimals,
-				maximumFractionDigits: shop.decimals,
-			} )
-		: amount;
+	let digits = amount;
+	if ( Number.isFinite( number ) ) {
+		const [ whole = '0', fraction = '' ] = Math.abs( number )
+			.toFixed( decimals )
+			.split( '.' );
+		const grouped = whole.replace(
+			/\B(?=(\d{3})+(?!\d))/g,
+			shop.thousands ?? ','
+		);
+		digits =
+			( number < 0 ? '-' : '' ) +
+			grouped +
+			( fraction === '' ? '' : ( shop.point ?? '.' ) + fraction );
+	}
 	const sign =
 		currency === shop.currency && shop.sign !== '' ? shop.sign : currency;
 	switch ( shop.position ) {
@@ -106,8 +141,8 @@ export function money( amount: string, currency: string ): string {
 
 /**
  * @param date An ISO 8601 date from the API.
- * @return The date and time in the browser's locale.
+ * @return The date and time on the shop's clock, in the browser's language.
  */
 export function when( date: string ): string {
-	return new Date( date ).toLocaleString();
+	return shopDateTime( date );
 }

@@ -10,6 +10,7 @@ import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
+import { useConfirm } from '../shared/useConfirm';
 import { errorMessage } from '../shared/api';
 import { shopClock } from '../shared/dates';
 import {
@@ -359,6 +360,7 @@ interface FailedCardProps {
 }
 
 function FailedCard( { overview, changed, onDone, onError }: FailedCardProps ) {
+	const [ confirmation, confirm ] = useConfirm();
 	const [ type, setType ] = useState( '' );
 	const [ view, setView ] = useState< View >( {
 		type: 'table',
@@ -480,10 +482,20 @@ function FailedCard( { overview, changed, onDone, onError }: FailedCardProps ) {
 							<Button
 								variant="tertiary"
 								isDestructive
-								onClick={ () => remove( { all: true } ) }
+								onClick={ () =>
+									confirm(
+										__(
+											'Delete every failed job? They are not run again, and what they were for is not done.',
+											'orillacart'
+										),
+										() => remove( { all: true } ),
+										__( 'Delete all', 'orillacart' )
+									)
+								}
 							>
 								{ __( 'Delete all', 'orillacart' ) }
 							</Button>
+							{ confirmation }
 						</div>
 					) }
 				</CardHeader>

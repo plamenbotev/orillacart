@@ -63,10 +63,14 @@ describe( 'EmailsScreen', () => {
 			'orders@shop.test'
 		);
 		await user.click( screen.getByLabelText( 'New order (to the shop)' ) );
-		await screen.findByRole( 'option', { name: 'COMEBACK' } );
-		await user.selectOptions(
+		// A search box over all the codes, not the newest hundred. jsdom does not scroll lists.
+		Element.prototype.scrollIntoView = jest.fn();
+		await user.type(
 			screen.getByLabelText( 'Coupon in the cart reminder' ),
-			'COMEBACK'
+			'COME'
+		);
+		await user.click(
+			await screen.findByRole( 'option', { name: 'COMEBACK' } )
 		);
 		await user.click( screen.getByRole( 'button', { name: 'Save' } ) );
 

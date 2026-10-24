@@ -8,6 +8,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { shopDateTime } from '../shared/dates';
 import { errorMessage } from '../shared/api';
 import { useConfirm } from '../shared/useConfirm';
 import { clearProblems, fetchProblems, type ProblemPage } from './api';
@@ -74,9 +75,7 @@ export function ProblemsCard() {
 								{ problems.problems.map( ( problem ) => (
 									<tr key={ problem.id }>
 										<td>
-											{ new Date(
-												problem.last_at
-											).toLocaleString() }
+											{ shopDateTime( problem.last_at ) }
 										</td>
 										<td>
 											{ problem.level !== 'warning' && (

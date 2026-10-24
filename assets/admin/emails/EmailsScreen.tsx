@@ -4,8 +4,8 @@ import {
 	CardBody,
 	CardHeader,
 	CheckboxControl,
+	ComboboxControl,
 	Notice,
-	SelectControl,
 	Spinner,
 	TextControl,
 } from '@wordpress/components';
@@ -42,13 +42,22 @@ export function EmailsScreen() {
 	const [ message, setMessage ] = useState< Message >( null );
 	const [ coupons, setCoupons ] = useState< string[] >( [] );
 
+	// The codes that match what is typed, from all of them: the newest first while nothing is.
+	const [ couponSearch, setCouponSearch ] = useState( '' );
 	useEffect( () => {
-		fetchCoupons( { page: 1, per_page: 100 } )
-			.then( ( page ) =>
-				setCoupons( page.coupons.map( ( coupon ) => coupon.code ) )
-			)
-			.catch( () => setCoupons( [] ) );
-	}, [] );
+		const timer = window.setTimeout( () => {
+			fetchCoupons( {
+				search: couponSearch.trim() === '' ? undefined : couponSearch,
+				page: 1,
+				per_page: 20,
+			} )
+				.then( ( page ) =>
+					setCoupons( page.coupons.map( ( coupon ) => coupon.code ) )
+				)
+				.catch( () => setCoupons( [] ) );
+		}, 250 );
+		return () => window.clearTimeout( timer );
+	}, [ couponSearch ] );
 
 	useEffect( () => {
 		fetchEmailSettings()
@@ -250,46 +259,39 @@ export function EmailsScreen() {
 										} )
 									}
 								/>
-								<SelectControl
+								<ComboboxControl
 									__next40pxDefaultSize
 									label={ __(
 										'Coupon in the cart reminder',
 										'orillacart'
 									) }
 									help={ __(
-										'Its code shows in the email, and the link puts it in the cart.',
+										'Its code shows in the email, and the link puts it in the cart. Type to find a code; clear it for none.',
 										'orillacart'
 									) }
 									value={
-										settings.cart_reminder_coupon ?? ''
+										settings.cart_reminder_coupon ?? null
 									}
 									options={ [
-										{
-											label: __(
-												'No coupon',
-												'orillacart'
-											),
-											value: '',
-										},
-										...[
-											...new Set( [
-												...coupons,
-												...( settings.cart_reminder_coupon
-													? [
-															settings.cart_reminder_coupon,
-														]
-													: [] ),
-											] ),
-										].map( ( code ) => ( {
-											label: code,
-											value: code,
-										} ) ),
-									] }
+										...new Set( [
+											...coupons,
+											...( settings.cart_reminder_coupon
+												? [
+														settings.cart_reminder_coupon,
+													]
+												: [] ),
+										] ),
+									].map( ( code ) => ( {
+										label: code,
+										value: code,
+									} ) ) }
+									onFilterValueChange={ setCouponSearch }
 									onChange={ ( value ) =>
 										setSettings( {
 											...settings,
-											cart_reminder_coupon:
-												blank( value ),
+											cart_reminder_coupon: blank(
+												value ?? ''
+											),
 										} )
 									}
 								/>

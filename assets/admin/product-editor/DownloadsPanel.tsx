@@ -7,6 +7,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { useConfirm } from '../shared/useConfirm';
 import {
 	type Download,
 	type DownloadStorage,
@@ -52,6 +53,7 @@ export function DownloadsPanel( {
 }: DownloadsPanelProps ) {
 	const [ storage, setStorage ] = useState< DownloadStorage | null >( null );
 	const [ uploading, setUploading ] = useState( false );
+	const [ confirmation, confirm ] = useConfirm();
 
 	useEffect( () => {
 		fetchDownloadStorage().then( setStorage ).catch( onError );
@@ -99,13 +101,26 @@ export function DownloadsPanel( {
 							variant="link"
 							isDestructive
 							onClick={ () =>
-								removeDownload( productId, file.id )
-									.then( onChanged )
-									.catch( onError )
+								confirm(
+									sprintf(
+										/* translators: %s: file name */
+										__(
+											'Remove %s? Customers who bought the product can no longer download it.',
+											'orillacart'
+										),
+										file.name
+									),
+									() =>
+										removeDownload( productId, file.id )
+											.then( onChanged )
+											.catch( onError ),
+									__( 'Remove', 'orillacart' )
+								)
 							}
 						>
 							{ __( 'Remove', 'orillacart' ) }
 						</Button>
+						{ confirmation }
 					</li>
 				) ) }
 			</ul>

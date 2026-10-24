@@ -23,6 +23,7 @@ import type { Stockroom } from '../inventory/api';
 import { BACKORDERS, orNull, STOCK_MODES, withSalePrice } from './fields';
 import { GalleryField, ImageField } from '../catalog/MediaFields';
 import { StockLevels } from './StockLevels';
+import { useConfirm } from '../shared/useConfirm';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import { MoneyControl } from '../shared/MoneyControl';
 
@@ -139,6 +140,7 @@ function VariationRow( {
 	const [ draft, setDraft ] = useState< VariationInput >(
 		variationInput( variation )
 	);
+	const [ confirmation, confirm ] = useConfirm();
 	const [ content, setContent ] = useState< VariationContent >( NO_CONTENT );
 	const [ savedContent, setSavedContent ] =
 		useState< VariationContent >( NO_CONTENT );
@@ -371,14 +373,22 @@ function VariationRow( {
 						? __( 'Add variation', 'orillacart' )
 						: __( 'Save variation', 'orillacart' ) }
 				</Button>
+				{ confirmation }
 				{ variation !== null && (
 					<Button
 						variant="tertiary"
 						isDestructive
 						onClick={ () =>
-							deleteVariation( productId, variation.id )
-								.then( onChanged )
-								.catch( onError )
+							confirm(
+								__(
+									'Delete this variation? Orders that have it keep it; carts that hold it lose it.',
+									'orillacart'
+								),
+								() =>
+									deleteVariation( productId, variation.id )
+										.then( onChanged )
+										.catch( onError )
+							)
 						}
 					>
 						{ __( 'Delete', 'orillacart' ) }

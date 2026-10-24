@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { shopDateTime } from '../shared/dates';
 import { errorMessage } from '../shared/api';
 import { type ChangeLogPage, fetchChangeLog } from './api';
 
@@ -89,9 +90,9 @@ export function ChangeLogCard() {
 									{ log.records.map( ( record ) => (
 										<tr key={ record.id }>
 											<td>
-												{ new Date(
+												{ shopDateTime(
 													record.made_at
-												).toLocaleString() }
+												) }
 											</td>
 											<td>
 												{ record.user ||

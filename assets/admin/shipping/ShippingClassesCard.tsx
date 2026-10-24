@@ -8,8 +8,9 @@ import {
 	TextControl,
 } from '@wordpress/components';
 import { useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
+import { useConfirm } from '../shared/useConfirm';
 import {
 	deleteShippingClass,
 	saveShippingClass,
@@ -119,6 +120,7 @@ function ClassRow( {
 	onError: ( error: unknown ) => void;
 } ) {
 	const [ name, setName ] = useState( shippingClass.name );
+	const [ confirmation, confirm ] = useConfirm();
 
 	return (
 		<Flex align="flex-end">
@@ -150,13 +152,25 @@ function ClassRow( {
 					variant="tertiary"
 					isDestructive
 					onClick={ () =>
-						deleteShippingClass( shippingClass.id )
-							.then( onDeleted )
-							.catch( onError )
+						confirm(
+							sprintf(
+								/* translators: %s: shipping class name */
+								__(
+									'Delete the shipping class %s? Its products then have none, and rates for it no longer apply to them.',
+									'orillacart'
+								),
+								shippingClass.name
+							),
+							() =>
+								deleteShippingClass( shippingClass.id )
+									.then( onDeleted )
+									.catch( onError )
+						)
 					}
 				>
 					{ __( 'Delete', 'orillacart' ) }
 				</Button>
+				{ confirmation }
 			</FlexItem>
 		</Flex>
 	);

@@ -17,7 +17,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { type Named, ProductTokens, TermTokens } from '../shared/CatalogTokens';
 import { errorMessage } from '../shared/api';
-import { fromLocal, toLocal } from '../shared/dates';
+import { fromLocal, shopDateTime, toLocal } from '../shared/dates';
 import { useConfirm } from '../shared/useConfirm';
 import { useLeaveGuard } from '../shared/useLeaveGuard';
 import {
@@ -137,9 +137,7 @@ const FIELDS: Field< Coupon >[] = [
 		label: __( 'Ends', 'orillacart' ),
 		enableSorting: false,
 		getValue: ( { item } ) =>
-			item.ends_at === null
-				? '—'
-				: new Date( item.ends_at ).toLocaleString(),
+			item.ends_at === null ? '—' : shopDateTime( item.ends_at ),
 	},
 	{
 		id: 'active',

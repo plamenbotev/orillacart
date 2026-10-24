@@ -22,7 +22,7 @@ import {
 	refundOrder,
 	retryRefund,
 } from './api';
-import { money, when } from './labels';
+import { currencyDecimals, money, when } from './labels';
 import { useConfirm } from '../shared/useConfirm';
 import { useLatest } from '../shared/useLatest';
 import { MoneyControl } from '../shared/MoneyControl';
@@ -34,11 +34,12 @@ interface RefundsCardProps {
 }
 
 /**
- * @param value An amount.
- * @return Four decimals, as the shop keeps money, without trailing zeros.
+ * @param value    An amount.
+ * @param decimals The decimals of the order's currency, as refunds are made in.
+ * @return The amount to those decimals.
  */
-const decimal = ( value: number ) =>
-	String( Math.round( value * 10000 ) / 10000 );
+const decimal = ( value: number, decimals: number ) =>
+	value.toFixed( decimals );
 
 /**
  * What the chosen items and shipping cost the customer, tax included and discounts taken off: the amount the
@@ -131,7 +132,8 @@ export function RefundsCard( {
 		refundable,
 		suggestedAmount( order, quantities, shipping )
 	);
-	const value = amount ?? decimal( suggested );
+	const decimals = currencyDecimals( order.currency );
+	const value = amount ?? decimal( suggested, decimals );
 	const items = Object.values( quantities ).some( ( count ) => count > 0 );
 	const throughProvider = state.provider !== null && how === 'provider';
 
@@ -301,7 +303,10 @@ export function RefundsCard( {
 										money(
 											decimal(
 												Number( order.shipping_total ) +
-													Number( order.shipping_tax )
+													Number(
+														order.shipping_tax
+													),
+												decimals
 											),
 											order.currency
 										)
@@ -320,6 +325,7 @@ export function RefundsCard( {
 								'orillacart'
 							) }
 							value={ value }
+							decimals={ decimals }
 							onChange={ setAmount }
 						/>
 						<TextControl
@@ -416,23 +422,46 @@ export function RefundsCard( {
 								! ( Number( value ) > 0 ) ||
 								Number( value ) > refundable
 							}
-							onClick={ () =>
-								throughProvider
-									? confirm(
-											sprintf(
-												/* translators: 1: amount, 2: payment method */
-												__(
-													'Give %1$s back to the customer through %2$s? The money leaves at once.',
-													'orillacart'
-												),
-												money( value, order.currency ),
-												state.provider ?? ''
-											),
-											submit,
-											__( 'Refund', 'orillacart' )
-										)
-									: submit()
-							}
+							onClick={ () => {
+								const amountShown = money(
+									value,
+									order.currency
+								);
+								let question: string = sprintf(
+									/* translators: %s: amount */
+									__(
+										'Record that %s was given back outside the shop? No money moves from here; the order shows it refunded.',
+										'orillacart'
+									),
+									amountShown
+								);
+								if ( throughProvider ) {
+									question = sprintf(
+										/* translators: 1: amount, 2: payment method */
+										__(
+											'Give %1$s back to the customer through %2$s? The money leaves at once.',
+											'orillacart'
+										),
+										amountShown,
+										state.provider ?? ''
+									);
+								} else if ( how === 'store_credit' ) {
+									question = sprintf(
+										/* translators: 1: amount, 2: the customer's email */
+										__(
+											'Give %1$s back as a gift card or store credit for %2$s? It can be spent at once.',
+											'orillacart'
+										),
+										amountShown,
+										order.email
+									);
+								}
+								confirm(
+									question,
+									submit,
+									__( 'Refund', 'orillacart' )
+								);
+							} }
 						>
 							{ throughProvider
 								? sprintf(

@@ -15,7 +15,7 @@ import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { type Coupon, deleteCoupon, fetchCoupons } from '../coupons/api';
+import { type Coupon, deleteCoupon, fetchAllCoupons } from '../coupons/api';
 import { CouponForm, discountLabel } from '../coupons/CouponsScreen';
 import { errorMessage } from '../shared/api';
 import {
@@ -286,6 +286,7 @@ function AutomaticDiscounts( {
 	onError: ( error: unknown ) => void;
 } ) {
 	const [ discounts, setDiscounts ] = useState< Coupon[] | null >( null );
+	const [ discountConfirmation, confirmDiscount ] = useConfirm();
 	const [ editing, setEditingNow ] = useState< Coupon | 'new' | null >(
 		null
 	);
@@ -294,8 +295,8 @@ function AutomaticDiscounts( {
 	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
 		guard( () => setEditingNow( next ) );
 	const load = () =>
-		fetchCoupons( { page: 1, per_page: 100, automatic: true } )
-			.then( ( page ) => setDiscounts( page.coupons ) )
+		fetchAllCoupons( { automatic: true } )
+			.then( setDiscounts )
 			.catch( onError );
 	useEffect( () => {
 		load();
@@ -305,6 +306,7 @@ function AutomaticDiscounts( {
 	return (
 		<Card className="orillacart-card">
 			{ leaving }
+			{ discountConfirmation }
 			<CardHeader>
 				<h2>{ __( 'Automatic discounts', 'orillacart' ) }</h2>
 				{ editing === null && (
@@ -367,9 +369,20 @@ function AutomaticDiscounts( {
 								variant="link"
 								isDestructive
 								onClick={ () =>
-									deleteCoupon( discount.id )
-										.then( load )
-										.catch( onError )
+									confirmDiscount(
+										sprintf(
+											/* translators: %s: the automatic discount's description */
+											__(
+												'Delete the automatic discount %s? Orders that had it keep their discount.',
+												'orillacart'
+											),
+											discount.description
+										),
+										() =>
+											deleteCoupon( discount.id )
+												.then( load )
+												.catch( onError )
+									)
 								}
 							>
 								{ __( 'Delete', 'orillacart' ) }

@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { shopDateTime } from '../shared/dates';
 import { errorMessage } from '../shared/api';
 import { useConfirm } from '../shared/useConfirm';
 import {
@@ -270,9 +271,9 @@ export function WebhooksCard() {
 									<li
 										key={ `${ delivery.event }-${ delivery.attempt }` }
 									>
-										{ new Date(
+										{ shopDateTime(
 											delivery.attempted_at
-										).toLocaleString() }{ ' ' }
+										) }{ ' ' }
 										<code>{ delivery.topic }</code>{ ' ' }
 										{ outcome( delivery ) }{ ' ' }
 										<small>

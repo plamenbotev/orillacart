@@ -34,6 +34,7 @@ import {
 	setCustomerGroups,
 } from './api';
 import { TaxExemptions } from './TaxExemptions';
+import { shopDateTime, shopDate } from '../shared/dates';
 
 interface CustomerCardProps {
 	groups: CustomerGroup[];
@@ -170,7 +171,7 @@ function StoreCredit( {
 }
 
 function day( at: string | null ): string {
-	return at === null ? '—' : new Date( at ).toLocaleDateString();
+	return at === null ? '—' : shopDate( at );
 }
 
 /**
@@ -270,10 +271,7 @@ function Notes( {
 					<li key={ note.id }>
 						<p>{ note.text }</p>
 						<small>
-							{ [
-								new Date( note.created_at ).toLocaleString(),
-								note.author,
-							]
+							{ [ shopDateTime( note.created_at ), note.author ]
 								.filter( Boolean )
 								.join( ' · ' ) }
 						</small>{ ' ' }

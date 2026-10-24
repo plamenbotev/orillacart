@@ -12,9 +12,10 @@ import {
 	TextControl,
 } from '@wordpress/components';
 import { useCallback, useEffect, useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
+import { useConfirm } from '../shared/useConfirm';
 import { errorMessage } from '../shared/api';
 import { useBusy } from '../shared/useBusy';
 import { fetchCountries, type Country } from '../shared/geography';
@@ -703,6 +704,7 @@ function GroupCard( {
 } ) {
 	const [ name, setName ] = useState( group.name );
 	const [ taxCode, setTaxCode ] = useState( group.tax_code ?? '' );
+	const [ rateConfirmation, confirmRate ] = useConfirm();
 	const [ editing, setEditingNow ] = useState< TaxRate | 'new' | null >(
 		null
 	);
@@ -718,6 +720,7 @@ function GroupCard( {
 	return (
 		<Card className="orillacart-card">
 			{ leaving }
+			{ rateConfirmation }
 			<CardHeader>
 				<h2>{ group.name }</h2>
 				{ confirming ? (
@@ -870,9 +873,23 @@ function GroupCard( {
 										variant="link"
 										isDestructive
 										onClick={ () =>
-											deleteRate( group.id, rate.id )
-												.then( onChanged )
-												.catch( onError )
+											confirmRate(
+												sprintf(
+													/* translators: %s: tax rate name */
+													__(
+														'Delete the rate %s? Orders taxed at it keep their taxes.',
+														'orillacart'
+													),
+													rate.name
+												),
+												() =>
+													deleteRate(
+														group.id,
+														rate.id
+													)
+														.then( onChanged )
+														.catch( onError )
+											)
 										}
 									>
 										{ __( 'Delete', 'orillacart' ) }
