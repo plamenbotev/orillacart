@@ -50,12 +50,21 @@ final class BulkEditsTest extends TestCase
         self::assertSame(['44', '45.1', '36.08'], [$hoodie->price, $hoodie->variations[0]->price, $hoodie->variations[0]->sale?->price]);
     }
 
+    public function testAPriceLoweredToItsSaleIsRefusedForThatProduct(): void
+    {
+        self::assertSame(['Lamp: A sale price is below the regular price: 25 is not below 24. Lower the sale too, or remove it.'], $this->edits->apply([10], new BulkEdit(price: 'lower_percent', priceBy: '20')));
+        self::assertSame(['30', '25'], [$this->shop->products->product(10)->price, $this->shop->products->product(10)->sale?->price], 'customers would have paid the sale, above the price');
+
+        self::assertSame([], $this->edits->apply([10], new BulkEdit(price: 'lower_percent', priceBy: '20', sale: 'remove')));
+        self::assertSame(['24', null], [$this->shop->products->product(10)->price, $this->shop->products->product(10)->sale]);
+    }
+
     public function testStockIsAddedInOneStockroomAndAProductThatCannotTakeItIsNamed(): void
     {
-        self::assertSame(['Hoodie: the stock would be below zero.'], $this->edits->apply([10, 11], new BulkEdit(price: 'lower', priceBy: '5', stock: 'add', stockroomId: $this->room, stockBy: -3)));
+        self::assertSame(['Hoodie: the stock would be below zero.'], $this->edits->apply([10, 11], new BulkEdit(price: 'lower', priceBy: '4', stock: 'add', stockroomId: $this->room, stockBy: -3)));
 
         self::assertSame([$this->room => 1], $this->shop->stock->levelsOf([StockItemRef::product(10)])['product:10']);
-        self::assertSame('25', $this->shop->products->product(10)->price);
+        self::assertSame('26', $this->shop->products->product(10)->price);
         self::assertSame('40', $this->shop->products->product(11)->price, 'the hoodie is left as it was, its price too');
         self::assertSame([], $this->shop->stock->levelsOf([StockItemRef::variation($this->small)])["variation:{$this->small}"] ?? []);
 

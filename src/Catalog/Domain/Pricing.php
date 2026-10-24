@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\Money;
 
 /**
- * The regular price and an optional sale, as products and variations store them.
+ * The regular price and an optional sale below it, as products and variations store them.
  */
 #[ORM\Embeddable]
 final class Pricing
@@ -29,6 +29,10 @@ final class Pricing
     {
         if ($price->isNegative()) {
             throw new CatalogRuleViolation('A price cannot be negative.', 'orillacart_invalid_price');
+        }
+        if ($sale !== null && $sale->price->compare($price) >= 0) {
+            // Charged while it runs, and shown without the regular price struck through: nothing would look wrong.
+            throw new CatalogRuleViolation(\sprintf('A sale price is below the regular price: %s is not below %s. Lower the sale too, or remove it.', $sale->price, $price), 'orillacart_sale_not_below_price');
         }
         $this->price = $price->toFixed();
         $this->salePrice = $sale?->price->toFixed();

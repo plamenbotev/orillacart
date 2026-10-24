@@ -207,5 +207,13 @@ final class ProductServiceTest extends TestCase
 
         $product = $this->products->product(10);
         self::assertSame(['45', '30', 'HOOD'], [$product->price, $product->sale?->price, $product->sku]);
+
+        try {
+            $this->products->changePrice(10, '29');
+            self::fail('the sale of 30 would be charged above a price of 29');
+        } catch (CatalogRuleViolation $e) {
+            self::assertSame('orillacart_sale_not_below_price', $e->errorCode);
+        }
+        self::assertSame('45', $this->products->product(10)->price);
     }
 }
