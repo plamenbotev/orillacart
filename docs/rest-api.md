@@ -1593,6 +1593,8 @@ Gives the money back for the items that came back, and puts them back in stock.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `outside` (bool): default false
+  - `restock` (bool): default true
+  - `store_credit` (bool): default false
 
 ### `POST /returns/{id}/refuse`
 

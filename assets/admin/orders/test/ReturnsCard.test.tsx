@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
@@ -9,7 +9,12 @@ import { ReturnsCard } from '../ReturnsCard';
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
 
-const order = { number: 7, currency: 'EUR' } as unknown as Order;
+const order = {
+	number: 7,
+	currency: 'EUR',
+	customer_id: null,
+	email: 'ada@example.com',
+} as unknown as Order;
 
 const asked: ItemReturn = {
 	id: 3,
@@ -89,5 +94,34 @@ describe( 'ReturnsCard', () => {
 			await screen.findByRole( 'button', { name: /Refund 30\.00/ } )
 		).toBeVisible();
 		expect( onChanged ).toHaveBeenCalledTimes( 2 );
+		expect(
+			screen.getByRole( 'checkbox', {
+				name: 'Put the items back in stock',
+			} )
+		).not.toBeChecked();
+
+		await user.click(
+			screen.getByRole( 'radio', {
+				name: 'As a gift card, sent to ada@example.com',
+			} )
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: /Refund 30\.00/ } )
+		);
+		expect( mockedFetch ).not.toHaveBeenCalledWith(
+			expect.objectContaining( {
+				path: '/orillacart/v1/returns/3/refund',
+			} )
+		);
+		await user.click(
+			within( screen.getByRole( 'dialog' ) ).getByRole( 'button', {
+				name: 'Refund',
+			} )
+		);
+		expect( mockedFetch ).toHaveBeenCalledWith( {
+			path: '/orillacart/v1/returns/3/refund',
+			method: 'POST',
+			data: { outside: false, store_credit: true, restock: false },
+		} );
 	} );
 } );

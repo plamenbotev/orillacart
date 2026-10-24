@@ -104,7 +104,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
 
         $facets = $this->data($this->request('GET', '/orders/facets'));
         self::assertSame([['BG'], ['Post – Anywhere']], [$facets['countries'], $facets['shipping']]);
-        self::assertContains(['value' => 'return', 'label' => 'A return'], $this->rows($facets['has']));
+        self::assertContains(['value' => 'return', 'label' => 'An open return'], $this->rows($facets['has']));
         self::assertContains(['value' => 'coupon', 'label' => 'Used a coupon'], $this->rows($facets['has']));
     }
 

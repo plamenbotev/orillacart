@@ -108,7 +108,7 @@ final class FindingOrdersTest extends TestCase
         $facets = $this->shop->orders->facets();
         self::assertSame([['Courier – Europe'], ['BG', 'GR'], ['EUR']], [$facets->shipping, $facets->countries, $facets->currencies]);
         self::assertContains(['value' => 'coupon', 'label' => 'Used a coupon'], $facets->has);
-        self::assertContains(['value' => 'return', 'label' => 'A return'], $facets->has);
+        self::assertContains(['value' => 'return', 'label' => 'An open return'], $facets->has);
     }
 
     public function testAnAreasMarkNarrowsTheList(): void

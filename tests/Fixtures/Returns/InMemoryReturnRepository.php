@@ -20,7 +20,7 @@ final class InMemoryReturnRepository implements ReturnRepository
 
     public function orderIds(): array
     {
-        return array_values(array_unique(array_map(static fn(ItemReturn $return): int => $return->orderId(), $this->returns)));
+        return array_values(array_unique(array_map(static fn(ItemReturn $return): int => $return->orderId(), array_filter($this->returns, static fn(ItemReturn $return): bool => $return->status()->holdsItems()))));
     }
 
     public function forOrder(int $orderId): array

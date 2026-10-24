@@ -49,7 +49,7 @@ const HAS_LABELS: Record< string, string > = {
 	note: __( 'A note from the customer', 'orillacart' ),
 	downloads: __( 'Downloads', 'orillacart' ),
 	coupon: __( 'Used a coupon', 'orillacart' ),
-	return: __( 'A return', 'orillacart' ),
+	return: __( 'An open return', 'orillacart' ),
 };
 
 /**

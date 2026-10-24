@@ -6,6 +6,7 @@ import {
 	CheckboxControl,
 	Flex,
 	FlexItem,
+	RadioControl,
 	TextareaControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
@@ -19,18 +20,24 @@ import {
 	type OrderReturns,
 } from './api';
 import { money } from './labels';
+import { useConfirm } from '../shared/useConfirm';
 
 const STATUS: Record< ItemReturn[ 'status' ], string > = {
 	requested: __( 'Asked for', 'orillacart' ),
 	approved: __( 'Approved: on its way back', 'orillacart' ),
 	refused: __( 'Refused', 'orillacart' ),
 	received: __( 'Came back', 'orillacart' ),
+	refunding: __(
+		'Refunded: the provider is sending the money',
+		'orillacart'
+	),
 	refunded: __( 'Refunded', 'orillacart' ),
 };
 
 /**
  * The items customers asked to send back: approve or refuse each with an answer they read, say when the items came
- * back, and refund them, which puts them back in stock. Shown when the order has returns.
+ * back, and refund them: through the payment provider, as made outside the shop, or as store credit, the items back
+ * in stock unless they came back broken. Shown when the order has returns.
  *
  * @param props           The card's properties.
  * @param props.order     The order.
@@ -76,7 +83,7 @@ export function ReturnsCard( {
 					<ReturnRow
 						key={ itemReturn.id }
 						itemReturn={ itemReturn }
-						currency={ order.currency }
+						order={ order }
 						busy={ busy }
 						run={ run }
 					/>
@@ -88,17 +95,32 @@ export function ReturnsCard( {
 
 function ReturnRow( {
 	itemReturn,
-	currency,
+	order,
 	busy,
 	run,
 }: {
 	itemReturn: ItemReturn;
-	currency: string;
+	order: Order;
 	busy: boolean;
 	run: ( work: Promise< unknown > ) => void;
 } ) {
+	const currency = order.currency;
 	const [ answer, setAnswer ] = useState( '' );
-	const [ outside, setOutside ] = useState( false );
+	const [ how, setHow ] = useState< 'provider' | 'outside' | 'store_credit' >(
+		'provider'
+	);
+	// What came back broken is not sold again, unless the shop says so.
+	const [ restock, setRestock ] = useState( itemReturn.reason !== 'damaged' );
+	const [ confirmation, confirm ] = useConfirm();
+	const amount = money( itemReturn.amount, currency );
+	const refund = () =>
+		run(
+			moveReturn( itemReturn.id, 'refund', {
+				outside: how === 'outside',
+				store_credit: how === 'store_credit',
+				restock,
+			} )
+		);
 
 	return (
 		<div className="orillacart-return">
@@ -171,37 +193,89 @@ function ReturnRow( {
 				</Button>
 			) }
 			{ itemReturn.status === 'received' && (
-				<Flex align="center" justify="flex-start">
-					<FlexItem>
-						<CheckboxControl
-							label={ __(
-								'I gave the money back outside the shop',
-								'orillacart'
-							) }
-							checked={ outside }
-							onChange={ setOutside }
-						/>
-					</FlexItem>
-					<FlexItem>
-						<Button
-							variant="primary"
-							disabled={ busy }
-							onClick={ () =>
-								run(
-									moveReturn( itemReturn.id, 'refund', {
-										outside,
-									} )
-								)
-							}
-						>
-							{ sprintf(
-								/* translators: %s: an amount of money */
-								__( 'Refund %s', 'orillacart' ),
-								money( itemReturn.amount, currency )
-							) }
-						</Button>
-					</FlexItem>
-				</Flex>
+				<>
+					{ confirmation }
+					<RadioControl
+						label={ __( 'Give the money back', 'orillacart' ) }
+						selected={ how }
+						options={ [
+							{
+								value: 'provider',
+								label: __(
+									'The way the customer paid',
+									'orillacart'
+								),
+							},
+							{
+								value: 'outside',
+								label: __(
+									'I gave it back outside the shop: only record it',
+									'orillacart'
+								),
+							},
+							{
+								value: 'store_credit',
+								label:
+									order.customer_id !== null
+										? __(
+												'As store credit, to spend in the shop',
+												'orillacart'
+											)
+										: sprintf(
+												/* translators: %s: email address */
+												__(
+													'As a gift card, sent to %s',
+													'orillacart'
+												),
+												order.email
+											),
+							},
+						] }
+						onChange={ ( choice ) =>
+							setHow( choice as typeof how )
+						}
+					/>
+					<CheckboxControl
+						label={ __(
+							'Put the items back in stock',
+							'orillacart'
+						) }
+						help={ __(
+							'Leave it off for items that came back broken.',
+							'orillacart'
+						) }
+						checked={ restock }
+						onChange={ setRestock }
+					/>
+					<Flex align="center" justify="flex-start">
+						<FlexItem>
+							<Button
+								variant="primary"
+								disabled={ busy }
+								onClick={ () =>
+									confirm(
+										sprintf(
+											/* translators: %s: an amount of money */
+											__(
+												'Give %s back to the customer for these items?',
+												'orillacart'
+											),
+											amount
+										),
+										refund,
+										__( 'Refund', 'orillacart' )
+									)
+								}
+							>
+								{ sprintf(
+									/* translators: %s: an amount of money */
+									__( 'Refund %s', 'orillacart' ),
+									amount
+								) }
+							</Button>
+						</FlexItem>
+					</Flex>
+				</>
 			) }
 		</div>
 	);

@@ -99,6 +99,53 @@ final class ReturnsTest extends TestCase
         self::assertSame([['Lamp', 1]], array_map(static fn(ReturnedItemView $item): array => [$item->name, $item->quantity], $this->shop->returns->forOrder($this->order)->returnable), 'the other may still go back');
     }
 
+    public function testAReturnIsRefundedOnceTheProviderSentTheMoney(): void
+    {
+        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret', 'webhook_id' => 'WH-1']));
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $this->shop->orders->order($this->order)->shippingOption, payment: 'paypal'));
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('shipped'), 7);
+        $return = $this->shop->returns->request($this->shop->receipts->issue($placed->number), new RequestReturn([new ReturnItem(0, 1)], 'damaged'));
+        $this->shop->returns->receive($return->id, 7);
+        $this->shop->payPalApi->refundStatus = 'PENDING';
+
+        self::assertSame('refunding', $this->shop->returns->refund($return->id, new RefundReturn(restock: false), 7)->status, 'PayPal sends the money later');
+        self::assertSame([], $this->shop->returns->forOrder($placed->number)->returnable, 'its items are still held');
+
+        $this->shop->payPalApi->refundStatus = 'COMPLETED';
+        $this->shop->refunds->reconcile();
+        self::assertSame('refunded', $this->shop->returns->forOrder($placed->number)->returns[0]->status);
+    }
+
+    public function testAReturnWhoseRefundFailedIsRefundedAgain(): void
+    {
+        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret', 'webhook_id' => 'WH-1']));
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $this->shop->orders->order($this->order)->shippingOption, payment: 'paypal'));
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('shipped'), 7);
+        $return = $this->shop->returns->request($this->shop->receipts->issue($placed->number), new RequestReturn([new ReturnItem(0, 1)], 'other'));
+        $this->shop->returns->receive($return->id, 7);
+        $this->shop->payPalApi->refundStatus = 'PENDING';
+        $this->shop->returns->refund($return->id, new RefundReturn(), 7);
+
+        $this->shop->payPalApi->refundStatus = 'FAILED';
+        $this->shop->refunds->reconcile();
+
+        self::assertSame('received', $this->shop->returns->forOrder($placed->number)->returns[0]->status, 'the money did not go: the shop refunds it again');
+    }
+
+    public function testAnOrderNotPaidHasNothingToGiveBack(): void
+    {
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $this->shop->orders->order($this->order)->shippingOption, payment: 'bank_transfer'));
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('processing'), 7);
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('shipped'), 7);
+
+        self::assertFalse($this->shop->returns->forReceipt($this->shop->receipts->issue($placed->number))->accepting);
+    }
+
     public function testARefusalSaysWhyAndLeavesTheItemsReturnable(): void
     {
         $this->shop->orders->changeStatus($this->order, new ChangeOrderStatus('shipped'), 7);

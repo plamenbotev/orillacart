@@ -1026,6 +1026,23 @@ final readonly class OrderService
     }
 
     /**
+     * Runs work about an order, such as another area's records of it, in one transaction with the order's row
+     * locked: two requests about the same order then run one after the other.
+     *
+     * @template T
+     *
+     * @param \Closure(): T $work
+     *
+     * @return T
+     *
+     * @throws OrderNotFound
+     */
+    public function whileLocked(int $id, \Closure $work): mixed
+    {
+        return $this->changing($id, static fn(): mixed => $work());
+    }
+
+    /**
      * Runs a change of an order in one transaction, with the order's row locked.
      *
      * @template T

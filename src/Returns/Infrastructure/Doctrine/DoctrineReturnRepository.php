@@ -7,6 +7,7 @@ namespace OrillaCart\Returns\Infrastructure\Doctrine;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Returns\Domain\ItemReturn;
 use OrillaCart\Returns\Domain\ReturnRepository;
+use OrillaCart\Returns\Domain\ReturnStatus;
 
 final readonly class DoctrineReturnRepository implements ReturnRepository
 {
@@ -19,7 +20,10 @@ final readonly class DoctrineReturnRepository implements ReturnRepository
 
     public function orderIds(): array
     {
-        $ids = $this->entityManager->createQueryBuilder()->select('DISTINCT r.orderId')->from(ItemReturn::class, 'r')->getQuery()->getSingleColumnResult();
+        // Returns still open: one refused or refunded is done with.
+        $ids = $this->entityManager->createQueryBuilder()->select('DISTINCT r.orderId')->from(ItemReturn::class, 'r')
+            ->where('r.status IN (:open)')->setParameter('open', array_filter(ReturnStatus::cases(), static fn(ReturnStatus $status): bool => $status->holdsItems()))
+            ->getQuery()->getSingleColumnResult();
 
         return array_values(array_map(intval(...), array_filter($ids, is_numeric(...))));
     }

@@ -86,8 +86,13 @@ Status: built (2026-10-20), PLAN item 92.
   reason and a comment (`POST /receipts/{receipt}/returns`, ten an hour). The order needs attention, so the shop
   hears.
 - `returns`: requested, then approved (with how to send the items) or refused (with why), the customer reading
-  the answer as a note; received; refunded, through the provider or outside the shop, for what the customer paid
-  for those items with their tax, putting them back in stock.
+  the answer as a note; received; refunded, through the provider, outside the shop or as store credit, for what
+  the customer paid for those items with their tax (in the order currency's cents), back in stock unless the shop
+  says they came back broken (off by default for "damaged"), after a confirmation.
+- Since 134: a refund the provider sends later leaves the return "refunding", its items still held, until the
+  order records the refund; one the provider gives up on goes back to received, with a note, to refund again.
+  Only paid orders can be returned. A request is made with the order locked, so one sent twice makes one
+  return. The orders filter is "An open return" (requested, approved, received or refunding).
 
 ## Checkout choices
 

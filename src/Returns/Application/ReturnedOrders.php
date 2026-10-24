@@ -21,7 +21,7 @@ final readonly class ReturnedOrders implements OrderMark
 
     public function label(): string
     {
-        return 'A return';
+        return 'An open return';
     }
 
     public function orderIds(): array

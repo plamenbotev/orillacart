@@ -894,7 +894,13 @@ export function fetchPickupPoints(
 /** A customer's request to send items back, and where it stands. */
 export interface ItemReturn {
 	id: number;
-	status: 'requested' | 'approved' | 'refused' | 'received' | 'refunded';
+	status:
+		| 'requested'
+		| 'approved'
+		| 'refused'
+		| 'received'
+		| 'refunding'
+		| 'refunded';
 	items: { line: number; name: string; quantity: number }[];
 	reason: string;
 	reason_label: string;
@@ -926,16 +932,23 @@ export function fetchReturns( orderId: number ): Promise< OrderReturns > {
 
 /**
  * Moves a return on: approve or refuse it with an answer for the customer, say the items came back, or refund them.
- * @param id           The return.
- * @param step         What happens to it.
- * @param data         What the step takes.
- * @param data.answer  For approving or refusing: what the customer reads.
- * @param data.outside For refunding: the shop gave the money back itself.
+ * @param id                The return.
+ * @param step              What happens to it.
+ * @param data              What the step takes.
+ * @param data.answer       For approving or refusing: what the customer reads.
+ * @param data.outside      For refunding: the shop gave the money back itself.
+ * @param data.restock      For refunding: the items go back in stock.
+ * @param data.store_credit For refunding: as store credit, or for a guest a gift card.
  */
 export function moveReturn(
 	id: number,
 	step: 'approve' | 'refuse' | 'receive' | 'refund',
-	data: { answer?: string; outside?: boolean } = {}
+	data: {
+		answer?: string;
+		outside?: boolean;
+		restock?: boolean;
+		store_credit?: boolean;
+	} = {}
 ): Promise< ItemReturn > {
 	return apiFetch< ItemReturn >( {
 		path: `${ BASE }/returns/${ id }/${ step }`,

@@ -11,6 +11,7 @@ use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
+use OrillaCart\Payment\Application\Dto\RefundView;
 use OrillaCart\Payment\Application\Refunds;
 use OrillaCart\Returns\Application\Dto\AnswerReturn;
 use OrillaCart\Returns\Application\Dto\OrderReturnsView;
@@ -24,7 +25,9 @@ use OrillaCart\Returns\Domain\ReturnNotFound;
 use OrillaCart\Returns\Domain\ReturnReason;
 use OrillaCart\Returns\Domain\ReturnRepository;
 use OrillaCart\Returns\Domain\ReturnRuleViolation;
+use OrillaCart\Returns\Domain\ReturnStatus;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use Psr\Clock\ClockInterface;
@@ -74,6 +77,16 @@ final readonly class Returns
     public function request(string $receipt, RequestReturn $command): ReturnView
     {
         $order = $this->orders->byReceipt($receipt);
+
+        // The order locked: a request sent twice makes one return, the second finding the items held already.
+        return $this->orders->whileLocked($order->number, fn(): ReturnView => $this->requested($this->orders->order($order->number), $command));
+    }
+
+    /**
+     * @throws ReturnRuleViolation for an order not to return now, or items that cannot go back
+     */
+    private function requested(OrderView $order, RequestReturn $command): ReturnView
+    {
         if (!$this->accepting($order)) {
             throw new ReturnRuleViolation('This order cannot be returned now.', 'orillacart_return_not_accepted');
         }
@@ -153,24 +166,60 @@ final readonly class Returns
     {
         $return = $this->get($id);
         $order = $this->orders->order($return->orderId());
-        if ($return->status()->value !== 'received') {
+        if ($return->status() !== ReturnStatus::Received) {
             throw new ReturnRuleViolation(\sprintf('Return %d is %s; its items are refunded once they came back.', $id, $return->status()->value), 'orillacart_return_not_refundable');
         }
-        $this->refunds->refund($order->number, new MakeRefund(
+        $refunds = $this->refunds->refund($order->number, new MakeRefund(
             (string) $this->amount($order, $return->items()),
             array_map(static fn(int $line, int $quantity): RefundLine => new RefundLine($line, $quantity), array_keys($return->items()), $return->items()),
-            restock: true,
+            restock: $command->restock,
             reason: \sprintf('Return %d', $id),
-            outside: $command->outside,
+            outside: $command->outside && !$command->storeCredit,
+            storeCredit: $command->storeCredit,
         ), $userId);
-        $return->refunded($this->clock->now());
+        $made = array_values(array_filter($refunds->refunds, static fn(RefundView $refund): bool => $refund->reason === \sprintf('Return %d', $id)));
+        usort($made, static fn(RefundView $a, RefundView $b): int => $b->id <=> $a->id);
+        // Refunded once the money went: a provider that sends it later says so, and the return follows (settle()).
+        if (($made[0] ?? null)?->status === 'done') {
+            $return->refunded($this->clock->now());
+        } else {
+            $return->refunding($made[0]->id ?? throw new \LogicException("Return {$id}'s refund was not recorded."));
+        }
         $this->returns->save($return);
 
         return $this->returnView($this->orders->order($order->number), $return);
     }
 
+    /**
+     * Returns whose refund the provider was sending: refunded once it did, back to received when it gave up, for
+     * the shop to refund again.
+     */
+    public function settle(int $orderId): void
+    {
+        $refunding = array_filter($this->returns->forOrder($orderId), static fn(ItemReturn $return): bool => $return->status() === ReturnStatus::Refunding);
+        if ($refunding === []) {
+            return;
+        }
+        $refunds = [];
+        foreach ($this->refunds->forOrder($orderId)->refunds as $refund) {
+            $refunds[$refund->id] = $refund;
+        }
+        foreach ($refunding as $return) {
+            $refund = $refunds[$return->refundId() ?? 0] ?? null;
+            if ($refund?->status === 'done') {
+                $return->refunded($refund->settledAt === null ? $this->clock->now() : new \DateTimeImmutable($refund->settledAt));
+                $this->returns->save($return);
+            } elseif ($refund === null || $refund->status === 'failed') {
+                $return->refundFailed();
+                $this->returns->save($return);
+                $this->orders->addNote($orderId, new AddOrderNote(\sprintf('The refund of return %d did not go through%s: refund it again.', $return->id(), $refund?->error === null ? '' : ' (' . $refund->error . ')')), null);
+            }
+        }
+    }
+
     private function view(OrderView $order): OrderReturnsView
     {
+        $this->settle($order->number);
         $until = $this->until($order);
         $left = $this->returnable($order);
 
@@ -197,7 +246,8 @@ final readonly class Returns
     {
         $until = $this->until($order);
 
-        return $until !== null && !\in_array($order->status, self::CLOSED, true) && $this->clock->now() <= $until;
+        // Paid: an order paid on delivery that never was has no money to give back.
+        return $until !== null && $order->paidAt !== null && !\in_array($order->status, self::CLOSED, true) && $this->clock->now() <= $until;
     }
 
     /**
@@ -253,7 +303,7 @@ final readonly class Returns
      */
     private function amount(OrderView $order, array $items): Money
     {
-        $decimals = $this->settings->current()->priceDecimals;
+        $decimals = new Currency($order->currency)->decimals();
         $amount = Money::zero();
         foreach ($items as $position => $quantity) {
             $line = $order->lines[$position] ?? null;

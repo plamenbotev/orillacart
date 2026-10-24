@@ -12,7 +12,7 @@ interface ReturnRepository
     public function forOrder(int $orderId): array;
 
     /**
-     * @return list<int> ids of the orders with a return
+     * @return list<int> ids of the orders with a return still open (requested, approved, received or being refunded)
      */
     public function orderIds(): array;
 

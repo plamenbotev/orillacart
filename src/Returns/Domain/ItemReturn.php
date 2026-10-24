@@ -48,6 +48,11 @@ class ItemReturn
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $refundedAt = null;
 
+    /** The refund of its items, while the provider sends the money. */
+    #[ORM\Column(nullable: true)]
+    #[References('refunds', onDelete: 'SET NULL')]
+    private ?int $refundId = null;
+
     /**
      * @param array<int, int> $items quantities by line position
      *
@@ -177,11 +182,39 @@ class ItemReturn
      */
     public function refunded(\DateTimeImmutable $at): void
     {
-        if ($this->status !== ReturnStatus::Received) {
+        if ($this->status !== ReturnStatus::Received && $this->status !== ReturnStatus::Refunding) {
             throw new ReturnRuleViolation(\sprintf('Return %d is %s; its items are refunded once they came back.', $this->id(), $this->status->value), 'orillacart_return_not_refundable');
         }
         $this->status = ReturnStatus::Refunded;
         $this->refundedAt = $at;
+    }
+
+    /**
+     * The refund was made, and the provider sends the money later.
+     *
+     * @throws ReturnRuleViolation for one whose items did not come back
+     */
+    public function refunding(int $refundId): void
+    {
+        if ($this->status !== ReturnStatus::Received) {
+            throw new ReturnRuleViolation(\sprintf('Return %d is %s; its items are refunded once they came back.', $this->id(), $this->status->value), 'orillacart_return_not_refundable');
+        }
+        $this->status = ReturnStatus::Refunding;
+        $this->refundId = $refundId;
+    }
+
+    public function refundId(): ?int
+    {
+        return $this->refundId;
+    }
+
+    /** The provider gave up on the refund: the items are back, the money is not, and the shop refunds again. */
+    public function refundFailed(): void
+    {
+        if ($this->status === ReturnStatus::Refunding) {
+            $this->status = ReturnStatus::Received;
+            $this->refundId = null;
+        }
     }
 
     private function answered(ReturnStatus $status, string $answer, \DateTimeImmutable $at): void
