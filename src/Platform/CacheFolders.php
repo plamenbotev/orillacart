@@ -56,7 +56,7 @@ final readonly class CacheFolders implements LifecycleListener
             $versions = self::root() . '/' . $kind;
             $found = is_dir($versions) ? scandir($versions) : false;
             foreach ($found === false ? [] : $found as $version) {
-                if ($version !== '.' && $version !== '..' && $version !== self::versionFolder($this->context->version)) {
+                if ($version !== '.' && $version !== '..' && $version !== self::versionFolder($this->context->build)) {
                     self::remove($versions . '/' . $version);
                 }
             }

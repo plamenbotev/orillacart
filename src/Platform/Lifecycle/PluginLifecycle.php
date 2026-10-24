@@ -31,10 +31,16 @@ final readonly class PluginLifecycle
 
     public function activate(): void
     {
+        // Every migration runs now, for every site of a network turned on at once: not cut off by the host's
+        // time limit halfway through one, nor by the browser leaving.
+        if (\function_exists('set_time_limit')) {
+            set_time_limit(0);
+        }
+        ignore_user_abort(true);
         foreach ($this->listeners as $listener) {
             $listener->activate();
         }
-        update_option(self::VERSION_OPTION, $this->context->version);
+        update_option(self::VERSION_OPTION, $this->context->build);
     }
 
     public function upgradeIfNeeded(): void
@@ -42,14 +48,14 @@ final readonly class PluginLifecycle
         $stored = get_option(self::VERSION_OPTION);
         $stored = \is_string($stored) ? $stored : null;
 
-        if ($stored === $this->context->version) {
+        if ($stored === $this->context->build) {
             return;
         }
 
         foreach ($this->listeners as $listener) {
             $listener->upgrade($stored);
         }
-        update_option(self::VERSION_OPTION, $this->context->version);
+        update_option(self::VERSION_OPTION, $this->context->build);
     }
 
     public function deactivate(): void

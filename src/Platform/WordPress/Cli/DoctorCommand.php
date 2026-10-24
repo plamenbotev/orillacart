@@ -86,7 +86,7 @@ final readonly class DoctorCommand implements CliCommand
         delete_option(PluginLifecycle::UPGRADE_FAILED_OPTION);
         \WP_CLI::log($executed === [] ? 'Tables: up to date.' : 'Tables: ran ' . implode(', ', $executed) . '.');
 
-        CacheFolders::clear($this->context->version);
+        CacheFolders::clear($this->context->build);
         \WP_CLI::log('Cache: cleared; the next request compiles the templates again.');
 
         $this->pages->activate();

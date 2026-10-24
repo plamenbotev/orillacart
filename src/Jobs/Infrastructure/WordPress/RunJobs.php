@@ -16,7 +16,8 @@ use OrillaCart\Shared\WordPress\ScheduledTask;
 final readonly class RunJobs implements ScheduledTask
 {
     private const int SECONDS = 20;
-    private const int BATCH = 50;
+    /** Small: a batch is done or tried again as one, and a host's time limit cut through a big one again and again. */
+    private const int BATCH = 10;
 
     public function __construct(
         private JobRunner $runner,
@@ -40,6 +41,11 @@ final readonly class RunJobs implements ScheduledTask
         $lanes = $this->workers->unserved($this->handlers->queues());
         if ($lanes === []) {
             return;
+        }
+        // A slow batch (PDFs, the search index) may run past twenty seconds: the host's limit must not stop it halfway,
+        // or every job in it counts a failed try.
+        if (\function_exists('set_time_limit')) {
+            set_time_limit(self::SECONDS + 60);
         }
         $until = microtime(true) + self::SECONDS;
         do {

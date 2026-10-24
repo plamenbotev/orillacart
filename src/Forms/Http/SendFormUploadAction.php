@@ -9,6 +9,7 @@ use OrillaCart\Forms\Application\FormUploads;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Security\ClientAddress;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UploadedFileInterface;
@@ -45,8 +46,6 @@ final readonly class SendFormUploadAction implements RequestHandlerInterface
         }
         $file->moveTo($temporary);
 
-        $address = $request->getServerParams()['REMOTE_ADDR'] ?? '';
-
-        return $this->responder->ok($this->uploads->send(new SendUpload($productId, $field, $temporary, $file->getClientFilename() ?? 'file', \is_string($address) ? $address : '')), 201);
+        return $this->responder->ok($this->uploads->send(new SendUpload($productId, $field, $temporary, $file->getClientFilename() ?? 'file', ClientAddress::of($request->getServerParams()))), 201);
     }
 }

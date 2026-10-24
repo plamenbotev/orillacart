@@ -67,11 +67,11 @@ final class Plugin
      */
     private static function upgrade(Kernel $kernel, PluginContext $context): void
     {
-        if (get_option(PluginLifecycle::VERSION_OPTION) === $context->version) {
+        if (get_option(PluginLifecycle::VERSION_OPTION) === $context->build) {
             return;
         }
         $failed = get_option(PluginLifecycle::UPGRADE_FAILED_OPTION);
-        if (\is_array($failed) && ($failed['version'] ?? null) === $context->version && \is_int($failed['at'] ?? null) && $failed['at'] > time() - self::RETRY_AFTER_SECONDS) {
+        if (\is_array($failed) && ($failed['version'] ?? null) === $context->build && \is_int($failed['at'] ?? null) && $failed['at'] > time() - self::RETRY_AFTER_SECONDS) {
             return;
         }
         $wpdb = $GLOBALS['wpdb'] ?? null;
@@ -84,7 +84,7 @@ final class Plugin
         try {
             // Read from the table, not the option cache: the request that held the lock may have just finished.
             $stored = $wpdb->get_var((string) $wpdb->prepare('SELECT option_value FROM %i WHERE option_name = %s', $wpdb->options, PluginLifecycle::VERSION_OPTION));
-            if ($stored === $context->version) {
+            if ($stored === $context->build) {
                 wp_cache_delete('alloptions', 'options');
 
                 return;
@@ -96,8 +96,8 @@ final class Plugin
             self::lifecycle($kernel)->upgradeIfNeeded();
             delete_option(PluginLifecycle::UPGRADE_FAILED_OPTION);
         } catch (\Throwable $e) {
-            update_option(PluginLifecycle::UPGRADE_FAILED_OPTION, ['version' => $context->version, 'message' => $e->getMessage(), 'at' => time()], false);
-            error_log(\sprintf('[OrillaCart] ERROR: The database could not be upgraded to %s: %s', $context->version, $e));
+            update_option(PluginLifecycle::UPGRADE_FAILED_OPTION, ['version' => $context->build, 'message' => $e->getMessage(), 'at' => time()], false);
+            error_log(\sprintf('[OrillaCart] ERROR: The database could not be upgraded to %s: %s', $context->build, $e));
         } finally {
             $wpdb->query((string) $wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lock));
         }
@@ -106,7 +106,7 @@ final class Plugin
     private static function upgradeNotice(PluginContext $context): void
     {
         $failed = get_option(PluginLifecycle::UPGRADE_FAILED_OPTION);
-        if (!\is_array($failed) || ($failed['version'] ?? null) !== $context->version || !current_user_can('activate_plugins')) {
+        if (!\is_array($failed) || ($failed['version'] ?? null) !== $context->build || !current_user_can('activate_plugins')) {
             return;
         }
         printf(

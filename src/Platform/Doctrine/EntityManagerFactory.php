@@ -87,7 +87,7 @@ final readonly class EntityManagerFactory
      */
     private function metadataCache(): CacheItemPoolInterface
     {
-        $dir = CacheFolders::path('doctrine', $this->context->version);
+        $dir = CacheFolders::path('doctrine', $this->context->build);
         if ($dir === null) {
             return new ArrayAdapter();
         }

@@ -14,6 +14,7 @@ use OrillaCart\Reviews\Domain\ReviewReply;
 use OrillaCart\Reviews\Domain\ReviewRuleViolation;
 use OrillaCart\Reviews\Domain\ReviewStatus;
 use OrillaCart\Reviews\Domain\ReviewStore;
+use OrillaCart\Shared\Http\Security\ClientAddress;
 
 /**
  * Reviews are comments of their own type on the product's post, with the stars and the buyer's mark as comment
@@ -41,7 +42,7 @@ final readonly class CommentReviewStore implements ReviewStore
 
     public function add(NewReview $review): Review
     {
-        $address = $_SERVER['REMOTE_ADDR'] ?? '';
+        $address = ClientAddress::of($_SERVER);
         $agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         $id = wp_new_comment(wp_slash([
             'comment_post_ID' => $review->productId,
@@ -52,7 +53,7 @@ final readonly class CommentReviewStore implements ReviewStore
             'comment_type' => self::TYPE,
             'comment_parent' => 0,
             'user_id' => $review->customerId ?? 0,
-            'comment_author_IP' => \is_string($address) ? (string) preg_replace('/[^0-9a-fA-F:., ]/', '', $address) : '',
+            'comment_author_IP' => (string) preg_replace('/[^0-9a-fA-F:., ]/', '', $address),
             'comment_agent' => \is_string($agent) ? mb_substr($agent, 0, 254) : '',
             'comment_meta' => [self::RATING => $review->rating, self::VERIFIED => $review->verified ? 1 : 0],
         ]), true);

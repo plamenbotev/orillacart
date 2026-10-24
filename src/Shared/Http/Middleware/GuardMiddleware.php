@@ -7,6 +7,7 @@ namespace OrillaCart\Shared\Http\Middleware;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\HttpKernel;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
+use OrillaCart\Shared\Http\Security\ClientAddress;
 use OrillaCart\Shared\Http\Security\HumanCheck;
 use OrillaCart\Shared\Http\Security\RateLimiter;
 use Psr\Http\Message\ResponseInterface;
@@ -37,8 +38,7 @@ final readonly class GuardMiddleware implements MiddlewareInterface
         if ($guard === null) {
             return $handler->handle($request);
         }
-        $address = $request->getServerParams()['REMOTE_ADDR'] ?? null;
-        $callers = ['ip:' . (\is_string($address) ? $address : 'unknown')];
+        $callers = ['ip:' . ClientAddress::of($request->getServerParams())];
         $cart = $request->getCookieParams()[self::CART_COOKIE] ?? null;
         if (\is_string($cart) && $cart !== '') {
             $callers[] = 'cart:' . hash('sha256', $cart);

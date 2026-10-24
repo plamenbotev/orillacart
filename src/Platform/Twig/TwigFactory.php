@@ -73,6 +73,6 @@ final readonly class TwigFactory
      */
     private function cacheDir(): ?string
     {
-        return CacheFolders::path('twig', $this->context->version);
+        return CacheFolders::path('twig', $this->context->build);
     }
 }

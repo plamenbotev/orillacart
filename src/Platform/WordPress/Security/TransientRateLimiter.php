@@ -9,8 +9,7 @@ use OrillaCart\Shared\Http\Security\RateLimiter;
 /**
  * Counts in transients (the object cache where the site has one), in fixed windows. The limits are
  * {guard: [how many, in seconds]}, changed with the filter orillacart_rate_limits; a guard without one is not
- * counted. The address is REMOTE_ADDR: behind a proxy, a site sets it from the forwarded header, as WordPress
- * expects.
+ * counted. The caller's address is ClientAddress's: behind a proxy the site trusts, the visitor's.
  */
 final readonly class TransientRateLimiter implements RateLimiter
 {

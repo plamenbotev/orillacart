@@ -47,7 +47,7 @@ final readonly class EmailTwig
             'autoescape' => 'html',
             'strict_variables' => true,
             'debug' => \defined('WP_DEBUG') && WP_DEBUG,
-            'cache' => CacheFolders::path('twig-emails', $this->context->version) ?? false,
+            'cache' => CacheFolders::path('twig-emails', $this->context->build) ?? false,
             'auto_reload' => true,
         ]);
         if ($this->extension !== null) {

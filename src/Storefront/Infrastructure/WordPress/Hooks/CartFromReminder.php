@@ -7,6 +7,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 use OrillaCart\Cart\Application\CartLinks;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Shared\Http\Security\ClientAddress;
 use OrillaCart\Shared\Http\Security\RateLimiter;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
@@ -51,8 +52,7 @@ final readonly class CartFromReminder implements CartLinks
         }
         // Counted as codes typed at checkout are: the cart shows whether a code holds, so the link must not be a
         // way to try codes without end.
-        $address = $_SERVER['REMOTE_ADDR'] ?? null;
-        if (\is_string($coupon) && $this->limits->hit('coupons', 'ip:' . (\is_string($address) ? $address : 'unknown')) === null) {
+        if (\is_string($coupon) && $this->limits->hit('coupons', 'ip:' . ClientAddress::of($_SERVER)) === null) {
             $code = mb_substr(sanitize_text_field(wp_unslash($coupon)), 0, 100);
             $this->give($this->carts->offerCoupon($this->shopper->cart(), $code));
         }
