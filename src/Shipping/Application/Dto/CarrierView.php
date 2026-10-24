@@ -30,6 +30,7 @@ final readonly class CarrierView
         public ?int $methodTaxGroupId = null,
         public array $pickupLocations = [],
         public ?SaveDeliverySchedule $deliverySchedule = null,
+        public bool $classesKeptToTheirRates = false,
     ) {}
 
     /**
@@ -52,6 +53,7 @@ final readonly class CarrierView
             $carrier->methodTaxGroupId(),
             array_map(PickupLocationView::fromLocation(...), $carrier->pickupLocations()),
             $carrier->deliverySchedule() === null ? null : SaveDeliverySchedule::fromSchedule($carrier->deliverySchedule()),
+            $carrier->keepsClassesToTheirRates(),
         );
     }
 }

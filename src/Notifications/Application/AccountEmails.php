@@ -25,9 +25,9 @@ final readonly class AccountEmails implements AccountMail
         private LoggerInterface $logger,
     ) {}
 
-    public function confirm(string $email, string $firstName, string $link, \DateTimeImmutable $until): void
+    public function confirm(string $email, string $firstName, string $link, \DateTimeImmutable $until, bool $guestOrders = true): void
     {
-        $this->send($email, 'emails/account-confirm.html.twig', 'account_confirm', ['first_name' => $firstName, 'link' => $link, 'until' => $until->format(\DATE_ATOM)]);
+        $this->send($email, 'emails/account-confirm.html.twig', 'account_confirm', ['first_name' => $firstName, 'link' => $link, 'until' => $until->format(\DATE_ATOM), 'guest_orders' => $guestOrders]);
     }
 
     public function exists(string $email, string $loginUrl, string $lostPasswordUrl): void

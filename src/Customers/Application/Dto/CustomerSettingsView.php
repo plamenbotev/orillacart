@@ -12,5 +12,7 @@ final readonly class CustomerSettingsView
     public function __construct(
         public string $accounts,
         public array $modes,
+        /** A new account takes the orders placed with its email as a guest before. */
+        public bool $guestOrders = true,
     ) {}
 }

@@ -73,6 +73,22 @@ final class CustomerAccountsTest extends TestCase
         self::assertNull($this->shop->orders->order($other->number)->customerId);
     }
 
+    public function testAShopMayKeepEarlierGuestOrdersOutOfANewAccount(): void
+    {
+        $this->shop->customers->updateSettings(new UpdateCustomerSettings('optional', guestOrders: false));
+        $earlier = $this->place(new CartOwner(null));
+        $order = $this->place(new CartOwner(null), createAccount: true);
+
+        $customer = $this->shop->customers->confirmAccount(new ConfirmAccount($this->shop->accountMail->tokenFor('ada@example.com'), 'correct horse'));
+
+        self::assertSame(1, $customer->orders, 'only the order placed while asking');
+        self::assertSame($order->number, $this->shop->orders->customerOrder($customer->id, $order->number)->number);
+        self::assertNull($this->shop->orders->order($earlier->number)->customerId);
+        self::assertFalse($this->shop->customers->settings()->guestOrders);
+        $this->shop->customers->updateSettings(new UpdateCustomerSettings('required'));
+        self::assertFalse($this->shop->customers->settings()->guestOrders, 'left as it was');
+    }
+
     public function testSigningUpSaysNothingOfWhetherTheEmailHasAnAccount(): void
     {
         $this->shop->accounts->add('ada@example.com');

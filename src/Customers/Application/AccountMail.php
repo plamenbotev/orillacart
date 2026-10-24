@@ -10,7 +10,10 @@ namespace OrillaCart\Customers\Application;
  */
 interface AccountMail
 {
-    public function confirm(string $email, string $firstName, string $link, \DateTimeImmutable $until): void;
+    /**
+     * @param bool $guestOrders whether the account takes the orders placed with the email before, as the email says
+     */
+    public function confirm(string $email, string $firstName, string $link, \DateTimeImmutable $until, bool $guestOrders = true): void;
 
     public function exists(string $email, string $loginUrl, string $lostPasswordUrl): void;
 

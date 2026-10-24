@@ -3,6 +3,7 @@ import {
 	Card,
 	CardBody,
 	CardHeader,
+	CheckboxControl,
 	Notice,
 	RadioControl,
 	TextControl,
@@ -112,6 +113,16 @@ export function CustomersScreen() {
 
 	const fail = ( error: unknown ) =>
 		setMessage( { status: 'error', text: errorMessage( error ) } );
+	const saveSettings = ( changed: CustomerSettings ) =>
+		saveCustomerSettings( changed )
+			.then( ( saved ) => {
+				setSettings( saved );
+				setMessage( {
+					status: 'success',
+					text: __( 'Saved.', 'orillacart' ),
+				} );
+			} )
+			.catch( fail );
 
 	useEffect( () => {
 		fetchCustomerSettings().then( setSettings ).catch( fail );
@@ -156,19 +167,32 @@ export function CustomersScreen() {
 							selected={ settings.accounts }
 							options={ MODES }
 							onChange={ ( value ) =>
-								saveCustomerSettings(
-									value as CustomerSettings[ 'accounts' ]
-								)
-									.then( ( saved ) => {
-										setSettings( saved );
-										setMessage( {
-											status: 'success',
-											text: __( 'Saved.', 'orillacart' ),
-										} );
-									} )
-									.catch( fail )
+								saveSettings( {
+									...settings,
+									accounts:
+										value as CustomerSettings[ 'accounts' ],
+								} )
 							}
 						/>
+						{ settings.accounts !== 'disabled' && (
+							<CheckboxControl
+								label={ __(
+									'A new account takes the orders placed with its email before',
+									'orillacart'
+								) }
+								help={ __(
+									'Its owner proved the address by following the link emailed to it. Off, an account takes only the order placed while asking for it.',
+									'orillacart'
+								) }
+								checked={ settings.guest_orders }
+								onChange={ ( guestOrders ) =>
+									saveSettings( {
+										...settings,
+										guest_orders: guestOrders,
+									} )
+								}
+							/>
+						) }
 					</CardBody>
 				</Card>
 			) }

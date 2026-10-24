@@ -198,6 +198,10 @@ class ShippingRate
         if ($this->classes !== [] && array_diff($parcel->classes, $this->classes) !== []) {
             return false;
         }
+        // Carrying every item, it leaves goods to the rates made for their class, when the carrier says so.
+        if ($this->classes === [] && $this->carrier->keepsClassesToTheirRates() && array_intersect($parcel->classes, $this->carrier->namedClasses()) !== []) {
+            return false;
+        }
 
         return $this->weight->contains($parcel->weight)
             && $this->volume->contains($parcel->volume)

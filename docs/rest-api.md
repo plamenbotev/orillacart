@@ -243,6 +243,7 @@ A visitor asks to hear when a sold-out item is back; answered alike whether or n
   - `method_tax_group_id` (int|null): more than 0
   - `pickup_locations` (list<SavePickupLocation>): at most 100 items
   - `delivery_schedule` (SaveDeliverySchedule|null)
+  - `classes_kept_to_their_rates` (bool): default false
 
 ### `GET /carriers/{id}`
 
@@ -262,6 +263,7 @@ A visitor asks to hear when a sold-out item is back; answered alike whether or n
   - `method_tax_group_id` (int|null): more than 0
   - `pickup_locations` (list<SavePickupLocation>): at most 100 items
   - `delivery_schedule` (SaveDeliverySchedule|null)
+  - `classes_kept_to_their_rates` (bool): default false
 
 ### `DELETE /carriers/{id}`
 
@@ -540,6 +542,7 @@ Public: checkout and account forms list the countries before anyone logs in.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `accounts` (string): required; one of optional, required, disabled
+  - `guest_orders` (bool|null)
 
 ## /customers
 

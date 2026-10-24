@@ -129,12 +129,14 @@ final readonly class CustomerService
 
     public function settings(): CustomerSettingsView
     {
-        return new CustomerSettingsView($this->settings->load()->accounts->value, AccountMode::values());
+        $settings = $this->settings->load();
+
+        return new CustomerSettingsView($settings->accounts->value, AccountMode::values(), $settings->guestOrders);
     }
 
     public function updateSettings(UpdateCustomerSettings $command): CustomerSettingsView
     {
-        $this->settings->save(new CustomerSettings(AccountMode::from($command->accounts)));
+        $this->settings->save(new CustomerSettings(AccountMode::from($command->accounts), $command->guestOrders ?? $this->settings->load()->guestOrders));
 
         return $this->settings();
     }
@@ -254,7 +256,7 @@ final readonly class CustomerService
         }
         [$account, $token] = PendingAccount::start($command->email, $command->firstName, $command->lastName, $orderIds, $this->clock->now());
         $this->pending->save($account);
-        $this->accountMail->confirm($account->email(), $account->firstName(), $this->links->confirmUrl($token), $account->expiresAt());
+        $this->accountMail->confirm($account->email(), $account->firstName(), $this->links->confirmUrl($token), $account->expiresAt(), $this->settings->load()->guestOrders);
     }
 
     /**
@@ -281,8 +283,9 @@ final readonly class CustomerService
         $id = $this->accounts->register($account->email(), $command->password, $account->firstName(), $account->lastName());
         $addressed = false;
         // The link came to the email, so its owner made the account: the orders placed with it as a guest join
-        // it, the ones placed while asking first, as the confirmation email says.
-        foreach (array_values(array_unique([...$account->orderIds(), ...$this->orders->guestOrdersOf($account->email())])) as $orderId) {
+        // it, the ones placed while asking first, as the confirmation email says; unless the shop chose only those.
+        $guestOrders = $this->settings->load()->guestOrders ? $this->orders->guestOrdersOf($account->email()) : [];
+        foreach (array_values(array_unique([...$account->orderIds(), ...$guestOrders])) as $orderId) {
             try {
                 $order = $this->orders->order($orderId);
                 $this->orders->giveTo($orderId, $id);

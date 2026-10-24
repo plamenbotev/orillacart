@@ -83,6 +83,8 @@ export interface CustomerPage {
 
 export interface CustomerSettings {
 	accounts: 'optional' | 'required' | 'disabled';
+	/** A new account takes the orders placed with its email as a guest before. */
+	guest_orders: boolean;
 	modes: string[];
 }
 
@@ -299,11 +301,14 @@ export function fetchCustomerSettings(): Promise< CustomerSettings > {
 }
 
 export function saveCustomerSettings(
-	accounts: CustomerSettings[ 'accounts' ]
+	settings: Pick< CustomerSettings, 'accounts' | 'guest_orders' >
 ): Promise< CustomerSettings > {
 	return apiFetch< CustomerSettings >( {
 		path: `${ BASE }/customer-settings`,
 		method: 'PUT',
-		data: { accounts },
+		data: {
+			accounts: settings.accounts,
+			guest_orders: settings.guest_orders,
+		},
 	} );
 }

@@ -12,5 +12,7 @@ final readonly class UpdateCustomerSettings
     public function __construct(
         #[Assert\Choice(callback: [AccountMode::class, 'values'])]
         public string $accounts,
+        /** Null leaves it as it is. */
+        public ?bool $guestOrders = null,
     ) {}
 }

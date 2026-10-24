@@ -58,6 +58,13 @@ class Carrier
     #[ORM\Column(nullable: true)]
     private ?int $methodTaxGroupId = null;
 
+    /**
+     * Goods of a class one of its rates lists go only by the rates that list it: the "Bulky" rate's goods not by
+     * the standard rate that carries every item too. Off, a rate that carries every item carries them as well.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $classesKeptToTheirRates = false;
+
     /** @var Collection<int, ShippingRate> */
     #[ORM\OneToMany(targetEntity: ShippingRate::class, mappedBy: 'carrier', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
@@ -108,6 +115,26 @@ class Carrier
     public function moveTo(int $position): void
     {
         $this->position = $position;
+    }
+
+    public function keepsClassesToTheirRates(): bool
+    {
+        return $this->classesKeptToTheirRates;
+    }
+
+    public function keepClassesToTheirRates(bool $kept): void
+    {
+        $this->classesKeptToTheirRates = $kept;
+    }
+
+    /**
+     * The shipping classes its rates list.
+     *
+     * @return list<int>
+     */
+    public function namedClasses(): array
+    {
+        return array_values(array_unique(array_merge(...array_map(static fn(ShippingRate $rate): array => $rate->details()->classes, $this->rates->toArray()))));
     }
 
     public function method(): ?string

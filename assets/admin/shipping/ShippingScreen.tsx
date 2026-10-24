@@ -215,6 +215,7 @@ const NEW_CARRIER: CarrierInput = {
 	method_tax_group_id: null,
 	pickup_locations: [],
 	delivery_schedule: null,
+	classes_kept_to_their_rates: false,
 };
 
 const NEW_PLACE: Omit< PickupLocation, 'id' > = {
@@ -275,6 +276,7 @@ function CarrierCard( {
 			method_tax_group_id: draft.method_tax_group_id,
 			pickup_locations: pickup ? draft.pickup_locations : [],
 			delivery_schedule: draft.delivery_schedule,
+			classes_kept_to_their_rates: draft.classes_kept_to_their_rates,
 		} )
 			.then( ( saved ) => {
 				setDraft( saved );
@@ -588,15 +590,40 @@ function CarrierCard( {
 					/>
 					{ draft.method === null &&
 						! pickup &&
+						classes.length > 0 && (
+							<CheckboxControl
+								label={ __(
+									'Goods of a class one of these rates is for go only by the rates for it',
+									'orillacart'
+								) }
+								help={ __(
+									'So “Bulky” goods go by the freight rate alone, not also by a rate that carries every item.',
+									'orillacart'
+								) }
+								checked={ draft.classes_kept_to_their_rates }
+								onChange={ ( kept ) =>
+									setDraft( {
+										...draft,
+										classes_kept_to_their_rates: kept,
+									} )
+								}
+							/>
+						) }
+					{ draft.method === null &&
+						! pickup &&
 						draft.rates.map( ( rate, index ) => (
 							<RateFields
 								key={ rate.id ?? `new-${ index }` }
 								rate={ rate }
 								groups={ groups }
 								classes={ classes }
-								others={ draft.rates.filter(
-									( _, i ) => i !== index
-								) }
+								others={
+									draft.classes_kept_to_their_rates
+										? []
+										: draft.rates.filter(
+												( _, i ) => i !== index
+											)
+								}
 								onChange={ ( changed ) =>
 									setRate( index, changed )
 								}
@@ -827,7 +854,7 @@ function RateFields( {
 							{ sprintf(
 								/* translators: %s: shipping class names, "Bulky, Fragile" */
 								__(
-									'%s also go by this rate, as it carries every item, though another rate is for them. To keep them to that rate, untick “Every item” and choose what this one carries.',
+									'%s also go by this rate, as it carries every item, though another rate is for them. To keep them to that rate, untick “Every item” and choose what this one carries, or keep classes to their rates above.',
 									'orillacart'
 								),
 								shared.join( ', ' )

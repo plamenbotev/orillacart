@@ -211,6 +211,21 @@ final class ShippingQuotesTest extends TestCase
         self::assertSame(['Standard', 'Anything'], $this->offered('BG', [new ParcelItem(1, '1', shippingClassId: 99)]), 'a class that is gone counts as none');
     }
 
+    public function testACarrierMayKeepAClassToTheRatesMadeForIt(): void
+    {
+        $bulky = $this->classes->create(new SaveShippingClass('Bulky'))->id;
+        $fragile = $this->classes->create(new SaveShippingClass('Fragile'))->id;
+        $this->carriers->create(new SaveCarrier('Courier', rates: [
+            new SaveShippingRate('Standard', '5'),
+            new SaveShippingRate('Freight', '40', shippingClasses: [$bulky]),
+        ], classesKeptToTheirRates: true));
+
+        self::assertSame(['Standard'], $this->offered('BG', [new ParcelItem(1, '1')]));
+        self::assertSame(['Freight'], $this->offered('BG', [new ParcelItem(1, '1', shippingClassId: $bulky)]), 'not by the standard rate too');
+        self::assertSame(['Standard'], $this->offered('BG', [new ParcelItem(1, '1', shippingClassId: $fragile)]), 'no rate is for fragile goods');
+        self::assertSame([], $this->offered('BG', [new ParcelItem(1, '1'), new ParcelItem(1, '1', shippingClassId: $bulky)]), 'no rate carries both');
+    }
+
     public function testAClassARateCarriesStaysUntilTheRateLetsGo(): void
     {
         $bulky = $this->classes->create(new SaveShippingClass('Bulky'))->id;

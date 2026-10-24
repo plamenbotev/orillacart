@@ -24,6 +24,11 @@ describe( 'CustomersScreen', () => {
 						( request.data as { accounts?: string } | undefined )
 							?.accounts ?? 'optional',
 					modes: [ 'optional', 'required', 'disabled' ],
+					guest_orders:
+						(
+							request.data as
+								{ guest_orders?: boolean } | undefined
+						 )?.guest_orders ?? true,
 				} );
 			}
 			if (
@@ -72,7 +77,7 @@ describe( 'CustomersScreen', () => {
 		expect( mockedFetch ).toHaveBeenCalledWith( {
 			path: '/orillacart/v1/customer-settings',
 			method: 'PUT',
-			data: { accounts: 'required' },
+			data: { accounts: 'required', guest_orders: true },
 		} );
 	} );
 } );

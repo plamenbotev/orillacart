@@ -40,5 +40,7 @@ final readonly class SaveCarrier
         /** The days, and times of day, the customer chooses for delivery; null to leave them out. */
         #[Assert\Valid]
         public ?SaveDeliverySchedule $deliverySchedule = null,
+        /** Goods of a class one of its rates lists go only by the rates that list it. */
+        public bool $classesKeptToTheirRates = false,
     ) {}
 }

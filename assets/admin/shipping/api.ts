@@ -68,6 +68,8 @@ export interface Carrier {
 	pickup_locations: PickupLocation[];
 	/** The days, and times of day, the customer chooses for delivery; null to leave them out. */
 	delivery_schedule: DeliverySchedule | null;
+	/** Goods of a class one of its rates lists go only by the rates that list it. */
+	classes_kept_to_their_rates: boolean;
 }
 
 /** The days, and times of day, a carrier lets the customer choose for delivery. */
@@ -110,6 +112,7 @@ export interface CarrierInput {
 	method_tax_group_id: number | null;
 	pickup_locations: PickupLocation[];
 	delivery_schedule: DeliverySchedule | null;
+	classes_kept_to_their_rates: boolean;
 }
 
 /** A shipping method an add-on brings. */
