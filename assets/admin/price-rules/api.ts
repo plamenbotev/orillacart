@@ -60,15 +60,18 @@ export function fetchRules(): Promise< PriceRule[] > {
 
 export function saveRule(
 	id: number | null,
-	rule: PriceRuleFields
+	rule: PriceRuleFields | PriceRule
 ): Promise< PriceRule > {
+	// A loaded rule also has its id, which the API does not take back.
+	const { id: _id, ...fields } = rule as Partial< PriceRule > &
+		PriceRuleFields;
 	return apiFetch< PriceRule >( {
 		path:
 			id === null
 				? `${ BASE }/price-rules`
 				: `${ BASE }/price-rules/${ id }`,
 		method: id === null ? 'POST' : 'PUT',
-		data: rule,
+		data: fields,
 	} );
 }
 

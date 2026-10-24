@@ -65,6 +65,20 @@ test.describe( 'The admin', () => {
 			page.getByText( 'The coupon E2E-SPRING was saved.' ).first()
 		).toBeVisible();
 		await expect( page.getByText( 'E2E-SPRING' ).first() ).toBeVisible();
+
+		// And changed afterwards: the form sends back only what the API takes.
+		await page
+			.getByRole( 'button', { name: 'E2E-SPRING' } )
+			.first()
+			.click();
+		await page.getByLabel( 'Percentage' ).fill( '15' );
+		await page.getByRole( 'button', { name: 'Save the coupon' } ).click();
+		await expect(
+			page.getByText( 'The coupon E2E-SPRING was saved.' ).first()
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'cell', { name: '15 %' } )
+		).toBeVisible();
 		await removeCoupons( requestUtils );
 	} );
 

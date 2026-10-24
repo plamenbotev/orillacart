@@ -131,12 +131,18 @@ export async function fetchAllCoupons( query: {
 
 export function saveCoupon(
 	id: number | null,
-	coupon: CouponFields
+	coupon: CouponFields | Coupon
 ): Promise< Coupon > {
+	// A loaded coupon also has its id and how often it was used, which the API does not take back.
+	const {
+		id: _id,
+		uses: _uses,
+		...fields
+	} = coupon as Partial< Coupon > & CouponFields;
 	return apiFetch< Coupon >( {
 		path: id === null ? `${ BASE }/coupons` : `${ BASE }/coupons/${ id }`,
 		method: id === null ? 'POST' : 'PUT',
-		data: coupon,
+		data: fields,
 	} );
 }
 
