@@ -634,9 +634,12 @@ Removes a customer's exemption; orders it covered keep it.
 
 ### `POST /customers/{id}/tax-exemptions/{exemption}/approve`
 
-The shop approves a certificate the customer sent: their orders into its states are no longer taxed.
+The shop approves a certificate the customer sent, saying where it holds and until when: their orders into those places are no longer taxed. {regions: ["US-TX"], expires_on: "2027-12-31"|null}
 
 - Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `regions` (list<string>): required; at least 1 items
+  - `expires_on` (string|null): a date, Y-m-d
 
 ### `POST /customers/{id}/tax-exemptions/{exemption}/refuse`
 

@@ -296,7 +296,8 @@ final readonly class DbalReportQueries implements ReportQueries
             'tax' => self::money($row['tax']),
             'refunded' => self::money($row['refunded']),
         ], $this->tables->connection()->fetchAllAssociative(
-            "SELECT t.country, t.region, t.level, t.code, MAX(t.jurisdiction) AS jurisdiction, t.percent, COUNT(DISTINCT t.order_id) AS orders,
+            // A refund's rows count the tax it gave back on its own day, not as an order of that period.
+            "SELECT t.country, t.region, t.level, t.code, MAX(t.jurisdiction) AS jurisdiction, t.percent, COUNT(DISTINCT CASE WHEN t.taxable <> 0 OR t.amount <> 0 THEN t.order_id END) AS orders,
                     SUM(CASE WHEN t.exempt = 1 THEN 0 ELSE t.taxable END) AS taxable, SUM(CASE WHEN t.exempt = 1 THEN t.taxable ELSE 0 END) AS exempt,
                     SUM(t.amount) AS tax, SUM(t.refunded) AS refunded
              FROM {$this->tables->taxes()} t
@@ -307,20 +308,21 @@ final readonly class DbalReportQueries implements ReportQueries
         ));
     }
 
-    public function stateSales(Period $period, string $currency, string $country): array
+    public function stateSales(Period $period, string $country): array
     {
-        $sales = [];
-        foreach ($this->tables->connection()->fetchAllAssociative(
-            "SELECT region, COUNT(*) AS orders, SUM(total - tax) AS sales
+        return array_map(static fn(array $row): array => [
+            'currency' => self::string($row['currency']),
+            'state' => self::string($row['region']),
+            'sales' => self::money($row['sales']),
+            'orders' => self::int($row['orders']),
+        ], $this->tables->connection()->fetchAllAssociative(
+            "SELECT currency, region, COUNT(*) AS orders, SUM(total - tax) AS sales
              FROM {$this->tables->orders()}
-             WHERE counted = 1 AND currency = ? AND country = ? AND region IS NOT NULL AND day BETWEEN ? AND ?
-             GROUP BY region",
-            [$currency, $country, ...$this->days($period)],
-        ) as $row) {
-            $sales[self::string($row['region'])] = ['sales' => self::money($row['sales']), 'orders' => self::int($row['orders'])];
-        }
-
-        return $sales;
+             WHERE counted = 1 AND country = ? AND region IS NOT NULL AND day BETWEEN ? AND ?
+             GROUP BY currency, region
+             ORDER BY region, currency",
+            [$country, ...$this->days($period)],
+        ));
     }
 
     public function consumerSales(Period $period, array $countries): array

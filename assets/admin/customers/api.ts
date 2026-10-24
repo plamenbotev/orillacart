@@ -216,11 +216,13 @@ export function removeTaxExemption(
 
 export function approveTaxExemption(
 	id: number,
-	exemptionId: number
+	exemptionId: number,
+	held: { regions: string[]; expires_on: string | null }
 ): Promise< TaxExemption > {
 	return apiFetch< TaxExemption >( {
 		path: `${ BASE }/customers/${ id }/tax-exemptions/${ exemptionId }/approve`,
 		method: 'POST',
+		data: held,
 	} );
 }
 

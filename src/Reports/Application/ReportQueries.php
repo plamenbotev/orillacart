@@ -90,12 +90,12 @@ interface ReportQueries
     public function taxes(Period $period, string $currency): array;
 
     /**
-     * The period's sales before tax and orders in each state of a country, for economic nexus: what the
-     * customers paid, before refunds.
+     * The period's sales before tax and orders in each state of a country, for economic nexus, by currency: what
+     * the customers paid, before refunds.
      *
-     * @return array<string, array{sales: string, orders: int}> by state code
+     * @return list<array{currency: string, state: string, sales: string, orders: int}>
      */
-    public function stateSales(Period $period, string $currency, string $country): array;
+    public function stateSales(Period $period, string $country): array;
 
     /**
      * What the shop sold to consumers in each of these countries before tax (reverse charge sales left out), by

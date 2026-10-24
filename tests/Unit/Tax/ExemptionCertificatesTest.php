@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Unit\Tax;
 use OrillaCart\Forms\Infrastructure\SafeUploadInspector;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Tax\Application\Dto\ApproveTaxExemption;
 use OrillaCart\Tax\Application\Dto\SendTaxExemption;
 use OrillaCart\Tax\Application\ExemptionCertificates;
 use OrillaCart\Tax\Application\TaxExemptions;
@@ -63,8 +64,15 @@ final class ExemptionCertificatesTest extends TestCase
         self::assertSame(['tax certificate.pdf', 'application/pdf', self::PDF], [$file['name'], $file['type'], file_get_contents($file['path'])]);
         self::assertNull($this->certificates->file($this->customer + 1, $sent->id), 'not another customer\'s');
 
-        $this->certificates->approve($this->customer, $sent->id);
+        try {
+            $this->certificates->approve($this->customer, $sent->id, new ApproveTaxExemption([]));
+            self::fail('everywhere, EU VAT included, is not how a customer\'s certificate is taken');
+        } catch (RuleViolation $e) {
+            self::assertSame('orillacart_invalid_exemption', $e->errorCode);
+        }
+        $this->certificates->approve($this->customer, $sent->id, new ApproveTaxExemption(['us-tx'], '2027-12-31'));
         self::assertSame($sent->id, $this->exemptions->covering($this->customer, new TaxLocation('US', 'TX'))?->id);
+        self::assertSame(['US-TX'], $this->certificates->mine($this->customer)[0]->regions, 'as the shop read it on the copy');
         self::assertSame(['received', 'reviewed'], array_column($this->mail->sent, 'kind'));
         self::assertSame(['shop', 'buyer@example.com'], array_column($this->mail->sent, 'to'));
         self::assertSame(['pending', 'approved'], array_column($this->mail->sent, 'status'));
@@ -118,8 +126,8 @@ final class ExemptionCertificatesTest extends TestCase
     {
         $soon = $this->send(expiresOn: '2026-11-20');
         $later = $this->send(expiresOn: '2027-06-30');
-        $this->certificates->approve($this->customer, $soon->id);
-        $this->certificates->approve($this->customer, $later->id);
+        $this->certificates->approve($this->customer, $soon->id, new ApproveTaxExemption(['US-TX'], '2026-11-20'));
+        $this->certificates->approve($this->customer, $later->id, new ApproveTaxExemption(['US-TX'], '2027-06-30'));
         $this->mail->sent = [];
 
         self::assertSame(1, $this->certificates->remindExpiring());

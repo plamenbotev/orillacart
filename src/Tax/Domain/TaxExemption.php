@@ -176,12 +176,27 @@ class TaxExemption
     }
 
     /**
-     * @throws RuleViolation for one that is not waiting
+     * Approved, where it holds and until when as the shop read them on the copy, when it says so.
+     *
+     * @param list<string>|null $regions
+     *
+     * @throws RuleViolation for one that is not waiting, or a region that is not one
      */
-    public function approve(\DateTimeImmutable $now): void
+    public function approve(\DateTimeImmutable $now, ?array $regions = null, ?\DateTimeImmutable $expiresOn = null, bool $setsEnd = false): void
     {
+        foreach ($regions ?? [] as $region) {
+            if (preg_match(self::REGION, $region) !== 1) {
+                throw new RuleViolation(\sprintf('"%s" is not a country or a state, such as US or US-TX.', $region), 'orillacart_invalid_exemption');
+            }
+        }
         $this->review($now);
         $this->status = ExemptionStatus::Approved;
+        if ($regions !== null) {
+            $this->regions = array_values(array_unique($regions));
+        }
+        if ($setsEnd) {
+            $this->expiresOn = $expiresOn?->setTime(0, 0);
+        }
     }
 
     /**

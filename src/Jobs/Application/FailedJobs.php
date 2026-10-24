@@ -35,7 +35,8 @@ interface FailedJobs
     public function forget(?array $ids): int;
 
     /** Deletes the failed jobs older than $before. */
-    public function prune(\DateTimeImmutable $before): void;
+    /** @param list<string> $keep types whose failed jobs stay */
+    public function prune(\DateTimeImmutable $before, array $keep = []): void;
 
     /**
      * Forgets failed jobs whose payload or error mentions the text, such as an email a privacy request erases.

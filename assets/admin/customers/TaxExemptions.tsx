@@ -257,7 +257,14 @@ function Review( {
 	onError: ( error: unknown ) => void;
 } ) {
 	const [ reason, setReason ] = useState( '' );
+	// As the customer typed them, for the shop to check against the copy.
+	const [ regions, setRegions ] = useState( exemption.regions.join( ', ' ) );
+	const [ expires, setExpires ] = useState( exemption.expires_on ?? '' );
 	const [ busy, setBusy ] = useState( false );
+	const held = regions
+		.split( ',' )
+		.map( ( region ) => region.trim().toUpperCase() )
+		.filter( ( region ) => region !== '' );
 	const run = ( work: Promise< TaxExemption > ) => {
 		setBusy( true );
 		work.then( onReviewed )
@@ -267,12 +274,35 @@ function Review( {
 
 	return (
 		<div>
+			<TextControl
+				__next40pxDefaultSize
+				label={ __( 'Where it holds, as the copy says', 'orillacart' ) }
+				help={ __(
+					'Countries and states, such as US-TX, separated by commas.',
+					'orillacart'
+				) }
+				value={ regions }
+				onChange={ setRegions }
+			/>
+			<TextControl
+				__next40pxDefaultSize
+				type="date"
+				label={ __( 'Its last day, as the copy says', 'orillacart' ) }
+				help={ __( 'Empty when it does not expire.', 'orillacart' ) }
+				value={ expires }
+				onChange={ setExpires }
+			/>
 			<Button
 				variant="primary"
 				isBusy={ busy }
-				disabled={ busy }
+				disabled={ busy || held.length === 0 }
 				onClick={ () =>
-					run( approveTaxExemption( customerId, exemption.id ) )
+					run(
+						approveTaxExemption( customerId, exemption.id, {
+							regions: held,
+							expires_on: expires === '' ? null : expires,
+						} )
+					)
 				}
 			>
 				{ __( 'Approve', 'orillacart' ) }

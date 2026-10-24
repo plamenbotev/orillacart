@@ -225,3 +225,10 @@ Closing the gaps (PLAN 111–116):
   fails and the shop has no rates of its own, checkout refuses rather than charge no tax, whatever the fallback
   says. Fees under an import scheme go as the goods and their shipping do, and prices with the tax taken out of
   a fee are in cents too.
+- **149** (second audit): the Taxes report counts what a refund gave back on the refund's day, by the rate it was
+  charged at, so a period filed stays as filed; a sale under the reverse charge reports its base at nothing
+  (`{country}-RC`), for the intra-EU supplies box and the EC Sales List. The US nexus figures count sales in the
+  shop's other currencies at their exchange rate, as the EU threshold does. A local rate's default filing code is
+  named by where it applies, so replacing rates from a CSV keeps it. A certificate a customer sent is approved
+  with where it holds and its last day as the shop read them (at least one place). Changing the site's time zone
+  rebuilds the reports, and orders whose counting failed are kept and counted as not yet in them.

@@ -231,7 +231,8 @@ final readonly class Reports
                 $previous?->to->format('Y-m-d'),
                 $currency,
                 array_values(array_diff($this->queries->currencies($period), [$currency])),
-                $waiting->due + $waiting->running + $this->jobs->pending(RebuildReports::TYPE),
+                // Orders not counted yet, those whose counting failed included: the report is short of them.
+                $waiting->due + $waiting->running + $this->jobs->failedCount(ProjectOrders::TYPE) + $this->jobs->pending(RebuildReports::TYPE),
             ),
             $period,
             $previous,

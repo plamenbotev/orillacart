@@ -52,16 +52,16 @@ final class TaxExemptionsRestTest extends RestTestCase
         self::assertIsInt($id);
         self::assertSame(['pending', 'TX-778', ['US-TX'], '2030-12-31'], [$this->data($sent)['status'], $this->data($sent)['certificate'], $this->data($sent)['regions'], $this->data($sent)['expires_on']]);
         self::assertArrayNotHasKey('note', $this->data($sent), 'the shop\'s note is its own');
-        self::assertSame(403, $this->request('POST', "/customers/{$customer}/tax-exemptions/{$id}/approve", nonce: true)->get_status(), 'not by the customer');
+        self::assertSame(403, $this->request('POST', "/customers/{$customer}/tax-exemptions/{$id}/approve", ['regions' => ['US-TX']], nonce: true)->get_status(), 'not by the customer');
 
         $this->actAs('administrator');
         $listed = $this->rows($this->data($this->request('GET', "/customers/{$customer}/tax-exemptions")));
         self::assertSame([['pending', 'My certificate.pdf']], array_map(static fn(array $exemption): array => [$exemption['status'], $exemption['file']], $listed));
         self::assertSame(422, $this->request('POST', "/customers/{$customer}/tax-exemptions/{$id}/refuse", ['reason' => ''], nonce: true)->get_status(), 'the customer is told why');
-        $approved = $this->request('POST', "/customers/{$customer}/tax-exemptions/{$id}/approve", nonce: true);
+        $approved = $this->request('POST', "/customers/{$customer}/tax-exemptions/{$id}/approve", ['regions' => ['US-TX'], 'expires_on' => '2030-12-31'], nonce: true);
         self::assertSame(200, $approved->get_status(), (string) wp_json_encode($approved->get_data()));
         self::assertSame(422, $this->request('POST', "/customers/{$customer}/tax-exemptions/{$id}/refuse", ['reason' => 'No'], nonce: true)->get_status(), 'checked already');
-        self::assertSame(422, $this->request('POST', '/customers/' . ($customer + 1000) . "/tax-exemptions/{$id}/approve", nonce: true)->get_status(), 'another customer\'s');
+        self::assertSame(422, $this->request('POST', '/customers/' . ($customer + 1000) . "/tax-exemptions/{$id}/approve", ['regions' => ['US-TX']], nonce: true)->get_status(), 'another customer\'s');
         self::assertContains('[' . get_bloginfo('name') . '] A tax exemption certificate to check', array_column($this->mails, 'subject'));
 
         wp_set_current_user($customer);

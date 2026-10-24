@@ -13,6 +13,7 @@ use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Files\PrivateFiles;
 use OrillaCart\Tax\Application\Dto\AccountTaxExemptionView;
+use OrillaCart\Tax\Application\Dto\ApproveTaxExemption;
 use OrillaCart\Tax\Application\Dto\SendTaxExemption;
 use OrillaCart\Tax\Application\Dto\TaxExemptionView;
 use OrillaCart\Tax\Domain\ExemptionReason;
@@ -133,10 +134,15 @@ final readonly class ExemptionCertificates
     /**
      * @throws RuleViolation for an exemption that is not the customer's, or one checked already
      */
-    public function approve(int $customerId, int $exemptionId): TaxExemptionView
+    public function approve(int $customerId, int $exemptionId, ApproveTaxExemption $command): TaxExemptionView
     {
         $exemption = $this->exemption($customerId, $exemptionId);
-        $exemption->approve($this->clock->now());
+        $regions = array_values(array_filter(array_map(static fn(string $region): string => strtoupper(trim($region)), $command->regions), static fn(string $region): bool => $region !== ''));
+        if ($regions === []) {
+            // Empty holds everywhere, EU VAT included: the shop says so for a certificate a customer sent.
+            throw new RuleViolation('Say where the certificate holds, such as US-TX.', 'orillacart_invalid_exemption');
+        }
+        $exemption->approve($this->clock->now(), $regions, $command->expiresOn === null ? null : new \DateTimeImmutable($command->expiresOn), true);
 
         return $this->reviewed($exemption);
     }

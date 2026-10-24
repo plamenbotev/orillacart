@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Jobs\Infrastructure\Doctrine;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use OrillaCart\Jobs\Application\Dto\FailedJobView;
 use OrillaCart\Jobs\Application\FailedJobs;
 
@@ -96,9 +98,18 @@ final readonly class DbalFailedJobs implements FailedJobs
         return (int) $this->tables->connection()->executeStatement("DELETE FROM {$this->tables->failed()} WHERE payload LIKE ? OR error LIKE ?", [$like, $like]);
     }
 
-    public function prune(\DateTimeImmutable $before): void
+    public function prune(\DateTimeImmutable $before, array $keep = []): void
     {
-        $this->tables->connection()->executeStatement("DELETE FROM {$this->tables->failed()} WHERE failed_at < ?", [$before->format(self::MOMENT)]);
+        if ($keep === []) {
+            $this->tables->connection()->executeStatement("DELETE FROM {$this->tables->failed()} WHERE failed_at < ?", [$before->format(self::MOMENT)]);
+
+            return;
+        }
+        $this->tables->connection()->executeStatement(
+            "DELETE FROM {$this->tables->failed()} WHERE failed_at < ? AND type NOT IN (?)",
+            [$before->format(self::MOMENT), $keep],
+            [ParameterType::STRING, ArrayParameterType::STRING],
+        );
     }
 
     /**

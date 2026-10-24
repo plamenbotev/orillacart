@@ -114,7 +114,11 @@ class TaxRate
             default => TaxJurisdiction::COUNTRY,
         };
         $place = $this->state === null ? $this->country : "{$this->country}-{$this->state}";
-        $code = $this->code ?? ($level === TaxJurisdiction::LOCAL ? $place . '-' . ($this->id ?? 'new') : $place);
+        // A local rate named by where it applies, not by its row: importing the rates again ("replace") keeps their
+        // codes, so the Taxes report keeps one place in one row.
+        $where = [...array_map(mb_strtoupper(...), $this->postcodes), ...array_map(mb_strtolower(...), $this->cities)];
+        sort($where);
+        $code = $this->code ?? ($level === TaxJurisdiction::LOCAL ? $place . '-' . substr(hash('sha256', implode('|', $where)), 0, 8) : $place);
 
         return new TaxJurisdiction($this->country, $this->state, $level, $code, $this->name !== '' ? $this->name : $place);
     }

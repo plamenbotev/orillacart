@@ -60,7 +60,7 @@ final class TaxGroupServiceTest extends TestCase
         self::assertEquals([$changed], $this->service->group($group->id)->rates);
 
         $local = $this->service->changeRate($group->id, $rate->id, new SaveTaxRate('US', 'CA', '1.25', 'Local', 1, [' 900* ', '', '91000-91999'], true));
-        self::assertEquals(new TaxRateView($rate->id, 'US', 'CA', '1.25', 'Local', 1, ['900*', '91000-91999'], true, null, new JurisdictionView('US', 'CA', 'local', 'US-CA-' . $rate->id, 'Local')), $local);
+        self::assertEquals(new TaxRateView($rate->id, 'US', 'CA', '1.25', 'Local', 1, ['900*', '91000-91999'], true, null, new JurisdictionView('US', 'CA', 'local', 'US-CA-' . substr(hash('sha256', '900*|91000-91999'), 0, 8), 'Local')), $local, 'named by where it applies: the same again after an import');
 
         $this->service->removeRate($group->id, $rate->id);
         self::assertSame([], $this->service->group($group->id)->rates);

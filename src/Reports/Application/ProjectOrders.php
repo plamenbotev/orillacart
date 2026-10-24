@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Reports\Application;
 
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
-use OrillaCart\Jobs\Application\JobHandler;
-use OrillaCart\Ordering\Application\Dto\LineTaxView;
+use OrillaCart\Jobs\Application\KeepsFailures;
 use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -28,7 +27,7 @@ use OrillaCart\Shared\Security\Signatures;
  * never the orders, so they stay quick however many orders the shop has. Placed, paid, edited, refunded or
  * deleted, an order is written again from scratch, so the facts never drift from it.
  */
-final readonly class ProjectOrders implements JobHandler
+final readonly class ProjectOrders implements KeepsFailures
 {
     public const string TYPE = 'reports.order';
     private const string GUEST_PURPOSE = 'report-guest';
@@ -159,24 +158,66 @@ final readonly class ProjectOrders implements JobHandler
                 (string) Money::of($refund->amount)->subtract(Money::of($refund->tax)),
                 $refund->tax,
             ), array_filter($this->refunds->forOrder($order->number)->refunds, static fn(RefundView $refund): bool => $refund->status === 'done'))),
-            array_merge([], ...array_map(static fn(OrderLineView $line): array => array_map(static fn(LineTaxView $tax): CollectedTax => new CollectedTax(
-                $order->number,
-                $day,
-                $counted,
-                $order->currency,
-                $tax->country,
-                $tax->region,
-                $tax->level,
-                $tax->code,
-                $tax->jurisdiction,
-                $tax->percent,
-                $line->kind,
-                $tax->taxable,
-                $tax->amount,
-                $tax->refunded,
-                $tax->exempt,
-            ), $line->taxes), [...$order->lines, ...$order->charges])),
+            [...self::collected($order, $day, $counted), ...$this->refundedTaxes($order, $counted, $zone)],
         );
+    }
+
+    /**
+     * The tax each line was charged, on the day of the order; and for a sale under the reverse charge, its base at
+     * nothing, for the intra-EU supplies box and the EC Sales List. What refunds gave back counts on their own day.
+     *
+     * @return list<CollectedTax>
+     */
+    private static function collected(OrderView $order, \DateTimeImmutable $day, bool $counted): array
+    {
+        $rows = [];
+        foreach ([...$order->lines, ...$order->charges] as $line) {
+            foreach ($line->taxes as $tax) {
+                $rows[] = new CollectedTax($order->number, $day, $counted, $order->currency, $tax->country, $tax->region, $tax->level, $tax->code, $tax->jurisdiction, $tax->percent, $line->kind, $tax->taxable, $tax->amount, '0', $tax->exempt);
+            }
+            if ($order->reverseCharge && $line->taxes === []) {
+                $base = (string) Money::of($line->total)->subtract(Money::of($line->discount));
+                $rows[] = new CollectedTax($order->number, $day, $counted, $order->currency, $order->billing->country, null, 'country', $order->billing->country . '-RC', 'Reverse charge (' . $order->billing->country . ')', '0', $line->kind, $base, '0', '0', false);
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The tax each refund gave back, by the rate it was charged at and on the day the refund was made: a refund in
+     * the next quarter lowers that quarter's tax, never a period filed already.
+     *
+     * @return list<CollectedTax>
+     */
+    private function refundedTaxes(OrderView $order, bool $counted, \DateTimeZone $zone): array
+    {
+        $charged = [];
+        foreach ([...$order->lines, ...$order->charges] as $line) {
+            foreach ($line->taxes as $tax) {
+                $charged[$tax->name . '|' . self::percent($tax->percent)] ??= [$tax, $line->kind];
+            }
+        }
+        $rows = [];
+        foreach ($this->refunds->forOrder($order->number)->refunds as $refund) {
+            if ($refund->status !== 'done') {
+                continue;
+            }
+            $day = new \DateTimeImmutable($refund->settledAt ?? $refund->createdAt)->setTimezone($zone)->setTime(0, 0);
+            foreach ($refund->taxes as $given) {
+                [$tax, $kind] = $charged[$given['name'] . '|' . self::percent($given['percent'])] ?? [null, 'item'];
+                if ($tax !== null) {
+                    $rows[] = new CollectedTax($order->number, $day, $counted, $order->currency, $tax->country, $tax->region, $tax->level, $tax->code, $tax->jurisdiction, $tax->percent, $kind, '0', '0', $given['amount'], $tax->exempt);
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    private static function percent(string $percent): string
+    {
+        return rtrim(rtrim($percent, '0'), '.');
     }
 
     /** A line's share of the refunds before tax: its refunded money less the tax in it, as the line's net is of its gross. */

@@ -67,8 +67,8 @@ final class MemoryFailedJobs implements FailedJobs
         return $forgotten;
     }
 
-    public function prune(\DateTimeImmutable $before): void
+    public function prune(\DateTimeImmutable $before, array $keep = []): void
     {
-        $this->jobs = array_filter($this->jobs, static fn(FailedJobView $job): bool => new \DateTimeImmutable($job->failedAt) >= $before);
+        $this->jobs = array_filter($this->jobs, static fn(FailedJobView $job): bool => \in_array($job->type, $keep, true) || new \DateTimeImmutable($job->failedAt) >= $before);
     }
 }

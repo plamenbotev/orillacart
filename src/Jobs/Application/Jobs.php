@@ -82,6 +82,12 @@ final readonly class Jobs
         return $this->queue->waitingByType($this->clock->now())[$type] ?? new WaitingJobs();
     }
 
+    /** How many of the type's jobs failed and wait to be retried. */
+    public function failedCount(string $type): int
+    {
+        return $this->failed->count($type);
+    }
+
     /**
      * The type's latest failed jobs, each with what it was for.
      *
@@ -121,7 +127,8 @@ final readonly class Jobs
     {
         $now = $this->clock->now();
         $this->queue->pruneStats($now->modify(self::KEEP_STATS));
-        $this->failed->prune($now->modify(self::KEEP_FAILED));
+        $keep = array_values(array_filter($this->handlers->types(), fn(string $type): bool => $this->handlers->get($type) instanceof KeepsFailures));
+        $this->failed->prune($now->modify(self::KEEP_FAILED), $keep);
         $this->registry->prune($now->modify(self::KEEP_WORKERS));
     }
 }

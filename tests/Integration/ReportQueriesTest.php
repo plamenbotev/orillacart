@@ -154,11 +154,11 @@ final class ReportQueriesTest extends RestTestCase
         ]);
 
         self::assertSame(
-            ['CA' => ['sales' => '50', 'orders' => 1], 'TX' => ['sales' => '140', 'orders' => 2]],
-            $this->queries->stateSales(new Period(new \DateTimeImmutable('2030-01-01'), new \DateTimeImmutable('2030-12-31')), 'USD', 'US'),
+            [['currency' => 'USD', 'state' => 'CA', 'sales' => '50', 'orders' => 1], ['currency' => 'USD', 'state' => 'TX', 'sales' => '140', 'orders' => 2]],
+            $this->queries->stateSales(new Period(new \DateTimeImmutable('2030-01-01'), new \DateTimeImmutable('2030-12-31')), 'US'),
             'before tax; unpaid orders and other years do not count',
         );
-        self::assertSame([], $this->queries->stateSales(new Period(new \DateTimeImmutable('2030-01-01'), new \DateTimeImmutable('2030-12-31')), 'EUR', 'US'));
+        self::assertSame([], $this->queries->stateSales(new Period(new \DateTimeImmutable('2030-01-01'), new \DateTimeImmutable('2030-12-31')), 'CA'));
     }
 
     /**

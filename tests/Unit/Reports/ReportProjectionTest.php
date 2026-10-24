@@ -24,6 +24,10 @@ use OrillaCart\Reports\Application\RebuildReports;
 use OrillaCart\Reports\Application\ShopCalendar;
 use OrillaCart\Reports\Infrastructure\Events\CountChangedOrders;
 use OrillaCart\Shared\Security\Signatures;
+use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
+use OrillaCart\Tax\Application\Dto\SaveTaxRate;
+use OrillaCart\Tax\Domain\TaxBasis;
+use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Reports\InMemoryReportStore;
 use PHPUnit\Framework\TestCase;
@@ -91,6 +95,29 @@ final class ReportProjectionTest extends TestCase
         $this->store->facts = [];
         $this->shop->jobs->jobs->push(RebuildReports::TYPE, ['after' => 0]);
         self::assertSame([$kept->number], array_keys($this->store->facts));
+    }
+
+    public function testRefundedTaxCountsOnTheRefundsDayAndAReverseChargeSaleItsBase(): void
+    {
+        $vat = $this->shop->taxGroups->create(new SaveTaxGroup('Standard'))->id;
+        $this->shop->taxGroups->addRate($vat, new SaveTaxRate('BG', null, '20', 'VAT'));
+        $this->shop->taxGroups->addRate($vat, new SaveTaxRate('DE', null, '19', 'MwSt'));
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::BillingAddress, $vat, reverseCharge: true));
+        $this->shop->clock->modify('2030-03-30 12:00:00');
+        $order = $this->place(2);
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->clock->modify('+5 days');
+        $this->shop->refunds->refund($order->number, new MakeRefund('9.6', [new RefundLine(0, 1)]), 7);
+
+        // Here the report's job runs at once, inside the refund's transaction; a shop's runs after it, as this does.
+        $this->shop->jobs->jobs->push(ProjectOrders::TYPE, ['order' => $order->number], (string) $order->number);
+        $taxes = array_map(static fn($tax): array => [$tax->day->format('Y-m-d'), $tax->amount, $tax->refunded], $this->store->facts[$order->number]->taxes);
+        self::assertSame([['2030-03-30', '3.2', '0'], ['2030-04-04', '0', '1.6']], $taxes, 'March charged it; April gave part back, and March stays as filed');
+
+        $this->shop->vies->known = ['DE123456789' => 'Muster GmbH'];
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
+        $business = $this->shop->checkout->placeOrder($owner, new PlaceOrder('max@example.de', new AddressData('Max', 'Muster', 'Hauptstr. 1', 'Berlin', '10115', 'DE', '+49 30 000000'), payment: 'bank_transfer', vatNumber: 'DE123456789'));
+        self::assertSame([['DE-RC', '8', '0']], array_map(static fn($tax): array => [$tax->code, $tax->taxable, $tax->amount], $this->store->facts[$business->number]->taxes), 'its base, for the intra-EU supplies');
     }
 
     private function place(int $quantity): PlacedOrderView

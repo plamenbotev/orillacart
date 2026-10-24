@@ -8,6 +8,7 @@ use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Reports\Application\Dto\NexusReport;
 use OrillaCart\Reports\Domain\Period;
+use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Tax\Application\NexusThresholdSettings;
@@ -35,7 +36,29 @@ final readonly class EconomicNexus
         private TaxServices $taxServices,
         private GeographyService $geography,
         private Jobs $jobs,
+        private Currencies $currencies,
     ) {}
+
+    /**
+     * Each state's sales and orders in the period, in the shop's currency: sales in another of its currencies at
+     * its exchange rate now, as the EU threshold counts them; none is left out.
+     *
+     * @return array<string, array{sales: string, orders: int}> by state
+     */
+    private function byState(Period $period, string $currency): array
+    {
+        $states = [];
+        foreach ($this->queries->stateSales($period, self::COUNTRY) as $row) {
+            $sales = Money::of($row['sales']);
+            if ($row['currency'] !== $currency && $this->currencies->isOffered($row['currency'])) {
+                $sales = $this->currencies->back($sales, $row['currency']);
+            }
+            $known = $states[$row['state']] ?? ['sales' => '0', 'orders' => 0];
+            $states[$row['state']] = ['sales' => (string) Money::of($known['sales'])->add($sales), 'orders' => $known['orders'] + $row['orders']];
+        }
+
+        return $states;
+    }
 
     public function report(): NexusReport
     {
@@ -47,7 +70,7 @@ final readonly class EconomicNexus
             'last_year' => Period::of($today->modify('-1 year')->format('Y-01-01'), $today->modify('-1 year')->format('Y-12-31'), $zone),
         ];
         $currency = $this->settings->current()->currency;
-        $sales = array_map(fn(Period $period): array => $this->queries->stateSales($period, $currency, self::COUNTRY), $windows);
+        $sales = array_map(fn(Period $period): array => $this->byState($period, $currency), $windows);
         $thresholds = $this->thresholds->current();
         $own = array_column($thresholds->states, null, 'state');
         $names = array_column(array_map(static fn($state): array => ['code' => $state->code, 'name' => $state->name], $this->geography->states(self::COUNTRY)), 'name', 'code');
