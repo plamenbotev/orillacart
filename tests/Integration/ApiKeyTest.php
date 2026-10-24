@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Platform\Lifecycle\PluginLifecycle;
+
 /**
  * API keys in a real WordPress: made by a shop manager, then the request with one acts as them, within the key's
  * scope; a key the shop has not is refused, and no key manages keys.
@@ -97,6 +99,29 @@ final class ApiKeyTest extends RestTestCase
         self::assertStringStartsWith('orillacart:sealed:1:', $stored, 'a copy of the database alone does not give it away');
         self::assertStringNotContainsString($made['secret'], $stored);
         $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_webhooks");
+    }
+
+    public function testASecretSavedBeforeSealingIsSealedByTheUpdate(): void
+    {
+        $this->actAs('administrator');
+        $made = $this->data($this->request('POST', '/webhooks', ['name' => 'ERP', 'url' => 'https://erp.example.com/hook', 'topics' => ['order.placed']], nonce: true));
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        $table = $wpdb->prefix . 'orillacart_webhooks';
+        $wpdb->update($table, ['secret' => 'plain-old-secret'], ['id' => $made['id']]);
+
+        // The update that brings the sealing runs every step after an update.
+        $lifecycle = self::kernel()->container()->get(PluginLifecycle::class);
+        self::assertInstanceOf(PluginLifecycle::class, $lifecycle);
+        $version = get_option(PluginLifecycle::VERSION_OPTION);
+        update_option(PluginLifecycle::VERSION_OPTION, '0.9.0');
+        $lifecycle->upgradeIfNeeded();
+        self::assertSame($version, get_option(PluginLifecycle::VERSION_OPTION));
+
+        $stored = $wpdb->get_var($wpdb->prepare('SELECT secret FROM %i WHERE id = %d', $table, $made['id']));
+        self::assertIsString($stored);
+        self::assertStringStartsWith('orillacart:sealed:1:', $stored);
+        $wpdb->query("DELETE FROM {$table}");
     }
 
     /** As WordPress finds the user of a request to the shop's API with the key; null for none. */

@@ -41,7 +41,7 @@ final readonly class EmailSettings
         }
         foreach (['sender' => $fromAddress, 'shop' => $shopAddress] as $which => $address) {
             if ($address !== null && filter_var($address, FILTER_VALIDATE_EMAIL) === false) {
-                throw new RuleViolation('The %1$s address "%2$s" is not an email address.', 'orillacart_invalid_email', values: [$which, $address]);
+                throw new RuleViolation($which === 'sender' ? 'The sender address "%s" is not an email address.' : 'The shop address "%s" is not an email address.', 'orillacart_invalid_email', values: [$address]);
             }
         }
         if ($fromName !== null && (trim($fromName) === '' || mb_strlen($fromName) > 100 || preg_match('/[\r\n<>"]/', $fromName) === 1)) {

@@ -69,9 +69,13 @@ final readonly class PluginLifecycle
      * The plugin is deleted: what it can make again goes (its schedules, rules, caches and capabilities), and the
      * shop's data too when the shop asked for that in its settings.
      */
-    public function uninstall(): void
+    /**
+     * @param bool $everything whether the shop's data goes whatever the settings say: a deleted site's does, its
+     *                         download files (kept outside its tables) included
+     */
+    public function uninstall(bool $everything = false): void
     {
-        $removeData = $this->settings->load()->removeDataOnUninstall;
+        $removeData = $everything || $this->settings->load()->removeDataOnUninstall;
         foreach ($this->listeners as $listener) {
             if ($removeData || !$listener instanceof RemovesShopData) {
                 $listener->uninstall();

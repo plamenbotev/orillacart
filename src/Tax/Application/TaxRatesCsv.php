@@ -172,10 +172,10 @@ final readonly class TaxRatesCsv
             Percentage::of($percent),
             mb_substr($name, 0, TaxRateDetails::MAX_NAME_LENGTH),
             (int) $priority,
-            array_map(PostcodePattern::of(...), self::list($postcodes, TaxRateDetails::MAX_POSTCODES)),
+            array_map(PostcodePattern::of(...), self::list($postcodes, TaxRateDetails::MAX_POSTCODES, cities: false)),
             self::flag($compound, false),
             $code === '' ? null : $code,
-            array_values(array_unique(array_map(TaxRateDetails::city(...), self::list($cities, TaxRateDetails::MAX_CITIES)))),
+            array_values(array_unique(array_map(TaxRateDetails::city(...), self::list($cities, TaxRateDetails::MAX_CITIES, cities: true)))),
             self::flag($shipping, true),
         );
     }
@@ -188,7 +188,13 @@ final readonly class TaxRatesCsv
         foreach ($rates as $index => [$row, $rate]) {
             foreach (\array_slice($rates, 0, $index) as [$otherRow, $other]) {
                 if (self::overlap($rate, $other)) {
-                    throw new RuleViolation('Row %1$d and %2$s apply at the same places with priority %3$d. WooCommerce charges only one of them; OrillaCart would charge both. Keep one, or give each its own places.', 'orillacart_overlapping_tax_rates', values: [$row, $otherRow === 0 ? 'a rate the group has' : "row {$otherRow}", $rate->priority]);
+                    throw new RuleViolation(
+                        $otherRow === 0
+                            ? 'Row %1$d and a rate the group has apply at the same places with priority %2$d. WooCommerce charges only one of them; OrillaCart would charge both. Keep one, or give each its own places.'
+                            : 'Rows %1$d and %3$d apply at the same places with priority %2$d. WooCommerce charges only one of them; OrillaCart would charge both. Keep one, or give each its own places.',
+                        'orillacart_overlapping_tax_rates',
+                        values: [$row, $rate->priority, $otherRow],
+                    );
                 }
             }
         }
@@ -228,13 +234,17 @@ final readonly class TaxRatesCsv
     }
 
     /**
+     * @param bool $cities whether the cell lists cities, for the message; postcodes if not
+     *
      * @return list<string>
      */
-    private static function list(string $cell, int $max): array
+    private static function list(string $cell, int $max, bool $cities): array
     {
         $values = array_values(array_filter(array_map(trim(...), explode(';', $cell)), static fn(string $value): bool => $value !== '' && $value !== '*'));
         if (\count($values) > $max) {
-            throw new RuleViolation('a rate can list up to %d of them.', 'orillacart_too_many_postcodes', values: [$max]);
+            throw $cities
+                ? new RuleViolation('A tax rate can list up to %d cities.', 'orillacart_too_many_cities', values: [$max])
+                : new RuleViolation('A tax rate can list up to %d postcodes.', 'orillacart_too_many_postcodes', values: [$max]);
         }
 
         return $values;

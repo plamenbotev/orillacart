@@ -24,7 +24,7 @@ final readonly class AddressRules
     ) {}
 
     /**
-     * @param string $kind          "billing" or "shipping", for the messages
+     * @param 'billing'|'shipping' $kind which address, for the messages
      * @param bool   $soldToCountry whether the shop must sell to the country; the shop's own orders may go anywhere
      *
      * @return AddressData the address, without a state where the country has none
@@ -35,21 +35,26 @@ final readonly class AddressRules
     {
         $sellTo = $this->settings->current()->sellTo;
         if ($soldToCountry && $sellTo !== [] && !\in_array($address->country, $sellTo, true)) {
-            throw new CheckoutRuleViolation('The shop does not sell to the country of the %s address.', 'orillacart_country_not_served', values: [$kind]);
+            throw new CheckoutRuleViolation($kind === 'billing' ? 'The shop does not sell to the country of the billing address.' : 'The shop does not sell to the country of the shipping address.', 'orillacart_country_not_served');
         }
         try {
             $states = $this->geography->states($address->country);
             $this->geography->require($address->country, $states === [] ? null : $address->state);
         } catch (RuleViolation) {
-            throw new CheckoutRuleViolation('The %s address has an unknown country or state.', 'orillacart_invalid_address', values: [$kind]);
+            throw new CheckoutRuleViolation($kind === 'billing' ? 'The billing address has an unknown country or state.' : 'The shipping address has an unknown country or state.', 'orillacart_invalid_address');
         }
         if ($states !== [] && $address->state === null) {
-            throw new CheckoutRuleViolation('Choose the state of the %s address.', 'orillacart_invalid_address', values: [$kind]);
+            throw new CheckoutRuleViolation($kind === 'billing' ? 'Choose the state of the billing address.' : 'Choose the state of the shipping address.', 'orillacart_invalid_address');
         }
         try {
             $postcode = $this->geography->postcode($address->country, $address->postcode);
         } catch (InvalidPostcode $e) {
-            throw new CheckoutRuleViolation('The postcode of the %1$s address is not one of %2$s, which look like %3$s.', 'orillacart_invalid_postcode', $e, values: [$kind, $e->countryName, $e->example]);
+            throw new CheckoutRuleViolation(
+                $kind === 'billing' ? 'The postcode of the billing address is not one of %1$s, which look like %2$s.' : 'The postcode of the shipping address is not one of %1$s, which look like %2$s.',
+                'orillacart_invalid_postcode',
+                $e,
+                values: [$e->countryName, $e->example],
+            );
         }
 
         return new AddressData($address->firstName, $address->lastName, $address->street, $address->city, $postcode, $address->country, $address->phone, $states === [] ? null : $address->state);

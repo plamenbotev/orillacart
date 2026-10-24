@@ -44,6 +44,13 @@ final class TextTest extends TestCase
         self::assertSame('Ред 4: Only 2 of the lamp left.', $translations->text(Text::of('Row %1$d: %2$s', 4, Text::of('Only %1$d of %2$s left.', 2, 'the lamp'))));
     }
 
+    public function testAPercentSignInWordsWithoutValuesIsNoPlaceholder(): void
+    {
+        $translations = new GettextTranslations(static fn(string $text): string => 'С 20 на сто.');
+
+        self::assertSame('С 20 на сто.', $translations->text(new Text('Up to 20 % off.')));
+    }
+
     public function testAValidationMessageThatLostItsParameterGivesWayToTheEnglish(): void
     {
         $translations = new GettextTranslations(static fn(string $text): string => $text === 'This value should not be blank.' ? 'Попълнете полето.' : 'Твърде дълго.');

@@ -10,6 +10,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! (cd "$ROOT" && npx wp-env run cli true >/dev/null 2>&1); then
+    echo "bin/make-pot: wp-env is not running; start it with: npx wp-env start" >&2
+    exit 1
+fi
 mkdir -p "$ROOT/var/i18n" "$ROOT/languages"
 php "$ROOT/bin/twig-strings.php" templates > "$ROOT/var/i18n/templates.php"
 php "$ROOT/bin/message-strings.php" "$ROOT/src" > "$ROOT/var/i18n/messages.php"

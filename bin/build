@@ -6,6 +6,8 @@
 #   bin/build            -> dist/orillacart-<version>.zip
 #   COMPOSER_BIN=... bin/build   (when composer is not on PATH)
 #
+# Needs wp-env running (npx wp-env start): the .pot is written with WP-CLI in its container (bin/make-pot).
+#
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

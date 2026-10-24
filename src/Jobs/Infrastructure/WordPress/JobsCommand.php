@@ -131,6 +131,8 @@ final readonly class JobsCommand implements CliCommand
                     $beat(implode(', ', array_unique(array_map(static fn(QueuedJob $job): string => $job->type, $jobs))), false);
                 });
                 $done += $run->count();
+                // What the batch logged is written now, not when the worker stops hours later.
+                do_action('orillacart_jobs_worked', $run);
                 if ($run->count() > 0) {
                     \WP_CLI::log(\sprintf('Done %d, to retry %d, failed %d.', $run->done, $run->retried, $run->failed));
                 }

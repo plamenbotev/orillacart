@@ -170,7 +170,7 @@ class Coupon
             throw new CouponRuleViolation('A percentage is more than 0 and at most 100.', 'orillacart_invalid_coupon_amount');
         }
         if ($terms->kind === CouponKind::BuyGet && (!$terms->amount->isPercentOff() || $terms->amount->isZero())) {
-            throw new CouponRuleViolation('The items given come more than 0 and at most 100 % off.', 'orillacart_invalid_coupon_amount');
+            throw new CouponRuleViolation('The items given are discounted by more than 0 and at most 100%.', 'orillacart_invalid_coupon_amount');
         }
         if ($terms->kind === CouponKind::BuyGet && ($terms->buyQuantity < 1 || $terms->getQuantity < 1)) {
             throw new CouponRuleViolation('Say how many items to buy and how many it gives, at least 1 each.', 'orillacart_invalid_coupon_quantities');

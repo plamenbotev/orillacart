@@ -141,7 +141,7 @@ final class Plugin
 
     /**
      * A site added to a network where the plugin is on for every site is set up like the others; a deleted
-     * site's tables go with it (WordPress drops only its own).
+     * site's shop goes with it, its tables (WordPress drops only its own) and its download files.
      */
     private static function followTheNetwork(PluginContext $context): void
     {
@@ -157,9 +157,7 @@ final class Plugin
         add_action('wp_uninitialize_site', static function (\WP_Site $site) use ($context): void {
             self::onSite((int) $site->blog_id, $context, static function (Kernel $kernel): void {
                 if (get_option(PluginLifecycle::VERSION_OPTION) !== false) {
-                    $migrator = $kernel->container()->get(DatabaseMigrator::class);
-                    \assert($migrator instanceof DatabaseMigrator);
-                    $migrator->uninstall();
+                    self::lifecycle($kernel)->uninstall(everything: true);
                 }
             });
         }, 5);

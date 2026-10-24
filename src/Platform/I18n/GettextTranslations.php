@@ -28,8 +28,9 @@ final readonly class GettextTranslations implements Translations
         $values = array_map(fn(int|float|string|Text $value): int|float|string => $value instanceof Text ? $this->text($value) : $value, $text->values);
         $translated = $this->translate($text->template);
         // A translation that lost or changed a placeholder would show "%1$s", or leave a value out: the English
-        // sentence with its values reads better than either.
-        if ($translated !== $text->template && self::placeholders($translated) !== self::placeholders($text->template)) {
+        // sentence with its values reads better than either. Words without values have no placeholders, whatever
+        // a "%" in them looks like ("20 % off").
+        if ($text->values !== [] && $translated !== $text->template && self::placeholders($translated) !== self::placeholders($text->template)) {
             $translated = $text->template;
         }
 

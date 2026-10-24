@@ -37,7 +37,7 @@ final readonly class DompdfInvoicePdfs implements InvoicePdfs
             ->setDefaultFont('DejaVu Sans')
             ->setDefaultPaperSize('a4')
             ->setTempDir($temp)
-            ->setFontCache(CacheFolders::path('pdf-fonts', $this->context->version) ?? $temp)
+            ->setFontCache(CacheFolders::path('pdf-fonts', $this->context->build) ?? $temp)
             ->setChroot([$this->context->path('')]);
         // A page takes some 20 MB to print, as editing an image does: ask for what WordPress allows such work.
         if (\function_exists('wp_raise_memory_limit')) {

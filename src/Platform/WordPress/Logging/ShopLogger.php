@@ -11,18 +11,21 @@ use Psr\Log\LogLevel;
  * The shop's logger: everything goes to PHP's error log as before (DebugLogLogger), and warnings and worse are
  * also kept where the shop manager reads them (Shop → Status, Site Health; LoggedProblem), the same message once
  * with how often it happened. They are written when the request ends, outside any transaction that might roll
- * them back with the work that failed, straight through WordPress's database (never Doctrine's, whose entity
+ * them back with the work that failed (a worker's after each batch, and once the first has waited a minute), straight through WordPress's database (never Doctrine's, whose entity
  * manager a failure may have closed).
  */
 final class ShopLogger extends AbstractLogger
 {
     private const array KEPT = [LogLevel::WARNING, LogLevel::ERROR, LogLevel::CRITICAL, LogLevel::ALERT, LogLevel::EMERGENCY];
-    /** A long-running worker writes what it has once this many wait. */
+    /** A long-running worker writes what it has once this many wait, or once the first has waited this long. */
     private const int FLUSH_AT = 50;
+    private const int FLUSH_AFTER_SECONDS = 60;
     private const int MAX_MESSAGE = 2000;
 
-    /** @var array<string, array{level: string, message: string, count: int, at: string}> by fingerprint */
+    /** @var array<string, array{level: string, message: string, count: int, first: string, last: string}> by fingerprint */
     private array $waiting = [];
+    /** When the first of those waiting came. */
+    private ?int $since = null;
     private bool $registered = false;
 
     public function __construct(private readonly DebugLogLogger $debugLog) {}
@@ -43,12 +46,24 @@ final class ShopLogger extends AbstractLogger
         }
         $text = mb_substr($text, 0, self::MAX_MESSAGE);
         $fingerprint = sha1($level . "\n" . $text);
-        $this->waiting[$fingerprint] = ['level' => $level, 'message' => $text, 'count' => ($this->waiting[$fingerprint]['count'] ?? 0) + 1, 'at' => gmdate('Y-m-d H:i:s')];
+        $now = gmdate('Y-m-d H:i:s');
+        $this->waiting[$fingerprint] = [
+            'level' => $level,
+            'message' => $text,
+            'count' => ($this->waiting[$fingerprint]['count'] ?? 0) + 1,
+            'first' => $this->waiting[$fingerprint]['first'] ?? $now,
+            'last' => $now,
+        ];
+        $this->since ??= time();
         if (!$this->registered) {
             $this->registered = true;
             register_shutdown_function($this->flush(...));
+            // And after each batch a worker runs.
+            if (\function_exists('add_action')) {
+                add_action('orillacart_jobs_worked', $this->flush(...));
+            }
         }
-        if (\count($this->waiting) >= self::FLUSH_AT) {
+        if (\count($this->waiting) >= self::FLUSH_AT || time() - $this->since >= self::FLUSH_AFTER_SECONDS) {
             $this->flush();
         }
     }
@@ -62,6 +77,7 @@ final class ShopLogger extends AbstractLogger
         }
         $waiting = $this->waiting;
         $this->waiting = [];
+        $this->since = null;
         $table = $wpdb->prefix . 'orillacart_problems';
         $suppressed = $wpdb->suppress_errors(true);
         foreach ($waiting as $fingerprint => $problem) {
@@ -72,8 +88,8 @@ final class ShopLogger extends AbstractLogger
                 $problem['level'],
                 $problem['message'],
                 $problem['count'],
-                $problem['at'],
-                $problem['at'],
+                $problem['first'],
+                $problem['last'],
             ));
         }
         $wpdb->suppress_errors($suppressed);

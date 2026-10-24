@@ -73,8 +73,8 @@ final class TaxRatesCsvTest extends TestCase
             "US,CA,,,seven,CA,1,0,1,\n" => '"seven" is not a rate',
             "US,CA,,,7.25,CA,1,maybe,1,\n" => '"maybe" is not 1 or 0',
             "US,CA,abc!,,7.25,CA,1,0,1,\n" => 'not a postcode pattern',
-            "US,,,,6,US,1,0,1,\nUS,CA,90001,,7.25,CA,1,0,1,\n" => 'Row 2 and row 1 apply at the same places with priority 1',
-            "US,CA,,,6,CA,1,0,1,\nUS,CA,90001,,1,LA,1,0,1,\n" => 'Row 2 and row 1',
+            "US,,,,6,US,1,0,1,\nUS,CA,90001,,7.25,CA,1,0,1,\n" => 'Rows 2 and 1 apply at the same places with priority 1',
+            "US,CA,,,6,CA,1,0,1,\nUS,CA,90001,,1,LA,1,0,1,\n" => 'Rows 2 and 1',
             "DE,,10115,,1,Berlin,0,0,1,\n" => 'Row 1 and a rate the group has',
             "Country code,State code\n" => 'The file has no rates',
         ] as $file => $refusal) {

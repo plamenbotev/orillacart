@@ -174,7 +174,7 @@ final readonly class BulkEdits
             throw new CatalogRuleViolation('Give the price change an amount, such as 19.90 or 10 for 10 %.', 'orillacart_invalid_bulk_edit');
         }
         if ($edit->sale !== null && (!\in_array($edit->sale, BulkEdit::SALES, true) || ($edit->sale !== 'remove' && !$amount($edit->saleBy)))) {
-            throw new CatalogRuleViolation('Give the sale an amount, such as 15 or 20 for 20 % off.', 'orillacart_invalid_bulk_edit');
+            throw new CatalogRuleViolation('Give the sale an amount, such as 15, or 20 for a sale of 20%.', 'orillacart_invalid_bulk_edit');
         }
         if (\in_array($edit->price, ['raise_percent', 'lower_percent'], true) && Money::of($edit->priceBy)->compare(Money::of('1000')) > 0 || $edit->sale === 'percent_off' && Money::of($edit->saleBy)->compare(Money::of('100')) > 0) {
             throw new CatalogRuleViolation('A percentage off is at most 100.', 'orillacart_invalid_bulk_edit');

@@ -630,10 +630,10 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertNotSame('', $this->accountToken('ada@example.com'));
     }
 
-    public function testOneAddressGetsSoManyAccountEmailsWhoeverAsks(): void
+    public function testOneAddressGetsSoManyAccountEmailsFromOneCaller(): void
     {
-        // The test site counts none: the shop's limit for one address, three a day.
-        $limits = static fn(): array => ['account_emails' => [3, 86400]];
+        // The test site counts none: the shop's limits for one address, three a day from one caller.
+        $limits = static fn(): array => ['account_emails' => [3, 86400], 'account_emails_any' => [20, 86400]];
         add_filter('orillacart_rate_limits', $limits, 20);
         $email = 'someone-' . bin2hex(random_bytes(4)) . '@example.com';
         $answers = [];
@@ -641,12 +641,18 @@ final class OrdersAndCustomersRestTest extends RestTestCase
             for ($i = 0; $i < 4; ++$i) {
                 $answers[] = $this->request('POST', '/accounts', ['email' => $email, 'first_name' => 'Visit', 'last_name' => 'cheap.example'], nonce: true)->get_status();
             }
+            $flooded = \count(array_filter($this->sentMail(), static fn(array $mail): bool => $mail['to'] === $email));
+            // The person themselves, from elsewhere, still gets their link.
+            $_SERVER['REMOTE_ADDR'] = '2001:db8::' . implode(':', str_split(bin2hex(random_bytes(8)), 4));
+            $answers[] = $this->request('POST', '/accounts', ['email' => $email, 'first_name' => 'Ada', 'last_name' => 'Lovelace'], nonce: true)->get_status();
         } finally {
             remove_filter('orillacart_rate_limits', $limits, 20);
+            unset($_SERVER['REMOTE_ADDR']);
         }
 
-        self::assertSame([202, 202, 202, 202], $answers, 'the answer never changes');
-        self::assertCount(3, array_filter($this->sentMail(), static fn(array $mail): bool => $mail['to'] === $email), 'the shop\'s mail is not a way to flood someone');
+        self::assertSame([202, 202, 202, 202, 202], $answers, 'the answer never changes');
+        self::assertSame(3, $flooded, 'the shop\'s mail is not a way to flood someone');
+        self::assertCount(4, array_filter($this->sentMail(), static fn(array $mail): bool => $mail['to'] === $email), 'nor to keep them from their account');
         self::assertStringNotContainsString('cheap.example', implode(' ', array_column($this->mails, 'message')), 'what they typed as a name is not in the email');
     }
 

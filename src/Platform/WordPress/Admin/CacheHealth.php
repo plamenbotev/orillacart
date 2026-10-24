@@ -29,7 +29,7 @@ final readonly class CacheHealth implements HealthCheck
 
     public function check(): HealthStatus
     {
-        $missing = array_values(array_filter(CacheFolders::KINDS, fn(string $kind): bool => CacheFolders::path($kind, $this->context->version) === null));
+        $missing = array_values(array_filter(CacheFolders::KINDS, fn(string $kind): bool => CacheFolders::path($kind, $this->context->build) === null));
         if ($missing !== []) {
             return HealthStatus::recommended(
                 __('The shop cannot keep what it compiles', 'orillacart'),
@@ -48,7 +48,7 @@ final readonly class CacheHealth implements HealthCheck
     {
         $fields = [];
         foreach (CacheFolders::KINDS as $kind) {
-            $path = CacheFolders::path($kind, $this->context->version);
+            $path = CacheFolders::path($kind, $this->context->build);
             $fields[$kind] = ['label' => \sprintf('%s cache', ucfirst($kind)), 'value' => $path ?? __('not writable', 'orillacart')];
         }
 

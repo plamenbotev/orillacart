@@ -11,6 +11,7 @@ use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Security\Authorization;
+use OrillaCart\Shared\Http\Security\ClientAddress;
 use OrillaCart\Shared\Http\Security\RateLimiter;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -37,8 +38,12 @@ final readonly class RegisterAccountAction implements RequestHandlerInterface
         }
 
         $command = $this->input->body($request, RegisterAccount::class);
-        // Asked for one address too often, by anyone: the answer stays the same, and no more mail goes.
-        if ($this->limits->hit('account_emails', 'email:' . hash('sha256', strtolower(trim($command->email)))) === null) {
+        // Asked for one address too often: the answer stays the same, and no more mail goes. Counted by who asks,
+        // so someone asking for another's address cannot keep that person from their own account for a day; and
+        // by the address, more loosely, so many callers cannot flood it either.
+        $address = hash('sha256', strtolower(trim($command->email)));
+        $caller = ClientAddress::of($request->getServerParams());
+        if ($this->limits->hit('account_emails', "email:{$address}|ip:{$caller}") === null && $this->limits->hit('account_emails_any', "email:{$address}") === null) {
             $this->customers->requestAccount($command);
         }
 
