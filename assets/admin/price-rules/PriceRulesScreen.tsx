@@ -16,7 +16,11 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { type Coupon, deleteCoupon, fetchAllCoupons } from '../coupons/api';
-import { CouponForm, discountLabel } from '../coupons/CouponsScreen';
+import {
+	CouponForm,
+	couponFields,
+	discountLabel,
+} from '../coupons/CouponsScreen';
 import { errorMessage } from '../shared/api';
 import {
 	fetchTerms,
@@ -115,7 +119,17 @@ export function PriceRulesScreen() {
 	} );
 
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: errorMessage( error ) } );
+		setMessage( {
+			status: 'error',
+			// Its own rules' fields, and the automatic discounts', which are coupons.
+			text: errorMessage( error, {
+				...couponFields(),
+				name: __( 'Name', 'orillacart' ),
+				/* translators: %d: its number in the list */
+				'tiers[]': __( 'Tier %d', 'orillacart' ),
+				'tiers[].min_quantity': __( 'From', 'orillacart' ),
+			} ),
+		} );
 	const load = () => {
 		fetchRules().then( setRules ).catch( fail );
 	};

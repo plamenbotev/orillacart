@@ -16,7 +16,7 @@ import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { type Named, ProductTokens, TermTokens } from '../shared/CatalogTokens';
-import { errorMessage } from '../shared/api';
+import { errorMessage, type FieldLabels } from '../shared/api';
 import { fromLocal, shopDateTime, toLocal } from '../shared/dates';
 import { useConfirm } from '../shared/useConfirm';
 import { useLeaveGuard } from '../shared/useLeaveGuard';
@@ -154,6 +154,31 @@ const FIELDS: Field< Coupon >[] = [
  * The Shop → Coupons screen: the codes customers enter at the cart or checkout, what each takes off, on which
  * items, when and for whom it holds, and how often it may be used.
  */
+/** The coupon form's words for the fields the API names, for its refusals. */
+export function couponFields(): FieldLabels {
+	return {
+		code: __( 'Code', 'orillacart' ),
+		description: __( 'Description', 'orillacart' ),
+		kind: __( 'Discount', 'orillacart' ),
+		amount: __( 'Discount', 'orillacart' ),
+		cap: __( 'At most (optional)', 'orillacart' ),
+		gift_product_id: __( 'The gift', 'orillacart' ),
+		get_product_ids: __( 'Products given', 'orillacart' ),
+		get_category_ids: __( 'Categories given', 'orillacart' ),
+		product_ids: __( 'Products', 'orillacart' ),
+		category_ids: __( 'Categories', 'orillacart' ),
+		brand_ids: __( 'Brands', 'orillacart' ),
+		excluded_product_ids: __( 'Never for these products', 'orillacart' ),
+		excluded_category_ids: __( 'Never for these categories', 'orillacart' ),
+		starts_at: __( 'Starts', 'orillacart' ),
+		ends_at: __( 'Ends', 'orillacart' ),
+		min_subtotal: __( 'Smallest order (before tax)', 'orillacart' ),
+		max_subtotal: __( 'Largest order', 'orillacart' ),
+		usage_limit: __( 'Uses in all (optional)', 'orillacart' ),
+		per_customer_limit: __( 'Uses per customer (optional)', 'orillacart' ),
+	};
+}
+
 export function CouponsScreen() {
 	const [ confirmation, confirm ] = useConfirm();
 	const [ view, setView ] = useState< View >( {
@@ -176,7 +201,10 @@ export function CouponsScreen() {
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: errorMessage( error ) } );
+		setMessage( {
+			status: 'error',
+			text: errorMessage( error, couponFields() ),
+		} );
 	const load = useCallback( () => {
 		fetchCoupons( {
 			search: view.search === '' ? undefined : view.search,

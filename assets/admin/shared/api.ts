@@ -36,12 +36,22 @@ export function toApiError( error: unknown ): ApiError {
 }
 
 /**
- * What to tell the shop of a failure: the server's message and, when it refused fields, each of them with why
- * ("Some fields are not valid. Price decimals: …"), for screens that do not show the refusals beside their fields.
- *
- * @param error Whatever apiFetch rejected with.
+ * The words a form shows for the fields the API names, so a refusal reads as the form does: `price` →
+ * "Price". A list's items are "rates[].price"; "rates[]" names one of them, with %d for its number ("Rate %d").
  */
-export function errorMessage( error: unknown ): string {
+export type FieldLabels = Record< string, string >;
+
+/**
+ * What to tell the shop of a failure: the server's message and, when it refused fields, each of them with why
+ * ("Some fields are not valid. Price: …"), for screens that do not show the refusals beside their fields.
+ *
+ * @param error  Whatever apiFetch rejected with.
+ * @param labels The form's words for its fields; without one, the field's API name in words.
+ */
+export function errorMessage(
+	error: unknown,
+	labels: FieldLabels = {}
+): string {
 	const { message, data } = toApiError( error );
 	const violations = data?.violations ?? [];
 	if ( violations.length === 0 ) {
@@ -53,17 +63,29 @@ export function errorMessage( error: unknown ): string {
 		...violations.map( ( violation ) =>
 			violation.field === ''
 				? violation.message
-				: `${ fieldName( violation.field ) }: ${ violation.message }`
+				: `${ fieldName( violation.field, labels ) }: ${
+						violation.message
+					}`
 		),
 	].join( ' ' );
 }
 
 /**
- * A field as the API names it, in words: price_decimals → "Price decimals", rates[0].price → "Rates 1 price".
+ * A field as the form calls it, or as the API names it, in words: price_decimals → "Price decimals",
+ * rates[0].price → "Rate 1: Price" with labels for them, "Rates 1 price" without.
  *
- * @param field The field's path.
+ * @param field  The field's path.
+ * @param labels The form's words for its fields.
  */
-export function fieldName( field: string ): string {
+export function fieldName( field: string, labels: FieldLabels = {} ): string {
+	const label = labels[ field.replace( /\[\d+\]/g, '[]' ) ];
+	if ( label !== undefined ) {
+		const item = /^([a-z_]+)\[(\d+)\]/.exec( field );
+		const list = item ? labels[ `${ item[ 1 ] }[]` ] : undefined;
+		return item && list !== undefined
+			? `${ list.replace( '%d', String( Number( item[ 2 ] ) + 1 ) ) }: ${ label }`
+			: label;
+	}
 	const words = field
 		.replace(
 			/\[(\d+)\]/g,

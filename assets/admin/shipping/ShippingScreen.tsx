@@ -87,7 +87,29 @@ export function ShippingScreen() {
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: errorMessage( error ) } );
+		setMessage( {
+			status: 'error',
+			text: errorMessage( error, {
+				name: __( 'Name', 'orillacart' ),
+				/* translators: %d: its number in the list */
+				'rates[]': __( 'Rate %d', 'orillacart' ),
+				'rates[].name': __( 'Rate name', 'orillacart' ),
+				'rates[].price': __( 'Price', 'orillacart' ),
+				'rates[].regions': __( 'Ships to', 'orillacart' ),
+				'rates[].excluded_regions': __( 'Except to', 'orillacart' ),
+				'rates[].postcodes': __( 'Postcodes', 'orillacart' ),
+				'rates[].excluded_postcodes': __(
+					'Except postcodes',
+					'orillacart'
+				),
+				/* translators: %d: its number in the list */
+				'pickup_locations[]': __( 'Place %d', 'orillacart' ),
+				'pickup_locations[].name': __( 'Place name', 'orillacart' ),
+				'pickup_locations[].address': __( 'Address', 'orillacart' ),
+				'pickup_locations[].hours': __( 'Opening hours', 'orillacart' ),
+				'pickup_locations[].fee': __( 'Fee', 'orillacart' ),
+			} ),
+		} );
 
 	useEffect( () => {
 		Promise.all( [
