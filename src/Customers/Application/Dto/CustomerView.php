@@ -46,4 +46,10 @@ final readonly class CustomerView
 
         return new self($record->id, $record->email, $record->firstName, $record->lastName, $record->registeredAt, $book->billing(), $book->shipping(), $orders, $groupIds, $saved, $lifetimeValue, $record->cartReminders, $newsletter);
     }
+
+    /** As the customer sees their own account: without the shop's groups and what they spent, which are the shop's. */
+    public function forCustomer(): self
+    {
+        return new self($this->id, $this->email, $this->firstName, $this->lastName, $this->registeredAt, $this->billing, $this->shippingAddress, $this->orders, [], $this->addresses, null, $this->cartReminders, $this->newsletter);
+    }
 }

@@ -46,6 +46,16 @@ class OrderNote
         $this->text = $text;
     }
 
+    /**
+     * Takes the person's details out of the note, as erasing them asks: their email, names, phone and street.
+     *
+     * @param list<string> $personal
+     */
+    public function redact(array $personal): void
+    {
+        $this->text = str_ireplace($personal, '[erased]', $this->text);
+    }
+
     public function id(): int
     {
         return $this->id ?? throw new \LogicException('The note has no id until it is saved.');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Fixtures\Checkout;
 
+use OrillaCart\Cart\Application\AbandonedCartPersonalData;
 use OrillaCart\Cart\Application\AbandonedCarts;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Infrastructure\Events\ForgetDeletedCustomers as ForgetDeletedCarts;
@@ -45,6 +46,7 @@ use OrillaCart\Customers\Domain\Event\CustomerDeleted;
 use OrillaCart\Customers\Domain\Event\CustomerErased;
 use OrillaCart\Customers\Domain\Event\PersonErased;
 use OrillaCart\Customers\Infrastructure\GroupsOfShoppers;
+use OrillaCart\Customers\Infrastructure\TaggedPersonalDataSources;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Forms\Application\FieldAnswers;
 use OrillaCart\Forms\Application\FormService;
@@ -53,6 +55,7 @@ use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Forms\Infrastructure\SafeUploadInspector;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\GiftCards\Application\GiftCardPayments;
+use OrillaCart\GiftCards\Application\GiftCardPersonalData;
 use OrillaCart\GiftCards\Application\GiftCardSales;
 use OrillaCart\GiftCards\Application\GiftCardService;
 use OrillaCart\GiftCards\Infrastructure\Events\GiftCardsWithOrders;
@@ -453,7 +456,7 @@ final class TestShop
         $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)(...));
         $this->events->addListener(CustomerErased::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)->erased(...));
         $this->events->addListener(PersonErased::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)->personErased(...));
-        $this->personalData = new PersonalData($this->orders, $this->customers, $this->customerNotes, $this->newsletter, $this->accounts, $this->catalog);
+        $this->personalData = new PersonalData($this->orders, $this->customers, $this->customerNotes, $this->newsletter, $this->accounts, $this->catalog, sources: new TaggedPersonalDataSources([new AbandonedCartPersonalData($this->abandonedCartRecords), new GiftCardPersonalData($this->giftCardRecords)]));
         $this->customerGroups = new CustomerGroups($this->customerGroupRecords, $this->accounts);
         $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger);
         $this->couponRecords = new InMemoryCouponRepository($this->transactions);

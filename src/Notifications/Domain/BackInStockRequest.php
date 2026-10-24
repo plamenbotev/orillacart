@@ -51,6 +51,11 @@ class BackInStockRequest
         return $this->email;
     }
 
+    public function at(): \DateTimeImmutable
+    {
+        return $this->at;
+    }
+
     public function locale(): ?string
     {
         return $this->locale;

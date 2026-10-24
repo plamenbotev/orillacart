@@ -16,8 +16,8 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * What the shop holds of a person, for WordPress's privacy tools (Tools → Export and Erase Personal Data): their
- * orders, their account's addresses, the shop's notes about them and their newsletter sign-up, given out or
- * erased a page at a time. Erasing anonymises orders, which the books keep (see Order::anonymise()), and forgets
+ * orders, their account's addresses, wishlist and the shop's notes about them, an account they asked for, their
+ * newsletter sign-up, and what each area keeps of them (PersonalDataSource), given out or erased a page at a time. Erasing anonymises orders, which the books keep (see Order::anonymise()), and forgets
  * the rest.
  */
 final readonly class PersonalData
@@ -32,6 +32,7 @@ final readonly class PersonalData
         private Accounts $accounts,
         private ShopCatalog $catalog,
         private ?EventDispatcherInterface $events = null,
+        private ?PersonalDataSources $sources = null,
     ) {}
 
     /**
@@ -62,6 +63,11 @@ final readonly class PersonalData
             foreach ($id === null ? [] : $this->notes->of($id) as $note) {
                 $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-note-' . $note->id, 'data' => [['name' => 'The shop\'s note', 'value' => $note->text]]];
             }
+            $pending = $this->customers->pendingAccount($email);
+            if ($pending !== null) {
+                $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-requested', 'data' => [['name' => 'Account asked for, not confirmed yet', 'value' => $pending]]];
+            }
+            array_push($items, ...($this->sources?->of($email, $id) ?? []));
         }
         $orders = $this->orders->ofPerson($email, $this->customers->customerIdOf($email), $page, self::PER_PAGE);
         foreach ($orders as $order) {

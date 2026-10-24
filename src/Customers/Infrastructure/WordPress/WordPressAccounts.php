@@ -159,6 +159,7 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
         remove_role(self::ROLE);
         delete_metadata('user', 0, self::ADDRESSES, '', true);
         delete_metadata('user', 0, self::NO_CART_REMINDERS, '', true);
+        delete_metadata('user', 0, self::WISHLIST, '', true);
     }
 
     private function record(\WP_User $user): CustomerRecord

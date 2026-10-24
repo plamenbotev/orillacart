@@ -28,6 +28,6 @@ final readonly class ShowAccountAction implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->customers->customer($this->authorization->userId() ?? throw HttpException::unauthorized()));
+        return $this->responder->ok($this->customers->customer($this->authorization->userId() ?? throw HttpException::unauthorized())->forCustomer());
     }
 }

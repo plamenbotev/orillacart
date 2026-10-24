@@ -29,6 +29,6 @@ final readonly class RemoveAccountAddressAction implements RequestHandlerInterfa
     {
         $id = $this->authorization->userId() ?? throw HttpException::unauthorized();
 
-        return $this->responder->ok($this->customers->removeAddress($id, PathParameter::string($request, 'address')));
+        return $this->responder->ok($this->customers->removeAddress($id, PathParameter::string($request, 'address'))->forCustomer());
     }
 }

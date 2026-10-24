@@ -178,6 +178,10 @@ final readonly class OrderEmails
     public function send(int $orderId, EmailKind $kind, ?int $noteId = null, ?array $refund = null): void
     {
         $order = $this->orders->order($orderId);
+        if ($order->anonymised && !$kind->isForShop()) {
+            // Erased since it was queued: there is no one to write to any more.
+            return;
+        }
         $note = match ($kind) {
             EmailKind::CustomerNote => self::noteText($order, $noteId),
             EmailKind::OrderAttention => $order->attention,

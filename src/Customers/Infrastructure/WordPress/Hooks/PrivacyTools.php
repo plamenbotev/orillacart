@@ -81,7 +81,12 @@ final readonly class PrivacyTools
                 /* translators: %d: number of days */
                 __('A cookie remembers your cart for %d days.', 'orillacart'),
                 new \DateInterval(CartService::KEEP_FOR)->d,
-            ) . '</p>',
+            ) . '</p>'
+            . '<p>' . __('If you give your email at checkout and do not finish, we may remind you of your cart once, if you agreed to it; you can say no at checkout or in your account.', 'orillacart') . '</p>'
+            . '<p>' . __('If you sign up for our newsletter we keep your email address, when you signed up and what you agreed to, and may pass them to the mailing list service we use. You can unsubscribe at any time, from any newsletter or in your account.', 'orillacart') . '</p>'
+            . '<p>' . __('If you ask to be told when a product is back in stock, we keep your email address until we have told you, or for half a year.', 'orillacart') . '</p>'
+            . '<p>' . __('Files you upload with an order, and tax exemption certificates you send, are kept privately with the order or your account, for as long as the order or the exemption needs them.', 'orillacart') . '</p>'
+            . '<p>' . __('Gift cards keep the name, email address and message of the person they are for.', 'orillacart') . '</p>',
         ));
     }
 }

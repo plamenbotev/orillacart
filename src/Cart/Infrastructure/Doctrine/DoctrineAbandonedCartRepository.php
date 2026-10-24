@@ -95,6 +95,11 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
             ->getResult();
     }
 
+    public function ofEmail(string $email): array
+    {
+        return $this->entityManager->getRepository(AbandonedCart::class)->findBy(['email' => $email], ['abandonedAt' => 'ASC']);
+    }
+
     public function forgetEmail(string $email): int
     {
         $carts = $this->entityManager->createQueryBuilder()

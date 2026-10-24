@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform;
 
+use OrillaCart\Customers\Application\PersonalDataSource;
 use OrillaCart\Jobs\Application\JobHandler;
 use OrillaCart\Ordering\Application\OrderLookup;
 use OrillaCart\Ordering\Application\OrderMark;
@@ -89,6 +90,7 @@ final class Kernel
         $builder->registerForAutoconfiguration(OrderLookup::class)->addTag(OrderLookup::LOOKUP_TAG);
         $builder->registerForAutoconfiguration(OrderMark::class)->addTag(OrderMark::MARK_TAG);
         $builder->registerForAutoconfiguration(TaxGroupUse::class)->addTag(TaxGroupUse::TAG);
+        $builder->registerForAutoconfiguration(PersonalDataSource::class)->addTag(PersonalDataSource::TAG);
 
         $builder->addCompilerPass(new RoutePass());
         $builder->addCompilerPass(new HookPass());

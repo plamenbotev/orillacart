@@ -77,6 +77,11 @@ final class InMemoryAbandonedCartRepository implements AbandonedCartRepository
         return \array_slice($left, 0, $limit);
     }
 
+    public function ofEmail(string $email): array
+    {
+        return array_values(array_filter($this->abandoned, static fn(AbandonedCart $cart): bool => $cart->email() === $email));
+    }
+
     public function forgetEmail(string $email): int
     {
         $forgotten = 0;

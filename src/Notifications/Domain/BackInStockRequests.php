@@ -18,6 +18,9 @@ interface BackInStockRequests
 
     public function remove(BackInStockRequest $request): void;
 
+    /** @return list<BackInStockRequest> the email's, for its owner's export */
+    public function ofEmail(string $email): array;
+
     /** @return int how many were forgotten */
     public function forgetEmail(string $email): int;
 

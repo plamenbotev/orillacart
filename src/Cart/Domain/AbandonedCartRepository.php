@@ -33,6 +33,9 @@ interface AbandonedCartRepository
     public function latest(\DateTimeImmutable $from, \DateTimeImmutable $until, string $currency, int $limit): array;
 
     /** Forgets an email: in what was left, and in the carts that keep it. */
+    /** @return list<AbandonedCart> the carts left with this email, for its owner's export */
+    public function ofEmail(string $email): array;
+
     public function forgetEmail(string $email): int;
 
     /** Forgets the emails of carts left before the moment: the carts are gone. */

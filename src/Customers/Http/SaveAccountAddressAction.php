@@ -34,6 +34,6 @@ final readonly class SaveAccountAddressAction implements RequestHandlerInterface
         $id = $this->authorization->userId() ?? throw HttpException::unauthorized();
         $address = $request->getAttribute('address');
 
-        return $this->responder->ok($this->customers->saveAddress($id, \is_string($address) ? $address : null, $this->input->body($request, SaveAddress::class)));
+        return $this->responder->ok($this->customers->saveAddress($id, \is_string($address) ? $address : null, $this->input->body($request, SaveAddress::class))->forCustomer());
     }
 }

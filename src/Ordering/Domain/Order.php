@@ -1354,6 +1354,16 @@ class Order
         if ($this->anonymisedAt !== null) {
             return false;
         }
+        // The notes go before the details do: "sent to ada@example.com" keeps nobody's email.
+        $personal = [$this->email];
+        foreach ([$this->billing, $this->shippingAddress] as $address) {
+            array_push($personal, trim($address->firstName() . ' ' . $address->lastName()), $address->lastName(), $address->phone(), $address->street());
+        }
+        $personal = array_values(array_unique(array_filter($personal, static fn(string $part): bool => mb_strlen(trim($part)) >= 3)));
+        usort($personal, static fn(string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));
+        foreach ($this->notes as $note) {
+            $note->redact($personal);
+        }
         $this->email = 'anonymised@invalid';
         $this->billing = $this->billing->anonymised();
         $this->shippingAddress = $this->shippingAddress->isEmpty() ? $this->shippingAddress : $this->shippingAddress->anonymised();

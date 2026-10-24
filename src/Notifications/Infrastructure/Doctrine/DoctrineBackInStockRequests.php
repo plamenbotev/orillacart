@@ -40,6 +40,11 @@ final readonly class DoctrineBackInStockRequests implements BackInStockRequests
         $this->entityManager->flush();
     }
 
+    public function ofEmail(string $email): array
+    {
+        return $this->entityManager->getRepository(BackInStockRequest::class)->findBy(['email' => $email], ['at' => 'ASC']);
+    }
+
     public function forgetEmail(string $email): int
     {
         $deleted = $this->entityManager->createQuery('DELETE FROM ' . BackInStockRequest::class . ' r WHERE r.email = :email')->setParameter('email', $email)->execute();

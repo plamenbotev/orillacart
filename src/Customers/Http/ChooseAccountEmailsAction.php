@@ -31,6 +31,6 @@ final readonly class ChooseAccountEmailsAction implements RequestHandlerInterfac
     {
         $id = $this->authorization->userId() ?? throw HttpException::unauthorized();
 
-        return $this->responder->ok($this->customers->chooseEmails($id, $this->input->body($request, ChooseEmails::class)));
+        return $this->responder->ok($this->customers->chooseEmails($id, $this->input->body($request, ChooseEmails::class))->forCustomer());
     }
 }

@@ -362,6 +362,10 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $this->actAs('administrator');
         $this->request('POST', "/orders/{$first['number']}/paid", [], nonce: true);
         $this->request('POST', "/orders/{$second['number']}/notes", ['text' => 'Ada rang about the lamp'], nonce: true);
+        // Cards a run stopped halfway left for her would be in her export too.
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        $wpdb->query((string) $wpdb->prepare('UPDATE %i SET recipient_email = %s WHERE recipient_email = %s', $wpdb->prefix . 'orillacart_gift_cards', '', 'ada@example.com'));
         $card = $this->rows([$this->data($this->request('POST', '/gift-cards', ['amount' => '20', 'recipient_name' => 'Ada', 'recipient_email' => 'Ada@example.com', 'message' => 'Happy birthday'], nonce: true))['card'] ?? null])[0]['id'] ?? null;
         self::assertIsInt($card);
         self::assertSame(200, $this->request('POST', '/orders/quote', ['items' => [['product_id' => $this->lamp, 'quantity' => 1]], 'billing_country' => 'BG', 'email' => 'ada@example.com'], nonce: true)->get_status());
@@ -370,7 +374,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $exported = $export('ada@example.com', 1);
         self::assertIsArray($exported);
         self::assertTrue($exported['done'] ?? null);
-        self::assertSame(["orillacart-order-{$first['number']}", "orillacart-order-{$second['number']}"], array_column($this->rows($exported['data'] ?? null), 'item_id'));
+        self::assertSame(["orillacart-gift-card-{$card}", "orillacart-order-{$first['number']}", "orillacart-order-{$second['number']}"], array_column($this->rows($exported['data'] ?? null), 'item_id'), 'the gift card made out to her too');
 
         $erase = $this->privacyCallback('wp_privacy_personal_data_erasers');
         $erased = $erase('ada@example.com', 1);

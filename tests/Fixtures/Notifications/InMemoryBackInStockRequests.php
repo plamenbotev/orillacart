@@ -37,6 +37,11 @@ final class InMemoryBackInStockRequests implements BackInStockRequests
         $this->requests = array_values(array_filter($this->requests, static fn(BackInStockRequest $other): bool => $other !== $request));
     }
 
+    public function ofEmail(string $email): array
+    {
+        return array_values(array_filter($this->requests, static fn(BackInStockRequest $request): bool => $request->email() === $email));
+    }
+
     public function forgetEmail(string $email): int
     {
         $before = \count($this->requests);

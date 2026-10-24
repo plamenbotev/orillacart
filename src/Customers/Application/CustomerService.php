@@ -59,8 +59,9 @@ final readonly class CustomerService
     ) {}
 
     /**
-     * The person of the email erased, as a privacy request asks: their saved addresses and the shop's notes about
-     * them go, and they leave their groups. The WordPress account itself is WordPress's to remove.
+     * The person of the email erased, as a privacy request asks: their saved addresses, wishlist, cart-reminder
+     * choice and the shop's notes about them go, and they leave their groups. The WordPress account itself is
+     * WordPress's to remove.
      *
      * @return bool whether there was anything to erase
      */
@@ -78,7 +79,10 @@ final readonly class CustomerService
         }
         $groupIds = $this->groups->groupIdsOf($id);
         $noted = $this->notes->ofCustomer($id) !== [];
+        $wished = $this->accounts->wishlist($id) !== [];
         $this->accounts->saveAddresses($id, new AddressBook());
+        $this->accounts->saveWishlist($id, []);
+        $this->accounts->saveCartReminders($id, true);
         $this->notes->removeOfCustomer($id);
         foreach ($groupIds as $groupId) {
             $group = $this->groups->find($groupId);
@@ -89,7 +93,15 @@ final readonly class CustomerService
         }
         $this->events->dispatch(new CustomerErased($id));
 
-        return $record->addresses->addresses !== [] || $groupIds !== [] || $noted;
+        return $record->addresses->addresses !== [] || $groupIds !== [] || $noted || $wished;
+    }
+
+    /** An account the email asked for and has not confirmed: the names given, for the person's export. */
+    public function pendingAccount(string $email): ?string
+    {
+        $pending = $this->pending->findByEmail($email);
+
+        return $pending === null ? null : trim($pending->firstName() . ' ' . $pending->lastName());
     }
 
     /** The account of the email, if any. */

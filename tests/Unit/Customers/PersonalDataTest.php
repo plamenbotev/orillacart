@@ -10,6 +10,8 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Customers\Application\PersonalData;
+use OrillaCart\GiftCards\Application\Dto\IssueGiftCard;
+use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
@@ -80,6 +82,30 @@ final class PersonalDataTest extends TestCase
 
         self::assertSame([], $this->shop->personalData->export('ada@example.com', 1)['items']);
         self::assertSame(['removed' => false, 'retained' => false, 'messages' => [], 'done' => true], $this->shop->personalData->erase('ada@example.com', 1), 'nothing is left to erase');
+    }
+
+    public function testErasingTakesThePersonOutOfTheOrdersNotesAndForgetsTheirWishlist(): void
+    {
+        $ada = $this->shop->accounts->add('ada@example.com', 'Ada');
+        $ordered = $this->place(new CartOwner(null, $ada));
+        $this->shop->orders->addNote($ordered->number, new AddOrderNote('Called Ada Lovelace on +359 2 000 0000; the parcel goes to 1 Vitosha Blvd, a copy to ada@example.com.'), 7);
+        $this->shop->accounts->saveWishlist($ada, [20]);
+
+        $this->shop->personalData->erase('ada@example.com', 1);
+
+        $notes = implode(' ', array_map(static fn($note): string => $note->text, $this->shop->orders->order($ordered->number)->notes));
+        self::assertStringContainsString('Called [erased] on [erased]; the parcel goes to [erased], a copy to [erased].', $notes);
+        self::assertSame([], $this->shop->accounts->wishlist($ada));
+    }
+
+    public function testAGiftCardMadeOutToThePersonIsInTheirExport(): void
+    {
+        $this->shop->giftCards->issue(new IssueGiftCard('25', recipientName: 'Ada', recipientEmail: 'ada@example.com', message: 'Happy birthday'), 1);
+
+        $items = array_values(array_filter($this->shop->personalData->export('ada@example.com', 1)['items'], static fn(array $item): bool => $item['group'] === 'orillacart-gift-cards'));
+
+        self::assertCount(1, $items);
+        self::assertSame(['Ada', 'Happy birthday', '25 EUR'], [array_column($items[0]['data'], 'value', 'name')['For'], array_column($items[0]['data'], 'value', 'name')['Message'], array_column($items[0]['data'], 'value', 'name')['Left']]);
     }
 
     public function testManyOrdersAreErasedAPageAtATime(): void
