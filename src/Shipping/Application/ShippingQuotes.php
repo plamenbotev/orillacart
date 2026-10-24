@@ -192,7 +192,15 @@ final readonly class ShippingQuotes
     {
         $method = $carrier->method() === null ? null : $this->methods->find($carrier->method());
         $settings = new Settings($carrier->methodSettings());
-        if ($method === null || $query->country === null || !$method->isReady($settings)) {
+        if ($carrier->method() === null || $query->country === null) {
+            return [];
+        }
+        if ($method === null || !$method->isReady($settings)) {
+            // The shop sees it among its problems: a carrier quietly gone from checkout reads as "cannot be shipped".
+            $this->logger->warning($method === null
+                ? 'Carrier {carrier} uses the shipping method {method}, whose add-on is not on: checkout leaves the carrier out. Turn the add-on on, or choose another way to price it.'
+                : 'Carrier {carrier}: {method} is not set up (its settings are missing or wrong), so checkout leaves the carrier out.', ['carrier' => $carrier->name(), 'method' => $method?->name() ?? $carrier->method()]);
+
             return [];
         }
         $shop = $this->settings->current();
