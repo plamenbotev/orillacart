@@ -13,8 +13,10 @@ use OrillaCart\Shared\Lifecycle\RemovesShopData;
 /**
  * Keeps private files on the server's disk, where no web server can reach them when possible:
  *
- * 1. the folder named by the ORILLACART_DOWNLOADS_DIR constant, if defined;
- * 2. otherwise orillacart-downloads next to the WordPress folder, outside the site, when that can be written;
+ * 1. the folder named by the ORILLACART_DOWNLOADS_DIR constant, if defined (in a network, a folder per site in it);
+ * 2. otherwise a folder of this install and site in orillacart-downloads next to the WordPress folder, outside the
+ *    site, when that can be written: installs that share the parent folder (staging beside live, a host's add-on
+ *    domains) and the sites of a network never share one, so removing one shop's data never touches another's;
  * 3. otherwise a folder with a random 64-character name in the uploads folder. Deny rules there stop Apache and
  *    IIS; Nginx ignores them, so the folder's name is secret and a self-check fetches a test file over HTTP: if the
  *    server hands it out, the admin is told and shown the rule to add.
@@ -121,6 +123,12 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
             $left = scandir($directory);
             if (get_option(self::CREATED_OPTION) === $directory && $left !== false && array_diff($left, ['.', '..']) === []) {
                 rmdir($directory);
+                // The folder the installs and sites share goes too once the last of them left it.
+                $shared = \dirname($directory);
+                $others = basename($shared) === 'orillacart-downloads' ? scandir($shared) : false;
+                if ($others !== false && array_diff($others, ['.', '..']) === []) {
+                    rmdir($shared);
+                }
             }
         }
         delete_option(self::SECRET_OPTION);
@@ -141,7 +149,7 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
     private function directory(bool $create = true): string
     {
         if (\defined('ORILLACART_DOWNLOADS_DIR')) {
-            $directory = rtrim(self::configured(), '/');
+            $directory = rtrim(self::configured(), '/') . (is_multisite() ? '/site-' . get_current_blog_id() : '');
         } else {
             $chosen = get_option(self::DIRECTORY_OPTION);
             $directory = \is_string($chosen) && $chosen !== '' ? $chosen : ($this->outsideWebRoot() ?? $this->uploadsDirectory());
@@ -178,13 +186,24 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
         return \is_string($configured) ? $configured : throw new \LogicException('ORILLACART_DOWNLOADS_DIR is not a folder path.');
     }
 
-    /** The folder next to WordPress's, when this process can write there. */
+    /**
+     * This install's and site's folder in the one next to WordPress's, when this process can write there: named by
+     * the install's own folder (ABSPATH) and the site's id.
+     */
     private function outsideWebRoot(): ?string
     {
         $parent = \dirname(rtrim(ABSPATH, '/'));
-        $directory = $parent . '/orillacart-downloads';
+        $shared = $parent . '/orillacart-downloads';
+        $directory = self::siteFolder($shared, ABSPATH, get_current_blog_id());
+        $writable = static fn(string $folder): ?bool => is_dir($folder) ? wp_is_writable($folder) : null;
 
-        return is_dir($directory) ? (wp_is_writable($directory) ? $directory : null) : (wp_is_writable($parent) ? $directory : null);
+        return ($writable($directory) ?? $writable($shared) ?? wp_is_writable($parent)) ? $directory : null;
+    }
+
+    /** The folder of one install (by its WordPress folder) and one of its sites, in the folder they share. */
+    public static function siteFolder(string $shared, string $wordpressFolder, int $siteId): string
+    {
+        return $shared . '/' . substr(hash('sha256', $wordpressFolder), 0, 16) . '-site-' . $siteId;
     }
 
     private function uploadsDirectory(): string

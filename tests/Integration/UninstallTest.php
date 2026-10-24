@@ -71,4 +71,36 @@ final class UninstallTest extends TestCase
             $previous === false ? delete_option(LocalPrivateFiles::DIRECTORY_OPTION) : update_option(LocalPrivateFiles::DIRECTORY_OPTION, $previous);
         }
     }
+
+    public function testEachInstallAndSiteKeepsItsFilesInAFolderOfItsOwn(): void
+    {
+        $shared = sys_get_temp_dir() . '/orillacart-' . bin2hex(random_bytes(4)) . '/orillacart-downloads';
+        $ours = LocalPrivateFiles::siteFolder($shared, ABSPATH, get_current_blog_id());
+        self::assertNotSame($ours, LocalPrivateFiles::siteFolder($shared, '/home/shop/staging/', get_current_blog_id()), 'another install beside this one');
+        self::assertNotSame($ours, LocalPrivateFiles::siteFolder($shared, ABSPATH, get_current_blog_id() + 1), 'another site of the network');
+
+        $other = LocalPrivateFiles::siteFolder($shared, '/home/shop/staging/', 1);
+        wp_mkdir_p($ours);
+        wp_mkdir_p($other);
+        $key = bin2hex(random_bytes(16));
+        file_put_contents("{$ours}/{$key}", 'our guide');
+        file_put_contents("{$other}/{$key}", 'their guide');
+        $previous = [get_option(LocalPrivateFiles::DIRECTORY_OPTION), get_option(LocalPrivateFiles::CREATED_OPTION)];
+        update_option(LocalPrivateFiles::DIRECTORY_OPTION, $ours);
+        update_option(LocalPrivateFiles::CREATED_OPTION, $ours);
+        try {
+            new LocalPrivateFiles()->uninstall();
+
+            self::assertDirectoryDoesNotExist($ours);
+            self::assertFileExists("{$other}/{$key}", 'removing this shop\'s data leaves theirs, though their file has a name like ours');
+        } finally {
+            @unlink("{$other}/{$key}");
+            @rmdir($other);
+            @rmdir($shared);
+            @rmdir(\dirname($shared));
+            foreach ([LocalPrivateFiles::DIRECTORY_OPTION, LocalPrivateFiles::CREATED_OPTION] as $index => $option) {
+                $previous[$index] === false ? delete_option($option) : update_option($option, $previous[$index]);
+            }
+        }
+    }
 }
