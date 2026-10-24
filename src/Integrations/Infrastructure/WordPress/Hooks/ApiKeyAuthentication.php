@@ -14,10 +14,12 @@ use OrillaCart\Shared\WordPress\AsHook;
  * X-OrillaCart-Key header where the host drops Authorization) acts as the shop manager who made the key. It
  * sends no cookies, so it needs no nonce (orillacart_api_key_did_authenticate tells the nonce check). A key the
  * shop has not is refused (401), never served as a visitor. Cookies that come with a key are not asked about:
- * the key decides. Keys open the shop's API only, not WordPress's.
+ * the key decides. Keys open the shop's API only, not WordPress's: the route is read as WordPress reads it (a
+ * rest_route parameter wins over the path), and the route WordPress then dispatches is checked again.
  */
 #[AsHook('determine_current_user', method: 'user', filter: true, priority: 25)]
 #[AsHook('rest_authentication_errors', method: 'errors', filter: true, priority: 20)]
+#[AsHook('rest_pre_dispatch', method: 'dispatching', filter: true, priority: 1, arguments: 3)]
 final readonly class ApiKeyAuthentication
 {
     public function __construct(
@@ -57,6 +59,16 @@ final readonly class ApiKeyAuthentication
         return $errors;
     }
 
+    /** A request a key authenticated reaches the shop's routes only, whatever its address said. */
+    public function dispatching(mixed $result, mixed $server, mixed $request): mixed
+    {
+        if ($this->request->key === null || !$request instanceof \WP_REST_Request || self::ours($request->get_route())) {
+            return $result;
+        }
+
+        return new \WP_Error('orillacart_api_key_forbidden', __('API keys open the shop\'s API only.', 'orillacart'), ['status' => 403]);
+    }
+
     private static function secret(): ?string
     {
         $header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? null;
@@ -71,10 +83,20 @@ final readonly class ApiKeyAuthentication
     /** Whether the request is for the shop's own routes: keys open nothing else. */
     private static function shopApi(): bool
     {
+        // As WP::parse_request(): a rest_route sent with the request wins over the one in the path.
+        $given = $_POST['rest_route'] ?? $_GET['rest_route'] ?? null;
+        if ($given !== null) {
+            return \is_string($given) && self::ours($given);
+        }
         $uri = \is_string($_SERVER['REQUEST_URI'] ?? null) ? $_SERVER['REQUEST_URI'] : '';
-        $route = \is_string($_GET['rest_route'] ?? null) ? $_GET['rest_route'] : '';
-        $namespace = '/' . RouteCollection::REST_NAMESPACE . '/';
+        $path = wp_parse_url($uri, \PHP_URL_PATH);
+        $base = rtrim((string) wp_parse_url(home_url('/'), \PHP_URL_PATH), '/') . '/' . rest_get_url_prefix();
 
-        return str_contains($uri, '/' . rest_get_url_prefix() . $namespace) || str_starts_with($route, $namespace);
+        return \is_string($path) && str_starts_with($path, $base . '/') && self::ours(substr($path, \strlen($base)));
+    }
+
+    private static function ours(string $route): bool
+    {
+        return str_starts_with($route, '/' . RouteCollection::REST_NAMESPACE . '/') && !str_contains($route, '..');
     }
 }

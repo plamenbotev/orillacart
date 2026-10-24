@@ -44,7 +44,7 @@ class Webhook
         string $url,
         array $topics,
         bool $active,
-        #[ORM\Column(length: 64)]
+        #[ORM\Column(type: 'sealed_string', length: 255)]
         private string $secret,
         #[ORM\Column]
         private \DateTimeImmutable $createdAt,

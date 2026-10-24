@@ -64,6 +64,11 @@ final readonly class DeliverWebhook implements JobHandler
             if ($webhook === null || (!$webhook->isActive() && $topic !== WebhookTopics::PING)) {
                 continue;
             }
+            if ($webhook->secret() === '') {
+                // Sealed with salts the site no longer has: nothing unsigned goes out.
+                $outcomes[$job->id] = JobOutcome::fail(\sprintf('Webhook #%d\'s secret cannot be read since the site\'s salts changed: make a new secret.', $webhook->id()));
+                continue;
+            }
             $body = (string) json_encode([
                 'id' => $event,
                 'topic' => $topic,

@@ -64,7 +64,17 @@ export function WebhooksCard() {
 		status: 'success' | 'error';
 		text: string;
 	} | null >( null );
+	// A secret is shown once, when it is made: the shop keeps it sealed and never sends it again.
+	const [ secret, setSecret ] = useState< {
+		name: string;
+		secret: string;
+	} | null >( null );
 	const [ confirmation, confirm ] = useConfirm();
+	const show = ( made: Webhook ) => {
+		if ( made.secret !== null ) {
+			setSecret( { name: made.name, secret: made.secret } );
+		}
+	};
 	const fail = ( failure: unknown ) =>
 		setMessage( { status: 'error', text: toApiError( failure ).message } );
 	const load = () =>
@@ -112,6 +122,24 @@ export function WebhooksCard() {
 						onRemove={ () => setMessage( null ) }
 					>
 						{ message.text }
+					</Notice>
+				) }
+				{ secret !== null && (
+					<Notice
+						status="warning"
+						onRemove={ () => setSecret( null ) }
+					>
+						{ sprintf(
+							/* translators: %s: the webhook's name */
+							__(
+								'The secret of "%s": copy it to the receiver now, as the shop shows it only this once.',
+								'orillacart'
+							),
+							secret.name
+						) }{ ' ' }
+						<code className="orillacart-webhook__secret">
+							{ secret.secret }
+						</code>
 					</Notice>
 				) }
 				{ webhooks !== null && webhooks.length > 0 && (
@@ -279,7 +307,8 @@ export function WebhooksCard() {
 						onSubmit={ ( event ) => {
 							event.preventDefault();
 							saveWebhook( editing.id, editing.webhook )
-								.then( () => {
+								.then( ( saved ) => {
+									show( saved );
 									setEditing( null );
 									return load();
 								} )
@@ -339,18 +368,19 @@ export function WebhooksCard() {
 						/>
 						{ editing.id !== null && (
 							<p>
-								{ __( 'Secret:', 'orillacart' ) }{ ' ' }
-								<code className="orillacart-webhook__secret">
-									{ webhooks?.find(
-										( webhook ) => webhook.id === editing.id
-									)?.secret ?? '' }
-								</code>{ ' ' }
+								{ __(
+									'The secret was shown when it was made. A new one replaces it at once: the receiver needs it to check what the shop sends.',
+									'orillacart'
+								) }{ ' ' }
 								<Button
 									variant="link"
 									onClick={ () =>
 										editing.id !== null &&
 										newWebhookSecret( editing.id )
-											.then( load )
+											.then( ( made ) => {
+												show( made );
+												return load();
+											} )
 											.catch( fail )
 									}
 								>

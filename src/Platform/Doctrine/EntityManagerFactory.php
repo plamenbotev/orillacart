@@ -57,8 +57,13 @@ final readonly class EntityManagerFactory
         if (!Type::hasType(SealedJsonType::NAME)) {
             Type::addType(SealedJsonType::NAME, SealedJsonType::class);
         }
+        if (!Type::hasType(SealedStringType::NAME)) {
+            Type::addType(SealedStringType::NAME, SealedStringType::class);
+        }
         // The site's key; tools without WordPress (the schema, the build check) seal nothing they keep.
-        SealedJsonType::useSecrets($this->secrets ?? new Secrets(\defined('ABSPATH') ? SiteSignatures::create() : new Signatures(random_bytes(32))));
+        $secrets = $this->secrets ?? new Secrets(\defined('ABSPATH') ? SiteSignatures::create() : new Signatures(random_bytes(32)));
+        SealedJsonType::useSecrets($secrets);
+        SealedStringType::useSecrets($secrets);
         $connection = DriverManager::getConnection($this->database->connectionParams(), $this->dbalConfiguration());
 
         $events = new EventManager();

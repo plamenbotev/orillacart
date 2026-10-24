@@ -17,7 +17,8 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
  * Holds a request made with an API key to the key's scope: a read-only key changes nothing, and no key makes,
- * lists or revokes keys (that takes a shop manager logged in).
+ * lists or revokes keys, or sees or changes webhooks (their secrets sign what the shop sends, and their addresses
+ * receive its orders): that takes a shop manager logged in.
  */
 #[AutoconfigureTag(HttpKernel::MIDDLEWARE_TAG)]
 final readonly class ApiKeyScopeMiddleware implements MiddlewareInterface
@@ -31,6 +32,9 @@ final readonly class ApiKeyScopeMiddleware implements MiddlewareInterface
         if ($key !== null && $route instanceof RouteDefinition) {
             if (str_starts_with($route->path, '/api-keys')) {
                 throw new HttpException(403, 'orillacart_api_key_forbidden', 'API keys are made and revoked by a shop manager logged in, not with a key.');
+            }
+            if (str_starts_with($route->path, '/webhooks')) {
+                throw new HttpException(403, 'orillacart_api_key_forbidden', 'Webhooks are managed by a shop manager logged in, not with a key.');
             }
             if ($key->scope === ApiKeyScope::Read && !$route->isSafe($request->getMethod())) {
                 throw new HttpException(403, 'orillacart_read_only_key', 'This API key only reads.');

@@ -57,7 +57,8 @@ export interface Webhook {
 	url: string;
 	topics: string[];
 	active: boolean;
-	secret: string;
+	/** Only when the webhook or a new secret was just made. */
+	secret: string | null;
 	created_at: string;
 	last_delivery: WebhookDelivery | null;
 }

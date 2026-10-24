@@ -47,7 +47,7 @@ final readonly class Webhooks
         $webhook = new Webhook($command->name, $command->url, $command->topics, $command->active, self::secret(), $this->clock->now());
         $this->webhooks->save($webhook);
 
-        return $this->view($webhook);
+        return $this->view($webhook, withSecret: true);
     }
 
     /**
@@ -63,14 +63,14 @@ final readonly class Webhooks
         return $this->view($webhook);
     }
 
-    /** A new secret: the receiver checks signatures with it from now on. */
+    /** A new secret: the receiver checks signatures with it from now on. It is shown this once. */
     public function newSecret(int $id): WebhookView
     {
         $webhook = $this->get($id);
         $webhook->newSecret(self::secret());
         $this->webhooks->save($webhook);
 
-        return $this->view($webhook);
+        return $this->view($webhook, withSecret: true);
     }
 
     public function delete(int $id): void
@@ -129,11 +129,11 @@ final readonly class Webhooks
         return $this->webhooks->find($id) ?? throw new IntegrationRuleViolation('There is no such webhook.', 'orillacart_unknown_webhook');
     }
 
-    private function view(Webhook $webhook): WebhookView
+    private function view(Webhook $webhook, bool $withSecret = false): WebhookView
     {
         $last = $this->webhooks->deliveries($webhook->id(), 1)[0] ?? null;
 
-        return WebhookView::of($webhook, $last === null ? null : WebhookDeliveryView::of($last));
+        return WebhookView::of($webhook, $last === null ? null : WebhookDeliveryView::of($last), $withSecret);
     }
 
     /**

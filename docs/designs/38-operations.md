@@ -40,13 +40,17 @@ after the action, building the log only for a change, and never fails the change
   the shop manager it acts as, read only or read and change, and when it was last used (saved at most once a
   minute). `Authorization: Bearer <key>` or `X-OrillaCart-Key` on the shop's routes only: such a request acts
   as that user, needs no nonce, and its cookies are not asked about. A read-only key changes nothing; no key
-  manages keys; a key the shop has not is a 401.
+  manages keys or webhooks; a key the shop has not is a 401. "The shop's routes" is the route WordPress serves
+  (its `rest_route` parameter wins over the path, and the query string counts for nothing), checked again when
+  it dispatches (127).
 - Webhooks (`webhooks`, `webhook_deliveries`): a name, an https address (http only on this computer), topics.
   The shop's actions (`orillacart_order_placed`, …) become `webhook.deliver` jobs in their own lane, which POST
   `{id, topic, created_at, data}` (an order or product as the API shows it, when delivered) with
   `X-OrillaCart-Signature: t=<time>,v1=<HMAC-SHA256 of time.body>`. Not 2xx: tried again six times over a day;
   the latest fifty tries are kept. Add-ons add topics (`orillacart_webhook_topics`) and send their events
-  (`orillacart_send_webhook`). Shop → Integrations manages both, sends a test and makes a new secret.
+  (`orillacart_send_webhook`). Shop → Integrations manages both, sends a test and makes a new secret. A secret
+  is kept sealed (as payment keys are) and shown once, when the webhook or a new secret is made; one the salts
+  no longer open sends nothing until a new one is made (127).
 
 ## Settings file
 

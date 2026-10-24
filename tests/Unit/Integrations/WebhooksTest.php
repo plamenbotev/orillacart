@@ -72,7 +72,20 @@ final class WebhooksTest extends TestCase
         self::assertSame('8', self::at($event, 'data', 'product', 'price'), 'the product as the API shows it');
         self::assertSame($event['id'], $headers['X-OrillaCart-Event']);
         self::assertSame(1, preg_match('/^t=(\d+),v1=([a-f0-9]{64})$/', $headers['X-OrillaCart-Signature'], $signature));
-        self::assertSame(hash_hmac('sha256', $signature[1] . '.' . $body, $hook->secret), $signature[2], 'the receiver checks it with the secret');
+        self::assertSame(hash_hmac('sha256', $signature[1] . '.' . $body, (string) $hook->secret), $signature[2], 'the receiver checks it with the secret');
+        self::assertNull($this->webhooks->all()[0]->secret, 'shown once, when made');
+    }
+
+    public function testASecretThatCannotBeReadSendsNothingUnsigned(): void
+    {
+        $hook = $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED]));
+        $this->repository->find($hook->id)?->newSecret('');
+
+        $this->webhooks->announce(WebhookTopics::PRODUCT_CHANGED, ['product' => 20]);
+        $this->jobs->runAll();
+
+        self::assertSame([], $this->sender->sent);
+        self::assertNotNull($this->webhooks->newSecret($hook->id)->secret, 'a new one is shown');
     }
 
     public function testAFailedDeliveryIsTriedAgainAndEachTryKept(): void
