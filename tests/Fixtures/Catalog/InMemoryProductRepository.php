@@ -24,6 +24,11 @@ final class InMemoryProductRepository implements ProductRepository
 
     public function __construct(private readonly CatalogIds $ids = new CatalogIds()) {}
 
+    public function countTaxedBy(int $taxGroupId): int
+    {
+        return \count(array_filter($this->products, static fn(Product $product): bool => $product->details()->taxGroupId === $taxGroupId));
+    }
+
     public function find(int $id): ?Product
     {
         return $this->products[$id] ?? null;

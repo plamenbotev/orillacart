@@ -32,6 +32,7 @@ final readonly class TaxGroupService
         private TaxSettingsRepository $settings,
         private GeographyService $geography,
         private EventDispatcherInterface $events,
+        private ?TaxGroupUses $uses = null,
     ) {}
 
     /**
@@ -79,7 +80,7 @@ final readonly class TaxGroupService
 
     /**
      * @throws TaxGroupNotFound
-     * @throws RuleViolation   for the shop's default group
+     * @throws RuleViolation   for the shop's default group, or one products or shipping use
      */
     public function delete(int $id): void
     {
@@ -87,6 +88,13 @@ final readonly class TaxGroupService
         if ($this->settings->load()->defaultGroupId === $id) {
             throw new RuleViolation(
                 \sprintf('"%s" is the default tax group; choose another default before deleting it.', $group->name()),
+                'orillacart_tax_group_in_use',
+            );
+        }
+        $using = $this->uses?->of($id) ?? [];
+        if ($using !== []) {
+            throw new RuleViolation(
+                \sprintf('"%s" taxes %s: choose another tax group for them before deleting it, or they sell with no tax.', $group->name(), implode(', ', $using)),
                 'orillacart_tax_group_in_use',
             );
         }

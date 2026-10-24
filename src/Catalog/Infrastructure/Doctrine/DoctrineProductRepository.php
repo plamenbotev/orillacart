@@ -425,6 +425,11 @@ final readonly class DoctrineProductRepository implements ProductRepository
         $this->entityManager->flush();
     }
 
+    public function countTaxedBy(int $taxGroupId): int
+    {
+        return $this->entityManager->getRepository(Product::class)->count(['taxGroupId' => $taxGroupId]);
+    }
+
     public function forgetShippingClass(int $shippingClassId): void
     {
         foreach ($this->entityManager->getRepository(Product::class)->findBy(['shippingClassId' => $shippingClassId]) as $product) {

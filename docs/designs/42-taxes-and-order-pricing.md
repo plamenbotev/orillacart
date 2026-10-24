@@ -217,3 +217,6 @@ Closing the gaps (PLAN 111–116):
   again if they still hold, a note says so when one no longer does, and ones the shop started since do not; it
   takes the exemption and tax service the new prices went by. Prices with the tax taken out are in the
   currency's cents (an export customer's 10.00 with 20 % in it is 8.33; the unrounded 8.3333 refused the order).
+- **135** (second audit): a tax group that products, shipping rates or courier services use is not deleted
+  (`orillacart_tax_group_in_use`, naming what uses it); each area says what it taxes by a group (`TaxGroupUse`).
+  An item whose group is gone anyway is taxed by the default group, never at nothing.

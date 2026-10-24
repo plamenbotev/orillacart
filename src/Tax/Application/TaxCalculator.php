@@ -111,6 +111,10 @@ final readonly class TaxCalculator
         $settings = $this->settings->load();
         $groupId = $query->groupId ?? $settings->defaultGroupId;
         $group = $groupId === null ? null : $this->groups->find($groupId);
+        if ($group === null && $groupId !== $settings->defaultGroupId && $settings->defaultGroupId !== null) {
+            // A group that no longer exists: the default group's rates, never no tax at all.
+            $group = $this->groups->find($settings->defaultGroupId);
+        }
         if ($group === null) {
             return AppliedTaxes::none();
         }

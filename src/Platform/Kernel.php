@@ -12,6 +12,7 @@ use OrillaCart\Platform\DependencyInjection\RoutePass;
 use OrillaCart\Shared\Http\Routing\ActionDispatcher;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\WordPress\AsHook;
+use OrillaCart\Tax\Application\TaxGroupUse;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\Config\ConfigCache;
 use Symfony\Component\Config\FileLocator;
@@ -87,6 +88,7 @@ final class Kernel
         $builder->registerForAutoconfiguration(JobHandler::class)->addTag(JobHandler::TAG);
         $builder->registerForAutoconfiguration(OrderLookup::class)->addTag(OrderLookup::LOOKUP_TAG);
         $builder->registerForAutoconfiguration(OrderMark::class)->addTag(OrderMark::MARK_TAG);
+        $builder->registerForAutoconfiguration(TaxGroupUse::class)->addTag(TaxGroupUse::TAG);
 
         $builder->addCompilerPass(new RoutePass());
         $builder->addCompilerPass(new HookPass());

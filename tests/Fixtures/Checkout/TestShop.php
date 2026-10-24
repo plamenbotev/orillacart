@@ -15,6 +15,7 @@ use OrillaCart\Catalog\Application\PriceRules;
 use OrillaCart\Catalog\Application\ProductFinder;
 use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Catalog\Application\ProductService;
+use OrillaCart\Catalog\Application\ProductTaxGroups;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Application\StockItemNames;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
@@ -134,6 +135,7 @@ use OrillaCart\Shipping\Application\ShipmentTracking;
 use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Shipping\Application\ShippingMethods;
 use OrillaCart\Shipping\Application\ShippingQuotes;
+use OrillaCart\Shipping\Application\ShippingTaxGroups;
 use OrillaCart\Shipping\Application\TrackConsignments;
 use OrillaCart\Shipping\Domain\Event\ConsignmentBooked;
 use OrillaCart\Shipping\Domain\Event\OrderReadyForPickup;
@@ -149,6 +151,7 @@ use OrillaCart\Tax\Application\TaxServices;
 use OrillaCart\Tax\Application\VatNumbers;
 use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxSettings;
+use OrillaCart\Tax\Infrastructure\TaggedTaxGroupUses;
 use OrillaCart\Tests\Fixtures\Cart\FakeCartLinks;
 use OrillaCart\Tests\Fixtures\Cart\InMemoryAbandonedCartRepository;
 use OrillaCart\Tests\Fixtures\Cart\InMemoryCartRepository;
@@ -371,13 +374,15 @@ final class TestShop
 
         $this->taxGroupRecords = $taxGroupRecords = new InMemoryTaxGroupRepository();
         $this->taxSettings = new InMemoryTaxSettingsRepository(new TaxSettings(TaxBasis::ShippingAddress, null));
-        $this->taxGroups = new TaxGroupService($taxGroupRecords, $this->taxSettings, $geography, $this->events);
+        $carrierRecords = new InMemoryCarrierRepository();
+        $ids = new CatalogIds();
+        $this->productRecords = $productRecords = new InMemoryProductRepository($ids);
+        $this->taxGroups = new TaxGroupService($taxGroupRecords, $this->taxSettings, $geography, $this->events, new TaggedTaxGroupUses([new ProductTaxGroups($productRecords), new ShippingTaxGroups($carrierRecords)]));
         $this->taxRatesCsv = new TaxRatesCsv($taxGroupRecords, $geography, $this->events);
         $this->accounts = new InMemoryAccounts();
         $this->taxExemptions = new TaxExemptions(new InMemoryTaxExemptionRepository(), $this->accounts, $this->clock);
         $this->taxCalculator = $taxes = new TaxCalculator($taxGroupRecords, $this->taxSettings, $settings, $geography, $this->taxExemptions);
 
-        $carrierRecords = new InMemoryCarrierRepository();
         $classRecords = new InMemoryShippingClassRepository();
         $this->payPalApi = new FakePayPalApi();
         $this->extensions = $extensions = new FixedExtensions([new CashOnDelivery(), new BankTransfer(), new Cheque(), new PayPalGateway($this->payPalApi)], $shippingMethods);
@@ -386,8 +391,6 @@ final class TestShop
         $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups, $classRecords, $shippingMethodList);
         $this->shippingClasses = new ShippingClassService($classRecords, $carrierRecords, $this->events);
 
-        $ids = new CatalogIds();
-        $this->productRecords = $productRecords = new InMemoryProductRepository($ids);
         $this->events->addListener(ShippingClassDeleted::class, new ForgetDeletedShippingClass($productRecords)(...));
         $this->content = new InMemoryProductContent();
         $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->shippingClasses, $this->events);

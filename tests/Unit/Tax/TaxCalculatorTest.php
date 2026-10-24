@@ -95,6 +95,13 @@ final class TaxCalculatorTest extends TestCase
         self::assertSame('0', $this->calculator->taxes(new TaxQuery($this->reduced, new TaxAddress('DE')))->total);
     }
 
+    public function testAGroupThatIsGoneTaxesAsTheDefaultNotAtNothing(): void
+    {
+        $this->settings->update(new UpdateTaxSettings('shipping_address', $this->standard));
+
+        self::assertSame('20', $this->calculator->taxes(new TaxQuery(999, new TaxAddress('BG')))->total);
+    }
+
     public function testTheBasisPicksTheAddress(): void
     {
         $query = new TaxQuery($this->standard, shipping: new TaxAddress('DE'), billing: new TaxAddress('BG'));
