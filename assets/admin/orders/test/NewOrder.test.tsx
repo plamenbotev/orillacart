@@ -142,7 +142,13 @@ describe( 'NewOrder', () => {
 			screen.getByRole( 'button', { name: 'Create the order' } )
 		);
 
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+		// The order made; a pricing that lands after it is not what the test is about.
+		const created = mockedFetch.mock.calls.find(
+			( [ request ] ) =>
+				request.path === '/orillacart/v1/orders' &&
+				request.method === 'POST'
+		);
+		expect( created?.[ 0 ] ).toEqual( {
 			path: '/orillacart/v1/orders',
 			method: 'POST',
 			data: {
