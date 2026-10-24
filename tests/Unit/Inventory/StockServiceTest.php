@@ -13,6 +13,7 @@ use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Inventory\Domain\Event\StockChanged;
+use OrillaCart\Inventory\Domain\Event\StockroomItemsChanged;
 use OrillaCart\Inventory\Domain\InsufficientStock;
 use OrillaCart\Inventory\Domain\InventoryRuleViolation;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockLevelRepository;
@@ -96,9 +97,9 @@ final class StockServiceTest extends TestCase
         self::assertSame(3, $view->available);
         self::assertCount(1, $view->levels);
         self::assertSame([$this->berlin, 3], [$view->levels[0]->stockroomId, $view->levels[0]->quantity]);
-        self::assertNull($this->stock->setLevels($mug, new SetStockLevels([]))->available, 'no levels: not limited');
+        self::assertSame(0, $this->stock->setLevels($mug, new SetStockLevels([]))->available, 'cleared: held at 0, not sold without limit (that is "Always available")');
         self::assertEquals(
-            [new StockChanged('product:5', null, 6), new StockChanged('product:5', 6, 3), new StockChanged('product:5', 3, null)],
+            [new StockChanged('product:5', null, 6), new StockChanged('product:5', 6, 3), new StockChanged('product:5', 3, 0)],
             $this->events->events,
             'how many could be sold before and after each change',
         );
@@ -190,15 +191,32 @@ final class StockServiceTest extends TestCase
         $this->events->events = [];
 
         $this->stockrooms->update($this->sofia, new SaveStockroom('Sofia', 1, 2, active: false));
-        self::assertEquals([new StockChanged('product:5', 10, 1)], $this->events->events);
+        self::assertEquals([new StockChanged('product:5', 10, 1)], $this->stockChanges());
         $this->events->events = [];
         $this->stockrooms->update($this->sofia, new SaveStockroom('Sofia (renamed)', 1, 2, active: false));
-        self::assertSame([], $this->events->events, 'still off: nothing changed');
+        self::assertSame([], $this->stockChanges(), 'still off: nothing changed');
 
         $this->stockrooms->update($this->sofia, new SaveStockroom('Sofia', 1, 2));
         $this->events->events = [];
         $this->stockrooms->delete($this->sofia);
-        self::assertEquals([new StockChanged('product:5', 10, 1)], $this->events->events);
+        self::assertEquals([new StockChanged('product:5', 10, 1)], $this->stockChanges());
+    }
+
+    public function testAStockroomThatOwesIsNotDeletedAndTurningOneOffSaysWhichItemsItHeld(): void
+    {
+        $mug = StockItemRef::product(5);
+        $this->stock->setLevels($mug, new SetStockLevels([new SetStockLevel($this->sofia, 0), new SetStockLevel($this->berlin, 5)]));
+        $this->stock->take([$mug], 8, backorders: true);
+        try {
+            $this->stockrooms->delete($this->sofia);
+            self::fail('Sofia owes 3');
+        } catch (InventoryRuleViolation $e) {
+            self::assertSame('orillacart_stockroom_owes', $e->errorCode);
+        }
+
+        $this->events->events = [];
+        $this->stockrooms->update($this->berlin, new SaveStockroom('Berlin', 3, 7, active: false));
+        self::assertContains('product:5', $this->stockroomItems(), 'whether it can still be owed changed');
     }
 
     public function testBackordersNeedAnActiveStockroomToOweThem(): void
@@ -263,5 +281,17 @@ final class StockServiceTest extends TestCase
         self::assertSame([[$this->sofia, 0]], array_map(static fn($level): array => [$level->stockroomId, $level->quantity], $this->stock->stock(StockItemRef::product(5))->levels));
         self::assertSame(4, $this->stock->available([StockItemRef::product(6)]), 'one counted already is left as it is');
         self::assertCount(1, $this->events->events, 'the new one is announced: it is no longer for sale');
+    }
+
+    /** @return list<StockChanged> */
+    private function stockChanges(): array
+    {
+        return array_values(array_filter($this->events->events, static fn(object $event): bool => $event instanceof StockChanged));
+    }
+
+    /** @return list<string> the items the stockroom events named */
+    private function stockroomItems(): array
+    {
+        return array_merge(...array_map(static fn(object $event): array => $event instanceof StockroomItemsChanged ? $event->items : [], $this->events->events));
     }
 }

@@ -8,7 +8,9 @@ namespace OrillaCart\Inventory\Domain;
  * The stock levels of one item across the stockrooms, and the rules for selling from them.
  *
  * Only active stockrooms count. An item that has no stock level in any stockroom, active or not, is not limited
- * by stock. Carts do not hold stock: it is taken when an order is placed.
+ * by stock: one the shop never counted (it is "Always available", or the shop has no stockrooms). A counted item
+ * keeps a level: clearing them all leaves it at 0 (StockService). Carts do not hold stock: it is taken when an
+ * order is placed.
  */
 final readonly class Stock
 {

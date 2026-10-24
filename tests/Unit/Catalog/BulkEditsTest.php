@@ -59,6 +59,9 @@ final class BulkEditsTest extends TestCase
         self::assertSame([], $this->edits->apply([10], new BulkEdit(stock: 'add', stockroomId: $berlin, stockBy: 3)));
 
         self::assertSame([$this->room => -2, $berlin => 3], $this->shop->stock->levelsOf([StockItemRef::product(10)])['product:10'], 'still owed: the next ones that come in go to those customers');
+
+        self::assertSame([], $this->edits->apply([10], new BulkEdit(stock: 'add', stockroomId: $this->room, stockBy: 1)), 'one comes in where two are owed');
+        self::assertSame(-1, $this->shop->stock->levelsOf([StockItemRef::product(10)])['product:10'][$this->room]);
     }
 
     public function testAPriceLoweredToItsSaleIsRefusedForThatProduct(): void

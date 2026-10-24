@@ -8,6 +8,7 @@ use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\StockroomView;
 use OrillaCart\Inventory\Domain\DeliveryUnit;
 use OrillaCart\Inventory\Domain\Event\StockChanged;
+use OrillaCart\Inventory\Domain\Event\StockroomItemsChanged;
 use OrillaCart\Inventory\Domain\InventoryRuleViolation;
 use OrillaCart\Inventory\Domain\Stock;
 use OrillaCart\Inventory\Domain\StockItem;
@@ -57,8 +58,11 @@ final readonly class StockroomService
         $before = self::availableExcept($held, null);
         $stockroom->change(self::details($command));
         $this->stockrooms->save($stockroom);
-        // Turned on or off: what it holds counts or stops counting.
+        // Turned on or off: what it holds counts or stops counting, and can be owed or not.
         $this->announce($before, self::availableExcept($held, null));
+        if ($held !== []) {
+            $this->events->dispatch(new StockroomItemsChanged(array_map(static fn(Stock $stock): string => (string) $stock->item, $held)));
+        }
 
         return StockroomView::fromStockroom($stockroom);
     }
@@ -78,11 +82,18 @@ final readonly class StockroomService
         if ($only > 0) {
             throw new InventoryRuleViolation('%1$s is the only stockroom holding %2$d item(s), which would then sell without limit. Turn it off instead, or count them in another stockroom first.', 'orillacart_stockroom_in_use', values: [$stockroom->details()->name, $only]);
         }
-        $held = $stockroom->isActive() ? $this->levels->stockOf($this->itemsIn($id)) : [];
+        $owed = \count($this->levels->itemsOwed($id));
+        if ($owed > 0) {
+            throw new InventoryRuleViolation('%1$s owes %2$d item(s) on backorder: deleting it would sell what those customers wait for to others. Receive them, or count what it owes in another stockroom, first.', 'orillacart_stockroom_owes', values: [$stockroom->details()->name, $owed]);
+        }
+        $held = $this->levels->stockOf($this->itemsIn($id));
         $before = self::availableExcept($held, null);
         $after = self::availableExcept($held, $id);
         $this->stockrooms->remove($stockroom);
         $this->announce($before, $after);
+        if ($held !== []) {
+            $this->events->dispatch(new StockroomItemsChanged(array_map(static fn(Stock $stock): string => (string) $stock->item, $held)));
+        }
     }
 
     /** @return list<StockItem> */

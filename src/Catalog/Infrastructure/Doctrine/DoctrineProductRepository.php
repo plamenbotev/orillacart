@@ -37,14 +37,27 @@ final readonly class DoctrineProductRepository implements ProductRepository
             return [];
         }
 
-        /** @var list<Product> */
-        return $this->entityManager->createQueryBuilder()
+        /** @var list<Product> $products */
+        $products = $this->entityManager->createQueryBuilder()
             ->select('p')
             ->from(Product::class, 'p')
             ->where('p.id IN (:ids)')
             ->setParameter('ids', $ids)
             ->getQuery()
             ->getResult();
+        if (\count($products) > 1) {
+            // A list's offers read every product's variations, attributes, sets and files: one query for each kind
+            // fills them for all, rather than several queries a product. Ordered as the lazy loads order them.
+            $fill = fn(string $joins, string $order): mixed => $this->entityManager->createQuery(
+                "SELECT p, {$joins} FROM " . Product::class . " p {$order}",
+            )->setParameter('ids', $ids)->getResult();
+            $fill('v, vo', 'LEFT JOIN p.variations v LEFT JOIN v.options vo WHERE p.id IN (:ids) ORDER BY v.id ASC');
+            $fill('a, ao', 'LEFT JOIN p.attributes a LEFT JOIN a.options ao WHERE p.id IN (:ids) ORDER BY a.id ASC, ao.position ASC, ao.id ASC');
+            $fill('s, sa, sao', 'LEFT JOIN p.sets s LEFT JOIN s.attributes sa LEFT JOIN sa.options sao WHERE p.id IN (:ids) ORDER BY s.id ASC, sa.id ASC, sao.position ASC, sao.id ASC');
+            $fill('d', 'LEFT JOIN p.downloads d WHERE p.id IN (:ids) ORDER BY d.id ASC');
+        }
+
+        return $products;
     }
 
     public function idsWithSku(string $text): array

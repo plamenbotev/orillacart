@@ -8,6 +8,7 @@ use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
 use OrillaCart\Catalog\Domain\Event\PriceRulesChanged;
 use OrillaCart\Catalog\Domain\Event\ProductChanged;
 use OrillaCart\Inventory\Domain\Event\StockChanged;
+use OrillaCart\Inventory\Domain\Event\StockroomItemsChanged;
 use OrillaCart\Search\Application\SearchIndexing;
 use OrillaCart\Settings\Domain\SettingsChanged;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -17,6 +18,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  */
 #[AsEventListener(event: ProductChanged::class, method: 'productChanged')]
 #[AsEventListener(event: StockChanged::class, method: 'stockChanged')]
+#[AsEventListener(event: StockroomItemsChanged::class, method: 'stockroomChanged')]
 #[AsEventListener(event: CatalogItemsRemoved::class, method: 'itemsRemoved')]
 #[AsEventListener(event: SettingsChanged::class, method: 'settingsChanged')]
 #[AsEventListener(event: PriceRulesChanged::class, method: 'priceRulesChanged')]
@@ -37,6 +39,14 @@ final readonly class QueueChangedProducts
     {
         if ($event->changedAvailability() || ($event->before ?? 0) < 0 || ($event->after ?? 0) < 0) {
             $this->indexing->queueStockItem($event->item);
+        }
+    }
+
+    /** A stockroom turned on or off, or gone: whether its items sell, or can be owed, may have changed. */
+    public function stockroomChanged(StockroomItemsChanged $event): void
+    {
+        foreach ($event->items as $item) {
+            $this->indexing->queueStockItem($item);
         }
     }
 

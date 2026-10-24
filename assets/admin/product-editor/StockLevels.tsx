@@ -20,7 +20,7 @@ interface Props {
 
 /**
  * How many of one item each stockroom holds. An empty field means the stockroom holds none of it;
- * with every field empty, stock does not limit the item. Saving sends only the stockrooms changed here, as the
+ * with every field empty, it is at 0 in one ("Always available" sells without limit). Saving sends only the stockrooms changed here, as the
  * stock sheet does: another stockroom's level, owed items (below zero) and sales made meanwhile stay as they are.
  * @param root0
  * @param root0.kind

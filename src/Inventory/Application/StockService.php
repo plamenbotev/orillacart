@@ -168,22 +168,23 @@ final readonly class StockService
         $was = self::levelsBy($stocks);
         foreach ($this->levels->stockOf($items) as $stock) {
             $wanted = $byItem[(string) $stock->item];
+            $removed = [];
             foreach ($stock->levels() as $level) {
                 $stockroomId = $level->stockroom()->id();
                 if (!\array_key_exists($stockroomId, $wanted)) {
                     continue;
                 }
                 if ($wanted[$stockroomId] === null) {
-                    $this->levels->remove($level);
+                    $removed[] = $level;
                 } else {
                     $level->set($wanted[$stockroomId]);
                 }
                 unset($wanted[$stockroomId]);
             }
-            foreach ($wanted as $stockroomId => $quantity) {
-                if ($quantity !== null) {
-                    $this->levels->add(new StockLevel($stockrooms[$stockroomId], $stock->item, $quantity));
-                }
+            $added = array_filter($wanted, static fn(?int $quantity): bool => $quantity !== null);
+            $this->remove($stock, $removed, $added !== []);
+            foreach ($added as $stockroomId => $quantity) {
+                $this->levels->add(new StockLevel($stockrooms[$stockroomId], $stock->item, $quantity));
             }
         }
         $this->levels->flush();
@@ -208,15 +209,17 @@ final readonly class StockService
         $stock = $this->levels->stockOf([$item])[0];
         $before = self::availableOf([$stock]);
         $was = self::levelsBy([$stock]);
+        $removed = [];
         foreach ($stock->levels() as $level) {
             $stockroomId = $level->stockroom()->id();
             if (\array_key_exists($stockroomId, $wanted)) {
                 $level->set($wanted[$stockroomId]);
                 unset($wanted[$stockroomId]);
             } else {
-                $this->levels->remove($level);
+                $removed[] = $level;
             }
         }
+        $this->remove($stock, $removed, $wanted !== []);
         foreach ($wanted as $stockroomId => $quantity) {
             $stockroom = $this->stockrooms->find($stockroomId)
                 ?? throw new InventoryRuleViolation('There is no stockroom %d.', 'orillacart_unknown_stockroom', values: [$stockroomId]);
@@ -254,6 +257,24 @@ final readonly class StockService
         }
         $this->levels->flush();
         $this->announce($before, self::availableOf($this->levels->stockOf(array_map(static fn(Stock $stock): StockItem => $stock->item, $stocks))));
+    }
+
+    /**
+     * Removes an item's levels, all but one when nothing else would be left: a counted item is held at 0 rather than
+     * sold without limit by its stock being cleared, as a new one starts (countFromNothing()). An item to sell
+     * without limit is "Always available".
+     *
+     * @param list<StockLevel> $removed
+     */
+    private function remove(Stock $stock, array $removed, bool $adding): void
+    {
+        if ($removed !== [] && !$adding && \count($removed) === \count($stock->levels())) {
+            usort($removed, static fn(StockLevel $a, StockLevel $b): int => [!$a->stockroom()->isActive(), $a->stockroom()->maxDeliveryDays(), $a->stockroom()->id()] <=> [!$b->stockroom()->isActive(), $b->stockroom()->maxDeliveryDays(), $b->stockroom()->id()]);
+            array_shift($removed)?->set(0);
+        }
+        foreach ($removed as $level) {
+            $this->levels->remove($level);
+        }
     }
 
     /**

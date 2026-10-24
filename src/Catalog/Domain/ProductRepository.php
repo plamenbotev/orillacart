@@ -111,12 +111,12 @@ interface ProductRepository
      */
     public function bundlesHolding(array $productIds): array;
 
-    /**
-     * Saves the product with its attributes and variations; new ones have their ids afterwards.
-     */
     /** How many products the tax group taxes (bundles and variations take their product's). */
     public function countTaxedBy(int $taxGroupId): int;
 
+    /**
+     * Saves the product with its attributes and variations; new ones have their ids afterwards.
+     */
     public function save(Product $product): void;
 
     public function remove(Product $product): void;
