@@ -220,3 +220,8 @@ Closing the gaps (PLAN 111–116):
 - **135** (second audit): a tax group that products, shipping rates or courier services use is not deleted
   (`orillacart_tax_group_in_use`, naming what uses it); each area says what it taxes by a group (`TaxGroupUse`).
   An item whose group is gone anyway is taxed by the default group, never at nothing.
+- **137** (second audit): a tax service works on prices entered without tax; the settings refuse one with prices
+  that include it (before, it was simply never asked). Its amounts are rounded to the currency's cents. When it
+  fails and the shop has no rates of its own, checkout refuses rather than charge no tax, whatever the fallback
+  says. Fees under an import scheme go as the goods and their shipping do, and prices with the tax taken out of
+  a fee are in cents too.

@@ -86,6 +86,17 @@ final class ImportSchemesTest extends TestCase
         self::assertStringContainsString('import VAT and duties may be due on delivery', $this->shop->templates->render('storefront/_checkout_summary.html.twig', ['summary' => $summary, 'address_known' => true]));
     }
 
+    public function testAFeeGoesAsTheGoodsDoUnderAScheme(): void
+    {
+        $this->schemes(new SaveImportRegistration('ioss', 'IM2760000001', '150'));
+        $this->shop->carts->add($this->owner, new AddToCart(10));
+        $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true, fee: '2', feeLabel: 'Handling'));
+
+        $summary = $this->shop->checkout->summary($this->owner, new CheckoutDetails('DE', payment: 'bank_transfer'));
+
+        self::assertSame(['2', '0'], [$summary->fees[0]->amount ?? null, $summary->feesTax], 'an export: no German VAT on the fee either');
+    }
+
     public function testWithoutANumberTheGoodsGoAsExportsButServicesAreTaxedAsBefore(): void
     {
         $this->schemes(new SaveImportRegistration('ioss', null, '150'));

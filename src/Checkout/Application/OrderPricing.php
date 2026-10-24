@@ -317,7 +317,7 @@ final readonly class OrderPricing
                 $needsShipping ? $shipping?->country : $billing?->country,
                 $customerId,
                 $settings->currency,
-            ), $shipping, $billing, $reverseCharge, $currency, $exempt, $asked);
+            ), $shipping, $billing, $reverseCharge, $currency, $import, $decimals, $exempt, $asked);
             if (!$inclusive && !$reverseCharge) {
                 $this->provideTaxes($bill, $asked, $shipping ?? $billing, $currency, $customerId, $exemption, $orderId);
             }
@@ -333,13 +333,14 @@ final readonly class OrderPricing
      * @param list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string, tax_code: ?string}> $asked
      *        what each charge is, for a tax service, in the bill's order; the fees are added to it
      */
-    private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge, string $currency, bool $exempt = false, array &$asked = []): void
+    private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge, string $currency, ImportDecision $import, int $decimals, bool $exempt = false, array &$asked = []): void
     {
         foreach ($this->fees->of($query) as $fee) {
-            $taxes = $fee['taxable'] && !$reverseCharge ? $this->taxes($fee['tax_group_id'], $shipping, $billing, $exempt) : [];
+            // Under an import scheme the fees go with the goods, as the shipping does: the destination's tax, or none.
+            $taxes = $fee['taxable'] && !$reverseCharge && (!$import->applies() || $import->charges) ? $this->taxes($fee['tax_group_id'], $shipping, $billing, $exempt, atShipping: $import->applies()) : [];
             $amount = $this->currencies->amount($fee['amount'], $currency);
             if ($bill->includesTax() && $fee['taxable']) {
-                $amount = Tax::asPaid($amount, $taxes, $this->shopTaxes($fee['tax_group_id']), $this->tax->samePriceEverywhere());
+                $amount = Tax::asPaid($amount, $taxes, $this->shopTaxes($fee['tax_group_id']), $this->tax->samePriceEverywhere())->rounded($decimals);
             }
             $bill->addFee($fee['label'], $amount, $taxes);
             $asked[] = ['kind' => TaxRequestLine::FEE, 'code' => $fee['taxable'] ? $fee['tax_group_id'] : 'none', 'quantity' => 1, 'product' => null, 'sku' => null, 'tax_code' => null];
@@ -393,10 +394,12 @@ final readonly class OrderPricing
         if ($result === null) {
             return;
         }
+        // In the currency's cents: a service answering 1.2345 would leave a total no one can charge.
+        $decimals = $this->currencies->decimals($currency);
         $bill->provide(array_map(static fn(TaxRequestLine $line): array => array_map(static fn(TaxLine $tax): ChargedTax => new ChargedTax(
             new Tax("{$tax->code}|{$tax->percent}", $tax->name, $tax->percent, false, new TaxJurisdiction($tax->country, $tax->region, $tax->level, $tax->code, $tax->jurisdiction), $tax->exempt),
             Money::of($tax->taxable),
-            Money::of($tax->amount),
+            Money::of($tax->amount)->rounded($decimals),
         ), $result->lines[$line->id] ?? []), $lines));
     }
 

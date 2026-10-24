@@ -40,6 +40,10 @@ final readonly class TaxSettingsService
         if ($command->provider !== null && !\in_array($command->provider, array_column($this->providers(), 'id'), true)) {
             throw new RuleViolation(\sprintf('There is no tax service "%s": its add-on may be off.', $command->provider), 'orillacart_unknown_tax_provider');
         }
+        if ($command->provider !== null && $command->pricesIncludeTax) {
+            // A service works out the tax on top of a price; with the tax inside the prices it would never be asked.
+            throw new RuleViolation('A tax service works out the tax on prices entered without it: turn off "Prices include tax" to use one, or use the shop\'s own rates.', 'orillacart_tax_provider_with_inclusive_prices');
+        }
         $settings = new TaxSettings(TaxBasis::from($command->basis), $command->defaultGroupId, $command->pricesIncludeTax, $command->reverseCharge, $command->roundsEachLine, array_values(array_unique($command->originRegions)), $command->provider, $command->whenProviderFails, $command->acceptsCertificates, $command->shownInShop, $command->shownInCart, trim($command->priceSuffix), $command->samePriceEverywhere, $command->shippingTaxedAsItems, $command->euThreshold ?? $this->settings->load()->euThreshold);
         $this->settings->save($settings);
 

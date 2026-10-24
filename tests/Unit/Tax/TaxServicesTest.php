@@ -25,9 +25,11 @@ use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
+use OrillaCart\Tax\Application\Dto\UpdateTaxSettings;
 use OrillaCart\Tax\Application\RecordTaxes;
 use OrillaCart\Tax\Application\TaxServices;
 use OrillaCart\Tax\Application\TaxServiceUnavailable;
+use OrillaCart\Tax\Application\TaxSettingsService;
 use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
@@ -117,6 +119,30 @@ final class TaxServicesTest extends TestCase
         $this->shop->checkout->summary($this->cart(), new CheckoutDetails('US', 'CA', '90012'));
     }
 
+    public function testTheServicesAmountsAreInTheCurrencysCents(): void
+    {
+        $this->service->cityTax = '2.0049';
+
+        $order = $this->shop->orders->order($this->place());
+
+        self::assertSame(['8', '118.6'], [$order->lines[0]->tax, $order->total], '2.0049 is charged as 2.00');
+    }
+
+    public function testWithNoRatesOfItsOwnTheShopRefusesRatherThanChargeNoTax(): void
+    {
+        $this->shop->taxGroups->removeRate($this->group, $this->shop->taxGroups->groups()[0]->rates[0]->id);
+        $this->service->down = true;
+
+        $this->expectException(TaxServiceUnavailable::class);
+        $this->shop->checkout->summary($this->cart(), new CheckoutDetails('US', 'CA', '90012'));
+    }
+
+    public function testAServiceTakesPricesEnteredWithoutTax(): void
+    {
+        $this->expectExceptionMessage('A tax service works out the tax on prices entered without it');
+        new TaxSettingsService($this->shop->taxSettings, $this->shop->taxGroupRecords, $this->shop->extensions)->update(new UpdateTaxSettings('shipping_address', $this->group, pricesIncludeTax: true, provider: 'fake_tax'));
+    }
+
     public function testTheServiceIsToldOfTheSaleItsRefundsAndCancellations(): void
     {
         $number = $this->place();
@@ -184,6 +210,8 @@ final class TaxServicesTest extends TestCase
 final class FakeTaxService implements TaxProvider
 {
     public bool $down = false;
+    /** The city's tax as it answers it, unrounded: four decimals the service may give. */
+    public ?string $cityTax = null;
     /** @var list<TaxRequest> */
     public array $asked = [];
     /** @var list<TaxedOrder> */
@@ -212,7 +240,7 @@ final class FakeTaxService implements TaxProvider
             $amount = (float) $line->amount;
             $lines[$line->id] = [new TaxLine('California', '6', 'US', 'CA', TaxLine::REGION, 'CA', 'California', $line->amount, number_format($amount * 0.06, 2, '.', ''))];
             if ($line->kind === 'item') {
-                $lines[$line->id][] = new TaxLine('Los Angeles', '2', 'US', 'CA', TaxLine::LOCAL, 'LA-CITY', 'Los Angeles', $line->amount, number_format($amount * 0.02, 2, '.', ''));
+                $lines[$line->id][] = new TaxLine('Los Angeles', '2', 'US', 'CA', TaxLine::LOCAL, 'LA-CITY', 'Los Angeles', $line->amount, $this->cityTax ?? number_format($amount * 0.02, 2, '.', ''));
             }
         }
 

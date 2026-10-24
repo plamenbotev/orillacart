@@ -11,6 +11,7 @@ use OrillaCart\Extension\Tax\TaxRequest;
 use OrillaCart\Extension\Tax\TaxResult;
 use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Extension\InstalledExtensions;
+use OrillaCart\Tax\Domain\TaxGroup;
 use OrillaCart\Tax\Domain\TaxGroupRepository;
 use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tax\Domain\TaxSettingsRepository;
@@ -100,7 +101,8 @@ final class TaxServices
             if ($result !== null) {
                 $this->logger->error('The tax service {provider} answered taxes that cannot be: {problem}', ['provider' => $provider->id(), 'problem' => $problem]);
             }
-            $refuse = $this->settings->load()->whenProviderFails === TaxSettings::REFUSE || $provider instanceof FailsClosed;
+            // The shop's own rates stand in only when it has some: with none, falling back would charge no tax at all.
+            $refuse = $this->settings->load()->whenProviderFails === TaxSettings::REFUSE || $provider instanceof FailsClosed || !$this->hasOwnRates();
             if ($refuse) {
                 throw new TaxServiceUnavailable();
             }
@@ -112,6 +114,11 @@ final class TaxServices
         $this->cache->put($key, self::rows($result), self::KEPT_SECONDS);
 
         return $this->quoted[$key] = $result;
+    }
+
+    private function hasOwnRates(): bool
+    {
+        return array_any($this->groups->all(), static fn(TaxGroup $group): bool => $group->rates() !== []);
     }
 
     /** @return list<array<string, string|bool|null>> */
