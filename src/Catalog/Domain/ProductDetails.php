@@ -116,7 +116,7 @@ final readonly class ProductDetails
     {
         foreach ($measures as $name => $value) {
             if ($value !== null && preg_match('/^\d{1,8}(\.\d{1,4})?$/', $value) !== 1) {
-                throw new CatalogRuleViolation(\sprintf('The %s has to be a number of zero or more with up to four decimals.', $name), 'orillacart_invalid_measure');
+                throw new CatalogRuleViolation('The %s has to be a number of zero or more with up to four decimals.', 'orillacart_invalid_measure', values: [$name]);
             }
         }
     }
@@ -127,7 +127,7 @@ final readonly class ProductDetails
     public static function validSku(?string $sku): void
     {
         if ($sku !== null && ($sku === '' || mb_strlen($sku) > self::MAX_SKU_LENGTH || trim($sku) !== $sku)) {
-            throw new CatalogRuleViolation(\sprintf('A SKU has 1 to %d characters, without spaces at either end.', self::MAX_SKU_LENGTH), 'orillacart_invalid_sku');
+            throw new CatalogRuleViolation('A SKU has 1 to %d characters, without spaces at either end.', 'orillacart_invalid_sku', values: [self::MAX_SKU_LENGTH]);
         }
     }
 }

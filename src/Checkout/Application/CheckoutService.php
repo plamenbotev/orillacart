@@ -50,6 +50,7 @@ use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\Transactions;
@@ -136,7 +137,7 @@ final readonly class CheckoutService
         }
         $automatic = array_values(array_filter($applied, static fn(CheckoutCouponView $coupon): bool => $coupon->automatic));
         $coupons = array_map(
-            static fn(string $code): CheckoutCouponView => $applied[Coupon::normalize($code)] ?? new CheckoutCouponView(Coupon::normalize($code), '', '0', false, $priced['discounts']->refused[Coupon::normalize($code)] ?? 'This code is not valid.'),
+            static fn(string $code): CheckoutCouponView => $applied[Coupon::normalize($code)] ?? new CheckoutCouponView(Coupon::normalize($code), '', '0', false, $priced['discounts']->refused[Coupon::normalize($code)] ?? new Text('This code is not valid.')),
             $contents->coupons,
         );
         $coupons = [...$automatic, ...$coupons];
@@ -246,13 +247,13 @@ final readonly class CheckoutService
         try {
             $balance = $this->giftCards->balance($code, $this->currencies->current());
         } catch (GiftCardRuleViolation $e) {
-            throw new CheckoutRuleViolation($e->getMessage(), 'orillacart_gift_card_refused', $e);
+            throw new CheckoutRuleViolation($e->text, 'orillacart_gift_card_refused', $e);
         }
         if ($balance->refused !== null) {
             throw new CheckoutRuleViolation($balance->refused, 'orillacart_gift_card_refused');
         }
         if (!\in_array($code, $contents->giftCards, true) && \count($contents->giftCards) >= GiftCardPayments::MAX_CODES) {
-            throw new CheckoutRuleViolation(\sprintf('An order takes up to %d gift cards.', GiftCardPayments::MAX_CODES), 'orillacart_gift_card_refused');
+            throw new CheckoutRuleViolation('An order takes up to %d gift cards.', 'orillacart_gift_card_refused', values: [GiftCardPayments::MAX_CODES]);
         }
         $this->carts->useGiftCards($contents->cartId, array_values(array_unique([...$contents->giftCards, $code])), $contents->useStoreCredit);
 
@@ -372,7 +373,7 @@ final readonly class CheckoutService
         $code = Coupon::normalize($command->code);
         $held = array_map(Coupon::normalize(...), $contents->coupons);
         if (!\in_array($code, $held, true) && \count($held) >= Discounts::MAX_CODES) {
-            throw new CheckoutRuleViolation(\sprintf('An order takes up to %d codes.', Discounts::MAX_CODES), 'orillacart_coupon_refused');
+            throw new CheckoutRuleViolation('An order takes up to %d codes.', 'orillacart_coupon_refused', values: [Discounts::MAX_CODES]);
         }
         $codes = array_values(array_unique([...$held, $code]));
         $priced = $this->pricing->price($contents->lines, null, null, null, null, $codes, $owner->customerId, currency: $this->currencies->current());
@@ -426,7 +427,7 @@ final readonly class CheckoutService
             $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment, currency: $currency);
         }
         foreach ($priced['discounts']->refused as $code => $reason) {
-            throw new CheckoutRuleViolation(\sprintf('The code %s does not apply: %s Remove it to order.', $code, $reason), 'orillacart_coupon_refused');
+            throw new CheckoutRuleViolation('The code %1$s does not apply: %2$s Remove it to order.', 'orillacart_coupon_refused', values: [$code, $reason]);
         }
         if ($this->failures->closedSince($failed)) {
             throw new CheckoutRuleViolation('Some prices cannot be worked out right now. Try again in a moment.', 'orillacart_prices_unavailable');
@@ -439,12 +440,12 @@ final readonly class CheckoutService
         }
         ['minimumOrder' => $minimum] = $this->minimum($bill, $currency);
         if ($minimum !== null) {
-            throw new CheckoutRuleViolation(\sprintf('Orders start at %s %s. Add more items to order.', Money::of($minimum)->format($this->currencies->decimals($currency)), $currency), 'orillacart_below_minimum_order');
+            throw new CheckoutRuleViolation('Orders start at %1$s %2$s. Add more items to order.', 'orillacart_below_minimum_order', values: [Money::of($minimum)->format($this->currencies->decimals($currency)), $currency]);
         }
         $chosen = $priced['chosen'];
         if ($priced['needs_shipping'] && ($chosen === null || $chosen->id !== $command->shippingOption)) {
             if ($priced['options'] === [] && $priced['ships_from'] !== null) {
-                throw new CheckoutRuleViolation(\sprintf('Delivery to this address needs an order of at least %s %s.', Money::of($priced['ships_from'])->format($this->currencies->decimals($currency)), $currency), 'orillacart_shipping_required');
+                throw new CheckoutRuleViolation('Delivery to this address needs an order of at least %1$s %2$s.', 'orillacart_shipping_required', values: [Money::of($priced['ships_from'])->format($this->currencies->decimals($currency)), $currency]);
             }
             throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to this address.' : 'Choose how to ship the order.', 'orillacart_shipping_required');
         }
@@ -452,11 +453,11 @@ final readonly class CheckoutService
         try {
             $delivery = $priced['needs_shipping'] ? $this->deliveryDays->pick($chosen?->id, $command->deliveryDate, $command->deliverySlot) : null;
         } catch (ShippingRuleViolation $e) {
-            throw new CheckoutRuleViolation($e->getMessage(), $e->errorCode, $e);
+            throw new CheckoutRuleViolation($e->text, $e->errorCode, $e);
         }
         $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency);
         foreach ($plan->refused as $code => $reason) {
-            throw new CheckoutRuleViolation(\sprintf('The gift card %s cannot pay: %s Remove it to order.', $code, $reason), 'orillacart_gift_card_refused');
+            throw new CheckoutRuleViolation('The gift card %1$s cannot pay: %2$s Remove it to order.', 'orillacart_gift_card_refused', values: [$code, $reason]);
         }
         $needsPayment = !$bill->total()->subtract($plan->total())->isZero();
         $gateway = null;
@@ -600,7 +601,7 @@ final readonly class CheckoutService
             try {
                 $this->giftCards->pay($order->number, $plan, $order->currency);
             } catch (GiftCardRuleViolation $e) {
-                throw new CheckoutRuleViolation($e->getMessage(), $e->errorCode, $e);
+                throw new CheckoutRuleViolation($e->text, $e->errorCode, $e);
             }
             // As the payment will be asked for: the rest the gift cards left.
             $order = $this->orders->order($order->number);

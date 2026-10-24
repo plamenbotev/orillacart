@@ -20,7 +20,7 @@ final readonly class FieldAnswer
             throw new \InvalidArgumentException(\sprintf('"%s" is not a field id.', $id));
         }
         if (mb_strlen($answer) > self::LONGEST) {
-            throw new OrderRuleViolation(\sprintf('%s has up to %d characters.', $label, self::LONGEST), 'orillacart_invalid_field');
+            throw new OrderRuleViolation('%1$s has up to %2$d characters.', 'orillacart_invalid_field', values: [$label, self::LONGEST]);
         }
     }
 }

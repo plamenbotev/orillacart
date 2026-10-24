@@ -271,7 +271,7 @@ final readonly class CustomerService
             throw new RuleViolation('This link does not work any more. Sign up again for a new one.', 'orillacart_invalid_link');
         }
         if (mb_strlen($command->password) < CustomerSettings::MIN_PASSWORD_LENGTH) {
-            throw new RuleViolation(\sprintf('Choose a password of at least %d characters.', CustomerSettings::MIN_PASSWORD_LENGTH), 'orillacart_weak_password');
+            throw new RuleViolation('Choose a password of at least %d characters.', 'orillacart_weak_password', values: [CustomerSettings::MIN_PASSWORD_LENGTH]);
         }
         if ($this->accounts->isRegistered($account->email())) {
             $this->pending->remove($account);

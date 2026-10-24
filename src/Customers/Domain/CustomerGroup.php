@@ -54,7 +54,7 @@ class CustomerGroup
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new CustomerRuleViolation(\sprintf('A group has a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_group_name');
+            throw new CustomerRuleViolation('A group has a name of up to %d characters.', 'orillacart_invalid_group_name', values: [self::MAX_NAME_LENGTH]);
         }
         $this->name = $name;
     }

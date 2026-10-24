@@ -10,6 +10,6 @@ final class CartLineNotFound extends NotFound
 {
     public function __construct(int $id)
     {
-        parent::__construct(\sprintf('The cart has no line %d.', $id), 'orillacart_cart_line_not_found');
+        parent::__construct('The cart has no line %d.', 'orillacart_cart_line_not_found', values: [$id]);
     }
 }

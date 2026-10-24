@@ -9,8 +9,11 @@ namespace OrillaCart\Shared\Domain;
  */
 class NotFound extends RuleViolation
 {
-    public function __construct(string $message, string $errorCode = 'orillacart_not_found', ?\Throwable $previous = null)
+    /**
+     * @param list<int|float|string|\Stringable> $values
+     */
+    public function __construct(string|Text $message, string $errorCode = 'orillacart_not_found', ?\Throwable $previous = null, array $values = [])
     {
-        parent::__construct($message, $errorCode, $previous);
+        parent::__construct($message, $errorCode, $previous, $values);
     }
 }

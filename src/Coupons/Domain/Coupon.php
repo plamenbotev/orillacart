@@ -7,6 +7,7 @@ namespace OrillaCart\Coupons\Domain;
 use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\Text;
 
 /**
  * A code customers enter for a discount: what it takes off, on which items, when and for whom it holds, and
@@ -163,7 +164,7 @@ class Coupon
     {
         $code = self::normalize($terms->code);
         if ($code === '' || mb_strlen($code) > self::MAX_CODE_LENGTH || preg_match('/^[\p{L}\p{N}_-]+$/u', $code) !== 1) {
-            throw new CouponRuleViolation(\sprintf('A code has up to %d letters, digits, dashes and underscores.', self::MAX_CODE_LENGTH), 'orillacart_invalid_coupon_code');
+            throw new CouponRuleViolation('A code has up to %d letters, digits, dashes and underscores.', 'orillacart_invalid_coupon_code', values: [self::MAX_CODE_LENGTH]);
         }
         if ($terms->kind === CouponKind::Percent && (!$terms->amount->isPercentOff() || $terms->amount->isZero())) {
             throw new CouponRuleViolation('A percentage is more than 0 and at most 100.', 'orillacart_invalid_coupon_amount');
@@ -296,18 +297,18 @@ class Coupon
             && ($this->usageLimit === null || $this->uses < $this->usageLimit);
     }
 
-    /**
-     * Why the coupon does not hold for the basket, in words for the customer; null when it does.
-     *
-     * @param int $customerUses how often this customer used it on orders that stand
-     */
     /** Whether it holds only for some customers, by what they ordered or used before: it waits to know who. */
     public function dependsOnWho(): bool
     {
         return $this->firstOrderOnly || $this->perCustomerLimit !== null;
     }
 
-    public function refusal(Basket $basket, \DateTimeImmutable $now, int $customerUses): ?string
+    /**
+     * Why the coupon does not hold for the basket, in words for the customer; null when it does.
+     *
+     * @param int $customerUses how often this customer used it on orders that stand
+     */
+    public function refusal(Basket $basket, \DateTimeImmutable $now, int $customerUses): ?Text
     {
         $subtotal = $basket->subtotal();
         $matching = $this->matching($basket);
@@ -320,19 +321,19 @@ class Coupon
         $units = array_sum(array_map(static fn(BasketLine $line): int => $line->quantity, $matching));
 
         return match (true) {
-            !$this->active => 'This code is not valid.',
-            $this->startsAt !== null && $now < $this->startsAt => 'This code is not valid yet.',
-            $this->endsAt !== null && $now >= $this->endsAt => 'This code has expired.',
-            $this->usageLimit !== null && $this->uses >= $this->usageLimit => 'This code has been used up.',
-            $this->perCustomerLimit !== null && $customerUses >= $this->perCustomerLimit => 'You have already used this code.',
-            $this->firstOrderOnly && !$basket->firstOrder => 'This code is for a first order only.',
-            $this->countries !== [] && $basket->country !== null && !\in_array($basket->country, $this->countries, true) => 'This code is not valid for your country.',
-            $this->minSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->minSubtotal))) < 0 => \sprintf('This code needs an order of at least %s %s.', $basket->inCurrency(Money::of($this->minSubtotal))->rounded(new Currency($basket->currency)->decimals()), $basket->currency),
-            $this->maxSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->maxSubtotal))) > 0 => \sprintf('This code is for orders of up to %s %s.', $basket->inCurrency(Money::of($this->maxSubtotal))->rounded(new Currency($basket->currency)->decimals()), $basket->currency),
-            $matching === [] => 'This code does not apply to the items in your cart.',
-            $units < max(1, $this->minQuantity, $this->buyQuantity) => \sprintf('This code needs at least %d of the items it applies to.', max($this->minQuantity, $this->buyQuantity)),
-            $this->kind === CouponKind::BuyGet && !$this->givesOthers() && $units < $this->buyQuantity + $this->getQuantity => \sprintf('This code needs %d of the items it applies to: %d to buy and %d it gives.', $this->buyQuantity + $this->getQuantity, $this->buyQuantity, $this->getQuantity),
-            $this->kind === CouponKind::BuyGet && $this->givesOthers() && $this->giftable($basket) === [] => 'Add the items this code gives off to your cart.',
+            !$this->active => new Text('This code is not valid.'),
+            $this->startsAt !== null && $now < $this->startsAt => new Text('This code is not valid yet.'),
+            $this->endsAt !== null && $now >= $this->endsAt => new Text('This code has expired.'),
+            $this->usageLimit !== null && $this->uses >= $this->usageLimit => new Text('This code has been used up.'),
+            $this->perCustomerLimit !== null && $customerUses >= $this->perCustomerLimit => new Text('You have already used this code.'),
+            $this->firstOrderOnly && !$basket->firstOrder => new Text('This code is for a first order only.'),
+            $this->countries !== [] && $basket->country !== null && !\in_array($basket->country, $this->countries, true) => new Text('This code is not valid for your country.'),
+            $this->minSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->minSubtotal))) < 0 => Text::of('This code needs an order of at least %1$s %2$s.', $basket->inCurrency(Money::of($this->minSubtotal))->rounded(new Currency($basket->currency)->decimals()), $basket->currency),
+            $this->maxSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->maxSubtotal))) > 0 => Text::of('This code is for orders of up to %1$s %2$s.', $basket->inCurrency(Money::of($this->maxSubtotal))->rounded(new Currency($basket->currency)->decimals()), $basket->currency),
+            $matching === [] => new Text('This code does not apply to the items in your cart.'),
+            $units < max(1, $this->minQuantity, $this->buyQuantity) => Text::of('This code needs at least %d of the items it applies to.', max($this->minQuantity, $this->buyQuantity)),
+            $this->kind === CouponKind::BuyGet && !$this->givesOthers() && $units < $this->buyQuantity + $this->getQuantity => Text::of('This code needs %1$d of the items it applies to: %2$d to buy and %3$d it gives.', $this->buyQuantity + $this->getQuantity, $this->buyQuantity, $this->getQuantity),
+            $this->kind === CouponKind::BuyGet && $this->givesOthers() && $this->giftable($basket) === [] => new Text('Add the items this code gives off to your cart.'),
             default => null,
         };
     }

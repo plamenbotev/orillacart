@@ -78,8 +78,9 @@ final readonly class ShippingClassService
             foreach ($carrier->rates() as $rate) {
                 if (\in_array($id, $rate->details()->classes, true)) {
                     throw new ShippingRuleViolation(
-                        \sprintf('The rate "%s" of %s carries "%s"; change the rate before deleting the class.', $rate->name(), $carrier->name(), $class->name()),
+                        'The rate "%1$s" of %2$s carries "%3$s"; change the rate before deleting the class.',
                         'orillacart_shipping_class_in_use',
+                        values: [$rate->name(), $carrier->name(), $class->name()],
                     );
                 }
             }
@@ -96,7 +97,7 @@ final readonly class ShippingClassService
     private function requireFreeName(string $name, ?int $exceptId): void
     {
         if ($this->classes->isNameTaken($name, $exceptId)) {
-            throw new ShippingRuleViolation(\sprintf('There is already a shipping class "%s".', trim($name)), 'orillacart_duplicate_shipping_class');
+            throw new ShippingRuleViolation('There is already a shipping class "%s".', 'orillacart_duplicate_shipping_class', values: [trim($name)]);
         }
     }
 }

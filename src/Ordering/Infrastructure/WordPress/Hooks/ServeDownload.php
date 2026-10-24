@@ -8,6 +8,7 @@ use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
 use OrillaCart\Shared\Files\ByteRange;
 use OrillaCart\Shared\Files\FileDelivery;
+use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
@@ -25,6 +26,7 @@ final readonly class ServeDownload
     public function __construct(
         private Downloads $downloads,
         private FileDelivery $delivery,
+        private Translations $translations,
     ) {}
 
     public function __invoke(): void
@@ -38,7 +40,7 @@ final readonly class ServeDownload
         try {
             $file = $this->downloads->open(sanitize_key($token), ByteRange::resumes($range));
         } catch (DownloadUnavailable $e) {
-            wp_die(esc_html($e->getMessage()), esc_html__('Download not available', 'orillacart'), ['response' => 403, 'back_link' => true]);
+            wp_die(esc_html($this->translations->text($e->text)), esc_html__('Download not available', 'orillacart'), ['response' => 403, 'back_link' => true]);
         }
 
         while (ob_get_level() > 0) {

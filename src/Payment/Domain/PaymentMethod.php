@@ -84,14 +84,14 @@ class PaymentMethod
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new PaymentRuleViolation(\sprintf('A payment method needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_payment_method_name');
+            throw new PaymentRuleViolation('A payment method needs a name of up to %d characters.', 'orillacart_invalid_payment_method_name', values: [self::MAX_NAME_LENGTH]);
         }
         if (mb_strlen($instructions) > self::MAX_TEXT_LENGTH || mb_strlen($receiptNote) > self::MAX_TEXT_LENGTH) {
-            throw new PaymentRuleViolation(\sprintf('Texts of a payment method have up to %d characters.', self::MAX_TEXT_LENGTH), 'orillacart_invalid_payment_method_text');
+            throw new PaymentRuleViolation('Texts of a payment method have up to %d characters.', 'orillacart_invalid_payment_method_text', values: [self::MAX_TEXT_LENGTH]);
         }
         foreach ($countries as $country) {
             if (preg_match('/^[A-Z]{2}$/', $country) !== 1) {
-                throw new PaymentRuleViolation(\sprintf('"%s" is not a country code.', $country), 'orillacart_invalid_country');
+                throw new PaymentRuleViolation('"%s" is not a country code.', 'orillacart_invalid_country', values: [$country]);
             }
         }
         $this->name = $name;
@@ -160,7 +160,7 @@ class PaymentMethod
         }
         $label = trim($label);
         if (mb_strlen($label) > self::MAX_NAME_LENGTH) {
-            throw new PaymentRuleViolation(\sprintf('A fee\'s label has up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_payment_fee');
+            throw new PaymentRuleViolation('A fee\'s label has up to %d characters.', 'orillacart_invalid_payment_fee', values: [self::MAX_NAME_LENGTH]);
         }
         $this->fee = $fixed->toFixed();
         $this->feePercent = Money::of($percent)->toFixed();

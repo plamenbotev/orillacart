@@ -51,7 +51,7 @@ final readonly class ColumnChoice
     {
         foreach ($command->columns as $id) {
             if (!isset($all[$id])) {
-                throw new ExchangeRuleViolation(\sprintf('There is no %s column "%s".', $kind === ExportKind::Orders ? 'order' : 'product', $id), 'orillacart_unknown_column');
+                throw new ExchangeRuleViolation('There is no %1$s column "%2$s".', 'orillacart_unknown_column', values: [$kind === ExportKind::Orders ? 'order' : 'product', $id]);
             }
         }
         $this->choices->choose($kind, array_values(array_unique($command->columns)));

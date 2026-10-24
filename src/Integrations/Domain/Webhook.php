@@ -61,7 +61,7 @@ class Webhook
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new IntegrationRuleViolation(\sprintf('Name the webhook in 1 to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_webhook');
+            throw new IntegrationRuleViolation('Name the webhook in 1 to %d characters.', 'orillacart_invalid_webhook', values: [self::MAX_NAME_LENGTH]);
         }
         $parts = parse_url(trim($url));
         $host = \is_array($parts) ? ($parts['host'] ?? '') : '';

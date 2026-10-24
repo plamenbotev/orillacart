@@ -73,8 +73,9 @@ final readonly class StoreSettings
         $most = $currency->decimals();
         if ($decimals !== null && ($decimals < 0 || $decimals > $most)) {
             throw new RuleViolation(
-                \sprintf('Amounts in %s have at most %d decimals.', $currency->code, $most),
+                'Amounts in %1$s have at most %2$d decimals.',
                 'orillacart_invalid_price_decimals',
+                values: [$currency->code, $most],
             );
         }
         $this->fewerDecimals = $decimals === $most ? null : $decimals;
@@ -86,11 +87,11 @@ final readonly class StoreSettings
             throw new RuleViolation('A postcode has 1 to 20 characters.', 'orillacart_invalid_shop_address');
         }
         if (mb_strlen($currencySign) > self::MAX_SIGN_LENGTH || trim($currencySign) !== $currencySign) {
-            throw new RuleViolation(\sprintf('A currency sign has up to %d characters, without spaces at either end.', self::MAX_SIGN_LENGTH), 'orillacart_invalid_currency_sign');
+            throw new RuleViolation('A currency sign has up to %d characters, without spaces at either end.', 'orillacart_invalid_currency_sign', values: [self::MAX_SIGN_LENGTH]);
         }
         foreach ($sellTo as $country) {
             if (preg_match('/^[A-Z]{2}$/', $country) !== 1) {
-                throw new RuleViolation(\sprintf('"%s" is not a country code.', $country), 'orillacart_invalid_country');
+                throw new RuleViolation('"%s" is not a country code.', 'orillacart_invalid_country', values: [$country]);
             }
         }
         if (\count($sellTo) !== \count(array_unique($sellTo))) {

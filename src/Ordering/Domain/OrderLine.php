@@ -449,7 +449,7 @@ class OrderLine
     public function refund(int $quantity, bool $restock): array
     {
         if ($quantity < 1 || $quantity > $this->refundableQuantity()) {
-            throw new OrderRuleViolation(\sprintf('Line "%s" has %d items left to refund.', $this->name, $this->refundableQuantity()), 'orillacart_invalid_refund_quantity');
+            throw new OrderRuleViolation('Line "%1$s" has %2$d items left to refund.', 'orillacart_invalid_refund_quantity', values: [$this->name, $this->refundableQuantity()]);
         }
         $remaining = $this->refundableQuantity();
         $this->refundedQuantity += $quantity;

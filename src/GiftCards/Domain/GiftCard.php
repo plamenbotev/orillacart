@@ -6,6 +6,7 @@ namespace OrillaCart\GiftCards\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\Text;
 
 /**
  * Money the shop owes someone, to spend in it: a gift card, which whoever has its code pays with, or a customer's
@@ -186,21 +187,21 @@ class GiftCard
     }
 
     /** How the customer sees it on the order: "Gift card ····7KQ2" or "Store credit". */
-    public function label(): string
+    public function label(): Text
     {
-        return $this->kind === GiftCardKind::StoreCredit ? 'Store credit' : "Gift card ····{$this->codeEnd}";
+        return $this->kind === GiftCardKind::StoreCredit ? new Text('Store credit') : Text::of('Gift card ····%s', $this->codeEnd);
     }
 
     /**
      * Why it cannot pay for an order in the currency now, in words for the customer; null when it can.
      */
-    public function refusal(string $currency, \DateTimeImmutable $now): ?string
+    public function refusal(string $currency, \DateTimeImmutable $now): ?Text
     {
         return match (true) {
-            !$this->active => 'This gift card is not valid.',
-            $this->expiresAt !== null && $now >= $this->expiresAt => 'This gift card has expired.',
-            $this->currency !== $currency => \sprintf('This gift card is in %s and cannot pay for an order in %s.', $this->currency, $currency),
-            $this->balance()->isZero() => 'This gift card has been used up.',
+            !$this->active => new Text('This gift card is not valid.'),
+            $this->expiresAt !== null && $now >= $this->expiresAt => new Text('This gift card has expired.'),
+            $this->currency !== $currency => Text::of('This gift card is in %1$s and cannot pay for an order in %2$s.', $this->currency, $currency),
+            $this->balance()->isZero() => new Text('This gift card has been used up.'),
             default => null,
         };
     }
@@ -225,7 +226,7 @@ class GiftCard
     {
         $balance = $this->balance()->add($amount);
         if ($balance->isNegative()) {
-            throw new GiftCardRuleViolation(\sprintf('Only %s %s is left to take off.', $this->balance(), $this->currency), 'orillacart_gift_card_balance');
+            throw new GiftCardRuleViolation('Only %1$s %2$s is left to take off.', 'orillacart_gift_card_balance', values: [$this->balance(), $this->currency]);
         }
         $this->balance = $balance->toFixed();
     }

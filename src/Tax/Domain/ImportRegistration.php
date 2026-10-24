@@ -21,10 +21,10 @@ final readonly class ImportRegistration
         public string $limit,
     ) {
         if ($number !== null && preg_match($scheme->numberPattern(), $number) !== 1) {
-            throw new RuleViolation(\sprintf('"%s" is not a number for %s; it looks like %s.', $number, $scheme->label(), $scheme->numberExample()), 'orillacart_invalid_import_number');
+            throw new RuleViolation('"%1$s" is not a number for %2$s; it looks like %3$s.', 'orillacart_invalid_import_number', values: [$number, $scheme->label(), $scheme->numberExample()]);
         }
         if (preg_match('/^\d{1,9}(\.\d{1,2})?$/', $limit) !== 1 || (float) $limit <= 0) {
-            throw new RuleViolation(\sprintf('The limit for %s is an amount such as %s.', $scheme->label(), $scheme->limit()), 'orillacart_invalid_import_limit');
+            throw new RuleViolation('The limit for %1$s is an amount such as %2$s.', 'orillacart_invalid_import_limit', values: [$scheme->label(), $scheme->limit()]);
         }
     }
 

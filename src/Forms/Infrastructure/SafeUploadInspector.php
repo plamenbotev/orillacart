@@ -66,7 +66,7 @@ final readonly class SafeUploadInspector implements UploadInspector
             throw new FormRuleViolation('This picture cannot be read.', 'orillacart_invalid_upload');
         }
         if ($size[0] > self::MAX_SIDE || $size[1] > self::MAX_SIDE || $size[0] * $size[1] > self::MAX_PIXELS) {
-            throw new FormRuleViolation(\sprintf('The picture is too large: up to %d megapixels and %d pixels a side.', intdiv(self::MAX_PIXELS, 1_000_000), self::MAX_SIDE), 'orillacart_invalid_upload');
+            throw new FormRuleViolation('The picture is too large: up to %1$d megapixels and %2$d pixels a side.', 'orillacart_invalid_upload', values: [intdiv(self::MAX_PIXELS, 1_000_000), self::MAX_SIDE]);
         }
         if (\function_exists('wp_raise_memory_limit')) {
             wp_raise_memory_limit('image');

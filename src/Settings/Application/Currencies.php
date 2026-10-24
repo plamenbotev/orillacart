@@ -40,7 +40,7 @@ final readonly class Currencies
         $offered = [];
         foreach ($command->offered as $currency) {
             if ($currency->code === $own) {
-                throw new RuleViolation(\sprintf('%s is the shop’s own currency.', $own), 'orillacart_invalid_currency');
+                throw new RuleViolation('%s is the shop’s own currency.', 'orillacart_invalid_currency', values: [$own]);
             }
             $offered[] = new OfferedCurrency(new Currency($currency->code), $currency->rate, PriceRounding::from($currency->rounding));
         }

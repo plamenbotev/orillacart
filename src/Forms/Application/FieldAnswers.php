@@ -10,6 +10,7 @@ use OrillaCart\Forms\Domain\CleanText;
 use OrillaCart\Forms\Domain\FormUploadRepository;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\Text;
 
 /**
  * Checks shoppers' answers against the fields asked, the shop's and add-ons' alike. Only the fields asked are read,
@@ -45,7 +46,7 @@ final readonly class FieldAnswers
     {
         $sent = \is_array($sent) ? $sent : [];
         if (\strlen((string) json_encode($sent, JSON_INVALID_UTF8_SUBSTITUTE)) > self::MAX_BYTES) {
-            throw new InvalidFields([['field' => rtrim($prefix, '.'), 'message' => 'That is too much to send.']]);
+            throw new InvalidFields([['field' => rtrim($prefix, '.'), 'message' => new Text('That is too much to send.')]]);
         }
         $answers = [];
         $values = [];
@@ -56,11 +57,11 @@ final readonly class FieldAnswers
             }
             [$answer, $value, $uploadId, $problem] = $this->read($field, $sent[$field->id] ?? null, $kept);
             if ($problem === null && $answer === '' && $field->required) {
-                $problem = match ($field->kind) {
+                $problem = new Text(match ($field->kind) {
                     'checkbox' => 'Tick this to go on.',
                     'file' => 'Choose a file.',
                     default => 'This field is required.',
-                };
+                });
             }
             if ($problem === null && $answer !== '' && $check !== null) {
                 $problem = $check($field, $answer);
@@ -156,7 +157,7 @@ final readonly class FieldAnswers
     /**
      * The answer as shown ('' for none), the value kept, the upload, and the problem with it.
      *
-     * @return array{string, string, ?int, ?string}
+     * @return array{string, string, ?int, ?Text}
      */
     private function read(AskedField $field, mixed $raw, bool $kept): array
     {
@@ -169,11 +170,11 @@ final readonly class FieldAnswers
             return $ticked ? [self::YES, '1', null, null] : ['', '', null, null];
         }
         if (!\is_string($raw) && !\is_int($raw) && !\is_float($raw)) {
-            return ['', '', null, 'This answer is not valid.'];
+            return ['', '', null, new Text('This answer is not valid.')];
         }
         $text = CleanText::of((string) $raw, $field->kind === 'textarea');
         if ($text === null) {
-            return ['', '', null, 'This answer is not valid text.'];
+            return ['', '', null, new Text('This answer is not valid text.')];
         }
         if ($text === '') {
             return ['', '', null, null];
@@ -184,42 +185,42 @@ final readonly class FieldAnswers
             'date' => self::date($text),
             'choice' => self::choice($field, $text),
             'file' => $this->file($field, $text, $kept),
-            default => mb_strlen($text) > $field->longest ? ['', '', null, \sprintf('Up to %d characters.', $field->longest)] : [$text, $text, null, null],
+            default => mb_strlen($text) > $field->longest ? ['', '', null, Text::of('Up to %d characters.', $field->longest)] : [$text, $text, null, null],
         };
     }
 
-    /** @return array{string, string, ?int, ?string} */
+    /** @return array{string, string, ?int, ?Text} */
     private static function number(AskedField $field, string $text): array
     {
         if (preg_match(self::NUMBER, $text) !== 1 || ($field->whole && str_contains($text, '.'))) {
-            return ['', '', null, $field->whole ? 'Enter a whole number.' : 'Enter a number.'];
+            return ['', '', null, new Text($field->whole ? 'Enter a whole number.' : 'Enter a number.')];
         }
         $number = Money::of($text);
         if (($field->min !== null && $number->compare(Money::of($field->min)) < 0) || ($field->max !== null && $number->compare(Money::of($field->max)) > 0)) {
-            $range = match (true) {
-                $field->min !== null && $field->max !== null => \sprintf('from %s to %s', $field->min, $field->max),
-                $field->min !== null => \sprintf('of at least %s', $field->min),
-                default => \sprintf('of at most %s', $field->max),
+            $problem = match (true) {
+                $field->min !== null && $field->max !== null => Text::of('Enter a number from %1$s to %2$s.', $field->min, $field->max),
+                $field->min !== null => Text::of('Enter a number of at least %s.', $field->min),
+                default => Text::of('Enter a number of at most %s.', (string) $field->max),
             };
 
-            return ['', '', null, \sprintf('Enter a number %s.', $range)];
+            return ['', '', null, $problem];
         }
         $value = (string) $number;
 
         return [$value, $value, null, null];
     }
 
-    /** @return array{string, string, ?int, ?string} */
+    /** @return array{string, string, ?int, ?Text} */
     private static function date(string $text): array
     {
         if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $text, $parts) !== 1 || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]) || (int) $parts[1] < 1900 || (int) $parts[1] > 2200) {
-            return ['', '', null, 'Enter a date.'];
+            return ['', '', null, new Text('Enter a date.')];
         }
 
         return [$text, $text, null, null];
     }
 
-    /** @return array{string, string, ?int, ?string} */
+    /** @return array{string, string, ?int, ?Text} */
     private static function choice(AskedField $field, string $text): array
     {
         foreach ($field->choices as $choice) {
@@ -228,13 +229,13 @@ final readonly class FieldAnswers
             }
         }
 
-        return ['', '', null, 'This answer is not one of the choices.'];
+        return ['', '', null, new Text('This answer is not one of the choices.')];
     }
 
     /**
      * A shopper names their upload by its token; a cart, which checked it before, by its id.
      *
-     * @return array{string, string, ?int, ?string}
+     * @return array{string, string, ?int, ?Text}
      */
     private function file(AskedField $field, string $text, bool $kept): array
     {
@@ -246,10 +247,10 @@ final readonly class FieldAnswers
         }
         // One another order took belongs to that order.
         if ($upload === null || $upload->orderId() !== null) {
-            return ['', '', null, 'This file is no longer here; send it again.'];
+            return ['', '', null, new Text('This file is no longer here; send it again.')];
         }
         if (!\in_array($upload->mimeType(), $field->types, true) || $upload->size() > $field->largest * 1024 * 1024) {
-            return ['', '', null, 'This file is not one this field takes; send another.'];
+            return ['', '', null, new Text('This file is not one this field takes; send another.')];
         }
 
         return [$upload->filename(), '#' . $upload->tokenHash(), $upload->id(), null];

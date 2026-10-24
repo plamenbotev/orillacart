@@ -112,6 +112,7 @@ use OrillaCart\Payment\Domain\Event\PaymentFailed;
 use OrillaCart\Payment\Domain\Event\PaymentHeld;
 use OrillaCart\Payment\Domain\Event\PaymentInQuestion;
 use OrillaCart\Payment\Infrastructure\Events\OrdersWithPayments;
+use OrillaCart\Platform\I18n\GettextTranslations;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Twig\EditedTemplateLoader;
@@ -470,7 +471,7 @@ final class TestShop
         $releasing = new ReleaseCouponUses($this->discounts);
         $this->events->addListener(OrderStatusChanged::class, $releasing->statusChanged(...));
         $this->events->addListener(OrderDeleted::class, $releasing->deleted(...));
-        $this->giftCardPayments = new GiftCardPayments($this->giftCardRecords, $this->orders, $this->clock);
+        $this->giftCardPayments = new GiftCardPayments($this->giftCardRecords, $this->orders, $this->clock, new GettextTranslations());
         $withGiftCards = new GiftCardsWithOrders($this->giftCardPayments, new GiftCardSales($this->giftCardRecords, $this->giftCardSettings, $this->orders, $this->giftCardMail, $this->transactions, $this->clock), $this->orders);
         $this->events->addListener(OrderStatusChanged::class, $withGiftCards->statusChanged(...));
         $this->events->addListener(OrderPaid::class, $withGiftCards->paid(...));
@@ -508,7 +509,7 @@ final class TestShop
             $this->shownPrices = new ShownPrices($taxes, $this->customers, $settings),
         );
         $this->reorder = new Reorder($this->orders, $this->carts);
-        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock);
+        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations());
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
         $this->invoiceSettings = new MemoryInvoiceSettings();

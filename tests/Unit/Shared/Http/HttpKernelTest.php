@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Unit\Shared\Http;
 
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\ServerRequest;
+use OrillaCart\Platform\I18n\GettextTranslations;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -199,7 +200,7 @@ final class HttpKernelTest extends TestCase
         $responder = new JsonResponder(new SerializerFactory()->create(), $psr17, $psr17);
 
         return new HttpKernel(
-            new ErrorMiddleware($responder, $this->logger),
+            new ErrorMiddleware($responder, $this->logger, new GettextTranslations()),
             new AuthorizationMiddleware(new RouteAccess($this->authorization)),
             new CsrfMiddleware($this->csrf),
             [],

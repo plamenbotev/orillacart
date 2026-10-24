@@ -82,15 +82,15 @@ class TaxExemption
     ) {
         $certificate = trim($certificate);
         if ($certificate === '' || mb_strlen($certificate) > self::MAX_CERTIFICATE_LENGTH) {
-            throw new RuleViolation(\sprintf('An exemption needs its certificate\'s number, up to %d characters.', self::MAX_CERTIFICATE_LENGTH), 'orillacart_invalid_exemption');
+            throw new RuleViolation('An exemption needs its certificate\'s number, up to %d characters.', 'orillacart_invalid_exemption', values: [self::MAX_CERTIFICATE_LENGTH]);
         }
         foreach ($regions as $region) {
             if (preg_match(self::REGION, $region) !== 1) {
-                throw new RuleViolation(\sprintf('"%s" is not a country or a state, such as US or US-TX.', $region), 'orillacart_invalid_exemption');
+                throw new RuleViolation('"%s" is not a country or a state, such as US or US-TX.', 'orillacart_invalid_exemption', values: [$region]);
             }
         }
         if (mb_strlen($note) > self::MAX_NOTE_LENGTH) {
-            throw new RuleViolation(\sprintf('A note has up to %d characters.', self::MAX_NOTE_LENGTH), 'orillacart_invalid_exemption');
+            throw new RuleViolation('A note has up to %d characters.', 'orillacart_invalid_exemption', values: [self::MAX_NOTE_LENGTH]);
         }
         $this->reason = $reason;
         $this->certificate = $certificate;
@@ -186,7 +186,7 @@ class TaxExemption
     {
         foreach ($regions ?? [] as $region) {
             if (preg_match(self::REGION, $region) !== 1) {
-                throw new RuleViolation(\sprintf('"%s" is not a country or a state, such as US or US-TX.', $region), 'orillacart_invalid_exemption');
+                throw new RuleViolation('"%s" is not a country or a state, such as US or US-TX.', 'orillacart_invalid_exemption', values: [$region]);
             }
         }
         $this->review($now);
@@ -206,7 +206,7 @@ class TaxExemption
     {
         $reason = trim($reason);
         if ($reason === '' || mb_strlen($reason) > self::MAX_NOTE_LENGTH) {
-            throw new RuleViolation(\sprintf('Tell the customer why, in up to %d characters.', self::MAX_NOTE_LENGTH), 'orillacart_invalid_exemption');
+            throw new RuleViolation('Tell the customer why, in up to %d characters.', 'orillacart_invalid_exemption', values: [self::MAX_NOTE_LENGTH]);
         }
         $this->review($now);
         $this->status = ExemptionStatus::Refused;

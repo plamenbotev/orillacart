@@ -14,6 +14,7 @@ use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Input\RequestMapper;
+use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AsHook;
 
@@ -35,6 +36,7 @@ final readonly class DownloadExport
         private ProductsExport $products,
         private SubscribersExport $subscribers,
         private RequestMapper $input,
+        private Translations $translations,
     ) {}
 
     public function orders(): void
@@ -46,7 +48,7 @@ final readonly class DownloadExport
         } catch (HttpException $e) {
             wp_die(esc_html(self::problems($e)), esc_html__('Export', 'orillacart'), ['response' => 422, 'back_link' => true]);
         } catch (RuleViolation $e) {
-            wp_die(esc_html($e->getMessage()), esc_html__('Export', 'orillacart'), ['response' => 422, 'back_link' => true]);
+            wp_die(esc_html($this->translations->text($e->text)), esc_html__('Export', 'orillacart'), ['response' => 422, 'back_link' => true]);
         }
         $this->orders->export($query, $this->file('orders'));
         exit;

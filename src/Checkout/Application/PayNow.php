@@ -77,7 +77,7 @@ final readonly class PayNow
         } catch (InsufficientStock) {
             throw new CheckoutRuleViolation('Some of the items sold out since: this order cannot be paid any more. Order them again from the shop.', 'orillacart_out_of_stock');
         } catch (OrderRuleViolation $e) {
-            throw new CheckoutRuleViolation($e->getMessage(), 'orillacart_order_not_payable', $e);
+            throw new CheckoutRuleViolation($e->text, 'orillacart_order_not_payable', $e);
         }
         $receiptUrl = $this->links->receiptUrl($order->number);
         try {

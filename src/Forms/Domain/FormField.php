@@ -56,27 +56,27 @@ final readonly class FormField
         public array $types = self::FILE_TYPES,
         public int $largest = 10,
     ) {
-        $refuse = static fn(string $message): FormRuleViolation => new FormRuleViolation(\sprintf($message, $label), 'orillacart_invalid_form_field');
+        $refuse = static fn(string $message, int $limit = 0): FormRuleViolation => new FormRuleViolation($message, 'orillacart_invalid_form_field', values: [$label, $limit]);
         if (preg_match('/^[a-z][a-z0-9_]{0,29}$/', $key) !== 1) {
-            throw new FormRuleViolation(\sprintf('"%s" is not a field key: lowercase letters, digits and underscores, up to 30, starting with a letter.', $key), 'orillacart_invalid_form_field');
+            throw new FormRuleViolation('"%s" is not a field key: lowercase letters, digits and underscores, up to 30, starting with a letter.', 'orillacart_invalid_form_field', values: [$key]);
         }
         if (trim($label) === '' || mb_strlen($label) > self::MAX_LABEL_LENGTH) {
-            throw new FormRuleViolation(\sprintf('Each field needs a label of up to %d characters.', self::MAX_LABEL_LENGTH), 'orillacart_invalid_form_field');
+            throw new FormRuleViolation('Each field needs a label of up to %d characters.', 'orillacart_invalid_form_field', values: [self::MAX_LABEL_LENGTH]);
         }
         if (mb_strlen($help) > self::MAX_HELP_LENGTH || mb_strlen($placeholder) > self::MAX_LABEL_LENGTH) {
             throw $refuse('The help or placeholder of "%s" is too long.');
         }
         if ($longest < 1 || $longest > self::MAX_LONGEST) {
-            throw $refuse(\sprintf('"%%s" takes from 1 to %d characters.', self::MAX_LONGEST));
+            throw $refuse('"%1$s" takes from 1 to %2$d characters.', self::MAX_LONGEST);
         }
         if ($kind === FieldKind::Choice && $choices === []) {
             throw $refuse('"%s" offers no choices.');
         }
         if (\count($choices) > self::MAX_CHOICES) {
-            throw $refuse(\sprintf('"%%s" offers more than %d choices.', self::MAX_CHOICES));
+            throw $refuse('"%1$s" offers more than %2$d choices.', self::MAX_CHOICES);
         }
         if ($kind === FieldKind::File && ($types === [] || array_diff($types, self::FILE_TYPES) !== [] || $largest < 1 || $largest > self::MAX_MEGABYTES)) {
-            throw $refuse(\sprintf('"%%s" takes some of JPEG, PNG, WebP, GIF and PDF, up to %d MB.', self::MAX_MEGABYTES));
+            throw $refuse('"%1$s" takes some of JPEG, PNG, WebP, GIF and PDF, up to %2$d MB.', self::MAX_MEGABYTES);
         }
         if (!\in_array($display, [self::LIST, self::BUTTONS], true)) {
             throw $refuse('"%s" is shown as a list or as buttons.');
@@ -177,7 +177,7 @@ final readonly class FormField
         try {
             return Money::of($value);
         } catch (RuleViolation) {
-            throw new FormRuleViolation(\sprintf('"%s" is not an amount.', $value), 'orillacart_invalid_form_field');
+            throw new FormRuleViolation('"%s" is not an amount.', 'orillacart_invalid_form_field', values: [$value]);
         }
     }
 }

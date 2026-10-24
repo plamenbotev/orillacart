@@ -95,7 +95,7 @@ class Carrier
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new ShippingRuleViolation(\sprintf('A carrier needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_carrier_name');
+            throw new ShippingRuleViolation('A carrier needs a name of up to %d characters.', 'orillacart_invalid_carrier_name', values: [self::MAX_NAME_LENGTH]);
         }
         $this->name = $name;
     }
@@ -142,7 +142,7 @@ class Carrier
     public function useMethod(?string $method, array $settings = [], bool $taxable = true, ?int $taxGroupId = null): void
     {
         if ($method !== null && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $method) !== 1) {
-            throw new ShippingRuleViolation(\sprintf('"%s" is not a shipping method.', $method), 'orillacart_unknown_shipping_method');
+            throw new ShippingRuleViolation('"%s" is not a shipping method.', 'orillacart_unknown_shipping_method', values: [$method]);
         }
         $this->method = $method;
         $this->methodSettings = $method === null ? [] : $settings;
@@ -167,7 +167,7 @@ class Carrier
         $seen = [];
         foreach ($locations as $location) {
             if (isset($seen[$location->id])) {
-                throw new ShippingRuleViolation(\sprintf('The pickup place "%s" is listed twice.', $location->id), 'orillacart_duplicate_pickup_location');
+                throw new ShippingRuleViolation('The pickup place "%s" is listed twice.', 'orillacart_duplicate_pickup_location', values: [$location->id]);
             }
             $seen[$location->id] = true;
         }
@@ -250,9 +250,9 @@ class Carrier
                 $this->rates->add(new ShippingRate($this, $draft->details, $position));
                 continue;
             }
-            $rate = $existing[$draft->id] ?? throw new ShippingRuleViolation(\sprintf('Shipping rate %d is not one of this carrier\'s rates.', $draft->id), 'orillacart_unknown_rate');
+            $rate = $existing[$draft->id] ?? throw new ShippingRuleViolation('Shipping rate %d is not one of this carrier\'s rates.', 'orillacart_unknown_rate', values: [$draft->id]);
             if (isset($kept[$draft->id])) {
-                throw new ShippingRuleViolation(\sprintf('Shipping rate %d is listed twice.', $draft->id), 'orillacart_duplicate_rate');
+                throw new ShippingRuleViolation('Shipping rate %d is listed twice.', 'orillacart_duplicate_rate', values: [$draft->id]);
             }
             $rate->change($draft->details, $position);
             $kept[$draft->id] = true;

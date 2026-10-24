@@ -99,6 +99,7 @@
                         {% set line = order.lines[given.line] ?? null %}
                         {% if line %}<tr><td>{{ line.name }} &times; {{ given.quantity }}</td><td class="amount"></td></tr>{% endif %}
                     {% endfor %}
+                    {# translators: %s: the order number -#}
                     <tr><td>{{ __('Refund of order #%s')|format(order.number) }}</td><td class="amount">−{{ invoice.amount|money(invoice.currency) }}</td></tr>
                 </tbody>
                 <tfoot>
@@ -154,6 +155,7 @@
                     {% endif %}
                 </tfoot>
             </table>
+            {# translators: 1: a date, 2: the way to pay -#}
             {% if order.paid_at %}<p>{{ __('Paid %1$s by %2$s.')|format(order.paid_at|shop_date, order.payment_name ?: __('nothing (free)')) }}</p>{% endif %}
         {% endif %}
 

@@ -78,7 +78,7 @@ class DownloadFile
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new CatalogRuleViolation(\sprintf('A download needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_download_name');
+            throw new CatalogRuleViolation('A download needs a name of up to %d characters.', 'orillacart_invalid_download_name', values: [self::MAX_NAME_LENGTH]);
         }
         $this->name = $name;
     }

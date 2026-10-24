@@ -23,7 +23,7 @@ final readonly class PostcodePattern implements \Stringable
         $normalized = self::normalize($pattern);
         if (preg_match('/^(\d{1,10})-(\d{1,10})$/', $normalized, $range) === 1) {
             if ((int) $range[1] > (int) $range[2]) {
-                throw new RuleViolation(\sprintf('The postcode range "%s" ends before it starts.', $pattern), 'orillacart_invalid_postcode');
+                throw new RuleViolation('The postcode range "%s" ends before it starts.', 'orillacart_invalid_postcode', values: [$pattern]);
             }
 
             return new self($normalized, null, (int) $range[1], (int) $range[2]);
@@ -36,8 +36,9 @@ final readonly class PostcodePattern implements \Stringable
         }
 
         throw new RuleViolation(
-            \sprintf('"%s" is not a postcode pattern; use a postcode such as 1000, a start such as SW1*, or a range such as 1000-1999.', $pattern),
+            '"%s" is not a postcode pattern; use a postcode such as 1000, a start such as SW1*, or a range such as 1000-1999.',
             'orillacart_invalid_postcode',
+            values: [$pattern],
         );
     }
 

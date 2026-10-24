@@ -30,6 +30,8 @@ use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Domain\Text;
+use OrillaCart\Shared\I18n\Translations;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -48,6 +50,7 @@ final readonly class Returns
         private Refunds $refunds,
         private SettingsService $settings,
         private ClockInterface $clock,
+        private Translations $translations,
     ) {}
 
     /**
@@ -98,13 +101,13 @@ final readonly class Returns
         }
         foreach ($items as $line => $quantity) {
             if ($quantity > ($left[$line] ?? 0)) {
-                throw new ReturnRuleViolation(\sprintf('%d of "%s" can go back.', $left[$line] ?? 0, $order->lines[$line]->name ?? (string) ($line + 1)), 'orillacart_invalid_return_items');
+                throw new ReturnRuleViolation('%1$d of "%2$s" can go back.', 'orillacart_invalid_return_items', values: [$left[$line] ?? 0, $order->lines[$line]->name ?? (string) ($line + 1)]);
             }
         }
         ksort($items);
         $return = new ItemReturn($order->number, $items, ReturnReason::from($command->reason), $command->comment, $this->clock->now());
         $this->returns->save($return);
-        $this->orders->needsAttention($order->number, \sprintf('The customer asks to return %s: %s.%s', self::listed($order, $items), strtolower($return->reason()->label()), $return->comment() === '' ? '' : ' "' . $return->comment() . '"'));
+        $this->orders->needsAttention($order->number, \sprintf('The customer asks to return %s: %s.%s', self::listed($order, $items), strtolower((string) $return->reason()->label()), $return->comment() === '' ? '' : ' "' . $return->comment() . '"'));
 
         return $this->returnView($order, $return);
     }
@@ -119,7 +122,7 @@ final readonly class Returns
         $return->approve($command->answer, $this->clock->now());
         $this->returns->save($return);
         $order = $this->orders->order($return->orderId());
-        $this->orders->addNote($order->number, new AddOrderNote(trim(\sprintf('Your return of %s is approved. %s', self::listed($order, $return->items()), $return->answer())), true), $userId);
+        $this->orders->addNote($order->number, new AddOrderNote(trim($this->translations->text(Text::of('Your return of %1$s is approved. %2$s', self::listed($order, $return->items()), $return->answer()))), true), $userId);
 
         return $this->returnView($order, $return);
     }
@@ -134,7 +137,7 @@ final readonly class Returns
         $return->refuse($command->answer, $this->clock->now());
         $this->returns->save($return);
         $order = $this->orders->order($return->orderId());
-        $this->orders->addNote($order->number, new AddOrderNote(\sprintf('Your return of %s is refused: %s', self::listed($order, $return->items()), $return->answer()), true), $userId);
+        $this->orders->addNote($order->number, new AddOrderNote($this->translations->text(Text::of('Your return of %1$s is refused: %2$s', self::listed($order, $return->items()), $return->answer())), true), $userId);
 
         return $this->returnView($order, $return);
     }
@@ -167,7 +170,7 @@ final readonly class Returns
         $return = $this->get($id);
         $order = $this->orders->order($return->orderId());
         if ($return->status() !== ReturnStatus::Received) {
-            throw new ReturnRuleViolation(\sprintf('Return %d is %s; its items are refunded once they came back.', $id, $return->status()->value), 'orillacart_return_not_refundable');
+            throw new ReturnRuleViolation('Return %1$d is %2$s; its items are refunded once they came back.', 'orillacart_return_not_refundable', values: [$id, $return->status()->value]);
         }
         $refunds = $this->refunds->refund($order->number, new MakeRefund(
             (string) $this->amount($order, $return->items()),

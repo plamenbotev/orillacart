@@ -36,6 +36,7 @@ final class SerializerFactory
 
         return new Serializer(
             [
+                new TextNormalizer(),
                 new BackedEnumNormalizer(),
                 new DateTimeNormalizer([DateTimeNormalizer::FORMAT_KEY => \DATE_ATOM]),
                 new ArrayDenormalizer(),

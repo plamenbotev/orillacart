@@ -10,6 +10,6 @@ final class GiftCardNotFound extends NotFound
 {
     public function __construct(int $id)
     {
-        parent::__construct(\sprintf('There is no gift card %d.', $id), 'orillacart_gift_card_not_found');
+        parent::__construct('There is no gift card %d.', 'orillacart_gift_card_not_found', values: [$id]);
     }
 }

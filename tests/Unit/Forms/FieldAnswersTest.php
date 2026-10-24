@@ -87,7 +87,7 @@ final class FieldAnswersTest extends TestCase
             $this->answers->check([$field], [$field->id => $sent], 'personalisation.');
             self::fail('The answer was taken.');
         } catch (InvalidFields $e) {
-            self::assertSame([['field' => 'personalisation.' . $field->id, 'message' => $message]], $e->violations);
+            self::assertSame([['field' => 'personalisation.' . $field->id, 'message' => $message]], $e->messages());
         }
     }
 

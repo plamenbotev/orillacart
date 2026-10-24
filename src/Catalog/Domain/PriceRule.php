@@ -93,7 +93,7 @@ class PriceRule
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new CatalogRuleViolation(\sprintf('A price rule has a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_price_rule');
+            throw new CatalogRuleViolation('A price rule has a name of up to %d characters.', 'orillacart_invalid_price_rule', values: [self::MAX_NAME_LENGTH]);
         }
         if ($tiers === []) {
             throw new CatalogRuleViolation('A price rule sets a price from 1 item, or from some number of items.', 'orillacart_invalid_price_rule');

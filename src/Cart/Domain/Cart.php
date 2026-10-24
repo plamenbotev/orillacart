@@ -187,7 +187,7 @@ class Cart
             }
         }
         if ($this->lines->count() >= self::MAX_LINES) {
-            throw new CartRuleViolation(\sprintf('A cart holds up to %d different items.', self::MAX_LINES), 'orillacart_cart_full');
+            throw new CartRuleViolation('A cart holds up to %d different items.', 'orillacart_cart_full', values: [self::MAX_LINES]);
         }
         $position = 0;
         foreach ($this->lines as $line) {

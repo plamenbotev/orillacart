@@ -44,13 +44,13 @@ final readonly class TaxRateDetails
         public bool $shipping = true,
     ) {
         if (preg_match('/^[A-Z]{2}$/', $country) !== 1) {
-            throw new RuleViolation(\sprintf('"%s" is not a country code.', $country), 'orillacart_invalid_country');
+            throw new RuleViolation('"%s" is not a country code.', 'orillacart_invalid_country', values: [$country]);
         }
         if ($state !== null && preg_match('/^[A-Z0-9]{1,3}$/', $state) !== 1) {
-            throw new RuleViolation(\sprintf('"%s" is not a state code.', $state), 'orillacart_invalid_state');
+            throw new RuleViolation('"%s" is not a state code.', 'orillacart_invalid_state', values: [$state]);
         }
         if (mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new RuleViolation(\sprintf('Tax names can have up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_tax_name');
+            throw new RuleViolation('Tax names can have up to %d characters.', 'orillacart_invalid_tax_name', values: [self::MAX_NAME_LENGTH]);
         }
         if ($priority < 0) {
             throw new RuleViolation('The priority cannot be negative.', 'orillacart_invalid_priority');
@@ -59,14 +59,14 @@ final readonly class TaxRateDetails
             throw new RuleViolation('A tax code has 1 to 40 letters, digits, dots, dashes or underscores.', 'orillacart_invalid_tax_code');
         }
         if (\count($postcodes) > self::MAX_POSTCODES) {
-            throw new RuleViolation(\sprintf('A tax rate can list up to %d postcodes.', self::MAX_POSTCODES), 'orillacart_too_many_postcodes');
+            throw new RuleViolation('A tax rate can list up to %d postcodes.', 'orillacart_too_many_postcodes', values: [self::MAX_POSTCODES]);
         }
         if (\count($cities) > self::MAX_CITIES) {
-            throw new RuleViolation(\sprintf('A tax rate can list up to %d cities.', self::MAX_CITIES), 'orillacart_too_many_cities');
+            throw new RuleViolation('A tax rate can list up to %d cities.', 'orillacart_too_many_cities', values: [self::MAX_CITIES]);
         }
         foreach ($cities as $city) {
             if ($city === '' || $city !== self::city($city) || mb_strlen($city) > self::MAX_CITY_LENGTH) {
-                throw new RuleViolation(\sprintf('"%s" is not a city name of up to %d characters.', $city, self::MAX_CITY_LENGTH), 'orillacart_invalid_city');
+                throw new RuleViolation('"%1$s" is not a city name of up to %2$d characters.', 'orillacart_invalid_city', values: [$city, self::MAX_CITY_LENGTH]);
             }
         }
     }

@@ -47,7 +47,7 @@ final readonly class RateDetails
         public Range $items = new Range(),
     ) {
         if (trim($name) === '' || mb_strlen(trim($name)) > self::MAX_NAME_LENGTH) {
-            throw new ShippingRuleViolation(\sprintf('A shipping rate needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_rate_name');
+            throw new ShippingRuleViolation('A shipping rate needs a name of up to %d characters.', 'orillacart_invalid_rate_name', values: [self::MAX_NAME_LENGTH]);
         }
         if ($price->isNegative()) {
             throw new ShippingRuleViolation('A shipping rate cannot cost less than nothing.', 'orillacart_invalid_rate_price');
@@ -55,7 +55,7 @@ final readonly class RateDetails
         $seen = [];
         foreach ($regions as $region) {
             if (isset($seen[(string) $region])) {
-                throw new ShippingRuleViolation(\sprintf('The region %s is listed twice.', $region), 'orillacart_duplicate_region');
+                throw new ShippingRuleViolation('The region %s is listed twice.', 'orillacart_duplicate_region', values: [$region]);
             }
             $seen[(string) $region] = true;
         }

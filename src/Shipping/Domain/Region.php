@@ -17,7 +17,7 @@ final readonly class Region implements \Stringable
     public static function of(string $code): self
     {
         if (preg_match('/^([A-Z]{2})(?:-([A-Z0-9]{1,3}))?$/', $code, $parts) !== 1) {
-            throw new ShippingRuleViolation(\sprintf('"%s" is not a region; use a country code such as "BG" or a state such as "US-CA".', $code), 'orillacart_invalid_region');
+            throw new ShippingRuleViolation('"%s" is not a region; use a country code such as "BG" or a state such as "US-CA".', 'orillacart_invalid_region', values: [$code]);
         }
 
         return new self($parts[1], $parts[2] ?? null);

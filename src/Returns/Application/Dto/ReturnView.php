@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Returns\Application\Dto;
 
+use OrillaCart\Shared\Domain\Text;
+
 /**
  * A return of an order's items, as the order screen and the customer's receipt show it.
  */
@@ -19,7 +21,7 @@ final readonly class ReturnView
         public string $status,
         public array $items,
         public string $reason,
-        public string $reasonLabel,
+        public Text $reasonLabel,
         public string $comment,
         public string $answer,
         public string $amount,

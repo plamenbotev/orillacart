@@ -47,7 +47,7 @@ class ApiKey
     ) {
         $this->name = trim($name);
         if ($this->name === '' || mb_strlen($this->name) > self::MAX_NAME_LENGTH) {
-            throw new IntegrationRuleViolation(\sprintf('Name the key in 1 to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_api_key_name');
+            throw new IntegrationRuleViolation('Name the key in 1 to %d characters.', 'orillacart_invalid_api_key_name', values: [self::MAX_NAME_LENGTH]);
         }
     }
 

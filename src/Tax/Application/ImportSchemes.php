@@ -49,7 +49,7 @@ final readonly class ImportSchemes
         foreach ($command->schemes as $entry) {
             $scheme = ImportScheme::from($entry->scheme);
             if (isset($registrations[$scheme->value])) {
-                throw new RuleViolation(\sprintf('%s is listed twice.', $scheme->label()), 'orillacart_duplicate_import_scheme');
+                throw new RuleViolation('%s is listed twice.', 'orillacart_duplicate_import_scheme', values: [$scheme->label()]);
             }
             $number = $entry->number === null || trim($entry->number) === '' ? null : ImportRegistration::normalize($entry->number);
             $registrations[$scheme->value] = new ImportRegistration($scheme, $number, $entry->limit);

@@ -23,7 +23,7 @@ final class Range
     {
         $min ??= Measure::zero();
         if ($max !== null && $max->compare($min) < 0) {
-            throw new ShippingRuleViolation(\sprintf('A range cannot end (%s) below where it starts (%s).', $max, $min), 'orillacart_invalid_range');
+            throw new ShippingRuleViolation('A range cannot end (%1$s) below where it starts (%2$s).', 'orillacart_invalid_range', values: [$max, $min]);
         }
         $this->min = $min->toFixed();
         $this->max = $max?->toFixed();

@@ -10,6 +10,6 @@ final class InvalidPostcode extends RuleViolation
 {
     public function __construct(public readonly string $countryName, public readonly string $example)
     {
-        parent::__construct(\sprintf('That is not a postcode of %s, which look like %s.', $countryName, $example), 'orillacart_invalid_postcode');
+        parent::__construct('That is not a postcode of %1$s, which look like %2$s.', 'orillacart_invalid_postcode', values: [$countryName, $example]);
     }
 }

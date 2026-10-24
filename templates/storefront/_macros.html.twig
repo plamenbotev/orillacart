@@ -12,6 +12,7 @@
             <span class="orillacart-price">{{ __('From %s')|format(offer.price|money) }}</span>
         {%- elseif offer.regular_price -%}
             <span class="orillacart-price orillacart-price--sale"><del aria-label="{{ __('Regular price') }}">{{ offer.regular_price|money }}</del> <ins aria-label="{{ __('Sale price') }}">{{ offer.price|money }}</ins></span>
+            {# translators: %s: a price -#}
             {%- if offer.lowest_price %} <small class="orillacart-price__lowest">{{ __('Lowest price in the last 30 days: %s')|format(offer.lowest_price|money) }}</small>{% endif -%}
         {%- else -%}
             <span class="orillacart-price">{{ offer.price|money }}</span>

@@ -4,22 +4,28 @@ declare(strict_types=1);
 
 namespace OrillaCart\Shared\Http;
 
+use OrillaCart\Shared\Domain\Text;
+
 /**
  * Stops a request with a status and a message that is safe to show to the caller.
  */
 final class HttpException extends \RuntimeException
 {
+    /** The message, to translate where it is shown. */
+    public readonly Text $text;
+
     /**
      * @param array<string, mixed> $details extra data for the response body
      */
     public function __construct(
         public readonly int $status,
         public readonly string $errorCode,
-        string $message,
+        string|Text $message,
         public readonly array $details = [],
         ?\Throwable $previous = null,
     ) {
-        parent::__construct($message, 0, $previous);
+        $this->text = $message instanceof Text ? $message : new Text($message);
+        parent::__construct((string) $this->text, 0, $previous);
     }
 
     public static function unauthorized(): self
@@ -43,7 +49,7 @@ final class HttpException extends \RuntimeException
     }
 
     /**
-     * @param list<array{field: string, message: string}> $violations
+     * @param list<array{field: string, message: string|Text}> $violations
      */
     public static function invalidInput(array $violations): self
     {

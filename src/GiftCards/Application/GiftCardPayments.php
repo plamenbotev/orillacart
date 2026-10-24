@@ -14,6 +14,8 @@ use OrillaCart\GiftCards\Domain\GiftCardRepository;
 use OrillaCart\GiftCards\Domain\GiftCardRuleViolation;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\Text;
+use OrillaCart\Shared\I18n\Translations;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -29,6 +31,7 @@ final readonly class GiftCardPayments
         private GiftCardRepository $cards,
         private OrderService $orders,
         private ClockInterface $clock,
+        private Translations $translations,
     ) {}
 
     /**
@@ -58,9 +61,9 @@ final readonly class GiftCardPayments
         $seen = [];
         foreach (\array_slice($codes, 0, self::MAX_CODES) as $typed) {
             $card = $this->withCode($typed);
-            $refusal = $card === null ? 'This gift card is not valid.' : $card->refusal($currency, $now);
+            $refusal = $card === null ? new Text('This gift card is not valid.') : $card->refusal($currency, $now);
             if ($card === null || $refusal !== null) {
-                $refused[$typed] = $refusal ?? 'This gift card is not valid.';
+                $refused[$typed] = $refusal ?? new Text('This gift card is not valid.');
                 continue;
             }
             if (isset($seen[$card->id()])) {
@@ -97,12 +100,13 @@ final readonly class GiftCardPayments
             }
             $card = $this->cards->find($use->cardId, true);
             if ($card === null || $card->refusal($currency, $now) !== null || $card->balance()->compare($amount) < 0) {
-                throw new GiftCardRuleViolation(\sprintf('What is left on %s changed. Review your order and place it again.', $use->label), 'orillacart_gift_card_changed');
+                throw new GiftCardRuleViolation('What is left on %s changed. Review your order and place it again.', 'orillacart_gift_card_changed', values: [$use->label]);
             }
             $card->spend($amount);
             $this->cards->save($card);
             $this->cards->add(new GiftCardEntry($card->id(), Money::zero()->subtract($amount), \sprintf('Paid for order #%d', $orderId), $now, $orderId));
-            $paid[] = ['label' => $card->label(), 'amount' => (string) $amount];
+            // Kept on the order in the shop's language, as its receipt and emails show it.
+            $paid[] = ['label' => $this->translations->text($card->label()), 'amount' => (string) $amount];
         }
         if ($paid !== []) {
             $this->orders->payWithGiftCards($orderId, $paid);

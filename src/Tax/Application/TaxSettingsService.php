@@ -34,11 +34,11 @@ final readonly class TaxSettingsService
     public function update(UpdateTaxSettings $command): TaxSettingsView
     {
         if ($command->defaultGroupId !== null && $this->groups->find($command->defaultGroupId) === null) {
-            throw new RuleViolation(\sprintf('There is no tax group %d.', $command->defaultGroupId), 'orillacart_unknown_tax_group');
+            throw new RuleViolation('There is no tax group %d.', 'orillacart_unknown_tax_group', values: [$command->defaultGroupId]);
         }
 
         if ($command->provider !== null && !\in_array($command->provider, array_column($this->providers(), 'id'), true)) {
-            throw new RuleViolation(\sprintf('There is no tax service "%s": its add-on may be off.', $command->provider), 'orillacart_unknown_tax_provider');
+            throw new RuleViolation('There is no tax service "%s": its add-on may be off.', 'orillacart_unknown_tax_provider', values: [$command->provider]);
         }
         if ($command->provider !== null && $command->pricesIncludeTax) {
             // A service works out the tax on top of a price; with the tax inside the prices it would never be asked.

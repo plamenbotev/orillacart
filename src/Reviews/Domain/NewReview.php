@@ -30,7 +30,7 @@ final readonly class NewReview
             throw new ReviewRuleViolation('A review gives 1 to 5 stars.', 'orillacart_invalid_rating');
         }
         if (trim($text) === '' || mb_strlen($text) > self::MAX_TEXT_LENGTH) {
-            throw new ReviewRuleViolation(\sprintf('A review says something, in at most %d characters.', self::MAX_TEXT_LENGTH), 'orillacart_invalid_review');
+            throw new ReviewRuleViolation('A review says something, in at most %d characters.', 'orillacart_invalid_review', values: [self::MAX_TEXT_LENGTH]);
         }
         // A customer whose account has no name is signed by the store ("Customer", in the site's language).
         if ((trim($authorName) === '' && $customerId === null) || mb_strlen($authorName) > self::MAX_NAME_LENGTH || filter_var($authorEmail, \FILTER_VALIDATE_EMAIL) === false) {

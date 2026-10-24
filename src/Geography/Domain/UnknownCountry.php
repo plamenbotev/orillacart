@@ -10,6 +10,6 @@ final class UnknownCountry extends RuleViolation
 {
     public function __construct(public readonly string $countryCode)
     {
-        parent::__construct(\sprintf('There is no country with the code "%s".', $countryCode), 'orillacart_unknown_country');
+        parent::__construct('There is no country with the code "%s".', 'orillacart_unknown_country', values: [$countryCode]);
     }
 }

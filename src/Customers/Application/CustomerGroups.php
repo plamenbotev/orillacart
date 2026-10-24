@@ -108,7 +108,7 @@ final readonly class CustomerGroups
     {
         $existing = $this->groups->findByName($name);
         if ($existing !== null && $existing->id() !== $id) {
-            throw new CustomerRuleViolation(\sprintf('Another group is called %s.', trim($name)), 'orillacart_group_name_taken');
+            throw new CustomerRuleViolation('Another group is called %s.', 'orillacart_group_name_taken', values: [trim($name)]);
         }
     }
 }

@@ -32,7 +32,7 @@ final class Pricing
         }
         if ($sale !== null && $sale->price->compare($price) >= 0) {
             // Charged while it runs, and shown without the regular price struck through: nothing would look wrong.
-            throw new CatalogRuleViolation(\sprintf('A sale price is below the regular price: %s is not below %s. Lower the sale too, or remove it.', $sale->price, $price), 'orillacart_sale_not_below_price');
+            throw new CatalogRuleViolation('A sale price is below the regular price: %1$s is not below %2$s. Lower the sale too, or remove it.', 'orillacart_sale_not_below_price', values: [$sale->price, $price]);
         }
         $this->price = $price->toFixed();
         $this->salePrice = $sale?->price->toFixed();

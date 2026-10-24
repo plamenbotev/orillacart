@@ -8,7 +8,9 @@
         <div class="orillacart-reviews__summary">
             <p>
                 {% include 'storefront/_stars.html.twig' with {rating: page.rating.average} only %}
+                {# translators: %s: the average stars, such as 4.5 -#}
                 <strong>{{ __('%s out of 5')|format(page.rating.average) }}</strong>
+                {# translators: %d: how many reviews -#}
                 · {{ _n('%d review', '%d reviews', page.rating.count)|format(page.rating.count) }}
             </p>
             <ul class="orillacart-reviews__bars">
@@ -40,6 +42,7 @@
         <form class="orillacart-review-form" data-orillacart-review-form data-product="{{ product_id }}" novalidate>
             <h3>{{ __('Write a review') }}</h3>
             {% if invitation.author is not null %}
+                {# translators: %s: the reviewer's name -#}
                 <p>{{ __('Your review goes out as %s.')|format(invitation.author ?: __('Customer')) }}{% if invitation.verified %} <span class="orillacart-review__verified">{{ __('Verified buyer') }}</span>{% endif %}</p>
             {% endif %}
             <fieldset class="orillacart-field orillacart-stars-input" data-orillacart-field="rating">

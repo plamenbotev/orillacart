@@ -28,7 +28,7 @@ final readonly class NexusThresholds
         }
         foreach (array_keys($states) as $state) {
             if (preg_match('/^[A-Z]{2}$/', (string) $state) !== 1) {
-                throw new RuleViolation(\sprintf('"%s" is not a state code, such as TX.', $state), 'orillacart_invalid_region');
+                throw new RuleViolation('"%s" is not a state code, such as TX.', 'orillacart_invalid_region', values: [$state]);
             }
         }
     }

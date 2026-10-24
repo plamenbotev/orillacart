@@ -116,7 +116,7 @@ final readonly class SearchFilters
     private function requireFreeKey(string $key, ?int $exceptId): void
     {
         if ($this->filters->isKeyTaken($key, $exceptId)) {
-            throw new SearchRuleViolation(\sprintf('Another filter uses the key "%s".', $key), 'orillacart_duplicate_filter_key');
+            throw new SearchRuleViolation('Another filter uses the key "%s".', 'orillacart_duplicate_filter_key', values: [$key]);
         }
     }
 

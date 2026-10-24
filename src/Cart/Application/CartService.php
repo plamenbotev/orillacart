@@ -102,7 +102,7 @@ final readonly class CartService
         $values = FieldAnswers::values($answers);
         $quote = $this->quotes->quote(new QuoteRequest($command->productId, $command->optionIds, bundleChoices: $command->bundleChoices, extra: (string) FieldAnswers::price($answers)));
         if (!$quote->forSale) {
-            throw new CartRuleViolation(\sprintf('%s is not for sale right now.', $quote->name), 'orillacart_not_for_sale');
+            throw new CartRuleViolation('%s is not for sale right now.', 'orillacart_not_for_sale', values: [$quote->name]);
         }
 
         [$cart, $newToken] = $this->find($owner);
@@ -110,7 +110,7 @@ final readonly class CartService
         $existing = $cart?->lineFor($command->productId, $command->optionIds, $command->bundleChoices, $values);
         $files = FieldAnswers::uploadIds($answers);
         if ($files !== [] && $existing === null && self::files($cart) + \count($files) > FormUploads::MAX_HELD) {
-            throw new CartRuleViolation(\sprintf('A cart holds up to %d files sent with its items.', FormUploads::MAX_HELD), 'orillacart_cart_files');
+            throw new CartRuleViolation('A cart holds up to %d files sent with its items.', 'orillacart_cart_files', values: [FormUploads::MAX_HELD]);
         }
         $quantity = ($existing?->quantity() ?? 0) + $command->quantity;
         self::checkStock($quote, $quantity);

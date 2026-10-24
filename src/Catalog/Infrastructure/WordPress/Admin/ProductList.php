@@ -12,6 +12,7 @@ use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
@@ -48,6 +49,7 @@ final class ProductList
         private readonly TemplateRenderer $templates,
         private readonly BulkEdits $bulk,
         private readonly StockroomService $stockrooms,
+        private readonly Translations $translations,
     ) {}
 
     /**
@@ -147,7 +149,7 @@ final class ProductList
             wp_die(esc_html(\sprintf(
                 /* translators: %s: why the price was refused */
                 __('The price was not saved: %s', 'orillacart'),
-                $e->getMessage(),
+                $this->translations->text($e->text),
             )));
         }
     }
@@ -209,9 +211,9 @@ final class ProductList
         }
         $products = array_values(array_filter(array_map(intval(...), $updated), static fn(int $id): bool => get_post_type($id) === ProductPostType::NAME));
         try {
-            $refused = $this->bulk->apply($products, $edit, get_current_user_id());
+            $refused = array_map($this->translations->text(...), $this->bulk->apply($products, $edit, get_current_user_id()));
         } catch (RuleViolation $e) {
-            $refused = [$e->getMessage()];
+            $refused = [$this->translations->text($e->text)];
         }
         if ($refused !== []) {
             set_transient(self::NOTICE . get_current_user_id(), $refused, MINUTE_IN_SECONDS * 5);
@@ -265,7 +267,7 @@ final class ProductList
         try {
             $copy = $this->products->duplicate($id);
         } catch (RuleViolation $e) {
-            wp_die(esc_html($e->getMessage()), esc_html__('Duplicate', 'orillacart'), ['response' => 422, 'back_link' => true]);
+            wp_die(esc_html($this->translations->text($e->text)), esc_html__('Duplicate', 'orillacart'), ['response' => 422, 'back_link' => true]);
         }
         wp_safe_redirect(get_edit_post_link($copy->id, 'raw') ?? admin_url('edit.php?post_type=' . ProductPostType::NAME));
         exit;

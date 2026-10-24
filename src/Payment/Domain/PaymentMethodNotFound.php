@@ -10,6 +10,6 @@ final class PaymentMethodNotFound extends NotFound
 {
     public function __construct(string $gateway)
     {
-        parent::__construct(\sprintf('There is no payment method "%s".', $gateway), 'orillacart_payment_method_not_found');
+        parent::__construct('There is no payment method "%s".', 'orillacart_payment_method_not_found', values: [$gateway]);
     }
 }

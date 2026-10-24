@@ -64,7 +64,7 @@ final readonly class PaymentMethodService
         $settings = SettingValues::accept($found->settings(), $method->settings(), $command->settings, $found->defaultName());
         $missing = $command->active ? SettingValues::missing($found->settings(), $settings) : null;
         if ($missing !== null) {
-            throw new PaymentRuleViolation(\sprintf('%s needs "%s" before it can be turned on.', $command->name, $missing->label), 'orillacart_payment_method_incomplete');
+            throw new PaymentRuleViolation('%1$s needs "%2$s" before it can be turned on.', 'orillacart_payment_method_incomplete', values: [$command->name, $missing->label]);
         }
         $method->change($command->name, $command->active, $command->position, $command->countries, $command->instructions, $command->receiptNote, $settings);
         $method->chargeFee(Money::of($command->fee), $command->feePercent, $command->feeLabel);

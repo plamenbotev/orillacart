@@ -37,15 +37,15 @@ final readonly class DeliverySchedule
             throw new ShippingRuleViolation('A delivery schedule delivers on at least one weekday, each once.', 'orillacart_invalid_delivery_schedule');
         }
         if ($leadDays < 0 || $leadDays > 60 || $daysAhead < 1 || $daysAhead > self::MAX_DAYS_AHEAD) {
-            throw new ShippingRuleViolation(\sprintf('A delivery schedule needs 0 to 60 days, and offers 1 to %d days.', self::MAX_DAYS_AHEAD), 'orillacart_invalid_delivery_schedule');
+            throw new ShippingRuleViolation('A delivery schedule needs 0 to 60 days, and offers 1 to %d days.', 'orillacart_invalid_delivery_schedule', values: [self::MAX_DAYS_AHEAD]);
         }
         if ($cutoff !== null && !DeliverySlot::isTime($cutoff)) {
-            throw new ShippingRuleViolation(\sprintf('"%s" is not a time of day such as 14:00.', $cutoff), 'orillacart_invalid_delivery_schedule');
+            throw new ShippingRuleViolation('"%s" is not a time of day such as 14:00.', 'orillacart_invalid_delivery_schedule', values: [$cutoff]);
         }
         foreach ($closed as $date) {
             $parsed = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
             if ($parsed === false || $parsed->format('Y-m-d') !== $date) {
-                throw new ShippingRuleViolation(\sprintf('"%s" is not a date such as 2026-12-25.', $date), 'orillacart_invalid_delivery_schedule');
+                throw new ShippingRuleViolation('"%s" is not a date such as 2026-12-25.', 'orillacart_invalid_delivery_schedule', values: [$date]);
             }
         }
         $ids = array_map(static fn(DeliverySlot $slot): string => $slot->id, $slots);

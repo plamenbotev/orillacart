@@ -10,6 +10,6 @@ final class CustomerGroupNotFound extends NotFound
 {
     public function __construct(int $id)
     {
-        parent::__construct(\sprintf('Customer group %d does not exist.', $id), 'orillacart_customer_group_not_found');
+        parent::__construct('Customer group %d does not exist.', 'orillacart_customer_group_not_found', values: [$id]);
     }
 }

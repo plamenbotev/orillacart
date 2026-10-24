@@ -10,6 +10,6 @@ final class CarrierNotFound extends NotFound
 {
     public function __construct(int $id)
     {
-        parent::__construct(\sprintf('There is no carrier %d.', $id), 'orillacart_carrier_not_found');
+        parent::__construct('There is no carrier %d.', 'orillacart_carrier_not_found', values: [$id]);
     }
 }

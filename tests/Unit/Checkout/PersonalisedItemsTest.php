@@ -80,13 +80,13 @@ final class PersonalisedItemsTest extends TestCase
             $this->add(['engrave' => 'yes', 'text' => str_repeat('x', 21), 'box' => true]);
             self::fail('refused answers');
         } catch (InvalidFields $e) {
-            self::assertSame([['field' => "personalisation.f{$this->form}_text", 'message' => 'Up to 20 characters.']], $e->violations);
+            self::assertSame([['field' => "personalisation.f{$this->form}_text", 'message' => 'Up to 20 characters.']], $e->messages());
         }
         try {
             $this->add([]);
             self::fail('a required answer missing');
         } catch (InvalidFields $e) {
-            self::assertSame([['field' => "personalisation.f{$this->form}_engrave", 'message' => 'This field is required.']], $e->violations);
+            self::assertSame([['field' => "personalisation.f{$this->form}_engrave", 'message' => 'This field is required.']], $e->messages());
         }
     }
 
@@ -174,7 +174,7 @@ final class PersonalisedItemsTest extends TestCase
                 $send($same);
                 self::fail('past the sender\'s day');
             } catch (InvalidFields $e) {
-                self::assertSame('That is as many files as one visitor may send in a day. Try again tomorrow.', $e->violations[0]['message'], 'an IPv6 network counts as one sender');
+                self::assertSame('That is as many files as one visitor may send in a day. Try again tomorrow.', $e->messages()[0]['message'], 'an IPv6 network counts as one sender');
             }
         }
         new \ReflectionProperty($first, 'size')->setValue($first, 10);

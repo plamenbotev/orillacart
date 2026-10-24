@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\GiftCards\Application\Dto;
 
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\Text;
 
 /**
  * How gift cards and store credit pay an order: each in turn takes what is left, the codes in the order they
@@ -14,7 +15,7 @@ final readonly class GiftCardPlan
 {
     /**
      * @param list<GiftCardUse>     $uses
-     * @param array<string, string> $refused why, by the code as entered
+     * @param array<string, Text> $refused why, by the code as entered
      * @param string                $storeCredit what the customer has as store credit, whether used or not
      */
     public function __construct(

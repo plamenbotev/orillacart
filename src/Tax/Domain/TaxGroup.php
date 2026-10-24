@@ -98,7 +98,7 @@ class TaxGroup
     public function addRate(TaxRateDetails $details): TaxRate
     {
         if ($this->rates->count() >= self::MAX_RATES) {
-            throw new RuleViolation(\sprintf('A tax group holds up to %d rates; a tax service suits rates by street address.', self::MAX_RATES), 'orillacart_too_many_tax_rates');
+            throw new RuleViolation('A tax group holds up to %d rates; a tax service suits rates by street address.', 'orillacart_too_many_tax_rates', values: [self::MAX_RATES]);
         }
         $rate = new TaxRate($this, $details);
         $this->rates->add($rate);
@@ -155,7 +155,7 @@ class TaxGroup
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new RuleViolation(\sprintf('A tax group needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_tax_group_name');
+            throw new RuleViolation('A tax group needs a name of up to %d characters.', 'orillacart_invalid_tax_group_name', values: [self::MAX_NAME_LENGTH]);
         }
 
         return $name;

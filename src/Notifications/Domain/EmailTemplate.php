@@ -62,7 +62,7 @@ class EmailTemplate
     public function change(string $source, \DateTimeImmutable $at, ?int $by): void
     {
         if (trim($source) === '' || \strlen($source) > self::MAX_LENGTH) {
-            throw new EmailRuleViolation(\sprintf('A template has up to %d characters, and is not empty: reset it to go back to the file.', self::MAX_LENGTH), 'orillacart_invalid_template');
+            throw new EmailRuleViolation('A template has up to %d characters, and is not empty: reset it to go back to the file.', 'orillacart_invalid_template', values: [self::MAX_LENGTH]);
         }
         $this->source = $source;
         $this->updatedAt = $at;

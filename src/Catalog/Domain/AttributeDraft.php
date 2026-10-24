@@ -23,10 +23,10 @@ final readonly class AttributeDraft
         public bool $priceHidden = false,
     ) {
         if (trim($name) === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new CatalogRuleViolation(\sprintf('An attribute needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_attribute_name');
+            throw new CatalogRuleViolation('An attribute needs a name of up to %d characters.', 'orillacart_invalid_attribute_name', values: [self::MAX_NAME_LENGTH]);
         }
         if ($options === []) {
-            throw new CatalogRuleViolation(\sprintf('The attribute "%s" needs at least one option.', $name), 'orillacart_attribute_without_options');
+            throw new CatalogRuleViolation('The attribute "%s" needs at least one option.', 'orillacart_attribute_without_options', values: [$name]);
         }
     }
 }

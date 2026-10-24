@@ -11,6 +11,7 @@ use OrillaCart\Forms\Domain\FormRuleViolation;
 use OrillaCart\Forms\Domain\UploadInspector;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\Files\PrivateFiles;
 use OrillaCart\Tax\Application\Dto\AccountTaxExemptionView;
 use OrillaCart\Tax\Application\Dto\ApproveTaxExemption;
@@ -90,14 +91,14 @@ final readonly class ExemptionCertificates
                 $this->clock->now(),
             );
             if ($exemption->expiresOn() !== null && $exemption->expiresOn()->format('Y-m-d') < $this->clock->now()->format('Y-m-d')) {
-                throw new InvalidFields([['field' => 'expires_on', 'message' => 'The certificate ran out already.']]);
+                throw new InvalidFields([['field' => 'expires_on', 'message' => new Text('The certificate ran out already.')]]);
             }
             $size = is_file($filePath) ? filesize($filePath) : false;
             if ($size === false || $size === 0) {
                 throw self::refused('Add a copy of the certificate: a PDF or a photo.');
             }
             if ($size > self::MAX_MEGABYTES * 1024 * 1024) {
-                throw self::refused(\sprintf('The file is larger than %d MB.', self::MAX_MEGABYTES));
+                throw self::refused('The file is larger than %d MB.', self::MAX_MEGABYTES);
             }
             $type = $this->inspector->type($filePath);
             $takes = $this->inspector->takesImages() ? array_keys(self::EXTENSIONS) : ['application/pdf'];
@@ -107,10 +108,10 @@ final readonly class ExemptionCertificates
             try {
                 $clean = $this->inspector->clean($filePath, $type);
             } catch (FormRuleViolation $e) {
-                throw self::refused($e->getMessage());
+                throw self::refused($e->text);
             }
             if ((int) filesize($clean) > 2 * self::MAX_MEGABYTES * 1024 * 1024) {
-                throw self::refused(\sprintf('The file is larger than %d MB.', self::MAX_MEGABYTES));
+                throw self::refused('The file is larger than %d MB.', self::MAX_MEGABYTES);
             }
             $name = (string) preg_replace('/\.[^.]*$/', '', CleanText::filename($fileName));
             $name = ($name === '' ? 'certificate' : $name) . '.' . self::EXTENSIONS[$type];
@@ -248,8 +249,8 @@ final readonly class ExemptionCertificates
         }
     }
 
-    private static function refused(string $message): InvalidFields
+    private static function refused(string|Text $message, int|string ...$values): InvalidFields
     {
-        return new InvalidFields([['field' => 'file', 'message' => $message]]);
+        return new InvalidFields([['field' => 'file', 'message' => $message instanceof Text ? $message : Text::of($message, ...$values)]]);
     }
 }

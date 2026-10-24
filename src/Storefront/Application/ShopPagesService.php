@@ -29,7 +29,7 @@ final readonly class ShopPagesService
     {
         foreach ([$command->shop, $command->cart, $command->checkout, $command->account] as $id) {
             if ($id !== null && !$this->pages->isPage($id)) {
-                throw new StorefrontRuleViolation(\sprintf('Page %d is not a published page.', $id), 'orillacart_unknown_page');
+                throw new StorefrontRuleViolation('Page %d is not a published page.', 'orillacart_unknown_page', values: [$id]);
             }
         }
         $pages = new ShopPages($command->shop, $command->cart, $command->checkout, $command->account);

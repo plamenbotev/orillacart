@@ -23,7 +23,7 @@ final readonly class Money implements \Stringable
     private function __construct(public int $tenThousandths)
     {
         if (abs($tenThousandths) > self::MAX_UNITS) {
-            throw new RuleViolation(\sprintf('The amount is larger than %s.', self::MAX), 'orillacart_amount_too_large');
+            throw new RuleViolation('The amount is larger than %s.', 'orillacart_amount_too_large', values: [self::MAX]);
         }
     }
 
@@ -34,8 +34,9 @@ final readonly class Money implements \Stringable
     {
         if (preg_match('/^(-?)(\d{1,11})(?:\.(\d{1,' . self::DECIMALS . '}))?$/', $value, $parts) !== 1) {
             throw new RuleViolation(
-                \sprintf('"%s" is not an amount; use a number up to %s with up to %d decimals.', $value, self::MAX, self::DECIMALS),
+                '"%1$s" is not an amount; use a number up to %2$s with up to %3$d decimals.',
                 'orillacart_invalid_amount',
+                values: [$value, self::MAX, self::DECIMALS],
             );
         }
         $amount = (int) $parts[2] * self::UNIT + (int) str_pad($parts[3] ?? '', self::DECIMALS, '0');
@@ -67,7 +68,7 @@ final readonly class Money implements \Stringable
     public function times(int $quantity): self
     {
         if ($quantity !== 0 && abs($this->tenThousandths) > intdiv(self::MAX_UNITS, abs($quantity))) {
-            throw new RuleViolation(\sprintf('The amount is larger than %s.', self::MAX), 'orillacart_amount_too_large');
+            throw new RuleViolation('The amount is larger than %s.', 'orillacart_amount_too_large', values: [self::MAX]);
         }
 
         return new self($this->tenThousandths * $quantity);
@@ -136,7 +137,7 @@ final readonly class Money implements \Stringable
     {
         $units = preg_match('/^(\d{1,8})(?:\.(\d{1,8}))?$/', $rate, $parts) === 1 ? (int) ($parts[1] . str_pad($parts[2] ?? '', 8, '0')) : 0;
         if ($units === 0) {
-            throw new RuleViolation(\sprintf('"%s" is not an exchange rate.', $rate), 'orillacart_invalid_rate');
+            throw new RuleViolation('"%s" is not an exchange rate.', 'orillacart_invalid_rate', values: [$rate]);
         }
 
         return $units;
@@ -146,7 +147,7 @@ final readonly class Money implements \Stringable
     private static function percentShare(string $percent): int
     {
         if (preg_match('/^(\d{1,3})(?:\.(\d{1,4}))?$/', $percent, $parts) !== 1) {
-            throw new RuleViolation(\sprintf('"%s" is not a percentage.', $percent), 'orillacart_invalid_percentage');
+            throw new RuleViolation('"%s" is not a percentage.', 'orillacart_invalid_percentage', values: [$percent]);
         }
 
         return (int) $parts[1] * self::UNIT + (int) str_pad($parts[2] ?? '', self::DECIMALS, '0');
@@ -232,7 +233,7 @@ final readonly class Money implements \Stringable
         $remainder = 0;
         foreach (str_split($digits) as $digit) {
             if ($quotient > intdiv(self::MAX_UNITS, 10)) {
-                throw new RuleViolation(\sprintf('The amount is larger than %s.', self::MAX), 'orillacart_amount_too_large');
+                throw new RuleViolation('The amount is larger than %s.', 'orillacart_amount_too_large', values: [self::MAX]);
             }
             $remainder = $remainder * 10 + (int) $digit;
             $quotient = $quotient * 10 + intdiv($remainder, $c);

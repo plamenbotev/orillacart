@@ -92,9 +92,9 @@ final readonly class ProductRows
         $variation = self::id($row, 'variation_id');
         $product = self::id($row, 'id');
         if ($variation !== null) {
-            $owner = $this->lookup->idsOfStockItem(StockItemRef::variation($variation))[0] ?? throw new ExchangeRuleViolation(\sprintf('There is no variation %d.', $variation), 'orillacart_unknown_variation');
+            $owner = $this->lookup->idsOfStockItem(StockItemRef::variation($variation))[0] ?? throw new ExchangeRuleViolation('There is no variation %d.', 'orillacart_unknown_variation', values: [$variation]);
             if ($product !== null && $product !== $owner) {
-                throw new ExchangeRuleViolation(\sprintf('Variation %d is not one of product %d.', $variation, $product), 'orillacart_unknown_variation');
+                throw new ExchangeRuleViolation('Variation %1$d is not one of product %2$d.', 'orillacart_unknown_variation', values: [$variation, $product]);
             }
 
             return [$owner, $variation];
@@ -273,7 +273,7 @@ final readonly class ProductRows
             }
         }
 
-        throw new ExchangeRuleViolation(\sprintf('There is no variation %d.', $variationId), 'orillacart_unknown_variation');
+        throw new ExchangeRuleViolation('There is no variation %d.', 'orillacart_unknown_variation', values: [$variationId]);
     }
 
     /**

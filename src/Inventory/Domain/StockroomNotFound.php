@@ -10,6 +10,6 @@ final class StockroomNotFound extends NotFound
 {
     public function __construct(public readonly int $stockroomId)
     {
-        parent::__construct(\sprintf('There is no stockroom %d.', $stockroomId), 'orillacart_stockroom_not_found');
+        parent::__construct('There is no stockroom %d.', 'orillacart_stockroom_not_found', values: [$stockroomId]);
     }
 }

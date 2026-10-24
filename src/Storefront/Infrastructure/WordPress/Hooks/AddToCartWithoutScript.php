@@ -11,6 +11,7 @@ use OrillaCart\Cart\Domain\Cart;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
@@ -28,6 +29,7 @@ final readonly class AddToCartWithoutScript
         private CartService $carts,
         private Shopper $shopper,
         private ShopLinks $links,
+        private Translations $translations,
     ) {}
 
     public function __invoke(): void
@@ -45,9 +47,9 @@ final readonly class AddToCartWithoutScript
                 self::answers($fields),
             ));
         } catch (InvalidFields $e) {
-            wp_die(esc_html(implode(' ', array_map(static fn(array $violation): string => $violation['message'], $e->violations))), esc_html__('Not added to the cart', 'orillacart'), ['response' => 422, 'back_link' => true]);
+            wp_die(esc_html(implode(' ', array_map(fn(array $violation): string => $this->translations->text($violation['message']), $e->violations))), esc_html__('Not added to the cart', 'orillacart'), ['response' => 422, 'back_link' => true]);
         } catch (RuleViolation|NotFound $e) {
-            wp_die(esc_html($e->getMessage()), esc_html__('Not added to the cart', 'orillacart'), ['response' => 422, 'back_link' => true]);
+            wp_die(esc_html($this->translations->text($e->text)), esc_html__('Not added to the cart', 'orillacart'), ['response' => 422, 'back_link' => true]);
         }
         // A new cart's token, or again the one the browser has, for as long as the shop keeps carts.
         $token = $result->newToken ?? $this->shopper->cart()->token;

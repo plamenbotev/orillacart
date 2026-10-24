@@ -24,10 +24,10 @@ final readonly class DeliverySlot
         public ?int $limit = null,
     ) {
         if (preg_match('/^[a-z0-9][a-z0-9-]{0,39}$/', $id) !== 1) {
-            throw new ShippingRuleViolation(\sprintf('"%s" is not an id for a time slot: lowercase letters, digits and dashes, up to 40.', $id), 'orillacart_invalid_delivery_slot');
+            throw new ShippingRuleViolation('"%s" is not an id for a time slot: lowercase letters, digits and dashes, up to 40.', 'orillacart_invalid_delivery_slot', values: [$id]);
         }
         if (!self::isTime($from) || !self::isTime($to) || $to <= $from) {
-            throw new ShippingRuleViolation(\sprintf('A time slot runs from one time of day to a later one, such as 09:00 to 12:00; not %s to %s.', $from, $to), 'orillacart_invalid_delivery_slot');
+            throw new ShippingRuleViolation('A time slot runs from one time of day to a later one, such as 09:00 to 12:00; not %1$s to %2$s.', 'orillacart_invalid_delivery_slot', values: [$from, $to]);
         }
         if ($limit !== null && $limit < 1) {
             throw new ShippingRuleViolation('A time slot takes at least one order a day, or has no limit.', 'orillacart_invalid_delivery_slot');

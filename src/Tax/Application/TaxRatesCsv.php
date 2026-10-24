@@ -86,7 +86,7 @@ final readonly class TaxRatesCsv
         $group = $this->groups->find($groupId) ?? throw new TaxGroupNotFound($groupId);
         $rates = $this->read($command->csv);
         if (!$command->replace && \count($group->rates()) + \count($rates) > TaxGroup::MAX_RATES) {
-            throw new RuleViolation(\sprintf('A tax group holds up to %d rates; this file would take it past that.', TaxGroup::MAX_RATES), 'orillacart_too_many_tax_rates');
+            throw new RuleViolation('A tax group holds up to %d rates; this file would take it past that.', 'orillacart_too_many_tax_rates', values: [TaxGroup::MAX_RATES]);
         }
         self::refuseOverlaps($command->replace ? $rates : [...array_map(static fn($rate): array => [0, $rate->details()], $group->rates()), ...$rates]);
 
@@ -127,12 +127,12 @@ final readonly class TaxRatesCsv
                     continue;
                 }
                 if (\count($rates) >= self::MAX_ROWS) {
-                    throw new RuleViolation(\sprintf('A file can hold up to %d rates.', self::MAX_ROWS), 'orillacart_too_many_tax_rates');
+                    throw new RuleViolation('A file can hold up to %d rates.', 'orillacart_too_many_tax_rates', values: [self::MAX_ROWS]);
                 }
                 try {
                     $rates[] = [$row, $this->rate($cells)];
                 } catch (RuleViolation $refused) {
-                    throw new RuleViolation(\sprintf('Row %d: %s', $row, $refused->getMessage()), $refused->errorCode, $refused);
+                    throw new RuleViolation('Row %1$d: %2$s', $refused->errorCode, $refused, values: [$row, $refused->text]);
                 }
             }
         } finally {
@@ -159,11 +159,11 @@ final readonly class TaxRatesCsv
         $state = strtoupper($state);
         $location = $this->geography->require($country, $state === '' || $state === '*' ? null : $state);
         if (preg_match('/^\d{1,3}(\.\d{1,4})?$/', $percent) !== 1) {
-            throw new RuleViolation(\sprintf('"%s" is not a rate: use a number such as 7.25.', $percent), 'orillacart_invalid_percent');
+            throw new RuleViolation('"%s" is not a rate: use a number such as 7.25.', 'orillacart_invalid_percent', values: [$percent]);
         }
         $priority = $priority === '' ? '0' : $priority;
         if (preg_match('/^\d{1,4}$/', $priority) !== 1 || (int) $priority > 1000) {
-            throw new RuleViolation(\sprintf('"%s" is not a priority from 0 to 1000.', $priority), 'orillacart_invalid_priority');
+            throw new RuleViolation('"%s" is not a priority from 0 to 1000.', 'orillacart_invalid_priority', values: [$priority]);
         }
 
         return new TaxRateDetails(
@@ -188,12 +188,7 @@ final readonly class TaxRatesCsv
         foreach ($rates as $index => [$row, $rate]) {
             foreach (\array_slice($rates, 0, $index) as [$otherRow, $other]) {
                 if (self::overlap($rate, $other)) {
-                    throw new RuleViolation(\sprintf(
-                        'Row %d and %s apply at the same places with priority %d. WooCommerce charges only one of them; OrillaCart would charge both. Keep one, or give each its own places.',
-                        $row,
-                        $otherRow === 0 ? 'a rate the group has' : "row {$otherRow}",
-                        $rate->priority,
-                    ), 'orillacart_overlapping_tax_rates');
+                    throw new RuleViolation('Row %1$d and %2$s apply at the same places with priority %3$d. WooCommerce charges only one of them; OrillaCart would charge both. Keep one, or give each its own places.', 'orillacart_overlapping_tax_rates', values: [$row, $otherRow === 0 ? 'a rate the group has' : "row {$otherRow}", $rate->priority]);
                 }
             }
         }
@@ -239,7 +234,7 @@ final readonly class TaxRatesCsv
     {
         $values = array_values(array_filter(array_map(trim(...), explode(';', $cell)), static fn(string $value): bool => $value !== '' && $value !== '*'));
         if (\count($values) > $max) {
-            throw new RuleViolation(\sprintf('a rate can list up to %d of them.', $max), 'orillacart_too_many_postcodes');
+            throw new RuleViolation('a rate can list up to %d of them.', 'orillacart_too_many_postcodes', values: [$max]);
         }
 
         return $values;
@@ -251,7 +246,7 @@ final readonly class TaxRatesCsv
             '' => $empty,
             '1', 'yes', 'true' => true,
             '0', 'no', 'false' => false,
-            default => throw new RuleViolation(\sprintf('"%s" is not 1 or 0.', $cell), 'orillacart_invalid_flag'),
+            default => throw new RuleViolation('"%s" is not 1 or 0.', 'orillacart_invalid_flag', values: [$cell]),
         };
     }
 }

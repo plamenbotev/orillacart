@@ -10,6 +10,6 @@ final class FormNotFound extends NotFound
 {
     public function __construct(public readonly int $formId)
     {
-        parent::__construct(\sprintf('There is no form %d.', $formId), 'orillacart_form_not_found');
+        parent::__construct('There is no form %d.', 'orillacart_form_not_found', values: [$formId]);
     }
 }

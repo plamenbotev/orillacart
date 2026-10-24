@@ -52,7 +52,7 @@ final readonly class AddressBook
         $addresses = $this->addresses;
         $addresses[$id] = $address;
         if (\count($addresses) > self::MAX_ADDRESSES) {
-            throw new CustomerRuleViolation(\sprintf('Save up to %d addresses: remove one you no longer need first.', self::MAX_ADDRESSES), 'orillacart_too_many_addresses');
+            throw new CustomerRuleViolation('Save up to %d addresses: remove one you no longer need first.', 'orillacart_too_many_addresses', values: [self::MAX_ADDRESSES]);
         }
 
         return [new self(

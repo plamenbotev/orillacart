@@ -371,12 +371,12 @@ final readonly class OrderService
         return $this->changing($id, function (Order $order) use ($note, $userId): OrderView {
             $previous = $order->status();
             if ($order->paidAt() !== null) {
-                throw new OrderRuleViolation(\sprintf('Order #%d is paid already.', $order->id()), 'orillacart_order_paid');
+                throw new OrderRuleViolation('Order #%d is paid already.', 'orillacart_order_paid', values: [$order->id()]);
             }
             $marking = new OrderMarkingPaid($order->id());
             $this->events->dispatch($marking);
             if (!$order->markPaid($marking->transactionId ?? $order->transactionId(), $this->clock->now())) {
-                throw new OrderRuleViolation(\sprintf('Order #%d is paid already.', $order->id()), 'orillacart_order_paid');
+                throw new OrderRuleViolation('Order #%d is paid already.', 'orillacart_order_paid', values: [$order->id()]);
             }
             $order->status() === $previous ? $this->paidWhileFulfilled($order, $note, $userId) : $this->changed($order, $previous, [], $note, $userId);
 
@@ -725,10 +725,10 @@ final readonly class OrderService
     {
         $this->changing($id, function (Order $order) use ($id): void {
             if ($order->paidAt() !== null) {
-                throw new OrderRuleViolation(\sprintf('Order #%d was paid: it stays, with its invoice, for the books.', $id), 'orillacart_order_paid');
+                throw new OrderRuleViolation('Order #%d was paid: it stays, with its invoice, for the books.', 'orillacart_order_paid', values: [$id]);
             }
             if (!\in_array($order->status(), [OrderStatus::Cancelled, OrderStatus::Failed], true)) {
-                throw new OrderRuleViolation(\sprintf('Order #%d is still open: cancel it first, then delete it.', $id), 'orillacart_order_open');
+                throw new OrderRuleViolation('Order #%d is still open: cancel it first, then delete it.', 'orillacart_order_open', values: [$id]);
             }
             $this->events->dispatch(new OrderDeleting($id));
             $this->orders->remove($order);

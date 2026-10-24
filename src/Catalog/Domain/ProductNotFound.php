@@ -10,6 +10,6 @@ final class ProductNotFound extends NotFound
 {
     public function __construct(public readonly int $productId)
     {
-        parent::__construct(\sprintf('There is no product %d.', $productId), 'orillacart_product_not_found');
+        parent::__construct('There is no product %d.', 'orillacart_product_not_found', values: [$productId]);
     }
 }

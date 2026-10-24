@@ -132,7 +132,7 @@ final readonly class CarrierService
         $settings = SettingValues::accept($method->settings(), $saved, $command->methodSettings, $method->name());
         $missing = $command->active ? SettingValues::missing($method->settings(), $settings) : null;
         if ($missing !== null) {
-            throw new ShippingRuleViolation(\sprintf('%s needs "%s" before the carrier can be turned on.', $method->name(), $missing->label), 'orillacart_shipping_method_incomplete');
+            throw new ShippingRuleViolation('%1$s needs "%2$s" before the carrier can be turned on.', 'orillacart_shipping_method_incomplete', values: [$method->name(), $missing->label]);
         }
         $carrier->useMethod($command->method, $settings, $command->methodTaxable, $this->taxGroup($command->methodTaxGroupId));
     }
@@ -188,7 +188,7 @@ final readonly class CarrierService
     private function taxGroup(?int $id): ?int
     {
         if ($id !== null && !$this->taxGroups->exists($id)) {
-            throw new ShippingRuleViolation(\sprintf('There is no tax group %d.', $id), 'orillacart_unknown_tax_group');
+            throw new ShippingRuleViolation('There is no tax group %d.', 'orillacart_unknown_tax_group', values: [$id]);
         }
 
         return $id;
@@ -197,7 +197,7 @@ final readonly class CarrierService
     private function shippingClass(int $id): int
     {
         if ($id !== ShippingClass::NONE && $this->classes->find($id) === null) {
-            throw new ShippingRuleViolation(\sprintf('There is no shipping class %d.', $id), 'orillacart_unknown_shipping_class');
+            throw new ShippingRuleViolation('There is no shipping class %d.', 'orillacart_unknown_shipping_class', values: [$id]);
         }
 
         return $id;

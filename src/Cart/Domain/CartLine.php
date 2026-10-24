@@ -123,7 +123,7 @@ class CartLine
     public function setQuantity(int $quantity): void
     {
         if ($quantity < 1 || $quantity > Cart::MAX_QUANTITY) {
-            throw new CartRuleViolation(\sprintf('A cart line holds 1 to %d items.', Cart::MAX_QUANTITY), 'orillacart_invalid_quantity');
+            throw new CartRuleViolation('A cart line holds 1 to %d items.', 'orillacart_invalid_quantity', values: [Cart::MAX_QUANTITY]);
         }
         $this->quantity = $quantity;
     }

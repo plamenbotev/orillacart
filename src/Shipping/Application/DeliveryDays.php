@@ -84,7 +84,7 @@ final readonly class DeliveryDays
             foreach ($day->slots as $offered) {
                 if ($offered->id === $slot) {
                     if ($offered->full) {
-                        throw new ShippingRuleViolation(\sprintf('%s on that day is fully booked. Choose another time.', $offered->label), 'orillacart_delivery_slot_full');
+                        throw new ShippingRuleViolation('%s on that day is fully booked. Choose another time.', 'orillacart_delivery_slot_full', values: [$offered->label]);
                     }
 
                     return new DeliveryPick($date, $offered->label, "{$carrier->id()}:{$offered->id}");

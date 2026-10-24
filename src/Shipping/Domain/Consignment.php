@@ -81,7 +81,7 @@ class Consignment
             throw new ShippingRuleViolation('A shipment carries at least one item.', 'orillacart_invalid_shipment_items');
         }
         if (\count($parcels) > self::MAX_PARCELS) {
-            throw new ShippingRuleViolation(\sprintf('A shipment has up to %d parcels.', self::MAX_PARCELS), 'orillacart_invalid_shipment_parcels');
+            throw new ShippingRuleViolation('A shipment has up to %d parcels.', 'orillacart_invalid_shipment_parcels', values: [self::MAX_PARCELS]);
         }
         $this->parcels = array_map(static fn(ParcelTracking $parcel): array => ['number' => $parcel->number, 'tracking_url' => self::link($parcel->trackingUrl)], $parcels);
     }
@@ -200,7 +200,7 @@ class Consignment
     public function cancel(\DateTimeImmutable $at): void
     {
         if ($this->status !== ConsignmentStatus::Booked) {
-            throw new ShippingRuleViolation(\sprintf('Shipment %s is %s; only a booked one is cancelled.', $this->number, str_replace('_', ' ', $this->status->value)), 'orillacart_shipment_not_cancellable');
+            throw new ShippingRuleViolation('Shipment %1$s is %2$s; only a booked one is cancelled.', 'orillacart_shipment_not_cancellable', values: [$this->number, str_replace('_', ' ', $this->status->value)]);
         }
         $this->status = ConsignmentStatus::Cancelled;
         $this->updatedAt = $at;
@@ -230,7 +230,7 @@ class Consignment
     public function arrived(ConsignmentStatus $status, \DateTimeImmutable $at): void
     {
         if (!$this->isSentByShop() || $this->status !== ConsignmentStatus::OnTheWay || !\in_array($status, [ConsignmentStatus::Delivered, ConsignmentStatus::Returned], true)) {
-            throw new ShippingRuleViolation(\sprintf('Shipment %s is followed by its courier, or arrived already.', $this->number), 'orillacart_shipment_not_followed_by_shop');
+            throw new ShippingRuleViolation('Shipment %s is followed by its courier, or arrived already.', 'orillacart_shipment_not_followed_by_shop', values: [$this->number]);
         }
         $this->status = $status;
         $this->updatedAt = $at;

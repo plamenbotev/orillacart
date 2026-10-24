@@ -30,12 +30,13 @@ final readonly class StockroomDetails
             throw new InventoryRuleViolation('A low stock threshold is 0 or more, or empty for the shop\'s.', 'orillacart_invalid_low_stock_threshold');
         }
         if (trim($name) === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new InventoryRuleViolation(\sprintf('A stockroom needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_stockroom_name');
+            throw new InventoryRuleViolation('A stockroom needs a name of up to %d characters.', 'orillacart_invalid_stockroom_name', values: [self::MAX_NAME_LENGTH]);
         }
         if ($minDeliveryDays < 0 || $maxDeliveryDays > self::MAX_DELIVERY_DAYS || $minDeliveryDays > $maxDeliveryDays) {
             throw new InventoryRuleViolation(
-                \sprintf('Delivery takes from 0 to %d days, and the shortest time cannot be longer than the longest.', self::MAX_DELIVERY_DAYS),
+                'Delivery takes from 0 to %d days, and the shortest time cannot be longer than the longest.',
                 'orillacart_invalid_delivery_time',
+                values: [self::MAX_DELIVERY_DAYS],
             );
         }
         if ($minDeliveryDays % $deliveryUnit->days() !== 0 || $maxDeliveryDays % $deliveryUnit->days() !== 0) {

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Returns\Domain;
 
+use OrillaCart\Shared\Domain\Text;
+
 /** Why the customer sends items back. */
 enum ReturnReason: string
 {
@@ -13,15 +15,16 @@ enum ReturnReason: string
     case NoLongerNeeded = 'no_longer_needed';
     case Other = 'other';
 
-    public function label(): string
+    /** In the customer's words, translated where shown. */
+    public function label(): Text
     {
-        return match ($this) {
+        return new Text(match ($this) {
             self::Damaged => 'It arrived damaged',
             self::WrongItem => 'It is not what I ordered',
             self::NotAsDescribed => 'It is not as described',
             self::NoLongerNeeded => 'I no longer need it',
             self::Other => 'Another reason',
-        };
+        });
     }
 
     /** @return list<string> */

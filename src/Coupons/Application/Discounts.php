@@ -19,6 +19,7 @@ use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\Text;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -46,7 +47,7 @@ final readonly class Discounts
     {
         $codes = \array_slice(array_values(array_unique(array_filter(array_map(Coupon::normalize(...), $codes), static fn(string $code): bool => $code !== ''))), 0, self::MAX_CODES);
         if ($request->items === []) {
-            return new AppliedDiscounts([], array_fill_keys($codes, 'Add items first.'));
+            return new AppliedDiscounts([], array_fill_keys($codes, new Text('Add items first.')));
         }
         $automatic = $request->automatic === null ? $this->coupons->automatic() : array_values(array_filter($this->coupons->automatic(), static fn(Coupon $coupon): bool => \in_array($coupon->code(), $request->automatic, true)));
         $found = $codes === [] ? [] : $this->coupons->findByCodes($codes);
@@ -81,18 +82,18 @@ final readonly class Discounts
         foreach ($candidates as [$code, $coupon]) {
             $silent = $coupon?->isAutomatic() === true;
             if ($coupon === null) {
-                $refused[$code] = 'This code is not valid.';
+                $refused[$code] = new Text('This code is not valid.');
                 continue;
             }
             if ($silent && $automaticApplied !== [] && (!$coupon->combines() || !$automaticCombine)) {
                 continue;
             }
             if (!$silent && $codesApplied && (!$coupon->combines() || !$codesCombine)) {
-                $refused[$code] = 'This code cannot be used together with your other codes.';
+                $refused[$code] = new Text('This code cannot be used together with your other codes.');
                 continue;
             }
             if (!$silent && $automaticApplied !== [] && !$coupon->combines()) {
-                $refused[$code] = \sprintf('This code cannot be combined with %s.', implode(', ', $automaticApplied));
+                $refused[$code] = Text::of('This code cannot be combined with %s.', implode(', ', $automaticApplied));
                 continue;
             }
             if ($silent && !$known && $coupon->dependsOnWho()) {
@@ -159,11 +160,11 @@ final readonly class Discounts
         }
         $locked = $this->coupons->findByCodes(array_map(static fn(AppliedCoupon $coupon): string => $coupon->code, $coupons), true);
         foreach ($coupons as $applied) {
-            $coupon = $locked[$applied->code] ?? throw new CouponRuleViolation(\sprintf('The code %s is no longer valid.', $applied->code), 'orillacart_coupon_refused');
+            $coupon = $locked[$applied->code] ?? throw new CouponRuleViolation('The code %s is no longer valid.', 'orillacart_coupon_refused', values: [$applied->code]);
             $terms = $coupon->terms();
             if ($terms->usageLimit !== null && $coupon->uses() >= $terms->usageLimit
                 || $terms->perCustomerLimit !== null && $this->redemptions->countByCustomer($coupon->id(), $customerId, $email) >= $terms->perCustomerLimit) {
-                throw new CouponRuleViolation(\sprintf('The code %s was just used up. Remove it and try again.', $coupon->code()), 'orillacart_coupon_used_up');
+                throw new CouponRuleViolation('The code %s was just used up. Remove it and try again.', 'orillacart_coupon_used_up', values: [$coupon->code()]);
             }
             $coupon->use();
             $this->coupons->save($coupon);

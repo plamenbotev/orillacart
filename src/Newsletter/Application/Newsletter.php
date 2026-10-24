@@ -59,7 +59,7 @@ final readonly class Newsletter
         $known = array_map(static fn(MailingList $list): string => $list->id(), $this->extensions->mailingLists());
         $unknown = array_diff($command->lists, $known);
         if ($unknown !== []) {
-            throw new NewsletterRuleViolation(\sprintf('No add-on brings the mailing list %s.', implode(', ', $unknown)), 'orillacart_unknown_mailing_list');
+            throw new NewsletterRuleViolation('No add-on brings the mailing list %s.', 'orillacart_unknown_mailing_list', values: [implode(', ', $unknown)]);
         }
         $before = $this->settings->load();
         $lists = array_values(array_unique($command->lists));

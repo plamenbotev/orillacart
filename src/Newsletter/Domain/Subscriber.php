@@ -85,7 +85,7 @@ class Subscriber
     {
         $consent = trim($consent);
         if ($consent === '' || mb_strlen($consent) > self::MAX_CONSENT_LENGTH) {
-            throw new NewsletterRuleViolation(\sprintf('A sign-up keeps the words agreed to, in 1 to %d characters.', self::MAX_CONSENT_LENGTH), 'orillacart_invalid_consent');
+            throw new NewsletterRuleViolation('A sign-up keeps the words agreed to, in 1 to %d characters.', 'orillacart_invalid_consent', values: [self::MAX_CONSENT_LENGTH]);
         }
         $this->firstName = mb_substr(trim($firstName), 0, 100);
         $this->lastName = mb_substr(trim($lastName), 0, 100);

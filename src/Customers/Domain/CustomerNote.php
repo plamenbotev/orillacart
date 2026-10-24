@@ -40,7 +40,7 @@ class CustomerNote
     ) {
         $text = trim($text);
         if ($text === '' || mb_strlen($text) > self::MAX_LENGTH) {
-            throw new CustomerRuleViolation(\sprintf('A note has 1 to %d characters.', self::MAX_LENGTH), 'orillacart_invalid_note');
+            throw new CustomerRuleViolation('A note has 1 to %d characters.', 'orillacart_invalid_note', values: [self::MAX_LENGTH]);
         }
         $this->text = $text;
     }

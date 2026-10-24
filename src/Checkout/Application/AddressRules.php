@@ -35,21 +35,21 @@ final readonly class AddressRules
     {
         $sellTo = $this->settings->current()->sellTo;
         if ($soldToCountry && $sellTo !== [] && !\in_array($address->country, $sellTo, true)) {
-            throw new CheckoutRuleViolation(\sprintf('The shop does not sell to the country of the %s address.', $kind), 'orillacart_country_not_served');
+            throw new CheckoutRuleViolation('The shop does not sell to the country of the %s address.', 'orillacart_country_not_served', values: [$kind]);
         }
         try {
             $states = $this->geography->states($address->country);
             $this->geography->require($address->country, $states === [] ? null : $address->state);
         } catch (RuleViolation) {
-            throw new CheckoutRuleViolation(\sprintf('The %s address has an unknown country or state.', $kind), 'orillacart_invalid_address');
+            throw new CheckoutRuleViolation('The %s address has an unknown country or state.', 'orillacart_invalid_address', values: [$kind]);
         }
         if ($states !== [] && $address->state === null) {
-            throw new CheckoutRuleViolation(\sprintf('Choose the state of the %s address.', $kind), 'orillacart_invalid_address');
+            throw new CheckoutRuleViolation('Choose the state of the %s address.', 'orillacart_invalid_address', values: [$kind]);
         }
         try {
             $postcode = $this->geography->postcode($address->country, $address->postcode);
         } catch (InvalidPostcode $e) {
-            throw new CheckoutRuleViolation(\sprintf('The postcode of the %s address is not one of %s, which look like %s.', $kind, $e->countryName, $e->example), 'orillacart_invalid_postcode', $e);
+            throw new CheckoutRuleViolation('The postcode of the %1$s address is not one of %2$s, which look like %3$s.', 'orillacart_invalid_postcode', $e, values: [$kind, $e->countryName, $e->example]);
         }
 
         return new AddressData($address->firstName, $address->lastName, $address->street, $address->city, $postcode, $address->country, $address->phone, $states === [] ? null : $address->state);

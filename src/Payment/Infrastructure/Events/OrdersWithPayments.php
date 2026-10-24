@@ -31,7 +31,7 @@ final readonly class OrdersWithPayments
         $payments = $this->payments->ofOrder($event->orderId);
         foreach ($payments as $payment) {
             if ($payment->status() === PaymentStatus::Completed || self::atProvider($payment)) {
-                throw new PaymentRuleViolation(\sprintf('Order #%d has a payment still open at %s: it stays until the payment ends.', $event->orderId, $payment->gateway()), 'orillacart_order_payment_open');
+                throw new PaymentRuleViolation('Order #%1$d has a payment still open at %2$s: it stays until the payment ends.', 'orillacart_order_payment_open', values: [$event->orderId, $payment->gateway()]);
             }
         }
         foreach ($payments as $payment) {
@@ -44,7 +44,7 @@ final readonly class OrdersWithPayments
     {
         foreach ($this->payments->ofOrder($event->orderId) as $payment) {
             if (self::atProvider($payment)) {
-                throw new PaymentRuleViolation(\sprintf('Order #%d has a payment open at %s for its total: its items change once that payment ends.', $event->orderId, $payment->gateway()), 'orillacart_order_payment_open');
+                throw new PaymentRuleViolation('Order #%1$d has a payment open at %2$s for its total: its items change once that payment ends.', 'orillacart_order_payment_open', values: [$event->orderId, $payment->gateway()]);
             }
         }
     }

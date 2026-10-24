@@ -209,6 +209,33 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame(404, $this->request('GET', '/receipts/1-1-' . str_repeat('0', 32))->get_status());
     }
 
+    public function testRefusalsAndValidationMessagesAreInTheSitesLanguage(): void
+    {
+        $words = [
+            'This code is not valid.' => 'Кодът не е валиден.',
+            'Enter the code.' => 'Въведете кода.',
+            'This value is too long. It should have {{ limit }} character or less.' => 'Твърде дълго: до {{ limit }} знак.',
+            'This value is too long. It should have {{ limit }} characters or less.' => 'Твърде дълго: до {{ limit }} знака.',
+        ];
+        $translate = static fn(string $translation, string $text, string $domain): string => $domain === 'orillacart' ? ($words[$text] ?? $translation) : $translation;
+        $plural = static fn(string $translation, string $single, string $plural, int $count, string $domain): string => $domain === 'orillacart' ? ($words[$count === 1 ? $single : $plural] ?? $translation) : $translation;
+        add_filter('gettext', $translate, 10, 3);
+        add_filter('ngettext', $plural, 10, 5);
+        try {
+            $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product, 'quantity' => 1], nonce: true));
+            $refused = $this->request('POST', '/cart/coupons', ['code' => 'NOPE'], nonce: true);
+            self::assertSame('Кодът не е валиден.', $this->data($refused)['message']);
+
+            $blank = $this->data($this->request('POST', '/cart/gift-cards', ['code' => ''], nonce: true));
+            self::assertSame('Въведете кода.', $this->rows($this->rows([$blank['data']])[0]['violations'])[0]['message'], 'a validation message of the DTO');
+            $long = $this->data($this->request('POST', '/cart/gift-cards', ['code' => str_repeat('A', 41)], nonce: true));
+            self::assertSame('Твърде дълго: до 40 знака.', $this->rows($this->rows([$long['data']])[0]['violations'])[0]['message'], "Symfony's own, with its plural");
+        } finally {
+            remove_filter('gettext', $translate, 10);
+            remove_filter('ngettext', $plural, 10);
+        }
+    }
+
     public function testAVisitorUsesACouponAndTheOrderKeepsIt(): void
     {
         $this->actAs('administrator');

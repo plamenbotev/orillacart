@@ -10,6 +10,6 @@ final class CustomerNotFound extends NotFound
 {
     public function __construct(int $id)
     {
-        parent::__construct(\sprintf('There is no customer %d.', $id), 'orillacart_customer_not_found');
+        parent::__construct('There is no customer %d.', 'orillacart_customer_not_found', values: [$id]);
     }
 }

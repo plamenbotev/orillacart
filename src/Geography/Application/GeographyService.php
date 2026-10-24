@@ -36,7 +36,7 @@ final readonly class GeographyService
     public function states(string $country): array
     {
         $found = $this->countries->find($country)
-            ?? throw new NotFound(\sprintf('There is no country with the code "%s".', $country), 'orillacart_country_not_found');
+            ?? throw new NotFound('There is no country with the code "%s".', 'orillacart_country_not_found', values: [$country]);
 
         return array_map(StateView::fromState(...), $found->states());
     }

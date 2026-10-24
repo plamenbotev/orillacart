@@ -36,7 +36,7 @@ class Country
         public readonly bool $inEu,
     ) {
         if (preg_match('/^[A-Z]{2}$/', $code) !== 1) {
-            throw new RuleViolation(\sprintf('"%s" is not a country code; use two capital letters such as DE.', $code), 'orillacart_invalid_country');
+            throw new RuleViolation('"%s" is not a country code; use two capital letters such as DE.', 'orillacart_invalid_country', values: [$code]);
         }
         $this->states = new ArrayCollection();
     }

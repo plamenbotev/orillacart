@@ -190,7 +190,7 @@ final readonly class OrderPricing
                 throw new CheckoutRuleViolation('An item is no longer sold. Review the items and try again.', 'orillacart_cart_changed');
             }
             if (!$quote->forSale || ($quote->available !== null && $quote->available < $line['quantity'])) {
-                throw new CheckoutRuleViolation(\sprintf('%s is not available in that quantity. Review the items and try again.', $quote->name), 'orillacart_cart_changed');
+                throw new CheckoutRuleViolation('%s is not available in that quantity. Review the items and try again.', 'orillacart_cart_changed', values: [$quote->name]);
             }
             $quoted[$index] = $quote;
         }
@@ -244,7 +244,7 @@ final readonly class OrderPricing
                 $lines[$index]['discount'] = $lines[$index]['discount']->subtract(Money::of($change->amount));
             }
             if ($lines[$index]['discount']->compare($lines[$index]['total']) > 0) {
-                throw new CheckoutRuleViolation(\sprintf('The changes to the price of %s take off more than it costs.', $lines[$index]['quote']->name), 'orillacart_invalid_price_change');
+                throw new CheckoutRuleViolation('The changes to the price of %s take off more than it costs.', 'orillacart_invalid_price_change', values: [$lines[$index]['quote']->name]);
             }
             $parts = $taxesOf[$index];
             $discountShares = self::shares($lines[$index]['discount'], array_map(static fn(array $part): Money => $part['total'], $parts));
@@ -939,7 +939,7 @@ final readonly class OrderPricing
                 try {
                     array_push($taken, ...$this->stock->take($refs, $item->quantity * $quantity, $item->backorders !== 'no', $item->backorderLimit));
                 } catch (InsufficientStock) {
-                    throw new CheckoutRuleViolation(\sprintf('%s sold out in the meantime. Review the items and try again.', $quote->name), 'orillacart_out_of_stock');
+                    throw new CheckoutRuleViolation('%s sold out in the meantime. Review the items and try again.', 'orillacart_out_of_stock', values: [$quote->name]);
                 }
             }
 
@@ -951,7 +951,7 @@ final readonly class OrderPricing
         try {
             return $quote->available === null && $quote->inStock === null ? [] : $this->stock->take($refs, $quantity, $quote->backorders !== 'no', $quote->backorderLimit);
         } catch (InsufficientStock) {
-            throw new CheckoutRuleViolation(\sprintf('%s sold out in the meantime. Review the items and try again.', $quote->name), 'orillacart_out_of_stock');
+            throw new CheckoutRuleViolation('%s sold out in the meantime. Review the items and try again.', 'orillacart_out_of_stock', values: [$quote->name]);
         }
     }
 

@@ -64,7 +64,7 @@ final readonly class ProductImports
                     continue;
                 }
                 if (++$rows > self::MAX_ROWS) {
-                    throw new ExchangeRuleViolation(\sprintf('A file has up to %d rows; split it.', self::MAX_ROWS), 'orillacart_invalid_import');
+                    throw new ExchangeRuleViolation('A file has up to %d rows; split it.', 'orillacart_invalid_import', values: [self::MAX_ROWS]);
                 }
             }
             if ($rows === 0) {

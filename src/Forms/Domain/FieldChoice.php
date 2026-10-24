@@ -20,10 +20,10 @@ final readonly class FieldChoice
         public ?string $price = null,
     ) {
         if (preg_match('/^[a-z0-9][a-z0-9_-]{0,39}$/', $value) !== 1) {
-            throw new FormRuleViolation(\sprintf('"%s" is not a choice value: lowercase letters, digits, - and _, up to 40.', $value), 'orillacart_invalid_form_field');
+            throw new FormRuleViolation('"%s" is not a choice value: lowercase letters, digits, - and _, up to 40.', 'orillacart_invalid_form_field', values: [$value]);
         }
         if (trim($label) === '' || mb_strlen($label) > self::MAX_LABEL_LENGTH) {
-            throw new FormRuleViolation(\sprintf('Each choice needs a label of up to %d characters.', self::MAX_LABEL_LENGTH), 'orillacart_invalid_form_field');
+            throw new FormRuleViolation('Each choice needs a label of up to %d characters.', 'orillacart_invalid_form_field', values: [self::MAX_LABEL_LENGTH]);
         }
     }
 }

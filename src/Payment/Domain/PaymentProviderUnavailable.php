@@ -12,6 +12,6 @@ final class PaymentProviderUnavailable extends PaymentRuleViolation
 {
     public function __construct(string $provider, public readonly string $detail = '', ?\Throwable $previous = null)
     {
-        parent::__construct(\sprintf('%s is not available right now. Try again in a moment or choose another way to pay.', $provider), 'orillacart_payment_provider_unavailable', $previous);
+        parent::__construct('%s is not available right now. Try again in a moment or choose another way to pay.', 'orillacart_payment_provider_unavailable', $previous, values: [$provider]);
     }
 }

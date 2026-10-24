@@ -107,7 +107,7 @@ class Form
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new FormRuleViolation(\sprintf('A form needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_form');
+            throw new FormRuleViolation('A form needs a name of up to %d characters.', 'orillacart_invalid_form', values: [self::MAX_NAME_LENGTH]);
         }
         $this->name = $name;
     }
@@ -147,24 +147,24 @@ class Form
     public function replaceFields(array $fields): void
     {
         if (\count($fields) > self::MAX_FIELDS) {
-            throw new FormRuleViolation(\sprintf('A form asks up to %d questions.', self::MAX_FIELDS), 'orillacart_invalid_form');
+            throw new FormRuleViolation('A form asks up to %d questions.', 'orillacart_invalid_form', values: [self::MAX_FIELDS]);
         }
         $earlier = [];
         foreach ($fields as $field) {
             if (isset($earlier[$field->key])) {
-                throw new FormRuleViolation(\sprintf('Two fields have the key "%s".', $field->key), 'orillacart_invalid_form_field');
+                throw new FormRuleViolation('Two fields have the key "%s".', 'orillacart_invalid_form_field', values: [$field->key]);
             }
             if ($this->placement === FormPlacement::Checkout && $field->hasPrice()) {
-                throw new FormRuleViolation(\sprintf('"%s": questions at checkout have no price.', $field->label), 'orillacart_invalid_form_field');
+                throw new FormRuleViolation('"%s": questions at checkout have no price.', 'orillacart_invalid_form_field', values: [$field->label]);
             }
             if ($this->placement === FormPlacement::Checkout && $field->kind === FieldKind::File) {
-                throw new FormRuleViolation(\sprintf('"%s": checkout does not take files.', $field->label), 'orillacart_invalid_form_field');
+                throw new FormRuleViolation('"%s": checkout does not take files.', 'orillacart_invalid_form_field', values: [$field->label]);
             }
             if ($field->condition !== null) {
-                $other = $earlier[$field->condition->field] ?? throw new FormRuleViolation(\sprintf('"%s" is asked when a field above it is answered; choose one.', $field->label), 'orillacart_invalid_form_field');
+                $other = $earlier[$field->condition->field] ?? throw new FormRuleViolation('"%s" is asked when a field above it is answered; choose one.', 'orillacart_invalid_form_field', values: [$field->label]);
                 $offered = array_map(static fn(FieldChoice $choice): string => $choice->value, $other->choices);
                 if ($field->condition->values !== [] && ($other->kind !== FieldKind::Choice || array_diff($field->condition->values, $offered) !== [])) {
-                    throw new FormRuleViolation(\sprintf('"%s" is asked for values "%s" does not offer.', $field->label, $other->label), 'orillacart_invalid_form_field');
+                    throw new FormRuleViolation('"%1$s" is asked for values "%2$s" does not offer.', 'orillacart_invalid_form_field', values: [$field->label, $other->label]);
                 }
             }
             $earlier[$field->key] = $field;

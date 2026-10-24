@@ -24,11 +24,11 @@ final readonly class OptionDraft
         public AdjustmentKind $kind = AdjustmentKind::Amount,
     ) {
         if (trim($name) === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new CatalogRuleViolation(\sprintf('An option needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_option_name');
+            throw new CatalogRuleViolation('An option needs a name of up to %d characters.', 'orillacart_invalid_option_name', values: [self::MAX_NAME_LENGTH]);
         }
         if ($kind === AdjustmentKind::Percent
             && ($adjustment->compare(Money::of('-100')) < 0 || $adjustment->compare(Money::of(AdjustmentKind::MAX_PERCENT)) > 0)) {
-            throw new CatalogRuleViolation(\sprintf('"%s" changes the price by %s %%; use -100 to %s.', $name, $adjustment, AdjustmentKind::MAX_PERCENT), 'orillacart_invalid_option_percent');
+            throw new CatalogRuleViolation('"%1$s" changes the price by %2$s %%; use -100 to %3$s.', 'orillacart_invalid_option_percent', values: [$name, $adjustment, AdjustmentKind::MAX_PERCENT]);
         }
     }
 }

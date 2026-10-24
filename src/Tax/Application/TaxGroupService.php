@@ -87,15 +87,17 @@ final readonly class TaxGroupService
         $group = $this->get($id);
         if ($this->settings->load()->defaultGroupId === $id) {
             throw new RuleViolation(
-                \sprintf('"%s" is the default tax group; choose another default before deleting it.', $group->name()),
+                '"%s" is the default tax group; choose another default before deleting it.',
                 'orillacart_tax_group_in_use',
+                values: [$group->name()],
             );
         }
         $using = $this->uses?->of($id) ?? [];
         if ($using !== []) {
             throw new RuleViolation(
-                \sprintf('"%s" taxes %s: choose another tax group for them before deleting it, or they sell with no tax.', $group->name(), implode(', ', $using)),
+                '"%1$s" taxes %2$s: choose another tax group for them before deleting it, or they sell with no tax.',
                 'orillacart_tax_group_in_use',
+                values: [$group->name(), implode(', ', $using)],
             );
         }
         $this->groups->remove($group);

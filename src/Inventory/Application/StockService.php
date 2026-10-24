@@ -152,14 +152,14 @@ final readonly class StockService
         foreach ($changes as $change) {
             $key = (string) $change->ref()->toItem();
             if (\array_key_exists($change->stockroomId, $byItem[$key] ?? [])) {
-                throw new InventoryRuleViolation(\sprintf('The level of %s in stockroom %d is changed twice.', $key, $change->stockroomId), 'orillacart_duplicate_stockroom');
+                throw new InventoryRuleViolation('The level of %1$s in stockroom %2$d is changed twice.', 'orillacart_duplicate_stockroom', values: [$key, $change->stockroomId]);
             }
             $byItem[$key][$change->stockroomId] = $change->quantity;
         }
         $stockrooms = [];
         foreach ($changes as $change) {
             $stockrooms[$change->stockroomId] ??= $this->stockrooms->find($change->stockroomId)
-                ?? throw new InventoryRuleViolation(\sprintf('There is no stockroom %d.', $change->stockroomId), 'orillacart_unknown_stockroom');
+                ?? throw new InventoryRuleViolation('There is no stockroom %d.', 'orillacart_unknown_stockroom', values: [$change->stockroomId]);
         }
 
         $items = array_map(StockItem::fromString(...), array_keys($byItem));
@@ -200,7 +200,7 @@ final readonly class StockService
         $wanted = [];
         foreach ($command->levels as $level) {
             if (isset($wanted[$level->stockroomId])) {
-                throw new InventoryRuleViolation(\sprintf('Stockroom %d is listed twice.', $level->stockroomId), 'orillacart_duplicate_stockroom');
+                throw new InventoryRuleViolation('Stockroom %d is listed twice.', 'orillacart_duplicate_stockroom', values: [$level->stockroomId]);
             }
             $wanted[$level->stockroomId] = $level->quantity;
         }
@@ -219,7 +219,7 @@ final readonly class StockService
         }
         foreach ($wanted as $stockroomId => $quantity) {
             $stockroom = $this->stockrooms->find($stockroomId)
-                ?? throw new InventoryRuleViolation(\sprintf('There is no stockroom %d.', $stockroomId), 'orillacart_unknown_stockroom');
+                ?? throw new InventoryRuleViolation('There is no stockroom %d.', 'orillacart_unknown_stockroom', values: [$stockroomId]);
             $this->levels->add(new StockLevel($stockroom, $item, $quantity));
         }
         $this->levels->flush();

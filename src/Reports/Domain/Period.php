@@ -26,7 +26,7 @@ final readonly class Period
             throw new InvalidPeriod('A report period ends on or after its first day.');
         }
         if ($this->days() > self::MAX_DAYS) {
-            throw new InvalidPeriod(\sprintf('A report covers %d days at most.', self::MAX_DAYS));
+            throw new InvalidPeriod('A report covers %d days at most.', values: [self::MAX_DAYS]);
         }
     }
 

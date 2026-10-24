@@ -11,8 +11,9 @@ final class InsufficientStock extends RuleViolation
     public function __construct(public readonly StockItem $item, public readonly int $requested, public readonly int $available)
     {
         parent::__construct(
-            \sprintf('Only %d of %s are in stock, %d were asked for.', $available, $item, $requested),
+            'Only %1$d of %2$s are in stock, %3$d were asked for.',
             'orillacart_insufficient_stock',
+            values: [$available, $item, $requested],
         );
     }
 }

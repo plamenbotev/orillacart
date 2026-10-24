@@ -10,6 +10,6 @@ final class SearchFilterNotFound extends NotFound
 {
     public function __construct(int $id)
     {
-        parent::__construct(\sprintf('There is no filter %d.', $id), 'orillacart_filter_not_found');
+        parent::__construct('There is no filter %d.', 'orillacart_filter_not_found', values: [$id]);
     }
 }

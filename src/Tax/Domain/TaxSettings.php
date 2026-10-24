@@ -73,14 +73,14 @@ final readonly class TaxSettings
             }
         }
         if (mb_strlen($priceSuffix) > self::SUFFIX_LENGTH || preg_match('/[<>\x00-\x1F]/', $priceSuffix) === 1) {
-            throw new RuleViolation(\sprintf('The text after prices is plain text of up to %d characters.', self::SUFFIX_LENGTH), 'orillacart_invalid_price_suffix');
+            throw new RuleViolation('The text after prices is plain text of up to %d characters.', 'orillacart_invalid_price_suffix', values: [self::SUFFIX_LENGTH]);
         }
         if (!\in_array($whenProviderFails, [self::SHOP_RATES, self::REFUSE], true)) {
             throw new RuleViolation('Choose what checkout does when the tax service cannot be reached.', 'orillacart_invalid_tax_settings');
         }
         foreach ($originRegions as $region) {
             if (preg_match(self::REGION, $region) !== 1) {
-                throw new RuleViolation(\sprintf('"%s" is not a region: a country and a state code, such as US-TX.', $region), 'orillacart_invalid_region');
+                throw new RuleViolation('"%s" is not a region: a country and a state code, such as US-TX.', 'orillacart_invalid_region', values: [$region]);
             }
         }
     }

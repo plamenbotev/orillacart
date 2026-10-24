@@ -213,7 +213,7 @@ class Product
             }
         }
 
-        throw new CatalogRuleViolation(\sprintf('File %d is not one of this product\'s downloads.', $fileId), 'orillacart_unknown_download');
+        throw new CatalogRuleViolation('File %d is not one of this product\'s downloads.', 'orillacart_unknown_download', values: [$fileId]);
     }
 
     /**
@@ -395,7 +395,7 @@ class Product
                 foreach ($options as $option) {
                     if ($option->isSaved() && $option->id() === $optionId) {
                         if (isset($chosen[spl_object_id($attribute)])) {
-                            throw new InvalidSelection(\sprintf('Choose one option for "%s".', $attribute->name()));
+                            throw new InvalidSelection('Choose one option for "%s".', values: [$attribute->name()]);
                         }
                         $chosen[spl_object_id($attribute)] = $option;
                         $found = true;
@@ -403,7 +403,7 @@ class Product
                 }
             }
             if (!$found) {
-                throw new InvalidSelection(\sprintf('Option %d is not available for this product.', $optionId));
+                throw new InvalidSelection('Option %d is not available for this product.', values: [$optionId]);
             }
         }
 
@@ -422,7 +422,7 @@ class Product
         foreach ($offered as [$attribute, $options]) {
             $option = $chosen[spl_object_id($attribute)] ?? null;
             if ($option === null && $attribute->isRequired()) {
-                throw new InvalidSelection(\sprintf('Choose an option for "%s".', $attribute->name()));
+                throw new InvalidSelection('Choose an option for "%s".', values: [$attribute->name()]);
             }
             if ($option !== null) {
                 $price = $price->add($option->adjustmentOn($base));
@@ -490,9 +490,9 @@ class Product
         $attributes = [];
         foreach ($details->optionIds as $optionId) {
             $option = $this->findOption($optionId)
-                ?? throw new CatalogRuleViolation(\sprintf('Option %d is not one of this product\'s options.', $optionId), 'orillacart_unknown_option');
+                ?? throw new CatalogRuleViolation('Option %d is not one of this product\'s options.', 'orillacart_unknown_option', values: [$optionId]);
             if (isset($attributes[spl_object_id($option->attribute())])) {
-                throw new CatalogRuleViolation(\sprintf('A variation has one option for "%s".', $option->attribute()->name()), 'orillacart_invalid_variation');
+                throw new CatalogRuleViolation('A variation has one option for "%s".', 'orillacart_invalid_variation', values: [$option->attribute()->name()]);
             }
             $attributes[spl_object_id($option->attribute())] = true;
             $options[] = $option;

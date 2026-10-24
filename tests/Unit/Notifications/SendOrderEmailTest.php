@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Unit\Notifications;
 
 use Nyholm\Psr7\ServerRequest;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
+use OrillaCart\Platform\I18n\GettextTranslations;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Serialization\ValidatorFactory;
 use OrillaCart\Shared\Http\HttpException;
@@ -34,7 +35,7 @@ final class SendOrderEmailTest extends TestCase
         $serializers = new SerializerFactory();
         $body = ['kind' => $kind];
 
-        return new RequestMapper($serializers->create(), new ValidatorFactory()->create(), $serializers->nameConverter())
+        return new RequestMapper($serializers->create(), new ValidatorFactory()->create(), $serializers->nameConverter(), new GettextTranslations())
             ->body(new ServerRequest('POST', '/orders/1/emails', ['Content-Type' => 'application/json'], json_encode($body, \JSON_THROW_ON_ERROR))->withParsedBody($body), SendOrderEmail::class);
     }
 }

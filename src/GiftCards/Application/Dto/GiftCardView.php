@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\GiftCards\Application\Dto;
 
 use OrillaCart\GiftCards\Domain\GiftCard;
+use OrillaCart\Shared\Domain\Text;
 
 final readonly class GiftCardView
 {
@@ -13,7 +14,7 @@ final readonly class GiftCardView
         /** gift_card or store_credit */
         public string $kind,
         /** "Gift card ····7KQ2", or "Store credit". */
-        public string $label,
+        public Text $label,
         /** The code's last four characters; empty for store credit. */
         public string $codeEnd,
         public string $initial,

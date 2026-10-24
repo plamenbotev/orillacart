@@ -24,7 +24,7 @@ final readonly class StockItem implements \Stringable
         [$kind, $id] = array_pad(explode(':', $item, 2), 2, '');
         $found = StockItemKind::tryFrom($kind);
         if ($found === null || preg_match('/^\d+$/', $id) !== 1) {
-            throw new InventoryRuleViolation(\sprintf('"%s" is not a stock item.', $item), 'orillacart_invalid_stock_item');
+            throw new InventoryRuleViolation('"%s" is not a stock item.', 'orillacart_invalid_stock_item', values: [$item]);
         }
 
         return new self($found, (int) $id);

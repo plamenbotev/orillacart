@@ -175,7 +175,7 @@ class ProductImport
         ++$this->done;
         ++$this->failed;
         if (\count($this->errors) < self::MAX_ERRORS) {
-            $this->errors[] = \sprintf('Row %d: %s', $line, $why);
+            $this->errors[] = \sprintf('Row %1$d: %2$s', $line, $why);
         }
     }
 

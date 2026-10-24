@@ -34,7 +34,7 @@ class State
         public readonly string $name,
     ) {
         if (preg_match('/^[A-Z0-9]{1,3}$/', $code) !== 1) {
-            throw new RuleViolation(\sprintf('"%s" is not a state code; use one to three capital letters or digits.', $code), 'orillacart_invalid_state');
+            throw new RuleViolation('"%s" is not a state code; use one to three capital letters or digits.', 'orillacart_invalid_state', values: [$code]);
         }
     }
 }

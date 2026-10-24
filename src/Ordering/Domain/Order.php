@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\Text;
 
 /**
  * A placed order: what was bought at which prices, where it goes, how it is paid, and where it stands.
@@ -223,7 +224,7 @@ class Order
             throw new OrderRuleViolation('An order needs a valid email address.', 'orillacart_invalid_email');
         }
         if (mb_strlen($draft->note) > self::MAX_NOTE_LENGTH) {
-            throw new OrderRuleViolation(\sprintf('A note has up to %d characters.', self::MAX_NOTE_LENGTH), 'orillacart_invalid_note');
+            throw new OrderRuleViolation('A note has up to %d characters.', 'orillacart_invalid_note', values: [self::MAX_NOTE_LENGTH]);
         }
         $items = array_filter($draft->lines, static fn(LineDraft $line): bool => $line->kind === OrderLine::ITEM);
         if ($items === []) {
@@ -531,7 +532,7 @@ class Order
     {
         $sum = array_reduce($cards, static fn(Money $sum, array $card): Money => $sum->add($card['amount']), Money::zero());
         if ($this->status !== OrderStatus::PendingPayment || $this->paidAt !== null || $this->giftCards !== []) {
-            throw new OrderRuleViolation(\sprintf('Order #%d takes gift cards only when it is placed.', $this->id()), 'orillacart_order_gift_cards');
+            throw new OrderRuleViolation('Order #%d takes gift cards only when it is placed.', 'orillacart_order_gift_cards', values: [$this->id()]);
         }
         if ($sum->isNegative() || $sum->compare($this->total()) > 0) {
             throw new OrderRuleViolation('Gift cards pay no more than the order costs.', 'orillacart_order_gift_cards');
@@ -710,22 +711,22 @@ class Order
     public function checkRefund(OrderRefund $refund): void
     {
         if (!$this->isPaid()) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is not paid; only paid orders are refunded.', $this->id()), 'orillacart_order_not_refundable');
+            throw new OrderRuleViolation('Order #%d is not paid; only paid orders are refunded.', 'orillacart_order_not_refundable', values: [$this->id()]);
         }
         if ($refund->amount->isNegative() || $refund->amount->isZero()) {
             throw new OrderRuleViolation('A refund is for more than nothing.', 'orillacart_invalid_refund_amount');
         }
         if ($refund->amount->compare($this->refundable()) > 0) {
-            throw new OrderRuleViolation(\sprintf('At most %s %s is left to refund.', $this->refundable(), $this->currency), 'orillacart_invalid_refund_amount');
+            throw new OrderRuleViolation('At most %1$s %2$s is left to refund.', 'orillacart_invalid_refund_amount', values: [$this->refundable(), $this->currency]);
         }
         $lines = [];
         foreach ($this->lines() as $line) {
             $lines[$line->position()] = $line;
         }
         foreach ($refund->quantities as $position => $quantity) {
-            $line = $lines[$position] ?? throw new OrderRuleViolation(\sprintf('Order #%d has no line %d.', $this->id(), $position + 1), 'orillacart_invalid_refund_line');
+            $line = $lines[$position] ?? throw new OrderRuleViolation('Order #%1$d has no line %2$d.', 'orillacart_invalid_refund_line', values: [$this->id(), $position + 1]);
             if ($quantity < 1 || $quantity > $line->refundableQuantity()) {
-                throw new OrderRuleViolation(\sprintf('Line "%s" has %d items left to refund.', $line->name(), $line->refundableQuantity()), 'orillacart_invalid_refund_quantity');
+                throw new OrderRuleViolation('Line "%1$s" has %2$d items left to refund.', 'orillacart_invalid_refund_quantity', values: [$line->name(), $line->refundableQuantity()]);
             }
         }
         if ($refund->shipping && ($this->shippingLine() === null || $this->isShippingRefunded())) {
@@ -875,7 +876,7 @@ class Order
     public function restock(array $quantities): array
     {
         if ($this->status !== OrderStatus::Refunded) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is not refunded; its items go back in stock with a refund.', $this->id()), 'orillacart_order_not_refunded');
+            throw new OrderRuleViolation('Order #%d is not refunded; its items go back in stock with a refund.', 'orillacart_order_not_refunded', values: [$this->id()]);
         }
         $lines = [];
         foreach ($this->lines as $line) {
@@ -883,9 +884,9 @@ class Order
         }
         $taken = [];
         foreach ($quantities as $position => $quantity) {
-            $line = $lines[$position] ?? throw new OrderRuleViolation(\sprintf('Order #%d has no line %d.', $this->id(), $position + 1), 'orillacart_invalid_refund_line');
+            $line = $lines[$position] ?? throw new OrderRuleViolation('Order #%1$d has no line %2$d.', 'orillacart_invalid_refund_line', values: [$this->id(), $position + 1]);
             if ($quantity < 1 || $quantity > $line->restockable()) {
-                throw new OrderRuleViolation(\sprintf('Line "%s" has %d items to put back in stock.', $line->name(), $line->restockable()), 'orillacart_invalid_refund_quantity');
+                throw new OrderRuleViolation('Line "%1$s" has %2$d items to put back in stock.', 'orillacart_invalid_refund_quantity', values: [$line->name(), $line->restockable()]);
             }
             array_push($taken, ...$line->refund($quantity, true));
         }
@@ -1078,7 +1079,7 @@ class Order
             throw new OrderRuleViolation('An order has at least one item.', 'orillacart_empty_order');
         }
         if ($this->giftCards !== []) {
-            throw new OrderRuleViolation(\sprintf('Gift cards paid part of order #%d: its items stay as they are; cancel it and place another to change them.', $this->id()), 'orillacart_order_gift_cards');
+            throw new OrderRuleViolation('Gift cards paid part of order #%d: its items stay as they are; cancel it and place another to change them.', 'orillacart_order_gift_cards', values: [$this->id()]);
         }
         if (!self::addsUp($lines, $total, $pricesIncludeTax)) {
             throw new \LogicException('The order total is not the sum of its parts.');
@@ -1117,7 +1118,7 @@ class Order
         if ($this->status === OrderStatus::OnHold) {
             return false;
         }
-        $this->requireOpen('put on hold');
+        $this->requireOpen(new Text('put on hold'));
         $this->status = OrderStatus::OnHold;
 
         return true;
@@ -1137,7 +1138,7 @@ class Order
             return false;
         }
         if ($this->status->isClosed()) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot be marked paid.', $this->id(), strtolower($this->status->label())), 'orillacart_order_closed');
+            throw new OrderRuleViolation('Order #%1$d is %2$s and cannot be marked paid.', 'orillacart_order_closed', values: [$this->id(), $this->status->phrase()]);
         }
         if ($this->status->isOpen()) {
             $this->status = OrderStatus::Processing;
@@ -1204,7 +1205,7 @@ class Order
     public function moveTo(OrderStatus $status, \DateTimeImmutable $at): array
     {
         if (!\in_array($status, $this->nextStatuses(), true)) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot become %s.', $this->id(), strtolower($this->status->label()), strtolower($status->label())), 'orillacart_invalid_status_change');
+            throw new OrderRuleViolation('Order #%1$d is %2$s and cannot become %3$s.', 'orillacart_invalid_status_change', values: [$this->id(), $this->status->phrase(), $status->phrase()]);
         }
 
         switch ($status) {
@@ -1290,7 +1291,7 @@ class Order
     public function awaitPayment(string $gateway, string $name, string $note, \DateTimeImmutable $at, \Closure $take): void
     {
         if (!$this->isPayable()) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot be paid now.', $this->id(), strtolower($this->status->label())), 'orillacart_order_not_payable');
+            throw new OrderRuleViolation('Order #%1$d is %2$s and cannot be paid now.', 'orillacart_order_not_payable', values: [$this->id(), $this->status->phrase()]);
         }
         if ($this->status === OrderStatus::Failed) {
             $lines = array_values($this->lines->toArray());
@@ -1322,7 +1323,7 @@ class Order
     public function reopenPaid(?string $transactionId, \DateTimeImmutable $at, \Closure $take, ?Money $amount = null): void
     {
         if (!\in_array($this->status, [OrderStatus::Cancelled, OrderStatus::Failed], true) || $this->paidAt !== null) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot be opened again.', $this->id(), strtolower($this->status->label())), 'orillacart_order_not_reopenable');
+            throw new OrderRuleViolation('Order #%1$d is %2$s and cannot be opened again.', 'orillacart_order_not_reopenable', values: [$this->id(), $this->status->phrase()]);
         }
         $lines = array_values($this->lines->toArray());
         $taken = $take(array_map(static fn(OrderLine $line): array => $line->stockReleased(), $lines));
@@ -1451,14 +1452,14 @@ class Order
     private function requireOnHold(): void
     {
         if ($this->status !== OrderStatus::OnHold) {
-            throw new OrderRuleViolation(\sprintf('Only orders on hold can change their items; order #%d is %s.', $this->id(), strtolower($this->status->label())), 'orillacart_order_not_editable');
+            throw new OrderRuleViolation('Only orders on hold can change their items; order #%1$d is %2$s.', 'orillacart_order_not_editable', values: [$this->id(), $this->status->phrase()]);
         }
     }
 
-    private function requireOpen(string $change): void
+    private function requireOpen(Text $change): void
     {
         if (!$this->status->isOpen()) {
-            throw new OrderRuleViolation(\sprintf('Order #%d is %s and cannot be %s.', $this->id(), strtolower($this->status->label()), $change), 'orillacart_order_closed');
+            throw new OrderRuleViolation('Order #%1$d is %2$s and cannot be %3$s.', 'orillacart_order_closed', values: [$this->id(), $this->status->phrase(), $change]);
         }
     }
 }

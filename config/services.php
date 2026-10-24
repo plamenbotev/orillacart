@@ -149,6 +149,7 @@ use OrillaCart\Platform\Doctrine\DoctrineTransactions;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
 use OrillaCart\Platform\Doctrine\MigrationsFactory;
 use OrillaCart\Platform\Health\HealthStatusReport;
+use OrillaCart\Platform\I18n\GettextTranslations;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\Sample\SampleProducts;
@@ -208,6 +209,7 @@ use OrillaCart\Shared\Extension\InstalledExtensions;
 use OrillaCart\Shared\Files\FileDelivery;
 use OrillaCart\Shared\Files\PrivateFiles;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
+use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\Lifecycle\AfterResponse;
 use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\LoadedEntities;
@@ -487,6 +489,7 @@ return static function (ContainerConfigurator $container): void {
     $services->get(EmailTemplateEditing::class)->arg('$twig', service('orillacart.email_twig'));
     $services->alias(TemplateEditing::class, EmailTemplateEditing::class);
     $services->alias(TemplateRenderer::class, TwigRenderer::class);
+    $services->alias(Translations::class, GettextTranslations::class);
 
     // Entry points used by the WordPress bootstrap and WP-CLI
     $services->set(WordPressIntegration::class)->public();

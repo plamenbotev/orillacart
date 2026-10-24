@@ -75,17 +75,17 @@ final readonly class ProductService
     {
         $name = $this->name($id);
         if ($command->sku !== null && $this->products->isSkuTaken($command->sku, exceptProductId: $id)) {
-            throw new CatalogRuleViolation(\sprintf('Another product or variation has the SKU "%s".', $command->sku), 'orillacart_duplicate_sku');
+            throw new CatalogRuleViolation('Another product or variation has the SKU "%s".', 'orillacart_duplicate_sku', values: [$command->sku]);
         }
         if ($command->taxGroupId !== null && !$this->taxGroups->exists($command->taxGroupId)) {
-            throw new CatalogRuleViolation(\sprintf('There is no tax group %d.', $command->taxGroupId), 'orillacart_unknown_tax_group');
+            throw new CatalogRuleViolation('There is no tax group %d.', 'orillacart_unknown_tax_group', values: [$command->taxGroupId]);
         }
         if ($command->shippingClassId !== null && !$this->shippingClasses->exists($command->shippingClassId)) {
-            throw new CatalogRuleViolation(\sprintf('There is no shipping class %d.', $command->shippingClassId), 'orillacart_unknown_shipping_class');
+            throw new CatalogRuleViolation('There is no shipping class %d.', 'orillacart_unknown_shipping_class', values: [$command->shippingClassId]);
         }
         $sets = array_map(
             fn(int $setId): AttributeSet => $this->sets->find($setId)
-                ?? throw new CatalogRuleViolation(\sprintf('There is no attribute set %d.', $setId), 'orillacart_unknown_attribute_set'),
+                ?? throw new CatalogRuleViolation('There is no attribute set %d.', 'orillacart_unknown_attribute_set', values: [$setId]),
             array_values(array_unique($command->setIds)),
         );
 
@@ -326,7 +326,7 @@ final readonly class ProductService
     private function refuseTakenSku(?string $sku, ?int $exceptProductId, ?int $exceptVariationId): void
     {
         if ($sku !== null && $this->products->isSkuTaken($sku, $exceptProductId, $exceptVariationId)) {
-            throw new CatalogRuleViolation(\sprintf('Another product or variation has the SKU "%s".', $sku), 'orillacart_duplicate_sku');
+            throw new CatalogRuleViolation('Another product or variation has the SKU "%s".', 'orillacart_duplicate_sku', values: [$sku]);
         }
     }
 
@@ -358,25 +358,25 @@ final readonly class ProductService
         $items = [];
         foreach ($command->items as $item) {
             $product = $this->products->find($item->productId)
-                ?? throw new CatalogRuleViolation(\sprintf('Product %d has no commerce details to sell in a bundle.', $item->productId), 'orillacart_invalid_bundle');
+                ?? throw new CatalogRuleViolation('Product %d has no commerce details to sell in a bundle.', 'orillacart_invalid_bundle', values: [$item->productId]);
             $name = $this->content->name($item->productId);
             if ($product->isBundle()) {
-                throw new CatalogRuleViolation(\sprintf('%s is a bundle itself; add its items instead.', $name), 'orillacart_invalid_bundle');
+                throw new CatalogRuleViolation('%s is a bundle itself; add its items instead.', 'orillacart_invalid_bundle', values: [$name]);
             }
             if ($product->hasVariations()) {
                 $offered = array_map(static fn(Variation $variation): int => $variation->id(), $product->variations());
                 if ($item->variationIds === []) {
-                    throw new CatalogRuleViolation(\sprintf('Choose which variations of %s the bundle offers.', $name), 'orillacart_invalid_bundle');
+                    throw new CatalogRuleViolation('Choose which variations of %s the bundle offers.', 'orillacart_invalid_bundle', values: [$name]);
                 }
                 if (array_diff($item->variationIds, $offered) !== []) {
-                    throw new CatalogRuleViolation(\sprintf('%s has no such variation.', $name), 'orillacart_invalid_bundle');
+                    throw new CatalogRuleViolation('%s has no such variation.', 'orillacart_invalid_bundle', values: [$name]);
                 }
             } elseif ($item->variationIds !== []) {
-                throw new CatalogRuleViolation(\sprintf('%s has no variations.', $name), 'orillacart_invalid_bundle');
+                throw new CatalogRuleViolation('%s has no variations.', 'orillacart_invalid_bundle', values: [$name]);
             } else {
                 foreach ($product->offeredOptions() as [$attribute]) {
                     if ($attribute->isRequired()) {
-                        throw new CatalogRuleViolation(\sprintf('%s asks the customer to choose %s, which a bundle cannot.', $name, strtolower($attribute->name())), 'orillacart_invalid_bundle');
+                        throw new CatalogRuleViolation('%1$s asks the customer to choose %2$s, which a bundle cannot.', 'orillacart_invalid_bundle', values: [$name, strtolower($attribute->name())]);
                     }
                 }
             }

@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Unit\Shared\Http;
 
 use Nyholm\Psr7\ServerRequest;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
+use OrillaCart\Platform\I18n\GettextTranslations;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Serialization\ValidatorFactory;
 use OrillaCart\Settings\Application\Dto\UpdateSettings;
@@ -109,6 +110,6 @@ final class RequestMapperTest extends TestCase
     {
         $serializers = new SerializerFactory();
 
-        return new RequestMapper($serializers->create(), new ValidatorFactory()->create(), $serializers->nameConverter());
+        return new RequestMapper($serializers->create(), new ValidatorFactory()->create(), $serializers->nameConverter(), new GettextTranslations());
     }
 }

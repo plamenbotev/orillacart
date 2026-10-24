@@ -82,7 +82,7 @@ class SearchFilter
     {
         $label = trim($label);
         if ($label === '' || mb_strlen($label) > self::MAX_LABEL_LENGTH) {
-            throw new SearchRuleViolation(\sprintf('A filter needs a label of up to %d characters.', self::MAX_LABEL_LENGTH), 'orillacart_invalid_filter_label');
+            throw new SearchRuleViolation('A filter needs a label of up to %d characters.', 'orillacart_invalid_filter_label', values: [self::MAX_LABEL_LENGTH]);
         }
         if (preg_match('/^[a-z0-9][a-z0-9_-]{0,39}$/', $key) !== 1) {
             throw new SearchRuleViolation('A filter key is lowercase letters, digits, dashes and underscores, up to 40: "size".', 'orillacart_invalid_filter_key');
@@ -95,7 +95,7 @@ class SearchFilter
             }
         }
         if ($names === [] || \count($names) > self::MAX_ATTRIBUTES) {
-            throw new SearchRuleViolation(\sprintf('A filter covers 1 to %d attributes.', self::MAX_ATTRIBUTES), 'orillacart_invalid_filter_attributes');
+            throw new SearchRuleViolation('A filter covers 1 to %d attributes.', 'orillacart_invalid_filter_attributes', values: [self::MAX_ATTRIBUTES]);
         }
         $this->label = $label;
         $this->filterKey = $key;

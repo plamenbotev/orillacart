@@ -10,6 +10,6 @@ final class ReturnNotFound extends NotFound
 {
     public function __construct(int $id)
     {
-        parent::__construct(\sprintf('There is no return %d.', $id), 'orillacart_return_not_found');
+        parent::__construct('There is no return %d.', 'orillacart_return_not_found', values: [$id]);
     }
 }

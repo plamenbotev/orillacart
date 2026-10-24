@@ -10,6 +10,6 @@ final class CouponNotFound extends NotFound
 {
     public function __construct(int $id)
     {
-        parent::__construct(\sprintf('Coupon %d does not exist.', $id), 'orillacart_coupon_not_found');
+        parent::__construct('Coupon %d does not exist.', 'orillacart_coupon_not_found', values: [$id]);
     }
 }

@@ -99,12 +99,12 @@ final readonly class Refunds
         }
         $payment = $command->outside || $command->storeCredit ? null : $this->refundablePayment($orderId);
         if ($payment !== null && PaymentAccount::left($payment, $this->gateways->get($payment->gateway()), new Settings($this->methods->findByGateway($payment->gateway())?->settings() ?? []))) {
-            throw new PaymentRuleViolation(\sprintf('The payment through %s was made in another of its accounts or modes (sandbox or live) than the one set up now: switch back to refund it, or refund it at the provider and record it here as refunded outside the shop.', $this->name($payment->gateway())), 'orillacart_refund_other_account');
+            throw new PaymentRuleViolation('The payment through %s was made in another of its accounts or modes (sandbox or live) than the one set up now: switch back to refund it, or refund it at the provider and record it here as refunded outside the shop.', 'orillacart_refund_other_account', values: [$this->name($payment->gateway())]);
         }
         if ($payment !== null) {
             $left = $this->leftOf($payment);
             if (Money::of($command->amount)->compare($left) > 0) {
-                throw new PaymentRuleViolation(\sprintf('The payment through %s has %s %s left to give back; refund the rest outside the shop.', $this->name($payment->gateway()), $left, $payment->currency()), 'orillacart_refund_over_payment');
+                throw new PaymentRuleViolation('The payment through %1$s has %2$s %3$s left to give back; refund the rest outside the shop.', 'orillacart_refund_over_payment', values: [$this->name($payment->gateway()), $left, $payment->currency()]);
             }
         }
         $refund = new Refund(
@@ -297,13 +297,13 @@ final readonly class Refunds
             $refund->fail($e->getMessage(), $this->clock->now());
             $this->refunds->save($refund);
 
-            throw new PaymentRuleViolation(\sprintf('%s refused the refund: %s', $this->name($payment->gateway()), $e->getMessage()), 'orillacart_refund_refused', $e);
+            throw new PaymentRuleViolation('%1$s refused the refund: %2$s', 'orillacart_refund_refused', $e, values: [$this->name($payment->gateway()), $e->getMessage()]);
         } catch (ProviderUnavailable $e) {
             $refund->unanswered($e->getMessage());
             $this->refunds->save($refund);
             $this->logger->warning('Refund {refund} of order {order}: {message}', ['refund' => $refund->id(), 'order' => $order->number, 'message' => $e->getMessage()]);
 
-            throw new PaymentRuleViolation(\sprintf('%s did not answer, so the refund waits. Try it again: it is never sent twice.', $this->name($payment->gateway())), 'orillacart_refund_unanswered', $e);
+            throw new PaymentRuleViolation('%s did not answer, so the refund waits. Try it again: it is never sent twice.', 'orillacart_refund_unanswered', $e, values: [$this->name($payment->gateway())]);
         } catch (\Throwable $e) {
             // The gateway broke; whether the money moved is not known. The refund waits with the error, to be
             // tried again under the same id (never refunding twice) or given up.
@@ -311,7 +311,7 @@ final readonly class Refunds
             $this->refunds->save($refund);
             $this->logger->error('Refund {refund} of order {order} failed in {gateway}: {message}', ['refund' => $refund->id(), 'order' => $order->number, 'gateway' => $payment->gateway(), 'message' => $e->getMessage(), 'exception' => $e]);
 
-            throw new PaymentRuleViolation(\sprintf('%s failed: %s The refund waits: try it again, or give it up.', $this->name($payment->gateway()), $e->getMessage()), 'orillacart_refund_unanswered', $e);
+            throw new PaymentRuleViolation('%1$s failed: %2$s The refund waits: try it again, or give it up.', 'orillacart_refund_unanswered', $e, values: [$this->name($payment->gateway()), $e->getMessage()]);
         }
         if ($result->pending) {
             $this->accepted($refund, $result->reference);

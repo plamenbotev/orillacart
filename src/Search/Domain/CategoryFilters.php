@@ -54,7 +54,7 @@ class CategoryFilters
     {
         $filterIds = array_values(array_unique($filterIds));
         if (\count($filterIds) > self::MAX_FILTERS || array_filter($filterIds, static fn(int $id): bool => $id <= 0) !== []) {
-            throw new SearchRuleViolation(\sprintf('A category offers up to %d of the shop\'s filters.', self::MAX_FILTERS), 'orillacart_invalid_category_filters');
+            throw new SearchRuleViolation('A category offers up to %d of the shop\'s filters.', 'orillacart_invalid_category_filters', values: [self::MAX_FILTERS]);
         }
         $this->filterIds = $filterIds;
     }

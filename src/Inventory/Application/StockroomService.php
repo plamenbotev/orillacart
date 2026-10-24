@@ -76,11 +76,7 @@ final readonly class StockroomService
         $stockroom = $this->get($id);
         $only = $this->levels->itemsOnlyIn($id);
         if ($only > 0) {
-            throw new InventoryRuleViolation(\sprintf(
-                '%s is the only stockroom holding %d item(s), which would then sell without limit. Turn it off instead, or count them in another stockroom first.',
-                $stockroom->details()->name,
-                $only,
-            ), 'orillacart_stockroom_in_use');
+            throw new InventoryRuleViolation('%1$s is the only stockroom holding %2$d item(s), which would then sell without limit. Turn it off instead, or count them in another stockroom first.', 'orillacart_stockroom_in_use', values: [$stockroom->details()->name, $only]);
         }
         $held = $stockroom->isActive() ? $this->levels->stockOf($this->itemsIn($id)) : [];
         $before = self::availableExcept($held, null);

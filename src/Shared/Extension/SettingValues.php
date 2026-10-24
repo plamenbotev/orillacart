@@ -34,7 +34,7 @@ final class SettingValues
         }
         foreach (array_keys($submitted) as $key) {
             if (!isset($byKey[$key])) {
-                throw new RuleViolation(\sprintf('"%s" is not a setting of %s.', $key, $owner), 'orillacart_unknown_setting');
+                throw new RuleViolation('"%1$s" is not a setting of %2$s.', 'orillacart_unknown_setting', values: [$key, $owner]);
             }
         }
         $values = [];
@@ -92,7 +92,7 @@ final class SettingValues
     {
         if ($field->type === Setting::BOOLEAN) {
             if ($value !== null && !\is_bool($value)) {
-                throw new RuleViolation(\sprintf('"%s" is on or off.', $field->label), 'orillacart_invalid_setting');
+                throw new RuleViolation('"%s" is on or off.', 'orillacart_invalid_setting', values: [$field->label]);
             }
 
             return $value ?? false;
@@ -101,17 +101,17 @@ final class SettingValues
             return '';
         }
         if ($value !== null && !\is_string($value)) {
-            throw new RuleViolation(\sprintf('"%s" is text.', $field->label), 'orillacart_invalid_setting');
+            throw new RuleViolation('"%s" is text.', 'orillacart_invalid_setting', values: [$field->label]);
         }
         $value = trim($value ?? '');
         if (mb_strlen($value) > self::MAX_LENGTH) {
-            throw new RuleViolation(\sprintf('"%s" has up to %d characters.', $field->label, self::MAX_LENGTH), 'orillacart_invalid_setting');
+            throw new RuleViolation('"%1$s" has up to %2$d characters.', 'orillacart_invalid_setting', values: [$field->label, self::MAX_LENGTH]);
         }
         if ($field->type === Setting::NUMBER && $value !== '' && preg_match('/^-?\d{1,12}(\.\d{1,6})?$/', $value) !== 1) {
-            throw new RuleViolation(\sprintf('"%s" is a number, such as 2.5.', $field->label), 'orillacart_invalid_setting');
+            throw new RuleViolation('"%s" is a number, such as 2.5.', 'orillacart_invalid_setting', values: [$field->label]);
         }
         if ($field->type === Setting::CHOICE && $value !== '' && !\array_key_exists($value, $field->choices)) {
-            throw new RuleViolation(\sprintf('"%s" is one of: %s.', $field->label, implode(', ', array_map(strval(...), array_keys($field->choices)))), 'orillacart_invalid_setting');
+            throw new RuleViolation('"%1$s" is one of: %2$s.', 'orillacart_invalid_setting', values: [$field->label, implode(', ', array_map(strval(...), array_keys($field->choices)))]);
         }
 
         // An empty secret keeps the saved one: the screen never receives secrets to send back.

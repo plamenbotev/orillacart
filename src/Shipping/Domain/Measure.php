@@ -22,7 +22,7 @@ final readonly class Measure implements \Stringable
     public static function of(string $value): self
     {
         if (preg_match('/^(\d{1,14})(?:\.(\d{1,' . self::DECIMALS . '}))?$/', $value, $parts) !== 1) {
-            throw new ShippingRuleViolation(\sprintf('"%s" is not a measure; use a number of zero or more with up to %d decimals.', $value, self::DECIMALS), 'orillacart_invalid_measure');
+            throw new ShippingRuleViolation('"%1$s" is not a measure; use a number of zero or more with up to %2$d decimals.', 'orillacart_invalid_measure', values: [$value, self::DECIMALS]);
         }
 
         return new self((int) $parts[1] * self::UNIT + (int) str_pad($parts[2] ?? '', self::DECIMALS, '0'));

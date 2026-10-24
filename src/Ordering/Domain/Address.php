@@ -58,7 +58,7 @@ final class Address
     {
         foreach (['first name' => $firstName, 'last name' => $lastName, 'street' => $street, 'city' => $city] as $name => $value) {
             if (trim($value) === '' || mb_strlen(trim($value)) > self::MAX_LENGTH) {
-                throw new OrderRuleViolation(\sprintf('An address needs a %s of up to %d characters.', $name, self::MAX_LENGTH), 'orillacart_invalid_address');
+                throw new OrderRuleViolation('An address needs a %1$s of up to %2$d characters.', 'orillacart_invalid_address', values: [$name, self::MAX_LENGTH]);
             }
         }
         if (preg_match('/^[A-Z]{2}$/', $country) !== 1 || ($state !== null && preg_match('/^[A-Z0-9]{1,3}$/', $state) !== 1)) {

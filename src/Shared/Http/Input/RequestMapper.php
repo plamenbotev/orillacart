@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace OrillaCart\Shared\Http\Input;
 
+use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Middleware\CsrfMiddleware;
+use OrillaCart\Shared\I18n\Translations;
 use Psr\Http\Message\ServerRequestInterface;
 use Symfony\Component\Serializer\Exception\ExtraAttributesException;
 use Symfony\Component\Serializer\Exception\MissingConstructorArgumentsException;
@@ -32,6 +34,7 @@ final readonly class RequestMapper
         private DenormalizerInterface $denormalizer,
         private ValidatorInterface $validator,
         private NameConverterInterface $names,
+        private Translations $translations,
     ) {}
 
     /**
@@ -91,17 +94,17 @@ final readonly class RequestMapper
             ]);
         } catch (PartialDenormalizationException $e) {
             throw HttpException::invalidInput(array_map(
-                fn(NotNormalizableValueException $error): array => $this->violation((string) $error->getPath(), self::typeMessage($error)),
+                fn(NotNormalizableValueException $error): array => $this->violation((string) $error->getPath(), $this->translations->text(self::typeMessage($error))),
                 array_values($e->getErrors()),
             ));
         } catch (ExtraAttributesException $e) {
             throw HttpException::invalidInput(array_map(
-                fn(string $field): array => $this->violation($field, 'This field is not expected.'),
+                fn(string $field): array => $this->violation($field, $this->translations->text('This field is not expected.')),
                 array_values(array_map(static fn(mixed $attribute): string => \is_string($attribute) ? $attribute : get_debug_type($attribute), $e->getExtraAttributes())),
             ));
         } catch (MissingConstructorArgumentsException $e) {
             throw HttpException::invalidInput(array_map(
-                fn(string $field): array => $this->violation($field, 'This field is missing.'),
+                fn(string $field): array => $this->violation($field, $this->translations->text('This field is missing.')),
                 array_values($e->getMissingConstructorArguments()),
             ));
         }
@@ -111,7 +114,8 @@ final readonly class RequestMapper
 
         $violations = [];
         foreach ($this->validator->validate($dto) as $violation) {
-            $violations[] = $this->violation($violation->getPropertyPath(), (string) $violation->getMessage());
+            // Symfony's English template, translated as the site's language has it, the values put in after.
+            $violations[] = $this->violation($violation->getPropertyPath(), $this->translations->message($violation->getMessageTemplate(), $violation->getParameters(), $violation->getPlural()));
         }
         if ($violations !== []) {
             throw HttpException::invalidInput($violations);
@@ -136,12 +140,12 @@ final readonly class RequestMapper
         return ['field' => $field, 'message' => $message];
     }
 
-    private static function typeMessage(NotNormalizableValueException $error): string
+    private static function typeMessage(NotNormalizableValueException $error): Text
     {
         $expected = $error->getExpectedTypes() ?? [];
 
         return $expected === []
-            ? 'This value is not valid.'
-            : \sprintf('This value should be of type %s.', implode('|', $expected));
+            ? new Text('This value is not valid.')
+            : Text::of('This value should be of type %s.', implode('|', $expected));
     }
 }

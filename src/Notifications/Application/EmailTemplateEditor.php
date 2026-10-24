@@ -203,7 +203,7 @@ final readonly class EmailTemplateEditor
         try {
             return $this->orderEmails->preview($orderId, $kind);
         } catch (OrderNotFound $e) {
-            throw new EmailRuleViolation($e->getMessage(), 'orillacart_no_order_to_preview', $e);
+            throw new EmailRuleViolation($e->text, 'orillacart_no_order_to_preview', $e);
         }
     }
 

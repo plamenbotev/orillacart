@@ -34,16 +34,16 @@ final readonly class PickupLocation
         public Money $fee,
     ) {
         if (preg_match('/^[a-z0-9][a-z0-9-]{0,39}$/', $id) !== 1) {
-            throw new ShippingRuleViolation(\sprintf('"%s" is not an id for a pickup place: lowercase letters, digits and dashes, up to 40.', $id), 'orillacart_invalid_pickup_location');
+            throw new ShippingRuleViolation('"%s" is not an id for a pickup place: lowercase letters, digits and dashes, up to 40.', 'orillacart_invalid_pickup_location', values: [$id]);
         }
         $this->name = trim($name);
         $this->address = trim($address);
         $this->hours = trim($hours);
         if ($this->name === '' || mb_strlen($this->name) > self::MAX_NAME_LENGTH) {
-            throw new ShippingRuleViolation(\sprintf('A pickup place needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_pickup_location');
+            throw new ShippingRuleViolation('A pickup place needs a name of up to %d characters.', 'orillacart_invalid_pickup_location', values: [self::MAX_NAME_LENGTH]);
         }
         if ($this->address === '' || mb_strlen($this->address) > self::MAX_TEXT_LENGTH || mb_strlen($this->hours) > self::MAX_TEXT_LENGTH) {
-            throw new ShippingRuleViolation(\sprintf('A pickup place needs an address, and its address and hours have up to %d characters.', self::MAX_TEXT_LENGTH), 'orillacart_invalid_pickup_location');
+            throw new ShippingRuleViolation('A pickup place needs an address, and its address and hours have up to %d characters.', 'orillacart_invalid_pickup_location', values: [self::MAX_TEXT_LENGTH]);
         }
         if ($fee->isNegative()) {
             throw new ShippingRuleViolation('Collecting an order cannot cost less than nothing.', 'orillacart_invalid_pickup_location');

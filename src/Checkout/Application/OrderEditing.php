@@ -110,7 +110,7 @@ final readonly class OrderEditing
     {
         $order = $this->orderOnHold($orderId);
         if ($command->line !== null && !isset($order->lines[$command->line])) {
-            throw new CheckoutRuleViolation(\sprintf('Order #%d has no item %d.', $orderId, $command->line + 1), 'orillacart_invalid_price_change');
+            throw new CheckoutRuleViolation('Order #%1$d has no item %2$d.', 'orillacart_invalid_price_change', values: [$orderId, $command->line + 1]);
         }
         $changes = self::changesOf($order, array_combine(array_keys($order->lines), array_keys($order->lines)));
         $changes[] = [
@@ -225,7 +225,7 @@ final readonly class OrderEditing
     {
         $order = $this->orders->order($orderId);
         if ($order->status !== 'on_hold') {
-            throw new OrderRuleViolation(\sprintf('Only orders on hold can change their items; order #%d is %s.', $orderId, str_replace('_', ' ', $order->status)), 'orillacart_order_not_editable');
+            throw new OrderRuleViolation('Only orders on hold can change their items; order #%1$d is %2$s.', 'orillacart_order_not_editable', values: [$orderId, str_replace('_', ' ', $order->status)]);
         }
 
         return $order;

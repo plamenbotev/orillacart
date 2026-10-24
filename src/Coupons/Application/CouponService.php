@@ -92,7 +92,7 @@ final readonly class CouponService
     {
         $existing = $this->coupons->findByCodes([Coupon::normalize($code)])[Coupon::normalize($code)] ?? null;
         if ($existing !== null && $existing->id() !== $id) {
-            throw new CouponRuleViolation(\sprintf('Another coupon has the code %s.', Coupon::normalize($code)), 'orillacart_coupon_code_taken');
+            throw new CouponRuleViolation('Another coupon has the code %s.', 'orillacart_coupon_code_taken', values: [Coupon::normalize($code)]);
         }
     }
 

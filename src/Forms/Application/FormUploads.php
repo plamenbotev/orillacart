@@ -15,6 +15,7 @@ use OrillaCart\Forms\Domain\FormUploadRepository;
 use OrillaCart\Forms\Domain\UploadInspector;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\InvalidFields;
+use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\Files\PrivateFiles;
 use Psr\Clock\ClockInterface;
 
@@ -77,7 +78,7 @@ final readonly class FormUploads
                 throw self::refused('Choose a file.');
             }
             if ($size > $field->largest * 1024 * 1024) {
-                throw self::refused(\sprintf('The file is larger than %d MB.', $field->largest));
+                throw self::refused('The file is larger than %d MB.', $field->largest);
             }
             $sender = self::sender($command->address);
             if ($this->uploads->sentBy($sender, $this->clock->now()->modify('-1 day')) + $size > self::MAX_SENT_A_DAY) {
@@ -89,17 +90,17 @@ final readonly class FormUploads
             $type = $this->inspector->type($command->temporaryPath);
             $takes = $this->inspector->takesImages() ? $field->types : array_values(array_filter($field->types, static fn(string $type): bool => !str_starts_with($type, 'image/')));
             if ($type === null || !\in_array($type, $takes, true)) {
-                throw self::refused(\sprintf('This field takes %s files.', implode(', ', array_map(static fn(string $type): string => strtoupper(self::EXTENSIONS[$type] ?? $type), $takes))));
+                throw self::refused('This field takes %s files.', implode(', ', array_map(static fn(string $type): string => strtoupper(self::EXTENSIONS[$type] ?? $type), $takes)));
             }
             try {
                 $clean = $this->inspector->clean($command->temporaryPath, $type);
             } catch (FormRuleViolation $e) {
-                throw self::refused($e->getMessage());
+                throw self::refused($e->text);
             }
             $size = (int) filesize($clean);
             // A picture written again may come out larger; not by much more than it was allowed.
             if ($size > 2 * $field->largest * 1024 * 1024) {
-                throw self::refused(\sprintf('The file is larger than %d MB.', $field->largest));
+                throw self::refused('The file is larger than %d MB.', $field->largest);
             }
             $name = CleanText::filename($command->filename);
             $name = (string) preg_replace('/\.[^.]*$/', '', $name);
@@ -207,8 +208,8 @@ final readonly class FormUploads
         return hash('sha256', 'orillacart-upload-sender|' . $address);
     }
 
-    private static function refused(string $message): InvalidFields
+    private static function refused(string|Text $message, int|string ...$values): InvalidFields
     {
-        return new InvalidFields([['field' => 'file', 'message' => $message]]);
+        return new InvalidFields([['field' => 'file', 'message' => $message instanceof Text ? $message : Text::of($message, ...$values)]]);
     }
 }

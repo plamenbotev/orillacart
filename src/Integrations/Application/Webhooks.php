@@ -143,7 +143,7 @@ final readonly class Webhooks
     {
         $unknown = array_diff($topics, array_keys($this->topics->all()));
         if ($unknown !== []) {
-            throw new IntegrationRuleViolation(\sprintf('The shop has no webhook topic %s.', implode(', ', $unknown)), 'orillacart_invalid_webhook_topics');
+            throw new IntegrationRuleViolation('The shop has no webhook topic %s.', 'orillacart_invalid_webhook_topics', values: [implode(', ', $unknown)]);
         }
     }
 

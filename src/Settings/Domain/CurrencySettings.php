@@ -19,7 +19,7 @@ final readonly class CurrencySettings
     public function __construct(public array $offered = [])
     {
         if (\count($offered) > self::MAX_CURRENCIES) {
-            throw new RuleViolation(\sprintf('A shop offers up to %d other currencies.', self::MAX_CURRENCIES), 'orillacart_too_many_currencies');
+            throw new RuleViolation('A shop offers up to %d other currencies.', 'orillacart_too_many_currencies', values: [self::MAX_CURRENCIES]);
         }
         $codes = array_map(static fn(OfferedCurrency $offered): string => $offered->currency->code, $offered);
         if (\count($codes) !== \count(array_unique($codes))) {

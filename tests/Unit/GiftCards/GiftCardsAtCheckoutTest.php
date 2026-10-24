@@ -60,7 +60,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $summary = $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput(strtolower(str_replace('-', ' ', $issued->code))));
         $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
         self::assertSame(['54', '30', '24', true], [$summary->total, $summary->giftCardTotal, $summary->amountDue, $summary->needsPayment]);
-        self::assertSame([['Gift card ····' . substr($issued->code, -4), '30', null]], array_map(static fn($card): array => [$card->label, $card->amount, $card->refused], $summary->giftCards));
+        self::assertSame([['Gift card ····' . substr($issued->code, -4), '30', null]], array_map(static fn($card): array => [(string) $card->label, $card->amount, $card->refused], $summary->giftCards));
 
         $placed = $this->shop->checkout->placeOrder($owner, $this->order('paypal'));
         $order = $this->shop->orders->order($placed->number);
@@ -108,7 +108,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
         $this->shop->clock->modify('+1 month');
         $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG'));
-        self::assertSame([[$issued->code, 'This gift card has expired.']], array_map(static fn($card): array => [$card->code, $card->refused], $summary->giftCards));
+        self::assertSame([[$issued->code, 'This gift card has expired.']], array_map(static fn($card): array => [$card->code, (string) $card->refused], $summary->giftCards));
 
         $this->expectExceptionMessage('This gift card has expired. Remove it to order.');
         $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer'));
@@ -130,7 +130,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     {
         $ada = $this->shop->accounts->add('ada@example.com', 'Ada');
         $credit = $this->shop->giftCards->adjustStoreCredit($ada, new AdjustBalance('20', 'Sorry for the late delivery'), 1);
-        self::assertSame(['20', 'Store credit'], [$credit->card->balance, $credit->card->label]);
+        self::assertSame(['20', 'Store credit'], [$credit->card->balance, (string) $credit->card->label]);
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null, $ada), new AddToCart(10))->newToken, $ada);
 
         $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));

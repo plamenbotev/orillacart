@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Coupons\Application\Dto;
 
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\Text;
 
 /**
  * The coupons that hold for an order, and why the others do not.
@@ -13,7 +14,7 @@ final readonly class AppliedDiscounts
 {
     /**
      * @param list<AppliedCoupon>   $coupons in the order they were entered
-     * @param array<string, string> $refused why, by code
+     * @param array<string, Text> $refused why, by code
      * @param list<array{productId: int, quantity: int}> $gifts free gifts that hold but are not in the order yet:
      *                                                          checkout adds them and prices the order again
      */

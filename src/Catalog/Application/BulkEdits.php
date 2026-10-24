@@ -20,6 +20,7 @@ use OrillaCart\Inventory\Domain\StockReason;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\Persistence\Transactions;
 
 /**
@@ -40,7 +41,7 @@ final readonly class BulkEdits
     /**
      * @param list<int> $ids products
      *
-     * @return list<string> why products were left as they were: "Lamp: …"
+     * @return list<Text> why products were left as they were: "Lamp: …"
      *
      * @throws CatalogRuleViolation for a change that is not one
      */
@@ -65,7 +66,7 @@ final readonly class BulkEdits
                     }
                 });
             } catch (RuleViolation $e) {
-                $refused[] = \sprintf('%s: %s', $name, $e->getMessage());
+                $refused[] = Text::of('%1$s: %2$s', $name, $e->text);
             }
         }
 

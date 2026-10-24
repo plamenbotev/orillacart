@@ -144,7 +144,7 @@ final readonly class Consignments
     {
         $order = $this->orders->order($orderId);
         if (!self::isPickup($order) || !\in_array($order->status, ['processing', 'shipped'], true)) {
-            throw new ShippingRuleViolation(\sprintf('Order #%d is not one to collect from the shop now.', $orderId), 'orillacart_not_for_pickup');
+            throw new ShippingRuleViolation('Order #%d is not one to collect from the shop now.', 'orillacart_not_for_pickup', values: [$orderId]);
         }
 
         return $order;
@@ -185,7 +185,7 @@ final readonly class Consignments
                 $command->parcels,
             ), $booking['settings']);
         } catch (ProviderUnavailable $e) {
-            throw new ShippingRuleViolation(\sprintf('The courier did not book the shipment: %s', $e->getMessage()), 'orillacart_courier_refused', $e);
+            throw new ShippingRuleViolation('The courier did not book the shipment: %s', 'orillacart_courier_refused', $e, values: [$e->getMessage()]);
         } catch (\Throwable $e) {
             throw $this->broken('booking', $e);
         }
@@ -217,7 +217,7 @@ final readonly class Consignments
     {
         $order = $this->orders->order($orderId);
         if ($order->shippingAddress === null) {
-            throw new ShippingRuleViolation(\sprintf('Order #%d ships nothing.', $orderId), 'orillacart_shipment_not_bookable');
+            throw new ShippingRuleViolation('Order #%d ships nothing.', 'orillacart_shipment_not_bookable', values: [$orderId]);
         }
         $items = $this->sending($order, $command->items);
         $parcels = array_map(static fn(SaveParcel $parcel): ParcelTracking => new ParcelTracking($parcel->number, $parcel->trackingUrl), $command->parcels);
@@ -259,7 +259,7 @@ final readonly class Consignments
         try {
             $label = $method->label($consignment->number(), $settings);
         } catch (ProviderUnavailable $e) {
-            throw new ShippingRuleViolation(\sprintf('The courier did not give the label: %s', $e->getMessage()), 'orillacart_courier_refused', $e);
+            throw new ShippingRuleViolation('The courier did not give the label: %s', 'orillacart_courier_refused', $e, values: [$e->getMessage()]);
         } catch (\Throwable $e) {
             throw $this->broken('a label', $e);
         }
@@ -276,13 +276,13 @@ final readonly class Consignments
     {
         $consignment = $this->get($id);
         if ($consignment->status() !== ConsignmentStatus::Booked) {
-            throw new ShippingRuleViolation(\sprintf('Shipment %s is %s; only a booked one is cancelled.', $consignment->number(), str_replace('_', ' ', $consignment->status()->value)), 'orillacart_shipment_not_cancellable');
+            throw new ShippingRuleViolation('Shipment %1$s is %2$s; only a booked one is cancelled.', 'orillacart_shipment_not_cancellable', values: [$consignment->number(), str_replace('_', ' ', $consignment->status()->value)]);
         }
         [$method, $settings] = $this->methodOf($consignment);
         try {
             $method->cancelShipment($consignment->number(), $settings);
         } catch (ProviderUnavailable $e) {
-            throw new ShippingRuleViolation(\sprintf('The courier did not cancel the shipment: %s', $e->getMessage()), 'orillacart_courier_refused', $e);
+            throw new ShippingRuleViolation('The courier did not cancel the shipment: %s', 'orillacart_courier_refused', $e, values: [$e->getMessage()]);
         } catch (\Throwable $e) {
             throw $this->broken('cancelling', $e);
         }
@@ -404,11 +404,11 @@ final readonly class Consignments
     private function sending(OrderView $order, array $asked): array
     {
         if (\in_array($order->status, self::CLOSED, true)) {
-            throw new ShippingRuleViolation(\sprintf('Order #%d is %s; it does not ship.', $order->number, $order->status), 'orillacart_shipment_not_bookable');
+            throw new ShippingRuleViolation('Order #%1$d is %2$s; it does not ship.', 'orillacart_shipment_not_bookable', values: [$order->number, $order->status]);
         }
         $left = self::left($order, $this->consignments->forOrder($order->number));
         if ($asked === []) {
-            return $left !== [] ? $left : throw new ShippingRuleViolation(\sprintf('Everything of order #%d is in a shipment already.', $order->number), 'orillacart_nothing_to_ship');
+            return $left !== [] ? $left : throw new ShippingRuleViolation('Everything of order #%d is in a shipment already.', 'orillacart_nothing_to_ship', values: [$order->number]);
         }
         $items = [];
         foreach ($asked as $item) {
@@ -416,7 +416,7 @@ final readonly class Consignments
         }
         foreach ($items as $line => $quantity) {
             if ($quantity > ($left[$line] ?? 0)) {
-                throw new ShippingRuleViolation(\sprintf('%d of "%s" are left to send.', $left[$line] ?? 0, self::names($order)[$line] ?? (string) ($line + 1)), 'orillacart_nothing_to_ship');
+                throw new ShippingRuleViolation('%1$d of "%2$s" are left to send.', 'orillacart_nothing_to_ship', values: [$left[$line] ?? 0, self::names($order)[$line] ?? (string) ($line + 1)]);
             }
         }
         ksort($items);
@@ -474,7 +474,7 @@ final readonly class Consignments
     {
         $this->logger->error('The shipping method failed {doing}: {message}', ['doing' => $doing, 'message' => $e->getMessage(), 'exception' => $e]);
 
-        return new ShippingRuleViolation(\sprintf('The shipping method failed: %s', $e->getMessage()), 'orillacart_courier_failed', $e);
+        return new ShippingRuleViolation('The shipping method failed: %s', 'orillacart_courier_failed', $e, values: [$e->getMessage()]);
     }
 
     /**
@@ -487,7 +487,7 @@ final readonly class Consignments
         $carrier = $consignment->carrierId() === null ? null : $this->carriers->find($consignment->carrierId());
         $method = $consignment->method() === null ? null : $this->methods->find($consignment->method());
         if (!$carrier instanceof Carrier || !$method instanceof CreatesShipments) {
-            throw new ShippingRuleViolation(\sprintf($consignment->isSentByShop() ? 'Shipment %s was sent by the shop; it has no courier to ask.' : 'The shipping method that booked shipment %s is not active.', $consignment->number()), 'orillacart_unknown_shipping_method');
+            throw new ShippingRuleViolation($consignment->isSentByShop() ? 'Shipment %s was sent by the shop; it has no courier to ask.' : 'The shipping method that booked shipment %s is not active.', 'orillacart_unknown_shipping_method', values: [$consignment->number()]);
         }
 
         return [$method, new Settings($carrier->methodSettings())];

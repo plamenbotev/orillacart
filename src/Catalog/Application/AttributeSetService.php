@@ -87,7 +87,7 @@ final readonly class AttributeSetService
     {
         $set = $this->get($id);
         if ($this->products->isSetUsedByVariations($set)) {
-            throw new CatalogRuleViolation(\sprintf('Product variations use options of "%s"; change or remove them first.', $set->name()), 'orillacart_attribute_set_in_use');
+            throw new CatalogRuleViolation('Product variations use options of "%s"; change or remove them first.', 'orillacart_attribute_set_in_use', values: [$set->name()]);
         }
         $optionIds = array_merge(...array_map(static fn(Attribute $attribute): array => $attribute->savedOptionIds(), [...$set->ownAttributes()]));
         $users = $this->products->idsUsingSet($id);

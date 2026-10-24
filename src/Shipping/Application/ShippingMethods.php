@@ -41,6 +41,6 @@ final readonly class ShippingMethods
      */
     public function get(string $id): ShippingMethod
     {
-        return $this->find($id) ?? throw new ShippingRuleViolation(\sprintf('There is no shipping method "%s"; is its add-on active?', $id), 'orillacart_unknown_shipping_method');
+        return $this->find($id) ?? throw new ShippingRuleViolation('There is no shipping method "%s"; is its add-on active?', 'orillacart_unknown_shipping_method', values: [$id]);
     }
 }

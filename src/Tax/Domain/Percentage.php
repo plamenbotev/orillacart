@@ -27,8 +27,9 @@ final readonly class Percentage implements \Stringable
     {
         if (preg_match('/^(\d{1,3})(?:\.(\d{1,' . self::DECIMALS . '}))?$/', $value, $parts) !== 1) {
             throw new RuleViolation(
-                \sprintf('"%s" is not a tax percentage; use a number from 0 to %s with up to %d decimals.', $value, self::MAX, self::DECIMALS),
+                '"%1$s" is not a tax percentage; use a number from 0 to %2$s with up to %3$d decimals.',
                 'orillacart_invalid_percentage',
+                values: [$value, self::MAX, self::DECIMALS],
             );
         }
 

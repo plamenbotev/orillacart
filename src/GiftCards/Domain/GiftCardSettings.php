@@ -22,7 +22,7 @@ final readonly class GiftCardSettings
         public ?int $validMonths = null,
     ) {
         if ($validMonths !== null && ($validMonths < 1 || $validMonths > self::MAX_MONTHS)) {
-            throw new GiftCardRuleViolation(\sprintf('A gift card lasts 1 to %d months, or for ever.', self::MAX_MONTHS), 'orillacart_invalid_gift_card_months');
+            throw new GiftCardRuleViolation('A gift card lasts 1 to %d months, or for ever.', 'orillacart_invalid_gift_card_months', values: [self::MAX_MONTHS]);
         }
     }
 

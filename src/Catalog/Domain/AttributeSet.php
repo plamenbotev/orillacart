@@ -66,7 +66,7 @@ class AttributeSet
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new CatalogRuleViolation(\sprintf('An attribute set needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_attribute_set_name');
+            throw new CatalogRuleViolation('An attribute set needs a name of up to %d characters.', 'orillacart_invalid_attribute_set_name', values: [self::MAX_NAME_LENGTH]);
         }
         $this->name = $name;
     }

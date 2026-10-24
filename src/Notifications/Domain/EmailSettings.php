@@ -34,14 +34,14 @@ final readonly class EmailSettings
         public ?string $cartReminderCoupon = null,
     ) {
         if ($cartReminderHours < 1 || $cartReminderHours > self::MAX_CART_REMINDER_HOURS) {
-            throw new RuleViolation(\sprintf('The cart reminder goes 1 to %d hours after the cart was left.', self::MAX_CART_REMINDER_HOURS), 'orillacart_invalid_cart_reminder_hours');
+            throw new RuleViolation('The cart reminder goes 1 to %d hours after the cart was left.', 'orillacart_invalid_cart_reminder_hours', values: [self::MAX_CART_REMINDER_HOURS]);
         }
         if ($reminderDays < 1 || $reminderDays > self::MAX_REMINDER_DAYS) {
-            throw new RuleViolation(\sprintf('The payment reminder goes 1 to %d days after the order.', self::MAX_REMINDER_DAYS), 'orillacart_invalid_reminder_days');
+            throw new RuleViolation('The payment reminder goes 1 to %d days after the order.', 'orillacart_invalid_reminder_days', values: [self::MAX_REMINDER_DAYS]);
         }
         foreach (['sender' => $fromAddress, 'shop' => $shopAddress] as $which => $address) {
             if ($address !== null && filter_var($address, FILTER_VALIDATE_EMAIL) === false) {
-                throw new RuleViolation(\sprintf('The %s address "%s" is not an email address.', $which, $address), 'orillacart_invalid_email');
+                throw new RuleViolation('The %1$s address "%2$s" is not an email address.', 'orillacart_invalid_email', values: [$which, $address]);
             }
         }
         if ($fromName !== null && (trim($fromName) === '' || mb_strlen($fromName) > 100 || preg_match('/[\r\n<>"]/', $fromName) === 1)) {

@@ -24,7 +24,7 @@ final readonly class KeepShippedOrders
     {
         foreach ($this->consignments->forOrder($event->orderId) as $consignment) {
             if ($consignment->status() !== ConsignmentStatus::Cancelled) {
-                throw new ShippingRuleViolation(\sprintf('Order #%d has a shipment with %s: cancel the shipment first.', $event->orderId, $consignment->carrier()), 'orillacart_order_shipped');
+                throw new ShippingRuleViolation('Order #%1$d has a shipment with %2$s: cancel the shipment first.', 'orillacart_order_shipped', values: [$event->orderId, $consignment->carrier()]);
             }
         }
     }
@@ -34,7 +34,7 @@ final readonly class KeepShippedOrders
     {
         foreach ($this->consignments->forOrder($event->orderId) as $consignment) {
             if ($consignment->status()->isOpen()) {
-                throw new ShippingRuleViolation(\sprintf('Order #%d has a shipment booked with %s to its address: cancel the shipment to change where it goes.', $event->orderId, $consignment->carrier()), 'orillacart_order_shipped');
+                throw new ShippingRuleViolation('Order #%1$d has a shipment booked with %2$s to its address: cancel the shipment to change where it goes.', 'orillacart_order_shipped', values: [$event->orderId, $consignment->carrier()]);
             }
         }
     }

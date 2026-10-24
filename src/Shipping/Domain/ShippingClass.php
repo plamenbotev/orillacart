@@ -46,7 +46,7 @@ class ShippingClass
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
-            throw new ShippingRuleViolation(\sprintf('A shipping class needs a name of up to %d characters.', self::MAX_NAME_LENGTH), 'orillacart_invalid_shipping_class_name');
+            throw new ShippingRuleViolation('A shipping class needs a name of up to %d characters.', 'orillacart_invalid_shipping_class_name', values: [self::MAX_NAME_LENGTH]);
         }
         $this->name = $name;
     }

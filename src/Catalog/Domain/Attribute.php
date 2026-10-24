@@ -132,7 +132,7 @@ class Attribute
                 continue;
             }
             $option = $this->savedOption($optionDraft->id)
-                ?? throw new CatalogRuleViolation(\sprintf('The attribute "%s" has no option %d.', $this->name, $optionDraft->id), 'orillacart_unknown_option');
+                ?? throw new CatalogRuleViolation('The attribute "%1$s" has no option %2$d.', 'orillacart_unknown_option', values: [$this->name, $optionDraft->id]);
             $option->change($optionDraft, $index);
             $kept[$optionDraft->id] = true;
         }

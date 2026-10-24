@@ -10,6 +10,6 @@ final class ImportNotFound extends NotFound
 {
     public function __construct(int $id)
     {
-        parent::__construct(\sprintf('There is no import %d.', $id), 'orillacart_import_not_found');
+        parent::__construct('There is no import %d.', 'orillacart_import_not_found', values: [$id]);
     }
 }

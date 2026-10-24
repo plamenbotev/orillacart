@@ -23,6 +23,9 @@ step() { printf '\n==> %s\n' "$1"; }
 step "Admin assets"
 (cd "$ROOT" && npm run --silent build)
 
+step "Strings for translators"
+"$ROOT/bin/make-pot"
+
 step "Staging production files"
 rm -rf "$WORK" && mkdir -p "$STAGE" "$ROOT/dist"
 cp -R "$ROOT/orillacart.php" "$ROOT/uninstall.php" "$ROOT/readme.txt" "$ROOT/composer.json" "$ROOT/composer.lock" \

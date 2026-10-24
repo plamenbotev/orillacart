@@ -79,7 +79,7 @@ class ItemReturn
         }
         $this->comment = trim($comment);
         if (mb_strlen($this->comment) > self::MAX_COMMENT_LENGTH) {
-            throw new ReturnRuleViolation(\sprintf('Say why in up to %d characters.', self::MAX_COMMENT_LENGTH), 'orillacart_invalid_return_comment');
+            throw new ReturnRuleViolation('Say why in up to %d characters.', 'orillacart_invalid_return_comment', values: [self::MAX_COMMENT_LENGTH]);
         }
     }
 
@@ -170,7 +170,7 @@ class ItemReturn
     public function receive(\DateTimeImmutable $at): void
     {
         if ($this->status !== ReturnStatus::Requested && $this->status !== ReturnStatus::Approved) {
-            throw new ReturnRuleViolation(\sprintf('Return %d is %s; only a requested or approved one is received.', $this->id(), $this->status->value), 'orillacart_return_not_receivable');
+            throw new ReturnRuleViolation('Return %1$d is %2$s; only a requested or approved one is received.', 'orillacart_return_not_receivable', values: [$this->id(), $this->status->value]);
         }
         $this->status = ReturnStatus::Received;
         $this->answeredAt ??= $at;
@@ -183,7 +183,7 @@ class ItemReturn
     public function refunded(\DateTimeImmutable $at): void
     {
         if ($this->status !== ReturnStatus::Received && $this->status !== ReturnStatus::Refunding) {
-            throw new ReturnRuleViolation(\sprintf('Return %d is %s; its items are refunded once they came back.', $this->id(), $this->status->value), 'orillacart_return_not_refundable');
+            throw new ReturnRuleViolation('Return %1$d is %2$s; its items are refunded once they came back.', 'orillacart_return_not_refundable', values: [$this->id(), $this->status->value]);
         }
         $this->status = ReturnStatus::Refunded;
         $this->refundedAt = $at;
@@ -197,7 +197,7 @@ class ItemReturn
     public function refunding(int $refundId): void
     {
         if ($this->status !== ReturnStatus::Received) {
-            throw new ReturnRuleViolation(\sprintf('Return %d is %s; its items are refunded once they came back.', $this->id(), $this->status->value), 'orillacart_return_not_refundable');
+            throw new ReturnRuleViolation('Return %1$d is %2$s; its items are refunded once they came back.', 'orillacart_return_not_refundable', values: [$this->id(), $this->status->value]);
         }
         $this->status = ReturnStatus::Refunding;
         $this->refundId = $refundId;
@@ -220,11 +220,11 @@ class ItemReturn
     private function answered(ReturnStatus $status, string $answer, \DateTimeImmutable $at): void
     {
         if ($this->status !== ReturnStatus::Requested) {
-            throw new ReturnRuleViolation(\sprintf('Return %d was answered already.', $this->id()), 'orillacart_return_answered');
+            throw new ReturnRuleViolation('Return %d was answered already.', 'orillacart_return_answered', values: [$this->id()]);
         }
         $answer = trim($answer);
         if (mb_strlen($answer) > self::MAX_ANSWER_LENGTH) {
-            throw new ReturnRuleViolation(\sprintf('Answer in up to %d characters.', self::MAX_ANSWER_LENGTH), 'orillacart_invalid_return_answer');
+            throw new ReturnRuleViolation('Answer in up to %d characters.', 'orillacart_invalid_return_answer', values: [self::MAX_ANSWER_LENGTH]);
         }
         $this->status = $status;
         $this->answer = $answer;

@@ -67,7 +67,7 @@ trait AttributeOwner
                 continue;
             }
             $attribute = $this->attributes->findFirst(static fn(int $key, Attribute $attribute): bool => $attribute->isSaved() && $attribute->id() === $draft->id)
-                ?? throw new CatalogRuleViolation(\sprintf('There is no attribute %d here.', $draft->id), 'orillacart_unknown_attribute');
+                ?? throw new CatalogRuleViolation('There is no attribute %d here.', 'orillacart_unknown_attribute', values: [$draft->id]);
             $attribute->change($draft, $position);
             $kept[$draft->id] = true;
         }

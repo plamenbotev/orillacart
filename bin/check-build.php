@@ -18,6 +18,7 @@ use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
+use OrillaCart\Platform\I18n\GettextTranslations;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\Serialization\SerializerFactory;
 use OrillaCart\Platform\Serialization\ValidatorFactory;
@@ -104,7 +105,7 @@ echo "Every shipped template compiles to prefixed classes\n";
 
 // The serializer and validator read attributes from plugin DTOs; their class names were rewritten too.
 $serializers = new SerializerFactory();
-$mapper = new RequestMapper($serializers->create(), new ValidatorFactory()->create(), $serializers->nameConverter());
+$mapper = new RequestMapper($serializers->create(), new ValidatorFactory()->create(), $serializers->nameConverter(), new GettextTranslations());
 $dto = $mapper->map(['currency' => 'USD', 'fewer_decimals' => 0, 'weight_unit' => 'lb', 'dimension_unit' => 'in'], UpdateSettings::class);
 if ($dto->currency !== 'USD' || $dto->fewerDecimals !== 0) {
     $fail('The serializer did not fill the settings DTO.');

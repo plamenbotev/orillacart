@@ -23,7 +23,7 @@ final readonly class OfferedCurrency
         public PriceRounding $rounding = PriceRounding::Decimals,
     ) {
         if (preg_match('/^\d{1,8}(\.\d{1,8})?$/', $rate) !== 1 || Money::of('1')->at($rate)->isZero()) {
-            throw new RuleViolation(\sprintf('%s needs a rate above nothing, with up to eight decimals, such as 1.95583.', $currency->code), 'orillacart_invalid_exchange_rate');
+            throw new RuleViolation('%s needs a rate above nothing, with up to eight decimals, such as 1.95583.', 'orillacart_invalid_exchange_rate', values: [$currency->code]);
         }
     }
 

@@ -23,7 +23,7 @@ final readonly class NewsletterSettings
         public array $lists = [],
     ) {
         if (trim($consent) === '' || mb_strlen($consent) > Subscriber::MAX_CONSENT_LENGTH) {
-            throw new NewsletterRuleViolation(\sprintf('Say what customers sign up for in 1 to %d characters.', Subscriber::MAX_CONSENT_LENGTH), 'orillacart_invalid_consent');
+            throw new NewsletterRuleViolation('Say what customers sign up for in 1 to %d characters.', 'orillacart_invalid_consent', values: [Subscriber::MAX_CONSENT_LENGTH]);
         }
     }
 }

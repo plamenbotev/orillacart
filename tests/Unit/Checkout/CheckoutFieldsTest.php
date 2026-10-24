@@ -70,7 +70,7 @@ final class CheckoutFieldsTest extends TestCase
                 ['field' => 'fields.vat_number', 'message' => 'A VAT number starts with the country code.'],
                 ['field' => 'fields.wrap', 'message' => 'This answer is not one of the choices.'],
                 ['field' => 'fields.terms', 'message' => 'Tick this to go on.'],
-            ], $e->violations);
+            ], $e->messages());
         }
         self::assertSame([], $this->shop->orderRecords->orders, 'no order');
     }
@@ -115,7 +115,7 @@ final class CheckoutFieldsTest extends TestCase
             $this->place(["f{$books->id}_day" => '2026-13-01']);
             self::fail('a day that is not one');
         } catch (InvalidFields $e) {
-            self::assertSame([['field' => "fields.f{$books->id}_day", 'message' => 'Enter a date.']], $e->violations);
+            self::assertSame([['field' => "fields.f{$books->id}_day", 'message' => 'Enter a date.']], $e->messages());
         }
         $number = $this->place(["f{$books->id}_day" => '2026-10-30', "f{$books->id}_dedication" => "For Ada\u{202E},\nwith love"]);
         self::assertEquals([
@@ -150,7 +150,7 @@ final class CheckoutFieldsTest extends TestCase
             $this->place(['account' => 'T-1']);
             self::fail('an answer that cannot be checked');
         } catch (InvalidFields $e) {
-            self::assertSame([['field' => 'fields.account', 'message' => 'This answer cannot be checked right now. Try again in a moment.']], $e->violations);
+            self::assertSame([['field' => 'fields.account', 'message' => 'This answer cannot be checked right now. Try again in a moment.']], $e->messages());
         }
     }
 

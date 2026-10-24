@@ -5,6 +5,7 @@
 {# translators: 1: site name, 2: product name -#}
 {% block subject %}{{ __('[%1$s] %2$s is back in stock')|format(site_name, product.name) }}{% endblock %}
 {% block heading %}{{ __('It is back in stock') }}{% endblock %}
+{# translators: 1: the product, 2: the variation -#}
 {% block intro %}<p>{{ product.variation ? __('%1$s – %2$s is back. Get it before it sells out again.')|format(product.name, product.variation) : __('%s is back. Get it before it sells out again.')|format(product.name) }}</p>{% endblock %}
 {% block content %}
 <p><a href="{{ product.url }}" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;border-radius:4px;text-decoration:none;">{{ __('See it in the shop') }}</a></p>

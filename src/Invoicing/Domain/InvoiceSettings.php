@@ -51,7 +51,7 @@ final readonly class InvoiceSettings
         }
         foreach (['legal name' => $legalName, 'address' => $address, 'VAT number' => $vatNumber, 'company number' => $companyNumber, 'bank details' => $bankDetails, 'footer' => $footer] as $what => $text) {
             if (mb_strlen($text) > self::MAX_TEXT) {
-                throw new RuleViolation(\sprintf('The %s has up to %d characters.', $what, self::MAX_TEXT), 'orillacart_invalid_invoice_settings');
+                throw new RuleViolation('The %1$s has up to %2$d characters.', 'orillacart_invalid_invoice_settings', values: [$what, self::MAX_TEXT]);
             }
         }
         foreach ([$invoicePrefix, $creditNotePrefix] as $prefix) {

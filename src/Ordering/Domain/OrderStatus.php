@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Domain;
 
+use OrillaCart\Shared\Domain\Text;
+
 enum OrderStatus: string
 {
     /** Placed; the customer is paying at a provider. Stock is taken. */
@@ -63,6 +65,21 @@ enum OrderStatus: string
     public function label(): string
     {
         return ucfirst(str_replace('_', ' ', $this->value));
+    }
+
+    /** The status inside a sentence, "on hold", to be translated with it. */
+    public function phrase(): Text
+    {
+        return new Text(match ($this) {
+            self::PendingPayment => 'pending payment',
+            self::OnHold => 'on hold',
+            self::Processing => 'processing',
+            self::Shipped => 'shipped',
+            self::Completed => 'completed',
+            self::Cancelled => 'cancelled',
+            self::Failed => 'failed',
+            self::Refunded => 'refunded',
+        });
     }
 
     /** @return list<string> */

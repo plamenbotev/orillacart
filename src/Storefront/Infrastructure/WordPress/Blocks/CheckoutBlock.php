@@ -22,6 +22,7 @@ use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Returns\Application\Returns;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Shipping\Application\Dto\ShippingOptionView;
@@ -52,6 +53,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         private Shopper $shopper,
         private ShopLinks $links,
         private TemplateRenderer $templates,
+        private Translations $translations,
         private ShipmentTracking $shipments,
         private PayNow $payNow,
         private Invoices $invoices,
@@ -103,7 +105,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             $problem = null;
         } catch (CheckoutRuleViolation $e) {
             $summary = null;
-            $problem = $e->getMessage();
+            $problem = $this->translations->text($e->text);
         }
         $links = $this->links->pages();
 

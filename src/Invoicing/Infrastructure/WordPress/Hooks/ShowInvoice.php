@@ -7,6 +7,7 @@ namespace OrillaCart\Invoicing\Infrastructure\WordPress\Hooks;
 use OrillaCart\Invoicing\Application\EInvoices;
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Invoicing\Domain\InvoiceNotFound;
+use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
 
@@ -26,6 +27,7 @@ final readonly class ShowInvoice
         private Invoices $invoices,
         private TemplateRenderer $templates,
         private EInvoices $eInvoices,
+        private Translations $translations,
     ) {}
 
     public function __invoke(): void
@@ -38,7 +40,7 @@ final readonly class ShowInvoice
         try {
             $document = $this->invoices->document(sanitize_text_field(wp_unslash($number)), \is_string($key) ? sanitize_key($key) : '');
         } catch (InvoiceNotFound $e) {
-            wp_die(esc_html($e->getMessage()), esc_html__('Invoice not found', 'orillacart'), ['response' => 404, 'back_link' => true]);
+            wp_die(esc_html($this->translations->text($e->text)), esc_html__('Invoice not found', 'orillacart'), ['response' => 404, 'back_link' => true]);
         }
 
         nocache_headers();
