@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Newsletter\Application;
 
+use OrillaCart\Extension\Marketing\ForgetsSubscribers;
 use OrillaCart\Extension\Marketing\Subscriber as ListSubscriber;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
@@ -53,13 +54,16 @@ final readonly class SyncSubscriber implements JobHandler
         $outcomes = [];
         foreach ($jobs as $job) {
             $email = $job->payload['email'] ?? null;
-            $list = \is_string($job->payload['list'] ?? null) ? $this->newsletter->list($job->payload['list']) : null;
+            $forget = ($job->payload['forget'] ?? false) === true;
+            $list = \is_string($job->payload['list'] ?? null) ? $this->newsletter->list($job->payload['list'], any: $forget) : null;
             if (!\is_string($email) || $list === null) {
                 continue;
             }
-            $subscriber = $this->newsletter->standing($email);
+            $subscriber = $forget ? null : $this->newsletter->standing($email);
             try {
-                if ($subscriber === null) {
+                if ($forget && $list instanceof ForgetsSubscribers) {
+                    $list->forget($email);
+                } elseif ($subscriber === null) {
                     $list->unsubscribe($email);
                 } else {
                     $list->subscribe(new ListSubscriber($subscriber->email(), $subscriber->firstName(), $subscriber->lastName(), $subscriber->consent(), $subscriber->subscribedAt(), $subscriber->source()->value));

@@ -453,8 +453,16 @@ if ($registry->version() >= 6) {
 - Throw `ProviderUnavailable` when the service cannot be reached: the shop asks again later, up to six times.
   Anything else is logged, and the job is left among the failed ones (Shop → Background jobs) to retry.
 - `subscribe()` may come again for someone already on the list (a retry, a list turned on again): treat it as
-  updating them. Someone who unsubscribes at the service is the service's to keep off; the shop does not hear of
-  it.
+  updating them.
+- When the service says someone unsubscribed there (its own link, a complaint), tell the shop:
+  `do_action('orillacart_newsletter_unsubscribed', $email, $listId)` (version 12). They leave the shop's
+  newsletter, and the other lists hear it, so turning on another list never signs them up again.
+- A list whose service can delete a contact implements `ForgetsSubscribers` (version 12): `forget($email)` is
+  called for a person the privacy tools erase, on every list the shop knows, the ones turned off included; the
+  others get `unsubscribe()`.
+- A customer who changes their email in WordPress takes their sign-up along: the list hears the old address leave
+  and the new one join. Every shop email to someone subscribed carries a signed link to unsubscribe, which asks
+  them to confirm.
 
 ## Page slots
 

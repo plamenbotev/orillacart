@@ -8,7 +8,7 @@ Status: built (2026-10-20), PLAN item 93.
    that email when they match; the page says the same either way and shows nothing of the order.
 2. The newsletter: the shop keeps every sign-up (who, when, where, and the words they agreed to), shows it on the
    customer screen and exports it; add-ons' mailing lists get the sign-ups too, each turned on by the shop
-   manager; customers leave in their account.
+   manager; customers leave in their account, and anyone from the link every shop email to them carries (143).
 
 ## Address book
 

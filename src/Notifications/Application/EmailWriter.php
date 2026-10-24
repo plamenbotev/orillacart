@@ -12,7 +12,7 @@ use OrillaCart\Shared\View\TemplateRenderer;
 /**
  * Writes an email from its template, in the reader's language and from the shop's sender: the template's
  * "subject" block as plain text, its body as HTML and as plain text. Every template gets site_name, site_url
- * and lang (the reader's language, such as de-DE).
+ * and lang (the reader's language, such as de-DE), and unsubscribe_url for a reader on the newsletter.
  */
 final readonly class EmailWriter
 {
@@ -21,6 +21,7 @@ final readonly class EmailWriter
         private EmailSettingsRepository $settings,
         private Site $site,
         private Languages $languages,
+        private ?UnsubscribeLinks $unsubscribe = null,
     ) {}
 
     /**
@@ -33,6 +34,8 @@ final readonly class EmailWriter
     {
         $settings = $this->settings->load();
         $context += ['site_name' => $this->site->name(), 'site_url' => $this->site->url(), 'lang' => str_replace('_', '-', $locale ?? $this->languages->site())];
+        // A reader subscribed to the newsletter can leave it from any of the shop's emails.
+        $context += ['unsubscribe_url' => $to === $this->shopAddress() ? null : $this->unsubscribe?->for($to)];
         try {
             [$subject, $body] = $this->languages->in($locale, fn(): array => [
                 // A subject is plain text: what the template escaped for HTML reads as written.

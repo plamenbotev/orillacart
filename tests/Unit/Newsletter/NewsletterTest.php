@@ -14,6 +14,7 @@ use OrillaCart\Newsletter\Domain\NewsletterRuleViolation;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Newsletter\ForgettingMailingList;
 use OrillaCart\Tests\Fixtures\Newsletter\RecordingMailingList;
 use PHPUnit\Framework\TestCase;
 
@@ -102,6 +103,51 @@ final class NewsletterTest extends TestCase
         $this->shop->jobs->runAll();
         self::assertNull($this->shop->newsletter->subscription('ada@example.com'));
         self::assertSame([], $this->list->members, 'the list took them off');
+    }
+
+    public function testErasingDeletesThePersonAtEveryListTheShopKnows(): void
+    {
+        $forgetting = new ForgettingMailingList();
+        $this->shop->extensions->mailingLists[] = $forgetting;
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list']));
+        $this->order('ada@example.com');
+        $this->shop->jobs->runAll();
+
+        $this->shop->personalData->erase('ada@example.com', 1);
+        $this->shop->jobs->runAll();
+
+        self::assertSame(['ada@example.com'], $forgetting->forgotten, 'a list the sign-ups no longer go to deletes them too');
+        self::assertSame([], $this->list->members, 'one that cannot delete takes them off');
+    }
+
+    public function testOneWhoLeftAtTheListIsOffTheShopsNewsletterAndNoListSignsThemUpAgain(): void
+    {
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list']));
+        $this->order('ada@example.com');
+        $this->shop->jobs->runAll();
+
+        $this->shop->newsletter->unsubscribedAtList('ada@example.com');
+        $other = new RecordingMailingList('other_list');
+        $this->shop->extensions->mailingLists[] = $other;
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list', 'other_list']));
+        $this->shop->jobs->runAll();
+
+        self::assertFalse($this->shop->newsletter->isSubscribed('ada@example.com'));
+        self::assertSame([], $other->members);
+    }
+
+    public function testASignUpFollowsAChangedEmail(): void
+    {
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list']));
+        $this->order('ada@example.com');
+        $this->shop->jobs->runAll();
+
+        $this->shop->newsletter->changeEmail('ada@example.com', 'Ada@New.example');
+        $this->shop->jobs->runAll();
+
+        self::assertTrue($this->shop->newsletter->isSubscribed('ada@new.example'));
+        self::assertFalse($this->shop->newsletter->isSubscribed('ada@example.com'));
+        self::assertSame(['ada@new.example'], array_keys($this->list->members), 'the old address left the list, the new one joined');
     }
 
     private function order(string $email): void

@@ -106,6 +106,12 @@ class Subscriber
         return true;
     }
 
+    /** The person changed their email address: the sign-up follows it. */
+    public function changeEmail(string $email): void
+    {
+        $this->email = self::normalize($email);
+    }
+
     public function isSubscribed(): bool
     {
         return $this->unsubscribedAt === null;

@@ -120,7 +120,8 @@ final readonly class Newsletter
     }
 
     /**
-     * The privacy tools erase the person: the shop forgets the sign-up, and the lists take them off.
+     * The privacy tools erase the person: the shop forgets the sign-up, and every list it knows (the ones it no
+     * longer sends sign-ups to included) deletes them, or takes them off when it cannot delete.
      *
      * @return bool whether there was one
      */
@@ -131,9 +132,33 @@ final readonly class Newsletter
             return false;
         }
         $this->subscribers->remove($subscriber);
-        $this->sync($subscriber->email());
+        foreach ($this->extensions->mailingLists() as $list) {
+            $this->jobs->push(SyncSubscriber::TYPE, ['list' => $list->id(), 'email' => $subscriber->email(), 'forget' => true], "forget:{$list->id()}:{$subscriber->email()}");
+        }
 
         return true;
+    }
+
+    /**
+     * A list's service says the person unsubscribed there (from its own link): they are off the shop's newsletter
+     * too, and the other lists hear it, so turning on another list never signs them up again.
+     */
+    public function unsubscribedAtList(string $email): void
+    {
+        $this->unsubscribe($email);
+    }
+
+    /** The person changed their email address: the sign-up follows it, and the lists hear of both addresses. */
+    public function changeEmail(string $from, string $to): void
+    {
+        $subscriber = $this->subscribers->findByEmail($from);
+        if ($subscriber === null || Subscriber::normalize($from) === Subscriber::normalize($to) || $this->subscribers->findByEmail($to) !== null) {
+            return;
+        }
+        $subscriber->changeEmail($to);
+        $this->subscribers->save($subscriber);
+        $this->sync(Subscriber::normalize($from));
+        $this->sync($subscriber->email());
     }
 
     /**
@@ -184,13 +209,13 @@ final readonly class Newsletter
     }
 
     /**
-     * The list of the id, when the sign-ups still go to it.
+     * The list of the id, when the sign-ups still go to it; with $any, any list an add-on registers.
      *
      * @internal for SyncSubscriber
      */
-    public function list(string $id): ?MailingList
+    public function list(string $id, bool $any = false): ?MailingList
     {
-        if (!\in_array($id, $this->settings->load()->lists, true)) {
+        if (!$any && !\in_array($id, $this->settings->load()->lists, true)) {
             return null;
         }
         foreach ($this->extensions->mailingLists() as $list) {
