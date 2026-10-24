@@ -33,10 +33,109 @@ export async function reloadRegions(
 		document.querySelectorAll( selector ).forEach( ( region, index ) => {
 			const replacement = replacements[ index ];
 			if ( replacement ) {
-				region.replaceWith( document.importNode( replacement, true ) );
+				const next = document.importNode( replacement, true );
+				const restore = keepTyping( region, next );
+				region.replaceWith( next );
+				restore();
 			}
 		} );
 	}
+}
+
+/**
+ * Carries what the customer is doing in a region over to its new copy: what they typed in a field and did not send
+ * (a code half entered while the totals change), and where the keyboard is, so a refresh neither loses the code
+ * nor throws a keyboard user back to the top of the page.
+ * @param old  The region on the page.
+ * @param next Its new copy, not yet on the page.
+ * @return Puts the keyboard back, once the new copy is on the page.
+ */
+function keepTyping( old: Element, next: Element ): () => void {
+	old.querySelectorAll< HTMLInputElement | HTMLTextAreaElement >(
+		'input[id]:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]), textarea[id]'
+	).forEach( ( field ) => {
+		const copy = withAttribute( next, 'id', field.id );
+		if (
+			( copy instanceof HTMLInputElement ||
+				copy instanceof HTMLTextAreaElement ) &&
+			field.value !== field.defaultValue
+		) {
+			copy.value = field.value;
+		}
+	} );
+	const focused = old.ownerDocument.activeElement;
+	const found =
+		focused instanceof HTMLElement && old.contains( focused )
+			? sameIn( next, focused )
+			: null;
+
+	return () => {
+		if ( ! found || ! found.isConnected ) {
+			return;
+		}
+		found.focus( { preventScroll: true } );
+		if (
+			focused instanceof HTMLInputElement &&
+			found instanceof HTMLInputElement &&
+			focused.selectionStart !== null
+		) {
+			try {
+				found.setSelectionRange(
+					focused.selectionStart,
+					focused.selectionEnd
+				);
+			} catch {
+				// Not a field with a caret (a number field).
+			}
+		}
+	};
+}
+
+/**
+ * The element in a region's new copy that stands where the given one did: by its id, by its name and value (a
+ * radio button), or by the data attribute that names what it does (a button "remove this code").
+ * @param next    The new copy.
+ * @param element The element in the region on the page.
+ */
+function sameIn( next: Element, element: HTMLElement ): HTMLElement | null {
+	if ( element.id ) {
+		return withAttribute( next, 'id', element.id );
+	}
+	const name = element.getAttribute( 'name' );
+	if ( name ) {
+		const value = element.getAttribute( 'value' );
+		return (
+			Array.from( next.querySelectorAll< HTMLElement >( '[name]' ) ).find(
+				( candidate ) =>
+					candidate.getAttribute( 'name' ) === name &&
+					candidate.getAttribute( 'value' ) === value
+			) ?? null
+		);
+	}
+	const named = Array.from( element.attributes ).find( ( attribute ) =>
+		attribute.name.startsWith( 'data-orillacart-' )
+	);
+	return named ? withAttribute( next, named.name, named.value ) : null;
+}
+
+/**
+ * The first element in the scope whose attribute has this value; compared rather than put in a selector, so no
+ * value needs escaping.
+ * @param scope     Where to look.
+ * @param attribute The attribute's name.
+ * @param value     Its value.
+ */
+function withAttribute(
+	scope: Element,
+	attribute: string,
+	value: string
+): HTMLElement | null {
+	return (
+		Array.from(
+			scope.querySelectorAll< HTMLElement >( `[${ attribute }]` )
+		).find( ( element ) => element.getAttribute( attribute ) === value ) ??
+		null
+	);
 }
 
 export function showMessage(

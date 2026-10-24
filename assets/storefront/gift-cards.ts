@@ -56,6 +56,10 @@ export function bindGiftCards(
 			);
 			return;
 		}
+		// Sent: the refresh keeps only what is still being typed.
+		if ( field ) {
+			field.value = '';
+		}
 		await refreshed( box );
 	};
 

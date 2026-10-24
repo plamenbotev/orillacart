@@ -111,7 +111,10 @@
 
             {# What add-ons' address checks suggest, shown before the order is placed. #}
             <div class="orillacart-checkout__addresses-checked" data-orillacart-address-suggestions aria-live="polite" hidden></div>
-            <div class="orillacart-checkout__summary" data-orillacart-region="checkout-summary" aria-live="polite">
+            {# Says the new total when the summary changes, rather than reading the whole summary out again. #}
+            {# translators: %s: the order's total, with its currency -#}
+            <p class="screen-reader-text" data-orillacart-total-said aria-live="polite">{{ __('Total: %s')|format((summary.gift_card_total > 0 ? summary.amount_due : summary.total)|money(summary.currency)) }}</p>
+            <div class="orillacart-checkout__summary" data-orillacart-region="checkout-summary">
                 {% include 'storefront/_checkout_summary.html.twig' %}
             </div>
         </form>

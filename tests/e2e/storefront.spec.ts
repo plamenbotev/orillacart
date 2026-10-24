@@ -971,13 +971,17 @@ test.describe( 'A visitor', () => {
 					remember_addresses: false,
 				},
 			} );
-			for ( const status of [ 'processing', 'shipped' ] ) {
-				await requestUtils.rest( {
-					method: 'PUT',
-					path: `/orillacart/v1/orders/${ placed.number }/status`,
-					data: { status },
-				} );
-			}
+			// Paid: an order never paid has no money to give back.
+			await requestUtils.rest( {
+				method: 'POST',
+				path: `/orillacart/v1/orders/${ placed.number }/paid`,
+				data: { note: 'The transfer came.' },
+			} );
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: `/orillacart/v1/orders/${ placed.number }/status`,
+				data: { status: 'shipped' },
+			} );
 
 			await page.goto( placed.receipt_url );
 			const form = page.locator( 'form[data-orillacart-return]' );

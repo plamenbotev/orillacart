@@ -1,7 +1,7 @@
 /**
  * The checkout form: the summary follows the addresses, and placing the order goes to the API.
  */
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 import { addressesConfirmed, confirmAddresses } from './address-check';
 import { api } from './api';
@@ -129,21 +129,16 @@ export function bindCheckout( form: HTMLFormElement ): void {
 	} );
 }
 
-/**
- * Tells the shop the customer is at checkout with the cart, with the email so far and whether they ask to be
- * reminded of the cart: when the page opens, and when either changes.
- * @param form The checkout form.
- */
-/** A saved address as the page has it, and the address fields its values go in. */
+/** A saved address as the page has it, keyed as the address fields are named. */
 type SavedAddress = Record< string, string | null >;
-const SAVED_FIELDS: Record< string, string > = {
-	firstName: 'first_name',
-	lastName: 'last_name',
-	street: 'street',
-	city: 'city',
-	postcode: 'postcode',
-	phone: 'phone',
-};
+const SAVED_FIELDS = [
+	'first_name',
+	'last_name',
+	'street',
+	'city',
+	'postcode',
+	'phone',
+] as const;
 
 /**
  * Choosing one of the customer's saved addresses fills in the address's fields; a new country refills the
@@ -168,10 +163,10 @@ function bindSavedAddresses( form: HTMLFormElement ): void {
 			if ( ! address ) {
 				return;
 			}
-			for ( const [ key, name ] of Object.entries( SAVED_FIELDS ) ) {
+			for ( const name of SAVED_FIELDS ) {
 				const input = field( name );
 				if ( input ) {
-					input.value = address[ key ] ?? '';
+					input.value = address[ name ] ?? '';
 				}
 			}
 			const country = field( 'country' );
@@ -189,6 +184,11 @@ function bindSavedAddresses( form: HTMLFormElement ): void {
 	} );
 }
 
+/**
+ * Tells the shop the customer is at checkout with the cart, with the email so far and whether they ask to be
+ * reminded of the cart: when the page opens, and when either changes.
+ * @param form The checkout form.
+ */
 function bindContact( form: HTMLFormElement ): void {
 	const email = form.querySelector< HTMLInputElement >( '[name="email"]' );
 	const remind = form.querySelector< HTMLInputElement >(
@@ -293,9 +293,26 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 			'error'
 		);
 	}
-	form.querySelector(
+	const fresh = form.querySelector(
 		'[data-orillacart-region="checkout-summary"]'
-	)?.removeAttribute( 'aria-busy' );
+	);
+	fresh?.removeAttribute( 'aria-busy' );
+	const said = form.querySelector( '[data-orillacart-total-said]' );
+	const total = (
+		fresh?.querySelector( '.orillacart-amount-due td' ) ??
+		fresh?.querySelector( '.orillacart-total td' )
+	)?.textContent?.trim();
+	const saying = total
+		? sprintf(
+				/* translators: %s: the order's total, with its currency */
+				__( 'Total: %s', 'orillacart' ),
+				total
+			)
+		: '';
+	// Only a change is said: a refresh that leaves the total says nothing.
+	if ( said && saying !== '' && said.textContent !== saying ) {
+		said.textContent = saying;
+	}
 	// A choice made while this refresh was on its way stands, where the new summary still offers it.
 	for ( const name of Object.keys( CHOSEN ) as ( keyof typeof CHOSEN )[] ) {
 		const kept = form.dataset[ CHOSEN[ name ] ];

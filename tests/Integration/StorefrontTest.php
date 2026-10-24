@@ -9,6 +9,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\CategoryOrder;
 use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
+use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\WordPress\Security\SiteSignatures;
@@ -277,6 +278,23 @@ final class StorefrontTest extends RestTestCase
         self::assertStringContainsString('Sofia only', do_blocks('<!-- wp:orillacart/checkout /-->'));
         $_GET = ['billing_country' => 'BG', 'billing_postcode' => '1404', 'shipping_country' => 'BG', 'shipping_postcode' => '4000'];
         self::assertStringNotContainsString('Sofia only', do_blocks('<!-- wp:orillacart/checkout /-->'), 'the shipping address counts');
+    }
+
+    public function testTheCheckoutStartsWithTheCustomersSavedAddressNameAndAll(): void
+    {
+        $this->actAs(WordPressAccounts::ROLE);
+        $saved = $this->request('POST', '/account/addresses', ['address' => ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Vitosha Blvd', 'city' => 'Sofia', 'postcode' => '1000', 'country' => 'BG', 'phone' => '+359 2 000 0000'], 'billing' => true, 'shipping' => true], nonce: true);
+        self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 1], nonce: true));
+
+        $checkout = do_blocks('<!-- wp:orillacart/checkout /-->');
+        self::assertMatchesRegularExpression('#name="billing.first_name"[^>]*value="Ada"#', $checkout);
+        self::assertMatchesRegularExpression('#name="billing.last_name"[^>]*value="Lovelace"#', $checkout);
+        self::assertMatchesRegularExpression('#name="billing.street"[^>]*value="1 Vitosha Blvd"#', $checkout);
+
+        $_GET = ['section' => 'addresses'];
+        self::assertMatchesRegularExpression('#name="address-[a-z0-9]+\.first_name"[^>]*value="Ada"#', do_blocks('<!-- wp:orillacart/account /-->'), 'the address book\'s form');
+        $_GET = [];
     }
 
     public function testAVisitorSeesTheCartChecksOutAndGetsTheReceiptOnTheCheckoutPage(): void
