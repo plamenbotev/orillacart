@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-24T09:46:02+00:00\n"
+"POT-Creation-Date: 2026-10-24T10:27:42+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: orillacart\n"
@@ -116,19 +116,19 @@ msgid "Sent by"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Admin/PriceRulesPage.php:19
-#: build/admin/price-rules.js:11
+#: build/admin/price-rules.js:12
 msgid "Price rules"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:65
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Image"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:69
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:65
 #: var/i18n/templates.php:562
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 #: build/admin/stock.js:2
 msgid "SKU"
 msgstr ""
@@ -140,12 +140,12 @@ msgstr ""
 #: var/i18n/templates.php:340
 #: var/i18n/templates.php:475
 #: var/i18n/templates.php:488
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 #: build/admin/price-rules.js:9
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 #: build/admin/product-editor.js:7
-#: build/admin/product-editor.js:9
-#: build/admin/shipping.js:6
+#: build/admin/product-editor.js:10
+#: build/admin/shipping.js:7
 msgid "Price"
 msgstr ""
 
@@ -162,10 +162,10 @@ msgstr ""
 #: var/i18n/templates.php:598
 #: build/admin/emails.js:1
 #: build/admin/forms.js:2
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 #: build/admin/payments.js:2
 #: build/admin/settings.js:5
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Order"
 msgstr ""
 
@@ -226,7 +226,7 @@ msgstr ""
 #: src/Catalog/Infrastructure/WordPress/Admin/ProductList.php:177
 #: src/Catalog/Infrastructure/WordPress/Admin/StockPage.php:19
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:70
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 #: build/admin/stock.js:2
 msgid "Stock"
 msgstr ""
@@ -374,7 +374,7 @@ msgid "With variations"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:196
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Bundle"
 msgstr ""
 
@@ -418,7 +418,7 @@ msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:220
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:81
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Featured"
 msgstr ""
 
@@ -454,7 +454,7 @@ msgstr ""
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:83
 #: build/admin/coupons.js:9
 #: build/admin/price-rules.js:9
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Brands"
 msgstr ""
 
@@ -497,7 +497,7 @@ msgstr ""
 #: build/admin/coupons.js:9
 #: build/admin/forms.js:2
 #: build/admin/price-rules.js:9
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 #: build/admin/reports.js:1
 #: build/admin/reports.js:7
 msgid "Categories"
@@ -528,7 +528,7 @@ msgstr ""
 #: build/admin/coupons.js:9
 #: build/admin/forms.js:2
 #: build/admin/price-rules.js:9
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 #: build/admin/reports.js:1
 #: build/admin/reports.js:7
 #: build/admin/setup.js:1
@@ -616,7 +616,7 @@ msgid "No tags found"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Content/VariationPostType.php:27
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Variations"
 msgstr ""
 
@@ -673,10 +673,10 @@ msgstr ""
 #: build/admin/forms.js:1
 #: build/admin/forms.js:2
 #: build/admin/orders.js:3
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 #: build/admin/product-editor.js:1
 #: build/admin/product-editor.js:6
-#: build/admin/product-editor.js:8
+#: build/admin/product-editor.js:9
 #: build/admin/settings.js:5
 #: build/admin/settings.js:6
 #: build/admin/tax.js:7
@@ -758,8 +758,8 @@ msgstr ""
 #: src/Exchange/Infrastructure/WordPress/DownloadExport.php:51
 #: src/Exchange/Infrastructure/WordPress/DownloadExport.php:104
 #: build/admin/exchange.js:1
-#: build/admin/orders.js:41
-#: build/admin/orders.js:42
+#: build/admin/orders.js:43
+#: build/admin/orders.js:44
 msgid "Export"
 msgstr ""
 
@@ -784,10 +784,10 @@ msgstr ""
 #: var/i18n/templates.php:462
 #: var/i18n/templates.php:600
 #: build/admin/coupons.js:7
-#: build/admin/orders.js:39
-#: build/admin/orders.js:42
+#: build/admin/orders.js:41
+#: build/admin/orders.js:44
 #: build/admin/price-rules.js:9
-#: build/admin/price-rules.js:11
+#: build/admin/price-rules.js:12
 #: build/admin/status.js:3
 #: build/admin/tax.js:1
 #: build/admin/tax.js:7
@@ -808,7 +808,7 @@ msgstr ""
 #: var/i18n/templates.php:683
 #: build/admin/customers.js:5
 #: build/admin/orders.js:3
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Email"
 msgstr ""
 
@@ -817,8 +817,8 @@ msgstr ""
 #: var/i18n/templates.php:676
 #: build/admin/customers.js:5
 #: build/admin/orders.js:3
-#: build/admin/orders.js:41
-#: build/admin/orders.js:42
+#: build/admin/orders.js:43
+#: build/admin/orders.js:44
 #: build/admin/reports.js:9
 #: build/admin/reports.js:10
 msgid "Customer"
@@ -861,14 +861,14 @@ msgstr ""
 #: var/i18n/templates.php:531
 #: var/i18n/templates.php:639
 #: build/admin/orders.js:3
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Shipping address"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:47
 #: var/i18n/templates.php:617
 #: build/admin/orders.js:3
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 #: build/admin/reports.js:9
 msgid "Items"
 msgstr ""
@@ -884,7 +884,7 @@ msgstr ""
 #: var/i18n/templates.php:295
 #: var/i18n/templates.php:495
 #: var/i18n/templates.php:626
-#: build/admin/orders.js:30
+#: build/admin/orders.js:32
 msgid "Subtotal"
 msgstr ""
 
@@ -907,10 +907,10 @@ msgstr ""
 #: var/i18n/templates.php:629
 #: build/admin/customers.js:4
 #: build/admin/jobs.js:1
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 #: build/admin/reports.js:5
 #: build/admin/setup.js:1
-#: build/admin/shipping.js:8
+#: build/admin/shipping.js:10
 msgid "Shipping"
 msgstr ""
 
@@ -920,9 +920,9 @@ msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:53
 #: src/Tax/Infrastructure/WordPress/Admin/TaxPage.php:19
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 #: build/admin/reports.js:7
-#: build/admin/tax.js:8
+#: build/admin/tax.js:9
 msgid "Tax"
 msgstr ""
 
@@ -940,9 +940,9 @@ msgstr ""
 #: var/i18n/templates.php:601
 #: var/i18n/templates.php:619
 #: var/i18n/templates.php:630
-#: build/admin/orders.js:29
 #: build/admin/orders.js:31
-#: build/admin/orders.js:42
+#: build/admin/orders.js:33
+#: build/admin/orders.js:44
 msgid "Total"
 msgstr ""
 
@@ -957,8 +957,8 @@ msgstr ""
 #: build/admin/gift-cards.js:1
 #: build/admin/orders.js:1
 #: build/admin/orders.js:14
-#: build/admin/orders.js:39
 #: build/admin/orders.js:41
+#: build/admin/orders.js:43
 #: build/admin/reports.js:1
 #: build/admin/stock.js:1
 #: build/admin/tax.js:8
@@ -967,7 +967,7 @@ msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:56
 #: var/i18n/templates.php:332
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 #: build/admin/settings.js:11
 #: build/admin/setup.js:1
 msgid "Currency"
@@ -978,13 +978,13 @@ msgstr ""
 #: var/i18n/templates.php:320
 #: var/i18n/templates.php:603
 #: var/i18n/templates.php:613
-#: build/admin/orders.js:40
 #: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Payment"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:58
-#: build/admin/orders.js:34
+#: build/admin/orders.js:36
 msgid "Transaction"
 msgstr ""
 
@@ -1014,9 +1014,9 @@ msgstr ""
 #: build/admin/integrations.js:1
 #: build/admin/integrations.js:4
 #: build/admin/integrations.js:5
-#: build/admin/price-rules.js:10
-#: build/admin/product-editor.js:9
-#: build/admin/shipping.js:5
+#: build/admin/price-rules.js:11
+#: build/admin/product-editor.js:10
+#: build/admin/shipping.js:6
 #: build/admin/stockrooms.js:1
 #: build/admin/tax.js:8
 msgid "Name"
@@ -1033,7 +1033,7 @@ msgstr ""
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:67
 #: var/i18n/templates.php:356
 #: var/i18n/templates.php:400
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Sale price"
 msgstr ""
 
@@ -1050,44 +1050,44 @@ msgid "Backorders"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:72
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Owe at most"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:73
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 #: build/admin/settings.js:11
 #: build/admin/stockrooms.js:1
 msgid "Low stock at"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:74
-#: build/admin/product-editor.js:9
-#: build/admin/shipping.js:5
+#: build/admin/product-editor.js:10
+#: build/admin/shipping.js:6
 msgid "Weight"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:75
-#: build/admin/product-editor.js:9
-#: build/admin/shipping.js:5
+#: build/admin/product-editor.js:10
+#: build/admin/shipping.js:6
 msgid "Length"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:76
-#: build/admin/product-editor.js:9
-#: build/admin/shipping.js:5
+#: build/admin/product-editor.js:10
+#: build/admin/shipping.js:6
 msgid "Width"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:77
-#: build/admin/product-editor.js:9
-#: build/admin/shipping.js:5
+#: build/admin/product-editor.js:10
+#: build/admin/shipping.js:6
 msgid "Height"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:78
-#: build/admin/orders.js:39
-#: build/admin/product-editor.js:9
+#: build/admin/orders.js:41
+#: build/admin/product-editor.js:10
 msgid "Taxable"
 msgstr ""
 
@@ -1107,7 +1107,7 @@ msgstr ""
 #: build/admin/coupons.js:7
 #: build/admin/coupons.js:9
 #: build/admin/price-rules.js:9
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 #: build/admin/stockrooms.js:1
 msgid "Description"
 msgstr ""
@@ -1367,7 +1367,7 @@ msgstr ""
 #: src/Notifications/Infrastructure/WordPress/Admin/EmailsPage.php:19
 #: var/i18n/templates.php:427
 #: build/admin/emails.js:3
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Emails"
 msgstr ""
 
@@ -1377,7 +1377,7 @@ msgstr ""
 #: src/Platform/Health/HealthStatusReport.php:65
 #: var/i18n/templates.php:424
 #: build/admin/customers.js:5
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 #: build/admin/reports.js:5
 #: build/admin/reports.js:7
 #: build/admin/reports.js:10
@@ -1608,7 +1608,7 @@ msgstr ""
 #: src/Platform/WordPress/Admin/AdminPageRegistrar.php:55
 #: src/Platform/WordPress/Admin/SiteHealthRegistrar.php:51
 #: src/Reports/Infrastructure/WordPress/Hooks/ShopDashboardWidget.php:32
-#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:51
+#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:55
 #: build/admin/settings.js:10
 msgid "Shop"
 msgstr ""
@@ -1960,19 +1960,19 @@ msgstr ""
 msgid "A product page without an image: its name, description and buying form, for a service or a download."
 msgstr ""
 
-#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:52
+#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:56
 #: var/i18n/templates.php:546
 #: build/admin/settings.js:10
 msgid "Cart"
 msgstr ""
 
-#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:53
+#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:57
 #: build/admin/forms.js:2
 #: build/admin/settings.js:10
 msgid "Checkout"
 msgstr ""
 
-#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:54
+#: src/Storefront/Infrastructure/WordPress/OptionShopPagesRepository.php:58
 msgid "My account"
 msgstr ""
 
@@ -5127,7 +5127,7 @@ msgstr ""
 #. translators: %d: how many are owed, or were refunded
 #. translators: %d: how many are owed
 #: var/i18n/templates.php:18
-#: build/admin/orders.js:30
+#: build/admin/orders.js:32
 #, php-format,js-format
 msgid "%d on backorder"
 msgstr ""
@@ -5136,7 +5136,7 @@ msgstr ""
 #: var/i18n/templates.php:292
 #: var/i18n/templates.php:482
 #: var/i18n/templates.php:622
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "Holds"
 msgstr ""
 
@@ -5162,7 +5162,7 @@ msgstr ""
 #: var/i18n/templates.php:272
 #: var/i18n/templates.php:628
 #: build/admin/coupons.js:1
-#: build/admin/orders.js:31
+#: build/admin/orders.js:33
 #: build/admin/price-rules.js:1
 msgid "Free shipping"
 msgstr ""
@@ -5207,7 +5207,7 @@ msgstr ""
 #: var/i18n/templates.php:36
 #: var/i18n/templates.php:644
 #: build/admin/orders.js:3
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Pickup point"
 msgstr ""
 
@@ -5233,7 +5233,7 @@ msgstr ""
 #: var/i18n/templates.php:524
 #: var/i18n/templates.php:637
 #: build/admin/orders.js:3
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Billing address"
 msgstr ""
 
@@ -5246,7 +5246,7 @@ msgstr ""
 #. translators: %s: credit note number
 #: var/i18n/templates.php:46
 #: var/i18n/templates.php:238
-#: build/admin/orders.js:38
+#: build/admin/orders.js:40
 #, php-format,js-format
 msgid "Credit note %s"
 msgstr ""
@@ -5255,7 +5255,7 @@ msgstr ""
 #. translators: %s: invoice number
 #: var/i18n/templates.php:48
 #: var/i18n/templates.php:240
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 #, php-format,js-format
 msgid "Invoice %s"
 msgstr ""
@@ -5569,7 +5569,7 @@ msgstr ""
 
 #: var/i18n/templates.php:141
 #: var/i18n/templates.php:266
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 #: build/admin/stock.js:1
 msgid "Item"
 msgstr ""
@@ -5963,9 +5963,9 @@ msgstr ""
 #: var/i18n/templates.php:260
 #: build/admin/attribute-sets.js:3
 #: build/admin/coupons.js:9
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 #: build/admin/price-rules.js:9
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 #: build/admin/product-editor.js:3
 msgid "Amount"
 msgstr ""
@@ -5982,7 +5982,7 @@ msgstr ""
 #: var/i18n/templates.php:558
 #: var/i18n/templates.php:577
 #: build/admin/orders.js:3
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "Quantity"
 msgstr ""
 
@@ -5998,7 +5998,7 @@ msgid "Paid %1$s by %2$s."
 msgstr ""
 
 #: var/i18n/templates.php:279
-#: build/admin/orders.js:34
+#: build/admin/orders.js:36
 msgid "nothing (free)"
 msgstr ""
 
@@ -6170,14 +6170,14 @@ msgstr ""
 
 #: var/i18n/templates.php:341
 #: build/admin/reports.js:10
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:8
 #: build/admin/stock.js:1
 msgid "From"
 msgstr ""
 
 #: var/i18n/templates.php:342
 #: build/admin/reports.js:10
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:8
 msgid "To"
 msgstr ""
 
@@ -6267,8 +6267,8 @@ msgstr ""
 #: build/admin/emails.js:1
 #: build/admin/gift-cards.js:1
 #: build/admin/orders.js:1
-#: build/admin/orders.js:42
-#: build/admin/product-editor.js:9
+#: build/admin/orders.js:44
+#: build/admin/product-editor.js:10
 #: build/admin/reports.js:1
 #: build/admin/stock.js:1
 #: build/admin/tax.js:8
@@ -6342,8 +6342,8 @@ msgstr ""
 #: var/i18n/templates.php:372
 #: build/admin/customers.js:1
 #: build/admin/orders.js:1
-#: build/admin/orders.js:39
-#: build/admin/orders.js:42
+#: build/admin/orders.js:41
+#: build/admin/orders.js:44
 #: build/admin/reports.js:7
 #: build/admin/tax.js:1
 #: build/admin/tax.js:8
@@ -6359,7 +6359,7 @@ msgstr ""
 #: build/admin/customers.js:1
 #: build/admin/forms.js:3
 #: build/admin/orders.js:1
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 #: build/admin/reports.js:7
 #: build/admin/setup.js:1
 #: build/admin/tax.js:7
@@ -6382,7 +6382,7 @@ msgstr ""
 
 #: var/i18n/templates.php:379
 #: var/i18n/templates.php:383
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Details"
 msgstr ""
 
@@ -6529,8 +6529,8 @@ msgstr ""
 #: var/i18n/templates.php:425
 #: var/i18n/templates.php:616
 #: build/admin/orders.js:7
-#: build/admin/orders.js:41
-#: build/admin/product-editor.js:9
+#: build/admin/orders.js:43
+#: build/admin/product-editor.js:10
 msgid "Downloads"
 msgstr ""
 
@@ -6646,7 +6646,7 @@ msgstr ""
 #: build/admin/integrations.js:4
 #: build/admin/integrations.js:5
 #: build/admin/settings.js:8
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Address"
 msgstr ""
 
@@ -6911,7 +6911,7 @@ msgstr ""
 #: var/i18n/templates.php:570
 #: var/i18n/templates.php:574
 #: build/admin/orders.js:3
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 #: build/admin/settings.js:8
 msgid "None"
 msgstr ""
@@ -6992,7 +6992,7 @@ msgid "Your order was not completed"
 msgstr ""
 
 #: var/i18n/templates.php:599
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Placed"
 msgstr ""
 
@@ -7082,7 +7082,7 @@ msgid "Ask to return these items"
 msgstr ""
 
 #: var/i18n/templates.php:661
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Other details"
 msgstr ""
 
@@ -7247,6 +7247,30 @@ msgid "Add attribute"
 msgstr ""
 
 #: build/admin/attribute-sets.js:3
+#: build/admin/coupons.js:1
+#: build/admin/customers.js:1
+#: build/admin/emails.js:1
+#: build/admin/exchange.js:1
+#: build/admin/forms.js:1
+#: build/admin/gift-cards.js:1
+#: build/admin/integrations.js:1
+#: build/admin/jobs.js:1
+#: build/admin/orders.js:1
+#: build/admin/payments.js:1
+#: build/admin/price-rules.js:1
+#: build/admin/product-editor.js:1
+#: build/admin/reports.js:1
+#: build/admin/settings.js:1
+#: build/admin/setup.js:2
+#: build/admin/shipping.js:1
+#: build/admin/status.js:1
+#: build/admin/stock.js:1
+#: build/admin/stockrooms.js:1
+#: build/admin/tax.js:1
+msgid "The request failed. Check the connection and try again."
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
 msgid "New attribute set"
 msgstr ""
 
@@ -7256,8 +7280,8 @@ msgstr ""
 
 #: build/admin/attribute-sets.js:3
 #: build/admin/forms.js:2
-#: build/admin/orders.js:29
-#: build/admin/shipping.js:5
+#: build/admin/orders.js:31
+#: build/admin/shipping.js:6
 #: build/admin/stockrooms.js:1
 #: build/admin/tax.js:8
 msgid "Keep it"
@@ -7274,9 +7298,9 @@ msgstr ""
 #: build/admin/attribute-sets.js:3
 #: build/admin/coupons.js:7
 #: build/admin/payments.js:2
-#: build/admin/price-rules.js:10
 #: build/admin/price-rules.js:11
-#: build/admin/shipping.js:5
+#: build/admin/price-rules.js:12
+#: build/admin/shipping.js:6
 #: build/admin/stockrooms.js:1
 msgid "Active"
 msgstr ""
@@ -7291,26 +7315,98 @@ msgstr ""
 
 #: build/admin/attribute-sets.js:3
 #: build/admin/coupons.js:1
+#: build/admin/coupons.js:10
 #: build/admin/customers.js:1
+#: build/admin/customers.js:4
+#: build/admin/customers.js:7
+#: build/admin/emails.js:1
+#: build/admin/forms.js:2
+#: build/admin/gift-cards.js:3
+#: build/admin/integrations.js:1
+#: build/admin/integrations.js:4
+#: build/admin/jobs.js:10
+#: build/admin/jobs.js:13
+#: build/admin/orders.js:6
+#: build/admin/orders.js:31
+#: build/admin/orders.js:44
+#: build/admin/price-rules.js:1
+#: build/admin/price-rules.js:11
+#: build/admin/price-rules.js:13
+#: build/admin/product-editor.js:7
+#: build/admin/product-editor.js:10
+#: build/admin/settings.js:5
+#: build/admin/shipping.js:4
+#: build/admin/shipping.js:5
+#: build/admin/status.js:2
+#: build/admin/tax.js:1
+#: build/admin/tax.js:9
+msgid "Delete"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/coupons.js:1
+#: build/admin/customers.js:1
+#: build/admin/emails.js:1
+#: build/admin/forms.js:2
+#: build/admin/gift-cards.js:3
+#: build/admin/integrations.js:1
+#: build/admin/jobs.js:10
+#: build/admin/orders.js:6
+#: build/admin/price-rules.js:1
+#: build/admin/product-editor.js:7
+#: build/admin/settings.js:5
+#: build/admin/shipping.js:4
+#: build/admin/status.js:2
+#: build/admin/tax.js:1
+msgid "Are you sure?"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/coupons.js:1
+#: build/admin/customers.js:1
+#: build/admin/customers.js:4
+#: build/admin/customers.js:6
 #: build/admin/emails.js:1
 #: build/admin/exchange.js:1
 #: build/admin/forms.js:2
-#: build/admin/gift-cards.js:5
+#: build/admin/gift-cards.js:3
 #: build/admin/integrations.js:1
-#: build/admin/jobs.js:1
-#: build/admin/orders.js:1
-#: build/admin/payments.js:1
+#: build/admin/integrations.js:5
+#: build/admin/jobs.js:10
+#: build/admin/orders.js:6
+#: build/admin/orders.js:43
 #: build/admin/price-rules.js:1
-#: build/admin/product-editor.js:1
-#: build/admin/reports.js:1
-#: build/admin/settings.js:1
-#: build/admin/setup.js:2
-#: build/admin/shipping.js:1
-#: build/admin/status.js:1
-#: build/admin/stock.js:1
-#: build/admin/stockrooms.js:1
+#: build/admin/product-editor.js:7
+#: build/admin/settings.js:5
+#: build/admin/shipping.js:4
+#: build/admin/status.js:2
 #: build/admin/tax.js:1
-msgid "The request failed. Check the connection and try again."
+#: build/admin/tax.js:8
+msgid "Cancel"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/coupons.js:9
+#: build/admin/customers.js:7
+#: build/admin/emails.js:3
+#: build/admin/forms.js:2
+#: build/admin/orders.js:30
+#: build/admin/price-rules.js:1
+#: build/admin/settings.js:5
+#: build/admin/tax.js:8
+msgid "The changes you made are not saved. Leave them?"
+msgstr ""
+
+#: build/admin/attribute-sets.js:3
+#: build/admin/coupons.js:9
+#: build/admin/customers.js:7
+#: build/admin/emails.js:3
+#: build/admin/forms.js:2
+#: build/admin/orders.js:30
+#: build/admin/price-rules.js:1
+#: build/admin/settings.js:5
+#: build/admin/tax.js:8
+msgid "Leave without saving"
 msgstr ""
 
 #: build/admin/attribute-sets.js:3
@@ -7514,7 +7610,7 @@ msgstr ""
 
 #: build/admin/coupons.js:1
 #: build/admin/coupons.js:9
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 #: build/admin/price-rules.js:9
 #: build/admin/reports.js:7
 msgid "Code"
@@ -7570,14 +7666,14 @@ msgstr ""
 #: build/admin/coupons.js:7
 #: build/admin/coupons.js:9
 #: build/admin/price-rules.js:9
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Ends"
 msgstr ""
 
 #: build/admin/coupons.js:7
 #: build/admin/forms.js:3
 #: build/admin/price-rules.js:10
-#: build/admin/price-rules.js:11
+#: build/admin/price-rules.js:12
 msgid "Off"
 msgstr ""
 
@@ -7598,7 +7694,7 @@ msgstr ""
 #: build/admin/gift-cards.js:3
 #: build/admin/jobs.js:13
 #: build/admin/price-rules.js:9
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Close"
 msgstr ""
 
@@ -7630,7 +7726,7 @@ msgstr ""
 #: build/admin/coupons.js:9
 #: build/admin/payments.js:2
 #: build/admin/price-rules.js:9
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Percentage"
 msgstr ""
 
@@ -7731,7 +7827,7 @@ msgstr ""
 
 #: build/admin/coupons.js:9
 #: build/admin/price-rules.js:9
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Starts"
 msgstr ""
 
@@ -7801,60 +7897,6 @@ msgid "Save the coupon"
 msgstr ""
 
 #: build/admin/coupons.js:9
-#: build/admin/coupons.js:10
-#: build/admin/customers.js:1
-#: build/admin/customers.js:4
-#: build/admin/customers.js:7
-#: build/admin/emails.js:1
-#: build/admin/forms.js:2
-#: build/admin/gift-cards.js:3
-#: build/admin/integrations.js:1
-#: build/admin/integrations.js:4
-#: build/admin/jobs.js:13
-#: build/admin/orders.js:6
-#: build/admin/orders.js:29
-#: build/admin/orders.js:42
-#: build/admin/price-rules.js:10
-#: build/admin/price-rules.js:12
-#: build/admin/product-editor.js:9
-#: build/admin/settings.js:5
-#: build/admin/shipping.js:4
-#: build/admin/status.js:2
-#: build/admin/tax.js:8
-msgid "Delete"
-msgstr ""
-
-#: build/admin/coupons.js:9
-#: build/admin/customers.js:1
-#: build/admin/emails.js:1
-#: build/admin/gift-cards.js:3
-#: build/admin/integrations.js:1
-#: build/admin/orders.js:6
-#: build/admin/price-rules.js:10
-#: build/admin/settings.js:5
-#: build/admin/status.js:2
-msgid "Are you sure?"
-msgstr ""
-
-#: build/admin/coupons.js:9
-#: build/admin/customers.js:1
-#: build/admin/customers.js:4
-#: build/admin/customers.js:6
-#: build/admin/emails.js:1
-#: build/admin/exchange.js:1
-#: build/admin/gift-cards.js:3
-#: build/admin/integrations.js:1
-#: build/admin/integrations.js:5
-#: build/admin/orders.js:6
-#: build/admin/orders.js:41
-#: build/admin/price-rules.js:10
-#: build/admin/settings.js:5
-#: build/admin/status.js:2
-#: build/admin/tax.js:8
-msgid "Cancel"
-msgstr ""
-
-#: build/admin/coupons.js:9
 msgid "Add a coupon"
 msgstr ""
 
@@ -7875,7 +7917,7 @@ msgstr ""
 #: build/admin/forms.js:3
 #: build/admin/integrations.js:4
 #: build/admin/price-rules.js:10
-#: build/admin/price-rules.js:12
+#: build/admin/price-rules.js:13
 #: build/admin/settings.js:5
 #: build/admin/tax.js:8
 msgid "Edit"
@@ -7907,38 +7949,10 @@ msgstr ""
 #: build/admin/customers.js:1
 #: build/admin/orders.js:1
 #: build/admin/orders.js:3
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 #: build/admin/payments.js:1
 #: build/admin/shipping.js:1
 msgid "— Choose —"
-msgstr ""
-
-#: build/admin/customers.js:1
-#: build/admin/gift-cards.js:2
-msgid "Nothing yet."
-msgstr ""
-
-#: build/admin/customers.js:1
-#: build/admin/gift-cards.js:2
-#: build/admin/price-rules.js:10
-#: build/admin/status.js:1
-#: build/admin/stock.js:1
-msgid "When"
-msgstr ""
-
-#: build/admin/customers.js:1
-#: build/admin/gift-cards.js:2
-msgid "By"
-msgstr ""
-
-#: build/admin/customers.js:1
-#: build/admin/gift-cards.js:2
-msgid "Add, or − to take off"
-msgstr ""
-
-#: build/admin/customers.js:1
-#: build/admin/gift-cards.js:2
-msgid "Change the balance"
 msgstr ""
 
 #: build/admin/customers.js:1
@@ -8194,6 +8208,34 @@ msgid "Tax exemption certificate runs out in a month"
 msgstr ""
 
 #: build/admin/customers.js:1
+#: build/admin/gift-cards.js:2
+msgid "Nothing yet."
+msgstr ""
+
+#: build/admin/customers.js:1
+#: build/admin/gift-cards.js:2
+#: build/admin/price-rules.js:11
+#: build/admin/status.js:1
+#: build/admin/stock.js:1
+msgid "When"
+msgstr ""
+
+#: build/admin/customers.js:1
+#: build/admin/gift-cards.js:2
+msgid "By"
+msgstr ""
+
+#: build/admin/customers.js:1
+#: build/admin/gift-cards.js:2
+msgid "Add, or − to take off"
+msgstr ""
+
+#: build/admin/customers.js:1
+#: build/admin/gift-cards.js:2
+msgid "Change the balance"
+msgstr ""
+
+#: build/admin/customers.js:1
 msgid "Resale"
 msgstr ""
 
@@ -8359,7 +8401,7 @@ msgid "The customer does not see it."
 msgstr ""
 
 #: build/admin/customers.js:4
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Add note"
 msgstr ""
 
@@ -8635,11 +8677,7 @@ msgid "Coupon in the cart reminder"
 msgstr ""
 
 #: build/admin/emails.js:3
-msgid "Its code shows in the email, and the link puts it in the cart."
-msgstr ""
-
-#: build/admin/emails.js:3
-msgid "No coupon"
+msgid "Its code shows in the email, and the link puts it in the cart. Type to find a code; clear it for none."
 msgstr ""
 
 #: build/admin/emails.js:3
@@ -8651,24 +8689,24 @@ msgid "the shop’s own"
 msgstr ""
 
 #: build/admin/exchange.js:1
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "add-on"
 msgstr ""
 
 #: build/admin/exchange.js:1
 #: build/admin/forms.js:1
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Move up"
 msgstr ""
 
 #: build/admin/exchange.js:1
 #: build/admin/forms.js:1
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Move down"
 msgstr ""
 
 #: build/admin/exchange.js:1
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Format"
 msgstr ""
 
@@ -8923,7 +8961,7 @@ msgstr ""
 #: build/admin/forms.js:2
 #: build/admin/forms.js:3
 #: build/admin/gift-cards.js:2
-#: build/admin/price-rules.js:11
+#: build/admin/price-rules.js:12
 msgid "For"
 msgstr ""
 
@@ -8971,7 +9009,7 @@ msgstr ""
 #: build/admin/forms.js:3
 #: build/admin/integrations.js:1
 #: build/admin/integrations.js:4
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 #: build/admin/settings.js:5
 #: build/admin/tax.js:8
 msgid "Actions"
@@ -8979,7 +9017,7 @@ msgstr ""
 
 #: build/admin/forms.js:3
 #: build/admin/integrations.js:5
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "On"
 msgstr ""
 
@@ -8997,24 +9035,24 @@ msgstr ""
 
 #: build/admin/gift-cards.js:1
 #: build/admin/orders.js:1
-#: build/admin/product-editor.js:8
-#: build/admin/shipping.js:4
+#: build/admin/product-editor.js:9
+#: build/admin/shipping.js:5
 msgid "Use a whole amount: the currency has no decimals."
 msgstr ""
 
 #. translators: %d: how many decimals the currency has
 #: build/admin/gift-cards.js:2
 #: build/admin/orders.js:2
-#: build/admin/product-editor.js:9
-#: build/admin/shipping.js:5
+#: build/admin/product-editor.js:10
+#: build/admin/shipping.js:6
 #, js-format
 msgid "Use up to %d decimals."
 msgstr ""
 
 #: build/admin/gift-cards.js:2
 #: build/admin/orders.js:2
-#: build/admin/product-editor.js:9
-#: build/admin/shipping.js:5
+#: build/admin/product-editor.js:10
+#: build/admin/shipping.js:6
 msgid "Use an amount such as 19.90."
 msgstr ""
 
@@ -9543,6 +9581,10 @@ msgid "Retry all"
 msgstr ""
 
 #: build/admin/jobs.js:13
+msgid "Delete every failed job? They are not run again, and what they were for is not done."
+msgstr ""
+
+#: build/admin/jobs.js:13
 msgid "Delete all"
 msgstr ""
 
@@ -9563,7 +9605,7 @@ msgid "No job failed."
 msgstr ""
 
 #: build/admin/jobs.js:13
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 #: build/admin/stock.js:5
 msgid "History"
 msgstr ""
@@ -9652,7 +9694,7 @@ msgid "Empty for the catalog price"
 msgstr ""
 
 #: build/admin/orders.js:3
-#: build/admin/orders.js:28
+#: build/admin/orders.js:30
 msgid "← All orders"
 msgstr ""
 
@@ -9673,7 +9715,7 @@ msgid "No rate ships these items to this address."
 msgstr ""
 
 #: build/admin/orders.js:3
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Ships by"
 msgstr ""
 
@@ -9812,7 +9854,7 @@ msgid "It came back"
 msgstr ""
 
 #: build/admin/orders.js:10
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Send"
 msgstr ""
 
@@ -9924,7 +9966,7 @@ msgid "Give %s back to the customer for these items?"
 msgstr ""
 
 #: build/admin/orders.js:16
-#: build/admin/orders.js:25
+#: build/admin/orders.js:27
 msgid "Refund"
 msgstr ""
 
@@ -10031,441 +10073,453 @@ msgstr ""
 msgid "this payment method"
 msgstr ""
 
-#. translators: 1: amount, 2: payment method
+#. translators: %s: amount
 #: build/admin/orders.js:25
 #, js-format
-msgid "Give %1$s back to the customer through %2$s? The money leaves at once."
+msgid "Record that %s was given back outside the shop? No money moves from here; the order shows it refunded."
 msgstr ""
 
 #. translators: 1: amount, 2: payment method
 #: build/admin/orders.js:26
 #, js-format
+msgid "Give %1$s back to the customer through %2$s? The money leaves at once."
+msgstr ""
+
+#. translators: 1: amount, 2: the customer's email
+#: build/admin/orders.js:27
+#, js-format
+msgid "Give %1$s back as a gift card or store credit for %2$s? It can be spent at once."
+msgstr ""
+
+#. translators: 1: amount, 2: payment method
+#: build/admin/orders.js:28
+#, js-format
 msgid "Refund %1$s through %2$s"
 msgstr ""
 
 #. translators: %s: amount
-#: build/admin/orders.js:27
+#: build/admin/orders.js:29
 #, js-format
 msgid "Record a refund of %s"
 msgstr ""
 
-#: build/admin/orders.js:27
+#: build/admin/orders.js:29
 msgid "shipping"
 msgstr ""
 
 #. translators: %s: payment method
-#: build/admin/orders.js:28
+#: build/admin/orders.js:30
 #, js-format
 msgid "through %s"
 msgstr ""
 
-#: build/admin/orders.js:28
+#: build/admin/orders.js:30
 msgid "— waiting for the provider"
 msgstr ""
 
-#: build/admin/orders.js:28
+#: build/admin/orders.js:30
 msgid "— not refunded"
 msgstr ""
 
-#: build/admin/orders.js:28
+#: build/admin/orders.js:30
 msgid "— the provider is still sending the money"
 msgstr ""
 
-#: build/admin/orders.js:28
+#: build/admin/orders.js:30
 msgid "back in stock"
 msgstr ""
 
-#: build/admin/orders.js:28
+#: build/admin/orders.js:30
 msgid "This order needs your attention."
 msgstr ""
 
-#: build/admin/orders.js:28
+#: build/admin/orders.js:30
 msgid "Mark as handled"
 msgstr ""
 
 #. translators: 1: order number, 2: status
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 #, js-format
 msgid "Order #%1$d — %2$s"
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The order is marked as handled."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The items were changed."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The price was changed."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The order is marked as paid."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The status was changed."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The items went back in stock."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The note was added."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The customer’s details were saved."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The order’s account was changed."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The downloads were changed."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The email was sent."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The email could not be sent; see the site’s error log."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The customer’s details were erased from the order."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The customer’s name, email, addresses, phone, note and downloads go from this order for good. What was bought and paid stays, for the books."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "Erase"
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "Erase the customer’s details"
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "The order and its history go for good."
 msgstr ""
 
-#: build/admin/orders.js:29
+#: build/admin/orders.js:31
 msgid "Delete this order for good"
 msgstr ""
 
 #. translators: 1: coupon code, 2: its description
-#: build/admin/orders.js:31
+#: build/admin/orders.js:33
 #, js-format
 msgid "Coupon %1$s %2$s"
 msgstr ""
 
 #. translators: 1: tax name, 2: its rate
-#: build/admin/orders.js:32
+#: build/admin/orders.js:34
 #, js-format
 msgid "Includes %1$s (%2$s %%)"
 msgstr ""
 
-#: build/admin/orders.js:32
+#: build/admin/orders.js:34
 msgid "Paid the way chosen"
 msgstr ""
 
 #. translators: 1: why the customer buys without tax, 2: their certificate's number
-#: build/admin/orders.js:33
+#: build/admin/orders.js:35
 #, js-format
 msgid "Sold without tax: %1$s, certificate %2$s."
 msgstr ""
 
 #. translators: 1: date, 2: payment method
-#: build/admin/orders.js:34
+#: build/admin/orders.js:36
 #, js-format
 msgid "Placed %1$s, paying by %2$s."
 msgstr ""
 
-#: build/admin/orders.js:34
+#: build/admin/orders.js:36
 msgid "Not paid yet."
 msgstr ""
 
 #. translators: %s: date
-#: build/admin/orders.js:35
+#: build/admin/orders.js:37
 #, js-format
 msgid "Paid %s."
 msgstr ""
 
 #. translators: 1: the day, 2: the time of day, or nothing
-#: build/admin/orders.js:36
+#: build/admin/orders.js:38
 #, js-format
 msgid "Delivery on %1$s%2$s."
 msgstr ""
 
 #. translators: %s: VAT number
-#: build/admin/orders.js:37
+#: build/admin/orders.js:39
 #, js-format
 msgid "VAT number %s."
 msgstr ""
 
-#: build/admin/orders.js:37
+#: build/admin/orders.js:39
 msgid "Reverse charge: sold without VAT."
 msgstr ""
 
-#: build/admin/orders.js:37
+#: build/admin/orders.js:39
 msgid "The customer’s details were erased, as a privacy request asked."
 msgstr ""
 
-#: build/admin/orders.js:37
+#: build/admin/orders.js:39
 msgid "Customer’s note:"
 msgstr ""
 
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 msgid "(XML)"
 msgstr ""
 
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 #: build/admin/reports.js:7
 msgid "Local"
 msgstr ""
 
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 #: build/admin/reports.js:7
 msgid "Tax by jurisdiction"
 msgstr ""
 
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 #: build/admin/reports.js:7
 msgid "Jurisdiction"
 msgstr ""
 
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 msgid "Move the order to"
 msgstr ""
 
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 msgid "Cancelling puts the items back in stock."
 msgstr ""
 
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 msgid "Completing it records the payment, as when the courier hands over the cash."
 msgstr ""
 
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 msgid "Note for the history (optional)"
 msgstr ""
 
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 msgid "Change status"
 msgstr ""
 
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 msgid "Price changes"
 msgstr ""
 
-#: build/admin/orders.js:39
+#: build/admin/orders.js:41
 msgid "whole order"
 msgstr ""
 
 #. translators: %s: the change's label
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 #, js-format
 msgid "Take \"%s\" off the price? The taxes are worked out again."
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "Take off"
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "Worked out by the add-on"
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "Lower or raise the price before the order is paid: below zero lowers it. The taxes follow."
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "Such as -5.00 or 2.50."
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "What the customer sees"
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "The whole order, spread over its items"
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "Why (for the shop’s records)"
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "Change the price"
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "The order waits for its payment. Once the money came, mark it as paid: it is then fulfilled."
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "The order is being fulfilled before its payment, as for cash on delivery."
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "How the money came (optional)"
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "Mark as paid"
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "Items that came back"
 msgstr ""
 
-#: build/admin/orders.js:40
+#: build/admin/orders.js:42
 msgid "The money went back without these items. Once they come back, put them back in stock."
 msgstr ""
 
 #. translators: 1: item name, 2: how many can go back
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 #, js-format
 msgid "%1$s (up to %2$d)"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Put back in stock"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "to the customer"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Add a note"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Email it to the customer"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "The order waits for its payment, so its items can still change. Taxes, shipping and stock follow; the customer is not emailed — send the \"order received\" email again if they should know."
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Save the items"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Save the customer’s details"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Send again"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Not paid"
 msgstr ""
 
-#: build/admin/orders.js:41
-#: build/admin/orders.js:42
+#: build/admin/orders.js:43
+#: build/admin/orders.js:44
 msgid "Paid"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Partly refunded"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Paid with a gift card"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Backordered items"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Personalised items"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "A note from the customer"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "Used a coupon"
 msgstr ""
 
-#: build/admin/orders.js:41
+#: build/admin/orders.js:43
 msgid "An open return"
 msgstr ""
 
 #. translators: %s: order numbers
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 #, js-format
 msgid "Delete %s for good?"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Attention"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Needs attention"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Placed by"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "A customer"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "A guest"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Not shipped yet"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Delivery day"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Add order"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Export the orders listed"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "CSV (spreadsheet)"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Number, name, email, phone, address, SKU, tracking, invoice or coupon"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Open"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "Delete orders"
 msgstr ""
 
-#: build/admin/orders.js:42
+#: build/admin/orders.js:44
 msgid "No orders found."
 msgstr ""
 
@@ -10512,7 +10566,7 @@ msgid "Such as your bank details for a bank transfer."
 msgstr ""
 
 #: build/admin/payments.js:2
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Fee"
 msgstr ""
 
@@ -10540,7 +10594,7 @@ msgstr ""
 #. translators: %s: carrier name
 #. translators: %s: stockroom name
 #: build/admin/payments.js:3
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 #: build/admin/stockrooms.js:2
 #, js-format
 msgid "Save %s"
@@ -10582,115 +10636,121 @@ msgstr ""
 msgid "No automatic discounts yet."
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#. translators: %s: the automatic discount's description
+#: build/admin/price-rules.js:11
+#, js-format
+msgid "Delete the automatic discount %s? Orders that had it keep their discount."
+msgstr ""
+
+#: build/admin/price-rules.js:11
 msgid "New price rule"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "For you, such as \"Wholesale\" or \"Buy 10, save 10 %\"."
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Prices"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "From items"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Add a price for more items"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Who gets it"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Customer groups (empty: everyone, guests too)"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Make customer groups under Shop → Customers."
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "What it prices"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Leave these empty for the whole catalog. A category includes its subcategories."
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Also for items on sale (from their sale price)"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Discount codes and automatic discounts still apply on top"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Turn off for a price that is already the best deal, such as a trade price."
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Combine with other price rules"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Off: when several rules apply, the lowest price wins. On: this rule takes its amount off the price the other rules give, such as 5% more for members on top of a sale rule. Rules that combine apply in the order they were made, which matters when one takes a percentage and another an amount off."
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Save the rule"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 msgid "Rule"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 #, js-format
 msgid "%s %% off"
 msgstr ""
 
-#: build/admin/price-rules.js:10
+#: build/admin/price-rules.js:11
 #, js-format
 msgid "%s off"
 msgstr ""
 
 #. translators: 1: quantity, 2: price
-#: build/admin/price-rules.js:11
+#: build/admin/price-rules.js:12
 #, js-format
 msgid "from %1$d: %2$s"
 msgstr ""
 
-#: build/admin/price-rules.js:11
+#: build/admin/price-rules.js:12
 msgid "Everyone"
 msgstr ""
 
-#: build/admin/price-rules.js:11
+#: build/admin/price-rules.js:12
 msgid "Add a rule"
 msgstr ""
 
-#: build/admin/price-rules.js:11
+#: build/admin/price-rules.js:12
 msgid "Where several rules hold for an item, the shopper gets the lowest price, then the rules that combine take their amount off it. A rule leaves items on sale alone unless it says it goes with sales; discount codes still apply on top unless it says they do not."
 msgstr ""
 
 #. translators: %s: rule name
-#: build/admin/price-rules.js:12
+#: build/admin/price-rules.js:13
 #, js-format
 msgid "The rule %s was saved. The shop prices with it now."
 msgstr ""
 
 #. translators: %s: rule name
-#: build/admin/price-rules.js:13
+#: build/admin/price-rules.js:14
 #, js-format
 msgid "Delete the rule %s? Placed orders keep their prices."
 msgstr ""
 
-#: build/admin/price-rules.js:13
+#: build/admin/price-rules.js:14
 msgid "No price rules yet."
 msgstr ""
 
@@ -10822,232 +10882,242 @@ msgstr ""
 msgid "(%s KB)"
 msgstr ""
 
-#: build/admin/product-editor.js:8
+#. translators: %s: file name
+#: build/admin/product-editor.js:9
+#, js-format
+msgid "Remove %s? Customers who bought the product can no longer download it."
+msgstr ""
+
+#: build/admin/product-editor.js:9
 msgid "Uploading…"
 msgstr ""
 
-#: build/admin/product-editor.js:8
+#: build/admin/product-editor.js:9
 msgid "Add a file"
 msgstr ""
 
-#: build/admin/product-editor.js:8
+#: build/admin/product-editor.js:9
 msgid "Downloads per file"
 msgstr ""
 
-#: build/admin/product-editor.js:8
+#: build/admin/product-editor.js:9
 #: build/admin/shipping.js:4
 msgid "Empty for no limit."
 msgstr ""
 
-#: build/admin/product-editor.js:8
+#: build/admin/product-editor.js:9
 msgid "Downloads work for (days)"
 msgstr ""
 
-#: build/admin/product-editor.js:8
+#: build/admin/product-editor.js:9
 msgid "Counted from payment. Empty for always."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Add attributes and save the product first; variations combine their options."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "New variation"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "— Any —"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "When out of stock"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "As the product"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Empty: as the product."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Weight and size: empty for the product’s."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Empty: the product’s name with the options."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Shown on the product page when this variation is chosen."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Gallery"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Add variation"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Save variation"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
+msgid "Delete this variation? Orders that have it keep it; carts that hold it lose it."
+msgstr ""
+
+#: build/admin/product-editor.js:10
 msgid "Product details saved."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Price and tax"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Product type"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 #: build/admin/reports.js:5
 msgid "Not shipped"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Variations have their own prices."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Sale starts"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Sale ends"
 msgstr ""
 
-#: build/admin/product-editor.js:9
-#: build/admin/shipping.js:5
-#: build/admin/shipping.js:8
+#: build/admin/product-editor.js:10
+#: build/admin/shipping.js:6
+#: build/admin/shipping.js:10
 msgid "Tax group"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "The default group"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 #: build/admin/tax.js:8
 msgid "Tax code for tax services"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Only when it differs from its tax group’s, such as clothing in a group of general goods."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Can be bought"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Show the price"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "A hidden price is not shown; shoppers ask for it, and the product is not sold online."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "As the shop’s setting says"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Always show it"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Hide it"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Save product details"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Weight and size"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Shipping class"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Only rates that carry this class ship it. Variations ship in the product’s class."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Variations follow this unless they say otherwise."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "How many may be sold on backorder in all. Empty for no limit."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "The shop hears when a stockroom holds this many or fewer. Empty for the stockroom’s or the shop’s."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Each variation has its own stock."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Attributes"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Inactive set"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Save the product details first."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Images besides the featured one"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Linked products"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Upsells"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Better or bigger products the product’s page offers instead."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Cross-sells"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Products the cart offers with this one. Related products, by category and tag, show by themselves."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Barcode and part number"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Barcode (GTIN, EAN, UPC, ISBN)"
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "8, 12, 13 or 14 digits."
 msgstr ""
 
-#: build/admin/product-editor.js:9
+#: build/admin/product-editor.js:10
 msgid "Manufacturer part number (MPN)"
 msgstr ""
 
@@ -12180,179 +12250,191 @@ msgstr ""
 msgid "Class name"
 msgstr ""
 
+#. translators: %s: shipping class name
 #: build/admin/shipping.js:5
+#, js-format
+msgid "Delete the shipping class %s? Its products then have none, and rates for it no longer apply to them."
+msgstr ""
+
+#: build/admin/shipping.js:6
 msgid "Volume"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Order value"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Number of items"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Add a carrier"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Delete the carrier and its rates"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Delete carrier"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Prices from"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Its own rates"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Pickup at the shop’s places"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "A place to collect orders"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Place name"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Opening hours"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Such as \"Mon–Fri 9–18, Sat 10–14\"."
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Remove the place"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Add a place"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "The add-on that brings this shipping method is not active, so checkout leaves the carrier out."
 msgstr ""
 
-#: build/admin/shipping.js:5
-#: build/admin/shipping.js:8
+#: build/admin/shipping.js:6
+#: build/admin/shipping.js:10
 msgid "Taxed"
 msgstr ""
 
-#: build/admin/shipping.js:5
-#: build/admin/shipping.js:8
+#: build/admin/shipping.js:6
+#: build/admin/shipping.js:10
 msgid "The shop’s default"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Add a rate"
 msgstr ""
 
-#: build/admin/shipping.js:5
+#: build/admin/shipping.js:6
 msgid "Add carrier"
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "New rate"
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Rate name"
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Price is for each item shipped"
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Ships to"
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Country codes such as BG, or states such as US-CA, separated by commas. Empty for everywhere."
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Except to"
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Countries or states it does not ship to, such as US-HI when it ships to US."
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 #: build/admin/tax.js:8
 msgid "Postcodes"
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Postcodes such as 1000, starts such as SW1*, or ranges such as 1000–1999, separated by commas. Empty for any postcode in the regions."
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Except postcodes"
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Postcodes, starts or ranges it does not ship to."
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Carries"
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Every item"
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "Items without a class"
 msgstr ""
 
-#: build/admin/shipping.js:6
+#: build/admin/shipping.js:7
 msgid "An order gets this rate only when the rate carries every item in it."
 msgstr ""
 
-#: build/admin/shipping.js:6
+#. translators: %s: shipping class names, "Bulky, Fragile"
+#: build/admin/shipping.js:8
+#, js-format
+msgid "%s also go by this rate, as it carries every item, though another rate is for them. To keep them to that rate, untick “Every item” and choose what this one carries."
+msgstr ""
+
+#: build/admin/shipping.js:8
 #: build/admin/tax.js:4
 msgid "Limit"
 msgstr ""
 
 #. translators: %s: weight, volume, length...
-#: build/admin/shipping.js:7
+#: build/admin/shipping.js:9
 #, js-format
 msgid "%s from"
 msgstr ""
 
 #. translators: %s: weight, volume, length...
-#: build/admin/shipping.js:8
+#: build/admin/shipping.js:10
 #, js-format
 msgid "%s to"
 msgstr ""
 
-#: build/admin/shipping.js:8
+#: build/admin/shipping.js:10
 msgid "Remove rate"
 msgstr ""
 
-#: build/admin/shipping.js:8
+#: build/admin/shipping.js:10
 msgid "Checkout offers every rate whose regions include the address and whose limits the order fits, carriers in their order. Limits include both ends; leave the highest value empty for no end. Weight, volume and sizes add up over every item that ships."
 msgstr ""
 
-#: build/admin/shipping.js:8
+#: build/admin/shipping.js:10
 msgid "Carrier saved."
 msgstr ""
 
-#: build/admin/shipping.js:8
+#: build/admin/shipping.js:10
 msgid "Carrier added."
 msgstr ""
 
@@ -13132,31 +13214,37 @@ msgstr ""
 msgid "(not on shipping)"
 msgstr ""
 
-#: build/admin/tax.js:8
+#. translators: %s: tax rate name
+#: build/admin/tax.js:9
+#, js-format
+msgid "Delete the rate %s? Orders taxed at it keep their taxes."
+msgstr ""
+
+#: build/admin/tax.js:9
 msgid "Add rate"
 msgstr ""
 
-#: build/admin/tax.js:8
+#: build/admin/tax.js:9
 msgid "Add the EU’s standard rates"
 msgstr ""
 
-#: build/admin/tax.js:8
+#: build/admin/tax.js:9
 msgid "The standard rate of each EU country without one yet, as known in October 2026. Check them against the EU’s list before you rely on them."
 msgstr ""
 
-#: build/admin/tax.js:8
+#: build/admin/tax.js:9
 msgid "Tax settings saved."
 msgstr ""
 
-#: build/admin/tax.js:8
+#: build/admin/tax.js:9
 msgid "Thresholds saved."
 msgstr ""
 
-#: build/admin/tax.js:8
+#: build/admin/tax.js:9
 msgid "Import schemes saved."
 msgstr ""
 
-#: build/admin/tax.js:8
+#: build/admin/tax.js:9
 msgid "Threshold saved."
 msgstr ""
 
