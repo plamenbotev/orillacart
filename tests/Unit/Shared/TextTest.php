@@ -33,4 +33,22 @@ final class TextTest extends TestCase
         self::assertSame('Up to 3 characters.', $translations->text(Text::of('Up to %d characters.', 3)));
         self::assertSame('This value is too long. It should have 40 characters or less.', $translations->message('This value is too long. It should have {{ limit }} character or less.|This value is too long. It should have {{ limit }} characters or less.', ['{{ limit }}' => 40], 40));
     }
+
+    public function testATranslationThatLostAPlaceholderGivesWayToTheEnglish(): void
+    {
+        $words = ['Only %1$d of %2$s left.' => 'Само %1$d.', 'Up to %d characters.' => 'До %d знака.', 'Row %1$d: %2$s' => 'Ред %1$d: %2$s'];
+        $translations = new GettextTranslations(static fn(string $text): string => $words[$text] ?? $text);
+
+        self::assertSame('Only 2 of the lamp left.', $translations->text(Text::of('Only %1$d of %2$s left.', 2, 'the lamp')), 'a value would be lost');
+        self::assertSame('До 3 знака.', $translations->text(Text::of('Up to %d characters.', 3)));
+        self::assertSame('Ред 4: Only 2 of the lamp left.', $translations->text(Text::of('Row %1$d: %2$s', 4, Text::of('Only %1$d of %2$s left.', 2, 'the lamp'))));
+    }
+
+    public function testAValidationMessageThatLostItsParameterGivesWayToTheEnglish(): void
+    {
+        $translations = new GettextTranslations(static fn(string $text): string => $text === 'This value should not be blank.' ? 'Попълнете полето.' : 'Твърде дълго.');
+
+        self::assertSame('Попълнете полето.', $translations->message('This value should not be blank.'));
+        self::assertSame('This value is too long. It should have 40 characters or less.', $translations->message('This value is too long. It should have {{ limit }} characters or less.', ['{{ limit }}' => 40]));
+    }
 }
