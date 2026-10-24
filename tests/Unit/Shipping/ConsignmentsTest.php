@@ -152,6 +152,24 @@ final class ConsignmentsTest extends TestCase
         self::assertStringContainsString('The order is not paid yet, so it stays shipped', $order->notes[\count($order->notes) - 1]->text);
     }
 
+    public function testABookedShipmentTheCourierHasNotCollectedLeavesTheOrderAndCanStillBeCancelled(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart(), $this->order('express', 'bank_transfer'));
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('processing'), 7);
+        $booked = $this->shop->consignments->book($placed->number, new BookShipment(), 7);
+        $this->courier->tracking[$booked->number] = new Tracking(Tracking::BOOKED, 'Waiting for the courier');
+
+        self::assertTrue($this->shop->consignments->track($booked->id), 'the courier\'s words are kept');
+        self::assertSame(['booked', 'Waiting for the courier'], [$this->shop->consignments->forOrder($placed->number)->shipments[0]->status, $this->shop->consignments->forOrder($placed->number)->shipments[0]->tracking]);
+        self::assertSame('processing', $this->shop->orders->order($placed->number)->status, 'not shipped yet');
+
+        $this->courier->tracking[$booked->number] = new Tracking(Tracking::ON_THE_WAY, 'At the depot');
+        $this->shop->consignments->track($booked->id);
+        $this->courier->tracking[$booked->number] = new Tracking(Tracking::BOOKED, 'Booked');
+        $this->shop->consignments->track($booked->id);
+        self::assertSame('on_the_way', $this->shop->consignments->forOrder($placed->number)->shipments[0]->status, 'a late "booked" does not take it back');
+    }
+
     public function testADeliveryCompletesAnOrderPaidOnDeliveryAndRecordsItsPaymentInFull(): void
     {
         $placed = $this->shop->checkout->placeOrder($this->cart(), $this->order('express', 'cash_on_delivery'));

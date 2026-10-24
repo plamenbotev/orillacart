@@ -594,6 +594,9 @@ function CarrierCard( {
 								rate={ rate }
 								groups={ groups }
 								classes={ classes }
+								others={ draft.rates.filter(
+									( _, i ) => i !== index
+								) }
 								onChange={ ( changed ) =>
 									setRate( index, changed )
 								}
@@ -645,6 +648,8 @@ interface RateFieldsProps {
 	rate: ShippingRateInput;
 	groups: TaxGroup[];
 	classes: ShippingClass[];
+	/** The carrier's other rates: a class one of them is for goes by this rate too while it carries every item. */
+	others: ShippingRateInput[];
 	onChange: ( rate: ShippingRateInput ) => void;
 	onRemove: () => void;
 }
@@ -653,9 +658,21 @@ function RateFields( {
 	rate,
 	groups,
 	classes,
+	others,
 	onChange,
 	onRemove,
 }: RateFieldsProps ) {
+	// The classes another rate is for, that this one carries too because it carries every item.
+	const shared =
+		rate.shipping_classes.length === 0
+			? classes
+					.filter( ( shippingClass ) =>
+						others.some( ( other ) =>
+							other.shipping_classes.includes( shippingClass.id )
+						)
+					)
+					.map( ( shippingClass ) => shippingClass.name )
+			: [];
 	const carries = ( id: number, carried: boolean ) =>
 		onChange( {
 			...rate,
@@ -805,6 +822,18 @@ function RateFields( {
 							'orillacart'
 						) }
 					</p>
+					{ shared.length > 0 && (
+						<Notice status="warning" isDismissible={ false }>
+							{ sprintf(
+								/* translators: %s: shipping class names, "Bulky, Fragile" */
+								__(
+									'%s also go by this rate, as it carries every item, though another rate is for them. To keep them to that rate, untick “Every item” and choose what this one carries.',
+									'orillacart'
+								),
+								shared.join( ', ' )
+							) }
+						</Notice>
+					) }
 				</fieldset>
 			) }
 			<table className="orillacart-limits">

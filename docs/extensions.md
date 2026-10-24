@@ -17,9 +17,11 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
 });
 ```
 
-- Ids are lowercase letters, digits and underscores, up to 40 characters, and unique across the shop. The
-  shop's own gateways (`cash_on_delivery`, `bank_transfer`, `cheque`, `paypal`) come first; a second
-  registration with a taken id is logged and left out.
+- Ids are lowercase letters, digits and underscores, up to 40 characters, and unique among their kind: two
+  payment gateways cannot share one, a gateway and a shipping method can. The shop's own gateways
+  (`cash_on_delivery`, `bank_transfer`, `cheque`, `paypal`) come first; a second registration of a kind with a
+  taken id is logged and left out. Prefixing ids with the add-on's name (`acme_express`) keeps them apart from
+  other add-ons'.
 - An add-on that throws while registering is logged with where its callback is, and keeps what it registered
   before it threw; the add-ons after it still register.
 - `$registry->shippingMethod(...)` registers a shipping method the same way; method ids are unique among
@@ -183,8 +185,9 @@ orders shipped by the carrier's services:
 - `cancelShipment($number, $settings)` cancels one the courier has not picked up; throw when it cannot.
 
 A method that implements `TracksShipments` is asked every hour where the shipments on their way are:
-`track($number, $settings)` returns a `Tracking` (on the way, delivered or returned, with the courier's
-words). The order ships once everything is on its way, and completes once every shipment was delivered. The
+`track($number, $settings)` returns a `Tracking` (booked, on the way, delivered or returned, with the courier's
+words). Booked (version 13) is for a shipment the courier has not collected yet: the order waits and the shop can
+still cancel it; a method that cannot tell says on the way only once the courier has it. The order ships once everything is on its way, and completes once every shipment was delivered. The
 receipt and the emails show every shipment with its tracking link, what it carries and its parcels' numbers.
 Shipments the shop sent itself (with a courier it has no add-on for, entering each parcel's tracking number)
 are never asked about: the shop says when they arrived.

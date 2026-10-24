@@ -11,6 +11,17 @@ interface AbandonedCartRepository
     public function save(AbandonedCart $abandoned): void;
 
     /**
+     * Marks the cart reminded, unless it was already: in one statement, so of two workers sending the same
+     * reminder only one goes on.
+     *
+     * @return bool whether this call marked it
+     */
+    public function claimReminder(int $id, \DateTimeImmutable $at): bool;
+
+    /** Unmarks a reminder that did not go out, so it is tried again. */
+    public function releaseReminder(int $id): void;
+
+    /**
      * Carts at checkout, not changed and not at checkout since the moment, that hold something and are not
      * counted abandoned yet; the oldest first.
      *

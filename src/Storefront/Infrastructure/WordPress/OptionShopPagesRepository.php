@@ -38,12 +38,16 @@ final readonly class OptionShopPagesRepository implements ShopPagesRepository, L
         return get_post_type($id) === 'page' && get_post_status($id) === 'publish';
     }
 
+    /**
+     * Makes the shop's pages the first time, and again one that is gone (deleted, or in the trash) when the plugin
+     * is activated again. A page the shop unpublished, made private or a draft stays as it is, and so does "none".
+     */
     public function activate(): void
     {
         $first = get_option(self::OPTION) === false;
         $pages = $this->load();
         $page = fn(?int $id, string $title, string $block): ?int => match (true) {
-            $id !== null && $this->isPage($id), $id === null && !$first => $id,
+            $id !== null && get_post_type($id) === 'page' && get_post_status($id) !== 'trash', $id === null && !$first => $id,
             default => $this->make($title, $block),
         };
 
@@ -55,9 +59,12 @@ final readonly class OptionShopPagesRepository implements ShopPagesRepository, L
         ));
     }
 
+    /** An update leaves the pages as the shop has them; only a site that never had them gets them. */
     public function upgrade(?string $fromVersion): void
     {
-        $this->activate();
+        if (get_option(self::OPTION) === false) {
+            $this->activate();
+        }
     }
 
     public function deactivate(): void {}

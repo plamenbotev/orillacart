@@ -66,19 +66,25 @@ final readonly class CartReminders
             return;
         }
         $reminder = $this->abandoned->reminder($abandonedId);
-        if ($reminder === null) {
+        // Taken before it is written: a second worker, or a retry after it went, sends nothing.
+        if ($reminder === null || !$this->abandoned->claimReminder($abandonedId)) {
             return;
         }
-        $coupon = $settings->cartReminderCoupon === null ? null : $this->coupons->offerable($settings->cartReminderCoupon, $this->clock->now());
-        $email = $this->writer->write(EmailKind::CartReminder->template(), EmailKind::CartReminder->value, $reminder->email, $reminder->locale, [
-            'cart' => self::cart($reminder->cart, $this->shop->current()->currency),
-            'cart_url' => $this->links->reminderUrl($reminder->recoverToken, $coupon?->code),
-            'coupon' => $coupon === null ? null : ['code' => $coupon->code, 'description' => $coupon->description],
-        ]);
-        if (!$this->mailer->send($email)) {
-            throw new EmailNotSent('The cart reminder was not sent: the mail system refused it.');
+        try {
+            $coupon = $settings->cartReminderCoupon === null ? null : $this->coupons->offerable($settings->cartReminderCoupon, $this->clock->now());
+            $email = $this->writer->write(EmailKind::CartReminder->template(), EmailKind::CartReminder->value, $reminder->email, $reminder->locale, [
+                'cart' => self::cart($reminder->cart, $this->shop->current()->currency),
+                'cart_url' => $this->links->reminderUrl($reminder->recoverToken, $coupon?->code),
+                'coupon' => $coupon === null ? null : ['code' => $coupon->code, 'description' => $coupon->description],
+            ]);
+            if (!$this->mailer->send($email)) {
+                throw new EmailNotSent('The cart reminder was not sent: the mail system refused it.');
+            }
+        } catch (\Throwable $e) {
+            $this->abandoned->releaseReminder($abandonedId);
+
+            throw $e;
         }
-        $this->abandoned->reminded($abandonedId);
     }
 
     /**

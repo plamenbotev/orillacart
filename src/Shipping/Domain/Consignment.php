@@ -212,6 +212,10 @@ class Consignment
     public function track(ConsignmentStatus $status, string $description, \DateTimeImmutable $at): bool
     {
         $description = mb_substr(trim($description), 0, 255);
+        // A courier still saying "booked" of one it collected does not take it back.
+        if ($status === ConsignmentStatus::Booked && $this->status !== ConsignmentStatus::Booked) {
+            $status = $this->status;
+        }
         if (!$this->status->isOpen() || ($status === $this->status && $description === $this->tracking)) {
             return false;
         }

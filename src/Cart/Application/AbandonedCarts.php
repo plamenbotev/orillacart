@@ -84,13 +84,18 @@ final readonly class AbandonedCarts
         return new CartReminder($abandonedId, $email, $cart->locale(), $cart->customerId(), $view, $token);
     }
 
-    public function reminded(int $abandonedId): void
+    /**
+     * Takes the reminder to send it: false when another worker has, or it went already.
+     */
+    public function claimReminder(int $abandonedId): bool
     {
-        $left = $this->abandoned->find($abandonedId);
-        if ($left !== null) {
-            $left->reminded($this->clock->now());
-            $this->abandoned->save($left);
-        }
+        return $this->abandoned->claimReminder($abandonedId, $this->clock->now());
+    }
+
+    /** A reminder that did not go out is sent again later. */
+    public function releaseReminder(int $abandonedId): void
+    {
+        $this->abandoned->releaseReminder($abandonedId);
     }
 
     /**

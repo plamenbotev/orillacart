@@ -328,6 +328,7 @@ final readonly class Consignments
         }
         $tracking = $method->track($consignment->number(), $settings);
         $status = match ($tracking->status) {
+            Tracking::BOOKED => ConsignmentStatus::Booked,
             Tracking::DELIVERED => ConsignmentStatus::Delivered,
             Tracking::RETURNED => ConsignmentStatus::Returned,
             default => ConsignmentStatus::OnTheWay,

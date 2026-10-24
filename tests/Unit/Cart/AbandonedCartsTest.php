@@ -61,6 +61,22 @@ final class AbandonedCartsTest extends TestCase
         self::assertNull($this->shop->carts->recover($link[1]), 'the cart was ordered: the link is done');
     }
 
+    public function testAReminderGoesOnceThoughTwoWorkersSendItAndOneTheMailSystemRefusedIsTriedAgain(): void
+    {
+        $this->atCheckout('ada@example.com', true);
+        $this->shop->clock->modify('+5 hours');
+        $this->shop->mail->accepts = false;
+        $this->shop->cartReminders->run();
+        [$from, $until] = $this->today();
+        $id = $this->shop->abandonedCarts->report($from, $until, 'EUR', 10)['latest'][0]->id;
+        self::assertSame([], $this->shop->mail->summary());
+
+        $this->shop->mail->accepts = true;
+        $this->shop->cartReminders->send($id);
+        $this->shop->cartReminders->send($id);
+        self::assertSame(['ada@example.com: [Lamp Shop] Your cart is waiting for you'], $this->shop->mail->summary(), 'refused, then sent once');
+    }
+
     public function testAVisitorWhoDidNotAskIsCountedButNotWrittenTo(): void
     {
         $this->atCheckout('grace@example.com', false);

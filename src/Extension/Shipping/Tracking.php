@@ -9,6 +9,8 @@ namespace OrillaCart\Extension\Shipping;
  */
 final readonly class Tracking
 {
+    /** Booked with the courier, not collected yet: the order waits, and the shop may still cancel it (version 13). */
+    public const string BOOKED = 'booked';
     public const string ON_THE_WAY = 'on_the_way';
     public const string DELIVERED = 'delivered';
     /** The courier is bringing it back to the shop. */
@@ -21,7 +23,7 @@ final readonly class Tracking
         public string $status,
         public string $description = '',
     ) {
-        if (!\in_array($status, [self::ON_THE_WAY, self::DELIVERED, self::RETURNED], true)) {
+        if (!\in_array($status, [self::BOOKED, self::ON_THE_WAY, self::DELIVERED, self::RETURNED], true)) {
             throw new \InvalidArgumentException(\sprintf('"%s" is not a tracking status.', $status));
         }
     }

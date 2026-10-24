@@ -59,6 +59,20 @@ final class CustomerAccountsTest extends TestCase
         self::assertSame([['confirm', 'ada@example.com'], ['welcome', 'ada@example.com']], array_map(static fn(array $mail): array => [$mail['kind'], $mail['to']], $this->shop->accountMail->sent));
     }
 
+    public function testTheAccountTakesTheOrdersPlacedWithTheEmailAsAGuestBefore(): void
+    {
+        $earlier = $this->place(new CartOwner(null), 'Ada@Example.com');
+        $other = $this->place(new CartOwner(null), 'grace@example.com');
+        $order = $this->place(new CartOwner(null), createAccount: true);
+
+        $customer = $this->shop->customers->confirmAccount(new ConfirmAccount($this->shop->accountMail->tokenFor('ada@example.com'), 'correct horse'));
+
+        self::assertSame(2, $customer->orders, 'the link came to the email: its guest orders are its owner\'s');
+        self::assertSame($earlier->number, $this->shop->orders->customerOrder($customer->id, $earlier->number)->number);
+        self::assertSame($order->number, $this->shop->orders->customerOrder($customer->id, $order->number)->number);
+        self::assertNull($this->shop->orders->order($other->number)->customerId);
+    }
+
     public function testSigningUpSaysNothingOfWhetherTheEmailHasAnAccount(): void
     {
         $this->shop->accounts->add('ada@example.com');

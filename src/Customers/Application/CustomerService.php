@@ -280,7 +280,9 @@ final readonly class CustomerService
         }
         $id = $this->accounts->register($account->email(), $command->password, $account->firstName(), $account->lastName());
         $addressed = false;
-        foreach ($account->orderIds() as $orderId) {
+        // The link came to the email, so its owner made the account: the orders placed with it as a guest join
+        // it, the ones placed while asking first, as the confirmation email says.
+        foreach (array_values(array_unique([...$account->orderIds(), ...$this->orders->guestOrdersOf($account->email())])) as $orderId) {
             try {
                 $order = $this->orders->order($orderId);
                 $this->orders->giveTo($orderId, $id);

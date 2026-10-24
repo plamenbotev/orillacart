@@ -105,6 +105,13 @@ final class StorefrontTest extends RestTestCase
         self::assertNotSame($deleted, $account);
         self::assertSame('publish', get_post_status($account));
         $this->posts[] = $account;
+
+        // A page the shop unpublished stays so, after an update and an activation alike.
+        wp_update_post(['ID' => $account, 'post_status' => 'draft']);
+        new OptionShopPagesRepository()->upgrade('1.0.0');
+        $this->activate();
+        self::assertSame($account, $this->pages()['account']);
+        self::assertSame('draft', get_post_status($account));
     }
 
     public function testOnlyShopManagersChooseTheShopPages(): void

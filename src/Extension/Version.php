@@ -23,7 +23,8 @@ final class Version
      * ProductFilter, FindsProducts), and Orders::mark(). 9: tax services (TaxProvider), changes to
      * order prices at checkout (OrderAdjuster) and on orders on hold (OrderPrices). 10: sending e-invoices on
      * (EInvoiceSender). 11: gateways naming the account or mode a payment is made in (NamesAccounts). 12: mailing
-     * lists that delete a contact (ForgetsSubscribers), and the orillacart_newsletter_unsubscribed action.
+     * lists that delete a contact (ForgetsSubscribers), and the orillacart_newsletter_unsubscribed action. 13: a
+     * shipment the courier has booked but not collected yet (Tracking::BOOKED).
      */
-    public const int CURRENT = 12;
+    public const int CURRENT = 13;
 }

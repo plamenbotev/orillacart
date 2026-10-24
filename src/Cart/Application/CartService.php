@@ -241,9 +241,10 @@ final readonly class CartService
     /**
      * Empties the cart an order was placed from. A cart left at checkout before is counted recovered by the order.
      *
-     * @param string|null $orderTotal what the order costs, for the report
+     * @param string|null $orderTotal    what the order costs, for the report
+     * @param string|null $orderCurrency the order's currency; the report counts in the shop's
      */
-    public function clear(int $cartId, ?int $orderId = null, ?string $orderTotal = null): void
+    public function clear(int $cartId, ?int $orderId = null, ?string $orderTotal = null, ?string $orderCurrency = null): void
     {
         $cart = $this->carts->find($cartId);
         if ($cart === null) {
@@ -252,7 +253,9 @@ final readonly class CartService
         $abandonedId = $cart->abandonedId();
         $left = $abandonedId === null || $orderId === null ? null : $this->abandoned->find($abandonedId);
         if ($left !== null && $orderId !== null && !$left->isRecovered()) {
-            $left->recovered($orderId, $orderTotal ?? '0', $this->clock->now());
+            // The abandoned cart was kept in the shop's currency: an order in another is counted back in it.
+            $total = Money::of($orderTotal ?? '0');
+            $left->recovered($orderId, ($orderCurrency === null ? $total : $this->currencies->back($total, $orderCurrency))->toFixed(), $this->clock->now());
             $this->abandoned->save($left);
         }
         $cart->clear($this->clock->now());

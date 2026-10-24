@@ -95,6 +95,43 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
             ->getResult();
     }
 
+    public function claimReminder(int $id, \DateTimeImmutable $at): bool
+    {
+        $claimed = self::int($this->entityManager->createQueryBuilder()
+            ->update(AbandonedCart::class, 'a')
+            ->set('a.remindedAt', ':at')
+            ->where('a.id = :id')
+            ->andWhere('a.remindedAt IS NULL')
+            ->setParameter('at', $at)
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->execute()) === 1;
+        $this->refresh($id);
+
+        return $claimed;
+    }
+
+    public function releaseReminder(int $id): void
+    {
+        $this->entityManager->createQueryBuilder()
+            ->update(AbandonedCart::class, 'a')
+            ->set('a.remindedAt', 'NULL')
+            ->where('a.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->execute();
+        $this->refresh($id);
+    }
+
+    /** The statement went past the entity a request may hold: it reads the row again. */
+    private function refresh(int $id): void
+    {
+        $loaded = $this->entityManager->getUnitOfWork()->tryGetById($id, AbandonedCart::class);
+        if ($loaded instanceof AbandonedCart) {
+            $this->entityManager->refresh($loaded);
+        }
+    }
+
     public function ofEmail(string $email): array
     {
         return $this->entityManager->getRepository(AbandonedCart::class)->findBy(['email' => $email], ['abandonedAt' => 'ASC']);

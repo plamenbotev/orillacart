@@ -700,6 +700,27 @@ final readonly class OrderService
     }
 
     /**
+     * The orders placed with the email by a guest: those a new account of the email takes.
+     *
+     * @return list<int>
+     */
+    public function guestOrdersOf(string $email): array
+    {
+        $ids = [];
+        for ($offset = 0; ; $offset += 100) {
+            $found = $this->orders->ofPerson($email, null, $offset, 100);
+            foreach ($found as $order) {
+                if ($order->customerId() === null) {
+                    $ids[] = $order->id();
+                }
+            }
+            if (\count($found) < 100) {
+                return $ids;
+            }
+        }
+    }
+
+    /**
      * A customer who made an account after ordering gets the order in their account.
      *
      * @throws OrderNotFound

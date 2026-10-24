@@ -27,7 +27,13 @@ final class PostcodePatternTest extends TestCase
         yield 'a range may be written with a dash' => ['1000–1999', '1500', true];
         yield 'a range reads the digits a postcode starts with' => ['94000-94999', '94103-1234', true];
         yield 'a range takes no letters' => ['1000-1999', 'A1500', false];
-        yield 'the old plugin cast postcodes to numbers; letters are not zero' => ['0-999', 'SW1A', false];
+        yield 'the old plugin cast postcodes to numbers; letters are not zero' => ['000-999', 'SW1A', false];
+        yield 'a Polish postcode with its dash' => ['10-200', '10200', true];
+        yield 'is not a range of 10 to 200' => ['10-200', '150', false];
+        yield 'a Polish postcode in a range' => ['10000-10999', '10-200', true];
+        yield 'past the range by its second group' => ['10000-10199', '10-200', false];
+        yield 'a Japanese postcode' => ['100-0001', '1000001', true];
+        yield 'too few digits for the range' => ['10000-19999', '1500', false];
     }
 
     #[DataProvider('postcodes')]

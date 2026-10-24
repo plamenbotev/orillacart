@@ -4,8 +4,8 @@
  # cart: the cart (lines, items, subtotal, orderable); product_urls: {product id: url}; links: the shop's pages;
  # coupons and discount: the codes entered and what they take off, as checkout prices them; estimate: the
  # checkout summary at the customer's saved address or the shop's, and estimated_for: that country's name;
- # shown: that summary too when the cart shows prices otherwise than they are entered (with tax or without), whose
- # lines and subtotal stand in for the cart's.
+ # shown: that summary too whenever checkout priced the cart, whose lines and subtotal stand in for the cart's,
+ # so they add up to the estimate (with tax or without as the cart shows prices, at the customer's rate).
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-cart" data-orillacart-region="cart">

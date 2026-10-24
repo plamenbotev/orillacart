@@ -31,6 +31,25 @@ final class InMemoryAbandonedCartRepository implements AbandonedCartRepository
         $this->abandoned[$abandoned->id()] = $abandoned;
     }
 
+    public function claimReminder(int $id, \DateTimeImmutable $at): bool
+    {
+        $left = $this->abandoned[$id] ?? null;
+        if ($left === null || $left->remindedAt() !== null) {
+            return false;
+        }
+        $left->reminded($at);
+
+        return true;
+    }
+
+    public function releaseReminder(int $id): void
+    {
+        $left = $this->abandoned[$id] ?? null;
+        if ($left !== null) {
+            new \ReflectionProperty(AbandonedCart::class, 'remindedAt')->setValue($left, null);
+        }
+    }
+
     public function leftSince(\DateTimeImmutable $before, int $limit): array
     {
         $placing = new \ReflectionProperty(Cart::class, 'placingSince');
