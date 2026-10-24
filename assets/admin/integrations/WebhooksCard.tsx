@@ -24,6 +24,8 @@ import {
 	type WebhookDelivery,
 	type WebhookInput,
 } from './api';
+import { useLeaveGuard } from '../shared/useLeaveGuard';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 const EMPTY: WebhookInput = { name: '', url: '', topics: [], active: true };
 
@@ -92,6 +94,23 @@ export function WebhooksCard() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [] );
 
+	// What the form opened with: the webhook as saved, or an empty one.
+	const savedInput = ( id: number | null ): WebhookInput => {
+		const webhook = webhooks?.find( ( candidate ) => candidate.id === id );
+		return webhook === undefined
+			? EMPTY
+			: {
+					name: webhook.name,
+					url: webhook.url,
+					topics: webhook.topics,
+					active: webhook.active,
+				};
+	};
+	useUnsavedChanges(
+		editing !== null && differs( editing.webhook, savedInput( editing.id ) )
+	);
+	const [ leaving, guard ] = useLeaveGuard();
+
 	const field = < K extends keyof WebhookInput >(
 		key: K,
 		value: WebhookInput[ K ]
@@ -107,6 +126,7 @@ export function WebhooksCard() {
 	return (
 		<Card className="orillacart-card">
 			{ confirmation }
+			{ leaving }
 			<CardHeader>
 				<h2>{ __( 'Webhooks', 'orillacart' ) }</h2>
 			</CardHeader>
@@ -184,15 +204,14 @@ export function WebhooksCard() {
 										<Button
 											variant="link"
 											onClick={ () =>
-												setEditing( {
-													id: webhook.id,
-													webhook: {
-														name: webhook.name,
-														url: webhook.url,
-														topics: webhook.topics,
-														active: webhook.active,
-													},
-												} )
+												guard( () =>
+													setEditing( {
+														id: webhook.id,
+														webhook: savedInput(
+															webhook.id
+														),
+													} )
+												)
 											}
 										>
 											{ __( 'Edit', 'orillacart' ) }
@@ -394,7 +413,7 @@ export function WebhooksCard() {
 						</Button>{ ' ' }
 						<Button
 							variant="tertiary"
-							onClick={ () => setEditing( null ) }
+							onClick={ () => guard( () => setEditing( null ) ) }
 						>
 							{ __( 'Cancel', 'orillacart' ) }
 						</Button>

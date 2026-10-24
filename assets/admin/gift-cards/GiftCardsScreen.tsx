@@ -19,6 +19,7 @@ import { errorMessage } from '../shared/api';
 import { ProductTokens } from '../shared/CatalogTokens';
 import { MoneyControl } from '../shared/MoneyControl';
 import { useConfirm } from '../shared/useConfirm';
+import { useLeaveGuard } from '../shared/useLeaveGuard';
 import {
 	adjustGiftCard,
 	changeGiftCard,
@@ -45,18 +46,24 @@ type Message = { status: 'success' | 'error'; text: string } | null;
 export function GiftCardsScreen() {
 	const [ message, setMessage ] = useState< Message >( null );
 	const [ issued, setIssued ] = useState< IssuedGiftCard | null >( null );
-	const [ selected, setSelected ] = useState< number | null >( null );
+	const [ selected, setSelectedNow ] = useState< number | null >( null );
+	const [ leaving, guard ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go.
+	const setSelected = ( next: Parameters< typeof setSelectedNow >[ 0 ] ) =>
+		guard( () => setSelectedNow( next ) );
 	const [ version, setVersion ] = useState( 0 );
 	const fail = ( failure: unknown ) =>
 		setMessage( { status: 'error', text: errorMessage( failure ) } );
 	const shown = ( made: IssuedGiftCard ) => {
 		setIssued( made );
-		setSelected( made.card.id );
+		// Just issued: the form it came from is emptied, nothing is lost.
+		setSelectedNow( made.card.id );
 		setVersion( ( current ) => current + 1 );
 	};
 
 	return (
 		<>
+			{ leaving }
 			<h1>{ __( 'Gift cards', 'orillacart' ) }</h1>
 			{ message !== null && (
 				<Notice

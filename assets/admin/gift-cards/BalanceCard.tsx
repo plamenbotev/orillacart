@@ -5,6 +5,7 @@ import { __ } from '@wordpress/i18n';
 import { money } from '../orders/labels';
 import type { GiftCardDetail } from './api';
 import { shopDateTime } from '../shared/dates';
+import { useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 /**
  * A balance with every change of it, newest first, and a form to add to it or take off it with a reason: a gift
@@ -78,6 +79,7 @@ export function AdjustForm( {
 	const [ amount, setAmount ] = useState( '' );
 	const [ note, setNote ] = useState( '' );
 	const [ busy, setBusy ] = useState( false );
+	useUnsavedChanges( amount.trim() !== '' || note.trim() !== '' );
 	return (
 		<form
 			onSubmit={ ( event ) => {
