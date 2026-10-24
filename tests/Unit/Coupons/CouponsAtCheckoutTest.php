@@ -272,6 +272,31 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->shop->checkout->applyCoupon($this->cart([10, 1]), new CouponCode('SHADE'));
     }
 
+    public function testTheItemsBuyGetGivesAreLeftOutAsAnyCouponLeavesThemOut(): void
+    {
+        $this->shop->content->terms[20] = ['categories' => [7], 'brands' => []];
+        $this->shop->coupons->create(new SaveCoupon('SHADE', 'buy_get', '50', productIds: [10], excludedCategoryIds: [7], buyQuantity: 1, getQuantity: 1, getProductIds: [20]));
+
+        $this->expectExceptionMessage('Add the items this code gives off to your cart.');
+        $this->shop->checkout->applyCoupon($this->cart([10, 2], [20, 3]), new CouponCode('SHADE'));
+    }
+
+    public function testFreeShippingIsTheCheapestWayToShipUnlessTheCodeGivesEvery(): void
+    {
+        $express = $this->shop->carriers->create(new SaveCarrier('Express', rates: [new SaveShippingRate('Bulgaria', '15', regions: ['BG'])]))->rates[0]->id;
+        $this->coupon('SHIP', 'free_shipping', '0');
+        $owner = $this->cart([10, 1]);
+        $this->shop->checkout->applyCoupon($owner, new CouponCode('SHIP'));
+
+        self::assertSame('0', $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"))->shipping, 'the cheapest is free');
+        self::assertSame('15', $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$express}"))->shipping, 'express still costs what it costs');
+
+        $this->shop->coupons->create(new SaveCoupon('ALLSHIP', 'free_shipping', '0', freeShippingEveryRate: true));
+        $owner = $this->cart([10, 1]);
+        $this->shop->checkout->applyCoupon($owner, new CouponCode('ALLSHIP'));
+        self::assertSame('0', $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$express}"))->shipping, 'unless the code gives every way');
+    }
+
     public function testAFreeGiftIsAddedOnceTheOrderHoldsAndTheOrderKeepsIt(): void
     {
         $this->shop->coupons->create(new SaveCoupon('', 'free_gift', '0', 'A shade with orders over 50', minSubtotal: '50', combines: true, automatic: true, getQuantity: 1, giftProductId: 20));

@@ -34,6 +34,18 @@ final readonly class AppliedDiscounts
         return $sum;
     }
 
+    /** Whether the free shipping covers every way to ship, not only the cheapest. */
+    public function freeShippingEveryRate(): bool
+    {
+        foreach ($this->coupons as $coupon) {
+            if ($coupon->freeShippingEveryRate) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function freeShipping(): bool
     {
         foreach ($this->coupons as $coupon) {

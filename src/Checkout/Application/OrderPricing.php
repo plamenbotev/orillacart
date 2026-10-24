@@ -69,7 +69,8 @@ use Psr\Log\LoggerInterface;
  * Prices items as an order: catalog prices, taxes at the customer's address, shipping, fees and the bill; and turns
  * a priced order into order lines, taking their stock. Checkout and order editing price the same way.
  *
- * Coupons take money off the items before tax is charged, and free shipping makes every way to ship cost nothing.
+ * Coupons take money off the items before tax is charged, and free shipping makes the cheapest way to ship cost nothing
+ * (every way, when the coupon says so).
  * A free gift that holds is added to the items, when it is for sale, and the order priced again with it.
  *
  * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, gift: bool, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
@@ -272,7 +273,17 @@ final readonly class OrderPricing
             $freeFrom = $free ? null : $inCurrency($this->shipping->freeFrom($query));
             $shipsFrom = $offered === [] ? $inCurrency($this->shipping->shipsFrom($query)) : null;
             $asItems = $this->tax->shippingTaxedAsItems() && !$import->applies() ? self::itemTaxShares($taxesOf) : null;
+            // Free shipping makes the cheapest way to ship free, unless the coupon gives every one: the customer
+            // would otherwise choose express, or abroad, at the shop's cost.
+            $cheapest = null;
             foreach ($offered as $option) {
+                if ($cheapest === null || Money::of($option->price)->compare(Money::of($cheapest->price)) < 0) {
+                    $cheapest = $option;
+                }
+            }
+            $anyFree = $free;
+            foreach ($offered as $option) {
+                $free = $anyFree && ($discounts->freeShippingEveryRate() || $option->id === $cheapest?->id);
                 $taxes = $option->taxable && !$free && !$reverseCharge && (!$import->applies() || $import->charges) ? $this->taxes($option->taxGroupId, $shipping, $billing, $exempt, true, $import->applies()) : [];
                 $price = $free ? Money::zero() : $this->currencies->amount(Money::of($option->price), $currency);
                 $shares = null;
@@ -300,6 +311,7 @@ final readonly class OrderPricing
                     $chosen = $chosen !== null && $chosen['view']->id === $shippingOption ? $chosen : ['view' => $view, 'price' => $price, 'taxes' => $taxes, 'shares' => $shares, 'group' => $option->taxGroupId, 'free' => $free || !$option->taxable];
                 }
             }
+            $free = $anyFree;
             if ($chosen !== null) {
                 $bill->ship($chosen['price'], $chosen['taxes'], "{$chosen['view']->carrier} – {$chosen['view']->name}", $chosen['shares']);
                 $asked[] = ['kind' => TaxRequestLine::SHIPPING, 'code' => $chosen['free'] ? 'none' : $chosen['group'], 'quantity' => 1, 'product' => null, 'sku' => null, 'tax_code' => null];

@@ -21,5 +21,7 @@ final readonly class AppliedCoupon
         public array $lines,
         /** An automatic discount: customers see the description, not the code. */
         public bool $automatic = false,
+        /** Its free shipping covers every way to ship; otherwise the cheapest. */
+        public bool $freeShippingEveryRate = false,
     ) {}
 }

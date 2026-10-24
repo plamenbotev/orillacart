@@ -162,6 +162,15 @@ final class OrderFeesTest extends TestCase
         $this->shop->paymentMethods->update('cheque', new SavePaymentMethod('Cheque', fee: '1', feePercent: '101'));
     }
 
+    public function testPayingLaterOffersTheWaysToPayThatCostTheSameFee(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart(10), $this->order('cash_on_delivery'));
+
+        $methods = array_map(static fn($method): string => $method->gateway, $this->shop->payNow->methods($this->shop->orders->order($placed->number)));
+
+        self::assertSame(['cash_on_delivery'], $methods, 'the order keeps the fee it was priced with: bank transfer, without one, would leave it charged');
+    }
+
     private function cart(int $product, int $quantity = 1): CartOwner
     {
         return new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart($product, quantity: $quantity))->newToken);

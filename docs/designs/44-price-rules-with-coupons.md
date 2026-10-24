@@ -31,3 +31,13 @@ every coupon; a coupon made to override it is the shop's deliberate exception.
 
 A rule keeps coupons out only when it set the price: the winning rule, or a combining one that lowered it. A rule
 that holds but did not price the item (a higher price lost, or its quantity not reached) changes nothing.
+
+## Since the second audit (150)
+
+- Buy X get Y gives off only items no coupon leaves out: excluded products and categories, sale items when it
+  leaves them, and prices whose price rule keeps coupons off (unless it overrides them).
+- Free shipping makes the cheapest way to ship free; a coupon that says "Free on every way to ship" makes express
+  and abroad free too.
+- An automatic discount's combine box is about other automatic discounts: codes always apply on top of it, and a
+  code that does not combine is refused while it applies (decided 2026-10-18); the admin says so.
+- Paying later offers the ways to pay whose fee is the order's: the order keeps the fee it was priced with.

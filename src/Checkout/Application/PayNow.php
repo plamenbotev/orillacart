@@ -36,13 +36,23 @@ final readonly class PayNow
     ) {}
 
     /**
-     * The ways the order can be paid now; none when it is paid, closed or being fulfilled.
+     * The ways the order can be paid now; none when it is paid, closed or being fulfilled. Only those that cost what
+     * its way to pay did: the order keeps the fee it was priced with, which another method's would not be.
      *
      * @return list<PaymentOptionView>
      */
     public function methods(OrderView $order): array
     {
-        return $order->payable && !Money::of($order->total)->isZero() ? $this->paymentOptions->available($order->billing->country, $order->currency) : [];
+        if (!$order->payable || Money::of($order->total)->isZero()) {
+            return [];
+        }
+        $cost = fn(?string $gateway): ?array => ($fee = $gateway === null ? null : $this->paymentOptions->fee($gateway)) === null ? null : [$fee->fixed, $fee->percent];
+        $fee = $cost($order->paymentGateway);
+
+        return array_values(array_filter(
+            $this->paymentOptions->available($order->billing->country, $order->currency),
+            static fn(PaymentOptionView $method): bool => $method->gateway === $order->paymentGateway || $cost($method->gateway) === $fee,
+        ));
     }
 
     /**
@@ -58,7 +68,7 @@ final readonly class PayNow
         if (!$order->payable) {
             throw new CheckoutRuleViolation('This order cannot be paid now.', 'orillacart_order_not_payable');
         }
-        if (!$this->paymentOptions->isAvailable($command->payment, $order->billing->country, $order->currency)) {
+        if (!\in_array($command->payment, array_map(static fn(PaymentOptionView $method): string => $method->gateway, $this->methods($order)), true)) {
             throw new CheckoutRuleViolation('Choose how to pay.', 'orillacart_payment_required');
         }
         $failed = $order->status === 'failed';

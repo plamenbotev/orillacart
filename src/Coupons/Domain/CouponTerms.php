@@ -57,5 +57,7 @@ final readonly class CouponTerms
         public ?int $giftProductId = null,
         /** It comes off prices whose price rule keeps codes and automatic discounts out (a staff or apology code). */
         public bool $overridesPriceRules = false,
+        /** Free shipping on every way to ship, express and abroad too; otherwise on the cheapest one offered. */
+        public bool $freeShippingEveryRate = false,
     ) {}
 }

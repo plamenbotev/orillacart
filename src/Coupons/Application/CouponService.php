@@ -131,6 +131,7 @@ final readonly class CouponService
             $ids($command->getCategoryIds),
             $command->giftProductId,
             $command->overridesPriceRules,
+            $command->freeShippingEveryRate,
         );
     }
 }

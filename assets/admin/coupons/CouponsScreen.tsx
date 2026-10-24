@@ -630,6 +630,22 @@ export function CouponForm( {
 							set( 'exclude_sale_items', value )
 						}
 					/>
+					{ fields.kind === 'free_shipping' && (
+						<CheckboxControl
+							label={ __(
+								'Free on every way to ship',
+								'orillacart'
+							) }
+							help={ __(
+								'Express and abroad too. Otherwise the cheapest way to ship offered is free, and the others cost what they cost.',
+								'orillacart'
+							) }
+							checked={ fields.free_shipping_every_rate }
+							onChange={ ( value ) =>
+								set( 'free_shipping_every_rate', value )
+							}
+						/>
+					) }
 					<CheckboxControl
 						label={ __(
 							'Also on prices whose price rule keeps discounts out',
@@ -792,13 +808,21 @@ export function CouponForm( {
 						label={
 							automatic
 								? __(
-										'Goes with coupon codes and other discounts that allow it',
+										'Goes with other automatic discounts that allow it',
 										'orillacart'
 									)
 								: __(
 										'Can be used with other codes that allow it',
 										'orillacart'
 									)
+						}
+						help={
+							automatic
+								? __(
+										'Codes customers enter always apply on top of it, but a code that does not combine is refused while it applies.',
+										'orillacart'
+									)
+								: undefined
 						}
 						checked={ fields.combines }
 						onChange={ ( value ) => set( 'combines', value ) }

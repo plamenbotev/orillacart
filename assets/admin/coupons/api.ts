@@ -32,6 +32,8 @@ export interface CouponFields {
 	exclude_sale_items: boolean;
 	/** It comes off prices whose price rule keeps codes and automatic discounts out. */
 	overrides_price_rules: boolean;
+	/** Free shipping on every way to ship; otherwise on the cheapest one offered. */
+	free_shipping_every_rate: boolean;
 	combines: boolean;
 	usage_limit: number | null;
 	per_customer_limit: number | null;
@@ -81,6 +83,7 @@ export const NEW_COUPON: CouponFields = {
 	excluded_category_ids: [],
 	exclude_sale_items: false,
 	overrides_price_rules: false,
+	free_shipping_every_rate: false,
 	combines: false,
 	usage_limit: null,
 	per_customer_limit: null,

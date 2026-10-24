@@ -132,7 +132,7 @@ final readonly class Discounts
             if ($missing !== null) {
                 $gifts[] = $missing;
             }
-            $applied[] = new AppliedCoupon($coupon->code(), $coupon->description(), $sum->toFixed(), $coupon->freeShipping(), $lines, $silent);
+            $applied[] = new AppliedCoupon($coupon->code(), $coupon->description(), $sum->toFixed(), $coupon->freeShipping(), $lines, $silent, $coupon->freeShippingEveryRate());
             if ($silent) {
                 $automaticApplied[] = $coupon->description() === '' ? $coupon->code() : $coupon->description();
                 $automaticCombine = $automaticCombine && $coupon->combines();

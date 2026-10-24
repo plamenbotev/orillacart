@@ -84,5 +84,7 @@ final readonly class SaveCoupon
         public ?int $giftProductId = null,
         /** It comes off prices whose price rule keeps codes and automatic discounts out. */
         public bool $overridesPriceRules = false,
+        /** Free shipping on every way to ship, express and abroad too; otherwise on the cheapest offered. */
+        public bool $freeShippingEveryRate = false,
     ) {}
 }

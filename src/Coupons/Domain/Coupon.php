@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Coupons\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
+use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
 
 /**
@@ -93,6 +94,10 @@ class Coupon
     /** It comes off prices whose price rule keeps coupons out. */
     #[ORM\Column(options: ['default' => false])]
     private bool $overridesPriceRules = false;
+
+    /** Free shipping on every way to ship; otherwise on the cheapest one offered. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $freeShippingEveryRate = false;
 
     #[ORM\Column]
     private bool $combines;
@@ -203,6 +208,7 @@ class Coupon
         $this->excludedCategoryIds = self::ids($terms->excludedCategoryIds);
         $this->excludeSaleItems = $terms->excludeSaleItems;
         $this->overridesPriceRules = $terms->overridesPriceRules;
+        $this->freeShippingEveryRate = $terms->freeShippingEveryRate;
         $this->combines = $terms->combines;
         $this->usageLimit = $terms->usageLimit;
         $this->perCustomerLimit = $terms->perCustomerLimit;
@@ -276,6 +282,7 @@ class Coupon
             $this->getCategoryIds,
             $this->giftProductId,
             $this->overridesPriceRules,
+            $this->freeShippingEveryRate,
         );
     }
 
@@ -320,8 +327,8 @@ class Coupon
             $this->perCustomerLimit !== null && $customerUses >= $this->perCustomerLimit => 'You have already used this code.',
             $this->firstOrderOnly && !$basket->firstOrder => 'This code is for a first order only.',
             $this->countries !== [] && $basket->country !== null && !\in_array($basket->country, $this->countries, true) => 'This code is not valid for your country.',
-            $this->minSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->minSubtotal))) < 0 => \sprintf('This code needs an order of at least %s %s.', $basket->inCurrency(Money::of($this->minSubtotal)), $basket->currency),
-            $this->maxSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->maxSubtotal))) > 0 => \sprintf('This code is for orders of up to %s %s.', $basket->inCurrency(Money::of($this->maxSubtotal)), $basket->currency),
+            $this->minSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->minSubtotal))) < 0 => \sprintf('This code needs an order of at least %s %s.', $basket->inCurrency(Money::of($this->minSubtotal))->rounded(new Currency($basket->currency)->decimals()), $basket->currency),
+            $this->maxSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->maxSubtotal))) > 0 => \sprintf('This code is for orders of up to %s %s.', $basket->inCurrency(Money::of($this->maxSubtotal))->rounded(new Currency($basket->currency)->decimals()), $basket->currency),
             $matching === [] => 'This code does not apply to the items in your cart.',
             $units < max(1, $this->minQuantity, $this->buyQuantity) => \sprintf('This code needs at least %d of the items it applies to.', max($this->minQuantity, $this->buyQuantity)),
             $this->kind === CouponKind::BuyGet && !$this->givesOthers() && $units < $this->buyQuantity + $this->getQuantity => \sprintf('This code needs %d of the items it applies to: %d to buy and %d it gives.', $this->buyQuantity + $this->getQuantity, $this->buyQuantity, $this->getQuantity),
@@ -382,6 +389,12 @@ class Coupon
     public function freeShipping(): bool
     {
         return $this->kind === CouponKind::FreeShipping;
+    }
+
+    /** Its free shipping covers every way to ship, not only the cheapest. */
+    public function freeShippingEveryRate(): bool
+    {
+        return $this->freeShipping() && $this->freeShippingEveryRate;
     }
 
     /**
@@ -484,7 +497,8 @@ class Coupon
     }
 
     /**
-     * The lines buy-get gives off when it names its own: not excluded, and not free already.
+     * The lines buy-get gives off when it names its own: left out of no coupon (excluded products and categories,
+     * sale items when it leaves them, prices a price rule keeps coupons off), and not free already.
      *
      * @return array<int, BasketLine>
      */
@@ -493,7 +507,7 @@ class Coupon
         $giftable = [];
         foreach ($basket->lines as $index => $line) {
             $named = \in_array($line->productId, $this->getProductIds, true) || array_intersect($line->categoryIds, $this->getCategoryIds) !== [];
-            if ($named && !\in_array($line->productId, $this->excludedProductIds, true) && !$line->total->isZero()) {
+            if ($named && !$this->excludes($line) && !$line->total->isZero()) {
                 $giftable[$index] = $line;
             }
         }
@@ -525,6 +539,15 @@ class Coupon
         $this->uses = max(0, $this->uses - 1);
     }
 
+    /** Whether the coupon leaves the line out, whatever it applies to. */
+    private function excludes(BasketLine $line): bool
+    {
+        return \in_array($line->productId, $this->excludedProductIds, true)
+            || array_intersect($line->categoryIds, $this->excludedCategoryIds) !== []
+            || ($this->excludeSaleItems && $line->onSale)
+            || (!$line->coupons && !$this->overridesPriceRules);
+    }
+
     /**
      * The lines the coupon applies to, by their index.
      *
@@ -538,10 +561,7 @@ class Coupon
                 || \in_array($line->productId, $this->productIds, true)
                 || array_intersect($line->categoryIds, $this->categoryIds) !== []
                 || array_intersect($line->brandIds, $this->brandIds) !== [];
-            $excluded = \in_array($line->productId, $this->excludedProductIds, true)
-                || array_intersect($line->categoryIds, $this->excludedCategoryIds) !== []
-                || ($this->excludeSaleItems && $line->onSale)
-                || (!$line->coupons && !$this->overridesPriceRules);
+            $excluded = $this->excludes($line);
             $gift = $this->kind === CouponKind::FreeGift && $line->productId === $this->giftProductId;
             if ($targeted && !$excluded && !$gift && !$line->total->isZero()) {
                 $matching[$index] = $line;
