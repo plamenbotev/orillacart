@@ -172,7 +172,7 @@ final readonly class TaxRatesCsv
             Percentage::of($percent),
             mb_substr($name, 0, TaxRateDetails::MAX_NAME_LENGTH),
             (int) $priority,
-            array_map(static fn(string $pattern): PostcodePattern => PostcodePattern::of(str_replace('...', '-', $pattern)), self::list($postcodes, TaxRateDetails::MAX_POSTCODES)),
+            array_map(PostcodePattern::of(...), self::list($postcodes, TaxRateDetails::MAX_POSTCODES)),
             self::flag($compound, false),
             $code === '' ? null : $code,
             array_values(array_unique(array_map(TaxRateDetails::city(...), self::list($cities, TaxRateDetails::MAX_CITIES)))),

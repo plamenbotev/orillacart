@@ -34,6 +34,13 @@ final class PostcodePatternTest extends TestCase
         yield 'past the range by its second group' => ['10000-10199', '10-200', false];
         yield 'a Japanese postcode' => ['100-0001', '1000001', true];
         yield 'too few digits for the range' => ['10000-19999', '1500', false];
+        yield 'a Portuguese postcode by its first group' => ['1000-1999', '1000-001', true];
+        yield 'a range without its leading zeros' => ['501-999', '00501', true];
+        yield 'is not the postcodes that start with those digits' => ['501-999', '50100', false];
+        yield 'ends of different lengths' => ['1000-99999', '01500', true];
+        yield 'and past their end' => ['1000-99999', '0999', false];
+        yield 'three dots are always a range' => ['10...200', '150', true];
+        yield 'a US postcode with its extension' => ['94103-1234', '941031234', true];
     }
 
     #[DataProvider('postcodes')]
@@ -56,6 +63,7 @@ final class PostcodePatternTest extends TestCase
         yield 'a backwards range' => ['1999-1000'];
         yield 'a star inside' => ['S*1'];
         yield 'a range of letters' => ['A-B'];
+        yield 'a backwards range with dots' => ['200...10'];
     }
 
     #[DataProvider('invalid')]

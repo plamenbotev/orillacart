@@ -6,34 +6,44 @@ namespace OrillaCart\Shared\Domain;
 
 /**
  * Postcodes a rate applies to: one postcode ("1000", "10-200"), every postcode that starts the same ("SW1*"), or a
- * range of numeric postcodes, both ends included and as long as each other ("1000-1999"). Case, spaces and dashes
- * inside a postcode do not matter, so "sw1a 1aa" is "SW1A1AA" and the Polish "10-200" is in "10000-10999". A
- * range compares as many digits as its ends have, so "94103-1234" is in "94000-94999"; two groups of digits of
- * different lengths are one postcode ("10-200", "100-0001", "94103-1234"), not a range.
+ * range of numeric postcodes, both ends included ("1000-1999"). Case, spaces and dashes inside a postcode do not
+ * matter, so "sw1a 1aa" is "SW1A1AA".
+ *
+ * A range compares numbers, so a range saved by a spreadsheet without its leading zeros ("501-999" for
+ * "00501-00999") still means those postcodes, and its ends may differ in length ("1000-99999"). A postcode written
+ * with a dash is in a range by its digits together or by its first group: the Polish "10-200" is in "10000-10999",
+ * the US "94103-1234" in "94000-94999", the Portuguese "1000-001" in "1000-1999". Two groups of digits in the shape of
+ * a postcode with a dash (two and three digits for Poland, three and four for Japan, four and three for Portugal,
+ * five and three for Brazil, five and four for the US) are that one postcode, not a range; written with three dots
+ * ("10...200", as WooCommerce writes ranges) they are always a range.
  */
 final readonly class PostcodePattern implements \Stringable
 {
+    /** The lengths of the two groups of a postcode written with a dash. */
+    private const array WITH_DASH = [[2, 3], [3, 4], [4, 3], [5, 3], [5, 4]];
+
     private function __construct(
         private string $pattern,
         private ?string $prefix,
         private ?int $from,
         private ?int $to,
-        private int $digits = 0,
     ) {}
 
     public static function of(string $pattern): self
     {
         $normalized = self::normalize($pattern);
-        if (preg_match('/^(\d{1,10})-(\d{1,10})$/', $normalized, $range) === 1 && \strlen($range[1]) === \strlen($range[2])) {
-            if ((int) $range[1] > (int) $range[2]) {
+        if (preg_match('/^(\d{1,10})(-|\.\.\.)(\d{1,10})$/', $normalized, $groups) === 1) {
+            $dash = \in_array([\strlen($groups[1]), \strlen($groups[3])], self::WITH_DASH, true);
+            if ($dash && $groups[2] === '-') {
+                // A postcode written with its dash: "10-200".
+                return new self($normalized, null, null, null);
+            }
+            if ((int) $groups[1] > (int) $groups[3]) {
                 throw new RuleViolation('The postcode range "%s" ends before it starts.', 'orillacart_invalid_postcode', values: [$pattern]);
             }
 
-            return new self($normalized, null, (int) $range[1], (int) $range[2], \strlen($range[1]));
-        }
-        if (preg_match('/^\d{1,10}-\d{1,10}$/', $normalized) === 1) {
-            // A postcode written with its dash: "10-200".
-            return new self($normalized, null, null, null);
+            // Kept with a dash, unless that would read as one postcode.
+            return new self($dash ? $normalized : "{$groups[1]}-{$groups[3]}", null, (int) $groups[1], (int) $groups[3]);
         }
         if (preg_match('/^([A-Z0-9]{1,10})\*$/', $normalized, $prefix) === 1) {
             return new self($normalized, $prefix[1], null, null);
@@ -53,13 +63,21 @@ final readonly class PostcodePattern implements \Stringable
     {
         $postcode = self::normalize($postcode);
         if ($this->from !== null && $this->to !== null) {
-            // The digits it starts with, a dash between them or not: "10-200" is 10200, "94103-1234" 94103.
-            if (preg_match('/^\d[\d-]*/', $postcode, $start) !== 1) {
+            // The digits it starts with: "1234AB" is 1234, "10-200" 10200 or 10.
+            if (preg_match('/^(\d{1,10})(?:-(\d{1,10}))?/', $postcode, $start) !== 1) {
                 return false;
             }
-            $digits = substr(str_replace('-', '', $start[0]), 0, $this->digits);
+            $numbers = [(int) ($start[1] . ($start[2] ?? ''))];
+            if (isset($start[2])) {
+                $numbers[] = (int) $start[1];
+            }
+            foreach ($numbers as $number) {
+                if ($number >= $this->from && $number <= $this->to) {
+                    return true;
+                }
+            }
 
-            return \strlen($digits) === $this->digits && (int) $digits >= $this->from && (int) $digits <= $this->to;
+            return false;
         }
         $postcode = str_replace('-', '', $postcode);
 
