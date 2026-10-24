@@ -94,3 +94,12 @@ Status: built (2026-10-20), PLAN item 92.
 Checkout keeps the customer's choice of the way to ship and to pay, and of the delivery day and time, while a
 refresh of the summary is on its way, and puts them back after it; it tells the shop the contact one change at a
 time.
+
+## Delivered, paid (131)
+
+Completing an order records its payment when none came before, in full (`paidAmount`), so an order paid on
+delivery can be refunded; before, it was marked paid with nothing paid and "At most 0.00" could be refunded.
+A courier's delivery (or the shop's "arrived") completes the order only when it is paid, or paid on delivery
+(`PaymentOptions::collectsOnDelivery()`): a bank-transfer or cheque order shipped before its money came stays
+shipped, with a note, until the shop marks it paid or completes it by hand (which records the payment, as
+decided for 45).

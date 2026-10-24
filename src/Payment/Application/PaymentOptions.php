@@ -85,6 +85,18 @@ final readonly class PaymentOptions
         ));
     }
 
+    /** Whether the way to pay is paid when the order is handed over, as cash on delivery: delivering it is paying. */
+    public function collectsOnDelivery(?string $gateway): bool
+    {
+        foreach ($this->gateways->all() as $known) {
+            if ($known->id() === $gateway) {
+                return $known instanceof OfflineGateway && !$known->paidFirst();
+            }
+        }
+
+        return false;
+    }
+
     private function offers(PaymentMethod $method, ?string $country, string $currency): bool
     {
         if (!$method->isActive() || !$method->servesCountry($country)) {

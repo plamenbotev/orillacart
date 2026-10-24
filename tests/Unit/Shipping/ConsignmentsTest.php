@@ -147,7 +147,23 @@ final class ConsignmentsTest extends TestCase
 
         $this->courier->tracking[$booked->number] = new Tracking(Tracking::DELIVERED, 'Delivered to the customer');
         $this->shop->jobs->jobs->push(TrackConsignments::TYPE, [], (string) $booked->id);
-        self::assertSame('completed', $this->shop->orders->order($placed->number)->status);
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame(['shipped', null], [$order->status, $order->paidAt], 'arriving does not pay a bank transfer');
+        self::assertStringContainsString('The order is not paid yet, so it stays shipped', $order->notes[\count($order->notes) - 1]->text);
+    }
+
+    public function testADeliveryCompletesAnOrderPaidOnDeliveryAndRecordsItsPaymentInFull(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart(), $this->order('express', 'cash_on_delivery'));
+        $booked = $this->shop->consignments->book($placed->number, new BookShipment(), 7);
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('processing'), 7);
+        $this->courier->tracking[$booked->number] = new Tracking(Tracking::DELIVERED, 'Delivered to the customer');
+        $this->shop->jobs->jobs->push(TrackConsignments::TYPE, [], (string) $booked->id);
+
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame('completed', $order->status);
+        self::assertNotNull($order->paidAt);
+        self::assertSame($order->total, $order->refundable, 'the cash came: it can be refunded');
     }
 
     public function testTheCouriersFirstScanShipsTheOrderAndADeliveryOrAReturnFollows(): void
@@ -252,7 +268,7 @@ final class ConsignmentsTest extends TestCase
     {
         $rate = $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Anywhere', '4')]))->rates[0]->id;
         $placed = $this->shop->checkout->placeOrder($this->cart(3), new PlaceOrder('ada@example.com', self::address(), shippingOption: "rate:{$rate}", payment: 'bank_transfer'));
-        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('processing'), 7);
+        $this->shop->orders->markPaidByShop($placed->number, '', 7);
         $shipments = $this->shop->consignments->forOrder($placed->number);
         self::assertSame([false, true], [$shipments->bookable, $shipments->sendable]);
 

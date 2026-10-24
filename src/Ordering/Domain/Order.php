@@ -1213,9 +1213,13 @@ class Order
 
                 return [];
             case OrderStatus::Completed:
-                // Done: the courier handed over the cash of an order paid on delivery, if nothing came before.
+                // Done: the courier handed over the cash of an order paid on delivery, or the shop says the money
+                // came, if nothing came before. Recorded as paid in full, so it can be refunded.
                 $this->status = OrderStatus::Completed;
-                $this->paidAt ??= $at;
+                if ($this->paidAt === null) {
+                    $this->paidAt = $at;
+                    $this->paidAmount = $this->total()->toFixed();
+                }
                 $this->fulfilledAt ??= $at;
 
                 return [];

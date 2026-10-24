@@ -21,6 +21,7 @@ use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
+use OrillaCart\Payment\Application\PaymentOptions;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shipping\Application\Dto\BookShipment;
@@ -68,6 +69,7 @@ final readonly class Consignments
         private ClockInterface $clock,
         private LoggerInterface $logger,
         private EventDispatcherInterface $events,
+        private PaymentOptions $payments,
     ) {}
 
     /**
@@ -117,6 +119,25 @@ final readonly class Consignments
     {
         $order = $this->collected($orderId);
         $this->orders->changeStatus($orderId, new ChangeOrderStatus('completed', note: \sprintf('Collected at %s.', $order->pickupPoint ?? '')), $userId);
+    }
+
+    /**
+     * Everything arrived: the order is completed, which records its payment. Not so for an order still waiting for
+     * a bank transfer or cheque that was sent first: arriving does not pay it, so it waits, shipped, for the shop to
+     * mark it paid or complete it.
+     */
+    private function delivered(OrderView $order, Consignment $consignment): void
+    {
+        $arrived = \sprintf($consignment->isSentByShop() ? 'Shipment %s arrived.' : 'The courier delivered shipment %s.', $consignment->number());
+        if ($order->paidAt !== null || $this->payments->collectsOnDelivery($order->paymentGateway)) {
+            $this->orders->changeStatus($order->number, new ChangeOrderStatus('completed', note: $arrived), null);
+
+            return;
+        }
+        if ($order->status === 'processing') {
+            $this->orders->changeStatus($order->number, new ChangeOrderStatus('shipped', note: $arrived), null);
+        }
+        $this->orders->addNote($order->number, new AddOrderNote($arrived . ' The order is not paid yet, so it stays shipped: mark it paid, or complete it, when the money comes.'), null);
     }
 
     private function collected(int $orderId): OrderView
@@ -334,7 +355,7 @@ final readonly class Consignments
             $all = static fn(ConsignmentStatus ...$statuses): bool => $everything && array_all(array_filter($consignments, static fn(Consignment $shipment): bool => $shipment->carries()), static fn(Consignment $shipment): bool => \in_array($shipment->status(), $statuses, true));
             match (true) {
                 $status === ConsignmentStatus::OnTheWay && $order->status === 'processing' && $all(ConsignmentStatus::OnTheWay, ConsignmentStatus::Delivered) => $this->orders->changeStatus($orderId, new ChangeOrderStatus('shipped', note: \sprintf($consignment->isSentByShop() ? 'Shipment %s sent.' : 'The courier picked up shipment %s.', $consignment->number())), null),
-                $status === ConsignmentStatus::Delivered && \in_array($order->status, ['processing', 'shipped'], true) && $all(ConsignmentStatus::Delivered) => $this->orders->changeStatus($orderId, new ChangeOrderStatus('completed', note: \sprintf($consignment->isSentByShop() ? 'Shipment %s arrived.' : 'The courier delivered shipment %s.', $consignment->number())), null),
+                $status === ConsignmentStatus::Delivered && \in_array($order->status, ['processing', 'shipped'], true) && $all(ConsignmentStatus::Delivered) => $this->delivered($order, $consignment),
                 $status === ConsignmentStatus::Returned && !$consignment->isSentByShop() => $this->orders->addNote($orderId, new AddOrderNote(\sprintf('The courier is bringing shipment %s back: %s', $consignment->number(), $consignment->tracking() === '' ? 'no reason given.' : $consignment->tracking())), null),
                 default => null,
             };

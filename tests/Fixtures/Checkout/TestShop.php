@@ -525,7 +525,7 @@ final class TestShop
         $this->events->addListener(OrderDeleting::class, $withPayments->deleting(...));
         $this->events->addListener(OrderRepricing::class, $withPayments->repricing(...));
         $this->events->addListener(OrderMarkingPaid::class, $withPayments->markingPaid(...));
-        $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger, $this->events);
+        $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger, $this->events, $this->paymentOptions);
         $this->sentEmails = new InMemorySentEmails();
         $this->writer = new EmailWriter($this->emailTemplates, $this->emailSettings, $this->site = new FakeSite(), $this->languages);
         $this->eInvoices = new EInvoices($this->invoiceSettings, $settings, $geography, $this->writer);
