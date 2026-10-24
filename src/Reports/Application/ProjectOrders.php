@@ -128,6 +128,8 @@ final readonly class ProjectOrders implements KeepsFailures
                 $order->total,
                 $address->state === null || trim($address->state) === '' ? null : mb_strtoupper(mb_substr(trim($address->state), 0, 3)),
                 $order->reverseCharge,
+                // Kept only for an order in another currency than the shop's.
+                $order->exchangeRate,
             ),
             array_map(static fn(OrderLineView $line): SoldLine => new SoldLine(
                 $order->number,
@@ -195,6 +197,7 @@ final readonly class ProjectOrders implements KeepsFailures
         $charged = [];
         foreach ([...$order->lines, ...$order->charges] as $line) {
             foreach ($line->taxes as $tax) {
+                $charged[$tax->code . '|' . self::percent($tax->percent)] ??= [$tax, $line->kind];
                 $charged[$tax->name . '|' . self::percent($tax->percent)] ??= [$tax, $line->kind];
             }
         }
@@ -205,7 +208,9 @@ final readonly class ProjectOrders implements KeepsFailures
             }
             $day = new \DateTimeImmutable($refund->settledAt ?? $refund->createdAt)->setTimezone($zone)->setTime(0, 0);
             foreach ($refund->taxes as $given) {
-                [$tax, $kind] = $charged[$given['name'] . '|' . self::percent($given['percent'])] ?? [null, 'item'];
+                // By whom it is owed; a refund from before codes were kept, by its name.
+                $code = $given['code'] ?? '';
+                [$tax, $kind] = $charged[($code !== '' ? $code : $given['name']) . '|' . self::percent($given['percent'])] ?? [null, 'item'];
                 if ($tax !== null) {
                     $rows[] = new CollectedTax($order->number, $day, $counted, $order->currency, $tax->country, $tax->region, $tax->level, $tax->code, $tax->jurisdiction, $tax->percent, $kind, '0', '0', $given['amount'], $tax->exempt);
                 }
@@ -215,9 +220,10 @@ final readonly class ProjectOrders implements KeepsFailures
         return $rows;
     }
 
+    /** "19.00" and "19" alike; "10" stays 10. */
     private static function percent(string $percent): string
     {
-        return rtrim(rtrim($percent, '0'), '.');
+        return str_contains($percent, '.') ? rtrim(rtrim($percent, '0'), '.') : $percent;
     }
 
     /** A line's share of the refunds before tax: its refunded money less the tax in it, as the line's net is of its gross. */

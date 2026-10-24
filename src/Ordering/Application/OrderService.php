@@ -908,7 +908,7 @@ final readonly class OrderService
         $refund = self::orderRefund($command);
         $share = $order->refund($refund);
         $this->giveBack($share->taken, new StockNote(StockReason::Return, $order->id(), $userId));
-        $taxes = array_map(static fn(TaxLine $tax): TaxLineView => new TaxLineView($tax->name, $tax->percent, (string) $tax->amount), $share->taxes);
+        $taxes = array_map(static fn(TaxLine $tax): TaxLineView => new TaxLineView($tax->name, $tax->percent, (string) $tax->amount, $tax->code), $share->taxes);
         $text = \sprintf('Refunded %s %s %s.', $refund->amount, $order->currency(), $how);
         if ($refund->restock && $refund->quantities !== []) {
             $text .= ' The items went back in stock.';

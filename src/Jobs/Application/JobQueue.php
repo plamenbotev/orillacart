@@ -43,6 +43,7 @@ interface JobQueue
 
     /**
      * The jobs are done: they leave the queue, unless pushed again while they ran, which leaves them to run again.
+     * Earlier failures of the same work (type and unique key) go too: what they left undone is done.
      *
      * @param list<QueuedJob> $jobs
      */

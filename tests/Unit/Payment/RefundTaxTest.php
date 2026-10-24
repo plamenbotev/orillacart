@@ -58,7 +58,7 @@ final class RefundTaxTest extends TestCase
 
         $refunds = $this->shop->refunds->forOrder($order)->refunds;
         self::assertSame(['2', '1', '1'], array_map(static fn($refund): string => $refund->tax, $refunds), 'one lamp of two; a quarter of the order; what is left');
-        self::assertSame([['name' => 'VAT', 'percent' => '20', 'amount' => '2']], $refunds[0]->taxes);
+        self::assertSame([['name' => 'VAT', 'percent' => '20', 'amount' => '2', 'code' => 'BG']], $refunds[0]->taxes);
         self::assertSame('24', $this->shop->orders->order($order)->lines[0]->refundedAmount, 'the line holds its share of each refund');
 
         $credits = array_values(array_filter($this->shop->invoiceRecords->invoices, static fn(Invoice $invoice): bool => $invoice->kind() === InvoiceKind::CreditNote));

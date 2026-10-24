@@ -29,7 +29,7 @@ final readonly class RefundView
         public ?string $settledAt,
         /** The tax inside the amount. */
         public string $tax = '0',
-        /** @var list<array{name: string, percent: string, amount: string}> */
+        /** @var list<array{name: string, percent: string, amount: string, code?: string}> */
         public array $taxes = [],
     ) {}
 

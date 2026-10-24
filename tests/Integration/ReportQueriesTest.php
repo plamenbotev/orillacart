@@ -29,7 +29,7 @@ use OrillaCart\Shared\Domain\Money;
 final class ReportQueriesTest extends RestTestCase
 {
     /** Order ids no test site uses. */
-    private const array ORDERS = [990001, 990002, 990003, 990004, 990005];
+    private const array ORDERS = [990001, 990002, 990003, 990004, 990005, 990006];
 
     private DbalReportStore $store;
     private DbalReportQueries $queries;
@@ -154,11 +154,15 @@ final class ReportQueriesTest extends RestTestCase
         ]);
 
         self::assertSame(
-            [['currency' => 'USD', 'state' => 'CA', 'sales' => '50', 'orders' => 1], ['currency' => 'USD', 'state' => 'TX', 'sales' => '140', 'orders' => 2]],
+            [['currency' => 'USD', 'state' => 'CA', 'sales' => '50', 'orders' => 1, 'rated' => false], ['currency' => 'USD', 'state' => 'TX', 'sales' => '140', 'orders' => 2, 'rated' => false]],
             $this->queries->stateSales(new Period(new \DateTimeImmutable('2030-01-01'), new \DateTimeImmutable('2030-12-31')), 'US'),
             'before tax; unpaid orders and other years do not count',
         );
         self::assertSame([], $this->queries->stateSales(new Period(new \DateTimeImmutable('2030-01-01'), new \DateTimeImmutable('2030-12-31')), 'CA'));
+
+        // An order in yen at the rate it was priced at: in the shop's currency already.
+        $this->store->replace([990006], [$this->facts(990006, '2030-06-02', 'c10', '15000', currency: 'JPY', country: 'US', region: 'NY', rate: '150')]);
+        self::assertContains(['currency' => 'JPY', 'state' => 'NY', 'sales' => '100', 'orders' => 1, 'rated' => true], $this->queries->stateSales(new Period(new \DateTimeImmutable('2030-01-01'), new \DateTimeImmutable('2030-12-31')), 'US'));
     }
 
     /**
@@ -166,13 +170,13 @@ final class ReportQueriesTest extends RestTestCase
      * @param array{string, string}|null $coupon
      * @param list<CollectedTax>         $taxes
      */
-    private function facts(int $id, string $day, string $customer, string $gross, bool $counted = true, string $currency = 'EUR', ?array $refund = null, ?array $coupon = null, array $taxes = [], string $country = 'BG', ?string $region = null, string $tax = '0'): OrderFacts
+    private function facts(int $id, string $day, string $customer, string $gross, bool $counted = true, string $currency = 'EUR', ?array $refund = null, ?array $coupon = null, array $taxes = [], string $country = 'BG', ?string $region = null, string $tax = '0', ?string $rate = null): OrderFacts
     {
         $date = new \DateTimeImmutable($day);
         $discount = $coupon[1] ?? '0';
 
         return new OrderFacts(
-            new SoldOrder($id, $date, $date->setTime(10, 0), $counted, $counted ? 'processing' : 'pending_payment', $currency, $customer, str_starts_with($customer, 'c') ? (int) substr($customer, 1) : null, 'Ada Lovelace', $country, 'Bank transfer', '', 2, $gross, $discount, '0', $tax, (string) Money::of($gross)->add(Money::of($tax)), $region),
+            new SoldOrder($id, $date, $date->setTime(10, 0), $counted, $counted ? 'processing' : 'pending_payment', $currency, $customer, str_starts_with($customer, 'c') ? (int) substr($customer, 1) : null, 'Ada Lovelace', $country, 'Bank transfer', '', 2, $gross, $discount, '0', $tax, (string) Money::of($gross)->add(Money::of($tax)), $region, false, $rate),
             [new SoldLine($id, $date, $counted, $currency, $this->product, null, 'Report lamp', 2, (string) ((float) $gross - (float) $discount))],
             $coupon === null ? [] : [new UsedCoupon($id, $date, $counted, $currency, $coupon[0], $coupon[1])],
             $refund === null ? [] : [new GivenRefund($id, $id, new \DateTimeImmutable($refund[0]), $currency, $refund[1])],

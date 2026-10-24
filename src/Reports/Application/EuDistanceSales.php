@@ -60,12 +60,17 @@ final readonly class EuDistanceSales
         foreach ($years as $key => $period) {
             $totals[$key] = $empty($period);
             foreach ($this->queries->consumerSales($period, $others) as $row) {
-                // Sales in another of the shop's currencies, at its exchange rate now; one it no longer offers is
-                // counted as it is, so it is not left out.
+                // Sales in another currency, each order at the rate it was priced at; orders from before rates were
+                // kept at the rate now, while the shop still offers the currency.
                 $sales = Money::of($row['sales']);
                 if ($row['currency'] !== $shop->currency) {
                     $converted = true;
-                    $sales = $this->currencies->isOffered($row['currency']) ? $this->currencies->back($sales, $row['currency']) : $sales;
+                    if (!$row['rated']) {
+                        if (!$this->currencies->isOffered($row['currency'])) {
+                            continue;
+                        }
+                        $sales = $this->currencies->back($sales, $row['currency']);
+                    }
                 }
                 $totals[$key]['sales'] = (string) Money::of($totals[$key]['sales'])->add($sales);
                 $totals[$key]['orders'] += $row['orders'];

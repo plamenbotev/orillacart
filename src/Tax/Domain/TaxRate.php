@@ -114,11 +114,13 @@ class TaxRate
             default => TaxJurisdiction::COUNTRY,
         };
         $place = $this->state === null ? $this->country : "{$this->country}-{$this->state}";
-        // A local rate named by where it applies, not by its row: importing the rates again ("replace") keeps their
-        // codes, so the Taxes report keeps one place in one row.
+        // A local rate named by where it applies and what it is, not by its row: importing the rates again
+        // ("replace") keeps their codes, so the Taxes report keeps one place in one row; two rates stacked on the same
+        // postcodes (a county's and a district's) keep a row each.
         $where = [...array_map(mb_strtoupper(...), $this->postcodes), ...array_map(mb_strtolower(...), $this->cities)];
         sort($where);
-        $code = $this->code ?? ($level === TaxJurisdiction::LOCAL ? $place . '-' . substr(hash('sha256', implode('|', $where)), 0, 8) : $place);
+        $what = [mb_strtolower(trim($this->name)), (string) $this->priority];
+        $code = $this->code ?? ($level === TaxJurisdiction::LOCAL ? $place . '-' . substr(hash('sha256', implode('|', [...$where, '#', ...$what])), 0, 8) : $place);
 
         return new TaxJurisdiction($this->country, $this->state, $level, $code, $this->name !== '' ? $this->name : $place);
     }

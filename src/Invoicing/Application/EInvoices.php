@@ -216,20 +216,33 @@ final readonly class EInvoices
     {
         /** @var list<LineTaxView> $taxes */
         $taxes = $line->taxes;
+        // A part is one share's rates. Rates on one base at different levels are one place charging several (a
+        // state and a county); two at the same level are two shares that happen to cost the same (a book and a toy
+        // of 10.00 each), each its own part.
         $parts = [];
         foreach ($taxes as $tax) {
-            // Rates on the same base are one place charging several (a state and a county); on another, a share.
-            $parts[$tax->taxable][] = $tax;
+            $index = 0;
+            while (isset($parts[$tax->taxable][$index][$tax->level])) {
+                ++$index;
+            }
+            $parts[$tax->taxable][$index][$tax->level] = $tax;
         }
-        if (\count($parts) < 2) {
+        $parts = array_merge(...array_map(static fn(array $shares): array => array_map(array_values(...), $shares), array_values($parts)));
+        // A share taxed at nothing has no rates: what it costs is the line's, less the taxed shares'.
+        $lineNet = Money::of($line->total)->subtract(Money::of($line->discount))->subtract($includesTax ? Money::of($line->tax) : Money::zero());
+        $untaxed = array_reduce($parts, static fn(Money $left, array $rates): Money => $left->subtract(Money::of($rates[0]->taxable)), $lineNet);
+        if (\count($parts) < 2 && ($parts === [] || $untaxed->compare(Money::of('0.005')) < 0)) {
             return [self::line($id, $line, $includesTax, $noTax, $taxes, Money::of($line->tax))];
         }
         $split = [];
         $number = 0;
-        foreach ($parts as $base => $rates) {
+        foreach ($parts as $rates) {
             $tax = array_reduce($rates, static fn(Money $sum, LineTaxView $rate): Money => $sum->add(Money::of($rate->amount)), Money::zero());
             $part = self::line($id . '-' . ++$number, $line, $includesTax, $noTax, $rates, $tax);
             $split[] = ['name' => \sprintf('%s (%s %%)', $line->name, $part['percent']), 'quantity' => 1] + $part;
+        }
+        if ($untaxed->compare(Money::of('0.005')) >= 0) {
+            $split[] = ['id' => $id . '-' . ++$number, 'name' => \sprintf('%s (0 %%)', $line->name), 'sku' => $line->sku, 'quantity' => 1, 'net' => $untaxed, 'category' => $noTax, 'percent' => '0', 'tax' => Money::zero()];
         }
 
         return $split;

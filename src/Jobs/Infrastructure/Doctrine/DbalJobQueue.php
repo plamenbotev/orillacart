@@ -120,6 +120,14 @@ final readonly class DbalJobQueue implements JobQueue
             );
             // Pushed again while they ran: left for the next run, due as the push made them.
             $this->release(array_map(static fn(QueuedJob $job): int => (int) $job->id, $chunk));
+            // The same work failed before: done now, so the shop is no longer told it is waiting.
+            $keyed = array_values(array_filter($chunk, static fn(QueuedJob $job): bool => $job->uniqueKey !== null));
+            if ($keyed !== []) {
+                $connection->executeStatement(
+                    "DELETE FROM {$this->tables->failed()} WHERE (type, unique_key) IN (" . implode(', ', array_fill(0, \count($keyed), '(?, ?)')) . ')',
+                    array_merge(...array_map(static fn(QueuedJob $job): array => [$job->type, (string) $job->uniqueKey], $keyed)),
+                );
+            }
         }
     }
 

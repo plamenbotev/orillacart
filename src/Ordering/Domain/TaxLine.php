@@ -15,5 +15,7 @@ final readonly class TaxLine
         public string $name,
         public string $percent,
         public Money $amount,
+        /** Who it is owed to (TaxJurisdiction's code), where it is one place's: two rates of one name stay apart. */
+        public string $code = '',
     ) {}
 }

@@ -13,5 +13,6 @@ final readonly class TaxLineView
         public string $name,
         public string $percent,
         public string $amount,
+        public string $code = '',
     ) {}
 }

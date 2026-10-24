@@ -95,7 +95,7 @@ final readonly class TaxGroupService
         $using = $this->uses?->of($id) ?? [];
         if ($using !== []) {
             throw new RuleViolation(
-                '"%1$s" taxes %2$s: choose another tax group for them before deleting it, or they sell with no tax.',
+                '"%1$s" taxes %2$s: choose another tax group for them before deleting it, or they would be taxed at the default group\'s rates without anyone choosing it.',
                 'orillacart_tax_group_in_use',
                 values: [$group->name(), implode(', ', $using)],
             );

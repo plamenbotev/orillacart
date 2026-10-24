@@ -31,7 +31,7 @@ final class TaxGroupsInUseTest extends TestCase
             $shop->taxGroups->delete($reduced);
             self::fail('the book would sell with no VAT');
         } catch (RuleViolation $e) {
-            self::assertSame(['orillacart_tax_group_in_use', '"Reduced" taxes 1 product, 1 shipping rate: choose another tax group for them before deleting it, or they sell with no tax.'], [$e->errorCode, $e->getMessage()]);
+            self::assertSame(['orillacart_tax_group_in_use', '"Reduced" taxes 1 product, 1 shipping rate: choose another tax group for them before deleting it, or they would be taxed at the default group\'s rates without anyone choosing it.'], [$e->errorCode, $e->getMessage()]);
         }
 
         $shop->products->save(10, new SaveProduct('12'));

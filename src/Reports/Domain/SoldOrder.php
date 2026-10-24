@@ -71,5 +71,8 @@ class SoldOrder
         /** Sold to a business that accounts for the VAT itself (EU reverse charge): not a sale to a consumer. */
         #[ORM\Column(options: ['default' => false])]
         public readonly bool $reverseCharge = false,
+        /** Units of its currency for one of the shop's, as it was priced at; null in the shop's own currency. */
+        #[ORM\Column(type: 'decimal', precision: 18, scale: 8, nullable: true)]
+        public readonly ?string $exchangeRate = null,
     ) {}
 }

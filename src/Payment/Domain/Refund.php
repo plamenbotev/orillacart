@@ -44,7 +44,7 @@ class Refund
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
     private string $tax = '0';
 
-    /** @var list<array{name: string, percent: string, amount: string}> the tax by the order's rates */
+    /** @var list<array{name: string, percent: string, amount: string, code?: string}> the tax by the order's rates */
     #[ORM\Column(type: 'json')]
     private array $taxes = [];
 
@@ -122,7 +122,7 @@ class Refund
         return Money::of($this->tax);
     }
 
-    /** @return list<array{name: string, percent: string, amount: string}> */
+    /** @return list<array{name: string, percent: string, amount: string, code?: string}> */
     public function taxes(): array
     {
         return $this->taxes;
@@ -131,7 +131,7 @@ class Refund
     /**
      * The order recorded the refund and says what tax it gave back.
      *
-     * @param list<array{name: string, percent: string, amount: string}> $taxes
+     * @param list<array{name: string, percent: string, amount: string, code?: string}> $taxes
      */
     public function taxed(Money $tax, array $taxes): void
     {

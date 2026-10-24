@@ -91,19 +91,20 @@ interface ReportQueries
 
     /**
      * The period's sales before tax and orders in each state of a country, for economic nexus, by currency: what
-     * the customers paid, before refunds.
+     * the customers paid, before refunds. Rated: the sales are in the shop's currency already, each order at the
+     * exchange rate it was priced at; otherwise in the row's currency (the shop's, or orders before rates were kept).
      *
-     * @return list<array{currency: string, state: string, sales: string, orders: int}>
+     * @return list<array{currency: string, state: string, sales: string, orders: int, rated: bool}>
      */
     public function stateSales(Period $period, string $country): array;
 
     /**
      * What the shop sold to consumers in each of these countries before tax (reverse charge sales left out), by
-     * currency, for the EU's threshold of distance sales.
+     * currency, for the EU's threshold of distance sales; rated as stateSales() has it.
      *
      * @param list<string> $countries
      *
-     * @return list<array{currency: string, country: string, sales: string, orders: int}>
+     * @return list<array{currency: string, country: string, sales: string, orders: int, rated: bool}>
      */
     public function consumerSales(Period $period, array $countries): array;
 }

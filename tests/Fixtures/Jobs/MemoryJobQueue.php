@@ -71,6 +71,9 @@ final class MemoryJobQueue implements JobQueue
             } else {
                 $this->release($job);
             }
+            if ($job->uniqueKey !== null) {
+                $this->failed->jobs = array_filter($this->failed->jobs, static fn(FailedJobView $failed): bool => $failed->type !== $job->type || $failed->uniqueKey !== $job->uniqueKey);
+            }
         }
     }
 

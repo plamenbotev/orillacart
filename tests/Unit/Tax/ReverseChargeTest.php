@@ -11,6 +11,7 @@ use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
@@ -63,6 +64,20 @@ final class ReverseChargeTest extends TestCase
         self::assertSame('The goods are delivered in the shop\'s own country, so VAT is charged, even with a VAT number of another EU country.', $home->vatMessage);
 
         self::assertTrue($this->shop->checkout->summary($owner, new CheckoutDetails('DE', null, 'DE', shippingOption: "rate:{$rate}", vatNumber: 'DE123456789'))->reverseCharge, 'sent to Germany');
+    }
+
+    public function testGoodsAtHomePayVatAndAnEbookInTheSameOrderStaysUnderTheReverseCharge(): void
+    {
+        $this->shop->content->add(10, 'Lamp');
+        $this->shop->products->save(10, new SaveProduct('30', weight: '1'));
+        $rate = $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('EU', '5', regions: ['BG', 'DE'])]))->rates[0]->id;
+        $owner = new CartOwner($this->shop->carts->add($this->owner, new AddToCart(10))->newToken ?? $this->owner->token);
+
+        $mixed = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', null, 'DE', shippingOption: "rate:{$rate}", vatNumber: 'DE123456789'));
+
+        self::assertTrue($mixed->reverseCharge, 'the e-book is a service to a German business');
+        $taxOf = static fn(string $name): string => (string) Money::of(array_values(array_filter($mixed->lines, static fn($line): bool => $line->name === $name))[0]->tax ?? '0');
+        self::assertSame(['0', '5.7'], [$taxOf('E-book'), $taxOf('Lamp')], 'VAT on the lamp alone, at the rate the shop\'s settings take');
     }
 
     public function testAGreekNumberUsesTheElPrefix(): void

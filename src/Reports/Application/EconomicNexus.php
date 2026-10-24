@@ -50,7 +50,11 @@ final readonly class EconomicNexus
         $states = [];
         foreach ($this->queries->stateSales($period, self::COUNTRY) as $row) {
             $sales = Money::of($row['sales']);
-            if ($row['currency'] !== $currency && $this->currencies->isOffered($row['currency'])) {
+            if (!$row['rated'] && $row['currency'] !== $currency) {
+                // Orders from before rates were kept: at the rate now, while the shop still offers the currency.
+                if (!$this->currencies->isOffered($row['currency'])) {
+                    continue;
+                }
                 $sales = $this->currencies->back($sales, $row['currency']);
             }
             $known = $states[$row['state']] ?? ['sales' => '0', 'orders' => 0];

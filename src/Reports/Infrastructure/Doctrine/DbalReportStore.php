@@ -36,7 +36,7 @@ final readonly class DbalReportStore implements ReportStore
                     $connection->executeStatement("DELETE FROM {$table} WHERE order_id IN ({$in})", $ids);
                 }
             }
-            $this->insert($this->tables->orders(), ['order_id', 'day', 'placed_at', 'counted', 'status', 'currency', 'customer_key', 'customer_id', 'customer_name', 'country', 'payment', 'shipping', 'items', 'gross', 'discount', 'shipping_total', 'tax', 'total', 'region', 'reverse_charge'], array_map(static fn(OrderFacts $facts): array => [
+            $this->insert($this->tables->orders(), ['order_id', 'day', 'placed_at', 'counted', 'status', 'currency', 'customer_key', 'customer_id', 'customer_name', 'country', 'payment', 'shipping', 'items', 'gross', 'discount', 'shipping_total', 'tax', 'total', 'region', 'reverse_charge', 'exchange_rate'], array_map(static fn(OrderFacts $facts): array => [
                 $facts->order->orderId,
                 $facts->order->day->format(self::DAY),
                 $facts->order->placedAt->format(self::MOMENT),
@@ -57,6 +57,7 @@ final readonly class DbalReportStore implements ReportStore
                 $facts->order->total,
                 $facts->order->region,
                 (int) $facts->order->reverseCharge,
+                $facts->order->exchangeRate,
             ], $facts));
             $this->insert($this->tables->lines(), ['order_id', 'day', 'counted', 'currency', 'product_id', 'variation_id', 'name', 'quantity', 'net', 'refunded'], array_map(static fn(SoldLine $line): array => [
                 $line->orderId, $line->day->format(self::DAY), (int) $line->counted, $line->currency, $line->productId, $line->variationId, $line->name, $line->quantity, $line->net, $line->refunded,

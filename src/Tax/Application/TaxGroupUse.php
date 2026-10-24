@@ -6,7 +6,7 @@ namespace OrillaCart\Tax\Application;
 
 /**
  * What in an area is taxed by a tax group, such as products or shipping rates: a group in use is not deleted,
- * as what it taxed would then sell with no tax at all.
+ * as what it taxed would then be taxed at the default group's rates without anyone choosing it.
  */
 interface TaxGroupUse
 {

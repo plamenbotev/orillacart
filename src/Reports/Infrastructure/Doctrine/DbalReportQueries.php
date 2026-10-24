@@ -19,6 +19,9 @@ use OrillaCart\Shared\Domain\Money;
  */
 final readonly class DbalReportQueries implements ReportQueries
 {
+    /** Sales before tax, in the shop's currency where the order kept its exchange rate. */
+    private const string SALES = 'ROUND(SUM(CASE WHEN exchange_rate > 0 THEN (total - tax) / exchange_rate ELSE total - tax END), 4) AS sales';
+
     private const string DAY = 'Y-m-d';
 
     public function __construct(private ReportTables $tables) {}
@@ -315,11 +318,12 @@ final readonly class DbalReportQueries implements ReportQueries
             'state' => self::string($row['region']),
             'sales' => self::money($row['sales']),
             'orders' => self::int($row['orders']),
+            'rated' => self::int($row['rated']) === 1,
         ], $this->tables->connection()->fetchAllAssociative(
-            "SELECT currency, region, COUNT(*) AS orders, SUM(total - tax) AS sales
+            'SELECT currency, region, COUNT(*) AS orders, ' . self::SALES . ", exchange_rate IS NOT NULL AS rated
              FROM {$this->tables->orders()}
              WHERE counted = 1 AND country = ? AND region IS NOT NULL AND day BETWEEN ? AND ?
-             GROUP BY currency, region
+             GROUP BY currency, region, exchange_rate IS NOT NULL
              ORDER BY region, currency",
             [$country, ...$this->days($period)],
         ));
@@ -336,11 +340,12 @@ final readonly class DbalReportQueries implements ReportQueries
             'country' => self::string($row['country']),
             'sales' => self::money($row['sales']),
             'orders' => self::int($row['orders']),
+            'rated' => self::int($row['rated']) === 1,
         ], $this->tables->connection()->fetchAllAssociative(
-            "SELECT currency, country, COUNT(*) AS orders, SUM(total - tax) AS sales
+            'SELECT currency, country, COUNT(*) AS orders, ' . self::SALES . ", exchange_rate IS NOT NULL AS rated
              FROM {$this->tables->orders()}
              WHERE counted = 1 AND reverse_charge = 0 AND day BETWEEN ? AND ? AND country IN (?)
-             GROUP BY currency, country
+             GROUP BY currency, country, exchange_rate IS NOT NULL
              ORDER BY country, currency",
             [...$this->days($period), $countries],
             [ParameterType::STRING, ParameterType::STRING, ArrayParameterType::STRING],

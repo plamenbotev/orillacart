@@ -61,6 +61,7 @@ use OrillaCart\Shipping\Application\Dto\DeliveryDayView;
 use OrillaCart\Shipping\Application\Dto\DeliverySlotView;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
+use OrillaCart\Tax\Application\Dto\ReverseCharge;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Application\VatNumbers;
 use Psr\Log\LoggerInterface;
@@ -123,10 +124,11 @@ final readonly class CheckoutService
         $gateways = array_map(static fn(PaymentOptionView $method): string => $method->gateway, $methods);
         $payment = \in_array($details->payment, $gateways, true) ? $details->payment : ($gateways[0] ?? null);
         $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment, currency: $currency);
+        // Goods delivered at home, or out of the EU, are not sold under the reverse charge; services still are.
         $goods = $priced['needs_shipping'] ? $this->vatNumbers->forGoodsTo($reverse, $shipping?->country) : $reverse;
         if ($goods !== $reverse) {
-            $reverse = $goods;
-            $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment, currency: $currency);
+            $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment, currency: $currency, reverseChargeGoods: $goods->applies);
+            $reverse = self::underReverseCharge($reverse, $goods, $priced);
         }
         $bill = $priced['bill'];
         $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency);
@@ -421,24 +423,24 @@ final readonly class CheckoutService
         $reverse = $this->vatNumbers->reverseCharge($billingAddress->country, $command->vatNumber);
         $currency = $this->currencies->current();
         // Every automatic discount, or only those that hold whoever orders.
-        $price = fn(bool $forAnyone = false): array => $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment, currency: $currency, automatic: $forAnyone ? $this->discounts->automaticForAnyone() : null);
-        $priced = $price();
-        // Goods delivered at home, or out of the EU, are not sold under the reverse charge.
+        $price = fn(ReverseCharge $goods, bool $forAnyone = false): array => $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment, currency: $currency, automatic: $forAnyone ? $this->discounts->automaticForAnyone() : null, reverseChargeGoods: $goods->applies);
+        $priced = $price($reverse);
+        // Goods delivered at home, or out of the EU, are not sold under the reverse charge; services still are.
         $goods = $priced['needs_shipping'] ? $this->vatNumbers->forGoodsTo($reverse, $shippingAddress->country) : $reverse;
         if ($goods !== $reverse) {
-            $reverse = $goods;
-            $priced = $price();
+            $priced = $price($goods);
         }
         // A guest's summary was priced before it knew the email, so without an automatic discount for first orders
         // or once per customer. When that discount would make the order other than they saw (shipping no longer
         // free under a threshold, below the minimum, a code it does not combine with), the order is what they saw:
         // without it. Codes still go by the email.
         if ($owner->customerId === null && !$this->fits($priced, $command, $currency)) {
-            $seen = $price(true);
+            $seen = $price($goods, true);
             if ($this->fits($seen, $command, $currency)) {
                 $priced = $seen;
             }
         }
+        $reverse = $goods === $reverse ? $reverse : self::underReverseCharge($reverse, $goods, $priced);
         foreach ($priced['discounts']->refused as $code => $reason) {
             throw new CheckoutRuleViolation('The code %1$s does not apply: %2$s Remove it to order.', 'orillacart_coupon_refused', values: [$code, $reason]);
         }
@@ -632,6 +634,19 @@ final readonly class CheckoutService
         $order = $this->orders->order($number);
 
         return new PlacedOrderView($order->number, $order->status, $order->total, $receiptUrl, $redirectUrl);
+    }
+
+    /**
+     * The order's reverse charge once its goods were not sold under it: still the order's for what it sells besides
+     * goods (services, downloads), whose lines it leaves untaxed; none when it sells only goods.
+     *
+     * @param array{lines: list<array{quote: ItemQuote, ...}>, ...} $priced
+     */
+    private static function underReverseCharge(ReverseCharge $reverse, ReverseCharge $goods, array $priced): ReverseCharge
+    {
+        $services = array_filter($priced['lines'], static fn(array $line): bool => $line['quote']->type !== 'physical');
+
+        return $reverse->applies && $services !== [] ? new ReverseCharge(true, $reverse->number, $goods->message) : $goods;
     }
 
     /**

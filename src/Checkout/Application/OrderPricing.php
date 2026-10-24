@@ -120,13 +120,13 @@ final readonly class OrderPricing
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null, ?string $currency = null, array $changes = [], ?array $automatic = null): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null, ?string $currency = null, array $changes = [], ?array $automatic = null, ?bool $reverseChargeGoods = null): array
     {
         $currency ??= $this->settings->current()->currency;
-        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic);
+        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic, $reverseChargeGoods);
         $gifts = $this->gifts($priced['discounts']->gifts, $customerId);
 
-        return $gifts === [] ? $priced : $this->priceItems([...$items, ...$gifts], $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic);
+        return $gifts === [] ? $priced : $this->priceItems([...$items, ...$gifts], $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic, $reverseChargeGoods);
     }
 
     /**
@@ -162,15 +162,19 @@ final readonly class OrderPricing
      *
      * @return Priced
      */
-    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment, string $currency, array $changes = [], ?array $automatic = null): array
+    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment, string $currency, array $changes = [], ?array $automatic = null, ?bool $reverseChargeGoods = null): array
     {
+        // The reverse charge goes by what is sold: services by where the buyer is, goods (and their shipping) by
+        // where they go (VatNumbers::forGoodsTo()).
+        $goodsReverse = $reverseChargeGoods ?? $reverseCharge;
+        $allReverse = $reverseCharge && $goodsReverse;
         $settings = $this->settings->current();
         $decimals = $this->currencies->decimals($currency);
         $inclusive = $this->tax->pricesIncludeTax();
         $samePrice = $this->tax->samePriceEverywhere();
         $bill = new Bill($decimals, $inclusive, $this->tax->roundsEachLine());
         // A customer's exemption covers the sale where it is taxed: the rates still apply, at nothing.
-        $exemption = $reverseCharge ? null : $this->tax->exemption($customerId, $shipping, $billing);
+        $exemption = $allReverse ? null : $this->tax->exemption($customerId, $shipping, $billing);
         $exempt = $exemption !== null;
         /** @var list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string, tax_code: ?string}> $asked */
         $asked = [];
@@ -194,7 +198,7 @@ final readonly class OrderPricing
             }
             $quoted[$index] = $quote;
         }
-        $import = $reverseCharge ? new ImportDecision() : $this->importDecision($items, $quoted, $shipping, $currency, $inclusive);
+        $import = $goodsReverse ? new ImportDecision() : $this->importDecision($items, $quoted, $shipping, $currency, $inclusive);
         foreach ($items as $index => $line) {
             $quote = $quoted[$index];
             // Goods shipped under an import scheme: taxed at the destination when the shop charges it, otherwise not.
@@ -206,7 +210,7 @@ final readonly class OrderPricing
             $unitPrice = $given ? Money::of($line['unit_price']) : $this->currencies->price(Money::of($quote->unitPrice), $currency);
             $units = self::shares($unitPrice, $quote->contents === [] ? [Money::of('1')] : array_map(static fn(QuotedBundleItem $item): Money => Money::of($item->price), $quote->contents));
             foreach ($quote->contents === [] ? [[$quote->taxable, $quote->taxGroupId, $quote->taxCode]] : array_map(static fn(QuotedBundleItem $item): array => [$item->taxable, $item->taxGroupId, $item->taxCode], $quote->contents) as $index => [$taxable, $groupId, $taxCode]) {
-                $taxes = $taxable && !$reverseCharge && (!$imported || $import->charges) ? $this->taxes($groupId, $shipping, $billing, $exempt, atShipping: $imported) : [];
+                $taxes = $taxable && !($quote->type === 'physical' ? $goodsReverse : $reverseCharge) && (!$imported || $import->charges) ? $this->taxes($groupId, $shipping, $billing, $exempt, atShipping: $imported) : [];
                 $unit = $units[$index];
                 if ($inclusive && $taxable && !$given) {
                     // A price including tax: what this customer pays for it, as the shop chose (Tax::asPaid()).
@@ -285,7 +289,7 @@ final readonly class OrderPricing
             $anyFree = $free;
             foreach ($offered as $option) {
                 $free = $anyFree && ($discounts->freeShippingEveryRate() || $option->id === $cheapest?->id);
-                $taxes = $option->taxable && !$free && !$reverseCharge && (!$import->applies() || $import->charges) ? $this->taxes($option->taxGroupId, $shipping, $billing, $exempt, true, $import->applies()) : [];
+                $taxes = $option->taxable && !$free && !$goodsReverse && (!$import->applies() || $import->charges) ? $this->taxes($option->taxGroupId, $shipping, $billing, $exempt, true, $import->applies()) : [];
                 $price = $free ? Money::zero() : $this->currencies->amount(Money::of($option->price), $currency);
                 $shares = null;
                 if ($asItems !== null && $option->taxable && !$free) {
@@ -293,7 +297,7 @@ final readonly class OrderPricing
                     $shares = [];
                     foreach (self::shares($price, array_column($asItems, 'weight')) as $index => $share) {
                         // The rates of the items' group that apply to shipping; none for untaxed items.
-                        $shareTaxes = $reverseCharge || $asItems[$index]['taxes'] === [] ? [] : $this->taxes($asItems[$index]['group'], $shipping, $billing, $exempt, true);
+                        $shareTaxes = $goodsReverse || $asItems[$index]['taxes'] === [] ? [] : $this->taxes($asItems[$index]['group'], $shipping, $billing, $exempt, true);
                         $shares[] = [$inclusive ? Tax::asPaid($share, $shareTaxes, $this->shopTaxes($asItems[$index]['group'], true), $samePrice) : $share, $shareTaxes];
                     }
                     $price = array_reduce($shares, static fn(Money $sum, array $share): Money => $sum->add($share[0]), Money::zero());
@@ -330,8 +334,8 @@ final readonly class OrderPricing
                 $needsShipping ? $shipping?->country : $billing?->country,
                 $customerId,
                 $settings->currency,
-            ), $shipping, $billing, $reverseCharge, $currency, $import, $decimals, $exempt, $asked);
-            if (!$inclusive && !$reverseCharge) {
+            ), $shipping, $billing, $needsShipping ? $goodsReverse : $reverseCharge, $currency, $import, $decimals, $exempt, $asked);
+            if (!$inclusive && !$allReverse) {
                 $this->provideTaxes($bill, $asked, $shipping ?? $billing, $currency, $customerId, $exemption, $orderId);
             }
         }
@@ -341,8 +345,7 @@ final readonly class OrderPricing
 
     /**
      * Adds the order's fees to the bill, taxed as items of their tax group are.
-     */
-    /**
+     *
      * @param list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string, tax_code: ?string}> $asked
      *        what each charge is, for a tax service, in the bill's order; the fees are added to it
      */

@@ -113,6 +113,20 @@ final class JobRunnerTest extends TestCase
         self::assertSame(0, $this->test->queue->failed->count());
     }
 
+    public function testAFailureIsForgottenOnceTheSameWorkIsDone(): void
+    {
+        $this->push('a');
+        $this->handler->outcomes['a'] = JobOutcome::fail('Broken');
+        $this->test->runner->work([], 10, 'test');
+        self::assertSame(1, $this->test->queue->failed->count());
+
+        // Pushed again (the order changed, or a rebuild), and done this time: nothing is waiting any more.
+        unset($this->handler->outcomes['a']);
+        $this->push('a');
+        $this->test->runAll();
+        self::assertSame(0, $this->test->queue->failed->count());
+    }
+
     public function testAJobWhoseWorkerDiedEachTimeIsGivenUp(): void
     {
         $this->push('a');

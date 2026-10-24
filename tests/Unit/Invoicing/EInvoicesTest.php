@@ -118,6 +118,21 @@ final class EInvoicesTest extends TestCase
         self::assertSame(['19', '7'], array_map(static fn(\DOMNode $group): mixed => $xml->evaluate('string(cac:TaxCategory/cbc:Percent)', $group), self::nodes($xml, '//cac:TaxSubtotal')));
     }
 
+    public function testTwoPartsThatCostTheSameAtDifferentRatesStayTwoLines(): void
+    {
+        // The lamp and the atlas cost the same, so the shipping shared out between them has two equal bases.
+        $this->shop->products->save(10, new SaveProduct('10', weight: '1', sku: 'LMP-1'));
+        $settings = $this->shop->taxSettings->load();
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::ShippingAddress, $settings->defaultGroupId, reverseCharge: true, shippingTaxedAsItems: true));
+        $xml = $this->xpath($this->xml($this->paid(1)), ['cac' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2', 'cbc' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2']);
+
+        $shipping = array_values(array_filter(array_map(
+            static fn(\DOMNode $line): array => [$xml->evaluate('string(cac:Item/cac:ClassifiedTaxCategory/cbc:Percent)', $line), $xml->evaluate('string(cbc:LineExtensionAmount)', $line)],
+            self::nodes($xml, '//cac:InvoiceLine'),
+        ), static fn(array $line): bool => $line[1] === '2.50'));
+        self::assertSame([['19', '2.50'], ['7', '2.50']], $shipping, 'not one line of 2.50 at 26 %');
+    }
+
     public function testAnIssuedInvoiceKeepsWhomItWasIssuedTo(): void
     {
         $order = $this->paid(1);

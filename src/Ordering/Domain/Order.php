@@ -856,8 +856,9 @@ class Order
             if ($given->isZero()) {
                 continue;
             }
-            $key = $row->name() . '|' . $row->percent();
-            $shares[$key] = new TaxLine($row->name(), $row->percent(), ($shares[$key]->amount ?? Money::zero())->add($given));
+            // By whom it is owed: a county's and a city's "Local tax" at 1 % each are two.
+            $key = $row->jurisdiction()->code . '|' . $row->percent();
+            $shares[$key] = new TaxLine($row->name(), $row->percent(), ($shares[$key]->amount ?? Money::zero())->add($given), $row->jurisdiction()->code);
         }
 
         return array_values($shares);

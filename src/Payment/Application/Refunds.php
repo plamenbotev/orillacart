@@ -465,7 +465,7 @@ final readonly class Refunds
     /** The order recorded the refund: the refund keeps the tax it gave back, for the credit note and the books. */
     private function taxed(Refund $refund, RefundedView $recorded): void
     {
-        $refund->taxed(Money::of($recorded->tax), array_map(static fn(TaxLineView $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount], $recorded->taxes));
+        $refund->taxed(Money::of($recorded->tax), array_map(static fn(TaxLineView $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount, 'code' => $tax->code], $recorded->taxes));
         $this->refunds->save($refund);
     }
 
