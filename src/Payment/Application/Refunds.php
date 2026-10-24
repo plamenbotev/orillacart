@@ -97,6 +97,9 @@ final readonly class Refunds
             }
         }
         $payment = $command->outside || $command->storeCredit ? null : $this->refundablePayment($orderId);
+        if ($payment !== null && PaymentAccount::left($payment, $this->gateways->get($payment->gateway()), new Settings($this->methods->findByGateway($payment->gateway())?->settings() ?? []))) {
+            throw new PaymentRuleViolation(\sprintf('The payment through %s was made in another of its accounts or modes (sandbox or live) than the one set up now: switch back to refund it, or refund it at the provider and record it here as refunded outside the shop.', $this->name($payment->gateway())), 'orillacart_refund_other_account');
+        }
         if ($payment !== null) {
             $left = $this->leftOf($payment);
             if (Money::of($command->amount)->compare($left) > 0) {

@@ -8,6 +8,7 @@ use OrillaCart\Extension\Payment\ChecksPayments;
 use OrillaCart\Extension\Payment\ChecksRefunds;
 use OrillaCart\Extension\Payment\HandlesReturns;
 use OrillaCart\Extension\Payment\InvalidNotification;
+use OrillaCart\Extension\Payment\NamesAccounts;
 use OrillaCart\Extension\Payment\NamesNotifiedEvents;
 use OrillaCart\Extension\Payment\NamesNotifiedPayments;
 use OrillaCart\Extension\Payment\Notification;
@@ -36,7 +37,7 @@ use OrillaCart\Shared\Domain\Money;
  * approves it at PayPal and comes back, and the shop captures it. A verified webhook settles payments whose
  * customer never came back, and tells of refunds made in PayPal's own dashboard. Refunds go back to the capture. Built on the extension API, as an add-on's gateway would be.
  */
-final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, NamesNotifiedPayments, NamesNotifiedEvents, ChecksPayments, ChecksRefunds
+final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, HandlesReturns, NamesNotifiedPayments, NamesNotifiedEvents, ChecksPayments, ChecksRefunds
 {
     public const string ID = 'paypal';
 
@@ -71,7 +72,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
 
     public function notReady(Settings $settings, string $currency, int $decimals): ?string
     {
-        $account = self::account($settings);
+        $account = self::credentials($settings);
 
         return match (true) {
             $account->clientId === '' || $account->clientSecret === '' => 'Enter the client ID and secret.',
@@ -98,7 +99,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
         }
         // The shop's decimals are never more than PayPal's (notReady), but an add-on's session might be.
         $fits = array_all($parts, static fn(string $part): bool => Money::of($part)->rounded($decimals)->equals(Money::of($part)));
-        $order = $this->call(fn() => $this->api->createOrder(self::account($settings), new PayPalOrderRequest(
+        $order = $this->call(fn() => $this->api->createOrder(self::credentials($settings), new PayPalOrderRequest(
             "orillacart-payment-{$session->paymentId}",
             "orillacart-{$session->orderNumber}-{$session->paymentId}",
             (string) $session->orderNumber,
@@ -143,7 +144,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
     {
         if ($return->cancelled) {
             try {
-                $order = $this->api->order(self::account($settings), $token);
+                $order = $this->api->order(self::credentials($settings), $token);
             } catch (PaymentProviderUnavailable) {
                 return PaymentOutcome::pending($token);
             }
@@ -154,7 +155,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
             };
         }
         try {
-            return self::outcome($token, $this->api->captureOrder(self::account($settings), $token));
+            return self::outcome($token, $this->api->captureOrder(self::credentials($settings), $token));
         } catch (PaymentProviderUnavailable) {
             return PaymentOutcome::pending($token);
         }
@@ -170,7 +171,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
         if (!$amount->rounded($decimals)->equals($amount)) {
             throw new RefundRefused("The amount {$amount} has more decimals than PayPal takes in {$request->currency}.");
         }
-        $refund = $this->call(fn() => $this->api->refundCapture(self::account($settings), $request->transactionId, $request->id, $amount->format($decimals), $request->currency, $request->reason));
+        $refund = $this->call(fn() => $this->api->refundCapture(self::credentials($settings), $request->transactionId, $request->id, $amount->format($decimals), $request->currency, $request->reason));
         if (\in_array($refund->status, ['CANCELLED', 'FAILED'], true)) {
             throw new RefundRefused("PayPal answered the refund with {$refund->status}.");
         }
@@ -180,7 +181,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
 
     public function check(string $reference, ?string $transactionId, Settings $settings): PaymentOutcome
     {
-        $account = self::account($settings);
+        $account = self::credentials($settings);
         if ($transactionId !== null && $transactionId !== '') {
             return self::outcome($reference, $this->call(fn(): PayPalCapture => $this->api->capture($account, $transactionId)));
         }
@@ -197,7 +198,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
 
     public function checkRefund(string $reference, Settings $settings): RefundResult
     {
-        $refund = $this->call(fn(): PayPalRefund => $this->api->refund(self::account($settings), $reference));
+        $refund = $this->call(fn(): PayPalRefund => $this->api->refund(self::credentials($settings), $reference));
         if (\in_array($refund->status, ['CANCELLED', 'FAILED'], true)) {
             throw new RefundRefused("PayPal gave up on the refund: {$refund->status}.");
         }
@@ -228,7 +229,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
 
     public function notified(Notification $notification, Settings $settings): ?PaymentOutcome
     {
-        $account = self::account($settings);
+        $account = self::credentials($settings);
         $verified = $account->webhookId !== '' && $this->call(fn(): bool => $this->api->verifyNotification($account, new PayPalNotification($notification->headers, $notification->body)));
         if (!$verified) {
             throw new InvalidNotification('The notification is not signed by PayPal for this shop.');
@@ -305,7 +306,15 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
         return null;
     }
 
-    public static function account(Settings $settings): PayPalAccount
+    /** Sandbox or live, and whose app: a payment is asked about, and refunded, only there. */
+    public function account(Settings $settings): string
+    {
+        $account = self::credentials($settings);
+
+        return ($account->sandbox ? 'sandbox:' : 'live:') . $account->clientId;
+    }
+
+    public static function credentials(Settings $settings): PayPalAccount
     {
         return new PayPalAccount(trim($settings->text('client_id')), trim($settings->text('client_secret')), $settings->flag('sandbox'), trim($settings->text('webhook_id')));
     }
@@ -320,7 +329,7 @@ final readonly class PayPalGateway implements PaymentGateway, HandlesReturns, Na
         return match ($capture->status) {
             'COMPLETED' => PaymentOutcome::completed($orderId, $capture->id, $capture->amount, $capture->currency),
             'PENDING' => PaymentOutcome::held($orderId, $capture->id),
-            'DECLINED', 'FAILED' => PaymentOutcome::failed($orderId, $capture->id),
+            'DECLINED', 'FAILED' => PaymentOutcome::failed($orderId, $capture->id === '' ? null : $capture->id),
             default => PaymentOutcome::pending($orderId),
         };
     }

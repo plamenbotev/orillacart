@@ -345,10 +345,15 @@ final readonly class OrderService
                 $this->paidOtherThanTotal($order);
                 $order->status() === $previous ? $this->paidWhileFulfilled($order, $note, null) : $this->changed($order, $previous, [], $note, tellCustomer: $tellCustomer, tellShop: $tellShop);
             } elseif ($transactionId !== null && $transactionId !== $order->transactionId()) {
-                $text = $order->paidAgain($transactionId)
+                $again = $order->paidAgain($transactionId);
+                $text = $again
                     ? \sprintf('Another payment came for this order, which was already paid (transaction %s): check whether to give one back.', $transactionId)
                     : \sprintf('The payment came for this order, which was already marked paid. %s', trim($note));
                 $order->addNote(trim($text), NoteAuthor::System, false, $this->clock->now());
+                if ($again) {
+                    // Paid twice, as by an earlier payment the customer left open and finished after paying again.
+                    $order->needsAttention($text, $this->clock->now());
+                }
                 $this->orders->save($order);
             }
         });

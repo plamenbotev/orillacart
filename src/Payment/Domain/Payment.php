@@ -45,6 +45,10 @@ class Payment
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $checkedAt = null;
 
+    /** The provider's account or mode it was made in, such as PayPal's sandbox, when the gateway names it. */
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $account = null;
+
     public function __construct(
         #[ORM\Column]
         #[References('orders')]
@@ -56,11 +60,18 @@ class Payment
         private string $currency,
         #[ORM\Column]
         private \DateTimeImmutable $createdAt,
+        ?string $account = null,
     ) {
         if ($amount->isNegative() || $amount->isZero()) {
             throw new PaymentRuleViolation('A payment is for more than nothing.', 'orillacart_invalid_payment_amount');
         }
         $this->amount = $amount->toFixed();
+        $this->account = $account === null ? null : mb_substr($account, 0, 100);
+    }
+
+    public function account(): ?string
+    {
+        return $this->account;
     }
 
     public function id(): int

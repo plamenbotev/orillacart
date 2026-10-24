@@ -114,6 +114,17 @@ Version 3 lets the shop ask the provider itself, every hour, so payments settle 
   `RefundResult::done()`, `pending()` while it waits, or throw `RefundRefused` when the provider gave up on it
   (the refund fails and the order is flagged for the shop).
 
+A gateway whose settings can point at different accounts or modes of the provider (a sandbox and live, another
+app) implements `NamesAccounts` (version 11): `account($settings)` names the one they point at. Each payment
+keeps it; while the settings point elsewhere the shop does not ask about the payment, take its notifications,
+or refund through it (the shop manager is told to switch back, or to refund at the provider), so switching to
+the sandbox and back never cancels an order the other mode does not know.
+
+How the shop reads outcomes, whatever the gateway: a customer who comes back through the cancel address ends the
+payment but not the order, which may still be paid (the time the shop gives unpaid orders cancels it); and once
+an order started another payment (paid another way through "Pay now"), what an earlier one says moves the order
+only when it is money: an earlier payment completing on an order already paid flags it "Needs attention".
+
 `tests/Fixtures/Extension/TestPayGateway.php` is a complete example, and the shop's PayPal gateway
 (`src/Payment/Application/PayPal/PayPalGateway.php`) is built the same way.
 

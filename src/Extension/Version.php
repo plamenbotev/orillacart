@@ -22,7 +22,7 @@ final class Version
      * each OrderLine. 8: filters and searches of the Orders screen and the products list (OrderFilter, FindsOrders,
      * ProductFilter, FindsProducts), and Orders::mark(). 9: tax services (TaxProvider), changes to
      * order prices at checkout (OrderAdjuster) and on orders on hold (OrderPrices). 10: sending e-invoices on
-     * (EInvoiceSender).
+     * (EInvoiceSender). 11: gateways naming the account or mode a payment is made in (NamesAccounts).
      */
-    public const int CURRENT = 10;
+    public const int CURRENT = 11;
 }

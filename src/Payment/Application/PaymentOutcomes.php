@@ -11,6 +11,7 @@ use OrillaCart\Extension\Payment\InvalidNotification;
 use OrillaCart\Extension\Payment\NamesNotifiedEvents;
 use OrillaCart\Extension\Payment\NamesNotifiedPayments;
 use OrillaCart\Extension\Payment\Notification;
+use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Payment\PaymentOutcome;
 use OrillaCart\Extension\Payment\PaymentReturn;
 use OrillaCart\Extension\ProviderUnavailable;
@@ -95,7 +96,7 @@ final readonly class PaymentOutcomes
         if ($payment === null || !$gateway instanceof HandlesReturns || $reference === null || $payment->id() !== (int) $id) {
             throw new PaymentNotFound();
         }
-        if (!$payment->isSettled()) {
+        if (!$payment->isSettled() && !PaymentAccount::left($payment, $gateway, $this->settings($gatewayId))) {
             try {
                 $outcome = $gateway->returned($reference, $return, $this->settings($gatewayId));
             } catch (\Throwable $e) {
@@ -105,7 +106,9 @@ final readonly class PaymentOutcomes
 
                 return $this->links->receiptUrl($payment->orderId());
             }
-            $this->settle($payment, $outcome);
+            // A customer who chose to go back without paying may still pay, at the provider again or another way:
+            // the payment ends, the order waits, and the time the shop gives unpaid orders cancels it.
+            $this->settle($payment, $outcome, givenUp: $cancelled);
         }
 
         return $this->links->receiptUrl($payment->orderId());
@@ -148,9 +151,15 @@ final readonly class PaymentOutcomes
 
             throw new PaymentProviderUnavailable($this->methods->findByGateway($gatewayId)?->name() ?? $gateway->defaultName(), $e->getMessage(), $e);
         }
+        $this->act($gatewayId, $gateway, $outcome);
+        // Only once acted on: an event that broke on the way is handled when the provider sends it again.
         if ($eventId !== null) {
             $this->handled->remember(new NotifiedEvent($gatewayId, $eventId, $this->clock->now()));
         }
+    }
+
+    private function act(string $gatewayId, PaymentGateway&HandlesNotifications $gateway, ?PaymentOutcome $outcome): void
+    {
         if ($outcome === null) {
             return;
         }
@@ -158,7 +167,7 @@ final readonly class PaymentOutcomes
         if ($payment === null && $outcome->transactionId !== null && \in_array($outcome->status, [PaymentOutcome::REFUNDED, PaymentOutcome::DISPUTED], true)) {
             $payment = $this->payments->findByTransaction($gatewayId, $outcome->transactionId);
         }
-        if ($payment === null) {
+        if ($payment === null || PaymentAccount::left($payment, $gateway, $this->settings($gatewayId))) {
             return;
         }
         if ($outcome->status === PaymentOutcome::DISPUTED) {
@@ -195,9 +204,14 @@ final readonly class PaymentOutcomes
             if (!$gateway instanceof ChecksPayments || $reference === null) {
                 continue;
             }
-            ++$asked;
             $payment->checked($now);
             $this->payments->save($payment);
+            // Made in another account or mode (PayPal's sandbox, say) than the settings point at now: asking there
+            // would read it as unknown and cancel its order.
+            if (PaymentAccount::left($payment, $gateway, $this->settings($payment->gateway()))) {
+                continue;
+            }
+            ++$asked;
             try {
                 $outcome = $gateway->check($reference, $payment->transactionId(), $this->settings($payment->gateway()));
             } catch (\Throwable $e) {
@@ -210,19 +224,24 @@ final readonly class PaymentOutcomes
         return $asked;
     }
 
-    private function settle(Payment $found, PaymentOutcome $outcome): void
+    private function settle(Payment $found, PaymentOutcome $outcome, bool $givenUp = false): void
     {
-        $this->transactions->run(function () use ($found, $outcome): void {
+        $this->transactions->run(function () use ($found, $outcome, $givenUp): void {
             $payment = $this->payments->find($found->id(), true);
             if ($payment !== null) {
-                $this->settleLocked($payment, $outcome);
+                $this->settleLocked($payment, $outcome, $givenUp);
             }
         });
     }
 
-    private function settleLocked(Payment $payment, PaymentOutcome $outcome): void
+    /**
+     * Settles the payment, and tells the order. A payment the order replaced since (paid another way, or started
+     * again) only tells it of money: its failing, being given up or held moves nothing.
+     */
+    private function settleLocked(Payment $payment, PaymentOutcome $outcome, bool $givenUp): void
     {
         $now = $this->clock->now();
+        $replaced = array_any($this->payments->ofOrder($payment->orderId()), static fn(Payment $other): bool => $other->id() > $payment->id());
         $event = match ($outcome->status) {
             PaymentOutcome::COMPLETED => $this->paysInFull($payment, $outcome)
                 ? ($payment->complete($outcome->transactionId, $now) ? new PaymentCompleted($payment->orderId(), $payment->id(), $payment->gateway(), $outcome->transactionId ?? '', (string) $payment->amount()) : null)
@@ -233,7 +252,7 @@ final readonly class PaymentOutcomes
             default => null,
         };
         $this->payments->save($payment);
-        if ($event !== null) {
+        if ($event instanceof PaymentCompleted || ($event !== null && !$replaced && !($givenUp && $event instanceof PaymentCancelled))) {
             $this->events->dispatch($event);
         }
     }

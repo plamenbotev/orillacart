@@ -118,7 +118,8 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         wp_set_current_user(0);
         $order = $this->order([[$vase, 2]], ['shipping_option' => 'rate:' . self::int($rate[0]['id'])]);
         $this->actAs('administrator');
-        $this->request('PUT', "/orders/{$order['number']}/status", ['status' => 'processing'], nonce: true);
+        // The transfer came: an order shipped unpaid would wait, shipped, for it.
+        self::assertSame(200, $this->request('POST', "/orders/{$order['number']}/paid", nonce: true)->get_status());
 
         $first = $this->request('POST', "/orders/{$order['number']}/shipments/sent", ['carrier' => 'Post', 'parcels' => [['number' => 'P1', 'tracking_url' => 'https://post.test/P1']], 'items' => [['line' => 0, 'quantity' => 1]]], nonce: true);
         self::assertSame(201, $first->get_status(), (string) wp_json_encode($first->get_data()));

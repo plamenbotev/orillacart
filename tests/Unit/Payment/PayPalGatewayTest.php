@@ -195,14 +195,26 @@ final class PayPalGatewayTest extends TestCase
         self::assertSame('pending_payment', $this->orderStatus($placed));
     }
 
-    public function testACustomerWhoGivesUpCancelsThePaymentAndTheOrder(): void
+    public function testACustomerWhoGivesUpCancelsThePaymentNotTheOrder(): void
     {
         $placed = $this->place();
 
         self::assertSame($placed->receiptUrl, $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), true));
 
-        self::assertSame('cancelled', $this->orderStatus($placed));
+        self::assertSame('pending_payment', $this->orderStatus($placed), 'it may still be paid, until the time for unpaid orders runs out');
         self::assertSame([], $this->shop->payPalApi->captured);
+    }
+
+    public function testAPaymentMadeInTheSandboxIsNotAskedAboutLive(): void
+    {
+        $placed = $this->place();
+        // Made live; the shop then turns the sandbox on to try something.
+        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret', 'sandbox' => true]));
+        $this->shop->payPalApi->orderStatus['PAYPAL-1'] = 'VOIDED';
+        $this->shop->clock->modify('+1 hour');
+
+        self::assertSame(0, $this->shop->outcomes->reconcile(), 'the sandbox would not know it, and read it as given up');
+        self::assertSame('pending_payment', $this->orderStatus($placed));
     }
 
     public function testACustomerComingBackWhilePayPalIsDownStillSeesTheReceipt(): void

@@ -182,15 +182,22 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame(['processing', ['PAYPAL-1']], [$this->shop->orders->order($placed->number)->status, $this->shop->payPalApi->captured]);
     }
 
-    public function testGivingUpAtPayPalCancelsTheOrderAndPutsTheStockBack(): void
+    public function testGivingUpAtPayPalLeavesTheOrderToBePaidAnotherWay(): void
     {
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 3]), $this->order('paypal'));
         self::assertSame(0, $this->shop->stock->stock(StockItemRef::product(10))->available);
 
         $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), true);
 
-        self::assertSame('cancelled', $this->shop->orders->order($placed->number)->status);
-        self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available);
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame(['pending_payment', true], [$order->status, $order->payable], 'the cart is gone: the order is what is left to pay');
+        self::assertSame(0, $this->shop->stock->stock(StockItemRef::product(10))->available, 'it keeps its stock while it waits');
+
+        $this->shop->payNow->pay($this->shop->receipts->issue($placed->number), new PayOrder('bank_transfer'));
+        // PayPal tells of the first payment later, as the hourly check does: it moves nothing now.
+        $this->shop->payPalApi->orderStatus['PAYPAL-1'] = 'VOIDED';
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), true);
+        self::assertSame('on_hold', $this->shop->orders->order($placed->number)->status, 'waiting for the transfer');
     }
 
     public function testADeclinedPaymentFailsTheOrderAndPutsTheStockBack(): void

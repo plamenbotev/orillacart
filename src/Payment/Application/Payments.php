@@ -41,7 +41,7 @@ final readonly class Payments
         $method = $this->methods->findByGateway($command->gateway) ?? throw new PaymentMethodNotFound($command->gateway);
         $gateway = $this->gateways->get($command->gateway);
 
-        $payment = new Payment($command->orderId, $command->gateway, Money::of($command->amount), $command->currency, $this->clock->now());
+        $payment = new Payment($command->orderId, $command->gateway, Money::of($command->amount), $command->currency, $this->clock->now(), PaymentAccount::of($gateway, new Settings($method->settings())));
         $this->payments->save($payment);
 
         try {

@@ -123,6 +123,11 @@ final readonly class WordPressPayPalApi implements PayPalApi
         if ($response['status'] === 422 && self::issue($response['body']) === 'ORDER_ALREADY_CAPTURED') {
             $response = $this->send($account, 'GET', $path);
         }
+        if ($response['status'] === 422 && self::issue($response['body']) === 'INSTRUMENT_DECLINED') {
+            // The card or account the customer chose was declined: a payment that failed, not PayPal away; the
+            // order may be paid again, another way.
+            return new PayPalCapture('', 'DECLINED', '0', '', $orderId);
+        }
         if ($response['status'] >= 300) {
             throw $this->unavailable("PayPal refused to capture order {$orderId} ({$response['status']}).", $response['body']);
         }
