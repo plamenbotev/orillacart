@@ -11,6 +11,7 @@ use OrillaCart\Extension\Payment\RefundRequest;
 use OrillaCart\Extension\Payment\RefundsPayments;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Settings;
+use OrillaCart\GiftCards\Application\Dto\GiftCardCredit;
 use OrillaCart\GiftCards\Application\GiftCardService;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\RefundedView;
@@ -125,13 +126,17 @@ final readonly class Refunds
             $this->clock->now(),
         );
         if ($payment === null) {
-            $this->transactions->run(function () use ($refund, $order, $orderId, $command, $userId): void {
+            $credit = $this->transactions->run(function () use ($refund, $order, $orderId, $command, $userId): ?GiftCardCredit {
                 $this->refunds->save($refund);
-                $how = $command->storeCredit
+                $credit = $command->storeCredit
                     ? $this->giftCards->refundAsCredit($orderId, $order->customerId, $order->email, $order->billing->firstName, Money::of($command->amount), $order->currency, $userId)
-                    : 'outside the shop';
-                $this->taxed($refund, $this->orders->refund($orderId, $command->forOrder(), $how, $userId));
+                    : null;
+                $this->taxed($refund, $this->orders->refund($orderId, $command->forOrder(), $credit->how ?? 'outside the shop', $userId));
+
+                return $credit;
             });
+            // A guest's new card goes out once the refund is saved: never a code that a rollback took away.
+            $credit?->send();
         } else {
             // Saved before the provider is asked: an answer lost on the way leaves it pending, never forgotten.
             $this->refunds->save($refund);

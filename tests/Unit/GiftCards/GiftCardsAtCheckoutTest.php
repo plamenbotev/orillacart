@@ -8,14 +8,17 @@ use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
+use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\GiftCards\Application\Dto\AdjustBalance;
 use OrillaCart\GiftCards\Application\Dto\GiftCardCodeInput;
 use OrillaCart\GiftCards\Application\Dto\GiftCardSettingsView;
 use OrillaCart\GiftCards\Application\Dto\IssueGiftCard;
 use OrillaCart\GiftCards\Domain\GiftCardRuleViolation;
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
@@ -182,6 +185,79 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $this->shop->refunds->refund($guest->number, new MakeRefund('5', storeCredit: true), 1);
         self::assertSame([['ada@example.com', '5']], array_map(static fn(array $sent): array => [$sent['to'], $sent['amount']], $this->shop->giftCardMail->sent));
         self::assertStringContainsString('as gift card ····', implode(' ', array_map(static fn($note): string => $note->text, $this->shop->orders->order($guest->number)->notes)));
+    }
+
+    public function testTheCardsOfARefundedOrderPayNoMoreAndWhatTheySpentIsSaid(): void
+    {
+        $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));
+        $placed = $this->shop->checkout->placeOrder($this->cart([20, 2]), $this->order('bank_transfer', null));
+        $this->shop->orders->markPaid($placed->number, null);
+        $cards = $this->cards();
+        $this->shop->giftCards->adjust($cards[1]->id, new AdjustBalance('-10', 'Spent at the shop'), 1);
+
+        $this->shop->refunds->refund($placed->number, new MakeRefund('25', [new RefundLine(0, 1)], outside: true), 1);
+        self::assertSame([[false, '0'], [true, '15']], array_map(static fn($card): array => [$card->active, $card->balance], $this->cards()), 'the one with the most left goes first');
+
+        $this->shop->refunds->refund($placed->number, new MakeRefund('25', outside: true), 1);
+        self::assertSame([[false, '0'], [false, '0']], array_map(static fn($card): array => [$card->active, $card->balance], $this->cards()));
+        $notes = implode(' ', array_map(static fn($note): string => $note->text, $this->shop->orders->order($placed->number)->notes));
+        self::assertStringContainsString('had spent 10 of 25 EUR: settle that with the customer', $notes);
+    }
+
+    public function testACardWhoseEmailDidNotGoIsForTheShopToSendAgain(): void
+    {
+        $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));
+        $this->shop->giftCardMail->refuse = true;
+        $placed = $this->shop->checkout->placeOrder($this->cart([20, 1]), $this->order('bank_transfer', null));
+        $this->shop->orders->markPaid($placed->number, null);
+
+        $order = $this->shop->orders->order($placed->number);
+        self::assertNotNull($order->attention);
+        self::assertStringContainsString('did not go', $order->attention);
+        self::assertStringNotContainsString('made and sent', implode(' ', array_map(static fn($note): string => $note->text, $order->notes)));
+    }
+
+    public function testCardsSplitFromOneLineAreInCentsAndAddUpToWhatWasPaid(): void
+    {
+        $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));
+        $this->shop->coupons->create(new SaveCoupon('TEN', 'order_amount', '10'));
+        $owner = $this->cart([20, 3]);
+        $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'));
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer', null));
+        $this->shop->orders->markPaid($placed->number, null);
+
+        self::assertSame(['21.67', '21.67', '21.66'], array_map(static fn(array $sent): string => $sent['amount'], $this->shop->giftCardMail->sent), '65 in three');
+    }
+
+    public function testAGuestsRefundAsAGiftCardDoesNotExpire(): void
+    {
+        $this->shop->giftCards->saveSettings(new GiftCardSettingsView([], 12));
+        $guest = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('bank_transfer'));
+        $this->shop->orders->markPaid($guest->number, null);
+
+        $this->shop->refunds->refund($guest->number, new MakeRefund('5', storeCredit: true), 1);
+
+        self::assertSame([null], $this->shop->giftCardMail->expiries, 'the customer\'s money, not a gift');
+    }
+
+    public function testAnOrderTakesUpToFiveGiftCards(): void
+    {
+        $owner = $this->cart([10, 1]);
+        for ($i = 0; $i < 5; ++$i) {
+            $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($this->shop->giftCards->issue(new IssueGiftCard('1'), 1)->code));
+        }
+
+        $this->expectExceptionMessage('An order takes up to 5 gift cards.');
+        $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($this->shop->giftCards->issue(new IssueGiftCard('1'), 1)->code));
+    }
+
+    /** @return list<\OrillaCart\GiftCards\Application\Dto\GiftCardView> by id */
+    private function cards(): array
+    {
+        $cards = $this->shop->giftCards->page(new \OrillaCart\GiftCards\Application\Dto\GiftCardQuery())->cards;
+        usort($cards, static fn($a, $b): int => $a->id <=> $b->id);
+
+        return $cards;
     }
 
     /**

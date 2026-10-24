@@ -246,6 +246,9 @@ final readonly class CheckoutService
         if ($balance->refused !== null) {
             throw new CheckoutRuleViolation($balance->refused, 'orillacart_gift_card_refused');
         }
+        if (!\in_array($code, $contents->giftCards, true) && \count($contents->giftCards) >= GiftCardPayments::MAX_CODES) {
+            throw new CheckoutRuleViolation(\sprintf('An order takes up to %d gift cards.', GiftCardPayments::MAX_CODES), 'orillacart_gift_card_refused');
+        }
         $this->carts->useGiftCards($contents->cartId, array_values(array_unique([...$contents->giftCards, $code])), $contents->useStoreCredit);
 
         return $this->summary($owner, new CheckoutDetails());

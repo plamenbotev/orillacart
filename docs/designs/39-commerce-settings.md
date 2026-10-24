@@ -65,6 +65,14 @@ Two kinds on the coupon engine, as codes or automatic discounts:
 - A privacy request that erases an email, or anonymises an order, takes the recipient's name, email and message
   off the cards made out to it; the cards and their balances stay.
 
+- Since 133 (second audit): refunding an order that bought gift cards turns off as many of its cards as were
+  refunded (all, for the whole order), those with the most left first, and notes what a card had spent for the
+  shop to settle. A card whose email did not go (the email off, the mail failing) flags the order "Needs
+  attention" instead of saying it was sent: only the code's hash is kept, so a new code sends it. Cards split from
+  one line are in the currency's cents, the last taking what is left. A guest's refund card is sent once the
+  refund is saved and, like store credit, never expires. Dates the shop manager gives are in the shop's time
+  zone. An order takes up to five cards, and a sixth is refused rather than ignored.
+
 ## Other currencies
 
 - Settings → Currencies: the currencies the shop takes besides its own, each with the shop's rate (units of it

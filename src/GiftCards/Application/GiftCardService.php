@@ -6,6 +6,7 @@ namespace OrillaCart\GiftCards\Application;
 
 use OrillaCart\GiftCards\Application\Dto\AdjustBalance;
 use OrillaCart\GiftCards\Application\Dto\ChangeGiftCard;
+use OrillaCart\GiftCards\Application\Dto\GiftCardCredit;
 use OrillaCart\GiftCards\Application\Dto\GiftCardDetailView;
 use OrillaCart\GiftCards\Application\Dto\GiftCardEntryView;
 use OrillaCart\GiftCards\Application\Dto\GiftCardPage;
@@ -22,6 +23,7 @@ use OrillaCart\GiftCards\Domain\GiftCardRepository;
 use OrillaCart\GiftCards\Domain\GiftCardRuleViolation;
 use OrillaCart\GiftCards\Domain\GiftCardSettings;
 use OrillaCart\GiftCards\Domain\GiftCardSettingsRepository;
+use OrillaCart\Reports\Application\ShopCalendar;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Persistence\Transactions;
@@ -42,6 +44,7 @@ final readonly class GiftCardService
         private Transactions $transactions,
         private UserNames $users,
         private ClockInterface $clock,
+        private ShopCalendar $calendar,
     ) {}
 
     public function page(GiftCardQuery $query): GiftCardPage
@@ -69,7 +72,7 @@ final readonly class GiftCardService
     {
         $now = $this->clock->now();
         $code = GiftCardCode::generate();
-        $expires = $command->expiresAt === null || $command->expiresAt === '' ? $this->settings->load()->expiry($now) : new \DateTimeImmutable($command->expiresAt);
+        $expires = $command->expiresAt === null || $command->expiresAt === '' ? $this->settings->load()->expiry($now) : $this->day($command->expiresAt);
         $card = GiftCard::issue($code, Money::of($command->amount), $this->shop->current()->currency, $now, $expires, $command->recipientName, $command->recipientEmail, $command->message);
         $this->transactions->run(function () use ($card, $now, $userId): void {
             $this->cards->save($card);
@@ -107,7 +110,7 @@ final readonly class GiftCardService
     public function change(int $id, ChangeGiftCard $command): GiftCardView
     {
         $card = $this->get($id);
-        $card->change($command->active, $command->expiresAt === null || $command->expiresAt === '' ? null : new \DateTimeImmutable($command->expiresAt));
+        $card->change($command->active, $command->expiresAt === null || $command->expiresAt === '' ? null : $this->day($command->expiresAt));
         $this->cards->save($card);
 
         return GiftCardView::of($card);
@@ -156,11 +159,10 @@ final readonly class GiftCardService
 
     /**
      * Money given back for an order as something to spend in the shop: the customer's store credit, or for a
-     * guest a new gift card, sent to them. Run it in the transaction that records the refund.
-     *
-     * @return string how the money went back, for the order's history: "as store credit"
+     * guest a new gift card, to send them once the refund is saved. Run it in the transaction that records the
+     * refund. Neither expires: it is the customer's money, not a gift.
      */
-    public function refundAsCredit(int $orderId, ?int $customerId, string $email, string $name, Money $amount, string $currency, ?int $userId): string
+    public function refundAsCredit(int $orderId, ?int $customerId, string $email, string $name, Money $amount, string $currency, ?int $userId): GiftCardCredit
     {
         $now = $this->clock->now();
         $note = \sprintf('Refund of order #%d', $orderId);
@@ -170,15 +172,14 @@ final readonly class GiftCardService
             $this->cards->save($card);
             $this->cards->add(new GiftCardEntry($card->id(), $amount, $note, $now, $orderId, $userId));
 
-            return 'as store credit';
+            return new GiftCardCredit('as store credit');
         }
         $code = GiftCardCode::generate();
-        $card = GiftCard::issue($code, $amount, $currency, $now, $this->settings->load()->expiry($now), $name, $email);
+        $card = GiftCard::issue($code, $amount, $currency, $now, null, $name, $email);
         $this->cards->save($card);
         $this->cards->add(new GiftCardEntry($card->id(), $amount, $note, $now, $orderId, $userId));
-        $this->send($card, $code);
 
-        return \sprintf('as gift card ····%s, sent to %s', $card->codeEnd(), $email);
+        return new GiftCardCredit(\sprintf('as gift card ····%s, sent to %s', $card->codeEnd(), $email), fn(): bool => $this->send($card, $code));
     }
 
     /**
@@ -222,6 +223,12 @@ final readonly class GiftCardService
         $card->credit($amount);
         $this->cards->save($card);
         $this->cards->add(new GiftCardEntry($card->id(), $amount, $command->note, $this->clock->now(), null, $userId));
+    }
+
+    /** A time the shop manager gave without a zone, such as the end of a day, is the shop's time. */
+    private function day(string $at): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable($at, $this->calendar->timezone());
     }
 
     private function send(GiftCard $card, GiftCardCode $code): bool

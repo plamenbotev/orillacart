@@ -433,7 +433,7 @@ final class TestShop
         $this->giftCardRecords = new InMemoryGiftCards($this->transactions);
         $this->giftCardSettings = new MemoryGiftCardSettings();
         $this->giftCardMail = new SentGiftCards();
-        $this->giftCards = new GiftCardService($this->giftCardRecords, $this->giftCardSettings, $this->giftCardMail, $settings, $this->transactions, new FixedUserNames(), $this->clock);
+        $this->giftCards = new GiftCardService($this->giftCardRecords, $this->giftCardSettings, $this->giftCardMail, $settings, $this->transactions, new FixedUserNames(), $this->clock, new SofiaCalendar());
         $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions, $this->giftCards, $this->events);
         $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds, $this->transactions, $links, $this->signatures, $this->notifiedEvents = new InMemoryNotifiedEvents());
         $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events);
@@ -465,6 +465,7 @@ final class TestShop
         $withGiftCards = new GiftCardsWithOrders($this->giftCardPayments, new GiftCardSales($this->giftCardRecords, $this->giftCardSettings, $this->orders, $this->giftCardMail, $this->transactions, $this->clock), $this->orders);
         $this->events->addListener(OrderStatusChanged::class, $withGiftCards->statusChanged(...));
         $this->events->addListener(OrderPaid::class, $withGiftCards->paid(...));
+        $this->events->addListener(OrderRefunded::class, $withGiftCards->refunded(...));
         $this->paymentOptions = $paymentOptions = new PaymentOptions($methodRecords, $gateways, $settings);
         $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
         $this->taxServices = new TaxServices($this->taxSettings, $extensions, $this->logger, $this->failures, $taxGroupRecords, $this->taxQuotes = new MemoryTaxQuoteCache());

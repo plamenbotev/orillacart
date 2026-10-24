@@ -8,6 +8,7 @@ use OrillaCart\GiftCards\Application\GiftCardPayments;
 use OrillaCart\GiftCards\Application\GiftCardSales;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\Event\OrderPaid;
+use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
 use OrillaCart\Ordering\Domain\OrderStatus;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -42,5 +43,11 @@ final readonly class GiftCardsWithOrders
     public function paid(OrderPaid $event): void
     {
         $this->sales->issueFor($event->orderId);
+    }
+
+    #[AsEventListener]
+    public function refunded(OrderRefunded $event): void
+    {
+        $this->sales->refunded($event->orderId, $event->quantities, $event->full);
     }
 }

@@ -502,12 +502,13 @@ final readonly class OrderService
     public function needsAttention(int $id, string $reason): void
     {
         $this->changing($id, function (Order $order) use ($reason): void {
-            if (!$order->needsAttention($reason, $this->clock->now())) {
-                return;
-            }
+            // Flagged already for something else: the shop still reads this in the history.
+            $flagged = $order->needsAttention($reason, $this->clock->now());
             $order->addNote($reason, NoteAuthor::System, false, $this->clock->now());
             $this->orders->save($order);
-            $this->events->dispatch(new OrderNeedsAttention($order->id(), trim($reason)));
+            if ($flagged) {
+                $this->events->dispatch(new OrderNeedsAttention($order->id(), trim($reason)));
+            }
         });
     }
 

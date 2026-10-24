@@ -518,7 +518,7 @@ function SettingsCard( {
 						max={ 120 }
 						label={ __( 'A card lasts (months)', 'orillacart' ) }
 						help={ __(
-							'From when it is made, for cards sold and given. Empty: for ever. Some countries set the least a gift card must last.',
+							"From when it is made, for cards sold and given. Empty: for ever. Some countries set the least a gift card must last. Refunds given as a gift card or store credit never expire: they are the customer's money.",
 							'orillacart'
 						) }
 						value={

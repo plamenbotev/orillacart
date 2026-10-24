@@ -199,7 +199,7 @@ class GiftCard
         return match (true) {
             !$this->active => 'This gift card is not valid.',
             $this->expiresAt !== null && $now >= $this->expiresAt => 'This gift card has expired.',
-            $this->currency !== $currency => \sprintf('This gift card is in %s; it pays for orders in %s only.', $this->currency, $this->currency),
+            $this->currency !== $currency => \sprintf('This gift card is in %s and cannot pay for an order in %s.', $this->currency, $currency),
             $this->balance()->isZero() => 'This gift card has been used up.',
             default => null,
         };
