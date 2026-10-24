@@ -8,16 +8,27 @@ namespace OrillaCart\Shared\Http\Security;
  * The visitor's address, for the rate limits. Behind a proxy or a CDN (Cloudflare, a load balancer) every request
  * comes from the proxy's address, so the shop would count all its visitors as one: when REMOTE_ADDR is a proxy the
  * site trusts (ORILLACART_TRUSTED_PROXIES, comma-separated addresses or ranges such as 10.0.0.0/8, or the filter
- * orillacart_trusted_proxies), the address is the last one in X-Forwarded-For that is not one of its proxies, or
- * CF-Connecting-IP. A header from anyone else is ignored: a visitor cannot choose their own address.
+ * orillacart_trusted_proxies), the address is the last one in X-Forwarded-For that is not one of its proxies; or
+ * CF-Connecting-IP, when REMOTE_ADDR is also one of Cloudflare's (filter orillacart_cloudflare_proxies), since only
+ * Cloudflare sets it: another proxy passes a visitor's own on. A header from anyone else is ignored: a visitor
+ * cannot choose their own address.
  */
 final class ClientAddress
 {
+    /** Cloudflare's addresses, as it publishes them (cloudflare.com/ips). */
+    public const array CLOUDFLARE = [
+        '173.245.48.0/20', '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22', '141.101.64.0/18', '108.162.192.0/18',
+        '190.93.240.0/20', '188.114.96.0/20', '197.234.240.0/22', '198.41.128.0/17', '162.158.0.0/15', '104.16.0.0/13',
+        '104.24.0.0/14', '172.64.0.0/13', '131.0.72.0/22',
+        '2400:cb00::/32', '2606:4700::/32', '2803:f800::/32', '2405:b500::/32', '2405:8100::/32', '2a06:98c0::/29', '2c0f:f248::/32',
+    ];
+
     /**
-     * @param array<array-key, mixed> $server  $_SERVER, or a request's server params
-     * @param list<string>|null       $proxies the trusted proxies; null for the site's
+     * @param array<array-key, mixed> $server     $_SERVER, or a request's server params
+     * @param list<string>|null       $proxies    the trusted proxies; null for the site's
+     * @param list<string>|null       $cloudflare Cloudflare's addresses; null for the site's list
      */
-    public static function of(array $server, ?array $proxies = null): string
+    public static function of(array $server, ?array $proxies = null, ?array $cloudflare = null): string
     {
         $remote = \is_string($server['REMOTE_ADDR'] ?? null) ? $server['REMOTE_ADDR'] : '';
         $proxies ??= self::trustedProxies();
@@ -25,7 +36,7 @@ final class ClientAddress
             return $remote === '' ? 'unknown' : $remote;
         }
         $connecting = \is_string($server['HTTP_CF_CONNECTING_IP'] ?? null) ? trim($server['HTTP_CF_CONNECTING_IP']) : '';
-        if (filter_var($connecting, \FILTER_VALIDATE_IP) !== false) {
+        if (filter_var($connecting, \FILTER_VALIDATE_IP) !== false && self::isIn($remote, $cloudflare ?? self::cloudflare())) {
             return $connecting;
         }
         $forwarded = \is_string($server['HTTP_X_FORWARDED_FOR'] ?? null) ? array_reverse(array_map(trim(...), explode(',', $server['HTTP_X_FORWARDED_FOR']))) : [];
@@ -51,6 +62,14 @@ final class ClientAddress
         $remote = \is_string($server['REMOTE_ADDR'] ?? null) ? $server['REMOTE_ADDR'] : '';
 
         return (isset($server['HTTP_X_FORWARDED_FOR']) || isset($server['HTTP_CF_CONNECTING_IP'])) && !self::isIn($remote, self::trustedProxies());
+    }
+
+    /** @return list<string> */
+    private static function cloudflare(): array
+    {
+        $filtered = \function_exists('apply_filters') ? apply_filters('orillacart_cloudflare_proxies', self::CLOUDFLARE) : self::CLOUDFLARE;
+
+        return \is_array($filtered) ? array_values(array_filter($filtered, \is_string(...))) : [];
     }
 
     /** @return list<string> */
