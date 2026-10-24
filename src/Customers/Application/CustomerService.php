@@ -261,7 +261,8 @@ final readonly class CustomerService
 
     /**
      * The visitor followed the link and chose a password: the account is made, with the orders placed while
-     * asking for it and the addresses of the first, and the browser is logged in to it.
+     * asking for it (and, as the shop chooses, the earlier guest orders of the email) and the addresses of the
+     * latest placed while asking, or else of the latest guest order; and the browser is logged in to it.
      *
      * @throws RuleViolation for a link that does not work (any more), a password that is too short, or an email
      *                       that has an account since
@@ -281,10 +282,13 @@ final readonly class CustomerService
             throw new RuleViolation('This email has an account: log in instead.', 'orillacart_account_exists');
         }
         $id = $this->accounts->register($account->email(), $command->password, $account->firstName(), $account->lastName());
+        // The addresses the customer gave last: an order of years ago may be from a home they left.
+        $addressedBy = $account->orderIds() !== [] ? max($account->orderIds()) : null;
         $addressed = false;
         // The link came to the email, so its owner made the account: the orders placed with it as a guest join
         // it, the ones placed while asking first, as the confirmation email says; unless the shop chose only those.
         $guestOrders = $this->settings->load()->guestOrders ? $this->orders->guestOrdersOf($account->email()) : [];
+        $addressedBy ??= $guestOrders === [] ? null : max($guestOrders);
         foreach (array_values(array_unique([...$account->orderIds(), ...$guestOrders])) as $orderId) {
             try {
                 $order = $this->orders->order($orderId);
@@ -292,7 +296,7 @@ final readonly class CustomerService
             } catch (OrderNotFound) {
                 continue;
             }
-            if (!$addressed) {
+            if (!$addressed && $orderId === $addressedBy) {
                 $this->accounts->saveAddresses($id, new AddressBook()->remembering($order->billing, $order->shippingAddress));
                 $addressed = true;
             }

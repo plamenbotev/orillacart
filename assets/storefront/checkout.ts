@@ -241,6 +241,25 @@ function chosen(
 }
 
 /**
+ * What the summary says it refuses: each code or gift card that does not hold, with why.
+ * @param form The checkout form.
+ */
+function refusals( form: HTMLFormElement ): string[] {
+	return Array.from(
+		form.querySelectorAll(
+			'[data-orillacart-region="checkout-summary"] .orillacart-coupon--refused, [data-orillacart-region="checkout-summary"] .orillacart-gift-card--refused'
+		),
+		( refusal ) => {
+			const copy = refusal.cloneNode( true ) as HTMLElement;
+			copy.querySelectorAll( 'button' ).forEach( ( button ) =>
+				button.remove()
+			);
+			return ( copy.textContent ?? '' ).replace( /\s+/g, ' ' ).trim();
+		}
+	);
+}
+
+/**
  * Prices the order again for the addresses on the form, keeping the chosen way to pay.
  * @param form The checkout form.
  */
@@ -280,6 +299,7 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 	const summary = form.querySelector(
 		'[data-orillacart-region="checkout-summary"]'
 	);
+	const refusedBefore = refusals( form );
 	summary?.setAttribute( 'aria-busy', 'true' );
 	try {
 		await reloadRegions( [ 'checkout-summary' ], url.toString() );
@@ -309,9 +329,16 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 				total
 			)
 		: '';
-	// Only a change is said: a refresh that leaves the total says nothing.
-	if ( said && saying !== '' && said.textContent !== saying ) {
-		said.textContent = saying;
+	// A code or gift card the new totals refuse (the country changed, the minimum is no longer met) is said too:
+	// it shows inside the summary, which is not read out as it is replaced.
+	const refused = refusals( form ).filter(
+		( text ) => ! refusedBefore.includes( text )
+	);
+	// Only a change is said: a refresh that leaves the total, and refuses nothing new, says nothing.
+	const totalChanged =
+		saying !== '' && ( said?.textContent ?? '' ).indexOf( saying ) !== 0;
+	if ( said && ( totalChanged || refused.length > 0 ) ) {
+		said.textContent = [ saying, ...refused ].filter( Boolean ).join( ' ' );
 	}
 	// A choice made while this refresh was on its way stands, where the new summary still offers it.
 	for ( const name of Object.keys( CHOSEN ) as ( keyof typeof CHOSEN )[] ) {

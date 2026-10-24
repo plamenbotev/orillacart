@@ -160,7 +160,7 @@ final readonly class EmailTemplateEditor
         }
         $kind = $command->kind ?? self::previews($name);
 
-        return $this->editing->previewing($drafts, fn(): Email => $this->email($kind, $command->order));
+        return $this->editing->previewing($drafts, fn(): Email => $this->writer->previewing(fn(): Email => $this->email($kind, $command->order)));
     }
 
     /**

@@ -58,4 +58,48 @@ describe( 'the checkout', () => {
 		expect( value( 'street' ) ).toBe( '1 Vitosha Blvd' );
 		expect( value( 'phone' ) ).toBe( '+359 2 000 0000' );
 	} );
+
+	it( 'says a code the new totals refuse, which shows only inside the summary', async () => {
+		// What the test before set going ends first.
+		for ( let tick = 0; tick < 10; tick++ ) {
+			await new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
+		}
+		const summary = ( refused: string ) => `
+			<div data-orillacart-region="checkout-summary">
+				<table><tr class="orillacart-total"><td>€40.00</td></tr></table>
+				${ refused }
+			</div>`;
+		window.fetch = jest.fn( () =>
+			Promise.resolve( {
+				ok: true,
+				status: 200,
+				text: () =>
+					Promise.resolve(
+						summary(
+							'<p class="orillacart-coupon orillacart-coupon--refused"><strong>SAVE10</strong>: This code is for orders over €50.00. <button>×</button></p>'
+						)
+					),
+			} as Response )
+		) as typeof fetch;
+		document.body.innerHTML = `
+			<form data-orillacart-checkout>
+				<input name="billing.postcode" value="1000">
+				<p data-orillacart-total-said aria-live="polite">Total: €40.00</p>
+				${ summary( '' ) }
+			</form>`;
+		const form = document.querySelector( 'form' ) as HTMLFormElement;
+		bindCheckout( form );
+
+		form.querySelector( 'input' )?.dispatchEvent(
+			new Event( 'change', { bubbles: true } )
+		);
+		for ( let tick = 0; tick < 10; tick++ ) {
+			await new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
+		}
+		expect( window.fetch ).toHaveBeenCalled();
+
+		expect(
+			form.querySelector( '[data-orillacart-total-said]' )?.textContent
+		).toBe( 'Total: €40.00 SAVE10: This code is for orders over €50.00.' );
+	} );
 } );

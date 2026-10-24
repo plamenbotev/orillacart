@@ -71,6 +71,7 @@ final readonly class CartReminders
             return;
         }
         try {
+            $reminder = $this->abandoned->withLink($reminder);
             $coupon = $settings->cartReminderCoupon === null ? null : $this->coupons->offerable($settings->cartReminderCoupon, $this->clock->now());
             $email = $this->writer->write(EmailKind::CartReminder->template(), EmailKind::CartReminder->value, $reminder->email, $reminder->locale, [
                 'cart' => self::cart($reminder->cart, $this->shop->current()->currency),

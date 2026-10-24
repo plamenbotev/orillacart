@@ -34,6 +34,6 @@ final readonly class ConfirmAccountAction implements RequestHandlerInterface
             throw new RuleViolation('You are logged in already.', 'orillacart_logged_in');
         }
 
-        return $this->responder->ok($this->customers->confirmAccount($this->input->body($request, ConfirmAccount::class)), 201);
+        return $this->responder->ok($this->customers->confirmAccount($this->input->body($request, ConfirmAccount::class))->forCustomer(), 201);
     }
 }

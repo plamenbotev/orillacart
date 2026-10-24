@@ -57,7 +57,8 @@ final readonly class AbandonedCarts
 
     /**
      * What to remind the customer of; null when there is nothing to: the cart was ordered, emptied, is gone, its
-     * customer no longer asks, or was reminded. A visitor's cart gets a new link to bring it back.
+     * customer no longer asks, or was reminded. Without the link to bring a visitor's cart back: that comes once
+     * the reminder is claimed (withLink), so a second worker does not undo the link of the one sending it.
      */
     public function reminder(int $abandonedId): ?CartReminder
     {
@@ -74,14 +75,24 @@ final readonly class AbandonedCarts
         if ($view === null) {
             return null;
         }
-        $token = null;
-        if ($cart->customerId() === null) {
-            $token = bin2hex(random_bytes(32));
-            $cart->recoverWith($token);
-            $this->carts->save($cart);
-        }
+        return new CartReminder($abandonedId, $email, $cart->locale(), $cart->customerId(), $view, null);
+    }
 
-        return new CartReminder($abandonedId, $email, $cart->locale(), $cart->customerId(), $view, $token);
+    /**
+     * The claimed reminder of a visitor's cart, with a new link that brings it back; a customer's as it is.
+     */
+    public function withLink(CartReminder $reminder): CartReminder
+    {
+        $left = $reminder->customerId === null ? $this->abandoned->find($reminder->abandonedId) : null;
+        $cart = $left === null ? null : $this->carts->find($left->cartId());
+        if ($cart === null) {
+            return $reminder;
+        }
+        $token = bin2hex(random_bytes(32));
+        $cart->recoverWith($token);
+        $this->carts->save($cart);
+
+        return new CartReminder($reminder->abandonedId, $reminder->email, $reminder->locale, $reminder->customerId, $reminder->cart, $token);
     }
 
     /**

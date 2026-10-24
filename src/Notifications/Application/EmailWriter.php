@@ -22,7 +22,22 @@ final readonly class EmailWriter
         private Site $site,
         private Languages $languages,
         private ?UnsubscribeLinks $unsubscribe = null,
+        private EmailPreviews $previews = new EmailPreviews(),
     ) {}
+
+    /**
+     * Writes previews: the customer's own links (unsubscribing) lead to the shop's home page instead.
+     *
+     * @template T
+     *
+     * @param \Closure(): T $work
+     *
+     * @return T
+     */
+    public function previewing(\Closure $work): mixed
+    {
+        return $this->previews->during($work);
+    }
 
     /**
      * @param string|null          $locale  the reader's language; null for the site's
@@ -35,7 +50,12 @@ final readonly class EmailWriter
         $settings = $this->settings->load();
         $context += ['site_name' => $this->site->name(), 'site_url' => $this->site->url(), 'lang' => str_replace('_', '-', $locale ?? $this->languages->site())];
         // A reader subscribed to the newsletter can leave it from any of the shop's emails.
-        $context += ['unsubscribe_url' => $to === $this->shopAddress() ? null : $this->unsubscribe?->for($to)];
+        // A preview shows where the link goes without giving away the customer's.
+        $context += ['unsubscribe_url' => match (true) {
+            $to === $this->shopAddress() => null,
+            $this->previews->active() => $this->unsubscribe === null ? null : $this->site->url(),
+            default => $this->unsubscribe?->for($to),
+        }];
         try {
             [$subject, $body] = $this->languages->in($locale, fn(): array => [
                 // A subject is plain text: what the template escaped for HTML reads as written.

@@ -73,6 +73,19 @@ final class CustomerAccountsTest extends TestCase
         self::assertNull($this->shop->orders->order($other->number)->customerId);
     }
 
+    public function testAnAccountMadeLaterKeepsTheAddressesOfTheLatestGuestOrder(): void
+    {
+        $this->place(new CartOwner(null));
+        $moved = new AddressData('Ada', 'Lovelace', '5 Rakovski St', 'Plovdiv', '4000', 'BG', '+359 32 000 000');
+        $this->shop->checkout->placeOrder($this->cart(new CartOwner(null)), new PlaceOrder('ada@example.com', $moved, payment: 'bank_transfer'));
+        $this->shop->customers->requestAccount(new RegisterAccount('ada@example.com', 'Ada', 'Lovelace'));
+
+        $customer = $this->shop->customers->confirmAccount(new ConfirmAccount($this->shop->accountMail->tokenFor('ada@example.com'), 'correct horse'));
+
+        self::assertSame(2, $customer->orders);
+        self::assertEquals($moved, $customer->billing, 'where they live now, not where they lived first');
+    }
+
     public function testAShopMayKeepEarlierGuestOrdersOutOfANewAccount(): void
     {
         $this->shop->customers->updateSettings(new UpdateCustomerSettings('optional', guestOrders: false));
