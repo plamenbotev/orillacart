@@ -182,9 +182,20 @@ final class PluginDatabaseTest extends TestCase
         self::assertInstanceOf(PluginLifecycle::class, $lifecycle);
         $lifecycle->upgradeIfNeeded();
 
-        self::assertSame(ORILLACART_VERSION, get_option(PluginLifecycle::VERSION_OPTION));
+        $build = new PluginContext(\dirname(__DIR__, 2) . '/orillacart.php', ORILLACART_VERSION)->build;
+        self::assertSame($build, get_option(PluginLifecycle::VERSION_OPTION));
+        self::assertStringStartsWith(ORILLACART_VERSION . '+20', $build, 'the version and the newest migration');
         self::assertContains($this->database->tablePrefix . 'migrations', $this->connection->createSchemaManager()->listTableNames());
         self::assertEquals(249, $this->connection->fetchOne('SELECT COUNT(*) FROM ' . $this->database->tablePrefix . 'countries'));
+
+        // The same version built again with a migration more: the build differs, so the upgrade runs.
+        update_option(PluginLifecycle::VERSION_OPTION, ORILLACART_VERSION);
+        $this->migrator()->uninstall();
+        $again = new Kernel(new PluginContext(\dirname(__DIR__, 2) . '/orillacart.php', ORILLACART_VERSION))->container()->get(PluginLifecycle::class);
+        self::assertInstanceOf(PluginLifecycle::class, $again);
+        $again->upgradeIfNeeded();
+        self::assertSame($build, get_option(PluginLifecycle::VERSION_OPTION));
+        self::assertContains($this->database->tablePrefix . 'migrations', $this->connection->createSchemaManager()->listTableNames());
     }
 
     public function testEachMigrationRunsOnTablesThatHoldRows(): void
