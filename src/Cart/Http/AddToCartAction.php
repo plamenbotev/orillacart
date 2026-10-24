@@ -13,7 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-#[Route('/cart/items', methods: ['POST'], capability: Route::PUBLIC)]
+#[Route('/cart/items', methods: ['POST'], capability: Route::PUBLIC, guard: 'cart')]
 final readonly class AddToCartAction implements RequestHandlerInterface
 {
     public function __construct(

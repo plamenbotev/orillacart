@@ -277,7 +277,7 @@ A visitor asks to hear when a sold-out item is back; answered alike whether or n
 
 The checkout page tells of the customer at checkout with their cart: the email so far, and whether they ask to be reminded of the cart if they leave it.
 
-- Who: anyone; needs a nonce (not with an API key)
+- Who: anyone; needs a nonce (not with an API key); at most 20 every ten minutes from each address
 - Body (JSON):
   - `email` (string|null): an email; at most 254 characters
   - `remind` (bool): default false
@@ -290,7 +290,7 @@ The checkout page tells of the customer at checkout with their cart: the email s
 
 ### `DELETE /cart/coupons/{code}`
 
-- Who: anyone; needs a nonce (not with an API key)
+- Who: anyone; needs a nonce (not with an API key); at most 20 every ten minutes from each address
 
 ### `POST /cart/gift-cards`
 
@@ -304,7 +304,7 @@ The checkout page tells of the customer at checkout with their cart: the email s
 
 ### `POST /cart/items`
 
-- Who: anyone; needs a nonce (not with an API key)
+- Who: anyone; needs a nonce (not with an API key); at most 120 every ten minutes from each address
 - Body (JSON):
   - `product_id` (int): required; more than 0
   - `option_ids` (list<int>): each more than 0

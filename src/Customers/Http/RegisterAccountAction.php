@@ -11,6 +11,7 @@ use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Security\Authorization;
+use OrillaCart\Shared\Http\Security\RateLimiter;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -26,6 +27,7 @@ final readonly class RegisterAccountAction implements RequestHandlerInterface
         private RequestMapper $input,
         private JsonResponder $responder,
         private Authorization $authorization,
+        private RateLimiter $limits,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -34,7 +36,11 @@ final readonly class RegisterAccountAction implements RequestHandlerInterface
             throw new RuleViolation('You are logged in already.', 'orillacart_logged_in');
         }
 
-        $this->customers->requestAccount($this->input->body($request, RegisterAccount::class));
+        $command = $this->input->body($request, RegisterAccount::class);
+        // Asked for one address too often, by anyone: the answer stays the same, and no more mail goes.
+        if ($this->limits->hit('account_emails', 'email:' . hash('sha256', strtolower(trim($command->email)))) === null) {
+            $this->customers->requestAccount($command);
+        }
 
         return $this->responder->ok(['message' => 'Look in your email for the link to make your account.'], 202);
     }

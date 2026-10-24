@@ -18,7 +18,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * The checkout page tells of the customer at checkout with their cart: the email so far, and whether they ask to
  * be reminded of the cart if they leave it.
  */
-#[Route('/cart/checkout-contact', methods: ['POST'], capability: Route::PUBLIC)]
+#[Route('/cart/checkout-contact', methods: ['POST'], capability: Route::PUBLIC, guard: 'checkout_contact')]
 final readonly class CheckoutContactAction implements RequestHandlerInterface
 {
     public function __construct(

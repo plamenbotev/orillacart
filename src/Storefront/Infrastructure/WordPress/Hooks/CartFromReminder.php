@@ -7,6 +7,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 use OrillaCart\Cart\Application\CartLinks;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Shared\Http\Security\RateLimiter;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
@@ -26,6 +27,7 @@ final readonly class CartFromReminder implements CartLinks
         private CartService $carts,
         private Shopper $shopper,
         private ShopLinks $links,
+        private RateLimiter $limits,
     ) {}
 
     public function reminderUrl(?string $recoverToken, ?string $coupon): string
@@ -47,7 +49,10 @@ final readonly class CartFromReminder implements CartLinks
         if (\is_string($token) && preg_match('/^[a-f0-9]{64}$/', $token) === 1) {
             $this->give($this->carts->recover($token));
         }
-        if (\is_string($coupon)) {
+        // Counted as codes typed at checkout are: the cart shows whether a code holds, so the link must not be a
+        // way to try codes without end.
+        $address = $_SERVER['REMOTE_ADDR'] ?? null;
+        if (\is_string($coupon) && $this->limits->hit('coupons', 'ip:' . (\is_string($address) ? $address : 'unknown')) === null) {
             $code = mb_substr(sanitize_text_field(wp_unslash($coupon)), 0, 100);
             $this->give($this->carts->offerCoupon($this->shopper->cart(), $code));
         }

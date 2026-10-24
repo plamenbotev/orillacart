@@ -13,7 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-#[Route('/cart/coupons/{code}', methods: ['DELETE'], capability: Route::PUBLIC, requirements: ['code' => '[^/]{1,40}'])]
+#[Route('/cart/coupons/{code}', methods: ['DELETE'], capability: Route::PUBLIC, requirements: ['code' => '[^/]{1,40}'], guard: 'coupons')]
 final readonly class RemoveCouponAction implements RequestHandlerInterface
 {
     public function __construct(

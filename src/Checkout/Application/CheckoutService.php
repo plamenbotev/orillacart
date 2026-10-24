@@ -370,7 +370,11 @@ final readonly class CheckoutService
     {
         $contents = $this->contents($owner);
         $code = Coupon::normalize($command->code);
-        $codes = array_values(array_unique([...array_map(Coupon::normalize(...), $contents->coupons), $code]));
+        $held = array_map(Coupon::normalize(...), $contents->coupons);
+        if (!\in_array($code, $held, true) && \count($held) >= Discounts::MAX_CODES) {
+            throw new CheckoutRuleViolation(\sprintf('An order takes up to %d codes.', Discounts::MAX_CODES), 'orillacart_coupon_refused');
+        }
+        $codes = array_values(array_unique([...$held, $code]));
         $priced = $this->pricing->price($contents->lines, null, null, null, null, $codes, $owner->customerId, currency: $this->currencies->current());
         $refused = $priced['discounts']->refused[$code] ?? null;
         if ($refused !== null) {

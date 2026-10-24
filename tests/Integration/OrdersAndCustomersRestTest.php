@@ -630,6 +630,26 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertNotSame('', $this->accountToken('ada@example.com'));
     }
 
+    public function testOneAddressGetsSoManyAccountEmailsWhoeverAsks(): void
+    {
+        // The test site counts none: the shop's limit for one address, three a day.
+        $limits = static fn(): array => ['account_emails' => [3, 86400]];
+        add_filter('orillacart_rate_limits', $limits, 20);
+        $email = 'someone-' . bin2hex(random_bytes(4)) . '@example.com';
+        $answers = [];
+        try {
+            for ($i = 0; $i < 4; ++$i) {
+                $answers[] = $this->request('POST', '/accounts', ['email' => $email, 'first_name' => 'Visit', 'last_name' => 'cheap.example'], nonce: true)->get_status();
+            }
+        } finally {
+            remove_filter('orillacart_rate_limits', $limits, 20);
+        }
+
+        self::assertSame([202, 202, 202, 202], $answers, 'the answer never changes');
+        self::assertCount(3, array_filter($this->sentMail(), static fn(array $mail): bool => $mail['to'] === $email), 'the shop\'s mail is not a way to flood someone');
+        self::assertStringNotContainsString('cheap.example', implode(' ', array_column($this->mails, 'message')), 'what they typed as a name is not in the email');
+    }
+
     public function testAnAddOnMayRefuseAFormAndAProgramFillsTheHoneypot(): void
     {
         $refuse = static fn(mixed $verdict, string $guard): mixed => $guard === 'accounts' ? new \WP_Error('captcha', '<strong>Error</strong>: Prove you are human.') : $verdict;

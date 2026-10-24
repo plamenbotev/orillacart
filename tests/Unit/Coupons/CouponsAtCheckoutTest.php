@@ -13,6 +13,7 @@ use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\EditOrderItems;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Coupons\Application\Discounts;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Coupons\Domain\CouponRuleViolation;
 use OrillaCart\Ordering\Application\Dto\AddressData;
@@ -310,6 +311,19 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->coupon('SPRING', 'percent', '10');
         $this->expectException(CouponRuleViolation::class);
         $this->coupon('spring', 'percent', '20');
+    }
+
+    public function testACartHoldsUpToTenCodesAndAnEleventhIsRefused(): void
+    {
+        $owner = $this->cart([10, 1]);
+        for ($i = 1; $i <= Discounts::MAX_CODES; ++$i) {
+            $this->coupon("C{$i}", 'order_amount', '1', combines: true);
+            $this->shop->checkout->applyCoupon($owner, new CouponCode("C{$i}"));
+        }
+        $this->coupon('C11', 'order_amount', '1', combines: true);
+
+        $this->expectExceptionMessage('An order takes up to 10 codes.');
+        $this->shop->checkout->applyCoupon($owner, new CouponCode('C11'));
     }
 
     public function testAFirstOrderDiscountWaitsForTheEmailSoAReturningGuestOrdersWhatTheySaw(): void

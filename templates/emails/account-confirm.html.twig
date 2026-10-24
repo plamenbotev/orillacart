@@ -1,11 +1,11 @@
 {% extends 'emails/layout.html.twig' %}
 {#
- # To a visitor who asked for an account: the link that makes it. first_name, link, until (ISO 8601).
+ # To a visitor who asked for an account: the link that makes it. first_name, link, until (ISO 8601). Anyone can
+ # ask for an account for any address: what they typed as a name is not written in it.
  #}
 {# translators: %s: site name -#}
 {% block subject %}{{ __('[%s] Make your account')|format(site_name) }}{% endblock %}
-{# translators: %s: the customer's first name -#}
-{% block heading %}{{ __('Welcome, %s')|format(first_name) }}{% endblock %}
+{% block heading %}{{ __('Make your account') }}{% endblock %}
 {% block intro %}<p>{{ __('Choose your password to make your account. Orders you placed with it come with it.') }}</p>{% endblock %}
 {% block content %}
 <p><a href="{{ link }}" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;border-radius:4px;text-decoration:none;">{{ __('Choose your password') }}</a></p>

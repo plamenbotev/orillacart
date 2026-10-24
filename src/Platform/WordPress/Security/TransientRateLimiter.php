@@ -17,10 +17,15 @@ final readonly class TransientRateLimiter implements RateLimiter
     /** @var array<string, array{int, int}> */
     private const array LIMITS = [
         'accounts' => [5, 3600],
+        // Account emails to one address, whoever asks: the shop's mail is not a way to flood someone.
+        'account_emails' => [3, 86400],
         'account_links' => [10, 3600],
         'coupons' => [20, 600],
         'gift_cards' => [10, 600],
         'checkout' => [30, 600],
+        // A cart made or filled, and the email given at checkout (which may send a reminder).
+        'cart' => [120, 600],
+        'checkout_contact' => [20, 600],
         'session' => [120, 600],
         'receipts' => [60, 600],
         'receipt_links' => [5, 3600],
