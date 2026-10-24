@@ -62,7 +62,8 @@ final readonly class ProductQuotes
         $backorders = $configuration->backorders();
         $inStock = null;
         $backorderLimit = $backorders->allowed() ? $configuration->backorderLimit() : null;
-        if ($backorders->allowed() && $configuration->stockMode() === StockMode::Tracked && $level !== null) {
+        // Backorders need an active stockroom to owe them from (see Stock::take()).
+        if ($backorders->allowed() && $configuration->stockMode() === StockMode::Tracked && $level !== null && !\in_array(false, $this->stock->owableEach($this->refs($configuration)), true)) {
             // Backorders lift the limit, up to how many it may owe; how many are in stock tells what will be owed.
             $inStock = $available;
             $available = $backorderLimit === null ? null : max(0, $level + $backorderLimit);
@@ -186,9 +187,19 @@ final readonly class ProductQuotes
         return match ($configuration->stockMode()) {
             StockMode::AlwaysAvailable => null,
             StockMode::Unavailable => 0,
-            StockMode::Tracked => $this->stock->available($configuration->variation !== null
-                ? [StockItemRef::variation($configuration->variation->id())]
-                : [StockItemRef::product($configuration->product->id()), ...array_map(static fn(AttributeOption $option): StockItemRef => StockItemRef::option($option->id()), $configuration->options)], owedBelowZero: true),
+            StockMode::Tracked => $this->stock->available($this->refs($configuration), owedBelowZero: true),
         };
+    }
+
+    /**
+     * The stock items a configuration takes: its variation, or the product and the options chosen.
+     *
+     * @return list<StockItemRef>
+     */
+    private function refs(Configuration $configuration): array
+    {
+        return $configuration->variation !== null
+            ? [StockItemRef::variation($configuration->variation->id())]
+            : [StockItemRef::product($configuration->product->id()), ...array_map(static fn(AttributeOption $option): StockItemRef => StockItemRef::option($option->id()), $configuration->options)];
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Reviews\Infrastructure\WordPress\CommentReviewStore;
 use OrillaCart\Reviews\Infrastructure\WordPress\OptionReviewSettingsRepository;
 
@@ -73,6 +74,10 @@ final class ReviewsTest extends RestTestCase
 
         $again = $this->request('POST', "/products/{$this->lamp}/reviews", ['rating' => 1, 'text' => 'Changed my mind.', 'name' => 'Bob', 'email' => 'bob@example.com'], nonce: true);
         self::assertSame([422, 'orillacart_already_reviewed'], [$again->get_status(), $this->data($again)['code']]);
+        wp_spam_comment((int) $comment->comment_ID);
+        $spammed = $this->request('POST', "/products/{$this->lamp}/reviews", ['rating' => 1, 'text' => 'Buy cheap watches.', 'name' => 'Bob', 'email' => 'bob@example.com'], nonce: true);
+        self::assertSame('orillacart_already_reviewed', $this->data($spammed)['code'] ?? null, 'marked spam, not a new reviewer');
+        wp_unspam_comment((int) $comment->comment_ID);
 
         // The shop answers from the Comments screen.
         $this->actAs('administrator');
@@ -96,6 +101,20 @@ final class ReviewsTest extends RestTestCase
         self::assertStringContainsString('Thank you, Bob!', $html);
         self::assertStringContainsString('data-orillacart-review-form', $html, 'another visitor may review it too');
         self::assertStringContainsString('/templates/wordpress/no-comments.php', $this->productPage(static fn(): mixed => apply_filters('comments_template', 'comments.php')), 'the theme\'s comments do not show');
+    }
+
+    public function testACustomerWithoutANameIsSignedCustomerInTheSitesLanguage(): void
+    {
+        $id = $this->actAs(WordPressAccounts::ROLE);
+        wp_update_user(['ID' => $id, 'first_name' => '', 'last_name' => '', 'user_email' => 'nameless@example.com']);
+
+        $written = $this->request('POST', "/products/{$this->lamp}/reviews", ['rating' => 5, 'text' => 'Bright.'], nonce: true);
+        self::assertSame(201, $written->get_status(), (string) wp_json_encode($written->get_data()));
+        $comments = get_comments(['post_id' => $this->lamp, 'type' => CommentReviewStore::TYPE, 'user_id' => $id]);
+        self::assertIsArray($comments);
+        self::assertInstanceOf(\WP_Comment::class, $comments[0] ?? null);
+        self::assertSame('Customer', $comments[0]->comment_author);
+        wp_set_current_user(0);
     }
 
     public function testTheSitesDiscussionSettingsHoldReviewsAndMayAskGuestsToLogIn(): void

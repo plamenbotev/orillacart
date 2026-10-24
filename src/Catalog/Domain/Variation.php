@@ -99,9 +99,16 @@ class Variation
         return $this->pricing;
     }
 
+    /** Its own setting, as the shop edits it; sellingMode() is what the shop sells it by. */
     public function stockMode(): StockMode
     {
         return $this->stockMode;
+    }
+
+    /** What it is sold by: its own mode, unless its product as a whole is not available. */
+    public function sellingMode(): StockMode
+    {
+        return $this->product->details()->stockMode === StockMode::Unavailable ? StockMode::Unavailable : $this->stockMode;
     }
 
     /** Its own setting; null when it follows its product. */

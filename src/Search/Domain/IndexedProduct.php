@@ -18,6 +18,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(name: 'search_order', columns: ['menu_order', 'title'])]
 #[ORM\Index(name: 'search_published', columns: ['published_at'])]
 #[ORM\Index(name: 'search_price', columns: ['price_min'])]
+#[ORM\Index(name: 'search_price_max', columns: ['price_max'])]
 class IndexedProduct
 {
     public function __construct(

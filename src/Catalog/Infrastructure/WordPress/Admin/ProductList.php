@@ -89,8 +89,11 @@ final class ProductList
                     break;
                 }
                 echo $this->templates->render('storefront/_list_price.html.twig', ['offer' => $offer]);
-                // For quick edit, which fills its field from the row.
-                printf('<span hidden data-orillacart-price="%s"></span>', esc_attr($offer->regularPrice ?? $offer->price));
+                // For quick edit, which fills its field from the row: the product's own price, when it sells for it.
+                $own = $this->products->ownPrice($postId);
+                if ($own !== null) {
+                    printf('<span hidden data-orillacart-price="%s"></span>', esc_attr($own));
+                }
                 break;
             case 'orillacart_order':
                 echo (int) get_post_field('menu_order', $postId);
@@ -294,7 +297,11 @@ final class ProductList
                     const postId = typeof id === 'object' ? this.getId( id ) : id;
                     const price = document.querySelector( '#post-' + postId + ' [data-orillacart-price]' );
                     const field = document.querySelector( '#edit-' + postId + ' input[name="orillacart_price"]' );
-                    if ( price && field ) { field.value = price.dataset.orillacartPrice; }
+                    // Without one (variations, a bundle priced by its items) the field stays empty and off.
+                    if ( field ) {
+                        field.value = price ? price.dataset.orillacartPrice : '';
+                        field.disabled = ! price;
+                    }
                 };
             } )();
             JS);

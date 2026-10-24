@@ -32,7 +32,8 @@ final readonly class NewReview
         if (trim($text) === '' || mb_strlen($text) > self::MAX_TEXT_LENGTH) {
             throw new ReviewRuleViolation(\sprintf('A review says something, in at most %d characters.', self::MAX_TEXT_LENGTH), 'orillacart_invalid_review');
         }
-        if (trim($authorName) === '' || mb_strlen($authorName) > self::MAX_NAME_LENGTH || filter_var($authorEmail, \FILTER_VALIDATE_EMAIL) === false) {
+        // A customer whose account has no name is signed by the store ("Customer", in the site's language).
+        if ((trim($authorName) === '' && $customerId === null) || mb_strlen($authorName) > self::MAX_NAME_LENGTH || filter_var($authorEmail, \FILTER_VALIDATE_EMAIL) === false) {
             throw new ReviewRuleViolation('A review needs the name and email of who wrote it.', 'orillacart_invalid_review_author');
         }
     }

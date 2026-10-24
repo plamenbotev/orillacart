@@ -29,7 +29,7 @@ final readonly class Configuration
 
     public function stockMode(): StockMode
     {
-        return $this->variation !== null ? $this->variation->stockMode() : $this->product->details()->stockMode;
+        return $this->variation !== null ? $this->variation->sellingMode() : $this->product->details()->stockMode;
     }
 
     public function backorders(): Backorders

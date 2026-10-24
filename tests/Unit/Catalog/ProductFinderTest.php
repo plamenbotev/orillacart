@@ -178,6 +178,33 @@ final class ProductFinderTest extends TestCase
         self::assertContains('The product search odd', array_map(static fn(array $record): mixed => $record['context']['what'] ?? null, $this->shop->logger->records));
     }
 
+    public function testAProductNotAvailableSellsNoneOfItsVariations(): void
+    {
+        $this->product(90, new SaveProduct('25', attributes: [new SaveAttribute('Size', [new SaveOption('S')], required: true)], stockMode: 'unavailable'), []);
+        $small = $this->shop->productRecords->find(90)?->attributes()[0]->options()[0]->id() ?? 0;
+        $variation = $this->shop->products->addVariation(90, new SaveVariation([$small], '25'))->id;
+        $this->shop->stock->setLevels(StockItemRef::variation($variation), new SetStockLevels([new SetStockLevel($this->sofia, 3)]));
+
+        self::assertContains(90, $this->shop->productFinder->ids(new ProductFilter(stock: ProductFinder::NOT_FOR_SALE)) ?? []);
+        self::assertNotContains(90, $this->shop->productFinder->ids(new ProductFilter(stock: ProductFinder::IN_STOCK)) ?? []);
+        $offer = $this->shop->catalog->offer(90);
+        self::assertFalse($offer->forSale);
+        self::assertSame(0, $offer->variations[0]->available, 'three in Sofia, none for sale');
+    }
+
+    public function testNoBackordersWhenOnlyAStockroomThatIsOffHoldsTheItem(): void
+    {
+        $this->product(91, new SaveProduct('40', sku: 'LAMP', backorders: 'yes'), [$this->plovdiv => 0]);
+        self::assertTrue($this->shop->catalog->offer(91)->forSale, 'Plovdiv owes it');
+
+        $this->shop->stockrooms->update($this->plovdiv, new SaveStockroom('Plovdiv', active: false));
+
+        $offer = $this->shop->catalog->offer(91);
+        self::assertFalse($offer->forSale, 'no stockroom could owe it: checkout would fail');
+        self::assertSame(0, $offer->available);
+        self::assertFalse($this->shop->catalog->offers([91])[91]->forSale, 'in lists too');
+    }
+
     /**
      * @param array<int, int> $stock by stockroom
      */

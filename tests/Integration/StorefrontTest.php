@@ -239,7 +239,7 @@ final class StorefrontTest extends RestTestCase
         $_GET = ['sort' => 'price_asc'];
         self::assertSame(['Cup', 'Shirt', 'Brass lamp', 'Vase'], $names($this->shop('<!-- wp:orillacart/products /-->')), 'today\'s price: the sale and the lowest variation count');
         $_GET = ['sort' => 'price_desc'];
-        self::assertSame(['Vase', 'Brass lamp', 'Shirt', 'Cup'], $names($this->shop('<!-- wp:orillacart/products /-->')));
+        self::assertSame(['Shirt', 'Vase', 'Brass lamp', 'Cup'], $names($this->shop('<!-- wp:orillacart/products /-->')), 'the dearest first: the shirt goes up to 45');
         $_GET = [];
         self::assertSame(['Vase', 'Cup', 'Brass lamp', 'Shirt'], $names($this->shop('<!-- wp:orillacart/products /-->')), 'the shop\'s own order first');
         self::assertSame(['Cup'], $names($this->shop('<!-- wp:orillacart/products {"featured":true} /-->')));

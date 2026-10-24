@@ -7,12 +7,17 @@ namespace OrillaCart\Inventory\Application;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\StockroomView;
 use OrillaCart\Inventory\Domain\DeliveryUnit;
+use OrillaCart\Inventory\Domain\Event\StockChanged;
 use OrillaCart\Inventory\Domain\InventoryRuleViolation;
+use OrillaCart\Inventory\Domain\Stock;
+use OrillaCart\Inventory\Domain\StockItem;
+use OrillaCart\Inventory\Domain\StockLevel;
 use OrillaCart\Inventory\Domain\StockLevelRepository;
 use OrillaCart\Inventory\Domain\Stockroom;
 use OrillaCart\Inventory\Domain\StockroomDetails;
 use OrillaCart\Inventory\Domain\StockroomNotFound;
 use OrillaCart\Inventory\Domain\StockroomRepository;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Use cases for stockrooms, as the Stockrooms admin screen runs them.
@@ -22,6 +27,7 @@ final readonly class StockroomService
     public function __construct(
         private StockroomRepository $stockrooms,
         private StockLevelRepository $levels,
+        private EventDispatcherInterface $events,
     ) {}
 
     /**
@@ -46,8 +52,13 @@ final readonly class StockroomService
     public function update(int $id, SaveStockroom $command): StockroomView
     {
         $stockroom = $this->get($id);
+        $wasActive = $stockroom->isActive();
+        $held = $wasActive === $command->active ? [] : $this->levels->stockOf($this->itemsIn($id));
+        $before = self::availableExcept($held, null);
         $stockroom->change(self::details($command));
         $this->stockrooms->save($stockroom);
+        // Turned on or off: what it holds counts or stops counting.
+        $this->announce($before, self::availableExcept($held, null));
 
         return StockroomView::fromStockroom($stockroom);
     }
@@ -71,7 +82,51 @@ final readonly class StockroomService
                 $only,
             ), 'orillacart_stockroom_in_use');
         }
+        $held = $stockroom->isActive() ? $this->levels->stockOf($this->itemsIn($id)) : [];
+        $before = self::availableExcept($held, null);
+        $after = self::availableExcept($held, $id);
         $this->stockrooms->remove($stockroom);
+        $this->announce($before, $after);
+    }
+
+    /** @return list<StockItem> */
+    private function itemsIn(int $id): array
+    {
+        return array_map(static fn(int|string $item): StockItem => StockItem::fromString((string) $item), array_keys($this->levels->totals($id)));
+    }
+
+    /**
+     * How many of each can be sold, as Stock::available() counts: the levels of active stockrooms.
+     *
+     * @param list<Stock> $stocks
+     * @param int|null    $gone   a stockroom being deleted, counted as gone
+     *
+     * @return array<string, int>
+     */
+    private static function availableExcept(array $stocks, ?int $gone): array
+    {
+        $available = [];
+        foreach ($stocks as $stock) {
+            $available[(string) $stock->item] = array_sum(array_map(
+                static fn(StockLevel $level): int => $level->stockroom()->isActive() && $level->stockroom()->id() !== $gone ? $level->quantity() : 0,
+                $stock->levels(),
+            ));
+        }
+
+        return $available;
+    }
+
+    /**
+     * @param array<string, int> $before
+     * @param array<string, int> $after
+     */
+    private function announce(array $before, array $after): void
+    {
+        foreach ($after as $item => $available) {
+            if ($available !== ($before[$item] ?? null)) {
+                $this->events->dispatch(new StockChanged($item, $before[$item] ?? null, $available));
+            }
+        }
     }
 
     private function get(int $id): Stockroom

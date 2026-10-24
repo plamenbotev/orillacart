@@ -74,7 +74,8 @@ interface ProductRepository
 
     /**
      * What each product's stock rests on, bundles left out (their items' stock is theirs): a product with
-     * variations sells its variations, each with its own stock mode; one without sells itself.
+     * variations sells its variations, each with its own stock mode (none while the product is not available); one
+     * without sells itself.
      *
      * @return list<array{product: int, variation: ?int, mode: StockMode}>
      */

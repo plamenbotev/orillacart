@@ -201,7 +201,7 @@ final class InMemoryProductRepository implements ProductRepository
                 $items[] = ['product' => $product->id(), 'variation' => null, 'mode' => $product->details()->stockMode];
             }
             foreach ($product->variations() as $variation) {
-                $items[] = ['product' => $product->id(), 'variation' => $variation->id(), 'mode' => $variation->stockMode()];
+                $items[] = ['product' => $product->id(), 'variation' => $variation->id(), 'mode' => $variation->sellingMode()];
             }
         }
 

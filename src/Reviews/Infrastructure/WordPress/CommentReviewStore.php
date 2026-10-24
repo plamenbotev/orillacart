@@ -46,7 +46,7 @@ final readonly class CommentReviewStore implements ReviewStore
         $agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         $id = wp_new_comment(wp_slash([
             'comment_post_ID' => $review->productId,
-            'comment_author' => $review->authorName,
+            'comment_author' => $review->authorName !== '' ? $review->authorName : __('Customer', 'orillacart'),
             'comment_author_email' => $review->authorEmail,
             'comment_author_url' => '',
             'comment_content' => $review->text,
@@ -74,7 +74,8 @@ final readonly class CommentReviewStore implements ReviewStore
 
     public function hasReviewed(int $productId, ?int $customerId, string $email): bool
     {
-        $query = ['post_id' => $productId, 'type' => self::TYPE, 'parent' => 0, 'status' => 'all', 'count' => true];
+        // Spam too: 'all' is only published and held, and someone marked spam would review again and again.
+        $query = ['post_id' => $productId, 'type' => self::TYPE, 'parent' => 0, 'status' => ['approve', 'hold', 'spam'], 'count' => true];
         if ($customerId !== null && (int) get_comments($query + ['user_id' => $customerId]) > 0) {
             return true;
         }

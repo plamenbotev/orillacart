@@ -338,8 +338,10 @@ final readonly class DoctrineProductRepository implements ProductRepository
                 continue;
             }
             $variation = is_numeric($row['variation'] ?? null) ? (int) $row['variation'] : null;
-            $mode = $variation === null ? $row['productMode'] : $row['variationMode'];
-            $mode = $mode instanceof StockMode ? $mode : StockMode::tryFrom(\is_string($mode) ? $mode : '');
+            $own = static fn(mixed $mode): ?StockMode => $mode instanceof StockMode ? $mode : StockMode::tryFrom(\is_string($mode) ? $mode : '');
+            $productMode = $own($row['productMode'] ?? null);
+            // A product not available as a whole sells none of its variations.
+            $mode = $variation === null || $productMode === StockMode::Unavailable ? $productMode : $own($row['variationMode'] ?? null);
             if ($mode !== null) {
                 $items[] = ['product' => (int) $row['product'], 'variation' => $variation, 'mode' => $mode];
             }

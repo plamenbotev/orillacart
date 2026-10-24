@@ -21,7 +21,7 @@ interface ReviewStore
      */
     public function add(NewReview $review): Review;
 
-    /** Whether the person reviewed the product already, published or waiting. */
+    /** Whether the person reviewed the product already: published, waiting, or marked spam. */
     public function hasReviewed(int $productId, ?int $customerId, string $email): bool;
 
     /**

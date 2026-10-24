@@ -102,6 +102,12 @@ final readonly class Stock
         return $taken;
     }
 
+    /** Whether a backorder can be taken: an active stockroom has a level of the item to owe it from. */
+    public function canOwe(): bool
+    {
+        return $this->owingLevel() !== null;
+    }
+
     /** The stockroom that owes what is backordered: the active one that delivers fastest. */
     public function owingStockroomId(): ?int
     {

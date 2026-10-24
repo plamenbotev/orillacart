@@ -215,5 +215,22 @@ final class ProductServiceTest extends TestCase
             self::assertSame('orillacart_sale_not_below_price', $e->errorCode);
         }
         self::assertSame('45', $this->products->product(10)->price);
+        self::assertSame('45', $this->products->ownPrice(10));
+    }
+
+    public function testQuickEditLeavesAProductWithVariationsAlone(): void
+    {
+        $set = $this->sets->create(new SaveAttributeSet('Clothing', attributes: [new SaveAttribute('Size', [new SaveOption('S')])]));
+        $this->products->save(10, new SaveProduct('40', setIds: [$set->id]));
+        $this->products->addVariation(10, new SaveVariation([$set->attributes[0]->options[0]->id], '25'));
+
+        self::assertNull($this->products->ownPrice(10), 'the list shows 25, the cheapest variation');
+        try {
+            $this->products->changePrice(10, '25');
+            self::fail('the product\'s own price is not what it sells for');
+        } catch (CatalogRuleViolation $e) {
+            self::assertSame('orillacart_price_not_its_own', $e->errorCode);
+        }
+        self::assertSame('40', $this->products->product(10)->price);
     }
 }

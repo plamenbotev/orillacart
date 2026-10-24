@@ -275,6 +275,24 @@ final readonly class StockService
     }
 
     /**
+     * Whether each item could be owed on backorder: stock does not limit it, or an active stockroom has a level of
+     * it to owe from. An item only stockrooms that are off hold cannot be.
+     *
+     * @param list<StockItemRef> $refs
+     *
+     * @return array<string, bool> by item, as "product:12"
+     */
+    public function owableEach(array $refs): array
+    {
+        $owable = [];
+        foreach ($this->levels->stockOf(array_map(static fn(StockItemRef $ref): StockItem => $ref->toItem(), $refs)) as $stock) {
+            $owable[(string) $stock->item] = !$stock->isLimited() || $stock->canOwe();
+        }
+
+        return $owable;
+    }
+
+    /**
      * How many of the items can be sold together, such as a product with the options the customer chose:
      * the smallest number any of them allows.
      *

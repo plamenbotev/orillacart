@@ -65,6 +65,18 @@ final class LowestPriceTest extends TestCase
         self::assertCount(1, $this->shop->pricePoints->points);
     }
 
+    public function testAPriceIsKeptWhenTheProductIsSavedNotWhenTheIndexGetsToIt(): void
+    {
+        $this->shop->products->save(10, new SaveProduct('25'));
+        $this->shop->clock->modify('+5 days');
+        $this->shop->products->save(10, new SaveProduct('20'));
+
+        self::assertSame([['product:10', '25', '2026-09-01'], ['product:10', '20', '2026-09-06']], array_map(
+            static fn($point): array => [$point->item(), (string) $point->price(), $point->recordedAt()->format('Y-m-d')],
+            $this->shop->pricePoints->points,
+        ));
+    }
+
     private function priced(string $price): void
     {
         $this->shop->products->save(10, new SaveProduct($price));

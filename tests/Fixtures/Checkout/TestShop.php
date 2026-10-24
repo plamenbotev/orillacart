@@ -20,8 +20,10 @@ use OrillaCart\Catalog\Application\ProductTaxGroups;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Application\StockItemNames;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
+use OrillaCart\Catalog\Domain\Event\ProductChanged;
 use OrillaCart\Catalog\Infrastructure\Events\ConvertMeasures as ConvertProductMeasures;
 use OrillaCart\Catalog\Infrastructure\Events\ForgetDeletedShippingClass;
+use OrillaCart\Catalog\Infrastructure\Events\RecordPriceChanges;
 use OrillaCart\Checkout\Application\AddressChecks;
 use OrillaCart\Checkout\Application\AddressRules;
 use OrillaCart\Checkout\Application\CheckoutFields;
@@ -401,7 +403,7 @@ final class TestShop
         $this->events->addListener(SettingsChanged::class, new ConvertRateMeasures($this->carriers)(...));
         $stockroomRecords = new InMemoryStockroomRepository();
         $levelRecords = new InMemoryStockLevelRepository();
-        $this->stockrooms = new StockroomService($stockroomRecords, $levelRecords);
+        $this->stockrooms = new StockroomService($stockroomRecords, $levelRecords, $this->events);
         $this->stock = new StockService($levelRecords, $stockroomRecords, $this->events, $this->stockMovements = new InMemoryStockMovements(), $this->clock);
         $this->priceRuleRecords = new InMemoryPriceRuleRepository();
         $this->customerGroupRecords = new InMemoryCustomerGroupRepository();
@@ -411,6 +413,7 @@ final class TestShop
         $this->quotes = $quotes;
         $this->priceHistory = new PriceHistory($this->pricePoints = new InMemoryPriceHistory(), $this->clock);
         $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $quotes, $this->priceHistory);
+        $this->events->addListener(ProductChanged::class, new RecordPriceChanges($this->catalog, $this->priceHistory)(...));
         $this->productFinder = new ProductFinder($productRecords, $this->stock, new LowStock($productRecords, new StockItemNames($productRecords, $this->content), $this->stock, $this->stockrooms, $settings), $settings, $extensions, $this->logger);
 
         $methodRecords = new InMemoryPaymentMethodRepository();

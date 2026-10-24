@@ -6,12 +6,14 @@ namespace OrillaCart\Tests\Unit\Search;
 
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\ProductLookup;
+use OrillaCart\Inventory\Domain\Event\StockChanged;
 use OrillaCart\Search\Application\DocumentBuilder;
 use OrillaCart\Search\Application\IndexProducts;
 use OrillaCart\Search\Application\SearchIndexing;
 use OrillaCart\Search\Domain\EngineSettings;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchEngine;
+use OrillaCart\Search\Infrastructure\Events\QueueChangedProducts;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Jobs\TestJobs;
 use OrillaCart\Tests\Fixtures\Search\FixedProductTexts;
@@ -110,5 +112,16 @@ final class IndexProductsTest extends TestCase
         new SearchIndexing($this->jobs->jobs, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->handler, $this->index)->queueEverything();
 
         self::assertSame([10, 11, 12], array_keys($this->index->documents));
+    }
+
+    public function testStockBelowZeroIsIndexedAgainSinceTheBackorderLimitMayRunOut(): void
+    {
+        $this->jobs->runner->work([], 10, 'test');
+        $listener = new QueueChangedProducts(new SearchIndexing($this->jobs->jobs, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->handler, $this->index));
+
+        $listener->stockChanged(new StockChanged('product:10', 8, 5));
+        self::assertSame([], $this->jobs->queue->jobs, 'still in stock');
+        $listener->stockChanged(new StockChanged('product:10', -2, -3));
+        self::assertCount(1, $this->jobs->queue->jobs, 'one more owed');
     }
 }

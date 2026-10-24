@@ -34,7 +34,7 @@ final class StockServiceTest extends TestCase
         $stockrooms = new InMemoryStockroomRepository($levels->removeStockroom(...));
         $this->events = new RecordingDispatcher();
         $this->stock = new StockService($levels, $stockrooms, $this->events);
-        $this->stockrooms = new StockroomService($stockrooms, $levels);
+        $this->stockrooms = new StockroomService($stockrooms, $levels, $this->events);
         $this->sofia = $this->stockrooms->create(new SaveStockroom('Sofia', 1, 2))->id;
         $this->berlin = $this->stockrooms->create(new SaveStockroom('Berlin', 3, 7))->id;
     }
@@ -181,6 +181,34 @@ final class StockServiceTest extends TestCase
         self::assertSame(['Berlin'], array_map(static fn($stockroom): string => $stockroom->name, $this->stockrooms->stockrooms()));
         $this->stock->removeItems([StockItemRef::product(5)]);
         self::assertNull($this->stock->available([StockItemRef::product(5)]));
+    }
+
+    public function testTurningAStockroomOffOrDeletingItAnnouncesTheStockItTookAway(): void
+    {
+        $mug = StockItemRef::product(5);
+        $this->stock->setLevels($mug, new SetStockLevels([new SetStockLevel($this->sofia, 9), new SetStockLevel($this->berlin, 1)]));
+        $this->events->events = [];
+
+        $this->stockrooms->update($this->sofia, new SaveStockroom('Sofia', 1, 2, active: false));
+        self::assertEquals([new StockChanged('product:5', 10, 1)], $this->events->events);
+        $this->events->events = [];
+        $this->stockrooms->update($this->sofia, new SaveStockroom('Sofia (renamed)', 1, 2, active: false));
+        self::assertSame([], $this->events->events, 'still off: nothing changed');
+
+        $this->stockrooms->update($this->sofia, new SaveStockroom('Sofia', 1, 2));
+        $this->events->events = [];
+        $this->stockrooms->delete($this->sofia);
+        self::assertEquals([new StockChanged('product:5', 10, 1)], $this->events->events);
+    }
+
+    public function testBackordersNeedAnActiveStockroomToOweThem(): void
+    {
+        $mug = StockItemRef::product(5);
+        $this->stock->setLevels($mug, new SetStockLevels([new SetStockLevel($this->berlin, 0)]));
+        self::assertSame(['product:5' => true, 'product:6' => true], $this->stock->owableEach([$mug, StockItemRef::product(6)]), 'one not counted can be');
+
+        $this->stockrooms->update($this->berlin, new SaveStockroom('Berlin', 3, 7, active: false));
+        self::assertSame(['product:5' => false], $this->stock->owableEach([$mug]));
     }
 
     public function testStockOfACancelledOrderGoesBackWhereItCameFrom(): void

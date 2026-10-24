@@ -132,14 +132,28 @@ final readonly class ProductService
     }
 
     /**
+     * The regular price the product list's quick edit changes; null when the product's own price is not what it
+     * sells for: its variations have theirs, and a bundle priced by its items adds theirs up.
+     */
+    public function ownPrice(int $id): ?string
+    {
+        $product = $this->products->find($id);
+
+        return $product === null || !self::pricedByItself($product) ? null : (string) $product->details()->pricing->price();
+    }
+
+    /**
      * Changes the regular price only, keeping a sale, as the product list's quick edit does.
      *
      * @throws ProductNotFound      also when the product's commerce details were never saved
-     * @throws CatalogRuleViolation for a negative price
+     * @throws CatalogRuleViolation for a negative price, or a product whose own price it does not sell for
      */
     public function changePrice(int $id, string $price): void
     {
         $product = $this->get($id);
+        if (!self::pricedByItself($product)) {
+            throw new CatalogRuleViolation('Its variations, or the items of the bundle, have the prices: change them in the product\'s editor.', 'orillacart_price_not_its_own');
+        }
         $details = $product->details();
         $product->change($details->withPrice(new Pricing(Money::of($price), $details->pricing->sale())));
         $this->products->save($product);
@@ -407,5 +421,10 @@ final readonly class ProductService
                 $after = $id;
             }
         } while (\count($ids) === 100);
+    }
+
+    private static function pricedByItself(Product $product): bool
+    {
+        return !$product->hasVariations() && $product->bundle()?->pricing !== Bundle::SUM;
     }
 }

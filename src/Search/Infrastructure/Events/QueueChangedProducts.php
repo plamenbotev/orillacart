@@ -29,10 +29,13 @@ final readonly class QueueChangedProducts
         $this->indexing->queue([$event->productId]);
     }
 
-    /** The index knows whether a variant is in stock, not how many: only running out or coming back counts. */
+    /**
+     * The index knows whether a variant is in stock, not how many: only running out or coming back counts. Below
+     * zero, on backorder, any change may use up or free the backorder limit, which only the catalog knows.
+     */
     public function stockChanged(StockChanged $event): void
     {
-        if ($event->changedAvailability()) {
+        if ($event->changedAvailability() || ($event->before ?? 0) < 0 || ($event->after ?? 0) < 0) {
             $this->indexing->queueStockItem($event->item);
         }
     }

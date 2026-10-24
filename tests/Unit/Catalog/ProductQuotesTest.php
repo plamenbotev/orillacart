@@ -67,7 +67,7 @@ final class ProductQuotesTest extends TestCase
         $stockrooms = new InMemoryStockroomRepository();
         $levels = new InMemoryStockLevelRepository();
         $this->stock = new StockService($levels, $stockrooms, $events);
-        $this->stockroom = new StockroomService($stockrooms, $levels)->create(new SaveStockroom('Sofia'))->id;
+        $this->stockroom = new StockroomService($stockrooms, $levels, $events)->create(new SaveStockroom('Sofia'))->id;
         $this->settings = new InMemorySettingsRepository(StoreSettings::defaults());
         $clock = new MockClock('2026-10-17 12:00:00 UTC');
         $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, $clock, new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new PriceResolver(new InMemoryPriceRuleRepository(), new GroupsOfShoppers(new InMemoryCustomerGroupRepository()), $clock, new FixedExtensions(), new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new MemoryLogger(), new ExtensionFailures()));

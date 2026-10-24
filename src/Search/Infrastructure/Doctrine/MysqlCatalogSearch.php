@@ -240,7 +240,7 @@ final readonly class MysqlCatalogSearch implements CatalogSearch
             SearchSort::Name => 'd.title ASC, d.product_id ASC',
             // Products whose price shoppers ask for come last either way.
             SearchSort::PriceAscending => 'd.price_min IS NULL, d.price_min ASC, d.title ASC, d.product_id ASC',
-            SearchSort::PriceDescending => 'd.price_min IS NULL, d.price_min DESC, d.title ASC, d.product_id ASC',
+            SearchSort::PriceDescending => 'd.price_max IS NULL, d.price_max DESC, d.title ASC, d.product_id ASC',
         };
     }
 

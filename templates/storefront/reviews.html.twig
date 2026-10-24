@@ -39,8 +39,8 @@
     {% if invitation.open %}
         <form class="orillacart-review-form" data-orillacart-review-form data-product="{{ product_id }}" novalidate>
             <h3>{{ __('Write a review') }}</h3>
-            {% if invitation.author %}
-                <p>{{ __('Your review goes out as %s.')|format(invitation.author) }}{% if invitation.verified %} <span class="orillacart-review__verified">{{ __('Verified buyer') }}</span>{% endif %}</p>
+            {% if invitation.author is not null %}
+                <p>{{ __('Your review goes out as %s.')|format(invitation.author ?: __('Customer')) }}{% if invitation.verified %} <span class="orillacart-review__verified">{{ __('Verified buyer') }}</span>{% endif %}</p>
             {% endif %}
             <fieldset class="orillacart-field orillacart-stars-input" data-orillacart-field="rating">
                 <legend>{{ __('Your rating') }} <span aria-hidden="true">*</span></legend>
@@ -55,7 +55,7 @@
                 <label for="orillacart-review-text">{{ __('Your review') }} <span aria-hidden="true">*</span></label>
                 <textarea id="orillacart-review-text" name="text" rows="5" maxlength="5000" required></textarea>
             </p>
-            {% if not invitation.author %}
+            {% if invitation.author is null %}
                 <p class="orillacart-field" data-orillacart-field="name">
                     <label for="orillacart-review-name">{{ __('Name') }} <span aria-hidden="true">*</span></label>
                     <input id="orillacart-review-name" type="text" name="name" maxlength="100" autocomplete="name" required>

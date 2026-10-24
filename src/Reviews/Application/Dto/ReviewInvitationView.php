@@ -19,7 +19,10 @@ final readonly class ReviewInvitationView
         public bool $open,
         /** Why not: off, closed, log_in, buyers_only or reviewed. */
         public ?string $reason = null,
-        /** The name the review goes out under, when the shop knows the visitor; null asks for a name and email. */
+        /**
+         * The name the review goes out under, when the shop knows the visitor ('' when it knows no name: "Customer");
+         * null asks for a name and email.
+         */
         public ?string $author = null,
         public bool $verified = false,
     ) {}

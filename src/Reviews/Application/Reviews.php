@@ -199,7 +199,8 @@ final readonly class Reviews
         $first = trim($first);
         $last = trim($last);
         if ($first === '') {
-            return $last !== '' ? $last : 'Customer';
+            // Without names the store signs it in the site's language.
+            return $last;
         }
 
         return $last === '' ? $first : $first . ' ' . mb_substr($last, 0, 1) . '.';
