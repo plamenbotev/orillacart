@@ -18,10 +18,16 @@ final class SealedJsonType extends JsonType
     public const string NAME = 'sealed_json';
 
     private static ?Secrets $secrets = null;
+    /** @var (\Closure(): void)|null told when a value cannot be opened, for the shop to hear of it */
+    private static ?\Closure $unreadable = null;
 
-    public static function useSecrets(Secrets $secrets): void
+    /**
+     * @param (\Closure(): void)|null $unreadable
+     */
+    public static function useSecrets(Secrets $secrets, ?\Closure $unreadable = null): void
     {
         self::$secrets = $secrets;
+        self::$unreadable = $unreadable;
     }
 
     public function convertToDatabaseValue(mixed $value, AbstractPlatform $platform): ?string
@@ -41,8 +47,13 @@ final class SealedJsonType extends JsonType
             return $decoded;
         }
         $json = self::secrets()->open($decoded['sealed']);
+        if ($json === null) {
+            self::$unreadable?->__invoke();
 
-        return $json === null ? [] : parent::convertToPHPValue($json, $platform);
+            return [];
+        }
+
+        return parent::convertToPHPValue($json, $platform);
     }
 
     private static function secrets(): Secrets

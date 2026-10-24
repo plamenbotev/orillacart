@@ -17,10 +17,16 @@ final class SealedStringType extends StringType
     public const string NAME = 'sealed_string';
 
     private static ?Secrets $secrets = null;
+    /** @var (\Closure(): void)|null told when a value cannot be opened, for the shop to hear of it */
+    private static ?\Closure $unreadable = null;
 
-    public static function useSecrets(Secrets $secrets): void
+    /**
+     * @param (\Closure(): void)|null $unreadable
+     */
+    public static function useSecrets(Secrets $secrets, ?\Closure $unreadable = null): void
     {
         self::$secrets = $secrets;
+        self::$unreadable = $unreadable;
     }
 
     public function convertToDatabaseValue(mixed $value, AbstractPlatform $platform): ?string
@@ -30,7 +36,15 @@ final class SealedStringType extends StringType
 
     public function convertToPHPValue(mixed $value, AbstractPlatform $platform): ?string
     {
-        return \is_string($value) ? self::secrets()->open($value) ?? '' : null;
+        if (!\is_string($value)) {
+            return null;
+        }
+        $open = self::secrets()->open($value);
+        if ($open === null) {
+            self::$unreadable?->__invoke();
+        }
+
+        return $open ?? '';
     }
 
     private static function secrets(): Secrets

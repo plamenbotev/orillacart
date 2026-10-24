@@ -22,6 +22,7 @@ use OrillaCart\Platform\WordPress\Security\SiteSignatures;
 use OrillaCart\Shared\Security\Secrets;
 use OrillaCart\Shared\Security\Signatures;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\PhpFilesAdapter;
 
@@ -37,6 +38,7 @@ final readonly class EntityManagerFactory
         private DatabaseConfig $database,
         private PluginContext $context,
         private ?Secrets $secrets = null,
+        private ?LoggerInterface $logger = null,
     ) {}
 
     public function create(): EntityManagerInterface
@@ -62,8 +64,13 @@ final readonly class EntityManagerFactory
         }
         // The site's key; tools without WordPress (the schema, the build check) seal nothing they keep.
         $secrets = $this->secrets ?? new Secrets(\defined('ABSPATH') ? SiteSignatures::create() : new Signatures(random_bytes(32)));
-        SealedJsonType::useSecrets($secrets);
-        SealedStringType::useSecrets($secrets);
+        // A value sealed with salts the site no longer has reads as empty: the shop hears it should enter it again.
+        $logger = $this->logger;
+        $unreadable = $logger === null ? null : static function () use ($logger): void {
+            $logger->error('Saved credentials (a payment method\'s, a courier\'s or a webhook\'s secret) cannot be read since the site\'s security keys (salts) changed: enter them again, or put the old keys back.');
+        };
+        SealedJsonType::useSecrets($secrets, $unreadable);
+        SealedStringType::useSecrets($secrets, $unreadable);
         $connection = DriverManager::getConnection($this->database->connectionParams(), $this->dbalConfiguration());
 
         $events = new EventManager();

@@ -7,6 +7,7 @@ namespace OrillaCart\Notifications\Infrastructure\WordPress;
 use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Notifications\Application\Mailer;
 use OrillaCart\Shared\WordPress\AsHook;
+use Psr\Log\LoggerInterface;
 
 /**
  * Sends through wp_mail(), so SMTP plugins and the site's mail settings apply, with the plain text as the HTML's
@@ -15,10 +16,21 @@ use OrillaCart\Shared\WordPress\AsHook;
  * and order number.
  */
 #[AsHook('phpmailer_init', method: 'alternative')]
+#[AsHook('wp_mail_failed', method: 'failed')]
 final class WordPressMailer implements Mailer
 {
     /** The plain text of the mail being sent, for its alternative part. */
     private ?string $text = null;
+
+    public function __construct(private readonly LoggerInterface $logger) {}
+
+    /** Why the mail system refused one of the shop's mails, for the shop's problems: "SMTP connect() failed". */
+    public function failed(mixed $error): void
+    {
+        if ($this->text !== null && $error instanceof \WP_Error) {
+            $this->logger->error('An email could not be sent: {reason}', ['reason' => $error->get_error_message()]);
+        }
+    }
 
     public function send(Email $email): bool
     {

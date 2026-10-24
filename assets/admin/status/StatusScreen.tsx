@@ -12,6 +12,7 @@ import { __ } from '@wordpress/i18n';
 import { toApiError } from '../shared/api';
 import { type Check, fetchStatus, reportText, type Status } from './api';
 import { ChangeLogCard } from './ChangeLogCard';
+import { ProblemsCard } from './ProblemsCard';
 
 const LABELS: Record< Check[ 'status' ], string > = {
 	good: __( 'Good', 'orillacart' ),
@@ -114,6 +115,7 @@ export function StatusScreen() {
 							</CardBody>
 						</Card>
 					) ) }
+					<ProblemsCard />
 					<ChangeLogCard />
 				</>
 			) }

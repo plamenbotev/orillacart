@@ -48,7 +48,7 @@ final class DebugLogLogger extends AbstractLogger
             return;
         }
 
-        $line = \sprintf('[OrillaCart] %s: %s', strtoupper($level), $this->interpolate((string) $message, $context));
+        $line = \sprintf('[OrillaCart] %s: %s', strtoupper($level), self::interpolate((string) $message, $context));
         $exception = $context['exception'] ?? null;
         if ($exception instanceof \Throwable) {
             $line .= \sprintf("\n%s: %s in %s:%d\n%s", $exception::class, $exception->getMessage(), $exception->getFile(), $exception->getLine(), $exception->getTraceAsString());
@@ -62,9 +62,11 @@ final class DebugLogLogger extends AbstractLogger
     }
 
     /**
+     * The message with its {placeholders} filled from the context.
+     *
      * @param array<array-key, mixed> $context
      */
-    private function interpolate(string $message, array $context): string
+    public static function interpolate(string $message, array $context): string
     {
         return (string) preg_replace_callback(
             '/\{([A-Za-z0-9_.]+)\}/',

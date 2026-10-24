@@ -6,7 +6,9 @@ use Doctrine\Migrations\DependencyFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use OrillaCart\Audit\Domain\ChangeRecordRepository;
+use OrillaCart\Audit\Domain\LoggedProblemRepository;
 use OrillaCart\Audit\Infrastructure\Doctrine\DoctrineChangeRecordRepository;
+use OrillaCart\Audit\Infrastructure\Doctrine\DoctrineLoggedProblemRepository;
 use OrillaCart\Cart\Application\CartLinks;
 use OrillaCart\Cart\Domain\AbandonedCartRepository;
 use OrillaCart\Cart\Domain\CartRepository;
@@ -161,7 +163,7 @@ use OrillaCart\Platform\WordPress\AfterResponse\ShutdownWork;
 use OrillaCart\Platform\WordPress\Extensions\WordPressExtensions;
 use OrillaCart\Platform\WordPress\Files\LocalPrivateFiles;
 use OrillaCart\Platform\WordPress\Files\WebServerFileDelivery;
-use OrillaCart\Platform\WordPress\Logging\DebugLogLogger;
+use OrillaCart\Platform\WordPress\Logging\ShopLogger;
 use OrillaCart\Platform\WordPress\Security\SiteSignatures;
 use OrillaCart\Platform\WordPress\WordPressIntegration;
 use OrillaCart\Platform\WordPress\WordPressLanguages;
@@ -395,6 +397,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(SampleData::class, SampleProducts::class);
     $services->alias(SetupState::class, OptionSetupState::class);
     $services->alias(ChangeRecordRepository::class, DoctrineChangeRecordRepository::class);
+    $services->alias(LoggedProblemRepository::class, DoctrineLoggedProblemRepository::class);
     $services->alias(ApiKeyRepository::class, DoctrineApiKeyRepository::class);
     $services->alias(WebhookRepository::class, DoctrineWebhookRepository::class);
     $services->alias(WebhookSender::class, WordPressWebhookSender::class);
@@ -469,8 +472,8 @@ return static function (ContainerConfigurator $container): void {
     $services->set('event_dispatcher', EventDispatcher::class);
     $services->alias(Psr\EventDispatcher\EventDispatcherInterface::class, 'event_dispatcher');
 
-    // Logging (PSR-3)
-    $services->alias(LoggerInterface::class, DebugLogLogger::class);
+    // Logging (PSR-3): debug.log, and the problems the shop manager reads (Shop → Status)
+    $services->alias(LoggerInterface::class, ShopLogger::class);
 
     // Storefront templates
     $services->set(Environment::class)

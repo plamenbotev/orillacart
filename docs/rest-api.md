@@ -1291,6 +1291,20 @@ Providers' notifications (webhooks). They carry no nonce: the gateway checks wit
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+## /problems
+
+### `GET /problems`
+
+The problems the shop logged, the latest first (?page=2), and clearing them (DELETE).
+
+- Who: shop managers
+
+### `DELETE /problems`
+
+The problems the shop logged, the latest first (?page=2), and clearing them (DELETE).
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ## /product-cards
 
 ### `GET /product-cards`

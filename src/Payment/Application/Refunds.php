@@ -253,6 +253,7 @@ final readonly class Refunds
             $left = Money::of($order->refundable);
             if ($amount->isZero() || $amount->compare($left) > 0) {
                 $this->logger->warning('{gateway} refunded {amount} of order {order}, which has {left} left to refund; record it by hand.', ['gateway' => $payment->gateway(), 'amount' => (string) $amount, 'order' => $payment->orderId(), 'left' => (string) $left]);
+                $this->attention($payment->orderId(), \sprintf('%s refunded %s %s from its own dashboard, more than the %s left to refund: check it at the provider, and record what went back as refunded outside the shop.', $this->name($payment->gateway()), (string) $amount, $payment->currency(), (string) $left));
 
                 return;
             }
@@ -260,17 +261,18 @@ final readonly class Refunds
             $refund->refer($refundId);
             $command = new RefundOrder((string) $amount, reason: \sprintf('Made at %s.', $this->name($payment->gateway())));
             $this->orders->checkRefund($payment->orderId(), $command);
-            $this->transactions->run(function () use ($refund, $payment, $command, $refundId): void {
+            $this->transactions->run(function () use ($refund, $payment, $command, $refundId, $amount): void {
                 $this->refunds->save($refund);
                 $this->taxed($refund, $this->orders->refund($payment->orderId(), $command, \sprintf('through %s (refund %s)', $this->name($payment->gateway()), $refundId), null));
                 // Made at the provider, the refund names no items: whether they came back is the shop's to say.
                 $order = $this->orders->order($payment->orderId());
                 if (array_filter($order->lines, static fn(OrderLineView $line): bool => $line->restockable > 0) !== []) {
-                    $this->orders->needsAttention($payment->orderId(), \sprintf('%s refunded the order in full from its own dashboard: if the items came back, put them back in stock from the order.', $this->name($payment->gateway())));
+                    $this->orders->needsAttention($payment->orderId(), \sprintf('%s refunded %s %s of the order from its own dashboard: if items came back, put them back in stock from the order.', $this->name($payment->gateway()), (string) $amount, $payment->currency()));
                 }
             });
         } catch (OrderNotFound|OrderRuleViolation $e) {
             $this->logger->warning('{gateway} refunded {amount} of order {order}, which the shop could not record: {message}', ['gateway' => $payment->gateway(), 'amount' => (string) $amount, 'order' => $payment->orderId(), 'message' => $e->getMessage()]);
+            $this->attention($payment->orderId(), \sprintf('%s refunded %s %s from its own dashboard, which the shop could not record: %s', $this->name($payment->gateway()), (string) $amount, $payment->currency(), $e->getMessage()));
         }
     }
 
@@ -418,8 +420,19 @@ final readonly class Refunds
             } catch (OrderNotFound|OrderRuleViolation $e) {
                 // The money went back: the order must learn of it, even if not item by item.
                 $this->logger->error('Refund {refund} went through but order {order} could not record it: {message}', ['refund' => $refund->id(), 'order' => $refund->orderId(), 'message' => $e->getMessage()]);
+                $this->attention($refund->orderId(), \sprintf('%s %s went back to the customer, but the order could not record it: %s Record it on the order as refunded outside the shop.', $refund->amount()->toFixed(), $refund->currency(), $e->getMessage()));
             }
         });
+    }
+
+    /** Money moved and the order could not follow: the shop has to. */
+    private function attention(int $orderId, string $why): void
+    {
+        try {
+            $this->orders->needsAttention($orderId, $why);
+        } catch (OrderNotFound) {
+            // The shop's problems say so.
+        }
     }
 
     private function pending(int $refundId): Refund

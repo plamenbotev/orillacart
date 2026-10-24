@@ -78,3 +78,35 @@ export function fetchChangeLog(
 		} ),
 	} );
 }
+
+/** Something that went wrong which the shop should hear of, the same message once with how often it happened. */
+export interface Problem {
+	id: number;
+	level: 'warning' | 'error' | 'critical' | 'alert' | 'emergency';
+	message: string;
+	count: number;
+	first_at: string;
+	last_at: string;
+}
+
+/** A page of the problems, as GET /orillacart/v1/problems returns it: the latest seen first. */
+export interface ProblemPage {
+	problems: Problem[];
+	total: number;
+	page: number;
+	per_page: number;
+}
+
+export function fetchProblems( page: number ): Promise< ProblemPage > {
+	return apiFetch< ProblemPage >( {
+		path: addQueryArgs( '/orillacart/v1/problems', { page } ),
+	} );
+}
+
+export function clearProblems(): Promise< void > {
+	return apiFetch( {
+		path: '/orillacart/v1/problems',
+		method: 'DELETE',
+		parse: false,
+	} ).then( () => undefined );
+}

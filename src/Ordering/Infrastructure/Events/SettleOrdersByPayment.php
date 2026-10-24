@@ -50,6 +50,7 @@ final readonly class SettleOrdersByPayment
             $this->logger->warning('Payment {payment} ({gateway} {transaction}) completed for order {order}, which cannot take it: refund it. {reason}', [
                 'payment' => $event->paymentId, 'gateway' => $event->gateway, 'transaction' => $event->transactionId, 'order' => $event->orderId, 'reason' => $e->getMessage(),
             ]);
+            $this->attention($event->orderId, \sprintf('A payment of %s came through %s (transaction %s), but the order cannot take it: %s Refund it at the provider.', $event->amount, $event->gateway, $event->transactionId, $e->getMessage()));
 
             return;
         }
@@ -68,6 +69,7 @@ final readonly class SettleOrdersByPayment
             $this->logger->warning('Payment {payment} of order {order} is held by {gateway}, but the order is closed. {reason}', [
                 'payment' => $event->paymentId, 'order' => $event->orderId, 'gateway' => $event->gateway, 'reason' => $e->getMessage(),
             ]);
+            $this->attention($event->orderId, \sprintf('%s holds a payment of this order for review, but the order is closed: look at it at the provider, and refund it if it goes through.', $event->gateway));
         }
     }
 
@@ -88,6 +90,16 @@ final readonly class SettleOrdersByPayment
             $this->orders->cancel($event->orderId, self::note('The customer gave up paying', $event));
         } catch (OrderNotFound) {
             $this->gone($event, 'was given up');
+        }
+    }
+
+    /** Money moved and the order could not follow: the shop has to. */
+    private function attention(int $orderId, string $why): void
+    {
+        try {
+            $this->orders->needsAttention($orderId, $why);
+        } catch (OrderNotFound) {
+            // Logged already; nothing to flag.
         }
     }
 

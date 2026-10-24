@@ -226,7 +226,7 @@ final class RefundsTest extends TestCase
         self::assertSame([['external', 'done', 'DASH-1']], array_map(static fn($refund): array => [$refund->method, $refund->status, $refund->providerReference], $view->refunds));
         self::assertSame('refunded', $this->shop->orders->order($order)->status);
         self::assertSame([], $this->shop->payPalApi->refunds, 'nothing sent to PayPal');
-        self::assertStringContainsString('if the items came back, put them back in stock', (string) $this->shop->orders->order($order)->attention, 'the shop is asked about the items');
+        self::assertStringContainsString('PayPal refunded 16 EUR of the order from its own dashboard: if items came back, put them back in stock', (string) $this->shop->orders->order($order)->attention, 'the shop is asked about the items');
     }
 
     public function testItemsOfAnOrderRefundedByAmountGoBackInStockWhenTheyComeBack(): void

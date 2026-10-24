@@ -28,8 +28,11 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   rules, checkout fields, order actions and `orders()` came; 4 since export columns; 5 since order fees and
   address checks; 6 since mailing lists; 7 since the answers to product forms on order lines; 8 since filters and
   searches of the orders and products lists, and `products()`; 9 since tax services, order adjusters and
-  `orderPrices()`; 10 since e-invoice senders.
-- `$registry->log()` writes to the shop's log. Never log secrets or card data.
+  `orderPrices()`; 10 since e-invoice senders; 11 since gateways naming the account a payment is made in
+  (`NamesAccounts`).
+- `$registry->log()` writes to the shop's log: debug.log, and its warnings and errors appear to the shop manager
+  under Shop → Status → Problems and in Site Health, the same message once with how often it happened. Say what
+  to do in them. Never log secrets or card data.
 - Call the provider with the WordPress HTTP API (`wp_remote_post()` and friends).
 
 ## Settings
