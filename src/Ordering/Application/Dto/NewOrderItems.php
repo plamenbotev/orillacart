@@ -17,6 +17,10 @@ final readonly class NewOrderItems
         public ?NewShipping $shipping,
         public ?AddressData $shippingAddress,
         public string $total,
-        public bool $pricesIncludeTax = false,
+        public bool $pricesIncludeTax,
+        /** @var array{reason: string, certificate: string}|null the exemption the prices went by */
+        public ?array $taxExemption,
+        /** The tax service that worked out the taxes; null for the shop's own rates. */
+        public ?string $taxProvider,
     ) {}
 }

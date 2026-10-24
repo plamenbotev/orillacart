@@ -24,5 +24,7 @@ final readonly class DiscountRequest
         public ?int $orderId = null,
         /** Units of the order's currency for one of the shop's: coupons' amounts are the shop's. */
         public string $rate = '1',
+        /** @var list<string>|null the automatic discounts that may apply, by code: an order edited keeps its own; null for every one the shop has now */
+        public ?array $automatic = null,
     ) {}
 }

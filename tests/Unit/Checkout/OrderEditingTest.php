@@ -7,11 +7,13 @@ namespace OrillaCart\Tests\Unit\Checkout;
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Checkout\Application\Dto\AdjustOrderPrice;
 use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\EditOrderItems;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
@@ -90,6 +92,34 @@ final class OrderEditingTest extends TestCase
 
         $this->expectException(OrderRuleViolation::class);
         $this->shop->editing->edit($order->number, new EditOrderItems([new EditedItem(20, 2)]), 7);
+    }
+
+    public function testAPriceTheOrderKeepsIsWhatTheCustomerPaysAndAnEditLeavesIt(): void
+    {
+        // Prices with tax, a customer outside the EU: they pay the e-book's 10 without the 20 % VAT in it.
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::ShippingAddress, $this->shop->taxSettings->load()->defaultGroupId, pricesIncludeTax: true));
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
+        $order = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Main St', 'Tokyo', '100-0001', 'JP', '+81 3 0000 0000'), payment: 'bank_transfer'));
+        self::assertSame('8.33', $this->shop->orders->order($order->number)->lines[0]->unitPrice);
+
+        $this->shop->editing->adjust($order->number, new AdjustOrderPrice('-1', 'Goodwill'), 7);
+        $edited = $this->shop->editing->removeAdjustment($order->number, $this->shop->orders->order($order->number)->priceChanges[0]->change, 7);
+
+        self::assertSame(['8.33', '8.33'], [$edited->lines[0]->unitPrice, $edited->total], 'the tax is not taken out again at each edit');
+    }
+
+    public function testAnEditKeepsTheOrdersAutomaticDiscountsAndTakesNoNewOnes(): void
+    {
+        $this->shop->coupons->create(new SaveCoupon('', 'percent', '10', 'Spring sale', automatic: true));
+        $order = $this->place([20, 1]);
+        self::assertSame('10.8', $order->total, '10 less 10 %, with VAT');
+        $this->shop->coupons->create(new SaveCoupon('', 'percent', '50', 'Black Friday', automatic: true));
+
+        $edited = $this->shop->editing->edit($order->number, new EditOrderItems([new EditedItem(20, 2)]), 7);
+
+        self::assertSame(['Spring sale'], array_map(static fn($discount): string => $discount->description, $edited->discounts), 'last week\'s order does not take this week\'s sale');
+        self::assertSame('21.6', $edited->total);
+        self::assertSame([], array_filter(array_map(static fn($note): string => $note->text, $edited->notes), static fn(string $text): bool => str_contains($text, 'no longer applies')), 'its own discount is not "a code that no longer applies"');
     }
 
     private function available(): ?int

@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Unit\Checkout;
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Checkout\Application\Dto\AdjustOrderPrice;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
@@ -87,6 +88,17 @@ final class MultiCurrencyTest extends TestCase
         $given = $this->shop->invoices->document($credit, $this->shop->receipts->issue($order->number))->inShopCurrency;
         self::assertSame('1.1', $given['rate'] ?? null);
         self::assertNotSame('0', $given['total'] ?? '0');
+    }
+
+    public function testAnOrderEditedIsPricedAgainInItsOwnCurrency(): void
+    {
+        $this->shop->chosenCurrency->currency = 'USD';
+        $placed = $this->shop->checkout->placeOrder($this->cart(2), $this->order());
+        $this->shop->chosenCurrency->currency = null;
+
+        $edited = $this->shop->editing->adjust($placed->number, new AdjustOrderPrice('-1', 'Goodwill'), 7);
+
+        self::assertSame(['USD', '36.66', '5.5'], [$edited->currency, $edited->lines[0]->unitPrice, $edited->shippingTotal], 'its shipping in USD, not 5 EUR called USD');
     }
 
     public function testAnOrderInTheShopsCurrencyKeepsNoRate(): void

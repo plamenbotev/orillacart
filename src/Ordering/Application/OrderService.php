@@ -958,6 +958,8 @@ final readonly class OrderService
             $command->shippingAddress?->toAddress(),
             Money::of($command->total),
             $command->pricesIncludeTax,
+            $command->taxExemption,
+            $command->taxProvider,
         );
         $order->addNote(\sprintf('The items were changed; the total went from %s to %s %s.', $before, (string) $order->total(), $order->currency()), $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
         $this->orders->save($order);

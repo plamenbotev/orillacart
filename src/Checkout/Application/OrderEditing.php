@@ -10,9 +10,9 @@ use OrillaCart\Checkout\Application\Dto\EditOrderItems;
 use OrillaCart\Checkout\Application\Dto\ShippingChoiceView;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Discounts;
+use OrillaCart\Coupons\Application\Dto\AppliedCoupon;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\NewOrderItems;
-use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\PriceChangeView;
@@ -57,9 +57,9 @@ final readonly class OrderEditing
         $shippingAddress = $order->shippingAddress ?? $order->billing;
         $items = array_map(static fn(OrderLineView $line): array => ['product_id' => $line->productId, 'option_ids' => $line->optionIds, 'bundle_choices' => $line->bundleChoices, 'quantity' => $line->quantity, 'unit_price' => $line->unitPrice, 'personalisation' => $line->personalisation], $order->lines);
 
-        $codes = array_map(static fn(OrderDiscountView $discount): string => $discount->code, $order->discounts);
+        [$codes, $automatic] = self::discountsOf($order);
 
-        return $this->pricing->price($items, new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode, $shippingAddress->city, $shippingAddress->street), $billing, $order->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge)['options'];
+        return $this->pricing->price($items, new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode, $shippingAddress->city, $shippingAddress->street), $billing, $order->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, $order->paymentGateway, $order->currency, automatic: $automatic)['options'];
     }
 
     /**
@@ -179,13 +179,14 @@ final readonly class OrderEditing
         }, $command->items);
 
         $keptPoint = $order->pickupPointId;
-        $codes = array_map(static fn(OrderDiscountView $discount): string => $discount->code, $order->discounts);
+        [$codes, $automatic] = self::discountsOf($order);
 
-        return $this->transactions->run(function () use ($order, $orderId, $items, $shipping, $billing, $command, $shippingAddress, $userId, $keptPoint, $codes, $changes): OrderView {
+        return $this->transactions->run(function () use ($order, $orderId, $items, $shipping, $billing, $command, $shippingAddress, $userId, $keptPoint, $codes, $automatic, $changes): OrderView {
             $this->orders->releaseStock($orderId);
             // Its own uses do not count against the limits while it is priced again.
             $this->discounts->release($orderId);
-            $priced = $this->pricing->price($items, $shipping, $billing, $command->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, $order->paymentGateway, changes: $changes);
+            // In the order's currency, with its own automatic discounts: not ones the shop started since.
+            $priced = $this->pricing->price($items, $shipping, $billing, $command->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, $order->paymentGateway, $order->currency, $changes, $automatic);
             if ($priced['needs_shipping'] && $priced['chosen']?->id !== $command->shippingOption) {
                 throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to its address.' : 'Choose how the order ships.', 'orillacart_shipping_required');
             }
@@ -197,6 +198,12 @@ final readonly class OrderEditing
             foreach ($priced['discounts']->refused as $code => $reason) {
                 $this->orders->addNote($orderId, new AddOrderNote(\sprintf('The code %s no longer applies, so the order lost it: %s', $code, $reason)), $userId);
             }
+            $kept = array_map(static fn(AppliedCoupon $coupon): string => $coupon->code, $priced['discounts']->coupons);
+            foreach ($order->discounts as $discount) {
+                if ($discount->automatic && !\in_array($discount->code, $kept, true)) {
+                    $this->orders->addNote($orderId, new AddOrderNote(\sprintf('The automatic discount %s no longer applies to the items, so the order lost it.', $discount->description === '' ? $discount->code : $discount->description)), $userId);
+                }
+            }
 
             return $this->orders->replaceItems($orderId, new NewOrderItems(
                 $this->pricing->orderLines($priced),
@@ -204,6 +211,8 @@ final readonly class OrderEditing
                 $priced['needs_shipping'] ? $shippingAddress : null,
                 (string) $bill->total(),
                 $bill->includesTax(),
+                $this->pricing->exemption($priced),
+                $this->pricing->taxProvider($priced),
             ), $userId);
         });
     }
@@ -220,6 +229,26 @@ final readonly class OrderEditing
         }
 
         return $order;
+    }
+
+    /**
+     * The order's codes, to price again, and its automatic discounts, the only ones that may apply again.
+     *
+     * @return array{list<string>, list<string>}
+     */
+    private static function discountsOf(OrderView $order): array
+    {
+        $codes = [];
+        $automatic = [];
+        foreach ($order->discounts as $discount) {
+            if ($discount->automatic) {
+                $automatic[] = $discount->code;
+            } else {
+                $codes[] = $discount->code;
+            }
+        }
+
+        return [$codes, $automatic];
     }
 
     /** The order's items, unit prices and way to ship as they are. */

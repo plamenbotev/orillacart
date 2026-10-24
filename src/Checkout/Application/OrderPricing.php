@@ -96,7 +96,8 @@ final readonly class OrderPricing
 
     /**
      * Prices items with the customer's addresses: taxes, the shipping rates offered and the chosen one (or the
-     * first), and the bill. An item may carry its own unit price, which the shop sets when it edits an order.
+     * first), and the bill. An item may carry its own unit price, which the shop sets when it edits an order or
+     * keeps from it.
      *
      * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, gift?: bool, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
      *                                    extra: what the answers to the product's forms add to each item; personalisation: those answers
@@ -110,19 +111,21 @@ final readonly class OrderPricing
      *                                    changes to the prices besides coupons: the shop's or add-ons', for a line by
      *                                    its index among the items, or for the whole order (line null)
      * @param string|null  $currency   what the order is priced in: the shop's prices converted, when it offers it;
-     *                                 the shop's own currency when null. Unit prices given are in it already.
+     *                                 the shop's own currency when null. Unit prices given are in it already,
+     *                                 and are what the customer pays: they do not go through Tax::asPaid() again.
+     * @param list<string>|null $automatic the automatic discounts that may apply, by code; null for the shop's now
      *
      * @return Priced
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null, ?string $currency = null, array $changes = []): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null, ?string $currency = null, array $changes = [], ?array $automatic = null): array
     {
         $currency ??= $this->settings->current()->currency;
-        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes);
+        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic);
         $gifts = $this->gifts($priced['discounts']->gifts, $customerId);
 
-        return $gifts === [] ? $priced : $this->priceItems([...$items, ...$gifts], $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes);
+        return $gifts === [] ? $priced : $this->priceItems([...$items, ...$gifts], $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic);
     }
 
     /**
@@ -154,10 +157,11 @@ final readonly class OrderPricing
      *                                    extra: what the answers to the product's forms add to each item; personalisation: those answers
      * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
      * @param list<string> $codes
+     * @param list<string>|null $automatic
      *
      * @return Priced
      */
-    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment, string $currency, array $changes = []): array
+    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment, string $currency, array $changes = [], ?array $automatic = null): array
     {
         $settings = $this->settings->current();
         $decimals = $this->currencies->decimals($currency);
@@ -196,14 +200,17 @@ final readonly class OrderPricing
             $imported = $import->applies() && $quote->type === 'physical';
             // A bundle is taxed per item: its price shared out by what its items cost, each share at its item's rates.
             $parts = [];
-            $unitPrice = isset($line['unit_price']) ? Money::of($line['unit_price']) : $this->currencies->price(Money::of($quote->unitPrice), $currency);
+            // A price given for the line (one the order kept, or the shop's own) is what this customer pays already.
+            $given = isset($line['unit_price']);
+            $unitPrice = $given ? Money::of($line['unit_price']) : $this->currencies->price(Money::of($quote->unitPrice), $currency);
             $units = self::shares($unitPrice, $quote->contents === [] ? [Money::of('1')] : array_map(static fn(QuotedBundleItem $item): Money => Money::of($item->price), $quote->contents));
             foreach ($quote->contents === [] ? [[$quote->taxable, $quote->taxGroupId, $quote->taxCode]] : array_map(static fn(QuotedBundleItem $item): array => [$item->taxable, $item->taxGroupId, $item->taxCode], $quote->contents) as $index => [$taxable, $groupId, $taxCode]) {
                 $taxes = $taxable && !$reverseCharge && (!$imported || $import->charges) ? $this->taxes($groupId, $shipping, $billing, $exempt, atShipping: $imported) : [];
                 $unit = $units[$index];
-                if ($inclusive && $taxable) {
+                if ($inclusive && $taxable && !$given) {
                     // A price including tax: what this customer pays for it, as the shop chose (Tax::asPaid()).
-                    $unit = Tax::asPaid($unit, $taxes, $this->shopTaxes($groupId), $samePrice);
+                    // In the currency's cents: 10.00 with 20 % in it is 8.33 without, not 8.3333.
+                    $unit = Tax::asPaid($unit, $taxes, $this->shopTaxes($groupId), $samePrice)->rounded($decimals);
                 }
                 $parts[] = ['unit' => $unit, 'taxes' => $taxes, 'group' => $groupId, 'tax_code' => $taxCode];
             }
@@ -223,6 +230,7 @@ final readonly class OrderPricing
             $email,
             $orderId,
             $this->currencies->rate($currency),
+            $automatic,
         ));
         $couponLines = self::roundedCoupons($discounts, \count($lines), $decimals);
         foreach ($lines as $index => $line) {

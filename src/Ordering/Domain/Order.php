@@ -1065,11 +1065,13 @@ class Order
      * Replaces what an order on hold contains, as the shop repriced it. Only orders waiting for an offline
      * payment change: a paid order, or one being paid at a provider, keeps what was paid for.
      *
-     * @param list<LineDraft> $lines the items, the shipping and the fees, priced again
+     * @param list<LineDraft>                                  $lines        the items, the shipping and the fees, priced again
+     * @param array{reason: string, certificate: string}|null $taxExemption the exemption the new prices went by
+     * @param string|null                                      $taxProvider  the tax service that worked them out
      *
      * @throws OrderRuleViolation for an order not on hold, one without items, or one gift cards paid part of
      */
-    public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, Money $total, bool $pricesIncludeTax = false): void
+    public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, Money $total, bool $pricesIncludeTax, ?array $taxExemption, ?string $taxProvider): void
     {
         $this->requireOnHold();
         if (array_filter($lines, static fn(LineDraft $line): bool => $line->kind === OrderLine::ITEM) === []) {
@@ -1096,6 +1098,12 @@ class Order
         $this->pickupPoint = $shipping?->pickupPoint === null ? null : mb_substr($shipping->pickupPoint, 0, 255);
         $this->total = $total->toFixed();
         $this->pricesIncludeTax = $pricesIncludeTax;
+        $this->taxExemption = $taxExemption;
+        if ($taxProvider !== $this->taxProvider) {
+            // Another service, or none: what the one before recorded is not this order's any more.
+            $this->taxReference = null;
+        }
+        $this->taxProvider = $taxProvider === null ? null : mb_substr($taxProvider, 0, 40);
     }
 
     public function shippingOption(): ?string

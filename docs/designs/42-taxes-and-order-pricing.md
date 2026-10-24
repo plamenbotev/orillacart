@@ -211,3 +211,9 @@ Closing the gaps (PLAN 111–116):
   approves or refuses them on the customer's page, and only approved ones exempt. The copy is kept in the shop's
   private files; the customer hears the outcome, and again a month before the certificate runs out (115).
 - A tax service's answer is kept ten minutes for the same request (116).
+- **130** (second audit): an order on hold is priced again as it was placed. The prices it keeps are what the
+  customer pays already and do not go through `Tax::asPaid()` again (each edit took the tax out once more for a
+  reverse-charge, exempt or export customer); it is priced in its own currency; its own automatic discounts apply
+  again if they still hold, a note says so when one no longer does, and ones the shop started since do not; it
+  takes the exemption and tax service the new prices went by. Prices with the tax taken out are in the
+  currency's cents (an export customer's 10.00 with 20 % in it is 8.33; the unrounded 8.3333 refused the order).

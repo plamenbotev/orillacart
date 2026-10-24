@@ -48,7 +48,7 @@ final readonly class Discounts
         if ($request->items === []) {
             return new AppliedDiscounts([], array_fill_keys($codes, 'Add items first.'));
         }
-        $automatic = $this->coupons->automatic();
+        $automatic = $request->automatic === null ? $this->coupons->automatic() : array_values(array_filter($this->coupons->automatic(), static fn(Coupon $coupon): bool => \in_array($coupon->code(), $request->automatic, true)));
         $found = $codes === [] ? [] : $this->coupons->findByCodes($codes);
         if ($automatic === [] && $found === [] && $codes === []) {
             return new AppliedDiscounts();
