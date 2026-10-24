@@ -23,6 +23,7 @@ use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Infrastructure\WordPress\OptionEngineSettingsRepository;
 use OrillaCart\Settings\Application\SettingsArchive;
 use OrillaCart\Settings\Domain\CurrencySettingsRepository;
+use OrillaCart\Settings\Domain\SettingsChanged;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionCurrencySettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
@@ -35,6 +36,7 @@ use OrillaCart\Tax\Domain\TaxSettingsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionImportRegistrationsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionNexusThresholdsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * The settings each screen saves, as their options hold them: the shop's, tax, emails, invoices, customers, the
@@ -65,6 +67,7 @@ final readonly class OptionSettingsArchive implements SettingsArchive
         private EngineSettingsRepository $search,
         private NexusThresholdsRepository $nexus,
         private ImportRegistrationsRepository $importSchemes,
+        private EventDispatcherInterface $events,
     ) {}
 
     public function export(): array
@@ -105,6 +108,9 @@ final readonly class OptionSettingsArchive implements SettingsArchive
             }
             [$option, $roundTrip] = $sections[$section];
             $before = get_option($option);
+            // What changing the shop's settings sets off (weights converted to a new unit, the catalog indexed
+            // again) follows an import as it follows the settings screen.
+            $previousShop = $section === 'shop' ? $this->shop->load() : null;
             update_option($option, self::keepingSecrets($value, \is_array($before) ? $before : []), true);
             try {
                 $roundTrip();
@@ -115,6 +121,10 @@ final readonly class OptionSettingsArchive implements SettingsArchive
             }
             if ($problem === null) {
                 $imported[] = $section;
+                $now = $previousShop === null ? null : $this->shop->load();
+                if ($previousShop !== null && $now !== null && !$now->equals($previousShop)) {
+                    $this->events->dispatch(new SettingsChanged($previousShop, $now));
+                }
             } else {
                 $before === false ? delete_option($option) : update_option($option, $before, true);
                 $refused[$section] = $problem;
@@ -152,7 +162,13 @@ final readonly class OptionSettingsArchive implements SettingsArchive
                     }
                 }
             }],
-            'downloads' => [WebServerFileDelivery::OPTION, fn() => $this->downloads->change($this->downloads->settings())],
+            'downloads' => [WebServerFileDelivery::OPTION, function (): void {
+                // Tested here as on the settings screen: X-Sendfile copied from another server may hand out nothing.
+                $check = $this->downloads->change($this->downloads->settings());
+                if (!$check->works) {
+                    throw new \RuntimeException($check->message);
+                }
+            }],
             'search' => [OptionEngineSettingsRepository::OPTION, fn() => $this->search->save($this->search->load())],
         ];
     }

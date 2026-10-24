@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+
 /**
  * The shop's settings as a file and back: what the screens save, without this site's secrets, taken in
  * section by section, and a section the shop cannot use left as it was.
@@ -87,5 +89,28 @@ final class SettingsArchiveTest extends RestTestCase
         self::assertArrayHasKey('nonsense', $result['refused']);
         self::assertSame($before, get_option('orillacart_settings'));
         self::assertSame(['file' => 'This is not a file of the shop\'s settings.'], $this->data($this->request('PUT', '/settings-archive', ['a' => 1], nonce: true))['refused']);
+    }
+
+    public function testImportingAnotherWeightUnitConvertsTheProductsAsTheSettingsScreenDoes(): void
+    {
+        update_option('orillacart_settings', ['currency' => 'EUR', 'weight_unit' => 'kg', 'dimension_unit' => 'cm']);
+        $this->actAs('administrator');
+        $post = wp_insert_post(['post_type' => ProductPostType::NAME, 'post_title' => 'Anvil', 'post_status' => 'publish']);
+        self::assertIsInt($post);
+        try {
+            self::assertSame(200, $this->request('PUT', "/products/{$post}", ['price' => '10', 'weight' => '1.5'], nonce: true)->get_status());
+            $file = $this->data($this->request('GET', '/settings-archive'));
+            self::assertIsArray($file['settings']);
+            self::assertIsArray($file['settings']['shop']);
+            $file['settings']['shop']['weight_unit'] = 'g';
+
+            $result = $this->data($this->request('PUT', '/settings-archive', self::body($file), nonce: true));
+
+            self::assertIsArray($result['imported']);
+            self::assertContains('shop', $result['imported']);
+            self::assertSame('1500', $this->data($this->request('GET', "/products/{$post}"))['weight'], '1.5 kg is 1500 g, not 1.5 g');
+        } finally {
+            wp_delete_post($post, true);
+        }
     }
 }
