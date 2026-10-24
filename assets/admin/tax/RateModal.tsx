@@ -14,6 +14,7 @@ import { toApiError, violationOf, type Violation } from '../shared/api';
 import type { Country } from '../shared/geography';
 import { LocationFields } from '../shared/LocationFields';
 import { saveRate, type TaxRate, type TaxRateInput } from './api';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 /**
  * Adds a rate to a tax group or changes one: where it applies, the percentage, its name on invoices
@@ -53,6 +54,8 @@ export function RateModal( {
 	const [ cities, setCities ] = useState(
 		( rate?.cities ?? [] ).join( ', ' )
 	);
+	const [ opened ] = useState( () => [ form, postcodes, cities ] );
+	useUnsavedChanges( differs( [ form, postcodes, cities ], opened ) );
 	const [ violations, setViolations ] = useState< Violation[] >( [] );
 	const [ error, setError ] = useState< string | null >( null );
 	const [ saving, setSaving ] = useState( false );

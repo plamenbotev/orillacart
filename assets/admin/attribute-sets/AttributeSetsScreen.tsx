@@ -38,10 +38,10 @@ export function AttributeSetsScreen() {
 	const [ selected, setSelectedNow ] = useState< number | typeof NEW | null >(
 		null
 	);
-	const [ leaving, guard ] = useLeaveGuard();
-	// Another row, or none, only once unsaved changes are let go.
+	const [ leaving, guard, Guarded ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go; the row open stays as it is.
 	const setSelected = ( next: Parameters< typeof setSelectedNow >[ 0 ] ) =>
-		guard( () => setSelectedNow( next ) );
+		next !== selected && guard( () => setSelectedNow( next ) );
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) => {
@@ -112,32 +112,37 @@ export function AttributeSetsScreen() {
 				</Button>
 			</Flex>
 			{ ( set !== undefined || selected === NEW ) && (
-				<SetCard
-					key={ set?.id ?? NEW }
-					set={ set ?? null }
-					onSaved={ ( saved ) => {
-						setSets( [
-							...sets.filter(
-								( candidate ) => candidate.id !== saved.id
-							),
-							saved,
-						] );
-						setSelectedNow( saved.id );
-						setMessage( {
-							status: 'success',
-							text: __( 'Attribute set saved.', 'orillacart' ),
-						} );
-					} }
-					onDeleted={ ( id ) => {
-						const rest = sets.filter(
-							( candidate ) => candidate.id !== id
-						);
-						setSets( rest );
-						setSelectedNow( rest[ 0 ]?.id ?? NEW );
-						setMessage( null );
-					} }
-					onError={ fail }
-				/>
+				<Guarded>
+					<SetCard
+						key={ set?.id ?? NEW }
+						set={ set ?? null }
+						onSaved={ ( saved ) => {
+							setSets( [
+								...sets.filter(
+									( candidate ) => candidate.id !== saved.id
+								),
+								saved,
+							] );
+							setSelectedNow( saved.id );
+							setMessage( {
+								status: 'success',
+								text: __(
+									'Attribute set saved.',
+									'orillacart'
+								),
+							} );
+						} }
+						onDeleted={ ( id ) => {
+							const rest = sets.filter(
+								( candidate ) => candidate.id !== id
+							);
+							setSets( rest );
+							setSelectedNow( rest[ 0 ]?.id ?? NEW );
+							setMessage( null );
+						} }
+						onError={ fail }
+					/>
+				</Guarded>
 			) }
 		</>
 	);

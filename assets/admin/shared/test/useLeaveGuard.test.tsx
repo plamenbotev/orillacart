@@ -3,13 +3,29 @@ import { act, render, renderHook, screen } from '@testing-library/react';
 import { useLeaveGuard } from '../useLeaveGuard';
 import { hasUnsavedChanges, useUnsavedChanges } from '../useUnsavedChanges';
 
-function Screen( { dirty, onLeave }: { dirty: boolean; onLeave: () => void } ) {
+function Form( { dirty }: { dirty: boolean } ) {
 	useUnsavedChanges( dirty );
-	const [ dialog, guard ] = useLeaveGuard();
+	return null;
+}
+
+function Screen( {
+	dirty,
+	elsewhere = false,
+	onLeave,
+}: {
+	dirty: boolean;
+	elsewhere?: boolean;
+	onLeave: () => void;
+} ) {
+	const [ dialog, guard, Guarded ] = useLeaveGuard();
 
 	return (
 		<>
 			{ dialog }
+			<Guarded>
+				<Form dirty={ dirty } />
+			</Guarded>
+			<Form dirty={ elsewhere } />
 			<button onClick={ () => guard( onLeave ) }>Close</button>
 		</>
 	);
@@ -39,6 +55,17 @@ describe( 'useLeaveGuard', () => {
 
 		act( () => screen.getByText( 'Leave without saving' ).click() );
 		expect( leave ).toHaveBeenCalledTimes( 1 );
+	} );
+
+	it( 'does not ask about a form in another part of the page', () => {
+		const leave = jest.fn();
+		render( <Screen dirty={ false } elsewhere onLeave={ leave } /> );
+
+		act( () => screen.getByText( 'Close' ).click() );
+
+		expect( leave ).toHaveBeenCalledTimes( 1 );
+		// Leaving the page still asks about it.
+		expect( hasUnsavedChanges() ).toBe( true );
 	} );
 
 	it( 'forgets a form once it is gone', () => {

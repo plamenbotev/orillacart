@@ -118,7 +118,7 @@ function AttentionNotice( {
 export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 	const [ order, setOrder ] = useState< Order | null >( null );
 	const [ message, setMessage ] = useState< Message >( null );
-	const [ leaving, guard ] = useLeaveGuard();
+	const [ leaving, guard, Guarded ] = useLeaveGuard();
 
 	const fail = ( error: unknown ) =>
 		setMessage( { status: 'error', text: errorMessage( error ) } );
@@ -154,194 +154,206 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 	return (
 		<>
 			{ leaving }
-			{ back }
-			<h1>
-				{ sprintf(
-					/* translators: 1: order number, 2: status */
-					__( 'Order #%1$d — %2$s', 'orillacart' ),
-					order.number,
-					STATUS_LABELS[ order.status ]
-				) }
-			</h1>
-			{ notice }
-			{ order.attention !== null && (
-				<AttentionNotice
-					order={ order }
-					onHandled={ done(
-						__( 'The order is marked as handled.', 'orillacart' )
+			<Guarded>
+				{ back }
+				<h1>
+					{ sprintf(
+						/* translators: 1: order number, 2: status */
+						__( 'Order #%1$d — %2$s', 'orillacart' ),
+						order.number,
+						STATUS_LABELS[ order.status ]
 					) }
-					onError={ fail }
-				/>
-			) }
-			<Summary order={ order } />
-			<InvoicesList order={ order } />
-			{ order.status === 'on_hold' && (
-				<ItemsCard
-					// Seeded from the order: a fresh one, from another card or a refund, seeds it again.
-					key={ JSON.stringify( [
-						order.lines,
-						order.shipping_option,
-						order.pickup_point,
-					] ) }
-					order={ order }
-					onSaved={ done(
-						__( 'The items were changed.', 'orillacart' )
-					) }
-					onError={ fail }
-				/>
-			) }
-			{ order.status === 'on_hold' && (
-				<PriceChangesCard
-					order={ order }
-					onSaved={ done(
-						__( 'The price was changed.', 'orillacart' )
-					) }
-					onError={ fail }
-				/>
-			) }
-			{ order.paid_at === null &&
-				! CLOSED_STATUSES.includes( order.status ) && (
-					<PaymentCard
+				</h1>
+				{ notice }
+				{ order.attention !== null && (
+					<AttentionNotice
 						order={ order }
-						onSaved={ done(
-							__( 'The order is marked as paid.', 'orillacart' )
-						) }
-						onError={ fail }
-					/>
-				) }
-			{ order.next_statuses.length > 0 && (
-				<StatusCard
-					order={ order }
-					onSaved={ done(
-						__( 'The status was changed.', 'orillacart' )
-					) }
-					onError={ fail }
-				/>
-			) }
-			{ order.lines.some( ( line ) => line.restockable > 0 ) && (
-				<RestockCard
-					order={ order }
-					onSaved={ done(
-						__( 'The items went back in stock.', 'orillacart' )
-					) }
-					onError={ fail }
-				/>
-			) }
-			<ReturnsCard
-				order={ order }
-				onChanged={ () =>
-					fetchOrder( order.number ).then( setOrder ).catch( fail )
-				}
-				onError={ fail }
-			/>
-			<RefundsCard
-				// What was refunded changes when a return is refunded: the card loads its refunds again.
-				key={ order.refunded_total }
-				order={ order }
-				onRefunded={ ( text ) =>
-					fetchOrder( order.number )
-						.then( done( text ) )
-						.catch( fail )
-				}
-				onError={ fail }
-			/>
-			{ order.shipping !== null && (
-				<ShipmentsCard
-					order={ order }
-					onError={ fail }
-					onChanged={ () =>
-						fetchOrder( order.number )
-							.then( setOrder )
-							.catch( fail )
-					}
-				/>
-			) }
-			<ActionsCard
-				order={ order }
-				onRan={ ( result, label ) =>
-					done( result.message || label )( result.order )
-				}
-				onError={ fail }
-			/>
-			<NotesCard
-				order={ order }
-				onSaved={ done( __( 'The note was added.', 'orillacart' ) ) }
-				onError={ fail }
-			/>
-			<ContactCard
-				key={ JSON.stringify( [
-					order.email,
-					order.billing,
-					order.shipping_address,
-					order.fields,
-				] ) }
-				order={ order }
-				onSaved={ done(
-					__( 'The customer’s details were saved.', 'orillacart' )
-				) }
-				onError={ fail }
-			/>
-			<AccountCard
-				order={ order }
-				onSaved={ done(
-					__( 'The order’s account was changed.', 'orillacart' )
-				) }
-				onError={ fail }
-			/>
-			{ order.downloads.length > 0 && (
-				<DownloadsCard
-					order={ order }
-					onSaved={ done(
-						__( 'The downloads were changed.', 'orillacart' )
-					) }
-					onError={ fail }
-				/>
-			) }
-			<EmailCard
-				order={ order }
-				onSent={ ( sent ) =>
-					setMessage(
-						sent
-							? {
-									status: 'success',
-									text: __(
-										'The email was sent.',
-										'orillacart'
-									),
-								}
-							: {
-									status: 'error',
-									text: __(
-										'The email could not be sent; see the site’s error log.',
-										'orillacart'
-									),
-								}
-					)
-				}
-				onError={ fail }
-			/>
-			<Flex justify="flex-start">
-				{ ! order.anonymised && (
-					<AnonymiseButton
-						order={ order }
-						onSaved={ done(
+						onHandled={ done(
 							__(
-								'The customer’s details were erased from the order.',
+								'The order is marked as handled.',
 								'orillacart'
 							)
 						) }
 						onError={ fail }
 					/>
 				) }
+				<Summary order={ order } />
+				<InvoicesList order={ order } />
+				{ order.status === 'on_hold' && (
+					<ItemsCard
+						// Seeded from the order: a fresh one, from another card or a refund, seeds it again.
+						key={ JSON.stringify( [
+							order.lines,
+							order.shipping_option,
+							order.pickup_point,
+						] ) }
+						order={ order }
+						onSaved={ done(
+							__( 'The items were changed.', 'orillacart' )
+						) }
+						onError={ fail }
+					/>
+				) }
+				{ order.status === 'on_hold' && (
+					<PriceChangesCard
+						order={ order }
+						onSaved={ done(
+							__( 'The price was changed.', 'orillacart' )
+						) }
+						onError={ fail }
+					/>
+				) }
 				{ order.paid_at === null &&
-					[ 'cancelled', 'failed' ].includes( order.status ) && (
-						<DeleteButton
+					! CLOSED_STATUSES.includes( order.status ) && (
+						<PaymentCard
 							order={ order }
-							onDeleted={ onBack }
+							onSaved={ done(
+								__(
+									'The order is marked as paid.',
+									'orillacart'
+								)
+							) }
 							onError={ fail }
 						/>
 					) }
-			</Flex>
+				{ order.next_statuses.length > 0 && (
+					<StatusCard
+						order={ order }
+						onSaved={ done(
+							__( 'The status was changed.', 'orillacart' )
+						) }
+						onError={ fail }
+					/>
+				) }
+				{ order.lines.some( ( line ) => line.restockable > 0 ) && (
+					<RestockCard
+						order={ order }
+						onSaved={ done(
+							__( 'The items went back in stock.', 'orillacart' )
+						) }
+						onError={ fail }
+					/>
+				) }
+				<ReturnsCard
+					order={ order }
+					onChanged={ () =>
+						fetchOrder( order.number )
+							.then( setOrder )
+							.catch( fail )
+					}
+					onError={ fail }
+				/>
+				<RefundsCard
+					// What was refunded changes when a return is refunded: the card loads its refunds again.
+					key={ order.refunded_total }
+					order={ order }
+					onRefunded={ ( text ) =>
+						fetchOrder( order.number )
+							.then( done( text ) )
+							.catch( fail )
+					}
+					onError={ fail }
+				/>
+				{ order.shipping !== null && (
+					<ShipmentsCard
+						order={ order }
+						onError={ fail }
+						onChanged={ () =>
+							fetchOrder( order.number )
+								.then( setOrder )
+								.catch( fail )
+						}
+					/>
+				) }
+				<ActionsCard
+					order={ order }
+					onRan={ ( result, label ) =>
+						done( result.message || label )( result.order )
+					}
+					onError={ fail }
+				/>
+				<NotesCard
+					order={ order }
+					onSaved={ done(
+						__( 'The note was added.', 'orillacart' )
+					) }
+					onError={ fail }
+				/>
+				<ContactCard
+					key={ JSON.stringify( [
+						order.email,
+						order.billing,
+						order.shipping_address,
+						order.fields,
+					] ) }
+					order={ order }
+					onSaved={ done(
+						__( 'The customer’s details were saved.', 'orillacart' )
+					) }
+					onError={ fail }
+				/>
+				<AccountCard
+					order={ order }
+					onSaved={ done(
+						__( 'The order’s account was changed.', 'orillacart' )
+					) }
+					onError={ fail }
+				/>
+				{ order.downloads.length > 0 && (
+					<DownloadsCard
+						order={ order }
+						onSaved={ done(
+							__( 'The downloads were changed.', 'orillacart' )
+						) }
+						onError={ fail }
+					/>
+				) }
+				<EmailCard
+					order={ order }
+					onSent={ ( sent ) =>
+						setMessage(
+							sent
+								? {
+										status: 'success',
+										text: __(
+											'The email was sent.',
+											'orillacart'
+										),
+									}
+								: {
+										status: 'error',
+										text: __(
+											'The email could not be sent; see the site’s error log.',
+											'orillacart'
+										),
+									}
+						)
+					}
+					onError={ fail }
+				/>
+				<Flex justify="flex-start">
+					{ ! order.anonymised && (
+						<AnonymiseButton
+							order={ order }
+							onSaved={ done(
+								__(
+									'The customer’s details were erased from the order.',
+									'orillacart'
+								)
+							) }
+							onError={ fail }
+						/>
+					) }
+					{ order.paid_at === null &&
+						[ 'cancelled', 'failed' ].includes( order.status ) && (
+							<DeleteButton
+								order={ order }
+								onDeleted={ onBack }
+								onError={ fail }
+							/>
+						) }
+				</Flex>
+			</Guarded>
 		</>
 	);
 }

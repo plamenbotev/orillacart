@@ -53,10 +53,10 @@ export function FormsScreen() {
 	const [ selected, setSelectedNow ] = useState< number | typeof NEW | null >(
 		null
 	);
-	const [ leaving, guard ] = useLeaveGuard();
-	// Another form, or none, only once unsaved changes are let go.
+	const [ leaving, guard, Guarded ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go; the row open stays as it is.
 	const setSelected = ( next: number | typeof NEW | null ) =>
-		guard( () => setSelectedNow( next ) );
+		next !== selected && guard( () => setSelectedNow( next ) );
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) => {
@@ -181,41 +181,46 @@ export function FormsScreen() {
 				</CardBody>
 			</Card>
 			{ ( form !== undefined || selected === NEW ) && (
-				<FormCard
-					key={ form?.id ?? NEW }
-					form={ form ?? null }
-					categories={ categories }
-					onSaved={ ( saved ) => {
-						setForms(
-							[
-								...forms.filter(
-									( candidate ) => candidate.id !== saved.id
-								),
-								saved,
-							].sort(
-								( a, b ) =>
-									a.position - b.position || a.id - b.id
-							)
-						);
-						setSelectedNow( saved.id );
-						setMessage( {
-							status: 'success',
-							text: __( 'Form saved.', 'orillacart' ),
-						} );
-					} }
-					onDeleted={ ( id ) => {
-						setForms(
-							forms.filter( ( candidate ) => candidate.id !== id )
-						);
-						setSelectedNow( null );
-						setMessage( {
-							status: 'success',
-							text: __( 'Form deleted.', 'orillacart' ),
-						} );
-					} }
-					onClose={ () => setSelected( null ) }
-					onError={ fail }
-				/>
+				<Guarded>
+					<FormCard
+						key={ form?.id ?? NEW }
+						form={ form ?? null }
+						categories={ categories }
+						onSaved={ ( saved ) => {
+							setForms(
+								[
+									...forms.filter(
+										( candidate ) =>
+											candidate.id !== saved.id
+									),
+									saved,
+								].sort(
+									( a, b ) =>
+										a.position - b.position || a.id - b.id
+								)
+							);
+							setSelectedNow( saved.id );
+							setMessage( {
+								status: 'success',
+								text: __( 'Form saved.', 'orillacart' ),
+							} );
+						} }
+						onDeleted={ ( id ) => {
+							setForms(
+								forms.filter(
+									( candidate ) => candidate.id !== id
+								)
+							);
+							setSelectedNow( null );
+							setMessage( {
+								status: 'success',
+								text: __( 'Form deleted.', 'orillacart' ),
+							} );
+						} }
+						onClose={ () => setSelected( null ) }
+						onError={ fail }
+					/>
+				</Guarded>
 			) }
 		</>
 	);

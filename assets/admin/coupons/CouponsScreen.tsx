@@ -194,10 +194,10 @@ export function CouponsScreen() {
 	const [ editing, setEditingNow ] = useState< Coupon | 'new' | null >(
 		null
 	);
-	const [ leaving, guard ] = useLeaveGuard();
-	// Another row, or none, only once unsaved changes are let go.
+	const [ leaving, guard, Guarded ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go; the row open stays as it is.
 	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
-		guard( () => setEditingNow( next ) );
+		next !== editing && guard( () => setEditingNow( next ) );
 	const [ message, setMessage ] = useState< Message >( null );
 
 	const fail = ( error: unknown ) =>
@@ -240,24 +240,29 @@ export function CouponsScreen() {
 				</Notice>
 			) }
 			{ editing !== null && (
-				<CouponForm
-					key={ editing === 'new' ? 'new' : editing.id }
-					coupon={ editing === 'new' ? null : editing }
-					onClose={ () => setEditing( null ) }
-					onSaved={ ( saved ) => {
-						setEditingNow( null );
-						load();
-						setMessage( {
-							status: 'success',
-							text: sprintf(
-								/* translators: %s: coupon code */
-								__( 'The coupon %s was saved.', 'orillacart' ),
-								saved.code
-							),
-						} );
-					} }
-					onError={ fail }
-				/>
+				<Guarded>
+					<CouponForm
+						key={ editing === 'new' ? 'new' : editing.id }
+						coupon={ editing === 'new' ? null : editing }
+						onClose={ () => setEditing( null ) }
+						onSaved={ ( saved ) => {
+							setEditingNow( null );
+							load();
+							setMessage( {
+								status: 'success',
+								text: sprintf(
+									/* translators: %s: coupon code */
+									__(
+										'The coupon %s was saved.',
+										'orillacart'
+									),
+									saved.code
+								),
+							} );
+						} }
+						onError={ fail }
+					/>
+				</Guarded>
 			) }
 			<DataViews< Coupon >
 				view={ view }

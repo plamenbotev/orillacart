@@ -35,7 +35,7 @@ import {
 	saveGiftCardSettings,
 } from './api';
 import { AdjustForm, BalanceEntries } from './BalanceCard';
-import { shopDate } from '../shared/dates';
+import { fromLocal, shopDate } from '../shared/dates';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -47,17 +47,17 @@ export function GiftCardsScreen() {
 	const [ message, setMessage ] = useState< Message >( null );
 	const [ issued, setIssued ] = useState< IssuedGiftCard | null >( null );
 	const [ selected, setSelectedNow ] = useState< number | null >( null );
-	const [ leaving, guard ] = useLeaveGuard();
-	// Another row, or none, only once unsaved changes are let go.
+	const [ leaving, guard, Guarded ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go; the row open stays as it is.
 	const setSelected = ( next: Parameters< typeof setSelectedNow >[ 0 ] ) =>
-		guard( () => setSelectedNow( next ) );
+		next !== selected && guard( () => setSelectedNow( next ) );
 	const [ version, setVersion ] = useState( 0 );
 	const fail = ( failure: unknown ) =>
 		setMessage( { status: 'error', text: errorMessage( failure ) } );
 	const shown = ( made: IssuedGiftCard ) => {
 		setIssued( made );
-		// Just issued: the form it came from is emptied, nothing is lost.
-		setSelectedNow( made.card.id );
+		// The card open may have a change to its balance typed: asked about, as opening any other card is.
+		setSelected( made.card.id );
 		setVersion( ( current ) => current + 1 );
 	};
 
@@ -97,14 +97,18 @@ export function GiftCardsScreen() {
 			) }
 			<IssueCard onIssued={ shown } onError={ fail } />
 			{ selected !== null && (
-				<DetailCard
-					key={ `${ selected }-${ version }` }
-					id={ selected }
-					onClose={ () => setSelected( null ) }
-					onNewCode={ shown }
-					onChanged={ () => setVersion( ( current ) => current + 1 ) }
-					onError={ fail }
-				/>
+				<Guarded>
+					<DetailCard
+						key={ `${ selected }-${ version }` }
+						id={ selected }
+						onClose={ () => setSelected( null ) }
+						onNewCode={ shown }
+						onChanged={ () =>
+							setVersion( ( current ) => current + 1 )
+						}
+						onError={ fail }
+					/>
+				</Guarded>
 			) }
 			<ListCard
 				version={ version }
@@ -152,12 +156,11 @@ function IssueCard( {
 							recipient_name: name,
 							recipient_email: email,
 							message: text,
+							// The end of the day in the shop's time zone, not the browser's.
 							expires_at:
 								expires === ''
 									? null
-									: new Date(
-											`${ expires }T23:59:59`
-										).toISOString(),
+									: fromLocal( `${ expires }T23:59` ),
 						} )
 							.then( ( made ) => {
 								setAmount( '' );

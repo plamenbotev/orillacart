@@ -162,7 +162,11 @@ function VariationRow( {
 	const save = () =>
 		saveVariation( productId, variation?.id ?? null, draft )
 			.then( ( saved ) => saveVariationContent( saved.id, content ) )
-			.then( onChanged )
+			.then( () => {
+				// What was typed is now what is saved: nothing left to ask about.
+				setSavedContent( content );
+				onChanged();
+			} )
 			.catch( onError );
 
 	const chosen = ( attribute: Attribute ) =>

@@ -110,10 +110,10 @@ export function PriceRulesScreen() {
 	const [ editing, setEditingNow ] = useState< PriceRule | 'new' | null >(
 		null
 	);
-	const [ leaving, guard ] = useLeaveGuard();
-	// Another row, or none, only once unsaved changes are let go.
+	const [ leaving, guard, Guarded ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go; the row open stays as it is.
 	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
-		guard( () => setEditingNow( next ) );
+		next !== editing && guard( () => setEditingNow( next ) );
 	const [ message, setMessage ] = useState< Message >( null );
 	const [ view, setView ] = useState< View >( {
 		type: 'table',
@@ -210,28 +210,30 @@ export function PriceRulesScreen() {
 				</Notice>
 			) }
 			{ editing !== null && (
-				<RuleForm
-					key={ editing === 'new' ? 'new' : editing.id }
-					rule={ editing === 'new' ? null : editing }
-					groups={ groups }
-					onClose={ () => setEditing( null ) }
-					onSaved={ ( saved ) => {
-						setEditingNow( null );
-						load();
-						setMessage( {
-							status: 'success',
-							text: sprintf(
-								/* translators: %s: rule name */
-								__(
-									'The rule %s was saved. The shop prices with it now.',
-									'orillacart'
+				<Guarded>
+					<RuleForm
+						key={ editing === 'new' ? 'new' : editing.id }
+						rule={ editing === 'new' ? null : editing }
+						groups={ groups }
+						onClose={ () => setEditing( null ) }
+						onSaved={ ( saved ) => {
+							setEditingNow( null );
+							load();
+							setMessage( {
+								status: 'success',
+								text: sprintf(
+									/* translators: %s: rule name */
+									__(
+										'The rule %s was saved. The shop prices with it now.',
+										'orillacart'
+									),
+									saved.name
 								),
-								saved.name
-							),
-						} );
-					} }
-					onError={ fail }
-				/>
+							} );
+						} }
+						onError={ fail }
+					/>
+				</Guarded>
 			) }
 			<DataViews< PriceRule >
 				view={ view }
@@ -310,10 +312,10 @@ function AutomaticDiscounts( {
 	const [ editing, setEditingNow ] = useState< Coupon | 'new' | null >(
 		null
 	);
-	const [ leaving, guard ] = useLeaveGuard();
-	// Another row, or none, only once unsaved changes are let go.
+	const [ leaving, guard, Guarded ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go; the row open stays as it is.
 	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
-		guard( () => setEditingNow( next ) );
+		next !== editing && guard( () => setEditingNow( next ) );
 	const load = () =>
 		fetchAllCoupons( { automatic: true } )
 			.then( setDiscounts )
@@ -346,27 +348,29 @@ function AutomaticDiscounts( {
 					) }
 				</p>
 				{ editing !== null && (
-					<CouponForm
-						key={ editing === 'new' ? 'new' : editing.id }
-						automatic
-						coupon={ editing === 'new' ? null : editing }
-						onClose={ () => setEditing( null ) }
-						onSaved={ ( saved ) => {
-							setEditingNow( null );
-							void load();
-							onMessage(
-								sprintf(
-									/* translators: %s: discount description */
-									__(
-										'The discount "%s" was saved.',
-										'orillacart'
-									),
-									saved.description
-								)
-							);
-						} }
-						onError={ onError }
-					/>
+					<Guarded>
+						<CouponForm
+							key={ editing === 'new' ? 'new' : editing.id }
+							automatic
+							coupon={ editing === 'new' ? null : editing }
+							onClose={ () => setEditing( null ) }
+							onSaved={ ( saved ) => {
+								setEditingNow( null );
+								void load();
+								onMessage(
+									sprintf(
+										/* translators: %s: discount description */
+										__(
+											'The discount "%s" was saved.',
+											'orillacart'
+										),
+										saved.description
+									)
+								);
+							} }
+							onError={ onError }
+						/>
+					</Guarded>
 				) }
 				{ discounts !== null && discounts.length === 0 && (
 					<p>{ __( 'No automatic discounts yet.', 'orillacart' ) }</p>

@@ -708,10 +708,10 @@ function GroupCard( {
 	const [ editing, setEditingNow ] = useState< TaxRate | 'new' | null >(
 		null
 	);
-	const [ leaving, guard ] = useLeaveGuard();
-	// Another row, or none, only once unsaved changes are let go.
+	const [ leaving, guard, Guarded ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go; the row open stays as it is.
 	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
-		guard( () => setEditingNow( next ) );
+		next !== editing && guard( () => setEditingNow( next ) );
 	const [ confirming, setConfirming ] = useState( false );
 	const [ busy, run ] = useBusy();
 	const countryName = ( code: string ) =>
@@ -934,16 +934,18 @@ function GroupCard( {
 				/>
 			</CardBody>
 			{ editing !== null && (
-				<RateModal
-					groupId={ group.id }
-					rate={ editing === 'new' ? null : editing }
-					countries={ countries }
-					onSaved={ () => {
-						setEditingNow( null );
-						onChanged();
-					} }
-					onClose={ () => setEditing( null ) }
-				/>
+				<Guarded>
+					<RateModal
+						groupId={ group.id }
+						rate={ editing === 'new' ? null : editing }
+						countries={ countries }
+						onSaved={ () => {
+							setEditingNow( null );
+							onChanged();
+						} }
+						onClose={ () => setEditing( null ) }
+					/>
+				</Guarded>
 			) }
 		</Card>
 	);

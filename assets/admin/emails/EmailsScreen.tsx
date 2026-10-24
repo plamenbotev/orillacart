@@ -38,7 +38,7 @@ export function EmailsScreen() {
 	const [ settings, setSettings ] = useState< EmailSettings | null >( null );
 	const [ templates, setTemplates ] = useState< EmailTemplate[] >( [] );
 	const [ editing, setEditing ] = useState< string | null >( null );
-	const [ leaving, guard ] = useLeaveGuard();
+	const [ leaving, guard, Guarded ] = useLeaveGuard();
 	const [ message, setMessage ] = useState< Message >( null );
 	const [ coupons, setCoupons ] = useState< string[] >( [] );
 
@@ -82,10 +82,12 @@ export function EmailsScreen() {
 			<>
 				{ leaving }
 				<h1>{ __( 'Emails', 'orillacart' ) }</h1>
-				<TemplateEditor
-					name={ editing }
-					onClose={ () => guard( () => setEditing( null ) ) }
-				/>
+				<Guarded>
+					<TemplateEditor
+						name={ editing }
+						onClose={ () => guard( () => setEditing( null ) ) }
+					/>
+				</Guarded>
 			</>
 		);
 	}

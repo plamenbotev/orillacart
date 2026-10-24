@@ -38,10 +38,10 @@ export function FiltersCard() {
 	const [ names, setNames ] = useState< string[] >( [] );
 	/** The filter being edited, null for a new one; undefined when the dialog is closed. */
 	const [ editing, setEditingNow ] = useState< SearchFilter | null >();
-	const [ leaving, guard ] = useLeaveGuard();
-	// Another row, or none, only once unsaved changes are let go.
+	const [ leaving, guard, Guarded ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go; the row open stays as it is.
 	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
-		guard( () => setEditingNow( next ) );
+		next !== editing && guard( () => setEditingNow( next ) );
 	const [ message, setMessage ] = useState< {
 		status: 'success' | 'error';
 		text: string;
@@ -191,36 +191,45 @@ export function FiltersCard() {
 					</table>
 				) }
 				{ editing !== undefined && filters !== null && (
-					<FilterModal
-						filter={ editing }
-						names={ names }
-						nextPosition={
-							filters.reduce(
-								( highest, filter ) =>
-									Math.max( highest, filter.position ),
-								0
-							) + 1
-						}
-						onClose={ () => setEditing( undefined ) }
-						onSaved={ ( saved ) => {
-							setFilters(
-								ordered( [
-									...filters.filter(
-										( current ) => current.id !== saved.id
-									),
-									saved,
-								] )
-							);
-							setEditingNow( undefined );
-							setMessage( {
-								status: 'success',
-								text:
-									editing === null
-										? __( 'Filter added.', 'orillacart' )
-										: __( 'Filter saved.', 'orillacart' ),
-							} );
-						} }
-					/>
+					<Guarded>
+						<FilterModal
+							filter={ editing }
+							names={ names }
+							nextPosition={
+								filters.reduce(
+									( highest, filter ) =>
+										Math.max( highest, filter.position ),
+									0
+								) + 1
+							}
+							onClose={ () => setEditing( undefined ) }
+							onSaved={ ( saved ) => {
+								setFilters(
+									ordered( [
+										...filters.filter(
+											( current ) =>
+												current.id !== saved.id
+										),
+										saved,
+									] )
+								);
+								setEditingNow( undefined );
+								setMessage( {
+									status: 'success',
+									text:
+										editing === null
+											? __(
+													'Filter added.',
+													'orillacart'
+												)
+											: __(
+													'Filter saved.',
+													'orillacart'
+												),
+								} );
+							} }
+						/>
+					</Guarded>
 				) }
 			</CardBody>
 		</Card>

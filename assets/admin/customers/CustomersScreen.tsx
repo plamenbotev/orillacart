@@ -104,10 +104,10 @@ export function CustomersScreen() {
 	} );
 	const [ page, setPage ] = useState< CustomerPage | null >( null );
 	const [ selected, setSelectedNow ] = useState< Customer | null >( null );
-	const [ leaving, guard ] = useLeaveGuard();
-	// Another row, or none, only once unsaved changes are let go.
+	const [ leaving, guard, Guarded ] = useLeaveGuard();
+	// Another row, or none, only once unsaved changes are let go; the row open stays as it is.
 	const setSelected = ( next: Parameters< typeof setSelectedNow >[ 0 ] ) =>
-		guard( () => setSelectedNow( next ) );
+		next !== selected && guard( () => setSelectedNow( next ) );
 	const [ groups, setGroups ] = useState< CustomerGroup[] >( [] );
 	const [ message, setMessage ] = useState< Message >( null );
 
@@ -214,21 +214,23 @@ export function CustomersScreen() {
 				onError={ fail }
 			/>
 			{ selected !== null && (
-				<CustomerCard
-					key={ selected.id }
-					customer={ selected }
-					groups={ groups }
-					onClose={ () => setSelected( null ) }
-					onSaved={ ( saved ) => {
-						setSelectedNow( saved );
-						load();
-						setMessage( {
-							status: 'success',
-							text: __( 'Saved.', 'orillacart' ),
-						} );
-					} }
-					onError={ fail }
-				/>
+				<Guarded>
+					<CustomerCard
+						key={ selected.id }
+						customer={ selected }
+						groups={ groups }
+						onClose={ () => setSelected( null ) }
+						onSaved={ ( saved ) => {
+							setSelectedNow( saved );
+							load();
+							setMessage( {
+								status: 'success',
+								text: __( 'Saved.', 'orillacart' ),
+							} );
+						} }
+						onError={ fail }
+					/>
+				</Guarded>
 			) }
 			<DataViews< Customer >
 				view={ view }

@@ -106,10 +106,12 @@ export function WebhooksCard() {
 					active: webhook.active,
 				};
 	};
+	const [ leaving, guard, , scope ] = useLeaveGuard();
 	useUnsavedChanges(
-		editing !== null && differs( editing.webhook, savedInput( editing.id ) )
+		editing !== null &&
+			differs( editing.webhook, savedInput( editing.id ) ),
+		scope
 	);
-	const [ leaving, guard ] = useLeaveGuard();
 
 	const field = < K extends keyof WebhookInput >(
 		key: K,
