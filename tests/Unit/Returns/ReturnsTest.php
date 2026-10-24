@@ -11,6 +11,7 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Returns\Application\Dto\AnswerReturn;
 use OrillaCart\Returns\Application\Dto\RefundReturn;
 use OrillaCart\Returns\Application\Dto\RequestReturn;
@@ -134,6 +135,29 @@ final class ReturnsTest extends TestCase
         $this->shop->refunds->reconcile();
 
         self::assertSame('received', $this->shop->returns->forOrder($placed->number)->returns[0]->status, 'the money did not go: the shop refunds it again');
+    }
+
+    public function testAReturnWhoseRefundWentUnansweredIsRefundedOnceItIsTriedAgain(): void
+    {
+        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret', 'webhook_id' => 'WH-1']));
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $this->shop->orders->order($this->order)->shippingOption, payment: 'paypal'));
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
+        $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('shipped'), 7);
+        $return = $this->shop->returns->request($this->shop->receipts->issue($placed->number), new RequestReturn([new ReturnItem(0, 1)], 'damaged'));
+        $this->shop->returns->receive($return->id, 7);
+        $this->shop->payPalApi->answerLost = true;
+        try {
+            $this->shop->returns->refund($return->id, new RefundReturn(), 7);
+            self::fail('PayPal did not answer');
+        } catch (PaymentRuleViolation $e) {
+            self::assertSame('orillacart_refund_unanswered', $e->errorCode);
+        }
+        self::assertSame('refunding', $this->shop->returns->forOrder($placed->number)->returns[0]->status, 'it follows the refund that waits');
+
+        $this->shop->payPalApi->answerLost = false;
+        $this->shop->refunds->retry($this->shop->refunds->forOrder($placed->number)->refunds[0]->id, 7);
+        self::assertSame('refunded', $this->shop->returns->forOrder($placed->number)->returns[0]->status);
     }
 
     public function testAnOrderNotPaidHasNothingToGiveBack(): void

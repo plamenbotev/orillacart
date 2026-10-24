@@ -8,6 +8,7 @@ use OrillaCart\Checkout\Application\Dto\PayOrder;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Inventory\Domain\InsufficientStock;
+use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderService;
@@ -19,6 +20,7 @@ use OrillaCart\Payment\Application\Dto\StartPayment;
 use OrillaCart\Payment\Application\PaymentOptions;
 use OrillaCart\Payment\Application\Payments;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
+use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Shared\Domain\Money;
 
 /**
@@ -33,11 +35,14 @@ final readonly class PayNow
         private PaymentOptions $paymentOptions,
         private Payments $payments,
         private OrderLinks $links,
+        private OrderFees $fees,
+        private Currencies $currencies,
     ) {}
 
     /**
-     * The ways the order can be paid now; none when it is paid, closed or being fulfilled. Only those that cost what
-     * its way to pay did: the order keeps the fee it was priced with, which another method's would not be.
+     * The ways the order can be paid now; none when it is paid, closed or being fulfilled. Only those that would cost
+     * this order the fee it was priced with, which it keeps: its own way to pay, and those whose fee on it is the
+     * same, or none when it has none. A fee the shop set or changed since does not count.
      *
      * @return list<PaymentOptionView>
      */
@@ -46,12 +51,22 @@ final readonly class PayNow
         if (!$order->payable || Money::of($order->total)->isZero()) {
             return [];
         }
-        $cost = fn(?string $gateway): ?array => ($fee = $gateway === null ? null : $this->paymentOptions->fee($gateway)) === null ? null : [$fee->fixed, $fee->percent];
-        $fee = $cost($order->paymentGateway);
+        $decimals = $this->currencies->decimals($order->currency);
+        // The fee the order was priced with: its line named as its way to pay names its fee.
+        $label = $order->paymentGateway === null ? null : $this->paymentOptions->fee($order->paymentGateway)?->label;
+        $line = $label === null ? null : array_find($order->fees, static fn(NewOrderFee $fee): bool => $fee->label === $label);
+        $charged = $line === null ? null : Money::of($line->amount)->format($decimals);
+        // What each would add to this order, as checkout prices it: of the items less discounts, and shipping.
+        $base = Money::of($order->subtotal)->subtract(Money::of($order->discountTotal))->add(Money::of($order->shippingTotal));
+        $would = function (string $gateway) use ($base, $order, $decimals): ?string {
+            $fee = $this->fees->paymentFee($gateway, $this->currencies->back($base, $order->currency));
+
+            return $fee === null ? null : $this->currencies->amount($fee, $order->currency)->format($decimals);
+        };
 
         return array_values(array_filter(
             $this->paymentOptions->available($order->billing->country, $order->currency),
-            static fn(PaymentOptionView $method): bool => $method->gateway === $order->paymentGateway || $cost($method->gateway) === $fee,
+            static fn(PaymentOptionView $method): bool => $method->gateway === $order->paymentGateway || $would($method->gateway) === $charged,
         ));
     }
 

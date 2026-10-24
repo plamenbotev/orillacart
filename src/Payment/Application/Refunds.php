@@ -11,7 +11,6 @@ use OrillaCart\Extension\Payment\RefundRequest;
 use OrillaCart\Extension\Payment\RefundsPayments;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Settings;
-use OrillaCart\GiftCards\Application\Dto\GiftCardCredit;
 use OrillaCart\GiftCards\Application\GiftCardService;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\RefundedView;
@@ -87,60 +86,65 @@ final readonly class Refunds
      */
     public function refund(int $orderId, MakeRefund $command, ?int $userId): OrderRefundsView
     {
-        $order = $this->orders->order($orderId);
-        $this->orders->checkRefund($orderId, $command->forOrder());
-        foreach ($this->refunds->ofOrder($orderId) as $earlier) {
-            if ($earlier->status() === RefundStatus::Pending) {
-                throw new PaymentRuleViolation('A refund of this order is still waiting for the provider: try it again or give it up first.', 'orillacart_refund_pending');
+        // Checked and saved with the order locked: a second click, or a request tried again after a slow answer,
+        // finds the first one pending and is refused, rather than both reaching the provider.
+        [$refund, $payment, $credit] = $this->orders->whileLocked($orderId, function () use ($orderId, $command, $userId): array {
+            $order = $this->orders->order($orderId);
+            $this->orders->checkRefund($orderId, $command->forOrder());
+            foreach ($this->refunds->ofOrder($orderId) as $earlier) {
+                if ($earlier->status() === RefundStatus::Pending) {
+                    throw new PaymentRuleViolation('A refund of this order is still waiting for the provider: try it again or give it up first.', 'orillacart_refund_pending');
+                }
+                if ($earlier->status() === RefundStatus::Accepted) {
+                    throw new PaymentRuleViolation('The provider is still sending the money of a refund of this order; refund more once it is done.', 'orillacart_refund_pending');
+                }
             }
-            if ($earlier->status() === RefundStatus::Accepted) {
-                throw new PaymentRuleViolation('The provider is still sending the money of a refund of this order; refund more once it is done.', 'orillacart_refund_pending');
+            $payment = $command->outside || $command->storeCredit ? null : $this->refundablePayment($orderId);
+            if ($payment !== null && PaymentAccount::left($payment, $this->gateways->get($payment->gateway()), new Settings($this->methods->findByGateway($payment->gateway())?->settings() ?? []))) {
+                throw new PaymentRuleViolation('The payment through %s was made in another of its accounts or modes (sandbox or live) than the one set up now: switch back to refund it, or refund it at the provider and record it here as refunded outside the shop.', 'orillacart_refund_other_account', values: [$this->name($payment->gateway())]);
             }
-        }
-        $payment = $command->outside || $command->storeCredit ? null : $this->refundablePayment($orderId);
-        if ($payment !== null && PaymentAccount::left($payment, $this->gateways->get($payment->gateway()), new Settings($this->methods->findByGateway($payment->gateway())?->settings() ?? []))) {
-            throw new PaymentRuleViolation('The payment through %s was made in another of its accounts or modes (sandbox or live) than the one set up now: switch back to refund it, or refund it at the provider and record it here as refunded outside the shop.', 'orillacart_refund_other_account', values: [$this->name($payment->gateway())]);
-        }
-        if ($payment !== null) {
-            $left = $this->leftOf($payment);
-            if (Money::of($command->amount)->compare($left) > 0) {
-                throw new PaymentRuleViolation('The payment through %1$s has %2$s %3$s left to give back; refund the rest outside the shop.', 'orillacart_refund_over_payment', values: [$this->name($payment->gateway()), $left, $payment->currency()]);
+            if ($payment !== null) {
+                $left = $this->leftOf($payment);
+                if (Money::of($command->amount)->compare($left) > 0) {
+                    throw new PaymentRuleViolation('The payment through %1$s has %2$s %3$s left to give back; refund the rest outside the shop.', 'orillacart_refund_over_payment', values: [$this->name($payment->gateway()), $left, $payment->currency()]);
+                }
             }
-        }
-        $refund = new Refund(
-            $orderId,
-            $payment?->id(),
-            $payment?->gateway() ?? $order->paymentGateway,
-            match (true) {
-                $command->storeCredit => RefundMethod::StoreCredit,
-                $payment === null => RefundMethod::Manual,
-                default => RefundMethod::Provider,
-            },
-            Money::of($command->amount),
-            $order->currency,
-            self::quantities($command->forOrder()),
-            $command->shipping,
-            $command->restock,
-            trim($command->reason),
-            $userId,
-            $this->clock->now(),
-        );
-        if ($payment === null) {
-            $credit = $this->transactions->run(function () use ($refund, $order, $orderId, $command, $userId): ?GiftCardCredit {
-                $this->refunds->save($refund);
+            $refund = new Refund(
+                $orderId,
+                $payment?->id(),
+                $payment?->gateway() ?? $order->paymentGateway,
+                match (true) {
+                    $command->storeCredit => RefundMethod::StoreCredit,
+                    $payment === null => RefundMethod::Manual,
+                    default => RefundMethod::Provider,
+                },
+                Money::of($command->amount),
+                $order->currency,
+                self::quantities($command->forOrder()),
+                $command->shipping,
+                $command->restock,
+                trim($command->reason),
+                $userId,
+                $this->clock->now(),
+            );
+            // Saved before the provider is asked: an answer lost on the way leaves it pending, never forgotten.
+            $this->refunds->save($refund);
+            $credit = null;
+            if ($payment === null) {
                 $credit = $command->storeCredit
                     ? $this->giftCards->refundAsCredit($orderId, $order->customerId, $order->email, $order->billing->firstName, Money::of($command->amount), $order->currency, $userId)
                     : null;
                 $this->taxed($refund, $this->orders->refund($orderId, $command->forOrder(), $credit->how ?? 'outside the shop', $userId, credit: $credit?->kind()));
+            }
 
-                return $credit;
-            });
-            // A guest's new card goes out once the refund is saved: never a code that a rollback took away.
-            $credit?->send();
-        } else {
-            // Saved before the provider is asked: an answer lost on the way leaves it pending, never forgotten.
-            $this->refunds->save($refund);
+            return [$refund, $payment, $credit];
+        });
+        if ($payment !== null) {
             $this->send($refund, $payment, $userId);
+        } elseif ($credit !== null && !$credit->send()) {
+            // A guest's new card goes out once the refund is saved: never a code that a rollback took away. Only its
+            // hash is kept, so a card whose email did not go cannot be spent until it gets a new code.
+            $this->orders->needsAttention($orderId, \sprintf('The refund was given %s, but the email with its code did not go (the gift card email is off, or the mail failed): give the card a new code on the Gift cards screen to send it.', $credit->how));
         }
 
         return $this->forOrder($orderId);

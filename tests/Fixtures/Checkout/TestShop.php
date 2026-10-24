@@ -510,7 +510,7 @@ final class TestShop
         );
         $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations());
-        $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links);
+        $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links, $fees, $this->currencies);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
         $this->invoiceSettings = new MemoryInvoiceSettings();
         $this->invoices = new Invoices($this->invoiceRecords, $this->invoiceSettings, $this->orders, new FakeInvoiceLinks(), new SofiaCalendar(), $this->clock, $this->receipts);

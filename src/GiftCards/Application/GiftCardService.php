@@ -168,6 +168,10 @@ final readonly class GiftCardService
         $note = \sprintf('Refund of order #%d', $orderId);
         if ($customerId !== null) {
             $card = $this->cards->storeCreditOf($customerId, true) ?? GiftCard::storeCredit($customerId, $currency, $now);
+            if ($card->currency() !== $currency) {
+                // Store credit is kept in one currency: a refund in another would count its amount as that one's.
+                throw new GiftCardRuleViolation('The customer\'s store credit is in %1$s; a refund in %2$s cannot be added to it. Refund it another way.', 'orillacart_store_credit_currency', values: [$card->currency(), $currency]);
+            }
             $card->credit($amount);
             $this->cards->save($card);
             $this->cards->add(new GiftCardEntry($card->id(), $amount, $note, $now, $orderId, $userId));

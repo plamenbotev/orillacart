@@ -13,6 +13,7 @@ use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\RefundView;
 use OrillaCart\Payment\Application\Refunds;
+use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Returns\Application\Dto\AnswerReturn;
 use OrillaCart\Returns\Application\Dto\OrderReturnsView;
 use OrillaCart\Returns\Application\Dto\RefundReturn;
@@ -172,14 +173,28 @@ final readonly class Returns
         if ($return->status() !== ReturnStatus::Received) {
             throw new ReturnRuleViolation('Return %1$d is %2$s; its items are refunded once they came back.', 'orillacart_return_not_refundable', values: [$id, $return->status()->value]);
         }
-        $refunds = $this->refunds->refund($order->number, new MakeRefund(
-            (string) $this->amount($order, $return->items()),
-            array_map(static fn(int $line, int $quantity): RefundLine => new RefundLine($line, $quantity), array_keys($return->items()), $return->items()),
-            restock: $command->restock,
-            reason: \sprintf('Return %d', $id),
-            outside: $command->outside && !$command->storeCredit,
-            storeCredit: $command->storeCredit,
-        ), $userId);
+        try {
+            $refunds = $this->refunds->refund($order->number, new MakeRefund(
+                (string) $this->amount($order, $return->items()),
+                array_map(static fn(int $line, int $quantity): RefundLine => new RefundLine($line, $quantity), array_keys($return->items()), $return->items()),
+                restock: $command->restock,
+                reason: \sprintf('Return %d', $id),
+                outside: $command->outside && !$command->storeCredit,
+                storeCredit: $command->storeCredit,
+            ), $userId);
+        } catch (PaymentRuleViolation $e) {
+            // The provider did not answer: the refund waits, pending, to be tried again. The return follows it
+            // (settle()), refunded once it goes, rather than staying received with its lines refunded under it.
+            if ($e->errorCode === 'orillacart_refund_unanswered') {
+                $pending = $this->made($order->number, $id);
+                if ($pending !== null) {
+                    $return->refunding($pending->id);
+                    $this->returns->save($return);
+                }
+            }
+
+            throw $e;
+        }
         $made = array_values(array_filter($refunds->refunds, static fn(RefundView $refund): bool => $refund->reason === \sprintf('Return %d', $id)));
         usort($made, static fn(RefundView $a, RefundView $b): int => $b->id <=> $a->id);
         // Refunded once the money went: a provider that sends it later says so, and the return follows (settle()).
@@ -193,9 +208,18 @@ final readonly class Returns
         return $this->returnView($this->orders->order($order->number), $return);
     }
 
+    /** The latest refund made for the return. */
+    private function made(int $orderId, int $returnId): ?RefundView
+    {
+        $made = array_values(array_filter($this->refunds->forOrder($orderId)->refunds, static fn(RefundView $refund): bool => $refund->reason === \sprintf('Return %d', $returnId)));
+        usort($made, static fn(RefundView $a, RefundView $b): int => $b->id <=> $a->id);
+
+        return $made[0] ?? null;
+    }
+
     /**
-     * Returns whose refund the provider was sending: refunded once it did, back to received when it gave up, for
-     * the shop to refund again.
+     * Returns whose refund the provider was sending, or did not answer: refunded once it went, back to received when
+     * it failed or was given up, for the shop to refund again; left as they are while it waits.
      */
     public function settle(int $orderId): void
     {

@@ -244,6 +244,19 @@ final class GiftCardsAtCheckoutTest extends TestCase
         self::assertSame([null], $this->shop->giftCardMail->expiries, 'the customer\'s money, not a gift');
     }
 
+    public function testAGuestsRefundCardWhoseEmailDidNotGoIsFlaggedForTheShop(): void
+    {
+        $guest = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('bank_transfer'));
+        $this->shop->orders->markPaid($guest->number, null);
+        $this->shop->giftCardMail->refuse = true;
+
+        $this->shop->refunds->refund($guest->number, new MakeRefund('5', storeCredit: true), 1);
+
+        $order = $this->shop->orders->order($guest->number);
+        self::assertNotNull($order->attention, 'only its code\'s hash is kept: the money is unreachable until it gets a new code');
+        self::assertStringContainsString('give the card a new code', $order->notes[\count($order->notes) - 1]->text);
+    }
+
     public function testAnOrderTakesUpToFiveGiftCards(): void
     {
         $owner = $this->cart([10, 1]);
