@@ -11,6 +11,8 @@ use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Shipping\Application\Dto\SaveCarrier;
+use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tax\Domain\TaxBasis;
@@ -47,6 +49,20 @@ final class ReverseChargeTest extends TestCase
         $summary = $this->shop->checkout->summary($this->owner, new CheckoutDetails(null, null, 'DE', vatNumber: 'de 123 456 789'));
 
         self::assertSame([true, true, null, '10', []], [$summary->vatAsked, $summary->reverseCharge, $summary->vatMessage, $summary->total, $summary->taxes]);
+    }
+
+    public function testGoodsDeliveredInTheShopsCountryPayVatWhateverTheNumber(): void
+    {
+        $this->shop->content->add(10, 'Lamp');
+        $this->shop->products->save(10, new SaveProduct('30', weight: '1'));
+        $rate = $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('EU', '5', regions: ['BG', 'DE'])]))->rates[0]->id;
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+
+        $home = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', null, 'DE', shippingOption: "rate:{$rate}", vatNumber: 'DE123456789'));
+        self::assertFalse($home->reverseCharge, 'a German business taking the lamp in Sofia: a sale in Bulgaria');
+        self::assertSame('The goods are delivered in the shop\'s own country, so VAT is charged, even with a VAT number of another EU country.', $home->vatMessage);
+
+        self::assertTrue($this->shop->checkout->summary($owner, new CheckoutDetails('DE', null, 'DE', shippingOption: "rate:{$rate}", vatNumber: 'DE123456789'))->reverseCharge, 'sent to Germany');
     }
 
     public function testAGreekNumberUsesTheElPrefix(): void

@@ -121,6 +121,11 @@ final readonly class CheckoutService
         $gateways = array_map(static fn(PaymentOptionView $method): string => $method->gateway, $methods);
         $payment = \in_array($details->payment, $gateways, true) ? $details->payment : ($gateways[0] ?? null);
         $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment, currency: $currency);
+        $goods = $priced['needs_shipping'] ? $this->vatNumbers->forGoodsTo($reverse, $shipping?->country) : $reverse;
+        if ($goods !== $reverse) {
+            $reverse = $goods;
+            $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment, currency: $currency);
+        }
         $bill = $priced['bill'];
         $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency);
         $due = $bill->total()->subtract($plan->total());
@@ -410,6 +415,12 @@ final readonly class CheckoutService
         $reverse = $this->vatNumbers->reverseCharge($billingAddress->country, $command->vatNumber);
         $currency = $this->currencies->current();
         $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment, currency: $currency);
+        // Goods delivered at home, or out of the EU, are not sold under the reverse charge.
+        $goods = $priced['needs_shipping'] ? $this->vatNumbers->forGoodsTo($reverse, $shippingAddress->country) : $reverse;
+        if ($goods !== $reverse) {
+            $reverse = $goods;
+            $priced = $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment, currency: $currency);
+        }
         foreach ($priced['discounts']->refused as $code => $reason) {
             throw new CheckoutRuleViolation(\sprintf('The code %s does not apply: %s Remove it to order.', $code, $reason), 'orillacart_coupon_refused');
         }

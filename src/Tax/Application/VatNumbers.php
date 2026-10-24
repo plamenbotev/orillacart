@@ -36,6 +36,26 @@ final readonly class VatNumbers
         return $this->settings->load()->reverseCharge;
     }
 
+    /**
+     * Goods sold under the reverse charge leave for another EU country: delivered in the shop's own country they
+     * are a sale at home, VAT due; sent out of the EU they are an export, taxed as the rates there say.
+     *
+     * @param string|null $country where the goods go; null when nothing ships
+     */
+    public function forGoodsTo(ReverseCharge $reverse, ?string $country): ReverseCharge
+    {
+        if (!$reverse->applies || $country === null) {
+            return $reverse;
+        }
+        $shopCountry = $this->shop->current()->shopCountry;
+        $location = $this->geography->locate($country, null);
+        if ($location instanceof LocationView && $location->inEu && $country !== $shopCountry) {
+            return $reverse;
+        }
+
+        return new ReverseCharge(false, $reverse->number, $country === $shopCountry ? 'The goods are delivered in the shop\'s own country, so VAT is charged, even with a VAT number of another EU country.' : null);
+    }
+
     public function reverseCharge(?string $billingCountry, ?string $vatNumber): ReverseCharge
     {
         $entered = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $vatNumber ?? ''));

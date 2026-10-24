@@ -126,3 +126,7 @@ point, a service, so it is left to add-ons. The XML is offered through the exten
     (the shop's when empty).
   Checking each document as it is issued is for an add-on (typical hosting has no Java), or the access point's.
 
+- **136** (second audit): the reverse charge needs the goods to leave for another EU country. Goods delivered in
+  the shop's own country are a sale at home and pay VAT, whatever VAT number the buyer gives (checkout says why);
+  goods sent out of the EU are an export, taxed as the rates say. An order with nothing that ships goes by the
+  billing country, as before.
