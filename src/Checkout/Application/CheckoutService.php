@@ -428,8 +428,9 @@ final readonly class CheckoutService
             throw new CheckoutRuleViolation('Some prices cannot be worked out right now. Try again in a moment.', 'orillacart_prices_unavailable');
         }
         $bill = $priced['bill'];
-        if ($command->expectedTotal !== null && !Money::of($command->expectedTotal)->equals($bill->total())) {
-            // A price, a rule, a coupon or a rate changed since the summary: the customer orders only what they saw.
+        if ($command->expectedTotal !== null && $bill->total()->compare(Money::of($command->expectedTotal)) > 0) {
+            // A price, a rule, a coupon or a rate changed since the summary: the customer never pays more than they
+            // saw. Less goes through, as a first-order discount the email made hold.
             throw new CheckoutRuleViolation('The total of your order changed. Review it and place the order again.', 'orillacart_cart_changed');
         }
         ['minimumOrder' => $minimum] = $this->minimum($bill, $currency);

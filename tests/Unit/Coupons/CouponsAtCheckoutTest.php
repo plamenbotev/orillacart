@@ -312,6 +312,22 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->coupon('spring', 'percent', '20');
     }
 
+    public function testAFirstOrderDiscountWaitsForTheEmailSoAReturningGuestOrdersWhatTheySaw(): void
+    {
+        $this->shop->coupons->create(new SaveCoupon('', 'percent', '10', 'Welcome: 10 % off a first order', firstOrderOnly: true, automatic: true));
+        $first = $this->cart([10, 1]);
+        $seen = $this->shop->checkout->summary($first, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
+        self::assertSame('0', $seen->discount, 'not before the email says who it is');
+
+        $placed = $this->shop->checkout->placeOrder($first, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$this->rate}", payment: 'bank_transfer', expectedTotal: $seen->total));
+        self::assertNotSame($seen->total, $this->shop->orders->order($placed->number)->total, 'her first order: less than she saw, which goes through');
+
+        $again = $this->cart([10, 1]);
+        $seen = $this->shop->checkout->summary($again, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
+        $placed = $this->shop->checkout->placeOrder($again, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$this->rate}", payment: 'bank_transfer', expectedTotal: $seen->total));
+        self::assertSame($seen->total, $this->shop->orders->order($placed->number)->total, 'coming back, she orders at what she saw, not a "total changed" loop');
+    }
+
     /**
      * @param list<int> $categoryIds
      */

@@ -95,6 +95,11 @@ final readonly class Discounts
                 $refused[$code] = \sprintf('This code cannot be combined with %s.', implode(', ', $automaticApplied));
                 continue;
             }
+            if ($silent && !$known && $coupon->dependsOnWho()) {
+                // A first-order or once-each discount waits for the email: shown before it, the order could cost
+                // more than the summary said once a returning customer gives theirs. Given at placing, it costs less.
+                continue;
+            }
             $firstOrder ??= !$known || !$this->orders->hasOrdered($request->customerId, $email, $request->orderId);
             $basket = new Basket(
                 array_map(static fn(DiscountItem $item, Money $total): BasketLine => new BasketLine($item->productId, $item->quantity, $total, $item->onSale, $item->categoryIds, $item->brandIds, $item->coupons), $request->items, $left),

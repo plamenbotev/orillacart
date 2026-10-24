@@ -29,7 +29,7 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   address checks; 6 since mailing lists; 7 since the answers to product forms on order lines; 8 since filters and
   searches of the orders and products lists, and `products()`; 9 since tax services, order adjusters and
   `orderPrices()`; 10 since e-invoice senders; 11 since gateways naming the account a payment is made in
-  (`NamesAccounts`).
+  (`NamesAccounts`); 12 since mailing lists that delete contacts (`ForgetsSubscribers`).
 - `$registry->log()` writes to the shop's log: debug.log, and its warnings and errors appear to the shop manager
   under Shop → Status → Problems and in Site Health, the same message once with how often it happened. Say what
   to do in them. Never log secrets or card data.

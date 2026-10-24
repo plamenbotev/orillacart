@@ -294,6 +294,12 @@ class Coupon
      *
      * @param int $customerUses how often this customer used it on orders that stand
      */
+    /** Whether it holds only for some customers, by what they ordered or used before: it waits to know who. */
+    public function dependsOnWho(): bool
+    {
+        return $this->firstOrderOnly || $this->perCustomerLimit !== null;
+    }
+
     public function refusal(Basket $basket, \DateTimeImmutable $now, int $customerUses): ?string
     {
         $subtotal = $basket->subtotal();
