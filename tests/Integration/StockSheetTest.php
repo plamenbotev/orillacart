@@ -8,6 +8,9 @@ use OrillaCart\Catalog\Application\Dto\LowStockView;
 use OrillaCart\Catalog\Application\LowStock;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Inventory\Application\Dto\StockItemRef;
+use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Inventory\Domain\InsufficientStock;
 
 /**
  * The stock sheet over the REST API: finding products by name, SKU, category and parent, their variations in
@@ -95,6 +98,23 @@ final class StockSheetTest extends RestTestCase
         self::assertSame(['Berlin'], array_column($this->sheet("stockroom={$this->berlin}")['stockrooms'], 'name'));
         self::assertSame(2, $this->sheet('per_page=1')['pages'], 'pages count products');
         self::assertSame(['Hoodie – S', 'Hoodie – M'], array_column($this->sheet('per_page=1&page=2')['rows'], 'name'), 'a product\'s variations stay on its page');
+    }
+
+    public function testTakingStockReadsTheLevelsAgainUnderTheLock(): void
+    {
+        $this->request('PATCH', '/stock-levels', ['changes' => [['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'quantity' => 1]]], nonce: true);
+        $stock = self::kernel()->container()->get(StockService::class);
+        self::assertInstanceOf(StockService::class, $stock);
+        $lamp = StockItemRef::product($this->lamp);
+        self::assertSame(1, $stock->available([$lamp]), 'pricing the order reads 1');
+
+        // Another order takes the last one meanwhile.
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        $wpdb->query((string) $wpdb->prepare('UPDATE %i SET quantity = 0 WHERE item_id = %d', $wpdb->prefix . 'orillacart_stock_levels', $this->lamp));
+
+        $this->expectException(InsufficientStock::class);
+        $stock->take([$lamp], 1);
     }
 
     public function testManyCellsAreSavedTogether(): void

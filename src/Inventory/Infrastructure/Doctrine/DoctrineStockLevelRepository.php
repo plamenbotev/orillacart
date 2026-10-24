@@ -6,6 +6,7 @@ namespace OrillaCart\Inventory\Infrastructure\Doctrine;
 
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 use OrillaCart\Inventory\Domain\Stock;
 use OrillaCart\Inventory\Domain\StockItem;
@@ -114,7 +115,10 @@ final readonly class DoctrineStockLevelRepository implements StockLevelRepositor
         $this->matching($query, $items);
         $query = $query->getQuery();
         if ($lock) {
+            // Read again under the lock: levels loaded earlier in the request (pricing the order) may be older than
+            // the rows, and writing them back would sell what another order took.
             $query->setLockMode(LockMode::PESSIMISTIC_WRITE);
+            $query->setHint(Query::HINT_REFRESH, true);
         }
 
         /** @var list<StockLevel> */
