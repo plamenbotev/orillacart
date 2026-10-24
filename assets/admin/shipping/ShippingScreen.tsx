@@ -681,7 +681,7 @@ function CarrierCard( {
 							{ carrier === null
 								? __( 'Add carrier', 'orillacart' )
 								: sprintf(
-										/* translators: %s: carrier name */
+										/* translators: %s: what is saved: a payment method, a carrier or a stockroom */
 										__( 'Save %s', 'orillacart' ),
 										carrier.name
 									) }

@@ -286,7 +286,7 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 						disabled={ draft.name.trim() === '' }
 					>
 						{ sprintf(
-							/* translators: %s: payment method name */
+							/* translators: %s: what is saved: a payment method, a carrier or a stockroom */
 							__( 'Save %s', 'orillacart' ),
 							method.name
 						) }

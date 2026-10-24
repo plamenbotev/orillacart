@@ -59,7 +59,7 @@
                         </td>
                         <td data-label="{{ __('Total') }}">{{ (shown ? shown.lines[loop.index0].total : line.total)|money(cart.currency) }}</td>
                         <td>
-                            {# translators: %s: product name -#}
+                            {# translators: %s: what is removed: a product, an attribute or a gift card -#}
                             <button type="button" class="orillacart-remove" data-orillacart-remove="{{ line.id }}" aria-label="{{ __('Remove %s')|format(line.name) }}">&times;</button>
                         </td>
                     </tr>

@@ -7,7 +7,7 @@
 {% block subject %}{{ __('[%1$s] A gift card worth %2$s')|format(site_name, card.amount|money(card.currency)) }}{% endblock %}
 {% block heading %}{{ __('A gift card for you') }}{% endblock %}
 {% block intro %}
-{# translators: %s: the name of whom the gift card is for -#}
+{# translators: %s: the person's name -#}
 <p>{{ card.recipient_name ? __('Hello %s,')|format(card.recipient_name) : __('Hello,') }}</p>
 {# translators: %s: an amount of money -#}
 <p>{{ __('Here is a gift card worth %s to spend in our shop.')|format(card.amount|money(card.currency)) }}</p>

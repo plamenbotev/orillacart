@@ -91,6 +91,39 @@ export function currencyDecimals( currency: string ): number {
 }
 
 /**
+ * A decimal string rounded half away from zero to the decimals, exactly, as the storefront rounds: 1.005 is 1.01,
+ * where a float would make it 1.00. Null for what is not a decimal.
+ *
+ * @param amount   A decimal string, "-12.3456".
+ * @param decimals How many decimals to keep.
+ */
+export function roundDecimal(
+	amount: string,
+	decimals: number
+): string | null {
+	const parts = /^(-?)(\d+)(?:\.(\d+))?$/.exec( amount.trim() );
+	if ( parts === null ) {
+		return null;
+	}
+	const [ , sign = '', whole = '0', fraction = '' ] = parts;
+	const kept = ( fraction + '0'.repeat( decimals + 1 ) ).slice(
+		0,
+		decimals + 1
+	);
+	let units = BigInt( whole + kept.slice( 0, decimals ) );
+	if ( Number( kept.charAt( decimals ) ) >= 5 ) {
+		units += BigInt( 1 );
+	}
+	const digits = units.toString().padStart( decimals + 1, '0' );
+	const rounded =
+		decimals === 0
+			? digits
+			: `${ digits.slice( 0, -decimals ) }.${ digits.slice( -decimals ) }`;
+
+	return sign === '-' && units !== BigInt( 0 ) ? `-${ rounded }` : rounded;
+}
+
+/**
  * An amount as the shop shows it, as the storefront does: the shop's decimals for its own currency and the
  * currency's for another (an old order's), the site language's separators, and the currency sign where the shop
  * puts it (another currency shows its code).
@@ -110,18 +143,19 @@ export function money( amount: string, currency: string ): string {
 		currency === shop.currency
 			? shop.decimals
 			: currencyDecimals( currency );
-	const number = Number( amount );
+	const exact = roundDecimal( amount, decimals );
 	let digits = amount;
-	if ( Number.isFinite( number ) ) {
-		const [ whole = '0', fraction = '' ] = Math.abs( number )
-			.toFixed( decimals )
+	if ( exact !== null ) {
+		const negative = exact.startsWith( '-' );
+		const [ whole = '0', fraction = '' ] = exact
+			.replace( '-', '' )
 			.split( '.' );
 		const grouped = whole.replace(
 			/\B(?=(\d{3})+(?!\d))/g,
 			shop.thousands ?? ','
 		);
 		digits =
-			( number < 0 ? '-' : '' ) +
+			( negative ? '-' : '' ) +
 			grouped +
 			( fraction === '' ? '' : ( shop.point ?? '.' ) + fraction );
 	}

@@ -313,7 +313,7 @@ function StockroomCard( {
 						{ stockroom === null
 							? __( 'Add stockroom', 'orillacart' )
 							: sprintf(
-									/* translators: %s: stockroom name */
+									/* translators: %s: what is saved: a payment method, a carrier or a stockroom */
 									__( 'Save %s', 'orillacart' ),
 									stockroom.name
 								) }

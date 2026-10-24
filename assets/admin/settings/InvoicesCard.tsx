@@ -175,7 +175,7 @@ export function InvoicesCard() {
 								'orillacart'
 							) }
 							help={ sprintf(
-								/* translators: %s: an invoice number */
+								/* translators: %s: the next invoice or credit note number */
 								__(
 									'The next one reads like %s.',
 									'orillacart'
@@ -194,7 +194,7 @@ export function InvoicesCard() {
 								'orillacart'
 							) }
 							help={ sprintf(
-								/* translators: %s: a credit note number */
+								/* translators: %s: the next invoice or credit note number */
 								__(
 									'The next one reads like %s.',
 									'orillacart'

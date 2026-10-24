@@ -522,7 +522,7 @@ export function StockScreen() {
 							</Button>
 							<span>
 								{ sprintf(
-									/* translators: 1: page, 2: number of pages */
+									/* translators: 1: the page, 2: how many pages */
 									__( 'Page %1$d of %2$d', 'orillacart' ),
 									sheet.page,
 									sheet.pages

@@ -22,7 +22,7 @@ import {
 	refundOrder,
 	retryRefund,
 } from './api';
-import { currencyDecimals, money, when } from './labels';
+import { currencyDecimals, money, roundDecimal, when } from './labels';
 import { useConfirm } from '../shared/useConfirm';
 import { useLatest } from '../shared/useLatest';
 import { MoneyControl } from '../shared/MoneyControl';
@@ -39,7 +39,8 @@ interface RefundsCardProps {
  * @return The amount to those decimals.
  */
 const decimal = ( value: number, decimals: number ) =>
-	value.toFixed( decimals );
+	// Through six decimals first, which a sum of prices fits, then exactly: 1.005 is 1.01, as checkout has it.
+	roundDecimal( value.toFixed( 6 ), decimals ) ?? value.toFixed( decimals );
 
 /**
  * What the chosen items and shipping cost the customer, tax included and discounts taken off: the amount the

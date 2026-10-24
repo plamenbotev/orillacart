@@ -66,12 +66,18 @@ const KIND_LABELS: Record< TierKind, string > = {
  */
 function tierWhat( tier: Tier ): string {
 	if ( tier.kind === 'percent' ) {
-		/* translators: %s: percentage */
-		return sprintf( __( '%s %% off', 'orillacart' ), tier.value );
+		return sprintf(
+			/* translators: %s: percentage */
+			__( '%s %% off', 'orillacart' ),
+			tier.value
+		);
 	}
 	if ( tier.kind === 'amount_off' ) {
-		/* translators: %s: amount */
-		return sprintf( __( '%s off', 'orillacart' ), tier.value );
+		return sprintf(
+			/* translators: %s: amount */
+			__( '%s off', 'orillacart' ),
+			tier.value
+		);
 	}
 	return tier.value;
 }

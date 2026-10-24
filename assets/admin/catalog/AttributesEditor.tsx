@@ -123,7 +123,7 @@ export function AttributesEditor( { attributes, onChange }: Props ) {
 							} }
 						>
 							{ sprintf(
-								/* translators: %s: attribute name */
+								/* translators: %s: what is removed: a product, an attribute or a gift card */
 								__( 'Remove %s', 'orillacart' ),
 								attribute.name ||
 									__( 'attribute', 'orillacart' )

@@ -4,7 +4,7 @@
 <table role="presentation" width="100%" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
 {% for line in order.lines %}
 <tr style="border-bottom:1px solid #e4e4e7;">
-{# translators: %d: how many are owed, or were refunded -#}
+{# translators: %d: how many of the item -#}
 <td>{{ line.name }}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}{% for answer in line.personalisation|default([]) %}{% if answer.answer != '' %}<br><small>{{ answer.label }}: {{ answer.answer }}</small>{% endif %}{% endfor %}{% if line.backordered > 0 and (line.backorder_shown or for_shop) %}<br><small>{{ __('%d on backorder')|format(line.backordered) }}</small>{% endif %}{% if line.contents %}<br><small>{{ __('Holds') }}: {% for item in line.contents %}{{ item.quantity }} × {{ item.name }}{{ not loop.last ? ', ' }}{% endfor %}</small>{% endif %}{% if line.refunded_quantity > 0 %}<br><small>{{ __('%d refunded')|format(line.refunded_quantity) }}</small>{% endif %}</td>
 <td style="text-align:right;white-space:nowrap;">× {{ line.quantity }}</td>
 <td style="text-align:right;white-space:nowrap;">{{ line.total|money(order.currency) }}</td>

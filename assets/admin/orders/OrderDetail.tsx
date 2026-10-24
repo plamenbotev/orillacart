@@ -531,7 +531,7 @@ function Summary( { order }: { order: Order } ) {
 										<div className="orillacart-backorder">
 											<small>
 												{ sprintf(
-													/* translators: %d: how many are owed */
+													/* translators: %d: how many of the item */
 													__(
 														'%d on backorder',
 														'orillacart'
@@ -774,12 +774,12 @@ function InvoicesList( { order }: { order: Order } ) {
 					<a href={ invoice.url } target="_blank" rel="noreferrer">
 						{ invoice.kind === 'credit_note'
 							? sprintf(
-									/* translators: %s: credit note number */
+									/* translators: %s: the invoice or credit note number */
 									__( 'Credit note %s', 'orillacart' ),
 									invoice.number
 								)
 							: sprintf(
-									/* translators: %s: invoice number */
+									/* translators: %s: the invoice or credit note number */
 									__( 'Invoice %s', 'orillacart' ),
 									invoice.number
 								) }

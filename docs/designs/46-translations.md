@@ -27,6 +27,9 @@ and coupon refusals, return reasons and the notes sent to customers about return
 - **Words stored for a person** are written in the shop's language when they are written: a gift card's label on
   the order, the notes about a return the customer reads. Notes for the shop, logs and job failures stay English.
 - **Statuses inside a sentence** are their own words ("on hold"), so "Order #12 is on hold and …" translates whole.
+- **A broken translation gives way to the English.** One whose placeholders differ from the English (a `%2$s`
+  lost, a `{{ limit }}` dropped) would show "%1$s" or leave a value out: the English sentence, with its values,
+  shows instead.
 
 ## The list for translators
 
@@ -35,4 +38,4 @@ errors, `new Text`/`Text::of`, `Translations::text('…')`, the `refuse('…')` 
 messages with Symfony's defaults for the constraints the DTOs use; it writes them as `__()`/`_n()` calls for
 `wp i18n make-pot` (`npm run i18n:pot`, which the release build now runs). It warns of a message whose
 placeholders are not numbered: every message with more than one is `%1$s`, `%2$s`, so translators can reorder
-them.
+them. A message the scripts or templates translate too keeps their note for translators, not a second one.

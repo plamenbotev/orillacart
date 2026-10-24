@@ -11,7 +11,7 @@
             <strong>{{ card.label }}</strong>:
             {% if card.refused %}{{ card.refused }}{% else %}−{{ card.amount|money(summary.currency) }}{% endif %}
             {% if card.code %}
-                {# translators: %s: how the gift card is named, "Gift card ····7KQ2" -#}
+                {# translators: %s: what is removed: a product, an attribute or a gift card -#}
                 <button type="button" class="orillacart-remove" data-orillacart-remove-gift-card="{{ card.code }}" aria-label="{{ __('Remove %s')|format(card.label) }}">&times;</button>
             {% endif %}
         </p>

@@ -104,7 +104,7 @@ export function ProblemsCard() {
 										{ __( 'Newer', 'orillacart' ) }
 									</Button>{ ' ' }
 									{ sprintf(
-										/* translators: 1: page, 2: pages */
+										/* translators: 1: the page, 2: how many pages */
 										__( 'Page %1$d of %2$d', 'orillacart' ),
 										page,
 										pages

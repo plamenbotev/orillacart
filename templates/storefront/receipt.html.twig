@@ -73,7 +73,7 @@
                         {# translators: %d: how many of the item wait for stock -#}
                         {% if line.backorder_shown and line.backordered > 0 %}<br><small class="orillacart-backorder">{{ __('%d on backorder: they ship when back in stock')|format(line.backordered) }}</small>{% endif %}
                         {% if line.contents %}<br><small class="orillacart-bundle">{{ __('Holds') }}: {% for item in line.contents %}{{ item.quantity }} × {{ item.name }}{{ not loop.last ? ', ' }}{% endfor %}</small>{% endif %}
-                        {# translators: %d: quantity -#}
+                        {# translators: %d: how many of the item -#}
                         {% if line.refunded_quantity > 0 %}<br><small>{{ __('%d refunded')|format(line.refunded_quantity) }}</small>{% endif %}
                         {% if (review_links ?? {})[line.product_id] is defined %}<br><a class="orillacart-receipt__review" href="{{ review_links[line.product_id] }}">{{ __('Review it') }}</a>{% endif %}
                     </td>

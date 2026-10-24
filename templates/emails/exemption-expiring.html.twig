@@ -7,7 +7,7 @@
 {% block subject %}{{ __('[%s] Your tax exemption certificate runs out soon')|format(site_name) }}{% endblock %}
 {% block heading %}{{ __('Your certificate runs out soon') }}{% endblock %}
 {% block intro %}
-{# translators: %s: the customer's first name -#}
+{# translators: %s: the person's name -#}
 <p>{{ __('Hello %s,')|format(first_name) }}</p>
 {# translators: 1: the certificate's number, 2: its last day -#}
 <p>{{ __('Certificate %1$s runs out on %2$s. After that day your orders are taxed again; send the new certificate from your account before then.')|format(exemption.certificate, exemption.expires_on) }}</p>

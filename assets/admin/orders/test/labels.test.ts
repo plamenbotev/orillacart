@@ -1,4 +1,4 @@
-import { currencyDecimals, money } from '../labels';
+import { currencyDecimals, money, roundDecimal } from '../labels';
 
 describe( 'money', () => {
 	beforeEach( () => {
@@ -21,5 +21,14 @@ describe( 'money', () => {
 		expect( currencyDecimals( 'JPY' ) ).toBe( 0 );
 		expect( money( '1500.4', 'JPY' ) ).toBe( '1.500 JPY' );
 		expect( money( '12.3456', 'KWD' ) ).toBe( '12,346 KWD' );
+	} );
+
+	it( 'rounds exactly, as the storefront does', () => {
+		expect( roundDecimal( '1.005', 2 ) ).toBe( '1.01' );
+		expect( roundDecimal( '-0.004', 2 ) ).toBe( '0.00' );
+		expect( roundDecimal( '1999.995', 2 ) ).toBe( '2000.00' );
+		expect( roundDecimal( '7', 0 ) ).toBe( '7' );
+		expect( roundDecimal( 'lots', 2 ) ).toBeNull();
+		expect( money( '1.005', 'EUR' ) ).toBe( '1,01 €' );
 	} );
 } );

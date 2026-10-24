@@ -7,7 +7,7 @@
 {% block subject %}{{ (exemption.status == 'approved' ? __('[%s] Your tax exemption certificate is approved') : __('[%s] Your tax exemption certificate was not approved'))|format(site_name) }}{% endblock %}
 {% block heading %}{{ exemption.status == 'approved' ? __('Your certificate is approved') : __('Your certificate was not approved') }}{% endblock %}
 {% block intro %}
-{# translators: %s: the customer's first name -#}
+{# translators: %s: the person's name -#}
 <p>{{ __('Hello %s,')|format(first_name) }}</p>
 {% if exemption.status == 'approved' %}
 {# translators: %s: the certificate's number -#}
