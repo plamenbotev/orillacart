@@ -73,6 +73,30 @@ final readonly class DoctrineStockLevelRepository implements StockLevelRepositor
         return $this->items($this->scoped($stockroomId)->andWhere('l.quantity < 0'));
     }
 
+    public function countedItems(): array
+    {
+        $counted = [];
+        foreach ($this->entityManager->createQuery('SELECT DISTINCT l.itemKind AS kind, l.itemId AS id FROM ' . StockLevel::class . ' l')->getArrayResult() as $row) {
+            if (!\is_array($row) || !is_numeric($row['id'] ?? null)) {
+                continue;
+            }
+            $kind = $row['kind'] instanceof StockItemKind ? $row['kind'] : StockItemKind::tryFrom(\is_string($row['kind']) ? $row['kind'] : '');
+            if ($kind !== null) {
+                $counted[(string) new StockItem($kind, (int) $row['id'])] = true;
+            }
+        }
+
+        return $counted;
+    }
+
+    public function itemsOnlyIn(int $stockroomId): int
+    {
+        return (int) $this->entityManager->createQuery(
+            'SELECT COUNT(l.id) FROM ' . StockLevel::class . ' l WHERE IDENTITY(l.stockroom) = :id AND NOT EXISTS ('
+            . 'SELECT o.id FROM ' . StockLevel::class . ' o WHERE o.itemKind = l.itemKind AND o.itemId = l.itemId AND IDENTITY(o.stockroom) <> :id)',
+        )->setParameter('id', $stockroomId)->getSingleScalarResult();
+    }
+
     public function add(StockLevel $level): void
     {
         $this->entityManager->persist($level);

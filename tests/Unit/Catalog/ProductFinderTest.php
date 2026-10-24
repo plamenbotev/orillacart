@@ -56,6 +56,8 @@ final class ProductFinderTest extends TestCase
             $this->shop->products->addVariation(self::SHIRT, new SaveVariation([$options[1]->id()], '45'))->id,
         ];
         $this->shop->stock->setLevels(StockItemRef::variation($this->sizes[0]), new SetStockLevels([new SetStockLevel($this->plovdiv, 4)]));
+        // As the shop starts a new counted variation (StartCountingStock): at 0, not without limit.
+        $this->shop->stock->countFromNothing([StockItemRef::variation($this->sizes[1])]);
         $this->product(self::POSTER, new SaveProduct('0', priceVisibility: 'hidden', purchasable: false), [$this->sofia => 0]);
         $this->product(self::EBOOK, new SaveProduct('9', 'virtual', sku: 'BOOK', stockMode: 'always_available'), []);
         $this->product(self::GIFT, new SaveProduct('30', 'virtual', sku: 'GIFT', stockMode: 'unavailable'), []);
@@ -107,7 +109,7 @@ final class ProductFinderTest extends TestCase
 
     public function testLowStockIsTheStockPagesAndABundleWithALowItemIsToo(): void
     {
-        self::assertSame([self::BATTERY, self::POSTER, self::KIT, self::SPEAKER], $this->shop->productFinder->ids(new ProductFilter(stock: ProductFinder::LOW_STOCK)));
+        self::assertSame([self::BATTERY, self::SHIRT, self::POSTER, self::KIT, self::SPEAKER], $this->shop->productFinder->ids(new ProductFilter(stock: ProductFinder::LOW_STOCK)), 'the shirt\'s L, at 0, too');
     }
 
     public function testABundleSellsWhileOneVariationOfAChoiceDoesAndOptionalItemsDoNotHoldItBack(): void

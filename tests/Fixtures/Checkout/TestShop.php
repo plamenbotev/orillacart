@@ -394,8 +394,9 @@ final class TestShop
         $this->events->addListener(SettingsChanged::class, new ConvertProductMeasures($this->products)(...));
         $this->events->addListener(SettingsChanged::class, new ConvertRateMeasures($this->carriers)(...));
         $stockroomRecords = new InMemoryStockroomRepository();
-        $this->stockrooms = new StockroomService($stockroomRecords);
-        $this->stock = new StockService(new InMemoryStockLevelRepository(), $stockroomRecords, $this->events, $this->stockMovements = new InMemoryStockMovements(), $this->clock);
+        $levelRecords = new InMemoryStockLevelRepository();
+        $this->stockrooms = new StockroomService($stockroomRecords, $levelRecords);
+        $this->stock = new StockService($levelRecords, $stockroomRecords, $this->events, $this->stockMovements = new InMemoryStockMovements(), $this->clock);
         $this->priceRuleRecords = new InMemoryPriceRuleRepository();
         $this->customerGroupRecords = new InMemoryCustomerGroupRepository();
         $prices = new PriceResolver($this->priceRuleRecords, new GroupsOfShoppers($this->customerGroupRecords), $this->clock, $extensions, $settings, $this->logger, $this->failures = new ExtensionFailures());

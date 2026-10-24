@@ -117,10 +117,12 @@ final readonly class ProductFinder
             ), true),
             default => [],
         };
-        // Stockroom stock is only counted stock: an item always available is in none.
+        // Stockroom stock is only counted stock: an item always available is in none. One no stockroom holds is not
+        // limited, as the shop sells it, but is in no stockroom either.
+        $counted = $stockroom === null ? $this->stock->counted() : [];
         $sells = static fn(StockMode $mode, string $key, int $quantity): bool => match ($mode) {
             StockMode::AlwaysAvailable => $stockroom === null,
-            StockMode::Tracked => ($totals[$key] ?? 0) >= $quantity,
+            StockMode::Tracked => ($stockroom === null && !isset($counted[$key])) || ($totals[$key] ?? 0) >= $quantity,
             StockMode::Unavailable => false,
         };
 

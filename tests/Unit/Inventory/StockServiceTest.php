@@ -34,7 +34,7 @@ final class StockServiceTest extends TestCase
         $stockrooms = new InMemoryStockroomRepository($levels->removeStockroom(...));
         $this->events = new RecordingDispatcher();
         $this->stock = new StockService($levels, $stockrooms, $this->events);
-        $this->stockrooms = new StockroomService($stockrooms);
+        $this->stockrooms = new StockroomService($stockrooms, $levels);
         $this->sofia = $this->stockrooms->create(new SaveStockroom('Sofia', 1, 2))->id;
         $this->berlin = $this->stockrooms->create(new SaveStockroom('Berlin', 3, 7))->id;
     }
@@ -200,12 +200,40 @@ final class StockServiceTest extends TestCase
     public function testStockOfADeletedStockroomIsNotPutBack(): void
     {
         $mug = StockItemRef::product(5);
-        $this->stock->setLevels($mug, new SetStockLevels([new SetStockLevel($this->berlin, 5)]));
+        $this->stock->setLevels($mug, new SetStockLevels([new SetStockLevel($this->berlin, 5), new SetStockLevel($this->sofia, 0)]));
         $taken = $this->stock->take([$mug], 2);
         $this->stockrooms->delete($this->berlin);
 
         $this->stock->giveBack([...$taken, new TakenStock('product:5', $this->sofia, 1)]);
 
         self::assertSame([[$this->sofia, 1]], array_map(static fn($level): array => [$level->stockroomId, $level->quantity], $this->stock->stock($mug)->levels));
+    }
+
+    public function testAStockroomThatAloneHoldsItemsIsTurnedOffNotDeleted(): void
+    {
+        $this->stock->setLevels(StockItemRef::product(5), new SetStockLevels([new SetStockLevel($this->berlin, 3)]));
+        $this->stock->setLevels(StockItemRef::product(6), new SetStockLevels([new SetStockLevel($this->berlin, 1), new SetStockLevel($this->sofia, 1)]));
+
+        try {
+            $this->stockrooms->delete($this->berlin);
+            self::fail('product 5 would sell without limit');
+        } catch (InventoryRuleViolation $e) {
+            self::assertSame('orillacart_stockroom_in_use', $e->errorCode);
+            self::assertStringContainsString('Berlin is the only stockroom holding 1 item(s)', $e->getMessage());
+        }
+        self::assertSame(3, $this->stock->available([StockItemRef::product(5)]));
+    }
+
+    public function testCountedItemsNoStockroomHoldsStartAtNothing(): void
+    {
+        $this->stock->setLevels(StockItemRef::product(6), new SetStockLevels([new SetStockLevel($this->berlin, 4)]));
+        $this->events->events = [];
+
+        $this->stock->countFromNothing([StockItemRef::product(5), StockItemRef::product(6)]);
+
+        self::assertSame(0, $this->stock->available([StockItemRef::product(5)]), 'new: 0, not without limit');
+        self::assertSame([[$this->sofia, 0]], array_map(static fn($level): array => [$level->stockroomId, $level->quantity], $this->stock->stock(StockItemRef::product(5))->levels));
+        self::assertSame(4, $this->stock->available([StockItemRef::product(6)]), 'one counted already is left as it is');
+        self::assertCount(1, $this->events->events, 'the new one is announced: it is no longer for sale');
     }
 }

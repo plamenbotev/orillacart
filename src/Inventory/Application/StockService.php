@@ -23,6 +23,7 @@ use OrillaCart\Inventory\Domain\StockLevelRepository;
 use OrillaCart\Inventory\Domain\StockMovement;
 use OrillaCart\Inventory\Domain\StockMovementRepository;
 use OrillaCart\Inventory\Domain\StockReason;
+use OrillaCart\Inventory\Domain\Stockroom;
 use OrillaCart\Inventory\Domain\StockroomRepository;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -90,6 +91,16 @@ final readonly class StockService
     public function totals(?int $stockroomId = null): array
     {
         return $this->levels->totals($stockroomId);
+    }
+
+    /**
+     * The items a stockroom, active or not, has a level of; the others are not limited by stock.
+     *
+     * @return array<string, true> by item ("variation:12")
+     */
+    public function counted(): array
+    {
+        return $this->levels->countedItems();
     }
 
     /**
@@ -216,6 +227,33 @@ final readonly class StockService
         $this->announce($before, self::availableOf($this->levels->stockOf([$item])));
 
         return $this->stock($ref);
+    }
+
+    /**
+     * Items whose stock is counted but that no stockroom holds yet start at 0 in the active stockroom that
+     * delivers fastest (the one that would owe their backorders): counting starts from nothing, not without limit
+     * (an item with no level at all is not limited), and the other stockrooms' lists stay as they were. Items that
+     * have a level anywhere, and shops with no active stockroom, are left as they are.
+     *
+     * @param list<StockItemRef> $refs
+     */
+    public function countFromNothing(array $refs): void
+    {
+        $active = array_values(array_filter($this->stockrooms->all(), static fn(Stockroom $stockroom): bool => $stockroom->isActive()));
+        if ($refs === [] || $active === []) {
+            return;
+        }
+        $stocks = array_values(array_filter($this->levels->stockOf(array_map(static fn(StockItemRef $ref): StockItem => $ref->toItem(), $refs)), static fn(Stock $stock): bool => !$stock->isLimited()));
+        if ($stocks === []) {
+            return;
+        }
+        usort($active, static fn(Stockroom $a, Stockroom $b): int => [$a->maxDeliveryDays(), $a->id()] <=> [$b->maxDeliveryDays(), $b->id()]);
+        $before = self::availableOf($stocks);
+        foreach ($stocks as $stock) {
+            $this->levels->add(new StockLevel($active[0], $stock->item, 0));
+        }
+        $this->levels->flush();
+        $this->announce($before, self::availableOf($this->levels->stockOf(array_map(static fn(Stock $stock): StockItem => $stock->item, $stocks))));
     }
 
     /**

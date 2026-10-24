@@ -48,6 +48,10 @@ final class PluginDatabaseTest extends TestCase
         $this->kernel = new Kernel($context);
         $this->database = DatabaseConfig::fromWordPress();
         $this->connection = new EntityManagerFactory($this->database, $context)->create()->getConnection();
+        // Before the test may drop them: the ids the tables would give next, this run's and earlier runs'.
+        foreach ($this->autoIncrements() as $next) {
+            self::$ids = max(self::$ids, $next);
+        }
     }
 
     protected function tearDown(): void
@@ -58,15 +62,29 @@ final class PluginDatabaseTest extends TestCase
         // The plugin running these tests keeps one Doctrine session for the whole run, which still holds rows of
         // the tables dropped here: new rows must not take their ids, or it refuses them as already known.
         self::$ids += 1_000_000;
-        $tables = $this->connection->fetchFirstColumn(
-            'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE ? AND AUTO_INCREMENT IS NOT NULL',
-            [addcslashes($this->database->tablePrefix, '_%\\') . '%'],
-        );
-        foreach ($tables as $table) {
-            if (\is_string($table) && preg_match('/^\w+$/', $table) === 1) {
+        foreach (array_keys($this->autoIncrements()) as $table) {
+            if (preg_match('/^\w+$/', $table) === 1) {
                 $this->connection->executeStatement(\sprintf('ALTER TABLE %s AUTO_INCREMENT = %d', $table, self::$ids));
             }
         }
+    }
+
+    /**
+     * @return array<string, int> the next id of each of the plugin's tables, by table
+     */
+    private function autoIncrements(): array
+    {
+        $next = [];
+        foreach ($this->connection->fetchAllNumeric(
+            'SELECT TABLE_NAME, AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE ? AND AUTO_INCREMENT IS NOT NULL',
+            [addcslashes($this->database->tablePrefix, '_%\\') . '%'],
+        ) as [$table, $id]) {
+            if (\is_string($table) && is_numeric($id)) {
+                $next[$table] = (int) $id;
+            }
+        }
+
+        return $next;
     }
 
     public function testActivationCreatedTheMigrationsTable(): void

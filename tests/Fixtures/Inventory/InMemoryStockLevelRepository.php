@@ -61,6 +61,23 @@ final class InMemoryStockLevelRepository implements StockLevelRepository
         return array_values(array_filter($this->levels, static fn(StockLevel $level): bool => $stockroomId === null ? $level->stockroom()->isActive() : $level->stockroom()->id() === $stockroomId));
     }
 
+    public function countedItems(): array
+    {
+        $counted = [];
+        foreach ($this->levels as $level) {
+            $counted[(string) $level->item()] = true;
+        }
+
+        return $counted;
+    }
+
+    public function itemsOnlyIn(int $stockroomId): int
+    {
+        $here = array_filter($this->levels, static fn(StockLevel $level): bool => $level->stockroom()->id() === $stockroomId);
+
+        return \count(array_filter($here, fn(StockLevel $level): bool => array_filter($this->levels, static fn(StockLevel $other): bool => $other->item()->equals($level->item()) && $other->stockroom()->id() !== $stockroomId) === []));
+    }
+
     public function add(StockLevel $level): void
     {
         $this->levels[] = $level;

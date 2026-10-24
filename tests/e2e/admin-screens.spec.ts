@@ -55,7 +55,9 @@ test.describe( 'The admin', () => {
 		await page
 			.getByRole( 'textbox', { name: 'Code' } )
 			.fill( 'e2e-spring' );
-		await page.getByLabel( 'Discount' ).selectOption( 'percent' );
+		await page
+			.getByLabel( 'Discount', { exact: true } )
+			.selectOption( 'percent' );
 		await page.getByLabel( 'Percentage' ).fill( '10' );
 		await page.getByRole( 'button', { name: 'Save the coupon' } ).click();
 

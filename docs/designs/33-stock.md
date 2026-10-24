@@ -16,6 +16,19 @@ Status: built (2026-10-20), PLAN item 90. Low stock thresholds and their email c
   too), stockroom, reason and time, named as the stock screens name items, with who made each; and what moved
   in and out in all, by stockroom and reason, for the time looked at.
 
+## Counting from nothing (129)
+
+An item no stockroom has a level of is not limited by stock, which suits a shop that counts nothing. In a shop
+that counts, that left items selling without limit by mistake: a new variation (its stock fields show only once
+it is saved), a copied product (copied without stock), the items of a deleted stockroom. Now:
+
+- A product or variation saved as "count stock" that no stockroom holds starts at 0 in the active stockroom that
+  delivers fastest (`StockService::countFromNothing()`, on `ProductChanged`); a shop with no active stockroom is
+  left as it is. Bundles take their items' stock.
+- A stockroom that is the only one holding some items is not deleted (`orillacart_stockroom_in_use`): turning it
+  off makes them out of stock instead, or they are counted in another stockroom first.
+- The product list's stock filters count an item no stockroom holds as for sale, as the shop sells it.
+
 ## Back in stock
 
 - A product that is for sale but has none in stock (`soldOut` on the offer and on each variation) offers "Email

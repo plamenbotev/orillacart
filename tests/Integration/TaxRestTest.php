@@ -223,6 +223,8 @@ final class TaxRestTest extends RestTestCase
 
     public function testTheShopSeesWhichStatesItsSalesCrossedTheThresholdsOf(): void
     {
+        // A run stopped halfway may have left its thresholds behind.
+        delete_option(OptionNexusThresholdsRepository::OPTION);
         $this->actAs('administrator');
         update_option(OptionSettingsRepository::OPTION, ['currency' => 'USD', 'fewer_decimals' => null, 'weight_unit' => 'lb', 'dimension_unit' => 'in', 'shop_country' => 'US', 'shop_state' => 'NY']);
         self::assertSame(['everywhere' => ['sales' => '100000', 'orders' => null], 'states' => []], $this->data($this->request('GET', '/tax/nexus-thresholds')), 'the usual $100,000');

@@ -9,7 +9,10 @@ namespace OrillaCart\Catalog\Domain;
  */
 enum StockMode: string
 {
-    /** The stock levels in the stockrooms decide; an item with no stock levels at all is not limited. */
+    /**
+     * The stock levels in the stockrooms decide. An item with no stock levels at all is not limited; one saved in
+     * a shop with stockrooms starts at 0 in one of them (StartCountingStock).
+     */
     case Tracked = 'tracked';
     /** Always for sale, whatever the stockrooms hold. */
     case AlwaysAvailable = 'always_available';

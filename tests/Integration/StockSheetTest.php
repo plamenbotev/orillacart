@@ -128,7 +128,7 @@ final class StockSheetTest extends RestTestCase
         self::assertSame(204, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
 
         $rows = $this->sheet('')['rows'];
-        self::assertSame([[(string) $this->sofia => 5], [(string) $this->berlin => 0]], [$rows[0]['levels'], $rows[1]['levels']]);
+        self::assertSame([[(string) $this->sofia => 5], [(string) $this->sofia => 0, (string) $this->berlin => 0]], [$rows[0]['levels'], $rows[1]['levels']], 'a new variation starts at 0 in the first stockroom');
         $history = $this->data($this->request('GET', "/stock-history?product={$this->lamp}"));
         self::assertIsArray($history['movements']);
         self::assertIsArray($history['movements'][0]);
@@ -162,6 +162,7 @@ final class StockSheetTest extends RestTestCase
         self::assertInstanceOf(LowStock::class, $low);
         self::assertSame([
             ['Brass lamp', 'Berlin', 9, 9],
+            ['Hoodie – M', 'Sofia', 0, 2],
             ['Hoodie – S', 'Sofia', 5, 6],
             ['Size: M', 'Sofia', 1, 2],
         ], array_map(static fn(LowStockView $item): array => [$item->name, $item->stockroom, $item->quantity, $item->threshold], $low->items()), 'the lamp holds 3 in Sofia, above the shop\'s 2');

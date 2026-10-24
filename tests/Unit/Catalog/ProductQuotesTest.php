@@ -65,8 +65,9 @@ final class ProductQuotesTest extends TestCase
         $taxGroups = new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), new GeographyService(new InMemoryCountryRepository()), $events);
         $this->products = new ProductService($productRepository, new InMemoryAttributeSetRepository($ids), $this->content, $taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $events), $events);
         $stockrooms = new InMemoryStockroomRepository();
-        $this->stock = new StockService(new InMemoryStockLevelRepository(), $stockrooms, $events);
-        $this->stockroom = new StockroomService($stockrooms)->create(new SaveStockroom('Sofia'))->id;
+        $levels = new InMemoryStockLevelRepository();
+        $this->stock = new StockService($levels, $stockrooms, $events);
+        $this->stockroom = new StockroomService($stockrooms, $levels)->create(new SaveStockroom('Sofia'))->id;
         $this->settings = new InMemorySettingsRepository(StoreSettings::defaults());
         $clock = new MockClock('2026-10-17 12:00:00 UTC');
         $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, $clock, new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new PriceResolver(new InMemoryPriceRuleRepository(), new GroupsOfShoppers(new InMemoryCustomerGroupRepository()), $clock, new FixedExtensions(), new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new MemoryLogger(), new ExtensionFailures()));

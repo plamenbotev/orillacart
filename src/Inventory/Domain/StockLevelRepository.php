@@ -48,6 +48,16 @@ interface StockLevelRepository
      */
     public function itemsOwed(?int $stockroomId = null): array;
 
+    /**
+     * The items any stockroom, active or not, has a level of: their stock limits them.
+     *
+     * @return array<string, true> by item ("variation:12")
+     */
+    public function countedItems(): array;
+
+    /** How many items have a level in this stockroom and in no other. */
+    public function itemsOnlyIn(int $stockroomId): int;
+
     public function add(StockLevel $level): void;
 
     public function remove(StockLevel $level): void;

@@ -128,7 +128,8 @@ final class CatalogRestTest extends RestTestCase
         self::assertSame('orillacart_attribute_set_in_use', $this->data($inUse)['code']);
 
         self::assertSame(204, $this->request('DELETE', "/products/{$post}/variations/{$variation['id']}", nonce: true)->get_status());
-        self::assertSame('0', $this->rows('stock_levels'), 'the variation\'s stock went with it');
+        self::assertSame('0', $this->wpdb()->get_var($this->wpdb()->prepare('SELECT COUNT(*) FROM %i WHERE item_kind = %s', $this->wpdb()->prefix . 'orillacart_stock_levels', 'variation')), 'the variation\'s stock went with it');
+        self::assertSame(['item' => "product:{$post}", 'levels' => [['stockroom_id' => $stockroom, 'quantity' => 0]], 'available' => 0], $this->data($this->request('GET', "/stock/product/{$post}")), 'the product, left without variations, counts its own stock from nothing');
         self::assertSame(204, $this->request('DELETE', "/attribute-sets/{$set['id']}", nonce: true)->get_status());
     }
 
