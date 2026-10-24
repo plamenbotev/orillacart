@@ -30,5 +30,13 @@ final readonly class InvoiceDocument
          *      rate, as VAT law asks of invoices in another currency
          */
         public ?array $inShopCurrency = null,
+        /** Whom it was issued to, as it keeps them: show the buyer from here, not from the order. */
+        public ?InvoiceBuyer $buyer = null,
     ) {}
+
+    /** Whom it was issued to. */
+    public function buyer(): InvoiceBuyer
+    {
+        return $this->buyer ?? InvoiceBuyer::of($this->order);
+    }
 }

@@ -876,12 +876,12 @@ final readonly class OrderService
      * @throws OrderNotFound
      * @throws OrderRuleViolation
      */
-    public function refund(int $id, RefundOrder $command, string $how, ?int $userId, bool $tellCustomer = true): RefundedView
+    public function refund(int $id, RefundOrder $command, string $how, ?int $userId, bool $tellCustomer = true, ?string $credit = null): RefundedView
     {
-        return $this->changing($id, fn(Order $order): RefundedView => $this->refunded($order, $command, $how, $userId, $tellCustomer));
+        return $this->changing($id, fn(Order $order): RefundedView => $this->refunded($order, $command, $how, $userId, $tellCustomer, $credit));
     }
 
-    private function refunded(Order $order, RefundOrder $command, string $how, ?int $userId, bool $tellCustomer): RefundedView
+    private function refunded(Order $order, RefundOrder $command, string $how, ?int $userId, bool $tellCustomer, ?string $credit = null): RefundedView
     {
         $previous = $order->status();
         $refund = self::orderRefund($command);
@@ -899,7 +899,7 @@ final readonly class OrderService
         }
         $this->orders->save($order);
         $full = $order->status() === OrderStatus::Refunded;
-        $this->events->dispatch(new OrderRefunded($order->id(), (string) $refund->amount, $full, $refund->quantities, $tellCustomer, (string) $share->tax, array_map(static fn(TaxLineView $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount], $taxes)));
+        $this->events->dispatch(new OrderRefunded($order->id(), (string) $refund->amount, $full, $refund->quantities, $tellCustomer, (string) $share->tax, array_map(static fn(TaxLineView $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount], $taxes), $credit));
         if ($order->status() !== $previous) {
             // The refund's own email tells the customer.
             $this->events->dispatch(new OrderStatusChanged($order->id(), $order->status(), $previous, false, false));

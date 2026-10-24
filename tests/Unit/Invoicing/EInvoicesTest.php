@@ -103,6 +103,33 @@ final class EInvoicesTest extends TestCase
         self::assertSame('04011000-1234512345-06', $order->buyerReference);
     }
 
+    public function testALineTaxedAtTwoRatesIsALinePerRate(): void
+    {
+        // Shipping taxed as the items it carries: shared out between the lamps (19 %) and the atlas (7 %).
+        $settings = $this->shop->taxSettings->load();
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::ShippingAddress, $settings->defaultGroupId, reverseCharge: true, shippingTaxedAsItems: true));
+        $xml = $this->xpath($this->xml($this->paid(3)), ['cac' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2', 'cbc' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2']);
+
+        $shipping = array_values(array_filter(array_map(
+            static fn(\DOMNode $line): array => [$xml->evaluate('string(cac:Item/cbc:Name)', $line), $xml->evaluate('string(cac:Item/cac:ClassifiedTaxCategory/cbc:Percent)', $line), $xml->evaluate('string(cbc:LineExtensionAmount)', $line)],
+            self::nodes($xml, '//cac:InvoiceLine'),
+        ), static fn(array $line): bool => \is_string($line[0]) && str_starts_with($line[0], 'Courier')));
+        self::assertSame([['Courier – Everywhere (19 %)', '19', '4.55'], ['Courier – Everywhere (7 %)', '7', '0.45']], $shipping, 'each part at its own rate, not one line at 26 %');
+        self::assertSame(['19', '7'], array_map(static fn(\DOMNode $group): mixed => $xml->evaluate('string(cac:TaxCategory/cbc:Percent)', $group), self::nodes($xml, '//cac:TaxSubtotal')));
+    }
+
+    public function testAnIssuedInvoiceKeepsWhomItWasIssuedTo(): void
+    {
+        $order = $this->paid(1);
+        $number = $this->shop->invoices->ofOrder($order->number)[0]->number;
+        $this->shop->orders->anonymise($order->number, 7);
+
+        $document = $this->shop->invoices->issued($number);
+
+        self::assertSame(['Max', 'max@example.de'], [$document->buyer()->billing->firstName, $document->buyer()->email], 'an erasure since leaves an issued invoice as it was');
+        self::assertSame('anonymised@invalid', $document->order->email);
+    }
+
     public function testTheSameInvoiceInCiiForXRechnung(): void
     {
         $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Lamps Ltd', "1 Vitosha Blvd\n1000 Sofia", 'BG123456789', eInvoices: 'cii', phone: '+359 2 000 0000'));

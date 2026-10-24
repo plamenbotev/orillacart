@@ -4,8 +4,16 @@
 {% block heading %}{% if refund and not refund.full %}{{ __('Part of your order was refunded') }}{% else %}{{ __('Your order was refunded') }}{% endif %}{% endblock %}
 {% block intro %}
 {% if refund %}
+{% if refund.credit|default(null) == 'store_credit' %}
+{# translators: %s: amount -#}
+<p>{{ __('We gave you %s back as store credit, to spend in our shop. It is in your account.')|format(refund.amount|money(order.currency)) }}</p>
+{% elseif refund.credit|default(null) == 'gift_card' %}
+{# translators: %s: amount -#}
+<p>{{ __('We gave you %s back as a gift card, to spend in our shop. Its code comes in a separate email.')|format(refund.amount|money(order.currency)) }}</p>
+{% else %}
 {# translators: %s: amount -#}
 <p>{{ __('We refunded %s to you.')|format(refund.amount|money(order.currency)) }}</p>
+{% endif %}
 {% if refund.lines %}<ul style="margin:8px 0 0;padding-left:20px;">{% for line in refund.lines %}<li>{{ line.name }} × {{ line.quantity }}</li>{% endfor %}</ul>{% endif %}
 {% else %}
 <p>{{ __('We have refunded your order.') }}</p>

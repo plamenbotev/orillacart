@@ -31,6 +31,7 @@ class Invoice
      * @param array<string, string>           $seller   InvoiceSettings::seller() when it was issued
      * @param list<array{line: int, quantity: int}> $lines the order lines a credit note gives back, if any
      * @param list<array{name: string, percent: string, amount: string}> $taxes the tax a credit note gives back, by rate
+     * @param array<mixed>|null                                          $buyer  whom it is issued to (InvoiceBuyer::stored())
      */
     public function __construct(
         #[ORM\Column]
@@ -52,6 +53,9 @@ class Invoice
         private array $lines = [],
         #[ORM\Column(type: 'json')]
         private array $taxes = [],
+        /** Who it was issued to, as the order said then: the order's contact may change, and an erasure blanks it. */
+        #[ORM\Column(type: 'json', nullable: true)]
+        private ?array $buyer = null,
     ) {
         $this->amount = $amount->toFixed();
     }
@@ -101,6 +105,12 @@ class Invoice
     public function lines(): array
     {
         return $this->lines;
+    }
+
+    /** @return array<mixed>|null whom it was issued to, as InvoiceBuyer keeps it */
+    public function buyer(): ?array
+    {
+        return $this->buyer;
     }
 
     /** @return list<array{name: string, percent: string, amount: string}> for a credit note: the tax it gives back */

@@ -10,6 +10,8 @@
 {% set invoice = document.invoice %}
 {% set seller = document.seller %}
 {% set order = document.order %}
+{# Whom it was issued to, as it keeps them: the order's contact may have changed since. #}
+{% set buyer = document.buyer ?? {billing: order.billing, shipping_address: order.shipping_address, email: order.email, vat_number: order.vat_number, buyer_reference: order.buyer_reference} %}
 {% set credit = invoice.kind == 'credit_note' %}
 <!doctype html>
 <html lang="{{ locale }}">
@@ -62,7 +64,7 @@
                 <div>{{ __('Date') }}: {{ invoice.issued_at|shop_date }}</div>
                 {% if credit and document.corrects %}<div>{{ __('Corrects invoice') }}: {{ document.corrects }}</div>{% endif %}
                 <div>{{ __('Order') }}: #{{ order.number }} ({{ order.placed_at|shop_date }})</div>
-                {% if order.buyer_reference %}<div>{{ __('Your reference') }}: {{ order.buyer_reference }}</div>{% endif %}
+                {% if buyer.buyer_reference %}<div>{{ __('Your reference') }}: {{ buyer.buyer_reference }}</div>{% endif %}
             </div>
             <div>
                 <strong>{{ seller.legal_name }}</strong>
@@ -77,14 +79,14 @@
         <div class="parties">
             <div>
                 <div class="label">{{ __('Billed to') }}</div>
-                {% for line in order.billing|address_lines %}{{ not loop.first ? '<br>' }}{{ line }}{% endfor %}
-                <br>{{ order.email }}
-                {% if order.vat_number %}<br>{{ tax_number_label(order.billing.country) }}: {{ order.vat_number }}{% endif %}
+                {% for line in buyer.billing|address_lines %}{{ not loop.first ? '<br>' }}{{ line }}{% endfor %}
+                <br>{{ buyer.email }}
+                {% if buyer.vat_number %}<br>{{ tax_number_label(buyer.billing.country) }}: {{ buyer.vat_number }}{% endif %}
             </div>
-            {% if order.shipping_address %}
+            {% if buyer.shipping_address %}
                 <div>
                     <div class="label">{{ __('Shipped to') }}</div>
-                    {% for line in order.shipping_address|address_lines %}{{ not loop.first ? '<br>' }}{{ line }}{% endfor %}
+                    {% for line in buyer.shipping_address|address_lines %}{{ not loop.first ? '<br>' }}{{ line }}{% endfor %}
                 </div>
             {% endif %}
         </div>

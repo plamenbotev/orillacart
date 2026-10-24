@@ -151,7 +151,8 @@ final readonly class EInvoices
         $country = $shop->shopCountry ?? '';
         $vat = ($seller['vat_number'] ?? '') === '' ? null : $seller['vat_number'];
         $peppolId = $seller['peppol_id'] ?? '';
-        $buyer = self::party($order->billing, $order->vatNumber, $order->email);
+        $billedTo = $document->buyer();
+        $buyer = self::party($billedTo->billing, $billedTo->vatNumber, $billedTo->email);
         $fulfilled = $order->fulfilledAt ?? $order->paidAt ?? $invoice->issuedAt;
 
         return [
@@ -161,7 +162,7 @@ final readonly class EInvoices
             'currency' => $invoice->currency,
             'decimals' => $decimals,
             'corrects' => $document->corrects,
-            'buyerReference' => $order->buyerReference ?? (string) $order->number,
+            'buyerReference' => $billedTo->buyerReference ?? (string) $order->number,
             'salesOrder' => (string) $order->number,
             'delivered' => substr($fulfilled, 0, 10),
             'seller' => [
@@ -198,20 +199,49 @@ final readonly class EInvoices
     {
         $lines = [];
         foreach ([...$document->order->lines, ...$document->order->charges] as $index => $line) {
-            $lines[] = self::line((string) ($index + 1), $line, $document->order->pricesIncludeTax, $noTax);
+            array_push($lines, ...self::lines((string) ($index + 1), $line, $document->order->pricesIncludeTax, $noTax));
         }
 
         return $lines;
     }
 
     /**
-     * @return Line
+     * One line of the order as e-invoice lines: one, or one per part a line's price was shared out to and taxed at
+     * its own rates (a bundle of a book and a toy, shipping taxed as the items it carries), as EN 16931 has one
+     * rate a line.
+     *
+     * @return list<Line>
      */
-    private static function line(string $id, OrderLineView $line, bool $includesTax, string $noTax): array
+    private static function lines(string $id, OrderLineView $line, bool $includesTax, string $noTax): array
     {
         /** @var list<LineTaxView> $taxes */
         $taxes = $line->taxes;
-        $tax = Money::of($line->tax);
+        $parts = [];
+        foreach ($taxes as $tax) {
+            // Rates on the same base are one place charging several (a state and a county); on another, a share.
+            $parts[$tax->taxable][] = $tax;
+        }
+        if (\count($parts) < 2) {
+            return [self::line($id, $line, $includesTax, $noTax, $taxes, Money::of($line->tax))];
+        }
+        $split = [];
+        $number = 0;
+        foreach ($parts as $base => $rates) {
+            $tax = array_reduce($rates, static fn(Money $sum, LineTaxView $rate): Money => $sum->add(Money::of($rate->amount)), Money::zero());
+            $part = self::line($id . '-' . ++$number, $line, $includesTax, $noTax, $rates, $tax);
+            $split[] = ['name' => \sprintf('%s (%s %%)', $line->name, $part['percent']), 'quantity' => 1] + $part;
+        }
+
+        return $split;
+    }
+
+    /**
+     * @param list<LineTaxView> $taxes the rates of the line, or of one part of it, all on one base
+     *
+     * @return Line
+     */
+    private static function line(string $id, OrderLineView $line, bool $includesTax, string $noTax, array $taxes, Money $tax): array
+    {
         if ($taxes === []) {
             $net = Money::of($line->total)->subtract(Money::of($line->discount))->subtract($includesTax ? $tax : Money::zero());
             $category = $noTax;
@@ -252,6 +282,14 @@ final readonly class EInvoices
             $lines[] = ['id' => (string) ($index + 1), 'name' => \sprintf('Refund of order #%s: %s %s%%', $document->order->number, $tax['name'], $percent), 'sku' => null, 'quantity' => 1, 'net' => $net, 'category' => 'S', 'percent' => $percent, 'tax' => $amount];
             $left = $left->subtract($net)->subtract($amount);
         }
+        if ($lines !== [] && $left->compare(Money::of('-0.05')) < 0) {
+            // More than was given back: rates on one base (a state and a county), each read as its own. One line at
+            // their sum, on what the refund less its tax comes to.
+            $tax = array_reduce($lines, static fn(Money $sum, array $line): Money => $sum->add($line['tax']), Money::zero());
+            $percent = self::decimal(array_sum(array_map(static fn(array $line): float => (float) $line['percent'], $lines)));
+            $lines = [['id' => '1', 'name' => \sprintf('Refund of order #%s: %s %%', $document->order->number, $percent), 'sku' => null, 'quantity' => 1, 'net' => Money::of($document->invoice->amount)->subtract($tax), 'category' => 'S', 'percent' => $percent, 'tax' => $tax]];
+            $left = Money::zero();
+        }
         if ($lines === [] || $left->compare(Money::of('0.05')) > 0) {
             $lines[] = ['id' => (string) (\count($lines) + 1), 'name' => \sprintf('Refund of order #%s', $document->order->number), 'sku' => null, 'quantity' => 1, 'net' => $lines === [] ? Money::of($document->invoice->amount) : $left, 'category' => $noTax, 'percent' => '0', 'tax' => Money::zero()];
         }
@@ -271,7 +309,7 @@ final readonly class EInvoices
         }
         $shop = $this->shop->current();
         $from = $shop->shopCountry === null ? null : $this->geography->locate($shop->shopCountry, null);
-        $to = $this->geography->locate(($order->shippingAddress ?? $order->billing)->country, null);
+        $to = $this->geography->locate(($document->buyer()->shippingAddress ?? $document->buyer()->billing)->country, null);
         if ($order->importScheme !== null || ($from instanceof LocationView && $from->inEu && $to instanceof LocationView && !$to->inEu)) {
             return 'G';
         }

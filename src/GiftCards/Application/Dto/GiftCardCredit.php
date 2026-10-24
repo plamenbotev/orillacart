@@ -15,6 +15,12 @@ final readonly class GiftCardCredit
         private ?\Closure $mail = null,
     ) {}
 
+    /** "store_credit", or "gift_card" for a guest's card, as the order's refund email tells it. */
+    public function kind(): string
+    {
+        return $this->mail === null ? 'store_credit' : 'gift_card';
+    }
+
     /** @return bool false when the email could not go */
     public function send(): bool
     {

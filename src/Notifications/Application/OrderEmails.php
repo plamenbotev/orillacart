@@ -130,9 +130,9 @@ final readonly class OrderEmails
      *
      * @param array<int, int> $quantities items refunded by line position
      */
-    public function refunded(int $orderId, string $amount, bool $full, array $quantities, bool $tellCustomer = true): void
+    public function refunded(int $orderId, string $amount, bool $full, array $quantities, bool $tellCustomer = true, ?string $credit = null): void
     {
-        $refund = ['amount' => $amount, 'full' => $full, 'quantities' => array_map(static fn(int $line, int $quantity): array => ['line' => $line, 'quantity' => $quantity], array_keys($quantities), array_values($quantities))];
+        $refund = ['amount' => $amount, 'full' => $full, 'quantities' => array_map(static fn(int $line, int $quantity): array => ['line' => $line, 'quantity' => $quantity], array_keys($quantities), array_values($quantities)), 'credit' => $credit];
         if ($tellCustomer) {
             $this->queue($orderId, EmailKind::OrderRefunded, refund: $refund);
         }
@@ -173,7 +173,7 @@ final readonly class OrderEmails
      * @throws EmailNotSent    the mail system refused it, perhaps for a while
      *
      * @param int|null                                                                               $noteId for the customer note email: the note it brings
-     * @param array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>}|null $refund for the refund email: the refund it tells of
+     * @param array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>, credit?: string|null}|null $refund for the refund email: the refund it tells of
      */
     public function send(int $orderId, EmailKind $kind, ?int $noteId = null, ?array $refund = null): void
     {
@@ -232,7 +232,7 @@ final readonly class OrderEmails
     }
 
     /**
-     * @param array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>}|null $refund
+     * @param array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>, credit?: string|null}|null $refund
      *
      * @throws EmailNotWritten
      */
@@ -247,7 +247,7 @@ final readonly class OrderEmails
                     $lines[] = ['name' => $line->name, 'quantity' => $refunded['quantity']];
                 }
             }
-            $extra['refund'] = ['amount' => $refund['amount'], 'full' => $refund['full'], 'lines' => $lines];
+            $extra['refund'] = ['amount' => $refund['amount'], 'full' => $refund['full'], 'lines' => $lines, 'credit' => \is_string($refund['credit'] ?? null) ? $refund['credit'] : null];
         }
         $context = [
             'order' => $order,

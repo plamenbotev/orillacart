@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Invoicing\Application;
 
+use OrillaCart\Invoicing\Application\Dto\InvoiceBuyer;
 use OrillaCart\Invoicing\Application\Dto\InvoiceDocument;
 use OrillaCart\Invoicing\Application\Dto\InvoiceSettingsView;
 use OrillaCart\Invoicing\Application\Dto\InvoiceView;
@@ -138,7 +139,17 @@ final readonly class Invoices
             }
         }
 
-        return new InvoiceDocument($this->view($invoice, $receipt), $invoice->seller(), $order, $invoice->lines(), $corrects, $invoice->taxes(), self::inShopCurrency($order, $invoice->kind() === InvoiceKind::CreditNote ? $invoice->taxes() : array_map(static fn(TaxLineView $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount], $order->taxes)));
+        return new InvoiceDocument(
+            $this->view($invoice, $receipt),
+            $invoice->seller(),
+            $order,
+            $invoice->lines(),
+            $corrects,
+            $invoice->taxes(),
+            self::inShopCurrency($order, $invoice->kind() === InvoiceKind::CreditNote ? $invoice->taxes() : array_map(static fn(TaxLineView $tax): array => ['name' => $tax->name, 'percent' => $tax->percent, 'amount' => $tax->amount], $order->taxes)),
+            // Billed to whom it was issued to: an erasure or a changed contact since leaves it as it was.
+            InvoiceBuyer::fromStored($invoice->buyer()) ?? InvoiceBuyer::of($order),
+        );
     }
 
     /**
@@ -224,7 +235,8 @@ final readonly class Invoices
         $sequence = $counter->take();
         $this->invoices->saveCounter($counter);
         $number = $settings->prefix($kind) . ($settings->yearly ? $year . '-' : '') . str_pad((string) $sequence, 5, '0', \STR_PAD_LEFT);
-        $this->invoices->save(new Invoice($orderId, $kind, $number, $amount, $currency, $settings->seller(), $now, $lines, $taxes));
+        $buyer = InvoiceBuyer::of($this->orders->order($orderId))->stored();
+        $this->invoices->save(new Invoice($orderId, $kind, $number, $amount, $currency, $settings->seller(), $now, $lines, $taxes, $buyer));
 
         return $number;
     }

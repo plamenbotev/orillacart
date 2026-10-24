@@ -185,6 +185,10 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $this->shop->refunds->refund($guest->number, new MakeRefund('5', storeCredit: true), 1);
         self::assertSame([['ada@example.com', '5']], array_map(static fn(array $sent): array => [$sent['to'], $sent['amount']], $this->shop->giftCardMail->sent));
         self::assertStringContainsString('as gift card ····', implode(' ', array_map(static fn($note): string => $note->text, $this->shop->orders->order($guest->number)->notes)));
+        $this->shop->jobs->runAll();
+        $told = implode(' ', array_map(static fn($email): string => $email->html, array_filter($this->shop->mail->emails, static fn($email): bool => $email->kind === 'order_refunded')));
+        self::assertStringContainsString('back as store credit', $told, 'not "we refunded it to you"');
+        self::assertStringContainsString('back as a gift card', $told);
     }
 
     public function testTheCardsOfARefundedOrderPayNoMoreAndWhatTheySpentIsSaid(): void

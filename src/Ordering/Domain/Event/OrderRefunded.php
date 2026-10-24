@@ -24,6 +24,8 @@ final readonly class OrderRefunded implements PublicEvent
         public bool $tellCustomer = true,
         public string $tax = '0',
         public array $taxes = [],
+        /** How it went back when not as money: "store_credit", or "gift_card" for a guest; null for money. */
+        public ?string $credit = null,
     ) {}
 
     public function hookName(): string

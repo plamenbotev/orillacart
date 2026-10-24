@@ -130,3 +130,9 @@ point, a service, so it is left to add-ons. The XML is offered through the exten
   the shop's own country are a sale at home and pay VAT, whatever VAT number the buyer gives (checkout says why);
   goods sent out of the EU are an export, taxed as the rates say. An order with nothing that ships goes by the
   billing country, as before.
+- **146** (second audit): an invoice or credit note keeps whom it was issued to (`InvoiceBuyer`): a changed contact
+  or an erasure later leaves issued documents as they were, as tax law requires of them (the privacy policy text
+  says so). An e-invoice line taxed on several bases (a bundle's shares, shipping taxed as the items) is a line per
+  base, each at its own rate, which the official validators check; a credit note whose rates share one base (a
+  state and a county) is one line at their sum. The refund email says when the money went back as store credit
+  or a gift card.

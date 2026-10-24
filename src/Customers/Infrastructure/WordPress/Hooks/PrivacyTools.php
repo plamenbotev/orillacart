@@ -76,7 +76,7 @@ final readonly class PrivacyTools
         wp_add_privacy_policy_content('OrillaCart', wp_kses_post(
             '<p>' . __('When you place an order we keep your name, email address, billing and shipping addresses, phone number, VAT number if given, and what you bought. We use them to deliver the order, to send you emails about it, and to keep the accounts the law requires.', 'orillacart') . '</p>'
             . '<p>' . __('Payments are taken by the payment provider you choose; we keep its transaction reference, never your card details.', 'orillacart') . '</p>'
-            . '<p>' . __('We keep orders and invoices for as long as tax law requires. If you ask us to erase your data, your orders stay in our books with your name, contact details and address removed.', 'orillacart') . '</p>'
+            . '<p>' . __('We keep orders and invoices for as long as tax law requires. If you ask us to erase your data, your orders stay in our books with your name, contact details and address removed; invoices already issued keep the name and address they were issued to, as tax law requires of them.', 'orillacart') . '</p>'
             . '<p>' . \sprintf(
                 /* translators: %d: number of days */
                 __('A cookie remembers your cart for %d days.', 'orillacart'),

@@ -47,7 +47,7 @@ final class EInvoiceValidationTest extends TestCase
     public static function documents(): iterable
     {
         foreach (['ubl', 'cii'] as $format) {
-            foreach (['two_rates', 'reverse_charge', 'exempt', 'export', 'not_subject', 'other_currency', 'credit_note', 'business', 'business_credit_note'] as $case) {
+            foreach (['two_rates', 'reverse_charge', 'exempt', 'export', 'not_subject', 'other_currency', 'credit_note', 'business', 'business_credit_note', 'shipping_as_items'] as $case) {
                 yield "{$case} in {$format}" => [$case, $format];
             }
         }
@@ -74,7 +74,8 @@ final class EInvoiceValidationTest extends TestCase
         $this->shop->taxGroups->addRate($reduced, new SaveTaxRate('DE', null, '7', 'MwSt ermäßigt'));
         $this->shop->taxGroups->addRate($standard, new SaveTaxRate('BG', null, '20', 'ДДС'));
         $this->shop->taxGroups->addRate($reduced, new SaveTaxRate('BG', null, '9', 'ДДС'));
-        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::ShippingAddress, $standard, reverseCharge: true));
+        // Shipping taxed as the items it carries: one charge at two rates, as two lines.
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::ShippingAddress, $standard, reverseCharge: true, shippingTaxedAsItems: $case === 'shipping_as_items'));
         $this->shop->content->add(10, 'Lamp & shade');
         $this->shop->products->save(10, new SaveProduct('33.33', weight: '1', sku: 'LMP-1'));
         $this->shop->content->add(11, 'Atlas');

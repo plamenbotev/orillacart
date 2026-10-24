@@ -131,7 +131,7 @@ final readonly class Refunds
                 $credit = $command->storeCredit
                     ? $this->giftCards->refundAsCredit($orderId, $order->customerId, $order->email, $order->billing->firstName, Money::of($command->amount), $order->currency, $userId)
                     : null;
-                $this->taxed($refund, $this->orders->refund($orderId, $command->forOrder(), $credit->how ?? 'outside the shop', $userId));
+                $this->taxed($refund, $this->orders->refund($orderId, $command->forOrder(), $credit->how ?? 'outside the shop', $userId, credit: $credit?->kind()));
 
                 return $credit;
             });

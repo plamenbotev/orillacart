@@ -52,6 +52,6 @@ final readonly class EmailAboutOrders
     #[AsEventListener]
     public function refunded(OrderRefunded $event): void
     {
-        $this->emails->refunded($event->orderId, $event->amount, $event->full, $event->quantities, $event->tellCustomer);
+        $this->emails->refunded($event->orderId, $event->amount, $event->full, $event->quantities, $event->tellCustomer, $event->credit);
     }
 }
