@@ -23,6 +23,8 @@ final class SetupPlanTest extends RestTestCase
     private array $asked = [];
     /** @var list<int> the tax groups there were before the test */
     private array $groups = [];
+    /** @var list<int> the carriers there were before the test */
+    private array $carriers = [];
 
     protected function setUp(): void
     {
@@ -49,6 +51,7 @@ final class SetupPlanTest extends RestTestCase
         add_filter('pre_http_request', $this->vies, 10, 3);
         $this->actAs('administrator');
         $this->groups = array_column(self::rows($this->data($this->request('GET', '/tax/groups'))), 'id');
+        $this->carriers = array_column(self::rows($this->data($this->request('GET', '/carriers'))), 'id');
     }
 
     protected function tearDown(): void
@@ -59,6 +62,11 @@ final class SetupPlanTest extends RestTestCase
         }
         foreach ($this->kept as $option => $value) {
             $value === false ? delete_option($option) : update_option($option, $value);
+        }
+        foreach (self::rows($this->data($this->request('GET', '/carriers'))) as $carrier) {
+            if (!\in_array($carrier['id'], $this->carriers, true)) {
+                $this->request('DELETE', '/carriers/' . $carrier['id'], nonce: true);
+            }
         }
         foreach (self::rows($this->data($this->request('GET', '/tax/groups'))) as $group) {
             if (!\in_array($group['id'], $this->groups, true)) {
@@ -176,6 +184,49 @@ final class SetupPlanTest extends RestTestCase
         self::assertIsString($footer);
         self::assertStringContainsString('§ 19 UStG', $footer);
         self::assertSame('shop_address', $this->data($this->request('GET', '/tax/settings'))['basis']);
+    }
+
+    public function testShippingIsPricedForEachZoneTheShopSellsTo(): void
+    {
+        $this->business('DE', 'EUR');
+        $this->request('PUT', '/setup/answers/selling', ['customers' => 'consumers', 'regions' => 'world'], nonce: true);
+        $this->request('PUT', '/setup/answers/shipping', [
+            'name' => 'Standard shipping',
+            'zones' => [
+                ['zone' => 'home', 'prices' => 'free_above', 'price' => '4.90', 'free_above' => '50'],
+                ['zone' => 'eu', 'prices' => 'weight', 'weights' => [['up_to' => '2', 'price' => '9.90'], ['up_to' => '10', 'price' => '19.90']]],
+                ['zone' => 'world', 'prices' => 'none'],
+            ],
+        ], nonce: true);
+
+        $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
+        $carrier = self::change(self::changes($plan), 'shipping.carrier');
+        self::assertSame('Checkout offers "Standard shipping":', $carrier['summary']);
+        self::assertSame('Nothing ships to the rest of the world, so customers there cannot order: give it a price, or sell only where the shop ships.', $carrier['warning']);
+
+        $this->request('PUT', '/setup/answers/shipping', [
+            'name' => 'Standard shipping',
+            'zones' => [
+                ['zone' => 'home', 'prices' => 'free_above', 'price' => '4.90', 'free_above' => '50'],
+                ['zone' => 'eu', 'prices' => 'weight', 'weights' => [['up_to' => '2', 'price' => '9.90'], ['up_to' => '10', 'price' => '19.90']]],
+                ['zone' => 'world', 'prices' => 'flat', 'price' => '29'],
+            ],
+            'pickup' => ['name' => 'Our shop', 'address' => 'Hauptstraße 1, München', 'hours' => 'Mon–Fri 9–18'],
+        ], nonce: true);
+        $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
+        self::assertNull(self::change(self::changes($plan), 'shipping.carrier')['warning']);
+        $result = $this->data($this->request('POST', '/setup/apply', ['fingerprint' => $plan['fingerprint']], nonce: true));
+        self::assertNull($result['refused']);
+
+        $made = array_values(array_filter(self::rows($this->data($this->request('GET', '/carriers'))), fn(array $carrier): bool => !\in_array($carrier['id'], $this->carriers, true)));
+        $names = array_column($made, 'id', 'name');
+        ksort($names);
+        self::assertSame(['Our shop', 'Standard shipping'], array_keys($names));
+        $standard = $this->data($this->request('GET', '/carriers/' . $names['Standard shipping']));
+        $rates = $standard['rates'] ?? null;
+        self::assertIsArray($rates);
+        self::assertCount(5, $rates, 'two at home, two in the EU by weight, one for the world');
+        self::assertSame([], array_values(array_filter(array_column(self::changes($this->data($this->request('POST', '/setup/plan', nonce: true))), 'key'), static fn(string $key): bool => str_starts_with($key, 'shipping.'))), 'shipped as planned');
     }
 
     private function business(string $country, string $currency, ?string $state = null): void
