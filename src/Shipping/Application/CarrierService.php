@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace OrillaCart\Shipping\Application;
 
+use OrillaCart\Extension\Settings;
+use OrillaCart\Extension\TestsSettings;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\PostcodePattern;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Extension\SettingsTestView;
 use OrillaCart\Shared\Extension\SettingValues;
 use OrillaCart\Shipping\Application\Dto\CarrierView;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SavePickupLocation;
 use OrillaCart\Shipping\Application\Dto\SaveRange;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
+use OrillaCart\Shipping\Application\Dto\TestShippingSettings;
 use OrillaCart\Shipping\Domain\Carrier;
 use OrillaCart\Shipping\Domain\CarrierNotFound;
 use OrillaCart\Shipping\Domain\CarrierRepository;
@@ -87,6 +91,25 @@ final readonly class CarrierService
         $this->carriers->save($carrier);
 
         return $this->view($carrier);
+    }
+
+    /**
+     * Tries a shipping method's settings at the courier, for a method that can (TestsSettings); nothing is saved.
+     *
+     * @throws CarrierNotFound
+     * @throws ShippingRuleViolation for a method that cannot test its settings, or settings that are not valid
+     */
+    public function test(string $methodId, TestShippingSettings $command): SettingsTestView
+    {
+        $method = $this->methods->get($methodId);
+        if (!$method instanceof TestsSettings) {
+            throw new ShippingRuleViolation('%s cannot test its settings.', 'orillacart_shipping_method_untestable', values: [$method->name()]);
+        }
+        $carrier = $command->carrierId === null ? null : $this->get($command->carrierId);
+        $saved = $carrier !== null && $carrier->method() === $methodId ? $carrier->methodSettings() : [];
+        $problem = $method->test(new Settings(SettingValues::accept($method->settings(), $saved, $command->settings, $method->name())));
+
+        return new SettingsTestView($problem === null, $problem);
     }
 
     /**

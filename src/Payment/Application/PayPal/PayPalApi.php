@@ -41,6 +41,13 @@ interface PayPalApi
     public function refundCapture(PayPalAccount $account, string $captureId, string $requestId, string $amount, string $currency, string $note): PayPalRefund;
 
     /**
+     * Gets a token with the account's keys, to show they work.
+     *
+     * @throws PaymentProviderUnavailable when PayPal refuses them or cannot be reached
+     */
+    public function checkCredentials(PayPalAccount $account): void;
+
+    /**
      * How a capture stands now.
      *
      * @throws PaymentProviderUnavailable

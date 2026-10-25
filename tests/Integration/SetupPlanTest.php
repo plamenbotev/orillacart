@@ -25,6 +25,8 @@ final class SetupPlanTest extends RestTestCase
     private array $groups = [];
     /** @var list<int> the carriers there were before the test */
     private array $carriers = [];
+    /** @var list<array<array-key, mixed>> the payment methods as they were */
+    private array $methods = [];
 
     protected function setUp(): void
     {
@@ -52,6 +54,7 @@ final class SetupPlanTest extends RestTestCase
         $this->actAs('administrator');
         $this->groups = array_column(self::rows($this->data($this->request('GET', '/tax/groups'))), 'id');
         $this->carriers = array_column(self::rows($this->data($this->request('GET', '/carriers'))), 'id');
+        $this->methods = array_values(array_filter($this->data($this->request('GET', '/payment-methods')), \is_array(...)));
     }
 
     protected function tearDown(): void
@@ -62,6 +65,13 @@ final class SetupPlanTest extends RestTestCase
         }
         foreach ($this->kept as $option => $value) {
             $value === false ? delete_option($option) : update_option($option, $value);
+        }
+        foreach ($this->methods as $method) {
+            self::assertIsString($method['gateway'] ?? null);
+            $this->request('PUT', '/payment-methods/' . $method['gateway'], [
+                'name' => $method['name'], 'active' => $method['active'], 'position' => $method['position'], 'countries' => $method['countries'],
+                'instructions' => $method['instructions'], 'receipt_note' => $method['receipt_note'], 'fee' => $method['fee'], 'fee_percent' => $method['fee_percent'], 'fee_label' => $method['fee_label'],
+            ], nonce: true);
         }
         foreach (self::rows($this->data($this->request('GET', '/carriers'))) as $carrier) {
             if (!\in_array($carrier['id'], $this->carriers, true)) {
@@ -227,6 +237,57 @@ final class SetupPlanTest extends RestTestCase
         self::assertIsArray($rates);
         self::assertCount(5, $rates, 'two at home, two in the EU by weight, one for the world');
         self::assertSame([], array_values(array_filter(array_column(self::changes($this->data($this->request('POST', '/setup/plan', nonce: true))), 'key'), static fn(string $key): bool => str_starts_with($key, 'shipping.'))), 'shipped as planned');
+    }
+
+    public function testCustomersPayByBankTransferIntoTheShopsAccountOrCashAtHome(): void
+    {
+        $this->business('DE', 'EUR');
+        $this->request('PUT', '/setup/answers/payments', [
+            'bank_transfer' => true, 'cash_on_delivery' => true, 'cheque' => false,
+            'bank' => ['holder' => 'Acme', 'iban' => 'de89 3704 0044 0532 0130 00', 'bic' => 'COBADEFFXXX'],
+        ], nonce: true);
+
+        $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
+        $changes = self::changes($plan);
+        self::assertSame('Customers can pay by bank transfer to Acme.', self::change($changes, 'payments.bank_transfer')['summary']);
+        self::assertNull(self::change($changes, 'payments.bank_transfer')['warning'], 'a valid IBAN');
+        self::assertSame('Invoices give the bank account: Acme, IBAN DE89 3704 0044 0532 0130 00, BIC COBADEFFXXX.', self::change($changes, 'payments.bank_details')['summary']);
+
+        $result = $this->data($this->request('POST', '/setup/apply', ['fingerprint' => $plan['fingerprint']], nonce: true));
+        self::assertNull($result['refused']);
+        $methods = array_column(array_filter($this->data($this->request('GET', '/payment-methods')), \is_array(...)), null, 'gateway');
+        $bank = $methods['bank_transfer'] ?? [];
+        self::assertTrue($bank['active'] ?? null);
+        self::assertSame('Pay to Acme, IBAN DE89 3704 0044 0532 0130 00, BIC COBADEFFXXX, and give your order number as the reference.', $bank['instructions'] ?? null);
+        $cash = $methods['cash_on_delivery'] ?? [];
+        self::assertSame([true, ['DE']], [$cash['active'] ?? null, $cash['countries'] ?? null]);
+        self::assertSame([], array_values(array_filter(array_column(self::changes($this->data($this->request('POST', '/setup/plan', nonce: true))), 'key'), static fn(string $key): bool => str_starts_with($key, 'payments.'))), 'paid as planned');
+    }
+
+    public function testAnIbanThatDoesNotAddUpIsAWarning(): void
+    {
+        $this->request('PUT', '/setup/answers/payments', ['bank_transfer' => true, 'bank' => ['holder' => 'Acme', 'iban' => 'DE89 3704 0044 0532 0130 01']], nonce: true);
+
+        self::assertSame('DE89 3704 0044 0532 0130 01 is not a valid IBAN: check it.', self::change(self::changes($this->data($this->request('POST', '/setup/plan', nonce: true))), 'payments.bank_transfer')['warning']);
+    }
+
+    public function testPayPalsKeysAreTriedAtPayPal(): void
+    {
+        $paypal = static function (mixed $preempt, array $args, string $url): mixed {
+            if (!str_contains($url, 'paypal.com/v1/oauth2/token')) {
+                return $preempt;
+            }
+
+            return ['headers' => [], 'body' => '{"error":"invalid_client"}', 'response' => ['code' => 401, 'message' => 'Unauthorized'], 'cookies' => [], 'filename' => null];
+        };
+        add_filter('pre_http_request', $paypal, 10, 3);
+        try {
+            $tried = $this->data($this->request('POST', '/payment-methods/paypal/test', ['settings' => ['client_id' => 'abc', 'client_secret' => 'nope', 'sandbox' => true]], nonce: true));
+        } finally {
+            remove_filter('pre_http_request', $paypal);
+        }
+
+        self::assertSame([false, 'PayPal refused the credentials (401); check the client ID and secret.'], [$tried['works'], $tried['problem']]);
     }
 
     private function business(string $country, string $currency, ?string $state = null): void

@@ -24,7 +24,8 @@ final class Version
      * order prices at checkout (OrderAdjuster) and on orders on hold (OrderPrices). 10: sending e-invoices on
      * (EInvoiceSender). 11: gateways naming the account or mode a payment is made in (NamesAccounts). 12: mailing
      * lists that delete a contact (ForgetsSubscribers), and the orillacart_newsletter_unsubscribed action. 13: a
-     * shipment the courier has booked but not collected yet (Tracking::BOOKED).
+     * shipment the courier has booked but not collected yet (Tracking::BOOKED). 14: gateways and shipping methods
+     * whose settings the shop manager can test (TestsSettings).
      */
-    public const int CURRENT = 13;
+    public const int CURRENT = 14;
 }

@@ -190,6 +190,12 @@ final readonly class WordPressPayPalApi implements PayPalApi
         return new PayPalRefund(self::text($response['body'], 'id'), self::text($response['body'], 'status'));
     }
 
+    public function checkCredentials(PayPalAccount $account): void
+    {
+        // The shop manager asked and sees the answer: not a problem for the log.
+        $this->token($account, logged: false);
+    }
+
     public function capture(PayPalAccount $account, string $captureId): PayPalCapture
     {
         $capture = $this->call($account, 'GET', '/v2/payments/captures/' . rawurlencode($captureId));
@@ -289,7 +295,7 @@ final readonly class WordPressPayPalApi implements PayPalApi
         return ['status' => $status, 'body' => \is_array($decoded) ? $decoded : []];
     }
 
-    private function token(PayPalAccount $account): string
+    private function token(PayPalAccount $account, bool $logged = true): string
     {
         // Sealed, in a transient that expires, so never loaded with every page.
         $cached = get_transient(self::tokenKey($account));
@@ -304,12 +310,12 @@ final readonly class WordPressPayPalApi implements PayPalApi
             'body' => ['grant_type' => 'client_credentials'],
         ]);
         if ($response instanceof \WP_Error) {
-            throw $this->unavailable("PayPal could not be reached: {$response->get_error_message()}", []);
+            throw $this->unavailable("PayPal could not be reached: {$response->get_error_message()}", [], $logged);
         }
         $decoded = json_decode(wp_remote_retrieve_body($response), true);
         $token = \is_array($decoded) ? self::text($decoded, 'access_token') : '';
         if ($token === '') {
-            throw $this->unavailable('PayPal refused the credentials (' . wp_remote_retrieve_response_code($response) . '); check the client ID and secret.', \is_array($decoded) ? $decoded : []);
+            throw $this->unavailable('PayPal refused the credentials (' . wp_remote_retrieve_response_code($response) . '); check the client ID and secret.', \is_array($decoded) ? $decoded : [], $logged);
         }
         $lifetime = \is_array($decoded) && \is_int($decoded['expires_in'] ?? null) ? $decoded['expires_in'] : 600;
         set_transient(self::tokenKey($account), $this->secrets->seal($token), max(60, $lifetime - 120));
@@ -369,8 +375,11 @@ final readonly class WordPressPayPalApi implements PayPalApi
     /**
      * @param array<mixed> $body
      */
-    private function unavailable(string $detail, array $body): PaymentProviderUnavailable
+    private function unavailable(string $detail, array $body, bool $logged = true): PaymentProviderUnavailable
     {
+        if (!$logged) {
+            return new PaymentProviderUnavailable('PayPal', $detail);
+        }
         $this->logger->error('{detail} PayPal debug id: {debugId}; issue: {issue}', [
             'detail' => $detail,
             'debugId' => self::text($body, 'debug_id'),

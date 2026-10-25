@@ -7,8 +7,10 @@ namespace OrillaCart\Payment\Application;
 use OrillaCart\Extension\Payment\HandlesNotifications;
 use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Settings;
+use OrillaCart\Extension\TestsSettings;
 use OrillaCart\Payment\Application\Dto\PaymentMethodView;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Payment\Application\Dto\TestPaymentSettings;
 use OrillaCart\Payment\Domain\PaymentMethod;
 use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentMethodRepository;
@@ -16,6 +18,7 @@ use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Extension\SettingsTestView;
 use OrillaCart\Shared\Extension\SettingValues;
 
 /**
@@ -73,6 +76,23 @@ final readonly class PaymentMethodService
         return $this->view($found, $method);
     }
 
+    /**
+     * Tries the settings at the provider, for a gateway that can (TestsSettings); nothing is saved.
+     *
+     * @throws PaymentRuleViolation for a gateway that cannot test its settings, or settings that are not valid
+     */
+    public function test(string $gateway, TestPaymentSettings $command): SettingsTestView
+    {
+        $found = $this->gateways->get($gateway);
+        if (!$found instanceof TestsSettings) {
+            throw new PaymentRuleViolation('%s cannot test its settings.', 'orillacart_payment_method_untestable', values: [$found->defaultName()]);
+        }
+        $settings = SettingValues::accept($found->settings(), $this->method($found)->settings(), $command->settings, $found->defaultName());
+        $problem = $found->test(new Settings($settings));
+
+        return new SettingsTestView($problem === null, $problem);
+    }
+
     private function method(PaymentGateway $gateway): PaymentMethod
     {
         return $this->methods->findByGateway($gateway->id())
@@ -99,6 +119,7 @@ final readonly class PaymentMethodService
             (string) $method->fee(),
             $method->feePercent(),
             $method->feeLabel() === $method->name() ? '' : $method->feeLabel(),
+            $gateway instanceof TestsSettings,
         );
     }
 }

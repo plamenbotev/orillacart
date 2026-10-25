@@ -18,5 +18,7 @@ final readonly class ShippingMethodView
         public string $id,
         public string $name,
         public array $fields,
+        /** Whether its settings can be tried at the courier: the "Test" button. */
+        public bool $testable = false,
     ) {}
 }

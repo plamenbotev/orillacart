@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Shipping\Application;
 
 use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Extension\TestsSettings;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use OrillaCart\Shipping\Application\Dto\ShippingMethodView;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
@@ -21,7 +22,7 @@ final readonly class ShippingMethods
      */
     public function methods(): array
     {
-        return array_map(static fn(ShippingMethod $method): ShippingMethodView => new ShippingMethodView($method->id(), $method->name(), $method->settings()), $this->extensions->shippingMethods());
+        return array_map(static fn(ShippingMethod $method): ShippingMethodView => new ShippingMethodView($method->id(), $method->name(), $method->settings(), $method instanceof TestsSettings), $this->extensions->shippingMethods());
     }
 
     /** Null when no add-on registers the method, as when it was turned off. */

@@ -19,6 +19,7 @@ use OrillaCart\Extension\Shipping\ShipmentRequest;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Extension\Shipping\Tracking;
 use OrillaCart\Extension\Shipping\TracksShipments;
+use OrillaCart\Extension\TestsSettings;
 
 /**
  * A courier's method as an add-on writes it, with every capability: services priced by weight (economy,
@@ -26,7 +27,7 @@ use OrillaCart\Extension\Shipping\TracksShipments;
  * It books shipments TS1, TS2…, refuses to cancel one it picked up, and tracks as a test says. It counts and
  * keeps what it was asked, so tests see what the shop sent and kept.
  */
-final class TestShipMethod implements ShippingMethod, OffersPickupPoints, CreatesShipments, TracksShipments
+final class TestShipMethod implements ShippingMethod, OffersPickupPoints, CreatesShipments, TracksShipments, TestsSettings
 {
     public const string ID = 'test_ship';
 
@@ -54,6 +55,12 @@ final class TestShipMethod implements ShippingMethod, OffersPickupPoints, Create
             new Setting('account', 'Account', required: true),
             new Setting('per_kg', 'Price per kilogram', Setting::NUMBER),
         ];
+    }
+
+    /** The courier knows the accounts that start with "A-". */
+    public function test(Settings $settings): ?string
+    {
+        return str_starts_with($settings->text('account'), 'A-') ? null : 'The courier does not know this account.';
     }
 
     public function isReady(Settings $settings): bool

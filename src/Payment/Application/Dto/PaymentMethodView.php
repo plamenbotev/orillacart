@@ -37,5 +37,7 @@ final readonly class PaymentMethodView
         public string $feePercent = '0',
         /** As the shop entered it: empty for the method's name. */
         public string $feeLabel = '',
+        /** Whether its settings can be tried at the provider: the "Test" button. */
+        public bool $testable = false,
     ) {}
 }

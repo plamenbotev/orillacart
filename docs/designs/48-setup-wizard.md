@@ -95,9 +95,11 @@ plan as "keep" or "replace", with "keep" chosen. A second run of the setup only 
      check).
    - **Gateways from add-ons** are listed beside the shop's own. Each shows its settings as the Payments screen
      does, and its `notReady()` says what is missing.
-   - A gateway or shipping method may also implement a new `TestsSettings` interface (extension API version 12).
+   - A gateway or shipping method may also implement a new `TestsSettings` interface (extension API version 14).
      The step then shows its "Test" button, as PayPal has, so an add-on's keys are checked in the same place.
    - Only the add-ons that are installed are shown. The setup fetches no list of add-ons from anywhere.
+   - Keys and secrets never go into the setup's answers: the forms that ask for them (PayPal's, an add-on's
+     gateway or courier) save them at once to the gateway or carrier, sealed, as their own screens do.
    - The wizard cannot be finished with no way to pay.
 6. **Legal.**
    - **Pages, made from templates** and filled in with step 1's details:

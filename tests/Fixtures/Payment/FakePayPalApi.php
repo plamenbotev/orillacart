@@ -86,6 +86,14 @@ final class FakePayPalApi implements PayPalApi
         return new PayPalRefund('REFUND-' . ((int) array_search($requestId, array_keys($this->refunds), true) + 1), $this->refundStatus);
     }
 
+    public function checkCredentials(PayPalAccount $account): void
+    {
+        $this->reach();
+        if ($account->clientSecret === 'wrong') {
+            throw new PaymentProviderUnavailable('PayPal', 'PayPal refused the credentials (401); check the client ID and secret.');
+        }
+    }
+
     public function capture(PayPalAccount $account, string $captureId): PayPalCapture
     {
         $this->reach();

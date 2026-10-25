@@ -31,7 +31,8 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   address checks; 6 since mailing lists; 7 since the answers to product forms on order lines; 8 since filters and
   searches of the orders and products lists, and `products()`; 9 since tax services, order adjusters and
   `orderPrices()`; 10 since e-invoice senders; 11 since gateways naming the account a payment is made in
-  (`NamesAccounts`); 12 since mailing lists that delete contacts (`ForgetsSubscribers`).
+  (`NamesAccounts`); 12 since mailing lists that delete contacts (`ForgetsSubscribers`); 13 since shipments
+  booked but not collected (`Tracking::BOOKED`); 14 since settings the shop manager can test (`TestsSettings`).
 - `$registry->log()` writes to the shop's log: debug.log, and its warnings and errors appear to the shop manager
   under Shop → Status → Problems and in Site Health, the same message once with how often it happened. Say what
   to do in them. Never log secrets or card data.
@@ -44,6 +45,11 @@ shop's admin screen shows them, validates their kind, and keeps the values; the 
 `OrillaCart\Extension\Settings` (`text()`, `flag()`). Secrets never go back to the browser: the screen shows
 only that one is saved, and an empty field keeps it. A required setting must be filled before the method can be
 turned on.
+
+A gateway or shipping method whose settings can be tried at the provider implements
+`OrillaCart\Extension\TestsSettings` (version 14): `test($settings)` returns null when they work, or what is
+wrong in words for the shop manager, such as "The courier refused the API key." The Payments and Shipping
+screens, and the setup, show a "Test" button for it; the shop asks only when the button is pressed.
 
 ## Payment gateways
 

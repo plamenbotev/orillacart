@@ -24,6 +24,7 @@ use OrillaCart\Extension\Payment\RefundResult;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Setting;
 use OrillaCart\Extension\Settings;
+use OrillaCart\Extension\TestsSettings;
 use OrillaCart\Payment\Application\Dto\PayPalAccount;
 use OrillaCart\Payment\Application\Dto\PayPalCapture;
 use OrillaCart\Payment\Application\Dto\PayPalNotification;
@@ -37,7 +38,7 @@ use OrillaCart\Shared\Domain\Money;
  * approves it at PayPal and comes back, and the shop captures it. A verified webhook settles payments whose
  * customer never came back, and tells of refunds made in PayPal's own dashboard. Refunds go back to the capture. Built on the extension API, as an add-on's gateway would be.
  */
-final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, HandlesReturns, NamesNotifiedPayments, NamesNotifiedEvents, ChecksPayments, ChecksRefunds
+final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, HandlesReturns, NamesNotifiedPayments, NamesNotifiedEvents, ChecksPayments, ChecksRefunds, TestsSettings
 {
     public const string ID = 'paypal';
 
@@ -312,6 +313,22 @@ final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, Han
         $account = self::credentials($settings);
 
         return ($account->sandbox ? 'sandbox:' : 'live:') . $account->clientId;
+    }
+
+    /** Gets a token with the keys: PayPal's own answer when it refuses them. */
+    public function test(Settings $settings): ?string
+    {
+        $account = self::credentials($settings);
+        if ($account->clientId === '' || $account->clientSecret === '') {
+            return 'Enter the client ID and secret.';
+        }
+        try {
+            $this->api->checkCredentials($account);
+        } catch (PaymentProviderUnavailable $e) {
+            return $e->detail !== '' ? $e->detail : $e->getMessage();
+        }
+
+        return null;
     }
 
     public static function credentials(Settings $settings): PayPalAccount

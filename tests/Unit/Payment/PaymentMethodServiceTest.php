@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Unit\Payment;
 
 use OrillaCart\Payment\Application\Dto\PaymentMethodView;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Payment\Application\Dto\TestPaymentSettings;
 use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -78,5 +79,22 @@ final class PaymentMethodServiceTest extends TestCase
         $this->shop->settings->save(new \OrillaCart\Settings\Domain\StoreSettings(new \OrillaCart\Shared\Domain\Currency('BGN'), 2, \OrillaCart\Settings\Domain\WeightUnit::Kilogram, \OrillaCart\Settings\Domain\DimensionUnit::Centimetre));
 
         self::assertNotNull($this->shop->paymentMethods->show('paypal')->notReady);
+    }
+
+    public function testPayPalsKeysAreTriedAtPayPalWithTheSavedSecretWhereTheFormLeftItEmpty(): void
+    {
+        self::assertTrue($this->shop->paymentMethods->show('paypal')->testable);
+        self::assertFalse($this->shop->paymentMethods->show('bank_transfer')->testable);
+
+        $wrong = $this->shop->paymentMethods->test('paypal', new TestPaymentSettings(['client_id' => 'abc', 'client_secret' => 'wrong']));
+        self::assertFalse($wrong->works);
+        self::assertSame('PayPal refused the credentials (401); check the client ID and secret.', $wrong->problem);
+
+        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', false, settings: ['client_id' => 'abc', 'client_secret' => 's3cret']));
+        self::assertTrue($this->shop->paymentMethods->test('paypal', new TestPaymentSettings(['client_id' => 'abc', 'client_secret' => '']))->works, 'the saved secret');
+        self::assertSame('Enter the client ID and secret.', $this->shop->paymentMethods->test('paypal', new TestPaymentSettings(['client_id' => '']))->problem);
+
+        $this->expectException(PaymentRuleViolation::class);
+        $this->shop->paymentMethods->test('bank_transfer', new TestPaymentSettings());
     }
 }

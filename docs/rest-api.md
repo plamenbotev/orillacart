@@ -1235,6 +1235,14 @@ The ways an order can ship to its address, for changing how it ships.
   - `fee_percent` (string): matches `/^\d{1,3}(\.\d{1,4})?$/`; at most 100; default '0'
   - `fee_label` (string): at most 100 characters
 
+### `POST /payment-methods/{gateway}/test`
+
+Tries a gateway's settings at the provider, as the form has them; nothing is saved.
+
+- Who: shop managers; needs a nonce (not with an API key); at most 20 every ten minutes from each address
+- Body (JSON):
+  - `settings` (array)
+
 ## /payments
 
 ### `GET /payments/{gateway}/cancel`
@@ -1856,6 +1864,15 @@ A shipment's label, base64 in JSON, as the REST API speaks it; the admin screen 
 The shipping methods add-ons registered, which a carrier can be priced with, with their settings.
 
 - Who: shop managers
+
+### `POST /shipping-methods/{method}/test`
+
+Tries a shipping method's settings at the courier, as the form has them; nothing is saved.
+
+- Who: shop managers; needs a nonce (not with an API key); at most 20 every ten minutes from each address
+- Body (JSON):
+  - `settings` (array)
+  - `carrier_id` (int|null): more than 0
 
 ## /shop-pages
 

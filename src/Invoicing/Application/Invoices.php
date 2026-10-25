@@ -249,6 +249,29 @@ final readonly class Invoices
         ));
     }
 
+    /** The bank account invoices give, the other invoice settings as they are. */
+    public function changeBankDetails(string $details): InvoiceSettingsView
+    {
+        $current = $this->settings();
+
+        return $this->updateSettings(new UpdateInvoiceSettings(
+            $current->legalName,
+            $current->address,
+            $current->vatNumber,
+            $current->companyNumber,
+            $details,
+            $current->footer,
+            $current->invoicePrefix,
+            $current->creditNotePrefix,
+            $current->yearly,
+            $current->attachToEmails,
+            $current->eInvoices,
+            $current->phone,
+            $current->email,
+            $current->peppolId,
+        ));
+    }
+
     /** The seller invoices name, the other invoice settings as they are. */
     public function changeSeller(Seller $seller): InvoiceSettingsView
     {

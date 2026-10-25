@@ -27,10 +27,13 @@ use OrillaCart\Shipping\Application\Dto\SendShipment;
 use OrillaCart\Shipping\Application\Dto\ShipItem;
 use OrillaCart\Shipping\Application\Dto\ShipmentArrived;
 use OrillaCart\Shipping\Application\Dto\ShippedItemView;
+use OrillaCart\Shipping\Application\Dto\TestShippingSettings;
+use OrillaCart\Shipping\Application\ShippingMethods;
 use OrillaCart\Shipping\Application\TrackConsignments;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Extension\TestShipMethod;
+use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -52,6 +55,14 @@ final class ConsignmentsTest extends TestCase
         $this->carrier = $this->shop->carriers->create(new SaveCarrier('Speedy', method: TestShipMethod::ID, methodSettings: ['account' => 'A-1']))->id;
         $this->shop->paymentMethods->update('cash_on_delivery', new SavePaymentMethod('Cash on delivery', true));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
+    }
+
+    public function testTheCouriersSettingsAreTriedAtTheCourier(): void
+    {
+        self::assertTrue(new ShippingMethods(new FixedExtensions([], [$this->courier]))->methods()[0]->testable);
+        self::assertTrue($this->shop->carriers->test(TestShipMethod::ID, new TestShippingSettings(['account' => 'A-1'], $this->carrier))->works);
+        $refused = $this->shop->carriers->test(TestShipMethod::ID, new TestShippingSettings(['account' => 'B-2']));
+        self::assertSame([false, 'The courier does not know this account.'], [$refused->works, $refused->problem]);
     }
 
     public function testAServiceToAnOfficeAsksTheCustomerToChooseOne(): void
