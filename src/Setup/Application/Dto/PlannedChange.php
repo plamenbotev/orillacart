@@ -23,6 +23,8 @@ final readonly class PlannedChange
         /** What there is already, which the change would replace; null when it adds or only fills in. */
         public ?Text $existing = null,
         public array $data = [],
+        /** What the owner should know before applying it: a VAT number the EU does not know. Not part of the fingerprint. */
+        public ?Text $warning = null,
     ) {}
 
     /** Whether the owner chooses: keep what there is (the default), or replace it. */

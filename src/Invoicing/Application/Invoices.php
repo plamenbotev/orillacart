@@ -8,6 +8,7 @@ use OrillaCart\Invoicing\Application\Dto\InvoiceBuyer;
 use OrillaCart\Invoicing\Application\Dto\InvoiceDocument;
 use OrillaCart\Invoicing\Application\Dto\InvoiceSettingsView;
 use OrillaCart\Invoicing\Application\Dto\InvoiceView;
+use OrillaCart\Invoicing\Application\Dto\Seller;
 use OrillaCart\Invoicing\Application\Dto\UpdateInvoiceSettings;
 use OrillaCart\Invoicing\Domain\Invoice;
 use OrillaCart\Invoicing\Domain\InvoiceKind;
@@ -220,6 +221,29 @@ final readonly class Invoices
         $this->settings->save($settings);
 
         return InvoiceSettingsView::fromSettings($settings);
+    }
+
+    /** The seller invoices name, the other invoice settings as they are. */
+    public function changeSeller(Seller $seller): InvoiceSettingsView
+    {
+        $current = $this->settings();
+
+        return $this->updateSettings(new UpdateInvoiceSettings(
+            $seller->legalName,
+            $seller->address,
+            $seller->vatNumber,
+            $seller->companyNumber,
+            $current->bankDetails,
+            $current->footer,
+            $current->invoicePrefix,
+            $current->creditNotePrefix,
+            $current->yearly,
+            $current->attachToEmails,
+            $current->eInvoices,
+            $seller->phone,
+            $seller->email,
+            $current->peppolId,
+        ));
     }
 
     /**

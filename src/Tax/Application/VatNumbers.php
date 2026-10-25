@@ -89,4 +89,25 @@ final readonly class VatNumbers
             default => new ReverseCharge(false, $check->number, 'The EU does not know this VAT number, so VAT is charged.'),
         };
     }
+
+    /**
+     * Checks the shop's own number: an EU one with VIES, another country's by its check digits. Unavailable when
+     * VIES cannot answer now.
+     */
+    public function checkSeller(string $country, string $entered): VatCheck
+    {
+        $typed = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $entered));
+        if ($this->geography->locate($country, null)?->inEu !== true) {
+            $checked = TaxNumber::check($country, $typed);
+
+            return new VatCheck($checked === null ? VatCheck::INVALID : VatCheck::VALID, $checked ?? $typed);
+        }
+        $prefix = self::PREFIXES[$country] ?? $country;
+        $number = str_starts_with($typed, $prefix) ? substr($typed, \strlen($prefix)) : $typed;
+        if (preg_match('/^[0-9A-Z]{2,12}$/', $number) !== 1) {
+            return new VatCheck(VatCheck::INVALID, $typed);
+        }
+
+        return $this->registry->check($prefix, $number);
+    }
 }

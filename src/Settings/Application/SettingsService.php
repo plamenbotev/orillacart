@@ -6,6 +6,7 @@ namespace OrillaCart\Settings\Application;
 
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Settings\Application\Dto\SettingsView;
+use OrillaCart\Settings\Application\Dto\ShopLocation;
 use OrillaCart\Settings\Application\Dto\UpdateSettings;
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
@@ -75,5 +76,37 @@ final readonly class SettingsService
         }
 
         return SettingsView::fromSettings($current);
+    }
+
+    /**
+     * Where the shop sells from, its currency and units, the other settings as they are. A new currency starts
+     * with its own decimals.
+     *
+     * @throws RuleViolation
+     */
+    public function locate(ShopLocation $location): SettingsView
+    {
+        $current = $this->current();
+
+        return $this->update(new UpdateSettings(
+            $location->currency,
+            $location->currency === $current->currency ? $current->fewerDecimals : null,
+            $location->weightUnit,
+            $location->dimensionUnit,
+            $location->country,
+            $location->state,
+            $location->postcode,
+            $location->currencySign,
+            $location->currencyPosition,
+            $current->catalogOnly,
+            $current->hidePrices,
+            $current->sellTo,
+            $current->showLowestPrice,
+            $current->removeDataOnUninstall,
+            $current->lowStockThreshold,
+            $current->unpaidHoldDays,
+            $current->returnDays,
+            $current->minimumOrder,
+        ));
     }
 }

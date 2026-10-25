@@ -252,7 +252,7 @@ Design 48. The setup asks about the business, plans the settings from a country 
 | | # | P | Item | Commits |
 |---|---|---|---|---|
 | ✅ | 167 | P1 | Country profiles: currency, units, tax system and rates (EU standard and reduced, UK, CH, NO, US state base rates, CA by province, AU, NZ) with a checked-on date, prices with or without tax, legal facts (withdrawal days, imprint, small-business note, e-invoice mandates); a general profile for the rest | |
-| ⬜ | 168 | P1 | Setup backend: answers saved as the owner goes, `POST /setup/plan` (what would change, keep or replace for what exists) and `POST /setup/apply` (one go, change log, settings archive first); preset methods in each area | |
+| ✅ | 168 | P1 | Setup backend: answers saved as the owner goes, `POST /setup/plan` (what would change, keep or replace for what exists) and `POST /setup/apply` (one go, change log, settings archive first); preset methods in each area | |
 | ⬜ | 169 | P1 | Business step: one identity for settings and invoices (legal name, address, contacts, VAT number checked with VIES, company number, bank details); currency from a list | |
 | ⬜ | 170 | P1 | Who and where you sell, and tax: consumers, businesses or both; countries; tax groups and rates from the profile, OSS basis, reverse charge, small-business exemption with its invoice note, US nexus states or a tax service, all shown in plain words | |
 | ⬜ | 171 | P1 | Shipping zones from the countries sold to: flat, free above, by weight, local pickup, and add-ons' shipping methods with their settings; countries sold to but not shipped to listed | |
