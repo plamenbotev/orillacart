@@ -1833,6 +1833,12 @@ What the answers would change, in words, with what there is already; nothing is 
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+### `GET /setup/readiness`
+
+Whether the shop is ready to sell: what stops it, then what is advised.
+
+- Who: shop managers
+
 ## /shipments
 
 ### `POST /shipments/{id}/arrived`

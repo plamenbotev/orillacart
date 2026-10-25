@@ -29,6 +29,14 @@ final readonly class LegalSettingsService
         return $this->settings->load()->acceptTerms;
     }
 
+    /** @return list<int> the legal pages that are published */
+    public function publishedPages(): array
+    {
+        $settings = $this->settings->load();
+
+        return array_values(array_filter([$settings->terms, $settings->withdrawal, $settings->delivery, $settings->legalNotice], fn(?int $id): bool => $id !== null && $this->settings->published($id) !== null));
+    }
+
     /**
      * The terms of sale and the right of withdrawal, published, for the order confirmation to carry: the law asks
      * that a consumer gets them on a durable medium, such as an email.

@@ -205,8 +205,10 @@ use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionCurrencySettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSetupState;
+use OrillaCart\Setup\Application\ReadinessChecks;
 use OrillaCart\Setup\Application\SetupAnswersRepository;
 use OrillaCart\Setup\Application\SetupSteps;
+use OrillaCart\Setup\Infrastructure\TaggedReadinessChecks;
 use OrillaCart\Setup\Infrastructure\TaggedSetupSteps;
 use OrillaCart\Setup\Infrastructure\WordPress\OptionSetupAnswers;
 use OrillaCart\Shared\Extension\InstalledExtensions;
@@ -407,6 +409,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(SetupState::class, OptionSetupState::class);
     $services->alias(SetupAnswersRepository::class, OptionSetupAnswers::class);
     $services->alias(SetupSteps::class, TaggedSetupSteps::class);
+    $services->alias(ReadinessChecks::class, TaggedReadinessChecks::class);
     $services->alias(ChangeRecordRepository::class, DoctrineChangeRecordRepository::class);
     $services->alias(LoggedProblemRepository::class, DoctrineLoggedProblemRepository::class);
     $services->alias(ApiKeyRepository::class, DoctrineApiKeyRepository::class);

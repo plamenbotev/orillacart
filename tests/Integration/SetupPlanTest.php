@@ -71,6 +71,7 @@ final class SetupPlanTest extends RestTestCase
         foreach ($this->kept as $option => $value) {
             $value === false ? delete_option($option) : update_option($option, $value);
         }
+        $this->request('DELETE', '/sample-data', nonce: true);
         foreach (array_diff(self::pageIds(), $this->pages) as $page) {
             wp_delete_post($page, true);
         }
@@ -338,6 +339,62 @@ final class SetupPlanTest extends RestTestCase
         $this->request('POST', '/setup/apply', ['fingerprint' => $plan['fingerprint']], nonce: true);
         $emails = $this->data($this->request('GET', '/email-settings'));
         self::assertSame(['Acme', 'shop@example.com'], [$emails['from_name'], $emails['from_address']]);
+    }
+
+    public function testAGermanShopIsReadyOnceTheWholeSetupIsAppliedAndItsDraftsPublished(): void
+    {
+        $this->request('DELETE', '/sample-data', nonce: true);
+        $before = $this->data($this->request('GET', '/setup/readiness'));
+        self::assertFalse($before['ready']);
+
+        $this->business('DE', 'EUR');
+        $this->request('PUT', '/setup/answers/selling', ['customers' => 'both', 'regions' => 'eu'], nonce: true);
+        $this->request('PUT', '/setup/answers/tax', ['registered' => true], nonce: true);
+        $this->request('PUT', '/setup/answers/shipping', ['name' => 'Standard shipping', 'zones' => [
+            ['zone' => 'home', 'prices' => 'flat', 'price' => '4.90'],
+            ['zone' => 'eu', 'prices' => 'flat', 'price' => '12.90'],
+        ]], nonce: true);
+        $this->request('PUT', '/setup/answers/payments', ['bank_transfer' => true, 'bank' => ['holder' => 'Acme', 'iban' => 'DE89370400440532013000']], nonce: true);
+        $this->request('PUT', '/setup/answers/legal', [], nonce: true);
+        $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
+        $result = $this->data($this->request('POST', '/setup/apply', ['fingerprint' => $plan['fingerprint']], nonce: true));
+        self::assertNull($result['refused']);
+
+        $stops = array_column(self::rowsOf($this->data($this->request('GET', '/setup/readiness'))['stops'] ?? []), 'key');
+        self::assertSame(['legal.terms', 'legal.withdrawal', 'products.none'], self::sorted($stops), 'the drafts to check, and something to sell');
+
+        $legal = $this->data($this->request('GET', '/legal-settings'));
+        foreach (['terms', 'withdrawal'] as $part) {
+            self::assertIsInt($legal[$part]);
+            wp_update_post(['ID' => $legal[$part], 'post_status' => 'publish']);
+        }
+        $this->request('POST', '/sample-data', nonce: true);
+
+        $after = $this->data($this->request('GET', '/setup/readiness'));
+        self::assertSame([], array_column(self::rowsOf($after['stops'] ?? []), 'key'));
+        self::assertTrue($after['ready']);
+    }
+
+    /**
+     * @return list<array<array-key, mixed>>
+     */
+    private static function rowsOf(mixed $rows): array
+    {
+        self::assertIsList($rows);
+
+        return array_values(array_filter($rows, \is_array(...)));
+    }
+
+    /**
+     * @param list<mixed> $values
+     *
+     * @return list<mixed>
+     */
+    private static function sorted(array $values): array
+    {
+        sort($values);
+
+        return $values;
     }
 
     /** @return list<int> */
