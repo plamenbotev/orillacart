@@ -1778,6 +1778,33 @@ Whether the setup is finished (GET), and that it is (PUT), so the admin stops of
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+### `GET /setup/answers`
+
+The setup's answers so far, by step: null for a step not answered yet.
+
+- Who: shop managers
+
+### `PUT /setup/answers/{step}`
+
+Keeps one step's answers, as its questions ask for them; nothing in the shop changes until the plan is applied.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+### `POST /setup/apply`
+
+Makes the plan the owner saw, replacing only what they chose to; the settings from before are kept.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `fingerprint` (string): required; matches `/^[0-9a-f]{64}$/`
+  - `replace` (list<string>): at most 500 items; each at most 100 characters
+
+### `POST /setup/plan`
+
+What the answers would change, in words, with what there is already; nothing is saved.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ## /shipments
 
 ### `POST /shipments/{id}/arrived`

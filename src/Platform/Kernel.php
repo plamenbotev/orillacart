@@ -10,6 +10,7 @@ use OrillaCart\Ordering\Application\OrderLookup;
 use OrillaCart\Ordering\Application\OrderMark;
 use OrillaCart\Platform\DependencyInjection\HookPass;
 use OrillaCart\Platform\DependencyInjection\RoutePass;
+use OrillaCart\Setup\Application\SetupStep;
 use OrillaCart\Shared\Http\Routing\ActionDispatcher;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\WordPress\AsHook;
@@ -91,6 +92,7 @@ final class Kernel
         $builder->registerForAutoconfiguration(OrderMark::class)->addTag(OrderMark::MARK_TAG);
         $builder->registerForAutoconfiguration(TaxGroupUse::class)->addTag(TaxGroupUse::TAG);
         $builder->registerForAutoconfiguration(PersonalDataSource::class)->addTag(PersonalDataSource::TAG);
+        $builder->registerForAutoconfiguration(SetupStep::class)->addTag(SetupStep::TAG);
 
         $builder->addCompilerPass(new RoutePass());
         $builder->addCompilerPass(new HookPass());
