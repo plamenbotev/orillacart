@@ -1,6 +1,6 @@
 # 48 · A setup that leaves the shop ready to sell, within the rules
 
-Status: design, waiting for approval (2026-10-25), PLAN items 167–176. The user asked for a setup wizard that
+Status: built (2026-10-25), PLAN items 167–176; the EU's withdrawal function is 177. The user asked for a setup wizard that
 sets up taxes, shipping and payments, after which the shop is fully working and follows the rules where it sells,
 and is easy to use. The shop's MCP tools (design 49, later) reuse its plan-and-apply service.
 
@@ -203,9 +203,19 @@ The plan shows each country's "checked on" date. A rate the owner changes stays 
 - **Country rules that need a public body's own system.** Italy's SdI, for example, is listed as "not handled",
   not ignored.
 
-## For the user to approve
+## Calls made while building
 
-- Profiles beyond the first nine.
-- Whether "Opening soon" is part of this work or later.
-
-Everything else is a setting, per the shop's rule on policy choices.
+- **Replace or keep.** What the owner has just answered (who sells, the bank account, how the shop taxes)
+  replaces what there is unless they untick it. What the shop may have made its own (a tax group, a carrier)
+  is kept unless they tick it.
+- **"Opening soon"** is part of this work. The review's box starts ticked for a shop that is not set up and open
+  yet, and the owner's tick decides. Only shop managers can order while it is on.
+- **Another country asks again.** Changing the business's country drops the answers that depended on the old
+  one (customers, tax, shipping, payments, legal), so each is asked as the new country asks it.
+- **Bank accounts.** Countries whose banks use IBANs get an IBAN checked by its digits, and a BIC. Others get an
+  account number and a bank code (a routing number or sort code).
+- **Europe** leaves out Russia and Belarus, where EU sanctions forbid many sales. A shop adds them by list.
+- **Keys and secrets** are saved on the gateway or carrier straight away, never in the answers.
+- **Durable medium.** The customer's first order emails carry the published terms and right of withdrawal.
+- **Tests.** End to end: a German consumer shop and a US shop with California nexus, each opened and bought
+  from. Integration tests cover each step, a UK shop, readiness and opening.

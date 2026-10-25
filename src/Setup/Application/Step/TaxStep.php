@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Setup\Application\Step;
 
 use OrillaCart\Invoicing\Application\Invoices;
+use OrillaCart\Setup\Application\AskedByCountry;
 use OrillaCart\Setup\Application\Dto\PlannedChange;
 use OrillaCart\Setup\Application\Dto\TaxAnswers;
 use OrillaCart\Setup\Application\SetupAnswers;
@@ -23,7 +24,7 @@ use OrillaCart\Tax\Domain\TaxSettings;
  * Tax: the groups and rates the country's profile gives, how the shop taxes and shows prices, and for a small
  * business, what its invoices say instead.
  */
-final readonly class TaxStep implements SetupStep
+final readonly class TaxStep implements SetupStep, AskedByCountry
 {
     public const string KEY = 'tax';
     private const string SETTINGS = 'tax.settings';

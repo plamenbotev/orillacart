@@ -9,6 +9,7 @@ use OrillaCart\Setup\Application\Dto\ApplySetup;
 use OrillaCart\Setup\Application\Dto\PlannedChange;
 use OrillaCart\Setup\Application\Dto\SetupPlanView;
 use OrillaCart\Setup\Application\Dto\SetupResultView;
+use OrillaCart\Setup\Application\Step\BusinessStep;
 use OrillaCart\Setup\Application\Step\ShippingStep;
 use OrillaCart\Setup\Domain\SetupRuleViolation;
 use OrillaCart\Setup\Domain\SetupStepNotFound;
@@ -59,6 +60,14 @@ final readonly class SetupService
         $step = $this->steps->step($key) ?? throw new SetupStepNotFound($key);
         $this->input->map($answers, $step->answers());
         $stored = $this->answers->load();
+        if ($key === BusinessStep::KEY && ($stored[$key]['country'] ?? null) !== ($answers['country'] ?? null)) {
+            // Another country asks other questions: its taxes, its law, where it ships.
+            foreach ($this->steps->all() as $other) {
+                if ($other instanceof AskedByCountry) {
+                    unset($stored[$other->key()]);
+                }
+            }
+        }
         $stored[$key] = $answers;
         $this->answers->save($stored);
 

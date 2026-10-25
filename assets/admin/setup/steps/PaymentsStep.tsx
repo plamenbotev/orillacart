@@ -28,8 +28,9 @@ const OFFLINE = [ 'bank_transfer', 'cash_on_delivery', 'cheque' ];
  * @param root0.answers
  * @param root0.save
  * @param root0.fail
+ * @param root0.profile
  */
-export function PaymentsStep( { answers, save, fail }: StepProps ) {
+export function PaymentsStep( { answers, profile, save, fail }: StepProps ) {
 	const given = answered( answers, 'payments' );
 	const business = answered( answers, 'business' );
 	const bank = ( given.bank ?? {} ) as Record< string, unknown >;
@@ -40,10 +41,11 @@ export function PaymentsStep( { answers, save, fail }: StepProps ) {
 	} );
 	const [ account, setAccount ] = useState( {
 		holder: text( bank, 'holder', text( business, 'legal_name' ) ),
-		iban: text( bank, 'iban' ),
-		bic: text( bank, 'bic' ),
+		account: text( bank, 'account' ),
+		bank_code: text( bank, 'bank_code' ),
 		bank_name: text( bank, 'bank_name' ),
 	} );
+	const iban = profile?.iban ?? true;
 	const [ online, setOnline ] = useState< PaymentMethod[] | null >( null );
 	const [ busy, setBusy ] = useState( false );
 
@@ -68,7 +70,7 @@ export function PaymentsStep( { answers, save, fail }: StepProps ) {
 				save( {
 					...form,
 					bank:
-						form.bank_transfer && account.iban !== ''
+						form.bank_transfer && account.account !== ''
 							? account
 							: null,
 				} )
@@ -98,20 +100,31 @@ export function PaymentsStep( { answers, save, fail }: StepProps ) {
 					/>
 					<TextControl
 						__next40pxDefaultSize
-						label={ __( 'IBAN', 'orillacart' ) }
-						value={ account.iban }
+						label={
+							iban
+								? __( 'IBAN', 'orillacart' )
+								: __( 'Account number', 'orillacart' )
+						}
+						value={ account.account }
 						onChange={ ( value ) =>
-							setAccount( { ...account, iban: value } )
+							setAccount( { ...account, account: value } )
 						}
 						required
 					/>
 					<div className="orillacart-setup__row">
 						<TextControl
 							__next40pxDefaultSize
-							label={ __( 'BIC', 'orillacart' ) }
-							value={ account.bic }
+							label={
+								iban
+									? __( 'BIC', 'orillacart' )
+									: __(
+											'Routing number or sort code',
+											'orillacart'
+										)
+							}
+							value={ account.bank_code }
 							onChange={ ( value ) =>
-								setAccount( { ...account, bic: value } )
+								setAccount( { ...account, bank_code: value } )
 							}
 						/>
 						<TextControl

@@ -36,5 +36,7 @@ final readonly class CountryProfileView
         public bool $consumerCheckout,
         public ?string $eInvoices,
         public array $currencies,
+        /** Whether its banks number accounts by IBAN. */
+        public bool $iban = false,
     ) {}
 }

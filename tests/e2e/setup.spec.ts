@@ -92,6 +92,9 @@ async function removeLeftovers( requestUtils: RequestUtils ) {
 
 test.beforeAll( async ( { requestUtils } ) => {
 	shop = await setUpShop( requestUtils );
+} );
+
+test.beforeEach( async ( { requestUtils } ) => {
 	await removeLeftovers( requestUtils );
 	before = {
 		archive: await requestUtils.rest( {
@@ -110,7 +113,7 @@ test.beforeAll( async ( { requestUtils } ) => {
 	};
 } );
 
-test.afterAll( async ( { requestUtils } ) => {
+test.afterEach( async ( { requestUtils } ) => {
 	const restored = await requestUtils.rest< {
 		refused: Record< string, string >;
 	} >( {
@@ -174,6 +177,9 @@ test.afterAll( async ( { requestUtils } ) => {
 			params: { force: true },
 		} );
 	}
+} );
+
+test.afterAll( async ( { requestUtils } ) => {
 	await tearDownShop( requestUtils );
 } );
 
@@ -333,6 +339,120 @@ test( 'sets up a German shop for consumers in the EU, opens it, and a visitor bu
 	).toBeVisible();
 	await expect(
 		visit.getByText( /Pay to E2E Acme GmbH, IBAN DE89/ )
+	).toBeVisible();
+	await visitor.close();
+} );
+
+test( 'sets up a US shop collecting sales tax in California, and a visitor there buys from it', async ( {
+	admin,
+	page,
+	browser,
+} ) => {
+	test.slow();
+	await admin.visitAdminPage( 'admin.php', 'page=orillacart-setup' );
+
+	await page.getByRole( 'button', { name: 'Your business' } ).click();
+	await page
+		.getByLabel( 'Legal name of the business' )
+		.fill( 'E2E Acme Inc.' );
+	await page.getByLabel( 'Street and number' ).fill( '1 Market St' );
+	await page.getByLabel( 'Postcode' ).fill( '94105' );
+	await page.getByLabel( 'City' ).fill( 'San Francisco' );
+	await page.getByLabel( 'Country the shop sells from' ).selectOption( 'US' );
+	await page.getByLabel( 'State or province' ).selectOption( 'CA' );
+	await expect( page.getByLabel( 'Currency' ) ).toHaveValue( 'USD' );
+	await page.getByLabel( 'Email for customers' ).fill( 'shop@acme.test' );
+	await page.getByRole( 'button', { name: 'Save and go on' } ).click();
+
+	await expect(
+		page.getByRole( 'heading', { name: 'Customers' } )
+	).toBeVisible();
+	await expect(
+		page.getByRole( 'radio', { name: 'In the EU' } )
+	).toHaveCount( 0 );
+	await page.getByRole( 'radio', { name: 'Consumers' } ).check();
+	await page
+		.getByRole( 'radio', { name: 'Only in its own country' } )
+		.check();
+	await page.getByRole( 'button', { name: 'Save and go on' } ).click();
+
+	// Tax: the states with nexus, not VAT.
+	await page.getByRole( 'checkbox', { name: 'CA (7.25%)' } ).check();
+	await page.getByRole( 'button', { name: 'Save and go on' } ).click();
+
+	await expect( page.getByText( 'Your country' ) ).toBeVisible();
+	await page.getByRole( 'button', { name: 'Save and go on' } ).click();
+
+	// Payments: by cheque; US accounts have no IBAN.
+	await page.getByRole( 'checkbox', { name: 'Bank transfer' } ).uncheck();
+	await page.getByRole( 'checkbox', { name: 'Cheque' } ).check();
+	await page.getByRole( 'button', { name: 'Save and go on' } ).click();
+
+	await expect( page.getByText( /Consumers may withdraw/ ) ).toHaveCount( 0 );
+	await expect( page.getByLabel( 'The order button says' ) ).toHaveValue(
+		'place_order'
+	);
+	await page.getByRole( 'button', { name: 'Save and go on' } ).click();
+	await page.getByRole( 'button', { name: 'Save and go on' } ).click();
+	await page.getByRole( 'button', { name: 'Go on' } ).click();
+
+	const soon = page.getByRole( 'checkbox', { name: /Opening soon/ } );
+	await soon.check();
+	await expect(
+		page.getByText( 'A tax group "Standard rate" at 7.25% (Sales tax).' )
+	).toBeVisible();
+	await expect(
+		page.locator( '.components-notice__content', {
+			hasText: 'Most states add local sales taxes',
+		} )
+	).toBeVisible();
+	await page.getByRole( 'button', { name: 'Apply the setup' } ).click();
+
+	// Nothing the US asks stops it: the terms are advised, not required.
+	await expect(
+		page.locator( '.components-notice__content', {
+			hasText: 'Nothing stops the shop from selling.',
+		} )
+	).toBeVisible();
+	await page.getByRole( 'button', { name: 'Open the shop' } ).click();
+	await expect(
+		page.locator( '.components-notice__content', {
+			hasText: 'The shop is open.',
+		} )
+	).toBeVisible();
+
+	const visitor = await browser.newContext( {
+		storageState: { cookies: [], origins: [] },
+	} );
+	const visit = await visitor.newPage();
+	await visit.goto( shop.urls.shop );
+	const card = visit.locator( '.orillacart-product-card', {
+		hasText: 'E2E Lamp',
+	} );
+	await card.getByRole( 'button', { name: /Add to cart/ } ).click();
+	await expect( card.getByRole( 'status' ) ).toContainText( 'Added' );
+	await visit.goto( shop.urls.checkout );
+	await visit.getByLabel( 'Email' ).fill( 'e2e-visitor@example.com' );
+	await visit.locator( '#billing-first_name' ).fill( 'Ada' );
+	await visit.locator( '#billing-last_name' ).fill( 'Lovelace' );
+	await visit.locator( '#billing-street' ).fill( '2 Mission St' );
+	await visit.locator( '#billing-city' ).fill( 'San Francisco' );
+	await visit.locator( '#billing-country' ).selectOption( 'US' );
+	await visit.locator( '#billing-state' ).selectOption( 'CA' );
+	await visit.locator( '#billing-postcode' ).fill( '94105' );
+	await visit.locator( '#billing-phone' ).fill( '+1 415 000 0000' );
+	await expect(
+		visit.locator( '.orillacart-checkout__summary' )
+	).toContainText( 'Sales tax' );
+	await visit.getByRole( 'radio', { name: 'Cheque' } ).check();
+	await expect( visit.getByLabel( /I accept the/ ) ).toHaveCount( 0 );
+	await visit.getByRole( 'button', { name: 'Place order' } ).click();
+
+	await expect(
+		visit.getByRole( 'heading', { name: 'Thank you for your order' } )
+	).toBeVisible();
+	await expect(
+		visit.getByText( /Send your cheque to E2E Acme Inc\./ )
 	).toBeVisible();
 	await visitor.close();
 } );

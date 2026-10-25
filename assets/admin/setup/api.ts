@@ -137,6 +137,8 @@ export interface CountryProfile {
 	consumer_checkout: boolean;
 	e_invoices: string | null;
 	currencies: string[];
+	/** Whether its banks number accounts by IBAN. */
+	iban: boolean;
 }
 
 export function fetchCountryProfile(

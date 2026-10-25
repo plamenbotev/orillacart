@@ -31,6 +31,7 @@ const germany = {
 	consumer_checkout: true,
 	e_invoices: null,
 	currencies: [ 'EUR', 'USD' ],
+	iban: true,
 };
 
 const business = {

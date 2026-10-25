@@ -6,6 +6,7 @@ namespace OrillaCart\Setup\Application\Step;
 
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Setup\Application\AskedByCountry;
 use OrillaCart\Setup\Application\Dto\PlannedChange;
 use OrillaCart\Setup\Application\Dto\ShippingAnswers;
 use OrillaCart\Setup\Application\Dto\ZoneShipping;
@@ -26,7 +27,7 @@ use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
  * Shipping: one way to ship, priced for each zone the shop sells to (one price, free from an amount, or by
  * weight), and a place customers collect orders. A zone with no shipping is one whose customers cannot order.
  */
-final readonly class ShippingStep implements SetupStep
+final readonly class ShippingStep implements SetupStep, AskedByCountry
 {
     public const string KEY = 'shipping';
     private const string CARRIER = 'shipping.carrier';

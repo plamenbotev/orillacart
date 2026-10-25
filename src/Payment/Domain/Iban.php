@@ -9,6 +9,14 @@ namespace OrillaCart\Payment\Domain;
  */
 final class Iban
 {
+    /** The countries whose banks number accounts by IBAN, as SWIFT's IBAN registry lists them. */
+    public const array COUNTRIES = [
+        'AD', 'AE', 'AL', 'AT', 'AZ', 'BA', 'BE', 'BG', 'BH', 'BI', 'BR', 'BY', 'CH', 'CR', 'CY', 'CZ', 'DE', 'DJ', 'DK', 'DO', 'EE', 'EG',
+        'ES', 'FI', 'FK', 'FO', 'FR', 'GB', 'GE', 'GI', 'GL', 'GR', 'GT', 'HR', 'HU', 'IE', 'IL', 'IQ', 'IS', 'IT', 'JO', 'KW', 'KZ', 'LB',
+        'LC', 'LI', 'LT', 'LU', 'LV', 'LY', 'MC', 'MD', 'ME', 'MK', 'MN', 'MR', 'MT', 'MU', 'NI', 'NL', 'NO', 'OM', 'PK', 'PL', 'PS', 'PT',
+        'QA', 'RO', 'RS', 'RU', 'SA', 'SC', 'SD', 'SE', 'SI', 'SK', 'SM', 'SO', 'ST', 'SV', 'TL', 'TN', 'TR', 'UA', 'VA', 'VG', 'YE',
+    ];
+
     /**
      * The number in capitals without spaces, or null when it is not an IBAN.
      */
@@ -28,6 +36,12 @@ final class Iban
         }
 
         return $remainder === 1 ? $iban : null;
+    }
+
+    /** Whether it is written as an IBAN is: two letters, two check digits. Elsewhere accounts have other numbers. */
+    public static function looksLikeOne(string $entered): bool
+    {
+        return preg_match('/^[A-Z]{2}\d{2}/', strtoupper((string) preg_replace('/\s+/', '', $entered))) === 1;
     }
 
     /** Written in groups of four, as people read it. */

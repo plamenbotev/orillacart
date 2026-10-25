@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Setup\Application;
 
 use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\Payment\Domain\Iban;
 use OrillaCart\Settings\Domain\CountryDefaults;
 use OrillaCart\Setup\Application\Dto\CountryProfileView;
 use OrillaCart\Setup\Domain\LegalProfiles;
@@ -49,6 +50,7 @@ final readonly class CountryProfiles
             $legal->consumerCheckout,
             $duty === null ? null : "{$duty->from}: {$duty->how}",
             $currencies,
+            \in_array($country, Iban::COUNTRIES, true),
         );
     }
 }

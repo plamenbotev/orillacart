@@ -6,6 +6,7 @@ namespace OrillaCart\Setup\Application\Step;
 
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Setup\Application\AskedByCountry;
 use OrillaCart\Setup\Application\Dto\LegalAnswers;
 use OrillaCart\Setup\Application\Dto\PlannedChange;
 use OrillaCart\Setup\Application\LegalTexts;
@@ -23,7 +24,7 @@ use OrillaCart\Storefront\Domain\OrderButton;
  * check; shipping and payment and the legal notice from the shop's own settings, published), what checkout asks
  * before an order, and the rules for consumers (days to return, the lowest price before a discount).
  */
-final readonly class LegalStep implements SetupStep
+final readonly class LegalStep implements SetupStep, AskedByCountry
 {
     public const string KEY = 'legal';
     private const string PAGE = 'legal.page.';

@@ -9,6 +9,7 @@ use OrillaCart\Payment\Application\Dto\PaymentMethodView;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Application\PaymentMethodService;
 use OrillaCart\Payment\Domain\Iban;
+use OrillaCart\Setup\Application\AskedByCountry;
 use OrillaCart\Setup\Application\Dto\BankAccountAnswers;
 use OrillaCart\Setup\Application\Dto\PaymentsAnswers;
 use OrillaCart\Setup\Application\Dto\PlannedChange;
@@ -21,7 +22,7 @@ use OrillaCart\Shared\I18n\Translations;
  * Payments that need no account elsewhere: bank transfer into the shop's account (which invoices give too), cash
  * on delivery in the shop's own country, cheques sent to the seller.
  */
-final readonly class PaymentsStep implements SetupStep
+final readonly class PaymentsStep implements SetupStep, AskedByCountry
 {
     public const string KEY = 'payments';
     private const string BANK_TRANSFER = 'bank_transfer';
@@ -75,7 +76,7 @@ final readonly class PaymentsStep implements SetupStep
         }
         $bank = $payments->bank;
         if ($payments->bankTransfer && $bank !== null) {
-            $details = self::details($bank);
+            $details = $this->details($bank);
             if ($this->invoices->settings()->bankDetails !== $details) {
                 $changes[] = new PlannedChange(self::BANK_DETAILS, self::KEY, Text::of('Invoices give the bank account: %s.', str_replace("\n", ', ', $details)), data: ['details' => $details]);
             }
@@ -120,16 +121,20 @@ final readonly class PaymentsStep implements SetupStep
         $home = $this->facts->country($answers);
         [$seller, $address] = $this->facts->seller($answers);
         $bank = $payments->bank;
-        $iban = $bank === null ? null : Iban::check($bank->iban);
+        $account = $bank === null ? null : self::account($bank);
         $off = static fn(PaymentMethodView $method): Text => Text::of('%s is not offered.', $method->name);
 
         return [
             self::BANK_TRANSFER => $payments->bankTransfer
-                ? [true, $bank === null ? $this->methods->show(self::BANK_TRANSFER)->instructions : $this->translations->text(Text::of('Pay to %1$s, IBAN %2$s%3$s, and give your order number as the reference.', trim($bank->holder), $iban === null ? trim($bank->iban) : Iban::grouped($iban), $bank->bic === '' ? '' : ', BIC ' . strtoupper($bank->bic))), [], Text::of('Customers can pay by bank transfer to %s.', $bank === null ? '—' : trim($bank->holder)), match (true) {
-                    $bank === null => Text::of('Give the account customers pay into, or bank transfers go without one.'),
-                    $iban === null => Text::of('%s is not a valid IBAN: check it.', trim($bank->iban)),
-                    default => null,
-                }]
+                ? [true, $bank === null || $account === null ? $this->methods->show(self::BANK_TRANSFER)->instructions : $this->translations->text($account['iban']
+                    ? Text::of('Pay to %1$s, IBAN %2$s%3$s, and give your order number as the reference.', trim($bank->holder), $account['number'], $account['code'] === '' ? '' : ', BIC ' . $account['code'])
+                    : ($account['code'] === ''
+                        ? Text::of('Pay to %1$s, account %2$s, and give your order number as the reference.', trim($bank->holder), $account['number'])
+                        : Text::of('Pay to %1$s, account %2$s (bank code %3$s), and give your order number as the reference.', trim($bank->holder), $account['number'], $account['code']))), [], Text::of('Customers can pay by bank transfer to %s.', $bank === null ? '—' : trim($bank->holder)), match (true) {
+                            $bank === null => Text::of('Give the account customers pay into, or bank transfers go without one.'),
+                            $account !== null && $account['iban'] && !$account['valid'] => Text::of('%s is not a valid IBAN: check it.', $account['number']),
+                            default => null,
+                        }]
                 : [false, '', [], $off($this->methods->show(self::BANK_TRANSFER)), null],
             self::CASH_ON_DELIVERY => $payments->cashOnDelivery
                 ? [true, $this->methods->show(self::CASH_ON_DELIVERY)->instructions, $home === null ? [] : [$home], Text::of('Customers at home can pay cash on delivery.'), null]
@@ -140,10 +145,33 @@ final readonly class PaymentsStep implements SetupStep
         ];
     }
 
-    private static function details(BankAccountAnswers $bank): string
+    private function details(BankAccountAnswers $bank): string
     {
-        $iban = Iban::check($bank->iban);
+        $account = self::account($bank);
 
-        return implode("\n", array_filter([trim($bank->holder), trim($bank->bankName), 'IBAN ' . ($iban === null ? trim($bank->iban) : Iban::grouped($iban)), $bank->bic === '' ? '' : 'BIC ' . strtoupper($bank->bic)], static fn(string $line): bool => $line !== ''));
+        return implode("\n", array_filter([
+            trim($bank->holder),
+            trim($bank->bankName),
+            ($account['iban'] ? 'IBAN ' : '') . $account['number'],
+            $account['code'] === '' ? '' : ($account['iban'] ? 'BIC ' : $this->translations->text(Text::of('Bank code')) . ' ') . $account['code'],
+        ], static fn(string $line): bool => $line !== ''));
+    }
+
+    /**
+     * The account as people read it: an IBAN in groups of four, checked by its digits; another number as given.
+     *
+     * @return array{iban: bool, valid: bool, number: string, code: string}
+     */
+    private static function account(BankAccountAnswers $bank): array
+    {
+        $iban = Iban::looksLikeOne($bank->account);
+        $checked = $iban ? Iban::check($bank->account) : null;
+
+        return [
+            'iban' => $iban,
+            'valid' => $checked !== null,
+            'number' => $checked === null ? trim($bank->account) : Iban::grouped($checked),
+            'code' => strtoupper(trim($bank->bankCode)),
+        ];
     }
 }

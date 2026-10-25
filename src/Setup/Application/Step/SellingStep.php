@@ -6,6 +6,7 @@ namespace OrillaCart\Setup\Application\Step;
 
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Setup\Application\AskedByCountry;
 use OrillaCart\Setup\Application\Dto\PlannedChange;
 use OrillaCart\Setup\Application\Dto\SellingAnswers;
 use OrillaCart\Setup\Application\SetupAnswers;
@@ -16,7 +17,7 @@ use OrillaCart\Shared\Domain\Text;
 /**
  * Who and where the shop sells to: consumers, businesses or both, and the countries checkout takes addresses in.
  */
-final readonly class SellingStep implements SetupStep
+final readonly class SellingStep implements SetupStep, AskedByCountry
 {
     public const string KEY = 'selling';
     private const string COUNTRIES = 'selling.countries';

@@ -255,7 +255,7 @@ final class SetupPlanTest extends RestTestCase
         $this->business('DE', 'EUR');
         $this->request('PUT', '/setup/answers/payments', [
             'bank_transfer' => true, 'cash_on_delivery' => true, 'cheque' => false,
-            'bank' => ['holder' => 'Acme', 'iban' => 'de89 3704 0044 0532 0130 00', 'bic' => 'COBADEFFXXX'],
+            'bank' => ['holder' => 'Acme', 'account' => 'de89 3704 0044 0532 0130 00', 'bank_code' => 'COBADEFFXXX'],
         ], nonce: true);
 
         $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
@@ -277,7 +277,7 @@ final class SetupPlanTest extends RestTestCase
 
     public function testAnIbanThatDoesNotAddUpIsAWarning(): void
     {
-        $this->request('PUT', '/setup/answers/payments', ['bank_transfer' => true, 'bank' => ['holder' => 'Acme', 'iban' => 'DE89 3704 0044 0532 0130 01']], nonce: true);
+        $this->request('PUT', '/setup/answers/payments', ['bank_transfer' => true, 'bank' => ['holder' => 'Acme', 'account' => 'DE89 3704 0044 0532 0130 01']], nonce: true);
 
         self::assertSame('DE89 3704 0044 0532 0130 01 is not a valid IBAN: check it.', self::change(self::changes($this->data($this->request('POST', '/setup/plan', nonce: true))), 'payments.bank_transfer')['warning']);
     }
@@ -356,7 +356,7 @@ final class SetupPlanTest extends RestTestCase
             ['zone' => 'home', 'prices' => 'flat', 'price' => '4.90'],
             ['zone' => 'eu', 'prices' => 'flat', 'price' => '12.90'],
         ]], nonce: true);
-        $this->request('PUT', '/setup/answers/payments', ['bank_transfer' => true, 'bank' => ['holder' => 'Acme', 'iban' => 'DE89370400440532013000']], nonce: true);
+        $this->request('PUT', '/setup/answers/payments', ['bank_transfer' => true, 'bank' => ['holder' => 'Acme', 'account' => 'DE89370400440532013000']], nonce: true);
         $this->request('PUT', '/setup/answers/legal', [], nonce: true);
         $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
         $result = $this->data($this->request('POST', '/setup/apply', ['fingerprint' => $plan['fingerprint']], nonce: true));
@@ -413,6 +413,35 @@ final class SetupPlanTest extends RestTestCase
 
         $this->actAs('administrator');
         self::assertFalse($this->data($this->request('PUT', '/opening', nonce: true))['opens_soon']);
+    }
+
+    public function testAnotherCountryDropsTheAnswersThatDependedOnTheOldOne(): void
+    {
+        $this->business('DE', 'EUR');
+        $this->request('PUT', '/setup/answers/tax', ['registered' => false], nonce: true);
+        $this->request('PUT', '/setup/answers/emails', ['from_name' => 'Acme', 'from_address' => 'shop@example.com'], nonce: true);
+
+        $this->business('US', 'USD', 'CA');
+
+        $answers = $this->data($this->request('GET', '/setup/answers'));
+        self::assertNull($answers['tax'], 'asked again, as the US taxes');
+        self::assertIsArray($answers['emails'], 'kept: the same wherever the shop is');
+    }
+
+    public function testAUkShopChargesUkVatAndTellsConsumersOfTheirRightToWithdraw(): void
+    {
+        $this->business('GB', 'GBP');
+        $this->request('PUT', '/setup/answers/selling', ['customers' => 'consumers', 'regions' => 'home'], nonce: true);
+        $this->request('PUT', '/setup/answers/tax', ['registered' => true], nonce: true);
+        $this->request('PUT', '/setup/answers/legal', [], nonce: true);
+
+        $changes = self::changes($this->data($this->request('POST', '/setup/plan', nonce: true)));
+        self::assertSame('The shop sells from United Kingdom. Prices are in GBP, written £10; weights in kilograms and sizes in centimetres.', $changes[0]['summary']);
+        self::assertSame('A tax group "Standard rate" at 20% (VAT).', self::change($changes, 'tax.group.standard')['summary']);
+        self::assertSame('A tax group "Reduced rate" at 5% (VAT).', self::change($changes, 'tax.group.reduced')['summary']);
+        self::assertSame('A draft page "Right of withdrawal" for you to check and publish.', self::change($changes, 'legal.page.withdrawal')['summary']);
+        self::assertSame('A page "Legal notice", kept up to date from the shop\'s settings.', self::change($changes, 'legal.page.legal_notice')['summary']);
+        self::assertSame('Checkout asks customers to accept the terms of sale, and its button says "Buy now".', self::change($changes, 'legal.checkout')['summary']);
     }
 
     /** @return list<int> */
