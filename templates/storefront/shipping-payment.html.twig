@@ -16,9 +16,14 @@
                     <li>
                         {%- if rate.to %}{{ rate.to|join(', ') }}{% elseif rate.except %}{{ __('Everywhere else') }}{% else %}{{ __('Everywhere') }}{% endif %}:
                         {{ rate.price > 0 ? rate.price|money(currency) : __('free') }}{{ rate.per_item ? ' ' ~ __('per item') }}
+                        {#- translators: %s: an amount -#}
                         {%- if rate.subtotal and rate.subtotal.min %}, {{ __('for orders from %s')|format(rate.subtotal.min|money(currency)) }}{% endif %}
+                        {#- translators: %s: an amount -#}
                         {%- if rate.subtotal and rate.subtotal.max and not rate.subtotal.min %}, {{ __('for orders below %s')|format(rate.subtotal.max|money(currency)) }}{% endif %}
-                        {%- if rate.weight %}, {{ rate.weight.min ? __('%1$s to %2$s')|format(rate.weight.min, rate.weight.max ?? '…') : __('up to %s')|format(rate.weight.max) }} {{ weight_unit }}{% endif %}
+                        {#- translators: 1: the least weight, 2: the most -#}
+                        {%- if rate.weight and rate.weight.min %}, {{ __('%1$s to %2$s')|format(rate.weight.min, rate.weight.max ?? '…') }} {{ weight_unit }}{% endif %}
+                        {#- translators: %s: a weight -#}
+                        {%- if rate.weight and not rate.weight.min %}, {{ __('up to %s')|format(rate.weight.max) }} {{ weight_unit }}{% endif %}
                     </li>
                 {% endfor %}
             </ul>
@@ -36,7 +41,9 @@
                 <li>
                     {{- payment.name -}}
                     {%- if payment.to %} ({{ payment.to|join(', ') }}){% endif -%}
+                    {#- translators: %s: an amount -#}
                     {%- if payment.fee > 0 %}, {{ __('fee %s')|format(payment.fee|money(currency)) }}{% endif -%}
+                    {#- translators: %s: a percentage -#}
                     {%- if payment.fee_percent > 0 %}, {{ __('fee %s%%')|format(payment.fee_percent) }}{% endif -%}
                 </li>
             {% endfor %}

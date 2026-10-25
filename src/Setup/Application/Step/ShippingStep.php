@@ -213,7 +213,7 @@ final readonly class ShippingStep implements SetupStep, AskedByCountry
         if ($zone->id === ShippingZone::HOME) {
             foreach ($this->geography->countries() as $country) {
                 if ($country->code === ($zone->countries[0] ?? null)) {
-                    return Text::of('%s', $country->name);
+                    return new Text($country->name);
                 }
             }
         }
