@@ -27,6 +27,11 @@ final readonly class PlannedChange
         /** What the owner should know before applying it: a VAT number the EU does not know. Not part of the fingerprint. */
         public ?Text $warning = null,
         public array $details = [],
+        /**
+         * Whether replacing what there is is the choice made unless the owner unticks it: for what they have
+         * just answered (who sells, the bank account), not for what the shop may have made its own (tax groups).
+         */
+        public bool $replacesByDefault = false,
     ) {}
 
     /** Whether the owner chooses: keep what there is (the default), or replace it. */

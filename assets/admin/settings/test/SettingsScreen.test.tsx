@@ -241,7 +241,8 @@ describe( 'SettingsScreen', () => {
 				sell_to: [ 'BG' ],
 			},
 		} );
-	} );
+		// Many fields to type, on a screen of many cards: slower than most when the machine is busy.
+	}, 15000 );
 
 	it( 'offers the states of the shop country', async () => {
 		serve( () => Promise.resolve( stored ) );

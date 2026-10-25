@@ -61,6 +61,8 @@ export interface PlannedChange {
 	/** What there is already, which the change would replace; null when it adds. */
 	existing: string | null;
 	warning: string | null;
+	/** Whether replacing what there is is chosen unless unticked. */
+	replace: boolean;
 }
 
 export interface Plan {

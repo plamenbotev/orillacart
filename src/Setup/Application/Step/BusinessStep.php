@@ -136,6 +136,7 @@ final readonly class BusinessStep implements SetupStep
             ),
             $existing,
             $data,
+            replacesByDefault: true,
         );
     }
 
@@ -173,6 +174,7 @@ final readonly class BusinessStep implements SetupStep
                 VatCheck::UNAVAILABLE => Text::of('The EU could not check %s right now; the check before the shop opens tries again.', $check->number),
                 default => null,
             },
+            replacesByDefault: true,
         );
     }
 

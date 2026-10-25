@@ -70,6 +70,7 @@ final readonly class PaymentsStep implements SetupStep
                 $active && $current->instructions !== '' && $current->instructions !== $instructions ? Text::of('%1$s tells customers now: "%2$s"', $current->name, $current->instructions) : null,
                 ['active' => $active, 'instructions' => $instructions, 'countries' => $countries],
                 $warning,
+                replacesByDefault: true,
             );
         }
         $bank = $payments->bank;

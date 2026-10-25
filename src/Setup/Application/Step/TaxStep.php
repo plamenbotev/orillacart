@@ -194,6 +194,6 @@ final readonly class TaxStep implements SetupStep
         return new PlannedChange(self::SETTINGS, self::KEY, $summary, $existing, [
             'basis' => $preset->basis, 'including' => $preset->pricesIncludeTax, 'reverse' => $preset->reverseCharge, 'shown' => $preset->shown,
             'suffix' => (string) $preset->priceSuffix, 'shipping' => $preset->shippingTaxedAsItems, 'provider' => $preset->provider,
-        ], $preset->warnings[0] ?? null, $details);
+        ], $preset->warnings[0] ?? null, $details, true);
     }
 }

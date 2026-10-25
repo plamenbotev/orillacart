@@ -10,7 +10,9 @@ import { __, sprintf } from '@wordpress/i18n';
 import { errorMessage } from '../../shared/api';
 import {
 	applyPlan,
+	fetchOpening,
 	fetchPlan,
+	fetchSetup,
 	type Plan,
 	saveAnswers,
 	type SetupResult,
@@ -37,8 +39,10 @@ const STEP_NAMES: Record< string, string > = {
  * @param root0.fail
  */
 export function ReviewStep( { answers, next, fail }: StepProps ) {
-	const [ soon, setSoon ] = useState(
-		flag( answered( answers, 'opening' ), 'opens_soon', true )
+	const [ soon, setSoon ] = useState< boolean | null >(
+		answers.opening
+			? flag( answered( answers, 'opening' ), 'opens_soon', true )
+			: null
 	);
 	const [ plan, setPlan ] = useState< Plan | null >( null );
 	const [ replace, setReplace ] = useState< string[] >( [] );
@@ -49,15 +53,33 @@ export function ReviewStep( { answers, next, fail }: StepProps ) {
 		setPlan( null );
 		saveAnswers( 'opening', { opens_soon: opensSoon } )
 			.then( fetchPlan )
-			.then( setPlan )
+			.then( ( found ) => {
+				setPlan( found );
+				setReplace(
+					found.changes
+						.filter( ( change ) => change.replace )
+						.map( ( change ) => change.key )
+				);
+			} )
 			.catch( fail );
 	};
 	useEffect( () => {
-		load( soon );
+		if ( soon !== null ) {
+			load( soon );
+			return;
+		}
+		// Not asked yet: "Opening soon" for a shop not set up and open already.
+		Promise.all( [ fetchSetup(), fetchOpening() ] )
+			.then( ( [ setup, opening ] ) => {
+				const first = ! setup.finished || opening.opens_soon;
+				setSoon( first );
+				load( first );
+			} )
+			.catch( fail );
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [] );
 
-	if ( plan === null ) {
+	if ( plan === null || soon === null ) {
 		return <Spinner />;
 	}
 	const steps = Array.from(

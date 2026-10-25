@@ -97,6 +97,7 @@ function serve(
 							existing:
 								'The shop has a group "Standard rate" with 1 rates; replacing it gives it these instead.',
 							warning: null,
+							replace: false,
 						},
 						{
 							key: 'emails.sender',
@@ -121,7 +122,7 @@ function serve(
 			case '/orillacart/v1/opening':
 				return Promise.resolve( { opens_soon: method !== 'PUT' } );
 			case '/orillacart/v1/setup':
-				return Promise.resolve( { finished: true } );
+				return Promise.resolve( { finished: method === 'PUT' } );
 			default:
 				return Promise.resolve(
 					path.startsWith( '/orillacart/v1/states' ) ? [] : {}

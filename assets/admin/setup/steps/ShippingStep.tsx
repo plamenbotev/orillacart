@@ -56,11 +56,24 @@ export function ShippingStep( { answers, profile, save, fail }: StepProps ) {
 		text( given, 'name', __( 'Standard shipping', 'orillacart' ) )
 	);
 	const [ prices, setPrices ] = useState< ZonePrices[] >( [] );
-	const savedPickup = given.pickup as Record< string, string > | undefined;
-	const [ pickup, setPickup ] = useState( savedPickup !== undefined );
+	const savedPickup =
+		typeof given.pickup === 'object' && given.pickup !== null
+			? ( given.pickup as Record< string, string > )
+			: null;
+	const business = answered( answers, 'business' );
+	const [ pickup, setPickup ] = useState( savedPickup !== null );
 	const [ place, setPlace ] = useState( {
 		name: savedPickup?.name ?? __( 'Our shop', 'orillacart' ),
-		address: savedPickup?.address ?? '',
+		address:
+			savedPickup?.address ??
+			[
+				text( business, 'street' ),
+				[ text( business, 'postcode' ), text( business, 'city' ) ]
+					.filter( ( part ) => part !== '' )
+					.join( ' ' ),
+			]
+				.filter( ( part ) => part !== '' )
+				.join( ', ' ),
 		hours: savedPickup?.hours ?? '',
 		fee: savedPickup?.fee ?? '0',
 	} );

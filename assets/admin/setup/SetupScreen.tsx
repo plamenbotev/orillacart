@@ -90,7 +90,11 @@ export function SetupScreen() {
 	const [ profile, setProfile ] = useState< CountryProfile | null >( null );
 	const [ step, setStep ] = useState( 0 );
 	const [ error, setError ] = useState< string | null >( null );
-	const fail = ( failure: unknown ) => setError( errorMessage( failure ) );
+	const fail = ( failure: unknown ) => {
+		setError( errorMessage( failure ) );
+		// The message is above the step: the owner sees why it did not go on.
+		window.scrollTo( { top: 0 } );
+	};
 
 	useEffect( () => {
 		fetchAnswers()
