@@ -120,6 +120,8 @@ export interface ShippingMethod {
 	id: string;
 	name: string;
 	fields: Setting[];
+	/** Whether its settings can be tried at the courier. */
+	testable?: boolean;
 }
 
 const BASE = '/orillacart/v1';

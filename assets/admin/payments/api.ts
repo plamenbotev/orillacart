@@ -26,6 +26,8 @@ export interface PaymentMethod {
 	fee_percent: string;
 	/** What the totals call the fee; empty for the method's name. */
 	fee_label: string;
+	/** Whether its settings can be tried at the provider. */
+	testable?: boolean;
 }
 
 export interface PaymentMethodInput {

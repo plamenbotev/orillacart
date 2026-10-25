@@ -1847,6 +1847,12 @@ Makes the plan the owner saw, replacing only what they chose to; the settings fr
   - `fingerprint` (string): required; matches `/^[0-9a-f]{64}$/`
   - `replace` (list<string>): at most 500 items; each at most 100 characters
 
+### `GET /setup/countries/{country}`
+
+What the setup knows of a country: its money and units, how it taxes, what its law asks of a shop.
+
+- Who: shop managers
+
 ### `POST /setup/plan`
 
 What the answers would change, in words, with what there is already; nothing is saved.
@@ -1856,6 +1862,12 @@ What the answers would change, in words, with what there is already; nothing is 
 ### `GET /setup/readiness`
 
 Whether the shop is ready to sell: what stops it, then what is advised.
+
+- Who: shop managers
+
+### `GET /setup/shipping-zones`
+
+The zones the shipping step prices, from where the answers so far say the shop sells.
 
 - Who: shop managers
 

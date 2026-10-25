@@ -226,6 +226,50 @@
 [id^="orillacart-admin-"] .orillacart-setup__steps [aria-current] {
 	color: #1d2327;
 	font-weight: 600;
+	text-decoration: none;
+}
+
+/* Setup: the steps' forms */
+[id^="orillacart-admin-"] .orillacart-setup__row {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(10em, 1fr));
+	gap: 0 16px;
+}
+
+[id^="orillacart-admin-"] .orillacart-setup__columns {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(8em, 1fr));
+	gap: 0 16px;
+}
+
+[id^="orillacart-admin-"] .orillacart-setup__zone {
+	margin: 0 0 16px;
+	padding: 12px 16px;
+	border: 1px solid #dcdcde;
+	border-radius: 2px;
+}
+
+[id^="orillacart-admin-"] .orillacart-setup__zone legend {
+	padding: 0 4px;
+	font-weight: 600;
+}
+
+[id^="orillacart-admin-"] .orillacart-setup__facts,
+[id^="orillacart-admin-"] .orillacart-setup__plan ul ul {
+	list-style: disc;
+	margin-left: 1.5em;
+}
+
+[id^="orillacart-admin-"] .orillacart-setup__plan > ul > li {
+	margin-bottom: 12px;
+}
+
+[id^="orillacart-admin-"] .orillacart-setup__plan p {
+	margin: 0 0 4px;
+}
+
+[id^="orillacart-admin-"] .orillacart-setup__stops li {
+	color: #b32d2e;
 }
 
 [id^="orillacart-admin-"] .orillacart-filters td {

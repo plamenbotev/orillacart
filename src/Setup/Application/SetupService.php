@@ -9,8 +9,10 @@ use OrillaCart\Setup\Application\Dto\ApplySetup;
 use OrillaCart\Setup\Application\Dto\PlannedChange;
 use OrillaCart\Setup\Application\Dto\SetupPlanView;
 use OrillaCart\Setup\Application\Dto\SetupResultView;
+use OrillaCart\Setup\Application\Step\ShippingStep;
 use OrillaCart\Setup\Domain\SetupRuleViolation;
 use OrillaCart\Setup\Domain\SetupStepNotFound;
+use OrillaCart\Setup\Domain\ShippingZone;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Input\RequestMapper;
@@ -61,6 +63,16 @@ final readonly class SetupService
         $this->answers->save($stored);
 
         return $this->answers();
+    }
+
+    /**
+     * The zones the shipping step prices, from the answers so far.
+     *
+     * @return list<array{id: string, countries: list<string>}>
+     */
+    public function shippingZones(ShippingStep $shipping): array
+    {
+        return array_map(static fn(ShippingZone $zone): array => ['id' => $zone->id, 'countries' => $zone->countries], $shipping->zones($this->current()));
     }
 
     public function plan(): SetupPlanView
