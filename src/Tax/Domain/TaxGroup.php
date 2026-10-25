@@ -135,10 +135,10 @@ class TaxGroup
     }
 
     /**
-     * The taxes of this group at a location: every rate for the whole country, plus the rates for the
-     * location's state and postcode. They add up, listed by priority; a compound one on top of those before it.
+     * The taxes of this group at a location, on the items or on shipping: every rate for the whole country, plus
+     * the rates for the location's state and postcode. They add up, listed by priority; a compound one on top of
+     * those before it.
      */
-    /** The rates that apply at the location: to the items, or to shipping. */
     public function taxesAt(TaxLocation $location, bool $toShipping = false): AppliedTaxes
     {
         $taxes = [];

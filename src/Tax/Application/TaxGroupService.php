@@ -11,9 +11,9 @@ use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tax\Application\Dto\TaxGroupView;
 use OrillaCart\Tax\Application\Dto\TaxRateView;
-use OrillaCart\Tax\Domain\EuStandardRates;
 use OrillaCart\Tax\Domain\Event\TaxRatesChanged;
 use OrillaCart\Tax\Domain\Percentage;
+use OrillaCart\Tax\Domain\Profile\TaxProfiles;
 use OrillaCart\Tax\Domain\TaxGroup;
 use OrillaCart\Tax\Domain\TaxGroupNotFound;
 use OrillaCart\Tax\Domain\TaxGroupRepository;
@@ -137,11 +137,12 @@ final readonly class TaxGroupService
             }
         }
         $added = 0;
-        foreach (EuStandardRates::RATES as $country => $percent) {
-            if (isset($covered[$country]) || $this->geography->locate($country, null) === null) {
+        foreach (TaxProfiles::countries() as $country) {
+            $standard = TaxProfiles::of($country)->standard;
+            if ($standard === null || isset($covered[$country]) || $this->geography->locate($country, null)?->inEu !== true) {
                 continue;
             }
-            $group->addRate(new TaxRateDetails($country, null, Percentage::of($percent), 'VAT', 0));
+            $group->addRate(new TaxRateDetails($country, null, $standard, 'VAT', 0));
             ++$added;
         }
         if ($added > 0) {

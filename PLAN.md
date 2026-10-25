@@ -245,6 +245,25 @@ A fresh review of the 52 commits since the second audit (7 reviewers, findings c
 | ✅ | 165 | P3 | Platform: a long-running job worker writes logged problems only at exit; English words put into translated sentences (billing/shipping, order/product, sender/shop, row N); two callers name cache folders by version, not build (pdf fonts wiped on every upgrade, Site Health checks unused folders); "20 % off" is read as a placeholder, so its translation is refused; three registration requests block an address's account emails for a day; a deleted multisite site's download files stay on disk; webhook secrets saved before sealing stay plain; the release build needs wp-env for the .pot | |
 | ✅ | 166 | P3 | Smaller: an admin's test email carries the customer's real unsubscribe link; account confirmation returns the shop-only fields (`forCustomer()` missing); a new account saves the oldest guest order's address; a second reminder worker overwrites the recover token of the reminder sent; refusals drawn in a refreshed checkout summary are not announced to screen readers | |
 
+## Setup that leaves the shop ready (2026-10-25)
+
+Design 48. The setup asks about the business, plans the settings from a country profile, shows the plan, and applies it in one go.
+
+| | # | P | Item | Commits |
+|---|---|---|---|---|
+| ✅ | 167 | P1 | Country profiles: currency, units, tax system and rates (EU standard and reduced, UK, CH, NO, US state base rates, CA by province, AU, NZ) with a checked-on date, prices with or without tax, legal facts (withdrawal days, imprint, small-business note, e-invoice mandates); a general profile for the rest | |
+| ⬜ | 168 | P1 | Setup backend: answers saved as the owner goes, `POST /setup/plan` (what would change, keep or replace for what exists) and `POST /setup/apply` (one go, change log, settings archive first); preset methods in each area | |
+| ⬜ | 169 | P1 | Business step: one identity for settings and invoices (legal name, address, contacts, VAT number checked with VIES, company number, bank details); currency from a list | |
+| ⬜ | 170 | P1 | Who and where you sell, and tax: consumers, businesses or both; countries; tax groups and rates from the profile, OSS basis, reverse charge, small-business exemption with its invoice note, US nexus states or a tax service, all shown in plain words | |
+| ⬜ | 171 | P1 | Shipping zones from the countries sold to: flat, free above, by weight, local pickup, and add-ons' shipping methods with their settings; countries sold to but not shipped to listed | |
+| ⬜ | 172 | P1 | Payments in the setup: bank details from the business step, cash on delivery only at home, PayPal keys with sandbox and a key test; add-ons' gateways with their settings, and a `TestsSettings` interface (extension API 12) for their Test button; no finish without a way to pay | |
+| ⬜ | 173 | P1 | Legal: terms, withdrawal with model form, shipping and payment, imprint pages from templates (drafts, not legal advice); checkout accepts the terms (setting), shows the withdrawal notice, and the place-order button says ordering means paying; EU defaults on (14 days, lowest price, invoices, e-invoices where required) | |
+| ⬜ | 174 | P2 | Emails step: sender and a test email that says whether it went | |
+| ⬜ | 175 | P1 | Readiness check: stops and advice computed on the server, extensible by add-ons, kept on Status after setup; "Opening soon" for visitors until the shop opens, managers see the real shop | |
+| ⬜ | 176 | P2 | Tests: e2e setups for a German B2C shop, a UK shop and a US shop end with a test order that is taxed, shipped and paid as the plan said | |
+
+Later: MCP tools for an AI store manager (design 49): bundled with the plugin, working once a key is made, covering setup and all administration, on the same plan-and-apply service.
+
 ## Waiting on others
 
 - 26 Carrier integrations such as DPD (2026-10-18): not now. DPD was the example that shaped the extension API (27); couriers' add-ons come later, on that API.
