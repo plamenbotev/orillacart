@@ -550,7 +550,7 @@ final class TestShop
         $issuing = new IssueInvoices($this->invoices, $this->sendEInvoices);
         $this->events->addListener(OrderPaid::class, $issuing->paid(...));
         $this->events->addListener(OrderRefunded::class, $issuing->refunded(...));
-        $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $this->writer, $this->mail, $this->logger, new ShipmentTracking($this->consignmentRecords, $this->orders), $this->jobs->jobs, $this->invoices, $this->receipts, $this->invoiceAttachments = new InvoiceAttachments($this->invoices, $this->invoiceSettings, $this->invoicePdfs = new FakeInvoicePdfs(), $this->languages, $this->logger, $this->eInvoices));
+        $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $this->writer, $this->mail, $this->logger, new ShipmentTracking($this->consignmentRecords, $this->orders), $this->jobs->jobs, $this->invoices, $this->receipts, $this->invoiceAttachments = new InvoiceAttachments($this->invoices, $this->invoiceSettings, $this->invoicePdfs = new FakeInvoicePdfs(), $this->languages, $this->logger, $this->eInvoices), $this->legal);
         $this->cartReminders = new CartReminders($this->abandonedCarts, new FakeCartLinks(), $this->coupons, $this->emailSettings, $settings, $this->writer, $this->mail, $this->jobs->jobs, $this->clock);
         $this->jobs->with(new SendCartReminder($this->cartReminders));
         $this->jobs->with(new SendOrderEmails($this->emails, $this->sentEmails, $this->clock, $this->logger), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));

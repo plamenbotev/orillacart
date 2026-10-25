@@ -22,6 +22,7 @@ use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shipping\Application\ShipmentTracking;
+use OrillaCart\Storefront\Application\LegalSettingsService;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -46,6 +47,7 @@ final readonly class OrderEmails
         private Invoices $invoices,
         private ReceiptLinks $receipts,
         private InvoiceAttachments $attachments,
+        private LegalSettingsService $legal,
     ) {}
 
     public function statusChanged(int $orderId, string $previous, string $status, bool $tellCustomer = true, bool $tellShop = true): void
@@ -255,6 +257,8 @@ final readonly class OrderEmails
             'for_shop' => $kind->isForShop(),
             'shipments' => $this->shipments->forOrder($order->number),
             'invoices' => $kind->isForShop() ? [] : $this->invoices->ofOrder($order->number),
+            // The confirmation carries the terms and the right of withdrawal, as a durable medium must.
+            'legal_texts' => \in_array($kind, [EmailKind::OrderReceived, EmailKind::OrderProcessing], true) ? $this->legal->confirmationTexts() : [],
         ] + $extra;
 
         // The customer reads it in the language they ordered in; the shop in the site's.

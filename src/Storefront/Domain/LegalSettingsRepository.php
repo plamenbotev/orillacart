@@ -19,4 +19,11 @@ interface LegalSettingsRepository
      * @return int its id
      */
     public function makePage(string $title, string $content, bool $publish): int;
+
+    /**
+     * A published page's title and its content as HTML, for an email; null for one not published.
+     *
+     * @return array{title: string, html: string}|null
+     */
+    public function published(int $id): ?array;
 }

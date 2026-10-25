@@ -30,6 +30,26 @@ final readonly class LegalSettingsService
     }
 
     /**
+     * The terms of sale and the right of withdrawal, published, for the order confirmation to carry: the law asks
+     * that a consumer gets them on a durable medium, such as an email.
+     *
+     * @return list<array{title: string, html: string}>
+     */
+    public function confirmationTexts(): array
+    {
+        $settings = $this->settings->load();
+        $texts = [];
+        foreach ([$settings->terms, $settings->withdrawal] as $id) {
+            $page = $id === null ? null : $this->settings->published($id);
+            if ($page !== null) {
+                $texts[] = $page;
+            }
+        }
+
+        return $texts;
+    }
+
+    /**
      * @throws StorefrontRuleViolation for an id that is not a page, or accepting terms without their page
      */
     public function update(UpdateLegalSettings $command): LegalSettingsView

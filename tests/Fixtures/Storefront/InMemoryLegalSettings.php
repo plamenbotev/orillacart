@@ -30,11 +30,22 @@ final class InMemoryLegalSettings implements LegalSettingsRepository
         return \in_array($id, $this->pages, true);
     }
 
+    /** @var array<int, array{title: string, html: string}> published pages by id */
+    public array $published = [];
+
     public function makePage(string $title, string $content, bool $publish): int
     {
         $id = max([0, ...$this->pages]) + 1;
         $this->pages[] = $id;
+        if ($publish) {
+            $this->published[$id] = ['title' => $title, 'html' => $content];
+        }
 
         return $id;
+    }
+
+    public function published(int $id): ?array
+    {
+        return $this->published[$id] ?? null;
     }
 }

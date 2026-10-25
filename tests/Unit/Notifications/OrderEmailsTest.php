@@ -63,6 +63,21 @@ final class OrderEmailsTest extends TestCase
         ], \array_slice($this->shop->mail->summary(), 2));
     }
 
+    public function testTheConfirmationCarriesTheTermsAndTheRightOfWithdrawalOnceTheyArePublished(): void
+    {
+        $this->shop->legal->makePage('terms', 'Terms of sale', '<p>Our terms.</p>', true);
+        $this->shop->legal->makePage('withdrawal', 'Right of withdrawal', '<p>You may withdraw within 14 days.</p>', true);
+        $this->shop->legal->makePage('delivery', 'Shipping and payment', '<p>Shipping.</p>', true);
+
+        $this->place('bank_transfer');
+
+        $received = $this->shop->mail->emails[0]->html;
+        self::assertStringContainsString('Our terms.', $received);
+        self::assertStringContainsString('You may withdraw within 14 days.', $received);
+        self::assertStringNotContainsString('Shipping.</p>', $received, 'only what the law asks to send');
+        self::assertStringNotContainsString('Our terms.', $this->shop->mail->emails[1]->html, 'not to the shop');
+    }
+
     public function testTheCustomerIsWrittenInTheLanguageTheyOrderedInAndTheShopInItsOwn(): void
     {
         $this->shop->languages->locale = 'de_DE';

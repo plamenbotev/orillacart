@@ -64,6 +64,16 @@ final readonly class OptionLegalSettingsRepository implements LegalSettingsRepos
         return $id;
     }
 
+    public function published(int $id): ?array
+    {
+        $page = get_post($id);
+        if (!$page instanceof \WP_Post || $page->post_type !== 'page' || $page->post_status !== 'publish') {
+            return null;
+        }
+
+        return ['title' => get_the_title($page), 'html' => wp_kses_post(do_blocks($page->post_content))];
+    }
+
     public function activate(): void {}
 
     public function upgrade(?string $fromVersion): void {}
