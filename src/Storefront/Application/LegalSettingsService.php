@@ -34,7 +34,7 @@ final readonly class LegalSettingsService
     {
         $settings = $this->settings->load();
 
-        return array_values(array_filter([$settings->terms, $settings->withdrawal, $settings->delivery, $settings->legalNotice], fn(?int $id): bool => $id !== null && $this->settings->published($id) !== null));
+        return array_values(array_filter([$settings->terms, $settings->withdrawal, $settings->delivery, $settings->legalNotice, $settings->withdrawalForm], fn(?int $id): bool => $id !== null && $this->settings->published($id) !== null));
     }
 
     /**
@@ -62,26 +62,27 @@ final readonly class LegalSettingsService
      */
     public function update(UpdateLegalSettings $command): LegalSettingsView
     {
-        foreach ([$command->terms, $command->withdrawal, $command->delivery, $command->legalNotice] as $id) {
+        foreach ([$command->terms, $command->withdrawal, $command->delivery, $command->legalNotice, $command->withdrawalForm] as $id) {
             if ($id !== null && !$this->settings->isPage($id)) {
                 throw new StorefrontRuleViolation('Page %d is not a page of the site.', 'orillacart_unknown_page', values: [$id]);
             }
         }
-        $settings = new LegalSettings($command->terms, $command->withdrawal, $command->delivery, $command->legalNotice, $command->acceptTerms, OrderButton::from($command->orderButton));
+        $settings = new LegalSettings($command->terms, $command->withdrawal, $command->delivery, $command->legalNotice, $command->acceptTerms, OrderButton::from($command->orderButton), $command->withdrawalForm);
         $this->settings->save($settings);
 
         return LegalSettingsView::fromSettings($settings);
     }
 
     /**
-     * Makes the page of one of the legal parts (terms, withdrawal, delivery, legal_notice) and links it there.
+     * Makes the page of one of the legal parts (terms, withdrawal, delivery, legal_notice, withdrawal_form) and
+     * links it there.
      */
     public function makePage(string $part, string $title, string $content, bool $publish): LegalSettingsView
     {
         $id = $this->settings->makePage($title, $content, $publish);
         $now = $this->settings->load();
         $page = static fn(string $which, ?int $current): ?int => $which === $part ? $id : $current;
-        $settings = new LegalSettings($page('terms', $now->terms), $page('withdrawal', $now->withdrawal), $page('delivery', $now->delivery), $page('legal_notice', $now->legalNotice), $now->acceptTerms, $now->orderButton);
+        $settings = new LegalSettings($page('terms', $now->terms), $page('withdrawal', $now->withdrawal), $page('delivery', $now->delivery), $page('legal_notice', $now->legalNotice), $now->acceptTerms, $now->orderButton, $page('withdrawal_form', $now->withdrawalForm));
         $this->settings->save($settings);
 
         return LegalSettingsView::fromSettings($settings);
@@ -95,7 +96,7 @@ final readonly class LegalSettingsService
     public function checkout(bool $acceptTerms, OrderButton $button): LegalSettingsView
     {
         $now = $this->settings->load();
-        $settings = new LegalSettings($now->terms, $now->withdrawal, $now->delivery, $now->legalNotice, $acceptTerms, $button);
+        $settings = new LegalSettings($now->terms, $now->withdrawal, $now->delivery, $now->legalNotice, $acceptTerms, $button, $now->withdrawalForm);
         $this->settings->save($settings);
 
         return LegalSettingsView::fromSettings($settings);

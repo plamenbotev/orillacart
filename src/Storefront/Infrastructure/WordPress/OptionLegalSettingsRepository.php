@@ -24,10 +24,10 @@ final readonly class OptionLegalSettingsRepository implements LegalSettingsRepos
         $page = static fn(string $key): ?int => \is_int($stored[$key] ?? null) && $stored[$key] > 0 ? $stored[$key] : null;
         $button = \is_string($stored['order_button'] ?? null) ? OrderButton::tryFrom($stored['order_button']) : null;
         try {
-            return new LegalSettings($page('terms'), $page('withdrawal'), $page('delivery'), $page('legal_notice'), ($stored['accept_terms'] ?? false) === true, $button ?? OrderButton::PlaceOrder);
+            return new LegalSettings($page('terms'), $page('withdrawal'), $page('delivery'), $page('legal_notice'), ($stored['accept_terms'] ?? false) === true, $button ?? OrderButton::PlaceOrder, $page('withdrawal_form'));
         } catch (StorefrontRuleViolation) {
             // The terms page went: checkout no longer asks for it.
-            return new LegalSettings(null, $page('withdrawal'), $page('delivery'), $page('legal_notice'), false, $button ?? OrderButton::PlaceOrder);
+            return new LegalSettings(null, $page('withdrawal'), $page('delivery'), $page('legal_notice'), false, $button ?? OrderButton::PlaceOrder, $page('withdrawal_form'));
         }
     }
 
@@ -40,6 +40,7 @@ final readonly class OptionLegalSettingsRepository implements LegalSettingsRepos
             'legal_notice' => $settings->legalNotice,
             'accept_terms' => $settings->acceptTerms,
             'order_button' => $settings->orderButton->value,
+            'withdrawal_form' => $settings->withdrawalForm,
         ], true);
     }
 

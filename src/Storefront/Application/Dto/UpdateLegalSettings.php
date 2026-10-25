@@ -21,5 +21,7 @@ final readonly class UpdateLegalSettings
         public bool $acceptTerms = false,
         #[Assert\Choice(callback: [OrderButton::class, 'values'])]
         public string $orderButton = 'place_order',
+        #[Assert\Positive]
+        public ?int $withdrawalForm = null,
     ) {}
 }

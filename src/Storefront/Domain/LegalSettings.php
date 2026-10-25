@@ -20,8 +20,10 @@ final readonly class LegalSettings
         /** Checkout asks the customer to accept the terms of sale before the order. */
         public bool $acceptTerms = false,
         public OrderButton $orderButton = OrderButton::PlaceOrder,
+        /** The page of the withdrawal function, which every page links at its foot. */
+        public ?int $withdrawalForm = null,
     ) {
-        foreach ([$terms, $withdrawal, $delivery, $legalNotice] as $page) {
+        foreach ([$terms, $withdrawal, $delivery, $legalNotice, $withdrawalForm] as $page) {
             if ($page !== null && $page <= 0) {
                 throw new \InvalidArgumentException('A page id is positive.');
             }

@@ -1,6 +1,6 @@
 # 48 · A setup that leaves the shop ready to sell, within the rules
 
-Status: built (2026-10-25), PLAN items 167–176; the EU's withdrawal function is 177. The user asked for a setup wizard that
+Status: built (2026-10-25), PLAN items 167–177. The user asked for a setup wizard that
 sets up taxes, shipping and payments, after which the shop is fully working and follows the rules where it sells,
 and is easy to use. The shop's MCP tools (design 49, later) reuse its plan-and-apply service.
 
@@ -114,8 +114,9 @@ plan as "keep" or "replace", with "keep" chosen. A second run of the setup only 
      - the withdrawal notice;
      - the place-order button says that ordering means paying ("Buy now", "Order with obligation to pay"), as
        the EU requires.
-   - **The withdrawal function** (PLAN 177): since 2026-06-19 the EU requires a "Withdraw from contract here" link
-     that a consumer reaches from every page without logging in. They give their name, which order (its number
+   - **The withdrawal function** (PLAN 177, built): since 2026-06-19 the EU requires a "Withdraw from contract
+     here" link that a consumer reaches from every page without logging in. The setup publishes a page with the
+     Withdraw from contract block, and every page links it at its foot. They give their name, which order (its number
      and email) and where the confirmation goes, choose the items for a partial withdrawal, and press "Confirm
      withdrawal". An acknowledgement with what they declared, and the date and time, goes to them at once, by
      email. The shop sees it as a return of those items (Art. 11a of the Consumer Rights Directive, added by

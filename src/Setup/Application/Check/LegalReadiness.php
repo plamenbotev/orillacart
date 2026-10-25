@@ -12,11 +12,15 @@ use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Storefront\Application\LegalSettingsService;
 
 /**
- * The pages the law of the shop's country asks for, published: the terms of sale, the right of withdrawal and
- * the legal notice where consumers have those rights; and checkout's button saying that ordering means paying.
+ * The pages the law of the shop's country asks for, published: the terms of sale, the right of withdrawal, the
+ * withdrawal function (in the EU) and the legal notice where consumers have those rights; and checkout's button
+ * saying that ordering means paying.
  */
 final readonly class LegalReadiness implements ReadinessCheck
 {
+    /** Where the withdrawal function is the law (Art. 11a of the Consumer Rights Directive): the EU. */
+    public const array WITHDRAWAL_FUNCTION = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK'];
+
     public function __construct(
         private LegalSettingsService $legal,
         private SettingsService $settings,
@@ -40,6 +44,9 @@ final readonly class LegalReadiness implements ReadinessCheck
         }
         if ($profile->withdrawalDays !== null && !$page($legal->withdrawal)) {
             $found[] = Readiness::stop('legal.withdrawal', Text::of('The right of withdrawal is not published: consumers must be told of it before they order.'), 'settings');
+        }
+        if ($profile->withdrawalDays !== null && \in_array($country, LegalReadiness::WITHDRAWAL_FUNCTION, true) && !$page($legal->withdrawalForm)) {
+            $found[] = Readiness::stop('legal.withdrawal_form', Text::of('There is no published page where consumers withdraw from a purchase ("Withdraw from contract here"), which the EU asks of online shops since 19 June 2026.'), 'settings');
         }
         if ($profile->legalNotice && !$page($legal->legalNotice)) {
             $found[] = Readiness::stop('legal.notice', Text::of('The legal notice naming the seller is not published.'), 'settings');

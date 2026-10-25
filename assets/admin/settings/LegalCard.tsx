@@ -27,7 +27,8 @@ type Status =
 	| { kind: 'saved' }
 	| { kind: 'error'; message: string };
 
-type PageKey = 'terms' | 'withdrawal' | 'delivery' | 'legal_notice';
+type PageKey =
+	'terms' | 'withdrawal' | 'withdrawal_form' | 'delivery' | 'legal_notice';
 
 const pages: { key: PageKey; label: string; help: string }[] = [
 	{
@@ -43,6 +44,14 @@ const pages: { key: PageKey; label: string; help: string }[] = [
 		label: __( 'Right of withdrawal', 'orillacart' ),
 		help: __(
 			'Checkout links it below the order button. In the EU and the UK it is required.',
+			'orillacart'
+		),
+	},
+	{
+		key: 'withdrawal_form',
+		label: __( 'Withdraw from contract', 'orillacart' ),
+		help: __(
+			'The page with the Withdraw from contract block. Every page links it at its foot. In the EU it is required.',
 			'orillacart'
 		),
 	},

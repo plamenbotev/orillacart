@@ -36,4 +36,10 @@ final class SentMail implements Mailer
     {
         return array_map(static fn(Email $email): string => "{$email->to}: {$email->subject}", $this->emails);
     }
+
+    /** @return list<Email> the emails of a kind, as sent */
+    public function ofKind(string $kind): array
+    {
+        return array_values(array_filter($this->emails, static fn(Email $email): bool => $email->kind === $kind));
+    }
 }

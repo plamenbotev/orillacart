@@ -23,6 +23,7 @@ import { startRecentlyViewed } from './recent';
 import { bindReviewForm } from './reviews';
 import { bindShop } from './shop';
 import { startWishlist } from './wishlist';
+import { bindWithdrawal } from './withdrawal';
 
 function start(): void {
 	// Products that cannot be bought here still have pictures to look through.
@@ -69,6 +70,11 @@ function start(): void {
 	document
 		.querySelectorAll< HTMLFormElement >( 'form[data-orillacart-confirm]' )
 		.forEach( bindConfirm );
+	document
+		.querySelectorAll< HTMLFormElement >(
+			'form[data-orillacart-withdrawal]'
+		)
+		.forEach( bindWithdrawal );
 	// Choosing a currency reloads the page in it; the button is for browsers without the script.
 	document
 		.querySelectorAll< HTMLFormElement >(

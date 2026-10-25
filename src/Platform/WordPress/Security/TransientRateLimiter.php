@@ -38,6 +38,8 @@ final readonly class TransientRateLimiter implements RateLimiter
         'reviews' => [10, 3600],
         'form_uploads' => [20, 3600],
         'tax_certificates' => [10, 3600],
+        // Finding an order by its number and email, and declaring the withdrawal from it.
+        'withdrawals' => [20, 3600],
         // Each asks a payment provider or courier, with the shop's keys.
         'settings_tests' => [20, 600],
     ];

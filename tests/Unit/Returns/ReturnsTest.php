@@ -8,16 +8,20 @@ use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Returns\Application\Dto\AnswerReturn;
+use OrillaCart\Returns\Application\Dto\DeclareWithdrawal;
+use OrillaCart\Returns\Application\Dto\FindWithdrawableOrder;
 use OrillaCart\Returns\Application\Dto\RefundReturn;
 use OrillaCart\Returns\Application\Dto\RequestReturn;
 use OrillaCart\Returns\Application\Dto\ReturnedItemView;
 use OrillaCart\Returns\Application\Dto\ReturnItem;
 use OrillaCart\Returns\Domain\ReturnRuleViolation;
+use OrillaCart\Returns\Domain\WithdrawalOrderNotFound;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
@@ -48,6 +52,30 @@ final class ReturnsTest extends TestCase
         $this->order = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$rate}", payment: 'bank_transfer'))->number;
         $this->shop->orders->markPaid($this->order, null);
         $this->receipt = $this->shop->receipts->issue($this->order);
+    }
+
+    public function testAConsumerWithdrawsBeforeDeliveryAndIsToldAtOnceWhatTheyDeclaredAndWhen(): void
+    {
+        $found = $this->shop->returns->withdrawable(new FindWithdrawableOrder($this->order, 'ADA@example.com'));
+        self::assertSame([['line' => 0, 'name' => 'Lamp', 'quantity' => 2]], $found->lines, 'not shipped yet, and still withdrawable');
+        self::assertSame('Ada Lovelace', $found->name);
+
+        $withdrawn = $this->shop->returns->withdraw(new DeclareWithdrawal($this->order, 'ada@example.com', 'Ada Lovelace', 'ada.other@example.com', [new ReturnItem(0, 1)]));
+
+        self::assertSame([['name' => 'Lamp', 'quantity' => 1]], $withdrawn->items);
+        self::assertSame('2026-10-17T12:00:00+00:00', $withdrawn->declaredAt);
+        $acknowledged = $this->shop->mail->ofKind('withdrawal_received');
+        self::assertSame(['ada.other@example.com', 'ada@example.com'], array_map(static fn(Email $email): string => $email->to, $acknowledged), 'to the address given, and the order\'s');
+        self::assertStringContainsString('We received your withdrawal', $acknowledged[0]->html ?? '');
+        self::assertStringContainsString('1 × Lamp', $acknowledged[0]->html ?? '');
+        self::assertSame('withdrawal', $this->shop->returns->forOrder($this->order)->returns[0]->reason ?? null);
+        self::assertSame([['line' => 0, 'name' => 'Lamp', 'quantity' => 1]], $this->shop->returns->withdrawable(new FindWithdrawableOrder($this->order, 'ada@example.com'))->lines, 'the other one is left');
+    }
+
+    public function testAnOrderIsFoundOnlyWithItsOwnEmail(): void
+    {
+        $this->expectException(WithdrawalOrderNotFound::class);
+        $this->shop->returns->withdrawable(new FindWithdrawableOrder($this->order, 'eve@example.com'));
     }
 
     public function testAnOrderIsReturnedOnlyOnceItLeftAndWithinTheWindow(): void

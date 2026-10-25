@@ -72,6 +72,7 @@ final readonly class LegalStep implements SetupStep, AskedByCountry
                 $chosen = match ($part) {
                     'terms' => $current->terms,
                     'withdrawal' => $current->withdrawal,
+                    'withdrawal_form' => $current->withdrawalForm,
                     'delivery' => $current->delivery,
                     default => $current->legalNotice,
                 };
@@ -120,6 +121,7 @@ final readonly class LegalStep implements SetupStep, AskedByCountry
                 'terms' => [$this->texts->terms($seller, $this->countryName($country), $profile->withdrawalDays ?? 0, $withdrawalTitle), false],
                 'withdrawal' => [$this->texts->withdrawal($seller, $profile->withdrawalDays ?? 14), false],
                 'delivery' => [LegalTexts::block('shipping-payment'), true],
+                'withdrawal_form' => [LegalTexts::block('withdrawal'), true],
                 default => [LegalTexts::block('legal-notice'), true],
             };
             $this->legal->makePage($part, $title, $content, $publish);
@@ -143,6 +145,7 @@ final readonly class LegalStep implements SetupStep, AskedByCountry
         $pages = ['terms' => [$title('Terms of sale'), true]];
         if ($profile->withdrawalDays !== null) {
             $pages['withdrawal'] = [$title('Right of withdrawal'), true];
+            $pages['withdrawal_form'] = [$title('Withdraw from contract'), false];
         }
         $pages['delivery'] = [$title('Shipping and payment'), false];
         if ($profile->legalNotice) {

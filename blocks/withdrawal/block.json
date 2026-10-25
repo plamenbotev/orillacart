@@ -1,0 +1,21 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/withdrawal",
+	"title": "Withdraw from contract",
+	"category": "widgets",
+	"icon": "undo",
+	"description": "The withdrawal function the EU asks of online shops: a consumer withdraws from a purchase, all of it or some items, and gets an acknowledgement by email at once.",
+	"keywords": [
+		"withdrawal",
+		"cancel",
+		"return"
+	],
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

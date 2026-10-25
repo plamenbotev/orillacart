@@ -65,6 +65,10 @@ const notes: Record< string, string > = {
 		'Shows who sells: the name, address, contacts, registration and VAT number given in Settings → Invoices.',
 		'orillacart'
 	),
+	'orillacart/withdrawal': __(
+		'Customers withdraw from a purchase here, without logging in, and get a confirmation by email at once, as the EU asks of online shops.',
+		'orillacart'
+	),
 	'orillacart/shipping-payment': __(
 		'Shows where the shop ships and what it costs, and the ways to pay, as the shop has them now.',
 		'orillacart'

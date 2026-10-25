@@ -14,6 +14,8 @@ enum ReturnReason: string
     case NotAsDescribed = 'not_as_described';
     case NoLongerNeeded = 'no_longer_needed';
     case Other = 'other';
+    /** The consumer withdrew from the purchase, as the law lets them, through the shop's withdrawal function. */
+    case Withdrawal = 'withdrawal';
 
     /** In the customer's words, translated where shown. */
     public function label(): Text
@@ -24,12 +26,13 @@ enum ReturnReason: string
             self::NotAsDescribed => 'It is not as described',
             self::NoLongerNeeded => 'I no longer need it',
             self::Other => 'Another reason',
+            self::Withdrawal => 'I withdraw from the purchase',
         });
     }
 
-    /** @return list<string> */
+    /** @return list<string> the reasons a return asked for from the receipt may give; a withdrawal has its own way */
     public static function values(): array
     {
-        return array_column(self::cases(), 'value');
+        return array_values(array_filter(array_column(self::cases(), 'value'), static fn(string $reason): bool => $reason !== self::Withdrawal->value));
     }
 }

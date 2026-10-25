@@ -76,6 +76,8 @@ use OrillaCart\Notifications\Application\EmailWriter;
 use OrillaCart\Notifications\Application\OrderEmails;
 use OrillaCart\Notifications\Application\SendCartReminder;
 use OrillaCart\Notifications\Application\SendOrderEmails;
+use OrillaCart\Notifications\Application\WithdrawalEmails;
+use OrillaCart\Notifications\Infrastructure\Events\AcknowledgeWithdrawal;
 use OrillaCart\Notifications\Infrastructure\Events\EmailAboutOrders;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Application\OrderService;
@@ -124,6 +126,7 @@ use OrillaCart\Platform\Twig\TwigFactory;
 use OrillaCart\Platform\Twig\TwigRenderer;
 use OrillaCart\Returns\Application\ReturnedOrders;
 use OrillaCart\Returns\Application\Returns;
+use OrillaCart\Returns\Domain\Event\WithdrawalDeclared;
 use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Settings\Domain\DimensionUnit;
@@ -520,7 +523,7 @@ final class TestShop
             $this->opening = new ShopOpening(new InMemoryOpening(), $this->visitor = new FakeAuthorization()),
         );
         $this->reorder = new Reorder($this->orders, $this->carts);
-        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations());
+        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->events);
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links, $fees, $this->currencies);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
         $this->invoiceSettings = new MemoryInvoiceSettings();
@@ -557,6 +560,7 @@ final class TestShop
         $this->events->addListener(OrderPaid::class, $issuing->paid(...));
         $this->events->addListener(OrderRefunded::class, $issuing->refunded(...));
         $this->emails = new OrderEmails($this->orders, $links, $this->emailSettings, $this->writer, $this->mail, $this->logger, new ShipmentTracking($this->consignmentRecords, $this->orders), $this->jobs->jobs, $this->invoices, $this->receipts, $this->invoiceAttachments = new InvoiceAttachments($this->invoices, $this->invoiceSettings, $this->invoicePdfs = new FakeInvoicePdfs(), $this->languages, $this->logger, $this->eInvoices), $this->legal);
+        $this->events->addListener(WithdrawalDeclared::class, new AcknowledgeWithdrawal(new WithdrawalEmails($this->writer, $this->mail, $this->logger))->declared(...));
         $this->cartReminders = new CartReminders($this->abandonedCarts, new FakeCartLinks(), $this->coupons, $this->emailSettings, $settings, $this->writer, $this->mail, $this->jobs->jobs, $this->clock);
         $this->jobs->with(new SendCartReminder($this->cartReminders));
         $this->jobs->with(new SendOrderEmails($this->emails, $this->sentEmails, $this->clock, $this->logger), new TrackConsignments($this->consignments), new GiveBackLatePayments($this->refunds));

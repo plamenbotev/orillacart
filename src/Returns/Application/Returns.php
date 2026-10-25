@@ -15,18 +15,24 @@ use OrillaCart\Payment\Application\Dto\RefundView;
 use OrillaCart\Payment\Application\Refunds;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Returns\Application\Dto\AnswerReturn;
+use OrillaCart\Returns\Application\Dto\DeclareWithdrawal;
+use OrillaCart\Returns\Application\Dto\FindWithdrawableOrder;
 use OrillaCart\Returns\Application\Dto\OrderReturnsView;
 use OrillaCart\Returns\Application\Dto\RefundReturn;
 use OrillaCart\Returns\Application\Dto\RequestReturn;
 use OrillaCart\Returns\Application\Dto\ReturnedItemView;
 use OrillaCart\Returns\Application\Dto\ReturnItem;
 use OrillaCart\Returns\Application\Dto\ReturnView;
+use OrillaCart\Returns\Application\Dto\WithdrawableOrderView;
+use OrillaCart\Returns\Application\Dto\WithdrawalView;
+use OrillaCart\Returns\Domain\Event\WithdrawalDeclared;
 use OrillaCart\Returns\Domain\ItemReturn;
 use OrillaCart\Returns\Domain\ReturnNotFound;
 use OrillaCart\Returns\Domain\ReturnReason;
 use OrillaCart\Returns\Domain\ReturnRepository;
 use OrillaCart\Returns\Domain\ReturnRuleViolation;
 use OrillaCart\Returns\Domain\ReturnStatus;
+use OrillaCart\Returns\Domain\WithdrawalOrderNotFound;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
@@ -34,6 +40,7 @@ use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\I18n\Translations;
 use Psr\Clock\ClockInterface;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Items customers send back. Within the shop's return window, counted from when the order left, the customer asks
@@ -52,6 +59,7 @@ final readonly class Returns
         private SettingsService $settings,
         private ClockInterface $clock,
         private Translations $translations,
+        private EventDispatcherInterface $events,
     ) {}
 
     /**
@@ -111,6 +119,115 @@ final readonly class Returns
         $this->orders->needsAttention($order->number, \sprintf('The customer asks to return %s: %s.%s', self::listed($order, $items), strtolower((string) $return->reason()->label()), $return->comment() === '' ? '' : ' "' . $return->comment() . '"'));
 
         return $this->returnView($order, $return);
+    }
+
+    /**
+     * The order a consumer withdraws from, found by its number and the email it was placed with, and what of it
+     * they may withdraw from: every item not refunded or returned already, delivered or not.
+     *
+     * @throws WithdrawalOrderNotFound for no order with that number and email, said the same either way
+     * @throws ReturnRuleViolation for an order that is closed
+     */
+    public function withdrawable(FindWithdrawableOrder $command): WithdrawableOrderView
+    {
+        $order = $this->ordered($command->number, $command->email);
+        $lines = [];
+        foreach ($this->withdrawableItems($order) as $line => $quantity) {
+            $lines[] = ['line' => $line, 'name' => $order->lines[$line]->name ?? '', 'quantity' => $quantity];
+        }
+
+        return new WithdrawableOrderView($order->number, $order->placedAt, trim($order->billing->firstName . ' ' . $order->billing->lastName), $lines);
+    }
+
+    /**
+     * Records a consumer's withdrawal, as the law's withdrawal function asks: in time whenever it is sent within
+     * the period, so it is taken as it comes and the shop judges it; it holds the items as a return does, the order
+     * needs the shop's attention, and the consumer is told at once what they declared and when.
+     *
+     * @throws WithdrawalOrderNotFound
+     * @throws ReturnRuleViolation     for an order that is closed, or items it does not have left
+     */
+    public function withdraw(DeclareWithdrawal $command): WithdrawalView
+    {
+        $order = $this->ordered($command->number, $command->email);
+
+        return $this->orders->whileLocked($order->number, function () use ($command, $order): WithdrawalView {
+            $order = $this->orders->order($order->number);
+            $left = $this->withdrawableItems($order);
+            $items = [];
+            foreach ($command->items as $item) {
+                \assert($item instanceof ReturnItem);
+                $items[$item->line] = ($items[$item->line] ?? 0) + $item->quantity;
+            }
+            foreach ($items as $line => $quantity) {
+                if ($quantity > ($left[$line] ?? 0)) {
+                    throw new ReturnRuleViolation('%1$d of "%2$s" are left to withdraw from.', 'orillacart_invalid_return_items', values: [$left[$line] ?? 0, $order->lines[$line]->name ?? (string) ($line + 1)]);
+                }
+            }
+            // None chosen: the whole contract.
+            $items = $items === [] ? $left : array_filter($items, static fn(int $quantity): bool => $quantity > 0);
+            if ($items === []) {
+                throw new ReturnRuleViolation('Nothing of this order is left to withdraw from.', 'orillacart_nothing_to_withdraw');
+            }
+            ksort($items);
+            $now = $this->clock->now();
+            $name = trim($command->name);
+            $confirmation = trim($command->confirmationEmail);
+            $return = new ItemReturn($order->number, $items, ReturnReason::Withdrawal, \sprintf('Declared by %s on %s; confirmation to %s.', $name, $now->format(DATE_ATOM), $confirmation), $now);
+            $this->returns->save($return);
+            $this->orders->needsAttention($order->number, \sprintf('The customer withdrew from %s (declared by %s on %s).', self::listed($order, $items), $name, $now->format('Y-m-d H:i T')));
+            $listed = [];
+            foreach ($items as $line => $quantity) {
+                $listed[] = ['name' => $order->lines[$line]->name ?? '', 'quantity' => $quantity];
+            }
+            $this->events->dispatch(new WithdrawalDeclared($order->number, $return->id(), $name, $confirmation, $order->email, $listed, $now->format(DATE_ATOM), $order->locale));
+
+            return new WithdrawalView($order->number, $name, $confirmation, $listed, $now->format(DATE_ATOM));
+        });
+    }
+
+    /**
+     * @throws WithdrawalOrderNotFound the same for a number that is not an order and an email that is not its
+     * @throws ReturnRuleViolation for an order closed: cancelled, failed or refunded
+     */
+    private function ordered(int $number, string $email): OrderView
+    {
+        try {
+            $order = $this->orders->order($number);
+        } catch (OrderNotFound) {
+            $order = null;
+        }
+        if ($order === null || strcasecmp($order->email, trim($email)) !== 0) {
+            throw new WithdrawalOrderNotFound();
+        }
+        if (\in_array($order->status, self::CLOSED, true)) {
+            throw new ReturnRuleViolation('This order is closed: there is nothing to withdraw from.', 'orillacart_order_closed');
+        }
+
+        return $order;
+    }
+
+    /**
+     * What may be withdrawn from: every line's items, shipped or not, less those refunded and those a return holds.
+     *
+     * @return array<int, int> quantities by line position
+     */
+    private function withdrawableItems(OrderView $order): array
+    {
+        $left = [];
+        foreach ($order->lines as $position => $line) {
+            \assert($line instanceof OrderLineView);
+            $left[$position] = $line->quantity - $line->refundedQuantity;
+        }
+        foreach ($this->returns->forOrder($order->number) as $return) {
+            if ($return->status()->holdsItems()) {
+                foreach ($return->items() as $position => $quantity) {
+                    $left[$position] = ($left[$position] ?? 0) - $quantity;
+                }
+            }
+        }
+
+        return array_filter($left, static fn(int $quantity): bool => $quantity > 0);
     }
 
     /**

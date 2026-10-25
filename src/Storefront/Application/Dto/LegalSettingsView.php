@@ -18,10 +18,11 @@ final readonly class LegalSettingsView
         public bool $acceptTerms,
         public string $orderButton,
         public array $orderButtons,
+        public ?int $withdrawalForm = null,
     ) {}
 
     public static function fromSettings(LegalSettings $settings): self
     {
-        return new self($settings->terms, $settings->withdrawal, $settings->delivery, $settings->legalNotice, $settings->acceptTerms, $settings->orderButton->value, OrderButton::values());
+        return new self($settings->terms, $settings->withdrawal, $settings->delivery, $settings->legalNotice, $settings->acceptTerms, $settings->orderButton->value, OrderButton::values(), $settings->withdrawalForm);
     }
 }

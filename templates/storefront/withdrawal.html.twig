@@ -1,0 +1,33 @@
+{#
+ # The withdrawal function. email, name: a logged-in customer's, to start with.
+ #}
+{% import 'storefront/_macros.html.twig' as shop %}
+<div class="orillacart-withdrawal">
+    {{ shop.needs_script(__('Turn on JavaScript in your browser to withdraw here, or write to us: an email or a letter saying you withdraw is enough.')) }}
+    <form class="orillacart-form" data-orillacart-withdrawal novalidate>
+        <p>{{ __('Withdraw from a purchase, all of it or some items. Give the order’s number and the email you ordered with; we confirm your withdrawal by email at once.') }}</p>
+        <p class="orillacart-field">
+            <label for="withdrawal-name">{{ __('Your name') }}</label>
+            <input id="withdrawal-name" type="text" name="name" value="{{ name }}" autocomplete="name" required>
+        </p>
+        <p class="orillacart-field">
+            <label for="withdrawal-number">{{ __('Order number') }}</label>
+            <input id="withdrawal-number" type="text" inputmode="numeric" name="number" required data-orillacart-withdrawal-order>
+        </p>
+        <p class="orillacart-field">
+            <label for="withdrawal-email">{{ __('Email you ordered with') }}</label>
+            <input id="withdrawal-email" type="email" name="email" value="{{ email }}" autocomplete="email" required data-orillacart-withdrawal-order>
+        </p>
+        <p class="orillacart-field">
+            <label for="withdrawal-confirmation">{{ __('Send the confirmation to') }}</label>
+            <input id="withdrawal-confirmation" type="email" name="confirmation_email" value="{{ email }}" autocomplete="email" required>
+        </p>
+        <fieldset class="orillacart-withdrawal__items" data-orillacart-withdrawal-items hidden>
+            <legend>{{ __('What you withdraw from') }}</legend>
+            <div data-orillacart-withdrawal-lines></div>
+        </fieldset>
+        <p class="orillacart-message" role="alert" data-orillacart-message></p>
+        <button type="submit" class="wp-element-button orillacart-button">{{ __('Confirm withdrawal') }}</button>
+    </form>
+    <div class="orillacart-withdrawal__done" data-orillacart-withdrawal-done tabindex="-1" hidden></div>
+</div>

@@ -30,6 +30,7 @@ export interface LegalSettings {
 	withdrawal: number | null;
 	delivery: number | null;
 	legal_notice: number | null;
+	withdrawal_form: number | null;
 	accept_terms: boolean;
 	order_button: string;
 	order_buttons?: string[];

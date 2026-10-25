@@ -966,6 +966,7 @@ The shop's legal pages, and whether checkout asks to accept the terms and what i
   - `legal_notice` (int|null): more than 0
   - `accept_terms` (bool): default false
   - `order_button` (string): one of place_order, buy_now, order_and_pay; default 'place_order'
+  - `withdrawal_form` (int|null): more than 0
 
 ## /newsletter-settings
 
@@ -2255,6 +2256,29 @@ A webhook's test (POST …/ping: a webhook.ping event, sent by the background jo
 A webhook's test (POST …/ping: a webhook.ping event, sent by the background jobs), its new secret (POST …/secret), and the tries at delivering to it (GET …/deliveries, newest first).
 
 - Who: shop managers; needs a nonce (not with an API key)
+
+## /withdrawals
+
+### `POST /withdrawals`
+
+"Confirm withdrawal": the consumer's declaration, acknowledged at once by email.
+
+- Who: anyone; needs a nonce (not with an API key); at most 20 an hour from each address
+- Body (JSON):
+  - `number` (int): required; more than 0
+  - `email` (string): required; not empty; an email
+  - `name` (string): required; not empty; at most 200 characters
+  - `confirmation_email` (string): required; not empty; an email
+  - `items` (list<ReturnItem>): at most 200 items
+
+### `POST /withdrawals/orders`
+
+The withdrawal function's first step: the order by its number and email, and what of it is left to withdraw.
+
+- Who: anyone; needs a nonce (not with an API key); at most 20 an hour from each address
+- Body (JSON):
+  - `number` (int): required; more than 0
+  - `email` (string): required; not empty; an email
 
 ## Shapes
 

@@ -340,6 +340,35 @@ test( 'sets up a German shop for consumers in the EU, opens it, and a visitor bu
 	await expect(
 		visit.getByText( /Pay to E2E Acme GmbH, IBAN DE89/ )
 	).toBeVisible();
+
+	// Then withdraws from it, from the link at the foot of every page, without an account.
+	const orders = await requestUtils.rest< {
+		orders: { number: number; email: string }[];
+	} >( {
+		path: '/orillacart/v1/orders',
+		params: { search: 'e2e-visitor@example.com' },
+	} );
+	const placed = orders.orders[ 0 ]?.number;
+	await visit
+		.getByRole( 'link', { name: 'Withdraw from contract here' } )
+		.click();
+	await visit.getByLabel( 'Your name' ).fill( 'Ada Lovelace' );
+	await visit.getByLabel( 'Order number' ).fill( String( placed ) );
+	await visit
+		.getByLabel( 'Email you ordered with' )
+		.fill( 'e2e-visitor@example.com' );
+	await visit
+		.getByLabel( 'Email you ordered with' )
+		.dispatchEvent( 'change' );
+	await expect( visit.getByLabel( 'E2E Lamp' ) ).toHaveValue( '1' );
+	await visit
+		.getByLabel( 'Send the confirmation to' )
+		.fill( 'e2e-visitor@example.com' );
+	await visit.getByRole( 'button', { name: 'Confirm withdrawal' } ).click();
+	await expect(
+		visit.getByRole( 'heading', { name: 'We received your withdrawal' } )
+	).toBeVisible();
+	await expect( visit.getByText( '1 × E2E Lamp' ) ).toBeVisible();
 	await visitor.close();
 } );
 
