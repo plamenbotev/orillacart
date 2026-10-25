@@ -1,24 +1,33 @@
 #!/usr/bin/env bash
 #
-# Writes languages/orillacart.pot from the PHP code, the built scripts and the Twig templates, with WP-CLI in the
-# wp-env container. Build the scripts first (npm run build): their strings are read from build/. The words the code
-# keeps in English (rule violations, validation messages) come from bin/message-strings.php; the release build
-# runs this.
+# Writes languages/orillacart.pot from the PHP code, the built scripts and the Twig templates, with WP-CLI's
+# i18n command. It needs no WordPress site: a `wp` on PATH is used, otherwise the WP-CLI phar is downloaded
+# once into var/tools. Build the scripts first (npm run build): their strings are read from build/. The words
+# the code keeps in English (rule violations, validation messages) come from bin/message-strings.php; the
+# release build runs this.
 #
 #   npm run i18n:pot
 #
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-if ! (cd "$ROOT" && npx wp-env run cli true >/dev/null 2>&1); then
-    echo "bin/make-pot: wp-env is not running; start it with: npx wp-env start" >&2
-    exit 1
+WP_CLI_VERSION="2.12.0"
+PHAR="$ROOT/var/tools/wp-cli-$WP_CLI_VERSION.phar"
+
+if command -v wp > /dev/null; then
+    WP=(wp)
+else
+    if [ ! -f "$PHAR" ]; then
+        mkdir -p "$(dirname "$PHAR")"
+        curl -fsSL -o "$PHAR" "https://github.com/wp-cli/wp-cli/releases/download/v$WP_CLI_VERSION/wp-cli-$WP_CLI_VERSION.phar"
+    fi
+    WP=(php -d memory_limit=2G "$PHAR")
 fi
+
 mkdir -p "$ROOT/var/i18n" "$ROOT/languages"
 php "$ROOT/bin/twig-strings.php" templates > "$ROOT/var/i18n/templates.php"
 php "$ROOT/bin/message-strings.php" "$ROOT/src" > "$ROOT/var/i18n/messages.php"
-(cd "$ROOT" && npx wp-env run cli --env-cwd=wp-content/plugins/orillacart \
-    php -d memory_limit=2G /usr/local/bin/wp i18n make-pot . languages/orillacart.pot --slug=orillacart --domain=orillacart \
+(cd "$ROOT" && "${WP[@]}" i18n make-pot . languages/orillacart.pot --slug=orillacart --domain=orillacart \
     --include=orillacart.php,src,config,blocks,build/admin,build/storefront,var/i18n --exclude=var/build,var/cache,dist \
     --headers='{"Report-Msgid-Bugs-To":"https://github.com/plamenbotev/orillacart/issues"}')
 rm -r "$ROOT/var/i18n"

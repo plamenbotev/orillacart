@@ -6,7 +6,7 @@
 #   bin/build            -> dist/orillacart-<version>.zip
 #   COMPOSER_BIN=... bin/build   (when composer is not on PATH)
 #
-# Needs wp-env running (npx wp-env start): the .pot is written with WP-CLI in its container (bin/make-pot).
+# The .pot is written with WP-CLI (bin/make-pot); without a `wp` on PATH the phar is downloaded once into var/tools.
 #
 set -euo pipefail
 
