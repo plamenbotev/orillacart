@@ -149,6 +149,7 @@ use OrillaCart\Shipping\Domain\Event\ShippingClassDeleted;
 use OrillaCart\Shipping\Infrastructure\Events\ConvertMeasures as ConvertRateMeasures;
 use OrillaCart\Shipping\Infrastructure\Events\KeepShippedOrders;
 use OrillaCart\Storefront\Application\LegalSettingsService;
+use OrillaCart\Storefront\Application\ShopOpening;
 use OrillaCart\Tax\Application\ImportSchemes;
 use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Application\TaxExemptions;
@@ -183,6 +184,7 @@ use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\GiftCards\InMemoryGiftCards;
 use OrillaCart\Tests\Fixtures\GiftCards\MemoryGiftCardSettings;
 use OrillaCart\Tests\Fixtures\GiftCards\SentGiftCards;
+use OrillaCart\Tests\Fixtures\Http\FakeAuthorization;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockLevelRepository;
@@ -222,6 +224,7 @@ use OrillaCart\Tests\Fixtures\Shipping\InMemoryConsignmentRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
 use OrillaCart\Tests\Fixtures\Shipping\MemoryRateCache;
 use OrillaCart\Tests\Fixtures\Storefront\InMemoryLegalSettings;
+use OrillaCart\Tests\Fixtures\Storefront\InMemoryOpening;
 use OrillaCart\Tests\Fixtures\Tax\FakeVatRegistry;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryImportRegistrations;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
@@ -279,6 +282,8 @@ final class TestShop
     public readonly InMemoryPaymentRepository $paymentRecords;
     public readonly FakePayPalApi $payPalApi;
     public readonly LegalSettingsService $legal;
+    public readonly ShopOpening $opening;
+    public readonly FakeAuthorization $visitor;
     public readonly InMemoryLegalSettings $legalRecords;
     public readonly PaymentOutcomes $outcomes;
     public readonly InMemoryPriceRuleRepository $priceRuleRecords;
@@ -512,6 +517,7 @@ final class TestShop
             $this->currencies,
             $this->shownPrices = new ShownPrices($taxes, $this->customers, $settings),
             $this->legal = new LegalSettingsService($this->legalRecords = new InMemoryLegalSettings(pages: [1, 2, 3, 4])),
+            $this->opening = new ShopOpening(new InMemoryOpening(), $this->visitor = new FakeAuthorization()),
         );
         $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations());

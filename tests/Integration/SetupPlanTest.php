@@ -7,8 +7,10 @@ namespace OrillaCart\Tests\Integration;
 use OrillaCart\Invoicing\Infrastructure\WordPress\OptionInvoiceSettingsRepository;
 use OrillaCart\Notifications\Infrastructure\WordPress\OptionEmailSettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
+use OrillaCart\Settings\Infrastructure\WordPress\OptionSetupState;
 use OrillaCart\Setup\Infrastructure\WordPress\OptionSetupAnswers;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionLegalSettingsRepository;
+use OrillaCart\Storefront\Infrastructure\WordPress\OptionOpeningRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
 
 /**
@@ -16,7 +18,7 @@ use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
  */
 final class SetupPlanTest extends RestTestCase
 {
-    private const array OPTIONS = [OptionSettingsRepository::OPTION, OptionInvoiceSettingsRepository::OPTION, OptionTaxSettingsRepository::OPTION, OptionLegalSettingsRepository::OPTION, OptionEmailSettingsRepository::OPTION, OptionSetupAnswers::OPTION, OptionSetupAnswers::BEFORE_OPTION];
+    private const array OPTIONS = [OptionSettingsRepository::OPTION, OptionInvoiceSettingsRepository::OPTION, OptionTaxSettingsRepository::OPTION, OptionLegalSettingsRepository::OPTION, OptionEmailSettingsRepository::OPTION, OptionOpeningRepository::OPTION, OptionSetupState::OPTION, OptionSetupAnswers::OPTION, OptionSetupAnswers::BEFORE_OPTION];
 
     /** @var array<string, mixed> */
     private array $kept = [];
@@ -395,6 +397,22 @@ final class SetupPlanTest extends RestTestCase
         sort($values);
 
         return $values;
+    }
+
+    public function testTheShopOpensSoonUntilItsManagerOpensItAndVisitorsCannotOrderMeanwhile(): void
+    {
+        $this->request('PUT', '/setup/answers/opening', ['opens_soon' => true], nonce: true);
+        $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
+        self::assertSame(['opening.soon'], array_column(self::changes($plan), 'key'));
+        $this->request('POST', '/setup/apply', ['fingerprint' => $plan['fingerprint']], nonce: true);
+        self::assertTrue($this->data($this->request('GET', '/opening'))['opens_soon']);
+
+        wp_set_current_user(0);
+        $refused = $this->request('POST', '/checkout', ['email' => 'ada@example.com', 'billing' => ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Vitosha Blvd', 'city' => 'Sofia', 'postcode' => '1000', 'country' => 'BG', 'phone' => '+359 2 000 0000']], nonce: true);
+        self::assertSame('orillacart_opening_soon', $this->data($refused)['code'] ?? null);
+
+        $this->actAs('administrator');
+        self::assertFalse($this->data($this->request('PUT', '/opening', nonce: true))['opens_soon']);
     }
 
     /** @return list<int> */

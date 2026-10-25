@@ -981,6 +981,26 @@ The shop's legal pages, and whether checkout asks to accept the terms and what i
   - `consent` (string): not empty; at most 500 characters
   - `lists` (list<string>)
 
+## /opening
+
+### `GET /opening`
+
+Whether visitors see "Opening soon" (GET); PUT opens the shop, DELETE shows "Opening soon" again.
+
+- Who: shop managers
+
+### `PUT /opening`
+
+Whether visitors see "Opening soon" (GET); PUT opens the shop, DELETE shows "Opening soon" again.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+### `DELETE /opening`
+
+Whether visitors see "Opening soon" (GET); PUT opens the shop, DELETE shows "Opening soon" again.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ## /orders
 
 ### `GET /orders`

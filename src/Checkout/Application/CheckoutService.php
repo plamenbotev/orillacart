@@ -62,6 +62,7 @@ use OrillaCart\Shipping\Application\Dto\DeliverySlotView;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use OrillaCart\Storefront\Application\LegalSettingsService;
+use OrillaCart\Storefront\Application\ShopOpening;
 use OrillaCart\Tax\Application\Dto\ReverseCharge;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Application\VatNumbers;
@@ -99,6 +100,7 @@ final readonly class CheckoutService
         private Currencies $currencies,
         private ShownPrices $shownPrices,
         private LegalSettingsService $legal,
+        private ShopOpening $opening,
     ) {}
 
     /**
@@ -414,6 +416,9 @@ final readonly class CheckoutService
     {
         if ($this->settings->current()->catalogOnly) {
             throw new CheckoutRuleViolation('The shop does not take orders online.', 'orillacart_catalog_only');
+        }
+        if ($this->opening->closedToVisitor()) {
+            throw new CheckoutRuleViolation('The shop opens soon: it takes no orders yet.', 'orillacart_opening_soon');
         }
         $acceptsTerms = $this->legal->asksToAcceptTerms();
         if ($acceptsTerms && !$command->acceptsTerms) {

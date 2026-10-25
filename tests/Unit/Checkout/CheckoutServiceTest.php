@@ -27,6 +27,7 @@ use OrillaCart\Payment\Domain\PaymentNotFound;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveRange;
 use OrillaCart\Shipping\Application\Dto\SaveShippingClass;
@@ -113,6 +114,20 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 1]), new PlaceOrder($order->email, $order->billing, shippingOption: $order->shippingOption, payment: $order->payment, acceptsTerms: true));
 
         self::assertContains('The customer accepted the terms of sale.', array_column($this->shop->orders->order($placed->number)->notes, 'text'));
+    }
+
+    public function testWhileTheShopOpensSoonVisitorsCannotOrderButAManagerTriesIt(): void
+    {
+        $this->shop->opening->close();
+
+        try {
+            $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('cash_on_delivery'));
+            self::fail('a visitor ordered');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('orillacart_opening_soon', $e->errorCode);
+        }
+        $this->shop->visitor->capabilities = [Capability::MANAGE_SHOP];
+        self::assertSame('on_hold', $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('cash_on_delivery'))->status);
     }
 
     public function testAnOrderThatWouldCostOtherThanTheCustomerSawIsNotPlaced(): void

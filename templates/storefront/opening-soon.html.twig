@@ -1,0 +1,25 @@
+{#
+ # What visitors see of the shop while it opens soon: a page of its own, outside the theme. site_name, site_url,
+ # locale.
+ #}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{ __('Opening soon') }} · {{ site_name }}</title>
+<style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#fafafa;color:#18181b;text-align:center;padding:16px;box-sizing:border-box}
+main{max-width:32rem}h1{font-size:2rem;margin:0 0 .5rem}p{color:#52525b;line-height:1.5}a{color:inherit}
+@media (prefers-color-scheme:dark){body{background:#18181b;color:#fafafa}p{color:#a1a1aa}}
+</style>
+</head>
+<body>
+<main>
+<h1>{{ __('Opening soon') }}</h1>
+<p>{{ __('%s is getting its shop ready. Come back soon.')|format(site_name) }}</p>
+<p><a href="{{ site_url }}">{{ site_name }}</a></p>
+</main>
+</body>
+</html>
