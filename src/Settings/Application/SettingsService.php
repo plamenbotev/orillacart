@@ -109,4 +109,37 @@ final readonly class SettingsService
             $current->minimumOrder,
         ));
     }
+
+    /**
+     * The countries the shop sells to, empty for every country; the other settings as they are.
+     *
+     * @param list<string> $countries
+     *
+     * @throws RuleViolation
+     */
+    public function sellTo(array $countries): SettingsView
+    {
+        $current = $this->current();
+
+        return $this->update(new UpdateSettings(
+            $current->currency,
+            $current->fewerDecimals,
+            $current->weightUnit,
+            $current->dimensionUnit,
+            $current->shopCountry,
+            $current->shopState,
+            $current->shopPostcode,
+            $current->currencySign,
+            $current->currencyPosition,
+            $current->catalogOnly,
+            $current->hidePrices,
+            $countries,
+            $current->showLowestPrice,
+            $current->removeDataOnUninstall,
+            $current->lowStockThreshold,
+            $current->unpaidHoldDays,
+            $current->returnDays,
+            $current->minimumOrder,
+        ));
+    }
 }

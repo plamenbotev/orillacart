@@ -131,8 +131,8 @@ final readonly class BusinessStep implements SetupStep
                 $country->name ?? $business->country,
                 $business->currency,
                 self::written((string) $data['sign'], CurrencyPosition::from((string) $data['position'])),
-                (string) $data['weight'],
-                (string) $data['dimension'],
+                self::unit((string) $data['weight']),
+                self::unit((string) $data['dimension']),
             ),
             $existing,
             $data,
@@ -207,6 +207,20 @@ final readonly class BusinessStep implements SetupStep
             CurrencyPosition::BeforeWithSpace => $sign . ' 10',
             CurrencyPosition::After => '10' . $sign,
             CurrencyPosition::AfterWithSpace => '10 ' . $sign,
+        };
+    }
+
+    private static function unit(string $unit): Text
+    {
+        return match ($unit) {
+            'kg' => Text::of('kilograms'),
+            'g' => Text::of('grams'),
+            'lb' => Text::of('pounds'),
+            'oz' => Text::of('ounces'),
+            'm' => Text::of('metres'),
+            'mm' => Text::of('millimetres'),
+            'in' => Text::of('inches'),
+            default => Text::of('centimetres'),
         };
     }
 

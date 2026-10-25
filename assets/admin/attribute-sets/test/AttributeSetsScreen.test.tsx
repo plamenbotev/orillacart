@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import { AttributeSetsScreen } from '../AttributeSetsScreen';
+import { lastWrite } from '../../shared/testing';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -207,7 +208,7 @@ describe( 'AttributeSetsScreen', () => {
 		);
 
 		await screen.findByText( 'Attribute set saved.', NOTICE );
-		const sent = mockedFetch.mock.lastCall?.[ 0 ] as {
+		const sent = lastWrite( mockedFetch ) as {
 			data: {
 				attributes: { name: string; options: { name: string }[] }[];
 			};

@@ -7,19 +7,22 @@ namespace OrillaCart\Tests\Integration;
 use OrillaCart\Invoicing\Infrastructure\WordPress\OptionInvoiceSettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Setup\Infrastructure\WordPress\OptionSetupAnswers;
+use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
 
 /**
  * The setup through the REST API: answers kept as given, a plan in words that saves nothing, and applying it.
  */
 final class SetupPlanTest extends RestTestCase
 {
-    private const array OPTIONS = [OptionSettingsRepository::OPTION, OptionInvoiceSettingsRepository::OPTION, OptionSetupAnswers::OPTION, OptionSetupAnswers::BEFORE_OPTION];
+    private const array OPTIONS = [OptionSettingsRepository::OPTION, OptionInvoiceSettingsRepository::OPTION, OptionTaxSettingsRepository::OPTION, OptionSetupAnswers::OPTION, OptionSetupAnswers::BEFORE_OPTION];
 
     /** @var array<string, mixed> */
     private array $kept = [];
     private ?\Closure $vies = null;
     /** @var list<string> */
     private array $asked = [];
+    /** @var list<int> the tax groups there were before the test */
+    private array $groups = [];
 
     protected function setUp(): void
     {
@@ -45,15 +48,22 @@ final class SetupPlanTest extends RestTestCase
         };
         add_filter('pre_http_request', $this->vies, 10, 3);
         $this->actAs('administrator');
+        $this->groups = array_column(self::rows($this->data($this->request('GET', '/tax/groups'))), 'id');
     }
 
     protected function tearDown(): void
     {
+        $this->actAs('administrator');
         if ($this->vies !== null) {
             remove_filter('pre_http_request', $this->vies);
         }
         foreach ($this->kept as $option => $value) {
             $value === false ? delete_option($option) : update_option($option, $value);
+        }
+        foreach (self::rows($this->data($this->request('GET', '/tax/groups'))) as $group) {
+            if (!\in_array($group['id'], $this->groups, true)) {
+                $this->request('DELETE', '/tax/groups/' . $group['id'], nonce: true);
+            }
         }
         parent::tearDown();
     }
@@ -70,7 +80,7 @@ final class SetupPlanTest extends RestTestCase
         $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
         $changes = self::changes($plan);
         self::assertSame(['business.location', 'business.seller'], array_column($changes, 'key'));
-        self::assertSame('The shop sells from Germany. Prices are in EUR, written 10 €; weights in kg and sizes in cm.', $changes[0]['summary']);
+        self::assertSame('The shop sells from Germany. Prices are in EUR, written 10 €; weights in kilograms and sizes in centimetres.', $changes[0]['summary']);
         self::assertSame('Invoices name the seller as Acme GmbH, Hauptstraße 1, 80331 München, Germany, VAT number DE123456789.', $changes[1]['summary']);
         self::assertNull($changes[1]['warning'], 'the EU knows the number');
         self::assertFalse(get_option(OptionInvoiceSettingsRepository::OPTION), 'the plan saves nothing');
@@ -101,6 +111,98 @@ final class SetupPlanTest extends RestTestCase
         self::assertSame(422, $this->request('POST', '/setup/apply', ['fingerprint' => str_repeat('0', 64)], nonce: true)->get_status(), 'a plan not seen');
     }
 
+    public function testAGermanShopForConsumersChargesGermanVatIncludedInItsPrices(): void
+    {
+        $this->business('DE', 'EUR');
+        $this->request('PUT', '/setup/answers/selling', ['customers' => 'both', 'regions' => 'eu'], nonce: true);
+        $this->request('PUT', '/setup/answers/tax', ['registered' => true], nonce: true);
+
+        $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
+        $changes = self::changes($plan);
+        self::assertSame(['business.location', 'business.seller', 'selling.countries', 'tax.group.standard', 'tax.group.reduced', 'tax.group.zero', 'tax.settings'], array_column($changes, 'key'));
+        self::assertSame('The shop sells to consumers and businesses in 27 countries.', $changes[2]['summary']);
+        self::assertSame('A tax group "Standard rate" at 19% (MwSt.).', $changes[3]['summary']);
+        self::assertSame('A tax group "Reduced rate" at 7% (MwSt.).', $changes[4]['summary']);
+
+        $result = $this->data($this->request('POST', '/setup/apply', ['fingerprint' => $plan['fingerprint']], nonce: true));
+        self::assertNull($result['refused']);
+        $tax = $this->data($this->request('GET', '/tax/settings'));
+        self::assertSame(['eu_origin', true, true, 'with_tax', 'incl. MwSt., plus shipping', true], [$tax['basis'], $tax['prices_include_tax'], $tax['reverse_charge'], $tax['shown_in_shop'], $tax['price_suffix'], $tax['shipping_taxed_as_items']]);
+        $standard = array_values(array_filter(self::rows($this->data($this->request('GET', '/tax/groups'))), static fn(array $group): bool => $group['name'] === 'Standard rate'));
+        self::assertSame($standard[0]['id'] ?? null, $tax['default_group_id']);
+        $sellTo = $this->data($this->request('GET', '/settings'))['sell_to'] ?? null;
+        self::assertIsArray($sellTo);
+        self::assertCount(27, $sellTo);
+        self::assertSame([], self::changes($this->data($this->request('POST', '/setup/plan', nonce: true))), 'set up');
+    }
+
+    public function testInTheOneStopShopEveryEuCountryHasItsOwnRates(): void
+    {
+        $this->business('FR', 'EUR');
+        $this->request('PUT', '/setup/answers/tax', ['registered' => true, 'oss' => true], nonce: true);
+
+        $changes = self::changes($this->data($this->request('POST', '/setup/plan', nonce: true)));
+        $keys = array_column($changes, 'key');
+        self::assertSame(['tax.group.standard', 'tax.group.reduced', 'tax.group.second_reduced', 'tax.group.super_reduced', 'tax.group.zero'], array_values(array_filter($keys, static fn(string $key): bool => str_starts_with($key, 'tax.group.'))));
+        self::assertSame('A tax group "Standard rate": each EU country\'s own rate, 27 rates.', $changes[2]['summary']);
+        self::assertSame('Reduced rates cover different goods from one EU country to the next: check which group each product belongs to.', self::change($changes, 'tax.settings')['warning']);
+    }
+
+    public function testAUsShopChargesTheStateRatesWhereItHasNexusAndSaysLocalOnesAreMissing(): void
+    {
+        $this->business('US', 'USD', 'CA');
+        $this->request('PUT', '/setup/answers/selling', ['customers' => 'consumers', 'regions' => 'home'], nonce: true);
+        $this->request('PUT', '/setup/answers/tax', ['registered' => true, 'regions' => ['CA', 'TX']], nonce: true);
+
+        $changes = self::changes($this->data($this->request('POST', '/setup/plan', nonce: true)));
+        self::assertSame('A tax group "Standard rate": CA Sales tax 7.25%, TX Sales tax 6.25%.', self::change($changes, 'tax.group.standard')['summary']);
+        self::assertSame('Most states add local sales taxes to their own rate. A tax service charges them, or enter them in Tax by hand.', self::change($changes, 'tax.settings')['warning']);
+        self::assertSame('The shop sells from United States. Prices are in USD, written $10; weights in pounds and sizes in inches.', $changes[0]['summary']);
+    }
+
+    public function testASmallBusinessChargesNoVatAndItsInvoicesSayWhy(): void
+    {
+        $this->business('DE', 'EUR');
+        $this->request('PUT', '/setup/answers/tax', ['registered' => false], nonce: true);
+
+        $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
+        $changes = self::changes($plan);
+        self::assertSame(['business.location', 'business.seller', 'tax.settings', 'tax.note'], array_column($changes, 'key'));
+        self::assertSame('The shop charges no tax (MwSt.).', $changes[2]['summary']);
+        self::assertSame('Invoices say: "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet."', $changes[3]['summary']);
+
+        $this->request('POST', '/setup/apply', ['fingerprint' => $plan['fingerprint']], nonce: true);
+        $footer = $this->data($this->request('GET', '/invoice-settings'))['footer'] ?? null;
+        self::assertIsString($footer);
+        self::assertStringContainsString('§ 19 UStG', $footer);
+        self::assertSame('shop_address', $this->data($this->request('GET', '/tax/settings'))['basis']);
+    }
+
+    private function business(string $country, string $currency, ?string $state = null): void
+    {
+        $response = $this->request('PUT', '/setup/answers/business', [
+            'legal_name' => 'Acme', 'street' => 'Main Street 1', 'city' => 'Town', 'postcode' => '',
+            'country' => $country, 'state' => $state, 'email' => 'shop@example.com', 'currency' => $currency,
+        ], nonce: true);
+        self::assertSame(200, $response->get_status());
+    }
+
+    /**
+     * @param array<array-key, mixed> $rows
+     *
+     * @return list<array{id: int, name: string}>
+     */
+    private static function rows(array $rows): array
+    {
+        return array_values(array_map(static function (mixed $row): array {
+            self::assertIsArray($row);
+            self::assertIsInt($row['id'] ?? null);
+            self::assertIsString($row['name'] ?? null);
+
+            return ['id' => $row['id'], 'name' => $row['name']];
+        }, $rows));
+    }
+
     /**
      * @param array<array-key, mixed> $plan
      *
@@ -120,6 +222,21 @@ final class SetupPlanTest extends RestTestCase
 
             return ['key' => $change['key'], 'summary' => $change['summary'], 'warning' => $warning];
         }, $changes);
+    }
+
+    /**
+     * @param list<array{key: string, summary: string, warning: ?string}> $changes
+     *
+     * @return array{key: string, summary: string, warning: ?string}
+     */
+    private static function change(array $changes, string $key): array
+    {
+        foreach ($changes as $change) {
+            if ($change['key'] === $key) {
+                return $change;
+            }
+        }
+        self::fail("No change {$key} in the plan.");
     }
 
     /** @param array<array-key, mixed> $answers */

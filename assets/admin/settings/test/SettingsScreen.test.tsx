@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import { SettingsScreen } from '../SettingsScreen';
+import { lastWrite } from '../../shared/testing';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -358,7 +359,7 @@ describe( 'SettingsScreen', () => {
 		expect(
 			screen.getByText( 'XSendFilePath /srv/downloads' )
 		).toBeVisible();
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+		expect( lastWrite( mockedFetch ) ).toEqual( {
 			path: '/orillacart/v1/download-delivery',
 			method: 'PUT',
 			data: {
@@ -396,7 +397,7 @@ describe( 'SettingsScreen', () => {
 				selector: '.components-notice__content',
 			} )
 		).toBeVisible();
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+		expect( lastWrite( mockedFetch ) ).toEqual( {
 			path: '/orillacart/v1/search-filters',
 			method: 'POST',
 			data: {
@@ -431,7 +432,7 @@ describe( 'SettingsScreen', () => {
 				NOTICE
 			)
 		).toBeVisible();
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+		expect( lastWrite( mockedFetch ) ).toEqual( {
 			path: '/orillacart/v1/search-engine',
 			method: 'PUT',
 			data: {

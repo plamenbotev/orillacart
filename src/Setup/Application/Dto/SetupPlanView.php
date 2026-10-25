@@ -13,7 +13,7 @@ use OrillaCart\Shared\Domain\Text;
 final readonly class SetupPlanView
 {
     /**
-     * @param list<array{key: string, step: string, summary: Text, existing: ?Text, warning: ?Text}> $changes
+     * @param list<array{key: string, step: string, summary: Text, details: list<Text>, existing: ?Text, warning: ?Text}> $changes
      */
     public function __construct(
         public array $changes,
@@ -24,7 +24,7 @@ final readonly class SetupPlanView
     public static function of(array $changes): self
     {
         return new self(
-            array_map(static fn(PlannedChange $change): array => ['key' => $change->key, 'step' => $change->step, 'summary' => $change->summary, 'existing' => $change->existing, 'warning' => $change->warning], $changes),
+            array_map(static fn(PlannedChange $change): array => ['key' => $change->key, 'step' => $change->step, 'summary' => $change->summary, 'details' => $change->details, 'existing' => $change->existing, 'warning' => $change->warning], $changes),
             self::fingerprint($changes),
         );
     }
@@ -33,7 +33,7 @@ final readonly class SetupPlanView
     public static function fingerprint(array $changes): string
     {
         return hash('sha256', serialize(array_map(
-            static fn(PlannedChange $change): array => [$change->key, (string) $change->summary, (string) $change->existing, $change->data],
+            static fn(PlannedChange $change): array => [$change->key, (string) $change->summary, array_map(strval(...), $change->details), (string) $change->existing, $change->data],
             $changes,
         )));
     }

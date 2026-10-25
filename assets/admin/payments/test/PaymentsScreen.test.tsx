@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import { PaymentsScreen } from '../PaymentsScreen';
+import { lastWrite } from '../../shared/testing';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -116,7 +117,7 @@ describe( 'PaymentsScreen', () => {
 		expect(
 			await screen.findByText( 'Cash on delivery saved.', NOTICE )
 		).toBeVisible();
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toMatchObject( {
+		expect( lastWrite( mockedFetch ) ).toMatchObject( {
 			path: '/orillacart/v1/payment-methods/cash_on_delivery',
 			method: 'PUT',
 			data: {

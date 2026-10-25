@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import { EmailsScreen } from '../EmailsScreen';
+import { lastWrite } from '../../shared/testing';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -79,7 +80,7 @@ describe( 'EmailsScreen', () => {
 				selector: '.components-notice__content',
 			} )
 		).toBeVisible();
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+		expect( lastWrite( mockedFetch ) ).toEqual( {
 			path: '/orillacart/v1/email-settings',
 			method: 'PUT',
 			data: {
@@ -135,7 +136,7 @@ describe( 'EmailsScreen', () => {
 			'srcdoc',
 			'<p>On its way</p>'
 		);
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+		expect( lastWrite( mockedFetch ) ).toEqual( {
 			path: '/orillacart/v1/email-templates/order-shipped/preview',
 			method: 'POST',
 			data: { source: 'On its way', kind: null, order: null },

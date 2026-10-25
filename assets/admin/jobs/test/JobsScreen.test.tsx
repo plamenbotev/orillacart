@@ -5,6 +5,7 @@ import apiFetch from '@wordpress/api-fetch';
 
 import { JobsScreen, since } from '../JobsScreen';
 import type { FailedJobPage, Overview } from '../api';
+import { lastWrite } from '../../shared/testing';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -198,7 +199,7 @@ describe( 'JobsScreen', () => {
 		await user.click(
 			screen.getByRole( 'button', { name: 'Restart workers' } )
 		);
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+		expect( lastWrite( mockedFetch ) ).toEqual( {
 			path: '/orillacart/v1/jobs/workers/restart',
 			method: 'POST',
 		} );

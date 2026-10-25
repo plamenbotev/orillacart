@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import { ShippingScreen } from '../ShippingScreen';
+import { lastWrite } from '../../shared/testing';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -123,10 +124,10 @@ describe( 'ShippingScreen', () => {
 		expect(
 			await screen.findByText( 'Carrier saved.', NOTICE )
 		).toBeVisible();
-		const data = mockedFetch.mock.lastCall?.[ 0 ]?.data as {
+		const data = lastWrite( mockedFetch )?.data as {
 			rates: { id?: number; regions: string[]; weight: unknown }[];
 		};
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toMatchObject( {
+		expect( lastWrite( mockedFetch ) ).toMatchObject( {
 			path: '/orillacart/v1/carriers/1',
 			method: 'PUT',
 		} );
@@ -160,7 +161,7 @@ describe( 'ShippingScreen', () => {
 			screen.getByRole( 'button', { name: 'Save Courier' } )
 		);
 
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toMatchObject( {
+		expect( lastWrite( mockedFetch ) ).toMatchObject( {
 			path: '/orillacart/v1/carriers/1',
 			method: 'PUT',
 			data: {
@@ -192,7 +193,7 @@ describe( 'ShippingScreen', () => {
 			screen.getByRole( 'button', { name: 'Save Courier' } )
 		);
 
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toMatchObject( {
+		expect( lastWrite( mockedFetch ) ).toMatchObject( {
 			path: '/orillacart/v1/carriers/1',
 			method: 'PUT',
 			data: {
@@ -208,7 +209,7 @@ describe( 'ShippingScreen', () => {
 				],
 			},
 		} );
-		const data = mockedFetch.mock.lastCall?.[ 0 ]?.data as {
+		const data = lastWrite( mockedFetch )?.data as {
 			pickup_locations: { id: string }[];
 		};
 		expect( data.pickup_locations[ 0 ]?.id ).toMatch(
@@ -243,7 +244,7 @@ describe( 'ShippingScreen', () => {
 			screen.getByRole( 'button', { name: 'Save Courier' } )
 		);
 
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toMatchObject( {
+		expect( lastWrite( mockedFetch ) ).toMatchObject( {
 			path: '/orillacart/v1/carriers/1',
 			data: {
 				delivery_schedule: {
@@ -270,7 +271,7 @@ describe( 'ShippingScreen', () => {
 		await user.click( screen.getByRole( 'button', { name: 'Add class' } ) );
 
 		expect( await screen.findByDisplayValue( 'Fragile' ) ).toBeVisible();
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toEqual( {
+		expect( lastWrite( mockedFetch ) ).toEqual( {
 			path: '/orillacart/v1/shipping-classes',
 			method: 'POST',
 			data: { name: 'Fragile' },
@@ -302,7 +303,7 @@ describe( 'ShippingScreen', () => {
 		expect(
 			await screen.findByText( 'Carrier added.', NOTICE )
 		).toBeVisible();
-		expect( mockedFetch.mock.lastCall?.[ 0 ] ).toMatchObject( {
+		expect( lastWrite( mockedFetch ) ).toMatchObject( {
 			path: '/orillacart/v1/carriers',
 			method: 'POST',
 			data: {

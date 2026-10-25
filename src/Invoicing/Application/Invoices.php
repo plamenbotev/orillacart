@@ -223,6 +223,32 @@ final readonly class Invoices
         return InvoiceSettingsView::fromSettings($settings);
     }
 
+    /** Adds a line to the footer of invoices, such as why no VAT is charged, unless the footer says it already. */
+    public function addFooterNote(string $note): InvoiceSettingsView
+    {
+        $current = $this->settings();
+        if (str_contains($current->footer, trim($note))) {
+            return $current;
+        }
+
+        return $this->updateSettings(new UpdateInvoiceSettings(
+            $current->legalName,
+            $current->address,
+            $current->vatNumber,
+            $current->companyNumber,
+            $current->bankDetails,
+            trim($current->footer . "\n" . trim($note)),
+            $current->invoicePrefix,
+            $current->creditNotePrefix,
+            $current->yearly,
+            $current->attachToEmails,
+            $current->eInvoices,
+            $current->phone,
+            $current->email,
+            $current->peppolId,
+        ));
+    }
+
     /** The seller invoices name, the other invoice settings as they are. */
     public function changeSeller(Seller $seller): InvoiceSettingsView
     {
