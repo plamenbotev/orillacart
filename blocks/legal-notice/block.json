@@ -1,0 +1,20 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/legal-notice",
+	"title": "Legal notice",
+	"category": "widgets",
+	"icon": "id",
+	"description": "Who sells: the seller's name, address, contacts, registration and VAT number, as the invoices name them.",
+	"keywords": [
+		"impressum",
+		"imprint",
+		"seller"
+	],
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false
+	},
+	"editorScript": "orillacart-blocks",
+	"style": "orillacart-storefront"
+}

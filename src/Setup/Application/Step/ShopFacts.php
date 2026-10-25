@@ -37,6 +37,16 @@ final readonly class ShopFacts
         return [$invoices->legalName, str_replace("\n", ', ', $invoices->address)];
     }
 
+    public function email(SetupAnswers $answers): string
+    {
+        return $answers->of(BusinessStep::KEY, BusinessAnswers::class)->email ?? $this->invoices->settings()->email;
+    }
+
+    public function phone(SetupAnswers $answers): string
+    {
+        return $answers->of(BusinessStep::KEY, BusinessAnswers::class)->phone ?? $this->invoices->settings()->phone;
+    }
+
     public function selling(SetupAnswers $answers): SellingAnswers
     {
         return $answers->of(SellingStep::KEY, SellingAnswers::class) ?? new SellingAnswers(SellingAnswers::CONSUMERS, 'world');

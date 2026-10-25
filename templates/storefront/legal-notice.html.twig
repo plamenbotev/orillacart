@@ -1,0 +1,20 @@
+{#
+ # The seller's legal notice. name, address (lines), email, phone, vat_number, company_number: as invoices give
+ # them, empty for what the shop has not given.
+ #}
+<div class="orillacart-legal-notice">
+    {% if name %}
+        <p><strong>{{ name }}</strong>{% for line in address %}<br>{{ line }}{% endfor %}</p>
+        {% if email or phone %}
+            <p>
+                {%- if email %}{{ __('Email') }}: <a href="mailto:{{ email }}">{{ email }}</a>{% endif -%}
+                {%- if email and phone %}<br>{% endif -%}
+                {%- if phone %}{{ __('Phone') }}: {{ phone }}{% endif -%}
+            </p>
+        {% endif %}
+        {% if company_number %}<p>{{ __('Company registration') }}: {{ company_number }}</p>{% endif %}
+        {% if vat_number %}<p>{{ __('VAT number') }}: {{ vat_number }}</p>{% endif %}
+    {% else %}
+        <p>{{ __('The seller has not given its details yet.') }}</p>
+    {% endif %}
+</div>

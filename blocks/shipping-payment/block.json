@@ -1,0 +1,19 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/shipping-payment",
+	"title": "Shipping and payment",
+	"category": "widgets",
+	"icon": "car",
+	"description": "Where the shop ships and what it costs, and the ways to pay, as the shop has them now.",
+	"keywords": [
+		"delivery",
+		"shipping costs"
+	],
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false
+	},
+	"editorScript": "orillacart-blocks",
+	"style": "orillacart-storefront"
+}

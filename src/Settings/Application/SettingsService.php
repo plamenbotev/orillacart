@@ -142,4 +142,36 @@ final readonly class SettingsService
             $current->minimumOrder,
         ));
     }
+
+    /**
+     * The rules for selling to consumers: days to return, and showing a discount's lowest price of the last 30
+     * days; the other settings as they are.
+     *
+     * @throws RuleViolation
+     */
+    public function consumerRules(?int $returnDays, bool $showLowestPrice): SettingsView
+    {
+        $current = $this->current();
+
+        return $this->update(new UpdateSettings(
+            $current->currency,
+            $current->fewerDecimals,
+            $current->weightUnit,
+            $current->dimensionUnit,
+            $current->shopCountry,
+            $current->shopState,
+            $current->shopPostcode,
+            $current->currencySign,
+            $current->currencyPosition,
+            $current->catalogOnly,
+            $current->hidePrices,
+            $current->sellTo,
+            $showLowestPrice,
+            $current->removeDataOnUninstall,
+            $current->lowStockThreshold,
+            $current->unpaidHoldDays,
+            $returnDays,
+            $current->minimumOrder,
+        ));
+    }
 }

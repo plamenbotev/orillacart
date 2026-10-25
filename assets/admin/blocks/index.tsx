@@ -61,6 +61,14 @@ const notes: Record< string, string > = {
 		'Shoppers choose the currency they see prices and pay in here, among those the shop offers (Settings → Currencies). It shows nothing while the shop offers only its own.',
 		'orillacart'
 	),
+	'orillacart/legal-notice': __(
+		'Shows who sells: the name, address, contacts, registration and VAT number given in Settings → Invoices.',
+		'orillacart'
+	),
+	'orillacart/shipping-payment': __(
+		'Shows where the shop ships and what it costs, and the ways to pay, as the shop has them now.',
+		'orillacart'
+	),
 	'orillacart/product-filters': __(
 		'Shoppers narrow the products by brand, the shop’s filters, price and stock here, with how many products each choice leaves. Place it beside a Products block whose own filters are off; it counts within that block’s category, featured or sale products.',
 		'orillacart'

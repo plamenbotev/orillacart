@@ -1,0 +1,47 @@
+{#
+ # Shipping and payment as the shop has them. carriers: [{name, by_courier, rates: [{name, price, per_item, to
+ # (country names, empty for everywhere), except, weight, subtotal ({min, max} or null)}], pickup: [{name,
+ # address, hours, fee}]}]; payments: [{name, fee, fee_percent, to}]; currency; weight_unit.
+ #}
+<div class="orillacart-shipping-payment">
+    <h2>{{ __('Shipping') }}</h2>
+    {% for carrier in carriers %}
+        <h3>{{ carrier.name }}</h3>
+        {% if carrier.by_courier %}
+            <p>{{ __('The courier\'s price for the parcel shows at checkout.') }}</p>
+        {% endif %}
+        {% if carrier.rates %}
+            <ul>
+                {% for rate in carrier.rates %}
+                    <li>
+                        {%- if rate.to %}{{ rate.to|join(', ') }}{% elseif rate.except %}{{ __('Everywhere else') }}{% else %}{{ __('Everywhere') }}{% endif %}:
+                        {{ rate.price > 0 ? rate.price|money(currency) : __('free') }}{{ rate.per_item ? ' ' ~ __('per item') }}
+                        {%- if rate.subtotal and rate.subtotal.min %}, {{ __('for orders from %s')|format(rate.subtotal.min|money(currency)) }}{% endif %}
+                        {%- if rate.subtotal and rate.subtotal.max and not rate.subtotal.min %}, {{ __('for orders below %s')|format(rate.subtotal.max|money(currency)) }}{% endif %}
+                        {%- if rate.weight %}, {{ rate.weight.min ? __('%1$s to %2$s')|format(rate.weight.min, rate.weight.max ?? '…') : __('up to %s')|format(rate.weight.max) }} {{ weight_unit }}{% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        {% for place in carrier.pickup %}
+            <p><strong>{{ place.name }}</strong>, {{ place.address }}{% if place.hours %} ({{ place.hours }}){% endif %}{% if place.fee > 0 %}: {{ place.fee|money(currency) }}{% endif %}</p>
+        {% endfor %}
+    {% else %}
+        <p>{{ __('The shop does not ship yet.') }}</p>
+    {% endfor %}
+    <h2>{{ __('Payment') }}</h2>
+    {% if payments %}
+        <ul>
+            {% for payment in payments %}
+                <li>
+                    {{- payment.name -}}
+                    {%- if payment.to %} ({{ payment.to|join(', ') }}){% endif -%}
+                    {%- if payment.fee > 0 %}, {{ __('fee %s')|format(payment.fee|money(currency)) }}{% endif -%}
+                    {%- if payment.fee_percent > 0 %}, {{ __('fee %s%%')|format(payment.fee_percent) }}{% endif -%}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>{{ __('The shop takes no payments yet.') }}</p>
+    {% endif %}
+</div>

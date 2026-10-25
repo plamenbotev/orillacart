@@ -48,6 +48,22 @@ final readonly class OptionLegalSettingsRepository implements LegalSettingsRepos
         return get_post_type($id) === 'page' && !\in_array(get_post_status($id), [false, 'trash'], true);
     }
 
+    public function makePage(string $title, string $content, bool $publish): int
+    {
+        $id = wp_insert_post([
+            'post_type' => 'page',
+            'post_status' => $publish ? 'publish' : 'draft',
+            'post_title' => $title,
+            'post_content' => $content,
+            'comment_status' => 'closed',
+        ], true);
+        if ($id instanceof \WP_Error) {
+            throw new \RuntimeException('The page could not be made: ' . $id->get_error_message());
+        }
+
+        return $id;
+    }
+
     public function activate(): void {}
 
     public function upgrade(?string $fromVersion): void {}

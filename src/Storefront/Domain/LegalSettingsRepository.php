@@ -12,4 +12,11 @@ interface LegalSettingsRepository
 
     /** Whether the id is a page the shop can link, published or not yet. */
     public function isPage(int $id): bool;
+
+    /**
+     * Makes a page of the site, a draft for the owner to check or published.
+     *
+     * @return int its id
+     */
+    public function makePage(string $title, string $content, bool $publish): int;
 }

@@ -8,7 +8,8 @@ declare(strict_types=1);
  *
  * - the messages of rule violations, not-founds and HTTP errors (new SomeRuleViolation('…'), parent::__construct('…'));
  * - Text: new Text('…'), Text::of('…'), and the literals a match or a ternary in them chooses from;
- * - what goes through Translations::text('…'), and the refuse('…') helpers that make violations;
+ * - what goes through Translations::text('…'), the refuse('…') helpers that make violations, and $t('…')
+ *   closures that translate;
  * - the validation messages of the #[Assert\…] attributes on DTOs: those given, and Symfony's defaults.
  *
  * Warns on stderr of a message with several placeholders that are not numbered (%1$s), which translators cannot
@@ -64,8 +65,8 @@ $collector = new class extends NodeVisitorAbstract {
         if ($node instanceof Node\Expr\MethodCall && $node->name instanceof Node\Identifier && $node->name->toString() === 'text') {
             $this->literals(self::argument($node->args, 0, 'text'), $node);
         }
-        // $refuse('…'): a closure that makes a violation from the words.
-        if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Expr\Variable && \in_array($node->name->name, ['refuse', 'refused'], true)) {
+        // $refuse('…'): a closure that makes a violation from the words; $t('…'), one that translates them.
+        if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Expr\Variable && \in_array($node->name->name, ['refuse', 'refused', 't'], true)) {
             $this->literals(self::argument($node->args, 0, 'message'), $node);
         }
         if ($node instanceof Node\Attribute) {

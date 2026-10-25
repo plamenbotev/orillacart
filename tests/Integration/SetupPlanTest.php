@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Integration;
 use OrillaCart\Invoicing\Infrastructure\WordPress\OptionInvoiceSettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Setup\Infrastructure\WordPress\OptionSetupAnswers;
+use OrillaCart\Storefront\Infrastructure\WordPress\OptionLegalSettingsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
 
 /**
@@ -14,7 +15,7 @@ use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
  */
 final class SetupPlanTest extends RestTestCase
 {
-    private const array OPTIONS = [OptionSettingsRepository::OPTION, OptionInvoiceSettingsRepository::OPTION, OptionTaxSettingsRepository::OPTION, OptionSetupAnswers::OPTION, OptionSetupAnswers::BEFORE_OPTION];
+    private const array OPTIONS = [OptionSettingsRepository::OPTION, OptionInvoiceSettingsRepository::OPTION, OptionTaxSettingsRepository::OPTION, OptionLegalSettingsRepository::OPTION, OptionSetupAnswers::OPTION, OptionSetupAnswers::BEFORE_OPTION];
 
     /** @var array<string, mixed> */
     private array $kept = [];
@@ -25,6 +26,8 @@ final class SetupPlanTest extends RestTestCase
     private array $groups = [];
     /** @var list<int> the carriers there were before the test */
     private array $carriers = [];
+    /** @var list<int> the pages there were before the test */
+    private array $pages = [];
     /** @var list<array<array-key, mixed>> the payment methods as they were */
     private array $methods = [];
 
@@ -54,6 +57,7 @@ final class SetupPlanTest extends RestTestCase
         $this->actAs('administrator');
         $this->groups = array_column(self::rows($this->data($this->request('GET', '/tax/groups'))), 'id');
         $this->carriers = array_column(self::rows($this->data($this->request('GET', '/carriers'))), 'id');
+        $this->pages = self::pageIds();
         $this->methods = array_values(array_filter($this->data($this->request('GET', '/payment-methods')), \is_array(...)));
     }
 
@@ -65,6 +69,9 @@ final class SetupPlanTest extends RestTestCase
         }
         foreach ($this->kept as $option => $value) {
             $value === false ? delete_option($option) : update_option($option, $value);
+        }
+        foreach (array_diff(self::pageIds(), $this->pages) as $page) {
+            wp_delete_post($page, true);
         }
         foreach ($this->methods as $method) {
             self::assertIsString($method['gateway'] ?? null);
@@ -288,6 +295,40 @@ final class SetupPlanTest extends RestTestCase
         }
 
         self::assertSame([false, 'PayPal refused the credentials (401); check the client ID and secret.'], [$tried['works'], $tried['problem']]);
+    }
+
+    public function testAGermanShopGetsItsLegalPagesAndCheckoutAsksForTheTerms(): void
+    {
+        $this->business('DE', 'EUR');
+        $this->request('PUT', '/setup/answers/legal', [], nonce: true);
+
+        $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
+        $changes = self::changes($plan);
+        self::assertSame('A draft page "Terms of sale" for you to check and publish.', self::change($changes, 'legal.page.terms')['summary']);
+        self::assertSame('A page "Impressum", kept up to date from the shop\'s settings.', self::change($changes, 'legal.page.legal_notice')['summary']);
+        self::assertSame('Checkout asks customers to accept the terms of sale, and its button says "Buy now".', self::change($changes, 'legal.checkout')['summary']);
+
+        $result = $this->data($this->request('POST', '/setup/apply', ['fingerprint' => $plan['fingerprint']], nonce: true));
+        self::assertNull($result['refused']);
+        $legal = $this->data($this->request('GET', '/legal-settings'));
+        self::assertSame([true, 'buy_now'], [$legal['accept_terms'], $legal['order_button']]);
+        self::assertIsInt($legal['terms']);
+        self::assertIsInt($legal['withdrawal']);
+        self::assertSame('draft', get_post_status($legal['terms']), 'for the owner to check');
+        self::assertStringContainsString('You have the right to withdraw from this contract within 14 days', (string) get_post_field('post_content', $legal['withdrawal']));
+        self::assertStringContainsString('Acme', (string) get_post_field('post_content', $legal['withdrawal']), 'the seller to write to');
+        self::assertIsInt($legal['legal_notice']);
+        self::assertSame('publish', get_post_status($legal['legal_notice']));
+        self::assertStringContainsString('<strong>Acme</strong>', do_blocks((string) get_post_field('post_content', $legal['legal_notice'])), 'the seller as invoices name them');
+        $settings = $this->data($this->request('GET', '/settings'));
+        self::assertSame([14, true], [$settings['return_days'], $settings['show_lowest_price']]);
+        self::assertSame([], array_values(array_filter(array_column(self::changes($this->data($this->request('POST', '/setup/plan', nonce: true))), 'key'), static fn(string $key): bool => str_starts_with($key, 'legal.'))), 'set up');
+    }
+
+    /** @return list<int> */
+    private static function pageIds(): array
+    {
+        return array_values(array_map(intval(...), get_posts(['post_type' => 'page', 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids'])));
     }
 
     private function business(string $country, string $currency, ?string $state = null): void

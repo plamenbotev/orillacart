@@ -44,4 +44,32 @@ final readonly class LegalSettingsService
 
         return LegalSettingsView::fromSettings($settings);
     }
+
+    /**
+     * Makes the page of one of the legal parts (terms, withdrawal, delivery, legal_notice) and links it there.
+     */
+    public function makePage(string $part, string $title, string $content, bool $publish): LegalSettingsView
+    {
+        $id = $this->settings->makePage($title, $content, $publish);
+        $now = $this->settings->load();
+        $page = static fn(string $which, ?int $current): ?int => $which === $part ? $id : $current;
+        $settings = new LegalSettings($page('terms', $now->terms), $page('withdrawal', $now->withdrawal), $page('delivery', $now->delivery), $page('legal_notice', $now->legalNotice), $now->acceptTerms, $now->orderButton);
+        $this->settings->save($settings);
+
+        return LegalSettingsView::fromSettings($settings);
+    }
+
+    /**
+     * Whether checkout asks to accept the terms, and what its button says; the pages as they are.
+     *
+     * @throws StorefrontRuleViolation for accepting terms without their page
+     */
+    public function checkout(bool $acceptTerms, OrderButton $button): LegalSettingsView
+    {
+        $now = $this->settings->load();
+        $settings = new LegalSettings($now->terms, $now->withdrawal, $now->delivery, $now->legalNotice, $acceptTerms, $button);
+        $this->settings->save($settings);
+
+        return LegalSettingsView::fromSettings($settings);
+    }
 }
