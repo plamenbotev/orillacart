@@ -261,6 +261,7 @@ Design 48. The setup asks about the business, plans the settings from a country 
 | ⬜ | 174 | P2 | Emails step: sender and a test email that says whether it went | |
 | ⬜ | 175 | P1 | Readiness check: stops and advice computed on the server, extensible by add-ons, kept on Status after setup; "Opening soon" for visitors until the shop opens, managers see the real shop | |
 | ⬜ | 176 | P2 | Tests: e2e setups for a German B2C shop, a UK shop and a US shop end with a test order that is taxed, shipped and paid as the plan said | |
+| ⬜ | 177 | P1 | The EU's withdrawal function (Art. 11a of the Consumer Rights Directive, from 2026-06-19; § 356a BGB): a "Withdraw from contract here" link on every page, no login; the customer gives their name, the order (number and email) and the email for the confirmation, chooses items for a partial withdrawal, then "Confirm withdrawal"; an acknowledgement on a durable medium with what was declared and when, at once; the shop sees it as a return of the items | |
 
 Later: MCP tools for an AI store manager (design 49): bundled with the plugin, working once a key is made, covering setup and all administration, on the same plan-and-apply service.
 

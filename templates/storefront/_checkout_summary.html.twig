@@ -158,4 +158,14 @@
 <input type="hidden" name="expected_total" value="{{ summary.total }}">
 <p class="orillacart-message" role="alert" data-orillacart-message></p>
 {{ slot('checkout_before_place_order') }}
-<button type="submit" class="wp-element-button orillacart-button orillacart-checkout__place">{{ __('Place order') }}</button>
+{% set button = legal.button ?? 'place_order' %}
+<button type="submit" class="wp-element-button orillacart-button orillacart-checkout__place">
+    {{- button == 'buy_now' ? __('Buy now') : (button == 'order_and_pay' ? __('Order with obligation to pay') : __('Place order')) -}}
+</button>
+{% if legal.withdrawal ?? null %}
+    {# translators: %s: a link to the shop's page on the right of withdrawal -#}
+    <p class="orillacart-checkout__withdrawal">{{ __('You may withdraw from the purchase: see the %s.')|format('<a href="' ~ legal.withdrawal|e('html_attr') ~ '" target="_blank">' ~ __('right of withdrawal')|e ~ '</a>')|raw }}</p>
+{% endif %}
+{% if legal.delivery ?? null %}
+    <p class="orillacart-checkout__delivery"><a href="{{ legal.delivery }}" target="_blank">{{ __('Shipping and payment') }}</a></p>
+{% endif %}

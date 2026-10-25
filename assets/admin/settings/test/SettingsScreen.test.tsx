@@ -115,6 +115,20 @@ function serve( save?: () => Promise< unknown > ) {
 		if ( path === '/orillacart/v1/shop-pages' ) {
 			return Promise.resolve( pages );
 		}
+		if ( path === '/orillacart/v1/legal-settings' ) {
+			return Promise.resolve( {
+				terms: null,
+				withdrawal: null,
+				delivery: null,
+				legal_notice: null,
+				accept_terms: false,
+				order_button: 'place_order',
+				order_buttons: [ 'place_order', 'buy_now', 'order_and_pay' ],
+				...( method === 'PUT'
+					? ( options as { data: object } ).data
+					: {} ),
+			} );
+		}
 		if ( path === '/orillacart/v1/invoice-settings' ) {
 			return Promise.resolve( {
 				legal_name: '',
@@ -297,13 +311,14 @@ describe( 'SettingsScreen', () => {
 
 		render( <SettingsScreen /> );
 
-		// Every card says so: the settings, the shop pages, the invoices, reviews, sharing, the downloads, filters and search.
+		// Every card says so: the settings, the shop pages, the legal pages, the invoices, reviews, sharing, the
+		// downloads, filters and search.
 		expect(
 			await screen.findAllByText(
 				'You are not allowed to do this.',
 				NOTICE
 			)
-		).toHaveLength( 8 );
+		).toHaveLength( 9 );
 	} );
 
 	it( 'saves the page each part of the shop is on', async () => {
@@ -332,6 +347,45 @@ describe( 'SettingsScreen', () => {
 			path: '/orillacart/v1/shop-pages',
 			method: 'PUT',
 			data: { shop: 9, cart: null, checkout: 10, account: null },
+		} );
+	} );
+
+	it( 'chooses the legal pages and what checkout asks', async () => {
+		serve();
+		const user = userEvent.setup();
+		render( <SettingsScreen /> );
+
+		await user.selectOptions(
+			await screen.findByRole( 'combobox', { name: 'Terms of sale' } ),
+			'10'
+		);
+		await user.click(
+			screen.getByRole( 'checkbox', {
+				name: 'Checkout asks customers to accept the terms of sale',
+			} )
+		);
+		await user.selectOptions(
+			screen.getByRole( 'combobox', { name: 'The order button says' } ),
+			'buy_now'
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save legal settings' } )
+		);
+
+		expect(
+			await screen.findByText( 'Legal settings saved.', NOTICE )
+		).toBeVisible();
+		expect( lastWrite( mockedFetch ) ).toEqual( {
+			path: '/orillacart/v1/legal-settings',
+			method: 'PUT',
+			data: {
+				terms: 10,
+				withdrawal: null,
+				delivery: null,
+				legal_notice: null,
+				accept_terms: true,
+				order_button: 'buy_now',
+			},
 		} );
 	} );
 

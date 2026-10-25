@@ -8,7 +8,9 @@
  # cart_reminders: whether the shop reminds customers who ask of a cart they leave at checkout; remind_ticked:
  # whether its box starts ticked (a customer who did not turn it off); newsletter: the words of the newsletter's
  # box, when the shop offers one and the customer is not subscribed;
- # links: the shop's pages.
+ # links: the shop's pages; legal: accept_terms, whether the customer must tick that they accept the terms of
+ # sale, the addresses of the terms, withdrawal and delivery pages (null for none published), and button, the
+ # words of the order button (place_order, buy_now, order_and_pay).
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-checkout">
@@ -109,6 +111,20 @@
                 {{ slot('checkout_after_details') }}
             </div>
 
+            {# Outside the summary, which a refresh draws again: the tick stays. #}
+            {% if legal.accept_terms ?? false %}
+                <p class="orillacart-field orillacart-field--check orillacart-checkout__terms">
+                    <input id="orillacart-terms" type="checkbox" name="accepts_terms" value="1" required>
+                    <label for="orillacart-terms">
+                        {%- if legal.terms -%}
+                            {# translators: %s: a link to the shop's terms of sale -#}
+                            {{ __('I accept the %s.')|format('<a href="' ~ legal.terms|e('html_attr') ~ '" target="_blank">' ~ __('terms of sale')|e ~ '</a>')|raw }}
+                        {%- else -%}
+                            {{ __('I accept the terms of sale.') }}
+                        {%- endif -%}
+                    </label>
+                </p>
+            {% endif %}
             {# What add-ons' address checks suggest, shown before the order is placed. #}
             <div class="orillacart-checkout__addresses-checked" data-orillacart-address-suggestions aria-live="polite" hidden></div>
             {# Says the new total when the summary changes, rather than reading the whole summary out again. #}

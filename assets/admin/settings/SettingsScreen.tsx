@@ -28,6 +28,7 @@ import { FiltersCard } from './FiltersCard';
 import { InvoicesCard } from './InvoicesCard';
 import { ReviewsCard } from './ReviewsCard';
 import { SearchEngineCard } from './SearchEngineCard';
+import { LegalCard } from './LegalCard';
 import { ShopPagesCard } from './ShopPagesCard';
 import { StorefrontCard } from './StorefrontCard';
 import {
@@ -483,6 +484,7 @@ export function SettingsScreen() {
 				<CurrenciesCard currency={ settings.currency } />
 			) }
 			<ShopPagesCard />
+			<LegalCard />
 			<InvoicesCard />
 			<ReviewsCard />
 			<StorefrontCard />

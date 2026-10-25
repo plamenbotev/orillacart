@@ -27,6 +27,7 @@ use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Shipping\Application\Dto\ShippingOptionView;
 use OrillaCart\Shipping\Application\ShipmentTracking;
+use OrillaCart\Storefront\Application\LegalSettingsService;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
 use OrillaCart\Storefront\Infrastructure\WordPress\AnalyticsEvents;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
@@ -65,6 +66,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         private AnalyticsEvents $analytics,
         private ExemptionCertificates $certificates,
         private GeographyService $geography,
+        private LegalSettingsService $legal,
     ) {}
 
     public static function name(): string
@@ -127,6 +129,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'login_url' => wp_login_url((string) get_permalink()),
             'links' => $links,
             'exemption_states' => $this->shopper->customerId() !== null && $this->certificates->accepts() ? $this->geography->states('US') : [],
+            'legal' => $this->legal(),
         ] + $this->addresses->all()) . ($summary !== null && $summary->lines !== [] ? $this->analytics->beginCheckout($summary) : '');
     }
 
@@ -134,6 +137,30 @@ final readonly class CheckoutBlock implements BlockDefinition
      * The order a link the shop made is for: only the customer was given it, by the checkout and the emails, so
      * it shows the order to whoever has it, for ReceiptLinks::VALID_DAYS. An older one offers a new one, by email.
      */
+    /**
+     * What checkout says of the law: the box accepting the terms, the pages it links (published ones only), the
+     * order button's words.
+     *
+     * @return array{accept_terms: bool, terms: ?string, withdrawal: ?string, delivery: ?string, button: string}
+     */
+    private function legal(): array
+    {
+        $legal = $this->legal->current();
+        $url = static function (?int $id): ?string {
+            $link = $id !== null && get_post_status($id) === 'publish' ? get_permalink($id) : false;
+
+            return \is_string($link) && $link !== '' ? $link : null;
+        };
+
+        return [
+            'accept_terms' => $legal->acceptTerms,
+            'terms' => $url($legal->terms),
+            'withdrawal' => $url($legal->withdrawal),
+            'delivery' => $url($legal->delivery),
+            'button' => $legal->orderButton,
+        ];
+    }
+
     private function receipt(string $receipt): string
     {
         $links = $this->links->pages();

@@ -60,5 +60,7 @@ final readonly class PlaceOrder
         public ?string $deliverySlot = null,
         /** The customer ticked the box to get the shop's newsletter. */
         public bool $newsletter = false,
+        /** The customer ticked the box accepting the terms of sale, where checkout asks for it. */
+        public bool $acceptsTerms = false,
     ) {}
 }

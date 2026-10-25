@@ -61,6 +61,7 @@ use OrillaCart\Shipping\Application\Dto\DeliveryDayView;
 use OrillaCart\Shipping\Application\Dto\DeliverySlotView;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
+use OrillaCart\Storefront\Application\LegalSettingsService;
 use OrillaCart\Tax\Application\Dto\ReverseCharge;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Application\VatNumbers;
@@ -97,6 +98,7 @@ final readonly class CheckoutService
         private GiftCardPayments $giftCards,
         private Currencies $currencies,
         private ShownPrices $shownPrices,
+        private LegalSettingsService $legal,
     ) {}
 
     /**
@@ -413,6 +415,10 @@ final readonly class CheckoutService
         if ($this->settings->current()->catalogOnly) {
             throw new CheckoutRuleViolation('The shop does not take orders online.', 'orillacart_catalog_only');
         }
+        $acceptsTerms = $this->legal->asksToAcceptTerms();
+        if ($acceptsTerms && !$command->acceptsTerms) {
+            throw new CheckoutRuleViolation('Accept the terms of sale to order.', 'orillacart_terms_not_accepted');
+        }
         $failed = $this->failures->mark();
         $contents = $this->contents($owner);
         $billingAddress = $this->addresses->require($command->billing, 'billing');
@@ -517,6 +523,9 @@ final readonly class CheckoutService
         )), $gateway === null)));
         foreach ([...$this->failures->since($failed), ...$this->addressChecks->kept($billingAddress, $priced['needs_shipping'] && $command->shippingAddress !== null ? $shippingAddress : null)] as $failure) {
             $this->orders->note($order->number, $failure, false);
+        }
+        if ($acceptsTerms) {
+            $this->orders->note($order->number, 'The customer accepted the terms of sale.', false);
         }
         $receiptUrl = $this->links->receiptUrl($order->number);
 

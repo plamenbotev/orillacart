@@ -365,6 +365,7 @@ The change log, newest first: ?area=payment-methods&user_id=1&page=2.
   - `delivery_date` (string|null): a date, Y-m-d
   - `delivery_slot` (string|null): at most 40 characters
   - `newsletter` (bool): default false
+  - `accepts_terms` (bool): default false
 
 ### `POST /checkout/addresses`
 
@@ -946,6 +947,25 @@ The newest import, or null: the screen shows what came of it.
 ### `POST /jobs/workers/restart`
 
 - Who: shop managers; needs a nonce (not with an API key)
+
+## /legal-settings
+
+### `GET /legal-settings`
+
+The shop's legal pages, and whether checkout asks to accept the terms and what its order button says.
+
+- Who: shop managers
+
+### `PUT /legal-settings`
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `terms` (int|null): more than 0
+  - `withdrawal` (int|null): more than 0
+  - `delivery` (int|null): more than 0
+  - `legal_notice` (int|null): more than 0
+  - `accept_terms` (bool): default false
+  - `order_button` (string): one of place_order, buy_now, order_and_pay; default 'place_order'
 
 ## /newsletter-settings
 

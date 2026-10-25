@@ -31,6 +31,7 @@ use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveRange;
 use OrillaCart\Shipping\Application\Dto\SaveShippingClass;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
+use OrillaCart\Storefront\Application\Dto\UpdateLegalSettings;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tax\Domain\TaxBasis;
@@ -96,6 +97,22 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame(['Cash on delivery', 'Have the cash ready.', 'Courier – Bulgaria', 'ada@example.com'], [$order->paymentName, $order->paymentNote, $order->shipping, $order->email]);
         self::assertSame(['Lamp', 2, '33.33', '66.66'], [$order->lines[0]->name, $order->lines[0]->quantity, $order->lines[0]->unitPrice, $order->lines[0]->total]);
         self::assertSame('Sofia', $order->shippingAddress?->city);
+    }
+
+    public function testWhereCheckoutAsksToAcceptTheTermsAnOrderWithoutIsRefusedAndOneWithIsNoted(): void
+    {
+        $this->shop->legal->update(new UpdateLegalSettings(terms: 1, acceptTerms: true));
+
+        try {
+            $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('cash_on_delivery'));
+            self::fail('placed without the terms');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('orillacart_terms_not_accepted', $e->errorCode);
+        }
+        $order = $this->order('cash_on_delivery');
+        $placed = $this->shop->checkout->placeOrder($this->cart([10, 1]), new PlaceOrder($order->email, $order->billing, shippingOption: $order->shippingOption, payment: $order->payment, acceptsTerms: true));
+
+        self::assertContains('The customer accepted the terms of sale.', array_column($this->shop->orders->order($placed->number)->notes, 'text'));
     }
 
     public function testAnOrderThatWouldCostOtherThanTheCustomerSawIsNotPlaced(): void

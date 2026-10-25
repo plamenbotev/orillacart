@@ -114,6 +114,12 @@ plan as "keep" or "replace", with "keep" chosen. A second run of the setup only 
      - the withdrawal notice;
      - the place-order button says that ordering means paying ("Buy now", "Order with obligation to pay"), as
        the EU requires.
+   - **The withdrawal function** (PLAN 177): since 2026-06-19 the EU requires a "Withdraw from contract here" link
+     that a consumer reaches from every page without logging in. They give their name, which order (its number
+     and email) and where the confirmation goes, choose the items for a partial withdrawal, and press "Confirm
+     withdrawal". An acknowledgement with what they declared, and the date and time, goes to them at once, by
+     email. The shop sees it as a return of those items (Art. 11a of the Consumer Rights Directive, added by
+     Directive (EU) 2023/2673; § 356a BGB in Germany).
    - **The EU defaults the setup turns on**:
      - 14 days to return;
      - the lowest price of the last 30 days shown on discounts;

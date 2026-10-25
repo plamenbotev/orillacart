@@ -148,6 +148,7 @@ use OrillaCart\Shipping\Domain\Event\OrderReadyForPickup;
 use OrillaCart\Shipping\Domain\Event\ShippingClassDeleted;
 use OrillaCart\Shipping\Infrastructure\Events\ConvertMeasures as ConvertRateMeasures;
 use OrillaCart\Shipping\Infrastructure\Events\KeepShippedOrders;
+use OrillaCart\Storefront\Application\LegalSettingsService;
 use OrillaCart\Tax\Application\ImportSchemes;
 use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Application\TaxExemptions;
@@ -220,6 +221,7 @@ use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryConsignmentRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
 use OrillaCart\Tests\Fixtures\Shipping\MemoryRateCache;
+use OrillaCart\Tests\Fixtures\Storefront\InMemoryLegalSettings;
 use OrillaCart\Tests\Fixtures\Tax\FakeVatRegistry;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryImportRegistrations;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
@@ -276,6 +278,8 @@ final class TestShop
     public readonly PaymentMethodService $paymentMethods;
     public readonly InMemoryPaymentRepository $paymentRecords;
     public readonly FakePayPalApi $payPalApi;
+    public readonly LegalSettingsService $legal;
+    public readonly InMemoryLegalSettings $legalRecords;
     public readonly PaymentOutcomes $outcomes;
     public readonly InMemoryPriceRuleRepository $priceRuleRecords;
     public readonly InMemoryCustomerGroupRepository $customerGroupRecords;
@@ -507,6 +511,7 @@ final class TestShop
             $this->giftCardPayments,
             $this->currencies,
             $this->shownPrices = new ShownPrices($taxes, $this->customers, $settings),
+            $this->legal = new LegalSettingsService($this->legalRecords = new InMemoryLegalSettings(pages: [1, 2, 3, 4])),
         );
         $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations());
