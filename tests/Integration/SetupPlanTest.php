@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Invoicing\Infrastructure\WordPress\OptionInvoiceSettingsRepository;
+use OrillaCart\Notifications\Infrastructure\WordPress\OptionEmailSettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Setup\Infrastructure\WordPress\OptionSetupAnswers;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionLegalSettingsRepository;
@@ -15,7 +16,7 @@ use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
  */
 final class SetupPlanTest extends RestTestCase
 {
-    private const array OPTIONS = [OptionSettingsRepository::OPTION, OptionInvoiceSettingsRepository::OPTION, OptionTaxSettingsRepository::OPTION, OptionLegalSettingsRepository::OPTION, OptionSetupAnswers::OPTION, OptionSetupAnswers::BEFORE_OPTION];
+    private const array OPTIONS = [OptionSettingsRepository::OPTION, OptionInvoiceSettingsRepository::OPTION, OptionTaxSettingsRepository::OPTION, OptionLegalSettingsRepository::OPTION, OptionEmailSettingsRepository::OPTION, OptionSetupAnswers::OPTION, OptionSetupAnswers::BEFORE_OPTION];
 
     /** @var array<string, mixed> */
     private array $kept = [];
@@ -323,6 +324,20 @@ final class SetupPlanTest extends RestTestCase
         $settings = $this->data($this->request('GET', '/settings'));
         self::assertSame([14, true], [$settings['return_days'], $settings['show_lowest_price']]);
         self::assertSame([], array_values(array_filter(array_column(self::changes($this->data($this->request('POST', '/setup/plan', nonce: true))), 'key'), static fn(string $key): bool => str_starts_with($key, 'legal.'))), 'set up');
+    }
+
+    public function testEmailsFromAnotherDomainThanTheSitesAreAWarning(): void
+    {
+        $this->request('PUT', '/setup/answers/emails', ['from_name' => 'Acme', 'from_address' => 'shop@example.com'], nonce: true);
+
+        $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
+        $sender = self::change(self::changes($plan), 'emails.sender');
+        self::assertSame('Emails come from "Acme" <shop@example.com>; new orders go to shop@example.com.', $sender['summary']);
+        self::assertStringStartsWith('Mail from shop@example.com may land in spam: the site is ', (string) $sender['warning']);
+
+        $this->request('POST', '/setup/apply', ['fingerprint' => $plan['fingerprint']], nonce: true);
+        $emails = $this->data($this->request('GET', '/email-settings'));
+        self::assertSame(['Acme', 'shop@example.com'], [$emails['from_name'], $emails['from_address']]);
     }
 
     /** @return list<int> */

@@ -54,4 +54,12 @@ final readonly class EmailSettingsService
             $settings->cartReminderCoupon,
         );
     }
+
+    /** Who emails come from, and where the shop's own go; the other email settings as they are. */
+    public function sender(?string $fromName, ?string $fromAddress, ?string $shopAddress): EmailSettingsView
+    {
+        $current = $this->current();
+
+        return $this->update(new UpdateEmailSettings($fromName, $fromAddress, $shopAddress, $current->disabled, $current->reminderDays, $current->cartReminderHours, $current->cartReminderCoupon));
+    }
 }
