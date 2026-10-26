@@ -32,6 +32,7 @@ final class RuleWords
             'Email' => 'an email',
             'Url' => 'an address (URL)',
             'Date' => 'a date, Y-m-d',
+            'DateTime' => self::dateTime($arg('format')),
             'Length' => self::range($arg('min'), $arg('max'), 'characters'),
             'Count' => self::range($arg('min'), $arg('max'), 'items'),
             'Range' => self::range($arg('min'), $arg('max'), ''),
@@ -94,5 +95,15 @@ final class RuleWords
             \is_scalar($min) => "at least {$min}{$unit}",
             default => '',
         };
+    }
+
+    /** A DateTime rule's format in words: ISO 8601 by name, with an example. */
+    private static function dateTime(mixed $format): string
+    {
+        $format = \is_string($format) ? $format : 'Y-m-d H:i:s';
+
+        return \in_array($format, [\DATE_ATOM, \DATE_RFC3339], true)
+            ? 'a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00'
+            : "a date and time, {$format}";
     }
 }

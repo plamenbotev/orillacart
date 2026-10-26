@@ -38,6 +38,27 @@ final readonly class AssistantTools
         return array_values($tools);
     }
 
+    /**
+     * Names two sources both give a tool: the first source's wins, so the second's is never offered.
+     *
+     * @return list<string>
+     */
+    public function duplicates(): array
+    {
+        $seen = [];
+        $twice = [];
+        foreach ($this->sources->all() as $source) {
+            foreach ($source->tools() as $tool) {
+                if (isset($seen[$tool->name])) {
+                    $twice[$tool->name] = true;
+                }
+                $seen[$tool->name] = true;
+            }
+        }
+
+        return array_keys($twice);
+    }
+
     /** The tool of that name the caller is offered, if there is one. */
     public function find(string $name, Caller $caller): ?ToolDefinition
     {

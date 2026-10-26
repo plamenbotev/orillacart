@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Assistant\Application;
 
+use OrillaCart\Assistant\Application\Dto\AssistantChoices;
 use OrillaCart\Assistant\Application\Dto\Caller;
 use OrillaCart\Assistant\Application\Dto\McpReply;
 use OrillaCart\Assistant\Application\Dto\ToolDefinition;
@@ -46,10 +47,68 @@ final readonly class McpServer
     /** The owner's yes, as the client's form asks for it. */
     private const string CONFIRM = 'confirm';
 
+    /** The shop at a glance, as a resource. */
+    private const array OVERVIEW = [
+        'uri' => 'orillacart://shop',
+        'name' => 'shop',
+        'title' => 'The shop at a glance',
+        'description' => 'The shop\'s name and address, country and currency, whether visitors can order, and what still stops it from selling.',
+        'mimeType' => 'application/json',
+    ];
+
+    /** Ways to start, for the owner to pick in their client. */
+    private const array PROMPTS = [
+        'set_up_shop' => [
+            'name' => 'set_up_shop',
+            'title' => 'Set up my shop',
+            'description' => 'Walks the owner through the setup: their business, where they sell, tax, shipping, payments, legal pages and emails; shows the plan and applies it when they agree.',
+            'text' => <<<'TEXT'
+                Help me set up my shop so that it is ready to sell and follows the rules where I sell.
+
+                1. Read the shop resource (or show_readiness) and show_setup_answers to see what is done.
+                2. Ask me about my business, one step at a time, in plain words: who and where I sell to, whether I am registered for VAT or sales tax, how I ship, how I take payment, and who sends the emails. show_country_profile tells you what my country asks.
+                3. Save each step's answers with its tool (setup_answer_business, setup_answer_selling, setup_answer_tax, and so on), correcting what a refusal names.
+                4. Call plan_setup and tell me, in plain words, what would be created, changed, kept or replaced. Point out anything marked as a warning.
+                5. Only when I say yes, call apply_setup with the plan's fingerprint. Then show_readiness, and tell me what still stops the shop or is advised.
+
+                Do not invent legal facts: the legal pages are drafts for me or a lawyer to check.
+                TEXT,
+        ],
+        'review_orders' => [
+            'name' => 'review_orders',
+            'title' => 'Review today\'s orders',
+            'description' => 'Goes through the day\'s orders and the ones that need attention, and says what to do about each; changes nothing unasked.',
+            'text' => <<<'TEXT'
+                Review my orders for today.
+
+                Use list_orders with placed_from set to the start of today in the shop's time zone, and again with attention: true for the orders that need me. For each order that needs something (unpaid, on hold, backordered, a failed payment, not shipped when it should be), say what it needs and what you would do. Then give me the day's count and total.
+
+                Do not change anything until I say which actions to take.
+                TEXT,
+        ],
+        'running_low' => [
+            'name' => 'running_low',
+            'title' => 'What is running low',
+            'description' => 'Finds the products whose stock is at or below their stockroom\'s low-stock warning, and suggests what to reorder.',
+            'text' => <<<'TEXT'
+                Tell me what is running low.
+
+                Use list_stockrooms for each stockroom's low-stock warning, then page through show_stock_sheet for each stockroom. List the products and variations at or below the warning, and those owed on backorder, with how many are left. Suggest how many to reorder, from what sold lately (show_products_report) if you can.
+
+                Do not change any stock levels.
+                TEXT,
+        ],
+    ];
+
+    /** The three tools a key that finds its tools on demand is offered. */
+    private const string FIND = 'find_tools';
+    private const string DESCRIBE = 'describe_tool';
+    private const string RUN = 'run_tool';
+
     /** The risks in words, for the question the owner is asked. */
     private const array RISK_WORDS = [
         'money' => 'Money moves.',
-        'deleting' => 'Something is deleted for good.',
+        'deleting' => 'Something is deleted.',
         'customers' => 'Customers hear of it.',
         'opening' => 'The shop opens or closes, or many settings change at once.',
     ];
@@ -101,8 +160,10 @@ final readonly class McpServer
             'ping' => [],
             'tools/list' => $this->listTools($caller, $modern),
             'tools/call' => $this->callTool($params, $caller, $modern, $meta),
-            'prompts/list' => self::list('prompts', [], $modern),
-            'resources/list' => self::list('resources', [], $modern),
+            'prompts/list' => self::list('prompts', array_map(static fn(array $prompt): array => array_diff_key($prompt, ['text' => true]), array_values(self::PROMPTS)), $modern),
+            'prompts/get' => $this->prompt($params),
+            'resources/list' => self::list('resources', [self::OVERVIEW], $modern),
+            'resources/read' => $this->resource($params),
             'resources/templates/list' => self::list('resourceTemplates', [], $modern),
             default => null,
         };
@@ -242,7 +303,37 @@ final readonly class McpServer
     /** @return array<string, mixed> */
     private static function capabilities(): array
     {
-        return ['tools' => ['listChanged' => false]];
+        return ['tools' => ['listChanged' => false], 'prompts' => ['listChanged' => false], 'resources' => ['listChanged' => false, 'subscribe' => false]];
+    }
+
+    /**
+     * @param array<array-key, mixed> $params
+     *
+     * @return array<string, mixed>|McpReply
+     */
+    private function prompt(array $params): array|McpReply
+    {
+        $prompt = self::PROMPTS[\is_string($params['name'] ?? null) ? $params['name'] : ''] ?? null;
+        if ($prompt === null) {
+            return self::error(200, null, self::INVALID_PARAMS, 'No such prompt; prompts/list names them.');
+        }
+
+        return ['description' => $prompt['description'], 'messages' => [['role' => 'user', 'content' => ['type' => 'text', 'text' => $prompt['text']]]]];
+    }
+
+    /**
+     * @param array<array-key, mixed> $params
+     *
+     * @return array<string, mixed>|McpReply
+     */
+    private function resource(array $params): array|McpReply
+    {
+        if (($params['uri'] ?? null) !== self::OVERVIEW['uri']) {
+            return self::error(200, null, self::INVALID_PARAMS, 'No such resource; resources/list names them.');
+        }
+        $text = json_encode($this->context->overview(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+        return ['contents' => [['uri' => self::OVERVIEW['uri'], 'mimeType' => 'application/json', 'text' => $text === false ? '{}' : $text]]];
     }
 
     /** @return array{name: string, title: string, version: string} */
@@ -254,7 +345,64 @@ final readonly class McpServer
     /** @return array<string, mixed> */
     private function listTools(Caller $caller, bool $modern): array
     {
-        return self::list('tools', array_map(static fn(ToolDefinition $tool): array => $tool->toMcp(), $this->tools->offered($caller)), $modern);
+        $tools = $caller->choices->list === AssistantChoices::FIND_ON_DEMAND ? self::finders() : $this->tools->offered($caller);
+
+        return self::list('tools', array_map(static fn(ToolDefinition $tool): array => $tool->toMcp(), $tools), $modern);
+    }
+
+    /**
+     * The tools of a key that finds the others on demand, for clients that take few tools.
+     *
+     * @return list<ToolDefinition>
+     */
+    private static function finders(): array
+    {
+        $name = ['type' => 'string', 'minLength' => 1, 'maxLength' => 128];
+
+        return [
+            new ToolDefinition(self::DESCRIBE, 'Describe tool', 'One of the shop\'s tools in full: what it does, what it risks, and its arguments as JSON Schema. Find it with find_tools; run it with run_tool.', ['type' => 'object', 'properties' => ['name' => $name], 'required' => ['name'], 'additionalProperties' => false], true, false, true, null, 'Assistant', 'manage_orillacart'),
+            new ToolDefinition(self::FIND, 'Find tools', 'The shop\'s tools whose name, title or description has the words (orders, refund, stock, tax, setup…), or all of an area; nothing changes. Each comes with its name, what it does and whether it only reads.', ['type' => 'object', 'properties' => ['words' => ['type' => 'string', 'maxLength' => 200], 'area' => ['type' => 'string', 'maxLength' => 100]], 'additionalProperties' => false], true, false, true, null, 'Assistant', 'manage_orillacart'),
+            new ToolDefinition(self::RUN, 'Run tool', 'Runs one of the shop\'s tools with its arguments, as describe_tool gives them. Some ask the owner first.', ['type' => 'object', 'properties' => ['name' => $name, 'arguments' => ['type' => 'object']], 'required' => ['name'], 'additionalProperties' => false], false, false, false, null, 'Assistant', 'manage_orillacart'),
+        ];
+    }
+
+    /**
+     * The finders' answers: tools found, one described.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    private function find(string $name, array $arguments, Caller $caller): ToolOutcome
+    {
+        $offered = $this->tools->offered($caller);
+        if ($name === self::DESCRIBE) {
+            foreach ($offered as $tool) {
+                if ($tool->name === ($arguments['name'] ?? null)) {
+                    return ToolOutcome::done($tool->toMcp() + ['area' => $tool->area, 'risk' => $tool->risk]);
+                }
+            }
+
+            return ToolOutcome::refused('No tool of that name; find_tools lists them.');
+        }
+        $words = \is_string($arguments['words'] ?? null) ? preg_split('/\W+/u', mb_strtolower($arguments['words']), -1, PREG_SPLIT_NO_EMPTY) : [];
+        $area = \is_string($arguments['area'] ?? null) ? mb_strtolower($arguments['area']) : null;
+        $scored = [];
+        foreach ($offered as $tool) {
+            if ($area !== null && mb_strtolower($tool->area) !== $area) {
+                continue;
+            }
+            $text = mb_strtolower($tool->name . ' ' . $tool->title . ' ' . $tool->description);
+            $score = 0;
+            foreach (\is_array($words) ? $words : [] as $word) {
+                $score += substr_count(mb_strtolower($tool->name), $word) * 3 + substr_count($text, $word);
+            }
+            if ($words === [] || $score > 0) {
+                $scored[] = [$score, $tool];
+            }
+        }
+        usort($scored, static fn(array $a, array $b): int => [$b[0], $a[1]->name] <=> [$a[0], $b[1]->name]);
+        $found = array_map(static fn(array $pair): array => ['name' => $pair[1]->name, 'description' => $pair[1]->description, 'area' => $pair[1]->area, 'read_only' => $pair[1]->readOnly, 'risk' => $pair[1]->risk], \array_slice($scored, 0, 40));
+
+        return ToolOutcome::done(['tools' => $found, 'areas' => array_values(array_unique(array_map(static fn(ToolDefinition $tool): string => $tool->area, $offered)))]);
     }
 
     /**
@@ -287,6 +435,19 @@ final readonly class McpServer
             return self::error(200, null, self::INVALID_PARAMS, 'The arguments must be an object.');
         }
         $arguments = array_filter($arguments, \is_string(...), ARRAY_FILTER_USE_KEY);
+        if ($caller->choices->list === AssistantChoices::FIND_ON_DEMAND) {
+            if ($name === self::FIND || $name === self::DESCRIBE) {
+                return self::toolResult($this->find($name, $arguments, $caller), $modern);
+            }
+            if ($name === self::RUN) {
+                $inner = $arguments['name'] ?? null;
+                if (!\is_string($inner) || \in_array($inner, [self::FIND, self::DESCRIBE, self::RUN], true)) {
+                    return self::error(200, null, self::INVALID_PARAMS, 'run_tool runs one of the shop\'s tools: name it.');
+                }
+
+                return $this->callTool(['name' => $inner, 'arguments' => $arguments['arguments'] ?? []] + array_intersect_key($params, ['inputResponses' => true, 'requestState' => true]), $caller, $modern, $meta);
+            }
+        }
         $tool = $this->tools->find($name, $caller);
         if ($tool === null) {
             return self::error(200, null, self::INVALID_PARAMS, "Unknown tool: {$name}");

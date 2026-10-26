@@ -326,6 +326,11 @@ final class InputSchemas
             case $rule instanceof Assert\Date:
                 $schema['format'] = 'date';
                 break;
+            case $rule instanceof Assert\DateTime:
+                if (\in_array($rule->format, [\DATE_ATOM, \DATE_RFC3339], true)) {
+                    $schema['format'] = 'date-time';
+                }
+                break;
             case $rule instanceof Assert\Choice:
                 $choices = \is_array($rule->choices) ? $rule->choices : (\is_callable($rule->callback) ? ($rule->callback)() : null);
                 if (\is_array($choices)) {

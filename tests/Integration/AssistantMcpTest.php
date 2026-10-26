@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Assistant\Application\AssistantTools;
 use OrillaCart\Assistant\Application\RouteTools;
 use OrillaCart\Assistant\Infrastructure\AddOnToolSource;
 use OrillaCart\Assistant\Infrastructure\WordPress\SignedRequestStates;
@@ -54,6 +55,10 @@ final class AssistantMcpTest extends RestTestCase
         $sorted = $names;
         sort($sorted);
         self::assertSame($sorted, $names, 'a fixed order, for clients to cache');
+
+        $tools = self::kernel()->container()->get(AssistantTools::class);
+        self::assertInstanceOf(AssistantTools::class, $tools);
+        self::assertSame([], $tools->duplicates(), 'no two sources give a tool the same name');
 
         $made = $this->mcp('tools/call', ['name' => 'create_tax_group', 'arguments' => ['name' => 'Books']]);
         self::assertFalse(self::at($made, 'result', 'isError'));
@@ -191,6 +196,65 @@ final class AssistantMcpTest extends RestTestCase
 
         self::assertCount(1, $logger->records, 'logged once, not on every list');
         self::assertStringContainsString('left out', $logger->records[0]['message']);
+    }
+
+    public function testWhatWordPressKeepsHasItsOwnTools(): void
+    {
+        $this->connect('read_write');
+        // A 1x1 PNG.
+        $png = base64_encode((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC', true));
+
+        $image = $this->mcp('tools/call', ['name' => 'upload_image', 'arguments' => ['file_name' => 'dot.png', 'file_base64' => $png, 'alt' => 'A dot']]);
+        self::assertFalse(self::at($image, 'result', 'isError'));
+        $imageId = self::at($image, 'result', 'structuredContent', 'id');
+        self::assertIsInt($imageId);
+        self::assertSame('A dot', get_post_meta($imageId, '_wp_attachment_image_alt', true));
+        $text = $this->mcp('tools/call', ['name' => 'upload_image', 'arguments' => ['file_name' => 'note.txt', 'file_base64' => base64_encode('hello')]]);
+        self::assertTrue(self::at($text, 'result', 'isError'), 'only pictures');
+
+        $made = $this->mcp('tools/call', ['name' => 'create_product', 'arguments' => ['name' => 'Desk lamp', 'categories' => ['Assistant lighting > Assistant desk lamps'], 'image_ids' => [$imageId]]]);
+        self::assertFalse(self::at($made, 'result', 'isError'));
+        $productId = self::at($made, 'result', 'structuredContent', 'id');
+        self::assertIsInt($productId);
+        self::assertSame('draft', get_post_status($productId));
+        self::assertSame($imageId, get_post_thumbnail_id($productId));
+        self::assertSame(['Assistant desk lamps'], wp_get_post_terms($productId, 'orillacart_category', ['fields' => 'names']));
+
+        $changed = $this->mcp('tools/call', ['name' => 'change_product_content', 'arguments' => ['id' => $productId, 'status' => 'publish', 'short_description' => 'Bright.']]);
+        self::assertSame('publish', self::at($changed, 'result', 'structuredContent', 'status'));
+        self::assertSame('Bright.', get_post_field('post_excerpt', $productId));
+        self::assertSame('Desk lamp', get_the_title($productId), 'what was left out stays');
+
+        $found = $this->mcp('tools/call', ['name' => 'find_products', 'arguments' => ['search' => 'Desk lamp']]);
+        self::assertContains($productId, array_column(self::arrayOf(self::at($found, 'result', 'structuredContent', 'products')), 'id'));
+
+        $category = $this->mcp('tools/call', ['name' => 'save_category', 'arguments' => ['name' => 'Floor lamps', 'order' => 3, 'layout' => 'list']]);
+        $categoryId = self::at($category, 'result', 'structuredContent', 'id');
+        self::assertIsInt($categoryId);
+        self::assertSame(3, self::at($category, 'result', 'structuredContent', 'order'));
+        $renamed = $this->mcp('tools/call', ['name' => 'save_category', 'arguments' => ['id' => $categoryId, 'name' => 'Standing lamps']]);
+        self::assertSame(['Standing lamps', 'list'], [self::at($renamed, 'result', 'structuredContent', 'name'), self::at($renamed, 'result', 'structuredContent', 'layout')]);
+
+        $page = wp_insert_post(['post_type' => 'page', 'post_title' => 'Terms', 'post_status' => 'draft', 'post_content' => 'Old.'], true);
+        self::assertIsInt($page);
+        $edited = $this->mcp('tools/call', ['name' => 'change_page', 'arguments' => ['id' => $page, 'content' => 'New terms.']]);
+        self::assertSame('New terms.', self::at($edited, 'result', 'structuredContent', 'content'));
+        self::assertTrue(self::at($this->mcp('tools/call', ['name' => 'change_page', 'arguments' => ['id' => $productId, 'content' => 'x']]), 'result', 'isError'), 'pages only');
+
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        self::assertSame('CALL /assistant/change_page', $wpdb->get_var("SELECT route FROM {$wpdb->prefix}orillacart_change_log ORDER BY id DESC LIMIT 1"));
+
+        wp_delete_post($page, true);
+        wp_delete_post($productId, true);
+        wp_delete_attachment($imageId, true);
+        wp_delete_term($categoryId, 'orillacart_category');
+        foreach (['Assistant desk lamps', 'Assistant lighting'] as $name) {
+            $term = get_term_by('name', $name, 'orillacart_category');
+            if ($term instanceof \WP_Term) {
+                wp_delete_term($term->term_id, 'orillacart_category');
+            }
+        }
     }
 
     public function testAReadOnlyKeyIsOfferedOnlyWhatReads(): void

@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace OrillaCart\Assistant\Infrastructure\WordPress;
 
 use OrillaCart\Assistant\Application\AssistantContext;
+use OrillaCart\Integrations\Application\ViewNormalizer;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Setup\Application\ShopReadiness;
+use OrillaCart\Storefront\Application\ShopOpening;
 
 /**
  * The shop as WordPress and its settings describe it, for the assistant's server.
@@ -14,6 +17,9 @@ final readonly class WordPressAssistantContext implements AssistantContext
 {
     public function __construct(
         private SettingsService $settings,
+        private ShopOpening $opening,
+        private ShopReadiness $readiness,
+        private ViewNormalizer $views,
     ) {}
 
     public function shopName(): string
@@ -26,6 +32,22 @@ final readonly class WordPressAssistantContext implements AssistantContext
     public function version(): string
     {
         return \defined('ORILLACART_VERSION') && \is_string(\constant('ORILLACART_VERSION')) ? \constant('ORILLACART_VERSION') : 'dev';
+    }
+
+    public function overview(): array
+    {
+        $settings = $this->settings->current();
+
+        return [
+            'name' => $this->shopName(),
+            'address' => home_url('/'),
+            'country' => $settings->shopCountry,
+            'currency' => $settings->currency,
+            'catalog_only' => $settings->catalogOnly,
+            'opening_soon' => $this->opening->opensSoon(),
+            'readiness' => $this->views->normalize($this->readiness->report()),
+            'admin' => admin_url('admin.php?page=orillacart'),
+        ];
     }
 
     public function instructions(): string

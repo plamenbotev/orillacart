@@ -82,8 +82,8 @@ The logged-in customer's orders, newest first. Whatever customer the query names
   - `page` (int): more than 0; default 1
   - `per_page` (int): 1 to 100; default 20
   - `attention` (bool): default false
-  - `placed_from` (string|null): date time
-  - `placed_before` (string|null): date time
+  - `placed_from` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
+  - `placed_before` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `payment` (string|null): matches `/^[a-z][a-z0-9_]{0,39}$/`
   - `min_total` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
   - `max_total` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
@@ -479,8 +479,8 @@ The shop adds a coupon code, or an automatic discount that needs no code, with i
   - `description` (string): at most 255 characters
   - `cap` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
   - `active` (bool): default true
-  - `starts_at` (string|null): date time
-  - `ends_at` (string|null): date time
+  - `starts_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
+  - `ends_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `min_subtotal` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
   - `max_subtotal` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
   - `min_quantity` (int): 0 or more; default 0
@@ -522,8 +522,8 @@ Changes a coupon's code, amount and rules; placed orders keep the code and amoun
   - `description` (string): at most 255 characters
   - `cap` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
   - `active` (bool): default true
-  - `starts_at` (string|null): date time
-  - `ends_at` (string|null): date time
+  - `starts_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
+  - `ends_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `min_subtotal` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
   - `max_subtotal` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
   - `min_quantity` (int): 0 or more; default 0
@@ -946,7 +946,7 @@ A new gift card; the answer holds its code, shown this once.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `amount` (string): required; matches `/^\d{1,11}(\.\d{1,4})?$/`
-  - `expires_at` (string|null): date time
+  - `expires_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `recipient_name` (string): at most 100 characters
   - `recipient_email` (string): an email; at most 254 characters
   - `message` (string): at most 500 characters
@@ -979,7 +979,7 @@ Sets whether a gift card can pay, and until when; its balance does not change.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `active` (bool): default true
-  - `expires_at` (string|null): date time
+  - `expires_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
 
 ### `POST /gift-cards/{id}/adjustments`
 
@@ -1187,8 +1187,8 @@ Lists a page of orders, newest first, found by number, customer, product and mor
   - `page` (int): more than 0; default 1
   - `per_page` (int): 1 to 100; default 20
   - `attention` (bool): default false
-  - `placed_from` (string|null): date time
-  - `placed_before` (string|null): date time
+  - `placed_from` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
+  - `placed_before` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `payment` (string|null): matches `/^[a-z][a-z0-9_]{0,39}$/`
   - `min_total` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
   - `max_total` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
@@ -1533,8 +1533,8 @@ The shop adds a price rule: its own prices for customer groups, by quantity or b
   - `product_ids` (list<int>): at most 1000 items
   - `category_ids` (list<int>): at most 1000 items
   - `brand_ids` (list<int>): at most 1000 items
-  - `starts_at` (string|null): date time
-  - `ends_at` (string|null): date time
+  - `starts_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
+  - `ends_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `with_sales` (bool): default false
   - `active` (bool): default true
   - `with_coupons` (bool): default true
@@ -1552,8 +1552,8 @@ Changes a price rule's prices, dates and who and what it is for. Placed orders k
   - `product_ids` (list<int>): at most 1000 items
   - `category_ids` (list<int>): at most 1000 items
   - `brand_ids` (list<int>): at most 1000 items
-  - `starts_at` (string|null): date time
-  - `ends_at` (string|null): date time
+  - `starts_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
+  - `ends_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `with_sales` (bool): default false
   - `active` (bool): default true
   - `with_coupons` (bool): default true
@@ -2251,8 +2251,8 @@ Every move of a stock level, newest first, with who made it and why, and the tot
   - `stockroom` (int|null): more than 0
   - `reason` (string|null): one of sale, release, return, count, import, bulk_edit
   - `order` (int|null): more than 0
-  - `from` (string|null): date time
-  - `before` (string|null): date time
+  - `from` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
+  - `before` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `page` (int): more than 0; default 1
   - `per_page` (int): 1 to 100; default 50
 

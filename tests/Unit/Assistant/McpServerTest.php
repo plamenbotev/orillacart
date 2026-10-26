@@ -110,6 +110,40 @@ final class McpServerTest extends TestCase
         self::assertCount(1, $this->calls);
     }
 
+    public function testAKeyThatFindsOnDemandIsOfferedThreeToolsThatReachTheRest(): void
+    {
+        $finder = new Caller(1, 7, false, new AssistantChoices(list: AssistantChoices::FIND_ON_DEMAND));
+
+        self::assertSame(['describe_tool', 'find_tools', 'run_tool'], self::names(self::at($this->modern('tools/list', caller: $finder)->body, 'result', 'tools')));
+
+        $found = $this->modern('tools/call', ['name' => 'find_tools', 'arguments' => ['words' => 'money']], ['mcp-name' => 'find_tools'], $finder);
+        self::assertSame('refund_thing', self::at($found->body, 'result', 'structuredContent', 'tools', 0, 'name'));
+
+        $described = $this->modern('tools/call', ['name' => 'describe_tool', 'arguments' => ['name' => 'show_thing']], ['mcp-name' => 'describe_tool'], $finder);
+        self::assertSame(['type' => 'object'], self::at($described->body, 'result', 'structuredContent', 'inputSchema'));
+
+        $run = $this->modern('tools/call', ['name' => 'run_tool', 'arguments' => ['name' => 'show_thing', 'arguments' => ['id' => 2]]], ['mcp-name' => 'run_tool'], $finder);
+        self::assertSame(['id' => 2, 'name' => 'Mug'], self::at($run->body, 'result', 'structuredContent'));
+
+        $risky = $this->modern('tools/call', ['name' => 'run_tool', 'arguments' => ['name' => 'refund_thing', 'arguments' => []]], ['mcp-name' => 'run_tool'], $finder);
+        self::assertTrue(self::at($risky->body, 'result', 'isError'), 'run_tool asks first as the tool itself would');
+        self::assertCount(1, $this->calls);
+    }
+
+    public function testPromptsAndTheShopsOverview(): void
+    {
+        $prompts = self::at($this->modern('prompts/list')->body, 'result', 'prompts');
+        self::assertSame(['set_up_shop', 'review_orders', 'running_low'], self::names($prompts));
+
+        $setup = $this->modern('prompts/get', ['name' => 'set_up_shop'], ['mcp-name' => 'set_up_shop']);
+        self::assertStringContainsString('apply_setup', self::textAt($setup->body, 'result', 'messages', 0, 'content', 'text'));
+        self::assertSame(-32602, self::at($this->modern('prompts/get', ['name' => 'nope'], ['mcp-name' => 'nope'])->body, 'error', 'code'));
+
+        self::assertSame('orillacart://shop', self::at($this->modern('resources/list')->body, 'result', 'resources', 0, 'uri'));
+        $read = $this->modern('resources/read', ['uri' => 'orillacart://shop'], ['mcp-name' => 'orillacart://shop']);
+        self::assertSame(['name' => 'Mugs & Co', 'currency' => 'EUR'], json_decode(self::textAt($read->body, 'result', 'contents', 0, 'text'), true));
+    }
+
     public function testTheKeysAreasLimitWhatItIsOffered(): void
     {
         $caller = new Caller(1, 7, false, new AssistantChoices(offAreas: ['Things']));
@@ -140,7 +174,8 @@ final class McpServerTest extends TestCase
 
         self::assertSame(200, $reply->status);
         self::assertSame('2025-06-18', self::at($reply->body, 'result', 'protocolVersion'));
-        self::assertSame(['tools' => ['listChanged' => false]], self::at($reply->body, 'result', 'capabilities'));
+        self::assertSame(['listChanged' => false], self::at($reply->body, 'result', 'capabilities', 'tools'));
+        self::assertArrayHasKey('prompts', self::arrayOf(self::at($reply->body, 'result', 'capabilities')));
         self::assertSame(['name' => 'orillacart', 'title' => 'Mugs & Co', 'version' => '9.9'], self::at($reply->body, 'result', 'serverInfo'));
         self::assertSame('Be careful.', self::at($reply->body, 'result', 'instructions'));
 
@@ -336,6 +371,11 @@ final class McpServerTest extends TestCase
             {
                 return 'Be careful.';
             }
+
+            public function overview(): array
+            {
+                return ['name' => 'Mugs & Co', 'currency' => 'EUR'];
+            }
         };
 
         return new McpServer(new AssistantTools($sources, $authorization), $context, $this->states)->handle($message, $headers, $caller ?? new Caller(1, 7, false));
@@ -384,6 +424,16 @@ final class McpServerTest extends TestCase
     private static function arrayAt(mixed $data, int|string ...$path): array
     {
         $value = self::at($data, ...$path);
+        self::assertIsArray($value);
+
+        return $value;
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    private static function arrayOf(mixed $value): array
+    {
         self::assertIsArray($value);
 
         return $value;

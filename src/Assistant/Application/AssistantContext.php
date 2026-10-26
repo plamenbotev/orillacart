@@ -17,4 +17,12 @@ interface AssistantContext
 
     /** Guidance for the model: whose shop this is, its currency, how amounts and changes work. */
     public function instructions(): string;
+
+    /**
+     * The shop at a glance: its name and address, country and currency, whether visitors can order, and what still
+     * stops it from selling.
+     *
+     * @return array<string, mixed>
+     */
+    public function overview(): array;
 }

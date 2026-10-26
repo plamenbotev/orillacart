@@ -1,6 +1,6 @@
 # 49 · An AI store manager over MCP
 
-Status: designed 2026-10-26, PLAN items 178–190; 178–180 and 182–185 built. The user asked for an LLM store manager that works the moment
+Status: designed 2026-10-26, PLAN items 178–190; 178–187 built. The user asked for an LLM store manager that works the moment
 the plugin is installed. It is bundled, not a separate plugin, and it covers setting up the shop and all
 administration. On 2026-10-26 they added that the tooling must be extendable.
 
@@ -112,9 +112,10 @@ many for some others. Each key chooses:
 
 Each key can also leave out whole areas (reports only, or orders and customers only).
 
-**Resources and prompts.** A resource for the shop's overview: name, country, currency, how it taxes, whether it
-is open, and what readiness still stops. Prompts: "Set up my shop", "Review today's orders", "What is running
-low".
+**Resources and prompts.** A resource, `orillacart://shop`, gives the shop at a glance: name and address,
+country, currency, whether visitors can order, and what readiness still stops. Three prompts start the common
+jobs and name the tools to use: "Set up my shop" (asks step by step, shows the plan, applies only on a yes),
+"Review today's orders" and "What is running low"; neither of the last two changes anything unasked.
 
 ## Extending it
 
