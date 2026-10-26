@@ -15,6 +15,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Changes a product's variation: its options, price, sale, stock and measures. */
 #[Route('/products/{id}/variations/{variation}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'variation' => '\d+'])]
 final readonly class UpdateVariationAction implements RequestHandlerInterface
 {

@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * A page of the stock sheet, by stockroom: products and their variations, or attribute options, with their levels to
+ * count and correct; nothing changes.
+ */
 #[Route('/stock-sheet', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowStockSheetAction implements RequestHandlerInterface
 {

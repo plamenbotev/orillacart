@@ -15,6 +15,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Changes a stockroom's name, delivery times and low-stock warning, or turns it on or off. Turned off, its stock stops
+ * counting; turned on, it counts again and customers who asked to hear of an item back in stock are emailed.
+ */
 #[Route('/stockrooms/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class UpdateStockroomAction implements RequestHandlerInterface
 {

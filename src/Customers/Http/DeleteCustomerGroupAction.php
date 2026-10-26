@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Deletes a customer group: its customers leave it, and price rules for it no longer apply to anyone. */
 #[Route('/customer-groups/{id}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class DeleteCustomerGroupAction implements RequestHandlerInterface
 {

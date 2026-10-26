@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Removes a rate from a tax group. */
 #[Route('/tax/groups/{id}/rates/{rate}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'rate' => '\d+'])]
 final readonly class DeleteTaxRateAction implements RequestHandlerInterface
 {

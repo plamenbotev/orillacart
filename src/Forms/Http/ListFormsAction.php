@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** The shop's forms of extra fields for product pages and checkout, in their order; nothing changes. */
 #[Route('/forms', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListFormsAction implements RequestHandlerInterface
 {

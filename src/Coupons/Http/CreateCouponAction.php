@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** The shop adds a coupon code, or an automatic discount that needs no code, with its amount and rules. */
 #[Route('/coupons', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateCouponAction implements RequestHandlerInterface
 {

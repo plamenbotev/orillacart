@@ -5,6 +5,13 @@ declare(strict_types=1);
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Nyholm\Psr7\Factory\Psr17Factory;
+use OrillaCart\Assistant\Application\AssistantContext;
+use OrillaCart\Assistant\Application\AssistantRequests;
+use OrillaCart\Assistant\Application\RouteTools;
+use OrillaCart\Assistant\Application\ToolSources;
+use OrillaCart\Assistant\Infrastructure\TaggedToolSources;
+use OrillaCart\Assistant\Infrastructure\WordPress\WordPressAssistantContext;
+use OrillaCart\Assistant\Infrastructure\WordPress\WordPressAssistantRequests;
 use OrillaCart\Audit\Domain\ChangeRecordRepository;
 use OrillaCart\Audit\Domain\LoggedProblemRepository;
 use OrillaCart\Audit\Infrastructure\Doctrine\DoctrineChangeRecordRepository;
@@ -333,6 +340,11 @@ return static function (ContainerConfigurator $container): void {
 
     // Filled from #[Route] and #[AsHook] attributes by RoutePass and HookPass.
     $services->set(RouteCollection::class)->args(['$routes' => []]);
+    // Filled from the routes by RoutePass.
+    $services->set(RouteTools::class)->args(['$tools' => []])->public();
+    $services->alias(ToolSources::class, TaggedToolSources::class);
+    $services->alias(AssistantContext::class, WordPressAssistantContext::class);
+    $services->alias(AssistantRequests::class, WordPressAssistantRequests::class);
 
     // Repositories: the domain declares the interface, infrastructure decides where data lives.
     $services->alias(SettingsRepository::class, OptionSettingsRepository::class);

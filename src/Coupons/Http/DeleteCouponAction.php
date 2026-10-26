@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Deletes a coupon; placed orders keep the code and amount they used. */
 #[Route('/coupons/{id}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class DeleteCouponAction implements RequestHandlerInterface
 {

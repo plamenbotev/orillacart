@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Shows one order in full: its items, totals, customer, addresses, payment and shipping; nothing changes. */
 #[Route('/orders/{id}', methods: ['GET'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ShowOrderAction implements RequestHandlerInterface
 {

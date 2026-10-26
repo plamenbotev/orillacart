@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** The shop's price rules by name, with their prices, dates and who and what they are for; nothing changes. */
 #[Route('/price-rules', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListPriceRulesAction implements RequestHandlerInterface
 {

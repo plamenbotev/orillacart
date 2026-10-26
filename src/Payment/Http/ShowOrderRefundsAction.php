@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Shows an order's refunds and what is left to refund, and through which provider; nothing changes. */
 #[Route('/orders/{id}/refunds', methods: ['GET'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ShowOrderRefundsAction implements RequestHandlerInterface
 {

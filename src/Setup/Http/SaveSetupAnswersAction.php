@@ -10,12 +10,14 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Middleware\CsrfMiddleware;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Keeps one step's answers, as its questions ask for them; nothing in the shop changes until the plan is applied. */
+#[Tool(leftOut: 'Each step takes its own answers: the assistant has a tool per step, setup_answer_<step>, with that step\'s questions.')]
 #[Route('/setup/answers/{step}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['step' => '[a-z][a-z_]{0,39}'])]
 final readonly class SaveSetupAnswersAction implements RequestHandlerInterface
 {

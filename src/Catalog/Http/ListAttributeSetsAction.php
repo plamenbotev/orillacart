@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** The shop's attribute sets by name, with their attributes and options; nothing changes. */
 #[Route('/attribute-sets', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListAttributeSetsAction implements RequestHandlerInterface
 {

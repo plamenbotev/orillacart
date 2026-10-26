@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Removes a shipping class that no rate lists any more. */
 #[Route('/shipping-classes/{id}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class DeleteShippingClassAction implements RequestHandlerInterface
 {

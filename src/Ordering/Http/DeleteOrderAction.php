@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Deletes a cancelled or failed order for good. A paid order stays, for the books. */
 #[Route('/orders/{id}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class DeleteOrderAction implements RequestHandlerInterface
 {

@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Deletes one of the shop's notes about a customer. */
 #[Route('/customers/{id}/notes/{note}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'note' => '\d+'])]
 final readonly class RemoveCustomerNoteAction implements RequestHandlerInterface
 {

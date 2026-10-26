@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Reports the carts left at checkout over a period: how many and worth what, how many were reminded and ordered after
+ * all, and the latest; nothing changes.
+ */
 #[Route('/reports/carts', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowCartsReportAction implements RequestHandlerInterface
 {

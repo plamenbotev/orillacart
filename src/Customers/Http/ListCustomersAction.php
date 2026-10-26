@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** A page of the shop's customers, found by a search; nothing changes. */
 #[Route('/customers', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListCustomersAction implements RequestHandlerInterface
 {

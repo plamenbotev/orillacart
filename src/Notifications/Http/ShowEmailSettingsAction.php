@@ -12,6 +12,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Who the shop's emails come from, where the shop's own go, which are turned off, and when the reminders go; nothing
+ * changes.
+ */
 #[Route('/email-settings', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowEmailSettingsAction implements RequestHandlerInterface
 {

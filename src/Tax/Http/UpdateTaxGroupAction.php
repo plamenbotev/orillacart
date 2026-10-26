@@ -15,6 +15,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Renames a tax group, or changes its tax service code. */
 #[Route('/tax/groups/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class UpdateTaxGroupAction implements RequestHandlerInterface
 {

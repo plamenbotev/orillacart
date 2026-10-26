@@ -10,12 +10,15 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Adds a note to an order's history and answers with the order. A note for the customer is also emailed to them. */
+#[Tool(risk: Tool::CUSTOMERS)]
 #[Route('/orders/{id}/notes', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class AddOrderNoteAction implements RequestHandlerInterface
 {

@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Reports new and returning customers over a period, and those who spent the most; nothing changes. */
 #[Route('/reports/customers', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowCustomersReportAction implements RequestHandlerInterface
 {

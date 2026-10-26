@@ -107,6 +107,19 @@ PASS="$(wp user application-password create admin smoke --porcelain)"
 [ "$(wp option pluck orillacart_settings currency)" = USD ] || fail "the settings were not stored"
 [ "$(api -u "admin:$PASS" -X PUT -H 'Content-Type: application/json' -d '{"currency":"usd"}' "$URL")" = 422 ] \
     || fail "invalid settings were not refused"
+
+echo "==> The assistant's MCP server"
+# The tools are worked out when the container is compiled: the release's must list them and run one.
+mcp() {
+    docker exec "$WP" curl -s -u "admin:$PASS" -X POST 'http://localhost/?rest_route=/orillacart/v1/mcp' \
+        -H 'Content-Type: application/json' -H 'MCP-Protocol-Version: 2025-06-18' -d "$1"
+}
+tools="$(mcp '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | php -r '$d = json_decode(stream_get_contents(STDIN), true); echo count($d["result"]["tools"] ?? []);')"
+[ "$tools" -gt 200 ] || fail "the MCP server lists $tools tools"
+currency="$(mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"show_settings","arguments":{}}}' \
+    | php -r '$d = json_decode(stream_get_contents(STDIN), true); echo $d["result"]["structuredContent"]["currency"] ?? "";')"
+[ "$currency" = USD ] || fail "the MCP tool show_settings did not answer with the settings"
+echo "    ${tools} tools"
 # A cookie session (no application password) must send a nonce.
 status="$(wp eval --user=admin '
     $request = new WP_REST_Request("PUT", "/orillacart/v1/settings");

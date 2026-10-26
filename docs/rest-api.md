@@ -185,9 +185,13 @@ A new key, acting as the shop manager who makes it; the answer holds the key, sh
 
 ### `GET /attribute-sets`
 
+The shop's attribute sets by name, with their attributes and options; nothing changes.
+
 - Who: shop managers
 
 ### `POST /attribute-sets`
+
+The shop adds an attribute set: a named list of attributes, with their options, that products can offer.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -197,9 +201,13 @@ A new key, acting as the shop manager who makes it; the answer holds the key, sh
 
 ### `GET /attribute-sets/{id}`
 
+One attribute set, with its attributes and options; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /attribute-sets/{id}`
+
+Replaces an attribute set's name, state and whole list of attributes; it is refused when it would remove an option a variation uses.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -208,6 +216,8 @@ A new key, acting as the shop manager who makes it; the answer holds the key, sh
   - `attributes` (list<SaveAttribute>)
 
 ### `DELETE /attribute-sets/{id}`
+
+Deletes an attribute set; it is refused while a product's variations use its options.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -227,9 +237,13 @@ A visitor asks to hear when a sold-out item is back; answered alike whether or n
 
 ### `GET /carriers`
 
+Lists the carriers in checkout order, with their rates; nothing changes.
+
 - Who: shop managers
 
 ### `POST /carriers`
+
+Adds a carrier checkout offers: with its own rates, priced by an add-on's shipping method, or as pickup at the shop's places.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -247,9 +261,13 @@ A visitor asks to hear when a sold-out item is back; answered alike whether or n
 
 ### `GET /carriers/{id}`
 
+Shows one carrier with its rates, method settings, pickup places and delivery days.
+
 - Who: shop managers
 
 ### `PUT /carriers/{id}`
+
+Changes a carrier: its name, whether checkout offers it, its position, and its whole list of rates. A secret method setting left empty keeps the saved one.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -266,6 +284,8 @@ A visitor asks to hear when a sold-out item is back; answered alike whether or n
   - `classes_kept_to_their_rates` (bool): default false
 
 ### `DELETE /carriers/{id}`
+
+Removes a carrier and its rates; placed orders keep its name.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -413,6 +433,8 @@ Public: checkout and account forms list the countries before anyone logs in.
 
 ### `GET /coupons`
 
+A page of the shop's coupons, or of its automatic discounts, found by a search; nothing changes.
+
 - Who: shop managers
 - Query:
   - `search` (string|null): at most 100 characters
@@ -421,6 +443,8 @@ Public: checkout and account forms list the countries before anyone logs in.
   - `automatic` (bool): default false
 
 ### `POST /coupons`
+
+The shop adds a coupon code, or an automatic discount that needs no code, with its amount and rules.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -457,9 +481,13 @@ Public: checkout and account forms list the countries before anyone logs in.
 
 ### `GET /coupons/{id}`
 
+One coupon with its amount and rules; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /coupons/{id}`
+
+Changes a coupon's code, amount and rules; placed orders keep the code and amount they used.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -496,15 +524,21 @@ Public: checkout and account forms list the countries before anyone logs in.
 
 ### `DELETE /coupons/{id}`
 
+Deletes a coupon; placed orders keep the code and amount they used.
+
 - Who: shop managers; needs a nonce (not with an API key)
 
 ## /currencies
 
 ### `GET /currencies`
 
+Shows the currencies shoppers may pay in besides the shop's own, with the shop's rates and rounding.
+
 - Who: shop managers
 
 ### `PUT /currencies`
+
+Replaces the currencies shoppers may pay in besides the shop's own, with their rates and rounding. Shoppers pay the converted prices from then on.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -514,9 +548,13 @@ Public: checkout and account forms list the countries before anyone logs in.
 
 ### `GET /customer-groups`
 
+The shop's customer groups by name; nothing changes.
+
 - Who: shop managers
 
 ### `POST /customer-groups`
+
+The shop adds a customer group, which price rules can give its own prices.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -524,11 +562,15 @@ Public: checkout and account forms list the countries before anyone logs in.
 
 ### `PUT /customer-groups/{id}`
 
+Renames a customer group.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `name` (string): required; not empty; at most 100 characters
 
 ### `DELETE /customer-groups/{id}`
+
+Deletes a customer group: its customers leave it, and price rules for it no longer apply to anyone.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -536,9 +578,13 @@ Public: checkout and account forms list the countries before anyone logs in.
 
 ### `GET /customer-settings`
 
+Whether customers can, must or cannot have accounts, and whether guests can order; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /customer-settings`
+
+Sets whether customers can, must or cannot have accounts, and whether guests can order.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -549,6 +595,8 @@ Public: checkout and account forms list the countries before anyone logs in.
 
 ### `GET /customers`
 
+A page of the shop's customers, found by a search; nothing changes.
+
 - Who: shop managers
 - Query:
   - `search` (string|null): at most 100 characters
@@ -556,6 +604,8 @@ Public: checkout and account forms list the countries before anyone logs in.
   - `per_page` (int): 1 to 100; default 20
 
 ### `GET /customers/{id}`
+
+One customer: their details, addresses, groups, orders and what they have spent; nothing changes.
 
 - Who: shop managers
 
@@ -581,9 +631,13 @@ The shop saves a new address in a customer's address book, or changes one.
 
 ### `DELETE /customers/{id}/addresses/{address}`
 
+Removes an address from a customer's address book, and answers with the customer as they are now.
+
 - Who: shop managers; needs a nonce (not with an API key)
 
 ### `PUT /customers/{id}/groups`
+
+Sets all the groups a customer is in, and answers with them; the groups' price rules follow.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -591,9 +645,13 @@ The shop saves a new address in a customer's address book, or changes one.
 
 ### `GET /customers/{id}/notes`
 
+The shop's notes about a customer, newest first, with who wrote each; nothing changes.
+
 - Who: shop managers
 
 ### `POST /customers/{id}/notes`
+
+The shop notes something about a customer, for itself; the customer does not see it.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -601,13 +659,19 @@ The shop saves a new address in a customer's address book, or changes one.
 
 ### `DELETE /customers/{id}/notes/{note}`
 
+Deletes one of the shop's notes about a customer.
+
 - Who: shop managers; needs a nonce (not with an API key)
 
 ### `GET /customers/{id}/store-credit`
 
+A customer's store credit with every change of its balance; nothing changes.
+
 - Who: shop managers
 
 ### `POST /customers/{id}/store-credit`
+
+Adds to a customer's store credit, or takes off it with a minus amount, with a note for the record; answers with the credit and every change of its balance.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -659,6 +723,8 @@ The shop refuses a certificate the customer sent, and tells them why.
 
 ### `GET /download-delivery`
 
+How bought files are sent, by PHP or by the web server, and what the last test of it found; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /download-delivery`
@@ -682,9 +748,13 @@ Where download files are kept and whether the web server would hand them out by 
 
 ### `GET /email-settings`
 
+Who the shop's emails come from, where the shop's own go, which are turned off, and when the reminders go; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /email-settings`
+
+Changes who the shop's emails come from, where the shop's own go, which are turned off, and when the payment and cart reminders go, with which coupon.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -700,13 +770,19 @@ Where download files are kept and whether the web server would hand them out by 
 
 ### `GET /email-templates`
 
+The shop's email templates, which the shop has edited and when, and which a preview can show; nothing changes.
+
 - Who: shop managers
 
 ### `GET /email-templates/{name}`
 
+One email template's source, as the shop edited it or from its file, with the file's own; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /email-templates/{name}`
+
+Replaces an email's template with the shop's own Twig, checked before it is saved; that email is written with it from then on.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -742,9 +818,13 @@ Sends the preview to whoever asks.
 
 ### `GET /exports/orders/columns`
 
+The columns an orders export can hold: the chosen ones in their order, then the others; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /exports/orders/columns`
+
+Chooses which columns the orders export holds, in this order; answers with every column, the chosen ones first.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -752,9 +832,13 @@ Sends the preview to whoever asks.
 
 ### `GET /exports/products/columns`
 
+The columns a products export can hold: the chosen ones in their order, then the others; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /exports/products/columns`
+
+Chooses which columns the products export holds, in this order; answers with every column, the chosen ones first.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -772,9 +856,13 @@ A shopper sends a file for a product's file field: multipart, with product_id, f
 
 ### `GET /forms`
 
+The shop's forms of extra fields for product pages and checkout, in their order; nothing changes.
+
 - Who: shop managers
 
 ### `POST /forms`
+
+Makes a new form of extra fields that customers fill in on product pages or at checkout; a field or its choices can add to the price.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -789,9 +877,13 @@ A shopper sends a file for a product's file field: multipart, with product_id, f
 
 ### `GET /forms/{id}`
 
+One form with its settings and all its fields; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /forms/{id}`
+
+Changes a form's settings and replaces all its fields; a form stays where it was made, on product pages or at checkout.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -806,11 +898,15 @@ A shopper sends a file for a product's file field: multipart, with product_id, f
 
 ### `DELETE /forms/{id}`
 
+Deletes a form and its fields; customers no longer see it.
+
 - Who: shop managers; needs a nonce (not with an API key)
 
 ## /gift-cards
 
 ### `GET /gift-cards`
+
+A page of gift cards, newest first, searched by whom a card is for or the end of its code; nothing changes.
 
 - Who: shop managers
 - Query:
@@ -832,9 +928,13 @@ A new gift card; the answer holds its code, shown this once.
 
 ### `GET /gift-cards/settings`
 
+Which products the shop sells as gift cards, and for how many months a card stays valid; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /gift-cards/settings`
+
+Chooses which products the shop sells as gift cards, and for how many months a card stays valid.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -843,9 +943,13 @@ A new gift card; the answer holds its code, shown this once.
 
 ### `GET /gift-cards/{id}`
 
+One gift card with every change of its balance; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /gift-cards/{id}`
+
+Sets whether a gift card can pay, and until when; its balance does not change.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -853,6 +957,8 @@ A new gift card; the answer holds its code, shown this once.
   - `expires_at` (string|null): date time
 
 ### `POST /gift-cards/{id}/adjustments`
+
+Adds to a gift card's balance, or takes off it with a minus amount, with a note for the record; answers with the card and every change of its balance.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -881,13 +987,19 @@ The newest import, or null: the screen shows what came of it.
 
 ### `GET /imports/products/{id}`
 
+How a product import stands: the file's columns it reads and ignores, how many rows are done, created, updated or failed, and the first errors; nothing changes.
+
 - Who: shop managers
 
 ### `DELETE /imports/products/{id}`
 
+Forgets a product import that is not running, and its uploaded file; products it already imported stay.
+
 - Who: shop managers; needs a nonce (not with an API key)
 
 ### `POST /imports/products/{id}/start`
+
+Starts importing an uploaded products file in the background; its rows create new products or change existing ones.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -895,9 +1007,13 @@ The newest import, or null: the screen shows what came of it.
 
 ### `GET /invoice-settings`
 
+Who issues the shop's invoices, how their numbers read, and whether customers' emails carry them; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /invoice-settings`
+
+Changes who issues the shop's invoices, how their numbers read, whether they also go as e-invoices, and whether customers' emails carry them.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -920,9 +1036,13 @@ The newest import, or null: the screen shows what came of it.
 
 ### `GET /jobs`
 
+What background jobs wait and run, by lane and type, the workers, what failed, and what the jobs did lately; nothing changes.
+
 - Who: shop managers
 
 ### `GET /jobs/failed`
+
+A page of background jobs that failed, of one type or all, with what each was about; nothing changes.
 
 - Who: shop managers
 - Query:
@@ -932,6 +1052,8 @@ The newest import, or null: the screen shows what came of it.
 
 ### `POST /jobs/failed/delete`
 
+Deletes failed background jobs, chosen by id or all of them, without running them again; answers with how many.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `ids` (list<string>): at most 500 items
@@ -939,12 +1061,16 @@ The newest import, or null: the screen shows what came of it.
 
 ### `POST /jobs/failed/retry`
 
+Runs failed background jobs again, chosen by id or all of them; answers with how many. Each does what it failed to do, such as sending an email.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `ids` (list<string>): at most 500 items
   - `all` (bool): default false
 
 ### `POST /jobs/workers/restart`
+
+Asks every running background worker to finish its batch and stop, so their supervisor starts them again; answers with what the jobs are doing.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -958,6 +1084,8 @@ The shop's legal pages, and whether checkout asks to accept the terms and what i
 
 ### `PUT /legal-settings`
 
+Sets the shop's legal pages, whether checkout asks to accept the terms, and what its last button says.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `terms` (int|null): more than 0
@@ -968,13 +1096,31 @@ The shop's legal pages, and whether checkout asks to accept the terms and what i
   - `order_button` (string): one of place_order, buy_now, order_and_pay; default 'place_order'
   - `withdrawal_form` (int|null): more than 0
 
+## /mcp
+
+### `GET /mcp`
+
+The MCP endpoint keeps no stream open: a client that asks for one is told to POST (405).
+
+- Who: shop managers
+
+### `POST /mcp`
+
+The shop's MCP server for AI assistants: one JSON-RPC message per POST, answered with JSON. Its tools are the shop managers' own, acting as the manager whose API key (or login) called; each tool's change is logged by the route it runs, so this call itself is not.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ## /newsletter-settings
 
 ### `GET /newsletter-settings`
 
+Whether the shop offers its newsletter, the words people agree to, the add-ons' mailing lists, and how many are signed up; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /newsletter-settings`
+
+Changes whether the shop offers its newsletter, the words people agree to, and the mailing lists sign-ups go to; a list newly turned on gets everyone already signed up.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1006,6 +1152,8 @@ Whether visitors see "Opening soon" (GET); PUT opens the shop, DELETE shows "Ope
 
 ### `GET /orders`
 
+Lists a page of orders, newest first, found by number, customer, product and more, and narrowed by status, date, payment, total and shipping.
+
 - Who: shop managers
 - Query:
   - `status` (string|null): matches `/^(pending_payment|on_hold|processing|shipped|completed|cancelled|failed|refunded)(,(pending_payment|on_hold|processing|shipped|completed|cancelled|failed|refunded)){0,7}$/`
@@ -1032,6 +1180,8 @@ Whether visitors see "Opening soon" (GET); PUT opens the shop, DELETE shows "Ope
   - `currency` (string|null): matches `/^[A-Z]{3}$/`
 
 ### `POST /orders`
+
+The shop takes an order itself, as on the phone or in person: it is priced and takes stock as checkout does. A paid order is marked paid and starts processing; an unpaid one waits on hold. The customer is emailed only when the shop asks.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1073,17 +1223,25 @@ Prices an order the shop is taking, before it creates it. POST, since the items 
 
 ### `GET /orders/{id}`
 
+Shows one order in full: its items, totals, customer, addresses, payment and shipping; nothing changes.
+
 - Who: shop managers
 
 ### `DELETE /orders/{id}`
+
+Deletes a cancelled or failed order for good. A paid order stays, for the books.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
 ### `GET /orders/{id}/actions`
 
+Lists the actions add-ons offer for an order; nothing changes.
+
 - Who: shop managers
 
 ### `POST /orders/{id}/actions/{action}`
+
+Runs an action an add-on offers for an order, and notes its answer in the order's history. What it does is up to the add-on.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -1118,6 +1276,8 @@ The shop looked at what the order needed attention for: the flag goes, the histo
 
 ### `PUT /orders/{id}/contact`
 
+Corrects the customer's email, billing and shipping addresses and checkout answers on an order, and answers with the order. A shipment booked to the old address refuses the change.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `email` (string): required; not empty; an email; at most 200 characters
@@ -1127,11 +1287,15 @@ The shop looked at what the order needed attention for: the flag goes, the histo
 
 ### `PUT /orders/{id}/customer`
 
+Moves an order to a customer's account, or makes it a guest's order.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `customer_id` (int|null): more than 0
 
 ### `PUT /orders/{id}/downloads/{grant}`
+
+Changes how many downloads of a bought file are left and the last day it can be downloaded; the order's history notes it.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1140,15 +1304,21 @@ The shop looked at what the order needed attention for: the flag goes, the histo
 
 ### `POST /orders/{id}/emails`
 
+Sends one of an order's emails again, such as when the customer lost it; answers whether the mail system took it.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `kind` (string): required; one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, new_order, payment_failed
 
 ### `GET /orders/{id}/invoices`
 
+An order's invoices and credit notes, with the address of each one's printable page; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /orders/{id}/items`
+
+Changes the items of an order on hold, and how it ships: the old items' stock is put back, the new ones are priced and take stock. Its coupons are priced again, and one that no longer applies is dropped.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1157,6 +1327,8 @@ The shop looked at what the order needed attention for: the flag goes, the histo
   - `pickup_point` (string|null): at most 64 characters
 
 ### `POST /orders/{id}/notes`
+
+Adds a note to an order's history and answers with the order. A note for the customer is also emailed to them.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1191,9 +1363,13 @@ Tells the customer the order is ready at the shop's place they collect it from.
 
 ### `GET /orders/{id}/refunds`
 
+Shows an order's refunds and what is left to refund, and through which provider; nothing changes.
+
 - Who: shop managers
 
 ### `POST /orders/{id}/refunds`
+
+Gives money back for an order: through the provider that took the payment, as store credit, or as a record of money the shop paid back itself. Stock can be put back, and the customer is emailed.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1227,6 +1403,8 @@ An order's shipments, and whether its carrier's courier books one.
 
 ### `POST /orders/{id}/shipments`
 
+Books a shipment of an order's items with its carrier's courier, and notes it in the order's history. The customer is emailed the tracking.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `parcels` (int): 1 to 50; default 1
@@ -1250,6 +1428,8 @@ The ways an order can ship to its address, for changing how it ships.
 
 ### `PUT /orders/{id}/status`
 
+Moves an order to another status and answers with the order. Cancelling puts the stock back, completing an unpaid order records it as paid in full, and the customer is emailed as the shop's emails are set.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `status` (string): required; one of pending_payment, on_hold, processing, shipped, completed, cancelled, failed, refunded
@@ -1259,9 +1439,13 @@ The ways an order can ship to its address, for changing how it ships.
 
 ### `GET /payment-methods`
 
+Lists the shop's payment methods, on or off, in checkout order, with their settings; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /payment-methods/{gateway}`
+
+Sets up a payment method: its name, whether checkout offers it and where, its fee, texts and provider settings. A secret left empty keeps the saved one.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1308,9 +1492,13 @@ Providers' notifications (webhooks). They carry no nonce: the gateway checks wit
 
 ### `GET /price-rules`
 
+The shop's price rules by name, with their prices, dates and who and what they are for; nothing changes.
+
 - Who: shop managers
 
 ### `POST /price-rules`
+
+The shop adds a price rule: its own prices for customer groups, by quantity or between dates, for the products, categories or brands it names. Placed orders keep their prices.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1329,6 +1517,8 @@ Providers' notifications (webhooks). They carry no nonce: the gateway checks wit
 
 ### `PUT /price-rules/{id}`
 
+Changes a price rule's prices, dates and who and what it is for. Placed orders keep their prices.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `name` (string): required; not empty; at most 100 characters
@@ -1345,6 +1535,8 @@ Providers' notifications (webhooks). They carry no nonce: the gateway checks wit
   - `combines` (bool): default false
 
 ### `DELETE /price-rules/{id}`
+
+Deletes a price rule, so its prices no longer apply; placed orders keep theirs.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -1374,9 +1566,13 @@ The cards of published products, by id (?ids=12,30), as the shop's lists show th
 
 ### `GET /products/{id}`
 
+One product's shop details, with its attributes and variations; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /products/{id}`
+
+Saves a product's shop details all at once: price, sale, tax, stock, shipping, its own attributes and the attribute sets it offers. Variations are saved on their own.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1421,11 +1617,15 @@ Adds a file to a product's downloads: a multipart upload with the file in the "f
 
 ### `PUT /products/{id}/downloads/{file}`
 
+Renames one of a product's download files, as buyers see it.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `name` (string): required; not empty; at most 200 characters
 
 ### `DELETE /products/{id}/downloads/{file}`
+
+The product stops offering a download file; buyers who have it keep their downloads.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -1449,6 +1649,8 @@ A visitor reviews a product, as the shop's policy and the site's discussion sett
 
 ### `POST /products/{id}/variations`
 
+Adds a variation to a product, one option of each attribute it differs in, with its own price, stock and measures.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `option_ids` (list<int>): required; at least 1 items; each more than 0
@@ -1466,6 +1668,8 @@ A visitor reviews a product, as the shop's policy and the site's discussion sett
 
 ### `PUT /products/{id}/variations/{variation}`
 
+Changes a product's variation: its options, price, sale, stock and measures.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `option_ids` (list<int>): required; at least 1 items; each more than 0
@@ -1482,6 +1686,8 @@ A visitor reviews a product, as the shop's policy and the site's discussion sett
   - `low_stock_threshold` (int|null): 0 or more
 
 ### `DELETE /products/{id}/variations/{variation}`
+
+Removes a variation from a product, so it is no longer sold.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -1538,15 +1744,21 @@ The customer holding the order's receipt asks to send some of its items back.
 
 ### `POST /refunds/{id}/give-up`
 
+Gives up a refund the payment provider never confirmed, once the shop checked at the provider that no money went. The order does not change.
+
 - Who: shop managers; needs a nonce (not with an API key)
 
 ### `POST /refunds/{id}/retry`
+
+Asks the payment provider again to send a refund it did not answer, under the same id, so it is never sent twice.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
 ## /reports
 
 ### `GET /reports/carts`
+
+Reports the carts left at checkout over a period: how many and worth what, how many were reminded and ordered after all, and the latest; nothing changes.
 
 - Who: shop managers
 - Query:
@@ -1559,6 +1771,8 @@ The customer holding the order's receipt asks to send some of its items back.
 
 ### `GET /reports/categories`
 
+Reports the categories that sold best over a period, against the period it is compared with; nothing changes.
+
 - Who: shop managers
 - Query:
   - `from` (string|null): a date, Y-m-d
@@ -1570,6 +1784,8 @@ The customer holding the order's receipt asks to send some of its items back.
 
 ### `GET /reports/coupons`
 
+Reports the coupons used most over a period, with the orders and discount of each, against the period it is compared with; nothing changes.
+
 - Who: shop managers
 - Query:
   - `from` (string|null): a date, Y-m-d
@@ -1580,6 +1796,8 @@ The customer holding the order's receipt asks to send some of its items back.
   - `sort` (string): one of net, quantity; default 'net'
 
 ### `GET /reports/customers`
+
+Reports new and returning customers over a period, and those who spent the most; nothing changes.
 
 - Who: shop managers
 - Query:
@@ -1604,6 +1822,8 @@ The shop's sales in each US state against its economic nexus thresholds.
 
 ### `GET /reports/products`
 
+Reports the products that sold best over a period, by what they brought or how many sold, against the period it is compared with; nothing changes.
+
 - Who: shop managers
 - Query:
   - `from` (string|null): a date, Y-m-d
@@ -1621,6 +1841,8 @@ Counts every order again, in the background.
 
 ### `GET /reports/sales`
 
+Reports the shop's sales over a period, by day, week or month, with totals by payment, country and shipping, against the period it is compared with; nothing changes.
+
 - Who: shop managers
 - Query:
   - `from` (string|null): a date, Y-m-d
@@ -1631,6 +1853,8 @@ Counts every order again, in the background.
   - `sort` (string): one of net, quantity; default 'net'
 
 ### `GET /reports/taxes`
+
+Reports the tax of a period by place and rate, for filing returns: taxable and exempt sales, tax and refunds; nothing changes.
 
 - Who: shop managers
 - Query:
@@ -1679,9 +1903,13 @@ Refuses a return, telling the customer why.
 
 ### `GET /review-settings`
 
+Shows who may review products: no one, anyone, or only buyers.
+
 - Who: shop managers
 
 ### `PUT /review-settings`
+
+Sets who may review products: no one, anyone, or only buyers.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1711,6 +1939,8 @@ Whether the sample products are in the shop (GET), adds them (POST), or takes th
 
 ### `GET /search-engine`
 
+Shows the search engine the shop uses, how far behind its index is, and products that failed to index; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /search-engine`
@@ -1728,15 +1958,21 @@ Switches the search engine after checking OpenSearch answers; the view says what
 
 ### `POST /search-engine/rebuild`
 
+Indexes every product again, in the background, and answers with how many are queued.
+
 - Who: shop managers; needs a nonce (not with an API key)
 
 ## /search-filters
 
 ### `GET /search-filters`
 
+Lists the filters shoppers see in the shop, in their order; nothing changes.
+
 - Who: shop managers
 
 ### `POST /search-filters`
+
+Adds a filter shoppers see in the shop, over the product attributes with the names given.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1747,9 +1983,13 @@ Switches the search engine after checking OpenSearch answers; the view says what
 
 ### `GET /search-filters/attributes`
 
+Lists the attribute names products use, to build search filters from; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /search-filters/{id}`
+
+Changes a search filter's label, key, attributes or position.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1759,6 +1999,8 @@ Switches the search engine after checking OpenSearch answers; the view says what
   - `position` (int): 0 or more; default 0
 
 ### `DELETE /search-filters/{id}`
+
+Removes a filter from the shop's search.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -1774,9 +2016,13 @@ A visitor's nonce for the storefront script: visitors' pages carry none, since a
 
 ### `GET /settings`
 
+Shows the shop's settings: currency, units, address, where it sells, stock and order rules.
+
 - Who: shop managers
 
 ### `PUT /settings`
+
+Replaces all the shop's settings in one go, so every field must be sent. It can make the shop a catalog without checkout, hide prices, or change where it sells.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1898,9 +2144,13 @@ A shipment's label, base64 in JSON, as the REST API speaks it; the admin screen 
 
 ### `GET /shipping-classes`
 
+Lists the shipping classes by name; nothing changes.
+
 - Who: shop managers
 
 ### `POST /shipping-classes`
+
+Adds a shipping class, which products are put in and rates can be limited to.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1908,11 +2158,15 @@ A shipment's label, base64 in JSON, as the REST API speaks it; the admin screen 
 
 ### `PUT /shipping-classes/{id}`
 
+Renames a shipping class.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `name` (string): required; not empty; at most 100 characters
 
 ### `DELETE /shipping-classes/{id}`
+
+Removes a shipping class that no rate lists any more.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -1937,9 +2191,13 @@ Tries a shipping method's settings at the courier, as the form has them; nothing
 
 ### `GET /shop-pages`
 
+Shows which pages the shop, cart, checkout and account are on.
+
 - Who: shop managers
 
 ### `PUT /shop-pages`
+
+Sets which published pages the shop, cart, checkout and account are on; none for a page leaves that part without one.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1952,11 +2210,15 @@ Tries a shipping method's settings at the courier, as the form has them; nothing
 
 ### `GET /status`
 
+Shows how the shop stands: its checks' findings, with what to do, and what it runs on; nothing changes.
+
 - Who: shop managers
 
 ## /stock-history
 
 ### `GET /stock-history`
+
+Every move of a stock level, newest first, with who made it and why, and the totals in and out; a product, stockroom, order, reason or time narrows it. Nothing changes.
 
 - Who: shop managers
 - Query:
@@ -1983,6 +2245,8 @@ Saves the cells of the stock sheet that changed, all or none.
 
 ### `GET /stock-sheet`
 
+A page of the stock sheet, by stockroom: products and their variations, or attribute options, with their levels to count and correct; nothing changes.
+
 - Who: shop managers
 - Query:
   - `kind` (string): one of items, options; default 'items'
@@ -1997,9 +2261,13 @@ Saves the cells of the stock sheet that changed, all or none.
 
 ### `GET /stock/{kind}/{id}`
 
+How many of a product, variation or option each stockroom holds; nothing changes.
+
 - Who: shop managers
 
 ### `PUT /stock/{kind}/{id}`
+
+Sets how many of a product, variation or option each stockroom holds; stockrooms left out hold none, and an empty list means stock no longer limits it. When it comes back in stock, customers who asked are emailed.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -2009,9 +2277,13 @@ Saves the cells of the stock sheet that changed, all or none.
 
 ### `GET /stockrooms`
 
+The shop's stockrooms, by name; nothing changes.
+
 - Who: shop managers
 
 ### `POST /stockrooms`
+
+Adds a stockroom, a place that holds stock, with its delivery times and when it warns of low stock.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -2025,6 +2297,8 @@ Saves the cells of the stock sheet that changed, all or none.
 
 ### `PUT /stockrooms/{id}`
 
+Changes a stockroom's name, delivery times and low-stock warning, or turns it on or off. Turned off, its stock stops counting; turned on, it counts again and customers who asked to hear of an item back in stock are emailed.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `name` (string): required; not empty; at most 100 characters
@@ -2037,15 +2311,21 @@ Saves the cells of the stock sheet that changed, all or none.
 
 ### `DELETE /stockrooms/{id}`
 
+Deletes a stockroom and the stock it holds; not while it is the only one holding some items, or owes items on backorder.
+
 - Who: shop managers; needs a nonce (not with an API key)
 
 ## /storefront-settings
 
 ### `GET /storefront-settings`
 
+Shows the storefront's settings: product data for search engines, sharing tags, the wishlist, recently viewed products, the data layer and filters.
+
 - Who: shop managers
 
 ### `PUT /storefront-settings`
+
+Replaces the storefront's settings: product data for search engines, sharing tags, who may keep a wishlist, recently viewed products, the data layer and filters.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -2068,9 +2348,13 @@ Changes the EU's threshold of distance sales the shop measures against, alone: t
 
 ### `GET /tax/groups`
 
+Lists the tax groups by name, with their rates; nothing changes.
+
 - Who: shop managers
 
 ### `POST /tax/groups`
+
+Adds a tax group, which products and shipping are taxed by, with its tax service code.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -2079,9 +2363,13 @@ Changes the EU's threshold of distance sales the shop measures against, alone: t
 
 ### `GET /tax/groups/{id}`
 
+Shows one tax group with its rates.
+
 - Who: shop managers
 
 ### `PUT /tax/groups/{id}`
+
+Renames a tax group, or changes its tax service code.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -2089,6 +2377,8 @@ Changes the EU's threshold of distance sales the shop measures against, alone: t
   - `tax_code` (string|null): matches `/^[A-Za-z0-9][A-Za-z0-9._:-]{0,39}$/`
 
 ### `DELETE /tax/groups/{id}`
+
+Removes a tax group that is not the default and that no products or shipping use.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -2099,6 +2389,8 @@ Fills a tax group with the standard VAT rate of every EU country it has none for
 - Who: shop managers; needs a nonce (not with an API key)
 
 ### `POST /tax/groups/{id}/rates`
+
+Adds a rate to a tax group, for a country and, if given, a state, cities or postcodes.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -2130,6 +2422,8 @@ Adds the rates of a CSV file (WooCommerce's columns) to a tax group, or puts the
 
 ### `PUT /tax/groups/{id}/rates/{rate}`
 
+Changes a rate of a tax group.
+
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `country` (string): required; matches `/^[A-Z]{2}$/`
@@ -2144,6 +2438,8 @@ Adds the rates of a CSV file (WooCommerce's columns) to a tax group, or puts the
   - `shipping` (bool): default true
 
 ### `DELETE /tax/groups/{id}/rates/{rate}`
+
+Removes a rate from a tax group.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -2178,9 +2474,13 @@ Saves the economic nexus thresholds: for every US state, and for those whose own
 
 ### `GET /tax/settings`
 
+Shows how the shop taxes: by which address, whether prices include tax, the default group, a tax service, and how tax is shown.
+
 - Who: shop managers
 
 ### `PUT /tax/settings`
+
+Replaces the tax settings: by which address the shop taxes, whether prices include tax, the default group, a tax service, and how tax is shown.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):

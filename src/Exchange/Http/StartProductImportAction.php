@@ -13,6 +13,9 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Starts importing an uploaded products file in the background; its rows create new products or change existing ones.
+ */
 #[Route('/imports/products/{id}/start', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class StartProductImportAction implements RequestHandlerInterface
 {

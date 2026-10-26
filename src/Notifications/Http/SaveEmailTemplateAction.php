@@ -16,6 +16,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Replaces an email's template with the shop's own Twig, checked before it is saved; that email is written with it from
+ * then on.
+ */
 #[Route('/email-templates/{name}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['name' => '[a-z_-]+'])]
 final readonly class SaveEmailTemplateAction implements RequestHandlerInterface
 {

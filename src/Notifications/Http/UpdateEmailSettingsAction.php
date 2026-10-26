@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Changes who the shop's emails come from, where the shop's own go, which are turned off, and when the payment and cart
+ * reminders go, with which coupon.
+ */
 #[Route('/email-settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateEmailSettingsAction implements RequestHandlerInterface
 {

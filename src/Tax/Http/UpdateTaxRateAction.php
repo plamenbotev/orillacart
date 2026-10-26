@@ -15,6 +15,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Changes a rate of a tax group. */
 #[Route('/tax/groups/{id}/rates/{rate}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'rate' => '\d+'])]
 final readonly class UpdateTaxRateAction implements RequestHandlerInterface
 {

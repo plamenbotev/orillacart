@@ -13,6 +13,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Gives up a refund the payment provider never confirmed, once the shop checked at the provider that no money went.
+ * The order does not change.
+ */
 #[Route('/refunds/{id}/give-up', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class GiveUpRefundAction implements RequestHandlerInterface
 {

@@ -8,6 +8,7 @@ use OrillaCart\Integrations\Application\Webhooks;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -17,6 +18,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * A webhook's test (POST …/ping: a webhook.ping event, sent by the background jobs), its new secret
  * (POST …/secret), and the tries at delivering to it (GET …/deliveries, newest first).
  */
+#[Tool(leftOut: 'Webhooks are managed by a shop manager logged in: their secrets sign what the shop sends.')]
 #[Route('/webhooks/{id}/ping', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 #[Route('/webhooks/{id}/secret', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 #[Route('/webhooks/{id}/deliveries', methods: ['GET'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]

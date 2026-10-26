@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Lists the attribute names products use, to build search filters from; nothing changes. */
 #[Route('/search-filters/attributes', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListAttributeNamesAction implements RequestHandlerInterface
 {

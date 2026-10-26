@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Runs failed background jobs again, chosen by id or all of them; answers with how many. Each does what it failed to
+ * do, such as sending an email.
+ */
 #[Route('/jobs/failed/retry', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class RetryFailedJobsAction implements RequestHandlerInterface
 {

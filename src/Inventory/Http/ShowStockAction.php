@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** How many of a product, variation or option each stockroom holds; nothing changes. */
 #[Route('/stock/{kind}/{id}', methods: ['GET'], capability: Capability::MANAGE_SHOP, requirements: ['kind' => 'product|variation|option', 'id' => '\d+'])]
 final readonly class ShowStockAction implements RequestHandlerInterface
 {

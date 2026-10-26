@@ -15,6 +15,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Saves a product's shop details all at once: price, sale, tax, stock, shipping, its own attributes and the attribute sets
+ * it offers. Variations are saved on their own.
+ */
 #[Route('/products/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class SaveProductAction implements RequestHandlerInterface
 {

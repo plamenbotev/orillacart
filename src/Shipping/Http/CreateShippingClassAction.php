@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Adds a shipping class, which products are put in and rates can be limited to. */
 #[Route('/shipping-classes', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateShippingClassAction implements RequestHandlerInterface
 {

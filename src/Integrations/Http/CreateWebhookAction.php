@@ -9,11 +9,13 @@ use OrillaCart\Integrations\Application\Webhooks;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+#[Tool(leftOut: 'Webhooks are managed by a shop manager logged in: their secrets sign what the shop sends.')]
 #[Route('/webhooks', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateWebhookAction implements RequestHandlerInterface
 {

@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Lists the shipping classes by name; nothing changes. */
 #[Route('/shipping-classes', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListShippingClassesAction implements RequestHandlerInterface
 {

@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Adds a stockroom, a place that holds stock, with its delivery times and when it warns of low stock. */
 #[Route('/stockrooms', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateStockroomAction implements RequestHandlerInterface
 {

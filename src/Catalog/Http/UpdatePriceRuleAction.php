@@ -15,6 +15,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Changes a price rule's prices, dates and who and what it is for. Placed orders keep their prices. */
 #[Route('/price-rules/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class UpdatePriceRuleAction implements RequestHandlerInterface
 {

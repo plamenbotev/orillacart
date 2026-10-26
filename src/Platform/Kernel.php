@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform;
 
+use OrillaCart\Assistant\Application\ToolSource;
 use OrillaCart\Customers\Application\PersonalDataSource;
 use OrillaCart\Jobs\Application\JobHandler;
 use OrillaCart\Ordering\Application\OrderLookup;
@@ -95,6 +96,7 @@ final class Kernel
         $builder->registerForAutoconfiguration(PersonalDataSource::class)->addTag(PersonalDataSource::TAG);
         $builder->registerForAutoconfiguration(SetupStep::class)->addTag(SetupStep::TAG);
         $builder->registerForAutoconfiguration(ReadinessCheck::class)->addTag(ReadinessCheck::TAG);
+        $builder->registerForAutoconfiguration(ToolSource::class)->addTag(ToolSource::TAG);
 
         $builder->addCompilerPass(new RoutePass());
         $builder->addCompilerPass(new HookPass());

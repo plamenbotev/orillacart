@@ -42,11 +42,27 @@ class ChangeRecord
         private array $values,
         #[ORM\Column]
         private \DateTimeImmutable $madeAt,
+        /** How the change came: "assistant" (the AI assistant's tools) or "api_key"; null from the admin's screens. */
+        #[ORM\Column(length: 20, nullable: true)]
+        private ?string $via = null,
+        /** The API key it came with, by name. */
+        #[ORM\Column(length: 100, nullable: true)]
+        private ?string $keyName = null,
     ) {}
 
     public function id(): int
     {
         return $this->id ?? throw new \LogicException('The record has no id until it is saved.');
+    }
+
+    public function via(): ?string
+    {
+        return $this->via;
+    }
+
+    public function keyName(): ?string
+    {
+        return $this->keyName;
     }
 
     public function userId(): ?int

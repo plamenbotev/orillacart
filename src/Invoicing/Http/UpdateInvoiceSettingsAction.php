@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Changes who issues the shop's invoices, how their numbers read, whether they also go as e-invoices, and whether
+ * customers' emails carry them.
+ */
 #[Route('/invoice-settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateInvoiceSettingsAction implements RequestHandlerInterface
 {

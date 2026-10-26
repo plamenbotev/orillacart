@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\DependencyInjection;
 
+use OrillaCart\Assistant\Application\RouteTools;
 use OrillaCart\Shared\Http\Routing\ActionDispatcher;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
@@ -54,5 +55,15 @@ final class RoutePass implements CompilerPassInterface
 
         usort($routes, static fn(array $a, array $b): int => [$a['path'], $a['methods']] <=> [$b['path'], $b['methods']]);
         $container->getDefinition(RouteCollection::class)->setArgument('$routes', $routes);
+
+        // The assistant's tools are read from the same routes, once, here: it reads every action's and DTO's code.
+        if ($container->hasDefinition(RouteTools::class)) {
+            try {
+                $tools = RouteTools::describe(array_map(RouteDefinition::fromArray(...), $routes));
+            } catch (\LogicException $e) {
+                throw new InvalidArgumentException($e->getMessage(), 0, $e);
+            }
+            $container->getDefinition(RouteTools::class)->setArgument('$tools', $tools);
+        }
     }
 }

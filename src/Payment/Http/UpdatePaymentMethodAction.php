@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Sets up a payment method: its name, whether checkout offers it and where, its fee, texts and provider settings. A
+ * secret left empty keeps the saved one.
+ */
 #[Route('/payment-methods/{gateway}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['gateway' => '[a-z][a-z0-9_]{0,39}'])]
 final readonly class UpdatePaymentMethodAction implements RequestHandlerInterface
 {

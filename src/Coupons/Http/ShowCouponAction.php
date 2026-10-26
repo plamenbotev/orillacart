@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** One coupon with its amount and rules; nothing changes. */
 #[Route('/coupons/{id}', methods: ['GET'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ShowCouponAction implements RequestHandlerInterface
 {

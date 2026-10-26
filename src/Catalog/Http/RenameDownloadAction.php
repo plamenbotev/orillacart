@@ -15,6 +15,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Renames one of a product's download files, as buyers see it. */
 #[Route('/products/{id}/downloads/{file}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'file' => '\d+'])]
 final readonly class RenameDownloadAction implements RequestHandlerInterface
 {

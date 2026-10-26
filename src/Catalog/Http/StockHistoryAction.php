@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Every move of a stock level, newest first, with who made it and why, and the totals in and out; a product, stockroom,
+ * order, reason or time narrows it. Nothing changes.
+ */
 #[Route('/stock-history', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class StockHistoryAction implements RequestHandlerInterface
 {

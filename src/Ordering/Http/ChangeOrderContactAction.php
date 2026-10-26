@@ -16,6 +16,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Corrects the customer's email, billing and shipping addresses and checkout answers on an order, and answers with the
+ * order. A shipment booked to the old address refuses the change.
+ */
 #[Route('/orders/{id}/contact', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ChangeOrderContactAction implements RequestHandlerInterface
 {

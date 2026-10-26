@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Shows which pages the shop, cart, checkout and account are on. */
 #[Route('/shop-pages', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowShopPagesAction implements RequestHandlerInterface
 {

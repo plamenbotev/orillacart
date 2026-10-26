@@ -15,6 +15,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Replaces an attribute set's name, state and whole list of attributes; it is refused when it would remove an option a
+ * variation uses.
+ */
 #[Route('/attribute-sets/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class UpdateAttributeSetAction implements RequestHandlerInterface
 {

@@ -9,6 +9,8 @@ use OrillaCart\Platform\WordPress\Security\TransientRateLimiter;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
+use OrillaCart\Shared\Http\Routing\RouteInputs;
+use OrillaCart\Shared\Http\Routing\RuleWords;
 use OrillaCart\Shared\Security\Capability;
 
 /**
@@ -19,7 +21,6 @@ use OrillaCart\Shared\Security\Capability;
  */
 final readonly class RouteDocumentation
 {
-    private const string SNAKE = '/(?<!^)[A-Z]/';
     private const string INTRO = <<<'MD'
         # The shop's REST API
 
@@ -69,7 +70,7 @@ final readonly class RouteDocumentation
     {
         $documented = [];
         foreach ($this->routes->all() as $route) {
-            [$body, $query] = self::inputs($route->action);
+            [$body, $query] = RouteInputs::dtos($route->action);
             foreach ($route->methods as $method) {
                 $documented[] = [
                     'method' => $method,
@@ -77,7 +78,7 @@ final readonly class RouteDocumentation
                     'access' => self::access($route),
                     'nonce' => $route->needsNonce($method),
                     'limit' => self::limit($route->guard),
-                    'summary' => self::summary($route->action),
+                    'summary' => RouteInputs::summary($route->action),
                     'body' => $route->isSafe($method) || $body === null ? [] : self::fields($body),
                     'query' => $route->isSafe($method) && $query !== null ? self::fields($query) : [],
                 ];
@@ -138,9 +139,9 @@ final readonly class RouteDocumentation
     {
         $waiting = [];
         foreach ($this->routes->all() as $route) {
-            foreach (self::inputs($route->action) as $dto) {
+            foreach (RouteInputs::dtos($route->action) as $dto) {
                 if ($dto !== null) {
-                    array_push($waiting, ...self::nested($dto));
+                    array_push($waiting, ...RouteInputs::nested($dto));
                 }
             }
         }
@@ -152,46 +153,11 @@ final readonly class RouteDocumentation
                 continue;
             }
             $shapes[$name] = self::fields($class);
-            array_push($waiting, ...self::nested($class));
+            array_push($waiting, ...RouteInputs::nested($class));
         }
         ksort($shapes);
 
         return $shapes;
-    }
-
-    /**
-     * The shop's classes the DTO's fields are of, or lists of.
-     *
-     * @param class-string $dto
-     *
-     * @return list<class-string>
-     */
-    private static function nested(string $dto): array
-    {
-        $constructor = new \ReflectionClass($dto)->getConstructor();
-        if ($constructor === null) {
-            return [];
-        }
-        $code = (string) file_get_contents((string) new \ReflectionClass($dto)->getFileName());
-        $nested = [];
-        $documented = self::paramTypes((string) $constructor->getDocComment());
-        foreach ($constructor->getParameters() as $parameter) {
-            $type = $parameter->getType();
-            $names = [];
-            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
-                $names[] = $type->getName();
-            }
-            if (preg_match('/list<\??([A-Z]\w+)>/', $documented[$parameter->getName()] ?? '', $match) === 1) {
-                $names[] = preg_match('/^use ([\w\\\\]+\\\\' . $match[1] . ');$/m', $code, $use) === 1 ? $use[1] : (new \ReflectionClass($dto)->getNamespaceName() . '\\' . $match[1]);
-            }
-            foreach ($names as $name) {
-                if (str_starts_with($name, 'OrillaCart\\') && class_exists($name) && !enum_exists($name)) {
-                    $nested[] = $name;
-                }
-            }
-        }
-
-        return $nested;
     }
 
     private static function order(string $method): int
@@ -226,51 +192,6 @@ final readonly class RouteDocumentation
         }, $count) . ' from each address';
     }
 
-    /** The first paragraph of the action's docblock. */
-    private static function summary(string $action): string
-    {
-        if (!class_exists($action)) {
-            return '';
-        }
-        $doc = (string) new \ReflectionClass($action)->getDocComment();
-        $lines = [];
-        foreach (explode("\n", $doc) as $line) {
-            $line = trim(preg_replace(['#^\s*(/\*\*|\*/|\*)\s?#', '#\s*\*/$#'], '', $line) ?? '');
-            if ($line === '' && $lines !== []) {
-                break;
-            }
-            if ($line !== '' && !str_starts_with($line, '@')) {
-                $lines[] = $line;
-            }
-        }
-
-        return implode(' ', $lines);
-    }
-
-    /**
-     * The DTOs the action maps the body and the query to, from its code: $this->input->body($request, X::class).
-     *
-     * @return array{?class-string, ?class-string}
-     */
-    private static function inputs(string $action): array
-    {
-        if (!class_exists($action)) {
-            return [null, null];
-        }
-        $file = new \ReflectionClass($action)->getFileName();
-        $code = \is_string($file) ? (string) file_get_contents($file) : '';
-        $class = static function (string $kind) use ($code): ?string {
-            if (preg_match('/->' . $kind . '\(\$request, (\w+)::class\)/', $code, $match) !== 1) {
-                return null;
-            }
-            $name = preg_match('/^use ([\w\\\\]+\\\\' . $match[1] . ');$/m', $code, $use) === 1 ? $use[1] : null;
-
-            return $name !== null && class_exists($name) ? $name : null;
-        };
-
-        return [$class('body'), $class('query')];
-    }
-
     /**
      * @param class-string $dto
      *
@@ -278,17 +199,11 @@ final readonly class RouteDocumentation
      */
     private static function fields(string $dto): array
     {
-        $constructor = new \ReflectionClass($dto)->getConstructor();
-        if ($constructor === null) {
-            return [];
-        }
-        $documented = self::paramTypes((string) $constructor->getDocComment());
         $fields = [];
-        foreach ($constructor->getParameters() as $parameter) {
-            $type = $documented[$parameter->getName()] ?? (string) $parameter->getType();
-            $rules = array_values(array_filter(array_map(self::rule(...), $parameter->getAttributes()), static fn(string $rule): bool => $rule !== ''));
-            if ($parameter->isDefaultValueAvailable()) {
-                $default = $parameter->getDefaultValue();
+        foreach (RouteInputs::fields($dto) as $field) {
+            $rules = array_values(array_filter(array_map(RuleWords::of(...), $field->rules), static fn(string $rule): bool => $rule !== ''));
+            if (!$field->required) {
+                $default = $field->default;
                 if ($default !== null && $default !== [] && $default !== '' && \is_scalar($default)) {
                     $rules[] = 'default ' . var_export($default, true);
                 }
@@ -296,27 +211,13 @@ final readonly class RouteDocumentation
                 array_unshift($rules, 'required');
             }
             $fields[] = [
-                'name' => strtolower((string) preg_replace(self::SNAKE, '_$0', $parameter->getName())),
-                'type' => self::shortType($type),
+                'name' => $field->name,
+                'type' => self::shortType($field->type),
                 'rules' => implode('; ', $rules),
             ];
         }
 
         return $fields;
-    }
-
-    /**
-     * @return array<string, string> the @param types of the docblock, by parameter name
-     */
-    private static function paramTypes(string $doc): array
-    {
-        preg_match_all('/@param\s+(\S+)\s+\$(\w+)/', $doc, $matches, PREG_SET_ORDER);
-        $types = [];
-        foreach ($matches as $match) {
-            $types[$match[2]] = $match[1];
-        }
-
-        return $types;
     }
 
     /** "?OrillaCart\Ordering\Application\Dto\AddressData" reads "AddressData|null". */
@@ -326,89 +227,5 @@ final readonly class RouteDocumentation
         $short = (string) preg_replace('/(?:\w+\\\\)+(\w+)/', '$1', ltrim($type, '?'));
 
         return $nullable ? $short . '|null' : $short;
-    }
-
-    /**
-     * A validation attribute in words: "at most 100 characters", "one of read, read_write".
-     *
-     * @param \ReflectionAttribute<object> $attribute
-     */
-    private static function rule(\ReflectionAttribute $attribute): string
-    {
-        $class = $attribute->getName();
-        $slash = strrpos($class, '\\');
-        $name = $slash === false ? $class : substr($class, $slash + 1);
-        $args = $attribute->getArguments();
-        $arg = static fn(string $key, int $position = 0): mixed => $args[$key] ?? $args[$position] ?? null;
-
-        return match ($name) {
-            'NotBlank' => 'not empty',
-            'Positive' => 'more than 0',
-            'PositiveOrZero' => '0 or more',
-            'Email' => 'an email',
-            'Url' => 'an address (URL)',
-            'Date' => 'a date, Y-m-d',
-            'Length' => self::range($arg('min'), $arg('max'), 'characters'),
-            'Count' => self::range($arg('min'), $arg('max'), 'items'),
-            'Range' => self::range($arg('min'), $arg('max'), ''),
-            'Choice' => 'one of ' . self::listed(self::choices($arg('choices'), $args['callback'] ?? null)),
-            'All' => self::each($arg('constraints')),
-            'Regex' => \is_string($arg('pattern')) ? 'matches `' . $arg('pattern') . '`' : '',
-            'Valid', 'Type' => '',
-            default => strtolower((string) preg_replace(self::SNAKE, ' $0', $name)),
-        };
-    }
-
-    /**
-     * The values of a Choice: given, or what its callback answers.
-     *
-     * @return list<mixed>
-     */
-    private static function choices(mixed $choices, mixed $callback): array
-    {
-        if (\is_array($choices)) {
-            return array_values($choices);
-        }
-        $values = \is_callable($callback) ? $callback() : null;
-
-        return \is_array($values) ? array_values($values) : ['the known values'];
-    }
-
-    /**
-     * @param list<mixed> $values
-     */
-    private static function listed(array $values): string
-    {
-        return implode(', ', array_map(static fn(mixed $value): string => \is_scalar($value) ? (string) $value : '', $values));
-    }
-
-    /** What each item of a list must be, from an All's constraints. */
-    private static function each(mixed $constraints): string
-    {
-        $words = [];
-        foreach (\is_array($constraints) ? $constraints : [$constraints] as $constraint) {
-            $words[] = match (true) {
-                $constraint instanceof \Symfony\Component\Validator\Constraints\Positive => 'more than 0',
-                $constraint instanceof \Symfony\Component\Validator\Constraints\NotBlank => 'not empty',
-                $constraint instanceof \Symfony\Component\Validator\Constraints\Length => self::range($constraint->min, $constraint->max, 'characters'),
-                $constraint instanceof \Symfony\Component\Validator\Constraints\Choice => 'one of ' . self::listed(self::choices($constraint->choices, $constraint->callback)),
-                default => '',
-            };
-        }
-        $words = array_filter($words, static fn(string $word): bool => $word !== '');
-
-        return $words === [] ? '' : 'each ' . implode(', ', $words);
-    }
-
-    private static function range(mixed $min, mixed $max, string $unit): string
-    {
-        $unit = $unit === '' ? '' : " {$unit}";
-
-        return match (true) {
-            \is_scalar($min) && \is_scalar($max) => "{$min} to {$max}{$unit}",
-            \is_scalar($max) => "at most {$max}{$unit}",
-            \is_scalar($min) => "at least {$min}{$unit}",
-            default => '',
-        };
     }
 }

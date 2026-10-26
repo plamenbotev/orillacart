@@ -11,7 +11,36 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { shopDateTime } from '../shared/dates';
 import { errorMessage } from '../shared/api';
-import { type ChangeLogPage, fetchChangeLog } from './api';
+import { type ChangeLogPage, type ChangeRecord, fetchChangeLog } from './api';
+
+/**
+ * How a change came, in words: through the AI assistant or an API key, and which key.
+ *
+ * @param via     The channel the record names.
+ * @param keyName The key's name, when the record has it.
+ */
+function viaWords(
+	via: NonNullable< ChangeRecord[ 'via' ] >,
+	keyName: string | null
+): string {
+	if ( via === 'assistant' ) {
+		return keyName
+			? sprintf(
+					/* translators: %s: the name of an API key */
+					__( 'through the AI assistant, key "%s"', 'orillacart' ),
+					keyName
+				)
+			: __( 'through the AI assistant', 'orillacart' );
+	}
+
+	return keyName
+		? sprintf(
+				/* translators: %s: the name of an API key */
+				__( 'with the API key "%s"', 'orillacart' ),
+				keyName
+			)
+		: __( 'with an API key', 'orillacart' );
+}
 
 /**
  * The changes shop managers made through the shop's screens and API, newest first, with what they sent
@@ -99,6 +128,17 @@ export function ChangeLogCard() {
 													( record.user_id
 														? `#${ record.user_id }`
 														: '—' ) }
+												{ record.via && (
+													<>
+														<br />
+														<small>
+															{ viaWords(
+																record.via,
+																record.key_name
+															) }
+														</small>
+													</>
+												) }
 											</td>
 											<td>
 												<code>{ record.route }</code>

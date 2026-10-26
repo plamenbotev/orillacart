@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** How bought files are sent, by PHP or by the web server, and what the last test of it found; nothing changes. */
 #[Route('/download-delivery', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowDownloadDeliveryAction implements RequestHandlerInterface
 {

@@ -13,5 +13,6 @@ final readonly class AuthenticatedKey
         public int $keyId,
         public int $userId,
         public ApiKeyScope $scope,
+        public string $name = '',
     ) {}
 }

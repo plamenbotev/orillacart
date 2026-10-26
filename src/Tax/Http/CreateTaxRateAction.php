@@ -15,6 +15,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Adds a rate to a tax group, for a country and, if given, a state, cities or postcodes. */
 #[Route('/tax/groups/{id}/rates', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class CreateTaxRateAction implements RequestHandlerInterface
 {

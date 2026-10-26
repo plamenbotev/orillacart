@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Deletes a price rule, so its prices no longer apply; placed orders keep theirs. */
 #[Route('/price-rules/{id}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class DeletePriceRuleAction implements RequestHandlerInterface
 {

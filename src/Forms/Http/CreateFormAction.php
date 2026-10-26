@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Makes a new form of extra fields that customers fill in on product pages or at checkout; a field or its choices can
+ * add to the price.
+ */
 #[Route('/forms', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateFormAction implements RequestHandlerInterface
 {

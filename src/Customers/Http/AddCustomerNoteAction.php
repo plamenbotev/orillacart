@@ -16,6 +16,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** The shop notes something about a customer, for itself; the customer does not see it. */
 #[Route('/customers/{id}/notes', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class AddCustomerNoteAction implements RequestHandlerInterface
 {

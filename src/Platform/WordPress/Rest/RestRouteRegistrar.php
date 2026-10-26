@@ -33,6 +33,22 @@ final readonly class RestRouteRegistrar implements Registrar
     public function register(): void
     {
         add_action('rest_api_init', $this->registerRoutes(...));
+        add_filter('rest_post_dispatch', $this->challenge(...), 10, 3);
+    }
+
+    /**
+     * A 401 from the shop's routes says how to authenticate (RFC 9110): with an API key as a bearer token. The
+     * permission callback and a refused key answer before the kernel does, so it is added here. MCP clients
+     * read it to know a key is needed.
+     */
+    private function challenge(mixed $response, mixed $server, mixed $request): mixed
+    {
+        if ($response instanceof \WP_HTTP_Response && $response->get_status() === 401 && $request instanceof \WP_REST_Request
+            && str_starts_with($request->get_route(), '/' . RouteCollection::REST_NAMESPACE . '/')) {
+            $response->header('WWW-Authenticate', 'Bearer realm="OrillaCart"');
+        }
+
+        return $response;
     }
 
     private function registerRoutes(): void

@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Adds a carrier checkout offers: with its own rates, priced by an add-on's shipping method, or as pickup at the
+ * shop's places.
+ */
 #[Route('/carriers', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateCarrierAction implements RequestHandlerInterface
 {

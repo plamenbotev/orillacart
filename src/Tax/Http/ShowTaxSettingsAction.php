@@ -12,6 +12,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Shows how the shop taxes: by which address, whether prices include tax, the default group, a tax service, and how
+ * tax is shown.
+ */
 #[Route('/tax/settings', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowTaxSettingsAction implements RequestHandlerInterface
 {

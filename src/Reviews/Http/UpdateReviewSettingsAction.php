@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Sets who may review products: no one, anyone, or only buyers. */
 #[Route('/review-settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateReviewSettingsAction implements RequestHandlerInterface
 {

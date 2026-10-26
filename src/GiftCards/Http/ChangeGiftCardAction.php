@@ -15,6 +15,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Sets whether a gift card can pay, and until when; its balance does not change. */
 #[Route('/gift-cards/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ChangeGiftCardAction implements RequestHandlerInterface
 {

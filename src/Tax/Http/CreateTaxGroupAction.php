@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Adds a tax group, which products and shipping are taxed by, with its tax service code. */
 #[Route('/tax/groups', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateTaxGroupAction implements RequestHandlerInterface
 {

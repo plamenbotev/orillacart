@@ -16,6 +16,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Changes the items of an order on hold, and how it ships: the old items' stock is put back, the new ones are priced
+ * and take stock. Its coupons are priced again, and one that no longer applies is dropped.
+ */
 #[Route('/orders/{id}/items', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class EditOrderItemsAction implements RequestHandlerInterface
 {

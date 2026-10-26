@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Shows the shop's settings: currency, units, address, where it sells, stock and order rules. */
 #[Route('/settings', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowSettingsAction implements RequestHandlerInterface
 {

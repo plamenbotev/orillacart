@@ -15,6 +15,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Changes a carrier: its name, whether checkout offers it, its position, and its whole list of rates. A secret method
+ * setting left empty keeps the saved one.
+ */
 #[Route('/carriers/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class UpdateCarrierAction implements RequestHandlerInterface
 {

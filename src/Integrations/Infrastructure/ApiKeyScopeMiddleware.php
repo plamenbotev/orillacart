@@ -16,7 +16,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
- * Holds a request made with an API key to the key's scope: a read-only key changes nothing, and no key makes,
+ * Holds a request made with an API key to the key's scope: a read-only key changes nothing (it may still ask for
+ * a quote or a plan, which change nothing), and no key makes,
  * lists or revokes keys, or sees or changes webhooks (their secrets sign what the shop sends, and their addresses
  * receive its orders): that takes a shop manager logged in.
  */
@@ -36,7 +37,9 @@ final readonly class ApiKeyScopeMiddleware implements MiddlewareInterface
             if (str_starts_with($route->path, '/webhooks')) {
                 throw new HttpException(403, 'orillacart_api_key_forbidden', 'Webhooks are managed by a shop manager logged in, not with a key.');
             }
-            if ($key->scope === ApiKeyScope::Read && !$route->isSafe($request->getMethod())) {
+            // A route that only works something out (a quote, a plan, the assistant's endpoint, whose tools are
+            // checked again as their own routes) changes nothing, whatever its method.
+            if ($key->scope === ApiKeyScope::Read && !$route->isSafe($request->getMethod()) && $route->changes) {
                 throw new HttpException(403, 'orillacart_read_only_key', 'This API key only reads.');
             }
         }

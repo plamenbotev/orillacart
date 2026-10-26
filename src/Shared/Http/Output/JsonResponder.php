@@ -15,6 +15,12 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  */
 final readonly class JsonResponder
 {
+    /**
+     * A header that asks the REST bridge to keep the answer's JSON objects as objects, so that {} stays {} where a
+     * protocol needs it (MCP). The bridge takes it off before the answer leaves.
+     */
+    public const string KEEP_OBJECTS = 'X-OrillaCart-Keep-Objects';
+
     public function __construct(
         private NormalizerInterface $normalizer,
         private ResponseFactoryInterface $responses,
@@ -45,6 +51,14 @@ final readonly class JsonResponder
     public function error(int $status, string $code, string $message, array $details = []): ResponseInterface
     {
         return $this->json(['code' => $code, 'message' => $message, 'data' => ['status' => $status] + $details], $status);
+    }
+
+    /**
+     * JSON written as given, without normalizing: an empty stdClass stays {}.
+     */
+    public function exact(mixed $payload, int $status = 200): ResponseInterface
+    {
+        return $this->json($payload, $status)->withHeader(self::KEEP_OBJECTS, '1');
     }
 
     private function json(mixed $payload, int $status): ResponseInterface

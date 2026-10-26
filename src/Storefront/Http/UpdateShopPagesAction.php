@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Sets which published pages the shop, cart, checkout and account are on; none for a page leaves that part without
+ * one.
+ */
 #[Route('/shop-pages', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateShopPagesAction implements RequestHandlerInterface
 {

@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** A page of the shop's coupons, or of its automatic discounts, found by a search; nothing changes. */
 #[Route('/coupons', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListCouponsAction implements RequestHandlerInterface
 {

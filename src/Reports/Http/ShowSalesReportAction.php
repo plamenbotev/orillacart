@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Reports the shop's sales over a period, by day, week or month, with totals by payment, country and shipping, against
+ * the period it is compared with; nothing changes.
+ */
 #[Route('/reports/sales', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowSalesReportAction implements RequestHandlerInterface
 {

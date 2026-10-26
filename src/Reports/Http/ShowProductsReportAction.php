@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Reports the products that sold best over a period, by what they brought or how many sold, against the period it is
+ * compared with; nothing changes.
+ */
 #[Route('/reports/products', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowProductsReportAction implements RequestHandlerInterface
 {

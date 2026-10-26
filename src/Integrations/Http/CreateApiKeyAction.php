@@ -10,6 +10,7 @@ use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
@@ -17,6 +18,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** A new key, acting as the shop manager who makes it; the answer holds the key, shown this once. */
+#[Tool(leftOut: 'API keys are made and revoked by a shop manager logged in, never with a key.')]
 #[Route('/api-keys', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateApiKeyAction implements RequestHandlerInterface
 {

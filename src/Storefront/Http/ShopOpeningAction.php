@@ -6,6 +6,7 @@ namespace OrillaCart\Storefront\Http;
 
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Storefront\Application\ShopOpening;
 use Psr\Http\Message\ResponseInterface;
@@ -13,6 +14,9 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Whether visitors see "Opening soon" (GET); PUT opens the shop, DELETE shows "Opening soon" again. */
+#[Tool(method: 'GET', name: 'show_shop_opening', description: 'Whether visitors see "Opening soon" instead of the shop; shop managers always see the real shop.')]
+#[Tool(method: 'PUT', name: 'open_shop', risk: Tool::OPENING, description: 'Opens the shop to visitors: "Opening soon" goes and anyone can order.')]
+#[Tool(method: 'DELETE', name: 'show_opening_soon', risk: Tool::OPENING, description: 'Shows visitors "Opening soon" again, so only shop managers can order until the shop opens.')]
 #[Route('/opening', methods: ['GET', 'PUT', 'DELETE'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShopOpeningAction implements RequestHandlerInterface
 {

@@ -16,6 +16,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Changes how many downloads of a bought file are left and the last day it can be downloaded; the order's history
+ * notes it.
+ */
 #[Route('/orders/{id}/downloads/{grant}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'grant' => '\d+'])]
 final readonly class ChangeDownloadAllowanceAction implements RequestHandlerInterface
 {

@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Replaces the storefront's settings: product data for search engines, sharing tags, who may keep a wishlist, recently
+ * viewed products, the data layer and filters.
+ */
 #[Route('/storefront-settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateStorefrontSettingsAction implements RequestHandlerInterface
 {

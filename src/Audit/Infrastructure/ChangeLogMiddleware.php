@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Audit\Infrastructure;
 
 use OrillaCart\Audit\Application\ChangeLog;
+use OrillaCart\Integrations\Infrastructure\WordPress\ApiKeyRequest;
 use OrillaCart\Shared\Http\HttpKernel;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
 use OrillaCart\Shared\Http\Security\Authorization;
@@ -18,7 +19,8 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
 /**
- * Writes each change a shop manager's request made into the change log: routes for shop managers only, not
+ * Writes each change a shop manager's request made into the change log, with how it came (the AI assistant, an API
+ * key) when not from the admin's screens: routes for shop managers only, not
  * those that only read or work something out (a quote), and only once the change was made (the answer is a success). The log never stands in
  * the change's way: a record that cannot be written is logged instead.
  */
@@ -33,6 +35,7 @@ final readonly class ChangeLogMiddleware implements MiddlewareInterface
         private \Closure $log,
         private Authorization $authorization,
         private LoggerInterface $logger,
+        private ApiKeyRequest $keys,
     ) {}
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -45,7 +48,10 @@ final readonly class ChangeLogMiddleware implements MiddlewareInterface
         }
         try {
             $body = json_decode((string) $request->getBody(), true);
-            ($this->log)()->record($this->authorization->userId(), $method, $route->path, self::called($route, $request), \is_array($body) ? $body : []);
+            $key = $this->keys->key;
+            $via = $request->getAttribute(RouteDefinition::VIA);
+            $via = \is_string($via) ? $via : ($key === null ? null : 'api_key');
+            ($this->log)()->record($this->authorization->userId(), $method, $route->path, self::called($route, $request), \is_array($body) ? $body : [], $via, $key?->name);
         } catch (\Throwable $e) {
             $this->logger->error('The change log could not record {route}: {message}', ['route' => "{$method} {$route->path}", 'message' => $e->getMessage()]);
         }

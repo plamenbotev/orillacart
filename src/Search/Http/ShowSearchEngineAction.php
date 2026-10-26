@@ -12,6 +12,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Shows the search engine the shop uses, how far behind its index is, and products that failed to index; nothing
+ * changes.
+ */
 #[Route('/search-engine', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowSearchEngineAction implements RequestHandlerInterface
 {

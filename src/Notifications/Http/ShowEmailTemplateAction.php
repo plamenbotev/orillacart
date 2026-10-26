@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** One email template's source, as the shop edited it or from its file, with the file's own; nothing changes. */
 #[Route('/email-templates/{name}', methods: ['GET'], capability: Capability::MANAGE_SHOP, requirements: ['name' => '[a-z_-]+'])]
 final readonly class ShowEmailTemplateAction implements RequestHandlerInterface
 {

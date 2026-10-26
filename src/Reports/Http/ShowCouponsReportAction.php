@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Reports the coupons used most over a period, with the orders and discount of each, against the period it is compared
+ * with; nothing changes.
+ */
 #[Route('/reports/coupons', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowCouponsReportAction implements RequestHandlerInterface
 {

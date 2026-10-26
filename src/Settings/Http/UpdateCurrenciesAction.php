@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Replaces the currencies shoppers may pay in besides the shop's own, with their rates and rounding. Shoppers pay the
+ * converted prices from then on.
+ */
 #[Route('/currencies', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateCurrenciesAction implements RequestHandlerInterface
 {

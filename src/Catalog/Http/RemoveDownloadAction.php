@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** The product stops offering a download file; buyers who have it keep their downloads. */
 #[Route('/products/{id}/downloads/{file}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'file' => '\d+'])]
 final readonly class RemoveDownloadAction implements RequestHandlerInterface
 {

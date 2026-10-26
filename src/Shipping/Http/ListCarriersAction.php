@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Lists the carriers in checkout order, with their rates; nothing changes. */
 #[Route('/carriers', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListCarriersAction implements RequestHandlerInterface
 {

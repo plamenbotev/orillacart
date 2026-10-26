@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** A page of background jobs that failed, of one type or all, with what each was about; nothing changes. */
 #[Route('/jobs/failed', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListFailedJobsAction implements RequestHandlerInterface
 {

@@ -263,7 +263,25 @@ Design 48. The setup asks about the business, plans the settings from a country 
 | ✅ | 176 | P2 | Tests: e2e setups for a German B2C shop, a UK shop and a US shop end with a test order that is taxed, shipped and paid as the plan said | |
 | ✅ | 177 | P1 | The EU's withdrawal function (Art. 11a of the Consumer Rights Directive, from 2026-06-19; § 356a BGB): a "Withdraw from contract here" link on every page, no login; the customer gives their name, the order (number and email) and the email for the confirmation, chooses items for a partial withdrawal, then "Confirm withdrawal"; an acknowledgement on a durable medium with what was declared and when, at once; the shop sees it as a return of the items | |
 
-Later: MCP tools for an AI store manager (design 49): bundled with the plugin, working once a key is made, covering setup and all administration, on the same plan-and-apply service.
+## An AI store manager over MCP (2026-10-26)
+
+Design 49. Bundled with the plugin, working once a key is made, covering setup and all administration, on the same plan-and-apply service; add-ons extend it.
+
+| | # | P | Item | Commits |
+|---|---|---|---|---|
+| ✅ | 178 | P1 | Tool catalogue from the routes: one reader of a route's inputs for the REST docs and the tools; JSON Schema 2020-12 from the DTOs; names from the actions, descriptions, annotations; `#[Tool]` to rename, describe, set a risk or leave out with a reason; a test that every manager route is a tool or left out | |
+| ✅ | 179 | P1 | The MCP endpoint: `POST /mcp`, Streamable HTTP with JSON answers; revision 2026-07-28 (`server/discover`, `_meta`, `Mcp-Method`/`Mcp-Name`) and 2025-11-25/2025-06-18 (`initialize`); `tools/list`, `tools/call`; API key, 401 with `WWW-Authenticate`; `Origin` check | |
+| ✅ | 180 | P1 | Running a tool runs its route through the HTTP kernel in the same process, as the key's manager; refusals as tool errors with each field's violation; the change log names the assistant and the key | |
+| ⬜ | 181 | P1 | Tools for what WordPress owns: products (find, create, update, trash), categories, images from an address or base64, the text of the shop's pages | |
+| ✅ | 182 | P1 | The setup as tools: one per step from its answers DTO (add-ons' steps too), plan, apply with the fingerprint, readiness (the "Set up my shop" prompt is item 187's) | |
+| ⬜ | 183 | P1 | Asking before: risk classes (money, deleting, customers hear of it, the shop opens or closes), chosen per key; elicitation where the client can ask, a refusal naming the setting where it cannot | |
+| ⬜ | 184 | P1 | Admin: Shop → Integrations → AI assistant: the endpoint, a key with its areas, add-ons' tools, list mode and ask-before classes, the lines to paste for Claude Code, Claude Desktop, Cursor and VS Code, a connection test | |
+| ⬜ | 185 | P1 | Extension API 15: `AssistantTool` and `Registry::assistantTool()`, names prefixed, capability and risk checked by the shop, calls in the change log; add-ons' tools listed beside the shop's for the owner to choose | |
+| ⬜ | 186 | P2 | "Find on demand" list mode: `find_tools`, `describe_tool`, `run_tool` for clients limited in tools | |
+| ⬜ | 187 | P2 | Resources and prompts: the shop's overview; "Set up my shop", "Review today's orders", "What is running low" | |
+| ⬜ | 188 | P2 | OAuth 2.1 for connectors without a key field (claude.ai, ChatGPT): resource and server metadata, client ID metadata documents, PKCE, consent in wp-admin, grants listed and revoked with the keys | |
+| ⬜ | 189 | P3 | The same tools as WordPress abilities on 6.9 and later, for WordPress's MCP Adapter and AI features | |
+| ⬜ | 190 | P2 | Tests: protocol unit tests, every schema valid, a call per area, the MCP Inspector CLI against wp-env for both revisions; docs for owners and for add-on tools | |
 
 ## Waiting on others
 

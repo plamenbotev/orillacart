@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Lists the shop's payment methods, on or off, in checkout order, with their settings; nothing changes. */
 #[Route('/payment-methods', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListPaymentMethodsAction implements RequestHandlerInterface
 {

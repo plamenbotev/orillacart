@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Lists the tax groups by name, with their rates; nothing changes. */
 #[Route('/tax/groups', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListTaxGroupsAction implements RequestHandlerInterface
 {

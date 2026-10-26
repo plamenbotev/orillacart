@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\WordPress\Rest;
 
 use OrillaCart\Shared\Http\HttpKernel;
+use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
@@ -80,7 +81,10 @@ final readonly class RestBridge
     public function toWordPress(ResponseInterface $response): \WP_REST_Response
     {
         $body = (string) $response->getBody();
-        $data = $body === '' ? null : json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+        // Arrays for WordPress's filters and tests, unless the answer's empty objects must stay objects (MCP).
+        $objects = $response->hasHeader(JsonResponder::KEEP_OBJECTS);
+        $response = $response->withoutHeader(JsonResponder::KEEP_OBJECTS);
+        $data = $body === '' ? null : json_decode($body, !$objects, 512, JSON_THROW_ON_ERROR);
 
         $headers = [];
         foreach ($response->getHeaders() as $name => $values) {

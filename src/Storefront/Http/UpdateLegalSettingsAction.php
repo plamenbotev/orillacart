@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Sets the shop's legal pages, whether checkout asks to accept the terms, and what its last button says. */
 #[Route('/legal-settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateLegalSettingsAction implements RequestHandlerInterface
 {

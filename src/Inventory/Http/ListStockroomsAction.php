@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** The shop's stockrooms, by name; nothing changes. */
 #[Route('/stockrooms', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListStockroomsAction implements RequestHandlerInterface
 {

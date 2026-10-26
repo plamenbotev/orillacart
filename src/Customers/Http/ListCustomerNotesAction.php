@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** The shop's notes about a customer, newest first, with who wrote each; nothing changes. */
 #[Route('/customers/{id}/notes', methods: ['GET'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ListCustomerNotesAction implements RequestHandlerInterface
 {

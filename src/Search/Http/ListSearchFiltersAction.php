@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Lists the filters shoppers see in the shop, in their order; nothing changes. */
 #[Route('/search-filters', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListSearchFiltersAction implements RequestHandlerInterface
 {

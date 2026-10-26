@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Runs an action an add-on offers for an order, and notes its answer in the order's history. What it does is up to the
+ * add-on.
+ */
 #[Route('/orders/{id}/actions/{action}', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'action' => '[a-z][a-z0-9_]{0,39}'])]
 final readonly class RunOrderActionAction implements RequestHandlerInterface
 {

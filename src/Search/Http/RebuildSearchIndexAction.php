@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Indexes every product again, in the background, and answers with how many are queued. */
 #[Route('/search-engine/rebuild', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class RebuildSearchIndexAction implements RequestHandlerInterface
 {

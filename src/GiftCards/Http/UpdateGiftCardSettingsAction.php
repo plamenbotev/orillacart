@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Chooses which products the shop sells as gift cards, and for how many months a card stays valid. */
 #[Route('/gift-cards/settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateGiftCardSettingsAction implements RequestHandlerInterface
 {

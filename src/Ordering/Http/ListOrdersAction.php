@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Lists a page of orders, newest first, found by number, customer, product and more, and narrowed by status, date,
+ * payment, total and shipping.
+ */
 #[Route('/orders', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListOrdersAction implements RequestHandlerInterface
 {

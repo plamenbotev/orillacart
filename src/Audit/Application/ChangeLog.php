@@ -30,9 +30,11 @@ final readonly class ChangeLog
     ) {}
 
     /**
-     * @param array<array-key, mixed> $values what was sent
+     * @param array<array-key, mixed> $values  what was sent
+     * @param string|null             $via     "assistant" or "api_key" when the change did not come from the admin's screens
+     * @param string|null             $keyName the API key it came with
      */
-    public function record(?int $userId, string $method, string $route, string $path, array $values): void
+    public function record(?int $userId, string $method, string $route, string $path, array $values, ?string $via = null, ?string $keyName = null): void
     {
         $values = self::blank($values);
         $encoded = json_encode($values);
@@ -41,7 +43,7 @@ final readonly class ChangeLog
         }
         $name = $userId === null ? '' : ($this->users->names([$userId])[$userId] ?? '');
         $area = explode('/', trim($route, '/'))[0] ?? '';
-        $this->records->save(new ChangeRecord($userId, mb_substr($name, 0, 100), mb_substr($area, 0, 64), mb_substr("{$method} {$route}", 0, 200), mb_substr($path, 0, 255), $values, $this->clock->now()));
+        $this->records->save(new ChangeRecord($userId, mb_substr($name, 0, 100), mb_substr($area, 0, 64), mb_substr("{$method} {$route}", 0, 200), mb_substr($path, 0, 255), $values, $this->clock->now(), $via, $keyName === null ? null : mb_substr($keyName, 0, 100)));
     }
 
     public function page(ChangeLogQuery $query): ChangeLogPageView

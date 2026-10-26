@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** The shop adds an attribute set: a named list of attributes, with their options, that products can offer. */
 #[Route('/attribute-sets', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateAttributeSetAction implements RequestHandlerInterface
 {

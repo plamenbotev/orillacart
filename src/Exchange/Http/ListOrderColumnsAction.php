@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** The columns an orders export can hold: the chosen ones in their order, then the others; nothing changes. */
 #[Route('/exports/orders/columns', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ListOrderColumnsAction implements RequestHandlerInterface
 {

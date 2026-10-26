@@ -12,6 +12,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Whether the shop offers its newsletter, the words people agree to, the add-ons' mailing lists, and how many are
+ * signed up; nothing changes.
+ */
 #[Route('/newsletter-settings', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowNewsletterSettingsAction implements RequestHandlerInterface
 {

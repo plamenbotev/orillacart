@@ -18,6 +18,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Sets how many of a product, variation or option each stockroom holds; stockrooms left out hold none, and an empty
+ * list means stock no longer limits it. When it comes back in stock, customers who asked are emailed.
+ */
 #[Route('/stock/{kind}/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['kind' => 'product|variation|option', 'id' => '\d+'])]
 final readonly class UpdateStockAction implements RequestHandlerInterface
 {

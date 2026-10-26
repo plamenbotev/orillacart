@@ -15,6 +15,9 @@ final readonly class RouteDefinition
     /** Request attribute that carries the matched route through the middleware pipeline. */
     public const string ATTRIBUTE = '_orillacart_route';
 
+    /** Request attribute naming who made a change on the manager's behalf, for the change log: "assistant". */
+    public const string VIA = '_orillacart_via';
+
     private const array METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
     private const array SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
 

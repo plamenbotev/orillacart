@@ -56,6 +56,9 @@ export interface ChangeRecord {
 	path: string;
 	values: Record< string, unknown >;
 	made_at: string;
+	/** How the change came, when not from the admin's screens. */
+	via: 'assistant' | 'api_key' | null;
+	key_name: string | null;
 }
 
 /** A page of the change log, as GET /orillacart/v1/change-log returns it. */

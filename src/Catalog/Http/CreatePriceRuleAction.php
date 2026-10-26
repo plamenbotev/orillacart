@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * The shop adds a price rule: its own prices for customer groups, by quantity or between dates, for the products,
+ * categories or brands it names. Placed orders keep their prices.
+ */
 #[Route('/price-rules', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreatePriceRuleAction implements RequestHandlerInterface
 {

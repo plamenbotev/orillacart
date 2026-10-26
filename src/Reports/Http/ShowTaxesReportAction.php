@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Reports the tax of a period by place and rate, for filing returns: taxable and exempt sales, tax and refunds;
+ * nothing changes.
+ */
 #[Route('/reports/taxes', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowTaxesReportAction implements RequestHandlerInterface
 {

@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Removes a variation from a product, so it is no longer sold. */
 #[Route('/products/{id}/variations/{variation}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'variation' => '\d+'])]
 final readonly class DeleteVariationAction implements RequestHandlerInterface
 {

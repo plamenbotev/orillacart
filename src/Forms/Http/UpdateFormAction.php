@@ -15,6 +15,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Changes a form's settings and replaces all its fields; a form stays where it was made, on product pages or at
+ * checkout.
+ */
 #[Route('/forms/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class UpdateFormAction implements RequestHandlerInterface
 {

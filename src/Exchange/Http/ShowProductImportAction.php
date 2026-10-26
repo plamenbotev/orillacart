@@ -13,6 +13,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * How a product import stands: the file's columns it reads and ignores, how many rows are done, created, updated or
+ * failed, and the first errors; nothing changes.
+ */
 #[Route('/imports/products/{id}', methods: ['GET'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ShowProductImportAction implements RequestHandlerInterface
 {

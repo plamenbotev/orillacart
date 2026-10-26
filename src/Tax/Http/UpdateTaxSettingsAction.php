@@ -14,6 +14,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Replaces the tax settings: by which address the shop taxes, whether prices include tax, the default group, a tax
+ * service, and how tax is shown.
+ */
 #[Route('/tax/settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateTaxSettingsAction implements RequestHandlerInterface
 {

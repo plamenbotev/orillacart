@@ -20,10 +20,13 @@ final readonly class ChangeRecordView
         public string $path,
         public array $values,
         public string $madeAt,
+        /** "assistant", "api_key", or null for the admin's screens */
+        public ?string $via = null,
+        public ?string $keyName = null,
     ) {}
 
     public static function of(ChangeRecord $record): self
     {
-        return new self($record->id(), $record->userId(), $record->userName(), $record->area(), $record->route(), $record->path(), $record->values(), $record->madeAt()->format(\DATE_ATOM));
+        return new self($record->id(), $record->userId(), $record->userName(), $record->area(), $record->route(), $record->path(), $record->values(), $record->madeAt()->format(\DATE_ATOM), $record->via(), $record->keyName());
     }
 }

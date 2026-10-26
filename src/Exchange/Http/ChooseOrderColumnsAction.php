@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Chooses which columns the orders export holds, in this order; answers with every column, the chosen ones first. */
 #[Route('/exports/orders/columns', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class ChooseOrderColumnsAction implements RequestHandlerInterface
 {

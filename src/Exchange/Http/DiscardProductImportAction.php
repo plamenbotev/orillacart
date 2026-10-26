@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Forgets a product import that is not running, and its uploaded file; products it already imported stay. */
 #[Route('/imports/products/{id}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class DiscardProductImportAction implements RequestHandlerInterface
 {

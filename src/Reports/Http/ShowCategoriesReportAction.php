@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Reports the categories that sold best over a period, against the period it is compared with; nothing changes. */
 #[Route('/reports/categories', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowCategoriesReportAction implements RequestHandlerInterface
 {

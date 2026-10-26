@@ -15,6 +15,9 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Adds a variation to a product, one option of each attribute it differs in, with its own price, stock and measures.
+ */
 #[Route('/products/{id}/variations', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class CreateVariationAction implements RequestHandlerInterface
 {

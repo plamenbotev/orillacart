@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Adds a filter shoppers see in the shop, over the product attributes with the names given. */
 #[Route('/search-filters', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateSearchFilterAction implements RequestHandlerInterface
 {

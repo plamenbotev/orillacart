@@ -10,11 +10,14 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Sends one of an order's emails again, such as when the customer lost it; answers whether the mail system took it. */
+#[Tool(risk: Tool::CUSTOMERS)]
 #[Route('/orders/{id}/emails', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class SendOrderEmailAction implements RequestHandlerInterface
 {

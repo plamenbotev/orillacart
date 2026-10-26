@@ -12,6 +12,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * What background jobs wait and run, by lane and type, the workers, what failed, and what the jobs did lately; nothing
+ * changes.
+ */
 #[Route('/jobs', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowJobsAction implements RequestHandlerInterface
 {

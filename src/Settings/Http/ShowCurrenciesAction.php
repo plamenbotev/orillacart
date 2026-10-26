@@ -12,6 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Shows the currencies shoppers may pay in besides the shop's own, with the shop's rates and rounding. */
 #[Route('/currencies', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowCurrenciesAction implements RequestHandlerInterface
 {

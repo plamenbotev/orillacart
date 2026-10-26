@@ -9,11 +9,17 @@ use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Replaces all the shop's settings in one go, so every field must be sent. It can make the shop a catalog without
+ * checkout, hide prices, or change where it sells.
+ */
+#[Tool(risk: Tool::OPENING)]
 #[Route('/settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateSettingsAction implements RequestHandlerInterface
 {

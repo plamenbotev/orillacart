@@ -12,6 +12,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Asks every running background worker to finish its batch and stop, so their supervisor starts them again; answers
+ * with what the jobs are doing.
+ */
 #[Route('/jobs/workers/restart', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class RestartWorkersAction implements RequestHandlerInterface
 {

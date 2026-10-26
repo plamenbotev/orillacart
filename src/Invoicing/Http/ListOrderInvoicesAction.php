@@ -13,6 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** An order's invoices and credit notes, with the address of each one's printable page; nothing changes. */
 #[Route('/orders/{id}/invoices', methods: ['GET'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ListOrderInvoicesAction implements RequestHandlerInterface
 {

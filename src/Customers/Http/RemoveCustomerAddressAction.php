@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** Removes an address from a customer's address book, and answers with the customer as they are now. */
 #[Route('/customers/{id}/addresses/{address}', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'address' => AddressBook::ID_PATTERN])]
 final readonly class RemoveCustomerAddressAction implements RequestHandlerInterface
 {

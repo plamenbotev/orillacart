@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-25T10:33:08+00:00\n"
+"POT-Creation-Date: 2026-10-26T06:57:24+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: orillacart\n"
@@ -792,7 +792,7 @@ msgstr ""
 #: build/admin/orders.js:44
 #: build/admin/price-rules.js:9
 #: build/admin/price-rules.js:16
-#: build/admin/status.js:3
+#: build/admin/status.js:5
 #: build/admin/tax.js:1
 #: build/admin/tax.js:7
 msgid "Status"
@@ -1432,7 +1432,7 @@ msgid "Payments"
 msgstr ""
 
 #: src/Payment/Infrastructure/WordPress/Admin/PayPalHealth.php:35
-#: var/i18n/messages.php:651
+#: var/i18n/messages.php:653
 msgid "PayPal"
 msgstr ""
 
@@ -3470,58 +3470,62 @@ msgid "Collecting an order cannot cost less than nothing."
 msgstr ""
 
 #: var/i18n/messages.php:448
+msgid "Connect with an API key from Shop → Integrations."
+msgstr ""
+
+#: var/i18n/messages.php:449
 msgid "Consumers in the EU pay their own country's rate (One-Stop Shop)."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:450
+#: var/i18n/messages.php:451
 #, php-format
 msgid "Coupon %d does not exist."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:452
+#: var/i18n/messages.php:453
 #, php-format
 msgid "Customer group %d does not exist."
 msgstr ""
 
-#: var/i18n/messages.php:453
+#: var/i18n/messages.php:454
 msgid "Customers at home can pay cash on delivery."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:455
+#: var/i18n/messages.php:456
 #, php-format
 msgid "Customers can ask to return goods for %d days after delivery."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:457
+#: var/i18n/messages.php:458
 #, php-format
 msgid "Customers can collect their orders at %1$s, %2$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:459
+#: var/i18n/messages.php:460
 #, php-format
 msgid "Customers can pay by bank transfer to %s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:461
+#: var/i18n/messages.php:462
 #, php-format
 msgid "Customers can pay by cheque, sent to %s."
 msgstr ""
 
-#: var/i18n/messages.php:462
+#: var/i18n/messages.php:463
 msgid "Customers in the EU pay the shop's own rate, until its sales to other EU countries pass €10,000 a year."
 msgstr ""
 
-#: var/i18n/messages.php:463
+#: var/i18n/messages.php:464
 msgid "Customers return items within 1 to 365 days, or the shop takes no returns."
 msgstr ""
 
-#: var/i18n/messages.php:464
+#: var/i18n/messages.php:465
 #: var/i18n/templates.php:256
 #: var/i18n/templates.php:474
 #: var/i18n/templates.php:478
@@ -3530,638 +3534,642 @@ msgid "Date"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:466
+#: var/i18n/messages.php:467
 #, php-format
 msgid "Delivery takes from 0 to %d days, and the shortest time cannot be longer than the longest."
 msgstr ""
 
-#: var/i18n/messages.php:467
+#: var/i18n/messages.php:468
 msgid "Delivery times in weeks are whole weeks."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:469
+#: var/i18n/messages.php:470
 #, php-format
 msgid "Delivery to this address needs an order of at least %1$s %2$s."
 msgstr ""
 
-#: var/i18n/messages.php:470
+#: var/i18n/messages.php:471
 msgid "Draft by OrillaCart's setup: a starting point, not legal advice. Check it against the law that applies to your shop, or have a lawyer check it, then delete this line and publish the page."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:472
+#: var/i18n/messages.php:473
 #, php-format
 msgid "Each choice needs a label of up to %d characters."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:474
+#: var/i18n/messages.php:475
 #, php-format
 msgid "Each field needs a label of up to %d characters."
 msgstr ""
 
-#: var/i18n/messages.php:475
+#: var/i18n/messages.php:476
 msgid "Effects of withdrawal"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:477
+#: var/i18n/messages.php:478
 #, php-format
 msgid "Emails come from \"%1$s\" <%2$s>; new orders go to %3$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:479
+#: var/i18n/messages.php:480
 #, php-format
 msgid "Emails come from %1$s, not an address of %2$s: they may land in spam."
 msgstr ""
 
-#: var/i18n/messages.php:480
+#: var/i18n/messages.php:481
 #: build/storefront/storefront.js:1
 msgid "Enter a code."
 msgstr ""
 
-#: var/i18n/messages.php:481
+#: var/i18n/messages.php:482
 msgid "Enter a date."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:483
+#: var/i18n/messages.php:484
 #, php-format
 msgid "Enter a number from %1$s to %2$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:485
+#: var/i18n/messages.php:486
 #, php-format
 msgid "Enter a number of at least %s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:487
+#: var/i18n/messages.php:488
 #, php-format
 msgid "Enter a number of at most %s."
 msgstr ""
 
-#: var/i18n/messages.php:488
+#: var/i18n/messages.php:489
 msgid "Enter a number."
 msgstr ""
 
-#: var/i18n/messages.php:489
+#: var/i18n/messages.php:490
 msgid "Enter a whole number."
 msgstr ""
 
-#: var/i18n/messages.php:490
+#: var/i18n/messages.php:491
 msgid "Enter an amount such as -5.00 or 2.50."
 msgstr ""
 
-#: var/i18n/messages.php:491
+#: var/i18n/messages.php:492
 msgid "Enter an amount such as 100000."
 msgstr ""
 
-#: var/i18n/messages.php:492
+#: var/i18n/messages.php:493
 msgid "Enter an amount such as 25.50."
 msgstr ""
 
-#: var/i18n/messages.php:493
+#: var/i18n/messages.php:494
 msgid "Enter an amount."
 msgstr ""
 
-#: var/i18n/messages.php:494
+#: var/i18n/messages.php:495
 msgid "Enter the code."
 msgstr ""
 
-#: var/i18n/messages.php:495
+#: var/i18n/messages.php:496
 msgid "Enter the email address the gift card goes to."
 msgstr ""
 
-#: var/i18n/messages.php:496
+#: var/i18n/messages.php:497
 msgid "Enter the order number from your confirmation email."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:498
+#: var/i18n/messages.php:499
 #, php-format
 msgid "Everything of order #%d is in a shipment already."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:500
+#: var/i18n/messages.php:501
 #, php-format
 msgid "File %d is not one of this product's downloads."
 msgstr ""
 
-#: var/i18n/messages.php:501
+#: var/i18n/messages.php:502
 msgid "Files cannot be sent right now. Try again later."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:503
+#: var/i18n/messages.php:504
 #, php-format
 msgid "Gift card ····%s"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:505
+#: var/i18n/messages.php:506
 #, php-format
 msgid "Gift cards paid part of order #%d: its items stay as they are; cancel it and place another to change them."
 msgstr ""
 
-#: var/i18n/messages.php:506
+#: var/i18n/messages.php:507
 msgid "Gift cards pay no more than the order costs."
 msgstr ""
 
-#: var/i18n/messages.php:507
-msgid "Give the account customers pay into, or bank transfers go without one."
-msgstr ""
-
 #: var/i18n/messages.php:508
-msgid "Give the attribute at least one option."
+msgid "Give file_name, with its extension."
 msgstr ""
 
 #: var/i18n/messages.php:509
-msgid "Give the price change an amount, such as 19.90 or 10 for 10 %."
+msgid "Give the account customers pay into, or bank transfers go without one."
 msgstr ""
 
 #: var/i18n/messages.php:510
-msgid "Give the rule a price."
+msgid "Give the attribute at least one option."
 msgstr ""
 
 #: var/i18n/messages.php:511
+msgid "Give the price change an amount, such as 19.90 or 10 for 10 %."
+msgstr ""
+
+#: var/i18n/messages.php:512
+msgid "Give the rule a price."
+msgstr ""
+
+#: var/i18n/messages.php:513
 msgid "Give the sale an amount, such as 15, or 20 for a sale of 20%."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:513
+#: var/i18n/messages.php:515
 #, php-format
 msgid "How the shop charges %1$s, at the rates in force on %2$s."
 msgstr ""
 
-#: var/i18n/messages.php:514
+#: var/i18n/messages.php:516
 #: var/i18n/templates.php:678
 msgid "I no longer need it"
 msgstr ""
 
-#: var/i18n/messages.php:515
+#: var/i18n/messages.php:517
 msgid "I withdraw from the purchase"
 msgstr ""
 
-#: var/i18n/messages.php:516
+#: var/i18n/messages.php:518
 msgid "I/We (*) hereby give notice that I/We (*) withdraw from my/our (*) contract of sale of the following goods (*)/for the provision of the following service (*),"
 msgstr ""
 
-#: var/i18n/messages.php:517
+#: var/i18n/messages.php:519
 msgid "If you withdraw from this contract, we shall reimburse to you all payments received from you, including the costs of delivery (with the exception of the supplementary costs resulting from your choice of a type of delivery other than the least expensive type of standard delivery offered by us), without undue delay and in any event not later than 14 days from the day on which we are informed about your decision to withdraw from this contract. We will carry out such reimbursement using the same means of payment as you used for the initial transaction, unless you have expressly agreed otherwise; in any event, you will not incur any fees as a result of such reimbursement."
 msgstr ""
 
-#: var/i18n/messages.php:518
+#: var/i18n/messages.php:520
 msgid "Invoices and credit notes need different prefixes, so their numbers never meet."
 msgstr ""
 
-#: var/i18n/messages.php:519
-msgid "Invoices do not name the seller and its address."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:521
-#, php-format
-msgid "Invoices give the bank account: %s."
+msgid "Invoices do not name the seller and its address."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:523
 #, php-format
-msgid "Invoices name %s now."
+msgid "Invoices give the bank account: %s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:525
 #, php-format
-msgid "Invoices name the seller as %1$s, %2$s, VAT number %3$s."
+msgid "Invoices name %s now."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:527
 #, php-format
-msgid "Invoices name the seller as %1$s, %2$s."
+msgid "Invoices name the seller as %1$s, %2$s, VAT number %3$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:529
 #, php-format
-msgid "Invoices say: \"%s\""
+msgid "Invoices name the seller as %1$s, %2$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:531
 #, php-format
-msgid "Invoices to businesses in %1$s must be electronic (%2$s): turn on e-invoices in Settings → Invoices."
+msgid "Invoices say: \"%s\""
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:533
 #, php-format
+msgid "Invoices to businesses in %1$s must be electronic (%2$s): turn on e-invoices in Settings → Invoices."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:535
+#, php-format
 msgid "Invoices to businesses in %1$s must go %2$s, which the shop's own invoices do not: use invoicing software that does, or an add-on."
 msgstr ""
 
-#: var/i18n/messages.php:534
+#: var/i18n/messages.php:536
 msgid "Invoices will say no tax is charged; add the reason the law of your country asks for in Invoices → Footer."
 msgstr ""
 
-#: var/i18n/messages.php:535
+#: var/i18n/messages.php:537
 #: var/i18n/templates.php:675
 msgid "It arrived damaged"
 msgstr ""
 
-#: var/i18n/messages.php:536
+#: var/i18n/messages.php:538
 #: var/i18n/templates.php:677
 msgid "It is not as described"
 msgstr ""
 
-#: var/i18n/messages.php:537
+#: var/i18n/messages.php:539
 msgid "It is not sold out: you can order it now."
 msgstr ""
 
-#: var/i18n/messages.php:538
+#: var/i18n/messages.php:540
 #: var/i18n/templates.php:676
 msgid "It is not what I ordered"
 msgstr ""
 
-#: var/i18n/messages.php:539
+#: var/i18n/messages.php:541
 msgid "Its variations, or the items of the bundle, have the prices: change them in the product's editor."
 msgstr ""
 
-#: var/i18n/messages.php:540
-msgid "Limits are at least 1."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:542
-#, php-format
-msgid "Line \"%1$s\" has %2$d items left to refund."
+msgid "Limits are at least 1."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:544
 #, php-format
+msgid "Line \"%1$s\" has %2$d items left to refund."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:546
+#, php-format
 msgid "Line \"%1$s\" has %2$d items to put back in stock."
 msgstr ""
 
-#: var/i18n/messages.php:545
+#: var/i18n/messages.php:547
 msgid "List each state once, with its code."
 msgstr ""
 
-#: var/i18n/messages.php:546
+#: var/i18n/messages.php:548
 msgid "Log in or make an account to order."
 msgstr ""
 
-#: var/i18n/messages.php:547
+#: var/i18n/messages.php:549
 msgid "Log in to review the product."
 msgstr ""
 
-#: var/i18n/messages.php:548
+#: var/i18n/messages.php:550
 msgid "Log in to use your store credit."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:550
+#: var/i18n/messages.php:552
 #, php-format
 msgid "Mail from %1$s may land in spam: the site is %2$s. Use an address of the site's own domain, or a mail plugin that sends through %3$s."
 msgstr ""
 
-#: var/i18n/messages.php:551
+#: var/i18n/messages.php:553
 msgid "Model withdrawal form"
 msgstr ""
 
-#: var/i18n/messages.php:552
+#: var/i18n/messages.php:554
 msgid "Most states add local sales taxes to their own rate. A tax service charges them, or enter them in Tax by hand."
 msgstr ""
 
-#: var/i18n/messages.php:553
+#: var/i18n/messages.php:555
 msgid "Name of consumer(s),"
 msgstr ""
 
-#: var/i18n/messages.php:554
+#: var/i18n/messages.php:556
 msgid "Name the group."
 msgstr ""
 
-#: var/i18n/messages.php:555
+#: var/i18n/messages.php:557
 msgid "Name the items that came back."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:557
+#: var/i18n/messages.php:559
 #, php-format
 msgid "Name the key in 1 to %d characters."
 msgstr ""
 
-#: var/i18n/messages.php:558
+#: var/i18n/messages.php:560
 msgid "Name the rule."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:560
+#: var/i18n/messages.php:562
 #, php-format
 msgid "Name the webhook in 1 to %d characters."
 msgstr ""
 
-#: var/i18n/messages.php:561
+#: var/i18n/messages.php:563
 msgid "Name who carries the shipment, in up to 100 characters."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:563
+#: var/i18n/messages.php:565
 #, php-format
 msgid "No add-on brings the mailing list %s."
 msgstr ""
 
-#: var/i18n/messages.php:564
+#: var/i18n/messages.php:566
 msgid "No order has this number and email."
 msgstr ""
 
-#: var/i18n/messages.php:565
+#: var/i18n/messages.php:567
 msgid "No page tells customers where the shop ships and what it costs."
 msgstr ""
 
-#: var/i18n/messages.php:566
+#: var/i18n/messages.php:568
 msgid "No product is published."
 msgstr ""
 
-#: var/i18n/messages.php:567
+#: var/i18n/messages.php:569
 msgid "No tax group is the default, so products charge no tax. Run the setup's tax step, or choose one in Tax."
 msgstr ""
 
-#: var/i18n/messages.php:568
+#: var/i18n/messages.php:570
 msgid "No tax is charged."
 msgstr ""
 
-#: var/i18n/messages.php:569
+#: var/i18n/messages.php:571
 msgid "No way to pay is on: customers cannot order."
 msgstr ""
 
-#: var/i18n/messages.php:570
+#: var/i18n/messages.php:572
 msgid "Not a registration."
 msgstr ""
 
-#: var/i18n/messages.php:571
-msgid "Nothing of this order is left to withdraw from."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:573
-#, php-format
-msgid "Nothing ships to %d countries the shop sells to: give them a rate, or sell only where the shop ships."
+msgid "Nothing of this order is left to withdraw from."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:575
 #, php-format
-msgid "Nothing ships to %s, so customers there cannot order: give it a price, or sell only where the shop ships."
+msgid "Nothing ships to %d countries the shop sells to: give them a rate, or sell only where the shop ships."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:577
 #, php-format
-msgid "Nothing ships to %s, where the shop sells: give them a rate, or sell only where the shop ships."
-msgstr ""
-
-#: var/i18n/messages.php:578
-msgid "Nothing ships: customers cannot order goods that need shipping."
-msgstr ""
-
-#: var/i18n/messages.php:579
-msgid "One or more of the given values is invalid."
+msgid "Nothing ships to %s, so customers there cannot order: give it a price, or sell only where the shop ships."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:581
+#: var/i18n/messages.php:579
 #, php-format
-msgid "Only %1$d of %2$s are in stock, %3$d were asked for."
+msgid "Nothing ships to %s, where the shop sells: give them a rate, or sell only where the shop ships."
+msgstr ""
+
+#: var/i18n/messages.php:580
+msgid "Nothing ships: customers cannot order goods that need shipping."
+msgstr ""
+
+#: var/i18n/messages.php:581
+msgid "One or more of the given values is invalid."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:583
 #, php-format
+msgid "Only %1$d of %2$s are in stock, %3$d were asked for."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:585
+#, php-format
 msgid "Only %1$s %2$s is left to take off."
 msgstr ""
 
-#: var/i18n/messages.php:584
+#: var/i18n/messages.php:586
 msgid "Only a bundle offers choices of its items."
 msgstr ""
 
-#: var/i18n/messages.php:585
+#: var/i18n/messages.php:587
 msgid "Only a refund waiting for the provider can be tried again or given up."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:587
+#: var/i18n/messages.php:589
 #, php-format
 msgid "Only orders on hold can change their items; order #%1$d is %2$s."
 msgstr ""
 
-#: var/i18n/messages.php:588
-msgid "Only those who bought the product may review it."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:590
-#, php-format
-msgid "Option %d is not available for this product."
+msgid "Only those who bought the product may review it."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:592
 #, php-format
-msgid "Option %d is not one of this product's options."
+msgid "Option %d is not available for this product."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:594
 #, php-format
-msgid "Order #%1$d has a payment open at %2$s for its total: its items change once that payment ends."
+msgid "Option %d is not one of this product's options."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:596
 #, php-format
-msgid "Order #%1$d has a payment still open at %2$s: it stays until the payment ends."
+msgid "Order #%1$d has a payment open at %2$s for its total: its items change once that payment ends."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:598
 #, php-format
-msgid "Order #%1$d has a shipment booked with %2$s to its address: cancel the shipment to change where it goes."
+msgid "Order #%1$d has a payment still open at %2$s: it stays until the payment ends."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:600
 #, php-format
-msgid "Order #%1$d has a shipment with %2$s: cancel the shipment first."
+msgid "Order #%1$d has a shipment booked with %2$s to its address: cancel the shipment to change where it goes."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:602
 #, php-format
-msgid "Order #%1$d has no item %2$d."
+msgid "Order #%1$d has a shipment with %2$s: cancel the shipment first."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:604
 #, php-format
-msgid "Order #%1$d has no line %2$d."
+msgid "Order #%1$d has no item %2$d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:606
 #, php-format
-msgid "Order #%1$d is %2$s and cannot be %3$s."
+msgid "Order #%1$d has no line %2$d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:608
 #, php-format
-msgid "Order #%1$d is %2$s and cannot be marked paid."
+msgid "Order #%1$d is %2$s and cannot be %3$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:610
 #, php-format
-msgid "Order #%1$d is %2$s and cannot be opened again."
+msgid "Order #%1$d is %2$s and cannot be marked paid."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:612
 #, php-format
-msgid "Order #%1$d is %2$s and cannot be paid now."
+msgid "Order #%1$d is %2$s and cannot be opened again."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:614
 #, php-format
-msgid "Order #%1$d is %2$s and cannot become %3$s."
+msgid "Order #%1$d is %2$s and cannot be paid now."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:616
 #, php-format
-msgid "Order #%1$d is %2$s; it does not ship."
+msgid "Order #%1$d is %2$s and cannot become %3$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:618
 #, php-format
-msgid "Order #%d is not one to collect from the shop now."
+msgid "Order #%1$d is %2$s; it does not ship."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:620
 #, php-format
-msgid "Order #%d is not paid; only paid orders are refunded."
+msgid "Order #%d is not one to collect from the shop now."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:622
 #, php-format
-msgid "Order #%d is not refunded; its items go back in stock with a refund."
+msgid "Order #%d is not paid; only paid orders are refunded."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:624
 #, php-format
-msgid "Order #%d is paid already."
+msgid "Order #%d is not refunded; its items go back in stock with a refund."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:626
 #, php-format
-msgid "Order #%d is still open: cancel it first, then delete it."
+msgid "Order #%d is paid already."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:628
 #, php-format
-msgid "Order #%d ships nothing."
+msgid "Order #%d is still open: cancel it first, then delete it."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:630
 #, php-format
-msgid "Order #%d takes gift cards only when it is placed."
+msgid "Order #%d ships nothing."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:632
 #, php-format
+msgid "Order #%d takes gift cards only when it is placed."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:634
+#, php-format
 msgid "Order #%d was paid: it stays, with its invoice, for the books."
 msgstr ""
 
-#: var/i18n/messages.php:633
+#: var/i18n/messages.php:635
 msgid "Order emails show with an order: the shop has none yet."
 msgstr ""
 
-#: var/i18n/messages.php:634
+#: var/i18n/messages.php:636
 #: var/i18n/templates.php:338
 #: build/admin/settings.js:11
 #: build/admin/setup.js:6
 msgid "Order with obligation to pay"
 msgstr ""
 
-#: var/i18n/messages.php:635
+#: var/i18n/messages.php:637
 msgid "Ordered on (*)/received on (*),"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:637
+#: var/i18n/messages.php:639
 #, php-format
 msgid "Orders start at %1$s %2$s. Add more items to order."
 msgstr ""
 
-#: var/i18n/messages.php:638
-msgid "OrillaCart knows no tax rates for this country, so no tax is charged; enter a rate if the shop must charge one."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:640
-#, php-format
-msgid "OrillaCart knows no tax rates for this country: check %s%% with your tax authority."
+msgid "OrillaCart knows no tax rates for this country, so no tax is charged; enter a rate if the shop must charge one."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:642
 #, php-format
-msgid "Page %d is not a page of the site."
+msgid "OrillaCart knows no tax rates for this country: check %s%% with your tax authority."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:644
 #, php-format
-msgid "Page %d is not a published page."
+msgid "Page %d is not a page of the site."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:646
 #, php-format
-msgid "Pay to %1$s, IBAN %2$s%3$s, and give your order number as the reference."
+msgid "Page %d is not a published page."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:648
 #, php-format
-msgid "Pay to %1$s, account %2$s (bank code %3$s), and give your order number as the reference."
+msgid "Pay to %1$s, IBAN %2$s%3$s, and give your order number as the reference."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:650
 #, php-format
+msgid "Pay to %1$s, account %2$s (bank code %3$s), and give your order number as the reference."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:652
+#, php-format
 msgid "Pay to %1$s, account %2$s, and give your order number as the reference."
 msgstr ""
 
-#: var/i18n/messages.php:652
+#: var/i18n/messages.php:654
 msgid "Pictures cannot be taken here; send a PDF."
 msgstr ""
 
-#: var/i18n/messages.php:653
+#: var/i18n/messages.php:655
 #: var/i18n/templates.php:339
 #: build/admin/settings.js:11
 #: build/admin/setup.js:6
@@ -4169,1800 +4177,1800 @@ msgid "Place order"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:655
+#: var/i18n/messages.php:657
 #, php-format
 msgid "Price rule %d does not exist."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:657
+#: var/i18n/messages.php:659
 #, php-format
 msgid "Prices are entered and shown without %s, which checkout adds."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:659
+#: var/i18n/messages.php:661
 #, php-format
 msgid "Prices are entered with %s and shown with it."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:661
+#: var/i18n/messages.php:663
 #, php-format
 msgid "Prices are entered without %s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:663
+#: var/i18n/messages.php:665
 #, php-format
 msgid "Prices are in %1$s now; they stay the same numbers in %2$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:665
+#: var/i18n/messages.php:667
 #, php-format
 msgid "Prices in the shop say \"%s\"."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:667
+#: var/i18n/messages.php:669
 #, php-format
 msgid "Product %d has no commerce details to sell in a bundle."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:669
+#: var/i18n/messages.php:671
 #, php-format
 msgid "Product variations use options of \"%s\"; change or remove them first."
 msgstr ""
 
-#: var/i18n/messages.php:670
+#: var/i18n/messages.php:672
 msgid "Reduced rate"
 msgstr ""
 
-#: var/i18n/messages.php:671
+#: var/i18n/messages.php:673
 msgid "Reduced rates cover different goods from one EU country to the next: check which group each product belongs to."
 msgstr ""
 
-#: var/i18n/messages.php:672
-msgid "Report dates are days such as 2026-10-18."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:674
-#, php-format
-msgid "Return %1$d is %2$s; its items are refunded once they came back."
+msgid "Report dates are days such as 2026-10-18."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:676
 #, php-format
-msgid "Return %1$d is %2$s; only a requested or approved one is received."
+msgid "Return %1$d is %2$s; its items are refunded once they came back."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:678
 #, php-format
+msgid "Return %1$d is %2$s; only a requested or approved one is received."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:680
+#, php-format
 msgid "Return %d was answered already."
 msgstr ""
 
-#: var/i18n/messages.php:679
+#: var/i18n/messages.php:681
 #: build/admin/settings.js:11
 msgid "Right of withdrawal"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:681
+#: var/i18n/messages.php:683
 #, php-format
 msgid "Row %1$d and a rate the group has apply at the same places with priority %2$d. WooCommerce charges only one of them; OrillaCart would charge both. Keep one, or give each its own places."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:683
+#: var/i18n/messages.php:685
 #, php-format
 msgid "Row %1$d: %2$s"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:685
+#: var/i18n/messages.php:687
 #, php-format
 msgid "Rows %1$d and %3$d apply at the same places with priority %2$d. WooCommerce charges only one of them; OrillaCart would charge both. Keep one, or give each its own places."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:687
+#: var/i18n/messages.php:689
 #, php-format
 msgid "Save up to %d addresses: remove one you no longer need first."
 msgstr ""
 
-#: var/i18n/messages.php:688
+#: var/i18n/messages.php:690
 msgid "Say how many items to buy and how many it gives, at least 1 each."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:690
+#: var/i18n/messages.php:692
 #, php-format
 msgid "Say what customers sign up for in 1 to %d characters."
 msgstr ""
 
-#: var/i18n/messages.php:691
+#: var/i18n/messages.php:693
 msgid "Say where the certificate holds, such as US-TX."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:693
+#: var/i18n/messages.php:695
 #, php-format
 msgid "Say why in up to %d characters."
 msgstr ""
 
-#: var/i18n/messages.php:694
+#: var/i18n/messages.php:696
 msgid "Say why, for the record."
 msgstr ""
 
-#: var/i18n/messages.php:695
+#: var/i18n/messages.php:697
 msgid "Second reduced rate"
 msgstr ""
 
-#: var/i18n/messages.php:696
+#: var/i18n/messages.php:698
 msgid "Send a PDF or a photo (JPEG, PNG, WebP)."
 msgstr ""
 
-#: var/i18n/messages.php:697
-msgid "Send a PDF."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:699
-#, php-format
-msgid "Send your cheque to %1$s, %2$s, with your order number."
+msgid "Send a PDF."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:701
 #, php-format
-msgid "Shipment %1$s is %2$s; only a booked one is cancelled."
+msgid "Send your cheque to %1$s, %2$s, with your order number."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:703
 #, php-format
-msgid "Shipment %s is followed by its courier, or arrived already."
+msgid "Shipment %1$s is %2$s; only a booked one is cancelled."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:705
 #, php-format
-msgid "Shipment %s was sent by the shop; it has no courier to ask."
-msgstr ""
-
-#: var/i18n/messages.php:706
-msgid "Shipping is taxed at the rates of the goods it carries."
+msgid "Shipment %s is followed by its courier, or arrived already."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:708
+#: var/i18n/messages.php:707
 #, php-format
-msgid "Shipping rate %d is listed twice."
+msgid "Shipment %s was sent by the shop; it has no courier to ask."
+msgstr ""
+
+#: var/i18n/messages.php:708
+msgid "Shipping is taxed at the rates of the goods it carries."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:710
 #, php-format
+msgid "Shipping rate %d is listed twice."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:712
+#, php-format
 msgid "Shipping rate %d is not one of this carrier's rates."
 msgstr ""
 
-#: var/i18n/messages.php:711
+#: var/i18n/messages.php:713
 msgid "Signature of consumer(s) (only if this form is notified on paper),"
 msgstr ""
 
-#: var/i18n/messages.php:712
+#: var/i18n/messages.php:714
 msgid "Some fields are not valid."
 msgstr ""
 
-#: var/i18n/messages.php:713
+#: var/i18n/messages.php:715
 msgid "Some of the items sold out since: this order cannot be paid any more. Order them again from the shop."
 msgstr ""
 
-#: var/i18n/messages.php:714
+#: var/i18n/messages.php:716
 msgid "Some prices cannot be worked out right now. Try again in a moment."
 msgstr ""
 
-#: var/i18n/messages.php:715
+#: var/i18n/messages.php:717
 msgid "Some prices cannot be worked out right now: an add-on that sets them failed. Try again in a moment."
 msgstr ""
 
-#: var/i18n/messages.php:716
+#: var/i18n/messages.php:718
 msgid "Something went wrong. The error has been logged."
 msgstr ""
 
-#: var/i18n/messages.php:717
+#: var/i18n/messages.php:719
 msgid "Standard rate"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:719
+#: var/i18n/messages.php:721
 #, php-format
 msgid "Stockroom %d is listed twice."
 msgstr ""
 
-#: var/i18n/messages.php:720
+#: var/i18n/messages.php:722
 msgid "Store credit"
 msgstr ""
 
-#: var/i18n/messages.php:721
+#: var/i18n/messages.php:723
 msgid "Store credit does not expire."
 msgstr ""
 
-#: var/i18n/messages.php:722
+#: var/i18n/messages.php:724
 msgid "Store credit has no code."
 msgstr ""
 
-#: var/i18n/messages.php:723
+#: var/i18n/messages.php:725
 msgid "Super-reduced rate"
 msgstr ""
 
-#: var/i18n/messages.php:724
-msgid "Take at least one."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:726
-#, php-format
-msgid "Tax names can have up to %d characters."
+msgid "Take at least one."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:728
 #, php-format
-msgid "Taxes go by %s now."
-msgstr ""
-
-#: var/i18n/messages.php:729
-msgid "Taxes go by the address the order is shipped to."
-msgstr ""
-
-#: var/i18n/messages.php:730
-msgid "Tell the customer why the return is refused."
+msgid "Tax names can have up to %d characters."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:732
+#: var/i18n/messages.php:730
 #, php-format
-msgid "Tell the customer why, in up to %d characters."
+msgid "Taxes go by %s now."
+msgstr ""
+
+#: var/i18n/messages.php:731
+msgid "Taxes go by the address the order is shipped to."
+msgstr ""
+
+#: var/i18n/messages.php:732
+msgid "Tell the customer why the return is refused."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:734
 #, php-format
+msgid "Tell the customer why, in up to %d characters."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:736
+#, php-format
 msgid "Texts of a payment method have up to %d characters."
 msgstr ""
 
-#: var/i18n/messages.php:735
+#: var/i18n/messages.php:737
 msgid "That day is not one delivery can be on. Choose another."
 msgstr ""
 
-#: var/i18n/messages.php:736
+#: var/i18n/messages.php:738
 msgid "That is as many files as one visitor may send in a day. Try again tomorrow."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:738
+#: var/i18n/messages.php:740
 #, php-format
 msgid "That is not a postcode of %1$s, which look like %2$s."
 msgstr ""
 
-#: var/i18n/messages.php:739
+#: var/i18n/messages.php:741
 msgid "That is too much to send."
 msgstr ""
 
-#: var/i18n/messages.php:740
-msgid "That was a lot at once. Wait a little, then try again."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:742
-#, php-format
-msgid "The %1$s has up to %2$d characters."
+msgid "That was a lot at once. Wait a little, then try again."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:744
 #, php-format
-msgid "The %s has to be a number of zero or more with up to four decimals."
+msgid "The %1$s has up to %2$d characters."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:746
 #, php-format
+msgid "The %s has to be a number of zero or more with up to four decimals."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:748
+#, php-format
 msgid "The EU could not check %s right now; the check before the shop opens tries again."
 msgstr ""
 
-#: var/i18n/messages.php:747
+#: var/i18n/messages.php:749
 msgid "The EU threshold is an amount such as 10000."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:749
+#: var/i18n/messages.php:751
 #, php-format
 msgid "The amount is larger than %s."
 msgstr ""
 
-#: var/i18n/messages.php:750
-msgid "The amount is too large to take a percentage of."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:752
-#, php-format
-msgid "The attribute \"%1$s\" has no option %2$d."
+msgid "The amount is too large to take a percentage of."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:754
 #, php-format
+msgid "The attribute \"%1$s\" has no option %2$d."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:756
+#, php-format
 msgid "The attribute \"%s\" needs at least one option."
 msgstr ""
 
-#: var/i18n/messages.php:755
+#: var/i18n/messages.php:757
 msgid "The billing address has an unknown country or state."
 msgstr ""
 
-#: var/i18n/messages.php:756
+#: var/i18n/messages.php:758
 msgid "The bundle does not offer that choice."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:758
+#: var/i18n/messages.php:760
 #, php-format
 msgid "The cart has no line %d."
 msgstr ""
 
-#: var/i18n/messages.php:759
+#: var/i18n/messages.php:761
 msgid "The cart is empty."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:761
+#: var/i18n/messages.php:763
 #, php-format
 msgid "The cart reminder goes 1 to %d hours after the cart was left."
 msgstr ""
 
-#: var/i18n/messages.php:762
+#: var/i18n/messages.php:764
 msgid "The certificate ran out already."
 msgstr ""
 
-#: var/i18n/messages.php:763
-msgid "The certificate was checked already."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:765
-#, php-format
-msgid "The changes to the price of %s take off more than it costs."
+msgid "The certificate was checked already."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:767
 #, php-format
-msgid "The code %1$s does not apply: %2$s Remove it to order."
+msgid "The changes to the price of %s take off more than it costs."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:769
 #, php-format
-msgid "The code %s is no longer valid."
+msgid "The code %1$s does not apply: %2$s Remove it to order."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:771
 #, php-format
-msgid "The code %s was just used up. Remove it and try again."
-msgstr ""
-
-#: var/i18n/messages.php:772
-msgid "The contract is made in the language of the shop. We keep its text, and you receive it with the order confirmation."
+msgid "The code %s is no longer valid."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:774
+#: var/i18n/messages.php:773
 #, php-format
-msgid "The courier did not book the shipment: %s"
+msgid "The code %s was just used up. Remove it and try again."
+msgstr ""
+
+#: var/i18n/messages.php:774
+msgid "The contract is made in the language of the shop. We keep its text, and you receive it with the order confirmation."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:776
 #, php-format
-msgid "The courier did not cancel the shipment: %s"
+msgid "The courier did not book the shipment: %s"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:778
 #, php-format
-msgid "The courier did not give the label: %s"
-msgstr ""
-
-#: var/i18n/messages.php:779
-msgid "The customer has no store credit to take off."
-msgstr ""
-
-#: var/i18n/messages.php:780
-msgid "The customer has no such exemption."
+msgid "The courier did not cancel the shipment: %s"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:782
+#: var/i18n/messages.php:780
 #, php-format
-msgid "The customer's store credit is in %1$s; a refund in %2$s cannot be added to it. Refund it another way."
+msgid "The courier did not give the label: %s"
+msgstr ""
+
+#: var/i18n/messages.php:781
+msgid "The customer has no store credit to take off."
+msgstr ""
+
+#: var/i18n/messages.php:782
+msgid "The customer has no such exemption."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:784
 #, php-format
+msgid "The customer's store credit is in %1$s; a refund in %2$s cannot be added to it. Refund it another way."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:786
+#, php-format
 msgid "The default tax group \"%1$s\" has no rate for %2$s, where the shop sells from."
 msgstr ""
 
-#: var/i18n/messages.php:785
+#: var/i18n/messages.php:787
 msgid "The downloads left are 0 or more."
 msgstr ""
 
-#: var/i18n/messages.php:786
+#: var/i18n/messages.php:788
 msgid "The file could not be kept."
 msgstr ""
 
-#: var/i18n/messages.php:787
+#: var/i18n/messages.php:789
 msgid "The file could not be read."
 msgstr ""
 
-#: var/i18n/messages.php:788
+#: var/i18n/messages.php:790
 msgid "The file has no rates: use the columns of an exported file."
 msgstr ""
 
-#: var/i18n/messages.php:789
+#: var/i18n/messages.php:791
 msgid "The file has no rows after its header."
 msgstr ""
 
-#: var/i18n/messages.php:790
+#: var/i18n/messages.php:792
 msgid "The file is empty."
 msgstr ""
 
 #. translators: %d: megabytes
-#: var/i18n/messages.php:791
+#: var/i18n/messages.php:793
 #: build/storefront/storefront.js:4
 #, php-format,js-format
 msgid "The file is larger than %d MB."
 msgstr ""
 
-#: var/i18n/messages.php:792
+#: var/i18n/messages.php:794
 msgid "The file is not available right now. Please contact the shop."
 msgstr ""
 
-#: var/i18n/messages.php:793
+#: var/i18n/messages.php:795
 #: build/admin/tax.js:8
 msgid "The file is too large: up to 2 MB."
 msgstr ""
 
-#: var/i18n/messages.php:794
+#: var/i18n/messages.php:796
 msgid "The file names a column twice."
 msgstr ""
 
-#: var/i18n/messages.php:795
+#: var/i18n/messages.php:797
 msgid "The file's first row names no column the import knows, such as id, sku or name: export the products to see them."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:797
+#: var/i18n/messages.php:799
 #, php-format
 msgid "The gift card %1$s cannot pay: %2$s Remove it to order."
 msgstr ""
 
-#: var/i18n/messages.php:798
+#: var/i18n/messages.php:800
 msgid "The goods remain our property until they are paid in full."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:800
+#: var/i18n/messages.php:802
 #, php-format
 msgid "The help or placeholder of \"%s\" is too long."
 msgstr ""
 
-#: var/i18n/messages.php:801
+#: var/i18n/messages.php:803
 msgid "The import is running; it ends by itself."
 msgstr ""
 
-#: var/i18n/messages.php:802
+#: var/i18n/messages.php:804
 msgid "The invoice email is not an email address."
 msgstr ""
 
-#: var/i18n/messages.php:803
+#: var/i18n/messages.php:805
 msgid "The items given are discounted by more than 0 and at most 100%."
 msgstr ""
 
-#: var/i18n/messages.php:804
+#: var/i18n/messages.php:806
 msgid "The largest order is no smaller than the smallest."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:806
+#: var/i18n/messages.php:808
 #, php-format
 msgid "The law of %s applies. As a consumer you keep the protection the mandatory law of the country where you live gives you."
 msgstr ""
 
-#: var/i18n/messages.php:807
-msgid "The legal notice naming the seller is not published."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:809
-#, php-format
-msgid "The level of %1$s in stockroom %2$d is changed twice."
+msgid "The legal notice naming the seller is not published."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:811
 #, php-format
+msgid "The level of %1$s in stockroom %2$d is changed twice."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:813
+#, php-format
 msgid "The limit for %1$s is an amount such as %2$s."
 msgstr ""
 
-#: var/i18n/messages.php:812
+#: var/i18n/messages.php:814
 msgid "The link to your order has expired: open the order from its latest email."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:814
+#: var/i18n/messages.php:816
 #, php-format
 msgid "The lowest number of \"%s\" is above its highest."
 msgstr ""
 
-#: var/i18n/messages.php:815
+#: var/i18n/messages.php:817
 msgid "The measure is too large."
 msgstr ""
 
-#: var/i18n/messages.php:816
+#: var/i18n/messages.php:818
 msgid "The notification is not from the payment provider."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:818
+#: var/i18n/messages.php:820
 msgid "The number of elements in this collection should be a multiple of {{ compared_value }}."
 msgstr ""
 
-#: var/i18n/messages.php:819
+#: var/i18n/messages.php:821
 msgid "The order cannot be shipped to its address."
 msgstr ""
 
-#: var/i18n/messages.php:820
+#: var/i18n/messages.php:822
 msgid "The order cannot be shipped to this address."
 msgstr ""
 
-#: var/i18n/messages.php:821
+#: var/i18n/messages.php:823
 msgid "The order has no such change to its price; coupons go with their codes."
 msgstr ""
 
-#: var/i18n/messages.php:822
+#: var/i18n/messages.php:824
 msgid "The order has no such line to change the price of."
 msgstr ""
 
-#: var/i18n/messages.php:823
+#: var/i18n/messages.php:825
 msgid "The order shipped already: its address cannot change. The email and phone still can."
 msgstr ""
 
-#: var/i18n/messages.php:824
+#: var/i18n/messages.php:826
 msgid "The order's way to ship does not book shipments with a courier."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:826
+#: var/i18n/messages.php:828
 #, php-format
 msgid "The payment reminder goes 1 to %d days after the order."
 msgstr ""
 
-#: var/i18n/messages.php:827
-msgid "The payment this refund is for is gone."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:829
-#, php-format
-msgid "The payment through %1$s has %2$s %3$s left to give back; refund the rest outside the shop."
+msgid "The payment this refund is for is gone."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:831
 #, php-format
-msgid "The payment through %s was made in another of its accounts or modes (sandbox or live) than the one set up now: switch back to refund it, or refund it at the provider and record it here as refunded outside the shop."
+msgid "The payment through %1$s has %2$s %3$s left to give back; refund the rest outside the shop."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:833
 #, php-format
-msgid "The pickup place \"%s\" is listed twice."
+msgid "The payment through %s was made in another of its accounts or modes (sandbox or live) than the one set up now: switch back to refund it, or refund it at the provider and record it here as refunded outside the shop."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:835
 #, php-format
-msgid "The picture is too large: up to %1$d megapixels and %2$d pixels a side."
+msgid "The pickup place \"%s\" is listed twice."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:837
 #, php-format
-msgid "The plan has no change \"%s\" to replace with."
+msgid "The picture is too large: up to %1$d megapixels and %2$d pixels a side."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:839
 #, php-format
-msgid "The postcode of the billing address is not one of %1$s, which look like %2$s."
+msgid "The plan has no change \"%s\" to replace with."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:841
 #, php-format
-msgid "The postcode of the shipping address is not one of %1$s, which look like %2$s."
+msgid "The postcode of the billing address is not one of %1$s, which look like %2$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:843
 #, php-format
+msgid "The postcode of the shipping address is not one of %1$s, which look like %2$s."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:845
+#, php-format
 msgid "The postcode range \"%s\" ends before it starts."
 msgstr ""
 
-#: var/i18n/messages.php:844
+#: var/i18n/messages.php:846
 msgid "The prices are final prices and include the statutory tax where it applies. Shipping costs are added; they show at checkout before you order, and on the page \"Shipping and payment\"."
 msgstr ""
 
-#: var/i18n/messages.php:845
+#: var/i18n/messages.php:847
 msgid "The prices could not be worked out just now. Try again in a moment."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:847
+#: var/i18n/messages.php:849
 #, php-format
 msgid "The prices of \"%s\" cannot be below zero."
 msgstr ""
 
-#: var/i18n/messages.php:848
+#: var/i18n/messages.php:850
 msgid "The priority cannot be negative."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:850
+#: var/i18n/messages.php:852
 #, php-format
 msgid "The product has no variation %d."
 msgstr ""
 
-#: var/i18n/messages.php:851
+#: var/i18n/messages.php:853
 msgid "The product is not sold with this combination of options."
 msgstr ""
 
-#: var/i18n/messages.php:852
+#: var/i18n/messages.php:854
 msgid "The products in the shop are not a binding offer. By pressing the order button at checkout you make a binding offer to buy the products in your cart. We confirm your order by email; the contract is made when we accept it, at the latest when we ship the goods."
 msgstr ""
 
-#: var/i18n/messages.php:853
-msgid "The provider is still sending the money of a refund of this order; refund more once it is done."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:855
-#, php-format
-msgid "The rate \"%1$s\" of %2$s carries \"%3$s\"; change the rate before deleting the class."
+msgid "The provider is still sending the money of a refund of this order; refund more once it is done."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:857
 #, php-format
+msgid "The rate \"%1$s\" of %2$s carries \"%3$s\"; change the rate before deleting the class."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:859
+#, php-format
 msgid "The region %s is listed twice."
 msgstr ""
 
-#: var/i18n/messages.php:858
+#: var/i18n/messages.php:860
 msgid "The review could not be saved."
 msgstr ""
 
-#: var/i18n/messages.php:859
+#: var/i18n/messages.php:861
 msgid "The right of withdrawal is not published: consumers must be told of it before they order."
 msgstr ""
 
-#: var/i18n/messages.php:860
+#: var/i18n/messages.php:862
 msgid "The rules for consumers:"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:862
+#: var/i18n/messages.php:864
 #, php-format
 msgid "The sender address \"%s\" is not an email address."
 msgstr ""
 
-#: var/i18n/messages.php:863
+#: var/i18n/messages.php:865
 msgid "The sender name has up to 100 characters, without line breaks, quotes or angle brackets."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:865
+#: var/i18n/messages.php:867
 #, php-format
 msgid "The setup has no step \"%s\"."
 msgstr ""
 
-#: var/i18n/messages.php:866
-msgid "The shipping address has an unknown country or state."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:868
-#, php-format
-msgid "The shipping method failed: %s"
+msgid "The shipping address has an unknown country or state."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:870
 #, php-format
+msgid "The shipping method failed: %s"
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:872
+#, php-format
 msgid "The shipping method that booked shipment %s is not active."
 msgstr ""
 
-#: var/i18n/messages.php:871
+#: var/i18n/messages.php:873
 msgid "The shipping was refunded before, or the order ships nothing."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:873
+#: var/i18n/messages.php:875
 #, php-format
 msgid "The shop address \"%s\" is not an email address."
 msgstr ""
 
-#: var/i18n/messages.php:874
+#: var/i18n/messages.php:876
 msgid "The shop changed since this plan was made; look at the plan again before applying it."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:876
+#: var/i18n/messages.php:878
 #, php-format
 msgid "The shop charges no tax (%s)."
 msgstr ""
 
-#: var/i18n/messages.php:877
+#: var/i18n/messages.php:879
 msgid "The shop does not make accounts."
 msgstr ""
 
-#: var/i18n/messages.php:878
+#: var/i18n/messages.php:880
 msgid "The shop does not offer this payment method for the billing country."
 msgstr ""
 
-#: var/i18n/messages.php:879
+#: var/i18n/messages.php:881
 msgid "The shop does not say where it sells from."
 msgstr ""
 
-#: var/i18n/messages.php:880
+#: var/i18n/messages.php:882
 msgid "The shop does not sell to the country of the billing address."
 msgstr ""
 
-#: var/i18n/messages.php:881
+#: var/i18n/messages.php:883
 msgid "The shop does not sell to the country of the shipping address."
 msgstr ""
 
-#: var/i18n/messages.php:882
+#: var/i18n/messages.php:884
 msgid "The shop does not send this."
 msgstr ""
 
-#: var/i18n/messages.php:883
+#: var/i18n/messages.php:885
 #: var/i18n/templates.php:531
 msgid "The shop does not take orders online."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:885
+#: var/i18n/messages.php:887
 #, php-format
 msgid "The shop has a group \"%1$s\" with %2$d rates; replacing it gives it these instead."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:887
+#: var/i18n/messages.php:889
 #, php-format
 msgid "The shop has a place to collect called \"%s\" already."
 msgstr ""
 
-#: var/i18n/messages.php:888
+#: var/i18n/messages.php:890
 msgid "The shop has no newsletter to sign up for."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:890
+#: var/i18n/messages.php:892
 #, php-format
 msgid "The shop has no webhook topic %s."
 msgstr ""
 
-#: var/i18n/messages.php:891
+#: var/i18n/messages.php:893
 msgid "The shop is still checking the certificates you sent. Wait for its answer."
 msgstr ""
 
-#: var/i18n/messages.php:892
+#: var/i18n/messages.php:894
 msgid "The shop is very busy right now and could not finish this. Try again in a moment."
 msgstr ""
 
-#: var/i18n/messages.php:893
+#: var/i18n/messages.php:895
 msgid "The shop keeps no wishlists."
 msgstr ""
 
-#: var/i18n/messages.php:894
-msgid "The shop opens soon: it takes no orders yet."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:896
-#, php-format
-msgid "The shop sells from %1$s. Prices are in %2$s, written %3$s; weights in %4$s and sizes in %5$s."
+msgid "The shop opens soon: it takes no orders yet."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:898
 #, php-format
-msgid "The shop sells to %1$s in %2$d countries."
+msgid "The shop sells from %1$s. Prices are in %2$s, written %3$s; weights in %4$s and sizes in %5$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:900
 #, php-format
-msgid "The shop sells to %1$s in %2$s."
+msgid "The shop sells to %1$s in %2$d countries."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:902
 #, php-format
-msgid "The shop sells to %s everywhere."
+msgid "The shop sells to %1$s in %2$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:904
 #, php-format
+msgid "The shop sells to %s everywhere."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:906
+#, php-format
 msgid "The shop ships \"%s\" already; replacing it gives it these prices."
 msgstr ""
 
-#: var/i18n/messages.php:905
+#: var/i18n/messages.php:907
 msgid "The shop state needs a shop country."
 msgstr ""
 
-#: var/i18n/messages.php:906
+#: var/i18n/messages.php:908
 msgid "The shop takes no exemption certificates online. Contact it instead."
 msgstr ""
 
-#: var/i18n/messages.php:907
+#: var/i18n/messages.php:909
 msgid "The shop takes no reviews."
 msgstr ""
 
-#: var/i18n/messages.php:908
+#: var/i18n/messages.php:910
 msgid "The shop's own pickup has no rates and no shipping method."
 msgstr ""
 
-#: var/i18n/messages.php:909
+#: var/i18n/messages.php:911
 msgid "The site has no published privacy policy: choose or write one in Settings → Privacy; WordPress suggests what the shop keeps."
 msgstr ""
 
-#: var/i18n/messages.php:910
+#: var/i18n/messages.php:912
 msgid "The statutory rights for defective goods apply."
 msgstr ""
 
-#: var/i18n/messages.php:911
+#: var/i18n/messages.php:913
 msgid "The tax could not be worked out just now. Try again in a moment."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:913
+#: var/i18n/messages.php:915
 #, php-format
 msgid "The tax group has no rate %d."
 msgstr ""
 
-#: var/i18n/messages.php:914
+#: var/i18n/messages.php:916
 msgid "The terms of sale are not published."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:916
+#: var/i18n/messages.php:918
 #, php-format
 msgid "The text after prices is plain text of up to %d characters."
 msgstr ""
 
-#: var/i18n/messages.php:917
+#: var/i18n/messages.php:919
 msgid "The total of your order changed. Review it and place the order again."
 msgstr ""
 
-#: var/i18n/messages.php:918
+#: var/i18n/messages.php:920
 msgid "The value you selected is not a valid choice."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:920
+#: var/i18n/messages.php:922
 #, php-format
 msgid "The withdrawal period will expire after %d days from the day on which you acquire, or a third party other than the carrier and indicated by you acquires, physical possession of the goods."
 msgstr ""
 
-#: var/i18n/messages.php:921
+#: var/i18n/messages.php:923
 msgid "There are no downloads left for this file."
 msgstr ""
 
-#: var/i18n/messages.php:922
-msgid "There are not that many states."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:924
-#, php-format
-msgid "There is already a shipping class \"%s\"."
+msgid "There are not that many states."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:926
 #, php-format
-msgid "There is no attribute %d here."
+msgid "There is already a shipping class \"%s\"."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:928
 #, php-format
-msgid "There is no attribute set %d."
+msgid "There is no attribute %d here."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:930
 #, php-format
-msgid "There is no carrier %d."
+msgid "There is no attribute set %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:932
 #, php-format
-msgid "There is no country with the code \"%s\"."
+msgid "There is no carrier %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:934
 #, php-format
-msgid "There is no customer %d."
+msgid "There is no country with the code \"%s\"."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:936
 #, php-format
-msgid "There is no email template \"%s\"."
+msgid "There is no customer %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:938
 #, php-format
-msgid "There is no filter %d."
+msgid "There is no email template \"%s\"."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:940
 #, php-format
-msgid "There is no form %d."
+msgid "There is no filter %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:942
 #, php-format
-msgid "There is no gift card %d."
+msgid "There is no form %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:944
 #, php-format
-msgid "There is no import %d."
+msgid "There is no gift card %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:946
 #, php-format
-msgid "There is no order column \"%s\"."
+msgid "There is no import %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:948
 #, php-format
-msgid "There is no payment method \"%s\"."
+msgid "There is no order column \"%s\"."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:950
 #, php-format
-msgid "There is no product %d."
+msgid "There is no payment method \"%s\"."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:952
 #, php-format
-msgid "There is no product column \"%s\"."
-msgstr ""
-
-#: var/i18n/messages.php:953
-msgid "There is no published page where consumers withdraw from a purchase (\"Withdraw from contract here\"), which the EU asks of online shops since 19 June 2026."
+msgid "There is no product %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:955
+#: var/i18n/messages.php:954
 #, php-format
-msgid "There is no return %d."
+msgid "There is no product column \"%s\"."
+msgstr ""
+
+#: var/i18n/messages.php:955
+msgid "There is no published page where consumers withdraw from a purchase (\"Withdraw from contract here\"), which the EU asks of online shops since 19 June 2026."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:957
 #, php-format
-msgid "There is no shipment %d."
+msgid "There is no return %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:959
 #, php-format
-msgid "There is no shipping class %d."
+msgid "There is no shipment %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:961
 #, php-format
-msgid "There is no shipping method \"%s\"; is its add-on active?"
+msgid "There is no shipping class %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:963
 #, php-format
-msgid "There is no stockroom %d."
-msgstr ""
-
-#: var/i18n/messages.php:964
-msgid "There is no such invoice."
-msgstr ""
-
-#: var/i18n/messages.php:965
-msgid "There is no such key."
-msgstr ""
-
-#: var/i18n/messages.php:966
-msgid "There is no such note about the customer."
-msgstr ""
-
-#: var/i18n/messages.php:967
-msgid "There is no such order."
-msgstr ""
-
-#: var/i18n/messages.php:968
-msgid "There is no such payment."
-msgstr ""
-
-#: var/i18n/messages.php:969
-msgid "There is no such saved address."
-msgstr ""
-
-#: var/i18n/messages.php:970
-msgid "There is no such webhook."
+msgid "There is no shipping method \"%s\"; is its add-on active?"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:972
+#: var/i18n/messages.php:965
 #, php-format
-msgid "There is no tax group %d."
+msgid "There is no stockroom %d."
+msgstr ""
+
+#: var/i18n/messages.php:966
+msgid "There is no such invoice."
+msgstr ""
+
+#: var/i18n/messages.php:967
+msgid "There is no such key."
+msgstr ""
+
+#: var/i18n/messages.php:968
+msgid "There is no such note about the customer."
+msgstr ""
+
+#: var/i18n/messages.php:969
+msgid "There is no such order."
+msgstr ""
+
+#: var/i18n/messages.php:970
+msgid "There is no such payment."
+msgstr ""
+
+#: var/i18n/messages.php:971
+msgid "There is no such saved address."
+msgstr ""
+
+#: var/i18n/messages.php:972
+msgid "There is no such webhook."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:974
 #, php-format
-msgid "There is no tax service \"%s\": its add-on may be off."
+msgid "There is no tax group %d."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:976
 #, php-format
-msgid "There is no variation %d."
+msgid "There is no tax service \"%s\": its add-on may be off."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:978
 #, php-format
+msgid "There is no variation %d."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:980
+#, php-format
 msgid "These terms apply to every order placed in this online shop with %1$s, %2$s."
 msgstr ""
 
-#: var/i18n/messages.php:979
+#: var/i18n/messages.php:981
 msgid "This API key only reads."
 msgstr ""
 
-#: var/i18n/messages.php:980
+#: var/i18n/messages.php:982
 msgid "This PDF cannot be read."
 msgstr ""
 
-#: var/i18n/messages.php:981
+#: var/i18n/messages.php:983
 msgid "This PDF has scripts, actions, attachments, forms or encryption; send one without."
 msgstr ""
 
-#: var/i18n/messages.php:982
+#: var/i18n/messages.php:984
 msgid "This PDF is too complex to check; send a simpler one."
 msgstr ""
 
-#: var/i18n/messages.php:983
+#: var/i18n/messages.php:985
 msgid "This PDF uses an encoding the shop cannot check; save it again as a standard PDF."
 msgstr ""
 
-#: var/i18n/messages.php:984
+#: var/i18n/messages.php:986
 msgid "This URL is missing a top-level domain."
 msgstr ""
 
-#: var/i18n/messages.php:985
+#: var/i18n/messages.php:987
 msgid "This answer is not one of the choices."
 msgstr ""
 
-#: var/i18n/messages.php:986
+#: var/i18n/messages.php:988
 msgid "This answer is not valid text."
 msgstr ""
 
-#: var/i18n/messages.php:987
+#: var/i18n/messages.php:989
 msgid "This answer is not valid."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:989
+#: var/i18n/messages.php:991
 #, php-format
 msgid "This code cannot be combined with %s."
 msgstr ""
 
-#: var/i18n/messages.php:990
+#: var/i18n/messages.php:992
 msgid "This code cannot be used together with your other codes."
 msgstr ""
 
-#: var/i18n/messages.php:991
+#: var/i18n/messages.php:993
 msgid "This code does not apply to the items in your cart."
 msgstr ""
 
-#: var/i18n/messages.php:992
+#: var/i18n/messages.php:994
 msgid "This code has been used up."
 msgstr ""
 
-#: var/i18n/messages.php:993
+#: var/i18n/messages.php:995
 msgid "This code has expired."
 msgstr ""
 
-#: var/i18n/messages.php:994
+#: var/i18n/messages.php:996
 msgid "This code is for a first order only."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:996
+#: var/i18n/messages.php:998
 #, php-format
 msgid "This code is for orders of up to %1$s %2$s."
 msgstr ""
 
-#: var/i18n/messages.php:997
+#: var/i18n/messages.php:999
 msgid "This code is not valid for your country."
 msgstr ""
 
-#: var/i18n/messages.php:998
+#: var/i18n/messages.php:1000
 msgid "This code is not valid yet."
 msgstr ""
 
-#: var/i18n/messages.php:999
-msgid "This code is not valid."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:1001
-#, php-format
-msgid "This code needs %1$d of the items it applies to: %2$d to buy and %3$d it gives."
+msgid "This code is not valid."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:1003
 #, php-format
-msgid "This code needs an order of at least %1$s %2$s."
+msgid "This code needs %1$d of the items it applies to: %2$d to buy and %3$d it gives."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:1005
 #, php-format
-msgid "This code needs at least %d of the items it applies to."
+msgid "This code needs an order of at least %1$s %2$s."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:1007
+#, php-format
+msgid "This code needs at least %d of the items it applies to."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:1009
 msgid "This collection should contain exactly {{ limit }} element."
 msgid_plural "This collection should contain exactly {{ limit }} elements."
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1009
+#: var/i18n/messages.php:1011
 msgid "This collection should contain {{ limit }} element or less."
 msgid_plural "This collection should contain {{ limit }} elements or less."
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1011
+#: var/i18n/messages.php:1013
 msgid "This collection should contain {{ limit }} element or more."
 msgid_plural "This collection should contain {{ limit }} elements or more."
 msgstr[0] ""
 msgstr[1] ""
 
-#: var/i18n/messages.php:1012
+#: var/i18n/messages.php:1014
 msgid "This download link does not work."
 msgstr ""
 
-#: var/i18n/messages.php:1013
+#: var/i18n/messages.php:1015
 msgid "This email has an account: log in instead."
 msgstr ""
 
-#: var/i18n/messages.php:1014
+#: var/i18n/messages.php:1016
 msgid "This field is missing."
 msgstr ""
 
-#: var/i18n/messages.php:1015
+#: var/i18n/messages.php:1017
 msgid "This field is not expected."
 msgstr ""
 
-#: var/i18n/messages.php:1016
+#: var/i18n/messages.php:1018
 msgid "This field is required."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1018
+#: var/i18n/messages.php:1020
 #, php-format
 msgid "This field takes %s files."
 msgstr ""
 
-#: var/i18n/messages.php:1019
+#: var/i18n/messages.php:1021
 msgid "This file belongs to another order; send it again."
 msgstr ""
 
-#: var/i18n/messages.php:1020
+#: var/i18n/messages.php:1022
 msgid "This file is no longer here; send it again."
 msgstr ""
 
-#: var/i18n/messages.php:1021
+#: var/i18n/messages.php:1023
 msgid "This file is not one this field takes; send another."
 msgstr ""
 
-#: var/i18n/messages.php:1022
+#: var/i18n/messages.php:1024
 msgid "This gift card has been used up."
 msgstr ""
 
-#: var/i18n/messages.php:1023
+#: var/i18n/messages.php:1025
 msgid "This gift card has expired."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1025
+#: var/i18n/messages.php:1027
 #, php-format
 msgid "This gift card is in %1$s and cannot pay for an order in %2$s."
 msgstr ""
 
-#: var/i18n/messages.php:1026
+#: var/i18n/messages.php:1028
 msgid "This gift card is not valid."
 msgstr ""
 
-#: var/i18n/messages.php:1027
+#: var/i18n/messages.php:1029
 msgid "This import has started already."
 msgstr ""
 
-#: var/i18n/messages.php:1028
+#: var/i18n/messages.php:1030
 msgid "This link does not work any more. Sign up again for a new one."
 msgstr ""
 
-#: var/i18n/messages.php:1029
+#: var/i18n/messages.php:1031
 msgid "This link to your order has expired. We can email you a new one."
 msgstr ""
 
-#: var/i18n/messages.php:1030
+#: var/i18n/messages.php:1032
 msgid "This order cannot be paid now."
 msgstr ""
 
-#: var/i18n/messages.php:1031
+#: var/i18n/messages.php:1033
 msgid "This order cannot be returned now."
 msgstr ""
 
-#: var/i18n/messages.php:1032
+#: var/i18n/messages.php:1034
 msgid "This order is already being placed. Wait a moment, then look at your email or your account."
 msgstr ""
 
-#: var/i18n/messages.php:1033
+#: var/i18n/messages.php:1035
 msgid "This order is closed: there is nothing to withdraw from."
 msgstr ""
 
-#: var/i18n/messages.php:1034
+#: var/i18n/messages.php:1036
 msgid "This order offers no such action."
 msgstr ""
 
-#: var/i18n/messages.php:1035
+#: var/i18n/messages.php:1037
 msgid "This order ships nothing, so it has no shipping address."
 msgstr ""
 
-#: var/i18n/messages.php:1036
+#: var/i18n/messages.php:1038
 msgid "This order ships, so it needs a shipping address."
 msgstr ""
 
-#: var/i18n/messages.php:1037
+#: var/i18n/messages.php:1039
 msgid "This payment method cannot give money back; record a refund made outside the shop."
 msgstr ""
 
-#: var/i18n/messages.php:1038
+#: var/i18n/messages.php:1040
 msgid "This picture cannot be read."
 msgstr ""
 
-#: var/i18n/messages.php:1039
+#: var/i18n/messages.php:1041
 msgid "This product asks for no such file."
 msgstr ""
 
-#: var/i18n/messages.php:1040
+#: var/i18n/messages.php:1042
 msgid "This product takes no reviews."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1042
+#: var/i18n/messages.php:1044
 msgid "This value does not match the expected {{ charset }} charset."
 msgstr ""
 
-#: var/i18n/messages.php:1043
+#: var/i18n/messages.php:1045
 msgid "This value is not a valid URL."
 msgstr ""
 
-#: var/i18n/messages.php:1044
+#: var/i18n/messages.php:1046
 msgid "This value is not a valid date."
 msgstr ""
 
-#: var/i18n/messages.php:1045
+#: var/i18n/messages.php:1047
 msgid "This value is not a valid datetime."
 msgstr ""
 
-#: var/i18n/messages.php:1046
+#: var/i18n/messages.php:1048
 msgid "This value is not a valid email address."
 msgstr ""
 
-#: var/i18n/messages.php:1047
+#: var/i18n/messages.php:1049
 msgid "This value is not valid."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1049
+#: var/i18n/messages.php:1051
 msgid "This value is too long. It should have {{ limit }} character or less."
 msgid_plural "This value is too long. It should have {{ limit }} characters or less."
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1051
+#: var/i18n/messages.php:1053
 msgid "This value is too short. It should have {{ limit }} character or more."
 msgid_plural "This value is too short. It should have {{ limit }} characters or more."
 msgstr[0] ""
 msgstr[1] ""
 
-#: var/i18n/messages.php:1052
+#: var/i18n/messages.php:1054
 msgid "This value should be a valid number."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1054
+#: var/i18n/messages.php:1056
 msgid "This value should be between {{ min }} and {{ max }}."
 msgstr ""
 
-#: var/i18n/messages.php:1055
+#: var/i18n/messages.php:1057
 msgid "This value should be either positive or zero."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1057
+#: var/i18n/messages.php:1059
 #, php-format
 msgid "This value should be of type %s."
 msgstr ""
 
-#: var/i18n/messages.php:1058
+#: var/i18n/messages.php:1060
 msgid "This value should be positive."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1060
+#: var/i18n/messages.php:1062
 msgid "This value should be {{ limit }} or less."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1062
+#: var/i18n/messages.php:1064
 msgid "This value should be {{ limit }} or more."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1064
+#: var/i18n/messages.php:1066
 msgid "This value should have exactly {{ limit }} character."
 msgid_plural "This value should have exactly {{ limit }} characters."
 msgstr[0] ""
 msgstr[1] ""
 
-#: var/i18n/messages.php:1065
+#: var/i18n/messages.php:1067
 msgid "This value should not be blank."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1067
+#: var/i18n/messages.php:1069
 msgid "This value should not be equal to {{ compared_value }}."
 msgstr ""
 
-#: var/i18n/messages.php:1068
-msgid "Tick this to go on."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:1070
-#, php-format
-msgid "To %s:"
+msgid "Tick this to go on."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:1072
 #, php-format
-msgid "To exercise the right of withdrawal, you must inform us (%s) of your decision to withdraw from this contract by an unequivocal statement (e.g. a letter sent by post or email). You may use the model withdrawal form below, but it is not obligatory."
-msgstr ""
-
-#: var/i18n/messages.php:1073
-msgid "To meet the withdrawal deadline, it is sufficient for you to send your communication concerning your exercise of the right of withdrawal before the withdrawal period has expired."
+msgid "To %s:"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1075
+#: var/i18n/messages.php:1074
 #, php-format
-msgid "Two choices of \"%s\" have the same value."
+msgid "To exercise the right of withdrawal, you must inform us (%s) of your decision to withdraw from this contract by an unequivocal statement (e.g. a letter sent by post or email). You may use the model withdrawal form below, but it is not obligatory."
+msgstr ""
+
+#: var/i18n/messages.php:1075
+msgid "To meet the withdrawal deadline, it is sufficient for you to send your communication concerning your exercise of the right of withdrawal before the withdrawal period has expired."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:1077
 #, php-format
+msgid "Two choices of \"%s\" have the same value."
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:1079
+#, php-format
 msgid "Two fields have the key \"%s\"."
 msgstr ""
 
-#: var/i18n/messages.php:1078
+#: var/i18n/messages.php:1080
 msgid "Two tiers start at the same quantity."
 msgstr ""
 
-#: var/i18n/messages.php:1079
+#: var/i18n/messages.php:1081
 msgid "Unpaid orders are cancelled after 1 to 365 days, or never."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1081
+#: var/i18n/messages.php:1083
 #, php-format
 msgid "Up to %d characters."
 msgstr ""
 
-#: var/i18n/messages.php:1082
+#: var/i18n/messages.php:1084
 msgid "Use a number from 0 to 999.9999 with up to four decimals, such as 7.25."
 msgstr ""
 
-#: var/i18n/messages.php:1083
+#: var/i18n/messages.php:1085
 msgid "Use a number of zero or more with up to four decimals."
 msgstr ""
 
-#: var/i18n/messages.php:1084
+#: var/i18n/messages.php:1086
 msgid "Use a path such as /orillacart-files/."
 msgstr ""
 
-#: var/i18n/messages.php:1085
+#: var/i18n/messages.php:1087
 msgid "Use a percentage from 0 to 100 with up to four decimals."
 msgstr ""
 
-#: var/i18n/messages.php:1086
+#: var/i18n/messages.php:1088
 msgid "Use a rate such as 1.08, with up to eight decimals."
 msgstr ""
 
-#: var/i18n/messages.php:1087
+#: var/i18n/messages.php:1089
 msgid "Use a state code, such as TX."
 msgstr ""
 
-#: var/i18n/messages.php:1088
+#: var/i18n/messages.php:1090
 msgid "Use a three-letter currency code such as EUR."
 msgstr ""
 
-#: var/i18n/messages.php:1089
+#: var/i18n/messages.php:1091
 msgid "Use a three-letter currency code such as USD."
 msgstr ""
 
-#: var/i18n/messages.php:1090
+#: var/i18n/messages.php:1092
 msgid "Use a time of day such as 09:00."
 msgstr ""
 
-#: var/i18n/messages.php:1091
+#: var/i18n/messages.php:1093
 msgid "Use a time of day such as 12:00."
 msgstr ""
 
-#: var/i18n/messages.php:1092
+#: var/i18n/messages.php:1094
 msgid "Use a time of day such as 14:00."
 msgstr ""
 
-#: var/i18n/messages.php:1093
+#: var/i18n/messages.php:1095
 msgid "Use a two-letter country code such as DE."
 msgstr ""
 
-#: var/i18n/messages.php:1094
+#: var/i18n/messages.php:1096
 msgid "Use an amount of zero or more with up to four decimals."
 msgstr ""
 
-#: var/i18n/messages.php:1095
+#: var/i18n/messages.php:1097
 msgid "Use an amount such as 10000."
 msgstr ""
 
-#: var/i18n/messages.php:1096
+#: var/i18n/messages.php:1098
 msgid "Use an amount such as 150."
 msgstr ""
 
-#: var/i18n/messages.php:1097
+#: var/i18n/messages.php:1099
 msgid "Use an amount such as 20, or -5 to take off."
 msgstr ""
 
-#: var/i18n/messages.php:1098
+#: var/i18n/messages.php:1100
 msgid "Use an amount with up to four decimals, such as 19.90."
 msgstr ""
 
-#: var/i18n/messages.php:1099
+#: var/i18n/messages.php:1101
 msgid "Use an amount with up to four decimals, such as 50."
 msgstr ""
 
-#: var/i18n/messages.php:1100
+#: var/i18n/messages.php:1102
 msgid "Use digits, spaces and + ( ) - . / only."
 msgstr ""
 
-#: var/i18n/messages.php:1101
+#: var/i18n/messages.php:1103
 msgid "Use lowercase letters, digits and dashes, up to 40."
 msgstr ""
 
-#: var/i18n/messages.php:1102
+#: var/i18n/messages.php:1104
 msgid "Use plain text."
 msgstr ""
 
-#: var/i18n/messages.php:1103
+#: var/i18n/messages.php:1105
 msgid "Use the number as the tax office gave it."
 msgstr ""
 
-#: var/i18n/messages.php:1104
+#: var/i18n/messages.php:1106
 msgid "Use the state code, such as CA."
 msgstr ""
 
-#: var/i18n/messages.php:1105
+#: var/i18n/messages.php:1107
 msgid "Use up to 20 letters, digits, dots, dashes, slashes or underscores."
 msgstr ""
 
-#: var/i18n/messages.php:1106
+#: var/i18n/messages.php:1108
 msgid "Use up to 40 letters, digits, dots, dashes or underscores."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1108
+#: var/i18n/messages.php:1110
 #, php-format
 msgid "Variation %1$d is not one of product %2$d."
 msgstr ""
 
-#: var/i18n/messages.php:1109
+#: var/i18n/messages.php:1111
 msgid "Visitors see \"Opening soon\" until you open the shop; you see the real shop, to try it."
 msgstr ""
 
-#: var/i18n/messages.php:1110
+#: var/i18n/messages.php:1112
 msgid "We deliver to the countries checkout offers. The delivery time shows on each product, or at checkout."
 msgstr ""
 
-#: var/i18n/messages.php:1111
+#: var/i18n/messages.php:1113
 msgid "We may withhold reimbursement until we have received the goods back or you have supplied evidence of having sent back the goods, whichever is the earliest."
 msgstr ""
 
-#: var/i18n/messages.php:1112
+#: var/i18n/messages.php:1114
 msgid "Webhooks are managed by a shop manager logged in, not with a key."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1114
+#: var/i18n/messages.php:1116
 #, php-format
 msgid "What is left on %s changed. Review your order and place it again."
 msgstr ""
 
-#: var/i18n/messages.php:1115
+#: var/i18n/messages.php:1117
 msgid "Whether you may withdraw from the contract depends on the law of your country."
 msgstr ""
 
-#: var/i18n/messages.php:1116
+#: var/i18n/messages.php:1118
 msgid "Write the phone number with its digits, spaces, brackets, dots, dashes and a leading +."
 msgstr ""
 
-#: var/i18n/messages.php:1117
+#: var/i18n/messages.php:1119
 msgid "XRechnung needs a phone number for the seller."
 msgstr ""
 
-#: var/i18n/messages.php:1118
+#: var/i18n/messages.php:1120
 msgid "You are logged in already."
 msgstr ""
 
-#: var/i18n/messages.php:1119
+#: var/i18n/messages.php:1121
 msgid "You are only liable for any diminished value of the goods resulting from the handling other than what is necessary to establish the nature, characteristics and functioning of the goods."
 msgstr ""
 
-#: var/i18n/messages.php:1120
+#: var/i18n/messages.php:1122
 msgid "You are reviewing too quickly. Wait a moment and try again."
 msgstr ""
 
-#: var/i18n/messages.php:1121
+#: var/i18n/messages.php:1123
 msgid "You have already used this code."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1123
+#: var/i18n/messages.php:1125
 #, php-format
 msgid "You have the right to withdraw from this contract within %d days without giving any reason."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1125
+#: var/i18n/messages.php:1127
 msgid "You must select at least {{ limit }} choice."
 msgid_plural "You must select at least {{ limit }} choices."
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1127
+#: var/i18n/messages.php:1129
 msgid "You must select at most {{ limit }} choice."
 msgid_plural "You must select at most {{ limit }} choices."
 msgstr[0] ""
 msgstr[1] ""
 
-#: var/i18n/messages.php:1128
+#: var/i18n/messages.php:1130
 msgid "You pay in one of the ways checkout offers. Where you pay in advance, we ship once the payment has reached us."
 msgstr ""
 
-#: var/i18n/messages.php:1129
+#: var/i18n/messages.php:1131
 msgid "You reviewed this product already."
 msgstr ""
 
-#: var/i18n/messages.php:1130
+#: var/i18n/messages.php:1132
 msgid "You shall send back the goods or hand them over to us without undue delay and in any event not later than 14 days from the day on which you communicate your withdrawal from this contract to us. The deadline is met if you send back the goods before the period of 14 days has expired."
 msgstr ""
 
-#: var/i18n/messages.php:1131
+#: var/i18n/messages.php:1133
 msgid "You will have to bear the direct cost of returning the goods."
 msgstr ""
 
-#: var/i18n/messages.php:1132
-msgid "You wrote this review already."
-msgstr ""
-
-#. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:1134
-#, php-format
-msgid "Your return of %1$s is approved. %2$s"
+msgid "You wrote this review already."
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
 #: var/i18n/messages.php:1136
 #, php-format
+msgid "Your return of %1$s is approved. %2$s"
+msgstr ""
+
+#. translators: the placeholders stand for what the message names, in the order the English gives them
+#: var/i18n/messages.php:1138
+#, php-format
 msgid "Your return of %1$s is refused: %2$s"
 msgstr ""
 
-#: var/i18n/messages.php:1137
+#: var/i18n/messages.php:1139
 msgid "Your user has no email address to send the test to."
 msgstr ""
 
-#: var/i18n/messages.php:1138
+#: var/i18n/messages.php:1140
 msgid "Zero rate"
 msgstr ""
 
-#: var/i18n/messages.php:1139
+#: var/i18n/messages.php:1141
 msgid "a rate needs its country: OrillaCart has no rate for every country."
 msgstr ""
 
-#: var/i18n/messages.php:1140
+#: var/i18n/messages.php:1142
 msgid "businesses"
 msgstr ""
 
-#: var/i18n/messages.php:1141
+#: var/i18n/messages.php:1143
 msgid "cancelled"
 msgstr ""
 
-#: var/i18n/messages.php:1142
+#: var/i18n/messages.php:1144
 msgid "centimetres"
 msgstr ""
 
-#: var/i18n/messages.php:1143
+#: var/i18n/messages.php:1145
 msgid "client_id"
 msgstr ""
 
-#: var/i18n/messages.php:1144
+#: var/i18n/messages.php:1146
 msgid "client_secret"
 msgstr ""
 
-#: var/i18n/messages.php:1145
+#: var/i18n/messages.php:1147
 msgid "completed"
 msgstr ""
 
-#: var/i18n/messages.php:1146
+#: var/i18n/messages.php:1148
 msgid "consumers"
 msgstr ""
 
-#: var/i18n/messages.php:1147
+#: var/i18n/messages.php:1149
 msgid "consumers and businesses"
 msgstr ""
 
-#: var/i18n/messages.php:1148
+#: var/i18n/messages.php:1150
 msgid "failed"
 msgstr ""
 
-#: var/i18n/messages.php:1149
+#: var/i18n/messages.php:1151
 msgid "grams"
 msgstr ""
 
-#: var/i18n/messages.php:1150
+#: var/i18n/messages.php:1152
 msgid "inches"
 msgstr ""
 
 #. translators: the placeholders stand for what the message names, in the order the English gives them
-#: var/i18n/messages.php:1152
+#: var/i18n/messages.php:1154
 #, php-format
 msgid "incl. %s, plus shipping"
 msgstr ""
 
-#: var/i18n/messages.php:1153
+#: var/i18n/messages.php:1155
 msgid "kilograms"
 msgstr ""
 
-#: var/i18n/messages.php:1154
+#: var/i18n/messages.php:1156
 msgid "metres"
 msgstr ""
 
-#: var/i18n/messages.php:1155
+#: var/i18n/messages.php:1157
 msgid "millimetres"
 msgstr ""
 
-#: var/i18n/messages.php:1156
+#: var/i18n/messages.php:1158
 msgid "on hold"
 msgstr ""
 
-#: var/i18n/messages.php:1157
+#: var/i18n/messages.php:1159
 msgid "ounces"
 msgstr ""
 
-#: var/i18n/messages.php:1158
+#: var/i18n/messages.php:1160
 msgid "pending payment"
 msgstr ""
 
-#: var/i18n/messages.php:1159
+#: var/i18n/messages.php:1161
 msgid "pounds"
 msgstr ""
 
-#: var/i18n/messages.php:1160
+#: var/i18n/messages.php:1162
 msgid "processing"
 msgstr ""
 
-#: var/i18n/messages.php:1161
+#: var/i18n/messages.php:1163
 msgid "put on hold"
 msgstr ""
 
-#: var/i18n/messages.php:1162
+#: var/i18n/messages.php:1164
 msgid "refunded"
 msgstr ""
 
-#: var/i18n/messages.php:1163
+#: var/i18n/messages.php:1165
 msgid "shipped"
 msgstr ""
 
-#: var/i18n/messages.php:1164
+#: var/i18n/messages.php:1166
 msgid "the other countries"
 msgstr ""
 
-#: var/i18n/messages.php:1165
+#: var/i18n/messages.php:1167
 msgid "the price would be below zero."
 msgstr ""
 
-#: var/i18n/messages.php:1166
+#: var/i18n/messages.php:1168
 msgid "the rest of Europe"
 msgstr ""
 
-#: var/i18n/messages.php:1167
+#: var/i18n/messages.php:1169
 msgid "the rest of the EU"
 msgstr ""
 
-#: var/i18n/messages.php:1168
+#: var/i18n/messages.php:1170
 msgid "the rest of the world"
 msgstr ""
 
-#: var/i18n/messages.php:1169
+#: var/i18n/messages.php:1171
 msgid "the stock would be below zero."
 msgstr ""
 
-#: var/i18n/messages.php:1170
+#: var/i18n/messages.php:1172
 msgid "webhook_id"
 msgstr ""
 
@@ -7916,7 +7924,7 @@ msgstr ""
 #: var/i18n/templates.php:615
 #: build/admin/blocks.js:1
 #: build/admin/reports.js:6
-#: build/admin/status.js:1
+#: build/admin/status.js:3
 #: build/admin/stock.js:2
 msgid "Show"
 msgstr ""
@@ -8400,7 +8408,7 @@ msgstr ""
 #: build/admin/settings.js:5
 #: build/admin/shipping.js:4
 #: build/admin/shipping.js:5
-#: build/admin/status.js:2
+#: build/admin/status.js:4
 #: build/admin/tax.js:1
 #: build/admin/tax.js:9
 msgid "Delete"
@@ -8419,7 +8427,7 @@ msgstr ""
 #: build/admin/product-editor.js:7
 #: build/admin/settings.js:5
 #: build/admin/shipping.js:4
-#: build/admin/status.js:2
+#: build/admin/status.js:4
 #: build/admin/tax.js:1
 msgid "Are you sure?"
 msgstr ""
@@ -8442,7 +8450,7 @@ msgstr ""
 #: build/admin/product-editor.js:7
 #: build/admin/settings.js:5
 #: build/admin/shipping.js:4
-#: build/admin/status.js:2
+#: build/admin/status.js:4
 #: build/admin/tax.js:1
 #: build/admin/tax.js:8
 msgid "Cancel"
@@ -10235,15 +10243,15 @@ msgid "Bought, order #%d"
 msgstr ""
 
 #: build/admin/gift-cards.js:3
-#: build/admin/status.js:1
-#: build/admin/status.js:2
+#: build/admin/status.js:3
+#: build/admin/status.js:4
 #: build/admin/stock.js:2
 msgid "Newer"
 msgstr ""
 
 #: build/admin/gift-cards.js:3
-#: build/admin/status.js:2
-#: build/admin/status.js:3
+#: build/admin/status.js:4
+#: build/admin/status.js:5
 #: build/admin/stock.js:2
 msgid "Older"
 msgstr ""
@@ -10624,7 +10632,7 @@ msgid "Started"
 msgstr ""
 
 #: build/admin/jobs.js:9
-#: build/admin/status.js:2
+#: build/admin/status.js:4
 msgid "Last seen"
 msgstr ""
 
@@ -11876,7 +11884,7 @@ msgid "Choose images"
 msgstr ""
 
 #: build/admin/product-editor.js:1
-#: build/admin/status.js:3
+#: build/admin/status.js:5
 msgid "Clear"
 msgstr ""
 
@@ -14049,7 +14057,7 @@ msgid "Who"
 msgstr ""
 
 #: build/admin/status.js:1
-#: build/admin/status.js:2
+#: build/admin/status.js:4
 msgid "What"
 msgstr ""
 
@@ -14057,63 +14065,83 @@ msgstr ""
 msgid "Sent"
 msgstr ""
 
-#. translators: 1: the page, 2: how many pages
+#. translators: %s: the name of an API key
 #: build/admin/status.js:2
+#, js-format
+msgid "through the AI assistant, key \"%s\""
+msgstr ""
+
+#: build/admin/status.js:2
+msgid "through the AI assistant"
+msgstr ""
+
+#. translators: %s: the name of an API key
 #: build/admin/status.js:3
+#, js-format
+msgid "with the API key \"%s\""
+msgstr ""
+
+#: build/admin/status.js:3
+msgid "with an API key"
+msgstr ""
+
+#. translators: 1: the page, 2: how many pages
+#: build/admin/status.js:4
+#: build/admin/status.js:5
 #: build/admin/stock.js:5
 #, js-format
 msgid "Page %1$d of %2$d"
 msgstr ""
 
-#: build/admin/status.js:2
+#: build/admin/status.js:4
 msgid "Problems"
 msgstr ""
 
-#: build/admin/status.js:2
+#: build/admin/status.js:4
 msgid "What went wrong that the shop should hear of, such as a payment or refund it could not record, an email that did not go, or a courier or add-on that failed. Each says what to do. Kept for a month."
 msgstr ""
 
-#: build/admin/status.js:2
+#: build/admin/status.js:4
 msgid "No problems."
 msgstr ""
 
-#: build/admin/status.js:2
+#: build/admin/status.js:4
 msgid "Times"
 msgstr ""
 
-#: build/admin/status.js:2
+#: build/admin/status.js:4
 msgid "Error:"
 msgstr ""
 
-#: build/admin/status.js:3
+#: build/admin/status.js:5
 msgid "Clear the list? Problems that happen again come back."
 msgstr ""
 
-#: build/admin/status.js:3
+#: build/admin/status.js:5
 msgid "Clear the list"
 msgstr ""
 
-#: build/admin/status.js:3
+#: build/admin/status.js:5
 msgid "Good"
 msgstr ""
 
-#: build/admin/status.js:3
+#: build/admin/status.js:5
 msgid "Worth a look"
 msgstr ""
 
-#: build/admin/status.js:3
+#: build/admin/status.js:5
 msgid "Needs fixing"
 msgstr ""
 
-#: build/admin/status.js:3
+#: build/admin/status.js:5
 msgid "Checks"
 msgstr ""
 
-#: build/admin/status.js:3
+#: build/admin/status.js:5
 msgid "Copied"
 msgstr ""
 
-#: build/admin/status.js:3
+#: build/admin/status.js:5
 msgid "Copy the report for support"
 msgstr ""
 

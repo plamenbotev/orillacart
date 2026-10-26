@@ -77,6 +77,6 @@ final readonly class ApiKeys
             $this->keys->save($key);
         }
 
-        return new AuthenticatedKey($key->id(), $key->userId(), $key->scope());
+        return new AuthenticatedKey($key->id(), $key->userId(), $key->scope(), $key->name());
     }
 }

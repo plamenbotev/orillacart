@@ -14,6 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/** The shop adds a customer group, which price rules can give its own prices. */
 #[Route('/customer-groups', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateCustomerGroupAction implements RequestHandlerInterface
 {
