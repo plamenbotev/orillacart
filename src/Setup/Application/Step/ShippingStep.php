@@ -7,6 +7,7 @@ namespace OrillaCart\Setup\Application\Step;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Setup\Application\AskedByCountry;
+use OrillaCart\Setup\Application\Dto\BusinessAnswers;
 use OrillaCart\Setup\Application\Dto\PlannedChange;
 use OrillaCart\Setup\Application\Dto\ShippingAnswers;
 use OrillaCart\Setup\Application\Dto\ZoneShipping;
@@ -91,7 +92,7 @@ final readonly class ShippingStep implements SetupStep, AskedByCountry
                 $existing === null ? null : Text::of('The shop ships "%s" already; replacing it gives it these prices.', $carrier->name),
                 ['rates' => self::sent($carrier->rates)],
                 $this->unshipped($shipping, $this->zones($answers)),
-                $this->details($shipping, $this->zones($answers)),
+                $this->details($shipping, $this->zones($answers), $answers),
             );
         }
         if ($shipping->pickup !== null) {
@@ -168,15 +169,16 @@ final readonly class ShippingStep implements SetupStep, AskedByCountry
     }
 
     /**
-     * The zones' prices in words, a line each.
+     * The zones' prices in words, a line each, in the currency the business step chose, which the shop has from
+     * the same plan.
      *
      * @param list<ShippingZone> $zones
      *
      * @return list<Text>
      */
-    private function details(ShippingAnswers $shipping, array $zones): array
+    private function details(ShippingAnswers $shipping, array $zones, SetupAnswers $answers): array
     {
-        $currency = $this->settings->current()->currency;
+        $currency = $answers->of(BusinessStep::KEY, BusinessAnswers::class)->currency ?? $this->settings->current()->currency;
         $lines = [];
         foreach ($zones as $zone) {
             $priced = $shipping->zone($zone->id);

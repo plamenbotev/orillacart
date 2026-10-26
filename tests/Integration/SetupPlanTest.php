@@ -209,7 +209,8 @@ final class SetupPlanTest extends RestTestCase
 
     public function testShippingIsPricedForEachZoneTheShopSellsTo(): void
     {
-        $this->business('DE', 'EUR');
+        // A currency the shop has from no other test, so the plan cannot have it from the shop's settings.
+        $this->business('DE', 'CHF');
         $this->request('PUT', '/setup/answers/selling', ['customers' => 'consumers', 'regions' => 'world'], nonce: true);
         $this->request('PUT', '/setup/answers/shipping', [
             'name' => 'Standard shipping',
@@ -223,6 +224,7 @@ final class SetupPlanTest extends RestTestCase
         $plan = $this->data($this->request('POST', '/setup/plan', nonce: true));
         $carrier = self::change(self::changes($plan), 'shipping.carrier');
         self::assertSame('Checkout offers "Standard shipping":', $carrier['summary']);
+        self::assertStringContainsString('4.90 CHF, free from 50 CHF', $carrier['details'][0]);
         self::assertSame('Nothing ships to the rest of the world, so customers there cannot order: give it a price, or sell only where the shop ships.', $carrier['warning']);
 
         $this->request('PUT', '/setup/answers/shipping', [
@@ -478,7 +480,7 @@ final class SetupPlanTest extends RestTestCase
     /**
      * @param array<array-key, mixed> $plan
      *
-     * @return list<array{key: string, summary: string, warning: ?string}>
+     * @return list<array{key: string, summary: string, details: list<string>, warning: ?string}>
      */
     private static function changes(array $plan): array
     {
@@ -491,15 +493,18 @@ final class SetupPlanTest extends RestTestCase
             self::assertIsString($change['summary'] ?? null);
             $warning = $change['warning'] ?? null;
             self::assertTrue($warning === null || \is_string($warning));
+            $details = $change['details'] ?? null;
+            self::assertIsList($details);
+            self::assertContainsOnlyString($details);
 
-            return ['key' => $change['key'], 'summary' => $change['summary'], 'warning' => $warning];
+            return ['key' => $change['key'], 'summary' => $change['summary'], 'details' => $details, 'warning' => $warning];
         }, $changes);
     }
 
     /**
-     * @param list<array{key: string, summary: string, warning: ?string}> $changes
+     * @param list<array{key: string, summary: string, details: list<string>, warning: ?string}> $changes
      *
-     * @return array{key: string, summary: string, warning: ?string}
+     * @return array{key: string, summary: string, details: list<string>, warning: ?string}
      */
     private static function change(array $changes, string $key): array
     {
