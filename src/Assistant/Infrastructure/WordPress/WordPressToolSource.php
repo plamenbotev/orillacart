@@ -97,7 +97,7 @@ final readonly class WordPressToolSource implements ToolSource
                 'publish' => ['description' => 'true puts it live; false takes it back to a draft.', 'type' => 'boolean', 'default' => true],
                 'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 200],
                 'content' => ['description' => 'The whole text, HTML or blocks; replaces what it had.', 'type' => 'string', 'maxLength' => 200000],
-            ], ['id'], false, Tool::CUSTOMERS),
+            ], ['id'], false, Tool::PUBLISHING),
         ];
     }
 

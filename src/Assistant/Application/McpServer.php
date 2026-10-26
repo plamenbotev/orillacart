@@ -111,6 +111,7 @@ final readonly class McpServer
         'deleting' => 'Something is deleted.',
         'customers' => 'Customers hear of it.',
         'opening' => 'The shop opens or closes, or many settings change at once.',
+        'publishing' => 'What customers read or agree to changes.',
     ];
 
     public function __construct(

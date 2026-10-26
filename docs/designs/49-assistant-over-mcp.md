@@ -98,8 +98,10 @@ through it: ask the owner about the business, save each answer, show the plan, a
 - **Deleting**: anything a DELETE route does.
 - **Customers hear of it**: emails sent to customers, a return approved or refused.
 - **The shop opens or closes**: opening, "Opening soon", applying the setup.
+- **What customers read changes**: one of the shop's pages goes live, changes while live, or comes down. It is
+  not "customers hear of it": the owner who lets the assistant email customers has not let it publish terms.
 
-Each key says which classes need the owner's yes; by default all four do. A login, or an application password,
+Each key says which classes need the owner's yes; by default all five do. A class added later is asked about on keys whose choices were saved before it, until the owner unticks it. A login, or an application password,
 has the defaults. A client that can ask its user (MCP
 elicitation) is asked through the protocol: the tool answers "input required" with what it is about to do,
 and runs only when the client retries with the owner's yes. The question says it in words where a

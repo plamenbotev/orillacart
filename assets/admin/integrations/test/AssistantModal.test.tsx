@@ -80,6 +80,7 @@ describe( 'AssistantModal', () => {
 								'deleting',
 								'customers',
 								'opening',
+								'publishing',
 							],
 						}
 			)
@@ -118,7 +119,7 @@ describe( 'AssistantModal', () => {
 				off_areas: [ 'Tax' ],
 				off: [ 'parcelco_book_pickup' ],
 				list: 'all',
-				ask: [ 'deleting', 'customers', 'opening' ],
+				ask: [ 'deleting', 'customers', 'opening', 'publishing' ],
 			},
 		} );
 	} );

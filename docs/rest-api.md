@@ -196,7 +196,7 @@ Chooses what the AI assistant that uses a key is offered, and which risks wait f
   - `off_areas` (list<string>): at most 100 items; each at most 100 characters
   - `off` (list<string>): at most 1000 items
   - `list` (string): one of all, find; default 'all'
-  - `ask` (list<string>): each one of money, deleting, customers, opening
+  - `ask` (list<string>): each one of money, deleting, customers, opening, publishing
 
 ## /assistant
 

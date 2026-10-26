@@ -26,6 +26,9 @@ interface AssistantTool
     /** The shop opens or closes to buyers, or many settings change at once. */
     public const string OPENING = 'opening';
 
+    /** What customers read or agree to changes: a page, a text of the shop's, goes live or comes down. */
+    public const string PUBLISHING = 'publishing';
+
     /**
      * Lowercase letters, digits and underscores, up to 64, starting with the add-on's own prefix
      * ("parcelco_book_pickup"); a name the shop's tools have is left out.

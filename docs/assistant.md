@@ -81,8 +81,8 @@ that checks the shop's host passes the `Authorization` header on.
 ## What each key's assistant may do
 
 In Shop → Integrations, **Choose…** beside a key (each app you connected has one) sets, for the assistant that uses it:
-- **Ask me first when**: money moves, something is deleted, customers hear of it, or the shop opens or closes.
-  All four are ticked to start. A client that can ask you (MCP elicitation, revision 2026-07-28) shows the
+- **Ask me first when**: money moves, something is deleted, customers hear of it, the shop opens or closes, or
+  a page customers read (the terms, shipping and payment) goes live, changes or comes down. All five are ticked to start. A client that can ask you (MCP elicitation, revision 2026-07-28) shows the
   question in its own window, and the tool runs only on your yes. Applying the setup shows the whole plan in
   the question. A client that cannot ask is refused for those
   tools, and the assistant is told to leave them to you.
@@ -99,8 +99,8 @@ Every screen of the shop's admin has its tools: orders, products, customers, sto
 coupons, reports, emails, settings and the setup, one tool per step. Products' names, texts, categories and
 pictures, the categories themselves, the media library's pictures and the shop's own pages (the shop, cart,
 checkout and account pages, and the legal pages) have their own tools. The site's other pages are not the
-assistant's. Publishing one of the shop's pages, or changing one that is published, asks you first as
-"customers hear of it".
+assistant's. Publishing one of the shop's pages, changing one that is published, or taking one down asks
+you first, under its own tick: "a page customers read goes live, changes or comes down".
 Add-ons can add theirs (docs/extensions.md, "Tools for the AI assistant"). A tool runs the same request the admin's screen sends, with
 the same checks, so it can do nothing the manager could not. Some parts are left out on purpose: API keys and
 webhooks are managed by a manager logged in, never with a key.

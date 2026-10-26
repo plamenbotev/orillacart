@@ -70,6 +70,13 @@ const RISKS = [
 			'orillacart'
 		),
 	},
+	{
+		value: 'publishing',
+		label: __(
+			'A page customers read goes live, changes or comes down: terms, shipping and payment',
+			'orillacart'
+		),
+	},
 ];
 
 interface Props {

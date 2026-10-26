@@ -34,8 +34,11 @@ final readonly class Tool
     /** The shop opens or closes to buyers, or the setup changes it in one go. */
     public const string OPENING = 'opening';
 
+    /** What customers read or agree to changes: a page of the shop goes live, changes while live, or comes down. */
+    public const string PUBLISHING = 'publishing';
+
     /** @var list<string> */
-    public const array RISKS = [self::MONEY, self::DELETING, self::CUSTOMERS, self::OPENING];
+    public const array RISKS = [self::MONEY, self::DELETING, self::CUSTOMERS, self::OPENING, self::PUBLISHING];
 
     /**
      * @param string|null $name        the tool's name, when the action's would read badly or collide

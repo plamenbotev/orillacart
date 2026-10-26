@@ -522,7 +522,7 @@ if ($registry->version() >= 15) {
 - **The description** is what the model reads first: say what the tool does and what it changes.
 - **The shop checks before `run()`**: the user's capability, the key's scope (a read-only key is offered only
   tools whose `readOnly()` is true), and the owner's choices for the key. A tool with a `risk()` the owner wants
-  to be asked about waits for their yes: `MONEY`, `DELETING`, `CUSTOMERS` or `OPENING`.
+  to be asked about waits for their yes: `MONEY`, `DELETING`, `CUSTOMERS`, `OPENING` or `PUBLISHING`.
 - **Check the arguments yourself**, as the schema says: the shop passes them as the model sent them. Throw
   `ToolRefused` with what to correct, and details (each field) if it helps; the model reads both. Anything else
   thrown is logged, and the model is told the tool failed.
