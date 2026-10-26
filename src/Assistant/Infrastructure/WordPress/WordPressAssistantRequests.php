@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Assistant\Infrastructure\WordPress;
 
 use OrillaCart\Assistant\Application\AssistantRequests;
+use OrillaCart\Assistant\Application\Dto\AssistantChoices;
 use OrillaCart\Assistant\Application\Dto\Caller;
 use OrillaCart\Integrations\Domain\ApiKeyScope;
 use OrillaCart\Integrations\Infrastructure\WordPress\ApiKeyRequest;
@@ -24,7 +25,7 @@ final readonly class WordPressAssistantRequests implements AssistantRequests
         }
         $key = $this->keys->key;
 
-        return new Caller($user, $key?->keyId, $key?->scope === ApiKeyScope::Read);
+        return new Caller($user, $key?->keyId, $key?->scope === ApiKeyScope::Read, AssistantChoices::fromArray($key?->assistant), $key?->name);
     }
 
     /**

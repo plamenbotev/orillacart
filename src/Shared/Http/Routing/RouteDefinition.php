@@ -18,6 +18,9 @@ final readonly class RouteDefinition
     /** Request attribute naming who made a change on the manager's behalf, for the change log: "assistant". */
     public const string VIA = '_orillacart_via';
 
+    /** The change came through the AI assistant's tools. */
+    public const string VIA_ASSISTANT = 'assistant';
+
     private const array METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
     private const array SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
 

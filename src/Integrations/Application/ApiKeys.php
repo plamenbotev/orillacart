@@ -63,6 +63,30 @@ final readonly class ApiKeys
         $this->keys->remove($key);
     }
 
+    /**
+     * What the owner chose for the AI assistant that uses the key; null for the defaults.
+     *
+     * @return array<array-key, mixed>|null
+     *
+     * @throws IntegrationRuleViolation for a key that is not there
+     */
+    public function assistant(int $id): ?array
+    {
+        return ($this->keys->find($id) ?? throw new IntegrationRuleViolation('There is no such key.', 'orillacart_unknown_api_key'))->assistant();
+    }
+
+    /**
+     * @param array<array-key, mixed> $choices
+     *
+     * @throws IntegrationRuleViolation for a key that is not there
+     */
+    public function chooseForAssistant(int $id, array $choices): void
+    {
+        $key = $this->keys->find($id) ?? throw new IntegrationRuleViolation('There is no such key.', 'orillacart_unknown_api_key');
+        $key->chooseForAssistant($choices);
+        $this->keys->save($key);
+    }
+
     /** Who the key acts as, and what it may do; null for a key the shop has not (made, or revoked since). */
     public function authenticate(string $secret): ?AuthenticatedKey
     {
@@ -77,6 +101,6 @@ final readonly class ApiKeys
             $this->keys->save($key);
         }
 
-        return new AuthenticatedKey($key->id(), $key->userId(), $key->scope(), $key->name());
+        return new AuthenticatedKey($key->id(), $key->userId(), $key->scope(), $key->name(), $key->assistant());
     }
 }

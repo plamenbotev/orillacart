@@ -181,6 +181,31 @@ A new key, acting as the shop manager who makes it; the answer holds the key, sh
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+### `GET /api-keys/{id}/assistant`
+
+What the owner chose for the AI assistant that uses a key: its areas and tools, how they are listed, what it asks first.
+
+- Who: shop managers
+
+### `PUT /api-keys/{id}/assistant`
+
+Chooses what the AI assistant that uses a key is offered, and which risks wait for the owner's yes.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `off_areas` (list<string>): at most 100 items; each at most 100 characters
+  - `off` (list<string>): at most 1000 items
+  - `list` (string): one of all, find; default 'all'
+  - `ask` (list<string>): each one of money, deleting, customers, opening
+
+## /assistant
+
+### `GET /assistant`
+
+The AI assistant's endpoint and every tool there is, by area (the shop's areas, then each add-on's), for the owner to choose from per key.
+
+- Who: shop managers
+
 ## /attribute-sets
 
 ### `GET /attribute-sets`

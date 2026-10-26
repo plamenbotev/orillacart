@@ -26,6 +26,14 @@ class ApiKey
     private ?\DateTimeImmutable $lastUsedAt = null;
 
     /**
+     * What the owner chose for the AI assistant that uses the key; null for the defaults.
+     *
+     * @var array<array-key, mixed>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $assistant = null;
+
+    /**
      * @param string $prefix the key's first characters, to tell it from the others: "oc_3f9a1c2b"
      * @param string $hash   the key's SHA-256
      *
@@ -84,6 +92,20 @@ class ApiKey
     public function lastUsedAt(): ?\DateTimeImmutable
     {
         return $this->lastUsedAt;
+    }
+
+    /** @return array<array-key, mixed>|null */
+    public function assistant(): ?array
+    {
+        return $this->assistant;
+    }
+
+    /**
+     * @param array<array-key, mixed> $choices
+     */
+    public function chooseForAssistant(array $choices): void
+    {
+        $this->assistant = $choices;
     }
 
     /** @return bool whether it was not used within the minute before, so the use is worth saving */

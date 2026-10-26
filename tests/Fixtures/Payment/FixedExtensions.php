@@ -158,4 +158,9 @@ final class FixedExtensions implements InstalledExtensions
     {
         return $this->orderAdjusters;
     }
+
+    public function assistantTools(): array
+    {
+        return [];
+    }
 }

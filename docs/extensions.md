@@ -473,6 +473,62 @@ if ($registry->version() >= 6) {
   and the new one join. Every shop email to someone subscribed carries a signed link to unsubscribe, which asks
   them to confirm.
 
+## Tools for the AI assistant
+
+Version 15 lets an add-on give the shop's AI assistant (MCP, see docs/assistant.md) its own tools, beside the
+shop's: a courier add-on's "book a pickup", a marketplace's "read its orders". The owner sees them in
+Shop → Integrations under the add-on's name and ticks them per API key, like the shop's areas.
+
+```php
+if ($registry->version() >= 15) {
+    $registry->assistantTool(new class implements OrillaCart\Extension\Assistant\AssistantTool {
+        public function name(): string { return 'parcelco_book_pickup'; }
+        public function addOn(): string { return 'Parcel Co'; }
+        public function title(): string { return 'Book a pickup'; }
+        public function description(): string
+        {
+            return 'Asks Parcel Co to collect an order\'s parcels on a day; answers with the pickup\'s number.';
+        }
+        public function inputSchema(): array
+        {
+            return [
+                'type' => 'object',
+                'properties' => [
+                    'order_id' => ['type' => 'integer', 'minimum' => 1],
+                    'day' => ['type' => 'string', 'format' => 'date', 'description' => 'Y-m-d, a working day.'],
+                ],
+                'required' => ['order_id', 'day'],
+                'additionalProperties' => false,
+            ];
+        }
+        public function capability(): string { return 'manage_orillacart'; }
+        public function readOnly(): bool { return false; }
+        public function risk(): ?string { return null; }
+        public function run(array $arguments, OrillaCart\Extension\Assistant\ToolCall $call): ?array
+        {
+            $booking = my_parcelco_book((int) $arguments['order_id'], (string) $arguments['day']); // the add-on's own code
+            if ($booking === null) {
+                throw new OrillaCart\Extension\Assistant\ToolRefused('That order has no parcels to collect.');
+            }
+
+            return ['pickup' => $booking, 'day' => $arguments['day']];
+        }
+    });
+}
+```
+
+- **The name** starts with the add-on's own prefix. One the shop's tools have, or one that is not lowercase
+  letters, digits and underscores, is left out and logged, as is a schema that is not an object's.
+- **The description** is what the model reads first: say what the tool does and what it changes.
+- **The shop checks before `run()`**: the user's capability, the key's scope (a read-only key is offered only
+  tools whose `readOnly()` is true), and the owner's choices for the key. A tool with a `risk()` the owner wants
+  to be asked about waits for their yes: `MONEY`, `DELETING`, `CUSTOMERS` or `OPENING`.
+- **Check the arguments yourself**, as the schema says: the shop passes them as the model sent them. Throw
+  `ToolRefused` with what to correct, and details (each field) if it helps; the model reads both. Anything else
+  thrown is logged, and the model is told the tool failed.
+- **A tool that changes something** is written into the change log as the assistant's, with the key's name.
+- **`ToolCall`** says whom the assistant acts as (`userId`) and with which key (`keyName`).
+
 ## Page slots
 
 The templates print what add-ons echo in these actions:

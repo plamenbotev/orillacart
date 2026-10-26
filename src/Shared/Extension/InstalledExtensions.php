@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Shared\Extension;
 
+use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
@@ -119,4 +120,11 @@ interface InstalledExtensions
      * @return list<OrderAdjuster>
      */
     public function orderAdjusters(): array;
+
+    /**
+     * Add-ons' tools for the AI assistant, by name.
+     *
+     * @return list<AssistantTool>
+     */
+    public function assistantTools(): array;
 }

@@ -13,17 +13,35 @@ import { __ } from '@wordpress/i18n';
 import { shopDateTime } from '../shared/dates';
 import { errorMessage } from '../shared/api';
 import { useConfirm } from '../shared/useConfirm';
-import { type ApiKey, createApiKey, fetchApiKeys, revokeApiKey } from './api';
+import { AssistantModal } from './AssistantModal';
+import { ConnectAssistant } from './ConnectAssistant';
+import {
+	type ApiKey,
+	type AssistantCatalogue,
+	createApiKey,
+	fetchApiKeys,
+	revokeApiKey,
+} from './api';
 
 const SCOPES = [
 	{ value: 'read', label: __( 'Read only', 'orillacart' ) },
 	{ value: 'read_write', label: __( 'Read and change', 'orillacart' ) },
 ];
 
+interface Props {
+	/** The assistant's endpoint and tools, to choose each key's from; null until read. */
+	catalogue: AssistantCatalogue | null;
+}
+
 /**
- * Keys integrations call the shop's API with, as the shop manager who made them. A new key shows once.
+ * Keys integrations and AI assistants call the shop's API with, as the shop manager who made them. A new key
+ * shows once.
+ *
+ * @param props           The assistant's tools.
+ * @param props.catalogue The endpoint and the tools by area.
  */
-export function ApiKeysCard() {
+export function ApiKeysCard( { catalogue }: Props ) {
+	const [ choosing, setChoosing ] = useState< ApiKey | null >( null );
 	const [ keys, setKeys ] = useState< ApiKey[] | null >( null );
 	const [ name, setName ] = useState( '' );
 	const [ scope, setScope ] = useState< ApiKey[ 'scope' ] >( 'read' );
@@ -40,6 +58,13 @@ export function ApiKeysCard() {
 	return (
 		<Card className="orillacart-card">
 			{ confirmation }
+			{ choosing !== null && catalogue !== null && (
+				<AssistantModal
+					apiKey={ choosing }
+					catalogue={ catalogue }
+					onClose={ () => setChoosing( null ) }
+				/>
+			) }
 			<CardHeader>
 				<h2>{ __( 'API keys', 'orillacart' ) }</h2>
 			</CardHeader>
@@ -64,6 +89,20 @@ export function ApiKeysCard() {
 							) }
 						</p>
 						<code className="orillacart-api-key">{ made }</code>
+						{ catalogue !== null && (
+							<>
+								<p>
+									{ __(
+										'To connect an AI assistant with it:',
+										'orillacart'
+									) }
+								</p>
+								<ConnectAssistant
+									endpoint={ catalogue.endpoint }
+									apiKey={ made }
+								/>
+							</>
+						) }
 					</Notice>
 				) }
 				{ keys !== null && keys.length > 0 && (
@@ -75,6 +114,7 @@ export function ApiKeysCard() {
 								<th>{ __( 'May', 'orillacart' ) }</th>
 								<th>{ __( 'As', 'orillacart' ) }</th>
 								<th>{ __( 'Last used', 'orillacart' ) }</th>
+								<th>{ __( 'AI assistant', 'orillacart' ) }</th>
 								<th>
 									<span className="screen-reader-text">
 										{ __( 'Actions', 'orillacart' ) }
@@ -100,6 +140,15 @@ export function ApiKeysCard() {
 										{ key.last_used_at
 											? shopDateTime( key.last_used_at )
 											: __( 'Never', 'orillacart' ) }
+									</td>
+									<td>
+										<Button
+											variant="link"
+											disabled={ catalogue === null }
+											onClick={ () => setChoosing( key ) }
+										>
+											{ __( 'Choose…', 'orillacart' ) }
+										</Button>
 									</td>
 									<td>
 										<Button

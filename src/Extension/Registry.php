@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Extension;
 
+use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
@@ -104,5 +105,8 @@ interface Registry
     public function orderPrices(): OrderPrices;
 
     /** Writes to the shop's log, where the shop manager looks when something went wrong. */
+    /** A tool for the shop's AI assistant (MCP). Since version 15. */
+    public function assistantTool(AssistantTool $tool): void;
+
     public function log(): Log;
 }

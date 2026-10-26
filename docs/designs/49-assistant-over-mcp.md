@@ -1,6 +1,6 @@
 # 49 · An AI store manager over MCP
 
-Status: designed 2026-10-26, PLAN items 178–190; 178–180 built. The user asked for an LLM store manager that works the moment
+Status: designed 2026-10-26, PLAN items 178–190; 178–180 and 182–185 built. The user asked for an LLM store manager that works the moment
 the plugin is installed. It is bundled, not a separate plugin, and it covers setting up the shop and all
 administration. On 2026-10-26 they added that the tooling must be extendable.
 
@@ -90,11 +90,19 @@ through it: ask the owner about the business, save each answer, show the plan, a
 - **Customers hear of it**: emails sent to customers, a return approved or refused.
 - **The shop opens or closes**: opening, "Opening soon", applying the setup.
 
-Each key says which classes need the owner's yes; by default all four do. A client that can ask its user (MCP
+Each key says which classes need the owner's yes; by default all four do. A login, or an application password,
+has the defaults. A client that can ask its user (MCP
 elicitation) is asked through the protocol: the tool answers "input required" with what it is about to do,
 in words ("Refund €40.00 of order 1043 to PayPal"), and runs only when the client retries with the owner's yes.
-In 2026-07-28 this is a plain retry of the same request. A client that cannot ask gets a refusal that names the
-setting. The owner can untick a class for a key they trust.
+In 2026-07-28 this is a plain retry of the same request. The question carries a state the shop signed with the
+site's secret: who asked, with which key, and a digest of the tool and its arguments. It lasts 15 minutes and
+is good once, so a yes cannot be replayed (a refund would run twice) or used for other arguments. A client that cannot ask gets a refusal that names the
+setting. The owner can untick a class for a key they trust. Clients of the earlier revisions cannot be asked statelessly,
+so they are refused for the classes their key asks about.
+
+**Checking the connection.** Some hosts drop the `Authorization` header before PHP sees it. The admin's check
+sends a made-up key without cookies: "a key the shop has not" means the header arrives, "log in" means it was
+dropped, and the admin says to send `X-OrillaCart-Key` instead.
 
 **Many tools, or a few.** About 250 tools is fine for clients that search their tools, such as Claude, but too
 many for some others. Each key chooses:
@@ -131,8 +139,8 @@ The shop checks the capability and the risk before `run()`, and writes the call 
 REST routes stay its own; a tool can call its services directly.
 
 **The owner chooses.** The key's screen lists the shop's areas and every add-on's tools beside them, with the
-add-on's name. Each one is ticked or not per key. A tool an add-on adds later starts unticked on existing keys and
-ticked on new ones.
+add-on's name. Each one is ticked or not per key. What a key leaves out is kept as a list, so an area that comes later (with an update or a
+new add-on) is offered until the owner unticks it; its risky tools still wait for the owner's yes.
 
 **WordPress's Abilities API.** On WordPress 6.9 and later the same catalogue is also registered as abilities
 (category `orillacart`), with the same schemas and permission checks. WordPress's own MCP Adapter and its AI

@@ -6,6 +6,7 @@ namespace OrillaCart\Platform\WordPress\Extensions;
 
 use OrillaCart\Catalog\Application\AddOnProducts;
 use OrillaCart\Checkout\Application\AddOnOrderPrices;
+use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
@@ -84,6 +85,9 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $eInvoiceSenders = [];
     /** @var array<string, OrderAdjuster> */
     private array $orderAdjusters = [];
+
+    /** @var array<string, AssistantTool> */
+    private array $assistantTools = [];
     private bool $collected = false;
     private bool $collecting = false;
 
@@ -246,6 +250,27 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         if ($this->accepts('tax provider', $provider->id(), $this->taxProviders[$provider->id()] ?? null, $provider)) {
             $this->taxProviders[$provider->id()] = $provider;
         }
+    }
+
+    public function assistantTool(AssistantTool $tool): void
+    {
+        if (!$this->collecting) {
+            throw new \LogicException(\sprintf('Register an assistant tool on the %s action.', self::ACTION));
+        }
+        $name = $tool->name();
+        if (isset($this->assistantTools[$name])) {
+            $this->logger->error('Two of the assistant tools use the name "{id}": {first} and {second}. The second is left out.', ['id' => $name, 'first' => $this->assistantTools[$name]::class, 'second' => $tool::class]);
+
+            return;
+        }
+        $this->assistantTools[$name] = $tool;
+    }
+
+    public function assistantTools(): array
+    {
+        $this->collect();
+
+        return array_values($this->assistantTools);
     }
 
     public function orders(): Orders

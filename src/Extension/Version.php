@@ -25,7 +25,8 @@ final class Version
      * (EInvoiceSender). 11: gateways naming the account or mode a payment is made in (NamesAccounts). 12: mailing
      * lists that delete a contact (ForgetsSubscribers), and the orillacart_newsletter_unsubscribed action. 13: a
      * shipment the courier has booked but not collected yet (Tracking::BOOKED). 14: gateways and shipping methods
-     * whose settings the shop manager can test (TestsSettings).
+     * whose settings the shop manager can test (TestsSettings). 15: tools for the shop's AI assistant
+     * (Assistant\AssistantTool).
      */
-    public const int CURRENT = 14;
+    public const int CURRENT = 15;
 }

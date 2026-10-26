@@ -14,6 +14,7 @@ final readonly class ToolDefinition
      * @param string               $area        what the owner chooses by: a business area ("Ordering"), or an add-on's name
      * @param string|null          $risk        one of Tool::RISKS
      * @param string               $capability  the WordPress capability the user needs
+     * @param bool                 $addOn       an add-on's tool: the owner ticks it per key
      */
     public function __construct(
         public string $name,
@@ -26,6 +27,7 @@ final readonly class ToolDefinition
         public ?string $risk,
         public string $area,
         public string $capability,
+        public bool $addOn = false,
     ) {}
 
     /**

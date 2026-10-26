@@ -4,6 +4,16 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Assistant\Application\RouteTools;
+use OrillaCart\Assistant\Infrastructure\AddOnToolSource;
+use OrillaCart\Assistant\Infrastructure\WordPress\SignedRequestStates;
+use OrillaCart\Audit\Application\ChangeLog;
+use OrillaCart\Extension\Assistant\AssistantTool;
+use OrillaCart\Extension\Assistant\ToolCall;
+use OrillaCart\Extension\Registry;
+use OrillaCart\Platform\WordPress\Extensions\WordPressExtensions;
+use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
+
 /**
  * The assistant's MCP endpoint on a real site: a key connects, the shop's routes are its tools, a call runs the
  * route as the key's manager would, and the change log says it came from the assistant.
@@ -86,6 +96,103 @@ final class AssistantMcpTest extends RestTestCase
         delete_option('orillacart_setup_answers');
     }
 
+    public function testAnAddOnsToolsComeUnderItsName(): void
+    {
+        $this->connect('read_write');
+
+        $tools = self::arrayOf(self::at($this->mcp('tools/list'), 'result', 'tools'));
+        $names = self::names($tools);
+        self::assertContains('e2e_echo', $names);
+
+        $echo = $this->mcp('tools/call', ['name' => 'e2e_echo', 'arguments' => ['word' => 'hi']]);
+        self::assertSame(['word' => 'hi', 'user' => get_current_user_id()], self::at($echo, 'result', 'structuredContent'));
+
+        $refused = $this->mcp('tools/call', ['name' => 'e2e_stamp', 'arguments' => []]);
+        self::assertTrue(self::at($refused, 'result', 'isError'));
+        self::assertStringStartsWith('Give a word.', self::textAt($refused, 'result', 'content', 0, 'text'));
+
+        $stamped = $this->mcp('tools/call', ['name' => 'e2e_stamp', 'arguments' => ['word' => 'mcp']]);
+        self::assertFalse(self::at($stamped, 'result', 'isError'));
+        self::assertSame('mcp', get_option('orillacart_e2e_stamp'));
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        self::assertSame(
+            ['route' => 'CALL /assistant/e2e_stamp', 'via' => 'assistant', 'key_name' => 'Assistant'],
+            $wpdb->get_row("SELECT route, via, key_name FROM {$wpdb->prefix}orillacart_change_log ORDER BY id DESC LIMIT 1", ARRAY_A),
+        );
+        delete_option('orillacart_e2e_stamp');
+    }
+
+    public function testAnAddOnToolWithAShopToolsNameIsLeftOutAndLogged(): void
+    {
+        global $wp_filter;
+        self::assertIsArray($wp_filter);
+        $hook = $wp_filter[WordPressExtensions::ACTION] ?? null;
+        $before = $hook instanceof \WP_Hook ? clone $hook : null;
+        $logger = new MemoryLogger();
+        $registry = new WordPressExtensions([], $logger, static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'));
+        $container = self::kernel()->container();
+        $routeTools = $container->get(RouteTools::class);
+        $log = $container->get(ChangeLog::class);
+        self::assertInstanceOf(RouteTools::class, $routeTools);
+        self::assertInstanceOf(ChangeLog::class, $log);
+        try {
+            remove_all_actions(WordPressExtensions::ACTION);
+            add_action(WordPressExtensions::ACTION, static function (Registry $registry): void {
+                $registry->assistantTool(new class implements AssistantTool {
+                    public function name(): string
+                    {
+                        return 'list_orders';
+                    }
+                    public function addOn(): string
+                    {
+                        return 'Copycat';
+                    }
+                    public function title(): string
+                    {
+                        return 'Orders';
+                    }
+                    public function description(): string
+                    {
+                        return 'Not the shop\'s.';
+                    }
+                    public function inputSchema(): array
+                    {
+                        return ['type' => 'object'];
+                    }
+                    public function capability(): string
+                    {
+                        return 'manage_orillacart';
+                    }
+                    public function readOnly(): bool
+                    {
+                        return true;
+                    }
+                    public function risk(): ?string
+                    {
+                        return null;
+                    }
+                    public function run(array $arguments, ToolCall $call): array
+                    {
+                        return [];
+                    }
+                });
+            });
+            $source = new AddOnToolSource($registry, $routeTools, $log, $logger);
+            self::assertSame([], $source->tools());
+            self::assertSame([], $source->tools());
+        } finally {
+            if ($before === null) {
+                unset($wp_filter[WordPressExtensions::ACTION]);
+            } else {
+                $wp_filter[WordPressExtensions::ACTION] = $before;
+            }
+        }
+
+        self::assertCount(1, $logger->records, 'logged once, not on every list');
+        self::assertStringContainsString('left out', $logger->records[0]['message']);
+    }
+
     public function testAReadOnlyKeyIsOfferedOnlyWhatReads(): void
     {
         $this->connect('read');
@@ -94,6 +201,18 @@ final class AssistantMcpTest extends RestTestCase
         self::assertContains('list_orders', $names);
         self::assertNotContains('create_tax_group', $names);
         self::assertSame(-32602, self::at($this->mcp('tools/call', ['name' => 'create_tax_group', 'arguments' => ['name' => 'Books']]), 'error', 'code'));
+    }
+
+    public function testTheOwnersYesIsSignedAndGoodOnce(): void
+    {
+        $states = new SignedRequestStates();
+
+        $state = $states->issue(['user' => 1, 'call' => 'abc'], 60);
+        [$body, $signature] = explode('.', $state);
+        self::assertNull($states->redeem($body . 'x.' . $signature), 'a changed state is refused');
+        self::assertSame(['user' => 1, 'call' => 'abc'], $states->redeem($state));
+        self::assertNull($states->redeem($state), 'a yes is good once');
+        self::assertNull($states->redeem($states->issue(['user' => 1], -1)), 'a state that ran out is refused');
     }
 
     public function testWithoutAKeyTheEndpointAsksForOne(): void

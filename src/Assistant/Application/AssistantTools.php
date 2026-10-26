@@ -20,6 +20,38 @@ final readonly class AssistantTools
         private Authorization $authorization,
     ) {}
 
+    /**
+     * Every tool there is, whoever asks: what the owner chooses from.
+     *
+     * @return list<ToolDefinition>
+     */
+    public function all(): array
+    {
+        $tools = [];
+        foreach ($this->sources->all() as $source) {
+            foreach ($source->tools() as $tool) {
+                $tools[$tool->name] ??= $tool;
+            }
+        }
+        ksort($tools);
+
+        return array_values($tools);
+    }
+
+    /** The tool of that name the caller is offered, if there is one. */
+    public function find(string $name, Caller $caller): ?ToolDefinition
+    {
+        foreach ($this->sources->all() as $source) {
+            foreach ($source->tools() as $tool) {
+                if ($tool->name === $name) {
+                    return $this->offers($tool, $caller) ? $tool : null;
+                }
+            }
+        }
+
+        return null;
+    }
+
     /** @return list<ToolDefinition> */
     public function offered(Caller $caller): array
     {
@@ -54,8 +86,16 @@ final readonly class AssistantTools
         return null;
     }
 
+    /**
+     * Whether a call needs the owner's yes first: its risk is one the key's owner wants to be asked about.
+     */
+    public function asksFirst(ToolDefinition $tool, Caller $caller): bool
+    {
+        return $caller->choices->asksBefore($tool->risk);
+    }
+
     private function offers(ToolDefinition $tool, Caller $caller): bool
     {
-        return (!$caller->readOnly || $tool->readOnly) && $this->authorization->isGranted($tool->capability);
+        return (!$caller->readOnly || $tool->readOnly) && $caller->choices->offers($tool) && $this->authorization->isGranted($tool->capability);
     }
 }

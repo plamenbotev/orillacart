@@ -7,9 +7,11 @@ use Doctrine\ORM\EntityManagerInterface;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use OrillaCart\Assistant\Application\AssistantContext;
 use OrillaCart\Assistant\Application\AssistantRequests;
+use OrillaCart\Assistant\Application\RequestStates;
 use OrillaCart\Assistant\Application\RouteTools;
 use OrillaCart\Assistant\Application\ToolSources;
 use OrillaCart\Assistant\Infrastructure\TaggedToolSources;
+use OrillaCart\Assistant\Infrastructure\WordPress\SignedRequestStates;
 use OrillaCart\Assistant\Infrastructure\WordPress\WordPressAssistantContext;
 use OrillaCart\Assistant\Infrastructure\WordPress\WordPressAssistantRequests;
 use OrillaCart\Audit\Domain\ChangeRecordRepository;
@@ -345,6 +347,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ToolSources::class, TaggedToolSources::class);
     $services->alias(AssistantContext::class, WordPressAssistantContext::class);
     $services->alias(AssistantRequests::class, WordPressAssistantRequests::class);
+    $services->alias(RequestStates::class, SignedRequestStates::class);
 
     // Repositories: the domain declares the interface, infrastructure decides where data lives.
     $services->alias(SettingsRepository::class, OptionSettingsRepository::class);

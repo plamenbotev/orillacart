@@ -118,3 +118,55 @@ export function newWebhookSecret( id: number ): Promise< Webhook > {
 export function fetchDeliveries( id: number ): Promise< WebhookDelivery[] > {
 	return apiFetch( { path: `/orillacart/v1/webhooks/${ id }/deliveries` } );
 }
+
+/** What a key's AI assistant is offered, as GET /orillacart/v1/api-keys/{id}/assistant returns it. */
+export interface AssistantChoices {
+	/** The areas not offered; an area that comes later is. */
+	off_areas: string[];
+	/** Tools left out by name. */
+	off: string[];
+	list: 'all' | 'find';
+	/** The risks that wait for the owner's yes. */
+	ask: string[];
+}
+
+/** The assistant's endpoint and its tools by area, as GET /orillacart/v1/assistant returns them. */
+export interface AssistantCatalogue {
+	endpoint: string;
+	areas: {
+		area: string;
+		add_on: boolean;
+		tools: {
+			name: string;
+			title: string;
+			description: string;
+			risk: string | null;
+			read_only: boolean;
+		}[];
+	}[];
+}
+
+export function fetchAssistantCatalogue(): Promise< AssistantCatalogue > {
+	return apiFetch< AssistantCatalogue >( {
+		path: '/orillacart/v1/assistant',
+	} );
+}
+
+export function fetchAssistantChoices(
+	id: number
+): Promise< AssistantChoices > {
+	return apiFetch< AssistantChoices >( {
+		path: `/orillacart/v1/api-keys/${ id }/assistant`,
+	} );
+}
+
+export function saveAssistantChoices(
+	id: number,
+	choices: AssistantChoices
+): Promise< AssistantChoices > {
+	return apiFetch< AssistantChoices >( {
+		path: `/orillacart/v1/api-keys/${ id }/assistant`,
+		method: 'PUT',
+		data: choices,
+	} );
+}

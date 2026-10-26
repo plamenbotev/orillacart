@@ -44,3 +44,69 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
         }
     });
 });
+
+// An add-on's tools for the AI assistant: one that reads, one that changes.
+add_action('orillacart_extensions', static function (OrillaCart\Extension\Registry $registry): void {
+    if ($registry->version() < 15) {
+        return;
+    }
+    $tool = static fn(string $name, bool $readOnly, ?string $risk, Closure $run): OrillaCart\Extension\Assistant\AssistantTool => new class ($name, $readOnly, $risk, $run) implements OrillaCart\Extension\Assistant\AssistantTool {
+        public function __construct(private string $toolName, private bool $reads, private ?string $toolRisk, private Closure $runs) {}
+
+        public function name(): string
+        {
+            return $this->toolName;
+        }
+
+        public function addOn(): string
+        {
+            return 'Test add-on';
+        }
+
+        public function title(): string
+        {
+            return ucfirst(str_replace('_', ' ', $this->toolName));
+        }
+
+        public function description(): string
+        {
+            return 'A test add-on\'s tool.';
+        }
+
+        public function inputSchema(): array
+        {
+            return ['type' => 'object', 'properties' => ['word' => ['type' => 'string']], 'additionalProperties' => false];
+        }
+
+        public function capability(): string
+        {
+            return 'manage_orillacart';
+        }
+
+        public function readOnly(): bool
+        {
+            return $this->reads;
+        }
+
+        public function risk(): ?string
+        {
+            return $this->toolRisk;
+        }
+
+        public function run(array $arguments, OrillaCart\Extension\Assistant\ToolCall $call): ?array
+        {
+            $answer = ($this->runs)($arguments, $call);
+
+            return is_array($answer) ? $answer : null;
+        }
+    };
+    $registry->assistantTool($tool('e2e_echo', true, null, static fn(array $arguments, OrillaCart\Extension\Assistant\ToolCall $call): array => ['word' => $arguments['word'] ?? null, 'user' => $call->userId]));
+    $registry->assistantTool($tool('e2e_stamp', false, null, static function (array $arguments): array {
+        if (($arguments['word'] ?? '') === '') {
+            throw new OrillaCart\Extension\Assistant\ToolRefused('Give a word.', ['field' => 'word']);
+        }
+        update_option('orillacart_e2e_stamp', $arguments['word']);
+
+        return ['stamped' => $arguments['word']];
+    }));
+});

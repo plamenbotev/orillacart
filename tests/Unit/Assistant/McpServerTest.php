@@ -6,11 +6,13 @@ namespace OrillaCart\Tests\Unit\Assistant;
 
 use OrillaCart\Assistant\Application\AssistantContext;
 use OrillaCart\Assistant\Application\AssistantTools;
+use OrillaCart\Assistant\Application\Dto\AssistantChoices;
 use OrillaCart\Assistant\Application\Dto\Caller;
 use OrillaCart\Assistant\Application\Dto\McpReply;
 use OrillaCart\Assistant\Application\Dto\ToolDefinition;
 use OrillaCart\Assistant\Application\Dto\ToolOutcome;
 use OrillaCart\Assistant\Application\McpServer;
+use OrillaCart\Assistant\Application\RequestStates;
 use OrillaCart\Assistant\Application\ToolSource;
 use OrillaCart\Assistant\Application\ToolSources;
 use OrillaCart\Shared\Http\Security\Authorization;
@@ -27,9 +29,109 @@ final class McpServerTest extends TestCase
     /** @var \ArrayObject<int, array{string, array<string, mixed>}> the tools the fake source ran */
     private \ArrayObject $calls;
 
+    private RequestStates $states;
+
     protected function setUp(): void
     {
         $this->calls = new \ArrayObject();
+        $this->states = new class implements RequestStates {
+            /** @var array<string, array<string, mixed>> */
+            private array $issued = [];
+
+            public function issue(array $payload, int $seconds): string
+            {
+                $state = 'state-' . \count($this->issued);
+                $this->issued[$state] = $payload;
+
+                return $state;
+            }
+
+            public function redeem(string $state): ?array
+            {
+                $payload = $this->issued[$state] ?? null;
+                unset($this->issued[$state]);
+
+                return $payload;
+            }
+        };
+    }
+
+    public function testARiskyToolAsksTheOwnerAndRunsOnTheirYesOnce(): void
+    {
+        $call = ['name' => 'refund_thing', 'arguments' => ['id' => 4, 'amount' => '5.00']];
+        $asked = $this->asking($call);
+        self::assertSame('input_required', self::at($asked->body, 'result', 'resultType'));
+        self::assertSame('elicitation/create', self::at($asked->body, 'result', 'inputRequests', 'confirm', 'method'));
+        self::assertStringContainsString('Money moves.', self::textAt($asked->body, 'result', 'inputRequests', 'confirm', 'params', 'message'));
+        self::assertSame([], $this->calls->getArrayCopy(), 'nothing ran before the owner answered');
+        $state = self::textAt($asked->body, 'result', 'requestState');
+
+        $yes = ['confirm' => ['action' => 'accept', 'content' => ['confirm' => true]]];
+        $done = $this->asking($call + ['inputResponses' => $yes, 'requestState' => $state]);
+        self::assertSame('complete', self::at($done->body, 'result', 'resultType'));
+        self::assertFalse(self::at($done->body, 'result', 'isError'));
+        self::assertSame([['refund_thing', ['id' => 4, 'amount' => '5.00']]], $this->calls->getArrayCopy());
+
+        $again = $this->asking($call + ['inputResponses' => $yes, 'requestState' => $state]);
+        self::assertSame('input_required', self::at($again->body, 'result', 'resultType'), 'a yes is good once');
+        self::assertCount(1, $this->calls);
+    }
+
+    public function testAYesIsForTheCallItWasAskedFor(): void
+    {
+        $asked = $this->asking(['name' => 'refund_thing', 'arguments' => ['amount' => '5.00']]);
+        $yes = ['confirm' => ['action' => 'accept', 'content' => ['confirm' => true]]];
+
+        $other = $this->asking(['name' => 'refund_thing', 'arguments' => ['amount' => '500.00'], 'inputResponses' => $yes, 'requestState' => self::textAt($asked->body, 'result', 'requestState')]);
+        self::assertSame('input_required', self::at($other->body, 'result', 'resultType'));
+        self::assertSame([], $this->calls->getArrayCopy());
+    }
+
+    public function testANoRunsNothing(): void
+    {
+        $asked = $this->asking(['name' => 'refund_thing', 'arguments' => []]);
+        $no = $this->asking(['name' => 'refund_thing', 'arguments' => [], 'inputResponses' => ['confirm' => ['action' => 'decline']], 'requestState' => self::textAt($asked->body, 'result', 'requestState')]);
+
+        self::assertTrue(self::at($no->body, 'result', 'isError'));
+        self::assertStringContainsString('said no', self::textAt($no->body, 'result', 'content', 0, 'text'));
+        self::assertSame([], $this->calls->getArrayCopy());
+    }
+
+    public function testAClientThatCannotAskIsRefusedUnlessTheOwnerLetsTheKey(): void
+    {
+        $refused = $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => []], ['mcp-name' => 'refund_thing']);
+        self::assertTrue(self::at($refused->body, 'result', 'isError'));
+        self::assertStringContainsString('cannot ask', self::textAt($refused->body, 'result', 'content', 0, 'text'));
+        self::assertSame([], $this->calls->getArrayCopy());
+
+        $trusted = new Caller(1, 7, false, new AssistantChoices(ask: ['deleting']));
+        $run = $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => []], ['mcp-name' => 'refund_thing'], $trusted);
+        self::assertFalse(self::at($run->body, 'result', 'isError'));
+        self::assertCount(1, $this->calls);
+    }
+
+    public function testTheKeysAreasLimitWhatItIsOffered(): void
+    {
+        $caller = new Caller(1, 7, false, new AssistantChoices(offAreas: ['Things']));
+
+        self::assertSame([], self::at($this->modern('tools/list', caller: $caller)->body, 'result', 'tools'));
+        $left = new Caller(1, 7, false, new AssistantChoices(off: ['show_thing']));
+        self::assertNotContains('show_thing', self::names(self::at($this->modern('tools/list', caller: $left)->body, 'result', 'tools')));
+    }
+
+    /**
+     * A tools/call from a client that can ask its user (elicitation).
+     *
+     * @param array{name: string, arguments: array<string, mixed>, inputResponses?: array<string, mixed>, requestState?: string} $params
+     */
+    private function asking(array $params): McpReply
+    {
+        $meta = ['_meta' => ['io.modelcontextprotocol/protocolVersion' => '2026-07-28', 'io.modelcontextprotocol/clientCapabilities' => ['elicitation' => ['form' => []]]]];
+
+        return $this->send(
+            ['jsonrpc' => '2.0', 'id' => 5, 'method' => 'tools/call', 'params' => $meta + $params],
+            ['mcp-protocol-version' => '2026-07-28', 'mcp-method' => 'tools/call', 'mcp-name' => $params['name']],
+        );
     }
 
     public function testInitializeAgreesOnAnEarlierRevision(): void
@@ -69,8 +171,8 @@ final class McpServerTest extends TestCase
     public function testToolsAreListedInOrderAndAReadOnlyKeySeesOnlyReads(): void
     {
         $reply = $this->modern('tools/list');
-        self::assertSame(['change_thing', 'show_thing'], self::names(self::at($reply->body, 'result', 'tools')));
-        self::assertSame(['title' => 'Show thing', 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false], self::at($reply->body, 'result', 'tools', 1, 'annotations'));
+        self::assertSame(['change_thing', 'refund_thing', 'show_thing'], self::names(self::at($reply->body, 'result', 'tools')));
+        self::assertSame(['title' => 'Show thing', 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false], self::at($reply->body, 'result', 'tools', 2, 'annotations'));
         self::assertIsInt(self::at($reply->body, 'result', 'ttlMs'));
 
         $readOnly = $this->modern('tools/list', caller: new Caller(1, 7, true));
@@ -180,6 +282,7 @@ final class McpServerTest extends TestCase
                 return [
                     new ToolDefinition('show_thing', 'Show thing', 'Shows a thing.', ['type' => 'object'], true, false, true, null, 'Things', 'manage_orillacart'),
                     new ToolDefinition('change_thing', 'Change thing', 'Changes a thing.', ['type' => 'object'], false, false, true, null, 'Things', 'manage_orillacart'),
+                    new ToolDefinition('refund_thing', 'Refund thing', 'Gives the money back.', ['type' => 'object'], false, false, false, 'money', 'Things', 'manage_orillacart'),
                     new ToolDefinition('secret_thing', 'Secret thing', 'Not for managers.', ['type' => 'object'], true, false, true, null, 'Things', 'manage_options'),
                 ];
             }
@@ -235,7 +338,7 @@ final class McpServerTest extends TestCase
             }
         };
 
-        return new McpServer(new AssistantTools($sources, $authorization), $context)->handle($message, $headers, $caller ?? new Caller(1, 7, false));
+        return new McpServer(new AssistantTools($sources, $authorization), $context, $this->states)->handle($message, $headers, $caller ?? new Caller(1, 7, false));
     }
 
     /**

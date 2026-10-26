@@ -100,7 +100,7 @@ final readonly class RouteCaller
         $uri = rest_url(RouteCollection::REST_NAMESPACE . $path);
         $request = $this->requests->createServerRequest($routeTool->method, $uri, $_SERVER)
             ->withAttribute(RouteDefinition::ATTRIBUTE, $route)
-            ->withAttribute(RouteDefinition::VIA, 'assistant');
+            ->withAttribute(RouteDefinition::VIA, RouteDefinition::VIA_ASSISTANT);
         foreach ($values as $placeholder => $value) {
             $request = $request->withAttribute($placeholder, $value);
         }

@@ -1,0 +1,52 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Assistant\Infrastructure\WordPress;
+
+use OrillaCart\Assistant\Application\RequestStates;
+
+/**
+ * Request states signed with the site's own secret (wp_salt), their time limit inside what is signed, and each
+ * remembered once used until it would have run out.
+ */
+final readonly class SignedRequestStates implements RequestStates
+{
+    private const string USED = 'orillacart_mcp_state_';
+
+    public function issue(array $payload, int $seconds): string
+    {
+        $body = self::encode((string) json_encode(['p' => $payload, 'e' => time() + $seconds]));
+
+        return $body . '.' . self::encode(hash_hmac('sha256', $body, self::secret(), true));
+    }
+
+    public function redeem(string $state): ?array
+    {
+        $parts = explode('.', $state);
+        if (\count($parts) !== 2 || !hash_equals(self::encode(hash_hmac('sha256', $parts[0], self::secret(), true)), $parts[1])) {
+            return null;
+        }
+        $data = json_decode((string) base64_decode(strtr($parts[0], '-_', '+/'), true), true);
+        if (!\is_array($data) || !\is_int($data['e'] ?? null) || !\is_array($data['p'] ?? null) || $data['e'] < time()) {
+            return null;
+        }
+        $used = self::USED . hash('sha256', $state);
+        if (get_transient($used) !== false) {
+            return null;
+        }
+        set_transient($used, 1, max(1, $data['e'] - time() + 1));
+
+        return array_filter($data['p'], \is_string(...), ARRAY_FILTER_USE_KEY);
+    }
+
+    private static function secret(): string
+    {
+        return wp_salt('auth') . '|orillacart-mcp';
+    }
+
+    private static function encode(string $bytes): string
+    {
+        return rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
+    }
+}
