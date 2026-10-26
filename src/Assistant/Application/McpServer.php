@@ -502,7 +502,9 @@ final readonly class McpServer
             }
         }
 
-        $given = $arguments === [] ? '' : "\n\n" . json_encode($arguments, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        // What the call would do, where a description knows it; else what the tool does, with what it is given.
+        $what = $this->tools->describe($tool, $arguments, $caller)
+            ?? $tool->description . ($arguments === [] ? '' : "\n\n" . json_encode($arguments, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
 
         return [
             'resultType' => 'input_required',
@@ -510,7 +512,7 @@ final readonly class McpServer
                 'method' => 'elicitation/create',
                 'params' => [
                     'mode' => 'form',
-                    'message' => "The assistant wants to: {$tool->title}. " . (self::RISK_WORDS[$tool->risk ?? ''] ?? '') . "\n\n{$tool->description}{$given}",
+                    'message' => "The assistant wants to: {$tool->title}. " . (self::RISK_WORDS[$tool->risk ?? ''] ?? '') . "\n\n{$what}",
                     'requestedSchema' => [
                         'type' => 'object',
                         'properties' => [self::CONFIRM => ['type' => 'boolean', 'title' => 'Yes, do it', 'default' => false]],

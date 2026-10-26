@@ -83,7 +83,8 @@ that checks the shop's host passes the `Authorization` header on.
 In Shop → Integrations, **Choose…** beside a key (each app you connected has one) sets, for the assistant that uses it:
 - **Ask me first when**: money moves, something is deleted, customers hear of it, or the shop opens or closes.
   All four are ticked to start. A client that can ask you (MCP elicitation, revision 2026-07-28) shows the
-  question in its own window, and the tool runs only on your yes. A client that cannot ask is refused for those
+  question in its own window, and the tool runs only on your yes. Applying the setup shows the whole plan in
+  the question. A client that cannot ask is refused for those
   tools, and the assistant is told to leave them to you.
 - **What it may use**: the shop's areas and each add-on's tools. An area added later is offered until you untick
   it.

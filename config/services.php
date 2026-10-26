@@ -9,7 +9,9 @@ use OrillaCart\Assistant\Application\AssistantContext;
 use OrillaCart\Assistant\Application\AssistantRequests;
 use OrillaCart\Assistant\Application\RequestStates;
 use OrillaCart\Assistant\Application\RouteTools;
+use OrillaCart\Assistant\Application\CallDescriptions;
 use OrillaCart\Assistant\Application\ToolSources;
+use OrillaCart\Assistant\Infrastructure\TaggedCallDescriptions;
 use OrillaCart\Assistant\Infrastructure\TaggedToolSources;
 use OrillaCart\Assistant\Infrastructure\WordPress\SignedRequestStates;
 use OrillaCart\Assistant\Infrastructure\WordPress\WordPressAssistantContext;
@@ -355,6 +357,7 @@ return static function (ContainerConfigurator $container): void {
     // Filled from the routes by RoutePass.
     $services->set(RouteTools::class)->args(['$tools' => []])->public();
     $services->alias(ToolSources::class, TaggedToolSources::class);
+    $services->alias(CallDescriptions::class, TaggedCallDescriptions::class);
     $services->alias(AssistantContext::class, WordPressAssistantContext::class);
     $services->alias(AssistantRequests::class, WordPressAssistantRequests::class);
     $services->alias(RequestStates::class, SignedRequestStates::class);

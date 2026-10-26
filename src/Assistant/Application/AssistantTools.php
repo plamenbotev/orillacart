@@ -18,6 +18,7 @@ final readonly class AssistantTools
     public function __construct(
         private ToolSources $sources,
         private Authorization $authorization,
+        private CallDescriptions $descriptions,
     ) {}
 
     /**
@@ -113,6 +114,23 @@ final readonly class AssistantTools
     public function asksFirst(ToolDefinition $tool, Caller $caller): bool
     {
         return $caller->choices->asksBefore($tool->risk);
+    }
+
+    /**
+     * What the call would do, in words, for the owner's yes; null when no description knows the tool.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    public function describe(ToolDefinition $tool, array $arguments, Caller $caller): ?string
+    {
+        foreach ($this->descriptions->all() as $description) {
+            $described = $description->describe($tool, $arguments, $caller);
+            if ($described !== null) {
+                return $described;
+            }
+        }
+
+        return null;
     }
 
     private function offers(ToolDefinition $tool, Caller $caller): bool

@@ -98,7 +98,10 @@ through it: ask the owner about the business, save each answer, show the plan, a
 Each key says which classes need the owner's yes; by default all four do. A login, or an application password,
 has the defaults. A client that can ask its user (MCP
 elicitation) is asked through the protocol: the tool answers "input required" with what it is about to do,
-in words ("Refund €40.00 of order 1043 to PayPal"), and runs only when the client retries with the owner's yes.
+and runs only when the client retries with the owner's yes. The question says it in words where a
+`CallDescription` knows the tool: applying the setup shows the plan it applies, change by change, with what it
+replaces or keeps and its warnings, or that the shop changed since and it will be refused. Other tools show
+what they do and the arguments they were given.
 In 2026-07-28 this is a plain retry of the same request. The question carries a state the shop signed with the
 site's secret: who asked, with which key, and a digest of the tool and its arguments. It lasts 15 minutes and
 is good once, so a yes cannot be replayed (a refund would run twice) or used for other arguments. A client that cannot ask gets a refusal that names the

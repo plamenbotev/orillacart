@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform;
 
+use OrillaCart\Assistant\Application\CallDescription;
 use OrillaCart\Assistant\Application\ToolSource;
 use OrillaCart\Customers\Application\PersonalDataSource;
 use OrillaCart\Jobs\Application\JobHandler;
@@ -97,6 +98,7 @@ final class Kernel
         $builder->registerForAutoconfiguration(SetupStep::class)->addTag(SetupStep::TAG);
         $builder->registerForAutoconfiguration(ReadinessCheck::class)->addTag(ReadinessCheck::TAG);
         $builder->registerForAutoconfiguration(ToolSource::class)->addTag(ToolSource::TAG);
+        $builder->registerForAutoconfiguration(CallDescription::class)->addTag(CallDescription::TAG);
 
         $builder->addCompilerPass(new RoutePass());
         $builder->addCompilerPass(new HookPass());

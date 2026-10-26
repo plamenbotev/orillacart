@@ -6,6 +6,8 @@ namespace OrillaCart\Tests\Unit\Assistant;
 
 use OrillaCart\Assistant\Application\AssistantContext;
 use OrillaCart\Assistant\Application\AssistantTools;
+use OrillaCart\Assistant\Application\CallDescription;
+use OrillaCart\Assistant\Application\CallDescriptions;
 use OrillaCart\Assistant\Application\Dto\AssistantChoices;
 use OrillaCart\Assistant\Application\Dto\Caller;
 use OrillaCart\Assistant\Application\Dto\McpReply;
@@ -75,6 +77,19 @@ final class McpServerTest extends TestCase
         $again = $this->asking($call + ['inputResponses' => $yes, 'requestState' => $state]);
         self::assertSame('input_required', self::at($again->body, 'result', 'resultType'), 'a yes is good once');
         self::assertCount(1, $this->calls);
+    }
+
+    public function testTheOwnerIsAskedWithWhatTheCallWouldDoWhereADescriptionKnowsIt(): void
+    {
+        $described = $this->asking(['name' => 'refund_thing', 'arguments' => ['id' => 4, 'amount' => '5.00']]);
+        $message = self::textAt($described->body, 'result', 'inputRequests', 'confirm', 'params', 'message');
+        self::assertStringContainsString("Gives order #4's customer 5.00 back.", $message);
+        self::assertStringNotContainsString('"amount"', $message, 'the description takes the arguments\' place');
+
+        $plain = $this->asking(['name' => 'refund_thing', 'arguments' => ['amount' => '5.00']]);
+        $message = self::textAt($plain->body, 'result', 'inputRequests', 'confirm', 'params', 'message');
+        self::assertStringContainsString('Gives the money back.', $message);
+        self::assertStringContainsString('"amount": "5.00"', $message);
     }
 
     public function testAYesIsForTheCallItWasAskedFor(): void
@@ -378,7 +393,19 @@ final class McpServerTest extends TestCase
             }
         };
 
-        return new McpServer(new AssistantTools($sources, $authorization), $context, $this->states)->handle($message, $headers, $caller ?? new Caller(1, 7, false));
+        $descriptions = new class implements CallDescriptions {
+            public function all(): array
+            {
+                return [new class implements CallDescription {
+                    public function describe(ToolDefinition $tool, array $arguments, Caller $caller): ?string
+                    {
+                        return $tool->name === 'refund_thing' && isset($arguments['id']) ? 'Gives order #4\'s customer 5.00 back.' : null;
+                    }
+                }];
+            }
+        };
+
+        return new McpServer(new AssistantTools($sources, $authorization, $descriptions), $context, $this->states)->handle($message, $headers, $caller ?? new Caller(1, 7, false));
     }
 
     /**

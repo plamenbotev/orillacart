@@ -102,7 +102,24 @@ final class AssistantMcpTest extends RestTestCase
 
         $plan = $this->mcp('tools/call', ['name' => 'plan_setup', 'arguments' => []]);
         self::assertIsString(self::at($plan, 'result', 'structuredContent', 'fingerprint'));
-        self::assertContains('selling.countries', array_column(self::arrayOf(self::at($plan, 'result', 'structuredContent', 'changes')), 'key'));
+        $changes = self::arrayOf(self::at($plan, 'result', 'structuredContent', 'changes'));
+        self::assertContains('selling.countries', array_column($changes, 'key'));
+
+        // The owner is asked with the plan itself, not the fingerprint they could not read.
+        $asking = ['io.modelcontextprotocol/protocolVersion' => '2026-07-28', 'io.modelcontextprotocol/clientCapabilities' => ['elicitation' => ['form' => new \stdClass()]]];
+        $asked = $this->mcp('tools/call', ['name' => 'apply_setup', 'arguments' => ['fingerprint' => self::textAt($plan, 'result', 'structuredContent', 'fingerprint')], '_meta' => $asking]);
+        self::assertSame('input_required', self::at($asked, 'result', 'resultType'));
+        $question = self::textAt($asked, 'result', 'inputRequests', 'confirm', 'params', 'message');
+        self::assertStringContainsString('Applying the setup does this:', $question);
+        foreach ($changes as $change) {
+            self::assertIsArray($change);
+            self::assertIsString($change['summary']);
+            self::assertStringContainsString('• ' . $change['summary'], $question);
+        }
+        self::assertStringNotContainsString('fingerprint', $question);
+
+        $stale = $this->mcp('tools/call', ['name' => 'apply_setup', 'arguments' => ['fingerprint' => str_repeat('0', 64)], '_meta' => $asking]);
+        self::assertStringContainsString('applying it will be refused', self::textAt($stale, 'result', 'inputRequests', 'confirm', 'params', 'message'));
         delete_option('orillacart_setup_answers');
     }
 
@@ -367,7 +384,7 @@ final class AssistantMcpTest extends RestTestCase
      */
     private function mcp(string $method, array $params = []): array
     {
-        $params['_meta'] = ['io.modelcontextprotocol/protocolVersion' => '2026-07-28', 'io.modelcontextprotocol/clientCapabilities' => new \stdClass()];
+        $params['_meta'] ??= ['io.modelcontextprotocol/protocolVersion' => '2026-07-28', 'io.modelcontextprotocol/clientCapabilities' => new \stdClass()];
         $headers = ['MCP-Protocol-Version' => '2026-07-28', 'Mcp-Method' => $method];
         if (isset($params['name']) && \is_string($params['name'])) {
             $headers['Mcp-Name'] = $params['name'];
