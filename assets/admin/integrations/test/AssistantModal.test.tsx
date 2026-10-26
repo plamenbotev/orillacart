@@ -16,10 +16,12 @@ const key: ApiKey = {
 	prefix: 'oc_12345678',
 	created_at: '2026-10-26T08:00:00+00:00',
 	last_used_at: null,
+	client: null,
 };
 
 const catalogue: AssistantCatalogue = {
 	endpoint: 'https://shop.example/wp-json/orillacart/v1/mcp',
+	oauth: true,
 	areas: [
 		{
 			area: 'Ordering',

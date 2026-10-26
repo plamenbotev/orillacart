@@ -6,6 +6,7 @@ namespace OrillaCart\Assistant\Http;
 
 use OrillaCart\Assistant\Application\AssistantTools;
 use OrillaCart\Assistant\Application\Dto\ToolDefinition;
+use OrillaCart\Integrations\Application\OAuthServer;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
@@ -25,6 +26,7 @@ final readonly class ShowAssistantAction implements RequestHandlerInterface
 {
     public function __construct(
         private AssistantTools $tools,
+        private OAuthServer $oauth,
         private JsonResponder $responder,
     ) {}
 
@@ -39,6 +41,7 @@ final readonly class ShowAssistantAction implements RequestHandlerInterface
 
         return $this->responder->ok([
             'endpoint' => self::endpoint($request),
+            'oauth' => $this->oauth->available(),
             'areas' => array_values($areas),
         ]);
     }

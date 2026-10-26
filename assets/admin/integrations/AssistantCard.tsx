@@ -65,6 +65,17 @@ export function AssistantCard( { catalogue, error }: Props ) {
 								'orillacart'
 							) }
 						</p>
+						<p>
+							{ catalogue.oauth
+								? __(
+										'Claude.ai, ChatGPT and other apps that log in: add the address as a custom connector. You log in here and choose what it may do; it shows below as a key.',
+										'orillacart'
+									)
+								: __(
+										'Apps that log in instead of taking a key (claude.ai, ChatGPT) need the site on https with pretty permalinks. Clients that take a key work as they are.',
+										'orillacart'
+									) }
+						</p>
 						<ConnectAssistant
 							endpoint={ catalogue.endpoint }
 							apiKey={ null }

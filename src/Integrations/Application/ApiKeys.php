@@ -55,6 +55,25 @@ final readonly class ApiKeys
     }
 
     /**
+     * The key an OAuth client connects with, as the owner said yes to it: theirs from before for that client, with
+     * the scope they chose now, or a new one. Its secret is never shown; the client gets tokens instead.
+     *
+     * @return int the key's id
+     */
+    public function connect(string $client, string $name, int $userId, ApiKeyScope $scope): int
+    {
+        $key = $this->keys->ofClient($client, $userId);
+        if ($key === null) {
+            $secret = self::PREFIX . bin2hex(random_bytes(20));
+            $key = new ApiKey(mb_substr($name, 0, ApiKey::MAX_NAME_LENGTH), $userId, $scope, substr($secret, 0, 11), hash('sha256', $secret), $this->clock->now());
+        }
+        $key->connect($client, $scope);
+        $this->keys->save($key);
+
+        return $key->id();
+    }
+
+    /**
      * @throws IntegrationRuleViolation for a key that is not there
      */
     public function revoke(int $id): void

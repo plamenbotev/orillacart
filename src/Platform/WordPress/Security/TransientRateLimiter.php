@@ -42,6 +42,9 @@ final readonly class TransientRateLimiter implements RateLimiter
         'withdrawals' => [20, 3600],
         // Each asks a payment provider or courier, with the shop's keys.
         'settings_tests' => [20, 600],
+        // OAuth for AI assistants: anyone may register an app or ask for tokens.
+        'oauth_register' => [20, 3600],
+        'oauth_token' => [120, 600],
     ];
 
     /**

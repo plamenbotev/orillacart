@@ -1153,6 +1153,38 @@ Changes whether the shop offers its newsletter, the words people agree to, and t
   - `consent` (string): not empty; at most 500 characters
   - `lists` (list<string>)
 
+## /oauth
+
+### `GET /oauth/.well-known/oauth-authorization-server`
+
+The OAuth server's metadata (RFC 8414), where a client looks for it by appending a well-known path to the issuer; the site's root well-known addresses answer the same (OAuthWellKnown).
+
+- Who: anyone
+
+### `GET /oauth/.well-known/openid-configuration`
+
+The OAuth server's metadata (RFC 8414), where a client looks for it by appending a well-known path to the issuer; the site's root well-known addresses answer the same (OAuthWellKnown).
+
+- Who: anyone
+
+### `GET /oauth/protected-resource`
+
+The MCP endpoint's protected resource metadata (RFC 9728): which OAuth server gives its tokens.
+
+- Who: anyone
+
+### `POST /oauth/register`
+
+Dynamic client registration (RFC 7591) for AI assistants' apps that have no client ID metadata document. Anyone may register, so each address may register so many an hour; a registered client still needs the owner's yes.
+
+- Who: the payment provider, signed
+
+### `POST /oauth/token`
+
+The OAuth token endpoint: an authorization code and its PKCE verifier for tokens, or a refresh token for new ones. Public clients prove themselves with PKCE, so no nonce: the action checks (signed). Errors are RFC 6749's.
+
+- Who: the payment provider, signed
+
 ## /opening
 
 ### `GET /opening`

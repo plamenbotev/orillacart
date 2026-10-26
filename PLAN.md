@@ -279,8 +279,8 @@ Design 49. Bundled with the plugin, working once a key is made, covering setup a
 | ✅ | 185 | P1 | Extension API 15: `AssistantTool` and `Registry::assistantTool()`, names prefixed, capability and risk checked by the shop, calls in the change log; add-ons' tools listed beside the shop's for the owner to choose | 3e3893e |
 | ✅ | 186 | P2 | "Find on demand" list mode: `find_tools`, `describe_tool`, `run_tool` for clients limited in tools | 3102727 |
 | ✅ | 187 | P2 | Resources and prompts: the shop's overview; "Set up my shop", "Review today's orders", "What is running low" | 3102727 |
-| ⬜ | 188 | P2 | OAuth 2.1 for connectors without a key field (claude.ai, ChatGPT): resource and server metadata, client ID metadata documents, PKCE, consent in wp-admin, grants listed and revoked with the keys | |
-| ✅ | 189 | P3 | The same tools as WordPress abilities on 6.9 and later, for WordPress's MCP Adapter and AI features | |
+| ✅ | 188 | P2 | OAuth 2.1 for connectors without a key field (claude.ai, ChatGPT): resource and server metadata, client ID metadata documents, PKCE, consent in wp-admin, grants listed and revoked with the keys | |
+| ✅ | 189 | P3 | The same tools as WordPress abilities on 6.9 and later, for WordPress's MCP Adapter and AI features | 1981529 |
 | 🔄 | 190 | P2 | Tests: protocol unit tests, every schema valid, a call per area, the MCP Inspector CLI against wp-env for both revisions; docs for owners and for add-on tools | |
 
 ## Waiting on others
@@ -288,6 +288,8 @@ Design 49. Bundled with the plugin, working once a key is made, covering setup a
 - 26 Carrier integrations such as DPD (2026-10-18): not now. DPD was the example that shaped the extension API (27); couriers' add-ons come later, on that API.
 
 - PayPal against the real sandbox: needs sandbox credentials.
+
+- 190, an official MCP client against the test site: installing `@modelcontextprotocol/sdk` (1.32.1) as a dev dependency was not permitted in the session. The end-to-end tests speak both protocol revisions over HTTP themselves.
 
 ## Deliberately not carried over
 

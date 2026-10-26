@@ -19,10 +19,12 @@ final readonly class ApiKeyView
         public string $prefix,
         public string $createdAt,
         public ?string $lastUsedAt,
+        /** The OAuth client the owner connected with it: an AI assistant's app; null for a key made here. */
+        public ?string $client = null,
     ) {}
 
     public static function of(ApiKey $key, string $user): self
     {
-        return new self($key->id(), $key->name(), $key->userId(), $user, $key->scope()->value, $key->prefix(), $key->createdAt()->format(\DATE_ATOM), $key->lastUsedAt()?->format(\DATE_ATOM));
+        return new self($key->id(), $key->name(), $key->userId(), $user, $key->scope()->value, $key->prefix(), $key->createdAt()->format(\DATE_ATOM), $key->lastUsedAt()?->format(\DATE_ATOM), $key->client());
     }
 }

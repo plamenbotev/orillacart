@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Rest;
 
+use OrillaCart\Integrations\Application\OAuthEndpoints;
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
@@ -28,6 +29,7 @@ final readonly class RestRouteRegistrar implements Registrar
         private RouteAccess $access,
         #[AutowireServiceClosure(RestBridge::class)]
         private \Closure $bridge,
+        private OAuthEndpoints $oauth,
     ) {}
 
     public function register(): void
@@ -45,7 +47,9 @@ final readonly class RestRouteRegistrar implements Registrar
     {
         if ($response instanceof \WP_HTTP_Response && $response->get_status() === 401 && $request instanceof \WP_REST_Request
             && str_starts_with($request->get_route(), '/' . RouteCollection::REST_NAMESPACE . '/')) {
-            $response->header('WWW-Authenticate', 'Bearer realm="OrillaCart"');
+            // The MCP endpoint names its OAuth server too (RFC 9728), when the site can offer OAuth.
+            $mcp = $request->get_route() === '/' . RouteCollection::REST_NAMESPACE . '/mcp' && $this->oauth->issuer() !== null;
+            $response->header('WWW-Authenticate', 'Bearer realm="OrillaCart"' . ($mcp ? ', resource_metadata="' . $this->oauth->protectedResource() . '"' : ''));
         }
 
         return $response;

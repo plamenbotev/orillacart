@@ -107,6 +107,17 @@ final class InMemoryApiKeys implements ApiKeyRepository
         return null;
     }
 
+    public function ofClient(string $client, int $userId): ?ApiKey
+    {
+        foreach ($this->keys as $key) {
+            if ($key->client() === $client && $key->userId() === $userId) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
     public function save(ApiKey $key): void
     {
         ++$this->saves;

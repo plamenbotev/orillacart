@@ -29,7 +29,13 @@ final class RouteSecurityGateTest extends TestCase
      * Routes a payment provider calls server to server, without a nonce: their action checks the provider's
      * signature with the provider. A new one has to be added here, on purpose.
      */
-    private const array SIGNED = ['POST /payments/{gateway}/webhook'];
+    private const array SIGNED = [
+        // OAuth for AI assistants' apps: anyone may register a client, which still needs the owner's yes, and each
+        // address may register 20 an hour; public clients prove themselves with PKCE at the token endpoint.
+        'POST /oauth/register',
+        'POST /oauth/token',
+        'POST /payments/{gateway}/webhook',
+    ];
 
     /**
      * Routes anyone may call, logged in or not: the storefront's and the payment provider's. A new one has to be
@@ -73,6 +79,12 @@ final class RouteSecurityGateTest extends TestCase
         'GET /session',
         'GET /payments/{gateway}/return',
         'GET /payments/{gateway}/cancel',
+        // Where the MCP endpoint's OAuth server is, and what it offers: addresses, nothing of the shop's.
+        'GET /oauth/protected-resource',
+        'GET /oauth/.well-known/oauth-authorization-server',
+        'GET /oauth/.well-known/openid-configuration',
+        'POST /oauth/register',
+        'POST /oauth/token',
         'POST /payments/{gateway}/webhook',
         'GET /countries',
         'GET /countries/{code}/states',

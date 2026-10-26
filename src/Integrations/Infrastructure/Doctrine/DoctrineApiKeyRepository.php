@@ -27,6 +27,11 @@ final readonly class DoctrineApiKeyRepository implements ApiKeyRepository
         return $this->entityManager->getRepository(ApiKey::class)->findOneBy(['hash' => $hash]);
     }
 
+    public function ofClient(string $client, int $userId): ?ApiKey
+    {
+        return $this->entityManager->getRepository(ApiKey::class)->findOneBy(['client' => $client, 'userId' => $userId]);
+    }
+
     public function save(ApiKey $key): void
     {
         $this->entityManager->persist($key);

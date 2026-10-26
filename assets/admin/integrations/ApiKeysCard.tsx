@@ -125,7 +125,20 @@ export function ApiKeysCard( { catalogue }: Props ) {
 						<tbody>
 							{ keys.map( ( key ) => (
 								<tr key={ key.id }>
-									<td>{ key.name }</td>
+									<td>
+										{ key.name }
+										{ key.client !== null && (
+											<>
+												<br />
+												<small>
+													{ __(
+														'An app you connected (OAuth)',
+														'orillacart'
+													) }
+												</small>
+											</>
+										) }
+									</td>
 									<td>
 										<code>{ key.prefix }…</code>
 									</td>

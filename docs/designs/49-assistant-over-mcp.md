@@ -1,6 +1,6 @@
 # 49 · An AI store manager over MCP
 
-Status: designed 2026-10-26, PLAN items 178–190; 178–187 and 189 built. The user asked for an LLM store manager that works the moment
+Status: built 2026-10-26, PLAN items 178–190. The user asked for an LLM store manager that works the moment
 the plugin is installed. It is bundled, not a separate plugin, and it covers setting up the shop and all
 administration. On 2026-10-26 they added that the tooling must be extendable.
 
@@ -150,19 +150,29 @@ Abilities cannot ask the owner first, so a tool with a risk stays the MCP server
 features then see the shop too. The plugin's endpoint does not depend on it, because the plugin supports
 WordPress 6.7.
 
-## Later: OAuth for clients that cannot take a key
+## OAuth for clients that cannot take a key
 
 Claude.ai's and ChatGPT's connectors add a server by its address and log in with OAuth; they have no field for a
-key. The plugin will be its own authorization server, as the spec describes:
-- Protected resource metadata (RFC 9728) and authorization server metadata (RFC 8414).
-- Client ID metadata documents, fetched with WordPress's safe HTTP; dynamic registration only as the spec's
-  deprecated fallback.
-- The authorization code flow with PKCE, the `resource` parameter checked, and `iss` in the response.
-- The consent screen is in wp-admin: "Claude wants to manage your shop as Ana (read and change)". The owner sets
-  the same choices as for a key.
-- Tokens are short-lived, with refresh tokens. Each grant shows in the keys' list and is revoked there.
+key. The plugin is its own OAuth 2.1 server for the one resource it protects, the MCP endpoint:
+- **Discovery.** The endpoint's 401 names its protected resource metadata (RFC 9728) in `WWW-Authenticate`. The
+  issuer is the shop's `/oauth` REST address, so a client that appends OpenID Connect's discovery path reaches
+  the server's metadata (RFC 8414) as a REST route; the site's root well-known addresses answer the same.
+- **Clients.** A client named by an https address describes itself there (a client ID metadata document,
+  fetched with WordPress's safe HTTP, at most 64 KB, no redirects, kept as its Cache-Control says). One without
+  registers itself (RFC 7591, kept for compatibility, 20 an hour from an address). Both are public clients:
+  PKCE with S256, never a secret.
+- **Consent.** The authorization endpoint is a screen in wp-admin: the manager logs in as WordPress asks, sees
+  the app's name and where they go back to, and chooses "only read" or "read and change". The request is checked
+  before the screen is drawn: an error about the app or its address is shown, never redirected to; any other
+  goes back with `state` and `iss`. A loopback redirect may change its port, as native apps do.
+- **The yes is a key.** It is an API key under the manager's name, labelled as an app they connected, with the
+  scope they chose and the same ask-first choices as any key. Saying yes again to the same app reuses it.
+- **Tokens.** A code is good once for ten minutes. An access token lasts an hour and opens the MCP endpoint only;
+  a refresh token lasts thirty days and gives a new pair once. Only hashes are kept, and revoking the key ends
+  them all.
 
-This is item 188. The key path is what the shop needs on the first day.
+OAuth needs pretty permalinks (an issuer has no query) and https, except on a local site. The admin says so
+when the site cannot offer it; keys work either way.
 
 ## Why not WordPress's MCP Adapter
 

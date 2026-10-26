@@ -12,6 +12,7 @@ use OrillaCart\Audit\Application\ChangeLog;
 use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Assistant\ToolCall;
 use OrillaCart\Extension\Registry;
+use OrillaCart\Integrations\Application\OAuthServer;
 use OrillaCart\Platform\WordPress\Extensions\WordPressExtensions;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 
@@ -327,7 +328,13 @@ final class AssistantMcpTest extends RestTestCase
         $response = $this->post(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list'], []);
 
         self::assertSame(401, $response->get_status());
-        self::assertSame('Bearer realm="OrillaCart"', $response->get_headers()['WWW-Authenticate'] ?? null);
+        $challenge = $response->get_headers()['WWW-Authenticate'] ?? '';
+        self::assertIsString($challenge);
+        self::assertStringStartsWith('Bearer realm="OrillaCart"', $challenge);
+        $oauth = self::kernel()->container()->get(OAuthServer::class);
+        self::assertInstanceOf(OAuthServer::class, $oauth);
+        // With OAuth on offer, the challenge says where its server is (RFC 9728).
+        self::assertSame($oauth->available(), str_contains($challenge, 'resource_metadata="' . rest_url('orillacart/v1/oauth/protected-resource') . '"'));
     }
 
     public function testAnEmptyResultStaysAnObject(): void

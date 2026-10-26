@@ -52,6 +52,11 @@ claude mcp add --transport http my-shop https://your-shop.example/wp-json/orilla
 
 Some hosts drop the `Authorization` header before PHP sees it. Send `X-OrillaCart-Key: oc_…` instead.
 
+**Claude.ai, ChatGPT and other apps that log in** take the address alone, as a custom connector. They send you
+to a screen in your shop's admin, where you choose whether the app may only read or also change things. Your
+yes shows in Shop → Integrations as a key labelled as an app you connected; revoke it there to disconnect. This
+needs the site on https with pretty permalinks.
+
 Shop → Integrations shows the endpoint, these lines with a new key filled in, and a button that checks a key
 reaches the shop.
 

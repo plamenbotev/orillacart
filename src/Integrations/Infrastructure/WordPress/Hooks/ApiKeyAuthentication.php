@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Integrations\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Integrations\Application\ApiKeys;
+use OrillaCart\Integrations\Application\OAuthServer;
 use OrillaCart\Integrations\Infrastructure\WordPress\ApiKeyRequest;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\WordPress\AsHook;
@@ -24,6 +25,7 @@ final readonly class ApiKeyAuthentication
 {
     public function __construct(
         private ApiKeys $keys,
+        private OAuthServer $oauth,
         private ApiKeyRequest $request,
     ) {}
 
@@ -35,7 +37,8 @@ final readonly class ApiKeyAuthentication
         if ($secret === null || !self::shopApi()) {
             return $userId;
         }
-        $key = $this->keys->authenticate($secret);
+        // An OAuth access token an AI assistant's app was given, or one of the shop's keys.
+        $key = str_starts_with($secret, 'oat_') ? $this->oauth->authenticate($secret) : $this->keys->authenticate($secret);
         if ($key === null || get_userdata($key->userId) === false) {
             $this->request->refused = true;
 
@@ -59,10 +62,20 @@ final readonly class ApiKeyAuthentication
         return $errors;
     }
 
-    /** A request a key authenticated reaches the shop's routes only, whatever its address said. */
+    /**
+     * A request a key authenticated reaches the shop's routes only, whatever its address said; one an OAuth token
+     * authenticated reaches the MCP endpoint only, the resource it was given for.
+     */
     public function dispatching(mixed $result, mixed $server, mixed $request): mixed
     {
-        if ($this->request->key === null || !$request instanceof \WP_REST_Request || self::ours($request->get_route())) {
+        $key = $this->request->key;
+        if ($key === null || !$request instanceof \WP_REST_Request) {
+            return $result;
+        }
+        if ($key->oauth && $request->get_route() !== '/' . RouteCollection::REST_NAMESPACE . '/mcp') {
+            return new \WP_Error('orillacart_oauth_token_forbidden', __('This token is for the shop\'s MCP endpoint only.', 'orillacart'), ['status' => 403]);
+        }
+        if (self::ours($request->get_route())) {
             return $result;
         }
 
@@ -72,7 +85,7 @@ final readonly class ApiKeyAuthentication
     private static function secret(): ?string
     {
         $header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? null;
-        if (\is_string($header) && preg_match('/^Bearer\s+(oc_\S+)$/i', trim($header), $match) === 1) {
+        if (\is_string($header) && preg_match('/^Bearer\s+((?:oc|oat)_\S+)$/i', trim($header), $match) === 1) {
             return $match[1];
         }
         $own = $_SERVER['HTTP_X_ORILLACART_KEY'] ?? null;

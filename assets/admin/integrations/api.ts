@@ -9,6 +9,8 @@ export interface ApiKey {
 	prefix: string;
 	created_at: string;
 	last_used_at: string | null;
+	/** The OAuth client the owner connected with it; null for a key made here. */
+	client: string | null;
 }
 
 export function fetchApiKeys(): Promise< ApiKey[] > {
@@ -133,6 +135,8 @@ export interface AssistantChoices {
 /** The assistant's endpoint and its tools by area, as GET /orillacart/v1/assistant returns them. */
 export interface AssistantCatalogue {
 	endpoint: string;
+	/** Whether connectors that log in (claude.ai, ChatGPT) can connect: OAuth needs pretty permalinks and https. */
+	oauth: boolean;
 	areas: {
 		area: string;
 		add_on: boolean;

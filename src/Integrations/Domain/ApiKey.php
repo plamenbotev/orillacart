@@ -33,6 +33,10 @@ class ApiKey
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $assistant = null;
 
+    /** The OAuth client the owner connected with it (its client_id); null for a key made in the admin. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $client = null;
+
     /**
      * @param string $prefix the key's first characters, to tell it from the others: "oc_3f9a1c2b"
      * @param string $hash   the key's SHA-256
@@ -92,6 +96,21 @@ class ApiKey
     public function lastUsedAt(): ?\DateTimeImmutable
     {
         return $this->lastUsedAt;
+    }
+
+    public function client(): ?string
+    {
+        return $this->client;
+    }
+
+    /**
+     * The key an OAuth client connects with: made when the owner said yes, and given its scope again when they
+     * say yes once more.
+     */
+    public function connect(string $client, ApiKeyScope $scope): void
+    {
+        $this->client = $client;
+        $this->scope = $scope;
     }
 
     /** @return array<array-key, mixed>|null */

@@ -174,7 +174,7 @@ test.describe( 'The AI assistant', () => {
 			uri: 'orillacart://shop',
 		} );
 		const contents = shop.body.result?.contents as { text: string }[];
-		expect( JSON.parse( contents[ 0 ].text ) ).toHaveProperty(
+		expect( JSON.parse( contents[ 0 ]?.text ?? '{}' ) ).toHaveProperty(
 			'readiness'
 		);
 		const prompts = await rpc( request, 'prompts/list' );
