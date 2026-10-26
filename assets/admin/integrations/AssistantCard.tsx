@@ -17,8 +17,9 @@ interface Props {
 }
 
 /**
- * The AI assistant: what it is, where it connects, and how many tools it has. Keys are made below, and each
- * key's assistant is chosen there.
+ * The AI assistant: what it is, where it connects, and how many tools it has. Connecting by logging in comes
+ * first, as claude.ai and ChatGPT can do nothing else; a key is for clients that cannot log in, or a site that
+ * cannot offer it. What each connection may do is chosen below, beside its key.
  *
  * @param props           The tools there are, and why they could not be read.
  * @param props.catalogue The endpoint and the tools by area.
@@ -43,7 +44,7 @@ export function AssistantCard( { catalogue, error }: Props ) {
 			<CardBody>
 				<p>
 					{ __(
-						'An AI assistant such as Claude can run the shop with you: set it up, answer questions about orders and stock, change prices and settings. It connects with an API key and does what the key’s shop manager can, nothing more. Every change it makes is in the change log.',
+						'An AI assistant such as Claude or ChatGPT can run the shop with you: set it up, answer questions about orders and stock, change prices and settings. It does what the shop manager who connected it can, nothing more. Every change it makes is in the change log.',
 						'orillacart'
 					) }
 				</p>
@@ -61,25 +62,46 @@ export function AssistantCard( { catalogue, error }: Props ) {
 						<p>
 							{ count }{ ' ' }
 							{ __(
-								'tools. Make a key below, then choose what its assistant may use and what it asks you first.',
+								'tools. Each app you connect shows below as a key; Choose… beside it sets what its assistant may use and what it asks you first.',
 								'orillacart'
 							) }
 						</p>
-						<p>
-							{ catalogue.oauth
-								? __(
-										'Claude.ai, ChatGPT and other apps that log in: add the address as a custom connector. You log in here and choose what it may do; it shows below as a key.',
-										'orillacart'
-									)
-								: __(
-										'Apps that log in instead of taking a key (claude.ai, ChatGPT) need the site on https with pretty permalinks. Clients that take a key work as they are.',
+						{ catalogue.oauth ? (
+							<>
+								<p>
+									{ __(
+										'Give your app the address: it sends you here to log in and choose whether it may only read or also change things.',
 										'orillacart'
 									) }
-						</p>
-						<ConnectAssistant
-							endpoint={ catalogue.endpoint }
-							apiKey={ null }
-						/>
+								</p>
+								<ConnectAssistant
+									endpoint={ catalogue.endpoint }
+									apiKey={ null }
+								/>
+								<p>
+									{ __(
+										'A client or script that cannot log in connects with a key: make one below, and the lines to paste are shown with it.',
+										'orillacart'
+									) }
+								</p>
+							</>
+						) : (
+							<>
+								<Notice
+									status="warning"
+									isDismissible={ false }
+								>
+									{ __(
+										'Claude.ai and ChatGPT connect only by logging in, which needs the site on https with pretty permalinks (Settings → Permalinks). Until then, connect a client that takes a key: make one below.',
+										'orillacart'
+									) }
+								</Notice>
+								<ConnectAssistant
+									endpoint={ catalogue.endpoint }
+									apiKey="oc_…"
+								/>
+							</>
+						) }
 						<p>
 							<Button
 								variant="secondary"

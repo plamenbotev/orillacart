@@ -279,8 +279,9 @@ Design 49. Bundled with the plugin, working once a key is made, covering setup a
 | ✅ | 185 | P1 | Extension API 15: `AssistantTool` and `Registry::assistantTool()`, names prefixed, capability and risk checked by the shop, calls in the change log; add-ons' tools listed beside the shop's for the owner to choose | 3e3893e |
 | ✅ | 186 | P2 | "Find on demand" list mode: `find_tools`, `describe_tool`, `run_tool` for clients limited in tools | 3102727 |
 | ✅ | 187 | P2 | Resources and prompts: the shop's overview; "Set up my shop", "Review today's orders", "What is running low" | 3102727 |
-| ✅ | 188 | P2 | OAuth 2.1 for connectors without a key field (claude.ai, ChatGPT): resource and server metadata, client ID metadata documents, PKCE, consent in wp-admin, grants listed and revoked with the keys | |
+| ✅ | 188 | P2 | OAuth 2.1 for connectors without a key field (claude.ai, ChatGPT): resource and server metadata, client ID metadata documents, PKCE, consent in wp-admin, grants listed and revoked with the keys | 95c2a34 |
 | ✅ | 189 | P3 | The same tools as WordPress abilities on 6.9 and later, for WordPress's MCP Adapter and AI features | 1981529 |
+| ✅ | 191 | P1 | Logging in comes first: claude.ai and ChatGPT can only log in, so the admin, the owner's guide and the design lead with giving the app the address (Claude Code, Cursor and VS Code log in too); a key is for clients that cannot, and the admin says when the site cannot offer logging in | |
 | 🔄 | 190 | P2 | Tests: protocol unit tests, every schema valid, a call per area, the MCP Inspector CLI against wp-env for both revisions; docs for owners and for add-on tools | |
 
 ## Waiting on others

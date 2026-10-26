@@ -1,21 +1,44 @@
 # The AI assistant (MCP)
 
-The shop has an MCP server built in. An AI client that speaks MCP (Claude, Cursor, VS Code and others) can
-manage the shop through it, as the shop manager whose API key it uses. Every change it makes is in the change
+The shop has an MCP server built in. An AI client that speaks MCP (Claude, ChatGPT, Cursor, VS Code and others) can
+manage the shop through it, as the shop manager who connected it. Every change it makes is in the change
 log, marked "through the AI assistant" with the key's name.
 
 ## Connect
 
-1. In Shop → Integrations, make an API key. A **read** key lets the assistant look at everything and change
-   nothing; a **read and write** key lets it do what its manager can.
-2. Give your client the endpoint and the key:
+Give your AI app the shop's address:
 
-   ```
-   https://your-shop.example/wp-json/orillacart/v1/mcp
-   Authorization: Bearer oc_…
-   ```
+```
+https://your-shop.example/wp-json/orillacart/v1/mcp
+```
 
-   Without pretty permalinks the endpoint is `https://your-shop.example/?rest_route=/orillacart/v1/mcp`.
+The app sends you to a screen in your shop's admin. Log in, and choose whether it may only read or also change
+things. Your yes shows in Shop → Integrations as a key labelled as an app you connected; revoke it there to
+disconnect.
+
+- **Claude (claude.ai and Claude Desktop)**: Settings → Connectors → add a custom connector with the address,
+  then connect it.
+- **ChatGPT**: in its settings, add an app (a connector) with the address and OAuth, then connect it.
+- **Claude Code**: `claude mcp add --transport http my-shop https://your-shop.example/wp-json/orillacart/v1/mcp`,
+  then `/mcp` in Claude Code to log in.
+- **Cursor** (`~/.cursor/mcp.json`) and **VS Code** (`.vscode/mcp.json`, under `"servers"` with
+  `"type": "http"`): `{ "mcpServers": { "my-shop": { "url": "https://your-shop.example/wp-json/orillacart/v1/mcp" } } }`.
+  Each opens the log-in screen when it first connects.
+
+Logging in needs the site on https (a local site may use http) with pretty permalinks. Claude.ai and ChatGPT
+can connect no other way.
+
+### With a key
+
+A client or script that cannot log in, or a site that cannot offer it, connects with an API key. In Shop →
+Integrations, make one. A **read** key lets the assistant look at everything and change nothing; a **read and
+write** key lets it do what its manager can. Send it with each request:
+
+```
+Authorization: Bearer oc_…
+```
+
+Without pretty permalinks the endpoint is `https://your-shop.example/?rest_route=/orillacart/v1/mcp`.
 
 **Claude Code**
 
@@ -24,7 +47,7 @@ claude mcp add --transport http my-shop https://your-shop.example/wp-json/orilla
   --header "Authorization: Bearer oc_…"
 ```
 
-**Cursor** (`~/.cursor/mcp.json`) and **VS Code** (`.vscode/mcp.json`, under `"servers"` with `"type": "http"`)
+**Cursor** and **VS Code**
 
 ```json
 {
@@ -52,17 +75,12 @@ claude mcp add --transport http my-shop https://your-shop.example/wp-json/orilla
 
 Some hosts drop the `Authorization` header before PHP sees it. Send `X-OrillaCart-Key: oc_…` instead.
 
-**Claude.ai, ChatGPT and other apps that log in** take the address alone, as a custom connector. They send you
-to a screen in your shop's admin, where you choose whether the app may only read or also change things. Your
-yes shows in Shop → Integrations as a key labelled as an app you connected; revoke it there to disconnect. This
-needs the site on https with pretty permalinks.
-
-Shop → Integrations shows the endpoint, these lines with a new key filled in, and a button that checks a key
-reaches the shop.
+Shop → Integrations shows the address, these lines (with a new key filled in when you make one), and a button
+that checks the shop's host passes the `Authorization` header on.
 
 ## What each key's assistant may do
 
-In Shop → Integrations, **Choose…** beside a key sets, for the assistant that uses it:
+In Shop → Integrations, **Choose…** beside a key (each app you connected has one) sets, for the assistant that uses it:
 - **Ask me first when**: money moves, something is deleted, customers hear of it, or the shop opens or closes.
   All four are ticked to start. A client that can ask you (MCP elicitation, revision 2026-07-28) shows the
   question in its own window, and the tool runs only on your yes. A client that cannot ask is refused for those

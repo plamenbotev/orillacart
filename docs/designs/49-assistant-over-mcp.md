@@ -30,9 +30,14 @@ Answers are single JSON responses; nothing needs a long-lived stream. It speaks 
 `Mcp-Method` and `Mcp-Name` headers) and the earlier 2025-11-25 and 2025-06-18 with their `initialize`
 handshake, which most clients still send. `GET` answers 405, as the transport allows.
 
-**A key connects.** The owner makes a key in Shop → Integrations → AI assistant and pastes the endpoint and key
-into their client. The admin shows the lines to paste for Claude Code, Claude Desktop, Cursor and VS Code. A
-request without a valid key gets 401 with `WWW-Authenticate: Bearer`, as the spec asks. A read-only key may call
+**Logging in connects; a key also does.** Most owners' assistants are claude.ai, Claude Desktop and ChatGPT,
+which add a server by its address and log in with OAuth; they have no field for a key. So the owner gives the
+app the address, logs in to the shop's admin when it asks, and says yes (see "OAuth" below). Claude Code, Cursor
+and VS Code log in the same way. Shop → Integrations → AI assistant leads with this and shows what to type into
+each app. A key (`Authorization: Bearer oc_…`) is for a client or script that cannot log in, and for a site that
+cannot offer OAuth (http, or no pretty permalinks); the admin then says claude.ai and ChatGPT cannot connect yet,
+and shows the lines to paste for Claude Code, Claude Desktop (through `mcp-remote`), Cursor and VS Code. A request
+without a valid key or token gets 401 with `WWW-Authenticate: Bearer`, as the spec asks. A read-only key may call
 the endpoint and the routes that only work something out (a quote, the setup's plan), since they change
 nothing; every tool's own route is still held to the key's scope. The endpoint checks
 `Origin` when a browser sends one, against DNS rebinding.
@@ -150,10 +155,10 @@ Abilities cannot ask the owner first, so a tool with a risk stays the MCP server
 features then see the shop too. The plugin's endpoint does not depend on it, because the plugin supports
 WordPress 6.7.
 
-## OAuth for clients that cannot take a key
+## OAuth
 
 Claude.ai's and ChatGPT's connectors add a server by its address and log in with OAuth; they have no field for a
-key. The plugin is its own OAuth 2.1 server for the one resource it protects, the MCP endpoint:
+key, so this is how most owners connect. The plugin is its own OAuth 2.1 server for the one resource it protects, the MCP endpoint:
 - **Discovery.** The endpoint's 401 names its protected resource metadata (RFC 9728) in `WWW-Authenticate`. The
   issuer is the shop's `/oauth` REST address, so a client that appends OpenID Connect's discovery path reaches
   the server's metadata (RFC 8414) as a REST route; the site's root well-known addresses answer the same.
@@ -172,7 +177,7 @@ key. The plugin is its own OAuth 2.1 server for the one resource it protects, th
   them all.
 
 OAuth needs pretty permalinks (an issuer has no query) and https, except on a local site. The admin says so
-when the site cannot offer it; keys work either way.
+when the site cannot offer it, and that claude.ai and ChatGPT cannot connect until then; keys work either way.
 
 ## Why not WordPress's MCP Adapter
 
