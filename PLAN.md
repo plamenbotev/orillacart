@@ -282,7 +282,8 @@ Design 49. Bundled with the plugin, working once a key is made, covering setup a
 | ✅ | 188 | P2 | OAuth 2.1 for connectors without a key field (claude.ai, ChatGPT): resource and server metadata, client ID metadata documents, PKCE, consent in wp-admin, grants listed and revoked with the keys | 95c2a34 |
 | ✅ | 189 | P3 | The same tools as WordPress abilities on 6.9 and later, for WordPress's MCP Adapter and AI features | 1981529 |
 | ✅ | 191 | P1 | Logging in comes first: claude.ai and ChatGPT can only log in, so the admin, the owner's guide and the design lead with giving the app the address (Claude Code, Cursor and VS Code log in too); a key is for clients that cannot, and the admin says when the site cannot offer logging in | 6971453 |
-| ✅ | 192 | P1 | The owner's yes shows what the call would do: `CallDescription`s found by the container; applying the setup asks with the plan it applies (what replaces or is kept, warnings, or that the plan is stale) instead of its fingerprint | |
+| ✅ | 192 | P1 | The owner's yes shows what the call would do: `CallDescription`s found by the container; applying the setup asks with the plan it applies (what replaces or is kept, warnings, or that the plan is stale) instead of its fingerprint | cbd5672 |
+| ✅ | 194 | P1 | The assistant's page tools reach only the shop's pages (shop, cart, checkout, account, the legal ones), never the site's others; `change_page` edits unpublished ones; `publish_page` puts live, changes live or takes down, asking first with the page and its text | |
 | ⬜ | 193 | P2 | Descriptions for the other risky calls: a refund with its amount, order and customer; a deletion with what is deleted; an email with whom it goes to | |
 | 🔄 | 190 | P2 | Tests: protocol unit tests, every schema valid, a call per area, the MCP Inspector CLI against wp-env for both revisions; docs for owners and for add-on tools | |
 

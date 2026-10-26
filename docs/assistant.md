@@ -97,7 +97,10 @@ A read key is offered only the tools that read, whatever is ticked.
 
 Every screen of the shop's admin has its tools: orders, products, customers, stock, tax, shipping, payments,
 coupons, reports, emails, settings and the setup, one tool per step. Products' names, texts, categories and
-pictures, the categories themselves, the media library's pictures and the site's pages have their own tools.
+pictures, the categories themselves, the media library's pictures and the shop's own pages (the shop, cart,
+checkout and account pages, and the legal pages) have their own tools. The site's other pages are not the
+assistant's. Publishing one of the shop's pages, or changing one that is published, asks you first as
+"customers hear of it".
 Add-ons can add theirs (docs/extensions.md, "Tools for the AI assistant"). A tool runs the same request the admin's screen sends, with
 the same checks, so it can do nothing the manager could not. Some parts are left out on purpose: API keys and
 webhooks are managed by a manager logged in, never with a key.

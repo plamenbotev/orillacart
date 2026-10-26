@@ -21,12 +21,14 @@ use OrillaCart\Exchange\Application\ProductPosts;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
 use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
+use OrillaCart\Storefront\Application\LegalSettingsService;
+use OrillaCart\Storefront\Application\ShopPagesService;
 use Psr\Log\LoggerInterface;
 
 /**
  * Tools for what WordPress keeps of the shop rather than the shop's own tables: a product's post (name, texts,
- * categories, brands, tags, pictures), the categories, the media library's images and the site's pages. The
- * commerce side of a product (price, stock, shipping) is the route tools' (show_product, update_product).
+ * categories, brands, tags, pictures), the categories, the media library's images and the shop's own pages (the
+ * shop, cart, checkout and account pages, and the legal ones), never the site's other pages. The commerce side of a product (price, stock, shipping) is the route tools' (show_product, update_product).
  * A change is written into the change log as the assistant's, as a route's would be.
  */
 final readonly class WordPressToolSource implements ToolSource
@@ -40,6 +42,8 @@ final readonly class WordPressToolSource implements ToolSource
         private ToolFiles $files,
         private ChangeLog $log,
         private LoggerInterface $logger,
+        private ShopPagesService $shopPages,
+        private LegalSettingsService $legal,
     ) {}
 
     public function tools(): array
@@ -81,16 +85,19 @@ final readonly class WordPressToolSource implements ToolSource
             self::tool('upload_image', 'Upload image', 'Puts a picture into the media library, from base64 or an address the shop fetches, and answers with its id for create_product, change_product_content and save_category.', InputSchemas::FILE + [
                 'alt' => ['description' => 'What the picture shows, for people who cannot see it.', 'type' => 'string', 'maxLength' => 500],
             ], ['file_name'], false),
-            self::tool('list_pages', 'List pages', 'The site\'s pages (the shop\'s, the legal ones, the others), found by words in their title; nothing changes.', [
-                'search' => ['type' => 'string', 'maxLength' => 200],
-            ], [], true),
-            self::tool('show_page', 'Show page', 'One page with its whole text; nothing changes.', ['id' => $id], ['id'], true),
-            self::tool('change_page', 'Change page', 'Changes a page\'s title, text or state. The legal pages the setup made are drafts to check: show the owner the text before publishing it.', [
+            self::tool('list_pages', 'List the shop\'s pages', 'The shop\'s own pages, each with what it is for: the shop, cart, checkout and account pages, and the legal pages the shop links to (terms, right of withdrawal, the withdrawal form, shipping and payment, legal notice). The site\'s other pages are not the shop\'s; nothing changes.', [], [], true),
+            self::tool('show_page', 'Show page', 'One of the shop\'s pages with its whole text; nothing changes.', ['id' => $id], ['id'], true),
+            self::tool('change_page', 'Change page', 'Changes the title or text of one of the shop\'s pages that is not published, such as a legal draft the setup made. A published page changes, or is taken down, with publish_page.', [
                 'id' => $id,
                 'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 200],
                 'content' => ['description' => 'The whole text, HTML or blocks; replaces what it had.', 'type' => 'string', 'maxLength' => 200000],
-                'status' => ['enum' => self::STATUSES],
             ], ['id'], false),
+            self::tool('publish_page', 'Publish page', 'Puts one of the shop\'s pages live for customers, with a new title or text if given, or takes it back to a draft (publish: false). Changing a published page\'s text is this too. Show the owner the text first: legal pages are what customers agree to.', [
+                'id' => $id,
+                'publish' => ['description' => 'true puts it live; false takes it back to a draft.', 'type' => 'boolean', 'default' => true],
+                'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 200],
+                'content' => ['description' => 'The whole text, HTML or blocks; replaces what it had.', 'type' => 'string', 'maxLength' => 200000],
+            ], ['id'], false, Tool::CUSTOMERS),
         ];
     }
 
@@ -106,9 +113,10 @@ final readonly class WordPressToolSource implements ToolSource
                 'save_category' => $this->saveCategory($arguments),
                 'delete_category' => $this->deleteCategory($arguments),
                 'upload_image' => $this->uploadImage($arguments),
-                'list_pages' => $this->pages($arguments),
+                'list_pages' => $this->pages(),
                 'show_page' => $this->page(self::id($arguments), true),
-                'change_page' => $this->changePage($arguments),
+                'change_page' => $this->changePage($arguments, null),
+                'publish_page' => $this->changePage($arguments, ($arguments['publish'] ?? true) === false ? 'draft' : 'publish'),
                 default => throw new \InvalidArgumentException("The shop has no tool {$tool->name}."),
             };
         } catch (\InvalidArgumentException $e) {
@@ -387,50 +395,80 @@ final readonly class WordPressToolSource implements ToolSource
     }
 
     /**
-     * @param array<string, mixed> $arguments
+     * The shop's pages and what each is for, as the shop's settings name them.
      *
-     * @return list<array<string, mixed>>
+     * @return array<int, string> by page id
      */
-    private function pages(array $arguments): array
+    private function shopPages(): array
     {
-        $query = ['post_type' => 'page', 'post_status' => ['publish', 'draft', 'pending', 'private'], 'posts_per_page' => 100, 'orderby' => 'title', 'order' => 'ASC'];
-        $search = self::optionalString($arguments, 'search');
-        if ($search !== null && $search !== '') {
-            $query['s'] = $search;
-        }
+        $shop = $this->shopPages->pages();
+        $legal = $this->legal->current();
+        $roles = [
+            'shop' => $shop->shop, 'cart' => $shop->cart, 'checkout' => $shop->checkout, 'account' => $shop->account,
+            'terms' => $legal->terms, 'withdrawal' => $legal->withdrawal, 'withdrawal_form' => $legal->withdrawalForm,
+            'delivery' => $legal->delivery, 'legal_notice' => $legal->legalNotice,
+        ];
         $pages = [];
-        $found = new \WP_Query($query);
-        foreach (\is_array($found->posts) ? $found->posts : [] as $post) {
-            if ($post instanceof \WP_Post) {
-                $pages[] = $this->page($post->ID, false);
+        foreach ($roles as $role => $id) {
+            if ($id !== null) {
+                $pages[$id] ??= $role;
             }
         }
 
         return $pages;
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function pages(): array
+    {
+        $pages = [];
+        foreach (array_keys($this->shopPages()) as $id) {
+            try {
+                $pages[] = $this->page($id, false);
+            } catch (\InvalidArgumentException) {
+                // A setting that names a page since deleted.
+                continue;
+            }
+        }
+
+        return $pages;
+    }
+
+    /**
+     * One of the shop's pages; any other is refused, as the assistant runs the shop, not the site.
+     *
+     * @return array<string, mixed>
+     */
     private function page(int $id, bool $content): array
     {
+        $role = $this->shopPages()[$id] ?? throw new \InvalidArgumentException("Page {$id} is not one of the shop's pages; list_pages gives them.");
         $post = get_post($id);
-        if (!$post instanceof \WP_Post || $post->post_type !== 'page') {
+        if (!$post instanceof \WP_Post || $post->post_type !== 'page' || $post->post_status === 'trash') {
             throw new \InvalidArgumentException("There is no page {$id}.");
         }
-        $page = ['id' => $post->ID, 'title' => $post->post_title, 'status' => $post->post_status, 'link' => (string) get_permalink($post)];
+        $page = ['id' => $post->ID, 'for' => $role, 'title' => $post->post_title, 'status' => $post->post_status, 'link' => (string) get_permalink($post)];
 
         return $content ? $page + ['content' => $post->post_content] : $page;
     }
 
     /**
+     * A page's title or text, and with publish_page its state: change_page leaves a published page to
+     * publish_page, which asks the owner first.
+     *
      * @param array<string, mixed> $arguments
      *
      * @return array<string, mixed>
      */
-    private function changePage(array $arguments): array
+    private function changePage(array $arguments, ?string $status): array
     {
         $id = self::id($arguments);
-        $this->page($id, false);
-        if (!current_user_can('edit_page', $id)) {
+        $current = $this->page($id, false);
+        if ($status === null && $current['status'] === 'publish') {
+            throw new \InvalidArgumentException("Page {$id} is published: customers see it. Change it with publish_page, which asks the owner first.");
+        }
+        if (!current_user_can('edit_page', $id) || ($status === 'publish' && !current_user_can('publish_pages'))) {
             throw new \InvalidArgumentException('The key\'s shop manager may not edit that page.');
         }
         $post = ['ID' => $id];
@@ -440,7 +478,6 @@ final readonly class WordPressToolSource implements ToolSource
         if (\array_key_exists('content', $arguments)) {
             $post['post_content'] = self::optionalString($arguments, 'content') ?? '';
         }
-        $status = self::optionalStatus($arguments);
         if ($status !== null) {
             $post['post_status'] = $status;
         }

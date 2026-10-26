@@ -81,7 +81,11 @@ itself.
 - **Images** from a web address (fetched with WordPress's safe HTTP, images only, size-limited) or sent as
   base64, into the media library.
 - **The shop's pages**: read and replace the text of the pages the shop uses, such as the legal pages, so the
-  owner can ask for them to be checked and edited.
+  owner can ask for them to be checked and edited. Only those: the shop, cart, checkout and account pages and
+  the legal pages its settings name. Any other page of the site is refused, and none is created; a missing legal
+  page comes from the setup's legal step. `change_page` edits one that is not published; `publish_page` puts one
+  live, changes a live one or takes it down, and asks first as customers see it, naming the page and its new
+  text.
 
 **The setup as tools.** One tool per step, `setup_answer_business`, `setup_answer_tax` and so on, with the step's
 answers DTO as its schema. Add-ons' steps get theirs too. The setup's other routes are tools already:

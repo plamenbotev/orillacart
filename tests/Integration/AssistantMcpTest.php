@@ -14,6 +14,7 @@ use OrillaCart\Extension\Assistant\ToolCall;
 use OrillaCart\Extension\Registry;
 use OrillaCart\Integrations\Application\OAuthServer;
 use OrillaCart\Platform\WordPress\Extensions\WordPressExtensions;
+use OrillaCart\Storefront\Infrastructure\WordPress\OptionLegalSettingsRepository;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 
 /**
@@ -257,17 +258,47 @@ final class AssistantMcpTest extends RestTestCase
         $renamed = $this->mcp('tools/call', ['name' => 'save_category', 'arguments' => ['id' => $categoryId, 'name' => 'Standing lamps']]);
         self::assertSame(['Standing lamps', 'list'], [self::at($renamed, 'result', 'structuredContent', 'name'), self::at($renamed, 'result', 'structuredContent', 'layout')]);
 
+        // The shop's pages only: its terms, not a page of the site's own.
+        $legal = get_option(OptionLegalSettingsRepository::OPTION);
         $page = wp_insert_post(['post_type' => 'page', 'post_title' => 'Terms', 'post_status' => 'draft', 'post_content' => 'Old.'], true);
+        $about = wp_insert_post(['post_type' => 'page', 'post_title' => 'About us', 'post_status' => 'publish', 'post_content' => 'Ours.'], true);
         self::assertIsInt($page);
+        self::assertIsInt($about);
+        update_option(OptionLegalSettingsRepository::OPTION, ['terms' => $page] + (\is_array($legal) ? $legal : []));
+
+        $listed = self::arrayOf(self::at($this->mcp('tools/call', ['name' => 'list_pages', 'arguments' => []]), 'result', 'structuredContent'));
+        self::assertContains($page, array_column($listed, 'id'));
+        self::assertNotContains($about, array_column($listed, 'id'));
+        self::assertSame('terms', array_column($listed, 'for', 'id')[$page]);
+        foreach (['show_page' => ['id' => $about], 'change_page' => ['id' => $about, 'content' => 'x']] as $name => $arguments) {
+            $refused = $this->mcp('tools/call', ['name' => $name, 'arguments' => $arguments]);
+            self::assertStringContainsString('not one of the shop\'s pages', self::textAt($refused, 'result', 'content', 0, 'text'), $name);
+        }
+        self::assertSame('Ours.', get_post_field('post_content', $about));
+        self::assertTrue(self::at($this->mcp('tools/call', ['name' => 'change_page', 'arguments' => ['id' => $productId, 'content' => 'x']]), 'result', 'isError'), 'pages only');
+
         $edited = $this->mcp('tools/call', ['name' => 'change_page', 'arguments' => ['id' => $page, 'content' => 'New terms.']]);
         self::assertSame('New terms.', self::at($edited, 'result', 'structuredContent', 'content'));
-        self::assertTrue(self::at($this->mcp('tools/call', ['name' => 'change_page', 'arguments' => ['id' => $productId, 'content' => 'x']]), 'result', 'isError'), 'pages only');
+        // Publishing asks the owner, as customers see it; a client that cannot ask is refused.
+        $asked = $this->mcp('tools/call', ['name' => 'publish_page', 'arguments' => ['id' => $page]]);
+        self::assertStringContainsString('waits for the owner\'s yes', self::textAt($asked, 'result', 'content', 0, 'text'));
+        self::assertSame('draft', get_post_status($page));
+        $question = $this->mcp('tools/call', ['name' => 'publish_page', 'arguments' => ['id' => $page, 'content' => '<p>Final terms.</p>'], '_meta' => ['io.modelcontextprotocol/protocolVersion' => '2026-07-28', 'io.modelcontextprotocol/clientCapabilities' => ['elicitation' => ['form' => new \stdClass()]]]]);
+        $message = self::textAt($question, 'result', 'inputRequests', 'confirm', 'params', 'message');
+        self::assertStringContainsString('Puts the page "Terms" live for customers', $message);
+        self::assertStringContainsString("With this text:\nFinal terms.", $message);
+        wp_update_post(['ID' => $page, 'post_status' => 'publish']);
+        $published = $this->mcp('tools/call', ['name' => 'change_page', 'arguments' => ['id' => $page, 'content' => 'Quietly.']]);
+        self::assertStringContainsString('publish_page', self::textAt($published, 'result', 'content', 0, 'text'), 'a published page is not changed without asking');
+        self::assertSame('New terms.', get_post_field('post_content', $page));
 
         global $wpdb;
         \assert($wpdb instanceof \wpdb);
         self::assertSame('CALL /assistant/change_page', $wpdb->get_var("SELECT route FROM {$wpdb->prefix}orillacart_change_log ORDER BY id DESC LIMIT 1"));
 
         wp_delete_post($page, true);
+        wp_delete_post($about, true);
+        update_option(OptionLegalSettingsRepository::OPTION, $legal);
         wp_delete_post($productId, true);
         wp_delete_attachment($imageId, true);
         wp_delete_term($categoryId, 'orillacart_category');
