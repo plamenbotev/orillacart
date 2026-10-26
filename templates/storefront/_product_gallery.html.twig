@@ -1,0 +1,16 @@
+{#
+ # A product's pictures: the stage, which shows the large picture (stage_image, HTML) where the page has none of
+ # its own, and the thumbnails. gallery: its images, featured first ({src, srcset, sizes, alt, thumb}).
+ #
+ # The script shows a chosen picture in the stage's image, else the theme's featured image (img.wp-post-image),
+ # else in the empty stage.
+ #}
+<div class="orillacart-gallery__stage" data-orillacart-stage{{ (stage_image ?? '') != '' ? '' : ' hidden' }}>{{ (stage_image ?? '')|raw }}</div>
+<div class="orillacart-gallery" data-orillacart-gallery data-images="{{ gallery|json_encode }}"{{ gallery|length < 2 ? ' hidden' }}>
+    {% for image in gallery %}
+        {# translators: %d: image number -#}
+        <button type="button" class="orillacart-gallery__thumb" data-orillacart-image="{{ loop.index0 }}" aria-label="{{ __('Show image %d')|format(loop.index) }}">
+            <img src="{{ image.thumb }}" alt="{{ image.alt }}" width="64" height="64" loading="lazy">
+        </button>
+    {% endfor %}
+</div>

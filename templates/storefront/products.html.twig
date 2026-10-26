@@ -5,11 +5,13 @@
  # current "page" for the one chosen, "true" above it; subcategories: [{name, url, current}], below the one chosen (or beside it); all_url, all_current; search; sort;
  # sorts: {value: label}; page; pages; page_urls: {number: url}; columns; cart_url (null without a cart page);
  # show_filters; panel (see _filters.html.twig); hidden: [{name, value}] the choices kept without the panel;
- # filtered (anything chosen); layout: grid or list; layout_urls: {grid, list}; view: the shopper's own, kept by the form.
+ # filtered (anything chosen); layout: grid or list; layout_urls: {grid, list}; view: the shopper's own, kept by the form;
+ # card_html: [{id, html}] each product's card from the shop's own card blocks, else null for the shop's card;
+ # show: {categories, search, layouts, count, pagination}, the parts around the grid; first, last, total: the count.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-products" data-orillacart-region="products">
-    {% if categories %}
+    {% if categories and (show.categories ?? true) %}
         <nav class="orillacart-categories" aria-label="{{ __('Product categories') }}">
             <ul>
                 <li><a href="{{ all_url }}"{{ all_current ? ' aria-current="page"' }}>{{ __('All products') }}</a></li>
@@ -29,19 +31,24 @@
 
     <form class="orillacart-products__filters" method="get" action="{{ base_url }}" role="search" data-orillacart-filters>
         {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
-        <p class="orillacart-field">
-            <label for="orillacart-product-search">{{ __('Search products') }}</label>
-            <input id="orillacart-product-search" type="search" name="q" value="{{ search }}">
-        </p>
-        <p class="orillacart-field">
-            <label for="orillacart-product-sort">{{ __('Sort by') }}</label>
-            <select id="orillacart-product-sort" name="sort">
-                {% for value, label in sorts %}
-                    <option value="{{ value }}"{{ value == sort ? ' selected' }}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </p>
-        <button type="submit" class="wp-element-button orillacart-button">{{ __('Show') }}</button>
+        {% if show.search ?? true %}
+            <p class="orillacart-field">
+                <label for="orillacart-product-search">{{ __('Search products') }}</label>
+                <input id="orillacart-product-search" type="search" name="q" value="{{ search }}">
+            </p>
+            <p class="orillacart-field">
+                <label for="orillacart-product-sort">{{ __('Sort by') }}</label>
+                <select id="orillacart-product-sort" name="sort">
+                    {% for value, label in sorts %}
+                        <option value="{{ value }}"{{ value == sort ? ' selected' }}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+            <button type="submit" class="wp-element-button orillacart-button">{{ __('Show') }}</button>
+        {% else %}
+            {% if search %}<input type="hidden" name="q" value="{{ search }}">{% endif %}
+            <input type="hidden" name="sort" value="{{ sort }}">
+        {% endif %}
 
         {% if view %}<input type="hidden" name="view" value="{{ view }}">{% endif %}
         {% for field in hidden %}<input type="hidden" name="{{ field.name }}" value="{{ field.value }}">{% endfor %}
@@ -51,10 +58,16 @@
     </form>
 
     {% if products %}
-        <nav class="orillacart-layouts" aria-label="{{ __('Show products as') }}">
-            <a href="{{ layout_urls.grid }}"{{ layout == 'grid' ? ' aria-current="true"' }}>{{ __('Grid') }}</a>
-            <a href="{{ layout_urls.list }}"{{ layout == 'list' ? ' aria-current="true"' }}>{{ __('List') }}</a>
-        </nav>
+        {% if show.count ?? true %}
+            {# translators: 1: the first product shown, 2: the last, 3: how many there are -#}
+            <p class="orillacart-products__count" role="status">{{ total > last or first > 1 ? __('Showing %1$d–%2$d of %3$d')|format(first, last, total) : _n('%d product', '%d products', total)|format(total) }}</p>
+        {% endif %}
+        {% if show.layouts ?? true %}
+            <nav class="orillacart-layouts" aria-label="{{ __('Show products as') }}">
+                <a href="{{ layout_urls.grid }}"{{ layout == 'grid' ? ' aria-current="true"' }}>{{ __('Grid') }}</a>
+                <a href="{{ layout_urls.list }}"{{ layout == 'list' ? ' aria-current="true"' }}>{{ __('List') }}</a>
+            </nav>
+        {% endif %}
         {% if layout == 'list' %}
             <ul class="orillacart-products__list">
                 {% for product in products %}
@@ -63,13 +76,19 @@
             </ul>
         {% else %}
             <ul class="orillacart-products__grid" style="--orillacart-columns: {{ columns }}">
-                {% for product in products %}
-                    {% include 'storefront/_product_card.html.twig' with {product: product, cart_url: cart_url, heading: 'h2'} only %}
-                {% endfor %}
+                {% if card_html is not null %}
+                    {% for card in card_html %}
+                        <li class="orillacart-product-card orillacart-product-card--designed" data-product="{{ card.id }}">{{ card.html|raw }}</li>
+                    {% endfor %}
+                {% else %}
+                    {% for product in products %}
+                        {% include 'storefront/_product_card.html.twig' with {product: product, cart_url: cart_url, heading: 'h2'} only %}
+                    {% endfor %}
+                {% endif %}
             </ul>
         {% endif %}
 
-        {% if pages > 1 %}
+        {% if pages > 1 and (show.pagination ?? true) %}
             <nav class="orillacart-pagination" aria-label="{{ __('Product pages') }}">
                 <ul>
                     {% for number, url in page_urls %}

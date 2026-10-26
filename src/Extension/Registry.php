@@ -25,6 +25,7 @@ use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Extension\Storefront\ProductBlock;
 use OrillaCart\Extension\Tax\TaxProvider;
 
 /**
@@ -104,9 +105,12 @@ interface Registry
     /** Changes the prices of orders the shop keeps on hold. Since version 9. */
     public function orderPrices(): OrderPrices;
 
-    /** Writes to the shop's log, where the shop manager looks when something went wrong. */
     /** A tool for the shop's AI assistant (MCP). Since version 15. */
     public function assistantTool(AssistantTool $tool): void;
 
+    /** A block for product pages, product cards and landing pages. Since version 16. */
+    public function productBlock(ProductBlock $block): void;
+
+    /** Writes to the shop's log, where the shop manager looks when something went wrong. */
     public function log(): Log;
 }

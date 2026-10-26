@@ -110,3 +110,35 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
         return ['stamped' => $arguments['word']];
     }));
 });
+
+// An add-on's product block: how much the sale saves.
+add_action('orillacart_extensions', static function (OrillaCart\Extension\Registry $registry): void {
+    if ($registry->version() < 16) {
+        return;
+    }
+    $registry->productBlock(new class implements OrillaCart\Extension\Storefront\ProductBlock {
+        public function id(): string
+        {
+            return 'e2e_savings';
+        }
+
+        public function title(): string
+        {
+            return 'Savings';
+        }
+
+        public function description(): string
+        {
+            return 'How much the sale saves.';
+        }
+
+        public function render(OrillaCart\Extension\Storefront\ShownProduct $product, array $settings): string
+        {
+            if ($product->regularPrice === null) {
+                return '';
+            }
+
+            return sprintf('<p class="e2e-savings">%s saves %s</p>', esc_html($product->name), esc_html(number_format((float) $product->regularPrice - (float) $product->price, 2)));
+        }
+    });
+});

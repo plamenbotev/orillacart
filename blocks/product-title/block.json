@@ -1,0 +1,48 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/product-title",
+	"title": "Product title",
+	"category": "theme",
+	"icon": "heading",
+	"description": "The product's name, as a heading or a link to its page.",
+	"keywords": [
+		"shop",
+		"product",
+		"title",
+		"name"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"productId": {
+			"type": "integer",
+			"default": 0
+		},
+		"preview": {
+			"type": "boolean",
+			"default": false
+		},
+		"level": {
+			"type": "integer",
+			"default": 1
+		},
+		"isLink": {
+			"type": "boolean",
+			"default": false
+		}
+	},
+	"usesContext": [
+		"postId",
+		"postType"
+	],
+	"supports": {
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

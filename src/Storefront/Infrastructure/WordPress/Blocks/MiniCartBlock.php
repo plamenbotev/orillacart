@@ -6,6 +6,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
@@ -28,7 +29,7 @@ final readonly class MiniCartBlock implements BlockDefinition
         return 'orillacart/mini-cart';
     }
 
-    public function render(array $attributes): string
+    public function render(array $attributes, BlockContext $context): string
     {
         $url = $this->links->pages()['cart'];
         if ($url === null) {

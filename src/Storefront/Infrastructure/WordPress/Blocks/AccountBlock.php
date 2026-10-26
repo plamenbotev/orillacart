@@ -20,6 +20,7 @@ use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
 use OrillaCart\Storefront\Domain\WishlistPolicy;
@@ -64,7 +65,7 @@ final readonly class AccountBlock implements BlockDefinition
         return 'orillacart/account';
     }
 
-    public function render(array $attributes): string
+    public function render(array $attributes, BlockContext $context): string
     {
         $here = (string) get_permalink();
         $links = $this->links->pages();

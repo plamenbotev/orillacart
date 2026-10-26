@@ -24,6 +24,7 @@ use OrillaCart\Returns\Application\Returns;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Shipping\Application\Dto\ShippingOptionView;
 use OrillaCart\Shipping\Application\ShipmentTracking;
@@ -74,7 +75,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         return 'orillacart/checkout';
     }
 
-    public function render(array $attributes): string
+    public function render(array $attributes, BlockContext $context): string
     {
         $receipt = $_GET[StorefrontOrderLinks::RECEIPT_QUERY] ?? null;
         if (\is_string($receipt)) {

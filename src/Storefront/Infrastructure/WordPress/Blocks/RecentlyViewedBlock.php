@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
 
@@ -24,7 +25,7 @@ final readonly class RecentlyViewedBlock implements BlockDefinition
         return 'orillacart/recently-viewed';
     }
 
-    public function render(array $attributes): string
+    public function render(array $attributes, BlockContext $context): string
     {
         if (!$this->storefront->current()->recentlyViewed) {
             return '';

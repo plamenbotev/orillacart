@@ -6,6 +6,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 
 /**
@@ -24,7 +25,7 @@ final readonly class LegalNoticeBlock implements BlockDefinition
         return 'orillacart/legal-notice';
     }
 
-    public function render(array $attributes): string
+    public function render(array $attributes, BlockContext $context): string
     {
         $seller = $this->invoices->settings();
 

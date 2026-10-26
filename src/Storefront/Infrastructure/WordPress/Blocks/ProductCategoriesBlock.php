@@ -7,6 +7,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\ProductCategories;
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 
 /**
@@ -26,7 +27,7 @@ final readonly class ProductCategoriesBlock implements BlockDefinition
         return 'orillacart/product-categories';
     }
 
-    public function render(array $attributes): string
+    public function render(array $attributes, BlockContext $context): string
     {
         $empty = ($attributes['showEmpty'] ?? false) === true;
         $page = ($attributes['followPage'] ?? true) !== false && is_tax(ProductCategoryTaxonomy::NAME) ? get_queried_object() : null;

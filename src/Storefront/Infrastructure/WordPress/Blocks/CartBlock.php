@@ -10,6 +10,7 @@ use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
 use OrillaCart\Storefront\Infrastructure\WordPress\Merchandise;
@@ -39,7 +40,7 @@ final readonly class CartBlock implements BlockDefinition
         return 'orillacart/cart';
     }
 
-    public function render(array $attributes): string
+    public function render(array $attributes, BlockContext $context): string
     {
         $links = $this->links->pages();
         if ($links['cart'] === null) {

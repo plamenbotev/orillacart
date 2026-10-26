@@ -2,7 +2,12 @@
  * Puts the shop's blocks in the editor's inserter. The server registers them and renders them on the site
  * (BlockDefinition); in the editor they show a placeholder, since they display one shopper's cart or account.
  */
-import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
+import {
+	InnerBlocks,
+	InspectorControls,
+	store as blockEditorStore,
+	useBlockProps,
+} from '@wordpress/block-editor';
 import { registerBlockType } from '@wordpress/blocks';
 import {
 	PanelBody,
@@ -12,11 +17,13 @@ import {
 	TextControl,
 	ToggleControl,
 } from '@wordpress/components';
+import { useSelect } from '@wordpress/data';
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import ServerSideRender from '@wordpress/server-side-render';
 
 import { fetchTerms, type Named, TermTokens } from '../shared/CatalogTokens';
+import './product-blocks';
 
 type ProductsAttributes = {
 	perPage: number;
@@ -28,6 +35,11 @@ type ProductsAttributes = {
 	featured: boolean;
 	onSale: boolean;
 	filters: boolean;
+	showCategories: boolean;
+	showSearch: boolean;
+	showLayouts: boolean;
+	showCount: boolean;
+	showPagination: boolean;
 };
 
 type SearchAttributes = { placeholder: string };
@@ -90,13 +102,33 @@ function Note( { name }: { name: string } ) {
 	);
 }
 
+/** The parts around the grid, each on unless turned off. */
+const listingParts: [ keyof ProductsAttributes, string ][] = [
+	[ 'showCategories', __( 'Category links', 'orillacart' ) ],
+	[ 'showSearch', __( 'Search and sorting', 'orillacart' ) ],
+	[ 'showLayouts', __( 'Grid or list switch', 'orillacart' ) ],
+	[ 'showCount', __( 'How many products', 'orillacart' ) ],
+	[ 'showPagination', __( 'Pages', 'orillacart' ) ],
+];
+
 function ProductsEdit( {
+	clientId,
 	attributes,
 	setAttributes,
 }: {
+	clientId: string;
 	attributes: ProductsAttributes;
 	setAttributes: ( next: Partial< ProductsAttributes > ) => void;
 } ) {
+	const designed = useSelect(
+		( select ) =>
+			(
+				select( blockEditorStore ) as {
+					getBlockCount: ( id: string ) => number;
+				}
+			 ).getBlockCount( clientId ) > 0,
+		[ clientId ]
+	);
 	return (
 		<div { ...useBlockProps() }>
 			<InspectorControls>
@@ -231,13 +263,42 @@ function ProductsEdit( {
 						onChange={ ( filters ) => setAttributes( { filters } ) }
 					/>
 				</PanelBody>
+				<PanelBody
+					title={ __( 'Around the products', 'orillacart' ) }
+					initialOpen={ false }
+				>
+					{ listingParts.map( ( [ key, label ] ) => (
+						<ToggleControl
+							key={ key }
+							label={ label }
+							checked={ attributes[ key ] !== false }
+							onChange={ ( checked ) =>
+								setAttributes( { [ key ]: checked } )
+							}
+						/>
+					) ) }
+				</PanelBody>
 			</InspectorControls>
 			<Placeholder
 				label={ __( 'Products', 'orillacart' ) }
-				instructions={ __(
-					'The shop: published products with their prices, by category, with search and sorting.',
-					'orillacart'
-				) }
+				instructions={
+					designed
+						? __(
+								'The shop: published products with their prices, by category, with search and sorting. Each product in the grid shows the card below.',
+								'orillacart'
+							)
+						: __(
+								'The shop: published products with their prices, by category, with search and sorting. Add a product card to design what each product shows.',
+								'orillacart'
+							)
+				}
+			/>
+			<InnerBlocks
+				allowedBlocks={ [ 'orillacart/product-card' ] }
+				template={ [] }
+				renderAppender={
+					designed ? false : InnerBlocks.ButtonBlockAppender
+				}
 			/>
 		</div>
 	);
@@ -478,7 +539,8 @@ registerBlockType( 'orillacart/mini-cart', {
 } as never );
 registerBlockType< ProductsAttributes >( 'orillacart/products', {
 	edit: ProductsEdit,
-	save: () => null,
+	// The card the shop designs is kept inside the block.
+	save: () => <InnerBlocks.Content />,
 } as never );
 registerBlockType< CategoriesAttributes >( 'orillacart/product-categories', {
 	edit: CategoriesEdit,

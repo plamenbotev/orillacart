@@ -1,0 +1,61 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/add-to-cart",
+	"title": "Add to cart",
+	"category": "theme",
+	"icon": "cart",
+	"description": "The way to buy the product: its choices, personalisation, quantity and button, with its stock, SKU, wishlist and files.",
+	"keywords": [
+		"shop",
+		"product",
+		"buy",
+		"cart",
+		"form"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"productId": {
+			"type": "integer",
+			"default": 0
+		},
+		"preview": {
+			"type": "boolean",
+			"default": false
+		},
+		"showContents": {
+			"type": "boolean",
+			"default": true
+		},
+		"showSku": {
+			"type": "boolean",
+			"default": true
+		},
+		"showStock": {
+			"type": "boolean",
+			"default": true
+		},
+		"showWishlist": {
+			"type": "boolean",
+			"default": true
+		},
+		"showDownloads": {
+			"type": "boolean",
+			"default": true
+		}
+	},
+	"usesContext": [
+		"postId",
+		"postType"
+	],
+	"supports": {
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

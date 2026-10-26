@@ -23,12 +23,14 @@ use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Storefront\Application\LegalSettingsService;
 use OrillaCart\Storefront\Application\ShopPagesService;
+use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\ShopPatterns;
 use Psr\Log\LoggerInterface;
 
 /**
  * Tools for what WordPress keeps of the shop rather than the shop's own tables: a product's post (name, texts,
  * categories, brands, tags, pictures), the categories, the media library's images and the shop's own pages (the
- * shop, cart, checkout and account pages, and the legal ones), never the site's other pages. The commerce side of a product (price, stock, shipping) is the route tools' (show_product, update_product).
+ * shop, cart, checkout and account pages, the legal ones, and the landing pages the assistant made from the shop's
+ * patterns), never the site's other pages. The commerce side of a product (price, stock, shipping) is the route tools' (show_product, update_product).
  * A change is written into the change log as the assistant's, as a route's would be.
  */
 final readonly class WordPressToolSource implements ToolSource
@@ -36,6 +38,8 @@ final readonly class WordPressToolSource implements ToolSource
     public const string AREA = 'WordPress';
 
     private const array STATUSES = ['publish', 'draft', 'pending', 'private'];
+    /** Marks a page the assistant made as a landing page, which its page tools may then change. */
+    public const string LANDING = '_orillacart_landing';
 
     public function __construct(
         private ProductPosts $posts,
@@ -85,7 +89,13 @@ final readonly class WordPressToolSource implements ToolSource
             self::tool('upload_image', 'Upload image', 'Puts a picture into the media library, from base64 or an address the shop fetches, and answers with its id for create_product, change_product_content and save_category.', InputSchemas::FILE + [
                 'alt' => ['description' => 'What the picture shows, for people who cannot see it.', 'type' => 'string', 'maxLength' => 500],
             ], ['file_name'], false),
-            self::tool('list_pages', 'List the shop\'s pages', 'The shop\'s own pages, each with what it is for: the shop, cart, checkout and account pages, and the legal pages the shop links to (terms, right of withdrawal, the withdrawal form, shipping and payment, legal notice). The site\'s other pages are not the shop\'s; nothing changes.', [], [], true),
+            self::tool('list_pages', 'List the shop\'s pages', 'The shop\'s own pages, each with what it is for: the shop, cart, checkout and account pages, the legal pages the shop links to (terms, right of withdrawal, the withdrawal form, shipping and payment, legal notice), and the landing pages made with create_landing_page. The site\'s other pages are not the shop\'s; nothing changes.', [], [], true),
+            self::tool('list_patterns', 'List the shop\'s patterns', 'The shop\'s block patterns for landing pages (hero, categories, sale, new arrivals, product spotlight, gift card, a whole launch page), each with its blocks, to make a page from with create_landing_page or to put into a shop page; nothing changes.', [], [], true),
+            self::tool('create_landing_page', 'Create landing page', 'Makes a landing page as a draft, from the shop\'s patterns (by name, in order) and blocks or HTML after them. It is then one of the shop\'s pages: change it with change_page, put it live with publish_page. A product spotlight shows nothing until its Single product block names a product (productId).', [
+                'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 200],
+                'patterns' => ['description' => 'Pattern names from list_patterns, such as orillacart/shop-hero.', 'type' => 'array', 'items' => ['type' => 'string', 'maxLength' => 100], 'maxItems' => 20],
+                'content' => ['description' => 'Blocks or HTML after the patterns.', 'type' => 'string', 'maxLength' => 200000],
+            ], ['title'], false),
             self::tool('show_page', 'Show page', 'One of the shop\'s pages with its whole text; nothing changes.', ['id' => $id], ['id'], true),
             self::tool('change_page', 'Change page', 'Changes the title or text of one of the shop\'s pages that is not published, such as a legal draft the setup made. A published page changes, or is taken down, with publish_page.', [
                 'id' => $id,
@@ -114,6 +124,8 @@ final readonly class WordPressToolSource implements ToolSource
                 'delete_category' => $this->deleteCategory($arguments),
                 'upload_image' => $this->uploadImage($arguments),
                 'list_pages' => $this->pages(),
+                'list_patterns' => self::patterns(),
+                'create_landing_page' => $this->createLandingPage($arguments),
                 'show_page' => $this->page(self::id($arguments), true),
                 'change_page' => $this->changePage($arguments, null),
                 'publish_page' => $this->changePage($arguments, ($arguments['publish'] ?? true) === false ? 'draft' : 'publish'),
@@ -414,6 +426,12 @@ final readonly class WordPressToolSource implements ToolSource
                 $pages[$id] ??= $role;
             }
         }
+        $landing = get_posts(['post_type' => 'page', 'post_status' => ['publish', 'draft', 'pending', 'private'], 'meta_key' => self::LANDING, 'fields' => 'ids', 'numberposts' => 100, 'orderby' => 'ID']); // phpcs:ignore WordPress.DB.SlowDBQuery
+        foreach ($landing as $id) {
+            if (\is_int($id)) {
+                $pages[$id] ??= 'landing';
+            }
+        }
 
         return $pages;
     }
@@ -451,6 +469,64 @@ final readonly class WordPressToolSource implements ToolSource
         $page = ['id' => $post->ID, 'for' => $role, 'title' => $post->post_title, 'status' => $post->post_status, 'link' => (string) get_permalink($post)];
 
         return $content ? $page + ['content' => $post->post_content] : $page;
+    }
+
+    /**
+     * The shop's patterns for landing pages (ShopPatterns).
+     *
+     * @return list<array{name: string, title: string, description: string, content: string}>
+     */
+    private static function patterns(): array
+    {
+        $patterns = [];
+        foreach (\WP_Block_Patterns_Registry::get_instance()->get_all_registered() as $pattern) {
+            ['name' => $name, 'title' => $title, 'content' => $content] = $pattern + ['name' => null, 'title' => null, 'content' => null];
+            if (\is_array($pattern['categories'] ?? null) && \in_array(ShopPatterns::CATEGORY, $pattern['categories'], true) && \is_string($name) && \is_string($title) && \is_string($content)) {
+                $patterns[] = [
+                    'name' => $name,
+                    'title' => $title,
+                    'description' => \is_string($pattern['description'] ?? null) ? $pattern['description'] : '',
+                    'content' => $content,
+                ];
+            }
+        }
+
+        return $patterns;
+    }
+
+    /**
+     * A draft page made of the shop's patterns and the blocks given, marked as the shop's landing page.
+     *
+     * @param array<string, mixed> $arguments
+     *
+     * @return array<string, mixed>
+     */
+    private function createLandingPage(array $arguments): array
+    {
+        if (!current_user_can('edit_pages')) {
+            throw new \InvalidArgumentException('The key\'s shop manager may not make pages.');
+        }
+        $known = array_column(self::patterns(), 'content', 'name');
+        $parts = [];
+        foreach (self::strings($arguments, 'patterns') ?? [] as $name) {
+            $parts[] = $known[$name] ?? throw new \InvalidArgumentException("The shop has no pattern {$name}; list_patterns gives them.");
+        }
+        $content = self::optionalString($arguments, 'content');
+        if ($content !== null && $content !== '') {
+            $parts[] = $content;
+        }
+        $id = wp_insert_post(wp_slash([
+            'post_type' => 'page',
+            'post_status' => 'draft',
+            'post_title' => self::requiredString($arguments, 'title', 200),
+            'post_content' => implode("\n\n", $parts),
+            'meta_input' => [self::LANDING => '1'],
+        ]), true);
+        if ($id instanceof \WP_Error) {
+            throw new \InvalidArgumentException($id->get_error_message());
+        }
+
+        return $this->page($id, true);
     }
 
     /**

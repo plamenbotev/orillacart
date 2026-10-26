@@ -1,0 +1,21 @@
+{#
+ # A product's price as the shop shows prices, which the script changes to the chosen variation's, and its
+ # quantity tiers (show_tiers, default on). offer: the product.
+ #}
+{% import 'storefront/_macros.html.twig' as shop %}
+<p class="orillacart-product__price" data-orillacart-price>{{ shop.price(offer) }}</p>
+{% if (show_tiers ?? true) and offer.tiers and not offer.price_hidden %}
+    <table class="orillacart-table orillacart-product__tiers">
+        <caption>{{ __('Buy more, pay less') }}</caption>
+        <thead><tr><th scope="col">{{ __('Quantity') }}</th><th scope="col">{{ __('Price each') }}</th></tr></thead>
+        <tbody>
+            {% for tier in offer.tiers %}
+                <tr>
+                    {# translators: %d: quantity -#}
+                    <td>{{ loop.last ? __('%d or more')|format(tier.min_quantity) : (tier.min_quantity == offer.tiers[loop.index].min_quantity - 1 ? tier.min_quantity : tier.min_quantity ~ '–' ~ (offer.tiers[loop.index].min_quantity - 1)) }}</td>
+                    <td>{{ tier.price|money }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}

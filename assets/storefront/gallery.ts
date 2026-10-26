@@ -1,6 +1,6 @@
 /**
- * The product page's pictures: thumbnails that show their picture in the page's main image (the theme's
- * featured image, img.wp-post-image), or in the panel's own stage when the page has none. A chosen variation
+ * The product page's pictures: thumbnails that show their picture in the gallery's large image, else the page's
+ * main image (the theme's featured image, img.wp-post-image), else in the panel's own stage. A chosen variation
  * brings its own pictures; without one the product's come back.
  */
 
@@ -18,18 +18,59 @@ export type Gallery = {
 	use: ( pictures: Picture[] | null ) => void;
 };
 
-export function bindGallery( product: Element ): Gallery | null {
-	const strip = product.querySelector< HTMLElement >(
-		'[data-orillacart-gallery]'
+/**
+ * The parts of one product on the page: its gallery, price, buying form, wherever the template put each.
+ *
+ * @param id The product's id.
+ */
+export function partsOf( id: string ): Element[] {
+	// A product's id is its post id: digits only.
+	return /^\d+$/.test( id )
+		? Array.from(
+				document.querySelectorAll( `[data-orillacart-for="${ id }"]` )
+			)
+		: [];
+}
+
+/**
+ * The parts of the product an element belongs to; none for an element outside them (a card in a list).
+ *
+ * @param element Inside one of the product's parts.
+ */
+export function productParts( element: Element ): Element[] {
+	const id = element
+		.closest( '[data-orillacart-for]' )
+		?.getAttribute( 'data-orillacart-for' );
+	return id ? partsOf( id ) : [];
+}
+
+/**
+ * The elements matching in any of the parts.
+ *
+ * @param parts    The product's parts.
+ * @param selector What to find.
+ */
+export function findIn< T extends Element = HTMLElement >(
+	parts: Element[],
+	selector: string
+): T[] {
+	return parts.flatMap( ( part ) =>
+		Array.from( part.querySelectorAll< T >( selector ) )
 	);
+}
+
+export function bindGallery( parts: Element[] ): Gallery | null {
+	const strip = findIn( parts, '[data-orillacart-gallery]' )[ 0 ];
 	if ( ! strip ) {
 		return null;
 	}
 	const own = JSON.parse( strip.dataset.images ?? '[]' ) as Picture[];
-	const stage = product.querySelector< HTMLElement >(
-		'[data-orillacart-stage]'
-	);
+	const stage = findIn( parts, '[data-orillacart-stage]' )[ 0 ];
 	const main =
+		findIn< HTMLImageElement >(
+			parts,
+			'[data-orillacart-stage] img'
+		)[ 0 ] ??
 		document.querySelector< HTMLImageElement >( 'img.wp-post-image' ) ??
 		( stage ? stage.appendChild( document.createElement( 'img' ) ) : null );
 	const original = main

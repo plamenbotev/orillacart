@@ -51,6 +51,26 @@
 		"filters": {
 			"type": "boolean",
 			"default": true
+		},
+		"showCategories": {
+			"type": "boolean",
+			"default": true
+		},
+		"showSearch": {
+			"type": "boolean",
+			"default": true
+		},
+		"showLayouts": {
+			"type": "boolean",
+			"default": true
+		},
+		"showCount": {
+			"type": "boolean",
+			"default": true
+		},
+		"showPagination": {
+			"type": "boolean",
+			"default": true
 		}
 	},
 	"supports": {
@@ -62,5 +82,8 @@
 	},
 	"editorScript": "orillacart-blocks",
 	"viewScript": "orillacart-storefront",
-	"style": "orillacart-storefront"
+	"style": "orillacart-storefront",
+	"allowedBlocks": [
+		"orillacart/product-card"
+	]
 }

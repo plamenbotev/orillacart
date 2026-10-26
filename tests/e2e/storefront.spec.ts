@@ -214,6 +214,19 @@ test.describe( 'A visitor', () => {
 		await expect( page.getByText( 'Your cart is empty.' ) ).toBeVisible();
 	} );
 
+	test( 'gets the whole product page in the first response, as search engines do', async ( {
+		request,
+	} ) => {
+		// The product blocks render on the server: no script runs here.
+		const html = await ( await request.get( shop.lampUrl ) ).text();
+		expect( html ).toContain( 'E2E Lamp' );
+		expect( html ).toMatch( /data-orillacart-price[^>]*>[\s\S]*?\d+\.\d\d/ );
+		expect( html ).toContain( 'data-orillacart-add-to-cart' );
+		expect( html ).toContain( 'https://schema.org/BreadcrumbList' );
+		expect( html ).toContain( '<script type="application/ld+json">' );
+		expect( html.match( /data-orillacart-add-to-cart/g ) ).toHaveLength( 1 );
+	} );
+
 	test( 'adds to the cart without JavaScript, and is told checking out needs it', async ( {
 		browser,
 	} ) => {
@@ -1223,7 +1236,7 @@ test.describe( 'Templates', () => {
 			} );
 			await page.goto( shop.lampUrl );
 			await expect(
-				page.locator( 'main.orillacart-product--wide' )
+				page.locator( 'main.orillacart-product-page--wide' )
 			).toBeVisible();
 			await expect(
 				page.getByRole( 'button', { name: 'Add to cart' } )

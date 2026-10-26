@@ -529,6 +529,35 @@ if ($registry->version() >= 15) {
 - **A tool that changes something** is written into the change log as the assistant's, with the key's name.
 - **`ToolCall`** says whom the assistant acts as (`userId`) and with which key (`keyName`).
 
+## Product blocks
+
+Version 16 lets an add-on give product pages, product cards and landing pages a block of its own, beside the
+shop's product blocks (design 50): a size guide, a delivery estimate, a badge.
+
+```php
+if ($registry->version() >= 16) {
+    $registry->productBlock(new class implements OrillaCart\Extension\Storefront\ProductBlock {
+        public function id(): string { return 'sizes_guide'; }
+        public function title(): string { return __('Size guide', 'my-addon'); }
+        public function description(): string { return __('The sizes of the product, with how to measure.', 'my-addon'); }
+
+        public function render(OrillaCart\Extension\Storefront\ShownProduct $product, array $settings): string
+        {
+            return '<p>' . esc_html(sprintf(__('Sizes of %s', 'my-addon'), $product->name)) . '</p>';
+        }
+    });
+}
+```
+
+- **The shop registers it** as `orillacart-addon/{id}` (underscores become dashes: `orillacart-addon/sizes-guide`),
+  with a Product setting, and shows it in the editor's inserter with a preview the server renders.
+- **The product** is the one the block renders for: the page's (in the product template), the card's (in the
+  Products block's Product card), a Single product block's, or the one its Product setting names. Without one, or
+  for a product not for show, the block shows nothing and `render()` is not called.
+- **`ShownProduct`** is the product as the shopper is shown it: id, name, address, SKU, price and the regular
+  price while on sale, whether it is for sale, how many are in stock, its stars and number of reviews.
+- **Escape what you return.** An empty string shows nothing; anything thrown is logged and shows nothing.
+
 ## Page slots
 
 The templates print what add-ons echo in these actions:

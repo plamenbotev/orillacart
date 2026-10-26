@@ -6,6 +6,7 @@ namespace OrillaCart\Platform\WordPress\Storefront;
 
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\WordPress\Registrar;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
@@ -38,7 +39,7 @@ final readonly class BlockRegistrar implements Registrar
                 continue;
             }
             register_block_type($this->context->path('blocks/' . substr($name, \strlen('orillacart/'))), [
-                'render_callback' => fn(array $attributes): string => self::wrap($this->blocks->get($name)->render(self::named($attributes))),
+                'render_callback' => fn(array $attributes, string $content = '', ?\WP_Block $block = null): string => self::wrap($this->blocks->get($name)->render(self::named($attributes), BlockContext::of($content, $block))),
             ]);
         }
     }

@@ -29,6 +29,7 @@ use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Registry;
 use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Extension\Storefront\ProductBlock;
 use OrillaCart\Extension\Tax\TaxProvider;
 use OrillaCart\Extension\Version;
 use OrillaCart\Ordering\Application\OrderSummaries;
@@ -88,6 +89,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
 
     /** @var array<string, AssistantTool> */
     private array $assistantTools = [];
+    /** @var array<string, ProductBlock> */
+    private array $productBlocks = [];
     private bool $collected = false;
     private bool $collecting = false;
 
@@ -271,6 +274,20 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->assistantTools);
+    }
+
+    public function productBlock(ProductBlock $block): void
+    {
+        if ($this->accepts('product block', $block->id(), $this->productBlocks[$block->id()] ?? null, $block)) {
+            $this->productBlocks[$block->id()] = $block;
+        }
+    }
+
+    public function productBlocks(): array
+    {
+        $this->collect();
+
+        return array_values($this->productBlocks);
     }
 
     public function orders(): Orders

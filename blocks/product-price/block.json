@@ -1,0 +1,44 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/product-price",
+	"title": "Product price",
+	"category": "theme",
+	"icon": "money-alt",
+	"description": "The product's price as the shop shows prices, the chosen variation's, and its quantity tiers.",
+	"keywords": [
+		"shop",
+		"product",
+		"price",
+		"tiers"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"productId": {
+			"type": "integer",
+			"default": 0
+		},
+		"preview": {
+			"type": "boolean",
+			"default": false
+		},
+		"showTiers": {
+			"type": "boolean",
+			"default": true
+		}
+	},
+	"usesContext": [
+		"postId",
+		"postType"
+	],
+	"supports": {
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

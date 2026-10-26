@@ -16,7 +16,7 @@ import { startAnalytics } from './analytics';
 import { bindBackInStock } from './backinstock';
 import { bindCart } from './cart';
 import { bindCheckout } from './checkout';
-import { bindGallery } from './gallery';
+import { bindGallery, partsOf } from './gallery';
 import { bindPayNow, bindReceiptLink, bindReorder, bindReturn } from './paynow';
 import { bindAddToCart, refreshCartCount } from './product';
 import { startRecentlyViewed } from './recent';
@@ -27,9 +27,18 @@ import { bindWithdrawal } from './withdrawal';
 
 function start(): void {
 	// Products that cannot be bought here still have pictures to look through.
-	document.querySelectorAll( '.orillacart-product' ).forEach( ( product ) => {
-		if ( ! product.querySelector( 'form[data-orillacart-add-to-cart]' ) ) {
-			bindGallery( product );
+	new Set(
+		Array.from( document.querySelectorAll( '[data-orillacart-for]' ) ).map(
+			( part ) => part.getAttribute( 'data-orillacart-for' ) ?? ''
+		)
+	).forEach( ( id ) => {
+		const parts = partsOf( id );
+		if (
+			! parts.some( ( part ) =>
+				part.querySelector( 'form[data-orillacart-add-to-cart]' )
+			)
+		) {
+			bindGallery( parts );
 		}
 	} );
 	document

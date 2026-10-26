@@ -163,4 +163,9 @@ final class FixedExtensions implements InstalledExtensions
     {
         return [];
     }
+
+    public function productBlocks(): array
+    {
+        return [];
+    }
 }

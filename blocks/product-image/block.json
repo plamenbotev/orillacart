@@ -1,0 +1,48 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/product-image",
+	"title": "Product image",
+	"category": "theme",
+	"icon": "format-image",
+	"description": "The product's picture, linking to its page, with a sale badge: for product cards.",
+	"keywords": [
+		"shop",
+		"product",
+		"picture",
+		"card"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"productId": {
+			"type": "integer",
+			"default": 0
+		},
+		"preview": {
+			"type": "boolean",
+			"default": false
+		},
+		"saleBadge": {
+			"type": "boolean",
+			"default": true
+		},
+		"isLink": {
+			"type": "boolean",
+			"default": true
+		}
+	},
+	"usesContext": [
+		"postId",
+		"postType"
+	],
+	"supports": {
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

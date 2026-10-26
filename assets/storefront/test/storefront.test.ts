@@ -233,11 +233,17 @@ describe( 'add to cart', () => {
 		},
 	];
 
-	function page(): HTMLFormElement {
+	function page( priceApart = false ): HTMLFormElement {
+		const price = '<p data-orillacart-price>From 38.00 EUR</p>';
 		document.body.innerHTML = `
 			<span data-orillacart-cart-count>0</span>
-			<section class="orillacart-product">
-				<p data-orillacart-price>From 38.00 EUR</p>
+			${
+				priceApart
+					? `<div class="orillacart-product-price" data-orillacart-for="9">${ price }</div><div class="orillacart-product-price" data-orillacart-for="10"><p data-orillacart-price>12.00 EUR</p></div>`
+					: ''
+			}
+			<section class="orillacart-product" data-orillacart-for="9">
+				${ priceApart ? '' : price }
 				<span data-orillacart-sku>H</span>
 				<p data-orillacart-stock></p>
 				<form data-orillacart-add-to-cart data-cart-url="/cart/" data-variations='${ JSON.stringify( variations ) }'>
@@ -287,6 +293,15 @@ describe( 'add to cart', () => {
 			'disabled',
 			true
 		);
+	} );
+
+	it( "changes the price where the page's template put it, not another product's", () => {
+		const form = page( true );
+
+		choose( form, [ '5', '8' ] );
+		const prices = document.querySelectorAll( '[data-orillacart-price]' );
+		expect( prices[ 0 ]?.textContent ).toBe( '38.00 EUR' );
+		expect( prices[ 1 ]?.textContent ).toBe( '12.00 EUR' );
 	} );
 
 	it( 'sends the choices and shows the new count', async () => {

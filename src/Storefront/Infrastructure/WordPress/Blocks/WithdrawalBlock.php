@@ -6,6 +6,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
@@ -26,7 +27,7 @@ final readonly class WithdrawalBlock implements BlockDefinition
         return 'orillacart/withdrawal';
     }
 
-    public function render(array $attributes): string
+    public function render(array $attributes, BlockContext $context): string
     {
         $id = $this->shopper->customerId();
         $customer = $id === null ? null : $this->customers->customer($id);

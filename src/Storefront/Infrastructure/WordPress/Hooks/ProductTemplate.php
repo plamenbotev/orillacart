@@ -8,10 +8,11 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
- * Product page templates for block themes, without the blog's byline and post navigation. The plugin's product
- * template: image, name, the description and the buying form below it (ProductPanel). Two more a product can
- * choose in the editor's Template panel: a wide image above the rest, and no image column at all (a service, a
- * download). A theme's own single-orillacart_product template, one edited in the site editor, or one made there
+ * Product page templates for block themes, without the blog's byline and post navigation, made of the product
+ * blocks (design 50), which the site editor moves, sets and removes: breadcrumbs; the pictures beside the name,
+ * stars, categories, price and buying form; the description; the upsells, related and recently viewed products;
+ * the reviews. Two more a product can choose in the editor's Template panel: the pictures across the page above
+ * the rest, and no pictures at all (a service, a download). A theme's own single-orillacart_product template, one edited in the site editor, or one made there
  * for one product (single-orillacart_product-{slug}) takes the place of the plugin's.
  */
 #[AsHook('init')]
@@ -22,6 +23,19 @@ final readonly class ProductTemplate
 
     private const string HEADER = '<!-- wp:template-part {"slug":"header","tagName":"header"} /-->';
     private const string FOOTER = '<!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->';
+    private const string BUY = <<<'HTML'
+        <!-- wp:post-title {"level":1} /-->
+        <!-- wp:orillacart/product-rating /-->
+        <!-- wp:post-terms {"term":"orillacart_category"} /-->
+        <!-- wp:orillacart/product-price /-->
+        <!-- wp:orillacart/add-to-cart /-->
+        HTML;
+    private const string AFTER = <<<'HTML'
+        <!-- wp:orillacart/related-products {"kind":"upsells","align":"wide"} /-->
+        <!-- wp:orillacart/related-products {"align":"wide"} /-->
+        <!-- wp:orillacart/recently-viewed {"align":"wide"} /-->
+        <!-- wp:orillacart/product-reviews /-->
+        HTML;
 
     public function __invoke(): void
     {
@@ -30,56 +44,61 @@ final readonly class ProductTemplate
         }
         register_block_template('orillacart//single-' . ProductPostType::NAME, [
             'title' => __('Product', 'orillacart'),
-            'description' => __('A product page: its image, name, description and buying form.', 'orillacart'),
+            'description' => __('A product page: its pictures beside its name, price and buying form, then its description, the products beside it and its reviews.', 'orillacart'),
             'post_types' => [ProductPostType::NAME],
-            'content' => self::page('orillacart-product', <<<'HTML'
+            'content' => self::page('orillacart-product-page', <<<'HTML'
                 <!-- wp:columns {"align":"wide"} -->
                 <div class="wp-block-columns alignwide">
                     <!-- wp:column -->
-                    <div class="wp-block-column"><!-- wp:post-featured-image /--></div>
+                    <div class="wp-block-column"><!-- wp:orillacart/product-gallery /--></div>
                     <!-- /wp:column -->
                     <!-- wp:column -->
                     <div class="wp-block-column">
-                        <!-- wp:post-title {"level":1} /-->
-                        <!-- wp:post-terms {"term":"orillacart_category"} /-->
-                        <!-- wp:post-content {"layout":{"type":"default"}} /-->
+                        BUY
                     </div>
                     <!-- /wp:column -->
                 </div>
                 <!-- /wp:columns -->
+                <!-- wp:post-content {"layout":{"type":"constrained"}} /-->
+                AFTER
                 HTML),
         ]);
         register_block_template('orillacart//' . self::WIDE, [
             'title' => __('Product: wide image', 'orillacart'),
-            'description' => __('A product page with its image across the page, then its name, description and buying form.', 'orillacart'),
+            'description' => __('A product page with its pictures across the page, then its name, price, buying form and description.', 'orillacart'),
             'post_types' => [ProductPostType::NAME],
-            'content' => self::page('orillacart-product orillacart-product--wide', <<<'HTML'
-                <!-- wp:post-featured-image {"align":"wide"} /-->
-                <!-- wp:post-title {"level":1} /-->
-                <!-- wp:post-terms {"term":"orillacart_category"} /-->
+            'content' => self::page('orillacart-product-page orillacart-product-page--wide', <<<'HTML'
+                <!-- wp:orillacart/product-gallery {"align":"wide"} /-->
+                BUY
                 <!-- wp:post-content {"layout":{"type":"constrained"}} /-->
+                AFTER
                 HTML),
         ]);
         register_block_template('orillacart//' . self::TEXT, [
             'title' => __('Product: text only', 'orillacart'),
-            'description' => __('A product page without an image: its name, description and buying form, for a service or a download.', 'orillacart'),
+            'description' => __('A product page without pictures: its name, price, buying form and description, for a service or a download.', 'orillacart'),
             'post_types' => [ProductPostType::NAME],
-            'content' => self::page('orillacart-product orillacart-product--text', <<<'HTML'
-                <!-- wp:post-title {"level":1} /-->
-                <!-- wp:post-terms {"term":"orillacart_category"} /-->
+            'content' => self::page('orillacart-product-page orillacart-product-page--text', <<<'HTML'
+                BUY
                 <!-- wp:post-content {"layout":{"type":"constrained"}} /-->
+                AFTER
                 HTML),
         ]);
     }
 
-    /** The header, the page's main part (with a class for the theme) holding these blocks, and the footer. */
+    /**
+     * The header, the page's main part (with a class for the theme) holding the breadcrumbs and these blocks, and
+     * the footer. BUY: the name, stars, categories, price and buying form; AFTER: the upsells, related and recently
+     * viewed products, and the reviews.
+     */
     private static function page(string $class, string $blocks): string
     {
         return implode("\n", [
             self::HEADER,
             '<!-- wp:group {"tagName":"main","className":"' . $class . '","style":{"spacing":{"margin":{"top":"var:preset|spacing|60"}}},"layout":{"type":"constrained"}} -->',
             '<main class="wp-block-group ' . $class . '" style="margin-top:var(--wp--preset--spacing--60)">',
-            $blocks,
+            '<!-- wp:orillacart/breadcrumbs /-->',
+            str_replace(['BUY', 'AFTER'], [self::BUY, self::AFTER], $blocks),
             '</main>',
             '<!-- /wp:group -->',
             self::FOOTER,

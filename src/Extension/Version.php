@@ -26,7 +26,7 @@ final class Version
      * lists that delete a contact (ForgetsSubscribers), and the orillacart_newsletter_unsubscribed action. 13: a
      * shipment the courier has booked but not collected yet (Tracking::BOOKED). 14: gateways and shipping methods
      * whose settings the shop manager can test (TestsSettings). 15: tools for the shop's AI assistant
-     * (Assistant\AssistantTool).
+     * (Assistant\AssistantTool). 16: blocks for product pages, cards and landing pages (Storefront\ProductBlock).
      */
-    public const int CURRENT = 15;
+    public const int CURRENT = 16;
 }

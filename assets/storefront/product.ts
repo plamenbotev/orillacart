@@ -8,7 +8,13 @@ import { api } from './api';
 import { showBackInStock } from './backinstock';
 import { clearErrors, failure, formBody, showErrors, showMessage } from './dom';
 import { bindConditions, bindUploads } from './forms';
-import { bindGallery, type Gallery, type Picture } from './gallery';
+import {
+	bindGallery,
+	findIn,
+	productParts,
+	type Gallery,
+	type Picture,
+} from './gallery';
 
 type CartSummary = {
 	items: number;
@@ -92,8 +98,7 @@ export function bindAddToCart( form: HTMLFormElement ): void {
 	const variations = JSON.parse(
 		form.dataset.variations ?? '[]'
 	) as Variation[];
-	const product = form.closest( '.orillacart-product' );
-	const gallery = product ? bindGallery( product ) : null;
+	const gallery = bindGallery( productParts( form ) );
 	if ( variations.length > 0 ) {
 		form.addEventListener( 'change', () =>
 			showVariation( form, variations, gallery )
@@ -210,10 +215,12 @@ async function showBundle(
 		}
 		return;
 	}
-	const price = product?.querySelector( '[data-orillacart-price]' );
-	if ( price ) {
-		price.innerHTML = result.data.price_html;
-	}
+	// The price may be a block of its own, elsewhere on the page.
+	findIn( productParts( form ), '[data-orillacart-price]' ).forEach(
+		( price ) => {
+			price.innerHTML = result.data.price_html;
+		}
+	);
 	if ( stock ) {
 		if ( ! result.data.for_sale ) {
 			stock.textContent = __( 'Not available', 'orillacart' );
@@ -307,15 +314,16 @@ function showVariation(
 		}
 		return;
 	}
-	const price = product?.querySelector( '[data-orillacart-price]' );
 	const sku = product?.querySelector( '[data-orillacart-sku]' );
 	const quantity = form.querySelector< HTMLInputElement >(
 		'input[name="quantity"]'
 	);
-	if ( price ) {
-		// Rendered by the shop's own template (escaped there): the variation's price as the page shows prices.
-		price.innerHTML = variation.price;
-	}
+	// Rendered by the shop's own template (escaped there): the variation's price as the page shows prices.
+	findIn( productParts( form ), '[data-orillacart-price]' ).forEach(
+		( price ) => {
+			price.innerHTML = variation.price;
+		}
+	);
 	if ( sku && variation.sku ) {
 		sku.textContent = variation.sku;
 	}

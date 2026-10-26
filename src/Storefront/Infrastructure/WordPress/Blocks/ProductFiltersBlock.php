@@ -7,6 +7,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopListing;
@@ -32,7 +33,7 @@ final readonly class ProductFiltersBlock implements BlockDefinition
         return 'orillacart/product-filters';
     }
 
-    public function render(array $attributes): string
+    public function render(array $attributes, BlockContext $context): string
     {
         // A category's or tag's own page lists its products, as its Products block does.
         $term = is_tax([ProductCategoryTaxonomy::NAME, ProductTagTaxonomy::NAME]) ? get_queried_object() : null;

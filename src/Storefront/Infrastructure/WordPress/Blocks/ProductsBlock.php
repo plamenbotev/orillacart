@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
+use OrillaCart\Catalog\Application\Dto\ProductOffer;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\CategoryLayout;
 use OrillaCart\Catalog\Infrastructure\WordPress\ProductCategories;
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\ProductCards;
+use OrillaCart\Storefront\Infrastructure\WordPress\ProductParts;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopListing;
 
@@ -32,6 +36,7 @@ final readonly class ProductsBlock implements BlockDefinition
         private ShopLinks $links,
         private TemplateRenderer $templates,
         private ProductCards $cards,
+        private ProductParts $parts,
     ) {}
 
     public static function name(): string
@@ -39,7 +44,7 @@ final readonly class ProductsBlock implements BlockDefinition
         return 'orillacart/products';
     }
 
-    public function render(array $attributes): string
+    public function render(array $attributes, BlockContext $context): string
     {
         $perPage = max(1, min(60, \is_int($attributes['perPage'] ?? null) ? $attributes['perPage'] : 12));
         $columns = max(1, min(6, \is_int($attributes['columns'] ?? null) ? $attributes['columns'] : 3));
@@ -74,6 +79,7 @@ final readonly class ProductsBlock implements BlockDefinition
         $categoryLayout = (int) $choices['category_id'] > 0 ? CategoryLayout::of((int) $choices['category_id']) : null;
         $layout = $choices['view'] !== '' ? $choices['view'] : ($categoryLayout ?? (($attributes['layout'] ?? 'grid') === 'list' ? 'list' : 'grid'));
         $products = $this->cards->cards($result->ids, $layout === 'list');
+        $card = $layout === 'grid' ? self::card($context) : null;
 
         $base = remove_query_arg(['category', 'tag', 'q', 'sort', ...ShopListing::FILTER_ARGUMENTS], ShopListing::pageUrl(1));
         $pages = (int) ceil($result->total / $perPage);
@@ -95,8 +101,22 @@ final readonly class ProductsBlock implements BlockDefinition
             $below = $this->categories->childrenOf($path[1]);
         }
 
+        $on = static fn(string $name): bool => ($attributes[$name] ?? true) !== false;
+
         return $this->templates->render('storefront/products.html.twig', [
             'products' => $products,
+            // The shop's own card design: each product's blocks, rendered with the product as theirs.
+            'card_html' => $card === null ? null : $this->cardHtml($card, $products),
+            'show' => [
+                'categories' => $on('showCategories'),
+                'search' => $on('showSearch'),
+                'layouts' => $on('showLayouts'),
+                'count' => $on('showCount'),
+                'pagination' => $on('showPagination'),
+            ],
+            'first' => ($choices['page'] - 1) * $perPage + 1,
+            'last' => ($choices['page'] - 1) * $perPage + \count($products),
+            'total' => $result->total,
             'categories' => $ownCategory ? [] : array_map(static fn(array $term): array => $term + [
                 'url' => $keep($term['url']),
                 // The one chosen is this page; the one above it holds it.
@@ -138,5 +158,55 @@ final readonly class ProductsBlock implements BlockDefinition
             'hidden' => $showFilters ? [] : $this->listing->hidden($choices, true),
             'filtered' => $panel['filtered'],
         ]);
+    }
+
+    /**
+     * The Product card block inside, if the shop designed its card.
+     *
+     * @return array{blockName: string, attrs: array<mixed>, innerBlocks: array<mixed>, innerHTML: string, innerContent: array<mixed>}|null
+     */
+    private static function card(BlockContext $context): ?array
+    {
+        foreach ($context->innerBlocks as $block) {
+            if (($block['blockName'] ?? null) === ProductCardBlock::NAME) {
+                return [
+                    'blockName' => ProductCardBlock::NAME,
+                    'attrs' => \is_array($block['attrs'] ?? null) ? $block['attrs'] : [],
+                    'innerBlocks' => \is_array($block['innerBlocks'] ?? null) ? $block['innerBlocks'] : [],
+                    'innerHTML' => \is_string($block['innerHTML'] ?? null) ? $block['innerHTML'] : '',
+                    'innerContent' => \is_array($block['innerContent'] ?? null) ? $block['innerContent'] : [],
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Each product's card from the card's blocks, with the product as their context.
+     *
+     * @param array{blockName: string, attrs: array<mixed>, innerBlocks: array<mixed>, innerHTML: string, innerContent: array<mixed>} $card
+     * @param list<array<string, mixed>>                                                                                             $products
+     *
+     * @return list<array{id: int, html: string}>
+     */
+    private function cardHtml(array $card, array $products): array
+    {
+        $ids = array_values(array_map(static fn(array $product): int => $product['offer'] instanceof ProductOffer ? $product['offer']->id : 0, $products));
+        $this->parts->warm($ids);
+        $html = [];
+        // Core blocks such as Post title read the global post, as WordPress's Query Loop sets it for each.
+        global $post;
+        foreach ($ids as $id) {
+            $post = get_post($id);
+            if (!$post instanceof \WP_Post) {
+                continue;
+            }
+            setup_postdata($post);
+            $html[] = ['id' => $id, 'html' => new \WP_Block($card, ['postId' => $id, 'postType' => ProductPostType::NAME])->render()];
+        }
+        wp_reset_postdata();
+
+        return $html;
     }
 }

@@ -1,0 +1,60 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/related-products",
+	"title": "Related products",
+	"category": "theme",
+	"icon": "screenoptions",
+	"description": "A row of products: those like this one, or those the shop offers instead (upsells).",
+	"keywords": [
+		"shop",
+		"product",
+		"related",
+		"upsells"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"productId": {
+			"type": "integer",
+			"default": 0
+		},
+		"preview": {
+			"type": "boolean",
+			"default": false
+		},
+		"kind": {
+			"type": "string",
+			"enum": [
+				"related",
+				"upsells"
+			],
+			"default": "related"
+		},
+		"title": {
+			"type": "string",
+			"default": ""
+		},
+		"count": {
+			"type": "integer",
+			"default": 4
+		}
+	},
+	"usesContext": [
+		"postId",
+		"postType"
+	],
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		],
+		"spacing": {
+			"margin": true,
+			"padding": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

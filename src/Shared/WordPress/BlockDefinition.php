@@ -25,5 +25,5 @@ interface BlockDefinition
      *
      * @param array<string, mixed> $attributes
      */
-    public function render(array $attributes): string;
+    public function render(array $attributes, BlockContext $context): string;
 }

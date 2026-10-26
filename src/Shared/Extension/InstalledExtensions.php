@@ -22,6 +22,7 @@ use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Extension\Storefront\ProductBlock;
 use OrillaCart\Extension\Tax\TaxProvider;
 
 /**
@@ -127,4 +128,11 @@ interface InstalledExtensions
      * @return list<AssistantTool>
      */
     public function assistantTools(): array;
+
+    /**
+     * Add-ons' blocks for product pages, cards and landing pages, by id.
+     *
+     * @return list<ProductBlock>
+     */
+    public function productBlocks(): array;
 }

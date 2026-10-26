@@ -23,4 +23,17 @@ declare module '@wordpress/block-editor' {
 		children?: ReactNode;
 		fallback?: ReactNode;
 	} ): ReactNode;
+
+	// Blocks inside a block (the Products block's card): what the editor stores between its comments.
+	type InnerBlocksProps = {
+		allowedBlocks?: string[];
+		template?: [ string, Record< string, unknown >, unknown[]? ][];
+		templateLock?: false | 'all' | 'insert' | 'contentOnly';
+		renderAppender?: false | ( () => ReactNode );
+	};
+	export const InnerBlocks: ( ( props: InnerBlocksProps ) => ReactNode ) & {
+		Content: () => ReactNode;
+		ButtonBlockAppender: () => ReactNode;
+	};
+	export const store: string;
 }

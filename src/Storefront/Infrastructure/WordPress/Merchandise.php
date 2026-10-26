@@ -24,9 +24,9 @@ final readonly class Merchandise
     /**
      * @return list<int>
      */
-    public function upsells(int $productId): array
+    public function upsells(int $productId, int $count = self::SHOWN): array
     {
-        return \array_slice(LinkedProducts::upsellsOf($productId), 0, self::SHOWN);
+        return \array_slice(LinkedProducts::upsellsOf($productId), 0, $count);
     }
 
     /**
@@ -34,7 +34,7 @@ final readonly class Merchandise
      *
      * @return list<int>
      */
-    public function related(int $productId): array
+    public function related(int $productId, int $count = self::SHOWN): array
     {
         $leave = [$productId, ...LinkedProducts::upsellsOf($productId)];
         $related = [];
@@ -45,19 +45,19 @@ final readonly class Merchandise
                 continue;
             }
             $found = $this->search->search($taxonomy === ProductCategoryTaxonomy::NAME
-                ? new SearchQuery(categoryIds: $termIds, inStockOnly: true, limit: self::SHOWN + \count($leave))
-                : new SearchQuery(tagIds: $termIds, inStockOnly: true, limit: self::SHOWN + \count($leave)));
+                ? new SearchQuery(categoryIds: $termIds, inStockOnly: true, limit: $count + \count($leave))
+                : new SearchQuery(tagIds: $termIds, inStockOnly: true, limit: $count + \count($leave)));
             foreach ($found->ids as $id) {
                 if (!\in_array($id, $leave, true)) {
                     $related[$id] = $id;
                 }
             }
-            if (\count($related) >= self::SHOWN) {
+            if (\count($related) >= $count) {
                 break;
             }
         }
 
-        return \array_slice(array_values($related), 0, self::SHOWN);
+        return \array_slice(array_values($related), 0, $count);
     }
 
     /**

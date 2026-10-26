@@ -1,0 +1,8 @@
+{#
+ # A product's stars and how many reviews it has, linking to them. rating: {average, count}; url: the reviews.
+ #}
+<p class="orillacart-product-rating">
+    {% include 'storefront/_stars.html.twig' with {rating: rating.average} only %}
+    {# translators: %d: how many reviews -#}
+    <a href="{{ url }}">{{ _n('%d review', '%d reviews', rating.count)|format(rating.count) }}</a>
+</p>

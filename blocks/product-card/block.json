@@ -1,0 +1,37 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/product-card",
+	"title": "Product card",
+	"category": "theme",
+	"icon": "id-alt",
+	"description": "What each product of the list shows: the blocks inside, with the product as theirs.",
+	"keywords": [
+		"shop",
+		"product",
+		"card"
+	],
+	"textdomain": "orillacart",
+	"parent": [
+		"orillacart/products"
+	],
+	"usesContext": [
+		"postId",
+		"postType"
+	],
+	"supports": {
+		"html": false,
+		"reusable": false,
+		"spacing": {
+			"padding": true,
+			"blockGap": true
+		},
+		"color": {
+			"background": true,
+			"text": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

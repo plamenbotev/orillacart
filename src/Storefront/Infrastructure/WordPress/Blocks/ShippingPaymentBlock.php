@@ -8,6 +8,7 @@ use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Payment\Application\PaymentMethodService;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\View\TemplateRenderer;
+use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Shipping\Application\CarrierService;
 use OrillaCart\Shipping\Application\Dto\RangeView;
@@ -32,7 +33,7 @@ final readonly class ShippingPaymentBlock implements BlockDefinition
         return 'orillacart/shipping-payment';
     }
 
-    public function render(array $attributes): string
+    public function render(array $attributes, BlockContext $context): string
     {
         $names = [];
         foreach ($this->geography->countries() as $country) {

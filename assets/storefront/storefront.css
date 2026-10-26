@@ -2,7 +2,7 @@
  * Storefront styles: layout only. Fonts, colours and buttons come from the theme (buttons use the theme's
  * .wp-element-button style). Themes adjust the shop through these custom properties.
  */
-:where(.orillacart-products, .orillacart-product, .orillacart-product-row, .orillacart-wishlist-list, .orillacart-reviews, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart, .orillacart-product-filters, .orillacart-product-search, .orillacart-category-tiles) {
+:where(.orillacart-products, .orillacart-product, .orillacart-product-gallery, .orillacart-product-price, .orillacart-product-rating, .orillacart-product-image, .orillacart-breadcrumbs, .orillacart-product-row, .orillacart-wishlist-list, .orillacart-reviews, .orillacart-cart, .orillacart-checkout, .orillacart-receipt, .orillacart-account, .orillacart-mini-cart, .orillacart-product-filters, .orillacart-product-search, .orillacart-category-tiles) {
 	--orillacart-gap: 1.5rem;
 	--orillacart-star: #d99a00;
 	--orillacart-border: color-mix(in srgb, currentColor 18%, transparent);
@@ -1005,4 +1005,80 @@ fieldset[aria-invalid="true"] {
 
 .orillacart-withdrawal__items select {
 	margin-left: 0.5rem;
+}
+
+/* The product blocks (design 50): each part where the template puts it */
+.orillacart-product--form {
+	margin-top: 0;
+}
+
+.orillacart-product-gallery .orillacart-gallery__stage img {
+	display: block;
+	aspect-ratio: auto;
+}
+
+.orillacart-product-rating {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0 0 0.5rem;
+}
+
+.orillacart-product-image {
+	position: relative;
+	display: block;
+}
+
+.orillacart-sale-badge {
+	position: absolute;
+	top: 0.5rem;
+	inset-inline-start: 0.5rem;
+	padding: 0.125rem 0.5rem;
+	border-radius: var(--orillacart-radius);
+	background: var(--orillacart-error);
+	color: #fff;
+	font-size: 0.875em;
+	font-weight: 600;
+}
+
+.orillacart-breadcrumbs ol {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 0.5rem;
+	margin: 0 0 1rem;
+	padding: 0;
+	list-style: none;
+}
+
+.orillacart-breadcrumbs li + li::before {
+	content: "›";
+	margin-inline-end: 0.5rem;
+	color: var(--orillacart-muted);
+}
+
+.orillacart-products__count {
+	margin: 0;
+	color: var(--orillacart-muted);
+}
+
+/* A card the shop designed: its blocks one below the other, the last one at the bottom */
+.orillacart-product-card--designed > .wp-block-orillacart-product-card {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	height: 100%;
+}
+
+.orillacart-product-card--designed > .wp-block-orillacart-product-card > :last-child {
+	margin-top: auto;
+}
+
+.orillacart-product-card .orillacart-product__price {
+	font-size: inherit;
+	margin: 0;
+}
+
+.orillacart-product-card .wp-block-post-title {
+	margin: 0;
+	font-size: 1.125em;
 }

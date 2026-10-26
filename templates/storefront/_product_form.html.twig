@@ -1,0 +1,136 @@
+{#
+ # The way to buy a product on its page: what is in the box, the chosen variation's text, SKU and stock, the
+ # back-in-stock form, the choices, personalisation, quantity and button, the wishlist, the files it brings, and
+ # the add-ons' slots between them.
+ #
+ # offer: the product (price, sale, stock, choices); variations: each variation with its price already formatted,
+ # image, gallery and description, for the script that shows the chosen one; cart_url: null when the shop has no
+ # cart page; back_in_stock: whether visitors may ask to hear when a sold-out item is back (email: the logged-in
+ # customer's, to fill in); personalisation: the questions the shop's forms ask for the product (an engraving, a
+ # logo to print), whose answers go with the item; show: {contents, sku, stock, wishlist, downloads}, each on
+ # unless false.
+ #}
+{% import 'storefront/_macros.html.twig' as shop %}
+{% if offer.contents and (show.contents ?? true) %}
+    <div class="orillacart-product__contents">
+        <p class="orillacart-heading">{{ __('In the box') }}</p>
+        <ul>{% for item in offer.contents %}<li>{{ item.quantity }} × {{ item.name }}</li>{% endfor %}</ul>
+    </div>
+{% endif %}
+<p class="orillacart-product__description" data-orillacart-variation-description hidden></p>
+
+{% if offer.sku and (show.sku ?? true) %}
+    <p class="orillacart-product__sku">{{ __('SKU') }}: <span data-orillacart-sku>{{ offer.sku }}</span></p>
+{% endif %}
+
+<p class="orillacart-stock" data-orillacart-stock{{ (show.stock ?? true) ? '' : ' hidden' }}>
+    {%- if offer.price_hidden -%}
+    {%- elseif not offer.for_sale -%}
+        <span class="orillacart-stock--out">{{ __('Not available') }}</span>
+    {%- elseif offer.on_backorder -%}
+        <span class="orillacart-stock--backorder">{{ __('On backorder: ships when it is back in stock') }}</span>
+    {%- elseif offer.available is not null -%}
+        {# translators: %d: how many are in stock -#}
+        {{ __('%d in stock')|format(offer.available) }}
+    {%- endif -%}
+</p>
+
+{% if back_in_stock|default(false) and (offer.sold_out or variations|filter(variation => variation.sold_out)|length > 0) %}
+    <form class="orillacart-back-in-stock" data-orillacart-back-in-stock data-product="{{ offer.id }}"{{ offer.sold_out ? '' : ' hidden' }}>
+        <p class="orillacart-field">
+            <label for="orillacart-back-in-stock-{{ offer.id }}">{{ __('Email me when it is back') }}</label>
+            <input id="orillacart-back-in-stock-{{ offer.id }}" type="email" name="email" data-orillacart-field="email" value="{{ email|default('') }}" autocomplete="email" required>
+        </p>
+        {{ shop.honeypot() }}
+        <button type="submit" class="wp-element-button orillacart-button">{{ __('Tell me') }}</button>
+        <p class="orillacart-message" role="status" data-orillacart-message></p>
+    </form>
+{% endif %}
+{{ slot('product_before_form', offer.id) }}
+{% if (offer.for_sale or offer.bundle_choices) and cart_url and not offer.price_hidden %}
+    <form class="orillacart-add-to-cart" method="post" action="{{ cart_url }}" data-orillacart-add-to-cart data-cart-url="{{ cart_url }}" data-variations="{{ variations|json_encode }}"{% if offer.bundle_choices %} data-bundle="{{ offer.id }}"{% endif %}>
+        <input type="hidden" name="orillacart_add_to_cart" value="1">
+        <input type="hidden" name="product_id" value="{{ offer.id }}">
+        {% for attribute in offer.attributes %}
+            <p class="orillacart-field">
+                <label for="orillacart-attribute-{{ attribute.id }}">
+                    {{ attribute.name }}{% if attribute.required or offer.variations %} <span aria-hidden="true">*</span>{% endif %}
+                </label>
+                <select id="orillacart-attribute-{{ attribute.id }}" name="option_ids" data-orillacart-option{{ attribute.required or offer.variations ? ' required' }}>
+                    <option value="">{{ attribute.required or offer.variations ? __('Choose an option') : __('None') }}</option>
+                    {% for option in attribute.options %}
+                        <option value="{{ option.id }}">
+                            {{- option.name -}}
+                            {%- if not offer.variations and not attribute.price_hidden and option.adjustment != '0' %} ({{ option.adjustment starts with '-' ? '' : '+' }}{{ option.adjustment_kind == 'percent' ? option.adjustment ~ '%' : option.adjustment|money }}){% endif -%}
+                        </option>
+                    {% endfor %}
+                </select>
+            </p>
+        {% endfor %}
+        {% for item in offer.bundle_choices %}
+            {% set label = item.quantity > 1 ? item.quantity ~ ' × ' ~ item.name : item.name %}
+            {% if item.choices|length == 1 and item.optional %}
+                {% set choice = item.choices|first %}
+                <p class="orillacart-field orillacart-field--check">
+                    <label>
+                        <input type="checkbox" name="bundle_choices" value="{{ choice.id }}" data-orillacart-bundle-choice{{ choice.for_sale ? '' : ' disabled' }}>
+                        {# translators: %s: product or option name -#}
+                        {{ __('Add %s')|format(label) }}{% if choice.price is not null %} (+{{ choice.price|money }}){% endif %}{% if not choice.for_sale %} – {{ __('Not available') }}{% endif %}
+                    </label>
+                </p>
+            {% else %}
+                <p class="orillacart-field">
+                    <label for="orillacart-bundle-{{ offer.id }}-{{ loop.index }}">
+                        {{ label }}{% if not item.optional %} <span aria-hidden="true">*</span>{% endif %}
+                    </label>
+                    <select id="orillacart-bundle-{{ offer.id }}-{{ loop.index }}" name="bundle_choices" data-orillacart-bundle-choice{{ item.optional ? '' : ' required' }}>
+                        {% if item.optional %}<option value="">{{ __('None') }}</option>{% endif %}
+                        {% for choice in item.choices %}
+                            <option value="{{ choice.id }}"{{ choice.for_sale ? '' : ' disabled' }}>
+                                {{- choice.name -}}
+                                {%- if choice.price is not null %} (+{{ choice.price|money }}){% endif -%}
+                                {%- if not choice.for_sale %} – {{ __('Not available') }}{% endif -%}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </p>
+            {% endif %}
+        {% endfor %}
+        {% if personalisation|default([]) %}
+            <div class="orillacart-personalisation">
+                {% for field in personalisation %}{{ shop.form_field(field, 'personalisation') }}{% endfor %}
+                {% if personalisation|filter(field => field.kind == 'file') %}
+                    <noscript><p class="orillacart-message">{{ __('Sending a file needs JavaScript in your browser.') }}</p></noscript>
+                {% endif %}
+            </div>
+        {% endif %}
+        <div class="orillacart-add-to-cart__buy">
+            <p class="orillacart-field orillacart-field--quantity">
+                <label for="orillacart-quantity-{{ offer.id }}">{{ __('Quantity') }}</label>
+                <input id="orillacart-quantity-{{ offer.id }}" type="number" name="quantity" value="1" min="1" max="{{ offer.available ?? 999 }}" step="1" inputmode="numeric" required>
+            </p>
+            <button type="submit" class="wp-element-button orillacart-button"{{ offer.for_sale ? '' : ' disabled' }}>{{ __('Add to cart') }}</button>
+        </div>
+        <p class="orillacart-message" role="status" data-orillacart-message></p>
+    </form>
+{% endif %}
+{% if (wishlist ?? 'off') != 'off' and (show.wishlist ?? true) %}
+    {# The script says whether it is saved, and saves it: the page itself is the same for everyone. #}
+    <p class="orillacart-wishlist">
+        <button type="button" class="orillacart-wishlist__button" data-orillacart-wishlist="{{ offer.id }}" aria-pressed="false" hidden>
+            <span aria-hidden="true">♡</span> <span data-orillacart-wishlist-label>{{ __('Save to wishlist') }}</span>
+        </button>
+        <span class="orillacart-message" role="status" data-orillacart-message></span>
+    </p>
+{% endif %}
+{{ slot('product_after_form', offer.id) }}
+
+{% if offer.downloads and (show.downloads ?? true) %}
+    <div class="orillacart-product__downloads">
+        <h2 class="orillacart-heading">{{ __('Files you get') }}</h2>
+        <ul>
+            {% for name in offer.downloads %}<li>{{ name }}</li>{% endfor %}
+        </ul>
+    </div>
+{% endif %}
+{{ slot('product_after_details', offer.id) }}

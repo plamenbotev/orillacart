@@ -1,0 +1,38 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/breadcrumbs",
+	"title": "Breadcrumbs",
+	"category": "theme",
+	"icon": "arrow-right-alt2",
+	"description": "The way to the page through the shop: Home › Shop › category › product, which search engines read too.",
+	"keywords": [
+		"shop",
+		"navigation",
+		"path"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"showHome": {
+			"type": "boolean",
+			"default": true
+		}
+	},
+	"usesContext": [
+		"postId",
+		"postType"
+	],
+	"supports": {
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"typography": {
+			"fontSize": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

@@ -296,6 +296,21 @@ final class AssistantMcpTest extends RestTestCase
         \assert($wpdb instanceof \wpdb);
         self::assertSame('CALL /assistant/change_page', $wpdb->get_var("SELECT route FROM {$wpdb->prefix}orillacart_change_log ORDER BY id DESC LIMIT 1"));
 
+        // A landing page made from the shop's patterns is then one of the shop's pages; the site's others are still not.
+        $patterns = self::arrayOf(self::at($this->mcp('tools/call', ['name' => 'list_patterns', 'arguments' => []]), 'result', 'structuredContent'));
+        self::assertContains('orillacart/shop-hero', array_column($patterns, 'name'));
+        $made = $this->mcp('tools/call', ['name' => 'create_landing_page', 'arguments' => ['title' => 'Summer', 'patterns' => ['orillacart/shop-hero', 'orillacart/new-arrivals'], 'content' => '<!-- wp:paragraph --><p>See you soon.</p><!-- /wp:paragraph -->']]);
+        $landing = self::at($made, 'result', 'structuredContent', 'id');
+        self::assertIsInt($landing);
+        self::assertSame(['landing', 'draft'], [self::at($made, 'result', 'structuredContent', 'for'), get_post_status($landing)]);
+        $text = (string) get_post_field('post_content', $landing);
+        self::assertStringContainsString('wp:orillacart/products', $text);
+        self::assertStringEndsWith('<p>See you soon.</p><!-- /wp:paragraph -->', $text);
+        self::assertContains($landing, array_column(self::arrayOf(self::at($this->mcp('tools/call', ['name' => 'list_pages', 'arguments' => []]), 'result', 'structuredContent')), 'id'));
+        self::assertSame('Later.', self::at($this->mcp('tools/call', ['name' => 'change_page', 'arguments' => ['id' => $landing, 'content' => 'Later.']]), 'result', 'structuredContent', 'content'));
+        self::assertTrue(self::at($this->mcp('tools/call', ['name' => 'create_landing_page', 'arguments' => ['title' => 'X', 'patterns' => ['core/nothing']]]), 'result', 'isError'), 'only the shop\'s patterns');
+
+        wp_delete_post($landing, true);
         wp_delete_post($page, true);
         wp_delete_post($about, true);
         update_option(OptionLegalSettingsRepository::OPTION, $legal);
