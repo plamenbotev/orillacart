@@ -1,6 +1,6 @@
 # 49 · An AI store manager over MCP
 
-Status: designed 2026-10-26, PLAN items 178–190; 178–187 built. The user asked for an LLM store manager that works the moment
+Status: designed 2026-10-26, PLAN items 178–190; 178–187 and 189 built. The user asked for an LLM store manager that works the moment
 the plugin is installed. It is bundled, not a separate plugin, and it covers setting up the shop and all
 administration. On 2026-10-26 they added that the tooling must be extendable.
 
@@ -144,7 +144,9 @@ add-on's name. Each one is ticked or not per key. What a key leaves out is kept 
 new add-on) is offered until the owner unticks it; its risky tools still wait for the owner's yes.
 
 **WordPress's Abilities API.** On WordPress 6.9 and later the same catalogue is also registered as abilities
-(category `orillacart`), with the same schemas and permission checks. WordPress's own MCP Adapter and its AI
+(category `orillacart`, `list_orders` as `orillacart/list-orders`), with the same schemas and permission checks.
+WordPress validates an ability's input itself and follows no `$ref`, so the schemas are written out for it.
+Abilities cannot ask the owner first, so a tool with a risk stays the MCP server's. WordPress's own MCP Adapter and its AI
 features then see the shop too. The plugin's endpoint does not depend on it, because the plugin supports
 WordPress 6.7.
 

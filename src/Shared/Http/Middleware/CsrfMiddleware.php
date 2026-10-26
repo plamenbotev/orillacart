@@ -22,13 +22,20 @@ final readonly class CsrfMiddleware implements MiddlewareInterface
     public const string HEADER = 'X-WP-Nonce';
     public const string FIELD = '_wpnonce';
 
+    /**
+     * A request attribute for a request the shop built itself to run a route for a call that was checked already
+     * (an AI assistant's tool: the MCP endpoint checked its own request, WordPress checks an ability's). Clients
+     * cannot set attributes, so this cannot come from outside.
+     */
+    public const string CHECKED = '_orillacart_csrf_checked';
+
     public function __construct(private CsrfProtection $csrf) {}
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $route = RouteDefinition::fromRequest($request);
 
-        if ($route->needsNonce($request->getMethod()) && $this->csrf->isRequired()) {
+        if ($route->needsNonce($request->getMethod()) && $request->getAttribute(self::CHECKED) !== true && $this->csrf->isRequired()) {
             $token = $this->token($request);
             if ($token === '' || !$this->csrf->isTokenValid($token, $route->nonce)) {
                 throw HttpException::invalidNonce();

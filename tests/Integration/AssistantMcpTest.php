@@ -35,6 +35,10 @@ final class AssistantMcpTest extends RestTestCase
 
     protected function tearDown(): void
     {
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        // The tax groups the tools made: later tests count the shop's groups.
+        $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_tax_groups WHERE name IN ('Books', 'Logged in', 'By ability')");
         $_SERVER = $this->server;
         unset($_SERVER['HTTP_AUTHORIZATION']);
         // The key the last request came with is kept per PHP process: a request without one forgets it.
@@ -277,6 +281,45 @@ final class AssistantMcpTest extends RestTestCase
         self::assertSame(['user' => 1, 'call' => 'abc'], $states->redeem($state));
         self::assertNull($states->redeem($state), 'a yes is good once');
         self::assertNull($states->redeem($states->issue(['user' => 1], -1)), 'a state that ran out is refused');
+    }
+
+    public function testAManagerLoggedInCanCallAToolThatChangesSomething(): void
+    {
+        $this->actAs('administrator');
+        $request = new \WP_REST_Request('POST', self::NAMESPACE . '/mcp');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_header('X-WP-Nonce', wp_create_nonce('wp_rest'));
+        $request->set_header('MCP-Protocol-Version', '2025-06-18');
+        $request->set_body((string) wp_json_encode(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/call', 'params' => ['name' => 'create_tax_group', 'arguments' => ['name' => 'Logged in']]]));
+        $answer = json_decode((string) wp_json_encode(rest_do_request($request)->get_data()), true);
+
+        self::assertFalse(self::at($answer, 'result', 'isError'), 'the endpoint checked the nonce; the route the tool runs does not ask again');
+        self::assertSame('Logged in', self::at($answer, 'result', 'structuredContent', 'name'));
+    }
+
+    public function testTheToolsAreWordPressAbilitiesExceptTheRiskyOnes(): void
+    {
+        if (!\function_exists('wp_get_ability')) {
+            self::markTestSkipped('WordPress before 6.9 has no Abilities API.');
+        }
+        $this->actAs('administrator');
+
+        $settings = wp_get_ability('orillacart/show-settings');
+        self::assertInstanceOf(\WP_Ability::class, $settings);
+        self::assertSame('orillacart', $settings->get_category());
+        self::assertTrue(self::at($settings->get_meta_item('annotations'), 'readonly'));
+        $read = $settings->execute();
+        self::assertIsArray($read);
+        self::assertArrayHasKey('currency', $read);
+
+        $made = wp_get_ability('orillacart/create-tax-group')?->execute(['name' => 'By ability']);
+        self::assertIsArray($made);
+        self::assertSame('By ability', $made['name']);
+        $refused = wp_get_ability('orillacart/create-tax-group')?->execute(['name' => '']);
+        self::assertInstanceOf(\WP_Error::class, $refused);
+
+        self::assertFalse(wp_has_ability('orillacart/refund-order'), 'abilities cannot ask the owner first');
+        self::assertTrue(wp_has_ability('orillacart/e2e-echo'), 'add-ons\' tools too');
     }
 
     public function testWithoutAKeyTheEndpointAsksForOne(): void

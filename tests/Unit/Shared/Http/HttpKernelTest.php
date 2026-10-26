@@ -120,6 +120,16 @@ final class HttpKernelTest extends TestCase
         self::assertSame(1, $this->action->calls);
     }
 
+    public function testARequestTheShopBuiltForACheckedCallNeedsNoNonce(): void
+    {
+        $route = $this->route(['POST'], Route::PUBLIC);
+        $request = new ServerRequest('POST', '/wp-json/orillacart/v1/test')->withAttribute(RouteDefinition::ATTRIBUTE, $route);
+
+        self::assertSame(403, $this->kernel()->handle($request)->getStatusCode());
+        self::assertSame(403, $this->kernel()->handle($request->withAttribute(CsrfMiddleware::CHECKED, 'yes'))->getStatusCode(), 'only true marks it');
+        self::assertSame(200, $this->kernel()->handle($request->withAttribute(CsrfMiddleware::CHECKED, true))->getStatusCode());
+    }
+
     public function testRequestsWithoutCookiesNeedNoNonce(): void
     {
         $this->csrf->required = false;

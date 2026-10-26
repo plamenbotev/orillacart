@@ -8,6 +8,7 @@ use OrillaCart\Assistant\Application\Dto\RouteTool;
 use OrillaCart\Assistant\Application\Dto\ToolOutcome;
 use OrillaCart\Assistant\Infrastructure\WordPress\ToolFiles;
 use OrillaCart\Shared\Http\HttpKernel;
+use OrillaCart\Shared\Http\Middleware\CsrfMiddleware;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
 use Psr\Http\Message\ServerRequestFactoryInterface;
@@ -100,7 +101,9 @@ final readonly class RouteCaller
         $uri = rest_url(RouteCollection::REST_NAMESPACE . $path);
         $request = $this->requests->createServerRequest($routeTool->method, $uri, $_SERVER)
             ->withAttribute(RouteDefinition::ATTRIBUTE, $route)
-            ->withAttribute(RouteDefinition::VIA, RouteDefinition::VIA_ASSISTANT);
+            ->withAttribute(RouteDefinition::VIA, RouteDefinition::VIA_ASSISTANT)
+            // The call that runs this tool was checked as it came in; this request is the shop's own.
+            ->withAttribute(CsrfMiddleware::CHECKED, true);
         foreach ($values as $placeholder => $value) {
             $request = $request->withAttribute($placeholder, $value);
         }

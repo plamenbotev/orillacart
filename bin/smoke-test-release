@@ -120,6 +120,10 @@ currency="$(mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":
     | php -r '$d = json_decode(stream_get_contents(STDIN), true); echo $d["result"]["structuredContent"]["currency"] ?? "";')"
 [ "$currency" = USD ] || fail "the MCP tool show_settings did not answer with the settings"
 echo "    ${tools} tools"
+ability="$(wp eval --user=admin 'echo function_exists("wp_has_ability") ? (wp_has_ability("orillacart/show-settings") ? "yes" : "no") : "none";')"
+[ "$ability" = no ] && fail "the tools are not WordPress abilities"
+[ "$ability" = yes ] && [ "$(wp eval --user=admin 'echo wp_get_ability("orillacart/show-settings")->execute()["currency"] ?? "";')" = USD ] \
+    || [ "$ability" = none ] || fail "the ability show-settings did not answer with the settings"
 # A cookie session (no application password) must send a nonce.
 status="$(wp eval --user=admin '
     $request = new WP_REST_Request("PUT", "/orillacart/v1/settings");
