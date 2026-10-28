@@ -2,26 +2,26 @@
 # This file is distributed under the GPL-3.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: OrillaCart 2.0.0-dev\n"
+"Project-Id-Version: OrillaCart Network 2.0.0-dev\n"
 "Report-Msgid-Bugs-To: https://github.com/plamenbotev/orillacart/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-26T23:24:39+00:00\n"
+"POT-Creation-Date: 2026-10-28T20:45:02+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: orillacart\n"
 
 #. Plugin Name of the plugin
-#: orillacart.php
-msgid "OrillaCart"
+#: network.php
+msgid "OrillaCart Network"
 msgstr ""
 
 #. Description of the plugin
-#: orillacart.php
-msgid "E-commerce for WordPress."
+#: network.php
+msgid "Brings a network's OrillaCart shops up to date after an update and shows how it goes in the network admin, also when the main site does not run the shop. Not needed when OrillaCart is on for the whole network."
 msgstr ""
 
 #: src/Assistant/Infrastructure/WordPress/Hooks/RegisterAbilities.php:31
@@ -1803,29 +1803,72 @@ msgstr ""
 msgid "The web server did not send the test file. Add the setting below to its configuration, reload it, and try again."
 msgstr ""
 
-#: src/Platform/WordPress/Plugin.php:114
+#: src/Platform/WordPress/Plugin.php:83
 msgid "OrillaCart could not update its database."
 msgstr ""
 
-#: src/Platform/WordPress/Plugin.php:115
+#: src/Platform/WordPress/Plugin.php:84
 msgid "The shop may not work until it does. The error:"
 msgstr ""
 
-#: src/Platform/WordPress/Plugin.php:117
+#: src/Platform/WordPress/Plugin.php:86
 msgid "Run wp orillacart migrate, or"
 msgstr ""
 
-#: src/Platform/WordPress/Plugin.php:119
+#: src/Platform/WordPress/Plugin.php:88
 msgid "try again now"
 msgstr ""
 
-#: src/Platform/WordPress/Plugin.php:126
+#: src/Platform/WordPress/Plugin.php:95
+#: src/Platform/WordPress/Upgrades/NetworkControl.php:130
 #: src/Settings/Infrastructure/WordPress/Hooks/SetupNotice.php:41
 msgid "You may not do this."
 msgstr ""
 
 #: src/Platform/WordPress/Scheduling/ScheduledTaskRegistrar.php:30
 msgid "Every minute"
+msgstr ""
+
+#. translators: %d: how many shops
+#: src/Platform/WordPress/Upgrades/NetworkControl.php:80
+#, php-format
+msgid "OrillaCart brought the database of %d shop of the network up to date."
+msgid_plural "OrillaCart brought the databases of %d shops of the network up to date."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: sites gone through, 2: sites in all, 3: shops upgraded
+#: src/Platform/WordPress/Upgrades/NetworkControl.php:96
+#, php-format
+msgid "OrillaCart is bringing the network's shops up to date: %1$d of %2$d sites gone through, %3$d shops upgraded."
+msgstr ""
+
+#: src/Platform/WordPress/Upgrades/NetworkControl.php:101
+msgid "It goes on in the background with the main site's scheduled tasks, or a worker for the network (wp orillacart jobs work --network); each shop also upgrades on its own first visit."
+msgstr ""
+
+#: src/Platform/WordPress/Upgrades/NetworkControl.php:102
+msgid "To do them all now:"
+msgstr ""
+
+#. translators: %d: how many shops
+#: src/Platform/WordPress/Upgrades/NetworkControl.php:115
+#, php-format
+msgid "OrillaCart could not upgrade the database of %d shop of the network."
+msgid_plural "OrillaCart could not upgrade the databases of %d shops of the network."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Platform/WordPress/Upgrades/NetworkControl.php:120
+msgid "Try them again"
+msgstr ""
+
+#: src/Platform/WordPress/Upgrades/NetworkControl.php:121
+msgid "or run"
+msgstr ""
+
+#: src/Platform/WordPress/Upgrades/NetworkControl.php:149
+msgid "OrillaCart is bringing the network's shops up to date after an update. To follow it in the network admin, activate \"OrillaCart Network\" for the network; to do them all now, run"
 msgstr ""
 
 #: src/Reports/Infrastructure/WordPress/Admin/ReportsPage.php:19

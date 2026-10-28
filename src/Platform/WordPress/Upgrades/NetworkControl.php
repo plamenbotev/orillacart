@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\WordPress\Upgrades;
 
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Platform\WordPress\Translations;
 
 /**
  * The network's side of an update, on the main site: it begins the walk (NetworkUpgrades), runs its batches as the
@@ -40,6 +41,8 @@ final class NetworkControl
 
             return;
         }
+        // The notices in the network admin's language also when the shop, which loads them otherwise, is not on here.
+        add_action('init', static fn() => new Translations(new PluginContext($pluginFile, $version))->load(), 0);
         // After the main site's own upgrade at 999, when the shop runs here too.
         add_action('init', static fn() => self::upgrades()->start(), 1000);
         add_action(NetworkUpgrades::HOOK, static fn() => self::upgrades()->step(self::BATCH_SECONDS));

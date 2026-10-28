@@ -62,8 +62,8 @@ echo "==> Install and activate $(basename "$ZIP")"
 docker cp "$ZIP" "$WP:/tmp/orillacart.zip"
 wp plugin install /tmp/orillacart.zip --activate > /dev/null
 [ "$(wp plugin get orillacart --field=status)" = "active" ] || fail "plugin is not active"
-plugin_tables | grep -qx 'wp_orillacart_migrations' || fail "activation did not create the migrations table"
-wp orillacart migrate | grep -q 'up to date' || fail "wp orillacart migrate"
+grep -qx 'wp_orillacart_migrations' <<< "$(plugin_tables)" || fail "activation did not create the migrations table"
+grep -q 'up to date' <<< "$(wp orillacart migrate)" || fail "wp orillacart migrate"
 
 echo "==> Translations from the plugin's languages folder"
 LANGS=/var/www/html/wp-content/plugins/orillacart/languages
@@ -201,7 +201,7 @@ key="$(echo "$placed" | sed -n 's/.*orillacart_order=\([0-9]*-[0-9]*-[a-f0-9]*\)
         ->stock(OrillaCart\Inventory\Application\Dto\StockItemRef::product($product))->available;
 ")" = 1 ] || fail "the order did not take its stock"
 for hook in orillacart_cancel_abandoned_orders orillacart_forget_abandoned_carts; do
-    wp cron event list --fields=hook --format=csv | grep -qx "$hook" || fail "$hook is not scheduled"
+    grep -qx "$hook" <<< "$(wp cron event list --fields=hook --format=csv)" || fail "$hook is not scheduled"
 done
 wp cron event run orillacart_cancel_abandoned_orders orillacart_forget_abandoned_carts > /dev/null || fail "the scheduled tasks failed"
 
@@ -288,8 +288,8 @@ docker exec "$WP" bash -c 'cd /var/www/html && php -r "
     do_action(\"admin_init\");
 "'
 [ "$(wp option get orillacart_version)" != "0.0.1" ] || fail "admin_init did not run the upgrade"
-plugin_tables | grep -qx 'wp_orillacart_migrations' || fail "the upgrade did not restore the schema"
-plugin_tables | grep -qx 'wp_orillacart_countries' || fail "the upgrade did not create the countries table"
+grep -qx 'wp_orillacart_migrations' <<< "$(plugin_tables)" || fail "the upgrade did not restore the schema"
+grep -qx 'wp_orillacart_countries' <<< "$(plugin_tables)" || fail "the upgrade did not create the countries table"
 
 echo "==> Uninstall"
 # Deleting the plugin keeps the shop's data unless its settings ask for it to go.
@@ -308,10 +308,10 @@ after="$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e 'SHOW TABLES' 2> /dev
 wp option get orillacart_version > /dev/null 2>&1 && fail "version option left after uninstall"
 wp option get orillacart_settings > /dev/null 2>&1 && fail "settings left after uninstall"
 wp option get orillacart_tax_settings > /dev/null 2>&1 && fail "tax settings left after uninstall"
-wp cap list administrator | grep -qx manage_orillacart && fail "capability left after uninstall"
+grep -qx manage_orillacart <<< "$(wp cap list administrator)" && fail "capability left after uninstall"
 [ "$(docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SELECT COUNT(*) FROM wp_posts WHERE post_type = 'orillacart_product'" 2> /dev/null)" = 0 ] \
     || fail "product posts left after uninstall"
-wp cron event list --fields=hook --format=csv | grep -q '^orillacart_' && fail "scheduled tasks left after uninstall"
+grep -q '^orillacart_' <<< "$(wp cron event list --fields=hook --format=csv)" && fail "scheduled tasks left after uninstall"
 wp option get orillacart_email_settings > /dev/null 2>&1 && fail "email settings left after uninstall"
 docker exec "$WP" bash -c 'ls -d /var/www/orillacart-downloads /var/www/html/wp-content/uploads/orillacart-* 2> /dev/null' && fail "download files left after uninstall"
 wp role exists orillacart_customer > /dev/null 2>&1 && fail "customer role left after uninstall"
@@ -325,20 +325,50 @@ site_tables() { docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SHOW TABLES L
 wp core multisite-convert --title=Network > /dev/null
 wp site create --slug=second --porcelain > /dev/null
 wp plugin install /tmp/orillacart.zip --activate-network > /dev/null
-site_tables '' | grep -qx 'wp_orillacart_migrations' || fail "network activation did not set up the main site"
-site_tables '2\_' | grep -qx 'wp_2_orillacart_countries' || fail "network activation did not set up the second site"
+grep -qx 'wp_orillacart_migrations' <<< "$(site_tables '')" || fail "network activation did not set up the main site"
+grep -qx 'wp_2_orillacart_countries' <<< "$(site_tables '2\_')" || fail "network activation did not set up the second site"
 [ "$(wp --url=http://localhost/second/ post get "$(wp --url=http://localhost/second/ option pluck orillacart_shop_pages shop)" --field=post_status)" = publish ] \
     || fail "network activation made no shop page on the second site"
 third="$(wp site create --slug=third --porcelain)"
-site_tables "${third}\\_" | grep -qx "wp_${third}_orillacart_migrations" || fail "a site added to the network was not set up"
+grep -qx "wp_${third}_orillacart_migrations" <<< "$(site_tables "${third}\\_")" || fail "a site added to the network was not set up"
 wp site delete "$third" --yes > /dev/null
 [ -z "$(site_tables "${third}\\_")" ] || fail "a deleted site's tables were left"
+# After an update the network brings its quiet shops up to date in batches, from the main site's scheduled task;
+# with the shop on for some sites only, OrillaCart Network runs that on the main site.
+# From the table: a request to the second site would upgrade it itself.
+second_version() { docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SELECT option_value FROM wp_2_options WHERE option_name = 'orillacart_version'" 2> /dev/null; }
+# WP-Cron may run the batch itself, over a loopback request: run what is due, and wait for the second site.
+walked() {
+    for _ in $(seq 1 15); do
+        wp cron event run --due-now > /dev/null
+        [ "$(second_version)" = "$build" ] && return 0
+        sleep 2
+    done
+    return 1
+}
+build="$(wp option get orillacart_version)"
+wp plugin activate orillacart/network --network > /dev/null
+# An update brings a new build, and with it a new walk: forget the one the steps above finished.
+wp site option delete orillacart_network_upgrade > /dev/null
+wp --url=http://localhost/second/ option update orillacart_version 1.0.0 > /dev/null
+wp eval '' > /dev/null # a main site request begins the walk
+walked || fail "the network's walk did not upgrade the second site"
+wp plugin deactivate orillacart --network > /dev/null
+wp --url=http://localhost/second/ plugin activate orillacart > /dev/null
+wp --url=http://localhost/second/ option update orillacart_version 1.0.0 > /dev/null
+wp site option delete orillacart_network_upgrade > /dev/null
+wp eval '' > /dev/null
+walked || fail "OrillaCart Network's walk did not upgrade the second site on a main site without the shop"
+wp --url=http://localhost/second/ plugin deactivate orillacart > /dev/null
+wp plugin deactivate orillacart/network --network > /dev/null
+wp plugin activate orillacart --network > /dev/null
 wp plugin deactivate orillacart --network > /dev/null
 remove_all_data
 remove_all_data --url=http://localhost/second/
 wp plugin uninstall orillacart > /dev/null
 [ -z "$(site_tables '')$(site_tables '2\_')" ] || fail "plugin tables left after uninstalling from the network"
 wp --url=http://localhost/second/ option get orillacart_version > /dev/null 2>&1 && fail "the second site's options left after uninstall"
+wp site option get orillacart_network_upgrade > /dev/null 2>&1 && fail "the network's upgrade walk left after uninstall"
 
 echo "==> Debug log"
 if docker exec "$WP" test -s /var/www/html/wp-content/debug.log; then
