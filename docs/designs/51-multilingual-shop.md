@@ -58,9 +58,16 @@ shipping and payment titles, forms, filters and email templates in each language
   rule or coupon for a category holds for the products in its translations.
 - The assistant's product tools say a post's language and which product a translation is of. Add-ons get
   `Extension\Catalog\ProductLanguages` (version 17).
+- **Deleting follows the product.** The original's translations go to the trash with it, come back with it (only
+  those it took), and are deleted with it for good; a translation trashed or deleted is that language's page alone.
+  A category, brand or tag deleted in any language is deleted in all of them (the owner's choice, 2026-10-29), so
+  each language's products lose it, and rules, coupons and forms naming it stop matching, as for any deleted term.
+  No foreign keys reach WordPress's posts or the plugins' translation groups, and one WordPress delete runs other
+  plugins' hooks, so these follow WordPress's actions without a transaction around them; each step stands alone,
+  and a translation whose delete failed has no product to sell.
 - Known gaps for later steps: an email's product link is the original's address; search filters set for a
-  category do not show on its translation's page; deleting the original post deletes the product, leaving its
-  translations without one; the admin product pickers list the posts of the admin's language.
+  category do not show on its translation's page; the admin product pickers list the posts of the admin's
+  language.
 
 ## Order
 

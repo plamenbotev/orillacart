@@ -319,6 +319,31 @@ sold="$(wp eval "
 [ "$sold" = "polylang $english 9.5" ] || fail "the German translation was sold as '$sold', not as product $english"
 grep -q 'orillacart-price' <<< "$(docker exec "$WP" curl -s -L "$(wp eval "echo get_permalink($german);")")" \
     || fail "the German translation's page shows no price"
+# Deleting a translation is that language's page alone; deleting the product takes its translations with it.
+extra="$(wp eval "
+    \$fr = wp_insert_post(['post_type' => 'orillacart_product', 'post_status' => 'publish', 'post_title' => 'Tasse']);
+    PLL()->model->add_language(['name' => 'Français', 'slug' => 'fr', 'locale' => 'fr_FR', 'rtl' => false, 'term_group' => 2]);
+    pll_set_post_language(\$fr, 'fr');
+    pll_save_post_translations(['en' => $english, 'de' => $german, 'fr' => \$fr]);
+    echo \$fr;
+")"
+wp post delete "$extra" --force > /dev/null
+[ "$(wp post get "$english" --field=post_status)" = publish ] || fail "deleting a translation touched its product"
+wp post delete "$english" --force > /dev/null
+! wp post get "$german" --field=ID > /dev/null 2>&1 || fail "the product's translation was left when the product was deleted"
+# A category deleted in one language is deleted in all of them.
+left="$(wp eval "
+    \$ids = [];
+    foreach (['en' => 'Cups', 'de' => 'Tassen'] as \$language => \$name) {
+        \$term = wp_insert_term(\$name, 'orillacart_category');
+        pll_set_term_language(\$term['term_id'], \$language);
+        \$ids[\$language] = \$term['term_id'];
+    }
+    pll_save_term_translations(\$ids);
+    wp_delete_term(\$ids['de'], 'orillacart_category');
+    echo term_exists(\$ids['en'], 'orillacart_category') === null ? 'none' : 'english';
+")"
+[ "$left" = none ] || fail "deleting the German category left its English translation"
 wp plugin deactivate polylang --uninstall > /dev/null
 
 echo "==> Uninstall"

@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-28T21:31:28+00:00\n"
+"POT-Creation-Date: 2026-10-28T22:17:34+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: orillacart\n"
@@ -149,6 +149,7 @@ msgstr ""
 #: var/i18n/templates.php:402
 #: build/admin/blocks.js:1
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/stock.js:2
 msgid "SKU"
 msgstr ""
@@ -165,6 +166,7 @@ msgstr ""
 #: build/admin/price-rules.js:11
 #: build/admin/product-editor.js:7
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/setup.js:3
 #: build/admin/shipping.js:7
 #: build/admin/shipping.js:12
@@ -252,6 +254,7 @@ msgstr ""
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:70
 #: build/admin/blocks.js:1
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/stock.js:2
 msgid "Stock"
 msgstr ""
@@ -400,7 +403,7 @@ msgid "With variations"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:202
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Bundle"
 msgstr ""
 
@@ -445,7 +448,7 @@ msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:226
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:81
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Featured"
 msgstr ""
 
@@ -645,7 +648,7 @@ msgid "No tags found"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Content/VariationPostType.php:27
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Variations"
 msgstr ""
 
@@ -1076,6 +1079,7 @@ msgstr ""
 #: var/i18n/templates.php:373
 #: var/i18n/templates.php:446
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Sale price"
 msgstr ""
 
@@ -1093,11 +1097,13 @@ msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:72
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Owe at most"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:73
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/settings.js:12
 #: build/admin/stockrooms.js:1
 msgid "Low stock at"
@@ -1105,31 +1111,35 @@ msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:74
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/shipping.js:6
 msgid "Weight"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:75
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/shipping.js:6
 msgid "Length"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:76
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/shipping.js:6
 msgid "Width"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:77
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/shipping.js:6
 msgid "Height"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:78
 #: build/admin/orders.js:41
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Taxable"
 msgstr ""
 
@@ -7459,7 +7469,7 @@ msgstr ""
 #: build/admin/gift-cards.js:1
 #: build/admin/orders.js:1
 #: build/admin/orders.js:44
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/reports.js:1
 #: build/admin/stock.js:1
 #: build/admin/tax.js:8
@@ -7627,7 +7637,7 @@ msgstr ""
 #: var/i18n/templates.php:410
 #: var/i18n/templates.php:414
 #: build/admin/orders.js:3
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/settings.js:8
 msgid "None"
 msgstr ""
@@ -7807,7 +7817,7 @@ msgstr ""
 #: var/i18n/templates.php:652
 #: build/admin/orders.js:7
 #: build/admin/orders.js:43
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Downloads"
 msgstr ""
 
@@ -12618,6 +12628,7 @@ msgid "— Any —"
 msgstr ""
 
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "When out of stock"
 msgstr ""
 
@@ -12642,6 +12653,7 @@ msgid "Shown on the product page when this variation is chosen."
 msgstr ""
 
 #: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Gallery"
 msgstr ""
 
@@ -12665,151 +12677,161 @@ msgstr ""
 msgid "Price and tax"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#. translators: %s: the product's name in its original language
+#: build/admin/product-editor.js:11
+#, js-format
+msgid "This is a translation of %s. Price, stock and variations are the same product in every language: what you change here changes it."
+msgstr ""
+
+#: build/admin/product-editor.js:11
+msgid "Open the original"
+msgstr ""
+
+#: build/admin/product-editor.js:11
 msgid "Product type"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/reports.js:5
 msgid "Not shipped"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Variations have their own prices."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Sale starts"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Sale ends"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/shipping.js:6
 #: build/admin/shipping.js:10
 msgid "Tax group"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "The default group"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 #: build/admin/tax.js:8
 msgid "Tax code for tax services"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Only when it differs from its tax group’s, such as clothing in a group of general goods."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Can be bought"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Show the price"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "A hidden price is not shown; shoppers ask for it, and the product is not sold online."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "As the shop’s setting says"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Always show it"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Hide it"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Save product details"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Weight and size"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Shipping class"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Only rates that carry this class ship it. Variations ship in the product’s class."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Variations follow this unless they say otherwise."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "How many may be sold on backorder in all. Empty for no limit."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "The shop hears when a stockroom holds this many or fewer. Empty for the stockroom’s or the shop’s."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Each variation has its own stock."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Attributes"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Inactive set"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Save the product details first."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Images besides the featured one"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Linked products"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Upsells"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Better or bigger products the product’s page offers instead."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Cross-sells"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Products the cart offers with this one. Related products, by category and tag, show by themselves."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Barcode and part number"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Barcode (GTIN, EAN, UPC, ISBN)"
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "8, 12, 13 or 14 digits."
 msgstr ""
 
-#: build/admin/product-editor.js:10
+#: build/admin/product-editor.js:11
 msgid "Manufacturer part number (MPN)"
 msgstr ""
 

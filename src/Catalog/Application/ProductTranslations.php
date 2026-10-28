@@ -82,6 +82,21 @@ final class ProductTranslations implements ProductLanguages
         return array_map($this->original(...), $postIds);
     }
 
+    /**
+     * The posts that translate a product: the other posts of its group, when this post holds the shop's details.
+     * Empty for a translation, for a post never saved as a product, and with one language.
+     *
+     * @return list<int>
+     */
+    public function translationsOf(int $productId): array
+    {
+        if (!$this->languages->multilingual() || $this->products->existing([$productId]) === []) {
+            return [];
+        }
+
+        return array_values(array_filter($this->languages->postTranslations($productId), static fn(int $id): bool => $id !== $productId));
+    }
+
     /** Whether the post is a translation of another one, which is the product. */
     public function isTranslation(int $postId): bool
     {
