@@ -85,6 +85,8 @@ final class CheckoutServiceTest extends TestCase
     public function testCashOnDeliveryPutsTheOrderOnHoldTakesTheStockAndEmptiesTheCart(): void
     {
         $owner = $this->cart([10, 2], [20, 1]);
+        // Counted from the checkout on: setting up the shop saves products in transactions too.
+        $before = $this->shop->transactions->outermost;
 
         $placed = $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
 
@@ -92,7 +94,7 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame('https://shop.test/?orillacart_order=' . $this->shop->receipts->issue($placed->number), $placed->receiptUrl);
         self::assertSame(1, $this->shop->stock->stock(StockItemRef::product(10))->available);
         self::assertSame(0, $this->shop->carts->cart($owner)->cart->items);
-        self::assertSame(2, $this->shop->transactions->outermost, 'stock and order were saved together, then the order was put on hold');
+        self::assertSame(2, $this->shop->transactions->outermost - $before, 'stock and order were saved together, then the order was put on hold');
 
         $order = $this->shop->orders->order($placed->number);
         self::assertSame(['Cash on delivery', 'Have the cash ready.', 'Courier – Bulgaria', 'ada@example.com'], [$order->paymentName, $order->paymentNote, $order->shipping, $order->email]);
@@ -165,10 +167,12 @@ final class CheckoutServiceTest extends TestCase
 
     public function testAFreeOrderNeedsNoPaymentAndGoesStraightToProcessing(): void
     {
-        $placed = $this->shop->checkout->placeOrder($this->cart([30, 1]), $this->order(null, rate: null));
+        $owner = $this->cart([30, 1]);
+        $before = $this->shop->transactions->outermost;
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order(null, rate: null));
 
         self::assertSame(['processing', '0'], [$placed->status, $placed->total]);
-        self::assertSame(1, $this->shop->transactions->outermost, 'placed and paid together');
+        self::assertSame(1, $this->shop->transactions->outermost - $before, 'placed and paid together');
         self::assertNull($this->shop->orders->order($placed->number)->shippingAddress, 'nothing ships');
     }
 

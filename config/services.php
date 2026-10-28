@@ -288,6 +288,8 @@ use OrillaCart\Tax\Infrastructure\WordPress\OptionNexusThresholdsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\TransientTaxQuoteCache;
 use OrillaCart\Tax\Infrastructure\WordPress\ViesVatRegistry;
+use OrillaCart\Translations\Domain\TranslationRepository;
+use OrillaCart\Translations\Infrastructure\Doctrine\DbalTranslationRepository;
 use Psr\Clock\ClockInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
@@ -378,6 +380,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ProductRepository::class, DoctrineProductRepository::class);
     $services->alias(AttributeSetRepository::class, DoctrineAttributeSetRepository::class);
     $services->alias(FormRepository::class, DoctrineFormRepository::class);
+    $services->alias(TranslationRepository::class, DbalTranslationRepository::class);
     $services->alias(FormUploadRepository::class, DoctrineFormUploadRepository::class);
     $services->alias(UploadInspector::class, SafeUploadInspector::class);
     $services->alias(ProductContent::class, WordPressProductContent::class);

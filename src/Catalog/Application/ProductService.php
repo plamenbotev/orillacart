@@ -36,6 +36,7 @@ use OrillaCart\Catalog\Domain\Variation;
 use OrillaCart\Catalog\Domain\VariationDetails;
 use OrillaCart\Catalog\Domain\VariationNotFound;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Tax\Application\TaxGroupService;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -53,6 +54,8 @@ final readonly class ProductService
         private ShippingClassService $shippingClasses,
         private EventDispatcherInterface $events,
         private ProductTranslations $translations,
+        private AttributeTexts $texts,
+        private Transactions $transactions,
     ) {}
 
     /**
@@ -64,7 +67,7 @@ final readonly class ProductService
         $name = $this->name($id);
         $product = $this->products->find($id);
 
-        return $product === null ? ProductView::unsaved($id, $name) : ProductView::fromProduct($product, $name, $this->itemName(...));
+        return $product === null ? ProductView::unsaved($id, $name) : ProductView::fromProduct($product, $name, $this->itemName(...), $this->texts->of($product->attributes()));
     }
 
     /**
@@ -114,6 +117,7 @@ final readonly class ProductService
             $command->lowStockThreshold,
             $command->taxCode === null || trim($command->taxCode) === '' ? null : trim($command->taxCode),
         );
+        $texts = $this->texts->check($command->attributes);
         $product = $this->products->find($id);
         if ($product === null) {
             $product = new Product($id, $details);
@@ -122,16 +126,21 @@ final readonly class ProductService
         }
         $drafts = CatalogDrafts::attributes($command->attributes);
         $removedOptions = $product->optionIdsRemovedBy($drafts);
+        [$attributesBefore, $optionsBefore] = AttributeTexts::ids($product->ownAttributes());
         $product->replaceAttributes($drafts, $sets);
         $product->makeBundle($command->bundle === null ? null : $this->bundle($command->bundle));
-        $this->products->save($product);
+        // The details and their names' translations together, or neither.
+        $this->transactions->run(function () use ($product, $texts, $attributesBefore, $optionsBefore): void {
+            $this->products->save($product);
+            $this->texts->write($texts, $product->ownAttributes(), $attributesBefore, $optionsBefore);
+        });
 
         $this->events->dispatch(new ProductChanged($id));
         if ($removedOptions !== []) {
             $this->events->dispatch(new CatalogItemsRemoved(optionIds: $removedOptions));
         }
 
-        return ProductView::fromProduct($product, $name, $this->itemName(...));
+        return ProductView::fromProduct($product, $name, $this->itemName(...), $this->texts->of($product->attributes()));
     }
 
     /**
@@ -181,7 +190,9 @@ final readonly class ProductService
         );
         $files = $product->downloads();
         $variationIds = array_map(static fn(Variation $variation): int => $variation->id(), $product->variations());
+        [$attributeIds, $optionIds] = AttributeTexts::ids($product->ownAttributes());
         $this->products->remove($product);
+        $this->texts->forget($attributeIds, $optionIds);
         foreach ($variationIds as $variationId) {
             $this->content->deleteVariation($variationId);
         }

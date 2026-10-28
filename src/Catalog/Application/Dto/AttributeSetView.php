@@ -18,8 +18,8 @@ final readonly class AttributeSetView
         public array $attributes,
     ) {}
 
-    public static function fromSet(AttributeSet $set): self
+    public static function fromSet(AttributeSet $set, ?NameTranslations $translations = null): self
     {
-        return new self($set->id(), $set->name(), $set->isActive(), array_map(AttributeView::fromAttribute(...), $set->ownAttributes()));
+        return new self($set->id(), $set->name(), $set->isActive(), array_map(static fn($attribute): AttributeView => AttributeView::fromAttribute($attribute, $translations), $set->ownAttributes()));
     }
 }

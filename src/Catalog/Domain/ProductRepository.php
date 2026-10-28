@@ -46,6 +46,24 @@ interface ProductRepository
     public function ids(int $afterId, int $limit): array;
 
     /**
+     * Which of these are attributes, a product's own or an attribute set's.
+     *
+     * @param list<int> $ids
+     *
+     * @return list<int>
+     */
+    public function attributeIdsAmong(array $ids): array;
+
+    /**
+     * Which of these are attributes' options.
+     *
+     * @param list<int> $ids
+     *
+     * @return list<int>
+     */
+    public function optionIdsAmong(array $ids): array;
+
+    /**
      * Ids of the products that offer this attribute option: its product's, or those of the products using its set.
      *
      * @return list<int>

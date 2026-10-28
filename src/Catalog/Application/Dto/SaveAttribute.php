@@ -13,7 +13,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 final readonly class SaveAttribute
 {
     /**
-     * @param list<SaveOption> $options
+     * @param list<SaveOption>           $options
+     * @param array<string, string>|null $translations
      */
     public function __construct(
         #[Assert\NotBlank]
@@ -26,5 +27,8 @@ final readonly class SaveAttribute
         public bool $priceHidden = false,
         #[Assert\Positive]
         public ?int $id = null,
+        /** The name in the site's other languages, by locale ({"de_DE": "Farbe"}); null leaves them as they are. */
+        #[Assert\All([new Assert\Type('string')])]
+        public ?array $translations = null,
     ) {}
 }

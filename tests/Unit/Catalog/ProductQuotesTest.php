@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Catalog;
 
+use OrillaCart\Catalog\Application\AttributeNames;
+use OrillaCart\Catalog\Application\AttributeTexts;
+use OrillaCart\Catalog\Application\AttributeTranslations;
 use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
+use OrillaCart\Catalog\Application\OptionTranslations;
 use OrillaCart\Catalog\Application\PriceResolver;
 use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Catalog\Application\ProductService;
@@ -34,9 +38,11 @@ use OrillaCart\Tests\Fixtures\Catalog\InMemoryPriceRuleRepository;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductContent;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductRepository;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryCustomerGroupRepository;
+use OrillaCart\Tests\Fixtures\FakeLanguages;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 use OrillaCart\Tests\Fixtures\I18n\FakeContentLanguages;
+use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockLevelRepository;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockroomRepository;
 use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
@@ -46,6 +52,8 @@ use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
+use OrillaCart\Tests\Fixtures\Translations\InMemoryTranslations;
+use OrillaCart\Translations\Application\ContentTranslations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
@@ -65,14 +73,14 @@ final class ProductQuotesTest extends TestCase
         $events = new RecordingDispatcher();
         $this->content = new InMemoryProductContent([10 => ['Mug', true], 20 => ['Hoodie', true], 30 => ['Draft', false]]);
         $taxGroups = new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), new GeographyService(new InMemoryCountryRepository()), $events);
-        $this->products = new ProductService($productRepository, new InMemoryAttributeSetRepository($ids), $this->content, $taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $events), $events, $translations = new ProductTranslations(new FakeContentLanguages([]), $productRepository, $this->content));
+        $this->products = new ProductService($productRepository, new InMemoryAttributeSetRepository($ids), $this->content, $taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $events), $events, $translations = new ProductTranslations(new FakeContentLanguages([]), $productRepository, $this->content), new AttributeTexts(new ContentTranslations($records = new InMemoryTranslations()->add(new AttributeTranslations($productRepository), new OptionTranslations($productRepository)), $records, new FakeContentLanguages([]), new FakeLanguages())), new ImmediateTransactions());
         $stockrooms = new InMemoryStockroomRepository();
         $levels = new InMemoryStockLevelRepository();
         $this->stock = new StockService($levels, $stockrooms, $events);
         $this->stockroom = new StockroomService($stockrooms, $levels, $events)->create(new SaveStockroom('Sofia'))->id;
         $this->settings = new InMemorySettingsRepository(StoreSettings::defaults());
         $clock = new MockClock('2026-10-17 12:00:00 UTC');
-        $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, $clock, new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new PriceResolver(new InMemoryPriceRuleRepository(), new GroupsOfShoppers(new InMemoryCustomerGroupRepository()), $clock, new FixedExtensions(), new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new MemoryLogger(), new ExtensionFailures()), $translations);
+        $this->quotes = new ProductQuotes($productRepository, $this->content, $this->stock, $clock, new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new PriceResolver(new InMemoryPriceRuleRepository(), new GroupsOfShoppers(new InMemoryCustomerGroupRepository()), $clock, new FixedExtensions(), new SettingsService($this->settings, $events, new GeographyService(new InMemoryCountryRepository())), new MemoryLogger(), new ExtensionFailures()), $translations, new AttributeNames(new ContentTranslations($records, $records, new FakeContentLanguages([]), new FakeLanguages())));
     }
 
     public function testAQuoteHasTheChosenOptionsTheirPriceAndTheStock(): void

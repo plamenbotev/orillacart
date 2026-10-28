@@ -61,9 +61,10 @@ final readonly class ProductView
     ) {}
 
     /**
-     * @param (\Closure(int, ?int): string)|null $itemName names a bundle's products, and their variations by their options
+     * @param (\Closure(int, ?int): string)|null $itemName     names a bundle's products, and their variations by their options
+     * @param NameTranslations|null              $translations the attributes' and options' names in other languages
      */
-    public static function fromProduct(Product $product, string $name, ?\Closure $itemName = null): self
+    public static function fromProduct(Product $product, string $name, ?\Closure $itemName = null, ?NameTranslations $translations = null): self
     {
         $bundle = $product->bundle();
         $details = $product->details();
@@ -86,8 +87,8 @@ final readonly class ProductView
             $details->width,
             $details->height,
             array_map(static fn(AttributeSet $set): int => $set->id(), $product->sets()),
-            array_map(AttributeView::fromAttribute(...), $product->ownAttributes()),
-            array_map(AttributeView::fromAttribute(...), $product->attributes()),
+            array_map(static fn($attribute): AttributeView => AttributeView::fromAttribute($attribute, $translations), $product->ownAttributes()),
+            array_map(static fn($attribute): AttributeView => AttributeView::fromAttribute($attribute, $translations), $product->attributes()),
             array_map(VariationView::fromVariation(...), $product->variations()),
             $details->downloadLimit,
             $details->downloadExpiryDays,

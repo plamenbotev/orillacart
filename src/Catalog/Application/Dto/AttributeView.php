@@ -19,17 +19,20 @@ final readonly class AttributeView
         public bool $priceHidden,
         public array $options,
         public ?int $setId,
+        /** @var array<string, string> the name in the site's other languages, by locale, for the admin screens */
+        public array $translations = [],
     ) {}
 
-    public static function fromAttribute(Attribute $attribute): self
+    public static function fromAttribute(Attribute $attribute, ?NameTranslations $translations = null): self
     {
         return new self(
             $attribute->id(),
             $attribute->name(),
             $attribute->isRequired(),
             $attribute->isPriceHidden(),
-            array_map(OptionView::fromOption(...), $attribute->options()),
+            array_map(static fn($option): OptionView => OptionView::fromOption($option, $translations), $attribute->options()),
             $attribute->set()?->id(),
+            $translations?->attributes[$attribute->id()] ?? [],
         );
     }
 }

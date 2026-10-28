@@ -14,6 +14,7 @@ use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
 use OrillaCart\Catalog\Domain\Event\ProductChanged;
 use OrillaCart\Catalog\Domain\ProductRepository;
+use OrillaCart\Shared\Persistence\Transactions;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -25,6 +26,8 @@ final readonly class AttributeSetService
         private AttributeSetRepository $sets,
         private ProductRepository $products,
         private EventDispatcherInterface $events,
+        private AttributeTexts $texts,
+        private Transactions $transactions,
     ) {}
 
     /**
@@ -32,7 +35,10 @@ final readonly class AttributeSetService
      */
     public function sets(): array
     {
-        return array_map(AttributeSetView::fromSet(...), $this->sets->all());
+        $sets = $this->sets->all();
+        $texts = $this->texts->of(array_merge(...array_map(static fn(AttributeSet $set): array => $set->ownAttributes(), $sets)));
+
+        return array_map(static fn(AttributeSet $set): AttributeSetView => AttributeSetView::fromSet($set, $texts), $sets);
     }
 
     /**
@@ -40,16 +46,22 @@ final readonly class AttributeSetService
      */
     public function set(int $id): AttributeSetView
     {
-        return AttributeSetView::fromSet($this->get($id));
+        $set = $this->get($id);
+
+        return AttributeSetView::fromSet($set, $this->texts->of($set->ownAttributes()));
     }
 
     public function create(SaveAttributeSet $command): AttributeSetView
     {
+        $texts = $this->texts->check($command->attributes);
         $set = new AttributeSet($command->name, $command->active);
         $set->replaceAttributes(CatalogDrafts::attributes($command->attributes));
-        $this->sets->save($set);
+        $this->transactions->run(function () use ($set, $texts): void {
+            $this->sets->save($set);
+            $this->texts->write($texts, $set->ownAttributes(), [], []);
+        });
 
-        return AttributeSetView::fromSet($set);
+        return AttributeSetView::fromSet($set, $this->texts->of($set->ownAttributes()));
     }
 
     /**
@@ -64,10 +76,15 @@ final readonly class AttributeSetService
         if ($removed !== [] && $this->products->isAnyOptionUsedByVariations($removed)) {
             throw new CatalogRuleViolation('A product variation uses an option this would remove; change or remove the variation first.', 'orillacart_option_in_use');
         }
+        $texts = $this->texts->check($command->attributes);
+        [$attributesBefore, $optionsBefore] = AttributeTexts::ids($set->ownAttributes());
         $set->rename($command->name);
         $set->activate($command->active);
         $set->replaceAttributes($drafts);
-        $this->sets->save($set);
+        $this->transactions->run(function () use ($set, $texts, $attributesBefore, $optionsBefore): void {
+            $this->sets->save($set);
+            $this->texts->write($texts, $set->ownAttributes(), $attributesBefore, $optionsBefore);
+        });
         if ($removed !== []) {
             $this->events->dispatch(new CatalogItemsRemoved(optionIds: $removed));
         }
@@ -76,7 +93,7 @@ final readonly class AttributeSetService
             $this->events->dispatch(new ProductChanged($productId));
         }
 
-        return AttributeSetView::fromSet($set);
+        return AttributeSetView::fromSet($set, $this->texts->of($set->ownAttributes()));
     }
 
     /**
@@ -91,7 +108,9 @@ final readonly class AttributeSetService
         }
         $optionIds = array_merge(...array_map(static fn(Attribute $attribute): array => $attribute->savedOptionIds(), [...$set->ownAttributes()]));
         $users = $this->products->idsUsingSet($id);
+        [$attributeIds, $translatedOptions] = AttributeTexts::ids($set->ownAttributes());
         $this->sets->remove($set);
+        $this->texts->forget($attributeIds, $translatedOptions);
         if ($optionIds !== []) {
             $this->events->dispatch(new CatalogItemsRemoved(optionIds: array_values($optionIds)));
         }

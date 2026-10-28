@@ -46,6 +46,7 @@ final readonly class ShopCatalog
         private ProductQuotes $quotes,
         private PriceHistory $history,
         private ProductTranslations $translations,
+        private AttributeNames $names,
     ) {}
 
     /**
@@ -94,7 +95,9 @@ final readonly class ShopCatalog
         $prices = $this->prices->forShopper($customerId);
         $originals = array_combine($ids, $this->translations->originals($ids));
         $found = [];
-        foreach ($this->products->findMany(array_values(array_unique($originals))) as $product) {
+        $products = $this->products->findMany(array_values(array_unique($originals)));
+        $this->names->warm(...$products);
+        foreach ($products as $product) {
             $found[$product->id()] = $product;
         }
         // The stock of every product and variation that counts it, in one query rather than one each.
@@ -190,12 +193,14 @@ final readonly class ShopCatalog
         $priceHidden = $details->priceVisibility->isHidden($this->settings->current()->hidePrices);
         $sellable = $this->content->isPublished($product->id()) && $details->purchasable && !$priceHidden;
 
-        $attributes = array_map(static fn(array $offered): AttributeView => new AttributeView(
+        // In the shopper's language where translated (design 51).
+        $this->names->warm($product);
+        $attributes = array_map(fn(array $offered): AttributeView => new AttributeView(
             $offered[0]->id(),
-            $offered[0]->name(),
+            $this->names->attribute($offered[0]),
             $offered[0]->isRequired(),
             $offered[0]->isPriceHidden(),
-            array_map(OptionView::fromOption(...), $offered[1]),
+            array_map(fn(AttributeOption $option): OptionView => new OptionView($option->id(), $this->names->option($option), (string) $option->adjustment(), $option->adjustmentKind()->value), $offered[1]),
             $offered[0]->set()?->id(),
         ), $product->offeredOptions());
         $downloads = array_map(static fn(DownloadFile $file): string => $file->name(), $product->downloads());
@@ -361,7 +366,7 @@ final readonly class ShopCatalog
     {
         foreach ($this->products->find($productId)?->variations() ?? [] as $variation) {
             if ($variation->id() === $variationId) {
-                return implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $variation->options()));
+                return implode(' / ', array_map(fn(AttributeOption $option): string => $this->names->option($option), $variation->options()));
             }
         }
 
@@ -381,7 +386,7 @@ final readonly class ShopCatalog
         return new OfferedVariation(
             $variation->id(),
             $variation->signature(),
-            implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $variation->options())),
+            implode(' / ', array_map(fn(AttributeOption $option): string => $this->names->option($option), $variation->options())),
             $variation->sku(),
             (string) $price,
             $regular = self::regularPrice($variation->pricing(), $price),

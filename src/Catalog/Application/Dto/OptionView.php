@@ -13,10 +13,12 @@ final readonly class OptionView
         public string $name,
         public string $adjustment,
         public string $adjustmentKind = 'amount',
+        /** @var array<string, string> the name in the site's other languages, by locale, for the admin screens */
+        public array $translations = [],
     ) {}
 
-    public static function fromOption(AttributeOption $option): self
+    public static function fromOption(AttributeOption $option, ?NameTranslations $translations = null): self
     {
-        return new self($option->id(), $option->name(), (string) $option->adjustment(), $option->adjustmentKind()->value);
+        return new self($option->id(), $option->name(), (string) $option->adjustment(), $option->adjustmentKind()->value, $translations?->options[$option->id()] ?? []);
     }
 }

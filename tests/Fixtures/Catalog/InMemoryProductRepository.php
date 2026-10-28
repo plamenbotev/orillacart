@@ -34,6 +34,23 @@ final class InMemoryProductRepository implements ProductRepository
         return $this->products[$id] ?? null;
     }
 
+    public function attributeIdsAmong(array $ids): array
+    {
+        $known = [];
+        foreach ($this->products as $product) {
+            foreach ($product->ownAttributes() as $attribute) {
+                $known[] = $attribute->id();
+            }
+        }
+
+        return array_values(array_intersect($ids, $known));
+    }
+
+    public function optionIdsAmong(array $ids): array
+    {
+        return array_map(static fn(AttributeOption $option): int => $option->id(), $this->optionsWithIds($ids));
+    }
+
     public function existing(array $ids): array
     {
         return array_values(array_filter($ids, fn(int $id): bool => isset($this->products[$id])));

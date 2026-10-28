@@ -39,6 +39,7 @@ final readonly class ProductQuotes
         private SettingsService $settings,
         private PriceResolver $prices,
         private ProductTranslations $translations,
+        private AttributeNames $names,
     ) {}
 
     /**
@@ -56,7 +57,7 @@ final readonly class ProductQuotes
 
         $name = $this->content->name($this->translations->shown($product->id()));
         if ($configuration->variation !== null) {
-            $name .= ' – ' . implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $configuration->variation->options()));
+            $name .= ' – ' . implode(' / ', array_map(fn(AttributeOption $option): string => $this->names->option($option), $configuration->variation->options()));
         }
         // Below zero by what is owed already, for the backorder limit.
         $level = $this->available($configuration);
@@ -137,10 +138,10 @@ final readonly class ProductQuotes
             $details->taxable,
             $details->taxGroupId,
             $weight,
-            array_map(static fn(AttributeOption $option): QuotedOption => new QuotedOption(
+            array_map(fn(AttributeOption $option): QuotedOption => new QuotedOption(
                 $option->id(),
-                $option->attribute()->name(),
-                $option->name(),
+                $this->names->attribute($option->attribute()),
+                $this->names->option($option),
                 (string) $option->adjustmentOn($ruled),
             ), $configuration->options),
             $available,

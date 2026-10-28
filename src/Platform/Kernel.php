@@ -18,6 +18,7 @@ use OrillaCart\Shared\Http\Routing\ActionDispatcher;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Tax\Application\TaxGroupUse;
+use OrillaCart\Translations\Application\TranslatableType;
 use Psr\Container\ContainerInterface;
 use Symfony\Component\Config\ConfigCache;
 use Symfony\Component\Config\FileLocator;
@@ -94,6 +95,7 @@ final class Kernel
         $builder->registerForAutoconfiguration(OrderLookup::class)->addTag(OrderLookup::LOOKUP_TAG);
         $builder->registerForAutoconfiguration(OrderMark::class)->addTag(OrderMark::MARK_TAG);
         $builder->registerForAutoconfiguration(TaxGroupUse::class)->addTag(TaxGroupUse::TAG);
+        $builder->registerForAutoconfiguration(TranslatableType::class)->addTag(TranslatableType::TAG);
         $builder->registerForAutoconfiguration(PersonalDataSource::class)->addTag(PersonalDataSource::TAG);
         $builder->registerForAutoconfiguration(SetupStep::class)->addTag(SetupStep::TAG);
         $builder->registerForAutoconfiguration(ReadinessCheck::class)->addTag(ReadinessCheck::TAG);

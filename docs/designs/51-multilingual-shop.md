@@ -69,6 +69,24 @@ shipping and payment titles, forms, filters and email templates in each language
   category do not show on its translation's page; the admin product pickers list the posts of the admin's
   language.
 
+## Built in step 2 (attributes first)
+
+- **`{prefix}orillacart_translations`**: object type, object id, field, locale, value, unique by the first four.
+  Keyed by WordPress locale (de_DE), not the plugin's code: emails switch to a locale, and the translations stay
+  when a site moves from Polylang to WPML. The field's own column keeps the default language.
+- **Areas declare what they translate** (`Translations\Application\TranslatableType`: a type, its fields with their
+  longest value, which of its objects exist); `ContentTranslations` checks a translation against them and the
+  site's languages, and reads one in the language shown.
+- **Saved with the object** (the owner's choice, 2026-10-29): an attribute or option in a product's or an attribute
+  set's save carries `translations` by locale, checked before anything is written and written in the same
+  transaction once the save gave new ones their ids; `null` leaves them as they are. Removed attributes and options,
+  deleted products and sets take theirs with them. The views return them; `GET /translations` reads any type's,
+  `GET /content-languages` lists the languages.
+- **The admin**: one `TranslationFields` component, a field per other language under the field itself, nothing on
+  a site in one language; the attributes editor uses it for the product's and the sets' attributes and options.
+- **The shopper** reads the names in the language shown, with the option's own name where it has no translation:
+  offers, variation names and quotes (the cart line's options), read for a request in a few queries.
+
 ## Order
 
 1. The contract and its three implementations; translated products taken back to the original; translated product

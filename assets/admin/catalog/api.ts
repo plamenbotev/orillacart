@@ -6,6 +6,8 @@ export interface AttributeOption {
 	/** Decimal string added to the price, such as "2.5" or "-1"; a percentage of the price when the kind is percent. */
 	adjustment: string;
 	adjustment_kind: AdjustmentKind;
+	/** The name in the site's other languages, by locale. */
+	translations: Record< string, string >;
 }
 
 /** amount: added to the price; percent: a percentage of the product's price. */
@@ -19,6 +21,8 @@ export interface Attribute {
 	options: AttributeOption[];
 	/** The attribute set it comes from; null for a product's own attribute. */
 	set_id: number | null;
+	/** The name in the site's other languages, by locale. */
+	translations: Record< string, string >;
 }
 
 /** An attribute as it is sent: new attributes and options have no id yet. */
@@ -32,7 +36,10 @@ export interface AttributeInput {
 		name: string;
 		adjustment: string;
 		adjustment_kind: AdjustmentKind;
+		translations?: Record< string, string >;
 	}[];
+	/** The name in the site's other languages, by locale; left out, they stay as they are. */
+	translations?: Record< string, string >;
 }
 
 export interface AttributeSet {
@@ -189,13 +196,21 @@ export function toAttributeInput( attribute: Attribute ): AttributeInput {
 		required: attribute.required,
 		price_hidden: attribute.price_hidden,
 		options: attribute.options.map(
-			( { id, name, adjustment, adjustment_kind: adjustmentKind } ) => ( {
+			( {
 				id,
 				name,
 				adjustment,
 				adjustment_kind: adjustmentKind,
+				translations,
+			} ) => ( {
+				id,
+				name,
+				adjustment,
+				adjustment_kind: adjustmentKind,
+				translations,
 			} )
 		),
+		translations: attribute.translations,
 	};
 }
 

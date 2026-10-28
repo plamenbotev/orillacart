@@ -9,6 +9,7 @@ import {
 import { useRef } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { TranslationFields, useOtherLanguages } from '../shared/Translations';
 import type { AdjustmentKind, AttributeInput } from './api';
 import { SortableItem, move } from './SortableItem';
 
@@ -74,6 +75,8 @@ function useKeys() {
  */
 export function AttributesEditor( { attributes, onChange }: Props ) {
 	const keys = useKeys();
+	// Names in the site's other languages, under each name; none on a site in one language.
+	const languages = useOtherLanguages();
 	const update = ( index: number, attribute: AttributeInput ) =>
 		onChange(
 			attributes.map( ( current, i ) =>
@@ -137,6 +140,14 @@ export function AttributesEditor( { attributes, onChange }: Props ) {
 						value={ attribute.name }
 						onChange={ ( name ) =>
 							update( index, { ...attribute, name } )
+						}
+					/>
+					<TranslationFields
+						label={ __( 'Attribute', 'orillacart' ) }
+						languages={ languages }
+						value={ attribute.translations }
+						onChange={ ( translations ) =>
+							update( index, { ...attribute, translations } )
 						}
 					/>
 					<CheckboxControl
@@ -263,6 +274,17 @@ export function AttributesEditor( { attributes, onChange }: Props ) {
 									/>
 								</FlexItem>
 							</Flex>
+							<TranslationFields
+								label={ __( 'Option', 'orillacart' ) }
+								languages={ languages }
+								value={ option.translations }
+								onChange={ ( translations ) =>
+									updateOption( index, optionIndex, {
+										...option,
+										translations,
+									} )
+								}
+							/>
 						</SortableItem>
 					) ) }
 					<Button

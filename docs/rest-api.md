@@ -442,6 +442,14 @@ The totals for the addresses and shipping the customer has chosen so far. Change
   - `shipping_city` (string|null): at most 100 characters
   - `billing_city` (string|null): at most 100 characters
 
+## /content-languages
+
+### `GET /content-languages`
+
+The site's content languages, the default first; none when Polylang or WPML does not translate the site.
+
+- Who: shop managers
+
 ## /countries
 
 ### `GET /countries`
@@ -2557,6 +2565,17 @@ Replaces the tax settings: by which address the shop taxes, whether prices inclu
   - `shipping_taxed_as_items` (bool): default false
   - `eu_threshold` (string|null): matches `/^\d{1,12}(\.\d{1,2})?$/`
 
+## /translations
+
+### `GET /translations`
+
+The translations of some of a type's objects, by object id, field and locale; nothing changes.
+
+- Who: shop managers
+- Query:
+  - `type` (string): not empty
+  - `ids` (string): matches `/^\d+(,\d+)*$/`
+
 ## /webhooks
 
 ### `GET /webhooks`
@@ -2697,6 +2716,7 @@ The objects fields above take.
 - `required` (bool): default false
 - `price_hidden` (bool): default false
 - `id` (int|null): more than 0
+- `translations` (array|null)
 
 ### SaveBundle
 
@@ -2771,6 +2791,7 @@ The objects fields above take.
 - `adjustment` (string): matches `/^-?\d{1,11}(\.\d{1,4})?$/`; default '0'
 - `id` (int|null): more than 0
 - `adjustment_kind` (string): one of amount, percent; default 'amount'
+- `translations` (array|null)
 
 ### SaveParcel
 

@@ -8,8 +8,12 @@ use OrillaCart\Cart\Application\AbandonedCartPersonalData;
 use OrillaCart\Cart\Application\AbandonedCarts;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Infrastructure\Events\ForgetDeletedCustomers as ForgetDeletedCarts;
+use OrillaCart\Catalog\Application\AttributeNames;
+use OrillaCart\Catalog\Application\AttributeTexts;
+use OrillaCart\Catalog\Application\AttributeTranslations;
 use OrillaCart\Catalog\Application\DownloadService;
 use OrillaCart\Catalog\Application\LowStock;
+use OrillaCart\Catalog\Application\OptionTranslations;
 use OrillaCart\Catalog\Application\PriceHistory;
 use OrillaCart\Catalog\Application\PriceResolver;
 use OrillaCart\Catalog\Application\PriceRules;
@@ -237,6 +241,8 @@ use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use OrillaCart\Tests\Fixtures\Tax\MemoryTaxQuoteCache;
 use OrillaCart\Tests\Fixtures\TemporaryPrivateFiles;
+use OrillaCart\Tests\Fixtures\Translations\InMemoryTranslations;
+use OrillaCart\Translations\Application\ContentTranslations;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
@@ -272,6 +278,12 @@ final class TestShop
     /** Polylang or WPML in memory: no languages until a test gives some. */
     public readonly FakeContentLanguages $contentLanguages;
     public readonly ProductTranslations $productTranslations;
+    public readonly InMemoryTranslations $translationRecords;
+    /** The request's locale, which a test may change. */
+    public readonly FakeLanguages $languageOfRequest;
+    public readonly ContentTranslations $contentTranslations;
+    public readonly AttributeNames $attributeNames;
+    public readonly AttributeTexts $attributeTexts;
     public readonly ProductFinder $productFinder;
     public readonly StockService $stock;
     public readonly InMemoryStockMovements $stockMovements;
@@ -417,8 +429,12 @@ final class TestShop
         $this->content = new InMemoryProductContent();
         $this->contentLanguages = new FakeContentLanguages([]);
         $this->productTranslations = new ProductTranslations($this->contentLanguages, $productRecords, $this->content);
+        $this->translationRecords = new InMemoryTranslations()->add(new AttributeTranslations($productRecords), new OptionTranslations($productRecords));
+        $this->languageOfRequest = new FakeLanguages();
+        $this->contentTranslations = new ContentTranslations($this->translationRecords, $this->translationRecords, $this->contentLanguages, $this->languageOfRequest);
+        $this->attributeNames = new AttributeNames($this->contentTranslations);
         $this->forms = new FormService($this->formRecords, $this->productTranslations);
-        $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->shippingClasses, $this->events, $this->productTranslations);
+        $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->shippingClasses, $this->events, $this->productTranslations, $this->attributeTexts = new AttributeTexts($this->contentTranslations), $this->transactions);
         $this->events->addListener(SettingsChanged::class, new ConvertProductMeasures($this->products)(...));
         $this->events->addListener(SettingsChanged::class, new ConvertRateMeasures($this->carriers)(...));
         $stockroomRecords = new InMemoryStockroomRepository();
@@ -429,10 +445,10 @@ final class TestShop
         $this->customerGroupRecords = new InMemoryCustomerGroupRepository();
         $prices = new PriceResolver($this->priceRuleRecords, new GroupsOfShoppers($this->customerGroupRecords), $this->clock, $extensions, $settings, $this->logger, $this->failures = new ExtensionFailures());
         $this->priceRules = new PriceRules($this->priceRuleRecords, $this->events, $this->productTranslations);
-        $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $this->productTranslations);
+        $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $this->productTranslations, $this->attributeNames);
         $this->quotes = $quotes;
         $this->priceHistory = new PriceHistory($this->pricePoints = new InMemoryPriceHistory(), $this->clock);
-        $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $quotes, $this->priceHistory, $this->productTranslations);
+        $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $quotes, $this->priceHistory, $this->productTranslations, $this->attributeNames);
         $this->events->addListener(ProductChanged::class, new RecordPriceChanges($this->catalog, $this->priceHistory)(...));
         $this->productFinder = new ProductFinder($productRecords, $this->stock, new LowStock($productRecords, new StockItemNames($productRecords, $this->content), $this->stock, $this->stockrooms, $settings), $settings, $extensions, $this->logger);
 
