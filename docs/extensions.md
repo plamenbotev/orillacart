@@ -9,7 +9,9 @@ even the PSR interfaces), so an add-on never sees them.
 ## Registering
 
 The shop fires `orillacart_extensions` once per request, the first time it needs something add-ons register
-(a price, a cart, checkout, a payment gateway, a shipping method), and passes the registry:
+(a price, a cart, checkout, a payment gateway, a shipping method), at the latest on `wp_loaded` (to register the
+add-ons' product blocks), and passes the registry. Hook it when your plugin loads, as below, or by the end of
+`init`: a callback hooked after the action ran gets nothing in, and the shop logs a warning naming it.
 
 ```php
 add_action('orillacart_extensions', static function (OrillaCart\Extension\Registry $registry): void {

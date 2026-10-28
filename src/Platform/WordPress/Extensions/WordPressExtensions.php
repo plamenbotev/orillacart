@@ -40,8 +40,9 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
 /**
  * The registry add-ons fill on the orillacart_extensions action. The action runs once, the first time the shop
- * needs what is registered, after the plugin's own gateways are in: so every plugin is loaded by then, and a
- * request that never prices, pays or ships never runs it.
+ * needs what is registered (at the latest on wp_loaded, for the add-ons' product blocks), after the plugin's own
+ * gateways are in: so every plugin is loaded by then. A callback hooked after the action ran is logged as a
+ * warning, since nothing it registers is used.
  */
 final class WordPressExtensions implements Registry, InstalledExtensions
 {
@@ -93,6 +94,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $productBlocks = [];
     private bool $collected = false;
     private bool $collecting = false;
+    /** @var array<string, true> the action's callbacks when it ran, by priority and key */
+    private array $heard = [];
 
     /**
      * @param iterable<PaymentGateway> $builtInGateways
@@ -449,6 +452,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private function collect(): void
     {
         if ($this->collected) {
+            $this->warnOfLateCallbacks();
+
             return;
         }
         $this->collected = true;
@@ -460,6 +465,7 @@ final class WordPressExtensions implements Registry, InstalledExtensions
             if (\function_exists('do_action')) {
                 $this->isolateCallbacks();
                 do_action(self::ACTION, $this);
+                $this->heard = array_fill_keys(array_keys(self::callbackKeys()), true);
             }
         } finally {
             $this->collecting = false;
@@ -492,6 +498,39 @@ final class WordPressExtensions implements Registry, InstalledExtensions
             }
         }
         $hook->callbacks = $isolated;
+    }
+
+    /**
+     * An add-on hooked on the action after it ran (in a late hook, or after the shop read the registry): it would
+     * lose everything it registers, its payment methods too, without a word. Each is logged once.
+     */
+    private function warnOfLateCallbacks(): void
+    {
+        foreach (self::callbackKeys() as $key => $callback) {
+            if (isset($this->heard[$key])) {
+                continue;
+            }
+            $this->heard[$key] = true;
+            $this->logger->warning('An add-on hooked {action} after the shop read what add-ons register ({callback}); nothing it registers is used. Hook it when the plugin loads.', ['action' => self::ACTION, 'callback' => self::describe($callback)]);
+        }
+    }
+
+    /** @return array<string, mixed> the action's callbacks, by priority and key */
+    private static function callbackKeys(): array
+    {
+        global $wp_filter;
+        $hook = \is_array($wp_filter) ? ($wp_filter[self::ACTION] ?? null) : null;
+        if (!$hook instanceof \WP_Hook) {
+            return [];
+        }
+        $keys = [];
+        foreach ($hook->callbacks as $priority => $callbacks) {
+            foreach ($callbacks as $key => $callback) {
+                $keys["{$priority}/{$key}"] = $callback['function'];
+            }
+        }
+
+        return $keys;
     }
 
     /** Where a callback is, for the shop to find the add-on: a function or method name, or a closure's file and line. */

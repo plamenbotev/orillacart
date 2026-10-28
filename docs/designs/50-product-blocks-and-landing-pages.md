@@ -85,6 +85,10 @@ product (context or its Product setting) as a plain `ShownProduct` (id, name, ur
 for sale, in stock, rating), shows it in the editor with the shop's blocks (server preview), and lets it into the
 product card. The owner places it like any block.
 
+Registering the blocks reads the registry, which fixes what add-ons register for the request, so it happens on
+`wp_loaded`, not `init`: add-ons may hook `orillacart_extensions` until `init` is over. One hooked after the
+registry was read is logged as a warning naming it, instead of losing its payment methods without a word.
+
 ## How the blocks get their product
 
 `BlockDefinition::render()` takes a `BlockContext` beside the attributes: the post id from WordPress's block

@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Add-ons registering on the real orillacart_extensions action: one that throws is logged, and the ones after it
- * still register.
+ * still register; one hooked after the action ran is warned of.
  */
 final class ExtensionRegistrationTest extends TestCase
 {
@@ -45,6 +45,39 @@ final class ExtensionRegistrationTest extends TestCase
 
         self::assertSame([TestShipMethod::ID], array_map(static fn(ShippingMethod $method): string => $method->id(), $methods));
         self::assertSame('error', $logger->records[0]['level'] ?? null);
+        $callback = $logger->records[0]['context']['callback'] ?? null;
+        self::assertIsString($callback);
+        self::assertStringContainsString('a closure in ' . __FILE__, $callback);
+    }
+
+    public function testAnAddOnHookedAfterTheActionRanIsWarnedOfOnce(): void
+    {
+        global $wp_filter;
+        self::assertIsArray($wp_filter);
+        $hook = $wp_filter[WordPressExtensions::ACTION] ?? null;
+        $before = $hook instanceof \WP_Hook ? clone $hook : null;
+        $logger = new MemoryLogger();
+        $registry = new WordPressExtensions([], $logger, static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'));
+        try {
+            $first = $registry->shippingMethods();
+            $inTime = $logger->records;
+            add_action(WordPressExtensions::ACTION, static function (Registry $registry): void {
+                $registry->shippingMethod(new TestShipMethod());
+            });
+
+            $methods = $registry->shippingMethods();
+            $registry->paymentGateways();
+        } finally {
+            if ($before === null) {
+                unset($wp_filter[WordPressExtensions::ACTION]);
+            } else {
+                $wp_filter[WordPressExtensions::ACTION] = $before;
+            }
+        }
+
+        self::assertSame([], $inTime, 'the add-ons hooked in time are not warned of');
+        self::assertSame($first, $methods, 'the action does not run again');
+        self::assertSame(['warning'], array_column($logger->records, 'level'));
         $callback = $logger->records[0]['context']['callback'] ?? null;
         self::assertIsString($callback);
         self::assertStringContainsString('a closure in ' . __FILE__, $callback);

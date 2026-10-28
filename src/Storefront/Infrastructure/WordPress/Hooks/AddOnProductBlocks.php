@@ -19,9 +19,11 @@ use Psr\Log\LoggerInterface;
  * Add-ons' product blocks (extension API 16): registered as "orillacart-addon/{id}" beside the shop's own, with
  * the product they render for (the page's, the card's, or their Product setting's) as a ShownProduct, and in the
  * editor with the shop's preview of the product blocks; the script and styles are the shop's blocks' (block.json)
- * handles. An add-on's failure shows nothing and is logged.
+ * handles. An add-on's failure shows nothing and is logged. Registered on wp_loaded, not init: reading the
+ * registry fixes what add-ons register, so add-ons may hook on until init is over; blocks registered then are in
+ * before any page, REST request or editor needs them.
  */
-#[AsHook('init', method: 'register', priority: 20)]
+#[AsHook('wp_loaded', method: 'register')]
 #[AsHook('enqueue_block_editor_assets', method: 'editor')]
 final readonly class AddOnProductBlocks
 {

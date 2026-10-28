@@ -294,13 +294,13 @@ Design 50. No page builder of the shop's own: the block editor and site editor a
 
 | | # | P | Item | Commits |
 |---|---|---|---|---|
-| ✅ | 196 | P1 | Product page blocks: title, gallery, price (with tiers), rating, Add to cart (in the box, variation text, SKU, stock, back in stock, choices, personalisation, wishlist, files, add-ons' slots), reviews, related products (upsells or related), breadcrumbs with schema.org microdata; the product from the block context, a Single product block or a Product setting; the latest product as the editor's preview; the script finds a product's parts across the page | |
-| ✅ | 197 | P1 | The default product templates made of those blocks; the content filter appends the buying part only where the page's template has no Add to cart block (classic themes, templates saved before) | |
-| ✅ | 198 | P1 | The product list: a Product card block inside the Products block whose blocks (Product image with a sale badge, Post title, price, rating, Product button, add-ons' blocks) are each card; the parts around the grid as settings (categories, search and sorting, grid or list, a new result count, pagination) | |
-| ✅ | 199 | P2 | Patterns for landing pages: shop hero, category showcase, sale banner, new arrivals, product spotlight, gift card (when one is sold), a launch page | |
-| ✅ | 200 | P2 | The assistant builds landing pages: `list_patterns`, `create_landing_page` (a draft); its page tools reach landing pages it made, still not the site's others | |
-| ✅ | 201 | P2 | Extension API 16: `Storefront\ProductBlock` with a plain `ShownProduct`, registered as `orillacart-addon/{id}`, previewed in the editor, allowed in the product card | |
-| ✅ | 202 | P1 | Tests: the first response of a product page built from blocks holds the name, price, form and reviews; the variation changes the price outside the form; the card template in the grid; patterns parse; the assistant's landing pages; an add-on's block | |
+| ✅ | 196 | P1 | Product page blocks: title, gallery, price (with tiers), rating, Add to cart (in the box, variation text, SKU, stock, back in stock, choices, personalisation, wishlist, files, add-ons' slots), reviews, related products (upsells or related), breadcrumbs with schema.org microdata; the product from the block context, a Single product block or a Product setting; the latest product as the editor's preview; the script finds a product's parts across the page | c5b3248 |
+| ✅ | 197 | P1 | The default product templates made of those blocks; the content filter appends the buying part only where the page's template has no Add to cart block (classic themes, templates saved before) | c5b3248 |
+| ✅ | 198 | P1 | The product list: a Product card block inside the Products block whose blocks (Product image with a sale badge, Post title, price, rating, Product button, add-ons' blocks) are each card; the parts around the grid as settings (categories, search and sorting, grid or list, a new result count, pagination) | c5b3248 |
+| ✅ | 199 | P2 | Patterns for landing pages: shop hero, category showcase, sale banner, new arrivals, product spotlight, gift card (when one is sold), a launch page | c5b3248 |
+| ✅ | 200 | P2 | The assistant builds landing pages: `list_patterns`, `create_landing_page` (a draft); its page tools reach landing pages it made, still not the site's others | c5b3248 |
+| ✅ | 201 | P2 | Extension API 16: `Storefront\ProductBlock` with a plain `ShownProduct`, registered as `orillacart-addon/{id}`, previewed in the editor, allowed in the product card | c5b3248 |
+| ✅ | 202 | P1 | Tests: the first response of a product page built from blocks holds the name, price, form and reviews; the variation changes the price outside the form; the card template in the grid; patterns parse; the assistant's landing pages; an add-on's block | c5b3248 |
 | ⬜ | 203 | P2 | End-to-end in the editor: the product blocks' previews in the site editor's product template, the card designer in the Products block, the Single product chooser | |
 
 ## Waiting on others

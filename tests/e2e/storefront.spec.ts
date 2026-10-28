@@ -220,11 +220,15 @@ test.describe( 'A visitor', () => {
 		// The product blocks render on the server: no script runs here.
 		const html = await ( await request.get( shop.lampUrl ) ).text();
 		expect( html ).toContain( 'E2E Lamp' );
-		expect( html ).toMatch( /data-orillacart-price[^>]*>[\s\S]*?\d+\.\d\d/ );
+		expect( html ).toMatch(
+			/data-orillacart-price[^>]*>[\s\S]*?\d+\.\d\d/
+		);
 		expect( html ).toContain( 'data-orillacart-add-to-cart' );
 		expect( html ).toContain( 'https://schema.org/BreadcrumbList' );
 		expect( html ).toContain( '<script type="application/ld+json">' );
-		expect( html.match( /data-orillacart-add-to-cart/g ) ).toHaveLength( 1 );
+		expect( html.match( /data-orillacart-add-to-cart/g ) ).toHaveLength(
+			1
+		);
 	} );
 
 	test( 'adds to the cart without JavaScript, and is told checking out needs it', async ( {
