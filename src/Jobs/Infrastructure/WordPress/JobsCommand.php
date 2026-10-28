@@ -51,6 +51,9 @@ final readonly class JobsCommand implements CliCommand
      * : Serve every site of the network that runs the shop, a batch from each in turn, instead of the site --url
      * names: one cron line or one worker for the whole network.
      *
+     * [--except=<sites>]
+     * : With --network, leave out these sites, by id and comma-separated: a busy shop with workers of its own.
+     *
      * [--queue=<lanes>]
      * : Serve these lanes only, comma-separated, such as search,mail. All lanes when left out.
      *
@@ -92,6 +95,9 @@ final readonly class JobsCommand implements CliCommand
      *     # One worker for every shop of a network:
      *     wp orillacart jobs work --network --loop --max-time=3600
      *
+     *     # A cron line for the network but its busy site 7, which has its own worker:
+     *     wp orillacart jobs work --network --except=7 --max-time=55
+     *
      * @param list<string>               $args
      * @param array<string, string|bool> $options
      */
@@ -113,6 +119,14 @@ final readonly class JobsCommand implements CliCommand
         if ($network && !$this->sites->network()) {
             \WP_CLI::error('This site is not a network: run it without --network.');
         }
+        $except = \is_string($options['except'] ?? null) ? array_values(array_filter(array_map(trim(...), explode(',', $options['except'])), static fn(string $site): bool => $site !== '')) : [];
+        if ($except !== [] && !$network) {
+            \WP_CLI::error('--except leaves sites out of --network: add --network, or name the site with --url.');
+        }
+        if (array_filter($except, static fn(string $site): bool => !ctype_digit($site)) !== []) {
+            \WP_CLI::error('--except takes site ids, such as --except=7,12.');
+        }
+        $except = array_map(intval(...), $except);
 
         $startedAt = $this->clock->now();
         $started = microtime(true);
@@ -158,7 +172,7 @@ final readonly class JobsCommand implements CliCommand
                 if ($network) {
                     // Sites come and go on a network: look again now and then.
                     if (microtime(true) - $sitesAt >= 60) {
-                        $sites = $this->sites->sites();
+                        $sites = array_values(array_diff($this->sites->sites(), $except));
                         $sitesAt = microtime(true);
                     }
                     $this->sites->chores();

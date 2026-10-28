@@ -89,20 +89,32 @@ Start three with `systemctl enable --now orillacart-jobs@{1..3}`.
 
 Each site of a network has its own queue in its own tables. `--network` serves them all from one process: it takes a
 batch from each site that runs the shop in turn, as that site (its tables, settings and language), and looks for
-sites added or removed every minute. Each site sees the worker on its jobs screen, so its WP-Cron leaves the lanes to
-it, and `wp orillacart jobs restart` on any site stops it. Run it from a site that has the shop: the main site when
-the shop is on for the whole network.
+sites added or removed every minute. Run it from a site that has the shop: the main site when the shop is on for the
+whole network. With `--loop`, each site sees the worker on its jobs screen, so its WP-Cron leaves the lanes to it,
+and `wp orillacart jobs restart` on any site stops it; a cron line does not tell the sites, so their WP-Cron goes on
+helping.
+
+A busy site cannot keep the others waiting for long: each turn takes at most `--batch` jobs, then the next site's
+turn comes. The sites do share the process's time, though, so a slow batch on one (webhooks to a slow server, a big
+import) delays the others until it ends. Give such a site workers of its own with `--url`, and leave it out of the
+network's with `--except`.
 
 ```
-# A cron line, every minute: what is due on every shop, then it stops.
-* * * * * wp orillacart jobs work --network --path=/var/www/html
+# A cron line, every minute: what is due on every shop, then it stops. --max-time keeps a site that always has new
+# jobs from keeping one run going while the next minute starts another.
+* * * * * wp orillacart jobs work --network --max-time=55 --path=/var/www/html
 
 # Or a worker, under Supervisor or systemd as above.
 wp orillacart jobs work --network --loop --max-time=3600 --path=/var/www/html
 ```
 
-Without `--network` a worker serves the site `--url` names; several of those (`--url` each) give a busy shop
-workers of its own beside a network worker.
+Without `--network` a worker serves the site `--url` names. A busy shop with workers of its own, beside the
+network's:
+
+```
+wp orillacart jobs work --url=https://busy.example.com --loop --max-time=3600 --path=/var/www/html
+* * * * * wp orillacart jobs work --network --except=7 --max-time=55 --path=/var/www/html
+```
 
 After an update, each shop upgrades its own tables on its first request. The network also goes through the quiet
 ones itself, not in any shop's queue, so no shop sees the others: short batches that go on from the last site done,
