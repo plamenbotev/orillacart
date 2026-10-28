@@ -87,12 +87,22 @@ Start three with `systemctl enable --now orillacart-jobs@{1..3}`.
 
 ## Multisite
 
-Each site of a network has its own queue in its own tables, and a worker serves the site `--url` names. Run a worker,
-or a cron line, for each site whose queue should not wait for its visitors:
+Each site of a network has its own queue in its own tables. `--network` serves them all from one process: it takes a
+batch from each site that runs the shop in turn, as that site (its tables, settings and language), and looks for
+sites added or removed every minute. Each site sees the worker on its jobs screen, so its WP-Cron leaves the lanes to
+it, and `wp orillacart jobs restart` on any site stops it. Run it from a site that has the shop: the main site when
+the shop is on for the whole network.
 
 ```
-* * * * * wp site list --field=url | xargs -I% wp orillacart jobs work --url=%
+# A cron line, every minute: what is due on every shop, then it stops.
+* * * * * wp orillacart jobs work --network --path=/var/www/html
+
+# Or a worker, under Supervisor or systemd as above.
+wp orillacart jobs work --network --loop --max-time=3600 --path=/var/www/html
 ```
+
+Without `--network` a worker serves the site `--url` names; several of those (`--url` each) give a busy shop
+workers of its own beside a network worker.
 
 After an update, each shop upgrades its own tables on its first request. The coordinating site (the main site, or
 the first site with the shop when the main site has none) also queues an `upgrades` job for every other shop still

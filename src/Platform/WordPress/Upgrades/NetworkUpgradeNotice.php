@@ -62,7 +62,7 @@ final readonly class NetworkUpgradeNotice
                 )),
                 esc_html(\sprintf(
                     /* translators: %s: the site's address */
-                    __('They run in the background on %s, when that site has visitors; each shop also upgrades itself on its first visit.', 'orillacart'),
+                    __('They run in the background on %s, when that site has visitors or a worker serves the network (wp orillacart jobs work --network); each shop also upgrades itself on its first visit.', 'orillacart'),
                     $site,
                 )),
                 esc_html__('To upgrade them all now:', 'orillacart'),

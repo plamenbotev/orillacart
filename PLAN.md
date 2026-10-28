@@ -309,9 +309,9 @@ Each site of a network has its own tables and queue. After an update every shop 
 
 | | # | P | Item | Commits |
 |---|---|---|---|---|
-| ✅ | 204 | P1 | The network catches up: the coordinating site (the main site, or the first site with the shop when the main site has none) upgrades first and queues one `platform.upgrade_site` job per shop still behind; a failed one stays until retried and clears itself once its site is current; the network admin shows the sites left, the failures with "Try them again", and when it is done; a user deleted from the network is forgotten by shops brought up first | |
-| ✅ | 205 | P1 | `wp orillacart migrate --network`: every shop of the network, one after the other, with what each ran; ends with an error when one could not be upgraded | |
-| ⬜ | 206 | P2 | `wp orillacart jobs work --network [--loop]`: one process serving the queues of every shop of the network, so one cron line or one supervised worker covers them all | |
+| ✅ | 204 | P1 | The network catches up: the coordinating site (the main site, or the first site with the shop when the main site has none) upgrades first and queues one `platform.upgrade_site` job per shop still behind; a failed one stays until retried and clears itself once its site is current; the network admin shows the sites left, the failures with "Try them again", and when it is done; a user deleted from the network is forgotten by shops brought up first | b9588d5 |
+| ✅ | 205 | P1 | `wp orillacart migrate --network`: every shop of the network, one after the other, with what each ran; ends with an error when one could not be upgraded | b9588d5 |
+| ✅ | 206 | P2 | `wp orillacart jobs work --network [--loop]`: one process serving the queues of every shop of the network, a batch from each in turn as that site, so one cron line or one supervised worker covers them all; each site sees the worker and can ask it to restart; problems are logged on the site they happened on, also when its container is gone before the process ends | |
 | ⬜ | 207 | P3 | Development: a read-only plugin folder without a compiled container runs on the uncompiled builder, whose service locators do not know their classes, so activation stops at "? is not a scheduled task" | |
 
 ## Waiting on others

@@ -47,4 +47,35 @@ final class ProblemsTest extends RestTestCase
         wp_set_current_user(0);
         self::assertSame(401, $this->request('GET', '/problems')->get_status());
     }
+
+    public function testAProblemIsKeptOnTheSiteItHappenedOnThoughItsLoggerIsGoneBeforeTheEnd(): void
+    {
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        // Another site of a network, as a network worker switches to it: its own tables under its own prefix.
+        $prefix = $wpdb->prefix;
+        // What earlier tests logged and is still waiting goes first, so only this test's problems are counted.
+        ShopLogger::flushAll();
+        $wpdb->query("DELETE FROM {$prefix}orillacart_problems");
+        $other = $prefix . 'otherproblems_';
+        $wpdb->query("CREATE TABLE {$other}orillacart_problems LIKE {$prefix}orillacart_problems");
+        try {
+            $quiet = new DebugLogLogger(false, static function (): void {});
+            $wpdb->set_prefix($other);
+            $there = new ShopLogger($quiet);
+            $there->warning('On the other site');
+            $wpdb->set_prefix($prefix);
+            // The worker is done with that site's container, and its logger with it.
+            unset($there);
+            new ShopLogger($quiet)->warning('On this site');
+
+            ShopLogger::flushAll();
+
+            self::assertSame(['On the other site'], $wpdb->get_col("SELECT message FROM {$other}orillacart_problems"));
+            self::assertSame(['On this site'], $wpdb->get_col("SELECT message FROM {$prefix}orillacart_problems"));
+        } finally {
+            $wpdb->set_prefix($prefix);
+            $wpdb->query("DROP TABLE IF EXISTS {$other}orillacart_problems");
+        }
+    }
 }

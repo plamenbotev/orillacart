@@ -113,6 +113,7 @@ use OrillaCart\Invoicing\Infrastructure\WordPress\WordPressInvoiceLinks;
 use OrillaCart\Jobs\Application\JobContext;
 use OrillaCart\Jobs\Application\JobHandlers;
 use OrillaCart\Jobs\Application\JobQueue;
+use OrillaCart\Jobs\Application\JobSites;
 use OrillaCart\Jobs\Application\WorkerRegistry;
 use OrillaCart\Jobs\Infrastructure\Doctrine\DbalJobQueue;
 use OrillaCart\Jobs\Infrastructure\LocatedJobHandlers;
@@ -186,6 +187,7 @@ use OrillaCart\Platform\WordPress\Extensions\WordPressExtensions;
 use OrillaCart\Platform\WordPress\Files\LocalPrivateFiles;
 use OrillaCart\Platform\WordPress\Files\WebServerFileDelivery;
 use OrillaCart\Platform\WordPress\Logging\ShopLogger;
+use OrillaCart\Platform\WordPress\NetworkJobSites;
 use OrillaCart\Platform\WordPress\Security\SiteSignatures;
 use OrillaCart\Platform\WordPress\WordPressIntegration;
 use OrillaCart\Platform\WordPress\WordPressLanguages;
@@ -477,6 +479,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(JobHandlers::class, LocatedJobHandlers::class);
     $services->alias(OrderLookups::class, TaggedOrderLookups::class);
     $services->alias(WorkerRegistry::class, TableWorkerRegistry::class);
+    $services->alias(JobSites::class, NetworkJobSites::class);
 
     $services->alias(Transactions::class, DoctrineTransactions::class);
     $services->alias(LoadedEntities::class, DoctrineLoadedEntities::class);
