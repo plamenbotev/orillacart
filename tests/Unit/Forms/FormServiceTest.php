@@ -14,6 +14,7 @@ use OrillaCart\Forms\Application\FormService;
 use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Forms\Domain\FormNotFound;
 use OrillaCart\Forms\Domain\FormRuleViolation;
+use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Forms\InMemoryFormRepository;
 use OrillaCart\Tests\Fixtures\Forms\InMemoryFormUploadRepository;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +28,7 @@ final class FormServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->repository = new InMemoryFormRepository();
-        $this->forms = new FormService($this->repository);
+        $this->forms = new FormService($this->repository, new TestShop()->productTranslations);
         $this->shop = new ShopForms($this->repository, new FieldAnswers(new InMemoryFormUploadRepository()));
     }
 

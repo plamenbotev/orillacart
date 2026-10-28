@@ -52,6 +52,7 @@ final readonly class ProductService
         private TaxGroupService $taxGroups,
         private ShippingClassService $shippingClasses,
         private EventDispatcherInterface $events,
+        private ProductTranslations $translations,
     ) {}
 
     /**
@@ -59,6 +60,7 @@ final readonly class ProductService
      */
     public function product(int $id): ProductView
     {
+        $id = $this->translations->original($id);
         $name = $this->name($id);
         $product = $this->products->find($id);
 
@@ -73,6 +75,7 @@ final readonly class ProductService
      */
     public function save(int $id, SaveProduct $command): ProductView
     {
+        $id = $this->translations->original($id);
         $name = $this->name($id);
         if ($command->sku !== null && $this->products->isSkuTaken($command->sku, exceptProductId: $id)) {
             throw new CatalogRuleViolation('Another product or variation has the SKU "%s".', 'orillacart_duplicate_sku', values: [$command->sku]);
@@ -137,6 +140,7 @@ final readonly class ProductService
      */
     public function ownPrice(int $id): ?string
     {
+        $id = $this->translations->original($id);
         $product = $this->products->find($id);
 
         return $product === null || !self::pricedByItself($product) ? null : (string) $product->details()->pricing->price();
@@ -150,6 +154,7 @@ final readonly class ProductService
      */
     public function changePrice(int $id, string $price): void
     {
+        $id = $this->translations->original($id);
         $product = $this->get($id);
         if (!self::pricedByItself($product)) {
             throw new CatalogRuleViolation('Its variations, or the items of the bundle, have the prices: change them in the product\'s editor.', 'orillacart_price_not_its_own');
@@ -192,6 +197,7 @@ final readonly class ProductService
      */
     public function addVariation(int $productId, SaveVariation $command): VariationView
     {
+        $productId = $this->translations->original($productId);
         $product = $this->get($productId);
         $this->refuseTakenSku($command->sku, $productId, null);
         $details = $this->variationDetails($command);
@@ -256,6 +262,7 @@ final readonly class ProductService
      */
     public function changeVariation(int $productId, int $variationId, SaveVariation $command): VariationView
     {
+        $productId = $this->translations->original($productId);
         $product = $this->get($productId);
         $this->refuseTakenSku($command->sku, null, $variationId);
         $variation = $product->changeVariation($variationId, $this->variationDetails($command));
@@ -271,6 +278,7 @@ final readonly class ProductService
      */
     public function removeVariation(int $productId, int $variationId): void
     {
+        $productId = $this->translations->original($productId);
         $product = $this->get($productId);
         $product->removeVariation($variationId);
         $this->products->save($product);

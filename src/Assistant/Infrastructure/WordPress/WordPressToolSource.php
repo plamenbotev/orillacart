@@ -10,6 +10,7 @@ use OrillaCart\Assistant\Application\Dto\ToolOutcome;
 use OrillaCart\Assistant\Application\InputSchemas;
 use OrillaCart\Assistant\Application\ToolSource;
 use OrillaCart\Audit\Application\ChangeLog;
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\CategoryLayout;
@@ -20,6 +21,7 @@ use OrillaCart\Exchange\Application\Dto\ProductPostChange;
 use OrillaCart\Exchange\Application\ProductPosts;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
 use OrillaCart\Shared\Http\Routing\Tool;
+use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Storefront\Application\LegalSettingsService;
 use OrillaCart\Storefront\Application\ShopPagesService;
@@ -48,6 +50,8 @@ final readonly class WordPressToolSource implements ToolSource
         private LoggerInterface $logger,
         private ShopPagesService $shopPages,
         private LegalSettingsService $legal,
+        private ProductTranslations $translations,
+        private ContentLanguages $languages,
     ) {}
 
     public function tools(): array
@@ -277,6 +281,9 @@ final readonly class WordPressToolSource implements ToolSource
             'image_ids' => array_values(array_filter([$image === false ? 0 : (int) $image, ...(\is_array($gallery) ? array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $gallery) : [])], static fn(int $id): bool => $id > 0)),
             'permalink' => (string) get_permalink($post),
             'edit_url' => (string) get_edit_post_link($post->ID, 'raw'),
+            // A translation is the product's text in another language; its price and stock are the original's.
+            'language' => $this->languages->ofPost($post->ID),
+            'translation_of' => $this->translations->isTranslation($post->ID) ? $this->translations->original($post->ID) : null,
         ];
     }
 

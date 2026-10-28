@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\ProductForBlock;
@@ -15,7 +16,10 @@ use OrillaCart\Storefront\Infrastructure\WordPress\ProductParts;
  */
 final readonly class ProductTitleBlock implements BlockDefinition
 {
-    public function __construct(private ProductParts $parts) {}
+    public function __construct(
+        private ProductParts $parts,
+        private ProductTranslations $translations,
+    ) {}
 
     public static function name(): string
     {
@@ -35,7 +39,7 @@ final readonly class ProductTitleBlock implements BlockDefinition
         return \sprintf(
             '<h%1$d class="orillacart-product-title">%2$s</h%1$d>',
             $level,
-            ($attributes['isLink'] ?? false) === true ? \sprintf('<a href="%s">%s</a>', esc_url((string) get_permalink($offer->id)), $name) : $name,
+            ($attributes['isLink'] ?? false) === true ? \sprintf('<a href="%s">%s</a>', esc_url((string) get_permalink($this->translations->shown($id))), $name) : $name,
         );
     }
 }

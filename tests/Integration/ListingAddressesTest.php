@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
+use OrillaCart\Platform\WordPress\Languages\WordPressContentLanguages;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Storefront\Application\ShopPagesService;
 use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\ListingAddresses;
@@ -137,7 +139,9 @@ final class ListingAddressesTest extends RestTestCase
             $settings = $container->get(SettingsService::class);
             self::assertInstanceOf(ShopPagesService::class, $pages);
             self::assertInstanceOf(SettingsService::class, $settings);
-            new ListingAddresses(new ShopLinks($pages, $settings))->redirect();
+            $translations = $container->get(ProductTranslations::class);
+            self::assertInstanceOf(ProductTranslations::class, $translations);
+            new ListingAddresses(new ShopLinks($pages, $settings, $translations, new WordPressContentLanguages()))->redirect();
         } catch (\RuntimeException) {
         } finally {
             remove_filter('wp_redirect', $catch);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Checkout\Application\ShownPrices;
 use OrillaCart\Reviews\Application\Reviews;
@@ -20,6 +21,7 @@ final readonly class ProductCards
         private Shopper $shopper,
         private Reviews $reviews,
         private ShownPrices $shownPrices,
+        private ProductTranslations $translations,
     ) {}
 
     /**
@@ -42,13 +44,15 @@ final readonly class ProductCards
             if (!isset($offers[$id])) {
                 continue;
             }
+            // The text in the shopper's language, from the product's translation (design 51).
+            $shown = $this->translations->shown($id);
             $cards[] = [
                 'offer' => $offers[$id],
                 'simple' => $offers[$id]->isSimple(),
                 'url' => $urls[$id] ?? '',
-                'image' => get_the_post_thumbnail($id, 'medium', ['class' => 'orillacart-product-card__image', 'loading' => 'lazy']),
+                'image' => get_the_post_thumbnail(has_post_thumbnail($shown) ? $shown : $id, 'medium', ['class' => 'orillacart-product-card__image', 'loading' => 'lazy']),
                 'rating' => $ratings[$id] ?? null,
-                'excerpt' => $excerpts ? self::excerpt($id) : '',
+                'excerpt' => $excerpts ? self::excerpt($shown) : '',
             ];
         }
 

@@ -26,6 +26,7 @@ final readonly class DownloadService
         private ProductRepository $products,
         private PrivateFiles $files,
         private EventDispatcherInterface $events,
+        private ProductTranslations $translations,
     ) {}
 
     /**
@@ -34,6 +35,7 @@ final readonly class DownloadService
      */
     public function add(int $productId, UploadDownload $command): DownloadView
     {
+        $productId = $this->translations->original($productId);
         $product = $this->product($productId);
         try {
             $stored = $this->files->store($command->temporaryPath, $command->filename);
@@ -52,6 +54,7 @@ final readonly class DownloadService
      */
     public function rename(int $productId, int $fileId, string $name): DownloadView
     {
+        $productId = $this->translations->original($productId);
         $product = $this->product($productId);
         $file = $product->download($fileId);
         $file->rename($name);
@@ -68,6 +71,7 @@ final readonly class DownloadService
      */
     public function remove(int $productId, int $fileId): void
     {
+        $productId = $this->translations->original($productId);
         $product = $this->product($productId);
         $file = $product->removeDownload($fileId);
         $this->products->save($product);

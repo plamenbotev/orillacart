@@ -29,7 +29,7 @@ final class BulkEditsTest extends TestCase
     protected function setUp(): void
     {
         $this->shop = new TestShop();
-        $this->edits = new BulkEdits($this->shop->products, $this->shop->stock, $this->shop->settingsService, $this->shop->transactions);
+        $this->edits = new BulkEdits($this->shop->products, $this->shop->stock, $this->shop->settingsService, $this->shop->transactions, $this->shop->productTranslations);
         $this->room = $this->shop->stockrooms->create(new SaveStockroom('Sofia'))->id;
         $this->shop->content->add(10, 'Lamp');
         $this->shop->products->save(10, new SaveProduct('30', sale: new SaveSale('25', new \DateTimeImmutable('2026-10-01T00:00:00+00:00'))));

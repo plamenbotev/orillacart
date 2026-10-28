@@ -158,7 +158,7 @@ final class AssistantMcpTest extends RestTestCase
         $hook = $wp_filter[WordPressExtensions::ACTION] ?? null;
         $before = $hook instanceof \WP_Hook ? clone $hook : null;
         $logger = new MemoryLogger();
-        $registry = new WordPressExtensions([], $logger, static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'));
+        $registry = new WordPressExtensions([], $logger, static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'));
         $container = self::kernel()->container();
         $routeTools = $container->get(RouteTools::class);
         $log = $container->get(ChangeLog::class);

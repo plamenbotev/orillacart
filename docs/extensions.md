@@ -560,6 +560,25 @@ if ($registry->version() >= 16) {
   price while on sale, whether it is for sale, how many are in stock, its stars and number of reviews.
 - **Escape what you return.** An empty string shows nothing; anything thrown is logged and shows nothing.
 
+## Products in several languages
+
+With Polylang or WPML, a product's translation is a WordPress post of its own that holds the product's text in
+another language; the product, with its price, stock, variations and orders, is the original (design 51). Version
+17 tells an add-on which post is which:
+
+```php
+if ($registry->version() >= 17) {
+    $languages = $registry->productLanguages();
+    $product = $languages->product(get_the_ID());      // a translation's post gives its original
+    $page = get_permalink($languages->shown($product)); // the translation in the shopper's language, if published
+}
+```
+
+- **Ids the shop gives an add-on are the product's**: in `ShownProduct`, order lines, price queries and the
+  extension API's other value objects. `orillacart_product_viewed` passes the page's post, which may be a
+  translation: take it to `product()` first.
+- **`languages()`** lists the site's content language codes, and is empty when no plugin translates the site.
+
 ## Page slots
 
 The templates print what add-ons echo in these actions:

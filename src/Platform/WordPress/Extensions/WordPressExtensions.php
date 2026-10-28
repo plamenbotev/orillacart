@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\WordPress\Extensions;
 
 use OrillaCart\Catalog\Application\AddOnProducts;
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Checkout\Application\AddOnOrderPrices;
 use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Catalog\ProductFilter;
+use OrillaCart\Extension\Catalog\ProductLanguages;
 use OrillaCart\Extension\Catalog\Products;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
@@ -102,6 +104,7 @@ final class WordPressExtensions implements Registry, InstalledExtensions
      * @param \Closure(): Orders        $orders          a closure: reading orders needs services that need this registry
      * @param \Closure(): Products      $products        a closure, as orders
      * @param \Closure(): OrderPrices   $orderPrices     a closure, as orders
+     * @param \Closure(): ProductLanguages $productLanguages a closure, as orders
      */
     public function __construct(
         #[AutowireIterator(self::GATEWAY_TAG)]
@@ -113,6 +116,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         private readonly \Closure $products,
         #[AutowireServiceClosure(AddOnOrderPrices::class)]
         private readonly \Closure $orderPrices,
+        #[AutowireServiceClosure(ProductTranslations::class)]
+        private readonly \Closure $productLanguages,
     ) {}
 
     public function version(): int
@@ -301,6 +306,11 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     public function products(): Products
     {
         return ($this->products)();
+    }
+
+    public function productLanguages(): ProductLanguages
+    {
+        return ($this->productLanguages)();
     }
 
     public function log(): Log

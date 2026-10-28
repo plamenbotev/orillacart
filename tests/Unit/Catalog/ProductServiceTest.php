@@ -12,6 +12,7 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveSale;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Catalog\Application\ProductService;
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
 use OrillaCart\Catalog\Domain\Event\ProductChanged;
@@ -25,6 +26,7 @@ use OrillaCart\Tests\Fixtures\Catalog\InMemoryAttributeSetRepository;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductContent;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductRepository;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
+use OrillaCart\Tests\Fixtures\I18n\FakeContentLanguages;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryShippingClassRepository;
@@ -48,7 +50,7 @@ final class ProductServiceTest extends TestCase
         $this->events = new RecordingDispatcher();
         $this->content = new InMemoryProductContent([10 => ['Hoodie', true], 11 => ['Mug', true]]);
         $this->taxGroups = new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), new GeographyService(new InMemoryCountryRepository()), $this->events);
-        $this->products = new ProductService($productRepository, $setRepository, $this->content, $this->taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $this->events), $this->events);
+        $this->products = new ProductService($productRepository, $setRepository, $this->content, $this->taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $this->events), $this->events, new ProductTranslations(new FakeContentLanguages([]), $productRepository, $this->content));
         $this->sets = new AttributeSetService($setRepository, $productRepository, $this->events);
     }
 

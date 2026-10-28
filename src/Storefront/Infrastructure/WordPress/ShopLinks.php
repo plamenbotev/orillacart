@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Storefront\Application\ShopPagesService;
 
 /**
@@ -15,6 +17,8 @@ final readonly class ShopLinks
     public function __construct(
         private ShopPagesService $pages,
         private SettingsService $settings,
+        private ProductTranslations $translations,
+        private ContentLanguages $languages,
     ) {}
 
     /**
@@ -72,7 +76,8 @@ final readonly class ShopLinks
     {
         $links = [];
         foreach (array_unique($ids) as $id) {
-            $link = get_permalink($id);
+            // The address of the product's text in the shopper's language (design 51).
+            $link = get_permalink($this->translations->shown($id));
             if (\is_string($link)) {
                 $links[$id] = $link;
             }
@@ -83,8 +88,17 @@ final readonly class ShopLinks
 
     private function url(?int $id): ?string
     {
-        $link = $id === null ? false : get_permalink($id);
+        $link = $id === null ? false : get_permalink($this->inLanguage($id));
 
         return \is_string($link) ? $link : null;
+    }
+
+    /** A shop page's translation in the request's language, when it has a published one. */
+    private function inLanguage(int $pageId): int
+    {
+        $language = $this->languages->current();
+        $translation = $language === null ? null : ($this->languages->postTranslations($pageId)[$language->code] ?? null);
+
+        return $translation !== null && get_post_status($translation) === 'publish' ? $translation : $pageId;
     }
 }

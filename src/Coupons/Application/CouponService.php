@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Coupons\Application;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Coupons\Application\Dto\CouponPageView;
 use OrillaCart\Coupons\Application\Dto\CouponQuery;
 use OrillaCart\Coupons\Application\Dto\CouponView;
@@ -22,7 +23,10 @@ use OrillaCart\Shared\Domain\Money;
  */
 final readonly class CouponService
 {
-    public function __construct(private CouponRepository $coupons) {}
+    public function __construct(
+        private CouponRepository $coupons,
+        private ProductTranslations $translations,
+    ) {}
 
     public function coupons(CouponQuery $query): CouponPageView
     {
@@ -52,7 +56,7 @@ final readonly class CouponService
      */
     public function create(SaveCoupon $command): CouponView
     {
-        $terms = self::terms($command, $command->automatic && trim($command->code) === '' ? 'AUTO-' . strtoupper(bin2hex(random_bytes(4))) : null);
+        $terms = $this->terms($command, $command->automatic && trim($command->code) === '' ? 'AUTO-' . strtoupper(bin2hex(random_bytes(4))) : null);
         $this->requireFreeCode($terms->code, null);
         $coupon = new Coupon($terms, $command->automatic);
         $this->coupons->save($coupon);
@@ -67,7 +71,7 @@ final readonly class CouponService
     public function update(int $id, SaveCoupon $command): CouponView
     {
         $coupon = $this->get($id);
-        $terms = self::terms($command, $coupon->isAutomatic() && trim($command->code) === '' ? $coupon->code() : null);
+        $terms = $this->terms($command, $coupon->isAutomatic() && trim($command->code) === '' ? $coupon->code() : null);
         $this->requireFreeCode($terms->code, $id);
         $coupon->change($terms);
         $this->coupons->save($coupon);
@@ -96,8 +100,10 @@ final readonly class CouponService
         }
     }
 
-    private static function terms(SaveCoupon $command, ?string $code = null): CouponTerms
+    private function terms(SaveCoupon $command, ?string $code = null): CouponTerms
     {
+        // Products picked in the admin's language are their originals, the products (design 51).
+        $products = fn(array $ids): array => $this->translations->originals(array_values(array_map(intval(...), array_filter($ids, is_numeric(...)))));
         $money = static fn(?string $amount): ?Money => $amount === null || $amount === '' ? null : Money::of($amount);
         $moment = static fn(?string $at): ?\DateTimeImmutable => $at === null || $at === '' ? null : new \DateTimeImmutable($at)->setTimezone(new \DateTimeZone('UTC'));
         $ids = static fn(array $ids): array => array_values(array_map(intval(...), array_filter($ids, is_numeric(...))));
@@ -115,10 +121,10 @@ final readonly class CouponService
             $money($command->maxSubtotal),
             $command->minQuantity,
             $command->countries,
-            $ids($command->productIds),
+            $products($command->productIds),
             $ids($command->categoryIds),
             $ids($command->brandIds),
-            $ids($command->excludedProductIds),
+            $products($command->excludedProductIds),
             $ids($command->excludedCategoryIds),
             $command->excludeSaleItems,
             $command->combines,
@@ -127,9 +133,9 @@ final readonly class CouponService
             $command->firstOrderOnly,
             $command->buyQuantity,
             $command->getQuantity,
-            $ids($command->getProductIds),
+            $products($command->getProductIds),
             $ids($command->getCategoryIds),
-            $command->giftProductId,
+            $command->giftProductId === null ? null : $this->translations->original($command->giftProductId),
             $command->overridesPriceRules,
             $command->freeShippingEveryRate,
         );

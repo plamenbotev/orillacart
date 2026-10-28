@@ -54,7 +54,8 @@ final readonly class ProductLookup
      */
     public function idsInTerms(array $categoryIds, array $brandIds): array
     {
-        return $this->content->productIdsInTerms($categoryIds, $brandIds);
+        // The products only: their translations' posts are in the same terms' translations (design 51).
+        return $this->products->existing($this->content->productIdsInTerms($categoryIds, $brandIds));
     }
 
     /**

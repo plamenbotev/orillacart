@@ -48,12 +48,19 @@ return [
         ...$wordpressExcludes('traits'),
         'WP_CLI',
     ],
-    'exclude-functions' => $wordpressExcludes('functions'),
+    'exclude-functions' => [
+        ...$wordpressExcludes('functions'),
+        // Polylang's, which the shop looks for by name (design 51).
+        'pll_languages_list', 'pll_default_language', 'pll_current_language', 'pll_get_post_language',
+        'pll_get_post_translations', 'pll_get_term_translations',
+    ],
     'exclude-constants' => [
         ...$wordpressExcludes('constants'),
         'ABSPATH', 'WPINC', 'WP_DEBUG', 'WP_CLI', 'WP_UNINSTALL_PLUGIN',
         'DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'DB_CHARSET', 'DB_COLLATE',
         'ORILLACART_VERSION',
+        // WPML's, by which the shop knows it is there.
+        'ICL_SITEPRESS_VERSION',
     ],
 
     'patchers' => [

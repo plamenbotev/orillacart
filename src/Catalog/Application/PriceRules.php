@@ -25,6 +25,7 @@ final readonly class PriceRules
     public function __construct(
         private PriceRuleRepository $rules,
         private EventDispatcherInterface $events,
+        private ProductTranslations $translations,
     ) {}
 
     /** @return list<PriceRuleView> by name */
@@ -38,7 +39,7 @@ final readonly class PriceRules
      */
     public function create(SavePriceRule $command): PriceRuleView
     {
-        $rule = new PriceRule(...self::arguments($command));
+        $rule = new PriceRule(...$this->arguments($command));
         $this->rules->save($rule);
         $this->events->dispatch(new PriceRulesChanged([$rule->scope()]));
 
@@ -53,7 +54,7 @@ final readonly class PriceRules
     {
         $rule = $this->get($id);
         $before = $rule->scope();
-        $rule->change(...self::arguments($command));
+        $rule->change(...$this->arguments($command));
         $this->rules->save($rule);
         $this->events->dispatch(new PriceRulesChanged([$before, $rule->scope()]));
 
@@ -78,7 +79,7 @@ final readonly class PriceRules
     /**
      * @return array{string, list<PriceTier>, list<int>, list<int>, list<int>, list<int>, ?\DateTimeImmutable, ?\DateTimeImmutable, bool, bool, bool, bool}
      */
-    private static function arguments(SavePriceRule $command): array
+    private function arguments(SavePriceRule $command): array
     {
         $moment = static fn(?string $at): ?\DateTimeImmutable => $at === null || $at === '' ? null : new \DateTimeImmutable($at)->setTimezone(new \DateTimeZone('UTC'));
         $ids = static fn(array $ids): array => array_values(array_map(intval(...), array_filter($ids, is_numeric(...))));
@@ -87,7 +88,8 @@ final readonly class PriceRules
             $command->name,
             array_map(static fn(PriceTierData $tier): PriceTier => new PriceTier($tier->minQuantity, $tier->kind, Money::of($tier->value)), $command->tiers),
             $ids($command->groupIds),
-            $ids($command->productIds),
+            // Products picked in the admin's language are their originals, the products (design 51).
+            $this->translations->originals($ids($command->productIds)),
             $ids($command->categoryIds),
             $ids($command->brandIds),
             $moment($command->startsAt),

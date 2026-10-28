@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Customers\Application;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Customers\Domain\CustomerRuleViolation;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
 use OrillaCart\Storefront\Domain\WishlistPolicy;
@@ -19,6 +20,7 @@ final readonly class Wishlists
     public function __construct(
         private Accounts $accounts,
         private StorefrontSettingsService $storefront,
+        private ProductTranslations $translations,
     ) {}
 
     /**
@@ -40,6 +42,7 @@ final readonly class Wishlists
      */
     public function add(int $customerId, int $productId): array
     {
+        $productId = $this->translations->original($productId);
         return $this->merge($customerId, [$productId]);
     }
 
@@ -50,6 +53,7 @@ final readonly class Wishlists
      */
     public function remove(int $customerId, int $productId): array
     {
+        $productId = $this->translations->original($productId);
         $this->open();
         $wishlist = array_values(array_filter($this->accounts->wishlist($customerId), static fn(int $id): bool => $id !== $productId));
         $this->accounts->saveWishlist($customerId, $wishlist);
@@ -69,6 +73,7 @@ final readonly class Wishlists
     public function merge(int $customerId, array $productIds): array
     {
         $this->open();
+        $productIds = $this->translations->originals($productIds);
         $wishlist = \array_slice(array_values(array_unique([...array_filter($productIds, static fn(int $id): bool => $id > 0), ...$this->accounts->wishlist($customerId)])), 0, self::MOST);
         $this->accounts->saveWishlist($customerId, $wishlist);
 

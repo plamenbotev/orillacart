@@ -38,6 +38,7 @@ final readonly class ProductQuotes
         private ClockInterface $clock,
         private SettingsService $settings,
         private PriceResolver $prices,
+        private ProductTranslations $translations,
     ) {}
 
     /**
@@ -46,13 +47,14 @@ final readonly class ProductQuotes
      */
     public function quote(QuoteRequest $request): ItemQuote
     {
-        $product = $this->products->find($request->productId) ?? throw new ProductNotFound($request->productId);
+        // A translation's post sells its original, the product (design 51); the name is the shopper's language's.
+        $product = $this->products->find($this->translations->original($request->productId)) ?? throw new ProductNotFound($request->productId);
         $now = $this->clock->now();
         $configuration = $product->configure($request->optionIds, $now);
         $base = $product->priceAt($now);
         $details = $product->details();
 
-        $name = $this->content->name($product->id());
+        $name = $this->content->name($this->translations->shown($product->id()));
         if ($configuration->variation !== null) {
             $name .= ' – ' . implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $configuration->variation->options()));
         }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Reviews\Application;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Customers\Application\Accounts;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\OrderService;
@@ -39,6 +40,7 @@ final readonly class Reviews
         private ReviewSettingsRepository $settings,
         private OrderService $orders,
         private Accounts $accounts,
+        private ProductTranslations $translations,
     ) {}
 
     public function settings(): ReviewSettingsView
@@ -66,6 +68,7 @@ final readonly class Reviews
      */
     public function invitation(int $productId, ?int $customerId, ?string $receipt = null): ReviewInvitationView
     {
+        $productId = $this->translations->original($productId);
         $policy = $this->settings->load()->policy;
         if ($policy === ReviewPolicy::Off) {
             return new ReviewInvitationView(false, ReviewInvitationView::OFF);
@@ -98,6 +101,7 @@ final readonly class Reviews
      */
     public function write(int $productId, WriteReview $command, ?int $customerId): WrittenReviewView
     {
+        $productId = $this->translations->original($productId);
         $policy = $this->settings->load()->policy;
         if ($policy === ReviewPolicy::Off) {
             throw new ReviewRuleViolation('The shop takes no reviews.', 'orillacart_reviews_off');
@@ -129,6 +133,7 @@ final readonly class Reviews
      */
     public function page(int $productId, int $page = 1): ReviewPageView
     {
+        $productId = $this->translations->original($productId);
         $page = max(1, $page);
         [$reviews, $total] = $this->store->published($productId, ($page - 1) * self::PER_PAGE, self::PER_PAGE);
         $rating = $this->store->ratings([$productId])[$productId] ?? null;
@@ -154,7 +159,17 @@ final readonly class Reviews
             return [];
         }
 
-        return array_map(RatingView::of(...), $this->store->ratings($productIds));
+        // A translation shows its original's stars (design 51).
+        $originals = array_combine($productIds, $this->translations->originals($productIds));
+        $ratings = array_map(RatingView::of(...), $this->store->ratings(array_values(array_unique($originals))));
+        $byAsked = [];
+        foreach ($originals as $id => $original) {
+            if (isset($ratings[$original])) {
+                $byAsked[$id] = $ratings[$original];
+            }
+        }
+
+        return $byAsked;
     }
 
     /**

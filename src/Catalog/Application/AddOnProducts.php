@@ -13,10 +13,14 @@ use OrillaCart\Extension\Catalog\Products;
  */
 final readonly class AddOnProducts implements Products
 {
-    public function __construct(private ProductRepository $products) {}
+    public function __construct(
+        private ProductRepository $products,
+        private ProductTranslations $translations,
+    ) {}
 
     public function mark(int $productId, string $filterId): bool
     {
+        $productId = $this->translations->original($productId);
         if (preg_match(MarkedProduct::MARK, $filterId) !== 1) {
             throw new \InvalidArgumentException(\sprintf('"%s" is not a product filter\'s id: lowercase letters, digits and underscores, up to 40.', $filterId));
         }
@@ -26,11 +30,13 @@ final readonly class AddOnProducts implements Products
 
     public function unmark(int $productId, string $filterId): void
     {
+        $productId = $this->translations->original($productId);
         $this->products->unmark($productId, $filterId);
     }
 
     public function isMarked(int $productId, string $filterId): bool
     {
+        $productId = $this->translations->original($productId);
         return $this->products->isMarked($productId, $filterId);
     }
 }

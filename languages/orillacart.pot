@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-28T20:45:02+00:00\n"
+"POT-Creation-Date: 2026-10-28T21:31:28+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: orillacart\n"
@@ -286,194 +286,194 @@ msgstr ""
 msgid "Import and export"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:61
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:63
 #: src/Catalog/Infrastructure/WordPress/Content/ProductCategoryTaxonomy.php:22
 #: build/admin/stock.js:2
 msgid "All categories"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:62
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:64
 #: src/Catalog/Infrastructure/WordPress/Content/ProductBrandTaxonomy.php:21
 msgid "All brands"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:63
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:65
 #: src/Catalog/Infrastructure/WordPress/Content/ProductTagTaxonomy.php:22
 msgid "All tags"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:78
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:80
 msgid "Filter by kind"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:78
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:80
 msgid "All kinds"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:79
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:81
 msgid "Filter by stock"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:79
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:81
 msgid "Any stock"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:82
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:84
 msgid "Count stock in"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:82
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:84
 #: build/admin/stock.js:2
 msgid "All stockrooms"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:84
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:86
 msgid "Filter by what is shown"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:84
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:86
 msgid "On sale, featured…"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:85
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:87
 msgid "Filter by what is missing"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:85
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:87
 msgid "Missing anything"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:88
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:90
 msgid "Filter by an add-on"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:88
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:90
 msgid "Add-on filters"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:93
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:95
 msgid "More filters"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:94
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:96
 msgid "Price from"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:94
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:96
 msgid "Price to"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:102
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:104
 msgid "No shipping class"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:106
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:108
 msgid "Filter by shipping class"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:106
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:108
 msgid "Any shipping class"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:107
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:109
 msgid "Filter by attribute set"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:107
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:109
 msgid "Any attribute set"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:111
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:113
 msgid "Clear filters"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:193
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:199
 msgid "Ships"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:194
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:200
 msgid "Does not ship"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:195
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:201
 msgid "With variations"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:196
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:202
 #: build/admin/product-editor.js:10
 msgid "Bundle"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:197
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:203
 msgid "With download files"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:205
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:211
 #: var/i18n/templates.php:144
 msgid "In stock"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:206
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:212
 msgid "Low stock"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:207
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:213
 msgid "Partly out of stock"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:208
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:214
 msgid "Out of stock"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:209
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:215
 msgid "Sold below zero (backorders)"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:210
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:216
 msgid "Always available (not counted)"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:211
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:217
 #: build/admin/stock.js:2
 msgid "Not for sale"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:219
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:225
 #: src/Storefront/Infrastructure/WordPress/Hooks/ShopPatterns.php:126
 msgid "On sale now"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:220
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:226
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:81
 #: build/admin/product-editor.js:10
 msgid "Featured"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:221
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:227
 msgid "Price hidden"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:222
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:228
 msgid "Not purchasable"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:230
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:236
 msgid "Missing a SKU"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:231
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:237
 msgid "Missing a picture"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:232
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:238
 msgid "Missing a category"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:233
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:239
 msgid "Missing a price (zero)"
 msgstr ""
 
-#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:234
+#: src/Catalog/Infrastructure/WordPress/Admin/ProductListFilters.php:240
 msgid "Missing a weight (ships)"
 msgstr ""
 
@@ -486,7 +486,7 @@ msgid "Brands"
 msgstr ""
 
 #: src/Catalog/Infrastructure/WordPress/Content/ProductBrandTaxonomy.php:20
-#: src/Storefront/Infrastructure/WordPress/ShopListing.php:111
+#: src/Storefront/Infrastructure/WordPress/ShopListing.php:114
 msgid "Brand"
 msgstr ""
 
@@ -718,7 +718,7 @@ msgid "Shown beside the category on the shop page."
 msgstr ""
 
 #. translators: %s: the product's name
-#: src/Catalog/Infrastructure/WordPress/WordPressProductContent.php:108
+#: src/Catalog/Infrastructure/WordPress/WordPressProductContent.php:134
 #, php-format
 msgid "%s (copy)"
 msgstr ""
@@ -1047,7 +1047,7 @@ msgid "Variation ID"
 msgstr ""
 
 #: src/Exchange/Infrastructure/WordPress/TranslatedColumnNames.php:63
-#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:140
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:142
 #: var/i18n/templates.php:718
 #: build/admin/blocks.js:1
 #: build/admin/forms.js:2
@@ -2046,25 +2046,25 @@ msgstr ""
 msgid "Categories in %s"
 msgstr ""
 
-#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:137
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:139
 msgid "Best match"
 msgstr ""
 
-#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:138
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:140
 msgid "Recommended"
-msgstr ""
-
-#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:139
-#: build/admin/blocks.js:1
-msgid "Newest"
 msgstr ""
 
 #: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:141
 #: build/admin/blocks.js:1
+msgid "Newest"
+msgstr ""
+
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:143
+#: build/admin/blocks.js:1
 msgid "Price: low to high"
 msgstr ""
 
-#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:142
+#: src/Storefront/Infrastructure/WordPress/Blocks/ProductsBlock.php:144
 #: build/admin/blocks.js:1
 msgid "Price: high to low"
 msgstr ""

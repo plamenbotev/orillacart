@@ -18,6 +18,7 @@ parameters:
         - tests/Fixtures/Checkout/record-legacy-checkout.php
     tmpDir: var/phpstan
     scanFiles:
+        - tools/phpstan/polylang.stub.php
         - tools/phpstan/wp-cli.stub.php
     treatPhpDocTypesAsCertain: false
 

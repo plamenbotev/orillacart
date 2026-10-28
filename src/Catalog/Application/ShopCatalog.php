@@ -45,6 +45,7 @@ final readonly class ShopCatalog
         private PriceResolver $prices,
         private ProductQuotes $quotes,
         private PriceHistory $history,
+        private ProductTranslations $translations,
     ) {}
 
     /**
@@ -54,7 +55,8 @@ final readonly class ShopCatalog
      */
     public function offer(int $id, ?int $customerId = null): ProductOffer
     {
-        $product = $this->products->find($id) ?? throw new ProductNotFound($id);
+        // A translation's post offers its original, the product (design 51).
+        $product = $this->products->find($this->translations->original($id)) ?? throw new ProductNotFound($id);
 
         return $this->toOffer($product, $this->clock->now(), $this->prices->forShopper($customerId), null, $customerId, $this->lowestPrices([$product]));
     }
@@ -69,7 +71,7 @@ final readonly class ShopCatalog
      */
     public function bundleOffer(int $id, array $choices, ?int $customerId = null): ProductOffer
     {
-        $product = $this->products->find($id);
+        $product = $this->products->find($this->translations->original($id));
         if ($product === null || !$product->isBundle() || !$this->content->isPublished($id)) {
             throw new ProductNotFound($id);
         }
@@ -78,7 +80,8 @@ final readonly class ShopCatalog
     }
 
     /**
-     * The offers of the products that have commerce details, keyed by id, in the order asked for.
+     * The offers of the products that have commerce details, keyed by id, in the order asked for; a translation's
+     * id gets its original's offer.
      *
      * @param list<int> $ids
      * @param int|null  $customerId who looks, for the prices of their customer groups
@@ -89,8 +92,9 @@ final readonly class ShopCatalog
     {
         $now = $this->clock->now();
         $prices = $this->prices->forShopper($customerId);
+        $originals = array_combine($ids, $this->translations->originals($ids));
         $found = [];
-        foreach ($this->products->findMany($ids) as $product) {
+        foreach ($this->products->findMany(array_values(array_unique($originals))) as $product) {
             $found[$product->id()] = $product;
         }
         // The stock of every product and variation that counts it, in one query rather than one each.
@@ -109,9 +113,9 @@ final readonly class ShopCatalog
         $owable = $refs === [] ? [] : $this->stock->owableEach($refs);
         $lowest = $this->lowestPrices(array_values($found));
         $offers = [];
-        foreach ($ids as $id) {
-            if (isset($found[$id])) {
-                $offers[$id] = $this->toOffer($found[$id], $now, $prices, $stock, $customerId, $lowest, $owable);
+        foreach ($originals as $id => $original) {
+            if (isset($found[$original])) {
+                $offers[$id] = $this->toOffer($found[$original], $now, $prices, $stock, $customerId, $lowest, $owable);
             }
         }
 
@@ -124,6 +128,7 @@ final readonly class ShopCatalog
      */
     public function nextPriceChange(int $id): ?\DateTimeImmutable
     {
+        $id = $this->translations->original($id);
         $product = $this->products->find($id);
         if ($product === null) {
             return null;
@@ -204,7 +209,7 @@ final readonly class ShopCatalog
 
             return new ProductOffer(
                 $product->id(),
-                $this->content->name($product->id()),
+                $this->content->name($this->translations->shown($product->id())),
                 $details->type->value,
                 $details->sku,
                 (string) $lowest,
@@ -228,7 +233,7 @@ final readonly class ShopCatalog
 
         return new ProductOffer(
             $product->id(),
-            $this->content->name($product->id()),
+            $this->content->name($this->translations->shown($product->id())),
             $details->type->value,
             $details->sku,
             (string) $price,
@@ -274,7 +279,7 @@ final readonly class ShopCatalog
 
         return new ProductOffer(
             $product->id(),
-            $this->content->name($product->id()),
+            $this->content->name($this->translations->shown($product->id())),
             $details->type->value,
             $details->sku,
             $quote->unitPrice ?? '0',
@@ -328,7 +333,7 @@ final readonly class ShopCatalog
             }
             $decisions[] = [
                 'product_id' => $item->productId,
-                'name' => $this->content->name($item->productId),
+                'name' => $this->content->name($this->translations->shown($item->productId)),
                 'quantity' => $item->quantity,
                 'optional' => $item->optional,
                 'choices' => $choices,

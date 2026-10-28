@@ -17,6 +17,7 @@ use OrillaCart\Catalog\Application\ProductFinder;
 use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Application\ProductTaxGroups;
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Application\StockItemNames;
 use OrillaCart\Catalog\Domain\Event\DownloadRemoved;
@@ -189,6 +190,7 @@ use OrillaCart\Tests\Fixtures\GiftCards\MemoryGiftCardSettings;
 use OrillaCart\Tests\Fixtures\GiftCards\SentGiftCards;
 use OrillaCart\Tests\Fixtures\Http\FakeAuthorization;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
+use OrillaCart\Tests\Fixtures\I18n\FakeContentLanguages;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockLevelRepository;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockMovements;
@@ -267,6 +269,9 @@ final class TestShop
     public readonly InMemoryProductRepository $productRecords;
     public readonly ProductService $products;
     public readonly ShopCatalog $catalog;
+    /** Polylang or WPML in memory: no languages until a test gives some. */
+    public readonly FakeContentLanguages $contentLanguages;
+    public readonly ProductTranslations $productTranslations;
     public readonly ProductFinder $productFinder;
     public readonly StockService $stock;
     public readonly InMemoryStockMovements $stockMovements;
@@ -386,7 +391,6 @@ final class TestShop
         $this->settingsService = $settings = new SettingsService($this->settings, $this->events, $geography);
         $this->formRecords = new InMemoryFormRepository();
         $this->uploadRecords = new InMemoryFormUploadRepository();
-        $this->forms = new FormService($this->formRecords);
         $this->fieldAnswers = new FieldAnswers($this->uploadRecords);
         $this->shopForms = new ShopForms($this->formRecords, $this->fieldAnswers);
 
@@ -411,7 +415,10 @@ final class TestShop
 
         $this->events->addListener(ShippingClassDeleted::class, new ForgetDeletedShippingClass($productRecords)(...));
         $this->content = new InMemoryProductContent();
-        $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->shippingClasses, $this->events);
+        $this->contentLanguages = new FakeContentLanguages([]);
+        $this->productTranslations = new ProductTranslations($this->contentLanguages, $productRecords, $this->content);
+        $this->forms = new FormService($this->formRecords, $this->productTranslations);
+        $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->shippingClasses, $this->events, $this->productTranslations);
         $this->events->addListener(SettingsChanged::class, new ConvertProductMeasures($this->products)(...));
         $this->events->addListener(SettingsChanged::class, new ConvertRateMeasures($this->carriers)(...));
         $stockroomRecords = new InMemoryStockroomRepository();
@@ -421,11 +428,11 @@ final class TestShop
         $this->priceRuleRecords = new InMemoryPriceRuleRepository();
         $this->customerGroupRecords = new InMemoryCustomerGroupRepository();
         $prices = new PriceResolver($this->priceRuleRecords, new GroupsOfShoppers($this->customerGroupRecords), $this->clock, $extensions, $settings, $this->logger, $this->failures = new ExtensionFailures());
-        $this->priceRules = new PriceRules($this->priceRuleRecords, $this->events);
-        $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices);
+        $this->priceRules = new PriceRules($this->priceRuleRecords, $this->events, $this->productTranslations);
+        $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $this->productTranslations);
         $this->quotes = $quotes;
         $this->priceHistory = new PriceHistory($this->pricePoints = new InMemoryPriceHistory(), $this->clock);
-        $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $quotes, $this->priceHistory);
+        $this->catalog = new ShopCatalog($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $quotes, $this->priceHistory, $this->productTranslations);
         $this->events->addListener(ProductChanged::class, new RecordPriceChanges($this->catalog, $this->priceHistory)(...));
         $this->productFinder = new ProductFinder($productRecords, $this->stock, new LowStock($productRecords, new StockItemNames($productRecords, $this->content), $this->stock, $this->stockrooms, $settings), $settings, $extensions, $this->logger);
 
@@ -444,7 +451,7 @@ final class TestShop
         $this->currencies = new Currencies($this->currencySettings, $settings, $this->chosenCurrency);
         $this->files = new TemporaryPrivateFiles();
         $this->uploads = new FormUploads($this->shopForms, $this->content, new SafeUploadInspector(), $this->files, $this->uploadRecords, $this->clock, $settings);
-        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads);
+        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads, $this->productTranslations);
         $this->abandonedCarts = new AbandonedCarts($this->cartRecords, $this->abandonedCartRecords, $this->carts, $settings, $this->clock);
         $this->orderRecords = new InMemoryOrderRepository($this->transactions);
         $this->receipts = new ReceiptLinks($this->signatures, $this->clock);
@@ -455,10 +462,10 @@ final class TestShop
         $this->giftCardRecords = new InMemoryGiftCards($this->transactions);
         $this->giftCardSettings = new MemoryGiftCardSettings();
         $this->giftCardMail = new SentGiftCards();
-        $this->giftCards = new GiftCardService($this->giftCardRecords, $this->giftCardSettings, $this->giftCardMail, $settings, $this->transactions, new FixedUserNames(), $this->clock, new SofiaCalendar());
+        $this->giftCards = new GiftCardService($this->giftCardRecords, $this->giftCardSettings, $this->giftCardMail, $settings, $this->transactions, new FixedUserNames(), $this->clock, new SofiaCalendar(), $this->productTranslations);
         $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions, $this->giftCards, $this->events);
         $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds, $this->transactions, $links, $this->signatures, $this->notifiedEvents = new InMemoryNotifiedEvents());
-        $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events);
+        $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events, $this->productTranslations);
         $this->downloads = new Downloads(new InMemoryDownloadGrantRepository($this->orderRecords), $this->files, $links, $this->clock, $this->logger);
         $this->events->addListener(DownloadRemoved::class, new ForgetRemovedDownloads($this->downloads)(...));
         $this->customerSettings = new InMemoryCustomerSettingsRepository();
@@ -478,7 +485,7 @@ final class TestShop
         $this->couponRecords = new InMemoryCouponRepository($this->transactions);
         $this->redemptions = new InMemoryRedemptionRepository();
         $this->events->addListener(OrderAnonymised::class, new ForgetErasedRedemptions($this->redemptions)->anonymised(...));
-        $this->coupons = new CouponService($this->couponRecords);
+        $this->coupons = new CouponService($this->couponRecords, $this->productTranslations);
         $this->discounts = new Discounts($this->couponRecords, $this->redemptions, $this->orders, $this->clock);
         $releasing = new ReleaseCouponUses($this->discounts);
         $this->events->addListener(OrderStatusChanged::class, $releasing->statusChanged(...));

@@ -109,7 +109,7 @@ final class IndexProductsTest extends TestCase
         $this->jobs->runner->work([], 10, 'test');
         $this->index->documents[77] = $this->index->documents[10];
 
-        new SearchIndexing($this->jobs->jobs, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->handler, $this->index)->queueEverything();
+        new SearchIndexing($this->jobs->jobs, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->handler, $this->index, $this->shop->productTranslations)->queueEverything();
 
         self::assertSame([10, 11, 12], array_keys($this->index->documents));
     }
@@ -117,7 +117,7 @@ final class IndexProductsTest extends TestCase
     public function testStockBelowZeroIsIndexedAgainSinceTheBackorderLimitMayRunOut(): void
     {
         $this->jobs->runner->work([], 10, 'test');
-        $listener = new QueueChangedProducts(new SearchIndexing($this->jobs->jobs, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->handler, $this->index));
+        $listener = new QueueChangedProducts(new SearchIndexing($this->jobs->jobs, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->handler, $this->index, $this->shop->productTranslations));
 
         $listener->stockChanged(new StockChanged('product:10', 8, 5));
         self::assertSame([], $this->jobs->queue->jobs, 'still in stock');

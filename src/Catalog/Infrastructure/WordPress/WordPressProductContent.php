@@ -9,9 +9,12 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\VariationPostType;
+use OrillaCart\Shared\I18n\ContentLanguages;
 
 final readonly class WordPressProductContent implements ProductContent
 {
+    public function __construct(private ContentLanguages $languages) {}
+
     public function exists(int $productId): bool
     {
         return get_post_type($productId) === ProductPostType::NAME;
@@ -30,7 +33,7 @@ final readonly class WordPressProductContent implements ProductContent
 
     public function termIds(int $productId): array
     {
-        return ['categories' => self::terms($productId, ProductCategoryTaxonomy::NAME), 'brands' => self::terms($productId, ProductBrandTaxonomy::NAME)];
+        return ['categories' => $this->terms($productId, ProductCategoryTaxonomy::NAME), 'brands' => $this->terms($productId, ProductBrandTaxonomy::NAME)];
     }
 
     public function productIdsInTerms(array $categoryIds, array $brandIds): array
@@ -41,7 +44,8 @@ final readonly class WordPressProductContent implements ProductContent
                 continue;
             }
             $below = [];
-            foreach ($termIds as $termId) {
+            // The terms in every language: a rule names them in the admin's (design 51).
+            foreach ($this->withTranslations($termIds, $taxonomy) as $termId) {
                 $children = get_term_children($termId, $taxonomy);
                 $below[] = $termId;
                 foreach (\is_array($children) ? $children : [] as $child) {
@@ -64,7 +68,7 @@ final readonly class WordPressProductContent implements ProductContent
     /**
      * @return list<int>
      */
-    private static function terms(int $productId, string $taxonomy): array
+    private function terms(int $productId, string $taxonomy): array
     {
         $terms = get_the_terms($productId, $taxonomy);
         $ids = [];
@@ -74,7 +78,29 @@ final readonly class WordPressProductContent implements ProductContent
             }
         }
 
-        return array_keys($ids);
+        // With their translations: a rule or coupon may name the category in another language (design 51).
+        return $this->withTranslations(array_keys($ids), $taxonomy);
+    }
+
+    /**
+     * @param list<int> $termIds
+     *
+     * @return list<int>
+     */
+    private function withTranslations(array $termIds, string $taxonomy): array
+    {
+        if (!$this->languages->multilingual()) {
+            return $termIds;
+        }
+        $all = [];
+        foreach ($termIds as $termId) {
+            $all[$termId] = true;
+            foreach ($this->languages->termTranslations($termId, $taxonomy) as $translation) {
+                $all[$translation] = true;
+            }
+        }
+
+        return array_keys($all);
     }
 
     public function createVariation(int $productId, string $name): int

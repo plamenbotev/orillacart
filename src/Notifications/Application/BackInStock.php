@@ -49,7 +49,8 @@ final readonly class BackInStock
         }
         $offer = $this->catalog->offer($command->productId);
         $soldOut = $offer->soldOut;
-        $item = "product:{$command->productId}";
+        // The original's stock, asked from a translation's page too (design 51).
+        $item = "product:{$offer->id}";
         if ($command->variationId !== null) {
             $variation = array_values(array_filter($offer->variations, static fn(OfferedVariation $variation): bool => $variation->id === $command->variationId))[0] ?? null;
             $soldOut = $variation->soldOut ?? false;
@@ -60,7 +61,7 @@ final readonly class BackInStock
         }
         $email = strtolower(trim($command->email));
         if (!$this->requests->has($item, $email)) {
-            $this->requests->save(new BackInStockRequest($item, $command->productId, $email, $locale, $this->clock->now()));
+            $this->requests->save(new BackInStockRequest($item, $offer->id, $email, $locale, $this->clock->now()));
         }
     }
 

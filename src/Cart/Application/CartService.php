@@ -26,6 +26,7 @@ use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Catalog\Application\Dto\QuotedOption;
 use OrillaCart\Catalog\Application\Dto\QuoteRequest;
 use OrillaCart\Catalog\Application\ProductQuotes;
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Domain\InvalidSelection;
 use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductNotFound;
@@ -71,6 +72,7 @@ final readonly class CartService
         private ShopForms $forms,
         private ProductContent $content,
         private FormUploads $uploads,
+        private ProductTranslations $translations,
     ) {}
 
     public function cart(CartOwner $owner): CartResult
@@ -97,6 +99,14 @@ final readonly class CartService
         if ($this->settings->current()->catalogOnly) {
             throw new CartRuleViolation('The shop does not take orders online.', 'orillacart_catalog_only');
         }
+        // Added from a translation's page, the line is its original's: the product (design 51).
+        $command = new AddToCart(
+            productId: $this->translations->original($command->productId),
+            optionIds: $command->optionIds,
+            quantity: $command->quantity,
+            bundleChoices: $command->bundleChoices,
+            personalisation: $command->personalisation,
+        );
         // Only the questions the product's forms ask are read; files by the token their sender was given.
         $answers = $this->forms->productAnswers($command->productId, $this->content->termIds($command->productId)['categories'], $command->personalisation);
         $values = FieldAnswers::values($answers);

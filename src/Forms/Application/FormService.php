@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Forms\Application;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Forms\Application\Dto\FormView;
 use OrillaCart\Forms\Application\Dto\SaveFieldChoice;
 use OrillaCart\Forms\Application\Dto\SaveForm;
@@ -25,7 +26,10 @@ use OrillaCart\Forms\Domain\FormScope;
  */
 final readonly class FormService
 {
-    public function __construct(private FormRepository $forms) {}
+    public function __construct(
+        private FormRepository $forms,
+        private ProductTranslations $translations,
+    ) {}
 
     /**
      * @return list<FormView> in their order
@@ -84,7 +88,7 @@ final readonly class FormService
         $form->rename($command->name);
         $form->activate($command->active);
         $form->moveTo($command->position);
-        $form->aimAt(FormScope::from($command->scope), $command->categoryIds, $command->productIds);
+        $form->aimAt(FormScope::from($command->scope), $command->categoryIds, $this->translations->originals($command->productIds));
         $keys = [];
         foreach ($command->fields as $field) {
             if ($field->key !== '') {

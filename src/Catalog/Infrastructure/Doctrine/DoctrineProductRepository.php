@@ -114,6 +114,21 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return [$options, $total];
     }
 
+    public function existing(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return self::intList($this->entityManager->createQueryBuilder()
+            ->select('p.id')
+            ->from(Product::class, 'p')
+            ->where('p.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->getQuery()
+            ->getSingleColumnResult());
+    }
+
     public function ids(int $afterId, int $limit): array
     {
         return self::intList($this->entityManager->createQueryBuilder()

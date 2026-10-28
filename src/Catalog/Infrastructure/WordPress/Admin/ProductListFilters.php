@@ -15,6 +15,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Inventory\Application\Dto\StockroomView;
 use OrillaCart\Inventory\Application\StockroomService;
+use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Shipping\Application\ShippingClassService;
 
@@ -50,6 +51,7 @@ final class ProductListFilters
         private readonly StockroomService $stockrooms,
         private readonly ShippingClassService $shippingClasses,
         private readonly AttributeSetService $attributeSets,
+        private readonly ContentLanguages $languages,
     ) {}
 
     public function filters(string $postType): void
@@ -144,6 +146,10 @@ final class ProductListFilters
         ));
         if ($ids === null) {
             return;
+        }
+        // The filters find the products; the list shows them in its language, as their translations.
+        if ($this->languages->multilingual()) {
+            $ids = array_values(array_unique(array_merge($ids, ...array_map(fn(int $id): array => array_values($this->languages->postTranslations($id)), $ids))));
         }
         $already = $query->get('post__in');
         if (\is_array($already) && $already !== []) {

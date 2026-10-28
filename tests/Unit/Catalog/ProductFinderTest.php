@@ -161,7 +161,7 @@ final class ProductFinderTest extends TestCase
                 }
             },
         ];
-        $products = new AddOnProducts($this->shop->productRecords);
+        $products = new AddOnProducts($this->shop->productRecords, $this->shop->productTranslations);
         $finder = $this->shop->productFinder;
 
         self::assertTrue($products->mark(self::CAMERA, 'marketplace'));

@@ -291,6 +291,36 @@ docker exec "$WP" bash -c 'cd /var/www/html && php -r "
 grep -qx 'wp_orillacart_migrations' <<< "$(plugin_tables)" || fail "the upgrade did not restore the schema"
 grep -qx 'wp_orillacart_countries' <<< "$(plugin_tables)" || fail "the upgrade did not create the countries table"
 
+echo "==> Polylang"
+# A product translated by Polylang is one product (design 51): the translation's page sells the original, and
+# a cart line from it is the original's. The release's renamed libraries must leave Polylang's functions alone.
+wp plugin install polylang --activate > /dev/null
+wp eval '
+    foreach ([["English", "en", "en_US", 0], ["Deutsch", "de", "de_DE", 1]] as [$name, $slug, $locale, $order]) {
+        PLL()->model->add_language(["name" => $name, "slug" => $slug, "locale" => $locale, "rtl" => false, "term_group" => $order]);
+    }' > /dev/null
+english="$(wp post create --post_type=orillacart_product --post_title=Cup --post_status=publish --porcelain)"
+[ "$(api -u "admin:$PASS" -X PUT -H 'Content-Type: application/json' -d '{"price":"9.5","stock_mode":"always_available"}' \
+    "$API/products/$english")" = 200 ] || fail "the administrator could not save the product to translate"
+german="$(wp eval "
+    pll_set_post_language($english, 'en');
+    \$de = wp_insert_post(['post_type' => 'orillacart_product', 'post_status' => 'publish', 'post_title' => 'Becher']);
+    pll_set_post_language(\$de, 'de');
+    pll_save_post_translations(['en' => $english, 'de' => \$de]);
+    echo \$de;
+")"
+wp rewrite flush > /dev/null
+sold="$(wp eval "
+    \$kernel = new OrillaCart\Platform\Kernel(new OrillaCart\Platform\PluginContext(WP_PLUGIN_DIR . '/orillacart/orillacart.php', ORILLACART_VERSION));
+    \$translations = \$kernel->container()->get(OrillaCart\Catalog\Application\ProductTranslations::class);
+    \$quote = \$kernel->container()->get(OrillaCart\Catalog\Application\ProductQuotes::class)->quote(new OrillaCart\Catalog\Application\Dto\QuoteRequest($german));
+    echo (\$translations->multilingual() ? 'polylang' : 'none'), ' ', \$quote->productId, ' ', \$quote->unitPrice;
+")"
+[ "$sold" = "polylang $english 9.5" ] || fail "the German translation was sold as '$sold', not as product $english"
+grep -q 'orillacart-price' <<< "$(docker exec "$WP" curl -s -L "$(wp eval "echo get_permalink($german);")")" \
+    || fail "the German translation's page shows no price"
+wp plugin deactivate polylang --uninstall > /dev/null
+
 echo "==> Uninstall"
 # Deleting the plugin keeps the shop's data unless its settings ask for it to go.
 remove_all_data() {

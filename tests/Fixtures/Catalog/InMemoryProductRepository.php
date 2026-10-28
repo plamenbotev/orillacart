@@ -34,6 +34,11 @@ final class InMemoryProductRepository implements ProductRepository
         return $this->products[$id] ?? null;
     }
 
+    public function existing(array $ids): array
+    {
+        return array_values(array_filter($ids, fn(int $id): bool => isset($this->products[$id])));
+    }
+
     public function idsWithSku(string $text): array
     {
         $ids = [];

@@ -20,7 +20,7 @@ final class WordPressExtensionsTest extends TestCase
     public function testTheShopsOwnGatewaysComeFirstAndATakenOrMalformedIdIsLeftOutAndLogged(): void
     {
         $logger = new MemoryLogger();
-        $extensions = new WordPressExtensions([new CashOnDelivery(), new BankTransfer(), self::gateway('bank_transfer'), self::gateway('Not An Id')], $logger, static fn() => throw new \LogicException('No orders in this test.'), static fn() => throw new \LogicException('No products in this test.'), static fn() => throw new \LogicException('No order prices in this test.'));
+        $extensions = new WordPressExtensions([new CashOnDelivery(), new BankTransfer(), self::gateway('bank_transfer'), self::gateway('Not An Id')], $logger, static fn() => throw new \LogicException('No orders in this test.'), static fn() => throw new \LogicException('No products in this test.'), static fn() => throw new \LogicException('No order prices in this test.'), static fn() => throw new \LogicException('No product languages in this test.'));
 
         self::assertSame(['cash_on_delivery', 'bank_transfer'], array_map(static fn(PaymentGateway $gateway): string => $gateway->id(), $extensions->paymentGateways()));
         self::assertSame(['error', 'error'], array_column($logger->records, 'level'));
@@ -29,7 +29,7 @@ final class WordPressExtensionsTest extends TestCase
 
     public function testGatewaysAreRegisteredOnlyOnTheAction(): void
     {
-        $extensions = new WordPressExtensions([], new MemoryLogger(), static fn() => throw new \LogicException('No orders in this test.'), static fn() => throw new \LogicException('No products in this test.'), static fn() => throw new \LogicException('No order prices in this test.'));
+        $extensions = new WordPressExtensions([], new MemoryLogger(), static fn() => throw new \LogicException('No orders in this test.'), static fn() => throw new \LogicException('No products in this test.'), static fn() => throw new \LogicException('No order prices in this test.'), static fn() => throw new \LogicException('No product languages in this test.'));
 
         $this->expectException(\LogicException::class);
         $extensions->paymentGateway(self::gateway('late'));

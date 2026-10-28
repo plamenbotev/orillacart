@@ -1,6 +1,6 @@
 # 51 · A shop in several languages
 
-Status: agreed (2026-10-28), not built. PLAN items 212–217.
+Status: agreed (2026-10-28); step 1 built (PLAN 212), the rest to do. PLAN items 212–217.
 
 Design 46 translates the shop's own words. This one is about the shop's content: products, categories, attributes,
 shipping and payment titles, forms, filters and email templates in each language a site offers.
@@ -31,12 +31,36 @@ shipping and payment titles, forms, filters and email templates in each language
 - **A multilingual contract** grows from `Languages`: the site's languages, the default and the current one, a post's
   or term's translation in a language and its original. Three implementations, chosen at boot: none (one language),
   Polylang, WPML. Add-ons get it through the extension API.
-- **The product editor** is the shop's own screen, where the plugins' language boxes do not show: it gets the
-  language switch and "translate this product" itself, through the plugins' APIs.
+- **The product editor** is WordPress's block editor with the shop's panel, so the plugins' own language boxes and
+  "translate" links show there. On a translation the shop's panel edits the original's price, stock and variations
+  (they are one product): it says so, with a link to the original.
 - **The search index** holds a document per product and language; a search looks in the current language.
 - **REST, the storefront blocks and MCP** take a language: their requests do not carry the plugin's URL language.
 - **Orders** keep the customer's language and send emails in it already; the email templates get one per language.
 - **Not here:** a currency per language belongs to multi-currency.
+
+## Built in step 1
+
+- `Shared\I18n\ContentLanguages` with `OneLanguage`, `PolylangLanguages` (its `pll_*` functions) and
+  `WpmlLanguages` (its documented filters), chosen on first use after the plugins load. Polylang is told to
+  translate products, categories, brands and tags (`pll_get_post_types`, `pll_get_taxonomies`); WPML reads
+  `wpml-config.xml`. Variations are not translated as posts.
+- **Which post is the product** (`Catalog\Application\ProductTranslations`): the one with the shop's details;
+  with none yet, the default language's, so a save from any translation goes there; with several (two products
+  linked as translations later), the oldest. Polylang has no original of its own and WPML's is not used, so both
+  plugins behave alike.
+- Taken back to the original: offers, quotes and the cart line, product saves, variations and downloads, bulk edits
+  (once per product), the search index, reviews and stars, wishlists, back-in-stock requests, add-on marks, and
+  the products coupons, price rules, forms and gift card settings name.
+- Shown from the translation in the request's language: offer and cart line names, product links, product
+  cards' pictures and excerpts, cards in the Products block, the product title's link, the shop pages' links.
+- Terms count in every language: a category, tag or brand page lists the products of its translations, and a price
+  rule or coupon for a category holds for the products in its translations.
+- The assistant's product tools say a post's language and which product a translation is of. Add-ons get
+  `Extension\Catalog\ProductLanguages` (version 17).
+- Known gaps for later steps: an email's product link is the original's address; search filters set for a
+  category do not show on its translation's page; deleting the original post deletes the product, leaving its
+  translations without one; the admin product pickers list the posts of the admin's language.
 
 ## Order
 

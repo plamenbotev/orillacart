@@ -1,0 +1,12 @@
+<wpml-config>
+    <!-- A product's translation is its text; price, stock and variations stay the original's (design 51). -->
+    <custom-types>
+        <custom-type translate="1">orillacart_product</custom-type>
+        <custom-type translate="0">orillacart_variation</custom-type>
+    </custom-types>
+    <taxonomies>
+        <taxonomy translate="1">orillacart_category</taxonomy>
+        <taxonomy translate="1">orillacart_brand</taxonomy>
+        <taxonomy translate="1">orillacart_tag</taxonomy>
+    </taxonomies>
+</wpml-config>

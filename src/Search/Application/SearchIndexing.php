@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Search\Application;
 
 use OrillaCart\Catalog\Application\ProductLookup;
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Search\Application\Dto\QueueStatus;
@@ -22,6 +23,7 @@ final readonly class SearchIndexing
         private ProductLookup $products,
         private IndexProducts $handler,
         private SearchIndex $index,
+        private ProductTranslations $translations,
     ) {}
 
     /**
@@ -29,6 +31,8 @@ final readonly class SearchIndexing
      */
     public function queue(array $productIds): void
     {
+        // A translation's text belongs to its original's document (design 51).
+        $productIds = array_values(array_unique($this->translations->originals($productIds)));
         $this->jobs->pushMany(IndexProducts::TYPE, array_map(
             static fn(int $id): array => ['key' => (string) $id, 'payload' => []],
             // A bundle's price and stock follow its items'.

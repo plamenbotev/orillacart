@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\GiftCards\Application;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\GiftCards\Application\Dto\AdjustBalance;
 use OrillaCart\GiftCards\Application\Dto\ChangeGiftCard;
 use OrillaCart\GiftCards\Application\Dto\GiftCardCredit;
@@ -45,6 +46,7 @@ final readonly class GiftCardService
         private UserNames $users,
         private ClockInterface $clock,
         private ShopCalendar $calendar,
+        private ProductTranslations $translations,
     ) {}
 
     public function page(GiftCardQuery $query): GiftCardPage
@@ -212,7 +214,7 @@ final readonly class GiftCardService
      */
     public function saveSettings(GiftCardSettingsView $command): GiftCardSettingsView
     {
-        $settings = new GiftCardSettings(array_values(array_unique($command->productIds)), $command->validMonths);
+        $settings = new GiftCardSettings(array_values(array_unique($this->translations->originals($command->productIds))), $command->validMonths);
         $this->settings->save($settings);
 
         return GiftCardSettingsView::of($settings);

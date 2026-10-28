@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Search\Application\Dto\Facet;
@@ -15,6 +16,7 @@ use OrillaCart\Search\Application\Dto\SearchResult;
 use OrillaCart\Search\Application\Dto\SearchSort;
 use OrillaCart\Search\Application\ShopSearch;
 use OrillaCart\Search\Domain\Facets;
+use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
 
 /**
@@ -37,6 +39,7 @@ final readonly class ShopListing
     public function __construct(
         private ShopSearch $search,
         private StorefrontSettingsService $settings,
+        private ContentLanguages $languages,
     ) {}
 
     /**
@@ -82,9 +85,9 @@ final readonly class ShopListing
 
         return $this->search->search(new SearchQuery(
             text: $choices['search'] === '' ? null : $choices['search'],
-            categoryIds: $choices['category_id'] === null ? [] : [$choices['category_id']],
-            brandIds: $choices['brands'],
-            tagIds: $choices['tag_id'] === null ? [] : [$choices['tag_id']],
+            categoryIds: $choices['category_id'] === null ? [] : $this->everyLanguage($choices['category_id'], ProductCategoryTaxonomy::NAME),
+            brandIds: array_values(array_unique(array_merge(...array_map(fn(int $id): array => $this->everyLanguage($id, ProductBrandTaxonomy::NAME), $choices['brands'])))),
+            tagIds: $choices['tag_id'] === null ? [] : $this->everyLanguage($choices['tag_id'], ProductTagTaxonomy::NAME),
             options: array_map(static fn(SearchFilterView $filter): OptionFilter => new OptionFilter($filter->key, $filter->attributes, $choices['options'][$filter->key] ?? []), $options),
             priceMin: $choices['price_min'],
             priceMax: $choices['price_max'],
@@ -257,6 +260,17 @@ final readonly class ShopListing
     }
 
     /** The id of the term with the slug; an unknown one is 0, which finds nothing rather than everything. */
+    /**
+     * The term with its translations: the index holds each product's terms in the product's own language, which
+     * need not be the page's (design 51).
+     *
+     * @return list<int>
+     */
+    private function everyLanguage(int $termId, string $taxonomy): array
+    {
+        return array_values(array_unique([$termId, ...array_values($this->languages->termTranslations($termId, $taxonomy))]));
+    }
+
     private static function termId(string $slug, string $taxonomy): ?int
     {
         if ($slug === '') {

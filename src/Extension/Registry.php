@@ -9,6 +9,7 @@ use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Catalog\ProductFilter;
+use OrillaCart\Extension\Catalog\ProductLanguages;
 use OrillaCart\Extension\Catalog\Products;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
@@ -101,6 +102,9 @@ interface Registry
 
     /** Marks the shop's products for product filters. Since version 8. */
     public function products(): Products;
+
+    /** Which post is the product where Polylang or WPML translates products. Since version 17. */
+    public function productLanguages(): ProductLanguages;
 
     /** Changes the prices of orders the shop keeps on hold. Since version 9. */
     public function orderPrices(): OrderPrices;

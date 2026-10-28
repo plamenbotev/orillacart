@@ -34,7 +34,7 @@ final class ReviewsTest extends TestCase
         $this->shop->content->add(30, 'Album');
         $this->shop->products->save(30, new SaveProduct('12', 'virtual'));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
-        $this->reviews = new Reviews($this->store = new InMemoryReviewStore(), new InMemoryReviewSettings(), $this->shop->orders, $this->shop->accounts);
+        $this->reviews = new Reviews($this->store = new InMemoryReviewStore(), new InMemoryReviewSettings(), $this->shop->orders, $this->shop->accounts, $this->shop->productTranslations);
     }
 
     public function testAnyoneReviewsOnceAndABuyersReviewIsMarked(): void

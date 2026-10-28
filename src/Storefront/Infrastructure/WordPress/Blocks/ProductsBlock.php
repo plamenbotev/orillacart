@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Catalog\Application\Dto\ProductOffer;
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
@@ -37,6 +38,7 @@ final readonly class ProductsBlock implements BlockDefinition
         private TemplateRenderer $templates,
         private ProductCards $cards,
         private ProductParts $parts,
+        private ProductTranslations $translations,
     ) {}
 
     public static function name(): string
@@ -198,12 +200,14 @@ final readonly class ProductsBlock implements BlockDefinition
         // Core blocks such as Post title read the global post, as WordPress's Query Loop sets it for each.
         global $post;
         foreach ($ids as $id) {
-            $post = get_post($id);
+            // The card shows the product's translation in the shopper's language; its blocks sell the original.
+            $shown = $this->translations->shown($id);
+            $post = get_post($shown);
             if (!$post instanceof \WP_Post) {
                 continue;
             }
             setup_postdata($post);
-            $html[] = ['id' => $id, 'html' => new \WP_Block($card, ['postId' => $id, 'postType' => ProductPostType::NAME])->render()];
+            $html[] = ['id' => $id, 'html' => new \WP_Block($card, ['postId' => $shown, 'postType' => ProductPostType::NAME])->render()];
         }
         wp_reset_postdata();
 

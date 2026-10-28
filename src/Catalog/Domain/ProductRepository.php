@@ -9,6 +9,15 @@ interface ProductRepository
     public function find(int $id): ?Product;
 
     /**
+     * Which of the post ids are products: have the shop's details, as a translation's post has not.
+     *
+     * @param list<int> $ids
+     *
+     * @return list<int>
+     */
+    public function existing(array $ids): array;
+
+    /**
      * @param list<int> $ids
      *
      * @return list<Product> the ones that exist, in no particular order

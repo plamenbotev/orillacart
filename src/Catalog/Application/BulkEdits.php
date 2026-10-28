@@ -37,6 +37,7 @@ final readonly class BulkEdits
         private StockService $stock,
         private SettingsService $settings,
         private Transactions $transactions,
+        private ProductTranslations $translations,
     ) {}
 
     /**
@@ -50,7 +51,8 @@ final readonly class BulkEdits
     {
         self::check($edit);
         $refused = [];
-        foreach ($ids as $id) {
+        // A product and its translation chosen together are edited once: they are one product (design 51).
+        foreach (array_values(array_unique($this->translations->originals($ids))) as $id) {
             $name = "#{$id}";
             try {
                 $product = $this->products->product($id);
