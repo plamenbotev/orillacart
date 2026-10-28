@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Installs the release zip on a clean WordPress (PHP 8.4, MySQL 8.4) in throwaway containers and
+# Installs the release zip on a clean WordPress (PHP 8.5, MySQL 8.4) in throwaway containers and
 # checks the whole lifecycle: activate, CLI, upgrade on an admin request, uninstall.
 #
 #   bin/smoke-test-release [dist/orillacart-<version>.zip]
@@ -33,7 +33,7 @@ docker network create "$NET" > /dev/null
 docker run -d --name "$DB" --network "$NET" -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=wordpress \
     -e MYSQL_USER=wp -e MYSQL_PASSWORD=wp mysql:8.4 > /dev/null
 docker run -d --name "$WP" --network "$NET" -e WORDPRESS_DB_HOST="$DB" -e WORDPRESS_DB_USER=wp \
-    -e WORDPRESS_DB_PASSWORD=wp -e WORDPRESS_DB_NAME=wordpress wordpress:php8.4-apache > /dev/null
+    -e WORDPRESS_DB_PASSWORD=wp -e WORDPRESS_DB_NAME=wordpress wordpress:php8.5-apache > /dev/null
 for _ in $(seq 1 60); do
     # Over TCP: the temporary server MySQL runs while initialising answers only on its socket.
     docker exec "$DB" mysqladmin ping -h 127.0.0.1 -uroot -proot --silent > /dev/null 2>&1 && break
@@ -426,8 +426,10 @@ wp --url=http://localhost/second/ option get orillacart_version > /dev/null 2>&1
 wp site option get orillacart_network_upgrade > /dev/null 2>&1 && fail "the network's upgrade walk left after uninstall"
 
 echo "==> Debug log"
-if docker exec "$WP" test -s /var/www/html/wp-content/debug.log; then
-    docker exec "$WP" cat /var/www/html/wp-content/debug.log >&2
+# WP-CLI's own deprecations on a newer PHP than it was written for are its own: the plugin's are what count.
+logged="$(docker exec "$WP" sh -c 'cat /var/www/html/wp-content/debug.log 2> /dev/null' | grep -v 'phar:///usr/local/bin/wp/' || true)"
+if [ -n "$logged" ]; then
+    printf '%s\n' "$logged" >&2
     fail "PHP notices or errors were logged"
 fi
 

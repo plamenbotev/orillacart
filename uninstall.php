@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 defined('WP_UNINSTALL_PLUGIN') || exit;
 
-if (PHP_VERSION_ID < 80400) {
+if (PHP_VERSION_ID < 80500) {
     return;
 }
 

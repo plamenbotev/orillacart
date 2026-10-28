@@ -243,7 +243,7 @@ final readonly class SafeUploadInspector implements UploadInspector
     /** Names with #xx escapes as written plainly: /J#61vaScript is /JavaScript. */
     private static function plain(string $bytes): string
     {
-        return (string) preg_replace_callback('/#([0-9A-Fa-f]{2})/', static fn(array $hex): string => \chr((int) hexdec($hex[1])), $bytes);
+        return (string) preg_replace_callback('/#([0-9A-Fa-f]{2})/', static fn(array $hex): string => pack('H2', $hex[1]), $bytes);
     }
 
     private static function acts(string $bytes): bool

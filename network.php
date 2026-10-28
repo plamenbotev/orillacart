@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Description:       Brings a network's OrillaCart shops up to date after an update and shows how it goes in the network admin, also when the main site does not run the shop. Not needed when OrillaCart is on for the whole network.
  * Version:           2.0.0-dev
  * Requires at least: 6.7
- * Requires PHP:      8.4
+ * Requires PHP:      8.5
  * Network:           true
  * License:           GPL-3.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-3.0.html
@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 defined('ABSPATH') || exit;
 
-if (PHP_VERSION_ID < 80400 || !is_multisite()) {
+if (PHP_VERSION_ID < 80500 || !is_multisite()) {
     return;
 }
 

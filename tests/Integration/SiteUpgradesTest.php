@@ -65,6 +65,8 @@ final class SiteUpgradesTest extends TestCase
             self::assertTrue($this->upgrades->upgradeHere(new Kernel($this->context), wait: 1)->isBusy());
             self::assertSame('1.0.0', get_option(PluginLifecycle::VERSION_OPTION));
         } finally {
+            // Released by name: a closed session's locks go only once MySQL has seen it leave, which may be later.
+            $other->query(\sprintf("SELECT RELEASE_LOCK('%s')", $other->real_escape_string($lock)));
             $other->close();
         }
         self::assertTrue($this->upgrades->upgradeHere(new Kernel($this->context))->isUpgraded());

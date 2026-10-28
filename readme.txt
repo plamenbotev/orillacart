@@ -3,7 +3,7 @@ Contributors: orillacart
 Tags: ecommerce, shop, cart, checkout
 Requires at least: 6.7
 Tested up to: 7.1
-Requires PHP: 8.4
+Requires PHP: 8.5
 Stable tag: 2.0.0-dev
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
@@ -64,7 +64,7 @@ corrected in the browser. The cart, checkout and account pages tell caches not t
 
 = 2.0.0 =
 
-Rebuilt from scratch on PHP 8.4, with no code or data kept from 1.x.
+Rebuilt from scratch on PHP 8.5, with no code or data kept from 1.x.
 
 * Storefront blocks: shop, product filters, search, mini cart, cart, checkout and account, from Twig templates a theme can override.
 * Catalog: variations, options with price changes, bundles, digital downloads, stock in several stockrooms, backorders, price rules per customer group, sales with the lowest earlier price shown.
