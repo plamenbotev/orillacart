@@ -20,6 +20,8 @@ namespace {
 
         public static function log(string $message): void {}
 
+        public static function warning(string $message): void {}
+
         /**
          * Asks yes or no; ends the command on no, unless the options hold yes.
          *

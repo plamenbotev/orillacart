@@ -31,6 +31,8 @@ The Mini cart block puts a link to the cart, with the number of items, in a head
 The first request after the update brings the shop's tables up to date; one request does it while the others go
 on. On a large shop, run `wp orillacart migrate` right after updating instead, so no visitor's request does the
 work. If the update fails, the admin screens say why and offer to try again; `wp orillacart migrate` does too.
+On a network, each shop upgrades on its own first request, and the main site's background jobs upgrade the quiet
+ones; the network admin shows how far it is. `wp orillacart migrate --network` upgrades every shop at once.
 
 = Does the shop issue invoices? =
 

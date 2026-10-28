@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\WordPress;
 
 use OrillaCart\Customers\Application\CustomerService;
-use OrillaCart\Platform\Doctrine\DatabaseMigrator;
 use OrillaCart\Platform\Kernel;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Platform\WordPress\Upgrades\SiteUpgrades;
 
 /**
  * Connects the plugin to WordPress: the only place that registers the lifecycle hooks.
@@ -47,23 +47,11 @@ final class Plugin
         $integration = $kernel->container()->get(WordPressIntegration::class);
         \assert($integration instanceof WordPressIntegration);
         $integration->register();
-
-        if (\defined('WP_CLI') && WP_CLI) {
-            \WP_CLI::add_command('orillacart migrate', static function () use ($kernel): void {
-                $migrator = $kernel->container()->get(DatabaseMigrator::class);
-                \assert($migrator instanceof DatabaseMigrator);
-                $executed = $migrator->migrate();
-                self::lifecycle($kernel)->upgradeIfNeeded();
-                delete_option(PluginLifecycle::UPGRADE_FAILED_OPTION);
-                \WP_CLI::success($executed === [] ? 'Database is up to date.' : 'Migrated: ' . implode(', ', $executed));
-            });
-        }
     }
 
     /**
-     * Brings the database up to the files' version, once: one request does it under a database lock while the
-     * others go on. A failure is kept for the admin screens to show, and not tried again on every request for a
-     * while, so a migration that cannot run does not slow down or break the whole site.
+     * Brings the database up to the files' version, once (SiteUpgrades). A failure is not tried again on every
+     * request for a while, so a migration that cannot run does not slow down or break the whole site.
      */
     private static function upgrade(Kernel $kernel, PluginContext $context): void
     {
@@ -74,33 +62,7 @@ final class Plugin
         if (\is_array($failed) && ($failed['version'] ?? null) === $context->build && \is_int($failed['at'] ?? null) && $failed['at'] > time() - self::RETRY_AFTER_SECONDS) {
             return;
         }
-        $wpdb = $GLOBALS['wpdb'] ?? null;
-        \assert($wpdb instanceof \wpdb);
-        $lock = 'orillacart_upgrade_' . $wpdb->prefix;
-        if ($wpdb->get_var((string) $wpdb->prepare('SELECT GET_LOCK(%s, 0)', $lock)) !== '1') {
-            // Another request is upgrading.
-            return;
-        }
-        try {
-            // Read from the table, not the option cache: the request that held the lock may have just finished.
-            $stored = $wpdb->get_var((string) $wpdb->prepare('SELECT option_value FROM %i WHERE option_name = %s', $wpdb->options, PluginLifecycle::VERSION_OPTION));
-            if ($stored === $context->build) {
-                wp_cache_delete('alloptions', 'options');
-
-                return;
-            }
-            if (\function_exists('set_time_limit')) {
-                set_time_limit(0);
-            }
-            ignore_user_abort(true);
-            self::lifecycle($kernel)->upgradeIfNeeded();
-            delete_option(PluginLifecycle::UPGRADE_FAILED_OPTION);
-        } catch (\Throwable $e) {
-            update_option(PluginLifecycle::UPGRADE_FAILED_OPTION, ['version' => $context->build, 'message' => $e->getMessage(), 'at' => time()], false);
-            error_log(\sprintf('[OrillaCart] ERROR: The database could not be upgraded to %s: %s', $context->build, $e));
-        } finally {
-            $wpdb->query((string) $wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lock));
-        }
+        new SiteUpgrades($context)->upgradeHere($kernel);
     }
 
     private static function upgradeNotice(PluginContext $context): void
@@ -164,8 +126,13 @@ final class Plugin
         // A user deleted from the network stops being a customer of every shop on it; deleted_user covers this site.
         add_action('wpmu_delete_user', static function (int $userId) use ($context): void {
             foreach (get_sites(['fields' => 'ids', 'number' => 0, 'site__not_in' => [get_current_blog_id()]]) as $siteId) {
-                self::onSite((int) $siteId, $context, static function (Kernel $kernel) use ($userId): void {
-                    if (get_option(PluginLifecycle::VERSION_OPTION) !== false) {
+                self::onSite((int) $siteId, $context, static function (Kernel $kernel) use ($userId, $context): void {
+                    $stored = get_option(PluginLifecycle::VERSION_OPTION);
+                    if ($stored !== false) {
+                        // A site nobody visited since an update is brought up first: forgetting runs the new code.
+                        if ($stored !== $context->build) {
+                            new SiteUpgrades($context)->upgradeHere($kernel, wait: 30);
+                        }
                         $customers = $kernel->container()->get(CustomerService::class);
                         \assert($customers instanceof CustomerService);
                         $customers->forget($userId);
@@ -193,19 +160,11 @@ final class Plugin
     }
 
     /**
-     * Runs a step as another site of the network. The table prefix is read when a container is made, so each
-     * site gets a container of its own.
-     *
      * @param \Closure(Kernel): void $step
      */
     private static function onSite(int $siteId, PluginContext $context, \Closure $step): void
     {
-        switch_to_blog($siteId);
-        try {
-            $step(new Kernel($context));
-        } finally {
-            restore_current_blog();
-        }
+        SiteKernels::run($siteId, $context, $step);
     }
 
     private static function lifecycle(Kernel $kernel): PluginLifecycle

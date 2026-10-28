@@ -84,3 +84,19 @@ WantedBy=multi-user.target
 ```
 
 Start three with `systemctl enable --now orillacart-jobs@{1..3}`.
+
+## Multisite
+
+Each site of a network has its own queue in its own tables, and a worker serves the site `--url` names. Run a worker,
+or a cron line, for each site whose queue should not wait for its visitors:
+
+```
+* * * * * wp site list --field=url | xargs -I% wp orillacart jobs work --url=%
+```
+
+After an update, each shop upgrades its own tables on its first request. The coordinating site (the main site, or
+the first site with the shop when the main site has none) also queues an `upgrades` job for every other shop still
+behind, so a quiet site is upgraded within minutes of the coordinator's next request, not on its own next visit. A
+worker or a cron line for the coordinator does not wait for that request either. The network admin shows how many
+sites are left, which could not be upgraded and why, with a button to try them again. `wp orillacart migrate
+--network` upgrades every shop at once.

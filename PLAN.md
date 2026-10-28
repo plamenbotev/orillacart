@@ -284,7 +284,7 @@ Design 49. Bundled with the plugin, working once a key is made, covering setup a
 | ✅ | 191 | P1 | Logging in comes first: claude.ai and ChatGPT can only log in, so the admin, the owner's guide and the design lead with giving the app the address (Claude Code, Cursor and VS Code log in too); a key is for clients that cannot, and the admin says when the site cannot offer logging in | 6971453 |
 | ✅ | 192 | P1 | The owner's yes shows what the call would do: `CallDescription`s found by the container; applying the setup asks with the plan it applies (what replaces or is kept, warnings, or that the plan is stale) instead of its fingerprint | cbd5672 |
 | ✅ | 194 | P1 | The assistant's page tools reach only the shop's pages (shop, cart, checkout, account, the legal ones), never the site's others; `change_page` edits unpublished ones; `publish_page` puts live, changes live or takes down, asking first with the page and its text | bca857d |
-| ✅ | 195 | P1 | Publishing the shop's pages is its own risk class, `publishing`, not "customers hear of it": the owner who lets the assistant email customers has not let it publish terms; a class added later is asked about on keys saved before it | |
+| ✅ | 195 | P1 | Publishing the shop's pages is its own risk class, `publishing`, not "customers hear of it": the owner who lets the assistant email customers has not let it publish terms; a class added later is asked about on keys saved before it | 66c45b0 |
 | ⬜ | 193 | P2 | Descriptions for the other risky calls: a refund with its amount, order and customer; a deletion with what is deleted; an email with whom it goes to | |
 | 🔄 | 190 | P2 | Tests: protocol unit tests, every schema valid, a call per area, the MCP Inspector CLI against wp-env for both revisions; docs for owners and for add-on tools | |
 
@@ -302,6 +302,17 @@ Design 50. No page builder of the shop's own: the block editor and site editor a
 | ✅ | 201 | P2 | Extension API 16: `Storefront\ProductBlock` with a plain `ShownProduct`, registered as `orillacart-addon/{id}`, previewed in the editor, allowed in the product card | c5b3248 |
 | ✅ | 202 | P1 | Tests: the first response of a product page built from blocks holds the name, price, form and reviews; the variation changes the price outside the form; the card template in the grid; patterns parse; the assistant's landing pages; an add-on's block | c5b3248 |
 | ⬜ | 203 | P2 | End-to-end in the editor: the product blocks' previews in the site editor's product template, the card designer in the Products block, the Single product chooser | |
+
+## Updates on a network (2026-10-28)
+
+Each site of a network has its own tables and queue. After an update every shop still upgrades on its own first request; the network no longer waits for each quiet shop's visitor.
+
+| | # | P | Item | Commits |
+|---|---|---|---|---|
+| ✅ | 204 | P1 | The network catches up: the coordinating site (the main site, or the first site with the shop when the main site has none) upgrades first and queues one `platform.upgrade_site` job per shop still behind; a failed one stays until retried and clears itself once its site is current; the network admin shows the sites left, the failures with "Try them again", and when it is done; a user deleted from the network is forgotten by shops brought up first | |
+| ✅ | 205 | P1 | `wp orillacart migrate --network`: every shop of the network, one after the other, with what each ran; ends with an error when one could not be upgraded | |
+| ⬜ | 206 | P2 | `wp orillacart jobs work --network [--loop]`: one process serving the queues of every shop of the network, so one cron line or one supervised worker covers them all | |
+| ⬜ | 207 | P3 | Development: a read-only plugin folder without a compiled container runs on the uncompiled builder, whose service locators do not know their classes, so activation stops at "? is not a scheduled task" | |
 
 ## Waiting on others
 
