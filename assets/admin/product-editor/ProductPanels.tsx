@@ -12,7 +12,7 @@ import {
 	store as editorStore,
 } from '@wordpress/editor';
 import { useCallback, useEffect, useRef, useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { store as noticesStore } from '@wordpress/notices';
 
 import { AttributesEditor } from '../catalog/AttributesEditor';
@@ -197,6 +197,9 @@ export function ProductPanels() {
 	const change = ( fields: Partial< ProductInput > ) =>
 		setDraft( { ...draft, ...fields } );
 	const hasVariations = product.variations.length > 0;
+	// On a translation's post (Polylang, WPML) the details are its original's: one product in every language.
+	const productId = product.id;
+	const translation = productId !== postId;
 
 	return (
 		<>
@@ -204,6 +207,21 @@ export function ProductPanels() {
 				name="orillacart-price"
 				title={ __( 'Price and tax', 'orillacart' ) }
 			>
+				{ translation && (
+					<Notice status="info" isDismissible={ false }>
+						{ sprintf(
+							/* translators: %s: the product's name in its original language */
+							__(
+								'This is a translation of %s. Price, stock and variations are the same product in every language: what you change here changes it.',
+								'orillacart'
+							),
+							product.name
+						) }{ ' ' }
+						<a href={ editLink( productId ) }>
+							{ __( 'Open the original', 'orillacart' ) }
+						</a>
+					</Notice>
+				) }
 				<SelectControl
 					__next40pxDefaultSize
 					label={ __( 'Product type', 'orillacart' ) }
@@ -523,7 +541,7 @@ export function ProductPanels() {
 					draft.stock_mode === 'tracked' && (
 						<StockLevels
 							kind="product"
-							id={ postId }
+							id={ productId }
 							stockrooms={ stockrooms }
 							onError={ fail }
 						/>
@@ -567,7 +585,7 @@ export function ProductPanels() {
 			>
 				{ product.saved ? (
 					<DownloadsPanel
-						productId={ postId }
+						productId={ productId }
 						downloads={ product.downloads }
 						limit={ draft.download_limit }
 						expiryDays={ draft.download_expiry_days }
@@ -590,7 +608,7 @@ export function ProductPanels() {
 				title={ __( 'Bundle', 'orillacart' ) }
 			>
 				<BundlePanel
-					productId={ postId }
+					productId={ productId }
 					bundle={ draft.bundle }
 					names={ Object.fromEntries(
 						( product.bundle?.items ?? [] ).map( ( item ) => [
@@ -613,7 +631,7 @@ export function ProductPanels() {
 			>
 				{ product.saved ? (
 					<VariationsPanel
-						productId={ postId }
+						productId={ productId }
 						attributes={ product.offered }
 						variations={ product.variations }
 						stockrooms={ stockrooms }
@@ -632,3 +650,10 @@ export function ProductPanels() {
 		</>
 	);
 }
+
+/**
+ * The edit screen of a product's post.
+ *
+ * @param id The post's id.
+ */
+const editLink = ( id: number ) => `post.php?post=${ id }&action=edit`;

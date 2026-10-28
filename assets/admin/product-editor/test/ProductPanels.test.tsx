@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 import { dispatch, select } from '@wordpress/data';
@@ -149,6 +149,70 @@ describe( 'ProductPanels', () => {
 		expect( screen.getByText( '4 available' ) ).toBeVisible();
 		expect(
 			screen.queryByLabelText( 'Sale starts' )
+		).not.toBeInTheDocument();
+	} );
+
+	it( 'on a translation edits its original, and says so', async () => {
+		// Polylang or WPML: post 10 translates product 7, whose details the shop answers with.
+		const paths: string[] = [];
+		mockedFetch.mockImplementation( ( options ) => {
+			const request = options as Request;
+			paths.push( request.path );
+			switch ( request.path ) {
+				case '/orillacart/v1/products/10':
+					return Promise.resolve( {
+						...product,
+						id: 7,
+						name: 'Becher',
+					} );
+				case '/orillacart/v1/stock/product/7':
+					return Promise.resolve( {
+						item: 'product:7',
+						levels: [ { stockroom_id: 1, quantity: 2 } ],
+						available: 2,
+					} );
+				case '/orillacart/v1/stockrooms':
+					return Promise.resolve( [
+						{
+							id: 1,
+							name: 'Sofia',
+							description: '',
+							min_delivery_days: 1,
+							max_delivery_days: 2,
+							active: true,
+						},
+					] );
+				default:
+					return Promise.resolve( [] );
+			}
+		} );
+
+		render( <ProductPanels /> );
+
+		expect( await screen.findByLabelText( 'Sofia' ) ).toHaveValue( 2 );
+		// In the panel: the notice is also spoken, outside it.
+		const panel = within(
+			screen.getByRole( 'region', { name: 'Price and tax' } )
+		);
+		expect(
+			panel.getByText( /This is a translation of Becher/ )
+		).toBeVisible();
+		expect(
+			panel.getByRole( 'link', { name: 'Open the original' } )
+		).toHaveAttribute( 'href', 'post.php?post=7&action=edit' );
+		expect( paths ).not.toContain( '/orillacart/v1/stock/product/10' );
+	} );
+
+	it( 'says nothing of translations on the product itself', async () => {
+		serve( () => Promise.resolve( product ) );
+
+		render( <ProductPanels /> );
+
+		expect( await screen.findByLabelText( 'Price' ) ).toHaveValue( '10' );
+		expect(
+			within(
+				screen.getByRole( 'region', { name: 'Price and tax' } )
+			).queryByText( /This is a translation/ )
 		).not.toBeInTheDocument();
 	} );
 

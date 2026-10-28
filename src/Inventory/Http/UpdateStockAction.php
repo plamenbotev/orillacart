@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Inventory\Http;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\StockNote;
@@ -30,13 +31,20 @@ final readonly class UpdateStockAction implements RequestHandlerInterface
         private RequestMapper $input,
         private JsonResponder $responder,
         private Authorization $authorization,
+        private ProductTranslations $translations,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         // WordPress matches routes case-insensitively.
-        $item = new StockItemRef(strtolower(PathParameter::string($request, 'kind')), PathParameter::id($request));
+        $item = $this->item(strtolower(PathParameter::string($request, 'kind')), PathParameter::id($request));
 
         return $this->responder->ok($this->stock->setLevels($item, $this->input->body($request, SetStockLevels::class), new StockNote(userId: $this->authorization->userId())));
+    }
+
+    /** A translation's post counts its original's stock (design 51): one product in every language. */
+    private function item(string $kind, int $id): StockItemRef
+    {
+        return new StockItemRef($kind, $kind === 'product' ? $this->translations->original($id) : $id);
     }
 }
