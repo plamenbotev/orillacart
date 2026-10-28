@@ -18,7 +18,7 @@ SCOPER="$ROOT/var/tools/php-scoper-$SCOPER_VERSION.phar"
 WORK="$ROOT/var/build"
 STAGE="$WORK/stage"
 OUT="$WORK/orillacart"
-VERSION="$(sed -n "s/^define('ORILLACART_VERSION', '\(.*\)');/\1/p" "$ROOT/orillacart.php")"
+VERSION="$(sed -n "s/^defined('ORILLACART_VERSION') || define('ORILLACART_VERSION', '\(.*\)');/\1/p" "$ROOT/orillacart.php")"
 
 step() { printf '\n==> %s\n' "$1"; }
 
@@ -30,7 +30,7 @@ step "Strings for translators"
 
 step "Staging production files"
 rm -rf "$WORK" && mkdir -p "$STAGE" "$ROOT/dist"
-cp -R "$ROOT/orillacart.php" "$ROOT/uninstall.php" "$ROOT/readme.txt" "$ROOT/composer.json" "$ROOT/composer.lock" \
+cp -R "$ROOT/orillacart.php" "$ROOT/network.php" "$ROOT/uninstall.php" "$ROOT/readme.txt" "$ROOT/composer.json" "$ROOT/composer.lock" \
       "$ROOT/src" "$ROOT/config" "$ROOT/migrations" "$ROOT/blocks" "$STAGE/"
 mkdir -p "$STAGE/build" && cp -R "$ROOT/build/admin" "$ROOT/build/storefront" "$STAGE/build/"
 [ -d "$ROOT/templates" ] && cp -R "$ROOT/templates" "$STAGE/"

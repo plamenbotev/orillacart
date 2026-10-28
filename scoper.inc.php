@@ -28,14 +28,14 @@ return [
             ->in('vendor')
             ->exclude(['bin', 'doc', 'docs', 'test', 'tests', 'Tests'])
             ->notName('/\.(md|dist|neon|xml|yml|yaml|rst|txt)$|^(LICENSE|Makefile|composer\.(json|lock))$/'),
-        Finder::create()->append(['orillacart.php', 'uninstall.php']),
+        Finder::create()->append(['orillacart.php', 'network.php', 'uninstall.php']),
     ],
 
     // Global files that reference only the plugin and WordPress: copied as they are, not wrapped in the prefix namespace.
     // Absolute paths: relative ones resolve against this config file, not the staging copy being scoped.
     'exclude-files' => array_map(
         static fn(string $file): string => getcwd() . '/' . $file,
-        ['orillacart.php', 'uninstall.php', 'generated/container.php'],
+        ['orillacart.php', 'network.php', 'uninstall.php', 'generated/container.php'],
     ),
 
     // The plugin's own code keeps its namespace; only libraries move under OrillaCart\Vendor.

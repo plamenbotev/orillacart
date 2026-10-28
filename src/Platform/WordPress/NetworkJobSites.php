@@ -9,6 +9,7 @@ use OrillaCart\Jobs\Application\JobSites;
 use OrillaCart\Jobs\Application\JobWorkers;
 use OrillaCart\Platform\Kernel;
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Platform\WordPress\Upgrades\NetworkUpgrades;
 use OrillaCart\Platform\WordPress\Upgrades\SiteUpgrades;
 
 /**
@@ -17,8 +18,11 @@ use OrillaCart\Platform\WordPress\Upgrades\SiteUpgrades;
  */
 final readonly class NetworkJobSites implements JobSites
 {
+    private const int CHORE_SECONDS = 10;
+
     public function __construct(
         private SiteUpgrades $upgrades,
+        private NetworkUpgrades $network,
         private PluginContext $context,
     ) {}
 
@@ -30,6 +34,13 @@ final readonly class NetworkJobSites implements JobSites
     public function sites(): array
     {
         return array_keys($this->upgrades->shops());
+    }
+
+    public function chores(): void
+    {
+        // A batch of the network's walk after an update, short so the queues are not kept waiting.
+        $this->network->start();
+        $this->network->step(self::CHORE_SECONDS);
     }
 
     public function on(int $site, \Closure $work): mixed

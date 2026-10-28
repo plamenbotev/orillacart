@@ -21,10 +21,11 @@ if (PHP_VERSION_ID < 80400) {
     return;
 }
 
-define('ORILLACART_VERSION', '2.0.0-dev');
+// OrillaCart Network (network.php) may have defined it first, with the same version.
+defined('ORILLACART_VERSION') || define('ORILLACART_VERSION', '2.0.0-dev');
 
 // The release's libraries are renamed (PHP-Scoper): its loader also gives the polyfills' functions, such as mb_*,
 // their global names for hosts without the extension. A development checkout has the plain one only.
-require file_exists(__DIR__ . '/vendor/scoper-autoload.php') ? __DIR__ . '/vendor/scoper-autoload.php' : __DIR__ . '/vendor/autoload.php';
+require_once file_exists(__DIR__ . '/vendor/scoper-autoload.php') ? __DIR__ . '/vendor/scoper-autoload.php' : __DIR__ . '/vendor/autoload.php';
 
 \OrillaCart\Platform\WordPress\Plugin::boot(__FILE__, ORILLACART_VERSION);

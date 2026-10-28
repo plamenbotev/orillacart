@@ -8,6 +8,8 @@ use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Platform\Kernel;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Platform\WordPress\Upgrades\NetworkControl;
+use OrillaCart\Platform\WordPress\Upgrades\NetworkUpgrades;
 use OrillaCart\Platform\WordPress\Upgrades\SiteUpgrades;
 
 /**
@@ -35,6 +37,7 @@ final class Plugin
         );
         if (is_multisite()) {
             self::followTheNetwork($context);
+            NetworkControl::boot($pluginFile, $version);
         }
 
         // After an update the files change without a new activation: the first request after it catches up the
@@ -62,7 +65,11 @@ final class Plugin
         if (\is_array($failed) && ($failed['version'] ?? null) === $context->build && \is_int($failed['at'] ?? null) && $failed['at'] > time() - self::RETRY_AFTER_SECONDS) {
             return;
         }
-        new SiteUpgrades($context)->upgradeHere($kernel);
+        $upgrades = new SiteUpgrades($context);
+        // The first shop of a network to see the update begins the network's walk through the others.
+        if ($upgrades->upgradeHere($kernel)->isUpgraded() && is_multisite()) {
+            new NetworkUpgrades($upgrades, $context)->start();
+        }
     }
 
     private static function upgradeNotice(PluginContext $context): void
@@ -98,7 +105,11 @@ final class Plugin
     public static function uninstall(string $pluginFile): void
     {
         // the version only matters for upgrades, which never run during uninstall
-        self::onSites(true, new PluginContext($pluginFile, ''), static fn(Kernel $site) => self::lifecycle($site)->uninstall());
+        $context = new PluginContext($pluginFile, '');
+        self::onSites(true, $context, static fn(Kernel $site) => self::lifecycle($site)->uninstall());
+        if (is_multisite()) {
+            new NetworkUpgrades(new SiteUpgrades($context), $context)->forget();
+        }
     }
 
     /**

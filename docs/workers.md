@@ -104,9 +104,13 @@ wp orillacart jobs work --network --loop --max-time=3600 --path=/var/www/html
 Without `--network` a worker serves the site `--url` names; several of those (`--url` each) give a busy shop
 workers of its own beside a network worker.
 
-After an update, each shop upgrades its own tables on its first request. The coordinating site (the main site, or
-the first site with the shop when the main site has none) also queues an `upgrades` job for every other shop still
-behind, so a quiet site is upgraded within minutes of the coordinator's next request, not on its own next visit. A
-worker or a cron line for the coordinator does not wait for that request either. The network admin shows how many
-sites are left, which could not be upgraded and why, with a button to try them again. `wp orillacart migrate
---network` upgrades every shop at once.
+After an update, each shop upgrades its own tables on its first request. The network also goes through the quiet
+ones itself, not in any shop's queue, so no shop sees the others: short batches that go on from the last site done,
+run by the main site's scheduled tasks and by a worker for the network between its rounds. A site that fails is tried
+again a few times, then waits. The network admin shows how far it got, which shops could not be upgraded and why,
+with a button to try them again. `wp orillacart migrate --network` upgrades every shop at once.
+
+The main site runs this when the shop is on for the whole network. When the shop is on for some sites only, activate
+the bundled **OrillaCart Network** plugin for the network: it runs only the network's side of updates on the main
+site, not the shop. Without it, a worker for the network, WP-CLI and each shop's own visitors still bring them up to
+date, and the shops' admin screens remind super admins of it.

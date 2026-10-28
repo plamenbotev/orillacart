@@ -18,6 +18,9 @@ interface JobSites
      */
     public function sites(): array;
 
+    /** The network's own work a worker for it does between rounds, such as bringing its shops up to date. */
+    public function chores(): void;
+
     /**
      * Runs the work as the site, with the site's own queue.
      *

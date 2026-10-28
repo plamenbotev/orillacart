@@ -161,6 +161,7 @@ final readonly class JobsCommand implements CliCommand
                         $sites = $this->sites->sites();
                         $sitesAt = microtime(true);
                     }
+                    $this->sites->chores();
                     $run = new JobRun();
                     $restart = false;
                     foreach ($sites as $site) {

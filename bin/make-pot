@@ -28,6 +28,6 @@ mkdir -p "$ROOT/var/i18n" "$ROOT/languages"
 php "$ROOT/bin/twig-strings.php" templates > "$ROOT/var/i18n/templates.php"
 php "$ROOT/bin/message-strings.php" "$ROOT/src" > "$ROOT/var/i18n/messages.php"
 (cd "$ROOT" && "${WP[@]}" i18n make-pot . languages/orillacart.pot --slug=orillacart --domain=orillacart \
-    --include=orillacart.php,src,config,blocks,build/admin,build/storefront,var/i18n --exclude=var/build,var/cache,dist \
+    --include=orillacart.php,network.php,src,config,blocks,build/admin,build/storefront,var/i18n --exclude=var/build,var/cache,dist \
     --headers='{"Report-Msgid-Bugs-To":"https://github.com/plamenbotev/orillacart/issues"}')
 rm -r "$ROOT/var/i18n"
