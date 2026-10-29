@@ -150,6 +150,12 @@ final readonly class Refunds
         return $this->forOrder($orderId);
     }
 
+    /** The order a refund is of; null for no such refund. */
+    public function orderOf(int $refundId): ?int
+    {
+        return $this->refunds->find($refundId)?->orderId();
+    }
+
     /**
      * Asks the provider again about a refund it did not answer, under the same id.
      *

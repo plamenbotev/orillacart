@@ -433,6 +433,58 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(422, $this->request('POST', "/orders/{$order['number']}/restock", ['lines' => []], nonce: true)->get_status());
     }
 
+    public function testTheOwnersYesSaysWhatARiskyCallWouldDo(): void
+    {
+        $this->actAs('administrator');
+        $billing = ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Vitosha Blvd', 'city' => 'Sofia', 'postcode' => '1000', 'country' => 'BG', 'phone' => '+359 2 000 0000'];
+        $order = $this->data($this->request('POST', '/orders', ['email' => 'ada@example.com', 'billing' => $billing, 'items' => [['product_id' => $this->lamp, 'quantity' => 2, 'unit_price' => '25']], 'payment' => 'bank_transfer', 'paid' => true], nonce: true));
+        self::assertIsInt($order['number']);
+        $number = $order['number'];
+        $group = $this->id($this->request('POST', '/tax/groups', ['name' => 'Described books'], nonce: true));
+        $card = $this->rows([$this->data($this->request('POST', '/gift-cards', ['amount' => '20', 'recipient_name' => 'Ada', 'recipient_email' => 'ada@example.com'], nonce: true))['card'] ?? null])[0]['id'] ?? null;
+        self::assertIsInt($card);
+
+        $order = "order #{$number} (Ada Lovelace, ada@example.com)";
+
+        self::assertSame(
+            "Gives back 25 EUR of {$order}.\nThe order came to 50 EUR; 0 is refunded already, 50 can be.\nRecorded only: the payment has no provider that can give money back.\nFor 1 × Lamp.\nThe items go back in stock.\nReason: \"Arrived broken\"\nThe customer is emailed about it.",
+            $this->described('refund_order', ['id' => $number, 'amount' => '25', 'lines' => [['line' => 0, 'quantity' => 1]], 'restock' => true, 'reason' => 'Arrived broken']),
+        );
+        self::assertStringStartsWith("Moves {$order} from processing to cancelled, 50 EUR.\nIts items go back in stock", (string) $this->described('change_order_status', ['id' => $number, 'status' => 'cancelled']));
+        self::assertSame("Sends the \"order completed\" email of {$order} to ada@example.com.", $this->described('send_order_email', ['id' => $number, 'kind' => 'order_completed']));
+        self::assertStringEndsWith('(the shop\'s own address).', (string) $this->described('send_order_email', ['id' => $number, 'kind' => 'new_order']), 'the shop\'s own email goes to the shop');
+        self::assertSame("Emails ada@example.com this note on {$order}:\n\"It ships tomorrow.\"", $this->described('add_order_note', ['id' => $number, 'text' => 'It ships tomorrow.', 'for_customer' => true]));
+        self::assertStringStartsWith('Takes 5 EUR off the gift card ending ', (string) $this->described('adjust_gift_card', ['id' => $card, 'amount' => '-5']));
+        self::assertStringEndsWith('of Ada (ada@example.com): its balance goes from 20 to 15 EUR.', (string) $this->described('adjust_gift_card', ['id' => $card, 'amount' => '-5']));
+        self::assertSame('Deletes the tax group "Described books" for good.', $this->described('delete_tax_group', ['id' => $group]));
+        self::assertStringStartsWith("Deletes the order #{$number} (ada@example.com) for good.", (string) $this->described('delete_order', ['id' => $number]));
+        self::assertSame('Moves the product "Lamp" to the trash: it is no longer sold or shown, and placed orders keep it. It can be brought back as a draft.', $this->described('trash_product', ['id' => $this->lamp]));
+        self::assertSame('Removes the download of "Guide" for good.', $this->described('remove_download', ['id' => $this->guide, 'file' => 'abc']), 'something listed in another thing names that thing');
+        $settings = $this->data($this->request('GET', '/settings'));
+        self::assertSame(
+            "Changes the shop's settings:\n• return days: " . (\is_int($settings['return_days']) ? $settings['return_days'] : 'none') . ' → 99',
+            $this->described('update_settings', ['return_days' => 99, 'catalog_only' => $settings['catalog_only']]),
+            'only what changes',
+        );
+        $stockroom = $this->id($this->request('POST', '/stockrooms', ['name' => 'Plovdiv'], nonce: true));
+        self::assertSame('Deletes the stockroom "Plovdiv" for good.', $this->described('delete_stockroom', ['id' => $stockroom]), 'named by its list, which has no read of one');
+        self::assertNull($this->described('delete_tax_group', ['id' => 999999]), 'nothing to name: the tool\'s own words stand');
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     */
+    private function described(string $name, array $arguments): ?string
+    {
+        $tools = self::kernel()->container()->get(\OrillaCart\Assistant\Application\AssistantTools::class);
+        self::assertInstanceOf(\OrillaCart\Assistant\Application\AssistantTools::class, $tools);
+        $caller = new \OrillaCart\Assistant\Application\Dto\Caller(get_current_user_id(), null, false, new \OrillaCart\Assistant\Application\Dto\AssistantChoices());
+        $tool = $tools->find($name, $caller);
+        self::assertNotNull($tool, $name);
+
+        return $tools->describe($tool, $arguments, $caller);
+    }
+
     public function testTheShopTakesAnOrderItselfAndDeletesItOnceCancelled(): void
     {
         $this->actAs('administrator');

@@ -142,6 +142,16 @@ final readonly class OrderEmails
     }
 
     /**
+     * Who an order's email goes to: the customer, or the shop's own address for the shop's emails.
+     *
+     * @throws OrderNotFound
+     */
+    public function recipient(int $orderId, EmailKind $kind): string
+    {
+        return $kind->isForShop() ? $this->writer->shopAddress() : $this->orders->order($orderId)->email;
+    }
+
+    /**
      * Sends an order's email again; the shop asks from the order's screen.
      *
      * @throws OrderNotFound
