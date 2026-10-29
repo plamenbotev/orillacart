@@ -21,6 +21,7 @@ use OrillaCart\Forms\Domain\FormRepository;
 use OrillaCart\Forms\Domain\FormRuleViolation;
 use OrillaCart\Forms\Domain\FormScope;
 use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Translations\Application\TranslationPackages;
 use OrillaCart\Translations\Domain\TranslationRuleViolation;
 
 /**
@@ -33,6 +34,7 @@ final readonly class FormService
         private ProductTranslations $translations,
         private FormTexts $texts,
         private Transactions $transactions,
+        private TranslationPackages $packages,
     ) {}
 
     /**
@@ -91,6 +93,7 @@ final readonly class FormService
             $this->texts->forget($form);
             $this->forms->remove($form);
         });
+        $this->packages->removed(FormPackages::KIND, $id);
     }
 
     /**
@@ -104,6 +107,7 @@ final readonly class FormService
             $this->forms->save($form);
             $this->texts->write($texts, $form);
         });
+        $this->packages->changed(FormPackages::KIND, $form->id());
 
         return $this->view($form);
     }

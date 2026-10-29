@@ -33,6 +33,7 @@ use OrillaCart\Shipping\Domain\ShippingClass;
 use OrillaCart\Shipping\Domain\ShippingClassRepository;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use OrillaCart\Tax\Application\TaxGroupService;
+use OrillaCart\Translations\Application\TranslationPackages;
 use OrillaCart\Translations\Domain\TranslationRuleViolation;
 
 /**
@@ -48,6 +49,7 @@ final readonly class CarrierService
         private ShippingMethods $methods,
         private ShippingTexts $texts,
         private Transactions $transactions,
+        private TranslationPackages $packages,
     ) {}
 
     /**
@@ -138,6 +140,7 @@ final readonly class CarrierService
             $this->texts->forget($carrier);
             $this->carriers->remove($carrier);
         });
+        $this->packages->removed(CarrierPackages::KIND, $id);
     }
 
     /**
@@ -153,6 +156,7 @@ final readonly class CarrierService
             $this->carriers->save($carrier);
             $this->texts->write($texts, $carrier, $ratesBefore, $placesBefore);
         });
+        $this->packages->changed(CarrierPackages::KIND, $carrier->id());
 
         return $this->view($carrier, $this->texts->of([$carrier])[$carrier->id()] ?? null);
     }

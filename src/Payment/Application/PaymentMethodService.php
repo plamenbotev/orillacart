@@ -22,6 +22,7 @@ use OrillaCart\Shared\Extension\SettingsTestView;
 use OrillaCart\Shared\Extension\SettingValues;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Translations\Application\ContentTranslations;
+use OrillaCart\Translations\Application\TranslationPackages;
 use OrillaCart\Translations\Domain\TranslationRuleViolation;
 
 /**
@@ -37,6 +38,7 @@ final readonly class PaymentMethodService
         private PaymentUrls $urls,
         private ContentTranslations $translations,
         private Transactions $transactions,
+        private TranslationPackages $packages,
     ) {}
 
     /**
@@ -83,6 +85,7 @@ final readonly class PaymentMethodService
             $this->methods->save($method);
             $this->translations->write(PaymentMethodTranslations::TYPE, $method->id() ?? 0, $texts);
         });
+        $this->packages->changed(PaymentMethodPackages::KIND, $method->id() ?? 0);
 
         return $this->view($found, $method);
     }

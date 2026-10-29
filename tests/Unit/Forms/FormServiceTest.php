@@ -32,7 +32,7 @@ final class FormServiceTest extends TestCase
         $this->repository = new InMemoryFormRepository();
         $shop = new TestShop();
         $texts = new FormTexts($shop->contentTranslations);
-        $this->forms = new FormService($this->repository, $shop->productTranslations, $texts, new ImmediateTransactions());
+        $this->forms = new FormService($this->repository, $shop->productTranslations, $texts, new ImmediateTransactions(), $shop->translationPackages);
         $this->shop = new ShopForms($this->repository, new FieldAnswers(new InMemoryFormUploadRepository()), $texts);
     }
 

@@ -17,6 +17,7 @@ use OrillaCart\Catalog\Application\OptionTranslations;
 use OrillaCart\Catalog\Application\PriceHistory;
 use OrillaCart\Catalog\Application\PriceResolver;
 use OrillaCart\Catalog\Application\PriceRules;
+use OrillaCart\Catalog\Application\ProductAttributePackages;
 use OrillaCart\Catalog\Application\ProductFinder;
 use OrillaCart\Catalog\Application\ProductQuotes;
 use OrillaCart\Catalog\Application\ProductService;
@@ -56,6 +57,7 @@ use OrillaCart\Customers\Infrastructure\GroupsOfShoppers;
 use OrillaCart\Customers\Infrastructure\TaggedPersonalDataSources;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Forms\Application\FieldAnswers;
+use OrillaCart\Forms\Application\FormPackages;
 use OrillaCart\Forms\Application\FormService;
 use OrillaCart\Forms\Application\FormTexts;
 use OrillaCart\Forms\Application\FormTranslations;
@@ -109,6 +111,7 @@ use OrillaCart\Payment\Application\Gateway\CashOnDelivery;
 use OrillaCart\Payment\Application\Gateway\Cheque;
 use OrillaCart\Payment\Application\Gateways;
 use OrillaCart\Payment\Application\GiveBackLatePayments;
+use OrillaCart\Payment\Application\PaymentMethodPackages;
 use OrillaCart\Payment\Application\PaymentMethodService;
 use OrillaCart\Payment\Application\PaymentMethodTranslations;
 use OrillaCart\Payment\Application\PaymentOptions;
@@ -146,6 +149,7 @@ use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Security\Signatures;
+use OrillaCart\Shipping\Application\CarrierPackages;
 use OrillaCart\Shipping\Application\CarrierService;
 use OrillaCart\Shipping\Application\CarrierTranslations;
 use OrillaCart\Shipping\Application\Consignments;
@@ -203,6 +207,7 @@ use OrillaCart\Tests\Fixtures\GiftCards\SentGiftCards;
 use OrillaCart\Tests\Fixtures\Http\FakeAuthorization;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 use OrillaCart\Tests\Fixtures\I18n\FakeContentLanguages;
+use OrillaCart\Tests\Fixtures\I18n\FakeTranslationService;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockLevelRepository;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockMovements;
@@ -251,6 +256,9 @@ use OrillaCart\Tests\Fixtures\Tax\MemoryTaxQuoteCache;
 use OrillaCart\Tests\Fixtures\TemporaryPrivateFiles;
 use OrillaCart\Tests\Fixtures\Translations\InMemoryTranslations;
 use OrillaCart\Translations\Application\ContentTranslations;
+use OrillaCart\Translations\Application\TranslationPackages;
+use OrillaCart\Translations\Application\TranslationPackageSource;
+use OrillaCart\Translations\Infrastructure\TaggedTranslationPackageSources;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
@@ -290,6 +298,11 @@ final class TestShop
     /** The request's locale, which a test may change. */
     public readonly FakeLanguages $languageOfRequest;
     public readonly ContentTranslations $contentTranslations;
+    /** WPML's string packages, off until a test turns it on. */
+    public readonly FakeTranslationService $translationService;
+    public readonly TranslationPackages $translationPackages;
+    /** @var \ArrayObject<int, TranslationPackageSource> */
+    public readonly \ArrayObject $packageSources;
     public readonly ShippingTexts $shippingTexts;
     public readonly ShippingQuotes $shippingQuotes;
     public readonly AttributeNames $attributeNames;
@@ -439,16 +452,22 @@ final class TestShop
         // One locale, as WordPress has: the request's, an email's, an order edited in its customer's language.
         $this->languageOfRequest = $this->languages;
         $this->contentTranslations = new ContentTranslations($this->translationRecords, $this->translationRecords, $this->contentLanguages, $this->languageOfRequest);
+        $this->packageSources = new \ArrayObject();
+        $this->translationService = new FakeTranslationService();
+        $this->translationPackages = new TranslationPackages(new TaggedTranslationPackageSources($this->packageSources), $this->translationService, $this->contentTranslations);
         $this->shippingTexts = new ShippingTexts($this->contentTranslations);
         $formTexts = new FormTexts($this->contentTranslations);
         $this->shopForms = new ShopForms($this->formRecords, $this->fieldAnswers, $formTexts);
-        $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups, $classRecords, $shippingMethodList, $this->shippingTexts, $this->transactions);
+        $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups, $classRecords, $shippingMethodList, $this->shippingTexts, $this->transactions, $this->translationPackages);
+        $this->packageSources->append(new CarrierPackages($carrierRecords));
         $this->shippingClasses = new ShippingClassService($classRecords, $carrierRecords, $this->events);
 
         $this->events->addListener(ShippingClassDeleted::class, new ForgetDeletedShippingClass($productRecords)(...));
         $this->attributeNames = new AttributeNames($this->contentTranslations);
-        $this->forms = new FormService($this->formRecords, $this->productTranslations, $formTexts, $this->transactions);
-        $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->shippingClasses, $this->events, $this->productTranslations, $this->attributeTexts = new AttributeTexts($this->contentTranslations), $this->transactions);
+        $this->forms = new FormService($this->formRecords, $this->productTranslations, $formTexts, $this->transactions, $this->translationPackages);
+        $this->packageSources->append(new FormPackages($this->formRecords));
+        $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->shippingClasses, $this->events, $this->productTranslations, $this->attributeTexts = new AttributeTexts($this->contentTranslations), $this->transactions, $this->translationPackages);
+        $this->packageSources->append(new ProductAttributePackages($productRecords, $this->content));
         $this->events->addListener(SettingsChanged::class, new ConvertProductMeasures($this->products)(...));
         $this->events->addListener(SettingsChanged::class, new ConvertRateMeasures($this->carriers)(...));
         $stockroomRecords = new InMemoryStockroomRepository();
@@ -471,7 +490,8 @@ final class TestShop
         $gateways = new Gateways($extensions);
         $this->signatures = new Signatures('test secret');
         $this->paymentUrls = $urls = new FakePaymentUrls($this->signatures);
-        $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls, $this->contentTranslations, $this->transactions);
+        $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls, $this->contentTranslations, $this->transactions, $this->translationPackages);
+        $this->packageSources->append(new PaymentMethodPackages($methodRecords));
         $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock, $this->logger);
 
         $this->cartRecords = new InMemoryCartRepository($this->transactions);

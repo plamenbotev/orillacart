@@ -15,6 +15,7 @@ use OrillaCart\Search\Domain\SearchFilterRepository;
 use OrillaCart\Search\Domain\SearchRuleViolation;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Translations\Application\ContentTranslations;
+use OrillaCart\Translations\Application\TranslationPackages;
 use OrillaCart\Translations\Domain\TranslationRuleViolation;
 
 /**
@@ -29,6 +30,7 @@ final readonly class SearchFilters
         private CategoryFiltersRepository $categories,
         private ContentTranslations $translations,
         private Transactions $transactions,
+        private TranslationPackages $packages,
     ) {}
 
     /**
@@ -123,6 +125,7 @@ final readonly class SearchFilters
             $this->translations->forget(SearchFilterTranslations::TYPE, [$filter->id()]);
             $this->filters->remove($filter);
         });
+        $this->packages->removed(SearchFilterPackages::KIND, $id);
     }
 
     /**
@@ -137,6 +140,7 @@ final readonly class SearchFilters
             $this->filters->save($filter);
             $this->translations->write(SearchFilterTranslations::TYPE, $filter->id(), $texts);
         });
+        $this->packages->changed(SearchFilterPackages::KIND, $filter->id());
 
         return SearchFilterView::fromFilter($filter, $this->translations->of(SearchFilterTranslations::TYPE, [$filter->id()])[$filter->id()]['label'] ?? []);
     }

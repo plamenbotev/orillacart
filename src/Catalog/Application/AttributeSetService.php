@@ -15,6 +15,7 @@ use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
 use OrillaCart\Catalog\Domain\Event\ProductChanged;
 use OrillaCart\Catalog\Domain\ProductRepository;
 use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Translations\Application\TranslationPackages;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -28,6 +29,7 @@ final readonly class AttributeSetService
         private EventDispatcherInterface $events,
         private AttributeTexts $texts,
         private Transactions $transactions,
+        private TranslationPackages $packages,
     ) {}
 
     /**
@@ -60,6 +62,7 @@ final readonly class AttributeSetService
             $this->sets->save($set);
             $this->texts->write($texts, $set->ownAttributes(), [], []);
         });
+        $this->packages->changed(AttributePackages::KIND, $set->id());
 
         return AttributeSetView::fromSet($set, $this->texts->of($set->ownAttributes()));
     }
@@ -85,6 +88,7 @@ final readonly class AttributeSetService
             $this->sets->save($set);
             $this->texts->write($texts, $set->ownAttributes(), $attributesBefore, $optionsBefore);
         });
+        $this->packages->changed(AttributePackages::KIND, $id);
         if ($removed !== []) {
             $this->events->dispatch(new CatalogItemsRemoved(optionIds: $removed));
         }
@@ -111,6 +115,7 @@ final readonly class AttributeSetService
         [$attributeIds, $translatedOptions] = AttributeTexts::ids($set->ownAttributes());
         $this->sets->remove($set);
         $this->texts->forget($attributeIds, $translatedOptions);
+        $this->packages->removed(AttributePackages::KIND, $id);
         if ($optionIds !== []) {
             $this->events->dispatch(new CatalogItemsRemoved(optionIds: array_values($optionIds)));
         }

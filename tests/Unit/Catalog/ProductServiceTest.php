@@ -31,6 +31,7 @@ use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductRepository;
 use OrillaCart\Tests\Fixtures\FakeLanguages;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\I18n\FakeContentLanguages;
+use OrillaCart\Tests\Fixtures\I18n\FakeTranslationService;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
@@ -57,8 +58,8 @@ final class ProductServiceTest extends TestCase
         $this->events = new RecordingDispatcher();
         $this->content = new InMemoryProductContent([10 => ['Hoodie', true], 11 => ['Mug', true]]);
         $this->taxGroups = new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), new GeographyService(new InMemoryCountryRepository()), $this->events);
-        $this->products = new ProductService($productRepository, $setRepository, $this->content, $this->taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $this->events), $this->events, new ProductTranslations(new FakeContentLanguages([]), $productRepository, $this->content), $texts = new AttributeTexts(new ContentTranslations($records = new InMemoryTranslations()->add(new AttributeTranslations(), new OptionTranslations()), $records, new FakeContentLanguages([]), new FakeLanguages())), new ImmediateTransactions());
-        $this->sets = new AttributeSetService($setRepository, $productRepository, $this->events, $texts, new ImmediateTransactions());
+        $this->products = new ProductService($productRepository, $setRepository, $this->content, $this->taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $this->events), $this->events, new ProductTranslations(new FakeContentLanguages([]), $productRepository, $this->content), $texts = new AttributeTexts(new ContentTranslations($records = new InMemoryTranslations()->add(new AttributeTranslations(), new OptionTranslations()), $records, new FakeContentLanguages([]), new FakeLanguages())), new ImmediateTransactions(), FakeTranslationService::none());
+        $this->sets = new AttributeSetService($setRepository, $productRepository, $this->events, $texts, new ImmediateTransactions(), FakeTranslationService::none());
     }
 
     public function testChangingOrDeletingASetChangesTheProductsUsingIt(): void

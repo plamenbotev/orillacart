@@ -39,6 +39,7 @@ use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Tax\Application\TaxGroupService;
+use OrillaCart\Translations\Application\TranslationPackages;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -56,6 +57,7 @@ final readonly class ProductService
         private ProductTranslations $translations,
         private AttributeTexts $texts,
         private Transactions $transactions,
+        private TranslationPackages $packages,
     ) {}
 
     /**
@@ -134,6 +136,7 @@ final readonly class ProductService
             $this->products->save($product);
             $this->texts->write($texts, $product->ownAttributes(), $attributesBefore, $optionsBefore);
         });
+        $this->packages->changed(ProductAttributePackages::KIND, $id);
 
         $this->events->dispatch(new ProductChanged($id));
         if ($removedOptions !== []) {
@@ -193,6 +196,7 @@ final readonly class ProductService
         [$attributeIds, $optionIds] = AttributeTexts::ids($product->ownAttributes());
         $this->products->remove($product);
         $this->texts->forget($attributeIds, $optionIds);
+        $this->packages->removed(ProductAttributePackages::KIND, $id);
         foreach ($variationIds as $variationId) {
             $this->content->deleteVariation($variationId);
         }

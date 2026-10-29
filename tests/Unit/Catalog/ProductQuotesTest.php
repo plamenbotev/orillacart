@@ -42,6 +42,7 @@ use OrillaCart\Tests\Fixtures\FakeLanguages;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 use OrillaCart\Tests\Fixtures\I18n\FakeContentLanguages;
+use OrillaCart\Tests\Fixtures\I18n\FakeTranslationService;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockLevelRepository;
 use OrillaCart\Tests\Fixtures\Inventory\InMemoryStockroomRepository;
@@ -73,7 +74,7 @@ final class ProductQuotesTest extends TestCase
         $events = new RecordingDispatcher();
         $this->content = new InMemoryProductContent([10 => ['Mug', true], 20 => ['Hoodie', true], 30 => ['Draft', false]]);
         $taxGroups = new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), new GeographyService(new InMemoryCountryRepository()), $events);
-        $this->products = new ProductService($productRepository, new InMemoryAttributeSetRepository($ids), $this->content, $taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $events), $events, $translations = new ProductTranslations(new FakeContentLanguages([]), $productRepository, $this->content), new AttributeTexts(new ContentTranslations($records = new InMemoryTranslations()->add(new AttributeTranslations(), new OptionTranslations()), $records, new FakeContentLanguages([]), new FakeLanguages())), new ImmediateTransactions());
+        $this->products = new ProductService($productRepository, new InMemoryAttributeSetRepository($ids), $this->content, $taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $events), $events, $translations = new ProductTranslations(new FakeContentLanguages([]), $productRepository, $this->content), new AttributeTexts(new ContentTranslations($records = new InMemoryTranslations()->add(new AttributeTranslations(), new OptionTranslations()), $records, new FakeContentLanguages([]), new FakeLanguages())), new ImmediateTransactions(), FakeTranslationService::none());
         $stockrooms = new InMemoryStockroomRepository();
         $levels = new InMemoryStockLevelRepository();
         $this->stock = new StockService($levels, $stockrooms, $events);

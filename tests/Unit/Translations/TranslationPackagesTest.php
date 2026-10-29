@@ -1,0 +1,89 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Tests\Unit\Translations;
+
+use OrillaCart\Catalog\Application\Dto\SaveAttribute;
+use OrillaCart\Catalog\Application\Dto\SaveOption;
+use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Shared\I18n\Language;
+use OrillaCart\Shipping\Application\Dto\SaveCarrier;
+use OrillaCart\Shipping\Application\Dto\SavePickupLocation;
+use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
+use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Design 51, step 4: the shop's objects as packages of words for WPML's translation management, and what its
+ * translators finish taken into the translations table.
+ */
+final class TranslationPackagesTest extends TestCase
+{
+    private TestShop $shop;
+
+    protected function setUp(): void
+    {
+        $this->shop = new TestShop('2026-10-29 12:00:00 UTC');
+        $this->shop->contentLanguages->languages = [new Language('en', 'en_US', 'English'), new Language('de', 'de_DE', 'Deutsch'), new Language('fr', 'fr_FR', 'Français')];
+        $this->shop->translationService->active = true;
+    }
+
+    public function testASavedCarrierIsAPackageOfItsNamePlacesAndRatesAndGoesWithIt(): void
+    {
+        $pickup = $this->shop->carriers->create(new SaveCarrier('Pickup', pickupLocations: [new SavePickupLocation('shop', 'The shop', 'Main St 1')]));
+        self::assertSame([
+            "carrier:{$pickup->id}:name" => 'Pickup',
+            "carrier:{$pickup->id}:pickup.shop.name" => 'The shop',
+            "carrier:{$pickup->id}:pickup.shop.address" => 'Main St 1',
+        ], $this->shop->translationService->words('carrier', $pickup->id), 'empty hours have nothing to translate');
+        self::assertSame('Pickup', $this->shop->translationService->packages["carrier:{$pickup->id}"]->title);
+
+        $courier = $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Standard', '5')]));
+        $rate = $courier->rates[0]->id;
+        $this->shop->carriers->update($courier->id, new SaveCarrier('Post', rates: [new SaveShippingRate('Normal', '5', id: $rate)]));
+        self::assertSame(["carrier:{$courier->id}:name" => 'Post', "shipping_rate:{$rate}:name" => 'Normal'], $this->shop->translationService->words('carrier', $courier->id), 'its words as they are now');
+
+        $this->shop->carriers->delete($pickup->id);
+        $this->shop->carriers->delete($courier->id);
+        self::assertSame([], $this->shop->translationService->packages);
+    }
+
+    public function testWhatTranslatorsFinishIsTakenAndTheShopsOwnTranslationsOfOtherLanguagesStay(): void
+    {
+        $carrier = $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Standard', '5')], translations: ['fr_FR' => 'Coursier']));
+        $rate = $carrier->rates[0]->id;
+        $this->shop->translationService->finished = [
+            "carrier:{$carrier->id}:name" => ['de_DE' => 'Kurier'],
+            "shipping_rate:{$rate}:name" => ['de_DE' => 'Normal', 'fr_FR' => 'Normale'],
+        ];
+
+        self::assertSame([2, 0], $this->shop->translationPackages->pull(), 'the carrier and its rate');
+        self::assertSame(['name' => ['de_DE' => 'Kurier', 'fr_FR' => 'Coursier']], $this->shop->translationRecords->all('carrier', [$carrier->id])[$carrier->id]);
+        self::assertSame(['name' => ['de_DE' => 'Normal', 'fr_FR' => 'Normale']], $this->shop->translationRecords->all('shipping_rate', [$rate])[$rate]);
+        self::assertSame([0, 0], $this->shop->translationPackages->pull(), 'nothing new the second time');
+    }
+
+    public function testATranslationTheShopWouldRefuseIsLeftOut(): void
+    {
+        $this->shop->content->add(10, 'Shirt');
+        $product = $this->shop->products->save(10, new SaveProduct('20', attributes: [new SaveAttribute('Colour', [new SaveOption('Red')])]));
+        $red = $product->attributes[0]->options[0]->id;
+        self::assertSame("attribute_option:{$red}:name", array_keys($this->shop->translationService->words('product', 10))[1], 'a product\'s own attributes and options');
+        $this->shop->translationService->finished = ["attribute_option:{$red}:name" => ['de_DE' => str_repeat('R', 500)]];
+
+        self::assertSame([0, 1], $this->shop->translationPackages->pull());
+        self::assertSame([], $this->shop->translationRecords->all('attribute_option', [$red]));
+    }
+
+    public function testEveryObjectIsRegisteredAtOnceAndNothingWithoutAService(): void
+    {
+        $this->shop->translationService->active = false;
+        $carrier = $this->shop->carriers->create(new SaveCarrier('Courier'));
+        self::assertSame([], $this->shop->translationService->packages);
+
+        $this->shop->translationService->active = true;
+        self::assertSame(1, $this->shop->translationPackages->registerAll());
+        self::assertArrayHasKey("carrier:{$carrier->id}", $this->shop->translationService->packages);
+    }
+}

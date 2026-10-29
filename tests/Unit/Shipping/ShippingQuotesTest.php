@@ -33,6 +33,7 @@ use OrillaCart\Tests\Fixtures\FakeLanguages;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 use OrillaCart\Tests\Fixtures\I18n\FakeContentLanguages;
+use OrillaCart\Tests\Fixtures\I18n\FakeTranslationService;
 use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
@@ -64,7 +65,7 @@ final class ShippingQuotesTest extends TestCase
         $this->method = new TestShipMethod();
         $methods = new ShippingMethods(new FixedExtensions(methods: [$this->method]));
         $texts = new ShippingTexts(new ContentTranslations($translations = new InMemoryTranslations()->add(new CarrierTranslations(), new RateTranslations()), $translations, new FakeContentLanguages([]), new FakeLanguages()));
-        $this->carriers = new CarrierService($records, $geography, new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), $geography, new RecordingDispatcher()), $classes, $methods, $texts, new ImmediateTransactions());
+        $this->carriers = new CarrierService($records, $geography, new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), $geography, new RecordingDispatcher()), $classes, $methods, $texts, new ImmediateTransactions(), FakeTranslationService::none());
         $settings = new SettingsService(new InMemorySettingsRepository(new StoreSettings(new Currency('EUR'), 2, WeightUnit::Kilogram, DimensionUnit::Centimetre)), new RecordingDispatcher(), $geography);
         $this->logger = new MemoryLogger();
         $this->quotes = new ShippingQuotes($records, $classes, $methods, $settings, $this->cache = new MemoryRateCache(), $this->logger, $texts);

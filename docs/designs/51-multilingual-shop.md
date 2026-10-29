@@ -1,6 +1,6 @@
 # 51 · A shop in several languages
 
-Status: agreed (2026-10-28); steps 1 to 3 built (PLAN 212, 214, 215), the rest to do. PLAN items 212–217.
+Status: agreed (2026-10-28); steps 1 to 4 built (PLAN 212, 214–216), the rest to do. PLAN items 212–217.
 
 Design 46 translates the shop's own words. This one is about the shop's content: products, categories, attributes,
 shipping and payment titles, forms, filters and email templates in each language a site offers.
@@ -130,6 +130,25 @@ shipping and payment titles, forms, filters and email templates in each language
   take the language of the post edited. **The assistant's endpoint** takes `X-OrillaCart-Locale` as the REST API
   does. Related products find the products under each language's terms.
 - The analyzers stay the shop's own (English stopwords); a language's own analysis in OpenSearch is for later.
+
+## Built in step 4
+
+- **One package per object** (`Translations\Application\TranslationPackages`): a carrier with its pickup places'
+  and rates' words, a payment method, a form with its fields and choices, a shop filter, an attribute set with its
+  options, a product's own attributes and options. Each area offers its kind as a `TranslationPackageSource`; the
+  object's save registers its package with its words as they are, its delete removes it.
+- **WPML String Translation** is the service (`WpmlStringPackages`), through its documented string package hooks:
+  `wpml_start_string_package_registration`, `wpml_register_string`, `wpml_delete_unused_package_strings`,
+  `wpml_delete_package`. A string is named by a hash of its field, so its words and title can change.
+- **What translators finish comes back** into the translations table, which stays the truth the shop reads: read
+  through `wpml_translate_string` in each language, after WPML completes or saves a translation job (a job on the
+  `translations` lane), or with `wp orillacart translations pull`. A word WPML has translated replaces the shop's
+  own translation of it in that language; the others stay. A translation the shop would refuse (too long) is left
+  out. Activating or updating the plugin, or activating WPML String Translation, registers every object;
+  `wp orillacart translations register` does too.
+- Not here: translations typed in the shop's own screens are not sent to WPML, and email templates (one per
+  language, step 2) have no package. WPML is commercial and not in the test environment: its hooks are answered by
+  a stand-in, as WPML documents them.
 
 ## Order
 

@@ -40,7 +40,7 @@ final class FiltersByCategoryTest extends TestCase
         $this->categories = new InMemoryCategoryFilters();
         $this->shop = $shop = new TestShop();
         $this->search = new ShopSearch(self::createStub(CatalogSearch::class), $this->repository, $this->categories, $shop->contentLanguages);
-        $this->filters = new SearchFilters($this->repository, new ProductLookup($shop->productRecords, $shop->content), $this->categories, $shop->contentTranslations, new ImmediateTransactions());
+        $this->filters = new SearchFilters($this->repository, new ProductLookup($shop->productRecords, $shop->content), $this->categories, $shop->contentTranslations, new ImmediateTransactions(), $shop->translationPackages);
     }
 
     public function testACategoryWithoutAChoiceOffersEveryFilterInTheShopsOrder(): void

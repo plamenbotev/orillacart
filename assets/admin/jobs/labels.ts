@@ -10,6 +10,7 @@ export const TYPE_LABELS: Record< string, string > = {
 	'exchange.import_products': __( 'Products import', 'orillacart' ),
 	'newsletter.sync': __( 'Mailing lists', 'orillacart' ),
 	'webhook.deliver': __( 'Webhooks', 'orillacart' ),
+	'translations.packages': __( 'WPML translations', 'orillacart' ),
 };
 
 export const LANE_LABELS: Record< string, string > = {
@@ -19,6 +20,7 @@ export const LANE_LABELS: Record< string, string > = {
 	reports: __( 'Reports', 'orillacart' ),
 	imports: __( 'Imports', 'orillacart' ),
 	webhooks: __( 'Webhooks', 'orillacart' ),
+	translations: __( 'Translations', 'orillacart' ),
 };
 
 export const typeLabel = ( type: string ) => TYPE_LABELS[ type ] ?? type;
