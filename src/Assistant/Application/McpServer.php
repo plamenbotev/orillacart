@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Assistant\Application;
 
 use OrillaCart\Assistant\Application\Dto\AssistantChoices;
+use OrillaCart\Assistant\Application\Dto\CallApproval;
 use OrillaCart\Assistant\Application\Dto\Caller;
 use OrillaCart\Assistant\Application\Dto\McpReply;
 use OrillaCart\Assistant\Application\Dto\ToolDefinition;
@@ -118,6 +119,7 @@ final readonly class McpServer
         private AssistantTools $tools,
         private AssistantContext $context,
         private RequestStates $states,
+        private CallApprovals $approvals,
     ) {}
 
     /**
@@ -482,12 +484,10 @@ final readonly class McpServer
     {
         $capabilities = \is_array($meta[self::META_CAPABILITIES] ?? null) ? $meta[self::META_CAPABILITIES] : [];
         $elicitation = $capabilities['elicitation'] ?? null;
-        if (!$modern || !\is_array($elicitation) || ($elicitation !== [] && !isset($elicitation['form']))) {
-            return self::toolResult(ToolOutcome::refused(
-                "{$tool->name} waits for the owner's yes (" . rtrim(self::RISK_WORDS[$tool->risk ?? ''] ?? '', '.') . '), and this client cannot ask them (MCP elicitation, revision ' . self::MODERN . '). Tell the owner what you would do; they can do it in the admin, or let this key do it without asking in Shop → Integrations.',
-            ), $modern);
-        }
         $digest = hash('sha256', $tool->name . "\n" . json_encode(self::sorted($arguments)));
+        if (!$modern || !\is_array($elicitation) || ($elicitation !== [] && !isset($elicitation['form']))) {
+            return $this->approvalPage($tool, $arguments, $caller, $digest, $modern);
+        }
         $responses = \is_array($params['inputResponses'] ?? null) ? $params['inputResponses'] : [];
         $state = $params['requestState'] ?? null;
         $answer = \is_array($responses[self::CONFIRM] ?? null) ? $responses[self::CONFIRM] : null;
@@ -503,9 +503,7 @@ final readonly class McpServer
             }
         }
 
-        // What the call would do, where a description knows it; else what the tool does, with what it is given.
-        $what = $this->tools->describe($tool, $arguments, $caller)
-            ?? $tool->description . ($arguments === [] ? '' : "\n\n" . json_encode($arguments, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        $what = $this->what($tool, $arguments, $caller);
 
         return [
             'resultType' => 'input_required',
@@ -523,6 +521,49 @@ final readonly class McpServer
             ]],
             'requestState' => $this->states->issue(['user' => $caller->userId, 'key' => $caller->keyId, 'call' => $digest], self::ASK_TTL),
         ];
+    }
+
+    /**
+     * The owner's yes for a client that cannot ask it: the call waits on the shop's approval page, whose link the
+     * model is given to show the owner; once they said yes there, the same call runs, once. Null when it may run.
+     *
+     * @param array<string, mixed> $arguments
+     *
+     * @return array<string, mixed>|null
+     */
+    private function approvalPage(ToolDefinition $tool, array $arguments, Caller $caller, string $digest, bool $modern): ?array
+    {
+        $approval = $this->approvals->find($caller, $digest);
+        if ($approval?->state === CallApproval::APPROVED) {
+            $this->approvals->spend($approval);
+
+            return null;
+        }
+        if ($approval?->state === CallApproval::REFUSED) {
+            $this->approvals->spend($approval);
+
+            return self::toolResult(ToolOutcome::refused('The owner said no: nothing was done.'), $modern);
+        }
+        $risk = self::RISK_WORDS[$tool->risk ?? ''] ?? '';
+        $what = $this->what($tool, $arguments, $caller);
+        $approval ??= $this->approvals->ask($caller, $digest, $tool->title, $risk, $what, self::ASK_TTL);
+
+        return self::toolResult(ToolOutcome::refused(
+            "{$tool->name} waits for the owner's yes (" . rtrim($risk, '.') . "), which this app cannot ask for. Give the owner this link, where they see what it would do and answer, logged in to the shop:\n"
+            . $this->approvals->url($approval)
+            . "\nWhen they say yes, call {$tool->name} again with the same arguments: it runs once. The link lasts " . intdiv(self::ASK_TTL, 60) . " minutes.\n\nWhat it would do:\n{$what}",
+        ), $modern);
+    }
+
+    /**
+     * What the call would do, where a description knows it; else what the tool does, with what it is given.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    private function what(ToolDefinition $tool, array $arguments, Caller $caller): string
+    {
+        return $this->tools->describe($tool, $arguments, $caller)
+            ?? $tool->description . ($arguments === [] ? '' : "\n\n" . json_encode($arguments, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     }
 
     /**

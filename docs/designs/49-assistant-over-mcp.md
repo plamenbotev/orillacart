@@ -110,9 +110,12 @@ replaces or keeps and its warnings, or that the shop changed since and it will b
 what they do and the arguments they were given.
 In 2026-07-28 this is a plain retry of the same request. The question carries a state the shop signed with the
 site's secret: who asked, with which key, and a digest of the tool and its arguments. It lasts 15 minutes and
-is good once, so a yes cannot be replayed (a refund would run twice) or used for other arguments. A client that cannot ask gets a refusal that names the
-setting. The owner can untick a class for a key they trust. Clients of the earlier revisions cannot be asked statelessly,
-so they are refused for the classes their key asks about.
+is good once, so a yes cannot be replayed (a refund would run twice) or used for other arguments. The owner can
+untick a class for a key they trust. Clients of the earlier revisions cannot be asked statelessly (the SDK's client
+stops at 2025-11-25, so most apps today): their call waits on the shop's approval page in wp-admin instead, whose
+link the refusal gives the model to show the owner (the owner's report, 2026-10-29). The page shows the same
+description; only the manager the call is made as answers it, with a nonce; the same call made again (the same
+digest, key and user) then runs once, and a no is told once. It lasts 15 minutes (transients).
 
 **Checking the connection.** Some hosts drop the `Authorization` header before PHP sees it. The admin's check
 sends a made-up key without cookies: "a key the shop has not" means the header arrives, "log in" means it was

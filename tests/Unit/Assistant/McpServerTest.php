@@ -18,6 +18,7 @@ use OrillaCart\Assistant\Application\RequestStates;
 use OrillaCart\Assistant\Application\ToolSource;
 use OrillaCart\Assistant\Application\ToolSources;
 use OrillaCart\Shared\Http\Security\Authorization;
+use OrillaCart\Tests\Fixtures\Assistant\MemoryCallApprovals;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -32,10 +33,12 @@ final class McpServerTest extends TestCase
     private \ArrayObject $calls;
 
     private RequestStates $states;
+    private MemoryCallApprovals $approvals;
 
     protected function setUp(): void
     {
         $this->calls = new \ArrayObject();
+        $this->approvals = new MemoryCallApprovals();
         $this->states = new class implements RequestStates {
             /** @var array<string, array<string, mixed>> */
             private array $issued = [];
@@ -112,12 +115,37 @@ final class McpServerTest extends TestCase
         self::assertSame([], $this->calls->getArrayCopy());
     }
 
-    public function testAClientThatCannotAskIsRefusedUnlessTheOwnerLetsTheKey(): void
+    public function testAClientThatCannotAskGetsTheApprovalPageAndTheSameCallRunsOnceTheOwnerSaidYes(): void
     {
-        $refused = $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => []], ['mcp-name' => 'refund_thing']);
+        $refused = $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => ['amount' => '5']], ['mcp-name' => 'refund_thing']);
         self::assertTrue(self::at($refused->body, 'result', 'isError'));
-        self::assertStringContainsString('cannot ask', self::textAt($refused->body, 'result', 'content', 0, 'text'));
+        $text = self::textAt($refused->body, 'result', 'content', 0, 'text');
+        self::assertStringContainsString('cannot ask for. Give the owner this link', $text);
+        self::assertStringContainsString('https://shop.test/wp-admin/admin.php?page=orillacart-approve&request=', $text);
         self::assertSame([], $this->calls->getArrayCopy());
+
+        $again = $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => ['amount' => '5']], ['mcp-name' => 'refund_thing']);
+        self::assertTrue(self::at($again->body, 'result', 'isError'), 'still waiting: the same page');
+        self::assertCount(1, $this->approvals->approvals);
+
+        $this->approvals->answerWaiting(true);
+        $other = $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => ['amount' => '50']], ['mcp-name' => 'refund_thing']);
+        self::assertTrue(self::at($other->body, 'result', 'isError'), 'a yes is for the call it was asked about, not another amount');
+        $run = $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => ['amount' => '5']], ['mcp-name' => 'refund_thing']);
+        self::assertFalse(self::at($run->body, 'result', 'isError'));
+        self::assertCount(1, $this->calls);
+        $twice = $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => ['amount' => '5']], ['mcp-name' => 'refund_thing']);
+        self::assertTrue(self::at($twice->body, 'result', 'isError'), 'once');
+        self::assertCount(1, $this->calls);
+
+        $this->approvals->answerWaiting(false);
+        $no = $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => ['amount' => '5']], ['mcp-name' => 'refund_thing']);
+        self::assertStringContainsString('said no', self::textAt($no->body, 'result', 'content', 0, 'text'));
+        self::assertCount(1, $this->calls);
+    }
+
+    public function testAKeyTheOwnerLetsRunsWithoutAsking(): void
+    {
 
         $trusted = new Caller(1, 7, false, new AssistantChoices(ask: ['deleting']));
         $run = $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => []], ['mcp-name' => 'refund_thing'], $trusted);
@@ -405,7 +433,7 @@ final class McpServerTest extends TestCase
             }
         };
 
-        return new McpServer(new AssistantTools($sources, $authorization, $descriptions), $context, $this->states)->handle($message, $headers, $caller ?? new Caller(1, 7, false));
+        return new McpServer(new AssistantTools($sources, $authorization, $descriptions), $context, $this->states, $this->approvals)->handle($message, $headers, $caller ?? new Caller(1, 7, false));
     }
 
     /**

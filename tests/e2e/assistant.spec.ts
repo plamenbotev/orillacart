@@ -206,6 +206,59 @@ test.describe( 'The AI assistant', () => {
 		}
 	} );
 
+	test( 'an app that cannot ask gives the owner a link, where they see what it would do and say yes', async ( {
+		baseURL,
+		page,
+		requestUtils,
+	} ) => {
+		const group = await requestUtils.rest< { id: number } >( {
+			method: 'POST',
+			path: '/orillacart/v1/tax/groups',
+			data: { name: 'E2E Approve me' },
+		} );
+		const client = new Client( { name: 'e2e-sdk', version: '1' } );
+		await client.connect(
+			new StreamableHTTPClientTransport( new URL( ENDPOINT, baseURL ), {
+				requestInit: {
+					headers: { Authorization: `Bearer ${ key.secret }` },
+				},
+			} ) as unknown as Parameters< Client[ 'connect' ] >[ 0 ]
+		);
+		try {
+			const call = {
+				name: 'delete_tax_group',
+				arguments: { id: group.id },
+			};
+			const waits = await client.callTool( call );
+			expect( waits.isError ).toBe( true );
+			const text =
+				( waits.content as { text: string }[] )[ 0 ]?.text ?? '';
+			const link = text.match(
+				/https?:\/\/\S+orillacart-approve\S+/
+			)?.[ 0 ];
+			expect( link ).toBeDefined();
+
+			// The owner, logged in, reads what it would do and says yes.
+			await page.goto( link ?? '' );
+			await expect(
+				page.getByText(
+					'Deletes the tax group "E2E Approve me" for good.'
+				)
+			).toBeVisible();
+			await page.getByRole( 'button', { name: 'Yes, do it' } ).click();
+			await expect( page.getByText( 'You said yes.' ) ).toBeVisible();
+
+			const ran = await client.callTool( call );
+			expect( ran.isError ).toBe( false );
+			const groups = await requestUtils.rest< { id: number }[] >( {
+				path: '/orillacart/v1/tax/groups',
+			} );
+			expect( groups.map( ( { id } ) => id ) ).not.toContain( group.id );
+		} finally {
+			await client.close();
+		}
+	} );
+
 	test( 'a 2026-07-28 client discovers the server, lists the tools and reads the shop', async ( {
 		request,
 	} ) => {

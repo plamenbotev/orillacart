@@ -87,8 +87,10 @@ In Shop → Integrations, **Choose…** beside a key (each app you connected has
   with the shop's own names: a refund with its amount, the order and customer, how the money goes back and
   whether the items go back in stock; an email or note with whom it goes to; a gift card's or store credit's
   balance before and after; what a deletion deletes; each setting from what it is to what it becomes; the whole
-  plan when applying the setup; the page and its text when publishing. A client that cannot ask is refused for those
-  tools, and the assistant is told to leave them to you.
+  plan when applying the setup; the page and its text when publishing. Most apps today speak an earlier
+  revision and cannot ask: the assistant then gives you a link to the shop's approval page, where you, logged in,
+  read the same and answer. Once you say yes there, the assistant makes the same call again and it runs, once;
+  the link lasts 15 minutes.
 - **What it may use**: the shop's areas and each add-on's tools. An area added later is offered until you untick
   it.
 - **How the tools are listed**: all of them (about 230), or three tools that find, describe and run the others,
