@@ -6,6 +6,7 @@ namespace OrillaCart\Jobs\Infrastructure;
 
 use OrillaCart\Jobs\Application\JobHandler;
 use OrillaCart\Jobs\Application\JobHandlers;
+use OrillaCart\Shared\Container\LocatedServices;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
@@ -42,8 +43,8 @@ final readonly class LocatedJobHandlers implements JobHandlers
     public function queues(): array
     {
         $queues = [];
-        foreach ($this->handlers->getProvidedServices() as $class) {
-            if (\is_string($class) && is_a($class, JobHandler::class, true)) {
+        foreach (LocatedServices::classes($this->handlers) as $class) {
+            if (is_a($class, JobHandler::class, true)) {
                 $queues[$class::queue()] = true;
             }
         }

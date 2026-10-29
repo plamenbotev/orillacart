@@ -36,7 +36,8 @@ use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Builds the service container: the class compiled during the release build when it exists,
- * otherwise one compiled from config/services.php and cached in var/cache until a source file changes (development).
+ * otherwise one compiled from config/services.php and cached in var/cache until a source file changes (development);
+ * for a read-only plugin folder in wp-content/cache/orillacart/container.
  */
 final class Kernel
 {
@@ -134,19 +135,43 @@ final class Kernel
             return self::requireContainer($compiled);
         }
 
-        $cache = new ConfigCache($this->context->path(self::DEV_CONTAINER_FILE), true);
-        if (!$cache->isFresh()) {
-            $builder = self::buildContainer($this->context->dir);
-            $builder->compile();
+        $builder = null;
+        foreach ($this->cacheFiles() as $file) {
+            $cache = new ConfigCache($file, true);
+            if ($cache->isFresh()) {
+                return self::requireContainer($cache->getPath());
+            }
+            if ($builder === null) {
+                $builder = self::buildContainer($this->context->dir);
+                $builder->compile();
+            }
             try {
                 self::writeContainer($builder, \dirname($cache->getPath()), self::DEV_CONTAINER_CLASS, $cache);
+
+                return self::requireContainer($cache->getPath());
             } catch (IOException) {
-                // A read-only plugin folder: run without the cache.
-                return $builder;
+                // Not writable: the next place, else the container as built.
             }
         }
 
-        return self::requireContainer($cache->getPath());
+        // Nowhere to write: run on the builder, slower; its service locators do not know their classes (LocatedServices).
+        return $builder ?? throw new \LogicException('The container has no place to be cached.');
+    }
+
+    /**
+     * Where the development container is cached: the plugin's own var/cache, else, for a read-only plugin folder,
+     * wp-content/cache/orillacart/container, a folder per plugin folder (CacheFolders removes it with the rest).
+     *
+     * @return list<string>
+     */
+    private function cacheFiles(): array
+    {
+        $files = [$this->context->path(self::DEV_CONTAINER_FILE)];
+        if (\defined('WP_CONTENT_DIR')) {
+            $files[] = WP_CONTENT_DIR . '/cache/orillacart/container/' . substr(hash('sha256', $this->context->dir), 0, 16) . '/container.php';
+        }
+
+        return $files;
     }
 
     /**

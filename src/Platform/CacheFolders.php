@@ -9,7 +9,8 @@ use OrillaCart\Shared\Lifecycle\LifecycleListener;
 /**
  * What the plugin compiles once and reads on every request, in wp-content/cache/orillacart/<kind>/<version>: the
  * Twig templates and Doctrine's mapping. Older versions' folders go after an update, and the whole folder when
- * the plugin is deleted. Nothing of the shop's is kept there, so it goes whatever the shop chose.
+ * the plugin is deleted, with the development container a read-only plugin folder caches in container/<folder>
+ * (Kernel), which rebuilds itself when its sources change. Nothing of the shop's is kept there, so it goes whatever the shop chose.
  */
 final readonly class CacheFolders implements LifecycleListener
 {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\Health;
 
+use OrillaCart\Shared\Container\LocatedServices;
 use OrillaCart\Shared\WordPress\HealthCheck;
 use OrillaCart\Shared\WordPress\HealthStatus;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
@@ -29,8 +30,7 @@ final readonly class ShopHealth
     public function labels(): array
     {
         $labels = [];
-        foreach ($this->checks->getProvidedServices() as $id => $class) {
-            $class = ltrim($class, '?');
+        foreach (LocatedServices::classes($this->checks) as $id => $class) {
             $labels[$id] = is_subclass_of($class, HealthCheck::class) ? $class::label() : $id;
         }
 

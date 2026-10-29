@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Scheduling;
 
+use OrillaCart\Shared\Container\LocatedServices;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\WordPress\ScheduledTask;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
@@ -24,7 +25,7 @@ final readonly class TaskSchedule implements LifecycleListener
 
     public function activate(): void
     {
-        foreach ($this->tasks->getProvidedServices() as $hook => $class) {
+        foreach (LocatedServices::classes($this->tasks) as $hook => $class) {
             if (!is_subclass_of($class, ScheduledTask::class)) {
                 throw new \LogicException(\sprintf('%s is not a scheduled task.', $class));
             }
