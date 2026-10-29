@@ -19,5 +19,7 @@ final readonly class EmailTemplateView
         public bool $edited,
         public string $previews,
         public ?string $updatedAt = null,
+        /** @var list<string> the locales that have a template of their own, in place of this one */
+        public array $languages = [],
     ) {}
 }

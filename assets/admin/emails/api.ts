@@ -51,6 +51,8 @@ export interface EmailTemplate {
 	/** The email it shows in a preview: an email kind, account_confirm or account_exists. */
 	previews: string;
 	updated_at: string | null;
+	/** The locales that have a template of their own in place of this one. */
+	languages: string[];
 }
 
 export interface EmailTemplateSource extends EmailTemplate {
@@ -58,6 +60,10 @@ export interface EmailTemplateSource extends EmailTemplate {
 	source: string;
 	/** The theme's or the plugin's file; null when there is none. */
 	file_source: string | null;
+	/** The site's language it is for (de_DE); empty for every language. */
+	locale: string;
+	/** For a language: the shop's template for every language, which its readers get until it has its own. */
+	every_language: string | null;
 }
 
 export interface PreviewInput {
@@ -67,6 +73,8 @@ export interface PreviewInput {
 	kind: string | null;
 	/** The order an order email is about; null for the latest. */
 	order: number | null;
+	/** The language's template, written in it; empty for every language's. */
+	locale: string;
 }
 
 export interface EmailPreview {
@@ -81,45 +89,62 @@ export function fetchEmailTemplates(): Promise< EmailTemplate[] > {
 }
 
 /**
+ * The address of a template, for one language or (empty) every language.
+ *
+ * @param name   The template, as the files name it.
+ * @param locale A site's language, or empty.
+ */
+const templatePath = ( name: string, locale: string ): string =>
+	`${ BASE }/email-templates/${ name }${
+		locale === '' ? '' : `?locale=${ encodeURIComponent( locale ) }`
+	}`;
+
+/**
  * One template, with the file it started from.
  *
- * @param name The template, as the files name it.
+ * @param name   The template, as the files name it.
+ * @param locale One of the site's languages; empty for every language.
  */
 export function fetchEmailTemplate(
-	name: string
+	name: string,
+	locale = ''
 ): Promise< EmailTemplateSource > {
 	return apiFetch< EmailTemplateSource >( {
-		path: `${ BASE }/email-templates/${ name }`,
+		path: templatePath( name, locale ),
 	} );
 }
 
 /**
- * Keeps the shop's own template in place of the file's.
+ * Keeps the shop's own template in place of the file's, for every language or one.
  *
  * @param name   The template, as the files name it.
  * @param source Its Twig.
+ * @param locale One of the site's languages; empty for every language.
  */
 export function saveEmailTemplate(
 	name: string,
-	source: string
+	source: string,
+	locale = ''
 ): Promise< EmailTemplateSource > {
 	return apiFetch< EmailTemplateSource >( {
 		path: `${ BASE }/email-templates/${ name }`,
 		method: 'PUT',
-		data: { source },
+		data: { source, locale },
 	} );
 }
 
 /**
- * Goes back to the template's file.
+ * Goes back to the template's file; a language's, to the template for every language.
  *
- * @param name The template, as the files name it.
+ * @param name   The template, as the files name it.
+ * @param locale One of the site's languages; empty for every language.
  */
 export function resetEmailTemplate(
-	name: string
+	name: string,
+	locale = ''
 ): Promise< EmailTemplateSource > {
 	return apiFetch< EmailTemplateSource >( {
-		path: `${ BASE }/email-templates/${ name }`,
+		path: templatePath( name, locale ),
 		method: 'DELETE',
 	} );
 }

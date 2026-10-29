@@ -10,17 +10,17 @@ use OrillaCart\Shared\View\EditedTemplates;
 
 final class InMemoryEmailTemplates implements EmailTemplateRepository, EditedTemplates
 {
-    /** @var array<string, EmailTemplate> */
+    /** @var array<string, EmailTemplate> by name and locale */
     private array $templates = [];
 
-    public function edited(string $name): ?string
+    public function edited(string $name, string $locale): ?string
     {
-        return ($this->templates[$name] ?? null)?->source();
+        return ($this->templates[$name . '|' . $locale] ?? $this->templates[$name . '|'] ?? null)?->source();
     }
 
-    public function find(string $name): ?EmailTemplate
+    public function find(string $name, string $locale = EmailTemplate::EVERY_LANGUAGE): ?EmailTemplate
     {
-        return $this->templates[$name] ?? null;
+        return $this->templates[$name . '|' . $locale] ?? null;
     }
 
     public function all(): array
@@ -32,11 +32,11 @@ final class InMemoryEmailTemplates implements EmailTemplateRepository, EditedTem
 
     public function save(EmailTemplate $template): void
     {
-        $this->templates[$template->name()] = $template;
+        $this->templates[$template->name() . '|' . $template->locale()] = $template;
     }
 
     public function remove(EmailTemplate $template): void
     {
-        unset($this->templates[$template->name()]);
+        unset($this->templates[$template->name() . '|' . $template->locale()]);
     }
 }

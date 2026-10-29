@@ -18,6 +18,7 @@ import { errorMessage } from '../shared/api';
 import { useBusy } from '../shared/useBusy';
 import { useConfirm } from '../shared/useConfirm';
 import { useUnsavedChanges } from '../shared/useUnsavedChanges';
+import { useOtherLanguages } from '../shared/Translations';
 import {
 	type EmailPreview,
 	type EmailTemplateSource,
@@ -40,7 +41,8 @@ interface TemplateEditorProps {
 /**
  * One email template in Twig, as the shop writes it: saved in place of the theme's or the plugin's file, checked
  * first, and shown before it is saved with a real order (the latest, or one the shop names). A test goes to
- * whoever asks; resetting goes back to the file.
+ * whoever asks; resetting goes back to the file. On a site in several languages each of its other languages may
+ * have a template of its own, which its readers get; resetting one goes back to the template for every language.
  *
  * @param props         The editor's properties.
  * @param props.name    The template, as the files name it: "order-shipped".
@@ -53,6 +55,10 @@ export function TemplateEditor( { name, onClose }: TemplateEditorProps ) {
 	const [ source, setSource ] = useState( '' );
 	const [ kind, setKind ] = useState< string | null >( null );
 	const [ order, setOrder ] = useState( '' );
+	const languages = useOtherLanguages();
+	// Empty for every language.
+	const [ locale, setLocale ] = useState( '' );
+	const language = languages.find( ( other ) => other.locale === locale );
 	const [ preview, setPreview ] = useState< EmailPreview | null >( null );
 	const [ message, setMessage ] = useState< Message >( null );
 	const [ busy, run ] = useBusy();
@@ -61,13 +67,13 @@ export function TemplateEditor( { name, onClose }: TemplateEditorProps ) {
 		setMessage( { status: 'error', text: errorMessage( error ) } );
 
 	useEffect( () => {
-		fetchEmailTemplate( name )
+		fetchEmailTemplate( name, locale )
 			.then( ( loaded ) => {
 				setTemplate( loaded );
 				setSource( loaded.source );
 			} )
 			.catch( fail );
-	}, [ name ] );
+	}, [ name, locale ] );
 	useUnsavedChanges( template !== null && source !== template.source );
 
 	if ( template === null ) {
@@ -84,6 +90,7 @@ export function TemplateEditor( { name, onClose }: TemplateEditorProps ) {
 		source: draft ? source : null,
 		kind,
 		order: order === '' ? null : Number( order ),
+		locale,
 	} );
 	const loaded = ( saved: EmailTemplateSource, text: string ) => {
 		setTemplate( saved );
@@ -92,7 +99,7 @@ export function TemplateEditor( { name, onClose }: TemplateEditorProps ) {
 	};
 	const save = () =>
 		run( () =>
-			saveEmailTemplate( name, source )
+			saveEmailTemplate( name, source, locale )
 				.then( ( saved ) =>
 					loaded( saved, __( 'Template saved.', 'orillacart' ) )
 				)
@@ -137,20 +144,34 @@ export function TemplateEditor( { name, onClose }: TemplateEditorProps ) {
 		);
 	const reset = () =>
 		confirm(
-			__(
-				'Your own template is deleted and the file’s is used again.',
-				'orillacart'
-			),
+			language === undefined
+				? __(
+						'Your own template is deleted and the file’s is used again.',
+						'orillacart'
+					)
+				: sprintf(
+						/* translators: %s: a language, such as "Deutsch" */
+						__(
+							'The template in %s is deleted; its readers get the one for every language again.',
+							'orillacart'
+						),
+						language.name
+					),
 			() =>
 				run( () =>
-					resetEmailTemplate( name )
+					resetEmailTemplate( name, locale )
 						.then( ( saved ) =>
 							loaded(
 								saved,
-								__(
-									'Back to the file’s template.',
-									'orillacart'
-								)
+								language === undefined
+									? __(
+											'Back to the file’s template.',
+											'orillacart'
+										)
+									: __(
+											'Back to the template for every language.',
+											'orillacart'
+										)
 							)
 						)
 						.catch( fail )
@@ -178,16 +199,66 @@ export function TemplateEditor( { name, onClose }: TemplateEditorProps ) {
 							{ message.text }
 						</Notice>
 					) }
+					{ languages.length > 0 && (
+						<SelectControl
+							__next40pxDefaultSize
+							label={ __( 'Language', 'orillacart' ) }
+							help={
+								changed
+									? __(
+											'Save or undo your changes to switch.',
+											'orillacart'
+										)
+									: undefined
+							}
+							disabled={ changed }
+							value={ locale }
+							options={ [
+								{
+									value: '',
+									label: __( 'Every language', 'orillacart' ),
+								},
+								...languages.map( ( other ) => ( {
+									value: other.locale,
+									label: other.name,
+								} ) ),
+							] }
+							onChange={ ( value ) => {
+								setTemplate( null );
+								setPreview( null );
+								setLocale( value );
+							} }
+						/>
+					) }
 					<p>
-						{ template.edited
-							? __(
-									'The shop’s own template, in place of the file’s.',
-									'orillacart'
-								)
-							: __(
-									'The file’s template. Saving keeps your own in its place; a theme’s file of the same name no longer applies.',
-									'orillacart'
-								) }
+						{ language !== undefined &&
+							( template.edited
+								? sprintf(
+										/* translators: %s: a language, such as "Deutsch" */
+										__(
+											'The template readers in %s get, in place of the one for every language.',
+											'orillacart'
+										),
+										language.name
+									)
+								: sprintf(
+										/* translators: %s: a language, such as "Deutsch" */
+										__(
+											'Readers in %s get the template for every language. Saving keeps one of their own.',
+											'orillacart'
+										),
+										language.name
+									) ) }
+						{ language === undefined &&
+							( template.edited
+								? __(
+										'The shop’s own template, in place of the file’s.',
+										'orillacart'
+									)
+								: __(
+										'The file’s template. Saving keeps your own in its place; a theme’s file of the same name no longer applies.',
+										'orillacart'
+									) ) }
 					</p>
 					<TextareaControl
 						className="orillacart-template-source"

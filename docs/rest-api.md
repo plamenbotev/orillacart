@@ -821,6 +821,8 @@ The shop's email templates, which the shop has edited and when, and which a prev
 One email template's source, as the shop edited it or from its file, with the file's own; nothing changes.
 
 - Who: shop managers
+- Query:
+  - `locale` (string): matches `/^([a-z]{2,3}(_[A-Za-z0-9]{2,8}){0,2})?$/`
 
 ### `PUT /email-templates/{name}`
 
@@ -829,6 +831,7 @@ Replaces an email's template with the shop's own Twig, checked before it is save
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `source` (string): required; not empty; at most 100000 characters
+  - `locale` (string): matches `/^([a-z]{2,3}(_[A-Za-z0-9]{2,8}){0,2})?$/`
 
 ### `DELETE /email-templates/{name}`
 
@@ -845,6 +848,7 @@ The email a template makes, saved or as edited; a template that fails as it rend
   - `source` (string|null): at most 100000 characters
   - `kind` (string|null): one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, gift_card, new_order, order_attention, payment_failed, refund_made, low_stock, exemption_received, exemption_reviewed, exemption_expiring, account_confirm, account_exists
   - `order` (int|null): more than 0
+  - `locale` (string): matches `/^([a-z]{2,3}(_[A-Za-z0-9]{2,8}){0,2})?$/`
 
 ### `POST /email-templates/{name}/test`
 
@@ -855,6 +859,7 @@ Sends the preview to whoever asks.
   - `source` (string|null): at most 100000 characters
   - `kind` (string|null): one of order_received, order_processing, order_backordered, tracking_added, order_shipped, ready_for_pickup, order_completed, payment_reminder, order_cancelled, order_failed, order_refunded, customer_note, receipt_link, cart_reminder, back_in_stock, account_welcome, gift_card, new_order, order_attention, payment_failed, refund_made, low_stock, exemption_received, exemption_reviewed, exemption_expiring, account_confirm, account_exists
   - `order` (int|null): more than 0
+  - `locale` (string): matches `/^([a-z]{2,3}(_[A-Za-z0-9]{2,8}){0,2})?$/`
 
 ## /exports
 

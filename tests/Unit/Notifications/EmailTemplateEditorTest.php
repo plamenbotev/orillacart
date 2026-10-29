@@ -11,6 +11,7 @@ use OrillaCart\Catalog\Application\LowStock;
 use OrillaCart\Catalog\Application\StockItemNames;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Notifications\Application\Dto\EmailTemplateQuery;
 use OrillaCart\Notifications\Application\Dto\EmailTemplateView;
 use OrillaCart\Notifications\Application\Dto\PreviewEmail;
 use OrillaCart\Notifications\Application\Dto\SaveEmailTemplate;
@@ -23,6 +24,7 @@ use OrillaCart\Notifications\Domain\EmailTemplateNotFound;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Shared\I18n\Language;
 use OrillaCart\Shared\View\TemplateRejected;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Notifications\InMemoryAlertedStock;
@@ -46,7 +48,7 @@ final class EmailTemplateEditorTest extends TestCase
         $this->shop->products->save(20, new SaveProduct('8', 'virtual'));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
         $low = new LowStockAlerts(new LowStock($this->shop->productRecords, new StockItemNames($this->shop->productRecords, $this->shop->content), $this->shop->stock, $this->shop->stockrooms, $this->shop->settingsService), new InMemoryAlertedStock(), $this->shop->emailSettings, $this->shop->writer, $this->shop->mail, $this->shop->logger);
-        $this->editor = new EmailTemplateEditor($this->shop->templateEditing, $this->shop->emailTemplateRecords, $this->shop->emails, $low, $this->shop->cartReminders, $this->shop->orders, $this->shop->writer, $this->shop->mail, $this->shop->site, $this->shop->clock);
+        $this->editor = new EmailTemplateEditor($this->shop->templateEditing, $this->shop->emailTemplateRecords, $this->shop->emails, $low, $this->shop->cartReminders, $this->shop->orders, $this->shop->writer, $this->shop->mail, $this->shop->site, $this->shop->clock, $this->shop->contentTranslations);
     }
 
     public function testEveryEmailFileIsListedWithTheEmailItShowsIn(): void
@@ -79,6 +81,36 @@ final class EmailTemplateEditorTest extends TestCase
         self::assertSame($file, $this->editor->reset('order-shipped')->source);
         $this->shop->emails->send($order->number, EmailKind::OrderShipped);
         self::assertSame("ada@example.com: [Lamp Shop] Your order #{$order->number} is on its way", $this->lastMail());
+    }
+
+    public function testALanguagesReadersGetItsOwnTemplateAndOthersTheOneForEveryLanguage(): void
+    {
+        $this->shop->contentLanguages->languages = [new Language('en', 'en_US', 'English'), new Language('de', 'de_DE', 'Deutsch')];
+        $this->editor->save('order-shipped', new SaveEmailTemplate(self::SHIPPED), 7);
+        $german = $this->editor->save('order-shipped', new SaveEmailTemplate(str_replace(['left the workshop', 'On its way'], ['hat die Werkstatt verlassen', 'Unterwegs'], self::SHIPPED), 'de_DE'), 7);
+        self::assertSame(['de_DE', true, self::SHIPPED], [$german->locale, $german->edited, $german->everyLanguage]);
+        self::assertSame(['de_DE'], array_values(array_filter($this->editor->templates(), static fn(EmailTemplateView $template): bool => $template->name === 'order-shipped'))[0]->languages);
+
+        $english = $this->place();
+        $this->shop->languages->locale = 'de_DE';
+        $deutsch = $this->place();
+        $this->shop->languages->locale = 'en_US';
+        $this->ship($english);
+        self::assertSame("ada@example.com: Order {$english->number} left the workshop", $this->lastMail());
+        $this->ship($deutsch);
+        self::assertSame("ada@example.com: Order {$deutsch->number} hat die Werkstatt verlassen", $this->lastMail(), 'the order\'s language, whoever sends it');
+
+        // A preview of the language's template is written in it; resetting it goes back to every language's.
+        self::assertSame("Order {$english->number} hat die Werkstatt verlassen", $this->editor->preview('order-shipped', new PreviewEmail(order: $english->number, locale: 'de_DE'))->subject);
+        $reset = $this->editor->reset('order-shipped', new EmailTemplateQuery('de_DE'));
+        self::assertSame([false, self::SHIPPED], [$reset->edited, $reset->source]);
+    }
+
+    public function testATemplateForALanguageTheSiteHasNotIsRefused(): void
+    {
+        $this->expectException(EmailRuleViolation::class);
+
+        $this->editor->save('order-shipped', new SaveEmailTemplate(self::SHIPPED, 'fr_FR'), 7);
     }
 
     public function testTheSandboxRefusesWhatReachesPastTheEmail(): void

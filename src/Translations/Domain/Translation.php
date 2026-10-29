@@ -18,7 +18,8 @@ use Doctrine\ORM\Mapping as ORM;
 class Translation
 {
     public const int MAX_TYPE_LENGTH = 40;
-    public const int MAX_FIELD_LENGTH = 40;
+    /** The longest a field may be named: "field.{key}.choice.{value}" of a form, 84 at most. */
+    public const int MAX_FIELD_LENGTH = 100;
     public const int MAX_LOCALE_LENGTH = 20;
 
     #[ORM\Id]

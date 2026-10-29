@@ -15,12 +15,12 @@ use OrillaCart\Shared\View\EditedTemplates;
  */
 final class DoctrineEmailTemplates implements EmailTemplateRepository, EditedTemplates
 {
-    /** @var array<string, string>|null */
+    /** @var array<string, array<string, string>>|null by name and locale */
     private ?array $sources = null;
 
     public function __construct(private readonly EntityManagerInterface $entityManager) {}
 
-    public function edited(string $name): ?string
+    public function edited(string $name, string $locale): ?string
     {
         if (!str_starts_with($name, 'emails/')) {
             return null;
@@ -28,22 +28,22 @@ final class DoctrineEmailTemplates implements EmailTemplateRepository, EditedTem
         if ($this->sources === null) {
             $this->sources = [];
             foreach ($this->all() as $template) {
-                $this->sources[$template->name()] = $template->source();
+                $this->sources[$template->name()][$template->locale()] = $template->source();
             }
         }
 
-        return $this->sources[$name] ?? null;
+        return $this->sources[$name][$locale] ?? $this->sources[$name][EmailTemplate::EVERY_LANGUAGE] ?? null;
     }
 
-    public function find(string $name): ?EmailTemplate
+    public function find(string $name, string $locale = EmailTemplate::EVERY_LANGUAGE): ?EmailTemplate
     {
-        return $this->entityManager->find(EmailTemplate::class, $name);
+        return $this->entityManager->find(EmailTemplate::class, ['name' => $name, 'locale' => $locale]);
     }
 
     public function all(): array
     {
         /** @var list<EmailTemplate> */
-        return $this->entityManager->getRepository(EmailTemplate::class)->findBy([], ['name' => 'ASC']);
+        return $this->entityManager->getRepository(EmailTemplate::class)->findBy([], ['name' => 'ASC', 'locale' => 'ASC']);
     }
 
     public function save(EmailTemplate $template): void

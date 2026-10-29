@@ -16,5 +16,8 @@ final readonly class SaveEmailTemplate
         #[Assert\NotBlank]
         #[Assert\Length(max: EmailTemplate::MAX_LENGTH)]
         public string $source,
+        /** The site's language it is for, a WordPress locale such as de_DE; empty for every language. */
+        #[Assert\Regex(pattern: '/^([a-z]{2,3}(_[A-Za-z0-9]{2,8}){0,2})?$/')]
+        public string $locale = '',
     ) {}
 }

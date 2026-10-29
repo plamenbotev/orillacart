@@ -24,5 +24,8 @@ final readonly class PreviewEmail
         public ?string $kind = null,
         #[Assert\Positive]
         public ?int $order = null,
+        /** The language's template, written in it, a WordPress locale such as de_DE; empty for every language. */
+        #[Assert\Regex(pattern: '/^([a-z]{2,3}(_[A-Za-z0-9]{2,8}){0,2})?$/')]
+        public string $locale = '',
     ) {}
 }

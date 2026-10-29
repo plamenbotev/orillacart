@@ -32,6 +32,11 @@ final class TranslationsTest extends RestTestCase
         self::assertSame([901 => 'Farbe', 902 => 'Größe'], $this->translations->values('attribute', [901, 902, 903], 'name', 'de_DE'));
         self::assertSame([], $this->translations->values('attribute_option', [901], 'name', 'de_DE'), 'another type\'s 901');
         $this->translations->replace('attribute', 901, ['pickup.shop.hours' => ['de_DE' => 'Mo–Fr']]);
+        // The longest a field is named: a form's choice, its field's key of 30 and its value of 40.
+        $longest = 'field.' . str_repeat('k', 30) . '.choice.' . str_repeat('v', 40);
+        $this->translations->replace('attribute', 902, [$longest => ['de_DE' => 'Lang']]);
+        self::assertSame([$longest => 'Lang'], array_diff_key($this->translations->inLocale('attribute', [902], 'de_DE')[902], ['name' => true]));
+        $this->translations->replace('attribute', 902, [$longest => []]);
         self::assertSame([901 => ['name' => 'Farbe', 'pickup.shop.hours' => 'Mo–Fr'], 902 => ['name' => 'Größe']], $this->translations->inLocale('attribute', [901, 902], 'de_DE'), 'every field in one language');
 
         // A field sent replaces its languages: French goes, an empty value removes German.

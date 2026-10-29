@@ -5,6 +5,7 @@ import apiFetch from '@wordpress/api-fetch';
 
 import { EmailsScreen } from '../EmailsScreen';
 import { lastWrite } from '../../shared/testing';
+import { forgetContentLanguages } from '../../shared/Translations';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -41,6 +42,7 @@ function serve( answer: ( request: Request ) => unknown ) {
 
 describe( 'EmailsScreen', () => {
 	afterEach( () => mockedFetch.mockReset() );
+	beforeEach( () => forgetContentLanguages() );
 
 	it( 'shows the site defaults and turns an email off', async () => {
 		serve( ( request ) => {
@@ -139,7 +141,7 @@ describe( 'EmailsScreen', () => {
 		expect( lastWrite( mockedFetch ) ).toEqual( {
 			path: '/orillacart/v1/email-templates/order-shipped/preview',
 			method: 'POST',
-			data: { source: 'On its way', kind: null, order: null },
+			data: { source: 'On its way', kind: null, order: null, locale: '' },
 		} );
 		await user.click( screen.getByRole( 'button', { name: 'Save' } ) );
 		expect(
@@ -150,5 +152,78 @@ describe( 'EmailsScreen', () => {
 		expect(
 			screen.getByRole( 'button', { name: 'Reset to the file' } )
 		).toBeVisible();
+	} );
+
+	it( 'saves a template of its own for one of the site’s languages', async () => {
+		const german = {
+			...shipped,
+			locale: 'de_DE',
+			every_language: null,
+		};
+		serve( ( request ) => {
+			if ( request.path === '/orillacart/v1/content-languages' ) {
+				return [
+					{
+						code: 'en',
+						locale: 'en_US',
+						name: 'English',
+						default: true,
+					},
+					{
+						code: 'de',
+						locale: 'de_DE',
+						name: 'Deutsch',
+						default: false,
+					},
+				];
+			}
+			if ( request.path === '/orillacart/v1/email-templates' ) {
+				return [ shipped ];
+			}
+			if (
+				request.path ===
+				'/orillacart/v1/email-templates/order-shipped?locale=de_DE'
+			) {
+				return german;
+			}
+			if (
+				request.path === '/orillacart/v1/email-templates/order-shipped'
+			) {
+				return request.method === 'PUT'
+					? {
+							...german,
+							edited: true,
+							source: ( request.data as { source: string } )
+								.source,
+						}
+					: shipped;
+			}
+			return settings;
+		} );
+		const user = userEvent.setup();
+		render( <EmailsScreen /> );
+
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Edit' } )
+		);
+		await user.selectOptions(
+			await screen.findByLabelText( 'Language' ),
+			'de_DE'
+		);
+		expect(
+			await screen.findByText(
+				'Readers in Deutsch get the template for every language. Saving keeps one of their own.'
+			)
+		).toBeVisible();
+		const source = screen.getByLabelText( 'Template (Twig)' );
+		await user.clear( source );
+		await user.type( source, 'Unterwegs' );
+		await user.click( screen.getByRole( 'button', { name: 'Save' } ) );
+
+		expect( lastWrite( mockedFetch ) ).toEqual( {
+			path: '/orillacart/v1/email-templates/order-shipped',
+			method: 'PUT',
+			data: { source: 'Unterwegs', locale: 'de_DE' },
+		} );
 	} );
 } );

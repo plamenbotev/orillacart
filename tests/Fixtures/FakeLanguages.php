@@ -29,7 +29,13 @@ final class FakeLanguages implements Languages
     public function in(?string $locale, \Closure $work): mixed
     {
         $this->switched[] = $locale;
-
-        return $work();
+        // As WordPress's: the locale is the one switched to while the work runs.
+        $before = $this->locale;
+        $this->locale = $locale ?? $this->site();
+        try {
+            return $work();
+        } finally {
+            $this->locale = $before;
+        }
     }
 }

@@ -6,6 +6,7 @@ namespace OrillaCart\Notifications\Application;
 
 use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Notifications\Application\Dto\EmailPreviewView;
+use OrillaCart\Notifications\Application\Dto\EmailTemplateQuery;
 use OrillaCart\Notifications\Application\Dto\EmailTemplateSourceView;
 use OrillaCart\Notifications\Application\Dto\EmailTemplateView;
 use OrillaCart\Notifications\Application\Dto\PreviewEmail;
@@ -21,13 +22,17 @@ use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shared\View\TemplateEditing;
 use OrillaCart\Shared\View\TemplateRejected;
+use OrillaCart\Translations\Application\ContentTranslations;
+use OrillaCart\Translations\Application\Dto\ContentLanguageView;
 use Psr\Clock\ClockInterface;
 
 /**
  * The shop writes its emails' templates in the admin: each of the files under templates/emails/ (as a theme
  * overrides it) can be replaced by the shop's own Twig, which runs in the sandbox and is checked before it is
  * saved. A preview shows the email the template makes, saved or as edited, with a real order; a test sends it to
- * whoever asks. Resetting goes back to the file.
+ * whoever asks. Resetting goes back to the file. On a site in several languages (design 51) a template may have one
+ * for each of its other languages too, which their readers get; resetting one goes back to the one for every
+ * language.
  */
 final readonly class EmailTemplateEditor
 {
@@ -44,6 +49,7 @@ final readonly class EmailTemplateEditor
         private Mailer $mailer,
         private Site $site,
         private ClockInterface $clock,
+        private ContentTranslations $languages,
     ) {}
 
     /** @return list<string> the emails a preview can show */
@@ -56,27 +62,44 @@ final readonly class EmailTemplateEditor
     public function templates(): array
     {
         $edited = [];
+        $languages = [];
         foreach ($this->templates->all() as $template) {
-            $edited[$template->name()] = $template;
+            if ($template->locale() === EmailTemplate::EVERY_LANGUAGE) {
+                $edited[$template->name()] = $template;
+            } else {
+                $languages[$template->name()][] = $template->locale();
+            }
         }
 
-        return array_map(function (string $file) use ($edited): EmailTemplateView {
+        return array_map(function (string $file) use ($edited, $languages): EmailTemplateView {
             $name = self::shortName($file);
 
-            return new EmailTemplateView($name, isset($edited[$file]), self::previews($name), isset($edited[$file]) ? $edited[$file]->updatedAt()->format(\DATE_ATOM) : null);
+            return new EmailTemplateView($name, isset($edited[$file]), self::previews($name), isset($edited[$file]) ? $edited[$file]->updatedAt()->format(\DATE_ATOM) : null, $languages[$file] ?? []);
         }, $this->editing->names());
     }
 
     /**
      * @throws EmailTemplateNotFound
+     * @throws EmailRuleViolation    for a language the site does not have
      */
-    public function template(string $name): EmailTemplateSourceView
+    public function template(string $name, EmailTemplateQuery $query = new EmailTemplateQuery()): EmailTemplateSourceView
     {
         $file = $this->file($name);
-        $edited = $this->templates->find($file);
+        $locale = $this->locale($query->locale);
+        $everyLanguage = $this->templates->find($file);
+        $edited = $locale === EmailTemplate::EVERY_LANGUAGE ? $everyLanguage : $this->templates->find($file, $locale);
         $fileSource = $this->editing->fileSource($file);
 
-        return new EmailTemplateSourceView($name, $edited?->source() ?? $fileSource ?? '', $fileSource, $edited !== null, self::previews($name), $edited?->updatedAt()->format(\DATE_ATOM));
+        return new EmailTemplateSourceView(
+            $name,
+            $edited?->source() ?? $everyLanguage?->source() ?? $fileSource ?? '',
+            $fileSource,
+            $edited !== null,
+            self::previews($name),
+            $edited?->updatedAt()->format(\DATE_ATOM),
+            $locale,
+            $locale === EmailTemplate::EVERY_LANGUAGE ? null : $everyLanguage?->source(),
+        );
     }
 
     /**
@@ -87,31 +110,33 @@ final readonly class EmailTemplateEditor
     public function save(string $name, SaveEmailTemplate $command, ?int $userId): EmailTemplateSourceView
     {
         $file = $this->file($name);
+        $locale = $this->locale($command->locale);
         $this->editing->check($file, $command->source);
-        $template = $this->templates->find($file);
+        $template = $this->templates->find($file, $locale);
         if ($template === null) {
-            $template = new EmailTemplate($file, $command->source, $this->clock->now(), $userId);
+            $template = new EmailTemplate($file, $locale, $command->source, $this->clock->now(), $userId);
         } else {
             $template->change($command->source, $this->clock->now(), $userId);
         }
         $this->templates->save($template);
 
-        return $this->template($name);
+        return $this->template($name, new EmailTemplateQuery($locale));
     }
 
     /**
-     * Goes back to the theme's or the plugin's file.
+     * Goes back to the theme's or the plugin's file; a language's, to the template for every language.
      *
      * @throws EmailTemplateNotFound
+     * @throws EmailRuleViolation    for a language the site does not have
      */
-    public function reset(string $name): EmailTemplateSourceView
+    public function reset(string $name, EmailTemplateQuery $query = new EmailTemplateQuery()): EmailTemplateSourceView
     {
-        $template = $this->templates->find($this->file($name));
+        $template = $this->templates->find($this->file($name), $this->locale($query->locale));
         if ($template !== null) {
             $this->templates->remove($template);
         }
 
-        return $this->template($name);
+        return $this->template($name, $query);
     }
 
     /**
@@ -159,8 +184,25 @@ final readonly class EmailTemplateEditor
             $drafts[$file] = $command->source;
         }
         $kind = $command->kind ?? self::previews($name);
+        // A language's template shows as its readers get it, written in their language.
+        $locale = $this->locale($command->locale);
 
-        return $this->editing->previewing($drafts, fn(): Email => $this->writer->previewing(fn(): Email => $this->email($kind, $command->order)));
+        return $this->editing->previewing($drafts, fn(): Email => $this->writer->previewing(fn(): Email => $this->email($kind, $command->order), $locale === EmailTemplate::EVERY_LANGUAGE ? null : $locale));
+    }
+
+    /**
+     * Every language, or one of the site's other languages.
+     *
+     * @throws EmailRuleViolation
+     */
+    private function locale(string $locale): string
+    {
+        $others = array_map(static fn(ContentLanguageView $language): string => $language->locale, array_filter($this->languages->languages(), static fn(ContentLanguageView $language): bool => !$language->default));
+        if ($locale !== EmailTemplate::EVERY_LANGUAGE && !\in_array($locale, $others, true)) {
+            throw new EmailRuleViolation('The site has no %s to write emails in.', 'orillacart_email_language', values: [$locale]);
+        }
+
+        return $locale;
     }
 
     /**

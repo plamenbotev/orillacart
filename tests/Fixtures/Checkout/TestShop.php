@@ -571,7 +571,7 @@ final class TestShop
         $twigFiles = new TwigFactory($context, $shopExtension);
         $this->templates = $templates = new TwigRenderer($twigFiles->create(), new SerializerFactory()->create(), $this->logger);
         $this->emailTemplateRecords = new InMemoryEmailTemplates();
-        $edited = new EditedTemplateLoader($this->emailTemplateRecords);
+        $edited = new EditedTemplateLoader($this->emailTemplateRecords, $this->languages);
         $strictness = new Strictness();
         $emailTwig = new EmailTwig($context, $twigFiles, $edited, $strictness, $shopExtension)->create();
         $this->emailTemplates = new TwigRenderer($emailTwig, new SerializerFactory()->create(), $this->logger, $strictness);

@@ -35,14 +35,8 @@ final readonly class RequestLanguage
             return $work();
         }
 
-        // WordPress's locale is the language's while the call runs, also where WordPress has no files for it
-        // (switch_to_locale then refuses it): the order keeps it for its emails, the names are read in it.
-        $locale = static fn(): string => $language->locale;
-        add_filter('pre_determine_locale', $locale);
-        try {
-            return $this->locales->in($language->locale, fn(): mixed => $this->content->during($language, $work));
-        } finally {
-            remove_filter('pre_determine_locale', $locale);
-        }
+        // WordPress's locale is the language's while the call runs, also where WordPress has no files for it: the
+        // order keeps it for its emails, the names are read in it.
+        return $this->locales->in($language->locale, fn(): mixed => $this->content->during($language, $work));
     }
 }

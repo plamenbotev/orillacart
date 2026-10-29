@@ -1,6 +1,6 @@
 # 51 · A shop in several languages
 
-Status: agreed (2026-10-28); step 1 built (PLAN 212), step 2 under way (214), the rest to do. PLAN items 212–217.
+Status: agreed (2026-10-28); steps 1 and 2 built (PLAN 212, 214), the rest to do. PLAN items 212–217.
 
 Design 46 translates the shop's own words. This one is about the shop's content: products, categories, attributes,
 shipping and payment titles, forms, filters and email templates in each language a site offers.
@@ -97,6 +97,11 @@ shipping and payment titles, forms, filters and email templates in each language
   in the save, so its words are checked first and keyed after. The product page, the cart and checkout ask the
   questions in the language shown, and the answers keep the words they were asked in. A filter's label, saved
   with it, heads its group in the shop's filter panel.
+- **Email templates, one per language.** A template the shop edits is for every language, or for one of the site's
+  other languages, which its readers get instead; resetting a language's goes back to the one for every language.
+  An email is written in its reader's language (an order's, the shopper's), and the template is looked up in it.
+  The editor has a language to choose, and a preview of a language's template is written in that language.
+  While the shop writes in a language its locale holds, also where WordPress has no files for it.
 - **The storefront's calls carry the page's language.** The REST API's URL has no language of Polylang's or WPML's,
   so the cart, checkout and quotes would answer in the default one. The page gives its locale to the script, which
   sends it as `X-OrillaCart-Locale`; a locale the site offers is the call's: the content language, WordPress's

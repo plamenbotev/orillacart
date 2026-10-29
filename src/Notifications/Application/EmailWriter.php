@@ -31,12 +31,13 @@ final readonly class EmailWriter
      * @template T
      *
      * @param \Closure(): T $work
+     * @param string|null   $locale the language they are written in; null for each reader's
      *
      * @return T
      */
-    public function previewing(\Closure $work): mixed
+    public function previewing(\Closure $work, ?string $locale = null): mixed
     {
-        return $this->previews->during($work);
+        return $this->previews->during($work, $locale);
     }
 
     /**
@@ -48,6 +49,7 @@ final readonly class EmailWriter
     public function write(string $template, string $kind, string $to, ?string $locale, array $context, ?string $replyTo = null, ?int $orderNumber = null): Email
     {
         $settings = $this->settings->load();
+        $locale = $this->previews->locale() ?? $locale;
         $context += ['site_name' => $this->site->name(), 'site_url' => $this->site->url(), 'lang' => str_replace('_', '-', $locale ?? $this->languages->site())];
         // A reader subscribed to the newsletter can leave it from any of the shop's emails.
         // A preview shows where the link goes without giving away the customer's.

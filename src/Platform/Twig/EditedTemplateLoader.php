@@ -4,21 +4,26 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\Twig;
 
+use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\View\EditedTemplates;
 use Twig\Error\LoaderError;
 use Twig\Loader\LoaderInterface;
 use Twig\Source;
 
 /**
- * Loads the email templates the shop edited, and drafts being previewed, before the files. A template compiles
- * anew whenever its source changes: the source is part of its cache key.
+ * Loads the email templates the shop edited, and drafts being previewed, before the files: the edit for the
+ * language the email is written in (Languages::in), else the one for every language. A template compiles anew
+ * whenever its source changes: the source is part of its cache key.
  */
 final class EditedTemplateLoader implements LoaderInterface
 {
     /** @var array<string, string> */
     private array $drafts = [];
 
-    public function __construct(private readonly ?EditedTemplates $edited = null) {}
+    public function __construct(
+        private readonly ?EditedTemplates $edited = null,
+        private readonly ?Languages $languages = null,
+    ) {}
 
     public function getSourceContext(string $name): Source
     {
@@ -63,6 +68,6 @@ final class EditedTemplateLoader implements LoaderInterface
 
     private function source(string $name): ?string
     {
-        return $this->drafts[$name] ?? $this->edited?->edited($name);
+        return $this->drafts[$name] ?? $this->edited?->edited($name, $this->languages?->current() ?? '');
     }
 }

@@ -85,7 +85,8 @@ final class SiteUpgradesTest extends TestCase
             $outcome = $this->upgrades->upgradeHere(new Kernel($this->context));
 
             self::assertTrue($outcome->isFailed());
-            self::assertStringContainsString('already exists', $outcome->error);
+            // A table made twice, or a column added twice, as the newest migration does.
+            self::assertMatchesRegularExpression('/already exists|Duplicate column/', $outcome->error);
             $failed = get_option(PluginLifecycle::UPGRADE_FAILED_OPTION);
             self::assertIsArray($failed);
             self::assertSame($this->context->build, $failed['version']);
