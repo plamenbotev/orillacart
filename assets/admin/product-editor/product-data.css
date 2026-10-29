@@ -1,0 +1,59 @@
+/* The product's data box, in the block editor's panel below the post and on the classic edit screen. */
+.orillacart-product-data__body {
+	display: grid;
+	grid-template-columns: minmax(10rem, 13rem) minmax(0, 1fr);
+	gap: 1.5rem;
+	align-items: start;
+}
+
+.orillacart-product-data__tabs {
+	display: flex;
+	flex-direction: column;
+	border-right: 1px solid #ddd;
+	padding-right: 0.5rem;
+}
+
+.orillacart-product-data__tab.components-button {
+	justify-content: flex-start;
+	width: 100%;
+	height: auto;
+	min-height: 40px;
+	white-space: normal;
+	text-align: left;
+}
+
+.orillacart-product-data__tab[aria-selected="true"] {
+	background: #f0f0f0;
+	box-shadow: inset 3px 0 0 var(--wp-admin-theme-color, #3858e9);
+	font-weight: 600;
+}
+
+.orillacart-product-data__panel {
+	max-width: 56rem;
+}
+
+.orillacart-product-data__panel > * + * {
+	margin-top: 1rem;
+}
+
+.orillacart-product-data .components-notice {
+	margin: 0 0 1rem;
+}
+
+@media (max-width: 781px) {
+	.orillacart-product-data__body {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.orillacart-product-data__tabs {
+		flex-direction: row;
+		flex-wrap: wrap;
+		border-right: 0;
+		border-bottom: 1px solid #ddd;
+		padding: 0 0 0.5rem;
+	}
+
+	.orillacart-product-data__tab.components-button {
+		width: auto;
+	}
+}

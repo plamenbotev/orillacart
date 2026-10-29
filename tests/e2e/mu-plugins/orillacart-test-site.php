@@ -142,3 +142,6 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
         }
     });
 });
+
+// The classic edit screen, as the Classic Editor plugin gives it, while a test's browser has this cookie.
+add_filter('use_block_editor_for_post_type', static fn(bool $use, string $type): bool => ($_COOKIE['orillacart_e2e_classic'] ?? '') === '1' ? false : $use, 100, 2);

@@ -6,14 +6,8 @@ import {
 	Spinner,
 	TextControl,
 } from '@wordpress/components';
-import { useDispatch, useSelect } from '@wordpress/data';
-import {
-	PluginDocumentSettingPanel,
-	store as editorStore,
-} from '@wordpress/editor';
-import { useCallback, useEffect, useRef, useState } from '@wordpress/element';
+import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
-import { store as noticesStore } from '@wordpress/notices';
 
 import { AttributesEditor } from '../catalog/AttributesEditor';
 import {
@@ -43,26 +37,17 @@ import { DownloadsPanel } from './DownloadsPanel';
 import { VariationsPanel } from './VariationsPanel';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import { MoneyControl } from '../shared/MoneyControl';
+import { useEditorHost } from './host';
+import { ProductSections, Section } from './ProductSections';
 
 /**
- * Panels in the product editor's sidebar for what the shop sells the product as. The details are saved with the
- * post, or with the "Save product details" button; variations and stock are saved on their own.
+ * The product's data box, below the post in either editor, for what the shop sells the product as. The details
+ * are saved with the post, or with the "Save product details" button; variations and stock are saved on their own.
  */
 export function ProductPanels() {
-	const postId = useSelect(
-		( select ) => select( editorStore ).getCurrentPostId() as number | null,
-		[]
-	);
-	const { isSaving, isAutosaving, saveFailed } = useSelect(
-		( select ) => ( {
-			isSaving: select( editorStore ).isSavingPost(),
-			isAutosaving: select( editorStore ).isAutosavingPost(),
-			saveFailed: select( editorStore ).didPostSaveRequestFail(),
-		} ),
-		[]
-	);
-	const { createErrorNotice, createSuccessNotice } =
-		useDispatch( noticesStore );
+	const host = useEditorHost();
+	const postId = host.usePostId();
+	const notices = host.useNotices();
 
 	const [ product, setProduct ] = useState< Product | null >( null );
 	const [ draft, setDraft ] = useState< ProductInput | null >( null );
@@ -81,16 +66,9 @@ export function ProductPanels() {
 	);
 
 	const fail = useCallback(
-		( error: unknown ) => {
-			const { message, data } = toApiError( error );
-			const details = ( data?.violations ?? [] ).map(
-				( violation ) => `${ violation.field }: ${ violation.message }`
-			);
-			void createErrorNotice( [ message, ...details ].join( ' ' ), {
-				id: 'orillacart-product',
-			} );
-		},
-		[ createErrorNotice ]
+		( error: unknown ) =>
+			host.notify( { status: 'error', message: refusal( error ) } ),
+		[ host ]
 	);
 
 	const show = ( loaded: Product ) => {
@@ -135,63 +113,46 @@ export function ProductPanels() {
 			);
 	}, [ postId ] );
 
-	const save = useCallback(
-		( quiet: boolean ) => {
-			if ( postId === null || draft === null ) {
-				return;
-			}
-			setSaving( true );
-			saveProduct( postId, draft )
-				.then( ( saved ) => {
-					show( saved );
-					if ( ! quiet ) {
-						void createSuccessNotice(
-							__( 'Product details saved.', 'orillacart' ),
-							{ id: 'orillacart-product', type: 'snackbar' }
-						);
-					}
-				} )
-				.catch( fail )
-				.finally( () => setSaving( false ) );
-		},
-		[ postId, draft, fail, createSuccessNotice ]
-	);
-
-	// Save the details along with the post: when a save that is not an autosave finishes.
-	const wasSaving = useRef( false );
-	useEffect( () => {
-		if (
-			wasSaving.current &&
-			! isSaving &&
-			! isAutosaving &&
-			! saveFailed
-		) {
-			save( true );
+	const save = useCallback( () => {
+		if ( postId === null || draft === null ) {
+			return;
 		}
-		wasSaving.current = isSaving && ! isAutosaving;
-	}, [ isSaving, isAutosaving, saveFailed, save ] );
+		setSaving( true );
+		saveProduct( postId, draft )
+			.then( ( saved ) => {
+				show( saved );
+				host.notify( {
+					status: 'success',
+					message: __( 'Product details saved.', 'orillacart' ),
+				} );
+			} )
+			.catch( fail )
+			.finally( () => setSaving( false ) );
+	}, [ postId, draft, fail, host ] );
+
+	// The details go with the post: after it in the block editor, before the classic screen sends it, which a
+	// refusal stops with its reasons.
+	const saveWithPost = useCallback( async () => {
+		if ( postId === null || draft === null ) {
+			return;
+		}
+		try {
+			show( await saveProduct( postId, draft ) );
+		} catch ( error ) {
+			throw new Error( refusal( error ) );
+		}
+	}, [ postId, draft ] );
+	host.useSaveWithPost( saveWithPost );
 
 	if ( loadError !== null ) {
 		return (
-			<PluginDocumentSettingPanel
-				name="orillacart-price"
-				title={ __( 'Price and tax', 'orillacart' ) }
-			>
-				<Notice status="error" isDismissible={ false }>
-					{ loadError }
-				</Notice>
-			</PluginDocumentSettingPanel>
+			<Notice status="error" isDismissible={ false }>
+				{ loadError }
+			</Notice>
 		);
 	}
 	if ( product === null || draft === null || postId === null ) {
-		return (
-			<PluginDocumentSettingPanel
-				name="orillacart-price"
-				title={ __( 'Price and tax', 'orillacart' ) }
-			>
-				<Spinner />
-			</PluginDocumentSettingPanel>
-		);
+		return <Spinner />;
 	}
 
 	const change = ( fields: Partial< ProductInput > ) =>
@@ -202,8 +163,8 @@ export function ProductPanels() {
 	const translation = productId !== postId;
 
 	return (
-		<>
-			<PluginDocumentSettingPanel
+		<ProductSections notices={ notices }>
+			<Section
 				name="orillacart-price"
 				title={ __( 'Price and tax', 'orillacart' ) }
 			>
@@ -396,13 +357,13 @@ export function ProductPanels() {
 					variant="primary"
 					isBusy={ saving }
 					disabled={ saving }
-					onClick={ () => save( false ) }
+					onClick={ save }
 				>
 					{ __( 'Save product details', 'orillacart' ) }
 				</Button>
-			</PluginDocumentSettingPanel>
+			</Section>
 
-			<PluginDocumentSettingPanel
+			<Section
 				name="orillacart-shipping"
 				title={ __( 'Weight and size', 'orillacart' ) }
 			>
@@ -450,9 +411,9 @@ export function ProductPanels() {
 						}
 					/>
 				) ) }
-			</PluginDocumentSettingPanel>
+			</Section>
 
-			<PluginDocumentSettingPanel
+			<Section
 				name="orillacart-stock"
 				title={ __( 'Stock', 'orillacart' ) }
 			>
@@ -546,9 +507,9 @@ export function ProductPanels() {
 							onError={ fail }
 						/>
 					) }
-			</PluginDocumentSettingPanel>
+			</Section>
 
-			<PluginDocumentSettingPanel
+			<Section
 				name="orillacart-attributes"
 				title={ __( 'Attributes', 'orillacart' ) }
 			>
@@ -577,9 +538,9 @@ export function ProductPanels() {
 					attributes={ draft.attributes }
 					onChange={ ( attributes ) => change( { attributes } ) }
 				/>
-			</PluginDocumentSettingPanel>
+			</Section>
 
-			<PluginDocumentSettingPanel
+			<Section
 				name="orillacart-downloads"
 				title={ __( 'Downloads', 'orillacart' ) }
 			>
@@ -601,9 +562,9 @@ export function ProductPanels() {
 						) }
 					</p>
 				) }
-			</PluginDocumentSettingPanel>
+			</Section>
 
-			<PluginDocumentSettingPanel
+			<Section
 				name="orillacart-bundle"
 				title={ __( 'Bundle', 'orillacart' ) }
 			>
@@ -623,9 +584,9 @@ export function ProductPanels() {
 					onChange={ ( bundle ) => change( { bundle } ) }
 					onError={ fail }
 				/>
-			</PluginDocumentSettingPanel>
+			</Section>
 
-			<PluginDocumentSettingPanel
+			<Section
 				name="orillacart-variations"
 				title={ __( 'Variations', 'orillacart' ) }
 			>
@@ -646,9 +607,22 @@ export function ProductPanels() {
 						) }
 					</p>
 				) }
-			</PluginDocumentSettingPanel>
-		</>
+			</Section>
+		</ProductSections>
 	);
+}
+
+/**
+ * The shop's refusal with each field's reason.
+ *
+ * @param error What the request failed with.
+ */
+function refusal( error: unknown ): string {
+	const { message, data } = toApiError( error );
+	const details = ( data?.violations ?? [] ).map(
+		( violation ) => `${ violation.field }: ${ violation.message }`
+	);
+	return [ message, ...details ].join( ' ' );
 }
 
 /**

@@ -9,7 +9,8 @@ use OrillaCart\Shared\WordPress\EditorPanel;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
- * Loads each EditorPanel's script in the block editor, only for its post type.
+ * Loads each EditorPanel's script on its post type's edit screen: in the block editor, or on the classic screen
+ * (the Classic Editor plugin, or the block editor turned off for the type), where the script renders into boxes.
  */
 final readonly class EditorPanelRegistrar implements Registrar
 {
@@ -25,6 +26,15 @@ final readonly class EditorPanelRegistrar implements Registrar
     public function register(): void
     {
         add_action('enqueue_block_editor_assets', $this->enqueue(...));
+        add_action('admin_enqueue_scripts', $this->enqueueClassic(...));
+    }
+
+    private function enqueueClassic(): void
+    {
+        $screen = get_current_screen();
+        if ($screen !== null && $screen->base === 'post' && !$screen->is_block_editor()) {
+            $this->enqueue();
+        }
     }
 
     private function enqueue(): void

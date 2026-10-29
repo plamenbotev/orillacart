@@ -8,7 +8,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Shared\WordPress\EditorPanel;
 
 /**
- * Price, stock, attributes and variations in the product editor.
+ * Price, stock, attributes and variations on the product's edit screen, in either editor (ProductDataBoxes).
  */
 final readonly class ProductEditorPanel implements EditorPanel
 {

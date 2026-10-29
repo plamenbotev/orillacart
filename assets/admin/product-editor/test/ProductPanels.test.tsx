@@ -7,6 +7,11 @@ import { store as editorStore } from '@wordpress/editor';
 import { store as noticesStore } from '@wordpress/notices';
 import type { ReactNode } from 'react';
 
+import {
+	classicEditorHost,
+	EditorHostProvider,
+	forgetClassicPost,
+} from '../host';
 import { ProductPanels } from '../ProductPanels';
 
 jest.mock( '@wordpress/api-fetch' );
@@ -146,6 +151,9 @@ describe( 'ProductPanels', () => {
 		expect( await screen.findByLabelText( 'Price' ) ).toHaveValue( '10' );
 		expect( screen.getByLabelText( 'SKU' ) ).toHaveValue( 'MUG' );
 		expect( await screen.findByLabelText( 'Sofia' ) ).toHaveValue( 4 );
+		await userEvent
+			.setup()
+			.click( screen.getByRole( 'tab', { name: 'Stock' } ) );
 		expect( screen.getByText( '4 available' ) ).toBeVisible();
 		expect(
 			screen.queryByLabelText( 'Sale starts' )
@@ -192,7 +200,7 @@ describe( 'ProductPanels', () => {
 		expect( await screen.findByLabelText( 'Sofia' ) ).toHaveValue( 2 );
 		// In the panel: the notice is also spoken, outside it.
 		const panel = within(
-			screen.getByRole( 'region', { name: 'Price and tax' } )
+			screen.getByRole( 'tabpanel', { name: 'Price and tax' } )
 		);
 		expect(
 			panel.getByText( /This is a translation of Becher/ )
@@ -211,9 +219,40 @@ describe( 'ProductPanels', () => {
 		expect( await screen.findByLabelText( 'Price' ) ).toHaveValue( '10' );
 		expect(
 			within(
-				screen.getByRole( 'region', { name: 'Price and tax' } )
+				screen.getByRole( 'tabpanel', { name: 'Price and tax' } )
 			).queryByText( /This is a translation/ )
 		).not.toBeInTheDocument();
+	} );
+
+	it( 'lists its sections as tabs beside the one open, keeping what is typed in the others', async () => {
+		serve( () => Promise.resolve( product ) );
+		const user = userEvent.setup();
+		render( <ProductPanels /> );
+
+		const price = await screen.findByLabelText( 'Price' );
+		expect(
+			screen.getAllByRole( 'tab' ).map( ( tab ) => tab.textContent )
+		).toEqual( [
+			'Price and tax',
+			'Weight and size',
+			'Stock',
+			'Attributes',
+			'Downloads',
+			'Bundle',
+			'Variations',
+		] );
+		await user.clear( price );
+		await user.type( price, '11' );
+		await user.click( screen.getByRole( 'tab', { name: 'Stock' } ) );
+		expect( price ).not.toBeVisible();
+		expect( screen.getByRole( 'tab', { name: 'Stock' } ) ).toHaveAttribute(
+			'aria-selected',
+			'true'
+		);
+		await user.click(
+			screen.getByRole( 'tab', { name: 'Price and tax' } )
+		);
+		expect( screen.getByLabelText( 'Price' ) ).toHaveValue( '11' );
 	} );
 
 	it( 'saves the details when the post is saved', async () => {
@@ -273,5 +312,92 @@ describe( 'ProductPanels', () => {
 		expect( notices() ).toEqual( [
 			'Some fields are not valid. price: Use an amount of zero or more.',
 		] );
+	} );
+
+	describe( 'on the classic edit screen', () => {
+		let form: HTMLFormElement;
+		let sent: number;
+
+		beforeEach( () => {
+			// WordPress's post form, its id and its Update button; the page "goes" when the form's submit is not stopped.
+			form = document.createElement( 'form' );
+			form.id = 'post';
+			form.innerHTML =
+				'<input type="hidden" id="post_ID" value="10"><input type="submit" id="publish" value="Update">';
+			document.body.appendChild( form );
+			sent = 0;
+			form.addEventListener( 'submit', ( event ) => {
+				sent += 1;
+				event.preventDefault();
+			} );
+			forgetClassicPost();
+		} );
+
+		afterEach( () => form.remove() );
+
+		const classic = () =>
+			render(
+				<EditorHostProvider value={ classicEditorHost }>
+					<ProductPanels />
+				</EditorHostProvider>
+			);
+
+		it( 'saves the details before the page is sent, then sends it', async () => {
+			serve( ( request ) =>
+				Promise.resolve( { ...product, ...( request.data as object ) } )
+			);
+			const user = userEvent.setup();
+			classic();
+
+			const price = await screen.findByLabelText( 'Price' );
+			await user.clear( price );
+			await user.type( price, '14' );
+			await user.click( screen.getByDisplayValue( 'Update' ) );
+
+			await act( async () => {} );
+			expect( mockedFetch ).toHaveBeenCalledWith(
+				expect.objectContaining( {
+					path: '/orillacart/v1/products/10',
+					method: 'PUT',
+					data: expect.objectContaining( { price: '14' } ),
+				} )
+			);
+			expect( sent ).toBe( 1 );
+		} );
+
+		it( 'keeps the page when the shop refuses, with its reasons in the box', async () => {
+			serve( ( request ) =>
+				request.method === 'PUT'
+					? Promise.reject( {
+							code: 'orillacart_invalid_input',
+							message: 'Some fields are not valid.',
+							data: {
+								status: 422,
+								violations: [
+									{
+										field: 'price',
+										message:
+											'Use an amount of zero or more.',
+									},
+								],
+							},
+						} )
+					: Promise.resolve( product )
+			);
+			const user = userEvent.setup();
+			classic();
+
+			await screen.findByLabelText( 'Price' );
+			await user.click( screen.getByDisplayValue( 'Update' ) );
+
+			// In the box: the reason is also spoken, outside it.
+			expect(
+				await screen.findByText(
+					'Some fields are not valid. price: Use an amount of zero or more.',
+					{ selector: '.components-notice__content' }
+				)
+			).toBeVisible();
+			expect( sent ).toBe( 0 );
+		} );
 	} );
 } );
