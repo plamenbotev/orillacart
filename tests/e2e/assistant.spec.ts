@@ -5,6 +5,8 @@
  */
 import { expect, test } from '@wordpress/e2e-test-utils-playwright';
 import type { APIRequestContext } from '@playwright/test';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 import { remove } from './shop';
 
@@ -125,6 +127,83 @@ test.describe( 'The AI assistant', () => {
 		expect( settings.body.result?.structuredContent ).toHaveProperty(
 			'currency'
 		);
+	} );
+
+	test( 'the official MCP client connects, lists the tools, runs one, reads the shop and is told what waits for the owner', async ( {
+		baseURL,
+	} ) => {
+		// The SDK's own client and Streamable HTTP transport, as Claude Desktop, Cursor and others use them: it
+		// speaks its latest revision (2025-11-25) and the earlier ones; 2026-07-28 is the test below.
+		const client = new Client( { name: 'e2e-sdk', version: '1' } );
+		const transport = new StreamableHTTPClientTransport(
+			new URL( ENDPOINT, baseURL ),
+			{
+				requestInit: {
+					headers: { Authorization: `Bearer ${ key.secret }` },
+				},
+			}
+		);
+		// The SDK's own types disagree under exactOptionalPropertyTypes (sessionId may be undefined).
+		await client.connect(
+			transport as unknown as Parameters< Client[ 'connect' ] >[ 0 ]
+		);
+		try {
+			expect( client.getServerVersion()?.name ).toBe( 'orillacart' );
+			expect( transport.protocolVersion ).toBe( '2025-11-25' );
+
+			const names: string[] = [];
+			let cursor: string | undefined;
+			do {
+				const page = await client.listTools(
+					cursor === undefined ? {} : { cursor }
+				);
+				names.push( ...page.tools.map( ( tool ) => tool.name ) );
+				cursor = page.nextCursor;
+			} while ( cursor !== undefined );
+			expect( names.length ).toBeGreaterThan( 200 );
+			expect( names ).toEqual(
+				expect.arrayContaining( [ 'list_orders', 'e2e_echo' ] )
+			);
+
+			// The client checks each answer against the tool's output schema, where one is given.
+			const settings = await client.callTool( {
+				name: 'show_settings',
+				arguments: {},
+			} );
+			expect( settings.isError ).toBe( false );
+			expect( settings.structuredContent ).toHaveProperty( 'currency' );
+
+			const refused = await client.callTool( {
+				name: 'create_tax_group',
+				arguments: { name: '' },
+			} );
+			expect( refused.isError ).toBe( true );
+
+			// A refund waits for the owner's yes, which this revision's clients cannot ask: the model is told so.
+			const waits = await client.callTool( {
+				name: 'refund_order',
+				arguments: { id: 1, amount: '1' },
+			} );
+			expect( waits.isError ).toBe( true );
+			expect( JSON.stringify( waits.content ) ).toContain(
+				'waits for the owner'
+			);
+
+			const shop = await client.readResource( {
+				uri: 'orillacart://shop',
+			} );
+			expect( shop.contents[ 0 ]?.uri ).toBe( 'orillacart://shop' );
+			const prompts = await client.listPrompts();
+			expect(
+				prompts.prompts.map( ( prompt ) => prompt.name )
+			).toContain( 'set_up_shop' );
+			const prompt = await client.getPrompt( {
+				name: 'set_up_shop',
+			} );
+			expect( prompt.messages.length ).toBeGreaterThan( 0 );
+		} finally {
+			await client.close();
+		}
 	} );
 
 	test( 'a 2026-07-28 client discovers the server, lists the tools and reads the shop', async ( {

@@ -215,5 +215,7 @@ Registering the same tools as abilities (above) gives the adapter's users the sh
   DTOs, names, risk classes.
 - **Integration**, on wp-env: every tool's schema is valid JSON Schema 2020-12; a call per area with a key; a
   read-only key refused; a risk class asked and then run; the change log names the assistant; add-on tools.
-- **End to end**: the official MCP Inspector CLI lists the tools and calls a few against the test site, for both
-  protocol revisions.
+- **End to end**: the official MCP client (`@modelcontextprotocol/sdk`, its Streamable HTTP transport) connects
+  to the test site with a key at its latest revision, 2025-11-25: it pages through the tools, runs one, is refused
+  one with wrong arguments and told a refund waits for the owner, and reads the resource and a prompt. The
+  2026-07-28 revision, which the client does not speak yet, and 2025-06-18 are spoken by the tests themselves.

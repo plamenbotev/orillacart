@@ -286,7 +286,7 @@ Design 49. Bundled with the plugin, working once a key is made, covering setup a
 | ✅ | 194 | P1 | The assistant's page tools reach only the shop's pages (shop, cart, checkout, account, the legal ones), never the site's others; `change_page` edits unpublished ones; `publish_page` puts live, changes live or takes down, asking first with the page and its text | bca857d |
 | ✅ | 195 | P1 | Publishing the shop's pages is its own risk class, `publishing`, not "customers hear of it": the owner who lets the assistant email customers has not let it publish terms; a class added later is asked about on keys saved before it | 66c45b0 |
 | ✅ | 193 | P2 | Descriptions for the other risky calls: a refund with its amount, order and customer; a deletion with what is deleted; an email with whom it goes to. Every risky tool has one: money (refund, retry, status, a manual order), what reaches customers (emails, notes, shipments), balances, deletions named through the shop's own reads (or their list, or the thing they are in), opening, settings changed field by field, sample data, problems, failed jobs | 85caee7 |
-| 🔄 | 190 | P2 | Tests: protocol unit tests, every schema valid, a call per area, the MCP Inspector CLI against wp-env for both revisions; docs for owners and for add-on tools | |
+| ✅ | 190 | P2 | Tests: protocol unit tests, every schema valid, a call per area, the MCP Inspector CLI against wp-env for both revisions; docs for owners and for add-on tools. The official client is the SDK's (1.32.1, a dev dependency) at 2025-11-25 in the e2e tests; 2026-07-28, which it does not speak yet, by the tests' own requests; every area answers a reading tool in the integration tests | |
 
 ## Product pages, product lists and landing pages from blocks (2026-10-27)
 
@@ -301,7 +301,7 @@ Design 50. No page builder of the shop's own: the block editor and site editor a
 | ✅ | 200 | P2 | The assistant builds landing pages: `list_patterns`, `create_landing_page` (a draft); its page tools reach landing pages it made, still not the site's others | c5b3248 |
 | ✅ | 201 | P2 | Extension API 16: `Storefront\ProductBlock` with a plain `ShownProduct`, registered as `orillacart-addon/{id}`, previewed in the editor, allowed in the product card | c5b3248 |
 | ✅ | 202 | P1 | Tests: the first response of a product page built from blocks holds the name, price, form and reviews; the variation changes the price outside the form; the card template in the grid; patterns parse; the assistant's landing pages; an add-on's block | c5b3248 |
-| ✅ | 203 | P2 | End-to-end in the editor: the product blocks' previews in the site editor's product template, the card designer in the Products block, the Single product chooser (tests/e2e/editor.spec.ts: the template previews the latest product's price and buying form; a card designed without its price shows each product so; the chooser finds a product by name and the page shows it) | |
+| ✅ | 203 | P2 | End-to-end in the editor: the product blocks' previews in the site editor's product template, the card designer in the Products block, the Single product chooser (tests/e2e/editor.spec.ts: the template previews the latest product's price and buying form; a card designed without its price shows each product so; the chooser finds a product by name and the page shows it) | 129e385 |
 
 ## Updates on a network (2026-10-28)
 
@@ -342,7 +342,6 @@ Design 51. Both a site per language on a network (works today, each with its own
 
 - PayPal against the real sandbox: needs sandbox credentials.
 
-- 190, an official MCP client against the test site: installing `@modelcontextprotocol/sdk` (1.32.1) as a dev dependency was not permitted in the session. The end-to-end tests speak both protocol revisions over HTTP themselves.
 
 ## Deliberately not carried over
 

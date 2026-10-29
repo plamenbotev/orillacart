@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Assistant\Application\AssistantTools;
+use OrillaCart\Assistant\Application\Dto\AssistantChoices;
+use OrillaCart\Assistant\Application\Dto\Caller;
 use OrillaCart\Assistant\Application\RouteTools;
 use OrillaCart\Assistant\Infrastructure\AddOnToolSource;
 use OrillaCart\Assistant\Infrastructure\WordPress\SignedRequestStates;
@@ -359,6 +361,44 @@ final class AssistantMcpTest extends RestTestCase
 
         self::assertFalse(self::at($answer, 'result', 'isError'), 'the endpoint checked the nonce; the route the tool runs does not ask again');
         self::assertSame('Logged in', self::at($answer, 'result', 'structuredContent', 'name'));
+    }
+
+    public function testEveryAreaAnswersACallOfOneOfItsReadingTools(): void
+    {
+        $this->actAs('administrator');
+        $tools = self::kernel()->container()->get(AssistantTools::class);
+        self::assertInstanceOf(AssistantTools::class, $tools);
+        $caller = new Caller(get_current_user_id(), null, false, new AssistantChoices());
+
+        // Per area, its reading tools that need no arguments: lists, settings, overviews.
+        $byArea = [];
+        $byId = [];
+        foreach ($tools->offered($caller) as $tool) {
+            $required = $tool->inputSchema['required'] ?? [];
+            if ($tool->readOnly && $required === []) {
+                $byArea[$tool->area][] = $tool->name;
+            } elseif ($tool->readOnly && $required === ['id']) {
+                $byId[$tool->area][] = $tool->name;
+            }
+        }
+        $answered = [];
+        foreach ($byArea as $area => $names) {
+            sort($names);
+            $outcome = $tools->call($names[0], [], $caller);
+            self::assertNotNull($outcome, $names[0]);
+            self::assertFalse($outcome->isError(), "{$area}: {$names[0]} refused: " . ($outcome->refusal ?? ''));
+            $answered[] = $area;
+        }
+        // An area whose every read is of one thing (an order's returns): asked of none, it says so.
+        foreach (array_diff_key($byId, $byArea) as $area => $names) {
+            sort($names);
+            $outcome = $tools->call($names[0], ['id' => 999999999], $caller);
+            self::assertNotNull($outcome, $names[0]);
+            self::assertStringContainsStringIgnoringCase('no ', (string) $outcome->refusal, "{$area}: {$names[0]}");
+            $answered[] = $area;
+        }
+        $areas = array_values(array_unique(array_map(static fn($tool): string => $tool->area, $tools->offered($caller))));
+        self::assertSame([], array_values(array_diff($areas, $answered)), 'every area has a reading tool that needs nothing, and it answers');
     }
 
     public function testTheToolsAreWordPressAbilitiesExceptTheRiskyOnes(): void

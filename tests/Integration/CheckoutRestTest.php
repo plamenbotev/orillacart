@@ -199,7 +199,10 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame(1, $this->stock()->stock(StockItemRef::product($this->product))->available);
         self::assertSame(0, $this->data($this->request('GET', '/cart'))['items']);
 
-        self::assertSame(['ada@example.com', 'wordpress@example.com'], array_column($this->sentMail(), 'to'));
+        // The shop's own copy goes to its address for emails, which the end-to-end setup may have changed, else the site's.
+        $stored = get_option('orillacart_email_settings');
+        $shop = \is_array($stored) && \is_string($stored['shop_address'] ?? null) && $stored['shop_address'] !== '' ? $stored['shop_address'] : get_option('admin_email');
+        self::assertSame(['ada@example.com', $shop], array_column($this->sentMail(), 'to'));
         self::assertStringContainsString('We received your order', $this->sentMail()[0]['subject'] ?? '');
         self::assertStringContainsString('Have the cash ready.', $this->sentMail()[0]['message'] ?? '');
 
