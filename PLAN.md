@@ -301,7 +301,7 @@ Design 50. No page builder of the shop's own: the block editor and site editor a
 | ✅ | 200 | P2 | The assistant builds landing pages: `list_patterns`, `create_landing_page` (a draft); its page tools reach landing pages it made, still not the site's others | c5b3248 |
 | ✅ | 201 | P2 | Extension API 16: `Storefront\ProductBlock` with a plain `ShownProduct`, registered as `orillacart-addon/{id}`, previewed in the editor, allowed in the product card | c5b3248 |
 | ✅ | 202 | P1 | Tests: the first response of a product page built from blocks holds the name, price, form and reviews; the variation changes the price outside the form; the card template in the grid; patterns parse; the assistant's landing pages; an add-on's block | c5b3248 |
-| ⬜ | 203 | P2 | End-to-end in the editor: the product blocks' previews in the site editor's product template, the card designer in the Products block, the Single product chooser | |
+| ✅ | 203 | P2 | End-to-end in the editor: the product blocks' previews in the site editor's product template, the card designer in the Products block, the Single product chooser (tests/e2e/editor.spec.ts: the template previews the latest product's price and buying form; a card designed without its price shows each product so; the chooser finds a product by name and the page shows it) | |
 
 ## Updates on a network (2026-10-28)
 
@@ -333,7 +333,7 @@ Design 51. Both a site per language on a network (works today, each with its own
 | ✅ | 215 | P2 | The search index per language, a search in the current one; the blocks and MCP take a language (the storefront's REST calls carry it already, 214): a document per product and language, the own words where a product has no translation (listing those is a setting), values named in the language; block previews in the edited post's language; related products across each language's terms | 852a73e |
 | ✅ | 216 | P3 | WPML string packages, one per object, filling the translations table for its translation management: carriers, payment methods, forms, filters, attribute sets and products' attributes registered on save and removed on delete; finished translations pulled back after WPML's jobs or with `wp orillacart translations pull`. Not tried against a real WPML (commercial): a stand-in answers its documented hooks | f78956f |
 | ✅ | 221 | P2 | OpenSearch reads each document's words with its language's analyzer as well (35 built-in, by locale; a site in one language by WordPress's), so a search finds other forms of a word; an update prepares the index's new fields before rebuilding it, which 215's fields needed too | 7040be1 |
-| ✅ | 222 | P2 | WPML's older copy no longer overwrites a translation fixed in the shop (the owner's report, 2026-10-29): the shop keeps what WPML last gave for each word and takes WPML's only when it changed since | |
+| ✅ | 222 | P2 | WPML's older copy no longer overwrites a translation fixed in the shop (the owner's report, 2026-10-29): the shop keeps what WPML last gave for each word and takes WPML's only when it changed since | eab87d6 |
 | ⬜ | 217 | P3 | Later: a catalog shared by a network's language sites, one stock | |
 
 ## Waiting on others
