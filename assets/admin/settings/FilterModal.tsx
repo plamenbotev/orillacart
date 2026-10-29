@@ -12,6 +12,7 @@ import type { FormEvent } from 'react';
 
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import { toApiError, violationOf, type Violation } from '../shared/api';
+import { TranslationFields, useOtherLanguages } from '../shared/Translations';
 import { saveFilter, type SearchFilter } from './filters';
 
 interface Props {
@@ -50,7 +51,9 @@ export function FilterModal( props: Props ) {
 		key: filter?.key ?? '',
 		attributes: filter?.attributes ?? [],
 		position: filter?.position ?? nextPosition,
+		translations: filter?.translations ?? {},
 	} );
+	const languages = useOtherLanguages();
 	const [ opened ] = useState( form );
 	useUnsavedChanges( differs( form, opened ) );
 	const [ keyEdited, setKeyEdited ] = useState( filter !== null );
@@ -102,6 +105,14 @@ export function FilterModal( props: Props ) {
 							label,
 							key: keyEdited ? form.key : keyOf( label ),
 						} )
+					}
+				/>
+				<TranslationFields
+					label={ __( 'Label', 'orillacart' ) }
+					languages={ languages }
+					value={ form.translations }
+					onChange={ ( translations ) =>
+						setForm( { ...form, translations } )
 					}
 				/>
 				<TextControl

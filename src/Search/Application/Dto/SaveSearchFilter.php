@@ -26,5 +26,12 @@ final readonly class SaveSearchFilter
         public array $attributes,
         #[Assert\PositiveOrZero]
         public int $position = 0,
+        /**
+         * The label in the site's other languages, by locale; null leaves them as they are.
+         *
+         * @var array<string, string>|null
+         */
+        #[Assert\All([new Assert\Type('string')])]
+        public ?array $translations = null,
     ) {}
 }

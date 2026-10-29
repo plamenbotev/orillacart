@@ -18,5 +18,12 @@ final readonly class SaveFieldChoice
         public string $value = '',
         #[Assert\Regex(pattern: '/^\d{1,11}(\.\d{1,4})?$/', message: 'Enter an amount.')]
         public ?string $price = null,
+        /**
+         * The label in the site's other languages, by locale; null leaves them as they are.
+         *
+         * @var array<string, string>|null
+         */
+        #[Assert\All([new Assert\Type('string')])]
+        public ?array $translations = null,
     ) {}
 }

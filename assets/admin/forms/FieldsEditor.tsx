@@ -10,6 +10,7 @@ import {
 import { useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { TranslationFields, useOtherLanguages } from '../shared/Translations';
 import {
 	FILE_TYPES,
 	newField,
@@ -278,6 +279,24 @@ function FieldForm( {
 	const { field } = draft;
 	const set = ( changes: Partial< FormField > ) =>
 		onChange( { ...draft, field: { ...field, ...changes } } );
+	const languages = useOtherLanguages();
+	const translate = (
+		part: 'label' | 'help' | 'placeholder',
+		label: string,
+		multiline = false
+	) => (
+		<TranslationFields
+			label={ label }
+			languages={ languages }
+			multiline={ multiline }
+			value={ field.translations?.[ part ] }
+			onChange={ ( text ) =>
+				set( {
+					translations: { ...field.translations, [ part ]: text },
+				} )
+			}
+		/>
+	);
 	const priced = placement === 'product';
 	const conditionField = earlier.find(
 		( other ) => other.field.key === field.condition?.field
@@ -298,6 +317,7 @@ function FieldForm( {
 					)
 				}
 			/>
+			{ translate( 'label', __( 'Question', 'orillacart' ) ) }
 			<SelectControl
 				__next40pxDefaultSize
 				label={ __( 'Kind', 'orillacart' ) }
@@ -325,6 +345,11 @@ function FieldForm( {
 				rows={ 2 }
 				onChange={ ( help ) => set( { help } ) }
 			/>
+			{ translate(
+				'help',
+				__( 'Help shown under it', 'orillacart' ),
+				true
+			) }
 			{ [ 'text', 'textarea', 'number' ].includes( field.kind ) && (
 				<TextControl
 					__next40pxDefaultSize
@@ -333,6 +358,8 @@ function FieldForm( {
 					onChange={ ( placeholder ) => set( { placeholder } ) }
 				/>
 			) }
+			{ [ 'text', 'textarea', 'number' ].includes( field.kind ) &&
+				translate( 'placeholder', __( 'Placeholder', 'orillacart' ) ) }
 			{ [ 'text', 'textarea' ].includes( field.kind ) && (
 				<TextControl
 					__next40pxDefaultSize
@@ -550,6 +577,7 @@ function ChoicesEditor( {
 	onChange: ( draft: FieldDraft ) => void;
 } ) {
 	const { field } = draft;
+	const languages = useOtherLanguages();
 	const setChoices = ( choices: FormField[ 'choices' ], fresh: boolean[] ) =>
 		onChange( {
 			...draft,
@@ -582,84 +610,104 @@ function ChoicesEditor( {
 				}
 			/>
 			{ field.choices.map( ( choice, index ) => (
-				<Flex key={ index } align="flex-end">
-					<TextControl
-						__next40pxDefaultSize
-						label={ __( 'Choice', 'orillacart' ) }
-						value={ choice.label }
-						maxLength={ 100 }
-						onChange={ ( label ) =>
-							setChoices(
-								field.choices.map( ( other, at ) =>
-									at !== index
-										? other
-										: {
-												...other,
-												label,
-												value: draft.freshChoices[
-													index
-												]
-													? slugOf(
-															label,
-															'-',
-															40,
-															field.choices
-																.filter(
-																	( _, i ) =>
-																		i !==
-																		index
-																)
-																.map(
-																	( c ) =>
-																		c.value
-																)
-														)
-													: other.value,
-											}
-								),
-								draft.freshChoices
-							)
-						}
-					/>
-					{ priced && (
+				<div key={ index }>
+					<Flex align="flex-end">
 						<TextControl
 							__next40pxDefaultSize
-							label={ __( 'Price added', 'orillacart' ) }
-							value={ choice.price ?? '' }
-							onChange={ ( price ) =>
+							label={ __( 'Choice', 'orillacart' ) }
+							value={ choice.label }
+							maxLength={ 100 }
+							onChange={ ( label ) =>
 								setChoices(
 									field.choices.map( ( other, at ) =>
-										at === index
-											? {
+										at !== index
+											? other
+											: {
 													...other,
-													price: amountOrNull(
-														price
-													),
+													label,
+													value: draft.freshChoices[
+														index
+													]
+														? slugOf(
+																label,
+																'-',
+																40,
+																field.choices
+																	.filter(
+																		(
+																			_,
+																			i
+																		) =>
+																			i !==
+																			index
+																	)
+																	.map(
+																		( c ) =>
+																			c.value
+																	)
+															)
+														: other.value,
 												}
-											: other
 									),
 									draft.freshChoices
 								)
 							}
 						/>
-					) }
-					<Button
-						variant="tertiary"
-						isDestructive
-						onClick={ () =>
-							setChoices(
-								field.choices.filter(
-									( _, at ) => at !== index
-								),
-								draft.freshChoices.filter(
-									( _, at ) => at !== index
+						{ priced && (
+							<TextControl
+								__next40pxDefaultSize
+								label={ __( 'Price added', 'orillacart' ) }
+								value={ choice.price ?? '' }
+								onChange={ ( price ) =>
+									setChoices(
+										field.choices.map( ( other, at ) =>
+											at === index
+												? {
+														...other,
+														price: amountOrNull(
+															price
+														),
+													}
+												: other
+										),
+										draft.freshChoices
+									)
+								}
+							/>
+						) }
+						<Button
+							variant="tertiary"
+							isDestructive
+							onClick={ () =>
+								setChoices(
+									field.choices.filter(
+										( _, at ) => at !== index
+									),
+									draft.freshChoices.filter(
+										( _, at ) => at !== index
+									)
 								)
+							}
+						>
+							{ __( 'Remove', 'orillacart' ) }
+						</Button>
+					</Flex>
+					<TranslationFields
+						label={ __( 'Choice', 'orillacart' ) }
+						languages={ languages }
+						value={ choice.translations }
+						onChange={ ( translations ) =>
+							setChoices(
+								field.choices.map( ( other, at ) =>
+									at === index
+										? { ...other, translations }
+										: other
+								),
+								draft.freshChoices
 							)
 						}
-					>
-						{ __( 'Remove', 'orillacart' ) }
-					</Button>
-				</Flex>
+					/>
+				</div>
 			) ) }
 			<Button
 				variant="secondary"

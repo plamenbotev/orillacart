@@ -92,6 +92,11 @@ shipping and payment titles, forms, filters and email templates in each language
   A field of an item a list holds names the item's key: `pickup.{key}.name`, so a place gone takes its words with
   it. Checkout's options, the receipt note, the fee's line and the Shipping and payment block read them in the
   language shown; the order keeps the words it was placed with.
+- **Forms and search filters** too: each field's label, help and placeholder and each choice's label, by the
+  field's key and the choice's value (`field.{key}.choice.{key}`), saved with the form; a new field's key is made
+  in the save, so its words are checked first and keyed after. The product page, the cart and checkout ask the
+  questions in the language shown, and the answers keep the words they were asked in. A filter's label, saved
+  with it, heads its group in the shop's filter panel.
 - **The storefront's calls carry the page's language.** The REST API's URL has no language of Polylang's or WPML's,
   so the cart, checkout and quotes would answer in the default one. The page gives its locale to the script, which
   sends it as `X-OrillaCart-Locale`; a locale the site offers is the call's: the content language, WordPress's

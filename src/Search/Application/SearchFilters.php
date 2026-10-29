@@ -13,6 +13,9 @@ use OrillaCart\Search\Domain\SearchFilter;
 use OrillaCart\Search\Domain\SearchFilterNotFound;
 use OrillaCart\Search\Domain\SearchFilterRepository;
 use OrillaCart\Search\Domain\SearchRuleViolation;
+use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Translations\Application\ContentTranslations;
+use OrillaCart\Translations\Domain\TranslationRuleViolation;
 
 /**
  * The filters the shop offers shoppers, as the settings screen keeps them. Values come from the index, so a
@@ -24,6 +27,8 @@ final readonly class SearchFilters
         private SearchFilterRepository $filters,
         private ProductLookup $products,
         private CategoryFiltersRepository $categories,
+        private ContentTranslations $translations,
+        private Transactions $transactions,
     ) {}
 
     /**
@@ -31,7 +36,10 @@ final readonly class SearchFilters
      */
     public function filters(): array
     {
-        return array_map(SearchFilterView::fromFilter(...), $this->filters->all());
+        $filters = $this->filters->all();
+        $translations = $this->translations->of(SearchFilterTranslations::TYPE, array_map(static fn(SearchFilter $filter): int => $filter->id(), $filters));
+
+        return array_map(static fn(SearchFilter $filter): SearchFilterView => SearchFilterView::fromFilter($filter, $translations[$filter->id()]['label'] ?? []), $filters);
     }
 
     /**
@@ -46,28 +54,28 @@ final readonly class SearchFilters
 
     /**
      * @throws SearchRuleViolation
+     * @throws TranslationRuleViolation
      */
     public function create(SaveSearchFilter $command): SearchFilterView
     {
         $this->requireFreeKey($command->key, null);
         $filter = new SearchFilter($command->label, $command->key, $command->attributes, $command->position);
-        $this->filters->save($filter);
 
-        return SearchFilterView::fromFilter($filter);
+        return $this->save($filter, $command);
     }
 
     /**
      * @throws SearchFilterNotFound
      * @throws SearchRuleViolation
+     * @throws TranslationRuleViolation
      */
     public function update(int $id, SaveSearchFilter $command): SearchFilterView
     {
         $filter = $this->get($id);
         $this->requireFreeKey($command->key, $id);
         $filter->change($command->label, $command->key, $command->attributes, $command->position);
-        $this->filters->save($filter);
 
-        return SearchFilterView::fromFilter($filter);
+        return $this->save($filter, $command);
     }
 
     /**
@@ -110,7 +118,27 @@ final readonly class SearchFilters
      */
     public function delete(int $id): void
     {
-        $this->filters->remove($this->get($id));
+        $filter = $this->get($id);
+        $this->transactions->run(function () use ($filter): void {
+            $this->translations->forget(SearchFilterTranslations::TYPE, [$filter->id()]);
+            $this->filters->remove($filter);
+        });
+    }
+
+    /**
+     * The filter and its label's translations together, or neither; a new filter has its id once saved.
+     *
+     * @throws TranslationRuleViolation
+     */
+    private function save(SearchFilter $filter, SaveSearchFilter $command): SearchFilterView
+    {
+        $texts = $command->translations === null ? [] : $this->translations->check(SearchFilterTranslations::TYPE, ['label' => $command->translations]);
+        $this->transactions->run(function () use ($filter, $texts): void {
+            $this->filters->save($filter);
+            $this->translations->write(SearchFilterTranslations::TYPE, $filter->id(), $texts);
+        });
+
+        return SearchFilterView::fromFilter($filter, $this->translations->of(SearchFilterTranslations::TYPE, [$filter->id()])[$filter->id()]['label'] ?? []);
     }
 
     private function requireFreeKey(string $key, ?int $exceptId): void

@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Unit\Search;
 
 use OrillaCart\Catalog\Application\ProductLookup;
 use OrillaCart\Search\Application\CatalogSearch;
+use OrillaCart\Search\Application\Dto\SaveSearchFilter;
 use OrillaCart\Search\Application\Dto\SearchFilterView;
 use OrillaCart\Search\Application\SearchFilters;
 use OrillaCart\Search\Application\ShopSearch;
@@ -14,7 +15,9 @@ use OrillaCart\Search\Domain\CategoryFiltersRepository;
 use OrillaCart\Search\Domain\SearchFilter;
 use OrillaCart\Search\Domain\SearchFilterRepository;
 use OrillaCart\Search\Domain\SearchRuleViolation;
+use OrillaCart\Shared\I18n\Language;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -26,6 +29,7 @@ final class FiltersByCategoryTest extends TestCase
     private InMemoryCategoryFilters $categories;
     private ShopSearch $search;
     private SearchFilters $filters;
+    private TestShop $shop;
 
     protected function setUp(): void
     {
@@ -35,8 +39,8 @@ final class FiltersByCategoryTest extends TestCase
         $this->repository->save(new SearchFilter('Wattage', 'wattage', ['Wattage'], 3));
         $this->categories = new InMemoryCategoryFilters();
         $this->search = new ShopSearch(self::createStub(CatalogSearch::class), $this->repository, $this->categories);
-        $shop = new TestShop();
-        $this->filters = new SearchFilters($this->repository, new ProductLookup($shop->productRecords, $shop->content), $this->categories);
+        $this->shop = $shop = new TestShop();
+        $this->filters = new SearchFilters($this->repository, new ProductLookup($shop->productRecords, $shop->content), $this->categories, $shop->contentTranslations, new ImmediateTransactions());
     }
 
     public function testACategoryWithoutAChoiceOffersEveryFilterInTheShopsOrder(): void
@@ -60,6 +64,21 @@ final class FiltersByCategoryTest extends TestCase
         $this->filters->choose(11, null);
         $this->filters->choose(10, null);
         self::assertSame(['colour', 'size', 'wattage'], $this->keys(11, 10), 'back to the shop\'s');
+    }
+
+    public function testAFilterLabelIsSavedInTheSitesOtherLanguagesAndGoesWithIt(): void
+    {
+        $this->shop->contentLanguages->languages = [new Language('en', 'en_US', 'English'), new Language('de', 'de_DE', 'Deutsch')];
+
+        $filter = $this->filters->create(new SaveSearchFilter('Size', 'size', ['Size'], translations: ['de_DE' => 'Größe']));
+        self::assertSame(['de_DE' => 'Größe'], $filter->translations);
+        $kept = $this->filters->update($filter->id, new SaveSearchFilter('Size', 'size', ['Size', 'Größe']));
+        self::assertSame(['de_DE' => 'Größe'], $kept->translations, 'a save without them keeps them');
+        $this->shop->languageOfRequest->locale = 'de_DE';
+        self::assertSame([$filter->id => 'Größe'], $this->shop->contentTranslations->translated('search_filter', [$filter->id], 'label'));
+
+        $this->filters->delete($filter->id);
+        self::assertSame([], $this->shop->translationRecords->all('search_filter', [$filter->id]));
     }
 
     public function testACategoryOffersAtMostAHundredFilters(): void

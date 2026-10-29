@@ -17,10 +17,15 @@ final readonly class SearchFilterView
         public string $key,
         public array $attributes,
         public int $position,
+        /** @var array<string, string> the label in the site's other languages, by locale */
+        public array $translations = [],
     ) {}
 
-    public static function fromFilter(SearchFilter $filter): self
+    /**
+     * @param array<string, string> $translations
+     */
+    public static function fromFilter(SearchFilter $filter, array $translations = []): self
     {
-        return new self($filter->id(), $filter->label(), $filter->key(), $filter->attributes(), $filter->position());
+        return new self($filter->id(), $filter->label(), $filter->key(), $filter->attributes(), $filter->position(), $translations);
     }
 }

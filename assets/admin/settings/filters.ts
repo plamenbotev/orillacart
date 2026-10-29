@@ -1,5 +1,7 @@
 import apiFetch from '@wordpress/api-fetch';
 
+import type { FieldTranslations } from '../shared/Translations';
+
 /** A filter shoppers see on the shop page, over the attributes with these names. */
 export interface SearchFilter {
 	id: number;
@@ -8,6 +10,8 @@ export interface SearchFilter {
 	key: string;
 	attributes: string[];
 	position: number;
+	/** The label in the site's other languages; left out, they stay as they are. */
+	translations?: FieldTranslations;
 }
 
 export type SearchFilterInput = Omit< SearchFilter, 'id' >;

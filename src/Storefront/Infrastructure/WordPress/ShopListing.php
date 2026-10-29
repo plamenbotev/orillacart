@@ -14,10 +14,12 @@ use OrillaCart\Search\Application\Dto\SearchFilterView;
 use OrillaCart\Search\Application\Dto\SearchQuery;
 use OrillaCart\Search\Application\Dto\SearchResult;
 use OrillaCart\Search\Application\Dto\SearchSort;
+use OrillaCart\Search\Application\SearchFilterTranslations;
 use OrillaCart\Search\Application\ShopSearch;
 use OrillaCart\Search\Domain\Facets;
 use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
+use OrillaCart\Translations\Application\ContentTranslations;
 
 /**
  * What a shopper asks the shop page for, read from the address, as the Products and Product filters blocks
@@ -40,6 +42,7 @@ final readonly class ShopListing
         private ShopSearch $search,
         private StorefrontSettingsService $settings,
         private ContentLanguages $languages,
+        private ContentTranslations $translations,
     ) {}
 
     /**
@@ -112,8 +115,11 @@ final readonly class ShopListing
     public function panel(array $choices, SearchResult $result): array
     {
         $groups = [['label' => __('Brand', 'orillacart'), 'key' => Facet::BRANDS, 'name' => 'brand[]', 'chosen' => array_map(strval(...), $choices['brands'])]];
-        foreach ($this->definitions($choices['category_id']) as $filter) {
-            $groups[] = ['label' => $filter->label, 'key' => $filter->key, 'name' => "f[{$filter->key}][]", 'chosen' => $choices['options'][$filter->key] ?? []];
+        $definitions = $this->definitions($choices['category_id']);
+        // The labels in the shopper's language, where the shop translated them.
+        $labels = $this->translations->translated(SearchFilterTranslations::TYPE, array_map(static fn(SearchFilterView $filter): int => $filter->id, $definitions), 'label');
+        foreach ($definitions as $filter) {
+            $groups[] = ['label' => $labels[$filter->id] ?? $filter->label, 'key' => $filter->key, 'name' => "f[{$filter->key}][]", 'chosen' => $choices['options'][$filter->key] ?? []];
         }
         $filters = [];
         $hideSingle = $this->settings->current()->hideSingleValueFilters;

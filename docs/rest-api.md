@@ -2055,6 +2055,7 @@ Adds a filter shoppers see in the shop, over the product attributes with the nam
   - `key` (string): required; matches `/^[a-z0-9][a-z0-9_-]{0,39}$/`
   - `attributes` (list<string>): required; 1 to 20 items; each at most 100 characters
   - `position` (int): 0 or more; default 0
+  - `translations` (array|null)
 
 ### `GET /search-filters/attributes`
 
@@ -2072,6 +2073,7 @@ Changes a search filter's label, key, attributes or position.
   - `key` (string): required; matches `/^[a-z0-9][a-z0-9_-]{0,39}$/`
   - `attributes` (list<string>): required; 1 to 20 items; each at most 100 characters
   - `position` (int): 0 or more; default 0
+  - `translations` (array|null)
 
 ### `DELETE /search-filters/{id}`
 
@@ -2763,6 +2765,7 @@ The objects fields above take.
 - `label` (string): required; not empty; at most 100 characters
 - `value` (string): at most 40 characters
 - `price` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
+- `translations` (array|null)
 
 ### SaveFieldCondition
 
@@ -2788,6 +2791,7 @@ The objects fields above take.
 - `condition` (SaveFieldCondition|null)
 - `types` (list<string>): each one of image/jpeg, image/png, image/webp, image/gif, application/pdf
 - `largest` (int): 1 to 20; default 10
+- `translations` (array|null): collection
 
 ### SaveNexusThreshold
 

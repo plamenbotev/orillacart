@@ -462,6 +462,7 @@ describe( 'SettingsScreen', () => {
 				key: 'colour',
 				attributes: [ 'Colour' ],
 				position: 1,
+				translations: {},
 			},
 		} );
 	} );

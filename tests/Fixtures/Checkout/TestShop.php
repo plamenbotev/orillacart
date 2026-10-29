@@ -57,6 +57,8 @@ use OrillaCart\Customers\Infrastructure\TaggedPersonalDataSources;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Forms\Application\FieldAnswers;
 use OrillaCart\Forms\Application\FormService;
+use OrillaCart\Forms\Application\FormTexts;
+use OrillaCart\Forms\Application\FormTranslations;
 use OrillaCart\Forms\Application\FormUploads;
 use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Forms\Infrastructure\SafeUploadInspector;
@@ -134,6 +136,7 @@ use OrillaCart\Platform\Twig\TwigRenderer;
 use OrillaCart\Returns\Application\ReturnedOrders;
 use OrillaCart\Returns\Application\Returns;
 use OrillaCart\Returns\Domain\Event\WithdrawalDeclared;
+use OrillaCart\Search\Application\SearchFilterTranslations;
 use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Settings\Domain\DimensionUnit;
@@ -411,7 +414,6 @@ final class TestShop
         $this->formRecords = new InMemoryFormRepository();
         $this->uploadRecords = new InMemoryFormUploadRepository();
         $this->fieldAnswers = new FieldAnswers($this->uploadRecords);
-        $this->shopForms = new ShopForms($this->formRecords, $this->fieldAnswers);
 
         $this->taxGroupRecords = $taxGroupRecords = new InMemoryTaxGroupRepository();
         $this->taxSettings = new InMemoryTaxSettingsRepository(new TaxSettings(TaxBasis::ShippingAddress, null));
@@ -432,16 +434,18 @@ final class TestShop
         $this->content = new InMemoryProductContent();
         $this->contentLanguages = new FakeContentLanguages([]);
         $this->productTranslations = new ProductTranslations($this->contentLanguages, $productRecords, $this->content);
-        $this->translationRecords = new InMemoryTranslations()->add(new AttributeTranslations(), new OptionTranslations(), new CarrierTranslations(), new RateTranslations(), new PaymentMethodTranslations());
+        $this->translationRecords = new InMemoryTranslations()->add(new AttributeTranslations(), new OptionTranslations(), new CarrierTranslations(), new RateTranslations(), new PaymentMethodTranslations(), new FormTranslations(), new SearchFilterTranslations());
         $this->languageOfRequest = new FakeLanguages();
         $this->contentTranslations = new ContentTranslations($this->translationRecords, $this->translationRecords, $this->contentLanguages, $this->languageOfRequest);
         $this->shippingTexts = new ShippingTexts($this->contentTranslations);
+        $formTexts = new FormTexts($this->contentTranslations);
+        $this->shopForms = new ShopForms($this->formRecords, $this->fieldAnswers, $formTexts);
         $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups, $classRecords, $shippingMethodList, $this->shippingTexts, $this->transactions);
         $this->shippingClasses = new ShippingClassService($classRecords, $carrierRecords, $this->events);
 
         $this->events->addListener(ShippingClassDeleted::class, new ForgetDeletedShippingClass($productRecords)(...));
         $this->attributeNames = new AttributeNames($this->contentTranslations);
-        $this->forms = new FormService($this->formRecords, $this->productTranslations);
+        $this->forms = new FormService($this->formRecords, $this->productTranslations, $formTexts, $this->transactions);
         $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->shippingClasses, $this->events, $this->productTranslations, $this->attributeTexts = new AttributeTexts($this->contentTranslations), $this->transactions);
         $this->events->addListener(SettingsChanged::class, new ConvertProductMeasures($this->products)(...));
         $this->events->addListener(SettingsChanged::class, new ConvertRateMeasures($this->carriers)(...));

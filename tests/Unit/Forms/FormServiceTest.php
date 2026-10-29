@@ -11,12 +11,14 @@ use OrillaCart\Forms\Application\Dto\SaveForm;
 use OrillaCart\Forms\Application\Dto\SaveFormField;
 use OrillaCart\Forms\Application\FieldAnswers;
 use OrillaCart\Forms\Application\FormService;
+use OrillaCart\Forms\Application\FormTexts;
 use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Forms\Domain\FormNotFound;
 use OrillaCart\Forms\Domain\FormRuleViolation;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Forms\InMemoryFormRepository;
 use OrillaCart\Tests\Fixtures\Forms\InMemoryFormUploadRepository;
+use OrillaCart\Tests\Fixtures\ImmediateTransactions;
 use PHPUnit\Framework\TestCase;
 
 final class FormServiceTest extends TestCase
@@ -28,8 +30,10 @@ final class FormServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->repository = new InMemoryFormRepository();
-        $this->forms = new FormService($this->repository, new TestShop()->productTranslations);
-        $this->shop = new ShopForms($this->repository, new FieldAnswers(new InMemoryFormUploadRepository()));
+        $shop = new TestShop();
+        $texts = new FormTexts($shop->contentTranslations);
+        $this->forms = new FormService($this->repository, $shop->productTranslations, $texts, new ImmediateTransactions());
+        $this->shop = new ShopForms($this->repository, new FieldAnswers(new InMemoryFormUploadRepository()), $texts);
     }
 
     public function testKeysAndValuesAreMadeFromLabelsOnceAndKept(): void
@@ -42,7 +46,7 @@ final class FormServiceTest extends TestCase
 
         // Transliterated where the site has intl.
         self::assertSame(['engraving_text', 'engraving_text_2', class_exists(\Transliterator::class) ? 'gravirane' : 'field'], array_column($form->fields, 'key'));
-        self::assertSame([['value' => 'gold', 'label' => 'Gold', 'price' => null], ['value' => 'gold-2', 'label' => 'Gold', 'price' => null], ['value' => '12-ct', 'label' => '12 ct', 'price' => '4.50']], $form->fields[1]['choices']);
+        self::assertSame([['value' => 'gold', 'label' => 'Gold', 'price' => null, 'translations' => []], ['value' => 'gold-2', 'label' => 'Gold', 'price' => null, 'translations' => []], ['value' => '12-ct', 'label' => '12 ct', 'price' => '4.50', 'translations' => []]], $form->fields[1]['choices']);
 
         $renamed = $this->forms->update($form->id, new SaveForm('Engraving', fields: [new SaveFormField('Text to engrave', key: 'engraving_text')]));
         self::assertSame(['engraving_text'], array_column($renamed->fields, 'key'));

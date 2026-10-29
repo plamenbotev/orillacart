@@ -5,6 +5,7 @@ import apiFetch from '@wordpress/api-fetch';
 
 import { FormsScreen } from '../FormsScreen';
 import { slugOf } from '../api';
+import { forgetContentLanguages } from '../../shared/Translations';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -46,10 +47,15 @@ const engraving = {
 function serve(
 	forms: unknown[],
 	write: ( request: Request ) => Promise< unknown > = ( request ) =>
-		Promise.resolve( { ...( request.data as object ), id: 9 } )
+		Promise.resolve( { ...( request.data as object ), id: 9 } ),
+	languages: unknown[] = []
 ) {
+	forgetContentLanguages();
 	mockedFetch.mockImplementation( ( options ) => {
 		const request = options as Request;
+		if ( request.path.endsWith( '/content-languages' ) ) {
+			return Promise.resolve( languages );
+		}
 		if ( request.method !== undefined ) {
 			return write( request );
 		}
@@ -127,6 +133,54 @@ describe( 'FormsScreen', () => {
 				selector: '.components-notice__content',
 			} )
 		).toBeInTheDocument();
+	} );
+
+	it( 'saves a question’s words in the site’s other languages', async () => {
+		const write = jest.fn( ( request: Request ) =>
+			Promise.resolve( { ...( request.data as object ), id: 4 } )
+		);
+		serve( [ engraving ], write, [
+			{ code: 'en', locale: 'en_US', name: 'English', default: true },
+			{ code: 'de', locale: 'de_DE', name: 'Deutsch', default: false },
+		] );
+		const user = userEvent.setup();
+		render( <FormsScreen /> );
+
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Edit' } )
+		);
+		// The question opens with its own Edit button.
+		await user.click(
+			await screen.findByRole( 'button', {
+				name: 'Edit',
+				expanded: false,
+			} )
+		);
+		await user.type(
+			await screen.findByLabelText( 'Question in Deutsch' ),
+			'Gravieren?'
+		);
+		await user.type(
+			screen.getByLabelText( 'Help shown under it in Deutsch' ),
+			'Bis zu 20 Zeichen.'
+		);
+		await user.click( screen.getByRole( 'button', { name: 'Save form' } ) );
+
+		expect( write ).toHaveBeenCalledWith(
+			expect.objectContaining( {
+				data: expect.objectContaining( {
+					fields: [
+						expect.objectContaining( {
+							key: 'engrave',
+							translations: {
+								label: { de_DE: 'Gravieren?' },
+								help: { de_DE: 'Bis zu 20 Zeichen.' },
+							},
+						} ),
+					],
+				} ),
+			} )
+		);
 	} );
 
 	it( 'makes keys the shop would make', () => {

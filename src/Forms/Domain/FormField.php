@@ -120,6 +120,16 @@ final readonly class FormField
     }
 
     /**
+     * The same question in other words, another language's.
+     *
+     * @param list<FieldChoice> $choices the same values, in the same order
+     */
+    public function worded(string $label, string $help, string $placeholder, array $choices): self
+    {
+        return clone($this, ['label' => $label, 'help' => $help, 'placeholder' => $placeholder, 'choices' => $choices]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toRow(): array

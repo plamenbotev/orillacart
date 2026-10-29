@@ -20,6 +20,8 @@ use OrillaCart\Forms\Domain\FormPlacement;
 use OrillaCart\Forms\Domain\FormRepository;
 use OrillaCart\Forms\Domain\FormRuleViolation;
 use OrillaCart\Forms\Domain\FormScope;
+use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Translations\Domain\TranslationRuleViolation;
 
 /**
  * Use cases of the Shop → Forms screen.
@@ -29,6 +31,8 @@ final readonly class FormService
     public function __construct(
         private FormRepository $forms,
         private ProductTranslations $translations,
+        private FormTexts $texts,
+        private Transactions $transactions,
     ) {}
 
     /**
@@ -36,7 +40,7 @@ final readonly class FormService
      */
     public function forms(): array
     {
-        return array_map(FormView::fromForm(...), $this->forms->all());
+        return array_map($this->view(...), $this->forms->all());
     }
 
     /**
@@ -44,24 +48,26 @@ final readonly class FormService
      */
     public function form(int $id): FormView
     {
-        return FormView::fromForm($this->get($id));
+        return $this->view($this->get($id));
     }
 
     /**
      * @throws FormRuleViolation
+     * @throws TranslationRuleViolation
      */
     public function create(SaveForm $command): FormView
     {
+        $texts = $this->texts->check($command);
         $form = new Form($command->name, FormPlacement::from($command->placement));
         $this->apply($form, $command);
-        $this->forms->save($form);
 
-        return FormView::fromForm($form);
+        return $this->save($form, $texts);
     }
 
     /**
      * @throws FormNotFound
      * @throws FormRuleViolation
+     * @throws TranslationRuleViolation
      */
     public function update(int $id, SaveForm $command): FormView
     {
@@ -69,10 +75,10 @@ final readonly class FormService
         if ($form->placement()->value !== $command->placement) {
             throw new FormRuleViolation('A form stays where it is asked; make another for the other place.', 'orillacart_invalid_form');
         }
+        $texts = $this->texts->check($command);
         $this->apply($form, $command);
-        $this->forms->save($form);
 
-        return FormView::fromForm($form);
+        return $this->save($form, $texts);
     }
 
     /**
@@ -80,7 +86,31 @@ final readonly class FormService
      */
     public function delete(int $id): void
     {
-        $this->forms->remove($this->get($id));
+        $form = $this->get($id);
+        $this->transactions->run(function () use ($form): void {
+            $this->texts->forget($form);
+            $this->forms->remove($form);
+        });
+    }
+
+    /**
+     * The form and its words' translations together, or neither.
+     *
+     * @param list<array{?array<string, array<string, string>>, list<?array<string, string>>}> $texts
+     */
+    private function save(Form $form, array $texts): FormView
+    {
+        $this->transactions->run(function () use ($form, $texts): void {
+            $this->forms->save($form);
+            $this->texts->write($texts, $form);
+        });
+
+        return $this->view($form);
+    }
+
+    private function view(Form $form): FormView
+    {
+        return FormView::fromForm($form, $this->texts->of($form));
     }
 
     private function apply(Form $form, SaveForm $command): void

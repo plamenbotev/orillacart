@@ -22,6 +22,7 @@ final readonly class ShopForms
     public function __construct(
         private FormRepository $forms,
         private FieldAnswers $answers,
+        private FormTexts $texts,
     ) {}
 
     /**
@@ -76,11 +77,12 @@ final readonly class ShopForms
      */
     private function asked(FormPlacement $placement, \Closure $for): array
     {
+        $forms = array_values(array_filter($this->forms->active($placement), $for));
+        // In the shopper's language; the answers keep the words they were asked in.
+        $shown = $this->texts->shownFor($forms);
         $fields = [];
-        foreach ($this->forms->active($placement) as $form) {
-            if ($for($form)) {
-                array_push($fields, ...array_map(static fn(FormField $field): AskedField => self::field($form, $field), $form->fields()));
-            }
+        foreach ($forms as $form) {
+            array_push($fields, ...array_map(static fn(FormField $field): AskedField => self::field($form, FormTexts::shown($field, $shown[$form->id()] ?? [])), $form->fields()));
         }
 
         return $fields;

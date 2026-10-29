@@ -17,8 +17,8 @@ use OrillaCart\Translations\Domain\TranslationRuleViolation;
  */
 final readonly class ContentTranslations
 {
-    /** What an item's key in a field may be: lowercase letters, digits and dashes. */
-    private const string KEY = '[a-z0-9][a-z0-9-]{0,39}';
+    /** What an item's key in a field may be: lowercase letters, digits, dashes and underscores. */
+    private const string KEY = '[a-z0-9][a-z0-9_-]{0,39}';
 
     public function __construct(
         private TranslationRepository $translations,

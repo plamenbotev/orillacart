@@ -1,5 +1,7 @@
 import apiFetch from '@wordpress/api-fetch';
 
+import type { FieldTranslations } from '../shared/Translations';
+
 const BASE = '/orillacart/v1';
 
 export type Placement = 'product' | 'checkout';
@@ -22,6 +24,8 @@ export interface FieldChoice {
 	label: string;
 	/** Added to each item when chosen; product forms only. */
 	price: string | null;
+	/** The label in the site's other languages; left out, they stay as they are. */
+	translations?: FieldTranslations;
 }
 
 export interface FormField {
@@ -43,6 +47,10 @@ export interface FormField {
 	condition: { field: string; values: string[] } | null;
 	types: string[];
 	largest: number;
+	/** Its label, help and placeholder in the site's other languages, by part. */
+	translations?: Partial<
+		Record< 'label' | 'help' | 'placeholder', FieldTranslations >
+	>;
 }
 
 export interface ShopForm {
