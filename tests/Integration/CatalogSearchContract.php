@@ -427,11 +427,14 @@ abstract class CatalogSearchContract extends RestTestCase
             $lamp->menuOrder,
             $lamp->publishedAt,
             locale: 'en_US',
-            translations: [new DocumentText('de_DE', 'Messinglampe', 'Warmes Licht zum Lesen.')],
+            translations: [new DocumentText('de_DE', 'Messinglampe', 'Warmes Licht zum Lesen. Eine Lampe aus Messing.')],
         )]);
         $this->work();
 
         self::assertSame([$this->lamp], $this->ids(new SearchQuery(text: 'lesen', locale: 'de_DE')), 'its words in the language');
+        if (static::class === OpenSearchCatalogSearchTest::class) {
+            self::assertContains($this->lamp, $this->ids(new SearchQuery(text: 'lampen', locale: 'de_DE')), 'and on OpenSearch by their stem: the lamp holds "Lampe", German reads both as "lamp"');
+        }
         self::assertSame([], $this->ids(new SearchQuery(text: 'reading', locale: 'de_DE')), 'not its own, which it has words for');
         self::assertSame([], $this->ids(new SearchQuery(text: 'lesen')), 'nor the translation\'s in its own');
         self::assertSame([$this->book], $this->ids(new SearchQuery(text: 'history', locale: 'de_DE')), 'a product not translated by its own');

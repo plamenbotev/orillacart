@@ -14,6 +14,7 @@ use OrillaCart\Search\Application\Dto\SearchSort;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\Facets;
 use OrillaCart\Search\Infrastructure\Doctrine\ValueLabels;
+use OrillaCart\Shared\Lifecycle\Languages;
 
 /**
  * Searches the shop's OpenSearch index, answering as the database engine does: words (with typos forgiven),
@@ -41,6 +42,7 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
         private OpenSearchClient $client,
         private EngineSettingsRepository $settings,
         private ValueLabels $labels,
+        private Languages $locales,
     ) {}
 
     /**
@@ -56,7 +58,7 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
             'track_total_hits' => true,
             '_source' => ['product_id'],
             'query' => ['bool' => [
-                'must' => $text === '' ? [] : [self::words($text)],
+                'must' => $text === '' ? [] : [$this->words($text, $query)],
                 'filter' => $this->filters($query, null, true),
             ]],
             'sort' => self::sort($query->sort, $text !== ''),
@@ -84,13 +86,18 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
     }
 
     /**
+     * The words in the folded fields, and in the language's analyzed ones: a stem finds its other forms.
+     *
      * @return array<string, mixed>
      */
-    private static function words(string $text): array
+    private function words(string $text, SearchQuery $query): array
     {
+        $analyzer = OpenSearchLanguages::analyzer($query->locale ?? $this->locales->site());
+        $fields = $analyzer === null ? ['title^3', 'text'] : ['title^3', 'text', "words.{$analyzer}.title^3", "words.{$analyzer}.text"];
+
         return ['bool' => [
             'should' => [
-                ['multi_match' => ['query' => $text, 'fields' => ['title^3', 'text'], 'operator' => 'and', 'fuzziness' => 'AUTO', 'prefix_length' => 1]],
+                ['multi_match' => ['query' => $text, 'fields' => $fields, 'operator' => 'and', 'fuzziness' => 'AUTO', 'prefix_length' => 1]],
                 ['match_phrase_prefix' => ['title' => $text]],
                 ['prefix' => ['skus' => ['value' => mb_strtolower($text)]]],
             ],
@@ -195,7 +202,7 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
      */
     private function aggregations(SearchQuery $query, string $text): array
     {
-        $scoped = fn(?string $except, bool $variants): array => ['bool' => ['must' => $text === '' ? [] : [self::words($text)], 'filter' => $this->filters($query, $except, $variants)]];
+        $scoped = fn(?string $except, bool $variants): array => ['bool' => ['must' => $text === '' ? [] : [$this->words($text, $query)], 'filter' => $this->filters($query, $except, $variants)]];
         $aggregations = [
             Facet::CATEGORIES => ['filter' => $scoped(Facet::CATEGORIES, true), 'aggs' => ['values' => ['terms' => ['field' => 'categories', 'size' => 500]]]],
             Facet::BRANDS => ['filter' => $scoped(Facet::BRANDS, true), 'aggs' => ['values' => ['terms' => ['field' => 'brands', 'size' => 500]]]],

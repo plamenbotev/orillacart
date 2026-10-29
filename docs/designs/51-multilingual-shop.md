@@ -129,7 +129,11 @@ shipping and payment titles, forms, filters and email templates in each language
 - **The blocks** render in the page's language; in the editor, their previews through WordPress's block renderer
   take the language of the post edited. **The assistant's endpoint** takes `X-OrillaCart-Locale` as the REST API
   does. Related products find the products under each language's terms.
-- The analyzers stay the shop's own (English stopwords); a language's own analysis in OpenSearch is for later.
+- **OpenSearch reads words as their language does**: a document's words are also kept under its language's
+  built-in analyzer (`words.german.title`, …; 35 languages, by locale), and a search in a language looks there
+  too, so "Hemden" finds "Hemd". A site in one language uses WordPress's, so an English shop's "lamps" finds
+  "lamp". The database engine has no stemming, as it has no forgiven typos. A plugin update gives an existing
+  index its new fields before it is built again.
 
 ## Built in step 4
 

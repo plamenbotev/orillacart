@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Search\Application\Dto\SearchQuery;
+use OrillaCart\Search\Application\ShopSearch;
 use OrillaCart\Search\Infrastructure\WordPress\OptionEngineSettingsRepository;
 
 /**
@@ -49,6 +51,16 @@ final class OpenSearchCatalogSearchTest extends CatalogSearchContract
 
         self::assertFalse($refused['works']);
         self::assertSame([self::host(), true], [$refused['host'], $refused['ready']], 'the working server stays');
+    }
+
+    public function testWordsAreFoundByTheirStemInTheirLanguage(): void
+    {
+        $search = self::kernel()->container()->get(ShopSearch::class);
+        self::assertInstanceOf(ShopSearch::class, $search);
+
+        // "read" is three letters from "reading", more than a typo forgiven; English reads both as "read".
+        self::assertCount(1, $search->search(new SearchQuery(text: 'read'))->ids, 'the site\'s language, English');
+        self::assertCount(1, $search->search(new SearchQuery(text: 'reads'))->ids);
     }
 
     protected function work(): void

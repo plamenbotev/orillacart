@@ -13,6 +13,7 @@ use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\Facets;
 use OrillaCart\Shared\I18n\ContentLanguages;
+use OrillaCart\Shared\Lifecycle\Languages;
 
 /**
  * Keeps documents in the shop's OpenSearch index. Each variant carries its own options and the whole
@@ -29,6 +30,7 @@ final readonly class OpenSearchIndex implements SearchIndex
         private OpenSearchClient $client,
         private EngineSettingsRepository $settings,
         private ContentLanguages $languages,
+        private Languages $locales,
     ) {}
 
     /**
@@ -43,7 +45,8 @@ final readonly class OpenSearchIndex implements SearchIndex
         $settings = $this->settings->load();
         $lines = '';
         foreach ($documents as $document) {
-            $source = self::source($document);
+            // A site in one language writes in WordPress's.
+            $source = self::source($document, $document->locale ?? $this->locales->site());
             $lines .= wp_json_encode(['index' => ['_index' => $settings->index, '_id' => (string) $document->productId]]) . "\n" . wp_json_encode($source) . "\n";
             foreach ($document->translations as $text) {
                 $lines .= wp_json_encode(['index' => ['_index' => $settings->index, '_id' => self::translationId($document->productId, $text->locale)]]) . "\n" . wp_json_encode(self::translation($source, $text)) . "\n";
@@ -62,7 +65,7 @@ final readonly class OpenSearchIndex implements SearchIndex
     /**
      * @return array<string, mixed>
      */
-    private static function source(SearchDocument $document): array
+    private static function source(SearchDocument $document, string $locale): array
     {
         [$priceMin, $priceMax] = $document->priceRange();
         $productOptions = self::options($document->options);
@@ -91,7 +94,20 @@ final readonly class OpenSearchIndex implements SearchIndex
             'on_sale' => $document->onSale,
             'menu_order' => $document->menuOrder,
             'published_at' => $document->publishedAt->format(\DATE_ATOM),
+            'words' => self::words($locale, $document->title, $document->text),
         ];
+    }
+
+    /**
+     * The words under their language's analyzer; none for a language OpenSearch has no analyzer of.
+     *
+     * @return array<string, array{title: string, text: string}>|\stdClass
+     */
+    private static function words(string $locale, string $title, string $text): array|\stdClass
+    {
+        $analyzer = OpenSearchLanguages::analyzer($locale);
+
+        return $analyzer === null ? new \stdClass() : [$analyzer => ['title' => $title, 'text' => $text]];
     }
 
     /**
@@ -103,7 +119,7 @@ final readonly class OpenSearchIndex implements SearchIndex
      */
     private static function translation(array $source, DocumentText $text): array
     {
-        return ['locale' => $text->locale, 'translation' => true, 'translated' => [], 'title' => $text->title, 'text' => $text->text] + $source;
+        return ['locale' => $text->locale, 'translation' => true, 'translated' => [], 'title' => $text->title, 'text' => $text->text, 'words' => self::words($text->locale, $text->title, $text->text)] + $source;
     }
 
     private static function translationId(int $productId, string $locale): string

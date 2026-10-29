@@ -54,6 +54,19 @@ final readonly class SearchEngines
         return $this->view($candidate, true, \sprintf('OpenSearch answered. %d products are being indexed there; the shop searches its database until they are.', $queued));
     }
 
+    /**
+     * Brings OpenSearch's index up to this version's fields, as after an update: documents with fields its index
+     * does not know are refused.
+     *
+     * @return string|null what went wrong; null when ready, or when the shop searches its database
+     */
+    public function prepareIndex(): ?string
+    {
+        $settings = $this->settings->load();
+
+        return $settings->engine === SearchEngine::OpenSearch ? $this->server->prepare($settings) : null;
+    }
+
     public function rebuild(): SearchEngineView
     {
         $queued = $this->indexing->queueEverything();

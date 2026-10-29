@@ -93,6 +93,11 @@ final readonly class OpenSearchServer implements SearchServer
             'on_sale' => ['type' => 'boolean'],
             'menu_order' => ['type' => 'integer'],
             'published_at' => ['type' => 'date'],
+            // The words as their language's analyzer reads them, under its name: only a document in it has them.
+            'words' => ['properties' => array_combine(OpenSearchLanguages::all(), array_map(static fn(string $analyzer): array => ['properties' => [
+                'title' => ['type' => 'text', 'analyzer' => $analyzer],
+                'text' => ['type' => 'text', 'analyzer' => $analyzer],
+            ]], OpenSearchLanguages::all()))],
         ];
     }
 }
