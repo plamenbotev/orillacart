@@ -56,8 +56,11 @@ final readonly class ProductQuotes
         $details = $product->details();
 
         $name = $this->content->name($this->translations->shown($product->id()));
+        // And in the shop's own words, which the order keeps for the shop beside the shopper's.
+        $shopName = $this->content->name($product->id());
         if ($configuration->variation !== null) {
             $name .= ' – ' . implode(' / ', array_map(fn(AttributeOption $option): string => $this->names->option($option), $configuration->variation->options()));
+            $shopName .= ' – ' . implode(' / ', array_map(static fn(AttributeOption $option): string => $option->name(), $configuration->variation->options()));
         }
         // Below zero by what is owed already, for the backorder limit.
         $level = $this->available($configuration);
@@ -116,7 +119,7 @@ final readonly class ProductQuotes
                     $extrasWeight = $extrasWeight->add($itemWeight);
                 }
                 array_push($downloads, ...$quote->downloads);
-                $contents[] = new QuotedBundleItem($quote->productId, $quote->variationId, $quote->name, $item->quantity, $quote->available !== null || $quote->inStock !== null, $quote->backorders, $quote->backorderLimit, (string) $price, $quote->taxable, $quote->taxGroupId, $quote->taxCode);
+                $contents[] = new QuotedBundleItem($quote->productId, $quote->variationId, $quote->name, $item->quantity, $quote->available !== null || $quote->inStock !== null, $quote->backorders, $quote->backorderLimit, (string) $price, $quote->taxable, $quote->taxGroupId, $quote->taxCode, $quote->shopName);
             }
             // A fixed price covers the items every bundle holds; the optional ones the customer adds cost their own.
             $unitPrice = $bundle->pricing === Bundle::SUM ? $bundle->priceOf($sum) : $unitPrice->add($extras);
@@ -140,9 +143,11 @@ final readonly class ProductQuotes
             $weight,
             array_map(fn(AttributeOption $option): QuotedOption => new QuotedOption(
                 $option->id(),
-                $this->names->attribute($option->attribute()),
-                $this->names->option($option),
+                $attribute = $this->names->attribute($option->attribute()),
+                $optionName = $this->names->option($option),
                 (string) $option->adjustmentOn($ruled),
+                $attribute === $option->attribute()->name() ? null : $option->attribute()->name(),
+                $optionName === $option->name() ? null : $option->name(),
             ), $configuration->options),
             $available,
             $forSale && $this->content->isPublished($product->id()) && $details->purchasable && $available !== 0
@@ -163,6 +168,7 @@ final readonly class ProductQuotes
             $bundle === null ? $backorderLimit : null,
             $details->taxCode,
             $coupons,
+            $shopName === $name ? null : $shopName,
         );
     }
 

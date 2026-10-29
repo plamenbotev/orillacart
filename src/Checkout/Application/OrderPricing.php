@@ -30,6 +30,7 @@ use OrillaCart\Extension\Tax\TaxAddress as ExtensionTaxAddress;
 use OrillaCart\Extension\Tax\TaxLine;
 use OrillaCart\Extension\Tax\TaxRequest;
 use OrillaCart\Extension\Tax\TaxRequestLine;
+use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockService;
@@ -74,7 +75,7 @@ use Psr\Log\LoggerInterface;
  * A free gift that holds is added to the items, when it is for sale, and the order priced again with it.
  *
  * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, gift: bool, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
- * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, import: ImportDecision, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, changes: array<int, list<AdjustmentView>>, free_from: ?string, ships_from: ?string}
+ * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, import: ImportDecision, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, changes: array<int, list<AdjustmentView>>, free_from: ?string, ships_from: ?string, shop_shipping: array{carrier: string, rate: string, collect_at: ?PickupPointView}|null, shop_fees: list<string>}
  */
 final readonly class OrderPricing
 {
@@ -93,6 +94,7 @@ final readonly class OrderPricing
         private LoggerInterface $logger,
         private ExtensionFailures $failures,
         private ImportSchemes $importSchemes,
+        private ShopForms $forms,
     ) {}
 
     /**
@@ -313,7 +315,7 @@ final readonly class OrderPricing
                 $options[] = $view;
                 // The customer's choice when it is offered, otherwise the first rate, so the totals include shipping.
                 if ($chosen === null || $option->id === $shippingOption) {
-                    $chosen = $chosen !== null && $chosen['view']->id === $shippingOption ? $chosen : ['view' => $view, 'price' => $price, 'taxes' => $taxes, 'shares' => $shares, 'group' => $option->taxGroupId, 'free' => $free || !$option->taxable];
+                    $chosen = $chosen !== null && $chosen['view']->id === $shippingOption ? $chosen : ['view' => $view, 'price' => $price, 'taxes' => $taxes, 'shares' => $shares, 'group' => $option->taxGroupId, 'free' => $free || !$option->taxable, 'shop' => ['carrier' => $option->shopCarrier ?? $option->carrier, 'rate' => $option->shopName ?? $option->name, 'collect_at' => $option->shopCollectAt]];
                 }
             }
             $free = $anyFree;
@@ -322,6 +324,7 @@ final readonly class OrderPricing
                 $asked[] = ['kind' => TaxRequestLine::SHIPPING, 'code' => $chosen['free'] ? 'none' : $chosen['group'], 'quantity' => 1, 'product' => null, 'sku' => null, 'tax_code' => null];
             }
         }
+        $shopFees = [];
         if ($lines !== []) {
             // Fees are worked out in the shop's currency, then converted.
             $back = fn(Money $amount): string => (string) $this->currencies->back($amount, $currency);
@@ -334,13 +337,13 @@ final readonly class OrderPricing
                 $needsShipping ? $shipping?->country : $billing?->country,
                 $customerId,
                 $settings->currency,
-            ), $shipping, $billing, $needsShipping ? $goodsReverse : $reverseCharge, $currency, $import, $decimals, $exempt, $asked);
+            ), $shipping, $billing, $needsShipping ? $goodsReverse : $reverseCharge, $currency, $import, $decimals, $exempt, $asked, $shopFees);
             if (!$inclusive && !$allReverse) {
                 $this->provideTaxes($bill, $asked, $shipping ?? $billing, $currency, $customerId, $exemption, $orderId);
             }
         }
 
-        return ['exemption' => $exemption === null ? null : ['reason' => $exemption->reason, 'certificate' => $exemption->certificate], 'import' => $import, 'lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'changes' => $adjusted, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom];
+        return ['exemption' => $exemption === null ? null : ['reason' => $exemption->reason, 'certificate' => $exemption->certificate], 'import' => $import, 'lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'changes' => $adjusted, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom, 'shop_shipping' => $chosen['shop'] ?? null, 'shop_fees' => $shopFees];
     }
 
     /**
@@ -348,8 +351,9 @@ final readonly class OrderPricing
      *
      * @param list<array{kind: string, code: int|string|null, quantity: int, product: ?int, sku: ?string, tax_code: ?string}> $asked
      *        what each charge is, for a tax service, in the bill's order; the fees are added to it
+     * @param list<string> $shopFees the fees' labels in the shop's own language, in the bill's order
      */
-    private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge, string $currency, ImportDecision $import, int $decimals, bool $exempt = false, array &$asked = []): void
+    private function charge(Bill $bill, FeeQuery $query, ?TaxAddress $shipping, ?TaxAddress $billing, bool $reverseCharge, string $currency, ImportDecision $import, int $decimals, bool $exempt = false, array &$asked = [], array &$shopFees = []): void
     {
         foreach ($this->fees->of($query) as $fee) {
             // Under an import scheme the fees go with the goods, as the shipping does: the destination's tax, or none.
@@ -359,6 +363,7 @@ final readonly class OrderPricing
                 $amount = Tax::asPaid($amount, $taxes, $this->shopTaxes($fee['tax_group_id']), $this->tax->samePriceEverywhere())->rounded($decimals);
             }
             $bill->addFee($fee['label'], $amount, $taxes);
+            $shopFees[] = $fee['shop_label'] ?? $fee['label'];
             $asked[] = ['kind' => TaxRequestLine::FEE, 'code' => $fee['taxable'] ? $fee['tax_group_id'] : 'none', 'quantity' => 1, 'product' => null, 'sku' => null, 'tax_code' => null];
         }
     }
@@ -457,15 +462,16 @@ final readonly class OrderPricing
         $bill = $priced['bill'];
         $lines = [];
         $shipping = $this->shipping($priced) === null ? [] : $bill->charges(BilledCharge::SHIPPING);
+        $shop = $priced['shop_shipping'];
         foreach ($shipping as $charge) {
             $free = array_values(array_filter($priced['discounts']->coupons, static fn(AppliedCoupon $coupon): bool => $coupon->freeShipping));
             $lines[] = self::chargeLine($charge, OrderLine::SHIPPING, array_map(
                 static fn(AppliedCoupon $coupon): AdjustmentView => new AdjustmentView($coupon->automatic ? PriceAdjustment::AUTOMATIC : PriceAdjustment::COUPON, $coupon->code, $coupon->description, '0', PriceAdjustment::ORDER, true),
                 $free,
-            ));
+            ), $shop === null ? null : "{$shop['carrier']} – {$shop['rate']}");
         }
-        foreach ($bill->charges(BilledCharge::FEE) as $charge) {
-            $lines[] = self::chargeLine($charge, OrderLine::FEE, []);
+        foreach ($bill->charges(BilledCharge::FEE) as $index => $charge) {
+            $lines[] = self::chargeLine($charge, OrderLine::FEE, [], $priced['shop_fees'][$index] ?? null);
         }
 
         return $lines;
@@ -489,9 +495,9 @@ final readonly class OrderPricing
     /**
      * @param list<AdjustmentView> $adjustments
      */
-    private static function chargeLine(BilledCharge $charge, string $kind, array $adjustments): NewOrderLine
+    private static function chargeLine(BilledCharge $charge, string $kind, array $adjustments, ?string $shopLabel = null): NewOrderLine
     {
-        return new NewOrderLine(null, null, [], [], $charge->label, null, 1, (string) $charge->amount, (string) $charge->amount, self::lineTaxes($charge->taxes), false, [], adjustments: $adjustments, kind: $kind);
+        return new NewOrderLine(null, null, [], [], $charge->label, null, 1, (string) $charge->amount, (string) $charge->amount, self::lineTaxes($charge->taxes), false, [], adjustments: $adjustments, kind: $kind, shopWords: $shopLabel === null || $shopLabel === $charge->label ? [] : ['name' => $shopLabel]);
     }
 
     /**
@@ -587,7 +593,39 @@ final readonly class OrderPricing
             array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
             $line['quote']->contents === [] ? [] : $line['bundle_choices'],
             $line['personalisation'],
+            shopWords: $this->shopWords($line),
         );
+    }
+
+    /**
+     * The line's words in the shop's own language, where the shopper read others (design 51): what the order keeps
+     * for the shop beside the shopper's.
+     *
+     * @param PricedLine $line
+     *
+     * @return array{name?: string, options?: list<array{attribute: string, option: string}>, contents?: list<array{name: string, quantity: int}>, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
+     */
+    private function shopWords(array $line): array
+    {
+        $quote = $line['quote'];
+        $words = [];
+        if ($quote->shopName !== null) {
+            $words['name'] = $quote->shopName;
+        }
+        $options = array_map(static fn(QuotedOption $option): array => ['attribute' => $option->shopAttribute ?? $option->attribute, 'option' => $option->shopName ?? $option->name], $quote->options);
+        if ($options !== self::options($quote)) {
+            $words['options'] = $options;
+        }
+        $contents = array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->shopName ?? $item->name, 'quantity' => $item->quantity], $quote->contents);
+        if ($contents !== array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $quote->contents)) {
+            $words['contents'] = $contents;
+        }
+        $answers = $this->forms->shopWords($line['personalisation']);
+        if ($answers !== null) {
+            $words['personalisation'] = array_map(static fn(array $answer, array $own): array => ['label' => $own['label'], 'answer' => $own['answer']] + $answer, $line['personalisation'], $answers);
+        }
+
+        return $words;
     }
 
     /**
@@ -633,9 +671,18 @@ final readonly class OrderPricing
 
         // Collected from the shop: the place, with when it is open, is where the order goes.
         $pickupPoint ??= $chosen?->collectAt;
-        $label = $pickupPoint === null ? null : ($chosen?->collectAt !== null && $pickupPoint->hours !== '' ? "{$pickupPoint->label()} ({$pickupPoint->hours})" : $pickupPoint->label());
+        $label = $pickupPoint === null ? null : self::placeLabel($pickupPoint, $chosen?->collectAt !== null);
+        // And in the shop's own words: its own place in them; a courier's point is the courier's.
+        $shop = $priced['shop_shipping'];
+        $shopPoint = $chosen?->collectAt !== null ? $shop['collect_at'] ?? null : null;
 
-        return $chosen === null || !$priced['needs_shipping'] ? null : new NewShipping($chosen->id, $chosen->carrier, $chosen->name, $pickupPoint?->id, $label);
+        return $chosen === null || !$priced['needs_shipping'] ? null : new NewShipping($chosen->id, $chosen->carrier, $chosen->name, $pickupPoint?->id, $label, $shop['carrier'] ?? null, $shop['rate'] ?? null, $shopPoint === null ? null : self::placeLabel($shopPoint, true));
+    }
+
+    /** A place's name and address, with when it is open for the shop's own places. */
+    private static function placeLabel(PickupPointView $point, bool $shops): string
+    {
+        return $shops && $point->hours !== '' ? "{$point->label()} ({$point->hours})" : $point->label();
     }
 
     /**

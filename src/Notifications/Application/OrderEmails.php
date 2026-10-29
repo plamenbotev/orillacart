@@ -240,6 +240,10 @@ final readonly class OrderEmails
      */
     private function write(OrderView $order, EmailKind $kind, string $note, ?array $refund): Email
     {
+        // The customer reads the words they ordered in; the shop its own (design 51).
+        if (!$kind->isForShop()) {
+            $order = $this->orders->inCustomerWords($order->number);
+        }
         $extra = ['note' => $note, 'refund' => null];
         if ($refund !== null) {
             $lines = [];
@@ -255,7 +259,7 @@ final readonly class OrderEmails
             'order' => $order,
             'receipt_url' => $this->links->receiptUrl($order->number),
             'for_shop' => $kind->isForShop(),
-            'shipments' => $this->shipments->forOrder($order->number),
+            'shipments' => $this->shipments->forOrder($order->number, !$kind->isForShop()),
             'invoices' => $kind->isForShop() ? [] : $this->invoices->ofOrder($order->number),
             // The confirmation carries the terms and the right of withdrawal, as a durable medium must.
             'legal_texts' => \in_array($kind, [EmailKind::OrderReceived, EmailKind::OrderProcessing], true) ? $this->legal->confirmationTexts() : [],

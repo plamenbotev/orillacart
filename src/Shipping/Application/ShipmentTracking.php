@@ -25,10 +25,11 @@ final readonly class ShipmentTracking
     /**
      * @return list<ConsignmentView> oldest first
      */
-    public function forOrder(int $orderId): array
+    public function forOrder(int $orderId, bool $forCustomer = true): array
     {
         try {
-            $names = array_map(static fn(OrderLineView $line): string => $line->name, $this->orders->order($orderId)->lines);
+            $order = $forCustomer ? $this->orders->inCustomerWords($orderId) : $this->orders->order($orderId);
+            $names = array_map(static fn(OrderLineView $line): string => $line->name, $order->lines);
         } catch (OrderNotFound) {
             return [];
         }

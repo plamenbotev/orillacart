@@ -21,6 +21,7 @@ use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
 use OrillaCart\Ordering\Domain\PriceAdjustment;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Shipping\Application\ShippingQuotes;
@@ -40,6 +41,7 @@ final readonly class OrderEditing
         private Transactions $transactions,
         private ShippingQuotes $shipping,
         private Discounts $discounts,
+        private Languages $languages,
     ) {}
 
     /**
@@ -181,7 +183,8 @@ final readonly class OrderEditing
         $keptPoint = $order->pickupPointId;
         [$codes, $automatic] = self::discountsOf($order);
 
-        return $this->transactions->run(function () use ($order, $orderId, $items, $shipping, $billing, $command, $shippingAddress, $userId, $keptPoint, $codes, $automatic, $changes): OrderView {
+        // Priced in the customer's language, so the order's lines read as theirs did (design 51).
+        return $this->languages->in($order->locale, fn(): OrderView => $this->transactions->run(function () use ($order, $orderId, $items, $shipping, $billing, $command, $shippingAddress, $userId, $keptPoint, $codes, $automatic, $changes): OrderView {
             $this->orders->releaseStock($orderId);
             // Its own uses do not count against the limits while it is priced again.
             $this->discounts->release($orderId);
@@ -214,7 +217,7 @@ final readonly class OrderEditing
                 $this->pricing->exemption($priced),
                 $this->pricing->taxProvider($priced),
             ), $userId);
-        });
+        }));
     }
 
     /**
@@ -223,7 +226,8 @@ final readonly class OrderEditing
      */
     private function orderOnHold(int $orderId): OrderView
     {
-        $order = $this->orders->order($orderId);
+        // In the words the customer read: kept answers stay theirs, and the shop's are kept beside them again.
+        $order = $this->orders->inCustomerWords($orderId);
         if ($order->status !== 'on_hold') {
             throw new OrderRuleViolation('Only orders on hold can change their items; order #%1$d is %2$s.', 'orillacart_order_not_editable', values: [$orderId, str_replace('_', ' ', $order->status)]);
         }

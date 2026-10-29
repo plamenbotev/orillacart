@@ -55,7 +55,7 @@ final readonly class Invoices
                 return null;
             }
         }
-        $order = $this->orders->order($orderId);
+        $order = $this->orders->inCustomerWords($orderId);
 
         return $this->issue($orderId, InvoiceKind::Invoice, Money::of($order->total), $order->currency, []);
     }
@@ -70,7 +70,7 @@ final readonly class Invoices
      */
     public function creditNote(int $orderId, string $amount, array $lines, array $taxes = []): string
     {
-        $order = $this->orders->order($orderId);
+        $order = $this->orders->inCustomerWords($orderId);
 
         return $this->issue($orderId, InvoiceKind::CreditNote, Money::of($amount), $order->currency, $lines, $taxes);
     }
@@ -127,7 +127,7 @@ final readonly class Invoices
     private function documentOf(Invoice $invoice, string $receipt): InvoiceDocument
     {
         try {
-            $order = $this->orders->order($invoice->orderId());
+            $order = $this->orders->inCustomerWords($invoice->orderId());
         } catch (OrderNotFound) {
             throw new InvoiceNotFound();
         }

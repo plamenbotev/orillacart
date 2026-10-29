@@ -17,7 +17,7 @@ use Psr\Log\LoggerInterface;
  * add-ons add (OrderFee), in the order they were registered. A fee that fails is left out and the order says so; one
  * that fails closed has checkout refuse the order.
  *
- * @phpstan-type PricedFee array{label: string, amount: Money, taxable: bool, tax_group_id: ?int}
+ * @phpstan-type PricedFee array{label: string, amount: Money, taxable: bool, tax_group_id: ?int, shop_label?: string}
  */
 final readonly class OrderFees
 {
@@ -42,7 +42,8 @@ final readonly class OrderFees
         $payment = $gateway === null ? null : $this->payments->fee($gateway);
         $amount = $gateway === null ? null : $this->paymentFee($gateway, $base);
         if ($payment !== null && $amount !== null) {
-            $fees[] = ['label' => $payment->label, 'amount' => $amount, 'taxable' => true, 'tax_group_id' => null];
+            // The label in the shop's own language too, for the order it keeps (design 51).
+            $fees[] = ['label' => $payment->label, 'amount' => $amount, 'taxable' => true, 'tax_group_id' => null, 'shop_label' => $payment->shopLabel ?? $payment->label];
         }
         foreach ($this->extensions->orderFees() as $orderFee) {
             try {

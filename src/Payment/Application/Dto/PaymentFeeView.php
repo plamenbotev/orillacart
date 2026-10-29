@@ -14,5 +14,7 @@ final readonly class PaymentFeeView
         public string $label,
         public string $fixed,
         public string $percent,
+        /** The label in the shop's own language, where the shopper's differs (design 51). */
+        public ?string $shopLabel = null,
     ) {}
 }

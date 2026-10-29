@@ -24,6 +24,7 @@ use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Extension\ExtensionFailures;
+use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
 
@@ -43,6 +44,7 @@ final readonly class ManualOrders
         private Transactions $transactions,
         private Discounts $discounts,
         private ExtensionFailures $failures,
+        private Languages $languages,
     ) {}
 
     /**
@@ -104,7 +106,8 @@ final readonly class ManualOrders
         }
 
         $failed = $this->failures->mark();
-        $order = $this->transactions->run(function () use ($command, $billingAddress, $shippingAddress, $currency, $userId, $failed): OrderView {
+        // In the site's language, which the order has for its emails, whichever the admin's is (design 51).
+        $order = $this->languages->in(null, fn(): OrderView => $this->transactions->run(function () use ($command, $billingAddress, $shippingAddress, $currency, $userId, $failed): OrderView {
             $priced = $this->pricing->price(
                 self::items($command->items),
                 new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode, $shippingAddress->city, $shippingAddress->street),
@@ -159,7 +162,7 @@ final readonly class ManualOrders
             }
 
             return $order;
-        });
+        }));
 
         return $this->orders->order($order->number);
     }

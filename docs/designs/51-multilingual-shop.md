@@ -102,11 +102,16 @@ shipping and payment titles, forms, filters and email templates in each language
   An email is written in its reader's language (an order's, the shopper's), and the template is looked up in it.
   The editor has a language to choose, and a preview of a language's template is written in that language.
   While the shop writes in a language its locale holds, also where WordPress has no files for it.
+- **An order keeps both words** (the owner's report, 2026-10-29): the customer's, as placed, and the shop's own
+  beside them where they differ, for its items (name, options, a bundle's contents, answers), the way it ships,
+  the pickup place, the way to pay, the fees and checkout's answers. The shop's view reads its own: the admin,
+  REST and MCP, the shop's emails, reports, webhooks, courier labels. The customer's emails, invoices, receipt and
+  tracking read theirs (`OrderService::inCustomerWords`). An edit by the shop prices in the order's language, so
+  both stay; a manual order is in the site's. The admin's order says which language it was placed in.
 - **The storefront's calls carry the page's language.** The REST API's URL has no language of Polylang's or WPML's,
   so the cart, checkout and quotes would answer in the default one. The page gives its locale to the script, which
   sends it as `X-OrillaCart-Locale`; a locale the site offers is the call's: the content language, WordPress's
   locale (also without WordPress's files for it), and so the order's language for its emails. Others are ignored.
-- Known gaps: a manual order the admin places takes the names in the admin's language.
 
 ## Order
 

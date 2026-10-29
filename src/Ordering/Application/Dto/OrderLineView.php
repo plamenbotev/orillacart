@@ -54,9 +54,12 @@ final readonly class OrderLineView
         public int $position = 0,
     ) {}
 
-    public static function fromLine(OrderLine $line): self
+    /**
+     * @param bool $forShop in the shop's own words, where the customer read another language (design 51)
+     */
+    public static function fromLine(OrderLine $line, bool $forShop = false): self
     {
-        return new self($line->productId(), $line->variationId(), $line->name(), $line->sku(), $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount(), $line->order()->status() === OrderStatus::Refunded ? $line->restockable() : 0, $line->ships(), $line->personalisation(), $line->kind(), array_map(self::tax(...), $line->taxes()), array_map(self::adjustment(...), $line->adjustments()), $line->position());
+        return new self($line->productId(), $line->variationId(), $forShop ? $line->shopName() : $line->name(), $line->sku(), $forShop ? $line->shopOptions() : $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $forShop ? $line->shopContents() : $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount(), $line->order()->status() === OrderStatus::Refunded ? $line->restockable() : 0, $line->ships(), $forShop ? $line->shopPersonalisation() : $line->personalisation(), $line->kind(), array_map(self::tax(...), $line->taxes()), array_map(self::adjustment(...), $line->adjustments()), $line->position());
     }
 
     private static function tax(OrderTax $tax): LineTaxView

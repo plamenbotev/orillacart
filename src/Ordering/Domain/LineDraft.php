@@ -49,5 +49,11 @@ final readonly class LineDraft
         public array $personalisation = [],
         /** OrderLine::ITEM, SHIPPING or FEE. */
         public string $kind = OrderLine::ITEM,
+        /**
+         * Its name, options, contents and answers in the shop's own language, where the shopper's differ (design 51).
+         *
+         * @var array{name?: string, options?: list<array{attribute: string, option: string}>, contents?: list<array{name: string, quantity: int}>, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
+         */
+        public array $shopWords = [],
     ) {}
 }

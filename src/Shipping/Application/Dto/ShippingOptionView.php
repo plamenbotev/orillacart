@@ -25,5 +25,9 @@ final readonly class ShippingOptionView
         public bool $toPickupPoint = false,
         /** The shop's place where the customer collects the order, for a pickup. */
         public ?PickupPointView $collectAt = null,
+        /** The carrier's, the rate's and the place's in the shop's own language (design 51): what the order keeps for the shop. */
+        public ?string $shopCarrier = null,
+        public ?string $shopName = null,
+        public ?PickupPointView $shopCollectAt = null,
     ) {}
 }

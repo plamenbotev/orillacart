@@ -126,6 +126,8 @@ final readonly class OrderService
             $command->shopCurrency,
             $command->exchangeRate,
             $command->buyerReference,
+            $command->shopPaymentName,
+            $command->shopFields,
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
         $this->orders->save($order);
@@ -160,6 +162,17 @@ final readonly class OrderService
     public function order(int $id): OrderView
     {
         return $this->view($this->get($id), true);
+    }
+
+    /**
+     * An order as the shop sees it, in the words the customer read (design 51): for what the shop sends them, its
+     * emails and invoices.
+     *
+     * @throws OrderNotFound
+     */
+    public function inCustomerWords(int $id): OrderView
+    {
+        return $this->view($this->get($id), true, false);
     }
 
     /**
@@ -442,15 +455,18 @@ final readonly class OrderService
      * @throws OrderRuleViolation for an order that cannot be paid now
      * @throws InsufficientStock  when a failed order's items sold out since
      */
-    public function awaitPayment(int $id, string $gateway, string $name, string $note): OrderView
+    /**
+     * @param string|null $shopName the way to pay in the shop's own language, where the customer's differs
+     */
+    public function awaitPayment(int $id, string $gateway, string $name, string $note, ?string $shopName = null): OrderView
     {
-        return $this->changing($id, function (Order $order) use ($gateway, $name, $note): OrderView {
+        return $this->changing($id, function (Order $order) use ($gateway, $name, $note, $shopName): OrderView {
             $previous = $order->status();
             $order->awaitPayment($gateway, $name, $note, $this->clock->now(), fn(array $wanted): array => array_map(
                 static fn(array $taken): array => array_map(static fn(TakenStock $part): TakenItem => new TakenItem($part->item, $part->stockroomId, $part->quantity), $taken),
                 $this->stock->takeAgain($wanted, new StockNote(StockReason::Sale, $order->id())),
-            ));
-            $text = \sprintf('The customer chose to pay by %s.', $name);
+            ), $shopName);
+            $text = \sprintf('The customer chose to pay by %s.', $order->shopPaymentName());
             if ($order->status() !== $previous) {
                 $this->changed($order, $previous, [], $text);
             } else {
@@ -1026,12 +1042,13 @@ final readonly class OrderService
             $line->bundleChoices,
             $line->personalisation,
             $line->kind,
+            $line->shopWords,
         ), $lines);
     }
 
     private static function shippingChoice(?NewShipping $shipping): ?ShippingChoice
     {
-        return $shipping === null ? null : new ShippingChoice($shipping->option, $shipping->carrier, $shipping->rate, $shipping->pickupPointId, $shipping->pickupPoint);
+        return $shipping === null ? null : new ShippingChoice($shipping->option, $shipping->carrier, $shipping->rate, $shipping->pickupPointId, $shipping->pickupPoint, $shipping->shopCarrier, $shipping->shopRate, $shipping->shopPickupPoint);
     }
 
     private static function orderRefund(RefundOrder $command): OrderRefund
@@ -1111,9 +1128,9 @@ final readonly class OrderService
         return array_merge(...array_map(static fn(NewOrderLine $line): array => $line->taken, $lines));
     }
 
-    private function view(Order $order, bool $forShop = false): OrderView
+    private function view(Order $order, bool $forShop = false, ?bool $shopWords = null): OrderView
     {
-        return OrderView::fromOrder($order, $forShop, $this->links->downloadUrl(...));
+        return OrderView::fromOrder($order, $forShop, $this->links->downloadUrl(...), $shopWords);
     }
 
     private function get(int $id): Order

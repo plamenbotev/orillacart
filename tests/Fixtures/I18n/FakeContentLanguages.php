@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Fixtures\I18n;
 
 use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Shared\I18n\Language;
+use OrillaCart\Tests\Fixtures\FakeLanguages;
 
 /**
  * Polylang or WPML in memory: languages, and groups of posts that translate each other.
@@ -15,6 +16,8 @@ final class FakeContentLanguages implements ContentLanguages
     /** @var list<array<string, int>> */
     private array $groups = [];
     public ?string $current = null;
+    /** Without a current language, the one of this locale, as WordPress's follows the locale the shop works in. */
+    public ?FakeLanguages $follows = null;
 
     /**
      * @param list<Language> $languages the first is the default
@@ -47,7 +50,7 @@ final class FakeContentLanguages implements ContentLanguages
     public function current(): ?Language
     {
         foreach ($this->languages as $language) {
-            if ($language->code === $this->current) {
+            if ($this->current === null ? $language->locale === $this->follows?->locale : $language->code === $this->current) {
                 return $language;
             }
         }

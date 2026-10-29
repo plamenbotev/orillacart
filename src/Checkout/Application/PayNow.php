@@ -88,7 +88,7 @@ final readonly class PayNow
         }
         $failed = $order->status === 'failed';
         try {
-            $this->orders->awaitPayment($order->number, $command->payment, $this->paymentOptions->name($command->payment), $this->paymentOptions->receiptNote($command->payment));
+            $this->orders->awaitPayment($order->number, $command->payment, $this->paymentOptions->name($command->payment), $this->paymentOptions->receiptNote($command->payment), $this->paymentOptions->shopName($command->payment));
         } catch (InsufficientStock) {
             throw new CheckoutRuleViolation('Some of the items sold out since: this order cannot be paid any more. Order them again from the shop.', 'orillacart_out_of_stock');
         } catch (OrderRuleViolation $e) {

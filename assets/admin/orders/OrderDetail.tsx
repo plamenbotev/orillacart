@@ -56,6 +56,7 @@ import { AccountCard, DownloadsCard, ShipmentsCard } from './OrderCards';
 import { ReturnsCard } from './ReturnsCard';
 import { type ItemRow, ItemRows } from './ItemRows';
 import { RefundsCard } from './RefundsCard';
+import { useOtherLanguages } from '../shared/Translations';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -697,6 +698,7 @@ function Summary( { order }: { order: Order } ) {
 								when( order.paid_at )
 							) }
 				</p>
+				<OrderLanguage locale={ order.locale ?? null } />
 				{ order.delivery_date !== null && (
 					<p>
 						{ sprintf(
@@ -1657,5 +1659,33 @@ function EmailCard( {
 				</Flex>
 			</CardBody>
 		</Card>
+	);
+}
+
+/**
+ * Which of the site's other languages the customer ordered in: the shop reads the order in its own words, and the
+ * customer's emails and invoices are in theirs. Nothing for an order in the site's language.
+ *
+ * @param props        The line's properties.
+ * @param props.locale The order's language.
+ */
+function OrderLanguage( { locale }: { locale: string | null } ) {
+	const language = useOtherLanguages().find(
+		( other ) => other.locale === locale
+	);
+	if ( language === undefined ) {
+		return null;
+	}
+	return (
+		<p>
+			{ sprintf(
+				/* translators: %s: a language, such as "Deutsch" */
+				__(
+					'Ordered in %s: the customer’s emails and invoices are in it, with the names they read.',
+					'orillacart'
+				),
+				language.name
+			) }
+		</p>
 	);
 }

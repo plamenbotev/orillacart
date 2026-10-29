@@ -7,6 +7,7 @@ namespace OrillaCart\Forms\Application;
 use OrillaCart\Forms\Application\Dto\AskedField;
 use OrillaCart\Forms\Application\Dto\GivenAnswer;
 use OrillaCart\Forms\Domain\FieldChoice;
+use OrillaCart\Forms\Domain\FieldKind;
 use OrillaCart\Forms\Domain\Form;
 use OrillaCart\Forms\Domain\FormField;
 use OrillaCart\Forms\Domain\FormPlacement;
@@ -68,6 +69,41 @@ final readonly class ShopForms
 
             return false;
         });
+    }
+
+    /**
+     * The answers' questions and chosen choices in the shop's own words (design 51), where the shopper was asked in
+     * another language: what the order keeps for the shop. Add-ons' questions, and what the shopper typed, stay.
+     *
+     * @param list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}> $answers
+     *
+     * @return list<array{label: string, answer: string}>|null null when every one reads the same
+     */
+    public function shopWords(array $answers): ?array
+    {
+        $forms = [];
+        $words = [];
+        foreach ($answers as $answer) {
+            $own = ['label' => $answer['label'], 'answer' => $answer['answer']];
+            if (preg_match('/^f(\d+)_([a-z][a-z0-9_]*)$/', $answer['id'], $id) === 1) {
+                $form = $forms[$id[1]] ??= $this->forms->find((int) $id[1]);
+                foreach ($form?->fields() ?? [] as $field) {
+                    if ($field->key !== $id[2]) {
+                        continue;
+                    }
+                    $own['label'] = $field->label;
+                    foreach ($field->kind === FieldKind::Choice ? $field->choices : [] as $choice) {
+                        if ($choice->value === $answer['value']) {
+                            $own['answer'] = $choice->label;
+                        }
+                    }
+                }
+            }
+            $words[] = $own;
+        }
+        $same = array_map(static fn(array $answer): array => ['label' => $answer['label'], 'answer' => $answer['answer']], $answers);
+
+        return $words === $same ? null : $words;
     }
 
     /**

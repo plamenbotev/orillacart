@@ -73,6 +73,15 @@ class Order
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $pickupPoint = null;
 
+    /**
+     * Its words in the shop's own language where the customer read others (design 51): the way it ships, the pickup
+     * place, the way to pay and the answers' questions and choices, by field id. The customer's stay the order's.
+     *
+     * @var array{shipping_name?: string, pickup_point?: string, payment_name?: string, fields?: array<string, array{label: string, answer: string}>}|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $shopWords = null;
+
 
 
 
@@ -287,6 +296,12 @@ class Order
         $this->reverseCharge = $draft->reverseCharge;
         $this->locale = $draft->locale === null || preg_match('/^[A-Za-z]{2,3}(_[A-Za-z0-9]{2,8}){0,2}$/', $draft->locale) !== 1 ? null : $draft->locale;
         $this->fields = self::fieldRows($draft->fields);
+        $this->shipsInShopWords($draft->shipping);
+        $this->shopWord('payment_name', $draft->shopPaymentName === null || $draft->shopPaymentName === $this->paymentName ? null : mb_substr($draft->shopPaymentName, 0, 100));
+        $fields = array_intersect_key($draft->shopFields, array_flip(array_map(static fn(FieldAnswer $field): string => $field->id, $this->fields())));
+        if ($fields !== []) {
+            $this->shopWords = [...$this->shopWords ?? [], 'fields' => $fields];
+        }
     }
 
     public function id(): int
@@ -365,6 +380,57 @@ class Order
         return $this->shippingName;
     }
 
+    /** As the shop reads it: in its own language, where the customer read another (design 51). */
+    public function shopShippingName(): ?string
+    {
+        return $this->shopWords['shipping_name'] ?? $this->shippingName;
+    }
+
+    public function shopPickupPoint(): ?string
+    {
+        return $this->shopWords['pickup_point'] ?? $this->pickupPoint;
+    }
+
+    public function shopPaymentName(): string
+    {
+        return $this->shopWords['payment_name'] ?? $this->paymentName;
+    }
+
+    /**
+     * The answers as the shop reads them: their questions and choices in its own language.
+     *
+     * @return list<FieldAnswer>
+     */
+    public function shopFields(): array
+    {
+        $own = $this->shopWords['fields'] ?? [];
+
+        return array_map(static fn(FieldAnswer $field): FieldAnswer => isset($own[$field->id]) ? new FieldAnswer($field->id, $own[$field->id]['label'], $own[$field->id]['answer']) : $field, $this->fields());
+    }
+
+    /** The shop's words for the way it ships now, or none where they are the customer's. */
+    private function shipsInShopWords(?ShippingChoice $shipping): void
+    {
+        $name = $shipping?->shopName();
+        $this->shopWord('shipping_name', $name === null ? null : mb_substr($name, 0, 200));
+        $point = $shipping?->shopPickupPoint;
+        $this->shopWord('pickup_point', $point === null || $point === $shipping?->pickupPoint ? null : mb_substr($point, 0, 255));
+    }
+
+    /**
+     * @param 'shipping_name'|'pickup_point'|'payment_name' $key
+     */
+    private function shopWord(string $key, ?string $value): void
+    {
+        $words = $this->shopWords ?? [];
+        if ($value === null) {
+            unset($words[$key]);
+        } else {
+            $words[$key] = $value;
+        }
+        $this->shopWords = $words === [] ? null : $words;
+    }
+
     public function pickupPointId(): ?string
     {
         return $this->pickupPointId;
@@ -393,9 +459,9 @@ class Order
     }
 
     /** @return list<OrderFee> */
-    public function fees(): array
+    public function fees(bool $inShopWords = false): array
     {
-        return array_map(static fn(OrderLine $line): OrderFee => new OrderFee($line->name(), $line->net()), $this->feeLines());
+        return array_map(static fn(OrderLine $line): OrderFee => new OrderFee($inShopWords ? $line->shopName() : $line->name(), $line->net()), $this->feeLines());
     }
 
     public function feesTotal(): Money
@@ -943,6 +1009,12 @@ class Order
             static fn(FieldAnswer $field): FieldAnswer => isset($answers[$field->id]) ? new FieldAnswer($field->id, $field->label, trim($answers[$field->id])) : $field,
             $this->fields(),
         ));
+        // The corrected answer reads the same for the shop.
+        foreach ($answers as $id => $answer) {
+            if (isset($this->shopWords['fields'][$id])) {
+                $this->shopWords['fields'][$id]['answer'] = trim($answer);
+            }
+        }
     }
 
     /**
@@ -1098,6 +1170,7 @@ class Order
         $this->shippingName = $shipping === null ? null : mb_substr("{$shipping->carrier} – {$shipping->rate}", 0, 200);
         $this->pickupPointId = $shipping?->pickupPointId;
         $this->pickupPoint = $shipping?->pickupPoint === null ? null : mb_substr($shipping->pickupPoint, 0, 255);
+        $this->shipsInShopWords($shipping);
         $this->total = $total->toFixed();
         $this->pricesIncludeTax = $pricesIncludeTax;
         $this->taxExemption = $taxExemption;
@@ -1289,7 +1362,7 @@ class Order
      *
      * @throws OrderRuleViolation for an order that cannot be paid now
      */
-    public function awaitPayment(string $gateway, string $name, string $note, \DateTimeImmutable $at, \Closure $take): void
+    public function awaitPayment(string $gateway, string $name, string $note, \DateTimeImmutable $at, \Closure $take, ?string $shopName = null): void
     {
         if (!$this->isPayable()) {
             throw new OrderRuleViolation('Order #%1$d is %2$s and cannot be paid now.', 'orillacart_order_not_payable', values: [$this->id(), $this->status->phrase()]);
@@ -1306,6 +1379,7 @@ class Order
         $this->paymentName = mb_substr($name, 0, 100);
         $this->paymentNote = $note;
         $this->awaitingPaymentSince = $at;
+        $this->shopWord('payment_name', $shopName === null || $shopName === $this->paymentName ? null : mb_substr($shopName, 0, 100));
     }
 
     /**

@@ -113,6 +113,14 @@ class OrderLine
     private ?array $personalisation = null;
 
     /** How many of the items were refunded. */
+    /**
+     * Its words in the shop's own language where the shopper read others (design 51): what the shop reads.
+     *
+     * @var array{name?: string, options?: list<array{attribute: string, option: string}>, contents?: list<array{name: string, quantity: int}>, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $shopWords = null;
+
     #[ORM\Column(options: ['default' => 0])]
     private int $refundedQuantity = 0;
 
@@ -167,6 +175,10 @@ class OrderLine
         $this->contents = $draft->contents === [] ? null : $draft->contents;
         $this->bundleChoices = $draft->bundleChoices === [] ? null : $draft->bundleChoices;
         $this->personalisation = $draft->personalisation === [] ? null : $draft->personalisation;
+        $this->shopWords = $draft->shopWords === [] ? null : $draft->shopWords;
+        if (isset($this->shopWords['name'])) {
+            $this->shopWords['name'] = mb_substr($this->shopWords['name'], 0, 255);
+        }
         $this->stockTaken = array_map(static fn(TakenItem $taken): array => ['item' => $taken->item, 'stockroom_id' => $taken->stockroomId, 'quantity' => $taken->quantity], $draft->taken);
     }
 
@@ -247,6 +259,30 @@ class OrderLine
     public function name(): string
     {
         return $this->name;
+    }
+
+    /** As the shop reads it: in its own language, where the shopper read another. */
+    public function shopName(): string
+    {
+        return $this->shopWords['name'] ?? $this->name;
+    }
+
+    /** @return list<array{attribute: string, option: string}> */
+    public function shopOptions(): array
+    {
+        return $this->shopWords['options'] ?? $this->options();
+    }
+
+    /** @return list<array{name: string, quantity: int}> */
+    public function shopContents(): array
+    {
+        return $this->shopWords['contents'] ?? $this->contents();
+    }
+
+    /** @return list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}> */
+    public function shopPersonalisation(): array
+    {
+        return $this->shopWords['personalisation'] ?? $this->personalisation();
     }
 
     public function sku(): ?string

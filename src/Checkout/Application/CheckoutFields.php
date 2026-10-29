@@ -53,7 +53,8 @@ final readonly class CheckoutFields
      * @param array<array-key, mixed> $answers by field id, as the form sent them
      * @param list<ItemQuote>         $items   what the order holds
      *
-     * @return list<OrderFieldView>
+     * @return array{list<OrderFieldView>, array<string, array{label: string, answer: string}>} the answers, and those
+     *         whose question or choice reads otherwise in the shop's own language (design 51), by field id
      *
      * @throws InvalidFields with each refused answer next to its field, as fields.vat_number
      */
@@ -69,7 +70,15 @@ final readonly class CheckoutFields
         }
         $given = $this->answers->check($fields, $answers, 'fields.', check: fn(AskedField $asked, string $answer): ?string => isset($addOns[$asked->id]) ? $this->check($addOns[$asked->id], $answer, $context) : null);
 
-        return array_map(static fn(GivenAnswer $answer): OrderFieldView => new OrderFieldView($answer->id, $answer->label, $answer->answer), $given);
+        $rows = array_map(static fn(GivenAnswer $answer): array => ['id' => $answer->id, 'label' => $answer->label, 'answer' => $answer->answer, 'value' => $answer->value, 'price' => $answer->price, 'upload_id' => $answer->uploadId], $given);
+        $shop = [];
+        foreach ($this->forms->shopWords($rows) ?? [] as $index => $words) {
+            if ($words !== ['label' => $rows[$index]['label'], 'answer' => $rows[$index]['answer']]) {
+                $shop[$rows[$index]['id']] = $words;
+            }
+        }
+
+        return [array_map(static fn(GivenAnswer $answer): OrderFieldView => new OrderFieldView($answer->id, $answer->label, $answer->answer), $given), $shop];
     }
 
     /**

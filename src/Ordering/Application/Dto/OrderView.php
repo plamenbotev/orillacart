@@ -119,9 +119,12 @@ final readonly class OrderView
 
     /**
      * @param (\Closure(string): string)|null $downloadUrl the link of a download token; without it, no downloads are listed
+     * @param bool|null                       $shopWords   in the shop's own words, where the customer read another language
+     *                                                     (design 51); null for the shop's when it is the shop's view
      */
-    public static function fromOrder(Order $order, bool $forShop = false, ?\Closure $downloadUrl = null): self
+    public static function fromOrder(Order $order, bool $forShop = false, ?\Closure $downloadUrl = null, ?bool $shopWords = null): self
     {
+        $words = $shopWords ?? $forShop;
         $shippingAddress = $order->shippingAddress();
         $lines = $order->lines();
 
@@ -131,8 +134,9 @@ final readonly class OrderView
             $order->email(),
             AddressData::fromAddress($order->billing()),
             $shippingAddress === null ? null : AddressData::fromAddress($shippingAddress),
-            array_map(OrderLineView::fromLine(...), $order->lines()),
-            $order->shippingName(),
+            array_map(static fn(OrderLine $line): OrderLineView => OrderLineView::fromLine($line, $words), $order->lines()),
+            // The shop reads its own words, the customer theirs (design 51).
+            $words ? $order->shopShippingName() : $order->shippingName(),
             (string) $order->shippingTotal(),
             (string) $order->shippingTax(),
             array_map(static fn(TaxLine $tax): TaxLineView => new TaxLineView($tax->name, $tax->percent, (string) $tax->amount), $order->taxes()),
@@ -141,7 +145,7 @@ final readonly class OrderView
             (string) $order->total(),
             $order->currency(),
             $order->paymentGateway(),
-            $order->paymentName(),
+            $words ? $order->shopPaymentName() : $order->paymentName(),
             $order->paymentNote(),
             $order->note(),
             $order->placedAt()->format(\DATE_ATOM),
@@ -156,12 +160,12 @@ final readonly class OrderView
             ),
             $order->shippingOption(),
             $order->pickupPointId(),
-            $order->pickupPoint(),
+            $words ? $order->shopPickupPoint() : $order->pickupPoint(),
             (string) $order->refundedTotal(),
             $order->isShippingRefunded(),
             (string) $order->discountTotal(),
             array_map(static fn(OrderDiscount $discount): OrderDiscountView => new OrderDiscountView($discount->code, $discount->description, (string) $discount->amount, $discount->freeShipping, $discount->automatic), $order->discounts()),
-            array_map(OrderFieldView::fromAnswer(...), $order->fields()),
+            array_map(OrderFieldView::fromAnswer(...), $words ? $order->shopFields() : $order->fields()),
             $forShop ? $order->attention() : null,
             $order->isPayable(),
             $order->pricesIncludeTax(),
@@ -170,7 +174,7 @@ final readonly class OrderView
             $order->anonymisedAt() !== null,
             (string) $order->refundable(),
             $order->locale(),
-            array_map(static fn(OrderFee $fee): NewOrderFee => new NewOrderFee($fee->label, (string) $fee->amount), $order->fees()),
+            array_map(static fn(OrderFee $fee): NewOrderFee => new NewOrderFee($fee->label, (string) $fee->amount), $order->fees($words)),
             (string) $order->feesTotal(),
             (string) $order->feesTax(),
             $order->delivery()?->date->format('Y-m-d'),

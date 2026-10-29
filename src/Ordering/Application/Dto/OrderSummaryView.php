@@ -39,7 +39,7 @@ final readonly class OrderSummaryView
             array_sum(array_map(static fn($line): int => $line->quantity(), $order->lines())),
             (string) $order->total(),
             $order->currency(),
-            $order->paymentName(),
+            $forShop ? $order->shopPaymentName() : $order->paymentName(),
             $order->placedAt()->format(\DATE_ATOM),
             $forShop && $order->attention() !== null,
             $order->paidAt() !== null,

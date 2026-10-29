@@ -64,8 +64,8 @@ final readonly class ShippingQuotes
         $words = $this->texts->shown($carriers);
         foreach ($carriers as $carrier) {
             if ($carrier->isPickup()) {
-                foreach ($carrier->pickupLocations() as $location) {
-                    $location = $words->place($carrier, $location);
+                foreach ($carrier->pickupLocations() as $own) {
+                    $location = $words->place($carrier, $own);
                     $options[] = new ShippingOptionView(
                         "pickup:{$carrier->id()}:{$location->id}",
                         $carrier->id(),
@@ -75,6 +75,9 @@ final readonly class ShippingQuotes
                         $carrier->isMethodTaxable(),
                         $carrier->methodTaxGroupId(),
                         collectAt: new PickupPointView($location->id, $location->name, $location->address, $location->hours),
+                        shopCarrier: $carrier->name(),
+                        shopName: $own->name,
+                        shopCollectAt: new PickupPointView($own->id, $own->name, $own->address, $own->hours),
                     );
                 }
                 continue;
@@ -90,6 +93,7 @@ final readonly class ShippingQuotes
                         $carrier->isMethodTaxable(),
                         $carrier->methodTaxGroupId(),
                         $rate->toPickupPoint,
+                        shopCarrier: $carrier->name(),
                     );
                 }
                 continue;
@@ -104,6 +108,8 @@ final readonly class ShippingQuotes
                         (string) $rate->priceFor($parcel),
                         $rate->details()->taxable,
                         $rate->details()->taxGroupId,
+                        shopCarrier: $carrier->name(),
+                        shopName: $rate->name(),
                     );
                 }
             }

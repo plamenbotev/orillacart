@@ -63,7 +63,16 @@ final readonly class PaymentOptions
             return null;
         }
 
-        return new PaymentFeeView($this->words->one($method)['fee_label'], (string) $method->fee(), $method->feePercent());
+        $label = $this->words->one($method)['fee_label'];
+        $own = $method->hasFeeLabel() ? $method->feeLabel() : $method->name();
+
+        return new PaymentFeeView($label, (string) $method->fee(), $method->feePercent(), $own === $label ? null : $own);
+    }
+
+    /** The way to pay in the shop's own language, for the order it keeps (design 51). */
+    public function shopName(string $gateway): string
+    {
+        return $this->methods->findByGateway($gateway)?->name() ?? $this->gateways->get($gateway)->defaultName();
     }
 
     public function name(string $gateway): string

@@ -14,5 +14,9 @@ final readonly class NewShipping
         public ?string $pickupPointId = null,
         /** Its name and address. */
         public ?string $pickupPoint = null,
+        /** The carrier, rate and place in the shop's own language, where the shopper's differ (design 51). */
+        public ?string $shopCarrier = null,
+        public ?string $shopRate = null,
+        public ?string $shopPickupPoint = null,
     ) {}
 }

@@ -149,6 +149,8 @@ export interface Order {
 	payment_note: string;
 	note: string;
 	placed_at: string;
+	/** The language the customer ordered in (de_DE): what they read, and what the shop writes them; null for the site's. */
+	locale?: string | null;
 	paid_at: string | null;
 	customer_id: number | null;
 	transaction_id: string | null;

@@ -33,9 +33,17 @@ final class WordPressContentLanguages implements ContentLanguages
         return $this->plugin()->default();
     }
 
+    /**
+     * The request's, else the language of the locale the shop works in (Languages::in, as for an email or an order
+     * edited in its customer's language), else the plugin's.
+     */
     public function current(): ?Language
     {
-        return $this->requested ?? $this->plugin()->current();
+        if ($this->requested !== null) {
+            return $this->requested;
+        }
+
+        return ($this->multilingual() ? $this->forLocale(determine_locale()) : null) ?? $this->plugin()->current();
     }
 
     /**

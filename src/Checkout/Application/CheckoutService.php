@@ -494,7 +494,7 @@ final readonly class CheckoutService
             $gateway = $command->payment;
         }
 
-        $answers = $this->fields->answers($command->fields, new FieldContext($command->email, $billingAddress->country, $priced['needs_shipping'] ? $shippingAddress->country : null, $owner->customerId), array_map(static fn(array $line): ItemQuote => $line['quote'], $priced['lines']), $priced['needs_shipping']);
+        [$answers, $shopAnswers] = $this->fields->answers($command->fields, new FieldContext($command->email, $billingAddress->country, $priced['needs_shipping'] ? $shippingAddress->country : null, $owner->customerId), array_map(static fn(array $line): ItemQuote => $line['quote'], $priced['lines']), $priced['needs_shipping']);
         $registering = $this->registration($owner, $command);
 
         $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents->cartId, fn(): OrderView => $this->redeemed($priced, $plan, $owner, $command->email, $this->orders->place(new NewOrder(
@@ -525,6 +525,8 @@ final readonly class CheckoutService
             $currency === $this->settings->current()->currency ? null : $this->settings->current()->currency,
             $currency === $this->settings->current()->currency ? null : $this->currencies->rate($currency),
             $command->buyerReference,
+            $gateway === null ? null : $this->paymentOptions->shopName($gateway),
+            $shopAnswers,
         )), $gateway === null)));
         foreach ([...$this->failures->since($failed), ...$this->addressChecks->kept($billingAddress, $priced['needs_shipping'] && $command->shippingAddress !== null ? $shippingAddress : null)] as $failure) {
             $this->orders->note($order->number, $failure, false);

@@ -45,5 +45,13 @@ final readonly class OrderDraft
         public ?string $shopCurrency = null,
         public ?string $exchangeRate = null,
         public ?string $buyerReference = null,
+        /** The way to pay in the shop's own language, where the shopper's differs (design 51). */
+        public ?string $shopPaymentName = null,
+        /**
+         * The answers' questions and choices in the shop's own language, by field id, where the shopper's differ.
+         *
+         * @var array<string, array{label: string, answer: string}>
+         */
+        public array $shopFields = [],
     ) {}
 }

@@ -29,5 +29,7 @@ final readonly class QuotedBundleItem
         public ?int $taxGroupId = null,
         /** What tax services call it; null for its tax group's code. */
         public ?string $taxCode = null,
+        /** The name in the shop's own language, where the shopper's differs (design 51): what the shop reads in the order. */
+        public ?string $shopName = null,
     ) {}
 }

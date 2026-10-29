@@ -433,9 +433,11 @@ final class TestShop
         $this->rateCache = new MemoryRateCache();
         $this->content = new InMemoryProductContent();
         $this->contentLanguages = new FakeContentLanguages([]);
+        $this->contentLanguages->follows = $this->languages;
         $this->productTranslations = new ProductTranslations($this->contentLanguages, $productRecords, $this->content);
         $this->translationRecords = new InMemoryTranslations()->add(new AttributeTranslations(), new OptionTranslations(), new CarrierTranslations(), new RateTranslations(), new PaymentMethodTranslations(), new FormTranslations(), new SearchFilterTranslations());
-        $this->languageOfRequest = new FakeLanguages();
+        // One locale, as WordPress has: the request's, an email's, an order edited in its customer's language.
+        $this->languageOfRequest = $this->languages;
         $this->contentTranslations = new ContentTranslations($this->translationRecords, $this->translationRecords, $this->contentLanguages, $this->languageOfRequest);
         $this->shippingTexts = new ShippingTexts($this->contentTranslations);
         $formTexts = new FormTexts($this->contentTranslations);
@@ -527,9 +529,9 @@ final class TestShop
         $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
         $this->taxServices = new TaxServices($this->taxSettings, $extensions, $this->logger, $this->failures, $taxGroupRecords, $this->taxQuotes = new MemoryTaxQuoteCache());
         $this->importSchemes = new ImportSchemes(new InMemoryImportRegistrations(), $settings, $geography);
-        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures, $this->importSchemes);
-        $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts);
-        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures);
+        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures, $this->importSchemes, $this->shopForms);
+        $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts, $this->languages);
+        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures, $this->languages);
         $this->checkout = new CheckoutService(
             $this->carts,
             $this->pricing,

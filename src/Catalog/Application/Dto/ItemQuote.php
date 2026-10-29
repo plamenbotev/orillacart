@@ -54,6 +54,8 @@ final readonly class ItemQuote
         public ?string $taxCode = null,
         /** Codes and automatic discounts come off it: not when a price rule that set its price says so. */
         public bool $coupons = true,
+        /** The name in the shop's own language, where the shopper's differs (design 51): what the shop reads in the order. */
+        public ?string $shopName = null,
     ) {}
 
     /** How many of this quantity the customer is told are on backorder: none unless the product says so. */

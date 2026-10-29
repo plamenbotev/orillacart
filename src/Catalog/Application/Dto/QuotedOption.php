@@ -11,5 +11,8 @@ final readonly class QuotedOption
         public string $attribute,
         public string $name,
         public string $adjustment,
+        /** The attribute's and the option's names in the shop's own language, where the shopper's differ (design 51). */
+        public ?string $shopAttribute = null,
+        public ?string $shopName = null,
     ) {}
 }
