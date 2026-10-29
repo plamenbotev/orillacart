@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Translations\Application;
 
+use OrillaCart\Translations\Application\Dto\TranslationPackage;
 use OrillaCart\Translations\Domain\TranslationRuleViolation;
 
 /**
@@ -40,6 +41,36 @@ final readonly class TranslationPackages
             return;
         }
         $this->service->register($package, $source->title());
+        $this->send($package, $source);
+    }
+
+    /**
+     * Gives the service the translations the shop's screens changed: a word the shop has that differs from what
+     * the service last gave, where the service's own has not changed since. One its translators changed since
+     * is theirs, taken at the next pull, never overwritten.
+     */
+    private function send(TranslationPackage $package, TranslationPackageSource $source): void
+    {
+        $kindTitle = $source->title();
+        $theirs = $this->service->translated($package, $kindTitle);
+        $kept = $source instanceof KeepsItsTranslations ? $source->translationsOf($package) : null;
+        foreach ($package->strings as $string) {
+            $ours = $kept === null ? ($this->translations->of($string->type, [$string->id])[$string->id][$string->field] ?? []) : ($kept[$string->key()] ?? []);
+            $copies = $this->translations->serviceCopies($string->type, $string->id)[$string->field] ?? [];
+            $sent = [];
+            foreach ($ours as $locale => $value) {
+                $their = $theirs[$string->key()][$locale] ?? null;
+                $copy = $copies[$locale] ?? null;
+                if ($value === $their || ($their !== null && $their !== $copy)) {
+                    continue;
+                }
+                $this->service->translate($package, $string, $locale, $value, $kindTitle);
+                $sent[$locale] = $value;
+            }
+            if ($sent !== []) {
+                $this->translations->keepServiceCopies($string->type, $string->id, [$string->field => $sent]);
+            }
+        }
     }
 
     public function removed(string $kind, int $id): void
@@ -94,6 +125,12 @@ final readonly class TranslationPackages
                     continue;
                 }
                 $found = $this->service->translated($package, $source->title());
+                if ($source instanceof KeepsItsTranslations) {
+                    [$took, $refusedHere] = $this->keep($source, $package, $found);
+                    $changed += $took;
+                    $refused += $refusedHere;
+                    continue;
+                }
                 // By type, id, field and locale: an attribute set's package has its options' words too.
                 $objects = [];
                 foreach ($package->strings as $string) {
@@ -112,6 +149,35 @@ final readonly class TranslationPackages
         }
 
         return [$changed, $refused];
+    }
+
+    /**
+     * The service's words a source keeps itself, those changed since the service last gave them.
+     *
+     * @param array<string, array<string, string>> $found by key and locale
+     *
+     * @return array{int, int} the words taken, and those the shop refused
+     */
+    private function keep(KeepsItsTranslations $source, TranslationPackage $package, array $found): array
+    {
+        $took = 0;
+        $refused = 0;
+        foreach ($package->strings as $string) {
+            $copies = $this->translations->serviceCopies($string->type, $string->id)[$string->field] ?? [];
+            foreach ($found[$string->key()] ?? [] as $locale => $value) {
+                if (($copies[$locale] ?? null) === $value) {
+                    continue;
+                }
+                if (!$source->keep($package, $string, $locale, $value)) {
+                    ++$refused;
+                    continue;
+                }
+                $this->translations->keepServiceCopies($string->type, $string->id, [$string->field => [$locale => $value]]);
+                ++$took;
+            }
+        }
+
+        return [$took, $refused];
     }
 
     /**

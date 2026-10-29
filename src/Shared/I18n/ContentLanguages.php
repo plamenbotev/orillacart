@@ -37,6 +37,9 @@ interface ContentLanguages
      */
     public function postTranslations(int $postId): array;
 
+    /** The site's front page in the language, as its links go: Polylang's /de/, WPML's per its setting. */
+    public function homeUrl(Language $language): string;
+
     /**
      * The term's translations, itself among them.
      *

@@ -36,7 +36,8 @@ export async function fetchTerms( taxonomy: string ): Promise< Named[] > {
 }
 
 /**
- * Products by name or by id, from the WordPress posts API; at most 20.
+ * Products by name or by id, at most 20 found: each product once, by its own id, found by its name in any of the
+ * site's languages and named in the admin's (GET /orillacart/v1/product-choices).
  *
  * @param query A name to search, or the ids to name.
  */
@@ -46,21 +47,17 @@ export async function fetchProducts(
 	if ( 'include' in query && query.include.length === 0 ) {
 		return [];
 	}
-	const posts = await apiFetch<
-		{ id: number; title: { rendered: string } }[]
-	>( {
-		path: addQueryArgs( '/wp/v2/orillacart_product', {
-			...( 'search' in query
+	const products = await apiFetch< Named[] >( {
+		path: addQueryArgs(
+			'/orillacart/v1/product-choices',
+			'search' in query
 				? { search: query.search }
-				: { include: query.include.join( ',' ) } ),
-			per_page: 'include' in query ? 100 : 20,
-			status: 'publish,private,draft',
-			_fields: 'id,title',
-		} ),
+				: { include: query.include.join( ',' ) }
+		),
 	} );
-	return posts.map( ( post ) => ( {
-		id: post.id,
-		name: decoded( post.title.rendered ) || `#${ post.id }`,
+	return products.map( ( product ) => ( {
+		id: product.id,
+		name: product.name || `#${ product.id }`,
 	} ) );
 }
 

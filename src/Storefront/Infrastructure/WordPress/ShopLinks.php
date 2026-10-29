@@ -86,6 +86,12 @@ final readonly class ShopLinks
         return $links;
     }
 
+    /** A page's address in the request's language, or the language an email is written in; null for none. */
+    public function pageUrl(?int $id): ?string
+    {
+        return $this->url($id);
+    }
+
     private function url(?int $id): ?string
     {
         $link = $id === null ? false : get_permalink($this->inLanguage($id));

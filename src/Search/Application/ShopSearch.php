@@ -22,6 +22,7 @@ final readonly class ShopSearch
         private SearchFilterRepository $filters,
         private CategoryFiltersRepository $categories,
         private ContentLanguages $languages,
+        private CategoryTranslations $categoryTranslations = new UntranslatedCategories(),
     ) {}
 
     /**
@@ -35,10 +36,12 @@ final readonly class ShopSearch
     public function filters(?int $categoryId = null, array $above = []): array
     {
         $all = $this->filters->all();
-        $path = $categoryId === null ? [] : [$categoryId, ...$above];
-        $chosen = $this->categories->ofCategories($path);
-        foreach ($path as $category) {
-            if (isset($chosen[$category])) {
+        // Each category of the path with its translations: a choice holds in every language (design 51).
+        $path = array_map($this->categoryTranslations->of(...), $categoryId === null ? [] : [$categoryId, ...$above]);
+        $chosen = $this->categories->ofCategories(array_values(array_unique(array_merge([], ...$path))));
+        foreach ($path as $translations) {
+            $category = array_values(array_filter($translations, static fn(int $id): bool => isset($chosen[$id])))[0] ?? null;
+            if ($category !== null) {
                 $byId = [];
                 foreach ($all as $filter) {
                     $byId[$filter->id()] = $filter;

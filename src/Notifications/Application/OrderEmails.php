@@ -265,7 +265,8 @@ final readonly class OrderEmails
             }
             $extra['refund'] = ['amount' => $refund['amount'], 'full' => $refund['full'], 'lines' => $lines, 'credit' => \is_string($refund['credit'] ?? null) ? $refund['credit'] : null];
         }
-        $context = [
+        // Built in the reader's language: the receipt's page and the legal texts are theirs.
+        $context = fn(): array => [
             'order' => $order,
             'receipt_url' => $this->links->receiptUrl($order->number),
             'for_shop' => $kind->isForShop(),

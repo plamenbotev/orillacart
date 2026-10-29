@@ -24,6 +24,7 @@ use OrillaCart\Shared\View\TemplateEditing;
 use OrillaCart\Shared\View\TemplateRejected;
 use OrillaCart\Translations\Application\ContentTranslations;
 use OrillaCart\Translations\Application\Dto\ContentLanguageView;
+use OrillaCart\Translations\Application\TranslationPackages;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -50,6 +51,7 @@ final readonly class EmailTemplateEditor
         private Site $site,
         private ClockInterface $clock,
         private ContentTranslations $languages,
+        private ?TranslationPackages $packages = null,
     ) {}
 
     /** @return list<string> the emails a preview can show */
@@ -119,6 +121,8 @@ final readonly class EmailTemplateEditor
             $template->change($command->source, $this->clock->now(), $userId);
         }
         $this->templates->save($template);
+        // The translators get the template for every language, and a language's the shop wrote.
+        $this->packages?->changed(EmailTemplatePackages::KIND, EmailTemplatePackages::id($file));
 
         return $this->template($name, new EmailTemplateQuery($locale));
     }
@@ -131,9 +135,12 @@ final readonly class EmailTemplateEditor
      */
     public function reset(string $name, EmailTemplateQuery $query = new EmailTemplateQuery()): EmailTemplateSourceView
     {
-        $template = $this->templates->find($this->file($name), $this->locale($query->locale));
+        $file = $this->file($name);
+        $template = $this->templates->find($file, $this->locale($query->locale));
         if ($template !== null) {
             $this->templates->remove($template);
+            // Back to the plugin's file: nothing of the shop's for the translators; a language's: the rest stays.
+            $this->packages?->changed(EmailTemplatePackages::KIND, EmailTemplatePackages::id($file));
         }
 
         return $this->template($name, $query);

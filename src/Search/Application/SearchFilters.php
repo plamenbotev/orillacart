@@ -31,6 +31,7 @@ final readonly class SearchFilters
         private ContentTranslations $translations,
         private Transactions $transactions,
         private TranslationPackages $packages,
+        private CategoryTranslations $categoryTranslations = new UntranslatedCategories(),
     ) {}
 
     /**
@@ -87,7 +88,16 @@ final readonly class SearchFilters
      */
     public function chosenIn(int $categoryId): ?array
     {
-        return ($this->categories->ofCategories([$categoryId])[$categoryId] ?? null)?->filterIds();
+        // The category's choice, or its translations': one choice for it in every language.
+        $translations = $this->categoryTranslations->of($categoryId);
+        $chosen = $this->categories->ofCategories($translations);
+        foreach ($translations as $id) {
+            if (isset($chosen[$id])) {
+                return $chosen[$id]->filterIds();
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -99,6 +109,12 @@ final readonly class SearchFilters
      */
     public function choose(int $categoryId, ?array $filterIds): void
     {
+        // One choice for the category in every language: its translations' give way to this one.
+        foreach ($this->categoryTranslations->of($categoryId) as $id) {
+            if ($id !== $categoryId) {
+                $this->categories->remove($id);
+            }
+        }
         if ($filterIds === null) {
             $this->categories->remove($categoryId);
 

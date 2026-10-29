@@ -1643,6 +1643,17 @@ The cards of published products, by id (?ids=12,30), as the shop's lists show th
 
 - Who: anyone
 
+## /product-choices
+
+### `GET /product-choices`
+
+Products for a picker: ?search=words finds them by name in any language, ?include=12,40 names those given; each by the product's own id, named in the admin's language. Anyone who edits pages picks products in blocks.
+
+- Who: users who can edit_posts
+- Query:
+  - `search` (string): at most 200 characters
+  - `include` (string): matches `/^(\d+(,\d+)*)?$/`
+
 ## /products
 
 ### `GET /products/{id}`

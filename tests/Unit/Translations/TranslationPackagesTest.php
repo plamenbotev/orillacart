@@ -91,6 +91,23 @@ final class TranslationPackagesTest extends TestCase
         return $this->shop->translationRecords->all('carrier', [$carrier])[$carrier]['name'] ?? [];
     }
 
+    public function testATranslationTypedInTheShopGoesToTheTranslatorsUnlessTheyChangedTheirsSince(): void
+    {
+        $carrier = $this->shop->carriers->create(new SaveCarrier('Courier', translations: ['de_DE' => 'Kurier']));
+        $key = "carrier:{$carrier->id}:name";
+        self::assertSame([[$key, 'de_DE', 'Kurier']], $this->shop->translationService->given, 'WPML has the shop\'s word');
+
+        // A translator changes it in WPML; the owner saves the carrier for something else before the pull.
+        $this->shop->translationService->finished[$key]['de_DE'] = 'Paketdienst';
+        $this->shop->carriers->update($carrier->id, new SaveCarrier('Courier', active: false));
+        self::assertCount(1, $this->shop->translationService->given, 'their newer word is not overwritten');
+        $this->shop->translationPackages->pull();
+        self::assertSame(['de_DE' => 'Paketdienst'], $this->carrierName($carrier->id));
+
+        $this->shop->carriers->update($carrier->id, new SaveCarrier('Courier', translations: ['de_DE' => 'Bote']));
+        self::assertSame([[$key, 'de_DE', 'Kurier'], [$key, 'de_DE', 'Bote']], $this->shop->translationService->given, 'a word the shop changed since goes');
+    }
+
     public function testATranslationTheShopWouldRefuseIsLeftOut(): void
     {
         $this->shop->content->add(10, 'Shirt');

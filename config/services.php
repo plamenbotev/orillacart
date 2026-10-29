@@ -206,6 +206,7 @@ use OrillaCart\Reviews\Domain\ReviewStore;
 use OrillaCart\Reviews\Infrastructure\WordPress\CommentReviewStore;
 use OrillaCart\Reviews\Infrastructure\WordPress\OptionReviewSettingsRepository;
 use OrillaCart\Search\Application\CatalogSearch;
+use OrillaCart\Search\Application\CategoryTranslations;
 use OrillaCart\Search\Application\ProductTexts;
 use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Application\SearchServer;
@@ -218,6 +219,7 @@ use OrillaCart\Search\Infrastructure\EngineCatalogSearch;
 use OrillaCart\Search\Infrastructure\EngineSearchIndex;
 use OrillaCart\Search\Infrastructure\OpenSearch\OpenSearchServer;
 use OrillaCart\Search\Infrastructure\WordPress\OptionEngineSettingsRepository;
+use OrillaCart\Search\Infrastructure\WordPress\WordPressCategoryTranslations;
 use OrillaCart\Search\Infrastructure\WordPress\WordPressProductTexts;
 use OrillaCart\Settings\Application\CurrencyChoice;
 use OrillaCart\Settings\Application\SampleData;
@@ -476,6 +478,7 @@ return static function (ContainerConfigurator $container): void {
     // The search engine the shop chose: its database (MySQL FULLTEXT) or OpenSearch.
     $services->alias(CatalogSearch::class, EngineCatalogSearch::class)->public();
     $services->alias(SearchIndex::class, EngineSearchIndex::class)->public();
+    $services->alias(CategoryTranslations::class, WordPressCategoryTranslations::class);
     $services->alias(SearchServer::class, OpenSearchServer::class);
     $services->alias(EngineSettingsRepository::class, OptionEngineSettingsRepository::class);
 

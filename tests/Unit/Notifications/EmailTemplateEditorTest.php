@@ -17,6 +17,7 @@ use OrillaCart\Notifications\Application\Dto\PreviewEmail;
 use OrillaCart\Notifications\Application\Dto\SaveEmailTemplate;
 use OrillaCart\Notifications\Application\EmailNotWritten;
 use OrillaCart\Notifications\Application\EmailTemplateEditor;
+use OrillaCart\Notifications\Application\EmailTemplatePackages;
 use OrillaCart\Notifications\Application\LowStockAlerts;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailRuleViolation;
@@ -40,6 +41,7 @@ final class EmailTemplateEditorTest extends TestCase
 
     private TestShop $shop;
     private EmailTemplateEditor $editor;
+    private LowStockAlerts $low;
 
     protected function setUp(): void
     {
@@ -47,7 +49,7 @@ final class EmailTemplateEditorTest extends TestCase
         $this->shop->content->add(20, 'E-book');
         $this->shop->products->save(20, new SaveProduct('8', 'virtual'));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
-        $low = new LowStockAlerts(new LowStock($this->shop->productRecords, new StockItemNames($this->shop->productRecords, $this->shop->content), $this->shop->stock, $this->shop->stockrooms, $this->shop->settingsService), new InMemoryAlertedStock(), $this->shop->emailSettings, $this->shop->writer, $this->shop->mail, $this->shop->logger);
+        $this->low = $low = new LowStockAlerts(new LowStock($this->shop->productRecords, new StockItemNames($this->shop->productRecords, $this->shop->content), $this->shop->stock, $this->shop->stockrooms, $this->shop->settingsService), new InMemoryAlertedStock(), $this->shop->emailSettings, $this->shop->writer, $this->shop->mail, $this->shop->logger);
         $this->editor = new EmailTemplateEditor($this->shop->templateEditing, $this->shop->emailTemplateRecords, $this->shop->emails, $low, $this->shop->cartReminders, $this->shop->orders, $this->shop->writer, $this->shop->mail, $this->shop->site, $this->shop->clock, $this->shop->contentTranslations);
     }
 
@@ -104,6 +106,35 @@ final class EmailTemplateEditorTest extends TestCase
         self::assertSame("Order {$english->number} hat die Werkstatt verlassen", $this->editor->preview('order-shipped', new PreviewEmail(order: $english->number, locale: 'de_DE'))->subject);
         $reset = $this->editor->reset('order-shipped', new EmailTemplateQuery('de_DE'));
         self::assertSame([false, self::SHIPPED], [$reset->edited, $reset->source]);
+    }
+
+    public function testAnEditedTemplateGoesToTheTranslatorsAndTheirsComesBackAsTheLanguagesTemplate(): void
+    {
+        $this->shop->contentLanguages->languages = [new Language('en', 'en_US', 'English'), new Language('de', 'de_DE', 'Deutsch'), new Language('fr', 'fr_FR', 'Français')];
+        $service = $this->shop->translationService;
+        $service->active = true;
+        $this->shop->packageSources->append(new EmailTemplatePackages($this->shop->emailTemplateRecords, $this->shop->templateEditing, $this->shop->clock));
+        $editor = new EmailTemplateEditor($this->shop->templateEditing, $this->shop->emailTemplateRecords, $this->shop->emails, $this->low, $this->shop->cartReminders, $this->shop->orders, $this->shop->writer, $this->shop->mail, $this->shop->site, $this->shop->clock, $this->shop->contentTranslations, $this->shop->translationPackages);
+        $id = EmailTemplatePackages::id('emails/order-shipped.html.twig');
+        $key = "email_template:{$id}:source";
+
+        $editor->save('order-shipped', new SaveEmailTemplate(self::SHIPPED), 7);
+        self::assertSame([$key => self::SHIPPED], $service->words('email_template', $id), 'the template for every language is a package');
+        $german = str_replace('left the workshop', 'hat die Werkstatt verlassen', self::SHIPPED);
+        $editor->save('order-shipped', new SaveEmailTemplate($german, 'de_DE'), 7);
+        self::assertSame([[$key, 'de_DE', $german]], $service->given, 'the German the shop wrote goes to the translators');
+
+        $french = str_replace('left the workshop', 'a quitté l’atelier', self::SHIPPED);
+        $service->finished[$key]['fr_FR'] = $french;
+        self::assertSame([1, 0], $this->shop->translationPackages->pull());
+        self::assertSame($french, $editor->template('order-shipped', new EmailTemplateQuery('fr_FR'))->source, 'their French is the French template');
+
+        $service->finished[$key]['fr_FR'] = '{% block subject %}{{ order.number';
+        self::assertSame([0, 1], $this->shop->translationPackages->pull(), 'a template that does not compile is refused');
+        self::assertSame($french, $editor->template('order-shipped', new EmailTemplateQuery('fr_FR'))->source);
+
+        $editor->reset('order-shipped');
+        self::assertArrayNotHasKey("email_template:{$id}", $service->packages, 'back to the plugin\'s file: nothing to translate');
     }
 
     public function testATemplateForALanguageTheSiteHasNotIsRefused(): void

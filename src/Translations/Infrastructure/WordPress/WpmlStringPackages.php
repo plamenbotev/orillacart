@@ -18,6 +18,9 @@ use OrillaCart\Translations\Application\TranslationService;
  */
 final readonly class WpmlStringPackages implements TranslationService
 {
+    /** WPML's ICL_TM_COMPLETE: a translation done. */
+    private const int COMPLETE = 10;
+
     public function __construct(
         private ContentLanguages $languages,
         private Translations $words,
@@ -68,6 +71,24 @@ final readonly class WpmlStringPackages implements TranslationService
         }
 
         return $found;
+    }
+
+    /**
+     * Through WPML String Translation's functions: the package's string by its context (the kind's slug and the
+     * package's name, as WPML makes it) and name, translated and marked complete.
+     */
+    public function translate(TranslationPackage $package, PackageString $string, string $locale, string $value, string $kindTitle): void
+    {
+        $language = $this->languages->forLocale($locale);
+        if ($language === null || !\function_exists('icl_get_string_id') || !\function_exists('icl_add_string_translation')) {
+            return;
+        }
+        $context = sanitize_title($kindTitle) . '-' . self::package($package->kind, $package->id, $kindTitle)['name'];
+        // WPML answers 0 or null for a string it does not have.
+        $id = icl_get_string_id($string->value, $context, self::name($string));
+        if ($id > 0) {
+            icl_add_string_translation($id, $language->code, $value, self::COMPLETE);
+        }
     }
 
     /**

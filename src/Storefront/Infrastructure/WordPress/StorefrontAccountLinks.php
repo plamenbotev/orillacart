@@ -15,7 +15,10 @@ final readonly class StorefrontAccountLinks implements AccountLinks
 {
     public const string CONFIRM_QUERY = 'orillacart_account';
 
-    public function __construct(private ShopPagesService $pages) {}
+    public function __construct(
+        private ShopPagesService $pages,
+        private ShopLinks $links,
+    ) {}
 
     public function accountUrl(): string
     {
@@ -39,9 +42,7 @@ final readonly class StorefrontAccountLinks implements AccountLinks
 
     private function accountPage(): string
     {
-        $account = $this->pages->pages()->account;
-        $page = $account === null ? false : get_permalink($account);
-
-        return \is_string($page) ? $page : home_url('/');
+        // In the language the link is written in: an email's, the customer's (design 51).
+        return $this->links->pageUrl($this->pages->pages()->account) ?? home_url('/');
     }
 }

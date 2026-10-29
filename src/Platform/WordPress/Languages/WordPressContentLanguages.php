@@ -79,6 +79,11 @@ final class WordPressContentLanguages implements ContentLanguages
         return $this->plugin()->postTranslations($postId);
     }
 
+    public function homeUrl(Language $language): string
+    {
+        return $this->plugin()->homeUrl($language);
+    }
+
     public function termTranslations(int $termId, string $taxonomy): array
     {
         return $this->plugin()->termTranslations($termId, $taxonomy);

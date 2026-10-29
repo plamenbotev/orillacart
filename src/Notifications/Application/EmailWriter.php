@@ -41,29 +41,34 @@ final readonly class EmailWriter
     }
 
     /**
-     * @param string|null          $locale  the reader's language; null for the site's
-     * @param array<string, mixed> $context
+     * @param string|null                                          $locale  the reader's language; null for the site's
+     * @param array<string, mixed>|\Closure(): array<string, mixed> $context a closure is called in the reader's language,
+     *                                                                       so the pages it links to are in it
      *
      * @throws EmailNotWritten its template failed: trying again fails the same way
      */
-    public function write(string $template, string $kind, string $to, ?string $locale, array $context, ?string $replyTo = null, ?int $orderNumber = null): Email
+    public function write(string $template, string $kind, string $to, ?string $locale, array|\Closure $context, ?string $replyTo = null, ?int $orderNumber = null): Email
     {
         $settings = $this->settings->load();
         $locale = $this->previews->locale() ?? $locale;
-        $context += ['site_name' => $this->site->name(), 'site_url' => $this->site->url(), 'lang' => str_replace('_', '-', $locale ?? $this->languages->site())];
-        // A reader subscribed to the newsletter can leave it from any of the shop's emails.
-        // A preview shows where the link goes without giving away the customer's.
-        $context += ['unsubscribe_url' => match (true) {
-            $to === $this->shopAddress() => null,
-            $this->previews->active() => $this->unsubscribe === null ? null : $this->site->url(),
-            default => $this->unsubscribe?->for($to),
-        }];
         try {
-            [$subject, $body] = $this->languages->in($locale, fn(): array => [
-                // A subject is plain text: what the template escaped for HTML reads as written.
-                html_entity_decode(trim($this->templates->renderBlock($template, 'subject', $context)), \ENT_QUOTES | \ENT_HTML5, 'UTF-8'),
-                $this->templates->render($template, $context),
-            ]);
+            [$subject, $body] = $this->languages->in($locale, function () use ($template, $to, $locale, $context): array {
+                $context = ($context instanceof \Closure ? $context() : $context)
+                    + ['site_name' => $this->site->name(), 'site_url' => $this->site->url(), 'lang' => str_replace('_', '-', $locale ?? $this->languages->site())];
+                // A reader subscribed to the newsletter can leave it from any of the shop's emails.
+                // A preview shows where the link goes without giving away the customer's.
+                $context += ['unsubscribe_url' => match (true) {
+                    $to === $this->shopAddress() => null,
+                    $this->previews->active() => $this->unsubscribe === null ? null : $this->site->url(),
+                    default => $this->unsubscribe?->for($to),
+                }];
+
+                return [
+                    // A subject is plain text: what the template escaped for HTML reads as written.
+                    html_entity_decode(trim($this->templates->renderBlock($template, 'subject', $context)), \ENT_QUOTES | \ENT_HTML5, 'UTF-8'),
+                    $this->templates->render($template, $context),
+                ];
+            });
         } catch (\Throwable $e) {
             throw new EmailNotWritten(\sprintf('The %s email could not be written: %s', $kind, $e->getMessage()), previous: $e);
         }

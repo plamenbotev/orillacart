@@ -20,7 +20,7 @@ final readonly class TranslationsCommand implements CliCommand
     }
 
     /**
-     * Registers every carrier, payment method, form, filter, attribute set and product's attributes as a package.
+     * Registers every carrier, payment method, form, filter, attribute set, product's attributes and edited email template as a package.
      *
      * @param list<string>               $args
      * @param array<string, string|bool> $options

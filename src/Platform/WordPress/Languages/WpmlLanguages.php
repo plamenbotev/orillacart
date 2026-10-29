@@ -79,6 +79,13 @@ final class WpmlLanguages implements ContentLanguages
         return $type === false || $this->ofPost($postId) === null ? [] : $this->translations($postId, $type);
     }
 
+    public function homeUrl(Language $language): string
+    {
+        $url = apply_filters('wpml_permalink', home_url('/'), $language->code);
+
+        return \is_string($url) && $url !== '' ? $url : home_url('/');
+    }
+
     public function termTranslations(int $termId, string $taxonomy): array
     {
         return $this->translations($termId, $taxonomy);

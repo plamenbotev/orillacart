@@ -19,15 +19,16 @@ final readonly class StorefrontOrderLinks implements OrderLinks
     public function __construct(
         private ShopPagesService $pages,
         private ReceiptLinks $receipts,
+        private ShopLinks $links,
     ) {}
 
     /** A fresh signed link each time, working for ReceiptLinks::VALID_DAYS. */
     public function receiptUrl(int $orderNumber): string
     {
-        $checkout = $this->pages->pages()->checkout;
-        $page = $checkout === null ? false : get_permalink($checkout);
+        // The checkout page in the language the link is written in: an email's, the customer's (design 51).
+        $page = $this->links->pageUrl($this->pages->pages()->checkout);
 
-        return add_query_arg(self::RECEIPT_QUERY, $this->receipts->issue($orderNumber), \is_string($page) ? $page : home_url('/'));
+        return add_query_arg(self::RECEIPT_QUERY, $this->receipts->issue($orderNumber), $page ?? home_url('/'));
     }
 
     public function downloadUrl(string $token): string

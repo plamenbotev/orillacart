@@ -8,6 +8,7 @@ use OrillaCart\Platform\I18n\GettextTranslations;
 use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\I18n\Language;
 use OrillaCart\Tests\Fixtures\I18n\FakeContentLanguages;
+use OrillaCart\Tests\Fixtures\I18n\WpmlStringFunctions;
 use OrillaCart\Translations\Application\Dto\PackageString;
 use OrillaCart\Translations\Application\Dto\TranslationPackage;
 use OrillaCart\Translations\Infrastructure\WordPress\WpmlStringPackages;
@@ -70,6 +71,17 @@ final class WpmlStringPackagesTest extends TestCase
 
         self::assertSame(['carrier:3:name' => ['de_DE' => 'Abholung']], $found, 'a "translation" that is the word itself is none');
         self::assertSame('en', $this->language);
+    }
+
+    public function testATranslationTheShopMadeIsGivenToItsStringAsFinished(): void
+    {
+        WpmlStringFunctions::load();
+        $package = $this->package();
+
+        $this->wpml()->translate($package, $package->strings[0], 'de_DE', 'Abholung', 'OrillaCart carrier');
+
+        self::assertSame([['Pickup', 'orillacart-carrier-carrier-3', md5('carrier:3:name')]], WpmlStringFunctions::$strings, 'found by the context WPML gives a package\'s strings');
+        self::assertSame([[77, 'de', 'Abholung', 10]], WpmlStringFunctions::$translations);
     }
 
     public function testAPackageIsDeletedByItsNameAndKind(): void

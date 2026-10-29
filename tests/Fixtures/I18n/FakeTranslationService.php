@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Fixtures\I18n;
 use OrillaCart\Tests\Fixtures\FakeLanguages;
 use OrillaCart\Tests\Fixtures\Translations\InMemoryTranslations;
 use OrillaCart\Translations\Application\ContentTranslations;
+use OrillaCart\Translations\Application\Dto\PackageString;
 use OrillaCart\Translations\Application\Dto\TranslationPackage;
 use OrillaCart\Translations\Application\TranslationPackages;
 use OrillaCart\Translations\Application\TranslationService;
@@ -44,6 +45,15 @@ final class FakeTranslationService implements TranslationService
     public function remove(string $kind, int $id, string $kindTitle): void
     {
         unset($this->packages["{$kind}:{$id}"]);
+    }
+
+    /** @var list<array{string, string, string}> what the shop gave, by key, locale and value */
+    public array $given = [];
+
+    public function translate(TranslationPackage $package, PackageString $string, string $locale, string $value, string $kindTitle): void
+    {
+        $this->given[] = [$string->key(), $locale, $value];
+        $this->finished[$string->key()][$locale] = $value;
     }
 
     public function translated(TranslationPackage $package, string $kindTitle): array

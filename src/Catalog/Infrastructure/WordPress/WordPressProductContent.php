@@ -31,6 +31,25 @@ final readonly class WordPressProductContent implements ProductContent
         return $this->exists($productId) ? wp_strip_all_tags(html_entity_decode(get_the_title($productId), ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '';
     }
 
+    public function idsNamed(string $words, int $limit): array
+    {
+        $ids = get_posts([
+            'post_type' => ProductPostType::NAME,
+            'post_status' => ['publish', 'private', 'draft', 'pending', 'future'],
+            's' => $words,
+            'search_columns' => ['post_title'],
+            'posts_per_page' => $limit,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'fields' => 'ids',
+            // Every language: Polylang's posts of all of them, WPML's filters off.
+            'lang' => '',
+            'suppress_filters' => true,
+        ]);
+
+        return array_values(array_map(intval(...), array_filter($ids, is_numeric(...))));
+    }
+
     public function termIds(int $productId): array
     {
         return ['categories' => $this->terms($productId, ProductCategoryTaxonomy::NAME), 'brands' => $this->terms($productId, ProductBrandTaxonomy::NAME)];

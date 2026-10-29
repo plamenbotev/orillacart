@@ -97,7 +97,8 @@ final readonly class BackInStock
                 $id = (int) substr($item, \strlen('variation:'));
                 $variation = array_values(array_filter($offer->variations, static fn(OfferedVariation $offered): bool => $offered->id === $id))[0] ?? null;
             }
-            $email = $this->writer->write(EmailKind::BackInStock->template(), EmailKind::BackInStock->value, $request->email(), $request->locale(), [
+            // The product's page in the language of the one who asked.
+            $email = $this->writer->write(EmailKind::BackInStock->template(), EmailKind::BackInStock->value, $request->email(), $request->locale(), fn(): array => [
                 'product' => ['name' => $offer->name, 'variation' => $variation?->label, 'url' => $this->site->productUrl($request->productId()) ?? $this->site->url()],
             ]);
             if (!$this->mailer->send($email)) {

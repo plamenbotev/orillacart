@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Unit\Search;
 
 use OrillaCart\Catalog\Application\ProductLookup;
 use OrillaCart\Search\Application\CatalogSearch;
+use OrillaCart\Search\Application\CategoryTranslations;
 use OrillaCart\Search\Application\Dto\SaveSearchFilter;
 use OrillaCart\Search\Application\Dto\SearchFilterView;
 use OrillaCart\Search\Application\SearchFilters;
@@ -64,6 +65,33 @@ final class FiltersByCategoryTest extends TestCase
         $this->filters->choose(11, null);
         $this->filters->choose(10, null);
         self::assertSame(['colour', 'size', 'wattage'], $this->keys(11, 10), 'back to the shop\'s');
+    }
+
+    public function testAChoiceHoldsForTheCategoryInEveryLanguage(): void
+    {
+        // Lamps (10) and its German translation Lampen (20), as Polylang or WPML link them.
+        $translations = new class implements CategoryTranslations {
+            public function of(int $categoryId): array
+            {
+                return match ($categoryId) {
+                    10 => [10, 20],
+                    20 => [20, 10],
+                    default => [$categoryId],
+                };
+            }
+        };
+        $search = new ShopSearch(self::createStub(CatalogSearch::class), $this->repository, $this->categories, $this->shop->contentLanguages, $translations);
+        $filters = new SearchFilters($this->repository, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->categories, $this->shop->contentTranslations, new ImmediateTransactions(), $this->shop->translationPackages, $translations);
+        $keys = static fn(?int $category, int ...$above): array => array_map(static fn(SearchFilterView $filter): string => $filter->key, $search->filters($category, array_values($above)));
+
+        $filters->choose(10, [2]);
+        self::assertSame(['size'], $keys(20), 'the German page offers what was chosen for Lamps');
+        self::assertSame(['size'], $keys(21, 20), 'and so does a category below it');
+        self::assertSame([2], $filters->chosenIn(20), 'its edit screen shows the choice');
+
+        $filters->choose(20, [3, 1]);
+        self::assertSame(['wattage', 'colour'], $keys(10), 'a choice made in German replaces it in every language');
+        self::assertSame([3, 1], $filters->chosenIn(10));
     }
 
     public function testAFilterLabelIsSavedInTheSitesOtherLanguagesAndGoesWithIt(): void

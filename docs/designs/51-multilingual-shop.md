@@ -66,9 +66,11 @@ shipping and payment titles, forms, filters and email templates in each language
   No foreign keys reach WordPress's posts or the plugins' translation groups, and one WordPress delete runs other
   plugins' hooks, so these follow WordPress's actions without a transaction around them; each step stands alone,
   and a translation whose delete failed has no product to sell.
-- Known gaps for later steps: an email's product link is the original's address; search filters set for a
-  category do not show on its translation's page; the admin product pickers list the posts of the admin's
-  language.
+- The gaps step 1 left, closed later (PLAN 225): an email's links go to the pages of its reader's language (the
+  product's, the checkout for the receipt, the account, the cart, the front page), its context built in that
+  language; the filters chosen for a category hold in every language, one choice for the category and its
+  translations; the admin's product pickers (`GET /product-choices`) find a product by its name in any language
+  and offer it once, by its own id, named in the admin's.
 
 ## Built in step 2 (attributes first)
 
@@ -152,9 +154,13 @@ shipping and payment titles, forms, filters and email templates in each language
   2026-10-29); then the newer one is taken. The others stay. A translation the shop would refuse (too long) is left
   out. Activating or updating the plugin, or activating WPML String Translation, registers every object;
   `wp orillacart translations register` does too.
-- Not here: translations typed in the shop's own screens are not sent to WPML, and email templates (one per
-  language, step 2) have no package. WPML is commercial and not in the test environment: its hooks are answered by
-  a stand-in, as WPML documents them.
+- **Both ways** (PLAN 225): a translation typed in the shop's own screens goes to WPML when its object is saved,
+  as a finished translation of its string (`icl_get_string_id`, `icl_add_string_translation`), unless WPML's
+  translators changed theirs since WPML last gave it, which the next pull takes. An email template the shop
+  edited is a package too, its source for every language; a translation comes back as the language's template,
+  refused when the template engine refuses it, and a language's template written in the shop goes to WPML.
+- WPML is commercial and not in the test environment: its hooks and functions are answered by stand-ins, as WPML
+  documents them.
 
 ## Order
 

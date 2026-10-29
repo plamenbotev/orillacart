@@ -18,6 +18,14 @@ interface ProductContent
     public function name(int $productId): string;
 
     /**
+     * Product posts whose name holds the words, in every language the site has: drafts and private ones too,
+     * the newest first. A translation's post is found by its own name.
+     *
+     * @return list<int>
+     */
+    public function idsNamed(string $words, int $limit): array;
+
+    /**
      * The product's category and brand ids, each with every term above it, so a rule about a category holds
      * for its subcategories.
      *

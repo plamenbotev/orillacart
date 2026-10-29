@@ -58,6 +58,11 @@ final class FakeContentLanguages implements ContentLanguages
         return null;
     }
 
+    public function homeUrl(Language $language): string
+    {
+        return "https://shop.test/{$language->code}/";
+    }
+
     public function forLocale(string $locale): ?Language
     {
         foreach ($this->languages as $language) {

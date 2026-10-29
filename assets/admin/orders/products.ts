@@ -33,27 +33,21 @@ interface BundleItemData {
 }
 
 /**
- * Products whose name matches, from the WordPress posts API; at most 20.
- * @param search
+ * Products whose name matches in any of the site's languages, each once by its own id, named in the admin's
+ * (GET /orillacart/v1/product-choices); at most 20.
+ *
+ * @param search The words.
  */
 export async function searchProducts(
 	search: string
 ): Promise< { id: number; title: string }[] > {
-	const posts = await apiFetch<
-		{ id: number; title: { rendered: string } }[]
-	>( {
-		path: addQueryArgs( '/wp/v2/orillacart_product', {
-			search,
-			per_page: 20,
-			status: 'publish,private,draft',
-			_fields: 'id,title',
-		} ),
+	const products = await apiFetch< { id: number; name: string }[] >( {
+		path: addQueryArgs( '/orillacart/v1/product-choices', { search } ),
 	} );
-	const decode = document.createElement( 'textarea' );
-	return posts.map( ( post ) => {
-		decode.innerHTML = post.title.rendered;
-		return { id: post.id, title: decode.value || `#${ post.id }` };
-	} );
+	return products.map( ( product ) => ( {
+		id: product.id,
+		title: product.name || `#${ product.id }`,
+	} ) );
 }
 
 export async function fetchProductChoices(

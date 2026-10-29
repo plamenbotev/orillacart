@@ -69,6 +69,13 @@ final class PolylangLanguages implements ContentLanguages
         return self::ids(pll_get_post_translations($postId));
     }
 
+    public function homeUrl(Language $language): string
+    {
+        $url = \function_exists('pll_home_url') ? pll_home_url($language->code) : null;
+
+        return \is_string($url) && $url !== '' ? $url : home_url('/');
+    }
+
     public function termTranslations(int $termId, string $taxonomy): array
     {
         return self::ids(pll_get_term_translations($termId));

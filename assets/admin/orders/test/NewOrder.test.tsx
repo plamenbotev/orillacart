@@ -91,10 +91,8 @@ describe( 'NewOrder', () => {
 					pages: 1,
 				} );
 			}
-			if ( request.path.startsWith( '/wp/v2/orillacart_product' ) ) {
-				return Promise.resolve( [
-					{ id: 10, title: { rendered: 'Lamp' } },
-				] );
+			if ( request.path.startsWith( '/orillacart/v1/product-choices' ) ) {
+				return Promise.resolve( [ { id: 10, name: 'Lamp' } ] );
 			}
 			if ( request.path === '/orillacart/v1/products/10' ) {
 				return Promise.resolve( {

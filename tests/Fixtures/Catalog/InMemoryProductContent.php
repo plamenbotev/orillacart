@@ -54,6 +54,14 @@ final class InMemoryProductContent implements ProductContent
         return $this->posts[$productId][0] ?? '';
     }
 
+    public function idsNamed(string $words, int $limit): array
+    {
+        $ids = array_keys(array_filter($this->posts, static fn(array $post): bool => mb_stripos($post[0], $words) !== false));
+        rsort($ids);
+
+        return \array_slice($ids, 0, $limit);
+    }
+
     public function termIds(int $productId): array
     {
         return $this->terms[$productId] ?? ['categories' => [], 'brands' => []];

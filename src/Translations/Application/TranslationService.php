@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Translations\Application;
 
+use OrillaCart\Translations\Application\Dto\PackageString;
 use OrillaCart\Translations\Application\Dto\TranslationPackage;
 
 /**
@@ -26,4 +27,7 @@ interface TranslationService
      * @return array<string, array<string, string>> by PackageString::key() and locale; only words translated
      */
     public function translated(TranslationPackage $package, string $kindTitle): array;
+
+    /** Gives the service a translation the shop's own screens made, as finished, for its translators to see. */
+    public function translate(TranslationPackage $package, PackageString $string, string $locale, string $value, string $kindTitle): void;
 }

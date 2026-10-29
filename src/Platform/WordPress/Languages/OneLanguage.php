@@ -47,6 +47,11 @@ final readonly class OneLanguage implements ContentLanguages
         return [];
     }
 
+    public function homeUrl(Language $language): string
+    {
+        return home_url('/');
+    }
+
     public function termTranslations(int $termId, string $taxonomy): array
     {
         return [];
