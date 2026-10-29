@@ -146,8 +146,10 @@ shipping and payment titles, forms, filters and email templates in each language
   `wpml_delete_package`. A string is named by a hash of its field, so its words and title can change.
 - **What translators finish comes back** into the translations table, which stays the truth the shop reads: read
   through `wpml_translate_string` in each language, after WPML completes or saves a translation job (a job on the
-  `translations` lane), or with `wp orillacart translations pull`. A word WPML has translated replaces the shop's
-  own translation of it in that language; the others stay. A translation the shop would refuse (too long) is left
+  `translations` lane), or with `wp orillacart translations pull`. The shop keeps what WPML last gave for each word
+  (`translation_service_copies`) and takes WPML's word only when it changed since: a translation fixed, or
+  removed, in the shop's own screens stays until WPML's translators change theirs (the owner's report,
+  2026-10-29); then the newer one is taken. The others stay. A translation the shop would refuse (too long) is left
   out. Activating or updating the plugin, or activating WPML String Translation, registers every object;
   `wp orillacart translations register` does too.
 - Not here: translations typed in the shop's own screens are not sent to WPML, and email templates (one per

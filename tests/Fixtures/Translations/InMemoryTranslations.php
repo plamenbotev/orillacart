@@ -15,6 +15,8 @@ final class InMemoryTranslations implements TranslationRepository, TranslatableT
 {
     /** @var array<string, array<int, array<string, array<string, string>>>> by type, id, field and locale */
     private array $rows = [];
+    /** @var array<string, array<int, array<string, array<string, string>>>> the service's copies, by type, id, field and locale */
+    private array $copies = [];
     /** @var array<string, TranslatableType> */
     private array $types = [];
 
@@ -91,7 +93,21 @@ final class InMemoryTranslations implements TranslationRepository, TranslatableT
     public function forget(string $type, array $ids): void
     {
         foreach ($ids as $id) {
-            unset($this->rows[$type][$id]);
+            unset($this->rows[$type][$id], $this->copies[$type][$id]);
+        }
+    }
+
+    public function serviceCopies(string $type, array $ids): array
+    {
+        return array_intersect_key($this->copies[$type] ?? [], array_flip($ids));
+    }
+
+    public function keepServiceCopies(string $type, int $id, array $fields): void
+    {
+        foreach ($fields as $field => $locales) {
+            foreach ($locales as $locale => $value) {
+                $this->copies[$type][$id][$field][$locale] = $value;
+            }
         }
     }
 }

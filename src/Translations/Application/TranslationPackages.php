@@ -9,8 +9,9 @@ use OrillaCart\Translations\Domain\TranslationRuleViolation;
 /**
  * The shop's objects in the site's translation service, such as WPML's translation management (design 51): each
  * object's words as a package, registered when the object is saved and removed with it; what translators finish
- * comes back into the translations table, which stays the truth the shop reads. A translation typed in the shop's
- * own screens stays until the service has one of its own for the word.
+ * comes back into the translations table, which stays the truth the shop reads. The service's word is taken only
+ * when it changed since the service last gave it, so a translation fixed in the shop's own screens stays until
+ * the service's translators change theirs.
  */
 final readonly class TranslationPackages
 {
@@ -120,9 +121,19 @@ final readonly class TranslationPackages
      */
     private function take(string $type, int $id, array $fields): ?bool
     {
+        // Only what the service changed since it last gave it: the rest may have been fixed in the shop since.
+        $copies = $this->translations->serviceCopies($type, $id);
+        $given = [];
+        foreach ($fields as $field => $locales) {
+            foreach ($locales as $locale => $value) {
+                if (($copies[$field][$locale] ?? null) !== $value) {
+                    $given[$field][$locale] = $value;
+                }
+            }
+        }
         $existing = $this->translations->of($type, [$id])[$id] ?? [];
         $merged = [];
-        foreach ($fields as $field => $locales) {
+        foreach ($given as $field => $locales) {
             $now = [...($existing[$field] ?? []), ...$locales];
             ksort($now);
             $before = $existing[$field] ?? [];
@@ -131,15 +142,17 @@ final readonly class TranslationPackages
                 $merged[$field] = $now;
             }
         }
-        if ($merged === []) {
-            return false;
+        if ($merged !== []) {
+            try {
+                $this->translations->write($type, $id, $this->translations->check($type, $merged));
+            } catch (TranslationRuleViolation) {
+                return null;
+            }
         }
-        try {
-            $this->translations->write($type, $id, $this->translations->check($type, $merged));
-        } catch (TranslationRuleViolation) {
-            return null;
+        if ($given !== []) {
+            $this->translations->keepServiceCopies($type, $id, $given);
         }
 
-        return true;
+        return $merged !== [];
     }
 }

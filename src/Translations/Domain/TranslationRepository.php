@@ -35,7 +35,23 @@ interface TranslationRepository
     public function replace(string $type, int $id, array $fields): void;
 
     /**
-     * @param list<int> $ids objects that are gone
+     * @param list<int> $ids objects that are gone: their translations, and the service's copies of them
      */
     public function forget(string $type, array $ids): void;
+
+    /**
+     * What the translation service last gave for the objects' fields (ServiceCopy).
+     *
+     * @param list<int> $ids
+     *
+     * @return array<int, array<string, array<string, string>>> by object id, field and locale
+     */
+    public function serviceCopies(string $type, array $ids): array;
+
+    /**
+     * Keeps what the service gave now, in place of what it gave before.
+     *
+     * @param array<string, array<string, string>> $fields by field and locale
+     */
+    public function keepServiceCopies(string $type, int $id, array $fields): void;
 }

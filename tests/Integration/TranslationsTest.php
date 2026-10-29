@@ -47,6 +47,16 @@ final class TranslationsTest extends RestTestCase
         self::assertSame([902], array_keys($this->translations->all('attribute', [901, 902])));
     }
 
+    public function testTheServicesCopiesAreKeptByFieldAndLocaleAndGoWithTheObject(): void
+    {
+        $this->translations->keepServiceCopies('attribute', 901, ['name' => ['de_DE' => 'Farbe']]);
+        $this->translations->keepServiceCopies('attribute', 901, ['name' => ['de_DE' => 'Die Farbe', 'fr_FR' => 'Couleur']]);
+
+        self::assertSame([901 => ['name' => ['de_DE' => 'Die Farbe', 'fr_FR' => 'Couleur']]], $this->translations->serviceCopies('attribute', [901, 902]));
+        $this->translations->forget('attribute', [901]);
+        self::assertSame([], $this->translations->serviceCopies('attribute', [901]));
+    }
+
     public function testTheAdminScreensReadTheTranslationsAndTheLanguages(): void
     {
         $this->translations->replace('attribute', 901, ['name' => ['de_DE' => 'Farbe']]);

@@ -151,6 +151,24 @@ final readonly class ContentTranslations
         $this->translations->forget($type, $ids);
     }
 
+    /**
+     * What the translation service last gave for an object's fields, by field and locale.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public function serviceCopies(string $type, int $id): array
+    {
+        return $this->translations->serviceCopies($type, [$id])[$id] ?? [];
+    }
+
+    /**
+     * @param array<string, array<string, string>> $fields what the service gave now, by field and locale
+     */
+    public function keepServiceCopies(string $type, int $id, array $fields): void
+    {
+        $this->translations->keepServiceCopies($type, $id, $fields);
+    }
+
     /** The field's longest value, also for a field of a listed item ("pickup.{key}.name"); null for none. */
     private static function longest(TranslatableType $type, string $field): ?int
     {

@@ -64,6 +64,33 @@ final class TranslationPackagesTest extends TestCase
         self::assertSame([0, 0], $this->shop->translationPackages->pull(), 'nothing new the second time');
     }
 
+    public function testAFixInTheShopStaysUntilTheTranslatorsChangeTheirs(): void
+    {
+        $carrier = $this->shop->carriers->create(new SaveCarrier('Courier'));
+        $this->shop->translationService->finished = ["carrier:{$carrier->id}:name" => ['de_DE' => 'Kurir']];
+        $this->shop->translationPackages->pull();
+
+        $this->shop->carriers->update($carrier->id, new SaveCarrier('Courier', translations: ['de_DE' => 'Kurier']));
+        self::assertSame([0, 0], $this->shop->translationPackages->pull(), 'WPML still has its older word');
+        self::assertSame(['de_DE' => 'Kurier'], $this->carrierName($carrier->id));
+
+        $this->shop->carriers->update($carrier->id, new SaveCarrier('Courier', translations: ['de_DE' => '']));
+        $this->shop->translationPackages->pull();
+        self::assertSame([], $this->carrierName($carrier->id), 'nor does it come back once the shop removed it');
+
+        $this->shop->translationService->finished = ["carrier:{$carrier->id}:name" => ['de_DE' => 'Paketdienst']];
+        self::assertSame([1, 0], $this->shop->translationPackages->pull(), 'a word the translators changed is newer');
+        self::assertSame(['de_DE' => 'Paketdienst'], $this->carrierName($carrier->id));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function carrierName(int $carrier): array
+    {
+        return $this->shop->translationRecords->all('carrier', [$carrier])[$carrier]['name'] ?? [];
+    }
+
     public function testATranslationTheShopWouldRefuseIsLeftOut(): void
     {
         $this->shop->content->add(10, 'Shirt');
