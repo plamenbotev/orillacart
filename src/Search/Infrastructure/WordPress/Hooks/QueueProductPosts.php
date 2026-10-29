@@ -13,10 +13,12 @@ use OrillaCart\Shared\WordPress\AsHook;
 
 /**
  * Queues a product for the search index when its post changes: its words, status, order, categories, brands or tags;
- * or when it is deleted, so it leaves the index.
+ * or when it is deleted, so it leaves the index. A translation's queues its original while they are still linked:
+ * the original's document has the translation's words.
  */
 #[AsHook('save_post_' . ProductPostType::NAME, method: 'saved')]
 #[AsHook('transition_post_status', method: 'transitioned', arguments: 3)]
+#[AsHook('before_delete_post', method: 'deleted', arguments: 2)]
 #[AsHook('deleted_post', method: 'deleted', arguments: 2)]
 #[AsHook('set_object_terms', method: 'filed', arguments: 4)]
 final readonly class QueueProductPosts

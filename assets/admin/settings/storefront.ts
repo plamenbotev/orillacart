@@ -8,6 +8,7 @@ export interface StorefrontSettings {
 	recently_viewed: boolean;
 	data_layer: boolean;
 	hide_single_value_filters: boolean;
+	list_untranslated: boolean;
 }
 
 const PATH = '/orillacart/v1/storefront-settings';

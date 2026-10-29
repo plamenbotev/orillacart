@@ -12,9 +12,11 @@ use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Search\Application\DocumentBuilder;
 use OrillaCart\Search\Application\Dto\DocumentOption;
 use OrillaCart\Search\Application\Dto\DocumentTerm;
+use OrillaCart\Search\Application\Dto\DocumentText;
 use OrillaCart\Search\Application\Dto\DocumentVariant;
 use OrillaCart\Search\Application\Dto\ProductText;
 use OrillaCart\Search\Application\ProductTexts;
+use OrillaCart\Shared\I18n\Language;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
 
@@ -37,7 +39,7 @@ final class DocumentBuilderTest extends TestCase
                 return $texts;
             }
         };
-        $this->builder = new DocumentBuilder($this->shop->catalog, $texts, $this->shop->priceHistory);
+        $this->builder = new DocumentBuilder($this->shop->catalog, $texts, $this->shop->priceHistory, $this->shop->contentTranslations);
     }
 
     public function testAProductWithVariationsIsOneVariantEachWithItsOwnOptionsPriceAndStock(): void
@@ -73,5 +75,25 @@ final class DocumentBuilderTest extends TestCase
         self::assertEquals([new DocumentOption('Finish', 'Plain'), new DocumentOption('Finish', 'Gold')], $document->options);
         self::assertFalse($document->onSale);
         self::assertNull($this->builder->build(30), 'no content, no document');
+    }
+
+    public function testOnASiteInSeveralLanguagesTheDocumentHasItsTranslationsWordsAndItsOptionsNamesInEach(): void
+    {
+        $this->shop->contentLanguages->languages = [new Language('en', 'en_US', 'English'), new Language('de', 'de_DE', 'Deutsch')];
+        $this->shop->content->add(20, 'Mug');
+        $this->shop->products->save(20, new SaveProduct('10', stockMode: 'always_available', attributes: [new SaveAttribute('Finish', [new SaveOption('Plain', translations: ['de_DE' => 'Schlicht']), new SaveOption('Gold')])]));
+        $texts = new class implements ProductTexts {
+            public function describe(array $productIds): array
+            {
+                return [20 => new ProductText('Mug', 'Warm.', 0, new \DateTimeImmutable('2030-01-01'), [new DocumentTerm(4, 'Kitchen', ['de_DE' => 'Küche'])], [], locale: 'en_US', translations: [new DocumentText('de_DE', 'Becher', 'Warm.')])];
+            }
+        };
+
+        $document = new DocumentBuilder($this->shop->catalog, $texts, $this->shop->priceHistory, $this->shop->contentTranslations)->build(20);
+
+        self::assertNotNull($document);
+        self::assertSame(['en_US', ['de_DE']], [$document->locale, $document->translatedInto()]);
+        self::assertEquals([new DocumentOption('Finish', 'Plain', ['de_DE' => 'Schlicht']), new DocumentOption('Finish', 'Gold')], $document->options, 'filters go by the own names; the labels are the translations');
+        self::assertEquals([new DocumentTerm(4, 'Kitchen', ['de_DE' => 'Küche'])], $document->categories);
     }
 }

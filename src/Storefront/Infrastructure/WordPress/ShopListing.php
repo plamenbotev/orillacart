@@ -101,6 +101,7 @@ final readonly class ShopListing
             offset: $offset,
             limit: $limit,
             facets: $facets,
+            untranslated: $this->settings->current()->listUntranslated,
         ));
     }
 
@@ -265,7 +266,6 @@ final readonly class ShopListing
         return \is_string($uri) ? wp_unslash($uri) : '';
     }
 
-    /** The id of the term with the slug; an unknown one is 0, which finds nothing rather than everything. */
     /**
      * The term with its translations: the index holds each product's terms in the product's own language, which
      * need not be the page's (design 51).
@@ -277,6 +277,7 @@ final readonly class ShopListing
         return array_values(array_unique([$termId, ...array_values($this->languages->termTranslations($termId, $taxonomy))]));
     }
 
+    /** The id of the term with the slug; an unknown one is 0, which finds nothing rather than everything. */
     private static function termId(string $slug, string $taxonomy): ?int
     {
         if ($slug === '') {

@@ -19,10 +19,12 @@ final readonly class StorefrontSettingsView
         public bool $dataLayer,
         /** The shop's filters leave out one whose products in view have a single value. */
         public bool $hideSingleValueFilters,
+        /** On a site in several languages, products not translated into the language shown are listed in their own words. */
+        public bool $listUntranslated,
     ) {}
 
     public static function of(StorefrontSettings $settings): self
     {
-        return new self($settings->structuredData, $settings->sharingTags->value, $settings->wishlist->value, $settings->recentlyViewed, $settings->dataLayer, $settings->hideSingleValueFilters);
+        return new self($settings->structuredData, $settings->sharingTags->value, $settings->wishlist->value, $settings->recentlyViewed, $settings->dataLayer, $settings->hideSingleValueFilters, $settings->listUntranslated);
     }
 }

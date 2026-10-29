@@ -474,8 +474,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(RedemptionRepository::class, DoctrineRedemptionRepository::class);
 
     // The search engine the shop chose: its database (MySQL FULLTEXT) or OpenSearch.
-    $services->alias(CatalogSearch::class, EngineCatalogSearch::class);
-    $services->alias(SearchIndex::class, EngineSearchIndex::class);
+    $services->alias(CatalogSearch::class, EngineCatalogSearch::class)->public();
+    $services->alias(SearchIndex::class, EngineSearchIndex::class)->public();
     $services->alias(SearchServer::class, OpenSearchServer::class);
     $services->alias(EngineSettingsRepository::class, OptionEngineSettingsRepository::class);
 

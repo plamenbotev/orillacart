@@ -12,7 +12,8 @@ use OrillaCart\Search\Application\Dto\ProductText;
 interface ProductTexts
 {
     /**
-     * The published products among these, read together.
+     * The published products among these, read together, with their published translations' words on a site in
+     * several languages.
      *
      * @param list<int> $productIds
      *

@@ -39,4 +39,25 @@ final readonly class RequestLanguage
         // order keeps it for its emails, the names are read in it.
         return $this->locales->in($language->locale, fn(): mixed => $this->content->during($language, $work));
     }
+
+    /**
+     * The work in the post's language: a block's preview in the editor shows the page's.
+     *
+     * @template T
+     *
+     * @param \Closure(): T $work
+     *
+     * @return T
+     */
+    public function ofPost(int $postId, \Closure $work): mixed
+    {
+        $code = $postId > 0 && $this->content->multilingual() ? $this->content->ofPost($postId) : null;
+        foreach ($code === null ? [] : $this->content->languages() as $language) {
+            if ($language->code === $code) {
+                return $this->around($language->locale, $work);
+            }
+        }
+
+        return $work();
+    }
 }

@@ -10,6 +10,7 @@ use OrillaCart\Search\Application\Dto\SearchResult;
 use OrillaCart\Search\Domain\CategoryFiltersRepository;
 use OrillaCart\Search\Domain\SearchFilter;
 use OrillaCart\Search\Domain\SearchFilterRepository;
+use OrillaCart\Shared\I18n\ContentLanguages;
 
 /**
  * The storefront's product search: published products by words, categories and the shop's filters.
@@ -20,6 +21,7 @@ final readonly class ShopSearch
         private CatalogSearch $engine,
         private SearchFilterRepository $filters,
         private CategoryFiltersRepository $categories,
+        private ContentLanguages $languages,
     ) {}
 
     /**
@@ -50,8 +52,16 @@ final readonly class ShopSearch
         return array_map(SearchFilterView::fromFilter(...), $all);
     }
 
+    /**
+     * Looks in the query's language, else the one shown on a site in several (design 51): the request's, or the
+     * one the shop works in.
+     */
     public function search(SearchQuery $query): SearchResult
     {
+        if ($query->locale === null && $this->languages->multilingual()) {
+            $query = $query->inLanguage($this->languages->current()?->locale);
+        }
+
         return $this->engine->search($query);
     }
 }

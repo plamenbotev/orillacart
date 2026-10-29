@@ -18,7 +18,7 @@ use OrillaCart\Search\Infrastructure\Doctrine\ValueLabels;
 /**
  * Searches the shop's OpenSearch index, answering as the database engine does: words (with typos forgiven),
  * categories and brands on the product; options, price and stock on one nested variant; and counts for each
- * facet with every other choice applied, in global aggregations.
+ * facet with every other choice applied, in global aggregations. In a language, by the words in it.
  */
 final readonly class OpenSearchCatalogSearch implements CatalogSearch
 {
@@ -105,7 +105,7 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
      */
     private function filters(SearchQuery $query, ?string $except, bool $variants): array
     {
-        $filters = [];
+        $filters = [self::language($query)];
         if ($query->featuredOnly) {
             $filters[] = ['term' => ['featured' => true]];
         }
@@ -127,6 +127,29 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
         }
 
         return $filters;
+    }
+
+    /**
+     * One document of each product: in the language, its translation's, else its own (a translation's words are a
+     * document of their own, the original lists the languages it has them in); without one, its own.
+     *
+     * @return array<string, mixed>
+     */
+    private static function language(SearchQuery $query): array
+    {
+        $original = ['bool' => ['must_not' => [['term' => ['translation' => true]]]]];
+        if ($query->locale === null) {
+            return $original;
+        }
+        $inLanguage = ['term' => ['locale' => $query->locale]];
+        if (!$query->untranslated) {
+            return $inLanguage;
+        }
+
+        return ['bool' => ['should' => [
+            $inLanguage,
+            ['bool' => ['must_not' => [['term' => ['translation' => true]], ['term' => ['translated' => $query->locale]]]]],
+        ], 'minimum_should_match' => 1]];
     }
 
     /**
@@ -234,7 +257,7 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
                 }
             }
         }
-        $labels = $this->labels->of($pairs);
+        $labels = $this->labels->of($pairs, $query->locale);
         $facets = [];
         foreach ([Facet::CATEGORIES, Facet::BRANDS, ...array_map(static fn(OptionFilter $filter): string => $filter->key, $query->options)] as $key) {
             $values = [];

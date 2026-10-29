@@ -11,6 +11,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 import { errorMessage } from '../shared/api';
+import { useOtherLanguages } from '../shared/Translations';
 import {
 	fetchStorefrontSettings,
 	saveStorefrontSettings,
@@ -46,6 +47,7 @@ const WISHLISTS = [
  * keeps for shoppers: wishlists and the products they viewed. Each choice saves at once.
  */
 export function StorefrontCard() {
+	const others = useOtherLanguages();
 	const [ settings, setSettings ] = useState< StorefrontSettings | null >(
 		null
 	);
@@ -146,6 +148,22 @@ export function StorefrontCard() {
 								save( { hide_single_value_filters: checked } )
 							}
 						/>
+						{ others.length > 0 && (
+							<CheckboxControl
+								label={ __(
+									'List products not translated into the language shown',
+									'orillacart'
+								) }
+								help={ __(
+									'In their own words, in the shop’s lists and searches. Without it, a product is listed in the languages it is translated into, and its own.',
+									'orillacart'
+								) }
+								checked={ settings.list_untranslated }
+								onChange={ ( checked ) =>
+									save( { list_untranslated: checked } )
+								}
+							/>
+						) }
 						<CheckboxControl
 							label={ __(
 								'Show the products a shopper viewed lately',

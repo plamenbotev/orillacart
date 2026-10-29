@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\LinkedProducts;
 use OrillaCart\Search\Application\Dto\SearchQuery;
 use OrillaCart\Search\Application\ShopSearch;
+use OrillaCart\Shared\I18n\ContentLanguages;
+use OrillaCart\Storefront\Application\StorefrontSettingsService;
 
 /**
  * Which products to show beside others: a product's upsells and related products on its page, and the cart's
@@ -19,7 +22,12 @@ final readonly class Merchandise
 {
     public const int SHOWN = 4;
 
-    public function __construct(private ShopSearch $search) {}
+    public function __construct(
+        private ShopSearch $search,
+        private ContentLanguages $languages,
+        private StorefrontSettingsService $settings,
+        private ProductTranslations $translations,
+    ) {}
 
     /**
      * @return list<int>
@@ -36,7 +44,8 @@ final readonly class Merchandise
      */
     public function related(int $productId, int $count = self::SHOWN): array
     {
-        $leave = [$productId, ...LinkedProducts::upsellsOf($productId)];
+        // The index finds the product, which a translation's page is of.
+        $leave = [$productId, $this->translations->original($productId), ...LinkedProducts::upsellsOf($productId)];
         $related = [];
         foreach ([ProductCategoryTaxonomy::NAME, ProductTagTaxonomy::NAME] as $taxonomy) {
             $terms = wp_get_post_terms($productId, $taxonomy, ['fields' => 'ids']);
@@ -44,9 +53,12 @@ final readonly class Merchandise
             if ($termIds === []) {
                 continue;
             }
+            // The index files products under their own language's terms, which need not be this post's (design 51).
+            $termIds = array_values(array_unique(array_merge($termIds, ...array_map(fn(int $id): array => array_values($this->languages->termTranslations($id, $taxonomy)), $termIds))));
+            $untranslated = $this->settings->current()->listUntranslated;
             $found = $this->search->search($taxonomy === ProductCategoryTaxonomy::NAME
-                ? new SearchQuery(categoryIds: $termIds, inStockOnly: true, limit: $count + \count($leave))
-                : new SearchQuery(tagIds: $termIds, inStockOnly: true, limit: $count + \count($leave)));
+                ? new SearchQuery(categoryIds: $termIds, inStockOnly: true, limit: $count + \count($leave), untranslated: $untranslated)
+                : new SearchQuery(tagIds: $termIds, inStockOnly: true, limit: $count + \count($leave), untranslated: $untranslated));
             foreach ($found->ids as $id) {
                 if (!\in_array($id, $leave, true)) {
                     $related[$id] = $id;

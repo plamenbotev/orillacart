@@ -6,15 +6,19 @@ namespace OrillaCart\Search\Infrastructure\OpenSearch;
 
 use OrillaCart\Search\Application\Dto\DocumentOption;
 use OrillaCart\Search\Application\Dto\DocumentTerm;
+use OrillaCart\Search\Application\Dto\DocumentText;
 use OrillaCart\Search\Application\Dto\DocumentVariant;
 use OrillaCart\Search\Application\Dto\SearchDocument;
 use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\Facets;
+use OrillaCart\Shared\I18n\ContentLanguages;
 
 /**
  * Keeps documents in the shop's OpenSearch index. Each variant carries its own options and the whole
- * product's, as "attr:size␟m", so one nested query asks for a variant that has all the chosen ones.
+ * product's, as "attr:size␟m", so one nested query asks for a variant that has all the chosen ones. On a site in
+ * several languages a product's translations are documents of their own ("12@de_DE"), with what the product is
+ * filtered and sorted by; the product's lists the languages it has them in (design 51).
  */
 final readonly class OpenSearchIndex implements SearchIndex
 {
@@ -24,6 +28,7 @@ final readonly class OpenSearchIndex implements SearchIndex
     public function __construct(
         private OpenSearchClient $client,
         private EngineSettingsRepository $settings,
+        private ContentLanguages $languages,
     ) {}
 
     /**
@@ -38,7 +43,15 @@ final readonly class OpenSearchIndex implements SearchIndex
         $settings = $this->settings->load();
         $lines = '';
         foreach ($documents as $document) {
-            $lines .= wp_json_encode(['index' => ['_index' => $settings->index, '_id' => (string) $document->productId]]) . "\n" . wp_json_encode(self::source($document)) . "\n";
+            $source = self::source($document);
+            $lines .= wp_json_encode(['index' => ['_index' => $settings->index, '_id' => (string) $document->productId]]) . "\n" . wp_json_encode($source) . "\n";
+            foreach ($document->translations as $text) {
+                $lines .= wp_json_encode(['index' => ['_index' => $settings->index, '_id' => self::translationId($document->productId, $text->locale)]]) . "\n" . wp_json_encode(self::translation($source, $text)) . "\n";
+            }
+            // A translation no longer published leaves.
+            foreach (array_diff($this->locales(), $document->translatedInto()) as $locale) {
+                $lines .= wp_json_encode(['delete' => ['_index' => $settings->index, '_id' => self::translationId($document->productId, $locale)]]) . "\n";
+            }
         }
         $answer = $this->client->request($settings, 'POST', '/_bulk', $lines);
         if (($answer['errors'] ?? false) === true) {
@@ -56,6 +69,9 @@ final readonly class OpenSearchIndex implements SearchIndex
 
         return [
             'product_id' => $document->productId,
+            'locale' => $document->locale ?? '',
+            'translation' => false,
+            'translated' => $document->translatedInto(),
             'title' => $document->title,
             'text' => $document->text,
             'skus' => $document->skus,
@@ -76,6 +92,31 @@ final readonly class OpenSearchIndex implements SearchIndex
             'menu_order' => $document->menuOrder,
             'published_at' => $document->publishedAt->format(\DATE_ATOM),
         ];
+    }
+
+    /**
+     * A translation's document: the product's, with the translation's words.
+     *
+     * @param array<string, mixed> $source the product's
+     *
+     * @return array<string, mixed>
+     */
+    private static function translation(array $source, DocumentText $text): array
+    {
+        return ['locale' => $text->locale, 'translation' => true, 'translated' => [], 'title' => $text->title, 'text' => $text->text] + $source;
+    }
+
+    private static function translationId(int $productId, string $locale): string
+    {
+        return $productId . '@' . $locale;
+    }
+
+    /**
+     * @return list<string> the locales a product may have translations' documents in
+     */
+    private function locales(): array
+    {
+        return $this->languages->multilingual() ? array_map(static fn($language): string => $language->locale, $this->languages->languages()) : [];
     }
 
     /**
@@ -101,7 +142,9 @@ final readonly class OpenSearchIndex implements SearchIndex
         }
         $lines = '';
         foreach ($productIds as $productId) {
-            $lines .= wp_json_encode(['delete' => ['_index' => $settings->index, '_id' => (string) $productId]]) . "\n";
+            foreach ([(string) $productId, ...array_map(static fn(string $locale): string => self::translationId($productId, $locale), $this->locales())] as $id) {
+                $lines .= wp_json_encode(['delete' => ['_index' => $settings->index, '_id' => $id]]) . "\n";
+            }
         }
         $answer = $this->client->request($settings, 'POST', '/_bulk', $lines);
         // A document that was not there is gone all the same; anything else leaves a product shoppers can find.
@@ -114,7 +157,7 @@ final readonly class OpenSearchIndex implements SearchIndex
     }
 
     /**
-     * Pages through the index by product id, a thousand at a time.
+     * Pages through the index's products (not their translations) by id, a thousand at a time.
      */
     public function productIds(): array
     {
@@ -125,6 +168,7 @@ final readonly class OpenSearchIndex implements SearchIndex
             $answer = $this->client->request($settings, 'POST', '/' . rawurlencode($settings->index) . '/_search', (string) wp_json_encode(array_filter([
                 '_source' => false,
                 'size' => 1000,
+                'query' => ['bool' => ['must_not' => [['term' => ['translation' => true]]]]],
                 'sort' => [['product_id' => 'asc']],
                 'search_after' => $after,
             ], static fn(mixed $value): bool => $value !== null)));

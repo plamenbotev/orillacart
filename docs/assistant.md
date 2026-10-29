@@ -108,6 +108,10 @@ webhooks are managed by a manager logged in, never with a key.
 For products, a file (an import, a download) is sent as base64 or as an address the shop fetches. The shop
 fetches only public addresses, up to 100 MB.
 
+On a site in several languages, a client that sends `X-OrillaCart-Locale` (such as `de_DE`) with its calls gets
+the shop's content in that language where a tool reads it as shoppers do (names, a quote, the shipping options);
+the shop's own records (orders, the admin's lists) stay in the shop's words.
+
 Besides tools, the server offers a resource, `orillacart://shop`, with the shop at a glance (name, country,
 currency, whether visitors can order, what still stops it), and three prompts: **Set up my shop**, **Review
 today's orders** and **What is running low**.

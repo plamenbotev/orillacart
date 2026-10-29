@@ -1,6 +1,6 @@
 # 51 · A shop in several languages
 
-Status: agreed (2026-10-28); steps 1 and 2 built (PLAN 212, 214), the rest to do. PLAN items 212–217.
+Status: agreed (2026-10-28); steps 1 to 3 built (PLAN 212, 214, 215), the rest to do. PLAN items 212–217.
 
 Design 46 translates the shop's own words. This one is about the shop's content: products, categories, attributes,
 shipping and payment titles, forms, filters and email templates in each language a site offers.
@@ -112,6 +112,24 @@ shipping and payment titles, forms, filters and email templates in each language
   so the cart, checkout and quotes would answer in the default one. The page gives its locale to the script, which
   sends it as `X-OrillaCart-Locale`; a locale the site offers is the call's: the content language, WordPress's
   locale (also without WordPress's files for it), and so the order's language for its emails. Others are ignored.
+
+## Built in step 3
+
+- **A search index document per product and language.** The product's own words are its document, in its post's
+  language (a post the plugin gave none is in the default one); each published translation adds a document with
+  its title and text, sharing what the product is filtered and sorted by. The database engine keeps them as rows
+  of `search_documents` by product and locale; OpenSearch as documents of their own (`12@de_DE`), the product's
+  listing the languages it has them in. A translation saved, trashed or deleted builds its original again.
+- **A search looks in the language shown**: a product's words in it, else its own. Whether products not
+  translated into it are listed at all is the owner's setting (Storefront: "List products not translated into
+  the language shown", on by default, shown on a site in several languages).
+- **Values are named in it**: a category's, brand's or tag's name from its translation, an option's from the
+  shop's translations, kept beside the value (`search_values.labels`). Filters still go by the own names and ids,
+  so a shopper's choices and links hold in every language.
+- **The blocks** render in the page's language; in the editor, their previews through WordPress's block renderer
+  take the language of the post edited. **The assistant's endpoint** takes `X-OrillaCart-Locale` as the REST API
+  does. Related products find the products under each language's terms.
+- The analyzers stay the shop's own (English stopwords); a language's own analysis in OpenSearch is for later.
 
 ## Order
 

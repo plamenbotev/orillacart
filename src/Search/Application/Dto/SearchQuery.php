@@ -19,6 +19,8 @@ final readonly class SearchQuery
      * @param string|null        $priceMax    up to and including
      * @param int                $limit       how many products to list; 0 for the total and the counts only
      * @param bool               $facets      count what each filter would leave
+     * @param string|null        $locale      the language shown, on a site in several: products are found by their words in it
+     * @param bool               $untranslated also products without a translation into it, by their own words
      */
     public function __construct(
         public ?string $text = null,
@@ -35,5 +37,12 @@ final readonly class SearchQuery
         public int $limit = 12,
         public bool $facets = false,
         public array $tagIds = [],
+        public ?string $locale = null,
+        public bool $untranslated = true,
     ) {}
+
+    public function inLanguage(?string $locale): self
+    {
+        return clone($this, ['locale' => $locale]);
+    }
 }

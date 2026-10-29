@@ -9,11 +9,16 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Jobs\Application\JobRunner;
+use OrillaCart\Search\Application\DocumentBuilder;
+use OrillaCart\Search\Application\Dto\DocumentTerm;
+use OrillaCart\Search\Application\Dto\DocumentText;
 use OrillaCart\Search\Application\Dto\Facet;
 use OrillaCart\Search\Application\Dto\FacetCount;
 use OrillaCart\Search\Application\Dto\OptionFilter;
+use OrillaCart\Search\Application\Dto\SearchDocument;
 use OrillaCart\Search\Application\Dto\SearchQuery;
 use OrillaCart\Search\Application\Dto\SearchSort;
+use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Application\SearchIndexing;
 use OrillaCart\Search\Application\ShopSearch;
 
@@ -396,6 +401,51 @@ abstract class CatalogSearchContract extends RestTestCase
         self::assertSame(['Lamps of the world'], self::names(do_blocks('<!-- wp:orillacart/products /-->')), 'the shop page narrows by ?tag=');
         $_GET = [];
         self::assertSame(['Lamps of the world'], self::names(do_blocks('<!-- wp:orillacart/products {"tag":"gift-idea"} /-->')), 'or a block by its own');
+    }
+
+    public function testInALanguageProductsAreFoundByTheirWordsInItOrByTheirOwnAndValuesAreNamedInIt(): void
+    {
+        // wp-env has no Polylang or WPML: the lamp's document is given its German words as the builder would.
+        $builder = self::kernel()->container()->get(DocumentBuilder::class);
+        $index = self::kernel()->container()->get(SearchIndex::class);
+        self::assertInstanceOf(DocumentBuilder::class, $builder);
+        self::assertInstanceOf(SearchIndex::class, $index);
+        $lamp = $builder->build($this->lamp);
+        self::assertNotNull($lamp);
+        $categories = array_map(static fn(DocumentTerm $term): DocumentTerm => new DocumentTerm($term->id, $term->name, ['de_DE' => $term->name === 'Desk lamps' ? 'Schreibtischlampen' : 'Beleuchtung']), $lamp->categories);
+        $index->put([new SearchDocument(
+            $lamp->productId,
+            $lamp->title,
+            $lamp->text,
+            $lamp->skus,
+            $categories,
+            $lamp->brands,
+            $lamp->options,
+            $lamp->variants,
+            $lamp->featured,
+            $lamp->onSale,
+            $lamp->menuOrder,
+            $lamp->publishedAt,
+            locale: 'en_US',
+            translations: [new DocumentText('de_DE', 'Messinglampe', 'Warmes Licht zum Lesen.')],
+        )]);
+        $this->work();
+
+        self::assertSame([$this->lamp], $this->ids(new SearchQuery(text: 'lesen', locale: 'de_DE')), 'its words in the language');
+        self::assertSame([], $this->ids(new SearchQuery(text: 'reading', locale: 'de_DE')), 'not its own, which it has words for');
+        self::assertSame([], $this->ids(new SearchQuery(text: 'lesen')), 'nor the translation\'s in its own');
+        self::assertSame([$this->book], $this->ids(new SearchQuery(text: 'history', locale: 'de_DE')), 'a product not translated by its own');
+        self::assertSame([$this->lamp], $this->ids(new SearchQuery(locale: 'de_DE', untranslated: false)), 'unless the shop lists only the translated');
+        self::assertSame(
+            [(string) $this->lighting => ['Beleuchtung', 1], (string) $this->deskLamps => ['Schreibtischlampen', 1]],
+            self::counts($this->search(new SearchQuery(text: 'licht', locale: 'de_DE', facets: true))->facet(Facet::CATEGORIES)),
+            'the categories in the language',
+        );
+        self::assertSame(
+            [(string) $this->deskLamps => ['Desk lamps', 1], (string) $this->lighting => ['Lighting', 1]],
+            self::counts($this->search(new SearchQuery(text: 'lamp', facets: true))->facet(Facet::CATEGORIES)),
+            'and in its own',
+        );
     }
 
     /**

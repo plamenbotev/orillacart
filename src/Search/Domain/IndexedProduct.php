@@ -9,7 +9,8 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * A product as the database search engine keeps it: what the text search and the sorts read. Its variants and
  * values are rows of their own. The engine writes and reads these rows with SQL (FULLTEXT and facet counts are
- * beyond the ORM); this mapping makes the migrations create the table.
+ * beyond the ORM); this mapping makes the migrations create the table. On a site in several languages a product
+ * has a row in its own language, the original, and one in each language it is translated into (design 51).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'search_documents')]
@@ -25,6 +26,13 @@ class IndexedProduct
         #[ORM\Id]
         #[ORM\Column]
         private int $productId,
+        /** WordPress's locale of the words; empty on a site in one language. */
+        #[ORM\Id]
+        #[ORM\Column(length: 20, options: ['default' => ''])]
+        private string $locale,
+        /** The product's own words, which shoppers in a language it has no translation into find it by. */
+        #[ORM\Column(options: ['default' => true])]
+        private bool $original,
         #[ORM\Column(length: 255)]
         private string $title,
         #[ORM\Column(type: 'text')]
@@ -48,6 +56,16 @@ class IndexedProduct
     public function productId(): int
     {
         return $this->productId;
+    }
+
+    public function locale(): string
+    {
+        return $this->locale;
+    }
+
+    public function isOriginal(): bool
+    {
+        return $this->original;
     }
 
     public function title(): string

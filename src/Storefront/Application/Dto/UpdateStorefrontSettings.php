@@ -17,5 +17,6 @@ final readonly class UpdateStorefrontSettings
         public bool $recentlyViewed = true,
         public bool $dataLayer = false,
         public bool $hideSingleValueFilters = true,
+        public bool $listUntranslated = true,
     ) {}
 }

@@ -5,6 +5,7 @@ import apiFetch from '@wordpress/api-fetch';
 
 import { SettingsScreen } from '../SettingsScreen';
 import { lastWrite } from '../../shared/testing';
+import { forgetContentLanguages } from '../../shared/Translations';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -156,6 +157,7 @@ function serve( save?: () => Promise< unknown > ) {
 				recently_viewed: true,
 				data_layer: false,
 				hide_single_value_filters: true,
+				list_untranslated: true,
 			} );
 		}
 		if ( path === '/orillacart/v1/currencies' ) {
@@ -507,5 +509,61 @@ describe( 'SettingsScreen', () => {
 				'OpenSearch’s index is being built; the shop searches its database until it is.'
 			)
 		).toBeVisible();
+	} );
+
+	it( 'lists untranslated products as the owner chooses, on a site in several languages', async () => {
+		serve();
+		const served = mockedFetch.getMockImplementation();
+		mockedFetch.mockImplementation( ( options ) =>
+			( options as { path: string } ).path ===
+			'/orillacart/v1/content-languages'
+				? Promise.resolve( [
+						{
+							code: 'en',
+							locale: 'en_US',
+							name: 'English',
+							default: true,
+						},
+						{
+							code: 'de',
+							locale: 'de_DE',
+							name: 'Deutsch',
+							default: false,
+						},
+					] )
+				: served!( options )
+		);
+		forgetContentLanguages();
+		const user = userEvent.setup();
+		render( <SettingsScreen /> );
+
+		await user.click(
+			await screen.findByLabelText(
+				'List products not translated into the language shown'
+			)
+		);
+
+		expect( lastWrite( mockedFetch ) ).toMatchObject( {
+			path: '/orillacart/v1/storefront-settings',
+			method: 'PUT',
+			data: { list_untranslated: false },
+		} );
+	} );
+
+	it( 'has nothing to choose about translations on a site in one language', async () => {
+		serve();
+		forgetContentLanguages();
+		render( <SettingsScreen /> );
+
+		expect(
+			await screen.findByLabelText(
+				'Leave out a shop filter with a single value'
+			)
+		).toBeVisible();
+		expect(
+			screen.queryByLabelText(
+				'List products not translated into the language shown'
+			)
+		).not.toBeInTheDocument();
 	} );
 } );

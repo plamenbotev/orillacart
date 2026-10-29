@@ -7,7 +7,7 @@ namespace OrillaCart\Storefront\Domain;
 /**
  * What the storefront tells others about the shop's products (search engines, through structured data, and
  * social sites, through Open Graph tags), what it keeps for shoppers (a wishlist and the products they viewed), whether its events go to the dataLayer, and which filters
- * it offers.
+ * it offers, and whether it lists products not translated into the language shown.
  */
 final readonly class StorefrontSettings
 {
@@ -21,5 +21,7 @@ final readonly class StorefrontSettings
         public bool $dataLayer = false,
         /** The shop's filters leave out one whose products in view have a single value: it would narrow nothing. */
         public bool $hideSingleValueFilters = true,
+        /** On a site in several languages, the shop lists in a language also the products not translated into it, in their own words. */
+        public bool $listUntranslated = true,
     ) {}
 }

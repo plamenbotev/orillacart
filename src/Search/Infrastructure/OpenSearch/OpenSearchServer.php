@@ -67,6 +67,10 @@ final readonly class OpenSearchServer implements SearchServer
 
         return [
             'product_id' => ['type' => 'integer'],
+            'locale' => $keyword,
+            // A translation's words, beside the product's own document, which lists the languages it has them in.
+            'translation' => ['type' => 'boolean'],
+            'translated' => $keyword,
             'title' => ['type' => 'text', 'analyzer' => 'folded', 'fields' => ['sort' => ['type' => 'keyword', 'normalizer' => 'folded']]],
             'text' => ['type' => 'text', 'analyzer' => 'folded'],
             'skus' => ['type' => 'keyword', 'normalizer' => 'folded'],

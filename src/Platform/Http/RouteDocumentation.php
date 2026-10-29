@@ -44,8 +44,9 @@ final readonly class RouteDocumentation
 
         On a site in several languages (Polylang, WPML) a call is answered in the language of
         `X-OrillaCart-Locale` (a WordPress locale such as `de_DE`) when the site offers it, else in the default one:
-        the names of products, attributes, shipping and payment methods, and an order's language for its emails.
-        The storefront sends its page's. Admin routes take and give every language in `translations`.
+        the names of products, attributes, shipping and payment methods, the products a search finds (by their
+        words in it), and an order's language for its emails. The storefront sends its page's, and the assistant's
+        endpoint takes it too. Admin routes take and give every language in `translations`.
 
         ## Errors
 

@@ -57,7 +57,7 @@ final class IndexProductsTest extends TestCase
             }
         };
         $this->jobs = new TestJobs($this->shop->clock);
-        $this->handler = $handler = new IndexProducts(new DocumentBuilder($this->shop->catalog, $this->texts, $this->shop->priceHistory), $this->index, $this->jobs->jobs, $this->engine);
+        $this->handler = $handler = new IndexProducts(new DocumentBuilder($this->shop->catalog, $this->texts, $this->shop->priceHistory, $this->shop->contentTranslations), $this->index, $this->jobs->jobs, $this->engine);
         $this->jobs->with($handler);
         $this->jobs->jobs->pushMany(IndexProducts::TYPE, array_map(static fn(int $id): array => ['key' => (string) $id, 'payload' => []], [10, 11, 12, 99]));
     }

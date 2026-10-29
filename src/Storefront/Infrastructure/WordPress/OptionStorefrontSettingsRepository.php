@@ -29,6 +29,7 @@ final readonly class OptionStorefrontSettingsRepository implements StorefrontSet
             ($stored['recently_viewed'] ?? true) !== false,
             ($stored['data_layer'] ?? false) === true,
             ($stored['hide_single_value_filters'] ?? true) !== false,
+            ($stored['list_untranslated'] ?? true) !== false,
         );
     }
 
@@ -41,6 +42,7 @@ final readonly class OptionStorefrontSettingsRepository implements StorefrontSet
             'recently_viewed' => $settings->recentlyViewed,
             'data_layer' => $settings->dataLayer,
             'hide_single_value_filters' => $settings->hideSingleValueFilters,
+            'list_untranslated' => $settings->listUntranslated,
         ], true);
     }
 

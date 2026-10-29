@@ -35,6 +35,9 @@ class IndexedValue
         private string $value,
         #[ORM\Column(length: 255)]
         private string $label,
+        /** @var array<string, string>|null the label in the site's other languages, by locale, where it differs */
+        #[ORM\Column(type: 'json', nullable: true)]
+        private ?array $labels = null,
     ) {}
 
     public function id(): ?int

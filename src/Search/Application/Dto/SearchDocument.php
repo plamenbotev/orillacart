@@ -8,7 +8,8 @@ use OrillaCart\Shared\Domain\Money;
 
 /**
  * A product flattened for search: what shoppers find it by, filter it by and sort it by. Search engines keep
- * documents in their own way.
+ * documents in their own way. On a site in several languages its words are also in its translations' languages;
+ * a shopper in a language finds it by those, or by its own where it has none there (design 51).
  */
 final readonly class SearchDocument
 {
@@ -20,6 +21,8 @@ final readonly class SearchDocument
      * @param non-empty-list<DocumentVariant> $variants
      * @param \DateTimeImmutable|null $priceChangesAt when a sale starts or ends, so the document is built again then
      * @param list<DocumentTerm>    $tags
+     * @param string|null           $locale       the language of its own words, on a site in several
+     * @param list<DocumentText>    $translations its words in other languages
      */
     public function __construct(
         public int $productId,
@@ -36,7 +39,19 @@ final readonly class SearchDocument
         public \DateTimeImmutable $publishedAt,
         public ?\DateTimeImmutable $priceChangesAt = null,
         public array $tags = [],
+        public ?string $locale = null,
+        public array $translations = [],
     ) {}
+
+    /**
+     * The locales it has words in besides its own.
+     *
+     * @return list<string>
+     */
+    public function translatedInto(): array
+    {
+        return array_map(static fn(DocumentText $text): string => $text->locale, $this->translations);
+    }
 
     /**
      * @return array{?string, ?string} the lowest and highest variant price; nulls when shoppers ask for the price

@@ -27,7 +27,7 @@ final readonly class StorefrontSettingsService
 
     public function update(UpdateStorefrontSettings $command): StorefrontSettingsView
     {
-        $settings = new StorefrontSettings($command->structuredData, SharingTags::from($command->sharingTags), WishlistPolicy::from($command->wishlist), $command->recentlyViewed, $command->dataLayer, $command->hideSingleValueFilters);
+        $settings = new StorefrontSettings($command->structuredData, SharingTags::from($command->sharingTags), WishlistPolicy::from($command->wishlist), $command->recentlyViewed, $command->dataLayer, $command->hideSingleValueFilters, $command->listUntranslated);
         $this->settings->save($settings);
 
         return StorefrontSettingsView::of($settings);

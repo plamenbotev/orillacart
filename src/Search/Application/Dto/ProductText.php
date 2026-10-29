@@ -14,6 +14,8 @@ final readonly class ProductText
      * @param list<DocumentTerm> $categories the product's categories and every category above them
      * @param list<DocumentTerm> $brands
      * @param list<DocumentTerm> $tags
+     * @param string|null        $locale       the post's language, on a site in several
+     * @param list<DocumentText> $translations its translations' words, those published
      */
     public function __construct(
         public string $title,
@@ -23,5 +25,7 @@ final readonly class ProductText
         public array $categories,
         public array $brands,
         public array $tags = [],
+        public ?string $locale = null,
+        public array $translations = [],
     ) {}
 }

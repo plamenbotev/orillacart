@@ -38,8 +38,8 @@ final class FiltersByCategoryTest extends TestCase
         $this->repository->save(new SearchFilter('Size', 'size', ['Size'], 2));
         $this->repository->save(new SearchFilter('Wattage', 'wattage', ['Wattage'], 3));
         $this->categories = new InMemoryCategoryFilters();
-        $this->search = new ShopSearch(self::createStub(CatalogSearch::class), $this->repository, $this->categories);
         $this->shop = $shop = new TestShop();
+        $this->search = new ShopSearch(self::createStub(CatalogSearch::class), $this->repository, $this->categories, $shop->contentLanguages);
         $this->filters = new SearchFilters($this->repository, new ProductLookup($shop->productRecords, $shop->content), $this->categories, $shop->contentTranslations, new ImmediateTransactions());
     }
 

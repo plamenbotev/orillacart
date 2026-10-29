@@ -16,7 +16,8 @@ use OrillaCart\Search\Domain\Facets;
 /**
  * Searches the database engine's tables. Product-wide conditions (words, categories, brands, featured, on sale)
  * test the document; options, price and stock must hold for one variant together. A facet counts the products
- * every other condition leaves, so choosing "M" still shows how many "L" would find.
+ * every other condition leaves, so choosing "M" still shows how many "L" would find. In a language, a product's
+ * document is its words in it, else its own (unless the query leaves those out); values are named in it.
  */
 final readonly class MysqlCatalogSearch implements CatalogSearch
 {
@@ -63,7 +64,8 @@ final readonly class MysqlCatalogSearch implements CatalogSearch
         $params = new SqlParams();
         $where = $this->where($query, $text, $words, $params, $key, true);
         $sql = \sprintf(
-            'SELECT f.value, MIN(f.label) AS label, COUNT(DISTINCT d.product_id) AS products FROM %s d JOIN %s f ON f.product_id = d.product_id AND f.variant_id IS NULL AND f.facet = %s WHERE %s GROUP BY f.value ORDER BY label',
+            'SELECT f.value, %s AS label, COUNT(DISTINCT d.product_id) AS products FROM %s d JOIN %s f ON f.product_id = d.product_id AND f.variant_id IS NULL AND f.facet = %s WHERE %s GROUP BY f.value ORDER BY label',
+            self::label($query, $params),
             $this->tables->documents(),
             $this->tables->values(),
             $params->add($facet),
@@ -79,10 +81,11 @@ final readonly class MysqlCatalogSearch implements CatalogSearch
         $where = $this->where($query, $text, $words, $params, $filter->key, false);
         $variantWhere = $this->variantWhere($query, 'v', $params, $filter->key);
         $sql = \sprintf(
-            'SELECT f.value, MIN(f.label) AS label, COUNT(DISTINCT d.product_id) AS products FROM %s d
+            'SELECT f.value, %s AS label, COUNT(DISTINCT d.product_id) AS products FROM %s d
              JOIN %s v ON v.product_id = d.product_id
              JOIN %s f ON f.product_id = d.product_id AND (f.variant_id = v.variant_id OR f.variant_id IS NULL) AND f.facet IN (%s)
              WHERE %s AND %s GROUP BY f.value ORDER BY label',
+            self::label($query, $params),
             $this->tables->documents(),
             $this->tables->variants(),
             $this->tables->values(),
@@ -132,7 +135,7 @@ final readonly class MysqlCatalogSearch implements CatalogSearch
     private function where(SearchQuery $query, ?string $text, ?FullTextQuery $words, SqlParams $params, ?string $except, bool $variants): string
     {
         $values = $this->tables->values();
-        $conditions = [];
+        $conditions = [$this->languageCondition($query, $params)];
         if ($text !== null && $text !== '' && $words !== null) {
             $conditions[] = $this->textCondition($text, $words, $params);
         }
@@ -160,7 +163,39 @@ final readonly class MysqlCatalogSearch implements CatalogSearch
             }
         }
 
-        return $conditions === [] ? '1 = 1' : implode(' AND ', $conditions);
+        return implode(' AND ', $conditions);
+    }
+
+    /**
+     * One document of each product: in the language, its translation's, else its own; without one, its own.
+     */
+    private function languageCondition(SearchQuery $query, SqlParams $params): string
+    {
+        if ($query->locale === null) {
+            return 'd.original = 1';
+        }
+        if (!$query->untranslated) {
+            return 'd.locale = ' . $params->add($query->locale);
+        }
+
+        return \sprintf(
+            '(d.locale = %s OR (d.original = 1 AND NOT EXISTS (SELECT 1 FROM %s w WHERE w.product_id = d.product_id AND w.locale = %s)))',
+            $params->add($query->locale),
+            $this->tables->documents(),
+            $params->add($query->locale),
+        );
+    }
+
+    /**
+     * A value's label in the query's language, where the index has one, else its own.
+     */
+    private static function label(SearchQuery $query, SqlParams $params): string
+    {
+        if ($query->locale === null) {
+            return 'MIN(f.label)';
+        }
+
+        return \sprintf('MIN(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(f.labels, %s)), f.label))', $params->add('$."' . $query->locale . '"'));
     }
 
     /**
