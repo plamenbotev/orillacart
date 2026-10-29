@@ -20,6 +20,9 @@ use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Extension\SettingsTestView;
 use OrillaCart\Shared\Extension\SettingValues;
+use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Translations\Application\ContentTranslations;
+use OrillaCart\Translations\Domain\TranslationRuleViolation;
 
 /**
  * Use cases for payment methods, as the Payments admin screen runs them. Every gateway has a method; one the
@@ -32,6 +35,8 @@ final readonly class PaymentMethodService
         private Gateways $gateways,
         private SettingsService $shop,
         private PaymentUrls $urls,
+        private ContentTranslations $translations,
+        private Transactions $transactions,
     ) {}
 
     /**
@@ -59,10 +64,12 @@ final readonly class PaymentMethodService
      * @throws PaymentMethodNotFound for an unknown gateway
      * @throws RuleViolation        for unknown settings or values of the wrong kind
      * @throws PaymentRuleViolation for a method turned on without its required settings
+     * @throws TranslationRuleViolation
      */
     public function update(string $gateway, SavePaymentMethod $command): PaymentMethodView
     {
         $found = $this->gateways->get($gateway);
+        $texts = $command->translations === null ? [] : $this->translations->check(PaymentMethodTranslations::TYPE, $command->translations);
         $method = $this->method($found);
         $settings = SettingValues::accept($found->settings(), $method->settings(), $command->settings, $found->defaultName());
         $missing = $command->active ? SettingValues::missing($found->settings(), $settings) : null;
@@ -71,7 +78,11 @@ final readonly class PaymentMethodService
         }
         $method->change($command->name, $command->active, $command->position, $command->countries, $command->instructions, $command->receiptNote, $settings);
         $method->chargeFee(Money::of($command->fee), $command->feePercent, $command->feeLabel);
-        $this->methods->save($method);
+        // The method and its words' translations together, or neither; a new method has its id once saved.
+        $this->transactions->run(function () use ($method, $texts): void {
+            $this->methods->save($method);
+            $this->translations->write(PaymentMethodTranslations::TYPE, $method->id() ?? 0, $texts);
+        });
 
         return $this->view($found, $method);
     }
@@ -120,6 +131,7 @@ final readonly class PaymentMethodService
             $method->feePercent(),
             $method->feeLabel() === $method->name() ? '' : $method->feeLabel(),
             $gateway instanceof TestsSettings,
+            $method->id() === null ? [] : $this->translations->of(PaymentMethodTranslations::TYPE, [$method->id()])[$method->id()] ?? [],
         );
     }
 }

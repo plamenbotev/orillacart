@@ -57,7 +57,7 @@ final class ProductServiceTest extends TestCase
         $this->events = new RecordingDispatcher();
         $this->content = new InMemoryProductContent([10 => ['Hoodie', true], 11 => ['Mug', true]]);
         $this->taxGroups = new TaxGroupService(new InMemoryTaxGroupRepository(), new InMemoryTaxSettingsRepository(), new GeographyService(new InMemoryCountryRepository()), $this->events);
-        $this->products = new ProductService($productRepository, $setRepository, $this->content, $this->taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $this->events), $this->events, new ProductTranslations(new FakeContentLanguages([]), $productRepository, $this->content), $texts = new AttributeTexts(new ContentTranslations($records = new InMemoryTranslations()->add(new AttributeTranslations($productRepository), new OptionTranslations($productRepository)), $records, new FakeContentLanguages([]), new FakeLanguages())), new ImmediateTransactions());
+        $this->products = new ProductService($productRepository, $setRepository, $this->content, $this->taxGroups, new ShippingClassService(new InMemoryShippingClassRepository(), new InMemoryCarrierRepository(), $this->events), $this->events, new ProductTranslations(new FakeContentLanguages([]), $productRepository, $this->content), $texts = new AttributeTexts(new ContentTranslations($records = new InMemoryTranslations()->add(new AttributeTranslations(), new OptionTranslations()), $records, new FakeContentLanguages([]), new FakeLanguages())), new ImmediateTransactions());
         $this->sets = new AttributeSetService($setRepository, $productRepository, $this->events, $texts, new ImmediateTransactions());
     }
 

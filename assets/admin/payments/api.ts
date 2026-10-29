@@ -1,6 +1,7 @@
 import apiFetch from '@wordpress/api-fetch';
 
 import type { Setting, SettingValues } from '../shared/SettingFields';
+import type { FieldTranslations } from '../shared/Translations';
 
 export type Settings = SettingValues;
 
@@ -28,7 +29,17 @@ export interface PaymentMethod {
 	fee_label: string;
 	/** Whether its settings can be tried at the provider. */
 	testable?: boolean;
+	/** Its words in the site's other languages, by field. */
+	translations?: PaymentTranslations;
 }
+
+/** A payment method's words in the site's other languages, by field. */
+export type PaymentTranslations = Partial<
+	Record<
+		'name' | 'instructions' | 'receipt_note' | 'fee_label',
+		FieldTranslations
+	>
+>;
 
 export interface PaymentMethodInput {
 	name: string;
@@ -41,6 +52,7 @@ export interface PaymentMethodInput {
 	fee: string;
 	fee_percent: string;
 	fee_label: string;
+	translations?: PaymentTranslations;
 }
 
 const BASE = '/orillacart/v1';

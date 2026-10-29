@@ -1,6 +1,6 @@
 # 51 · A shop in several languages
 
-Status: agreed (2026-10-28); step 1 built (PLAN 212), the rest to do. PLAN items 212–217.
+Status: agreed (2026-10-28); step 1 built (PLAN 212), step 2 under way (214), the rest to do. PLAN items 212–217.
 
 Design 46 translates the shop's own words. This one is about the shop's content: products, categories, attributes,
 shipping and payment titles, forms, filters and email templates in each language a site offers.
@@ -35,7 +35,8 @@ shipping and payment titles, forms, filters and email templates in each language
   "translate" links show there. On a translation the shop's panel edits the original's price, stock and variations
   (they are one product): it says so, with a link to the original.
 - **The search index** holds a document per product and language; a search looks in the current language.
-- **REST, the storefront blocks and MCP** take a language: their requests do not carry the plugin's URL language.
+- **REST, the storefront blocks and MCP** take a language: their requests do not carry the plugin's URL language
+  (the storefront's REST calls send the page's, step 2).
 - **Orders** keep the customer's language and send emails in it already; the email templates get one per language.
 - **Not here:** a currency per language belongs to multi-currency.
 
@@ -75,7 +76,7 @@ shipping and payment titles, forms, filters and email templates in each language
   Keyed by WordPress locale (de_DE), not the plugin's code: emails switch to a locale, and the translations stay
   when a site moves from Polylang to WPML. The field's own column keeps the default language.
 - **Areas declare what they translate** (`Translations\Application\TranslatableType`: a type, its fields with their
-  longest value, which of its objects exist); `ContentTranslations` checks a translation against them and the
+  longest value); `ContentTranslations` checks a translation against them and the
   site's languages, and reads one in the language shown.
 - **Saved with the object** (the owner's choice, 2026-10-29): an attribute or option in a product's or an attribute
   set's save carries `translations` by locale, checked before anything is written and written in the same
@@ -86,6 +87,16 @@ shipping and payment titles, forms, filters and email templates in each language
   a site in one language; the attributes editor uses it for the product's and the sets' attributes and options.
 - **The shopper** reads the names in the language shown, with the option's own name where it has no translation:
   offers, variation names and quotes (the cart line's options), read for a request in a few queries.
+- **Shipping and payments** the same way: a carrier's name, its rates' and its pickup places' (name, address, hours),
+  saved with the carrier; a payment method's name, instructions, receipt note and fee label, saved with it.
+  A field of an item a list holds names the item's key: `pickup.{key}.name`, so a place gone takes its words with
+  it. Checkout's options, the receipt note, the fee's line and the Shipping and payment block read them in the
+  language shown; the order keeps the words it was placed with.
+- **The storefront's calls carry the page's language.** The REST API's URL has no language of Polylang's or WPML's,
+  so the cart, checkout and quotes would answer in the default one. The page gives its locale to the script, which
+  sends it as `X-OrillaCart-Locale`; a locale the site offers is the call's: the content language, WordPress's
+  locale (also without WordPress's files for it), and so the order's language for its emails. Others are ignored.
+- Known gaps: a manual order the admin places takes the names in the admin's language.
 
 ## Order
 
@@ -93,6 +104,6 @@ shipping and payment titles, forms, filters and email templates in each language
    text through Polylang and WPML.
 2. The translations table and the languages beside each field: attributes first, then shipping, payments, forms,
    filters, email templates.
-3. The search index per language; a language for REST, the blocks and MCP.
+3. The search index per language; a language for the blocks and MCP (the storefront's REST calls have theirs).
 4. WPML string packages filling the table.
 5. Later: a catalog shared by a network's language sites.

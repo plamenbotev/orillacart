@@ -103,6 +103,12 @@ class PaymentMethod
         $this->settings = $settings;
     }
 
+    /** Null until the shop first saves it. */
+    public function id(): ?int
+    {
+        return $this->id;
+    }
+
     public function gateway(): string
     {
         return $this->gateway;
@@ -181,6 +187,12 @@ class PaymentMethod
     public function feeLabel(): string
     {
         return $this->feeLabel === '' ? $this->name : $this->feeLabel;
+    }
+
+    /** Whether the fee has a label of its own rather than the method's name. */
+    public function hasFeeLabel(): bool
+    {
+        return $this->feeLabel !== '';
     }
 
     /** Whether a customer billed in this country may use it; without a country, only methods for everywhere. */

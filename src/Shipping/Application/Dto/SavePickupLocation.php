@@ -27,5 +27,12 @@ final readonly class SavePickupLocation
         public string $hours = '',
         #[Assert\Regex(pattern: SaveRange::MEASURE, message: 'Use an amount of zero or more with up to four decimals.')]
         public string $fee = '0',
+        /**
+         * Its name, address and hours in the site's other languages, by field and locale; null leaves them as they are.
+         *
+         * @var array<string, array<string, string>>|null
+         */
+        #[Assert\Collection(fields: ['name' => new Assert\Optional([new Assert\All([new Assert\Type('string')])]), 'address' => new Assert\Optional([new Assert\All([new Assert\Type('string')])]), 'hours' => new Assert\Optional([new Assert\All([new Assert\Type('string')])])])]
+        public ?array $translations = null,
     ) {}
 }

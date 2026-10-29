@@ -1,5 +1,5 @@
 import apiFetch from '@wordpress/api-fetch';
-import { TextControl } from '@wordpress/components';
+import { TextControl, TextareaControl } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { sprintf, __ } from '@wordpress/i18n';
 
@@ -68,6 +68,8 @@ interface Props {
 	languages: ContentLanguage[];
 	value: FieldTranslations | undefined;
 	onChange: ( value: FieldTranslations ) => void;
+	/** Several lines, as its own field has. */
+	multiline?: boolean;
 }
 
 /**
@@ -79,35 +81,43 @@ interface Props {
  * @param props.languages The languages to translate into.
  * @param props.value     The translations, by locale.
  * @param props.onChange  Receives all of them, changed.
+ * @param props.multiline Several lines, as its own field has.
  */
 export function TranslationFields( {
 	label,
 	languages: others,
 	value,
 	onChange,
+	multiline = false,
 }: Props ) {
 	if ( others.length === 0 ) {
 		return null;
 	}
 	return (
 		<div className="orillacart-translations">
-			{ others.map( ( language ) => (
-				<TextControl
-					key={ language.locale }
-					__next40pxDefaultSize
-					lang={ language.locale.replace( '_', '-' ) }
-					label={ sprintf(
+			{ others.map( ( language ) => {
+				const field = {
+					lang: language.locale.replace( '_', '-' ),
+					label: sprintf(
 						/* translators: 1: a field's label, such as "Option"; 2: a language, such as "Deutsch" */
 						__( '%1$s in %2$s', 'orillacart' ),
 						label,
 						language.name
-					) }
-					value={ value?.[ language.locale ] ?? '' }
-					onChange={ ( text ) =>
-						onChange( { ...value, [ language.locale ]: text } )
-					}
-				/>
-			) ) }
+					),
+					value: value?.[ language.locale ] ?? '',
+					onChange: ( text: string ) =>
+						onChange( { ...value, [ language.locale ]: text } ),
+				};
+				return multiline ? (
+					<TextareaControl key={ language.locale } { ...field } />
+				) : (
+					<TextControl
+						key={ language.locale }
+						__next40pxDefaultSize
+						{ ...field }
+					/>
+				);
+			} ) }
 		</div>
 	);
 }

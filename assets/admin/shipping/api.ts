@@ -1,6 +1,7 @@
 import apiFetch from '@wordpress/api-fetch';
 
 import type { Setting, SettingValues } from '../shared/SettingFields';
+import type { FieldTranslations } from '../shared/Translations';
 
 /** From min to max, both included; no max for no end. */
 export interface Range {
@@ -36,6 +37,8 @@ export interface ShippingRate extends Record< Measure, Range | null > {
 	excluded_regions: string[];
 	/** Postcode patterns it does not ship to. */
 	excluded_postcodes: string[];
+	/** The name in the site's other languages; left out, they stay as they are. */
+	translations?: FieldTranslations;
 }
 
 /** A kind of goods that ships its own way, such as "Bulky". */
@@ -70,6 +73,8 @@ export interface Carrier {
 	delivery_schedule: DeliverySchedule | null;
 	/** Goods of a class one of its rates lists go only by the rates that list it. */
 	classes_kept_to_their_rates: boolean;
+	/** The name in the site's other languages. */
+	translations?: FieldTranslations;
 }
 
 /** The days, and times of day, a carrier lets the customer choose for delivery. */
@@ -99,6 +104,10 @@ export interface PickupLocation {
 	hours: string;
 	/** What collecting there costs, as the shop's prices are. */
 	fee: string;
+	/** Its name, address and hours in the site's other languages, by field. */
+	translations?: Partial<
+		Record< 'name' | 'address' | 'hours', FieldTranslations >
+	>;
 }
 
 export interface CarrierInput {
@@ -113,6 +122,7 @@ export interface CarrierInput {
 	pickup_locations: PickupLocation[];
 	delivery_schedule: DeliverySchedule | null;
 	classes_kept_to_their_rates: boolean;
+	translations?: FieldTranslations;
 }
 
 /** A shipping method an add-on brings. */

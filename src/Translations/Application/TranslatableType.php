@@ -6,7 +6,7 @@ namespace OrillaCart\Translations\Application;
 
 /**
  * Something of an area's own tables whose words the shop translates (design 51): attributes, options, shipping
- * methods. Each area says which of its fields, how long each may be, and which of its objects exist.
+ * methods. Each area says which of its fields, and how long each may be.
  */
 interface TranslatableType
 {
@@ -16,14 +16,10 @@ interface TranslatableType
     public function type(): string;
 
     /**
+     * A field of something the object holds in a list has its item's key in braces: "pickup.{key}.name" for each of
+     * a carrier's pickup places, "pickup.front-desk.name" in the table.
+     *
      * @return array<string, int> the longest value of each translated field, by field
      */
     public function fields(): array;
-
-    /**
-     * @param list<int> $ids
-     *
-     * @return list<int> those that exist
-     */
-    public function existing(array $ids): array;
 }

@@ -16,6 +16,13 @@ Bodies are JSON; field names are in snake_case. Answers are JSON, as the shop's 
   read-only key changes nothing. Keys need no nonce. WordPress's application passwords (Basic auth) work
   too.
 
+## Languages
+
+On a site in several languages (Polylang, WPML) a call is answered in the language of
+`X-OrillaCart-Locale` (a WordPress locale such as `de_DE`) when the site offers it, else in the default one:
+the names of products, attributes, shipping and payment methods, and an order's language for its emails.
+The storefront sends its page's. Admin routes take and give every language in `translations`.
+
 ## Errors
 
 `{"code": "orillacart_…", "message": "…", "data": {"status": 422}}`, with `data.violations`
@@ -283,6 +290,7 @@ Adds a carrier checkout offers: with its own rates, priced by an add-on's shippi
   - `pickup_locations` (list<SavePickupLocation>): at most 100 items
   - `delivery_schedule` (SaveDeliverySchedule|null)
   - `classes_kept_to_their_rates` (bool): default false
+  - `translations` (array|null)
 
 ### `GET /carriers/{id}`
 
@@ -307,6 +315,7 @@ Changes a carrier: its name, whether checkout offers it, its position, and its w
   - `pickup_locations` (list<SavePickupLocation>): at most 100 items
   - `delivery_schedule` (SaveDeliverySchedule|null)
   - `classes_kept_to_their_rates` (bool): default false
+  - `translations` (array|null)
 
 ### `DELETE /carriers/{id}`
 
@@ -1524,6 +1533,7 @@ Sets up a payment method: its name, whether checkout offers it and where, its fe
   - `fee` (string): matches `/^\d{1,11}(\.\d{1,4})?$/`; default '0'
   - `fee_percent` (string): matches `/^\d{1,3}(\.\d{1,4})?$/`; at most 100; default '0'
   - `fee_label` (string): at most 100 characters
+  - `translations` (array|null)
 
 ### `POST /payment-methods/{gateway}/test`
 
@@ -2805,6 +2815,7 @@ The objects fields above take.
 - `address` (string): required; not empty; at most 255 characters
 - `hours` (string): at most 255 characters
 - `fee` (string): matches `/^\d{1,14}(\.\d{1,4})?$/`; default '0'
+- `translations` (array|null): collection
 
 ### SaveRange
 
@@ -2837,6 +2848,7 @@ The objects fields above take.
 - `excluded_regions` (list<string>)
 - `excluded_postcodes` (list<string>): each at most 30 characters
 - `items` (SaveRange|null)
+- `translations` (array|null)
 
 ### SetStockLevel
 

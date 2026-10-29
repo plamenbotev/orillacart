@@ -16,6 +16,13 @@ interface TranslationRepository
     /**
      * @param list<int> $ids
      *
+     * @return array<int, array<string, string>> every field's value in the locale, by object id and field
+     */
+    public function inLocale(string $type, array $ids, string $locale): array;
+
+    /**
+     * @param list<int> $ids
+     *
      * @return array<int, array<string, array<string, string>>> by object id, field and locale
      */
     public function all(string $type, array $ids): array;

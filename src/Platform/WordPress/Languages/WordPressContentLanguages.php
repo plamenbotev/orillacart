@@ -15,6 +15,9 @@ final class WordPressContentLanguages implements ContentLanguages
 {
     private ?ContentLanguages $plugin = null;
 
+    /** The language a storefront request said it is in, while it is handled (RequestLanguage). */
+    private ?Language $requested = null;
+
     public function multilingual(): bool
     {
         return $this->plugin()->multilingual();
@@ -32,7 +35,25 @@ final class WordPressContentLanguages implements ContentLanguages
 
     public function current(): ?Language
     {
-        return $this->plugin()->current();
+        return $this->requested ?? $this->plugin()->current();
+    }
+
+    /**
+     * @template T
+     *
+     * @param \Closure(): T $work
+     *
+     * @return T
+     */
+    public function during(Language $language, \Closure $work): mixed
+    {
+        $before = $this->requested;
+        $this->requested = $language;
+        try {
+            return $work();
+        } finally {
+            $this->requested = $before;
+        }
     }
 
     public function forLocale(string $locale): ?Language

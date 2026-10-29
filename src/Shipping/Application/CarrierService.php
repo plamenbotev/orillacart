@@ -12,6 +12,8 @@ use OrillaCart\Shared\Domain\PostcodePattern;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Extension\SettingsTestView;
 use OrillaCart\Shared\Extension\SettingValues;
+use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Shipping\Application\Dto\CarrierTexts;
 use OrillaCart\Shipping\Application\Dto\CarrierView;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SavePickupLocation;
@@ -31,6 +33,7 @@ use OrillaCart\Shipping\Domain\ShippingClass;
 use OrillaCart\Shipping\Domain\ShippingClassRepository;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use OrillaCart\Tax\Application\TaxGroupService;
+use OrillaCart\Translations\Domain\TranslationRuleViolation;
 
 /**
  * Use cases for carriers and their rates, as the Shipping admin screen runs them.
@@ -43,6 +46,8 @@ final readonly class CarrierService
         private TaxGroupService $taxGroups,
         private ShippingClassRepository $classes,
         private ShippingMethods $methods,
+        private ShippingTexts $texts,
+        private Transactions $transactions,
     ) {}
 
     /**
@@ -50,7 +55,10 @@ final readonly class CarrierService
      */
     public function carriers(): array
     {
-        return array_map($this->view(...), $this->carriers->all());
+        $carriers = $this->carriers->all();
+        $texts = $this->texts->of($carriers);
+
+        return array_map(fn(Carrier $carrier): CarrierView => $this->view($carrier, $texts[$carrier->id()] ?? null), $carriers);
     }
 
     /**
@@ -58,39 +66,45 @@ final readonly class CarrierService
      */
     public function carrier(int $id): CarrierView
     {
-        return $this->view($this->get($id));
+        $carrier = $this->get($id);
+
+        return $this->view($carrier, $this->texts->of([$carrier])[$id] ?? null);
     }
 
     /**
      * @throws ShippingRuleViolation
+     * @throws TranslationRuleViolation
      */
     public function create(SaveCarrier $command): CarrierView
     {
+        $texts = $this->texts->check($command);
         $carrier = new Carrier($command->name, $command->active, $command->position);
         $this->price($carrier, $command);
         $carrier->scheduleDeliveries($command->deliverySchedule?->toSchedule());
         $carrier->keepClassesToTheirRates($command->classesKeptToTheirRates);
-        $this->carriers->save($carrier);
 
-        return $this->view($carrier);
+        return $this->save($carrier, $texts, [], []);
     }
 
     /**
      * @throws CarrierNotFound
      * @throws ShippingRuleViolation
+     * @throws TranslationRuleViolation
      */
     public function update(int $id, SaveCarrier $command): CarrierView
     {
+        $texts = $this->texts->check($command);
         $carrier = $this->get($id);
+        $ratesBefore = ShippingTexts::rateIds($carrier);
+        $placesBefore = ShippingTexts::placeIds($carrier);
         $carrier->rename($command->name);
         $carrier->activate($command->active);
         $carrier->moveTo($command->position);
         $this->price($carrier, $command);
         $carrier->scheduleDeliveries($command->deliverySchedule?->toSchedule());
         $carrier->keepClassesToTheirRates($command->classesKeptToTheirRates);
-        $this->carriers->save($carrier);
 
-        return $this->view($carrier);
+        return $this->save($carrier, $texts, $ratesBefore, $placesBefore);
     }
 
     /**
@@ -119,7 +133,28 @@ final readonly class CarrierService
      */
     public function delete(int $id): void
     {
-        $this->carriers->remove($this->get($id));
+        $carrier = $this->get($id);
+        $this->transactions->run(function () use ($carrier): void {
+            $this->texts->forget($carrier);
+            $this->carriers->remove($carrier);
+        });
+    }
+
+    /**
+     * The carrier and its words' translations together, or neither.
+     *
+     * @param array{array<string, array<string, string>>, list<?array<string, array<string, string>>>} $texts
+     * @param list<int>                                                                                $ratesBefore
+     * @param list<string>                                                                             $placesBefore
+     */
+    private function save(Carrier $carrier, array $texts, array $ratesBefore, array $placesBefore): CarrierView
+    {
+        $this->transactions->run(function () use ($carrier, $texts, $ratesBefore, $placesBefore): void {
+            $this->carriers->save($carrier);
+            $this->texts->write($texts, $carrier, $ratesBefore, $placesBefore);
+        });
+
+        return $this->view($carrier, $this->texts->of([$carrier])[$carrier->id()] ?? null);
     }
 
     /**
@@ -162,11 +197,11 @@ final readonly class CarrierService
         $carrier->useMethod($command->method, $settings, $command->methodTaxable, $this->taxGroup($command->methodTaxGroupId));
     }
 
-    private function view(Carrier $carrier): CarrierView
+    private function view(Carrier $carrier, ?CarrierTexts $texts): CarrierView
     {
         $method = $carrier->method() === null ? null : $this->methods->find($carrier->method());
 
-        return CarrierView::fromCarrier($carrier, $method?->settings() ?? []);
+        return CarrierView::fromCarrier($carrier, $method?->settings() ?? [], $texts);
     }
 
     private function get(int $id): Carrier

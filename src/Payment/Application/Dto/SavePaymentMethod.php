@@ -40,5 +40,13 @@ final readonly class SavePaymentMethod
         /** What the totals call the fee; empty for the method's name. */
         #[Assert\Length(max: PaymentMethod::MAX_NAME_LENGTH)]
         public string $feeLabel = '',
+        /**
+         * Its name, instructions, receipt note and fee label in the site's other languages, by field (name,
+         * instructions, receipt_note, fee_label) and locale; null leaves them as they are.
+         *
+         * @var array<string, array<string, string>>|null
+         */
+        #[Assert\All([new Assert\All([new Assert\Type('string')])])]
+        public ?array $translations = null,
     ) {}
 }

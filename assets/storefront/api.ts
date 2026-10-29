@@ -18,6 +18,7 @@ declare global {
 			account?: string | null;
 			dataLayer?: boolean;
 			currency?: string;
+			locale?: string;
 		};
 	}
 }
@@ -111,6 +112,11 @@ async function call< T >(
 		}
 		if ( token !== null ) {
 			headers[ 'X-WP-Nonce' ] = token;
+		}
+		// The page's language: the call is answered in it (the names, the order's emails).
+		const locale = window.orillacartStorefront?.locale;
+		if ( locale ) {
+			headers[ 'X-OrillaCart-Locale' ] = locale;
 		}
 		return fetch( `${ root() }${ path }`, {
 			method,

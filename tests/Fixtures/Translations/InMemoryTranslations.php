@@ -45,9 +45,34 @@ final class InMemoryTranslations implements TranslationRepository, TranslatableT
         return $values;
     }
 
+    public function inLocale(string $type, array $ids, string $locale): array
+    {
+        $values = [];
+        foreach ($ids as $id) {
+            foreach ($this->rows[$type][$id] ?? [] as $field => $locales) {
+                if (isset($locales[$locale])) {
+                    $values[$id][$field] = $locales[$locale];
+                }
+            }
+        }
+
+        return $values;
+    }
+
     public function all(string $type, array $ids): array
     {
-        return array_intersect_key($this->rows[$type] ?? [], array_flip($ids));
+        // In the table's order: by field, then locale.
+        $all = array_intersect_key($this->rows[$type] ?? [], array_flip($ids));
+        foreach ($all as &$fields) {
+            ksort($fields);
+            foreach ($fields as &$locales) {
+                ksort($locales);
+            }
+        }
+        unset($fields, $locales);
+        ksort($all);
+
+        return $all;
     }
 
     public function replace(string $type, int $id, array $fields): void

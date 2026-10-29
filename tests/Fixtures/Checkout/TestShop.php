@@ -108,9 +108,11 @@ use OrillaCart\Payment\Application\Gateway\Cheque;
 use OrillaCart\Payment\Application\Gateways;
 use OrillaCart\Payment\Application\GiveBackLatePayments;
 use OrillaCart\Payment\Application\PaymentMethodService;
+use OrillaCart\Payment\Application\PaymentMethodTranslations;
 use OrillaCart\Payment\Application\PaymentOptions;
 use OrillaCart\Payment\Application\PaymentOutcomes;
 use OrillaCart\Payment\Application\Payments;
+use OrillaCart\Payment\Application\PaymentWords;
 use OrillaCart\Payment\Application\PayPal\PayPalGateway;
 use OrillaCart\Payment\Application\Refunds;
 use OrillaCart\Payment\Domain\Event\PaymentCancelled;
@@ -142,14 +144,17 @@ use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Security\Signatures;
 use OrillaCart\Shipping\Application\CarrierService;
+use OrillaCart\Shipping\Application\CarrierTranslations;
 use OrillaCart\Shipping\Application\Consignments;
 use OrillaCart\Shipping\Application\DeliveryDays;
+use OrillaCart\Shipping\Application\RateTranslations;
 use OrillaCart\Shipping\Application\ShipmentNumbers;
 use OrillaCart\Shipping\Application\ShipmentTracking;
 use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Shipping\Application\ShippingMethods;
 use OrillaCart\Shipping\Application\ShippingQuotes;
 use OrillaCart\Shipping\Application\ShippingTaxGroups;
+use OrillaCart\Shipping\Application\ShippingTexts;
 use OrillaCart\Shipping\Application\TrackConsignments;
 use OrillaCart\Shipping\Domain\Event\ConsignmentBooked;
 use OrillaCart\Shipping\Domain\Event\OrderReadyForPickup;
@@ -282,6 +287,8 @@ final class TestShop
     /** The request's locale, which a test may change. */
     public readonly FakeLanguages $languageOfRequest;
     public readonly ContentTranslations $contentTranslations;
+    public readonly ShippingTexts $shippingTexts;
+    public readonly ShippingQuotes $shippingQuotes;
     public readonly AttributeNames $attributeNames;
     public readonly AttributeTexts $attributeTexts;
     public readonly ProductFinder $productFinder;
@@ -422,16 +429,17 @@ final class TestShop
         $this->extensions = $extensions = new FixedExtensions([new CashOnDelivery(), new BankTransfer(), new Cheque(), new PayPalGateway($this->payPalApi)], $shippingMethods);
         $shippingMethodList = new ShippingMethods($extensions);
         $this->rateCache = new MemoryRateCache();
-        $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups, $classRecords, $shippingMethodList);
-        $this->shippingClasses = new ShippingClassService($classRecords, $carrierRecords, $this->events);
-
-        $this->events->addListener(ShippingClassDeleted::class, new ForgetDeletedShippingClass($productRecords)(...));
         $this->content = new InMemoryProductContent();
         $this->contentLanguages = new FakeContentLanguages([]);
         $this->productTranslations = new ProductTranslations($this->contentLanguages, $productRecords, $this->content);
-        $this->translationRecords = new InMemoryTranslations()->add(new AttributeTranslations($productRecords), new OptionTranslations($productRecords));
+        $this->translationRecords = new InMemoryTranslations()->add(new AttributeTranslations(), new OptionTranslations(), new CarrierTranslations(), new RateTranslations(), new PaymentMethodTranslations());
         $this->languageOfRequest = new FakeLanguages();
         $this->contentTranslations = new ContentTranslations($this->translationRecords, $this->translationRecords, $this->contentLanguages, $this->languageOfRequest);
+        $this->shippingTexts = new ShippingTexts($this->contentTranslations);
+        $this->carriers = new CarrierService($carrierRecords, $geography, $this->taxGroups, $classRecords, $shippingMethodList, $this->shippingTexts, $this->transactions);
+        $this->shippingClasses = new ShippingClassService($classRecords, $carrierRecords, $this->events);
+
+        $this->events->addListener(ShippingClassDeleted::class, new ForgetDeletedShippingClass($productRecords)(...));
         $this->attributeNames = new AttributeNames($this->contentTranslations);
         $this->forms = new FormService($this->formRecords, $this->productTranslations);
         $this->products = new ProductService($productRecords, new InMemoryAttributeSetRepository($ids), $this->content, $this->taxGroups, $this->shippingClasses, $this->events, $this->productTranslations, $this->attributeTexts = new AttributeTexts($this->contentTranslations), $this->transactions);
@@ -457,7 +465,7 @@ final class TestShop
         $gateways = new Gateways($extensions);
         $this->signatures = new Signatures('test secret');
         $this->paymentUrls = $urls = new FakePaymentUrls($this->signatures);
-        $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls);
+        $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls, $this->contentTranslations, $this->transactions);
         $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock, $this->logger);
 
         $this->cartRecords = new InMemoryCartRepository($this->transactions);
@@ -497,7 +505,7 @@ final class TestShop
         $this->events->addListener(PersonErased::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)->personErased(...));
         $this->personalData = new PersonalData($this->orders, $this->customers, $this->customerNotes, $this->newsletter, $this->accounts, $this->catalog, sources: new TaggedPersonalDataSources([new AbandonedCartPersonalData($this->abandonedCartRecords), new GiftCardPersonalData($this->giftCardRecords)]));
         $this->customerGroups = new CustomerGroups($this->customerGroupRecords, $this->accounts);
-        $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger);
+        $this->shippingQuotes = $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger, $this->shippingTexts);
         $this->couponRecords = new InMemoryCouponRepository($this->transactions);
         $this->redemptions = new InMemoryRedemptionRepository();
         $this->events->addListener(OrderAnonymised::class, new ForgetErasedRedemptions($this->redemptions)->anonymised(...));
@@ -511,7 +519,7 @@ final class TestShop
         $this->events->addListener(OrderStatusChanged::class, $withGiftCards->statusChanged(...));
         $this->events->addListener(OrderPaid::class, $withGiftCards->paid(...));
         $this->events->addListener(OrderRefunded::class, $withGiftCards->refunded(...));
-        $this->paymentOptions = $paymentOptions = new PaymentOptions($methodRecords, $gateways, $settings);
+        $this->paymentOptions = $paymentOptions = new PaymentOptions($methodRecords, $gateways, $settings, new PaymentWords($this->contentTranslations));
         $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
         $this->taxServices = new TaxServices($this->taxSettings, $extensions, $this->logger, $this->failures, $taxGroupRecords, $this->taxQuotes = new MemoryTaxQuoteCache());
         $this->importSchemes = new ImportSchemes(new InMemoryImportRegistrations(), $settings, $geography);

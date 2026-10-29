@@ -42,5 +42,12 @@ final readonly class SaveCarrier
         public ?SaveDeliverySchedule $deliverySchedule = null,
         /** Goods of a class one of its rates lists go only by the rates that list it. */
         public bool $classesKeptToTheirRates = false,
+        /**
+         * The name in the site's other languages, by locale; null leaves them as they are.
+         *
+         * @var array<string, string>|null
+         */
+        #[Assert\All([new Assert\Type('string')])]
+        public ?array $translations = null,
     ) {}
 }

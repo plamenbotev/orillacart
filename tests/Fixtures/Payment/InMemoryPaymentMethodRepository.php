@@ -27,6 +27,9 @@ final class InMemoryPaymentMethodRepository implements PaymentMethodRepository
 
     public function save(PaymentMethod $method): void
     {
+        if ($method->id() === null) {
+            new \ReflectionProperty(PaymentMethod::class, 'id')->setValue($method, \count($this->methods) + 1);
+        }
         $this->methods[$method->gateway()] = $method;
     }
 }

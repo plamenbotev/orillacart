@@ -129,37 +129,6 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->getSingleColumnResult());
     }
 
-    public function attributeIdsAmong(array $ids): array
-    {
-        return $this->idsAmong(Attribute::class, $ids);
-    }
-
-    public function optionIdsAmong(array $ids): array
-    {
-        return $this->idsAmong(AttributeOption::class, $ids);
-    }
-
-    /**
-     * @param class-string $entity
-     * @param list<int>    $ids
-     *
-     * @return list<int>
-     */
-    private function idsAmong(string $entity, array $ids): array
-    {
-        if ($ids === []) {
-            return [];
-        }
-
-        return self::intList($this->entityManager->createQueryBuilder()
-            ->select('e.id')
-            ->from($entity, 'e')
-            ->where('e.id IN (:ids)')
-            ->setParameter('ids', $ids)
-            ->getQuery()
-            ->getSingleColumnResult());
-    }
-
     public function ids(int $afterId, int $limit): array
     {
         return self::intList($this->entityManager->createQueryBuilder()

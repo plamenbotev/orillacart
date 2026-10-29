@@ -57,5 +57,12 @@ final readonly class SaveShippingRate
         public array $excludedPostcodes = [],
         #[Assert\Valid]
         public ?SaveRange $items = null,
+        /**
+         * The name in the site's other languages, by locale; null leaves them as they are.
+         *
+         * @var array<string, string>|null
+         */
+        #[Assert\All([new Assert\Type('string')])]
+        public ?array $translations = null,
     ) {}
 }

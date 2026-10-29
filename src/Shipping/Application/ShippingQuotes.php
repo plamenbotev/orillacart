@@ -47,6 +47,7 @@ final readonly class ShippingQuotes
         private SettingsService $settings,
         private RateCache $cache,
         private LoggerInterface $logger,
+        private ShippingTexts $texts,
     ) {}
 
     /**
@@ -58,16 +59,17 @@ final readonly class ShippingQuotes
         $parcel = $this->parcel($query, Money::of($query->subtotal));
 
         $options = [];
-        foreach ($this->carriers->all() as $carrier) {
-            if (!$carrier->isActive()) {
-                continue;
-            }
+        $carriers = array_values(array_filter($this->carriers->all(), static fn(Carrier $carrier): bool => $carrier->isActive()));
+        // In the shopper's language; the order keeps the names it was placed with.
+        $words = $this->texts->shown($carriers);
+        foreach ($carriers as $carrier) {
             if ($carrier->isPickup()) {
                 foreach ($carrier->pickupLocations() as $location) {
+                    $location = $words->place($carrier, $location);
                     $options[] = new ShippingOptionView(
                         "pickup:{$carrier->id()}:{$location->id}",
                         $carrier->id(),
-                        $carrier->name(),
+                        $words->carrier($carrier),
                         $location->name,
                         (string) $location->fee,
                         $carrier->isMethodTaxable(),
@@ -82,7 +84,7 @@ final readonly class ShippingQuotes
                     $options[] = new ShippingOptionView(
                         "carrier:{$carrier->id()}:{$rate->code}",
                         $carrier->id(),
-                        $carrier->name(),
+                        $words->carrier($carrier),
                         $rate->name,
                         (string) Money::of($rate->price),
                         $carrier->isMethodTaxable(),
@@ -97,8 +99,8 @@ final readonly class ShippingQuotes
                     $options[] = new ShippingOptionView(
                         'rate:' . $rate->id(),
                         $carrier->id(),
-                        $carrier->name(),
-                        $rate->name(),
+                        $words->carrier($carrier),
+                        $words->rate($rate),
                         (string) $rate->priceFor($parcel),
                         $rate->details()->taxable,
                         $rate->details()->taxGroupId,

@@ -74,6 +74,8 @@ final readonly class StorefrontScripts implements Registrar
             'account' => $this->links->pages()['account'],
             'dataLayer' => $settings->dataLayer,
             'currency' => $this->shop->current()->currency,
+            // The page's language, which the shop's calls send: their URL does not carry Polylang's or WPML's.
+            'locale' => determine_locale(),
         ]) . ';', 'before');
     }
 

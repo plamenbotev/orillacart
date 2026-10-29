@@ -31,12 +31,15 @@ final readonly class CarrierView
         public array $pickupLocations = [],
         public ?SaveDeliverySchedule $deliverySchedule = null,
         public bool $classesKeptToTheirRates = false,
+        /** @var array<string, string> the name in the site's other languages, by locale */
+        public array $translations = [],
     ) {}
 
     /**
      * @param list<Setting> $fields the method's settings, to show the saved values without secrets
+     * @param CarrierTexts|null $texts its words in the site's other languages
      */
-    public static function fromCarrier(Carrier $carrier, array $fields = []): self
+    public static function fromCarrier(Carrier $carrier, array $fields = [], ?CarrierTexts $texts = null): self
     {
         [$settings, $secretsSet] = SettingValues::shown($fields, $carrier->methodSettings());
 
@@ -45,15 +48,16 @@ final readonly class CarrierView
             $carrier->name(),
             $carrier->isActive(),
             $carrier->position(),
-            array_map(ShippingRateView::fromRate(...), $carrier->rates()),
+            array_map(static fn($rate): ShippingRateView => ShippingRateView::fromRate($rate, $texts->rates[$rate->id()] ?? []), $carrier->rates()),
             $carrier->method(),
             $settings,
             $secretsSet,
             $carrier->isMethodTaxable(),
             $carrier->methodTaxGroupId(),
-            array_map(PickupLocationView::fromLocation(...), $carrier->pickupLocations()),
+            array_map(static fn($location): PickupLocationView => PickupLocationView::fromLocation($location, $texts->pickup[$location->id] ?? []), $carrier->pickupLocations()),
             $carrier->deliverySchedule() === null ? null : SaveDeliverySchedule::fromSchedule($carrier->deliverySchedule()),
             $carrier->keepsClassesToTheirRates(),
+            $texts->name ?? [],
         );
     }
 }

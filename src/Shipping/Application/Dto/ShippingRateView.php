@@ -35,9 +35,14 @@ final readonly class ShippingRateView
         public array $excludedRegions,
         public array $excludedPostcodes,
         public ?RangeView $items,
+        /** @var array<string, string> the name in the site's other languages, by locale */
+        public array $translations = [],
     ) {}
 
-    public static function fromRate(ShippingRate $rate): self
+    /**
+     * @param array<string, string> $translations
+     */
+    public static function fromRate(ShippingRate $rate, array $translations = []): self
     {
         $details = $rate->details();
 
@@ -60,6 +65,7 @@ final readonly class ShippingRateView
             array_map(strval(...), $details->excludedRegions),
             array_map(strval(...), $details->excludedPostcodes),
             RangeView::fromRange($details->items),
+            $translations,
         );
     }
 }

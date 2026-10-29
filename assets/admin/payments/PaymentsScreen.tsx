@@ -21,9 +21,11 @@ import {
 	fetchPaymentMethods,
 	type PaymentMethod,
 	type PaymentMethodInput,
+	type PaymentTranslations,
 	savePaymentMethod,
 } from './api';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
+import { TranslationFields, useOtherLanguages } from '../shared/Translations';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -103,6 +105,7 @@ const inputOf = ( method: PaymentMethod ): PaymentMethodInput => ( {
 	fee: method.fee,
 	fee_percent: method.fee_percent,
 	fee_label: method.fee_label,
+	...( method.translations && { translations: method.translations } ),
 } );
 
 function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
@@ -110,6 +113,25 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 		inputOf( method )
 	);
 	useUnsavedChanges( differs( draft, inputOf( method ) ) );
+	const languages = useOtherLanguages();
+	const translate = (
+		field: keyof PaymentTranslations,
+		label: string,
+		multiline = false
+	) => (
+		<TranslationFields
+			label={ label }
+			languages={ languages }
+			multiline={ multiline }
+			value={ draft.translations?.[ field ] }
+			onChange={ ( text ) =>
+				setDraft( {
+					...draft,
+					translations: { ...draft.translations, [ field ]: text },
+				} )
+			}
+		/>
+	);
 	const [ countries, setCountries ] = useState(
 		method.countries.join( ', ' )
 	);
@@ -165,6 +187,10 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 									setDraft( { ...draft, name } )
 								}
 							/>
+							{ translate(
+								'name',
+								__( 'Name at checkout', 'orillacart' )
+							) }
 						</FlexItem>
 						<FlexItem>
 							<TextControl
@@ -220,6 +246,11 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 							setDraft( { ...draft, instructions } )
 						}
 					/>
+					{ translate(
+						'instructions',
+						__( 'Instructions at checkout', 'orillacart' ),
+						true
+					) }
 					<TextareaControl
 						label={ __( 'Note on the receipt', 'orillacart' ) }
 						help={ __(
@@ -231,6 +262,11 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 							setDraft( { ...draft, receipt_note: receiptNote } )
 						}
 					/>
+					{ translate(
+						'receipt_note',
+						__( 'Note on the receipt', 'orillacart' ),
+						true
+					) }
 					<fieldset className="orillacart-fee">
 						<legend>{ __( 'Fee', 'orillacart' ) }</legend>
 						<p className="description">
@@ -267,6 +303,10 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 								setDraft( { ...draft, fee_label: label } )
 							}
 						/>
+						{ translate(
+							'fee_label',
+							__( 'Name in the totals', 'orillacart' )
+						) }
 					</fieldset>
 					<SettingFields
 						fields={ method.fields }

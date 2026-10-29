@@ -12,6 +12,7 @@ use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Shipping\Application\CarrierService;
 use OrillaCart\Shipping\Application\Dto\RangeView;
+use OrillaCart\Translations\Application\ContentTranslations;
 
 /**
  * Shipping and payment as the shop has them now: each way to ship, where it goes and what it costs (by weight,
@@ -26,6 +27,7 @@ final readonly class ShippingPaymentBlock implements BlockDefinition
         private GeographyService $geography,
         private SettingsService $settings,
         private TemplateRenderer $templates,
+        private ContentTranslations $translations,
     ) {}
 
     public static function name(): string
@@ -41,16 +43,18 @@ final readonly class ShippingPaymentBlock implements BlockDefinition
         }
         $place = static fn(string $region): string => $names[explode('-', $region)[0]] ?? $region;
         $shop = $this->settings->current();
+        // The shop's words in the page's language, where the shop translated them.
+        $locale = $this->translations->shownLocale();
         $carriers = [];
         foreach ($this->carriers->carriers() as $carrier) {
             if (!$carrier->active) {
                 continue;
             }
             $carriers[] = [
-                'name' => $carrier->name,
+                'name' => self::in($locale, $carrier->translations, $carrier->name),
                 'by_courier' => $carrier->method !== null,
                 'rates' => array_map(static fn($rate): array => [
-                    'name' => $rate->name,
+                    'name' => self::in($locale, $rate->translations, $rate->name),
                     'price' => $rate->price,
                     'per_item' => $rate->perItem,
                     'to' => array_map($place, $rate->regions),
@@ -58,13 +62,13 @@ final readonly class ShippingPaymentBlock implements BlockDefinition
                     'weight' => self::range($rate->weight),
                     'subtotal' => self::range($rate->subtotal),
                 ], $carrier->rates),
-                'pickup' => array_map(static fn($place): array => ['name' => $place->name, 'address' => $place->address, 'hours' => $place->hours, 'fee' => $place->fee], $carrier->pickupLocations),
+                'pickup' => array_map(static fn($place): array => ['name' => self::in($locale, $place->translations['name'] ?? [], $place->name), 'address' => self::in($locale, $place->translations['address'] ?? [], $place->address), 'hours' => self::in($locale, $place->translations['hours'] ?? [], $place->hours), 'fee' => $place->fee], $carrier->pickupLocations),
             ];
         }
         $payments = [];
         foreach ($this->payments->methods() as $method) {
             if ($method->active) {
-                $payments[] = ['name' => $method->name, 'fee' => $method->fee, 'fee_percent' => $method->feePercent, 'to' => array_map($place, $method->countries)];
+                $payments[] = ['name' => self::in($locale, $method->translations['name'] ?? [], $method->name), 'fee' => $method->fee, 'fee_percent' => $method->feePercent, 'to' => array_map($place, $method->countries)];
             }
         }
 
@@ -74,6 +78,14 @@ final readonly class ShippingPaymentBlock implements BlockDefinition
             'currency' => $shop->currency,
             'weight_unit' => $shop->weightUnit,
         ]);
+    }
+
+    /**
+     * @param array<string, string> $translations by locale
+     */
+    private static function in(?string $locale, array $translations, string $own): string
+    {
+        return $locale === null ? $own : ($translations[$locale] ?? $own);
     }
 
     /** @return array{min: ?string, max: ?string}|null null for a range that holds everything */

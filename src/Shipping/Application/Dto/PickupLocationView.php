@@ -14,10 +14,15 @@ final readonly class PickupLocationView
         public string $address,
         public string $hours,
         public string $fee,
+        /** @var array<string, array<string, string>> its name, address and hours in the site's other languages, by field and locale */
+        public array $translations = [],
     ) {}
 
-    public static function fromLocation(PickupLocation $location): self
+    /**
+     * @param array<string, array<string, string>> $translations
+     */
+    public static function fromLocation(PickupLocation $location, array $translations = []): self
     {
-        return new self($location->id, $location->name, $location->address, $location->hours, (string) $location->fee);
+        return new self($location->id, $location->name, $location->address, $location->hours, (string) $location->fee, $translations);
     }
 }

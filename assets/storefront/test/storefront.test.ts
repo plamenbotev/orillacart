@@ -131,6 +131,19 @@ describe( 'api', () => {
 		expect( header( calls[ 0 ], 'X-WP-Nonce' ) ).toBeUndefined();
 	} );
 
+	it( 'tells the shop the page’s language with every call', async () => {
+		window.orillacartStorefront = {
+			api: '/api',
+			nonce: null,
+			locale: 'de_DE',
+		};
+		const calls = serve( [ [ 200, { items: 0 } ] ] );
+
+		await api( 'GET', '/cart' );
+
+		expect( header( calls[ 0 ], 'X-OrillaCart-Locale' ) ).toBe( 'de_DE' );
+	} );
+
 	it( 'returns the problems the server found', async () => {
 		serve( [
 			[ 200, { nonce: 'n' } ],

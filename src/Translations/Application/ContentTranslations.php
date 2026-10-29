@@ -17,6 +17,9 @@ use OrillaCart\Translations\Domain\TranslationRuleViolation;
  */
 final readonly class ContentTranslations
 {
+    /** What an item's key in a field may be: lowercase letters, digits and dashes. */
+    private const string KEY = '[a-z0-9][a-z0-9-]{0,39}';
+
     public function __construct(
         private TranslationRepository $translations,
         private TranslatableTypes $types,
@@ -51,6 +54,20 @@ final readonly class ContentTranslations
         $locale = $this->shownLocale($locale);
 
         return $locale === null || $ids === [] ? [] : $this->translations->values($type, array_values(array_unique($ids)), $field, $locale);
+    }
+
+    /**
+     * Every field of each object in the language shown, as translated(); for objects with several fields.
+     *
+     * @param list<int> $ids
+     *
+     * @return array<int, array<string, string>> by object id and field
+     */
+    public function shown(string $type, array $ids, ?string $locale = null): array
+    {
+        $locale = $this->shownLocale($locale);
+
+        return $locale === null || $ids === [] ? [] : $this->translations->inLocale($type, array_values(array_unique($ids)), $locale);
     }
 
     /**
@@ -98,7 +115,7 @@ final readonly class ContentTranslations
         $locales = array_map(static fn(ContentLanguageView $language): string => $language->locale, array_filter($this->languages(), static fn(ContentLanguageView $language): bool => !$language->default));
         $checked = [];
         foreach ($fields as $field => $values) {
-            $max = $translatable->fields()[$field] ?? throw new TranslationRuleViolation('A %1$s has no field "%2$s" to translate.', 'orillacart_translation_field', values: [$type, $field]);
+            $max = self::longest($translatable, $field) ?? throw new TranslationRuleViolation('A %1$s has no field "%2$s" to translate.', 'orillacart_translation_field', values: [$type, $field]);
             foreach ($values as $locale => $value) {
                 if (!\in_array($locale, $locales, true)) {
                     throw new TranslationRuleViolation('The site does not translate into %s.', 'orillacart_translation_language', values: [$locale]);
@@ -132,6 +149,18 @@ final readonly class ContentTranslations
     public function forget(string $type, array $ids): void
     {
         $this->translations->forget($type, $ids);
+    }
+
+    /** The field's longest value, also for a field of a listed item ("pickup.{key}.name"); null for none. */
+    private static function longest(TranslatableType $type, string $field): ?int
+    {
+        foreach ($type->fields() as $name => $max) {
+            if ($name === $field || (str_contains($name, '{key}') && preg_match('/^' . str_replace('\\{key\\}', self::KEY, preg_quote($name, '/')) . '$/', $field) === 1)) {
+                return $max;
+            }
+        }
+
+        return null;
     }
 
     private function type(string $type): TranslatableType

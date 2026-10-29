@@ -31,9 +31,11 @@ final class TranslationsTest extends RestTestCase
 
         self::assertSame([901 => 'Farbe', 902 => 'Größe'], $this->translations->values('attribute', [901, 902, 903], 'name', 'de_DE'));
         self::assertSame([], $this->translations->values('attribute_option', [901], 'name', 'de_DE'), 'another type\'s 901');
+        $this->translations->replace('attribute', 901, ['pickup.shop.hours' => ['de_DE' => 'Mo–Fr']]);
+        self::assertSame([901 => ['name' => 'Farbe', 'pickup.shop.hours' => 'Mo–Fr'], 902 => ['name' => 'Größe']], $this->translations->inLocale('attribute', [901, 902], 'de_DE'), 'every field in one language');
 
         // A field sent replaces its languages: French goes, an empty value removes German.
-        $this->translations->replace('attribute', 901, ['name' => ['de_DE' => 'Farbton', 'it_IT' => '']]);
+        $this->translations->replace('attribute', 901, ['name' => ['de_DE' => 'Farbton', 'it_IT' => ''], 'pickup.shop.hours' => []]);
         self::assertSame([901 => ['name' => ['de_DE' => 'Farbton']], 902 => ['name' => ['de_DE' => 'Größe']]], $this->translations->all('attribute', [901, 902]));
 
         $this->translations->forget('attribute', [901]);

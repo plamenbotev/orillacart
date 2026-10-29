@@ -32,6 +32,24 @@ final readonly class DbalTranslationRepository implements TranslationRepository
         return $values;
     }
 
+    public function inLocale(string $type, array $ids, string $locale): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+        $rows = $this->connection()->fetchAllAssociative(
+            "SELECT object_id, field, value FROM {$this->table()} WHERE object_type = ? AND locale = ? AND object_id IN (?)",
+            [$type, $locale, $ids],
+            [2 => ArrayParameterType::INTEGER],
+        );
+        $values = [];
+        foreach ($rows as $row) {
+            $values[self::int($row['object_id'])][self::text($row['field'])] = self::text($row['value']);
+        }
+
+        return $values;
+    }
+
     public function all(string $type, array $ids): array
     {
         if ($ids === []) {

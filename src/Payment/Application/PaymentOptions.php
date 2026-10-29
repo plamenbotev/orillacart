@@ -23,6 +23,7 @@ final readonly class PaymentOptions
         private PaymentMethodRepository $methods,
         private Gateways $gateways,
         private SettingsService $shop,
+        private PaymentWords $words,
     ) {}
 
     /**
@@ -32,14 +33,11 @@ final readonly class PaymentOptions
      */
     public function available(?string $country, string $currency): array
     {
-        $options = [];
-        foreach ($this->methods->all() as $method) {
-            if ($this->offers($method, $country, $currency)) {
-                $options[] = new PaymentOptionView($method->gateway(), $method->name(), $method->instructions());
-            }
-        }
+        $offered = array_values(array_filter($this->methods->all(), fn(PaymentMethod $method): bool => $this->offers($method, $country, $currency)));
+        // In the shopper's language; the order keeps the name and note it was placed with.
+        $words = $this->words->of($offered);
 
-        return $options;
+        return array_map(static fn(PaymentMethod $method): PaymentOptionView => new PaymentOptionView($method->gateway(), $words[$method->gateway()]['name'], $words[$method->gateway()]['instructions']), $offered);
     }
 
     public function isAvailable(string $gateway, ?string $country, string $currency): bool
@@ -52,7 +50,9 @@ final readonly class PaymentOptions
     /** What the customer reads after ordering with the method, such as bank details; empty for none. */
     public function receiptNote(string $gateway): string
     {
-        return $this->methods->findByGateway($gateway)?->receiptNote() ?? '';
+        $method = $this->methods->findByGateway($gateway);
+
+        return $method === null ? '' : $this->words->one($method)['receipt_note'];
     }
 
     /** The fee for paying with the method; null when it has none. */
@@ -63,12 +63,14 @@ final readonly class PaymentOptions
             return null;
         }
 
-        return new PaymentFeeView($method->feeLabel(), (string) $method->fee(), $method->feePercent());
+        return new PaymentFeeView($this->words->one($method)['fee_label'], (string) $method->fee(), $method->feePercent());
     }
 
     public function name(string $gateway): string
     {
-        return $this->methods->findByGateway($gateway)?->name() ?? $this->gateways->get($gateway)->defaultName();
+        $method = $this->methods->findByGateway($gateway);
+
+        return $method === null ? $this->gateways->get($gateway)->defaultName() : $this->words->one($method)['name'];
     }
 
     /**

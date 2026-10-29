@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Platform\WordPress\Rest;
 
 use OrillaCart\Integrations\Application\OAuthEndpoints;
+use OrillaCart\Platform\WordPress\Languages\RequestLanguage;
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
@@ -30,6 +31,7 @@ final readonly class RestRouteRegistrar implements Registrar
         #[AutowireServiceClosure(RestBridge::class)]
         private \Closure $bridge,
         private OAuthEndpoints $oauth,
+        private RequestLanguage $language,
     ) {}
 
     public function register(): void
@@ -79,7 +81,11 @@ final readonly class RestRouteRegistrar implements Registrar
     {
         return [
             'methods' => implode(', ', $route->methods),
-            'callback' => fn(\WP_REST_Request $request): \WP_REST_Response => ($this->bridge)()->handle($route, $request),
+            // In the language of the storefront page that called, which the request's URL does not carry.
+            'callback' => fn(\WP_REST_Request $request): \WP_REST_Response => $this->language->around(
+                $request->get_header(RequestLanguage::HEADER),
+                fn(): \WP_REST_Response => ($this->bridge)()->handle($route, $request),
+            ),
             'permission_callback' => fn(): true|\WP_Error => $this->permission($route),
         ];
     }

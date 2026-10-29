@@ -5,6 +5,7 @@ import apiFetch from '@wordpress/api-fetch';
 
 import { ShippingScreen } from '../ShippingScreen';
 import { lastWrite } from '../../shared/testing';
+import { forgetContentLanguages } from '../../shared/Translations';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -49,9 +50,13 @@ const courier = {
 
 type Request = { path: string; method?: string; data?: unknown };
 
-function serve() {
+function serve( languages: unknown[] = [] ) {
+	forgetContentLanguages();
 	mockedFetch.mockImplementation( ( options ) => {
 		const request = options as Request;
+		if ( request.path.endsWith( '/content-languages' ) ) {
+			return Promise.resolve( languages );
+		}
 		if ( request.path.endsWith( '/shipping-methods' ) ) {
 			return Promise.resolve( [
 				{
@@ -143,6 +148,38 @@ describe( 'ShippingScreen', () => {
 			excluded_regions: [ 'US-HI' ],
 		} );
 		// It types into many fields of a long form: more than Jest's default 5 seconds on a busy machine.
+	}, 15000 );
+
+	it( 'saves the carrier’s and its rates’ names in the site’s other languages', async () => {
+		serve( [
+			{ code: 'en', locale: 'en_US', name: 'English', default: true },
+			{ code: 'de', locale: 'de_DE', name: 'Deutsch', default: false },
+		] );
+		const user = userEvent.setup();
+		render( <ShippingScreen /> );
+
+		await screen.findByRole( 'heading', { name: 'Courier' } );
+		const name = (
+			await screen.findAllByLabelText( 'Name in Deutsch' )
+		)[ 0 ];
+		await user.type( name as HTMLElement, 'Kurier' );
+		await user.type(
+			screen.getAllByLabelText(
+				'Rate name in Deutsch'
+			)[ 0 ] as HTMLElement,
+			'Bulgarien'
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save Courier' } )
+		);
+
+		expect(
+			await screen.findByText( 'Carrier saved.', NOTICE )
+		).toBeVisible();
+		expect( lastWrite( mockedFetch )?.data ).toMatchObject( {
+			translations: { de_DE: 'Kurier' },
+			rates: [ { id: 7, translations: { de_DE: 'Bulgarien' } } ],
+		} );
 	}, 15000 );
 
 	it( 'prices a carrier with an add-on’s shipping method', async () => {

@@ -39,5 +39,7 @@ final readonly class PaymentMethodView
         public string $feeLabel = '',
         /** Whether its settings can be tried at the provider: the "Test" button. */
         public bool $testable = false,
+        /** @var array<string, array<string, string>> its words in the site's other languages, by field and locale */
+        public array $translations = [],
     ) {}
 }

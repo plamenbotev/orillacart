@@ -39,6 +39,11 @@ import { DeliveryScheduleFields } from './DeliveryScheduleFields';
 import { ShippingClassesCard } from './ShippingClassesCard';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import { MoneyControl } from '../shared/MoneyControl';
+import {
+	TranslationFields,
+	useOtherLanguages,
+	type ContentLanguage,
+} from '../shared/Translations';
 
 type ListField =
 	'regions' | 'postcodes' | 'excluded_regions' | 'excluded_postcodes';
@@ -270,6 +275,7 @@ function CarrierCard( {
 	);
 	useUnsavedChanges( differs( draft, carrier ?? NEW_CARRIER ) );
 	const method = methods.find( ( found ) => found.id === draft.method );
+	const languages = useOtherLanguages();
 	const [ confirming, setConfirming ] = useState( false );
 	// The shop's own pickup: places to collect orders, no rates and no method.
 	const [ pickup, setPickup ] = useState(
@@ -299,6 +305,7 @@ function CarrierCard( {
 			pickup_locations: pickup ? draft.pickup_locations : [],
 			delivery_schedule: draft.delivery_schedule,
 			classes_kept_to_their_rates: draft.classes_kept_to_their_rates,
+			...( draft.translations && { translations: draft.translations } ),
 		} )
 			.then( ( saved ) => {
 				setDraft( saved );
@@ -364,6 +371,14 @@ function CarrierCard( {
 								value={ draft.name }
 								onChange={ ( name ) =>
 									setDraft( { ...draft, name } )
+								}
+							/>
+							<TranslationFields
+								label={ __( 'Name', 'orillacart' ) }
+								languages={ languages }
+								value={ draft.translations }
+								onChange={ ( translations ) =>
+									setDraft( { ...draft, translations } )
 								}
 							/>
 						</FlexItem>
@@ -452,12 +467,38 @@ function CarrierCard( {
 										setPlace( index, { name } )
 									}
 								/>
+								<TranslationFields
+									label={ __( 'Place name', 'orillacart' ) }
+									languages={ languages }
+									value={ place.translations?.name }
+									onChange={ ( text ) =>
+										setPlace( index, {
+											translations: {
+												...place.translations,
+												name: text,
+											},
+										} )
+									}
+								/>
 								<TextControl
 									__next40pxDefaultSize
 									label={ __( 'Address', 'orillacart' ) }
 									value={ place.address }
 									onChange={ ( address ) =>
 										setPlace( index, { address } )
+									}
+								/>
+								<TranslationFields
+									label={ __( 'Address', 'orillacart' ) }
+									languages={ languages }
+									value={ place.translations?.address }
+									onChange={ ( text ) =>
+										setPlace( index, {
+											translations: {
+												...place.translations,
+												address: text,
+											},
+										} )
 									}
 								/>
 								<TextControl
@@ -473,6 +514,22 @@ function CarrierCard( {
 									value={ place.hours }
 									onChange={ ( hours ) =>
 										setPlace( index, { hours } )
+									}
+								/>
+								<TranslationFields
+									label={ __(
+										'Opening hours',
+										'orillacart'
+									) }
+									languages={ languages }
+									value={ place.translations?.hours }
+									onChange={ ( text ) =>
+										setPlace( index, {
+											translations: {
+												...place.translations,
+												hours: text,
+											},
+										} )
 									}
 								/>
 								<TextControl
@@ -639,6 +696,7 @@ function CarrierCard( {
 								rate={ rate }
 								groups={ groups }
 								classes={ classes }
+								languages={ languages }
 								others={
 									draft.classes_kept_to_their_rates
 										? []
@@ -699,6 +757,8 @@ interface RateFieldsProps {
 	classes: ShippingClass[];
 	/** The carrier's other rates: a class one of them is for goes by this rate too while it carries every item. */
 	others: ShippingRateInput[];
+	/** The site's other languages, for the name's translations. */
+	languages: ContentLanguage[];
 	onChange: ( rate: ShippingRateInput ) => void;
 	onRemove: () => void;
 }
@@ -708,6 +768,7 @@ function RateFields( {
 	groups,
 	classes,
 	others,
+	languages,
 	onChange,
 	onRemove,
 }: RateFieldsProps ) {
@@ -779,6 +840,14 @@ function RateFields( {
 						label={ __( 'Rate name', 'orillacart' ) }
 						value={ rate.name }
 						onChange={ ( name ) => onChange( { ...rate, name } ) }
+					/>
+					<TranslationFields
+						label={ __( 'Rate name', 'orillacart' ) }
+						languages={ languages }
+						value={ rate.translations }
+						onChange={ ( translations ) =>
+							onChange( { ...rate, translations } )
+						}
 					/>
 				</FlexItem>
 				<FlexItem>
