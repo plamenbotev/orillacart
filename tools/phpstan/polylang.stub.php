@@ -26,3 +26,12 @@ function pll_get_post_translations(int $postId): array {}
  * @return array<string, int>
  */
 function pll_get_term_translations(int $termId): array {}
+
+function pll_set_post_language(int $postId, string $language): bool {}
+
+/**
+ * @param array<string, int> $translations post id by language slug
+ *
+ * @return array<string, int>
+ */
+function pll_save_post_translations(array $translations): array {}

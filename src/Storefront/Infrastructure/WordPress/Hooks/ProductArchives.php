@@ -9,6 +9,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Domain\ShopPagesRepository;
+use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 
 /**
  * The pages of a product category, tag or brand show its products as the shop does, not as a blog's list of
@@ -27,7 +28,10 @@ final readonly class ProductArchives
     public const string CONTENT = 'orillacart_product_archive';
     private const array TAXONOMIES = [ProductCategoryTaxonomy::NAME, ProductTagTaxonomy::NAME, ProductBrandTaxonomy::NAME];
 
-    public function __construct(private ShopPagesRepository $pages) {}
+    public function __construct(
+        private ShopPagesRepository $pages,
+        private ShopLinks $links,
+    ) {}
 
     public function templates(): void
     {
@@ -87,8 +91,9 @@ final readonly class ProductArchives
      */
     private function listing(): string
     {
+        // The shop page in the listing's language, its blocks laid out as that one has them.
         $id = $this->pages->load()->shop;
-        $page = $id === null ? null : get_post($id);
+        $page = $id === null ? null : get_post($this->links->pageInLanguage($id));
         if (!$page instanceof \WP_Post || $page->post_status !== 'publish' || !has_block('orillacart/products', $page)) {
             return '<!-- wp:orillacart/products {"align":"wide"} /-->';
         }

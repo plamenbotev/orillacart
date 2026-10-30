@@ -71,6 +71,14 @@ shipping and payment titles, forms, filters and email templates in each language
   language; the filters chosen for a category hold in every language, one choice for the category and its
   translations; the admin's product pickers (`GET /product-choices`) find a product by its name in any language
   and offer it once, by its own id, named in the admin's.
+- The shop's pages in every language (PLAN 226): a shop or legal page made before Polylang or WPML gets the
+  default language, and each language without a version of it gets one, linked to it (ShopPageLanguages, on
+  activation and update, and in the admin when the languages or the chosen pages change). The shop's own pages,
+  only the shop's blocks under the shop's title, are published under the title in that language; a page with the
+  owner's words is a draft of them to translate, which links pass by until it is published. Every version of the
+  cart, checkout and account is kept from caches and search engines; the legal pages' links, the withdrawal link,
+  the breadcrumbs, the category listings' layout and the confirmation email's legal texts use the version in the
+  shopper's language.
 
 ## Built in step 2 (attributes first)
 

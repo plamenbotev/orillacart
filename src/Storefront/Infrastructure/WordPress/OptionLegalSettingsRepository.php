@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
+use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use OrillaCart\Storefront\Domain\LegalSettings;
@@ -14,6 +15,8 @@ use OrillaCart\Storefront\Domain\StorefrontRuleViolation;
 final readonly class OptionLegalSettingsRepository implements LegalSettingsRepository, LifecycleListener, RemovesShopData
 {
     public const string OPTION = 'orillacart_legal';
+
+    public function __construct(private ContentLanguages $languages) {}
 
     public function load(): LegalSettings
     {
@@ -65,11 +68,17 @@ final readonly class OptionLegalSettingsRepository implements LegalSettingsRepos
         return $id;
     }
 
+    /** The page's text in the current language (an email's, the request's), where its version in it is published. */
     public function published(int $id): ?array
     {
         $page = get_post($id);
         if (!$page instanceof \WP_Post || $page->post_type !== 'page' || $page->post_status !== 'publish') {
             return null;
+        }
+        $language = $this->languages->current();
+        $translation = $language === null ? null : get_post($this->languages->postTranslations($id)[$language->code] ?? 0);
+        if ($translation instanceof \WP_Post && $translation->post_status === 'publish') {
+            $page = $translation;
         }
 
         return ['title' => get_the_title($page), 'html' => wp_kses_post(do_blocks($page->post_content))];

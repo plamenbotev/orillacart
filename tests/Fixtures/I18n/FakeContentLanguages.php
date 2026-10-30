@@ -58,6 +58,22 @@ final class FakeContentLanguages implements ContentLanguages
         return null;
     }
 
+    public function setPostLanguage(int $postId, Language $language): void
+    {
+        if ($this->postTranslations($postId) === []) {
+            $this->groups[] = [$language->code => $postId];
+        }
+    }
+
+    public function addPostTranslation(int $postId, int $translationId, Language $language): void
+    {
+        foreach ($this->groups as $i => $group) {
+            if (\in_array($postId, $group, true)) {
+                $this->groups[$i][$language->code] = $translationId;
+            }
+        }
+    }
+
     public function homeUrl(Language $language): string
     {
         return "https://shop.test/{$language->code}/";

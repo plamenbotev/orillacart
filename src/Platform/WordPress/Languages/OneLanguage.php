@@ -47,6 +47,10 @@ final readonly class OneLanguage implements ContentLanguages
         return [];
     }
 
+    public function setPostLanguage(int $postId, Language $language): void {}
+
+    public function addPostTranslation(int $postId, int $translationId, Language $language): void {}
+
     public function homeUrl(Language $language): string
     {
         return home_url('/');

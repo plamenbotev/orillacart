@@ -69,6 +69,17 @@ final class PolylangLanguages implements ContentLanguages
         return self::ids(pll_get_post_translations($postId));
     }
 
+    public function setPostLanguage(int $postId, Language $language): void
+    {
+        pll_set_post_language($postId, $language->code);
+    }
+
+    public function addPostTranslation(int $postId, int $translationId, Language $language): void
+    {
+        pll_set_post_language($translationId, $language->code);
+        pll_save_post_translations([...$this->postTranslations($postId), $language->code => $translationId]);
+    }
+
     public function homeUrl(Language $language): string
     {
         $url = \function_exists('pll_home_url') ? pll_home_url($language->code) : null;

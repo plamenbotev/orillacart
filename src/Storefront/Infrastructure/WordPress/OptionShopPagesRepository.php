@@ -94,9 +94,15 @@ final readonly class OptionShopPagesRepository implements ShopPagesRepository, L
         if ($id instanceof \WP_Error) {
             throw new \RuntimeException('The shop page could not be made: ' . $id->get_error_message());
         }
-        $made = get_option(self::MADE_OPTION);
-        update_option(self::MADE_OPTION, [...array_values(array_filter(\is_array($made) ? $made : [], \is_int(...))), $id], false);
+        $this->made($id);
 
         return $id;
+    }
+
+    /** A page the plugin made, which uninstalling removes: one of the four, or its version in a language. */
+    public function made(int $id): void
+    {
+        $made = get_option(self::MADE_OPTION);
+        update_option(self::MADE_OPTION, [...array_values(array_filter(\is_array($made) ? $made : [], \is_int(...))), $id], false);
     }
 }

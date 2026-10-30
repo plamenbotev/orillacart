@@ -37,6 +37,12 @@ interface ContentLanguages
      */
     public function postTranslations(int $postId): array;
 
+    /** Gives a post without a language one, as pages made before Polylang or WPML need. */
+    public function setPostLanguage(int $postId, Language $language): void;
+
+    /** Makes the post's translation in the language, a post with no language yet, one of its translations. */
+    public function addPostTranslation(int $postId, int $translationId, Language $language): void;
+
     /** The site's front page in the language, as its links go: Polylang's /de/, WPML's per its setting. */
     public function homeUrl(Language $language): string;
 

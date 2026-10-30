@@ -11,6 +11,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Domain\ShopPagesRepository;
+use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 
 /**
  * The way to the page through the shop: Home › Shop › the categories above › the category or the product. A
@@ -19,7 +20,10 @@ use OrillaCart\Storefront\Domain\ShopPagesRepository;
  */
 final readonly class BreadcrumbsBlock implements BlockDefinition
 {
-    public function __construct(private ShopPagesRepository $pages) {}
+    public function __construct(
+        private ShopPagesRepository $pages,
+        private ShopLinks $links,
+    ) {}
 
     public static function name(): string
     {
@@ -63,6 +67,7 @@ final readonly class BreadcrumbsBlock implements BlockDefinition
     private function trail(BlockContext $context): array
     {
         $shopId = $this->pages->load()->shop;
+        $shopId = $shopId === null ? null : $this->links->pageInLanguage($shopId);
         $shop = $shopId !== null && get_post_status($shopId) === 'publish' ? [[get_the_title($shopId), (string) get_permalink($shopId)]] : [];
         $productId = $context->postId !== null && get_post_type($context->postId) === ProductPostType::NAME
             ? $context->postId

@@ -147,11 +147,8 @@ final readonly class CheckoutBlock implements BlockDefinition
     private function legal(): array
     {
         $legal = $this->legal->current();
-        $url = static function (?int $id): ?string {
-            $link = $id !== null && get_post_status($id) === 'publish' ? get_permalink($id) : false;
-
-            return \is_string($link) && $link !== '' ? $link : null;
-        };
+        // In the shopper's language where the page has a published version in it.
+        $url = fn(?int $id): ?string => $id !== null && get_post_status($id) === 'publish' ? $this->links->pageUrl($id) : null;
 
         return [
             'accept_terms' => $legal->acceptTerms,

@@ -79,6 +79,16 @@ final class WordPressContentLanguages implements ContentLanguages
         return $this->plugin()->postTranslations($postId);
     }
 
+    public function setPostLanguage(int $postId, Language $language): void
+    {
+        $this->plugin()->setPostLanguage($postId, $language);
+    }
+
+    public function addPostTranslation(int $postId, int $translationId, Language $language): void
+    {
+        $this->plugin()->addPostTranslation($postId, $translationId, $language);
+    }
+
     public function homeUrl(Language $language): string
     {
         return $this->plugin()->homeUrl($language);

@@ -40,7 +40,7 @@ final readonly class ShopLinks
     }
 
     /**
-     * The page ids, for telling whether a request shows one of them.
+     * The page ids, their versions in each language among them, for telling whether a request shows one of them.
      *
      * @return list<int>
      */
@@ -48,7 +48,7 @@ final readonly class ShopLinks
     {
         $pages = $this->pages->pages();
 
-        return array_values(array_filter([$pages->shop, $pages->cart, $pages->checkout, $pages->account], static fn(?int $id): bool => $id !== null));
+        return array_values(array_unique(array_merge(...array_map($this->versions(...), array_values(array_filter([$pages->shop, $pages->cart, $pages->checkout, $pages->account], static fn(?int $id): bool => $id !== null))))));
     }
 
     public function isPage(string $part): bool
@@ -62,7 +62,7 @@ final readonly class ShopLinks
             default => null,
         };
 
-        return $id !== null && is_page($id);
+        return $id !== null && is_page($this->versions($id));
     }
 
     /**
@@ -92,11 +92,27 @@ final readonly class ShopLinks
         return $this->url($id);
     }
 
+    /** The page's version in the request's language, when it has a published one; else the page. */
+    public function pageInLanguage(int $id): int
+    {
+        return $this->inLanguage($id);
+    }
+
     private function url(?int $id): ?string
     {
         $link = $id === null ? false : get_permalink($this->inLanguage($id));
 
         return \is_string($link) ? $link : null;
+    }
+
+    /**
+     * The page and its translations.
+     *
+     * @return non-empty-list<int>
+     */
+    private function versions(int $id): array
+    {
+        return array_values(array_unique([$id, ...array_values($this->languages->postTranslations($id))]));
     }
 
     /** A shop page's translation in the request's language, when it has a published one. */

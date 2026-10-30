@@ -9,7 +9,8 @@ use OrillaCart\Shared\I18n\Language;
 
 /**
  * WPML's languages, through its documented filters (wpml_active_languages, wpml_default_language,
- * wpml_current_language, wpml_element_language_code, wpml_object_id).
+ * wpml_current_language, wpml_element_language_code, wpml_object_id, wpml_element_trid) and actions
+ * (wpml_set_element_language_details).
  */
 final class WpmlLanguages implements ContentLanguages
 {
@@ -77,6 +78,30 @@ final class WpmlLanguages implements ContentLanguages
         $type = get_post_type($postId);
 
         return $type === false || $this->ofPost($postId) === null ? [] : $this->translations($postId, $type);
+    }
+
+    public function setPostLanguage(int $postId, Language $language): void
+    {
+        $type = get_post_type($postId);
+        if ($type !== false) {
+            do_action('wpml_set_element_language_details', ['element_id' => $postId, 'element_type' => 'post_' . $type, 'trid' => false, 'language_code' => $language->code, 'source_language_code' => null]);
+        }
+    }
+
+    public function addPostTranslation(int $postId, int $translationId, Language $language): void
+    {
+        $type = get_post_type($postId);
+        $trid = $type === false ? null : apply_filters('wpml_element_trid', null, $postId, 'post_' . $type);
+        if (!is_numeric($trid) || (int) $trid <= 0) {
+            return;
+        }
+        do_action('wpml_set_element_language_details', [
+            'element_id' => $translationId,
+            'element_type' => 'post_' . $type,
+            'trid' => (int) $trid,
+            'language_code' => $language->code,
+            'source_language_code' => $this->ofPost($postId),
+        ]);
     }
 
     public function homeUrl(Language $language): string

@@ -6,6 +6,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Application\LegalSettingsService;
+use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 
 /**
  * "Withdraw from contract here" at the foot of every page, set apart from the rest of the footer, while the
@@ -15,12 +16,20 @@ use OrillaCart\Storefront\Application\LegalSettingsService;
 #[AsHook('wp_footer')]
 final readonly class WithdrawalLink
 {
-    public function __construct(private LegalSettingsService $legal) {}
+    public function __construct(
+        private LegalSettingsService $legal,
+        private ShopLinks $links,
+    ) {}
 
     public function __invoke(): void
     {
         $page = $this->legal->current()->withdrawalForm;
-        if ($page === null || get_post_status($page) !== 'publish' || get_queried_object_id() === $page) {
+        if ($page === null || get_post_status($page) !== 'publish') {
+            return;
+        }
+        // The page in the shopper's language, not linked from itself.
+        $page = $this->links->pageInLanguage($page);
+        if (get_queried_object_id() === $page) {
             return;
         }
         $link = get_permalink($page);
