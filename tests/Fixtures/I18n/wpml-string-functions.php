@@ -10,7 +10,7 @@ if (!function_exists('icl_get_string_id')) {
     {
         WpmlStringFunctions::$strings[] = [$value, $context, $name];
 
-        return 77;
+        return WpmlStringFunctions::$ids[$name] ?? 77;
     }
 }
 if (!function_exists('icl_add_string_translation')) {
@@ -19,5 +19,12 @@ if (!function_exists('icl_add_string_translation')) {
         WpmlStringFunctions::$translations[] = [$stringId, $language, $value, $status];
 
         return 1;
+    }
+}
+if (!function_exists('icl_get_string_translations_by_id')) {
+    /** @return array<string, array{value: string, status: int}> by language code */
+    function icl_get_string_translations_by_id(int $stringId): array
+    {
+        return WpmlStringFunctions::$finished[$stringId] ?? [];
     }
 }

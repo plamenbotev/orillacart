@@ -6,6 +6,7 @@ namespace OrillaCart\Notifications\Application;
 
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -46,27 +47,25 @@ final readonly class SendBackInStock implements JobHandler
         return 600;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
-        $outcomes = [];
+        // Each item's emails are settled as they are sent: a batch of many items outlives one job's lock otherwise.
         foreach ($jobs as $job) {
             $item = $job->payload['item'] ?? null;
             if (!\is_string($item)) {
-                $outcomes[$job->id] = JobOutcome::fail('The job names no item.');
+                $progress->done($job, JobOutcome::fail('The job names no item.'));
                 continue;
             }
             try {
-                if ($this->backInStock->send($item)) {
-                    $outcomes[$job->id] = JobOutcome::reschedule($this->clock->now());
-                }
+                $progress->done($job, $this->backInStock->send($item) ? JobOutcome::reschedule($this->clock->now()) : null);
             } catch (EmailNotWritten $e) {
-                $outcomes[$job->id] = JobOutcome::fail($e->getMessage());
+                $progress->done($job, JobOutcome::fail($e->getMessage()));
             } catch (EmailNotSent $e) {
-                $outcomes[$job->id] = JobOutcome::retry($e->getMessage());
+                $progress->done($job, JobOutcome::retry($e->getMessage()));
             }
         }
 
-        return $outcomes;
+        return [];
     }
 
     public function describe(array $payload, ?string $uniqueKey): string

@@ -7,6 +7,7 @@ namespace OrillaCart\Search\Application;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Search\Application\Dto\SearchDocument;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
@@ -26,6 +27,7 @@ final readonly class IndexProducts implements JobHandler
         private SearchIndex $index,
         private Jobs $jobs,
         private EngineSettingsRepository $engine,
+        private SearchServer $server,
     ) {}
 
     public static function type(): string
@@ -53,11 +55,11 @@ final readonly class IndexProducts implements JobHandler
         return 300;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
         $productIds = array_map(static fn(QueuedJob $job): int => (int) $job->uniqueKey, $jobs);
         $documents = $this->builder->buildMany($productIds);
-        $this->index->put(array_values(array_filter($documents)));
+        $this->put(array_values(array_filter($documents)));
         $this->index->remove(array_map(intval(...), array_keys(array_filter($documents, static fn(?SearchDocument $document): bool => $document === null))));
 
         $outcomes = [];
@@ -72,6 +74,25 @@ final readonly class IndexProducts implements JobHandler
         }
 
         return $outcomes;
+    }
+
+    /**
+     * An index behind this version refuses the documents' new fields: it is given them, and the batch again. When
+     * it cannot be, the batch fails with the reason, and is tried again later.
+     *
+     * @param list<SearchDocument> $documents
+     */
+    private function put(array $documents): void
+    {
+        try {
+            $this->index->put($documents);
+        } catch (IndexRefusedFields $refused) {
+            $problem = $this->server->prepare($this->engine->load());
+            if ($problem !== null) {
+                throw new \RuntimeException($refused->getMessage() . ' The index could not be prepared: ' . $problem, 0, $refused);
+            }
+            $this->index->put($documents);
+        }
     }
 
     public function describe(array $payload, ?string $uniqueKey): string

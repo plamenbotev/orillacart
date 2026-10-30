@@ -33,6 +33,8 @@ use OrillaCart\Tax\Application\TaxSettingsService;
 use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Jobs\RecordedProgress;
+use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxRefundReports;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -146,24 +148,32 @@ final class TaxServicesTest extends TestCase
     public function testTheServiceIsToldOfTheSaleItsRefundsAndCancellations(): void
     {
         $number = $this->place();
-        $record = new RecordTaxes($this->shop->orders, $this->shop->taxServices, $this->shop->settingsService, $this->shop->clock);
+        $reports = new InMemoryTaxRefundReports();
+        $record = new RecordTaxes($this->shop->orders, $this->shop->taxServices, $this->shop->settingsService, $reports, $this->shop->clock);
         $job = fn(string $action, array $more = []): QueuedJob => self::job($number, $action, $more);
-        $outcome = self::outcome(...);
+        $outcome = static function (QueuedJob $job) use ($record): string {
+            $progress = new RecordedProgress();
 
-        self::assertSame('retry', $outcome($record->handle([$job(RecordTaxes::REFUND, ['amount' => '10', 'tax' => '0.8'])])), 'a refund waits for the sale');
-        $record->handle([$job(RecordTaxes::COMMIT)]);
+            return self::outcome($progress->with($record->handle([$job], $progress->progress)));
+        };
+
+        self::assertSame('retry', $outcome($job(RecordTaxes::REFUND, ['amount' => '10', 'tax' => '0.8'])), 'a refund waits for the sale');
+        $outcome($job(RecordTaxes::COMMIT));
         self::assertSame('TX-' . $number, $this->shop->orders->order($number)->taxReference);
         self::assertSame(['item:0' => '8', 'shipping' => '0.6'], array_map(static fn(array $taxes): string => (string) array_sum(array_map(static fn(TaxLine $tax): float => (float) $tax->amount, $taxes)), $this->service->committed[0]->taxes));
 
-        $record->handle([$job(RecordTaxes::COMMIT)]);
+        $outcome($job(RecordTaxes::COMMIT));
         self::assertCount(1, $this->service->committed, 'a sale is recorded once');
-        $record->handle([$job(RecordTaxes::REFUND, ['amount' => '10.6', 'tax' => '0.6', 'full' => false])]);
+        $refund = $job(RecordTaxes::REFUND, ['amount' => '10.6', 'tax' => '0.6', 'full' => false, 'reference' => "{$number}:ab12"]);
+        $outcome($refund);
+        self::assertSame('done', $outcome($refund), 'run again after its worker died: the service was told already');
         self::assertSame([['10.6', '0.6', false]], array_map(static fn(TaxRefund $refund): array => [$refund->amount, $refund->tax, $refund->full], $this->service->refunds));
-        $record->handle([$job(RecordTaxes::VOID)]);
+        self::assertSame(["{$number}:ab12"], array_keys($reports->reports));
+        $outcome($job(RecordTaxes::VOID));
         self::assertSame(['TX-' . $number], $this->service->voided);
 
         $this->service->down = true;
-        self::assertSame('retry', $outcome($record->handle([$job(RecordTaxes::REFUND, ['amount' => '1', 'tax' => '0'])])), 'tried again later');
+        self::assertSame('retry', $outcome($job(RecordTaxes::REFUND, ['amount' => '1', 'tax' => '0'])), 'tried again later');
     }
 
     /**

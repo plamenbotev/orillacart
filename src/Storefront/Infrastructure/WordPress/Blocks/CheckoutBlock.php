@@ -178,7 +178,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'shipments' => $this->shipments->forOrder($order->number),
             'pay_methods' => $this->payNow->methods($order),
             'invoices' => $this->invoices->ofOrder($order->number),
-            'returns' => $this->returns->forOrder($order->number),
+            'returns' => $this->returns->forCustomer($order->number),
             'review_links' => $this->reviewLinks->forOrder($order, $receipt),
         ]) . (\in_array($order->status, ['cancelled', 'failed'], true) ? '' : $this->analytics->purchase($order));
     }

@@ -74,9 +74,9 @@ final class SiteUpgradesTest extends TestCase
 
     public function testAMigrationThatFailsIsKeptForTheAdminAndTheMigrationsRunAgainWhenForced(): void
     {
-        // The newest migration forgotten while its tables stay: running it again fails.
+        // The first migration forgotten while its tables stay: running it again makes its tables twice and fails.
         $connection = new EntityManagerFactory(DatabaseConfig::fromWordPress(), $this->context)->create()->getConnection();
-        $newest = $connection->fetchAssociative(\sprintf('SELECT * FROM %s ORDER BY version DESC LIMIT 1', $this->migrations));
+        $newest = $connection->fetchAssociative(\sprintf('SELECT * FROM %s ORDER BY version ASC LIMIT 1', $this->migrations));
         self::assertIsArray($newest);
         $connection->delete($this->migrations, ['version' => $newest['version']]);
         update_option(PluginLifecycle::VERSION_OPTION, '1.0.0');
@@ -85,7 +85,7 @@ final class SiteUpgradesTest extends TestCase
             $outcome = $this->upgrades->upgradeHere(new Kernel($this->context));
 
             self::assertTrue($outcome->isFailed());
-            // A table made twice, or a column added twice, as the newest migration does.
+            // A table made twice, or a column added twice, as the first migration does.
             self::assertMatchesRegularExpression('/already exists|Duplicate column/', $outcome->error);
             $failed = get_option(PluginLifecycle::UPGRADE_FAILED_OPTION);
             self::assertIsArray($failed);

@@ -8,9 +8,11 @@ use OrillaCart\Integrations\Application\OAuthEndpoints;
 use OrillaCart\Platform\WordPress\Languages\RequestLanguage;
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Shared\Http\HttpException;
+use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
 use OrillaCart\Shared\Http\Security\RouteAccess;
+use OrillaCart\Shared\Security\Capability;
 use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
 /**
@@ -81,13 +83,20 @@ final readonly class RestRouteRegistrar implements Registrar
     {
         return [
             'methods' => implode(', ', $route->methods),
-            // In the language of the storefront page that called, which the request's URL does not carry.
+            // In the language of the storefront page that called, which the request's URL does not carry. The
+            // admin's screens work in the site's language: the header is not theirs to send.
             'callback' => fn(\WP_REST_Request $request): \WP_REST_Response => $this->language->around(
-                $request->get_header(RequestLanguage::HEADER),
+                self::storefront($route) ? $request->get_header(RequestLanguage::HEADER) : null,
                 fn(): \WP_REST_Response => ($this->bridge)()->handle($route, $request),
             ),
             'permission_callback' => fn(): true|\WP_Error => $this->permission($route),
         ];
+    }
+
+    /** A route the storefront's pages call: a visitor's, or a logged-in customer's. */
+    private static function storefront(RouteDefinition $route): bool
+    {
+        return \in_array($route->capability, [Route::PUBLIC, Capability::ACCOUNT], true);
     }
 
     private function permission(RouteDefinition $route): true|\WP_Error

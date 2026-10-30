@@ -7,11 +7,14 @@ namespace OrillaCart\Tests\Integration;
 use OrillaCart\Integrations\Application\ApiKeys;
 use OrillaCart\Integrations\Application\OAuthServer;
 use OrillaCart\Integrations\Domain\OAuthError;
+use OrillaCart\Integrations\Infrastructure\WordPress\ForgetUnconnectedOAuthClients;
+use OrillaCart\Integrations\Infrastructure\WordPress\Hooks\OAuthConsent;
 
 /**
  * OAuth 2.1 for AI assistants' apps that log in instead of taking a key: a client registers or describes itself,
  * the owner says yes, the code and its PKCE verifier give tokens for the MCP endpoint only, and a refresh token
- * gives a new pair once.
+ * gives a new pair once: presented again, it ends the pair. The consent screen's check answers only a logged-in
+ * shop manager; clients that registered and were never connected are forgotten.
  */
 final class OAuthTest extends RestTestCase
 {
@@ -20,6 +23,10 @@ final class OAuthTest extends RestTestCase
     /** @var array<mixed> */
     private array $server = [];
     private mixed $permalinks = null;
+    /** @var list<string> the addresses wp_redirect() was asked to send to */
+    private array $redirects = [];
+    /** @var list<string> the addresses the shop fetched */
+    private array $fetched = [];
 
     protected function setUp(): void
     {
@@ -36,6 +43,9 @@ final class OAuthTest extends RestTestCase
     protected function tearDown(): void
     {
         $_SERVER = $this->server;
+        $_GET = [];
+        $this->redirects = $this->fetched = [];
+        remove_all_filters('wp_redirect');
         apply_filters('determine_current_user', 0);
         wp_set_current_user(0);
         update_option('permalink_structure', $this->permalinks);
@@ -86,14 +96,122 @@ final class OAuthTest extends RestTestCase
         self::assertNull($server->authenticate($tokens['access_token']), 'the old access token ends with the refresh');
         self::assertNotNull($server->authenticate($renewed['access_token']));
         self::assertSame('invalid_grant', $this->refused(static fn() => $server->token(['grant_type' => 'refresh_token', 'refresh_token' => $tokens['refresh_token'], 'client_id' => $client['client_id']])), 'a refresh token is good once');
+        self::assertNull($server->authenticate($renewed['access_token']), 'the old refresh token presented again means it leaked: the pair it was rotated into ends too (OAuth 2.1 §6.1)');
+        self::assertSame('invalid_grant', $this->refused(static fn() => $server->token(['grant_type' => 'refresh_token', 'refresh_token' => $renewed['refresh_token'], 'client_id' => $client['client_id']])), 'the new refresh token ended with it');
 
         $keys = self::kernel()->container()->get(ApiKeys::class);
         self::assertInstanceOf(ApiKeys::class, $keys);
         $listed = $keys->all();
-        self::assertCount(1, $listed);
+        self::assertCount(1, $listed, 'the owner\'s yes stays: the app connects again without asking them');
         self::assertSame($client['client_id'], $listed[0]->client);
+        [$verifier, $challenge] = self::pkce();
+        $again = $server->approve($server->authorization(self::query($client['client_id'], self::REDIRECT, $challenge)), $admin, true);
+        parse_str((string) parse_url($again, \PHP_URL_QUERY), $answer);
+        self::assertIsString($answer['code'] ?? null);
+        $fresh = $server->token(['grant_type' => 'authorization_code', 'code' => $answer['code'], 'client_id' => $client['client_id'], 'code_verifier' => $verifier]);
+        self::assertIsString($fresh['access_token']);
+        self::assertNotNull($server->authenticate($fresh['access_token']));
         $keys->revoke($listed[0]->id);
-        self::assertNull($server->authenticate($renewed['access_token']), 'revoking the key ends its tokens');
+        self::assertNull($server->authenticate($fresh['access_token']), 'revoking the key ends its tokens');
+    }
+
+    public function testTheConsentCheckAnswersOnlyALoggedInShopManager(): void
+    {
+        $server = self::oauth();
+        $id = self::id($server->register(['client_name' => 'Assistant', 'redirect_uris' => ['https://app.example/callback']]));
+        [, $challenge] = self::pkce();
+        add_filter('pre_http_request', function (mixed $pre, array $args, string $url): mixed {
+            $this->fetched[] = $url;
+
+            return ['headers' => [], 'body' => '', 'response' => ['code' => 404, 'message' => 'Not Found'], 'cookies' => [], 'filename' => null];
+        }, 10, 3);
+        add_filter('wp_redirect', function (string $location): string {
+            $this->redirects[] = $location;
+            // The hook would exit after the redirect; the exception brings the test back instead.
+            throw new \RuntimeException('redirected');
+
+            return $location; // @phpstan-ignore deadCode.unreachable
+        });
+        self::assertTrue(has_action(OAuthConsent::LOAD) !== false, 'the check is hooked on the screen\'s own load hook, which fires after the menu\'s capability check');
+
+        // A visitor, as admin-ajax.php or admin-post.php would have them when admin_init fires: a redirectable
+        // error (response_type=token) must not send them on to the app's address, nor fetch a client document.
+        wp_set_current_user(0);
+        $_GET = ['page' => OAuthConsent::PAGE, 'response_type' => 'token'] + self::query($id, 'https://app.example/callback', $challenge);
+        do_action(OAuthConsent::LOAD);
+        $_GET['client_id'] = 'https://app.example/oauth/client.json';
+        do_action(OAuthConsent::LOAD);
+        self::assertSame('', $this->redirected(), 'a visitor is not redirected through the shop');
+        self::assertSame([], $this->fetched, 'nor does the shop fetch a document for them');
+
+        $_GET['client_id'] = $id;
+        $this->actAs('subscriber');
+        do_action(OAuthConsent::LOAD);
+        self::assertSame('', $this->redirected(), 'nor is a logged-in user without the capability');
+
+        $this->actAs('administrator');
+        try {
+            do_action(OAuthConsent::LOAD);
+            self::fail('The shop manager\'s bad request was not sent back to the app.');
+        } catch (\RuntimeException) {
+        }
+        self::assertStringStartsWith('https://app.example/callback?error=unsupported_response_type', $this->redirected());
+        self::assertStringNotContainsString("\n", $this->redirected(), 'once');
+    }
+
+    public function testAClientNobodyConnectedIsForgottenAfterADay(): void
+    {
+        $server = self::oauth();
+        $stale = self::id($server->register(['client_name' => 'Never connected', 'redirect_uris' => [self::REDIRECT]]));
+        $connected = self::id($server->register(['client_name' => 'Connected', 'redirect_uris' => [self::REDIRECT]]));
+        $fresh = self::id($server->register(['client_name' => 'Just registered', 'redirect_uris' => [self::REDIRECT]]));
+        $admin = $this->actAs('administrator');
+        [, $challenge] = self::pkce();
+        $server->approve($server->authorization(self::query($connected, self::REDIRECT, $challenge)), $admin, false);
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        $wpdb->query("UPDATE {$wpdb->prefix}orillacart_oauth_clients SET created_at = '" . gmdate('Y-m-d H:i:s', time() - 90000) . "' WHERE id IN ('" . esc_sql($stale) . "', '" . esc_sql($connected) . "')");
+
+        self::assertNotFalse(wp_next_scheduled(ForgetUnconnectedOAuthClients::hook()), 'the daily task is on the schedule while the plugin is active');
+        self::assertSame(1, $server->forgetUnconnectedClients());
+
+        self::assertNull($server->client($stale), 'registered a day ago, never connected: gone');
+        self::assertNotNull($server->client($connected), 'the owner connected it: kept');
+        self::assertNotNull($server->client($fresh), 'still within its day: kept');
+    }
+
+    /** The limiter counts in rows of its own, one statement each; every hit counts, and the window's row is swept after it. */
+    public function testRegistrationsAreCountedAgainstTheLimit(): void
+    {
+        $limits = static fn(): array => ['oauth_register' => [3, 600]];
+        add_filter('orillacart_rate_limits', $limits, 20);
+        $statuses = [];
+        try {
+            for ($i = 0; $i < 4; ++$i) {
+                $statuses[] = $this->request('POST', '/oauth/register', ['client_name' => 'Assistant', 'redirect_uris' => [self::REDIRECT]], nonce: true)->get_status();
+            }
+            $_SERVER['REMOTE_ADDR'] = '198.51.100.' . random_int(1, 254);
+            $statuses[] = $this->request('POST', '/oauth/register', ['client_name' => 'Assistant', 'redirect_uris' => [self::REDIRECT]], nonce: true)->get_status();
+        } finally {
+            remove_filter('orillacart_rate_limits', $limits, 20);
+            unset($_SERVER['REMOTE_ADDR']);
+        }
+        self::assertSame([201, 201, 201, 429, 201], $statuses, 'the fourth from one address is too many; another address has a window of its own');
+
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        $rows = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}orillacart_rate_limits");
+        self::assertSame(2, (int) $rows, 'one row a caller and window');
+        $wpdb->query("UPDATE {$wpdb->prefix}orillacart_rate_limits SET expires_at = '2000-01-01 00:00:00'");
+        $_SERVER['REMOTE_ADDR'] = '203.0.113.' . random_int(1, 254);
+        add_filter('orillacart_rate_limits', $limits, 20);
+        try {
+            self::assertSame(201, $this->request('POST', '/oauth/register', ['client_name' => 'Assistant', 'redirect_uris' => [self::REDIRECT]], nonce: true)->get_status());
+        } finally {
+            remove_filter('orillacart_rate_limits', $limits, 20);
+            unset($_SERVER['REMOTE_ADDR']);
+        }
+        self::assertSame(1, (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}orillacart_rate_limits"), 'a new window sweeps the rows of windows that ended');
     }
 
     public function testTheRequestIsCheckedBeforeTheOwnerIsAsked(): void
@@ -166,6 +284,24 @@ final class OAuthTest extends RestTestCase
         self::assertTrue($server->available(), 'pretty permalinks on a local site');
 
         return $server;
+    }
+
+    /** Where wp_redirect() was asked to send, one address a line. */
+    private function redirected(): string
+    {
+        return implode("\n", $this->redirects);
+    }
+
+    /**
+     * @param array<string, mixed> $registered what register() answered
+     *
+     * @return string its client_id
+     */
+    private static function id(array $registered): string
+    {
+        self::assertIsString($registered['client_id'] ?? null);
+
+        return $registered['client_id'];
     }
 
     /** @return array{string, string} the verifier and its S256 challenge */

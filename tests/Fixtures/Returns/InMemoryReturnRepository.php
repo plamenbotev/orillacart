@@ -13,7 +13,7 @@ final class InMemoryReturnRepository implements ReturnRepository
     private array $returns = [];
     private int $nextId = 1;
 
-    public function find(int $id): ?ItemReturn
+    public function find(int $id, bool $lock = false): ?ItemReturn
     {
         return $this->returns[$id] ?? null;
     }

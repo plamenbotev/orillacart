@@ -9,6 +9,7 @@ use OrillaCart\Extension\Marketing\Subscriber as ListSubscriber;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -49,7 +50,7 @@ final readonly class SyncSubscriber implements JobHandler
         return 60;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
         $outcomes = [];
         foreach ($jobs as $job) {

@@ -6,6 +6,7 @@ namespace OrillaCart\Notifications\Application;
 
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\SentEmail;
 use OrillaCart\Notifications\Domain\SentEmails;
@@ -58,7 +59,7 @@ final readonly class SendOrderEmails implements JobHandler
         return 600;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
         $outcomes = [];
         foreach ($jobs as $job) {

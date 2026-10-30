@@ -12,7 +12,6 @@ use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Shared\I18n\Language;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
-use OrillaCart\Translations\Domain\TranslationRuleViolation;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -70,16 +69,18 @@ final class AttributeNameTranslationsTest extends TestCase
         self::assertSame([], $this->shop->translationRecords->all('attribute', [$saved->id]));
     }
 
-    public function testATranslationTheSiteCannotHaveRefusesTheWholeSave(): void
+    public function testALanguageTheSiteNoLongerHasIsDroppedOnTheNextSave(): void
     {
-        try {
-            $this->shop->products->save(10, $this->shirt(['fr_FR' => 'Couleur'], null, null));
-            self::fail('A language the site does not have was taken.');
-        } catch (TranslationRuleViolation $e) {
-            self::assertSame('orillacart_translation_language', $e->errorCode);
-        }
+        $this->shop->contentLanguages->languages = [new Language('en', 'en_US', 'English'), new Language('de', 'de_DE', 'Deutsch'), new Language('fr', 'fr_FR', 'Français')];
+        $saved = $this->shop->products->save(10, $this->shirt(['de_DE' => 'Farbe', 'fr_FR' => 'Couleur'], null, null))->attributes[0];
+        self::assertSame(['de_DE' => 'Farbe', 'fr_FR' => 'Couleur'], $saved->translations);
 
-        self::assertFalse($this->shop->products->product(10)->saved, 'nothing was saved');
+        // French left the site; the editor sends the translations back as it loaded them.
+        $this->shop->contentLanguages->languages = [new Language('en', 'en_US', 'English'), new Language('de', 'de_DE', 'Deutsch')];
+        $this->shop->products->save(10, new SaveProduct('20', attributes: [new SaveAttribute('Colour', [new SaveOption('Red'), new SaveOption('Blue')], id: $saved->id, translations: ['de_DE' => 'Farbe', 'fr_FR' => 'Couleur'])]));
+
+        self::assertSame(['de_DE' => 'Farbe'], $this->shop->products->product(10)->attributes[0]->translations, 'the French rows went with the save');
+        self::assertSame(['name' => ['de_DE' => 'Farbe']], $this->shop->translationRecords->all('attribute', [$saved->id])[$saved->id]);
     }
 
     /**

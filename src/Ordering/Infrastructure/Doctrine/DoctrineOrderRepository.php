@@ -17,7 +17,14 @@ use OrillaCart\Ordering\Domain\OrderStatus;
 
 final readonly class DoctrineOrderRepository implements OrderRepository
 {
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    /** The way an order ships as the shop names it: its own words where the customer read another language's. */
+    private const string SHOP_SHIPPING = "COALESCE(JSON_VALUE(o.shopWords, '$.shipping_name'), o.shippingName)";
+
+    public function __construct(private EntityManagerInterface $entityManager)
+    {
+        // DQL has no JSON functions of its own; the shop's words are a JSON column.
+        $entityManager->getConfiguration()->addCustomStringFunction(JsonValue::NAME, JsonValue::class);
+    }
 
     public function find(int $id, bool $lock = false): ?Order
     {
@@ -136,7 +143,7 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             $query->andWhere($search->shipped ? 'o.fulfilledAt IS NOT NULL' : 'o.fulfilledAt IS NULL AND o.shippingName IS NOT NULL');
         }
         if ($search->shippingName !== null) {
-            $query->andWhere('o.shippingName = :shipping')->setParameter('shipping', $search->shippingName);
+            $query->andWhere(self::SHOP_SHIPPING . ' = :shipping')->setParameter('shipping', $search->shippingName);
         }
         if ($search->country !== null) {
             $query->andWhere('o.billing.country = :country OR o.shippingAddress.country = :country')->setParameter('country', $search->country);
@@ -176,7 +183,8 @@ final readonly class DoctrineOrderRepository implements OrderRepository
                     $matches[] = "o.{$address}.{$field} LIKE :text";
                 }
             }
-            $matches[] = 'EXISTS (' . \sprintf($lines, 'tl', 'tl.name LIKE :text OR tl.sku LIKE :text') . ')';
+            // An item by the shop's name of it, or the customer's (design 51).
+            $matches[] = 'EXISTS (' . \sprintf($lines, 'tl', "tl.name LIKE :text OR JSON_VALUE(tl.shopWords, '$.name') LIKE :text OR tl.sku LIKE :text") . ')';
             $number = ltrim($text, '#');
             if (ctype_digit($number) && \strlen($number) <= 9) {
                 $matches[] = 'o.id = :number';
@@ -248,7 +256,7 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         $countries = array_values(array_unique([...$distinct('o.billing.country'), ...$distinct('o.shippingAddress.country')]));
         sort($countries);
 
-        return ['shipping' => $distinct('o.shippingName'), 'countries' => $countries, 'currencies' => $distinct('o.currency')];
+        return ['shipping' => $distinct(self::SHOP_SHIPPING), 'countries' => $countries, 'currencies' => $distinct('o.currency')];
     }
 
     public function ofPerson(string $email, ?int $customerId, int $offset, int $limit): array

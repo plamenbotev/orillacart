@@ -104,6 +104,12 @@ final class Plugin
 
     public static function uninstall(string $pluginFile): void
     {
+        // Every site of a network, each its tables, files and content: not cut off by the host's time limit, nor
+        // by the browser leaving the plugins screen.
+        if (\function_exists('set_time_limit')) {
+            set_time_limit(0);
+        }
+        ignore_user_abort(true);
         // the version only matters for upgrades, which never run during uninstall
         $context = new PluginContext($pluginFile, '');
         self::onSites(true, $context, static fn(Kernel $site) => self::lifecycle($site)->uninstall());
@@ -130,7 +136,7 @@ final class Plugin
         add_action('wp_uninitialize_site', static function (\WP_Site $site) use ($context): void {
             self::onSite((int) $site->blog_id, $context, static function (Kernel $kernel): void {
                 if (get_option(PluginLifecycle::VERSION_OPTION) !== false) {
-                    self::lifecycle($kernel)->uninstall(everything: true);
+                    self::lifecycle($kernel)->uninstallSite();
                 }
             });
         }, 5);

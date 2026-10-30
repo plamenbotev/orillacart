@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Returns\Application;
 
+use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -25,7 +26,6 @@ use OrillaCart\Returns\Application\Dto\ReturnItem;
 use OrillaCart\Returns\Application\Dto\ReturnView;
 use OrillaCart\Returns\Application\Dto\WithdrawableOrderView;
 use OrillaCart\Returns\Application\Dto\WithdrawalView;
-use OrillaCart\Returns\Domain\Event\WithdrawalDeclared;
 use OrillaCart\Returns\Domain\ItemReturn;
 use OrillaCart\Returns\Domain\ReturnNotFound;
 use OrillaCart\Returns\Domain\ReturnReason;
@@ -40,7 +40,6 @@ use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\I18n\Translations;
 use Psr\Clock\ClockInterface;
-use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Items customers send back. Within the shop's return window, counted from when the order left, the customer asks
@@ -59,15 +58,27 @@ final readonly class Returns
         private SettingsService $settings,
         private ClockInterface $clock,
         private Translations $translations,
-        private EventDispatcherInterface $events,
+        private Jobs $jobs,
     ) {}
 
     /**
+     * The order's returns as the shop sees them, in its own words.
+     *
      * @throws OrderNotFound
      */
     public function forOrder(int $orderId): OrderReturnsView
     {
         return $this->view($this->orders->order($orderId));
+    }
+
+    /**
+     * The order's returns as its customer sees them, in the words they read (design 51).
+     *
+     * @throws OrderNotFound
+     */
+    public function forCustomer(int $orderId): OrderReturnsView
+    {
+        return $this->view($this->orders->inCustomerWords($orderId));
     }
 
     /**
@@ -91,7 +102,7 @@ final readonly class Returns
         $order = $this->orders->byReceipt($receipt);
 
         // The order locked: a request sent twice makes one return, the second finding the items held already.
-        return $this->orders->whileLocked($order->number, fn(): ReturnView => $this->requested($this->orders->order($order->number), $command));
+        return $this->orders->whileLocked($order->number, fn(): ReturnView => $this->requested($this->orders->inCustomerWords($order->number), $command));
     }
 
     /**
@@ -116,7 +127,8 @@ final readonly class Returns
         ksort($items);
         $return = new ItemReturn($order->number, $items, ReturnReason::from($command->reason), $command->comment, $this->clock->now());
         $this->returns->save($return);
-        $this->orders->needsAttention($order->number, \sprintf('The customer asks to return %s: %s.%s', self::listed($order, $items), strtolower((string) $return->reason()->label()), $return->comment() === '' ? '' : ' "' . $return->comment() . '"'));
+        // The shop reads the items in its own words, the customer in theirs (design 51).
+        $this->orders->needsAttention($order->number, \sprintf('The customer asks to return %s: %s.%s', self::listed($this->orders->order($order->number), $items), strtolower((string) $return->reason()->label()), $return->comment() === '' ? '' : ' "' . $return->comment() . '"'));
 
         return $this->returnView($order, $return);
     }
@@ -152,7 +164,7 @@ final readonly class Returns
         $order = $this->ordered($command->number, $command->email);
 
         return $this->orders->whileLocked($order->number, function () use ($command, $order): WithdrawalView {
-            $order = $this->orders->order($order->number);
+            $order = $this->orders->inCustomerWords($order->number);
             $left = $this->withdrawableItems($order);
             $items = [];
             foreach ($command->items as $item) {
@@ -175,12 +187,14 @@ final readonly class Returns
             $confirmation = trim($command->confirmationEmail);
             $return = new ItemReturn($order->number, $items, ReturnReason::Withdrawal, \sprintf('Declared by %s on %s; confirmation to %s.', $name, $now->format(DATE_ATOM), $confirmation), $now);
             $this->returns->save($return);
-            $this->orders->needsAttention($order->number, \sprintf('The customer withdrew from %s (declared by %s on %s).', self::listed($order, $items), $name, $now->format('Y-m-d H:i T')));
+            $this->orders->needsAttention($order->number, \sprintf('The customer withdrew from %s (declared by %s on %s).', self::listed($this->orders->order($order->number), $items), $name, $now->format('Y-m-d H:i T')));
             $listed = [];
             foreach ($items as $line => $quantity) {
                 $listed[] = ['name' => $order->lines[$line]->name ?? '', 'quantity' => $quantity];
             }
-            $this->events->dispatch(new WithdrawalDeclared($order->number, $return->id(), $name, $confirmation, $order->email, $listed, $now->format(DATE_ATOM), $order->locale));
+            // The acknowledgement goes out from a job, not from inside the order's lock: a slow mail server holds
+            // no order up, and the mail goes only once the withdrawal is saved.
+            $this->jobs->push(SendWithdrawalAcknowledgements::TYPE, ['order' => $order->number, 'return' => $return->id(), 'name' => $name, 'confirmation' => $confirmation, 'declared_at' => $now->format(DATE_ATOM)]);
 
             return new WithdrawalView($order->number, $name, $confirmation, $listed, $now->format(DATE_ATOM));
         });
@@ -193,7 +207,7 @@ final readonly class Returns
     private function ordered(int $number, string $email): OrderView
     {
         try {
-            $order = $this->orders->order($number);
+            $order = $this->orders->inCustomerWords($number);
         } catch (OrderNotFound) {
             $order = null;
         }
@@ -236,13 +250,12 @@ final readonly class Returns
      */
     public function approve(int $id, AnswerReturn $command, ?int $userId): ReturnView
     {
-        $return = $this->get($id);
-        $return->approve($command->answer, $this->clock->now());
-        $this->returns->save($return);
-        $order = $this->orders->order($return->orderId());
-        $this->orders->addNote($order->number, new AddOrderNote(trim($this->translations->text(Text::of('Your return of %1$s is approved. %2$s', self::listed($order, $return->items()), $return->answer()))), true), $userId);
-
-        return $this->returnView($order, $return);
+        return $this->changing($id, function (ItemReturn $return, OrderView $order) use ($command, $userId): void {
+            $return->approve($command->answer, $this->clock->now());
+            $this->returns->save($return);
+            // The customer reads the note: the items in their words (design 51).
+            $this->orders->addNote($order->number, new AddOrderNote(trim($this->translations->text(Text::of('Your return of %1$s is approved. %2$s', self::listed($this->orders->inCustomerWords($order->number), $return->items()), $return->answer()))), true), $userId);
+        });
     }
 
     /**
@@ -251,13 +264,11 @@ final readonly class Returns
      */
     public function refuse(int $id, AnswerReturn $command, ?int $userId): ReturnView
     {
-        $return = $this->get($id);
-        $return->refuse($command->answer, $this->clock->now());
-        $this->returns->save($return);
-        $order = $this->orders->order($return->orderId());
-        $this->orders->addNote($order->number, new AddOrderNote($this->translations->text(Text::of('Your return of %1$s is refused: %2$s', self::listed($order, $return->items()), $return->answer())), true), $userId);
-
-        return $this->returnView($order, $return);
+        return $this->changing($id, function (ItemReturn $return, OrderView $order) use ($command, $userId): void {
+            $return->refuse($command->answer, $this->clock->now());
+            $this->returns->save($return);
+            $this->orders->addNote($order->number, new AddOrderNote($this->translations->text(Text::of('Your return of %1$s is refused: %2$s', self::listed($this->orders->inCustomerWords($order->number), $return->items()), $return->answer())), true), $userId);
+        });
     }
 
     /**
@@ -266,13 +277,34 @@ final readonly class Returns
      */
     public function receive(int $id, ?int $userId): ReturnView
     {
-        $return = $this->get($id);
-        $return->receive($this->clock->now());
-        $this->returns->save($return);
-        $order = $this->orders->order($return->orderId());
-        $this->orders->addNote($order->number, new AddOrderNote(\sprintf('The returned %s came back.', self::listed($order, $return->items()))), $userId);
+        return $this->changing($id, function (ItemReturn $return, OrderView $order) use ($userId): void {
+            $return->receive($this->clock->now());
+            $this->returns->save($return);
+            $this->orders->addNote($order->number, new AddOrderNote(\sprintf('The returned %s came back.', self::listed($order, $return->items()))), $userId);
+        });
+    }
 
-        return $this->returnView($order, $return);
+    /**
+     * A change to a return, with its order locked and the return read again under the lock: two answers to it
+     * sent at once are made one after the other, the second finding it answered.
+     *
+     * @param \Closure(ItemReturn, OrderView): void $change given the return and its order in the shop's words
+     *
+     * @param-immediately-invoked-callable $change
+     *
+     * @throws ReturnNotFound
+     */
+    private function changing(int $id, \Closure $change): ReturnView
+    {
+        $orderId = $this->get($id)->orderId();
+
+        return $this->orders->whileLocked($orderId, function () use ($id, $orderId, $change): ReturnView {
+            $return = $this->returns->find($id, true) ?? throw new ReturnNotFound($id);
+            $order = $this->orders->order($orderId);
+            $change($return, $order);
+
+            return $this->returnView($order, $return);
+        });
     }
 
     /**
@@ -298,40 +330,30 @@ final readonly class Returns
                 reason: \sprintf('Return %d', $id),
                 outside: $command->outside && !$command->storeCredit,
                 storeCredit: $command->storeCredit,
-            ), $userId);
+            ), $userId, function (int $refundId) use ($id): void {
+                // With the refund, under the order's lock, the return takes it as its own: a second refund of the
+                // return sent at the same time waits, finds it refunding, and is refused, undoing its refund.
+                $return = $this->returns->find($id, true) ?? throw new ReturnNotFound($id);
+                $return->refunding($refundId);
+                $this->returns->save($return);
+            });
         } catch (PaymentRuleViolation $e) {
-            // The provider did not answer: the refund waits, pending, to be tried again. The return follows it
-            // (settle()), refunded once it goes, rather than staying received with its lines refunded under it.
-            if ($e->errorCode === 'orillacart_refund_unanswered') {
-                $pending = $this->made($order->number, $id);
-                if ($pending !== null) {
-                    $return->refunding($pending->id);
-                    $this->returns->save($return);
-                }
-            }
+            // The provider refused it, or did not answer: the return follows the refund it took (settle()), back to
+            // received when the refund failed, refunded once a waiting one goes, rather than staying received with
+            // its lines refunded under it.
+            $this->settle($order->number);
 
             throw $e;
         }
-        $made = array_values(array_filter($refunds->refunds, static fn(RefundView $refund): bool => $refund->reason === \sprintf('Return %d', $id)));
-        usort($made, static fn(RefundView $a, RefundView $b): int => $b->id <=> $a->id);
+        $return = $this->get($id);
+        $made = array_values(array_filter($refunds->refunds, static fn(RefundView $refund): bool => $refund->id === $return->refundId()));
         // Refunded once the money went: a provider that sends it later says so, and the return follows (settle()).
-        if (($made[0] ?? null)?->status === 'done') {
+        if (($made[0] ?? throw new \LogicException("Return {$id}'s refund was not recorded."))->status === 'done') {
             $return->refunded($this->clock->now());
-        } else {
-            $return->refunding($made[0]->id ?? throw new \LogicException("Return {$id}'s refund was not recorded."));
+            $this->returns->save($return);
         }
-        $this->returns->save($return);
 
         return $this->returnView($this->orders->order($order->number), $return);
-    }
-
-    /** The latest refund made for the return. */
-    private function made(int $orderId, int $returnId): ?RefundView
-    {
-        $made = array_values(array_filter($this->refunds->forOrder($orderId)->refunds, static fn(RefundView $refund): bool => $refund->reason === \sprintf('Return %d', $returnId)));
-        usort($made, static fn(RefundView $a, RefundView $b): int => $b->id <=> $a->id);
-
-        return $made[0] ?? null;
     }
 
     /**

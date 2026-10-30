@@ -80,16 +80,15 @@ final class ShippingTranslationsTest extends TestCase
         self::assertSame(['pickup.shop.hours', 'pickup.shop.name'], array_keys($this->shop->translationRecords->all('carrier', [$pickup->id])[$pickup->id]));
     }
 
-    public function testATranslationTheShopCannotTakeRefusesTheSave(): void
+    public function testALanguageTheSiteNoLongerHasIsDroppedNotRefused(): void
     {
-        try {
-            $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Standard', '5', translations: ['fr_FR' => 'Normale'])]));
-            self::fail('A language the site does not have was taken.');
-        } catch (TranslationRuleViolation $e) {
-            self::assertSame('orillacart_translation_language', $e->errorCode);
-        }
+        $carrier = $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Standard', '5', translations: ['de_DE' => 'Normal'])]));
+        $rate = $carrier->rates[0]->id;
 
-        self::assertSame([], $this->shop->carriers->carriers(), 'nothing was saved');
+        // As the admin sends a rate back after French left the site: its French translation among the others.
+        $this->shop->carriers->update($carrier->id, new SaveCarrier('Courier', rates: [new SaveShippingRate('Standard', '5', id: $rate, translations: ['de_DE' => 'Normal', 'fr_FR' => 'Normale'])]));
+
+        self::assertSame(['name' => ['de_DE' => 'Normal']], $this->shop->translationRecords->all('shipping_rate', [$rate])[$rate], 'the French is dropped, the rest saved');
     }
 
     public function testAPlaceFieldMustNameAPlaceKey(): void

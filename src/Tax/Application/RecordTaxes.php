@@ -7,11 +7,13 @@ namespace OrillaCart\Tax\Application;
 use OrillaCart\Extension\Tax\TaxAddress as ExtensionTaxAddress;
 use OrillaCart\Extension\Tax\TaxedOrder;
 use OrillaCart\Extension\Tax\TaxLine;
+use OrillaCart\Extension\Tax\TaxProvider;
 use OrillaCart\Extension\Tax\TaxRefund;
 use OrillaCart\Extension\Tax\TaxRequestLine;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -19,12 +21,15 @@ use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Tax\Domain\TaxRefundReport;
+use OrillaCart\Tax\Domain\TaxRefundReports;
 use Psr\Clock\ClockInterface;
 
 /**
  * Tells the tax service that taxed an order what became of it, in the background: the sale once it is paid
- * (keeping the service's reference), the tax in each refund, and a recorded order cancelled. A service that fails
- * is tried again later, then the job is failed for the shop to look at.
+ * (keeping the service's reference), the tax in each refund (keeping the refund's reference, so a job run again
+ * reports it once), and a recorded order cancelled. Each job is reported as it is done. A service that fails is
+ * tried again later, then the job is failed for the shop to look at.
  */
 final readonly class RecordTaxes implements JobHandler
 {
@@ -37,6 +42,7 @@ final readonly class RecordTaxes implements JobHandler
         private OrderService $orders,
         private TaxServices $services,
         private SettingsService $settings,
+        private TaxRefundReports $refundReports,
         private ClockInterface $clock,
     ) {}
 
@@ -62,17 +68,17 @@ final readonly class RecordTaxes implements JobHandler
 
     public function lockSeconds(): int
     {
-        return 120;
+        // One call to the service.
+        return 60;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
-        $outcomes = [];
         foreach ($jobs as $job) {
-            $outcomes[$job->id] = $this->run($job);
+            $progress->done($job, $this->run($job));
         }
 
-        return $outcomes;
+        return [];
     }
 
     public function describe(array $payload, ?string $uniqueKey): string
@@ -113,16 +119,16 @@ final readonly class RecordTaxes implements JobHandler
             // The sale is recorded first: a refund waits for it.
             return JobOutcome::retry('The sale is not recorded with the tax service yet.');
         }
+        $reference = \is_string($job->payload['reference'] ?? null) ? $job->payload['reference'] : null;
+        if ($action === self::REFUND && $reference !== null && $this->refundReports->reported($reference)) {
+            // Told already: the job's worker stopped before it was settled.
+            return JobOutcome::done();
+        }
         $taxed = $this->taxed($order);
         try {
             match ($action) {
                 self::COMMIT => $this->orders->taxRecorded($number, $provider->id(), $provider->commit($taxed)),
-                self::REFUND => $provider->refund($taxed, new TaxRefund(
-                    self::text($job->payload['amount'] ?? '0'),
-                    self::text($job->payload['tax'] ?? '0'),
-                    $this->clock->now()->format('Y-m-d'),
-                    ($job->payload['full'] ?? false) === true,
-                )),
+                self::REFUND => $this->refund($provider, $taxed, $job, $reference),
                 self::VOID => $provider->void($taxed),
                 default => throw new \UnexpectedValueException(\sprintf('"%s" is not something to tell a tax service.', \is_scalar($action) ? (string) $action : '?')),
             };
@@ -133,6 +139,23 @@ final readonly class RecordTaxes implements JobHandler
         }
 
         return JobOutcome::done();
+    }
+
+    /**
+     * @param TaxProvider $provider the service that taxed the order
+     * @param ?string     $reference the refund's, kept once the service was told; null for a refund queued without one
+     */
+    private function refund(TaxProvider $provider, TaxedOrder $taxed, QueuedJob $job, ?string $reference): void
+    {
+        $provider->refund($taxed, new TaxRefund(
+            self::text($job->payload['amount'] ?? '0'),
+            self::text($job->payload['tax'] ?? '0'),
+            $this->clock->now()->format('Y-m-d'),
+            ($job->payload['full'] ?? false) === true,
+        ));
+        if ($reference !== null) {
+            $this->refundReports->record(new TaxRefundReport($reference, $taxed->number, $this->clock->now()));
+        }
     }
 
     private function taxed(OrderView $order): TaxedOrder

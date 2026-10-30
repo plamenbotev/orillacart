@@ -20,10 +20,15 @@ final class Version20261018141653 extends Migration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE {prefix}cart_lines ADD bundle_choices JSON DEFAULT NULL');
-        $this->addSql('UPDATE {prefix}cart_lines SET bundle_choices = \'[]\'');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('cart_lines', 'bundle_choices')) {
+            $this->addSql('ALTER TABLE {prefix}cart_lines ADD bundle_choices JSON DEFAULT NULL');
+        }
+        $this->addSql('UPDATE {prefix}cart_lines SET bundle_choices = \'[]\' WHERE bundle_choices IS NULL');
         $this->addSql('ALTER TABLE {prefix}cart_lines MODIFY bundle_choices JSON NOT NULL');
-        $this->addSql('ALTER TABLE {prefix}order_lines ADD bundle_choices JSON DEFAULT NULL');
+        if (!$this->hasColumn('order_lines', 'bundle_choices')) {
+            $this->addSql('ALTER TABLE {prefix}order_lines ADD bundle_choices JSON DEFAULT NULL');
+        }
         // A bundle item named one variation; now it lists the variations it offers.
         foreach ($this->connection->fetchAllAssociative('SELECT id, bundle FROM ' . $this->table('products') . ' WHERE bundle IS NOT NULL') as $row) {
             \assert(\is_string($row['bundle']));

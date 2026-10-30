@@ -107,6 +107,42 @@ abstract class CatalogSearchContract extends RestTestCase
         self::assertSame([$bulb, $this->lamp], $this->find('light', SearchSort::Relevance), 'a title outweighs the text');
     }
 
+    public function testAProductIsQueuedAfterItsSaveIsDoneAndWhenTranslationsAreLinked(): void
+    {
+        $this->work();
+        // Polylang links a new translation to its product on save_post at 21: the shop queues after that.
+        $queuedAt21 = null;
+        $late = function (int $postId) use (&$queuedAt21): void {
+            $queuedAt21 = \in_array($postId, $this->queued(), true);
+        };
+        add_action('save_post_' . ProductPostType::NAME, $late, 21);
+        try {
+            $this->actAs('administrator');
+            $copy = $this->product('Messinglampe', '', ['price' => '40', 'stock_mode' => 'always_available'], 8);
+        } finally {
+            remove_action('save_post_' . ProductPostType::NAME, $late, 21);
+        }
+        self::assertFalse($queuedAt21, 'not yet queued when Polylang links it');
+        self::assertContains($copy, $this->queued());
+        $this->work();
+
+        // Polylang's and WPML's own screens link translations after the save: the products are queued then.
+        do_action('pll_save_post_translations', ['en' => $this->lamp, 'de' => $copy]);
+        self::assertSame([$this->lamp, $copy], $this->queued());
+        $this->work();
+        do_action('wpml_translation_update', ['type' => 'update', 'element_id' => $this->lamp, 'element_type' => 'post_' . ProductPostType::NAME]);
+        self::assertSame([$this->lamp], $this->queued());
+        $this->work();
+        // A term linked as a translation is a new name for the products of every term of the group.
+        $lampen = max(1, $this->term('Lampen', ProductCategoryTaxonomy::NAME));
+        self::assertSame([], $this->queued(), 'a new term has no products');
+        do_action('pll_save_term_translations', ['en' => $this->lighting, 'de' => $lampen]);
+        self::assertSame([$this->lamp], $this->queued(), 'the lamp is below the lighting category');
+        $this->work();
+        do_action('wpml_translation_update', ['type' => 'update', 'element_id' => $this->deskLamps, 'element_type' => 'tax_' . ProductCategoryTaxonomy::NAME]);
+        self::assertSame([$this->lamp], $this->queued());
+    }
+
     public function testOnlyTheProductsAChangeTouchesAreQueued(): void
     {
         $this->actAs('administrator');

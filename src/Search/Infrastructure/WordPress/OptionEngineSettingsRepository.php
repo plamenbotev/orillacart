@@ -20,11 +20,17 @@ final readonly class OptionEngineSettingsRepository implements EngineSettingsRep
 
     public function __construct(private Secrets $secrets) {}
 
+    /** An index of the site's own by default: on a network every shop would otherwise write into one "orillacart". */
+    public static function defaultIndex(): string
+    {
+        return is_multisite() ? 'orillacart-site-' . get_current_blog_id() : 'orillacart';
+    }
+
     public function load(): EngineSettings
     {
         $stored = get_option(self::OPTION);
         if (!\is_array($stored)) {
-            return new EngineSettings();
+            return new EngineSettings(index: self::defaultIndex());
         }
         $text = static fn(string $key, string $default = ''): string => \is_string($stored[$key] ?? null) ? $stored[$key] : $default;
 
@@ -33,7 +39,7 @@ final readonly class OptionEngineSettingsRepository implements EngineSettingsRep
             $text('host'),
             $text('username'),
             $this->secrets->open($text('password')) ?? '',
-            $text('index', 'orillacart'),
+            $text('index', self::defaultIndex()),
             ($stored['ready'] ?? false) === true,
         );
     }

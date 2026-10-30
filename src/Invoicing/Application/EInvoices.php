@@ -295,6 +295,13 @@ final readonly class EInvoices
             $lines[] = ['id' => (string) ($index + 1), 'name' => \sprintf('Refund of order #%s: %s %s%%', $document->order->number, $tax['name'], $percent), 'sku' => null, 'quantity' => 1, 'net' => $net, 'category' => 'S', 'percent' => $percent, 'tax' => $amount];
             $left = $left->subtract($net)->subtract($amount);
         }
+        if ($lines !== [] && !$left->isZero() && $left->compare(Money::of('-0.05')) >= 0 && $left->compare(Money::of('0.05')) <= 0) {
+            // The cent rounding left between the tax (rounded to the currency) and the net read from it goes to
+            // the last taxed line: the credit note adds up to what was given back, 39.66 = 33.33 + 6.33.
+            $last = array_pop($lines);
+            $lines[] = ['net' => $last['net']->add($left)] + $last;
+            $left = Money::zero();
+        }
         if ($lines !== [] && $left->compare(Money::of('-0.05')) < 0) {
             // More than was given back: rates on one base (a state and a county), each read as its own. One line at
             // their sum, on what the refund less its tax comes to.

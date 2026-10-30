@@ -16,6 +16,9 @@ use OrillaCart\Forms\Application\Dto\SaveFieldChoice;
 use OrillaCart\Forms\Application\Dto\SaveForm;
 use OrillaCart\Forms\Application\Dto\SaveFormField;
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\OrderPageView;
+use OrillaCart\Ordering\Application\Dto\OrderQuery;
+use OrillaCart\Ordering\Application\Dto\OrderSummaryView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shared\I18n\Language;
@@ -83,6 +86,19 @@ final class OrderWordsTest extends TestCase
 
         self::assertSame(['Ehering', [['attribute' => 'Metall', 'option' => 'Silber']], 'Gravieren', 'Ja, bitte'], self::item($this->shop->orders->inCustomerWords($number)));
         self::assertSame(['Ring', [['attribute' => 'Metal', 'option' => 'Silver']], 'Engrave it', 'Yes please'], self::item($this->shop->orders->order($number)));
+    }
+
+    public function testTheAdminFindsAndFacetsTheOrderByTheShopsWords(): void
+    {
+        $number = $this->placeInGerman();
+        $this->shop->languages->locale = 'en_US';
+        $this->shop->contentLanguages->current = null;
+
+        $found = static fn(OrderPageView $page): array => array_map(static fn(OrderSummaryView $order): int => $order->number, $page->orders);
+        self::assertSame(['Courier – Standard'], $this->shop->orders->facets()->shipping, 'the shop\'s name of the way it ships, not the customer\'s');
+        self::assertSame([$number], $found($this->shop->orders->orders(new OrderQuery(shipping: 'Courier – Standard'), forShop: true)));
+        self::assertSame([$number], $found($this->shop->orders->orders(new OrderQuery(search: 'Ring'), forShop: true)), 'the item by the shop\'s name');
+        self::assertSame([$number], $found($this->shop->orders->orders(new OrderQuery(search: 'Ehering'), forShop: true)), 'and by the customer\'s');
     }
 
     private function placeInGerman(): int

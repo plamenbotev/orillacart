@@ -656,7 +656,7 @@ final class CheckoutRestTest extends RestTestCase
     {
         $header = $response->get_headers()['Set-Cookie'] ?? '';
         self::assertIsString($header);
-        self::assertMatchesRegularExpression('/^orillacart_cart=[a-f0-9]{64}; Path=\/; Max-Age=\d+; HttpOnly; SameSite=Lax/', $header);
+        self::assertMatchesRegularExpression('/^orillacart_cart=[a-f0-9]{64}; Path=' . preg_quote(CartCookie::path(), '/') . '; Max-Age=\d+; HttpOnly; SameSite=Lax/', $header, 'at the site\'s own cookie path');
         $_COOKIE[CartCookie::NAME] = substr($header, \strlen(CartCookie::NAME) + 1, 64);
     }
 

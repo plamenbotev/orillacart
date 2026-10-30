@@ -9,6 +9,7 @@ use OrillaCart\Search\Application\Dto\DocumentTerm;
 use OrillaCart\Search\Application\Dto\DocumentText;
 use OrillaCart\Search\Application\Dto\DocumentVariant;
 use OrillaCart\Search\Application\Dto\SearchDocument;
+use OrillaCart\Search\Application\IndexRefusedFields;
 use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\Facets;
@@ -58,7 +59,9 @@ final readonly class OpenSearchIndex implements SearchIndex
         }
         $answer = $this->client->request($settings, 'POST', '/_bulk', $lines);
         if (($answer['errors'] ?? false) === true) {
-            throw new OpenSearchUnavailable('OpenSearch refused a document of the batch: ' . self::firstError($answer));
+            $message = 'OpenSearch refused a document of the batch: ' . self::firstError($answer);
+            // dynamic: strict, and a field the index was not told of: the index is behind this version.
+            throw self::firstError($answer, 'index', 'type') === 'strict_dynamic_mapping_exception' ? new IndexRefusedFields($message) : new OpenSearchUnavailable($message);
         }
     }
 
@@ -136,18 +139,20 @@ final readonly class OpenSearchIndex implements SearchIndex
     }
 
     /**
+     * The first error's reason, or another part of it such as its type.
+     *
      * @param array<mixed> $answer
      */
-    private static function firstError(array $answer, string $action = 'index'): string
+    private static function firstError(array $answer, string $action = 'index', string $part = 'reason'): string
     {
         foreach (\is_array($answer['items'] ?? null) ? $answer['items'] : [] as $item) {
-            $reason = \is_array($item) && \is_array($item[$action] ?? null) && \is_array($item[$action]['error'] ?? null) ? ($item[$action]['error']['reason'] ?? null) : null;
-            if (\is_string($reason)) {
-                return $reason;
+            $error = \is_array($item) && \is_array($item[$action] ?? null) && \is_array($item[$action]['error'] ?? null) ? $item[$action]['error'] : null;
+            if ($error !== null) {
+                return \is_string($error[$part] ?? null) ? $error[$part] : ($part === 'reason' ? 'no reason given' : '');
             }
         }
 
-        return 'no reason given';
+        return $part === 'reason' ? 'no reason given' : '';
     }
 
     public function remove(array $productIds): void

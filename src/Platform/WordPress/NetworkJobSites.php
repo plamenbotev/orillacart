@@ -14,7 +14,8 @@ use OrillaCart\Platform\WordPress\Upgrades\SiteUpgrades;
 
 /**
  * The network's shops for a worker: each site in a container of its own (SiteKernels), so its jobs run on its
- * tables, in its language and with its settings.
+ * tables, in its language and with its settings. A shop whose tables are behind the files' build waits until the
+ * network's walk (its chores) or its own first visit brings it up: the new code does not run on old tables.
  */
 final readonly class NetworkJobSites implements JobSites
 {
@@ -33,7 +34,7 @@ final readonly class NetworkJobSites implements JobSites
 
     public function sites(): array
     {
-        return array_keys($this->upgrades->shops());
+        return array_keys(array_filter($this->upgrades->shops(), fn(string $stored): bool => $stored === $this->context->build));
     }
 
     public function chores(): void

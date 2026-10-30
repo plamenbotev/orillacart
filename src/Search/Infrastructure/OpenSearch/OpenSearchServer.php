@@ -23,13 +23,21 @@ final readonly class OpenSearchServer implements SearchServer
         if (preg_match('/^[a-z0-9][a-z0-9_-]{0,99}$/', $settings->index) !== 1) {
             return 'An index name is lowercase letters, digits, dashes and underscores.';
         }
+        $owner = self::owner();
         try {
             $this->client->request($settings, 'GET', '/');
-            if ($this->client->request($settings, 'GET', "/{$settings->index}", missingOk: true) === []) {
-                $this->client->request($settings, 'PUT', "/{$settings->index}", self::definition());
+            $existing = $this->client->request($settings, 'GET', "/{$settings->index}", missingOk: true);
+            if ($existing === []) {
+                $this->client->request($settings, 'PUT', "/{$settings->index}", self::definition($owner));
             } else {
+                // The index remembers whose it is: documents are keyed by product id, so two shops in one index
+                // would overwrite and prune each other's.
+                $meta = self::ownerOf($existing, $settings->index);
+                if ($meta !== null && $meta !== $owner) {
+                    return \sprintf('The index "%s" holds another shop\'s products. Give this shop an index of its own.', $settings->index);
+                }
                 // An index made by an earlier version gets the fields added since; existing fields stay as they are.
-                $this->client->request($settings, 'PUT', "/{$settings->index}/_mapping", ['properties' => self::properties()]);
+                $this->client->request($settings, 'PUT', "/{$settings->index}/_mapping", ['_meta' => ['orillacart' => $owner], 'properties' => self::properties()]);
             }
         } catch (OpenSearchUnavailable $e) {
             return $e->getMessage();
@@ -38,10 +46,33 @@ final readonly class OpenSearchServer implements SearchServer
         return null;
     }
 
+    /** What tells this shop's tables from every other's that may reach the same server: the database and prefix. */
+    public static function owner(): string
+    {
+        $wpdb = $GLOBALS['wpdb'] ?? null;
+        $database = \defined('DB_NAME') ? \constant('DB_NAME') : '';
+
+        return (\is_string($database) ? $database : '') . ':' . ($wpdb instanceof \wpdb ? $wpdb->prefix : '');
+    }
+
+    /**
+     * The shop an index answer (GET /{index}) says the index belongs to; null for one made before owners were kept.
+     *
+     * @param array<mixed> $answer
+     */
+    public static function ownerOf(array $answer, string $index): ?string
+    {
+        $mappings = \is_array($answer[$index] ?? null) ? ($answer[$index]['mappings'] ?? null) : null;
+        $meta = \is_array($mappings) ? ($mappings['_meta'] ?? null) : null;
+        $owner = \is_array($meta) ? ($meta['orillacart'] ?? null) : null;
+
+        return \is_string($owner) ? $owner : null;
+    }
+
     /**
      * @return array<string, mixed>
      */
-    public static function definition(): array
+    public static function definition(string $owner = ''): array
     {
         return [
             'settings' => [
@@ -53,6 +84,7 @@ final readonly class OpenSearchServer implements SearchServer
             ],
             'mappings' => [
                 'dynamic' => 'strict',
+                '_meta' => ['orillacart' => $owner],
                 'properties' => self::properties(),
             ],
         ];

@@ -100,14 +100,15 @@ final readonly class ContentTranslations
 
     /**
      * Checks an object's translations before its owner saves it, with them: the fields the type translates, the
-     * site's other languages, the fields' lengths. A field given replaces all its languages; an empty value
-     * removes one.
+     * fields' lengths. A field given replaces all its languages; an empty value removes one. A language the site
+     * no longer translates into is dropped, not refused: the admin sends back every translation the object has,
+     * those of a language since removed from Polylang or WPML among them, and they go with the save.
      *
      * @param array<string, array<string, string>> $fields by field and locale
      *
      * @return array<string, array<string, string>> trimmed, for write()
      *
-     * @throws TranslationRuleViolation for a type, field, language or length the shop does not translate
+     * @throws TranslationRuleViolation for a type, field or length the shop does not translate
      */
     public function check(string $type, array $fields): array
     {
@@ -116,9 +117,11 @@ final readonly class ContentTranslations
         $checked = [];
         foreach ($fields as $field => $values) {
             $max = self::longest($translatable, $field) ?? throw new TranslationRuleViolation('A %1$s has no field "%2$s" to translate.', 'orillacart_translation_field', values: [$type, $field]);
+            // The field is written even when every language of it went: its old rows go with it.
+            $checked[$field] = [];
             foreach ($values as $locale => $value) {
                 if (!\in_array($locale, $locales, true)) {
-                    throw new TranslationRuleViolation('The site does not translate into %s.', 'orillacart_translation_language', values: [$locale]);
+                    continue;
                 }
                 $value = trim($value);
                 if (mb_strlen($value) > $max) {
@@ -159,6 +162,18 @@ final readonly class ContentTranslations
     public function serviceCopies(string $type, int $id): array
     {
         return $this->translations->serviceCopies($type, [$id])[$id] ?? [];
+    }
+
+    /**
+     * As serviceCopies(), for several objects in one read.
+     *
+     * @param list<int> $ids
+     *
+     * @return array<int, array<string, array<string, string>>> by object id, field and locale
+     */
+    public function serviceCopiesOf(string $type, array $ids): array
+    {
+        return $ids === [] ? [] : $this->translations->serviceCopies($type, array_values(array_unique($ids)));
     }
 
     /**

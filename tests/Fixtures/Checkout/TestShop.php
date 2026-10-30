@@ -138,6 +138,7 @@ use OrillaCart\Platform\Twig\TwigFactory;
 use OrillaCart\Platform\Twig\TwigRenderer;
 use OrillaCart\Returns\Application\ReturnedOrders;
 use OrillaCart\Returns\Application\Returns;
+use OrillaCart\Returns\Application\SendWithdrawalAcknowledgements;
 use OrillaCart\Returns\Domain\Event\WithdrawalDeclared;
 use OrillaCart\Search\Application\SearchFilterTranslations;
 use OrillaCart\Settings\Application\Currencies;
@@ -256,6 +257,7 @@ use OrillaCart\Tests\Fixtures\Tax\MemoryTaxQuoteCache;
 use OrillaCart\Tests\Fixtures\TemporaryPrivateFiles;
 use OrillaCart\Tests\Fixtures\Translations\InMemoryTranslations;
 use OrillaCart\Translations\Application\ContentTranslations;
+use OrillaCart\Translations\Application\SyncTranslationPackages;
 use OrillaCart\Translations\Application\TranslationPackages;
 use OrillaCart\Translations\Application\TranslationPackageSource;
 use OrillaCart\Translations\Infrastructure\TaggedTranslationPackageSources;
@@ -454,7 +456,8 @@ final class TestShop
         $this->contentTranslations = new ContentTranslations($this->translationRecords, $this->translationRecords, $this->contentLanguages, $this->languageOfRequest);
         $this->packageSources = new \ArrayObject();
         $this->translationService = new FakeTranslationService();
-        $this->translationPackages = new TranslationPackages(new TaggedTranslationPackageSources($this->packageSources), $this->translationService, $this->contentTranslations);
+        $this->translationPackages = new TranslationPackages(new TaggedTranslationPackageSources($this->packageSources), $this->translationService, $this->contentTranslations, $this->jobs->jobs);
+        $this->jobs->with(new SyncTranslationPackages($this->translationPackages, $this->jobs->jobs));
         $this->shippingTexts = new ShippingTexts($this->contentTranslations);
         $formTexts = new FormTexts($this->contentTranslations);
         $this->shopForms = new ShopForms($this->formRecords, $this->fieldAnswers, $formTexts);
@@ -500,7 +503,7 @@ final class TestShop
         $this->chosenCurrency = new ChosenCurrency();
         $this->currencies = new Currencies($this->currencySettings, $settings, $this->chosenCurrency);
         $this->files = new TemporaryPrivateFiles();
-        $this->uploads = new FormUploads($this->shopForms, $this->content, new SafeUploadInspector(), $this->files, $this->uploadRecords, $this->clock, $settings);
+        $this->uploads = new FormUploads($this->shopForms, $this->content, new SafeUploadInspector(), $this->files, $this->uploadRecords, $this->clock, $settings, $this->productTranslations);
         $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads, $this->productTranslations);
         $this->abandonedCarts = new AbandonedCarts($this->cartRecords, $this->abandonedCartRecords, $this->carts, $settings, $this->clock);
         $this->orderRecords = new InMemoryOrderRepository($this->transactions);
@@ -580,7 +583,8 @@ final class TestShop
             $this->opening = new ShopOpening(new InMemoryOpening(), $this->visitor = new FakeAuthorization()),
         );
         $this->reorder = new Reorder($this->orders, $this->carts);
-        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->events);
+        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs);
+        $this->jobs->with(new SendWithdrawalAcknowledgements($this->returnRecords, $this->orders, $this->events, $this->logger));
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links, $fees, $this->currencies);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
         $this->invoiceSettings = new MemoryInvoiceSettings();

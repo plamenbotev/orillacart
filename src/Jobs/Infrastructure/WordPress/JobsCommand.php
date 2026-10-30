@@ -13,6 +13,7 @@ use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Jobs\Application\JobSites;
 use OrillaCart\Jobs\Application\JobWorkers;
+use OrillaCart\Jobs\Application\SiteTurns;
 use OrillaCart\Shared\WordPress\CliCommand;
 use Psr\Clock\ClockInterface;
 
@@ -30,6 +31,7 @@ final readonly class JobsCommand implements CliCommand
         private Jobs $jobs,
         private ClockInterface $clock,
         private JobSites $sites,
+        private SiteTurns $turns,
     ) {}
 
     public static function name(): string
@@ -49,7 +51,8 @@ final readonly class JobsCommand implements CliCommand
      *
      * [--network]
      * : Serve every site of the network that runs the shop, a batch from each in turn, instead of the site --url
-     * names: one cron line or one worker for the whole network.
+     * names: one cron line or one worker for the whole network. A site whose turn fails is left alone for a minute
+     * and the others go on; one whose database is behind the update waits until it is brought up.
      *
      * [--except=<sites>]
      * : With --network, leave out these sites, by id and comma-separated: a busy shop with workers of its own.
@@ -163,12 +166,25 @@ final readonly class JobsCommand implements CliCommand
         };
         $sites = [];
         $sitesAt = 0.0;
+        // Why the worker stops, if it should now: the limits are looked at after every site's turn, not once a round.
+        $why = function (bool $restart, int $ran) use (&$stop, &$done, $maxJobs, $maxTime, $started, $memory, $loop): string|false|null {
+            return match (true) {
+                $stop => 'asked to stop',
+                $maxJobs !== null && $done >= $maxJobs => "ran {$done} jobs",
+                $maxTime !== null && microtime(true) - $started >= $maxTime => "ran {$maxTime} seconds",
+                memory_get_usage(true) > $memory => 'reached its memory limit',
+                $restart => 'asked to restart',
+                !$loop && $ran === 0 => null,
+                default => false,
+            };
+        };
         try {
             while (true) {
                 // WordPress keeps posts, terms and options for the life of the process: read them afresh each batch.
                 if ($loop && \function_exists('wp_cache_flush_runtime')) {
                     wp_cache_flush_runtime();
                 }
+                $reason = false;
                 if ($network) {
                     // Sites come and go on a network: look again now and then.
                     if (microtime(true) - $sitesAt >= 60) {
@@ -179,33 +195,32 @@ final readonly class JobsCommand implements CliCommand
                     $run = new JobRun();
                     $restart = false;
                     foreach ($sites as $site) {
-                        if ($stop) {
-                            break;
+                        $turn = $this->turns->on($site, static fn(JobRunner $runner, JobWorkers $workers): array => $serve($runner, $workers, (string) $site));
+                        if ($turn === null) {
+                            continue;
                         }
-                        [$ran, $asked] = $this->sites->on($site, static fn(JobRunner $runner, JobWorkers $workers): array => $serve($runner, $workers, (string) $site));
+                        [$ran, $asked] = $turn;
                         $restart = $restart || $asked;
                         if ($ran->count() > 0) {
                             \WP_CLI::log(\sprintf('Site #%d: done %d, to retry %d, failed %d.', $site, $ran->done, $ran->retried, $ran->failed));
                         }
                         $run = new JobRun($run->done + $ran->done, $run->retried + $ran->retried, $run->failed + $ran->failed);
+                        $done += $ran->count();
+                        $reason = $why($restart, 1);
+                        if ($reason !== false) {
+                            break;
+                        }
                     }
                 } else {
                     [$run, $restart] = $serve($this->runner, $this->workers, '');
                     if ($run->count() > 0) {
                         \WP_CLI::log(\sprintf('Done %d, to retry %d, failed %d.', $run->done, $run->retried, $run->failed));
                     }
+                    $done += $run->count();
                 }
-                $done += $run->count();
-
-                $reason = match (true) {
-                    $stop => 'asked to stop',
-                    $maxJobs !== null && $done >= $maxJobs => "ran {$done} jobs",
-                    $maxTime !== null && microtime(true) - $started >= $maxTime => "ran {$maxTime} seconds",
-                    memory_get_usage(true) > $memory => 'reached its memory limit',
-                    $restart => 'asked to restart',
-                    !$loop && $run->count() === 0 => null,
-                    default => false,
-                };
+                if ($reason === false) {
+                    $reason = $why($restart, $run->count());
+                }
                 if ($reason === null) {
                     \WP_CLI::success('Nothing is due.');
 
@@ -224,7 +239,7 @@ final readonly class JobsCommand implements CliCommand
             if ($loop) {
                 if ($network) {
                     foreach (array_keys($heartbeats) as $site) {
-                        $this->sites->on((int) $site, static fn(JobRunner $runner, JobWorkers $workers) => $workers->stopped($name));
+                        $this->turns->on((int) $site, static fn(JobRunner $runner, JobWorkers $workers) => $workers->stopped($name));
                     }
                 } else {
                     $this->workers->stopped($name);

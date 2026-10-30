@@ -46,7 +46,9 @@ final class HookPass implements CompilerPassInterface
             $services[$id] = new Reference($id);
         }
 
+        // Public: a hook firing while a step runs as another site resolves its class from that site's registrar.
         $container->getDefinition(HookRegistrar::class)
+            ->setPublic(true)
             ->setArgument('$hooks', $hooks)
             ->setArgument('$services', ServiceLocatorTagPass::register($container, $services));
     }

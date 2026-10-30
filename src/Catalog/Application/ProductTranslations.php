@@ -64,9 +64,12 @@ final class ProductTranslations implements ProductLanguages
                 $original = $default !== null ? ($translations[$default->code] ?? $postId) : $postId;
             }
         }
-        // The same for every post of the group.
-        foreach ([...$translations, $postId] as $id) {
-            $this->originals[$id] = $original;
+        // The same for every post of the group. A post alone is not remembered: a translation saved a moment ago
+        // is linked to its product by Polylang or WPML after the save, in the same request.
+        if (\count($translations) > 1) {
+            foreach ([...$translations, $postId] as $id) {
+                $this->originals[$id] = $original;
+            }
         }
 
         return $original;

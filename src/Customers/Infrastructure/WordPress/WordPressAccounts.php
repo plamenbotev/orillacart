@@ -16,11 +16,15 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 /**
  * Customers are WordPress users. Those who made their account at checkout have the shop's customer role;
- * anyone logged in has an account with an address book, kept in user meta.
+ * anyone logged in has an account with an address book, kept in user meta. A user is one across a network while
+ * each shop of it is their own, so the meta is keyed per site with the site's table prefix, as WordPress keys
+ * the roles: a shopper's address book, wishlist and cart-reminder choice at one shop are not seen at another,
+ * and one shop's uninstall or erasure leaves the others' alone.
  */
 final readonly class WordPressAccounts implements Accounts, LifecycleListener, RemovesShopData
 {
     public const string ROLE = 'orillacart_customer';
+    /** The meta's names, each behind the site's prefix: see key(). */
     public const string ADDRESSES = 'orillacart_addresses';
     public const string NO_CART_REMINDERS = 'orillacart_no_cart_reminders';
     public const string WISHLIST = 'orillacart_wishlist';
@@ -80,11 +84,11 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
     public function saveAddresses(int $id, AddressBook $addresses): void
     {
         if ($addresses->addresses === []) {
-            delete_user_meta($id, self::ADDRESSES);
+            delete_user_meta($id, self::key(self::ADDRESSES));
 
             return;
         }
-        update_user_meta($id, self::ADDRESSES, [
+        update_user_meta($id, self::key(self::ADDRESSES), [
             'addresses' => array_map(fn(AddressData $address): mixed => $this->normalizer->normalize($address, 'json'), $addresses->addresses),
             'billing' => $addresses->billingId,
             'shipping' => $addresses->shippingId,
@@ -94,15 +98,15 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
     public function saveCartReminders(int $id, bool $on): void
     {
         if ($on) {
-            delete_user_meta($id, self::NO_CART_REMINDERS);
+            delete_user_meta($id, self::key(self::NO_CART_REMINDERS));
         } else {
-            update_user_meta($id, self::NO_CART_REMINDERS, '1');
+            update_user_meta($id, self::key(self::NO_CART_REMINDERS), '1');
         }
     }
 
     public function wishlist(int $id): array
     {
-        $stored = get_user_meta($id, self::WISHLIST, true);
+        $stored = get_user_meta($id, self::key(self::WISHLIST), true);
 
         return \is_array($stored) ? array_values(array_filter(array_map(static fn(mixed $productId): int => is_numeric($productId) ? (int) $productId : 0, $stored), static fn(int $productId): bool => $productId > 0)) : [];
     }
@@ -110,9 +114,9 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
     public function saveWishlist(int $id, array $productIds): void
     {
         if ($productIds === []) {
-            delete_user_meta($id, self::WISHLIST);
+            delete_user_meta($id, self::key(self::WISHLIST));
         } else {
-            update_user_meta($id, self::WISHLIST, $productIds);
+            update_user_meta($id, self::key(self::WISHLIST), $productIds);
         }
     }
 
@@ -157,9 +161,21 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
             }
         }
         remove_role(self::ROLE);
-        delete_metadata('user', 0, self::ADDRESSES, '', true);
-        delete_metadata('user', 0, self::NO_CART_REMINDERS, '', true);
-        delete_metadata('user', 0, self::WISHLIST, '', true);
+        delete_metadata('user', 0, self::key(self::ADDRESSES), '', true);
+        delete_metadata('user', 0, self::key(self::NO_CART_REMINDERS), '', true);
+        delete_metadata('user', 0, self::key(self::WISHLIST), '', true);
+    }
+
+    /**
+     * A meta key of this site's: the name behind the site's table prefix (wp_ on a single site, wp_3_ on the
+     * third site of a network), the way WordPress keys a user's roles.
+     */
+    public static function key(string $name): string
+    {
+        $wpdb = $GLOBALS['wpdb'] ?? null;
+        \assert($wpdb instanceof \wpdb);
+
+        return $wpdb->get_blog_prefix() . $name;
     }
 
     private function record(\WP_User $user): CustomerRecord
@@ -171,14 +187,14 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
             $user->last_name,
             (string) mysql2date(\DATE_ATOM, $user->user_registered, false),
             $this->addressBook($user->ID),
-            get_user_meta($user->ID, self::NO_CART_REMINDERS, true) !== '1',
+            get_user_meta($user->ID, self::key(self::NO_CART_REMINDERS), true) !== '1',
         );
     }
 
     /** The saved address book; an address that no longer reads is left out. */
     private function addressBook(int $id): AddressBook
     {
-        $saved = get_user_meta($id, self::ADDRESSES, true);
+        $saved = get_user_meta($id, self::key(self::ADDRESSES), true);
         if (!\is_array($saved) || !\is_array($saved['addresses'] ?? null)) {
             return new AddressBook();
         }

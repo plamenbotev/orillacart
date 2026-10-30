@@ -16,7 +16,7 @@ use OrillaCart\Shared\Domain\References;
 #[ORM\Entity]
 #[ORM\Table(name: 'refunds')]
 #[ORM\Index(name: 'refund_order', columns: ['order_id'])]
-#[ORM\Index(name: 'refund_reference', columns: ['gateway', 'provider_reference'])]
+#[ORM\UniqueConstraint(name: 'refund_reference', columns: ['gateway', 'provider_reference'])]
 class Refund
 {
     #[ORM\Id]

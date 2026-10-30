@@ -6,6 +6,7 @@ namespace OrillaCart\Shipping\Application;
 
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 
 /**
  * Asks the couriers where shipments are, one job per shipment on its way, queued every hour (TrackShipments). A
@@ -43,7 +44,7 @@ final readonly class TrackConsignments implements JobHandler
         return 600;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
         $outcomes = [];
         foreach ($jobs as $job) {

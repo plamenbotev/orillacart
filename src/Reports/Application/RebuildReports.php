@@ -6,6 +6,7 @@ namespace OrillaCart\Reports\Application;
 
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Ordering\Application\OrderService;
 
@@ -52,7 +53,7 @@ final readonly class RebuildReports implements JobHandler
         return 1800;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
         foreach ($jobs as $job) {
             $this->step($job);

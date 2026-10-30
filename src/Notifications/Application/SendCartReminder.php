@@ -6,6 +6,7 @@ namespace OrillaCart\Notifications\Application;
 
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 
 /**
  * Reminds a customer of the cart they left at checkout, in the mail lane. A mail the mail system refused is tried
@@ -42,7 +43,7 @@ final readonly class SendCartReminder implements JobHandler
         return 120;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
         $outcomes = [];
         foreach ($jobs as $job) {

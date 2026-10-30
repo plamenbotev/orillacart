@@ -190,8 +190,8 @@ final class InMemoryOrderRepository implements OrderRepository
         $countries = [];
         $currencies = [];
         foreach ($this->orders as $order) {
-            if (($order->shippingName() ?? '') !== '') {
-                $shipping[] = (string) $order->shippingName();
+            if (($order->shopShippingName() ?? '') !== '') {
+                $shipping[] = (string) $order->shopShippingName();
             }
             $countries[] = $order->billing()->country();
             if ($order->shippingAddress() !== null) {
@@ -227,7 +227,7 @@ final class InMemoryOrderRepository implements OrderRepository
             array_push($haystack, $address->firstName(), $address->lastName(), $address->phone(), $address->street(), $address->city(), $address->postcode());
         }
         foreach ($lines as $line) {
-            array_push($haystack, $line->name(), $line->sku() ?? '');
+            array_push($haystack, $line->name(), $line->shopName(), $line->sku() ?? '');
         }
         $has = static fn(string $fact): bool => match ($fact) {
             OrderSearch::GIFT_CARD => !$order->giftCardTotal()->isZero(),
@@ -256,7 +256,7 @@ final class InMemoryOrderRepository implements OrderRepository
                 default => true,
             }
         && ($search->shipped === null || ($search->shipped ? $order->fulfilledAt() !== null : $order->fulfilledAt() === null && $order->shippingName() !== null))
-        && ($search->shippingName === null || $order->shippingName() === $search->shippingName)
+        && ($search->shippingName === null || $order->shopShippingName() === $search->shippingName)
         && ($search->country === null || array_filter($addresses, static fn(Address $address): bool => $address->country() === $search->country) !== [])
         && ($search->deliveryFrom === null || ($delivery !== null && $delivery >= $search->deliveryFrom->format('Y-m-d')))
         && ($search->deliveryUntil === null || ($delivery !== null && $delivery <= $search->deliveryUntil->format('Y-m-d')))

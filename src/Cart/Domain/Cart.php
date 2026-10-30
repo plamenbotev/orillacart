@@ -138,6 +138,28 @@ class Cart
         return $this->lines->isEmpty();
     }
 
+    /**
+     * What the cart holds and when it last changed, in one string: checkout places an order from the cart it read,
+     * and from no other (a cart changed, or emptied by the order placed from it, since).
+     */
+    public function fingerprint(): string
+    {
+        // As the row keeps them: the time to the second, and the answers' keys in one order whichever way they
+        // were read, so a cart read again from the database is the same cart.
+        return hash('sha256', json_encode([
+            array_map(static function (CartLine $line): array {
+                $answers = $line->answers();
+                ksort($answers, SORT_STRING);
+
+                return [$line->productId(), $line->optionIds(), $line->bundleChoices(), $line->quantity(), $answers];
+            }, $this->lines()),
+            $this->coupons,
+            $this->giftCards,
+            $this->useStoreCredit,
+            $this->updatedAt->format('Y-m-d H:i:s'),
+        ], JSON_THROW_ON_ERROR));
+    }
+
     public function line(int $id): CartLine
     {
         foreach ($this->lines as $line) {

@@ -7,6 +7,7 @@ namespace OrillaCart\Ordering\Domain;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\Text;
 
@@ -866,10 +867,15 @@ class Order
                 $covered[] = [$line, ...$this->lineShare($line, $line->quantity())];
             }
         }
+        // In the currency's cents, line by line: a credit note and the taxes report show 0.83 of 5 on 24, not 0.8333.
+        $decimals = new Currency($this->currency)->decimals();
         $gross = self::sum($covered, static fn(array $share): Money => $share[1]);
         $tax = self::sum($covered, static fn(array $share): Money => $share[2]);
-        foreach ($covered as [$line, $lineGross]) {
-            $line->refunded($gross->isZero() ? Money::zero() : $refund->amount->proportion($lineGross, $gross));
+        $left = $refund->amount;
+        foreach ($covered as $index => [$line, $lineGross]) {
+            $part = $index === \count($covered) - 1 ? $left : ($gross->isZero() ? Money::zero() : $refund->amount->proportion($lineGross, $gross)->rounded($decimals));
+            $left = $left->subtract($part);
+            $line->refunded($part);
         }
 
         $taxLeft = $this->tax()->subtract($this->refundedTax())->atLeastZero();
@@ -880,11 +886,11 @@ class Order
 
             return $taxLeft;
         }
-        $share = $gross->isZero() ? Money::zero() : $tax->proportion($refund->amount, $gross);
+        $share = $gross->isZero() ? Money::zero() : $tax->proportion($refund->amount, $gross)->rounded($decimals);
         $share = $share->compare($taxLeft) > 0 ? $taxLeft : $share;
         $left = $share;
         foreach ($covered as $index => [$line, , $lineTax]) {
-            $part = $index === \count($covered) - 1 ? $left : ($tax->isZero() ? Money::zero() : $share->proportion($lineTax, $tax));
+            $part = $index === \count($covered) - 1 ? $left : ($tax->isZero() ? Money::zero() : $share->proportion($lineTax, $tax)->rounded($decimals));
             $left = $left->subtract($part);
             $line->refundTax($part);
         }

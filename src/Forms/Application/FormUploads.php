@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Forms\Application;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Forms\Application\Dto\SendUpload;
 use OrillaCart\Forms\Application\Dto\SentUpload;
@@ -52,6 +53,7 @@ final readonly class FormUploads
         private FormUploadRepository $uploads,
         private ClockInterface $clock,
         private SettingsService $settings,
+        private ProductTranslations $translations,
     ) {}
 
     /**
@@ -62,9 +64,11 @@ final readonly class FormUploads
         $clean = null;
         try {
             $field = null;
+            // The page may be a translation's; the forms are the product's (design 51).
+            $productId = $this->translations->original($command->productId);
             // A shop that takes no orders has no use for files: taking them would only store strangers' files.
-            if (!$this->settings->current()->catalogOnly && $this->products->isPublished($command->productId)) {
-                foreach ($this->forms->productFields($command->productId, $this->products->termIds($command->productId)['categories']) as $asked) {
+            if (!$this->settings->current()->catalogOnly && $this->products->isPublished($productId)) {
+                foreach ($this->forms->productFields($productId, $this->products->termIds($productId)['categories']) as $asked) {
                     if ($asked->id === $command->fieldId && $asked->kind === 'file') {
                         $field = $asked;
                     }

@@ -102,7 +102,22 @@ final readonly class OptionShopPagesRepository implements ShopPagesRepository, L
     /** A page the plugin made, which uninstalling removes: one of the four, or its version in a language. */
     public function made(int $id): void
     {
+        update_option(self::MADE_OPTION, [...$this->madeIds(), $id], false);
+    }
+
+    /** Whether the plugin made the page: the shop's own, whatever it is titled now. */
+    public function wasMade(int $id): bool
+    {
+        return \in_array($id, $this->madeIds(), true);
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function madeIds(): array
+    {
         $made = get_option(self::MADE_OPTION);
-        update_option(self::MADE_OPTION, [...array_values(array_filter(\is_array($made) ? $made : [], \is_int(...))), $id], false);
+
+        return array_values(array_filter(\is_array($made) ? $made : [], \is_int(...)));
     }
 }

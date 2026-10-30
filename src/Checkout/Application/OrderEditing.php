@@ -124,13 +124,15 @@ final readonly class OrderEditing
             'reason' => trim($command->reason) === '' ? null : trim($command->reason),
             'change' => null,
         ];
+        // The note is the shop's: the item in its own words, not the customer's (design 51).
+        $shopWords = $this->orders->order($orderId);
         $view = $this->reprice($order, self::asItIs($order), $changes, $userId);
         $this->orders->addNote($orderId, new AddOrderNote(\sprintf(
             '%s: %s %s%s%s.',
             trim($command->label),
             $command->amount,
             $order->currency,
-            $command->line === null ? ' on the whole order' : \sprintf(' on %s', $order->lines[$command->line]->name),
+            $command->line === null ? ' on the whole order' : \sprintf(' on %s', $shopWords->lines[$command->line]->name),
             trim($command->reason) === '' ? '' : ' (' . trim($command->reason) . ')',
         )), $userId);
 

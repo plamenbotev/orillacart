@@ -49,8 +49,10 @@ final class FakeContentLanguages implements ContentLanguages
 
     public function current(): ?Language
     {
+        // Without one set, the language of the locale the shop works in: FakeLanguages's, or WordPress's own.
+        $locale = $this->follows !== null ? $this->follows->locale : (\function_exists('determine_locale') ? determine_locale() : null);
         foreach ($this->languages as $language) {
-            if ($this->current === null ? $language->locale === $this->follows?->locale : $language->code === $this->current) {
+            if ($this->current === null ? $language->locale === $locale : $language->code === $this->current) {
                 return $language;
             }
         }

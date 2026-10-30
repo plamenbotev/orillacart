@@ -22,6 +22,11 @@ final readonly class DoctrineOAuthTokenRepository implements OAuthTokenRepositor
         return $this->entityManager->getRepository(OAuthToken::class)->findOneBy(['refreshHash' => $hash]);
     }
 
+    public function withPreviousRefreshHash(string $hash): ?OAuthToken
+    {
+        return $this->entityManager->getRepository(OAuthToken::class)->findOneBy(['previousRefreshHash' => $hash]);
+    }
+
     public function save(OAuthToken $token): void
     {
         $this->entityManager->persist($token);

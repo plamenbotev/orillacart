@@ -8,18 +8,25 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * The tokens an OAuth client holds for the key the owner connected it with: an access token for an hour, and a
- * refresh token that gets a new pair once. Only their hashes are kept; revoking the key ends them.
+ * refresh token that gets a new pair once. Only their hashes are kept; revoking the key ends them. The refresh
+ * token a rotation replaced is remembered by its hash, so one presented again is told apart from an unknown one:
+ * it means the token leaked, and the whole grant ends (OAuth 2.1 §6.1).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'oauth_tokens')]
 #[ORM\UniqueConstraint(name: 'oauth_access_hash', columns: ['access_hash'])]
 #[ORM\UniqueConstraint(name: 'oauth_refresh_hash', columns: ['refresh_hash'])]
+#[ORM\Index(name: 'oauth_previous_refresh_hash', columns: ['previous_refresh_hash'])]
 class OAuthToken
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
+
+    /** The hash of the refresh token the last rotation replaced; null until the first. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $previousRefreshHash = null;
 
     public function __construct(
         #[ORM\ManyToOne(targetEntity: ApiKey::class)]
@@ -57,9 +64,10 @@ class OAuthToken
         return $this->refreshExpiresAt;
     }
 
-    /** A refresh: a new pair, the old one gone. */
+    /** A refresh: a new pair, the old one gone; the old refresh token's hash is kept to recognise it. */
     public function rotate(string $accessHash, \DateTimeImmutable $accessExpiresAt, string $refreshHash, \DateTimeImmutable $refreshExpiresAt): void
     {
+        $this->previousRefreshHash = $this->refreshHash;
         $this->accessHash = $accessHash;
         $this->accessExpiresAt = $accessExpiresAt;
         $this->refreshHash = $refreshHash;

@@ -53,4 +53,20 @@ final class StockHistoryTest extends TestCase
         ], array_map(static fn(array $total): array => [$total['reason'], $total['stockroom'], $total['in'], $total['out']], $history->totals));
         self::assertCount(1, new StockHistory($shop->stock, new StockItemNames($shop->productRecords, $shop->content), $shop->productRecords, new FixedUserNames())->history(new StockHistoryQuery(reason: 'sale'))->movements);
     }
+
+    public function testTwoPartsOnOneLevelEachLogTheLevelAfterThem(): void
+    {
+        $shop = new TestShop();
+        $room = $shop->stockrooms->create(new SaveStockroom('Sofia'))->id;
+        $shop->content->add(20, 'E-book');
+        $shop->products->save(20, new SaveProduct('8', 'virtual'));
+        $shop->stock->setLevels(StockItemRef::product(20), new SetStockLevels([new SetStockLevel($room, 5)]));
+        // A bundle holding the item twice takes it in two parts.
+        $taken = [...$shop->stock->take([StockItemRef::product(20)], 2), ...$shop->stock->take([StockItemRef::product(20)], 1)];
+
+        $shop->stock->record($taken, new StockNote(orderId: 42));
+
+        $sales = array_values(array_filter($shop->stockMovements->movements, static fn($movement): bool => $movement->orderId() === 42));
+        self::assertSame([[-2, 3], [-1, 2]], array_map(static fn($movement): array => [$movement->delta(), $movement->after()], $sales));
+    }
 }

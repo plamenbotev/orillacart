@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Fixtures\Jobs;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 
 /**
  * A handler that records the batches it was given and does what the test tells it per key: throw, or return an
@@ -21,6 +22,10 @@ final class RecordingHandler implements JobHandler
     public int $lock = 300;
     /** @var (\Closure(list<QueuedJob>): void)|null looks at the jobs while they run */
     public ?\Closure $during = null;
+    /** @var (\Closure(QueuedJob): void)|null runs before each job when the handler reports them one by one */
+    public ?\Closure $before = null;
+    /** Whether it reports each job as it is done, instead of returning the outcomes of the batch. */
+    public bool $reports = false;
 
     public static function type(): string
     {
@@ -47,7 +52,7 @@ final class RecordingHandler implements JobHandler
         return $this->lock;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
         $this->batches[] = array_map(static fn(QueuedJob $job): ?string => $job->uniqueKey, $jobs);
         if ($this->during !== null) {
@@ -55,11 +60,16 @@ final class RecordingHandler implements JobHandler
         }
         $outcomes = [];
         foreach ($jobs as $job) {
+            if ($this->before !== null) {
+                ($this->before)($job);
+            }
             $outcome = $this->outcomes[(string) $job->uniqueKey] ?? null;
             if ($outcome instanceof \Throwable) {
                 throw $outcome;
             }
-            if ($outcome !== null) {
+            if ($this->reports) {
+                $progress->done($job, $outcome);
+            } elseif ($outcome !== null) {
                 $outcomes[$job->id] = $outcome;
             }
         }

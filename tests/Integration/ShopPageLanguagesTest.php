@@ -4,14 +4,23 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Cart\Application\Dto\AddToCart;
+use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\ProductTranslations;
+use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Platform\WordPress\WordPressLanguages;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\I18n\Language;
 use OrillaCart\Storefront\Application\ShopPagesService;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionLegalSettingsRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionShopPagesRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopPageLanguages;
+use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
+use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\I18n\FakeContentLanguages;
 
 /**
@@ -53,6 +62,8 @@ final class ShopPageLanguagesTest extends RestTestCase
         $terms = $this->page('Terms of sale', '<!-- wp:paragraph --><p>Our terms.</p><!-- /wp:paragraph -->');
         update_option(OptionShopPagesRepository::OPTION, ['shop' => $shop, 'checkout' => $checkout]);
         update_option(OptionLegalSettingsRepository::OPTION, ['terms' => $terms]);
+        // The checkout page is the plugin's; the shop page the owner's own, with their words.
+        new OptionShopPagesRepository()->made($checkout);
         $languages = new FakeContentLanguages();
         $german = static fn(string $words, string $text): string => determine_locale() === 'de_DE' && $text === 'Checkout' ? 'Kasse' : $words;
         add_filter('gettext_orillacart', $german, 10, 2);
@@ -74,10 +85,43 @@ final class ShopPageLanguagesTest extends RestTestCase
         self::assertSame(['Terms of sale', 'draft'], [get_the_title($ownTerms), get_post_status($ownTerms)]);
         self::assertNotContains($ownTerms, (array) get_option(OptionShopPagesRepository::MADE_OPTION));
 
-        // Done until the languages or the pages change: a version the owner deleted is not made again.
+        // A version the owner deleted for good is not made again: not when nothing changed, nor on an update.
         wp_delete_post($ownShop, true);
+        wp_delete_post($kasse, true);
         $this->pageLanguages($languages)->changed();
+        $this->pageLanguages($languages)->upgrade('1.0.0');
         self::assertSame([], get_posts(['post_type' => 'page', 'post_status' => 'any', 'title' => 'Our shop', 'post__not_in' => [$shop], 'fields' => 'ids']));
+        self::assertSame([], get_posts(['post_type' => 'page', 'post_status' => 'any', 'title' => 'Kasse', 'fields' => 'ids']));
+    }
+
+    public function testTheShopsOwnPageIsKnownByItsIdNotItsTitle(): void
+    {
+        // The admin worked in German when the plugin made the checkout page, so it is titled "Kasse" in the
+        // site's default language, English; the owner's own cart page is titled as the shop would title it.
+        $checkout = $this->page('Kasse', '<!-- wp:orillacart/checkout {"align":"wide"} /-->');
+        $cart = $this->page('Cart', '<!-- wp:orillacart/cart /-->');
+        update_option(OptionShopPagesRepository::OPTION, ['checkout' => $checkout, 'cart' => $cart]);
+        new OptionShopPagesRepository()->made($checkout);
+        $languages = new FakeContentLanguages([new Language('en', 'en_US', 'English'), new Language('de', 'de_DE', 'Deutsch'), new Language('fr', 'fr_FR', 'Français')]);
+        $titles = static fn(string $words, string $text): string => $text === 'Checkout' ? match (determine_locale()) {
+            'de_DE' => 'Kasse',
+            'fr_FR' => 'Caisse',
+            default => $words,
+        } : $words;
+        add_filter('gettext_orillacart', $titles, 10, 2);
+        try {
+            $this->pageLanguages($languages)->keep();
+        } finally {
+            remove_filter('gettext_orillacart', $titles);
+        }
+
+        $versions = $languages->postTranslations($checkout);
+        $this->made = [...$this->made, ...array_values($versions), ...array_values($languages->postTranslations($cart))];
+        self::assertSame(['Kasse', 'publish'], [get_the_title($versions['de']), get_post_status($versions['de'])]);
+        self::assertSame(['Caisse', 'publish'], [get_the_title($versions['fr']), get_post_status($versions['fr'])]);
+        $ownCart = $languages->postTranslations($cart)['de'] ?? null;
+        self::assertIsInt($ownCart);
+        self::assertSame(['Cart', 'draft'], [get_the_title($ownCart), get_post_status($ownCart)], 'the owner\'s page, whatever it is titled');
     }
 
     public function testEveryLanguagesVersionOfTheCheckoutIsTheCheckout(): void
@@ -100,6 +144,33 @@ final class ShopPageLanguagesTest extends RestTestCase
         }
         $languages->current = 'de';
         self::assertSame(get_permalink($kasse), $links->pageUrl($checkout));
+    }
+
+    public function testTheReceiptLinkGoesToTheCheckoutInTheOrdersLanguage(): void
+    {
+        $checkout = $this->page('Checkout', '<!-- wp:orillacart/checkout /-->');
+        $kasse = $this->page('Kasse', '<!-- wp:orillacart/checkout /-->');
+        update_option(OptionShopPagesRepository::OPTION, ['checkout' => $checkout]);
+        $languages = new FakeContentLanguages();
+        $languages->translate(['en' => $checkout, 'de' => $kasse]);
+        // An order placed in German, in memory; the gateway's return and the admin's request are in English.
+        $shop = new TestShop();
+        $shop->contentLanguages->languages = $languages->languages;
+        $shop->content->add(20, 'Ring');
+        $shop->products->save(20, new SaveProduct('100', 'virtual'));
+        $shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
+        $shop->languages->locale = 'de_DE';
+        $owner = new CartOwner($shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
+        $german = $shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'))->number;
+        self::assertSame('de_DE', $shop->orderRecords->find($german)?->locale());
+        $container = self::kernel()->container();
+        $pages = $container->get(ShopPagesService::class);
+        self::assertInstanceOf(ShopPagesService::class, $pages);
+        $links = new StorefrontOrderLinks($pages, $shop->receipts, $this->links($languages), $shop->orderRecords, new WordPressLanguages());
+
+        self::assertSame('en_US', determine_locale());
+        self::assertSame(get_permalink($kasse), remove_query_arg(StorefrontOrderLinks::RECEIPT_QUERY, $links->receiptUrl($german)));
+        self::assertSame('en_US', determine_locale(), 'the request\'s language comes back');
     }
 
     private function page(string $title, string $content): int

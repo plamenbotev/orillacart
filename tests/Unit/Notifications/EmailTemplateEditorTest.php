@@ -144,6 +144,42 @@ final class EmailTemplateEditorTest extends TestCase
         $this->editor->save('order-shipped', new SaveEmailTemplate(self::SHIPPED, 'fr_FR'), 7);
     }
 
+    public function testTheGlobalResetTakesTheLanguagesWithItAndARemovedLanguagesTemplateCanStillBeReset(): void
+    {
+        $this->shop->contentLanguages->languages = [new Language('en', 'en_US', 'English'), new Language('de', 'de_DE', 'Deutsch'), new Language('fr', 'fr_FR', 'Français')];
+        $this->editor->save('order-shipped', new SaveEmailTemplate(self::SHIPPED), 7);
+        $this->editor->save('order-shipped', new SaveEmailTemplate(str_replace('workshop', 'Werkstatt', self::SHIPPED), 'de_DE'), 7);
+        $this->editor->save('order-shipped', new SaveEmailTemplate(str_replace('workshop', 'atelier', self::SHIPPED), 'fr_FR'), 7);
+
+        // French left the site: its template can be opened and reset, not written.
+        $this->shop->contentLanguages->languages = [new Language('en', 'en_US', 'English'), new Language('de', 'de_DE', 'Deutsch')];
+        self::assertTrue($this->editor->template('order-shipped', new EmailTemplateQuery('fr_FR'))->edited);
+        try {
+            $this->editor->save('order-shipped', new SaveEmailTemplate(self::SHIPPED, 'fr_FR'), 7);
+            self::fail('A language the site has not was written.');
+        } catch (EmailRuleViolation) {
+        }
+        self::assertFalse($this->editor->reset('order-shipped', new EmailTemplateQuery('fr_FR'))->edited);
+        self::assertSame(['de_DE'], $this->listed()['order-shipped']);
+
+        // The reset of the template for every language takes the languages' with it.
+        $this->editor->save('order-shipped', new SaveEmailTemplate(str_replace('workshop', 'atelier', self::SHIPPED), 'de_DE'), 7);
+        $this->editor->reset('order-shipped');
+        self::assertSame([], $this->listed()['order-shipped']);
+        self::assertFalse($this->editor->template('order-shipped', new EmailTemplateQuery('de_DE'))->edited);
+    }
+
+    /** @return array<string, list<string>> the languages with a template of their own, by template */
+    private function listed(): array
+    {
+        $listed = [];
+        foreach ($this->editor->templates() as $template) {
+            $listed[$template->name] = $template->languages;
+        }
+
+        return $listed;
+    }
+
     public function testTheSandboxRefusesWhatReachesPastTheEmail(): void
     {
         foreach ([

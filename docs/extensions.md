@@ -715,7 +715,9 @@ the email has an account: the link to make it, or word that it has one, goes to 
 ## Webhooks
 
 Shop → Integrations sends webhooks: each event a webhook listens to is POSTed to its address as JSON, by the
-background jobs, and tried again (up to six times over about a day) until the address answers 2xx:
+background jobs, and tried again (up to six times over about a day) until the address answers 2xx. The delivery is
+queued inside the transaction of the change it tells of, so a change that is saved is always announced and one
+rolled back never is:
 
 ```json
 { "id": "6f1c…", "topic": "order.placed", "created_at": "2026-10-21T08:00:00+00:00", "data": { "order": { … } } }

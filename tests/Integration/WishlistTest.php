@@ -42,7 +42,7 @@ final class WishlistTest extends RestTestCase
         }
         $customer = get_user_by('login', 'orillacart_subscriber');
         if ($customer instanceof \WP_User) {
-            delete_user_meta($customer->ID, WordPressAccounts::WISHLIST);
+            delete_user_meta($customer->ID, WordPressAccounts::key(WordPressAccounts::WISHLIST));
         }
         $this->stored === false ? delete_option(OptionStorefrontSettingsRepository::OPTION) : update_option(OptionStorefrontSettingsRepository::OPTION, $this->stored);
         global $wpdb;

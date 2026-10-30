@@ -24,6 +24,7 @@ use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Jobs\RecordedProgress;
 use PHPUnit\Framework\TestCase;
 
 final class OrderEmailsTest extends TestCase
@@ -243,8 +244,8 @@ final class OrderEmailsTest extends TestCase
         $handler = $this->shop->jobs->get(SendOrderEmails::TYPE);
 
         // Its worker stopped after the mail went out, so another worker claims it again.
-        $handler->handle([$job]);
-        $handler->handle([$job]);
+        $handler->handle([$job], RecordedProgress::none());
+        $handler->handle([$job], RecordedProgress::none());
 
         self::assertCount($sent + 1, $this->shop->mail->emails);
     }
@@ -257,7 +258,8 @@ final class OrderEmailsTest extends TestCase
         $customer = new QueuedJob('101', 'mail', SendOrderEmails::TYPE, null, ['order' => $order->number, 'kind' => 'order_received'], 1, 1);
         $shop = new QueuedJob('102', 'mail', SendOrderEmails::TYPE, null, ['order' => $order->number, 'kind' => 'new_order'], 1, 1);
 
-        $outcomes = $this->shop->jobs->get(SendOrderEmails::TYPE)->handle([$customer, $shop]);
+        $progress = new RecordedProgress();
+        $outcomes = $progress->with($this->shop->jobs->get(SendOrderEmails::TYPE)->handle([$customer, $shop], $progress->progress));
 
         self::assertCount(1, $outcomes, 'only the broken one is tried again');
         self::assertTrue(($outcomes[$shop->id] ?? null)?->isRetry());

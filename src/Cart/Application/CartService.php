@@ -216,7 +216,7 @@ final readonly class CartService
             ];
         }
 
-        return new CartContents($cart->id(), $lines, $cart->coupons(), array_values(array_unique($refusals)), $cart->giftCards(), $cart->usesStoreCredit());
+        return new CartContents($cart->id(), $lines, $cart->coupons(), array_values(array_unique($refusals)), $cart->giftCards(), $cart->usesStoreCredit(), $cart->fingerprint());
     }
 
     /**
@@ -335,13 +335,27 @@ final readonly class CartService
      * already being placed from it: a second submit of the same checkout waits here for the first, then
      * learns of its order instead of placing another.
      *
-     * @throws CartRuleViolation for a cart that is gone since it was read
+     * @param string|null $fingerprint the cart as checkout read it (CartContents::$fingerprint); the order is placed
+     *                                 from that cart only, not from one emptied (by the order placed from it) or
+     *                                 changed since
+     *
+     * @throws CartRuleViolation for a cart that is gone, emptied or changed since it was read
      */
-    public function lockForOrder(int $cartId): ?int
+    public function lockForOrder(int $cartId, ?string $fingerprint = null): ?int
     {
         $cart = $this->carts->find($cartId, true) ?? throw new CartRuleViolation('The cart is empty.', 'orillacart_cart_empty');
+        $placing = $cart->orderBeingPlaced($this->clock->now());
+        if ($placing !== null) {
+            return $placing;
+        }
+        if ($cart->isEmpty()) {
+            throw new CartRuleViolation('The cart is empty.', 'orillacart_cart_empty');
+        }
+        if ($fingerprint !== null && $cart->fingerprint() !== $fingerprint) {
+            throw new CartRuleViolation('The cart changed while the order was being placed. Review it and try again.', 'orillacart_cart_changed');
+        }
 
-        return $cart->orderBeingPlaced($this->clock->now());
+        return null;
     }
 
     /** The order was saved from the cart, in the transaction that locked it; its payment is about to start. */

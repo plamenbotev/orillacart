@@ -6,10 +6,15 @@ namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Customers\Application\AddressBook;
 use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Ordering\Application\Downloads;
+use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Tests\Fixtures\Extension\TestAddOn;
+use Symfony\Component\PropertyInfo\Extractor\ReflectionExtractor;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
+use Symfony\Component\Serializer\Serializer;
 
 /**
  * The shop works its orders and customers through the REST routes: statuses, notes and emails, editing an order
@@ -285,7 +290,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
             self::assertSame(0, $this->data($this->request('GET', '/newsletter-settings'))['subscribers']);
         } finally {
             delete_option('orillacart_newsletter');
-            delete_user_meta($customer, 'orillacart_no_cart_reminders');
+            delete_user_meta($customer, WordPressAccounts::key(WordPressAccounts::NO_CART_REMINDERS));
             $wpdb->update($wpdb->users, ['user_email' => ''], ['ID' => $customer]);
             clean_user_cache($customer);
         }
@@ -602,6 +607,55 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $this->actAs('administrator');
         $kept = $this->data($this->request('GET', "/orders/{$order['number']}"));
         self::assertSame([null, 'ada@example.com'], [$kept['customer_id'], $kept['email']], 'a deleted account\'s order stays, as a guest\'s');
+    }
+
+    public function testTheShopsDataAboutAUserIsKeyedToTheSiteAndGoesOnlyWithThisShopsUninstall(): void
+    {
+        // wp-env is one site; what a network adds is the prefix (wp_3_ for its third site), which key() takes from wpdb.
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        self::assertSame($wpdb->get_blog_prefix() . 'orillacart_addresses', WordPressAccounts::key(WordPressAccounts::ADDRESSES));
+        self::assertSame($wpdb->get_blog_prefix() . 'orillacart_wishlist', WordPressAccounts::key(WordPressAccounts::WISHLIST));
+        $serializer = new Serializer([new ObjectNormalizer(null, null, null, new ReflectionExtractor())]);
+        $accounts = new WordPressAccounts($serializer, $serializer);
+        $user = wp_insert_user(['user_login' => 'customer-two-shops', 'user_email' => 'two-shops@example.com', 'user_pass' => 'correct horse battery', 'role' => WordPressAccounts::ROLE]);
+        self::assertIsInt($user);
+        $this->users[] = $user;
+        $home = new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000');
+        // Another shop of the network keeps its own book under its own prefix: untouched by this shop's writes and its uninstall.
+        $otherShops = 'wp_2_orillacart_addresses';
+        update_user_meta($user, $otherShops, ['addresses' => ['other' => ['first_name' => 'Ada']], 'billing' => 'other', 'shipping' => null]);
+        $customers = array_map(static fn(\WP_User $customer): int => $customer->ID, array_filter(get_users(['role' => WordPressAccounts::ROLE]), static fn(mixed $customer): bool => $customer instanceof \WP_User));
+        try {
+            $accounts->saveAddresses($user, new AddressBook(['home' => $home], 'home'));
+            $accounts->saveWishlist($user, [$this->lamp]);
+            $accounts->saveCartReminders($user, false);
+
+            self::assertSame('', get_user_meta($user, 'orillacart_addresses', true), 'nothing under the bare, network-wide key');
+            self::assertSame('', get_user_meta($user, 'orillacart_wishlist', true));
+            self::assertSame('', get_user_meta($user, 'orillacart_no_cart_reminders', true));
+            self::assertIsArray(get_user_meta($user, WordPressAccounts::key(WordPressAccounts::ADDRESSES), true));
+            $record = $accounts->find($user);
+            self::assertNotNull($record);
+            self::assertSame('Sofia', $record->addresses->billing()?->city);
+            self::assertSame([$this->lamp], $accounts->wishlist($user));
+            self::assertFalse($record->cartReminders, 'the choice is read from the site\'s key');
+
+            $accounts->uninstall();
+            self::assertSame('', get_user_meta($user, WordPressAccounts::key(WordPressAccounts::ADDRESSES), true), 'this shop\'s book is gone');
+            self::assertSame('', get_user_meta($user, WordPressAccounts::key(WordPressAccounts::WISHLIST), true));
+            self::assertSame('', get_user_meta($user, WordPressAccounts::key(WordPressAccounts::NO_CART_REMINDERS), true));
+            $kept = get_user_meta($user, $otherShops, true);
+            self::assertIsArray($kept);
+            self::assertSame('other', $kept['billing'] ?? null, 'the other shop\'s stays');
+        } finally {
+            delete_user_meta($user, $otherShops);
+            // The uninstall made the customers subscribers and took the role: back as they were, for the other tests.
+            $accounts->activate();
+            foreach ($customers as $customer) {
+                new \WP_User($customer)->set_role(WordPressAccounts::ROLE);
+            }
+        }
     }
 
     public function testAddOnsPriceRefuseAndActOnOrders(): void

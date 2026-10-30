@@ -60,8 +60,9 @@ final readonly class WpmlStringPackages implements TranslationService
                 do_action('wpml_switch_language', $language->code);
                 foreach ($package->strings as $string) {
                     $translation = apply_filters('wpml_translate_string', $string->value, self::name($string), $wpml);
-                    // WPML answers the string itself where it has no translation.
-                    if (\is_string($translation) && trim($translation) !== '' && $translation !== $string->value) {
+                    // WPML answers the string itself where it has no translation; a finished translation that is
+                    // the word itself (a brand's name, say) is one all the same, which its string's status tells.
+                    if (\is_string($translation) && trim($translation) !== '' && ($translation !== $string->value || $this->finished($package, $string, $language->code, $kindTitle))) {
                         $found[$string->key()][$language->locale] = $translation;
                     }
                 }
@@ -80,15 +81,37 @@ final readonly class WpmlStringPackages implements TranslationService
     public function translate(TranslationPackage $package, PackageString $string, string $locale, string $value, string $kindTitle): void
     {
         $language = $this->languages->forLocale($locale);
-        if ($language === null || !\function_exists('icl_get_string_id') || !\function_exists('icl_add_string_translation')) {
+        if ($language === null || !\function_exists('icl_add_string_translation')) {
             return;
         }
-        $context = sanitize_title($kindTitle) . '-' . self::package($package->kind, $package->id, $kindTitle)['name'];
-        // WPML answers 0 or null for a string it does not have.
-        $id = icl_get_string_id($string->value, $context, self::name($string));
+        $id = self::stringId($package, $string, $kindTitle);
         if ($id > 0) {
             icl_add_string_translation($id, $language->code, $value, self::COMPLETE);
         }
+    }
+
+    /** Whether WPML holds a finished translation of the string in the language, whatever its words. */
+    private function finished(TranslationPackage $package, PackageString $string, string $code, string $kindTitle): bool
+    {
+        if (!\function_exists('icl_get_string_translations_by_id')) {
+            return false;
+        }
+        $id = self::stringId($package, $string, $kindTitle);
+        $translations = $id > 0 ? icl_get_string_translations_by_id($id) : [];
+        $status = \is_array($translations[$code] ?? null) ? ($translations[$code]['status'] ?? null) : null;
+
+        return is_numeric($status) && (int) $status === self::COMPLETE;
+    }
+
+    /** WPML's id of the package's string, by its context (the kind's slug and the package's name) and name; 0 for none. */
+    private static function stringId(TranslationPackage $package, PackageString $string, string $kindTitle): int
+    {
+        if (!\function_exists('icl_get_string_id')) {
+            return 0;
+        }
+        $context = sanitize_title($kindTitle) . '-' . self::package($package->kind, $package->id, $kindTitle)['name'];
+        // WPML answers 0 or null for a string it does not have.
+        return max(0, icl_get_string_id($string->value, $context, self::name($string)));
     }
 
     /**

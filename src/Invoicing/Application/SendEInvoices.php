@@ -10,6 +10,7 @@ use OrillaCart\Invoicing\Domain\InvoiceNotFound;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 
@@ -66,7 +67,7 @@ final readonly class SendEInvoices implements JobHandler
         return 120;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
         $outcomes = [];
         foreach ($jobs as $job) {

@@ -10,6 +10,7 @@ use OrillaCart\Inventory\Domain\Event\StockChanged;
 use OrillaCart\Search\Application\DocumentBuilder;
 use OrillaCart\Search\Application\IndexProducts;
 use OrillaCart\Search\Application\SearchIndexing;
+use OrillaCart\Search\Application\SearchServer;
 use OrillaCart\Search\Domain\EngineSettings;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchEngine;
@@ -27,6 +28,7 @@ final class IndexProductsTest extends TestCase
     private MemorySearchIndex $index;
     private FixedProductTexts $texts;
     private EngineSettingsRepository $engine;
+    private PreparedServer $server;
     private IndexProducts $handler;
 
     protected function setUp(): void
@@ -57,7 +59,8 @@ final class IndexProductsTest extends TestCase
             }
         };
         $this->jobs = new TestJobs($this->shop->clock);
-        $this->handler = $handler = new IndexProducts(new DocumentBuilder($this->shop->catalog, $this->texts, $this->shop->priceHistory, $this->shop->contentTranslations), $this->index, $this->jobs->jobs, $this->engine);
+        $this->server = new PreparedServer();
+        $this->handler = $handler = new IndexProducts(new DocumentBuilder($this->shop->catalog, $this->texts, $this->shop->priceHistory, $this->shop->contentTranslations), $this->index, $this->jobs->jobs, $this->engine, $this->server);
         $this->jobs->with($handler);
         $this->jobs->jobs->pushMany(IndexProducts::TYPE, array_map(static fn(int $id): array => ['key' => (string) $id, 'payload' => []], [10, 11, 12, 99]));
     }
@@ -72,6 +75,29 @@ final class IndexProductsTest extends TestCase
         self::assertSame([3], $this->index->writes, 'one write for the batch');
         self::assertSame([], $this->jobs->queue->jobs);
         self::assertTrue($this->engine->load()->ready);
+    }
+
+    public function testAnIndexBehindThisVersionIsPreparedAgainAndTheBatchWritten(): void
+    {
+        $this->index->refusals = 1;
+
+        $run = $this->jobs->runner->work([], 10, 'test');
+
+        self::assertSame([4, 1], [$run->done, $this->server->prepared], 'the mapping was brought up to date once');
+        self::assertSame([10, 11, 12], array_keys($this->index->documents));
+    }
+
+    public function testABatchTheIndexRefusesFailsWithTheReasonWhenTheIndexCannotBePrepared(): void
+    {
+        $this->index->refusals = \PHP_INT_MAX;
+        $this->server->problem = 'OpenSearch answered 401: unauthorized';
+
+        $run = $this->jobs->runner->work([], 10, 'test');
+
+        self::assertSame(0, $run->done);
+        self::assertSame([], $this->index->documents);
+        $left = array_values($this->jobs->queue->jobs);
+        self::assertStringContainsString('could not be prepared: OpenSearch answered 401: unauthorized', (string) $left[0]['error']);
     }
 
     public function testOneBrokenProductIsRetriedAloneAndTheRestAreBuilt(): void
@@ -123,5 +149,19 @@ final class IndexProductsTest extends TestCase
         self::assertSame([], $this->jobs->queue->jobs, 'still in stock');
         $listener->stockChanged(new StockChanged('product:10', -2, -3));
         self::assertCount(1, $this->jobs->queue->jobs, 'one more owed');
+    }
+}
+
+/** OpenSearch as a server that is prepared, or answers with what is wrong. */
+final class PreparedServer implements SearchServer
+{
+    public int $prepared = 0;
+    public ?string $problem = null;
+
+    public function prepare(EngineSettings $settings): ?string
+    {
+        ++$this->prepared;
+
+        return $this->problem;
     }
 }

@@ -13,6 +13,7 @@ use OrillaCart\Inventory\Domain\StockItem;
 use OrillaCart\Inventory\Domain\StockItemKind;
 use OrillaCart\Inventory\Domain\StockLevel;
 use OrillaCart\Inventory\Domain\StockLevelRepository;
+use OrillaCart\Inventory\Domain\Stockroom;
 use OrillaCart\Shared\Persistence\Transactions;
 
 final readonly class DoctrineStockLevelRepository implements StockLevelRepository
@@ -133,20 +134,32 @@ final readonly class DoctrineStockLevelRepository implements StockLevelRepositor
             return [];
         }
         $query = $this->entityManager->createQueryBuilder()
-            ->select('l', 's')
-            ->from(StockLevel::class, 'l')
-            ->join('l.stockroom', 's');
+            ->select('l')
+            ->from(StockLevel::class, 'l');
+        if (!$lock) {
+            $query->addSelect('s')->join('l.stockroom', 's');
+        }
         $this->matching($query, $items);
         $query = $query->getQuery();
         if ($lock) {
             // Read again under the lock: levels loaded earlier in the request (pricing the order) may be older than
-            // the rows, and writing them back would sell what another order took.
+            // the rows, and writing them back would sell what another order took. The levels alone are locked: a
+            // joined stockroom would be locked with them (FOR UPDATE takes every row read), and every order would
+            // then wait for every other one's.
             $query->setLockMode(LockMode::PESSIMISTIC_WRITE);
             $query->setHint(Query::HINT_REFRESH, true);
         }
 
-        /** @var list<StockLevel> */
-        return $query->getResult();
+        /** @var list<StockLevel> $levels */
+        $levels = $query->getResult();
+        if ($lock && $levels !== []) {
+            // Their stockrooms in one query, unlocked, in place of a query per level.
+            $this->entityManager->createQueryBuilder()->select('s')->from(Stockroom::class, 's')
+                ->where('s.id IN (:ids)')->setParameter('ids', array_values(array_unique(array_map(static fn(StockLevel $level): int => $level->stockroom()->id(), $levels))))
+                ->getQuery()->getResult();
+        }
+
+        return $levels;
     }
 
     private function scoped(?int $stockroomId): QueryBuilder

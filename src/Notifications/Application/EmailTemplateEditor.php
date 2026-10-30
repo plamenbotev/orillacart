@@ -82,12 +82,17 @@ final readonly class EmailTemplateEditor
 
     /**
      * @throws EmailTemplateNotFound
-     * @throws EmailRuleViolation    for a language the site does not have
+     * @throws EmailRuleViolation    for a language the site does not have, and has no template of
      */
     public function template(string $name, EmailTemplateQuery $query = new EmailTemplateQuery()): EmailTemplateSourceView
     {
         $file = $this->file($name);
-        $locale = $this->locale($query->locale);
+
+        return $this->view($name, $file, $this->locale($query->locale, $file));
+    }
+
+    private function view(string $name, string $file, string $locale): EmailTemplateSourceView
+    {
         $everyLanguage = $this->templates->find($file);
         $edited = $locale === EmailTemplate::EVERY_LANGUAGE ? $everyLanguage : $this->templates->find($file, $locale);
         $fileSource = $this->editing->fileSource($file);
@@ -128,22 +133,29 @@ final readonly class EmailTemplateEditor
     }
 
     /**
-     * Goes back to the theme's or the plugin's file; a language's, to the template for every language.
+     * Goes back to the theme's or the plugin's file, the languages' templates going with it; a language's, to the
+     * template for every language. A language the site no longer has can still be reset.
      *
      * @throws EmailTemplateNotFound
-     * @throws EmailRuleViolation    for a language the site does not have
+     * @throws EmailRuleViolation    for a language the site does not have, and has no template of
      */
     public function reset(string $name, EmailTemplateQuery $query = new EmailTemplateQuery()): EmailTemplateSourceView
     {
         $file = $this->file($name);
-        $template = $this->templates->find($file, $this->locale($query->locale));
-        if ($template !== null) {
-            $this->templates->remove($template);
+        $locale = $this->locale($query->locale, $file);
+        $removed = false;
+        foreach ($this->templates->all() as $template) {
+            if ($template->name() === $file && ($locale === EmailTemplate::EVERY_LANGUAGE || $template->locale() === $locale)) {
+                $this->templates->remove($template);
+                $removed = true;
+            }
+        }
+        if ($removed) {
             // Back to the plugin's file: nothing of the shop's for the translators; a language's: the rest stays.
             $this->packages?->changed(EmailTemplatePackages::KIND, EmailTemplatePackages::id($file));
         }
 
-        return $this->template($name, $query);
+        return $this->view($name, $file, $locale);
     }
 
     /**
@@ -198,14 +210,15 @@ final readonly class EmailTemplateEditor
     }
 
     /**
-     * Every language, or one of the site's other languages.
+     * Every language, or one of the site's other languages; also, for reading and resetting a file's templates,
+     * a language the site had when one was written for it.
      *
      * @throws EmailRuleViolation
      */
-    private function locale(string $locale): string
+    private function locale(string $locale, ?string $fileWithOne = null): string
     {
         $others = array_map(static fn(ContentLanguageView $language): string => $language->locale, array_filter($this->languages->languages(), static fn(ContentLanguageView $language): bool => !$language->default));
-        if ($locale !== EmailTemplate::EVERY_LANGUAGE && !\in_array($locale, $others, true)) {
+        if ($locale !== EmailTemplate::EVERY_LANGUAGE && !\in_array($locale, $others, true) && ($fileWithOne === null || $this->templates->find($fileWithOne, $locale) === null)) {
             throw new EmailRuleViolation('The site has no %s to write emails in.', 'orillacart_email_language', values: [$locale]);
         }
 

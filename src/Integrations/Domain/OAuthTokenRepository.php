@@ -10,6 +10,9 @@ interface OAuthTokenRepository
 
     public function withRefreshHash(string $hash): ?OAuthToken;
 
+    /** The token whose last rotation replaced the refresh token with this hash. */
+    public function withPreviousRefreshHash(string $hash): ?OAuthToken;
+
     public function save(OAuthToken $token): void;
 
     public function remove(OAuthToken $token): void;

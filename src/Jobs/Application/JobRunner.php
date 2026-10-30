@@ -12,10 +12,12 @@ use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Claims due jobs and hands them to their handlers, type by type, in batches. A handler that throws has its
- * batch run again job by job, so only the bad job is retried; a job is retried after its handler's wait while
- * attempts last, then failed for the shop to look at. WP-Cron, the end of requests and workers all run it, each
- * job as nobody and in the site's language.
+ * Claims due jobs and hands them to their handlers, type by type, in batches. Each job is settled as soon as its
+ * handler reports it finished (JobProgress), or when the batch returns for the rest, and the jobs still to run are
+ * held on meanwhile, so a slow batch is neither taken over by another worker while it runs nor lost whole when
+ * its worker is killed. A handler that throws has its batch run again job by job, so only the bad job is retried;
+ * a job is retried after its handler's wait while attempts last, then failed for the shop to look at. WP-Cron,
+ * the end of requests and workers all run it, each job as nobody and in the site's language.
  */
 final readonly class JobRunner
 {
@@ -52,11 +54,14 @@ final readonly class JobRunner
         foreach ($jobs as $job) {
             $byType[$job->type][] = $job;
         }
+        // The types not run yet keep the claim's hold while the earlier ones run, for as long as that takes.
+        $waiting = new Hold($this->queue, $jobs, $now->modify(\sprintf('+%d seconds', self::LOCK_SECONDS)), self::LOCK_SECONDS);
         $stats = [];
         $done = $retried = $failed = 0;
         foreach ($byType as $type => $group) {
+            $waiting->release($group);
             $started = microtime(true);
-            $counts = $this->context->run(fn(): array => $this->runType((string) $type, $group));
+            $counts = $this->context->run(fn(): array => $this->runType((string) $type, $group, $waiting));
             $stats[(string) $type] = $counts + ['ms' => (int) round((microtime(true) - $started) * 1000)];
             $done += $counts['done'];
             $retried += $counts['retried'];
@@ -69,10 +74,11 @@ final readonly class JobRunner
 
     /**
      * @param non-empty-list<QueuedJob> $jobs
+     * @param Hold                      $waiting the jobs of the types still to run
      *
      * @return array{done: int, retried: int, failed: int}
      */
-    private function runType(string $type, array $jobs): array
+    private function runType(string $type, array $jobs, Hold $waiting): array
     {
         try {
             $handler = $this->handlers->get($type);
@@ -86,30 +92,44 @@ final readonly class JobRunner
 
         // A job claimed more often than its attempts allow was never finished: its worker stopped mid-way.
         $runnable = [];
-        $failed = 0;
+        $counts = ['done' => 0, 'retried' => 0, 'failed' => 0];
         foreach ($jobs as $job) {
             if ($job->attempts > $handler->maxAttempts()) {
                 $this->queue->fail($job, \sprintf('Not finished in %d attempts: its worker stopped while running it.', $handler->maxAttempts()), $this->clock->now());
-                ++$failed;
+                ++$counts['failed'];
             } else {
                 $runnable[] = $job;
             }
         }
         if ($runnable === []) {
-            return ['done' => 0, 'retried' => 0, 'failed' => $failed];
+            return $counts;
         }
-        $this->queue->hold($runnable, $this->clock->now()->modify(\sprintf('+%d seconds', $handler->lockSeconds())));
+        $held = new Hold($this->queue, $runnable, $this->clock->now(), $handler->lockSeconds());
+        $held->extend($this->clock->now());
+        $settle = function (QueuedJob $job, JobOutcome $outcome) use ($handler, $held, &$counts): void {
+            $held->release([$job]);
+            ++$counts[$this->settle($handler, $job, $outcome)];
+        };
+        $holdOn = function () use ($held, $waiting): void {
+            $now = $this->clock->now();
+            $held->extend($now);
+            $waiting->extend($now);
+        };
 
+        $progress = new JobProgress($settle, $holdOn);
         try {
-            $outcomes = $handler->handle($runnable);
+            $outcomes = $handler->handle($runnable, $progress);
         } catch (\Throwable $e) {
-            // One job spoiled the batch: run them one by one, so only that one is retried.
+            // One job spoiled the batch: the rest run one by one, so only that one is retried.
             $this->logger->warning('A batch of {type} jobs failed, so each runs on its own: {message}', ['type' => $type, 'message' => $e->getMessage(), 'exception' => $e]);
             $outcomes = [];
             foreach ($runnable as $job) {
+                if ($progress->reported($job)) {
+                    continue;
+                }
                 try {
-                    $this->queue->hold([$job], $this->clock->now()->modify(\sprintf('+%d seconds', $handler->lockSeconds())));
-                    $outcomes += $handler->handle([$job]);
+                    $holdOn();
+                    $outcomes += $handler->handle([$job], $progress);
                 } catch (\Throwable $e) {
                     $this->logger->error('Job {type} {key} failed: {message}', ['type' => $type, 'key' => $job->uniqueKey ?? $job->id, 'message' => $e->getMessage(), 'exception' => $e]);
                     $outcomes[$job->id] = JobOutcome::retry($e->getMessage());
@@ -117,27 +137,41 @@ final readonly class JobRunner
             }
         }
 
-        $done = [];
-        $rescheduled = $retried = 0;
         foreach ($runnable as $job) {
-            $outcome = $outcomes[$job->id] ?? JobOutcome::done();
-            $now = $this->clock->now();
-            if ($outcome->isDone()) {
-                $done[] = $job;
-            } elseif ($outcome->isRescheduled() && $outcome->at !== null) {
-                $this->queue->reschedule($job, $outcome->at);
-                ++$rescheduled;
-            } elseif ($outcome->isRetry() && $job->attempts < $handler->maxAttempts()) {
-                $this->queue->retry($job, self::kept($outcome->error), $now->modify(\sprintf('+%d seconds', max(1, $handler->retryAfter($job->attempts)))));
-                ++$retried;
-            } else {
-                $this->queue->fail($job, self::kept($outcome->error), $now);
-                ++$failed;
+            if (!$progress->reported($job)) {
+                $progress->done($job, $outcomes[$job->id] ?? null);
             }
         }
-        $this->queue->complete($done);
 
-        return ['done' => \count($done) + $rescheduled, 'retried' => $retried, 'failed' => $failed];
+        return $counts;
+    }
+
+    /**
+     * Writes a job's outcome to the queue.
+     *
+     * @return 'done'|'retried'|'failed' what it counts as
+     */
+    private function settle(JobHandler $handler, QueuedJob $job, JobOutcome $outcome): string
+    {
+        $now = $this->clock->now();
+        if ($outcome->isDone()) {
+            $this->queue->complete([$job]);
+
+            return 'done';
+        }
+        if ($outcome->isRescheduled() && $outcome->at !== null) {
+            $this->queue->reschedule($job, $outcome->at);
+
+            return 'done';
+        }
+        if ($outcome->isRetry() && $job->attempts < $handler->maxAttempts()) {
+            $this->queue->retry($job, self::kept($outcome->error), $now->modify(\sprintf('+%d seconds', max(1, $handler->retryAfter($job->attempts)))));
+
+            return 'retried';
+        }
+        $this->queue->fail($job, self::kept($outcome->error), $now);
+
+        return 'failed';
     }
 
     /**

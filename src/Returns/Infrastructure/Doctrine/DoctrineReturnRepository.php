@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Returns\Infrastructure\Doctrine;
 
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Returns\Domain\ItemReturn;
 use OrillaCart\Returns\Domain\ReturnRepository;
@@ -13,9 +14,15 @@ final readonly class DoctrineReturnRepository implements ReturnRepository
 {
     public function __construct(private EntityManagerInterface $entityManager) {}
 
-    public function find(int $id): ?ItemReturn
+    public function find(int $id, bool $lock = false): ?ItemReturn
     {
-        return $this->entityManager->find(ItemReturn::class, $id);
+        $return = $this->entityManager->find(ItemReturn::class, $id);
+        if ($return !== null && $lock) {
+            // Read again under the lock: a copy loaded earlier in the request may be older than the row.
+            $this->entityManager->refresh($return, LockMode::PESSIMISTIC_WRITE);
+        }
+
+        return $return;
     }
 
     public function orderIds(): array

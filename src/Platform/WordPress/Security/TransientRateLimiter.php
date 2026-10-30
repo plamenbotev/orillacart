@@ -4,15 +4,22 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Security;
 
+use Doctrine\ORM\EntityManagerInterface;
+use OrillaCart\Platform\Domain\RateLimitWindow;
 use OrillaCart\Shared\Http\Security\RateLimiter;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
 /**
- * Counts in transients (the object cache where the site has one), in fixed windows. The limits are
+ * Counts in fixed windows, atomically: in the site's external object cache where it has one (add, then incr),
+ * else in a row per window of the rate_limits table, in one INSERT … ON DUPLICATE KEY UPDATE; never a read and
+ * a write apart, which two requests at once could both make and count as one. The limits are
  * {guard: [how many, in seconds]}, changed with the filter orillacart_rate_limits; a guard without one is not
  * counted. The caller's address is ClientAddress's: behind a proxy the site trusts, the visitor's.
  */
 final readonly class TransientRateLimiter implements RateLimiter
 {
+    private const string CACHE_GROUP = 'orillacart_rate_limits';
+
     /** @var array<string, array{int, int}> */
     private const array LIMITS = [
         'accounts' => [5, 3600],
@@ -57,6 +64,15 @@ final readonly class TransientRateLimiter implements RateLimiter
         return self::LIMITS;
     }
 
+    /**
+     * @param \Closure(): EntityManagerInterface $entityManager late: a site with an object cache never opens it
+     *                                                       for this, and the HTTP kernel builds without a database
+     */
+    public function __construct(
+        #[AutowireServiceClosure(EntityManagerInterface::class)]
+        private \Closure $entityManager,
+    ) {}
+
     public function hit(string $guard, string $caller): ?int
     {
         $limits = apply_filters('orillacart_rate_limits', self::LIMITS);
@@ -65,12 +81,46 @@ final readonly class TransientRateLimiter implements RateLimiter
             return null;
         }
         [$max, $seconds] = [$limit[0], $limit[1]];
-        $window = intdiv(time(), $seconds);
-        $key = 'orillacart_rl_' . md5("{$guard}|{$caller}|{$window}");
-        $count = get_transient($key);
-        $count = is_numeric($count) ? (int) $count + 1 : 1;
-        set_transient($key, $count, $seconds);
+        $now = time();
+        $window = intdiv($now, $seconds);
+        $ends = ($window + 1) * $seconds;
+        $bucket = md5("{$guard}|{$caller}|{$window}");
+        $count = $this->cached($bucket, $ends - $now) ?? $this->counted($bucket, $ends, $now);
 
-        return $count > $max ? ($window + 1) * $seconds - time() : null;
+        return $count > $max ? $ends - $now : null;
+    }
+
+    /** The count in the external object cache, whose add and incr are atomic; null for a site without one. */
+    private function cached(string $bucket, int $seconds): ?int
+    {
+        if (!wp_using_ext_object_cache()) {
+            return null;
+        }
+        wp_cache_add($bucket, 0, self::CACHE_GROUP, max(1, $seconds));
+        $count = wp_cache_incr($bucket, 1, self::CACHE_GROUP);
+
+        return \is_int($count) ? $count : null;
+    }
+
+    /**
+     * The count in the window's row, made or raised in one statement. LAST_INSERT_ID(expr) remembers the count
+     * for this connection, whichever branch ran. The first hit of a window sweeps the rows of windows that ended.
+     */
+    private function counted(string $bucket, int $ends, int $now): int
+    {
+        $entityManager = ($this->entityManager)();
+        $connection = $entityManager->getConnection();
+        $table = $entityManager->getClassMetadata(RateLimitWindow::class)->getTableName();
+        $connection->executeStatement(
+            "INSERT INTO {$table} (bucket, hits, expires_at) VALUES (?, LAST_INSERT_ID(1), ?) ON DUPLICATE KEY UPDATE hits = LAST_INSERT_ID(hits + 1)",
+            [$bucket, gmdate('Y-m-d H:i:s', $ends)],
+        );
+        $count = $connection->fetchOne('SELECT LAST_INSERT_ID()');
+        $count = is_numeric($count) ? (int) $count : 1;
+        if ($count === 1) {
+            $connection->executeStatement("DELETE FROM {$table} WHERE expires_at < ?", [gmdate('Y-m-d H:i:s', $now)]);
+        }
+
+        return $count;
     }
 }

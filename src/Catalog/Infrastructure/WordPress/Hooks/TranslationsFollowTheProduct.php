@@ -45,13 +45,20 @@ final readonly class TranslationsFollowTheProduct
         if (get_post_type($postId) !== ProductPostType::NAME) {
             return;
         }
-        // Only those it took: a translation trashed on its own before stays where it is.
-        foreach ($this->translations->translationsOf($postId) as $translation) {
-            $with = get_post_meta($translation, self::TRASHED_WITH, true);
-            if (is_numeric($with) && (int) $with === $postId) {
-                delete_post_meta($translation, self::TRASHED_WITH);
-                wp_untrash_post($translation);
+        // Only those it took: a translation trashed on its own before stays where it is. Each comes back with the
+        // status it had, as the product does, not as the draft WordPress makes of an untrashed post.
+        $asBefore = static fn(string $status, int $id, string $previous): string => $previous;
+        add_filter('wp_untrash_post_status', $asBefore, 10, 3);
+        try {
+            foreach ($this->translations->translationsOf($postId) as $translation) {
+                $with = get_post_meta($translation, self::TRASHED_WITH, true);
+                if (is_numeric($with) && (int) $with === $postId) {
+                    delete_post_meta($translation, self::TRASHED_WITH);
+                    wp_untrash_post($translation);
+                }
             }
+        } finally {
+            remove_filter('wp_untrash_post_status', $asBefore);
         }
     }
 

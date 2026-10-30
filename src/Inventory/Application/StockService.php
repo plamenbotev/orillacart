@@ -384,10 +384,15 @@ final readonly class StockService
             }
             $taken = [];
             foreach ($stocks as $stock) {
+                // What the item is short of in all: owed by the room that owes backorders when it took part, else
+                // by the last room taken from (a slower room covering what the owing room lacks), so the line is
+                // backordered whenever the stock does not cover it.
                 $owed = max(0, $quantity - max(0, $stock->available() ?? $quantity));
                 $owing = $stock->owingStockroomId();
-                foreach ($stock->take($quantity, $backorders) as $stockroomId => $amount) {
-                    $taken[] = new TakenStock((string) $stock->item, $stockroomId, $amount, $stockroomId === $owing ? $owed : 0);
+                $parts = $stock->take($quantity, $backorders);
+                $owedBy = \array_key_exists($owing ?? -1, $parts) ? $owing : array_key_last($parts);
+                foreach ($parts as $stockroomId => $amount) {
+                    $taken[] = new TakenStock((string) $stock->item, $stockroomId, $amount, $stockroomId === $owedBy ? $owed : 0);
                 }
             }
             $after = self::availableOf($stocks);
@@ -577,14 +582,19 @@ final readonly class StockService
         foreach ($parts as $part) {
             $items[$part->item] = StockItem::fromString($part->item);
         }
+        // The level after each part: the level now, less what the parts after it on the same level moved, so two
+        // parts on one level each log the level as it was after them.
         $now = self::levelsBy($this->levels->stockOf(array_values($items)));
         $moves = [];
-        foreach ($parts as $part) {
-            if ($part->quantity !== 0) {
-                $moves[] = [$items[$part->item], $part->stockroomId, $sign * $part->quantity, $now[$part->item][$part->stockroomId] ?? 0];
+        foreach (array_reverse($parts) as $part) {
+            if ($part->quantity === 0) {
+                continue;
             }
+            $after = $now[$part->item][$part->stockroomId] ?? 0;
+            $moves[] = [$items[$part->item], $part->stockroomId, $sign * $part->quantity, $after];
+            $now[$part->item][$part->stockroomId] = $after - $sign * $part->quantity;
         }
-        $this->keep($moves, $note);
+        $this->keep(array_reverse($moves), $note);
     }
 
     /**

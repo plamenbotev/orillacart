@@ -117,7 +117,9 @@ final readonly class WordPressProductTexts implements ProductTexts
     }
 
     /**
-     * The post's terms and every term above them, each once, with their names in the other languages.
+     * The post's terms and every term above them, each once, with their names in the other languages. A term
+     * stands for its whole translation group, by one id for all of them (design 51): products whose originals
+     * are in different languages share one facet value, not one per language.
      *
      * @param array<string, string> $locales by language code
      *
@@ -132,17 +134,30 @@ final readonly class WordPressProductTexts implements ProductTexts
         $found = [];
         foreach ($terms as $term) {
             foreach ([$term->term_id, ...get_ancestors($term->term_id, $taxonomy, 'taxonomy')] as $id) {
-                if (isset($found[$id])) {
+                $named = $id === $term->term_id ? $term : get_term($id, $taxonomy);
+                if (!$named instanceof \WP_Term) {
                     continue;
                 }
-                $named = $id === $term->term_id ? $term : get_term($id, $taxonomy);
-                if ($named instanceof \WP_Term) {
-                    $found[$id] = new DocumentTerm($id, self::plain($named->name), $this->labels($named, $locales));
+                $representative = $locales === [] ? $id : $this->representative($named);
+                if (!isset($found[$representative])) {
+                    $found[$representative] = new DocumentTerm($representative, self::plain($named->name), $this->labels($named, $locales));
                 }
             }
         }
 
         return array_values($found);
+    }
+
+    /** The one id a term's translation group goes by: the default language's term, else the oldest. */
+    private function representative(\WP_Term $term): int
+    {
+        $group = $this->languages->termTranslations($term->term_id, $term->taxonomy);
+        if ($group === []) {
+            return $term->term_id;
+        }
+        $default = $this->languages->default()?->code;
+
+        return $default !== null && isset($group[$default]) ? $group[$default] : min($group);
     }
 
     /**

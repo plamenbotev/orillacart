@@ -12,6 +12,8 @@ use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\PayOrder;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Extension\Pricing\AdjustmentQuery;
+use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Geography\Domain\PostcodeFormat;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
@@ -682,5 +684,50 @@ final class CheckoutServiceTest extends TestCase
             payment: $payment,
             expectedTotal: $expectedTotal,
         );
+    }
+
+    public function testAResubmitThatPricedBeforeTheCartWasClearedPlacesNoSecondOrder(): void
+    {
+        $owner = $this->cart([10, 1]);
+        $first = null;
+        // The resubmit reads the cart and prices it; the first submit then places its order and clears the cart,
+        // before the resubmit reaches the cart's lock.
+        $this->shop->extensions->orderAdjusters[] = new class (function () use ($owner, &$first): void {
+            $first = $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer'))->number;
+        }) implements OrderAdjuster {
+            private ?\Closure $once;
+
+            public function __construct(\Closure $once)
+            {
+                $this->once = $once;
+            }
+
+            public function id(): string
+            {
+                return 'race';
+            }
+
+            public function adjust(AdjustmentQuery $query): array
+            {
+                if ($this->once !== null) {
+                    $race = $this->once;
+                    $this->once = null;
+                    $race();
+                }
+
+                return [];
+            }
+        };
+
+        try {
+            $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer'));
+            self::fail('the cart was emptied by the first order');
+        } catch (CartRuleViolation $e) {
+            self::assertSame('orillacart_cart_empty', $e->errorCode);
+        }
+
+        self::assertNotNull($first);
+        self::assertCount(1, $this->shop->orderRecords->orders);
+        self::assertSame(2, $this->shop->stock->stock(StockItemRef::product(10))->available, 'stock taken once');
     }
 }

@@ -13,6 +13,7 @@ use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
+use OrillaCart\Platform\I18n\GettextTranslations;
 use OrillaCart\Returns\Application\Dto\AnswerReturn;
 use OrillaCart\Returns\Application\Dto\DeclareWithdrawal;
 use OrillaCart\Returns\Application\Dto\FindWithdrawableOrder;
@@ -20,15 +21,18 @@ use OrillaCart\Returns\Application\Dto\RefundReturn;
 use OrillaCart\Returns\Application\Dto\RequestReturn;
 use OrillaCart\Returns\Application\Dto\ReturnedItemView;
 use OrillaCart\Returns\Application\Dto\ReturnItem;
+use OrillaCart\Returns\Application\Returns;
 use OrillaCart\Returns\Domain\ReturnRuleViolation;
 use OrillaCart\Returns\Domain\WithdrawalOrderNotFound;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
+use OrillaCart\Shared\I18n\Language;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Returns\RacingReturnRepository;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -219,5 +223,61 @@ final class ReturnsTest extends TestCase
         $this->shop->orders->changeStatus($this->order, new ChangeOrderStatus('shipped'), 7);
 
         self::assertSame([false, null], [$this->shop->returns->forReceipt($this->receipt)->accepting, $this->shop->returns->forReceipt($this->receipt)->until]);
+    }
+
+    public function testASecondRefundOfTheReturnSentAtTheSameTimeIsRefused(): void
+    {
+        $this->shop->orders->changeStatus($this->order, new ChangeOrderStatus('shipped'), 7);
+        $return = $this->shop->returns->request($this->receipt, new RequestReturn([new ReturnItem(0, 1)], 'damaged'));
+        $this->shop->returns->receive($return->id, 7);
+        // The second request read the return as received; the first one refunds it while the second waits for the
+        // order's lock, and the second reads the return again under it.
+        $racing = new RacingReturnRepository($this->shop->returnRecords, fn() => $this->shop->returns->refund($return->id, new RefundReturn(outside: true), 7));
+        $second = new Returns($racing, $this->shop->orders, $this->shop->refunds, $this->shop->settingsService, $this->shop->clock, new GettextTranslations(), $this->shop->jobs->jobs);
+
+        try {
+            $second->refund($return->id, new RefundReturn(outside: true), 7);
+            self::fail('the first one refunded it');
+        } catch (ReturnRuleViolation $e) {
+            self::assertSame('orillacart_return_not_refundable', $e->errorCode);
+        }
+
+        $order = $this->shop->orders->order($this->order);
+        self::assertSame(['30', 1], [$order->refundedTotal, $order->lines[0]->refundedQuantity], 'refunded once');
+        self::assertSame('refunded', $this->shop->returns->forOrder($this->order)->returns[0]->status);
+    }
+
+    public function testTheReturnNamesTheItemsInTheCustomersWordsToThemAndInTheShopsToTheShop(): void
+    {
+        $this->shop->contentLanguages->languages = [new Language('en', 'en_US', 'English'), new Language('de', 'de_DE', 'Deutsch')];
+        $this->shop->content->add(20, 'Ring');
+        $this->shop->content->add(21, 'Ehering');
+        $this->shop->contentLanguages->translate(['en' => 20, 'de' => 21]);
+        $this->shop->products->save(20, new SaveProduct('100', weight: '1', stockMode: 'always_available'));
+        $this->shop->languages->locale = 'de_DE';
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20, quantity: 2))->newToken);
+        $number = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $this->shop->orders->order($this->order)->shippingOption, payment: 'bank_transfer'))->number;
+        $this->shop->languages->locale = 'en_US';
+        $this->shop->contentLanguages->current = null;
+        $this->shop->orders->markPaid($number, null);
+        $this->shop->orders->changeStatus($number, new ChangeOrderStatus('shipped'), 7);
+        $receipt = $this->shop->receipts->issue($number);
+
+        self::assertSame('Ehering', $this->shop->returns->forCustomer($number)->returnable[0]->name, 'the customer reads theirs');
+        self::assertSame('Ring', $this->shop->returns->forOrder($number)->returnable[0]->name, 'the shop its own');
+        try {
+            $this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(0, 3)], 'other'));
+            self::fail('only two');
+        } catch (ReturnRuleViolation $e) {
+            self::assertSame('2 of "Ehering" can go back.', $e->getMessage(), 'the customer is told in their words');
+        }
+        $return = $this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(0, 1)], 'other'));
+        self::assertSame('Ehering', $return->items[0]->name);
+        self::assertStringContainsString('1 × Ring', (string) $this->shop->orders->order($number)->attention, 'the shop in its own');
+        self::assertSame([['line' => 0, 'name' => 'Ehering', 'quantity' => 1]], $this->shop->returns->withdrawable(new FindWithdrawableOrder($number, 'ada@example.com'))->lines);
+
+        $this->shop->returns->approve($return->id, new AnswerReturn('Send it back.'), 7);
+        $notes = $this->shop->orders->order($number)->notes;
+        self::assertStringContainsString('Your return of 1 × Ehering is approved.', $notes[\count($notes) - 1]->text, 'the customer\'s note in their words');
     }
 }

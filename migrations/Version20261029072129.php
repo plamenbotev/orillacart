@@ -19,8 +19,10 @@ final class Version20261029072129 extends Migration
 
     public function up(Schema $schema): void
     {
-        // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE {prefix}email_templates ADD locale VARCHAR(20) DEFAULT \'\' NOT NULL, DROP PRIMARY KEY, ADD PRIMARY KEY (name, locale)');
+        // Guarded, so a run cut off between the two statements goes on from the second when it runs again.
+        if (!$this->hasColumn('email_templates', 'locale')) {
+            $this->addSql('ALTER TABLE {prefix}email_templates ADD locale VARCHAR(20) DEFAULT \'\' NOT NULL, DROP PRIMARY KEY, ADD PRIMARY KEY (name, locale)');
+        }
         $this->addSql('ALTER TABLE {prefix}translations CHANGE field field VARCHAR(100) NOT NULL');
     }
 

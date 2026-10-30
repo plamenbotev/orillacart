@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Integrations;
 
+use OrillaCart\Cart\Application\Dto\AddToCart;
+use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Integrations\Application\DeliverWebhook;
 use OrillaCart\Integrations\Application\Dto\SaveWebhook;
 use OrillaCart\Integrations\Application\Dto\WebhookResponse;
@@ -17,6 +20,11 @@ use OrillaCart\Integrations\Domain\IntegrationRuleViolation;
 use OrillaCart\Integrations\Domain\Webhook;
 use OrillaCart\Integrations\Domain\WebhookDelivery;
 use OrillaCart\Integrations\Domain\WebhookRepository;
+use OrillaCart\Integrations\Infrastructure\Events\AnnounceToWebhooks;
+use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Domain\Event\OrderPaid;
+use OrillaCart\Ordering\Domain\Event\OrderPlaced;
+use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Jobs\TestJobs;
 use PHPUnit\Framework\TestCase;
@@ -117,6 +125,27 @@ final class WebhooksTest extends TestCase
 
         self::assertCount(1, $this->sender->sent);
         self::assertSame(WebhookTopics::PING, $this->sender->sent[0][2]['X-OrillaCart-Topic']);
+    }
+
+    public function testTheShopsEventsAreQueuedForWebhooksInsideTheirTransaction(): void
+    {
+        $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::ORDER_PLACED]));
+        $announce = new AnnounceToWebhooks($this->webhooks);
+        $this->shop->events->addListener(OrderPaid::class, $announce->orderPaid(...));
+        $this->shop->events->addListener(OrderPlaced::class, $announce->orderPlaced(...));
+        $queuedAt = [];
+        // After the announcement: what the queue holds while the order's transaction is still open.
+        $this->shop->events->addListener(OrderPlaced::class, function () use (&$queuedAt): void {
+            $queuedAt[] = [$this->shop->transactions->depth > 0, \count($this->jobs->queue->jobs)];
+        }, -10);
+        $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
+
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
+        $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
+
+        self::assertSame([[true, 1]], $queuedAt, 'the delivery job is part of the transaction that placed the order');
+        $this->jobs->runAll();
+        self::assertSame([WebhookTopics::ORDER_PLACED], array_column(array_column($this->sender->sent, 2), 'X-OrillaCart-Topic'), 'the webhook on order.placed alone hears of it');
     }
 
     public function testAWebhookGoesToHttpsAndToTopicsTheShopHas(): void

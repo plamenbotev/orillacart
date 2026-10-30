@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Cart\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
@@ -17,7 +18,7 @@ final readonly class ForgetCartCookieAtLogout
     public function forget(): void
     {
         if (!headers_sent()) {
-            setcookie(CartOwner::COOKIE, '', ['expires' => time() - 3600, 'path' => '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
+            setcookie(CartOwner::COOKIE, '', ['expires' => time() - 3600, 'path' => CartCookie::path(), 'domain' => CartCookie::domain(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
         }
         unset($_COOKIE[CartOwner::COOKIE]);
     }

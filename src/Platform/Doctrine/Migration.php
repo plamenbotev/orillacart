@@ -36,6 +36,48 @@ abstract class Migration extends AbstractMigration
         return ($this->tablePrefix ?? throw new \LogicException(static::class . ' runs without a table prefix.')) . $name;
     }
 
+    /*
+     * The guards below look at the schema as it is when the migration runs: MySQL commits each DDL statement by
+     * itself, so a migration of several statements that failed halfway (the host's time limit, a lost connection)
+     * is run again from the start, and what is there already must be skipped, not fail the retry.
+     */
+
+    /** Whether the plugin's table (its name without the prefix) is there. */
+    protected function hasTable(string $table): bool
+    {
+        return $this->connection->createSchemaManager()->tablesExist([$this->table($table)]);
+    }
+
+    /** Whether the plugin's table has the column. */
+    protected function hasColumn(string $table, string $column): bool
+    {
+        if (!$this->hasTable($table)) {
+            return false;
+        }
+        foreach ($this->connection->createSchemaManager()->listTableColumns($this->table($table)) as $found) {
+            if (strcasecmp($found->getName(), $column) === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Whether the plugin's table has the index, by name. */
+    protected function hasIndex(string $table, string $index): bool
+    {
+        if (!$this->hasTable($table)) {
+            return false;
+        }
+        foreach ($this->connection->createSchemaManager()->listTableIndexes($this->table($table)) as $found) {
+            if (strcasecmp($found->getName(), $index) === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * @param array<array-key, mixed> $params
      * @param array<array-key, mixed> $types

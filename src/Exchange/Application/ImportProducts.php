@@ -7,6 +7,7 @@ namespace OrillaCart\Exchange\Application;
 use OrillaCart\Exchange\Domain\ImportNotFound;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -47,7 +48,7 @@ final readonly class ImportProducts implements JobHandler
         return 300;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
         $outcomes = [];
         foreach ($jobs as $job) {

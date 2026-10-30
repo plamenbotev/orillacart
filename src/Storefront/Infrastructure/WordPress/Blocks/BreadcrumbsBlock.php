@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
+use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Domain\ShopPagesRepository;
@@ -23,6 +25,8 @@ final readonly class BreadcrumbsBlock implements BlockDefinition
     public function __construct(
         private ShopPagesRepository $pages,
         private ShopLinks $links,
+        private ProductTranslations $translations,
+        private ContentLanguages $languages,
     ) {}
 
     public static function name(): string
@@ -86,10 +90,19 @@ final readonly class BreadcrumbsBlock implements BlockDefinition
         return [];
     }
 
-    /** The product's category with the most above it. */
+    /**
+     * The product's category with the most above it. A translation without categories of its own takes its
+     * product's, each in the translation's language where the category has a version in it (design 51).
+     */
     private function deepest(int $productId): ?\WP_Term
     {
         $terms = get_the_terms($productId, ProductCategoryTaxonomy::NAME);
+        $original = $this->translations->original($productId);
+        if (!\is_array($terms) && $original !== $productId) {
+            $terms = get_the_terms($original, ProductCategoryTaxonomy::NAME);
+            $code = $this->languages->ofPost($productId);
+            $terms = \is_array($terms) && $code !== null ? array_map(fn(\WP_Term $term): \WP_Term => $this->inLanguage($term, $code), $terms) : $terms;
+        }
         $deepest = null;
         $depth = -1;
         foreach (\is_array($terms) ? $terms : [] as $term) {
@@ -100,6 +113,15 @@ final readonly class BreadcrumbsBlock implements BlockDefinition
         }
 
         return $deepest;
+    }
+
+    /** The term's version in the language, when it has one. */
+    private function inLanguage(\WP_Term $term, string $code): \WP_Term
+    {
+        $id = $this->languages->termTranslations($term->term_id, $term->taxonomy)[$code] ?? null;
+        $translation = $id === null || $id === $term->term_id ? null : get_term($id, $term->taxonomy);
+
+        return $translation instanceof \WP_Term ? $translation : $term;
     }
 
     /**

@@ -7,8 +7,9 @@ namespace OrillaCart\Assistant\Infrastructure\WordPress;
 use OrillaCart\Assistant\Application\RequestStates;
 
 /**
- * Request states signed with the site's own secret (wp_salt), their time limit inside what is signed, and each
- * remembered once used until it would have run out.
+ * Request states signed with the site's own secret (wp_salt and the site's id, as every site of a network
+ * shares the salts), their time limit inside what is signed, and each remembered once used until it would have
+ * run out.
  */
 final readonly class SignedRequestStates implements RequestStates
 {
@@ -42,7 +43,7 @@ final readonly class SignedRequestStates implements RequestStates
 
     private static function secret(): string
     {
-        return wp_salt('auth') . '|orillacart-mcp';
+        return wp_salt('auth') . '|' . get_current_blog_id() . '|orillacart-mcp';
     }
 
     private static function encode(string $bytes): string

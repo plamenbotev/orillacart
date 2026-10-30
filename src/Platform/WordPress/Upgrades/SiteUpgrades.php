@@ -74,8 +74,9 @@ final readonly class SiteUpgrades
             return UpgradeOutcome::noShop();
         }
 
-        return SiteKernels::run($siteId, $this->context, function (Kernel $kernel) use ($force, $wait): UpgradeOutcome {
-            if (get_option(PluginLifecycle::VERSION_OPTION) === false) {
+        return SiteKernels::run($siteId, $this->context, function (Kernel $kernel) use ($siteId, $force, $wait): UpgradeOutcome {
+            // Set up at its first request where the plugin is on, as a web request would: not skipped for having none yet.
+            if (get_option(PluginLifecycle::VERSION_OPTION) === false && !$this->activeOn($siteId)) {
                 return UpgradeOutcome::noShop();
             }
 
@@ -85,7 +86,8 @@ final readonly class SiteUpgrades
 
     /**
      * The sites that run the shop, with the build their tables are at: every site of the network where the plugin
-     * is on, network-wide or there, and that was set up.
+     * is on, network-wide or there. One the plugin is on but that was never set up (no request reached it since)
+     * is at no build, "", and so behind.
      *
      * @return array<int, string> by site id, in order
      */
@@ -99,30 +101,35 @@ final readonly class SiteUpgrades
         $shops = [];
         foreach (get_sites(['fields' => 'ids', 'number' => 0, 'deleted' => 0, 'orderby' => 'id']) as $siteId) {
             $siteId = (int) $siteId;
-            $stored = $this->runsShop($siteId) ? get_blog_option($siteId, PluginLifecycle::VERSION_OPTION) : false;
-            if (\is_string($stored)) {
-                $shops[$siteId] = $stored;
+            if ($this->runsShop($siteId)) {
+                $stored = get_blog_option($siteId, PluginLifecycle::VERSION_OPTION);
+                $shops[$siteId] = \is_string($stored) ? $stored : '';
             }
         }
 
         return $shops;
     }
 
-    /** Whether a site of the network has the plugin on, network-wide or there, and was set up. */
+    /** Whether a site of the network has the plugin on, network-wide or there. */
     public function runsShop(int $siteId): bool
     {
         $site = get_site($siteId);
         if ($site === null || $site->deleted === '1') {
             return false;
         }
-        if (!$this->activeForNetwork()) {
-            $active = get_blog_option($siteId, 'active_plugins');
-            if (!\is_array($active) || !\in_array(plugin_basename($this->context->pluginFile), $active, true)) {
-                return false;
-            }
-        }
 
-        return get_blog_option($siteId, PluginLifecycle::VERSION_OPTION) !== false;
+        return $this->activeOn($siteId);
+    }
+
+    /** Whether the plugin is on for the site: for the whole network, or there. */
+    private function activeOn(int $siteId): bool
+    {
+        if ($this->activeForNetwork()) {
+            return true;
+        }
+        $active = get_blog_option($siteId, 'active_plugins');
+
+        return \is_array($active) && \in_array(plugin_basename($this->context->pluginFile), $active, true);
     }
 
     /**

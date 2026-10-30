@@ -7,6 +7,7 @@ namespace OrillaCart\Checkout\Application;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\CartContents;
 use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Cart\Domain\CartRuleViolation;
 use OrillaCart\Catalog\Application\Dto\ItemQuote;
 use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Checkout\Application\Dto\CheckoutCouponView;
@@ -46,6 +47,7 @@ use OrillaCart\Payment\Application\Dto\PaymentOptionView;
 use OrillaCart\Payment\Application\Dto\StartPayment;
 use OrillaCart\Payment\Application\PaymentOptions;
 use OrillaCart\Payment\Application\Payments;
+use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
@@ -497,7 +499,7 @@ final readonly class CheckoutService
         [$answers, $shopAnswers] = $this->fields->answers($command->fields, new FieldContext($command->email, $billingAddress->country, $priced['needs_shipping'] ? $shippingAddress->country : null, $owner->customerId), array_map(static fn(array $line): ItemQuote => $line['quote'], $priced['lines']), $priced['needs_shipping']);
         $registering = $this->registration($owner, $command);
 
-        $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents->cartId, fn(): OrderView => $this->redeemed($priced, $plan, $owner, $command->email, $this->orders->place(new NewOrder(
+        $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents, fn(): OrderView => $this->redeemed($priced, $plan, $owner, $command->email, $this->orders->place(new NewOrder(
             $owner->customerId,
             $command->email,
             $billingAddress,
@@ -544,10 +546,14 @@ final readonly class CheckoutService
         }
         try {
             $payment = $this->payments->start(StartPayment::forOrder($order, $gateway));
-        } catch (PaymentProviderUnavailable $e) {
+        } catch (PaymentProviderUnavailable|PaymentMethodNotFound $e) {
             // The stock and the coupons' uses go back, and the customer keeps the cart to try again.
             $this->orders->cancel($order->number, 'The payment could not start.');
             $this->carts->notPlacing($contents->cartId);
+            if ($e instanceof PaymentMethodNotFound) {
+                // Turned off between the summary and the order: the customer chooses another way to pay.
+                throw new CheckoutRuleViolation('This way to pay is no longer offered. Choose another.', 'orillacart_payment_required', $e);
+            }
 
             throw $e;
         }
@@ -601,17 +607,21 @@ final readonly class CheckoutService
 
     /**
      * Places the order from the cart under the cart's lock, in the placement's transaction: a second submit of
-     * the same checkout waits for the first and is then refused instead of placing the order twice.
+     * the same checkout waits for the first and is then refused instead of placing the order twice, whether it
+     * finds the order still being placed or the cart emptied by it (a resubmit that priced before the cart was
+     * cleared).
      *
      * @param \Closure(): OrderView $place
      *
      * @param-immediately-invoked-callable $place
      *
      * @throws CheckoutRuleViolation while an order is being placed from the cart
+     * @throws CartRuleViolation     for a cart emptied or changed since it was priced
      */
-    private function claimed(int $cartId, \Closure $place): OrderView
+    private function claimed(CartContents $contents, \Closure $place): OrderView
     {
-        if ($this->carts->lockForOrder($cartId) !== null) {
+        $cartId = $contents->cartId;
+        if ($this->carts->lockForOrder($cartId, $contents->fingerprint) !== null) {
             throw new CheckoutRuleViolation('This order is already being placed. Wait a moment, then look at your email or your account.', 'orillacart_order_in_progress');
         }
         $order = $place();

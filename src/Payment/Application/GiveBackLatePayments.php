@@ -6,6 +6,7 @@ namespace OrillaCart\Payment\Application;
 
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 
 /**
  * Gives back money that came for an order which closed unpaid and could not open again (see
@@ -43,7 +44,7 @@ final readonly class GiveBackLatePayments implements JobHandler
         return 300;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
         $outcomes = [];
         foreach ($jobs as $job) {

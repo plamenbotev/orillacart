@@ -25,8 +25,11 @@ wp orillacart jobs work --loop [--queue=search,mail] [--batch=100] [--sleep=3] [
   or was asked to restart; the supervisor then starts a fresh one. Restarting every hour or so keeps memory in
   check.
 - On SIGTERM, SIGINT or SIGQUIT it finishes its batch and stops, where PHP has the `pcntl` extension. Without it,
-  the signal stops it at once: the jobs it held are taken again by another worker after five minutes, and count as
-  an attempt.
+  the signal stops it at once: each job is settled as soon as it is done, so only the job it was on is taken
+  again by another worker, once its hold runs out, and counts an attempt.
+- A batch holds its jobs for as long as its handler says one of them needs (an email, a webhook delivery), and the
+  hold is extended for the jobs still to run as each one finishes: a slow batch is not taken over by another
+  worker while it goes on.
 - `wp orillacart jobs restart` asks every worker to finish its batch and stop. Run it after deploying a new
   version, so the workers start again on the new code.
 
@@ -95,7 +98,10 @@ and `wp orillacart jobs restart` on any site stops it; a cron line does not tell
 helping.
 
 A busy site cannot keep the others waiting for long: each turn takes at most `--batch` jobs, then the next site's
-turn comes. The sites do share the process's time, though, so a slow batch on one (webhooks to a slow server, a big
+turn comes; `--max-time`, `--max-jobs`, the memory limit and a stop signal are looked at after every turn. A site
+whose turn fails (deleted meanwhile, a broken container) does not stop the worker: the failure is logged on that
+site, which is left alone for a minute, and the others go on. A site whose tables are behind the update is left to
+the network's walk (below) or its own first request, and served once it is up to date. The sites do share the process's time, though, so a slow batch on one (webhooks to a slow server, a big
 import) delays the others until it ends. Give such a site workers of its own with `--url`, and leave it out of the
 network's with `--except`.
 

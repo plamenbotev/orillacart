@@ -37,7 +37,10 @@ final readonly class RecordTaxesWithTheService
     public function refunded(OrderRefunded $event): void
     {
         if ($this->taxedByAService($event->orderId)) {
-            $this->jobs->push(RecordTaxes::TYPE, ['order' => $event->orderId, 'action' => RecordTaxes::REFUND, 'amount' => $event->amount, 'tax' => $event->tax, 'full' => $event->full]);
+            // The refund has no id of its own: a reference made here names it, in the job's key and in what the
+            // handler keeps once the service was told.
+            $reference = \sprintf('%d:%s', $event->orderId, bin2hex(random_bytes(8)));
+            $this->jobs->push(RecordTaxes::TYPE, ['order' => $event->orderId, 'action' => RecordTaxes::REFUND, 'amount' => $event->amount, 'tax' => $event->tax, 'full' => $event->full, 'reference' => $reference], 'refund:' . $reference);
         }
     }
 

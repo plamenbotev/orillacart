@@ -67,8 +67,13 @@ final readonly class SearchEngines
         return $settings->engine === SearchEngine::OpenSearch ? $this->server->prepare($settings) : null;
     }
 
+    /** OpenSearch's index is given this version's fields first: a rebuild is how a failed upgrade is mended. */
     public function rebuild(): SearchEngineView
     {
+        $problem = $this->prepareIndex();
+        if ($problem !== null) {
+            return $this->view($this->settings->load(), false, 'OpenSearch\'s index could not be prepared, so nothing was queued: ' . $problem);
+        }
         $queued = $this->indexing->queueEverything();
 
         return $this->view($this->settings->load(), true, \sprintf('%d products are being indexed again.', $queued));

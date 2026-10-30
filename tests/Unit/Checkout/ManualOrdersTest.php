@@ -149,4 +149,11 @@ final class ManualOrdersTest extends TestCase
     {
         return new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', PostcodeFormat::example($country) ?? '1000', $country, '+359 2 000 0000');
     }
+
+    public function testAUnitPriceWithMoreDecimalsThanTheCurrencyIsTakenInCents(): void
+    {
+        $order = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 3, unitPrice: '1.2345')], payment: 'bank_transfer'), 7);
+
+        self::assertSame(['1.23', '3.69', '0.74', '4.43'], [$order->lines[0]->unitPrice, $order->lines[0]->total, $order->itemsTax, $order->total], 'the order is placed, and adds up');
+    }
 }

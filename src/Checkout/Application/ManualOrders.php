@@ -143,6 +143,8 @@ final readonly class ManualOrders
                 $command->note,
                 [],
                 $bill->includesTax(),
+                // The site's language, which the order was taken in: what its emails and invoices are written in.
+                locale: $this->languages->current(),
                 taxExemption: $this->pricing->exemption($priced),
                 taxProvider: $this->pricing->taxProvider($priced),
                 importScheme: $priced['import']->scheme,

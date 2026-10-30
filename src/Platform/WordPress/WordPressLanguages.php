@@ -27,17 +27,19 @@ final readonly class WordPressLanguages implements Languages
     public function in(?string $locale, \Closure $work): mixed
     {
         $locale ??= get_locale();
-        // A filter of its own, so that a switch inside this one comes before it and is undone alone.
+        // The switch before the filter: switch_to_locale() does nothing when determine_locale() already answers
+        // the locale, which the filter makes it do. A filter of its own, so that a switch inside this one comes
+        // before it and is undone alone.
+        $switched = switch_to_locale($locale);
         $current = static fn(): string => $locale;
         add_filter('pre_determine_locale', $current);
-        $switched = switch_to_locale($locale);
         try {
             return $work();
         } finally {
+            remove_filter('pre_determine_locale', $current);
             if ($switched) {
                 restore_previous_locale();
             }
-            remove_filter('pre_determine_locale', $current);
         }
     }
 }

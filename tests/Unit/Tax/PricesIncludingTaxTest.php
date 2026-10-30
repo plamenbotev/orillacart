@@ -102,4 +102,19 @@ final class PricesIncludingTaxTest extends TestCase
         $html = $this->shop->templates->render('storefront/receipt.html.twig', ['order' => $order, 'heading' => true, 'links' => []]);
         self::assertStringContainsString('Including VAT (20%)', $html);
     }
+
+    public function testAFlatRateThatDoesNotDivideByTheRateIsChargedInCentsAndTheOrderAddsUp(): void
+    {
+        // 5 with 20 % in it is 4.1667 without: the customer not charged it pays 4.17, and the order's total is its parts'.
+        $five = $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Flat', '5')]))->rates[0]->id;
+
+        $summary = $this->shop->checkout->summary($this->owner, new CheckoutDetails('GB', shippingOption: "rate:{$five}"));
+        $option = array_values(array_filter($summary->shippingOptions, static fn($option): bool => $option->id === "rate:{$five}"))[0];
+        self::assertSame(['4.17', '0', '4.17'], [$option->price, $option->tax, $option->total]);
+        self::assertSame(['10', '4.17', '14.17'], [$summary->subtotal, $summary->shipping, $summary->total]);
+
+        $placed = $this->shop->checkout->placeOrder($this->owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Main St', 'London', 'SW1A 1AA', 'GB', '+44 20 0000 0000'), shippingOption: "rate:{$five}", payment: 'bank_transfer'));
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame(['14.17', '4.17', '4.17'], [$order->total, $order->shippingTotal, $order->charges[0]->total]);
+    }
 }

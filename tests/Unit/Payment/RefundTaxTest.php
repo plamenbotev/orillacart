@@ -126,4 +126,18 @@ final class RefundTaxTest extends TestCase
 
         return $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: $payment))->number;
     }
+
+    public function testARefundWhoseTaxDoesNotDivideGivesItBackInCents(): void
+    {
+        $order = $this->paid(2);
+
+        $this->shop->refunds->refund($order, new MakeRefund('5'), 7);
+
+        $refund = $this->shop->refunds->forOrder($order)->refunds[0];
+        self::assertSame(['0.83', [['name' => 'VAT', 'percent' => '20', 'amount' => '0.83', 'code' => 'BG']]], [$refund->tax, $refund->taxes], '5 of 24 holds 0.83 of the 4, not 0.8333');
+        self::assertSame('5', $this->shop->orders->order($order)->lines[0]->refundedAmount);
+
+        $this->shop->refunds->refund($order, new MakeRefund('19'), 7);
+        self::assertSame('3.17', $this->shop->refunds->forOrder($order)->refunds[1]->tax, 'the last gives back all that is left');
+    }
 }

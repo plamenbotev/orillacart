@@ -73,6 +73,19 @@ final class WpmlStringPackagesTest extends TestCase
         self::assertSame('en', $this->language);
     }
 
+    public function testAFinishedTranslationThatIsTheWordItselfIsOne(): void
+    {
+        WpmlStringFunctions::load();
+        $this->translations = [md5('carrier:3:name') => ['de' => 'Abholung', 'fr' => 'Pickup']];
+        // WPML's translators finished the French as the English word, as a name stays; the German is on its way.
+        WpmlStringFunctions::$ids = [md5('carrier:3:name') => 77, md5('carrier:3:pickup.shop.address') => 78];
+        WpmlStringFunctions::$finished[77] = ['fr' => ['value' => 'Pickup', 'status' => 10], 'de' => ['value' => 'Abholung', 'status' => 2]];
+
+        $found = $this->wpml()->translated($this->package(), 'OrillaCart carrier');
+
+        self::assertSame(['carrier:3:name' => ['de_DE' => 'Abholung', 'fr_FR' => 'Pickup']], $found);
+    }
+
     public function testATranslationTheShopMadeIsGivenToItsStringAsFinished(): void
     {
         WpmlStringFunctions::load();

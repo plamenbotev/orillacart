@@ -294,4 +294,17 @@ final class StockServiceTest extends TestCase
     {
         return array_merge(...array_map(static fn(object $event): array => $event instanceof StockroomItemsChanged ? $event->items : [], $this->events->events));
     }
+
+    public function testWhatASlowerStockroomCoversWhileTheFastOneOwesIsStillOwed(): void
+    {
+        $this->stock->setLevels(StockItemRef::product(5), new SetStockLevels([new SetStockLevel($this->sofia, 1)]));
+        $this->stock->take([StockItemRef::product(5)], 3, backorders: true);
+        $this->stock->changeLevels([new ChangeStockLevel('product', 5, $this->berlin, 5)]);
+        self::assertSame(3, $this->stock->available([StockItemRef::product(5)]), 'Sofia owes two of Berlin\'s five');
+
+        $taken = $this->stock->take([StockItemRef::product(5)], 4, backorders: true);
+
+        self::assertEquals([new TakenStock('product:5', $this->berlin, 4, 1)], $taken, 'Berlin ships four, but the item is one short in all: the order is told');
+        self::assertSame(-1, $this->stock->available([StockItemRef::product(5)], owedBelowZero: true));
+    }
 }

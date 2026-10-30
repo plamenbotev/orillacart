@@ -13,17 +13,18 @@ use OrillaCart\Shared\WordPress\AsHook;
 /**
  * The shop's pages in each of the site's languages (design 51), with Polylang or WPML. A page made before either
  * has no language, so it has no translations and every link goes to it: it is given the default language. Each
- * language without a version of a page gets one, linked to it: the shop's own pages, holding only the shop's
- * blocks, published under their title in that language; a page with the owner's words (a heading, text of their
- * own, the legal pages) as a draft of the same words to translate, which links pass by until it is published.
- * A translation the owner already has is left as it is.
+ * language without a version of a page gets one, linked to it: the shop's own pages (the ones it made, holding
+ * only the shop's blocks), published under their title in that language; a page with the owner's words (a heading,
+ * text of their own, the legal pages) as a draft of the same words to translate, which links pass by until it is
+ * published. A translation the owner already has is left as it is, and a page and language once seen together
+ * are not made again: a version the owner deleted for good stays deleted.
  *
  * Done when the plugin is activated or updated, and in the admin when the languages or the chosen pages changed.
  */
 #[AsHook('admin_init', method: 'changed')]
 final readonly class ShopPageLanguages implements LifecycleListener
 {
-    /** What the pages and languages were when last done. */
+    /** What the pages and languages were when last done, and the version of each page in each language seen. */
     public const string DONE_OPTION = 'orillacart_page_languages';
 
     /** The shop's own parts; uninstalling removes the versions made of them, as it does the pages. */
@@ -38,7 +39,7 @@ final readonly class ShopPageLanguages implements LifecycleListener
 
     public function changed(): void
     {
-        if ($this->languages->multilingual() && get_option(self::DONE_OPTION) !== $this->state()) {
+        if ($this->languages->multilingual() && $this->done()['state'] !== $this->state()) {
             $this->keep();
         }
     }
@@ -49,6 +50,7 @@ final readonly class ShopPageLanguages implements LifecycleListener
         if (!$this->languages->multilingual() || $default === null) {
             return;
         }
+        $done = $this->done();
         foreach ($this->pagesByPart() as $part => $id) {
             if (get_post_type($id) !== 'page' || \in_array(get_post_status($id), [false, 'trash'], true)) {
                 continue;
@@ -58,12 +60,18 @@ final readonly class ShopPageLanguages implements LifecycleListener
             }
             $translations = $this->languages->postTranslations($id);
             foreach ($this->languages->languages() as $language) {
-                if (!isset($translations[$language->code])) {
-                    $this->translate($id, $part, $language);
+                $seen = "{$id}:{$language->code}";
+                if (isset($translations[$language->code])) {
+                    $done['versions'][$seen] = $translations[$language->code];
+                } elseif (!isset($done['versions'][$seen])) {
+                    $made = $this->translate($id, $part, $language);
+                    if ($made !== null) {
+                        $done['versions'][$seen] = $made;
+                    }
                 }
             }
         }
-        update_option(self::DONE_OPTION, $this->state(), false);
+        update_option(self::DONE_OPTION, ['state' => $this->state(), 'versions' => $done['versions']], false);
     }
 
     public function activate(): void
@@ -83,22 +91,17 @@ final readonly class ShopPageLanguages implements LifecycleListener
         delete_option(self::DONE_OPTION);
     }
 
-    private function translate(int $id, string $part, Language $language): void
+    /** @return int|null the version made, null when WordPress refused it */
+    private function translate(int $id, string $part, Language $language): ?int
     {
         $page = get_post($id);
         if (!$page instanceof \WP_Post) {
-            return;
-        }
-        $from = $this->languages->ofPost($id);
-        $fromLocale = null;
-        foreach ($this->languages->languages() as $known) {
-            $fromLocale = $known->code === $from ? $known->locale : $fromLocale;
+            return null;
         }
         $title = self::shopTitle($part);
-        // The shop's own page: its title as the shop named it, and nothing but the shop's blocks.
-        $own = $title !== null
-            && $page->post_title === $this->locales->in($fromLocale, $title)
-            && self::onlyShopBlocks($page->post_content);
+        // The shop's own page: one it made, holding nothing but the shop's blocks. Its title in the language is
+        // the shop's; whatever the owner titled it, in whichever language the admin worked in.
+        $own = $title !== null && $this->pages->wasMade($id) && self::onlyShopBlocks($page->post_content);
         $translation = wp_insert_post(wp_slash([
             'post_type' => 'page',
             'post_status' => $own ? $page->post_status : 'draft',
@@ -109,12 +112,14 @@ final readonly class ShopPageLanguages implements LifecycleListener
             'comment_status' => $page->comment_status,
         ]), true);
         if ($translation instanceof \WP_Error) {
-            return;
+            return null;
         }
         $this->languages->addPostTranslation($id, $translation, $language);
         if (\array_key_exists($part, self::SHOP_PARTS)) {
             $this->pages->made($translation);
         }
+
+        return $translation;
     }
 
     /**
@@ -166,5 +171,19 @@ final readonly class ShopPageLanguages implements LifecycleListener
     private function state(): string
     {
         return md5((string) json_encode([array_map(static fn(Language $language): string => $language->code, $this->languages->languages()), $this->pagesByPart()]));
+    }
+
+    /**
+     * @return array{state: ?string, versions: array<string, int>} the versions by "page id:language code"
+     */
+    private function done(): array
+    {
+        $stored = get_option(self::DONE_OPTION);
+        $versions = \is_array($stored) && \is_array($stored['versions'] ?? null) ? $stored['versions'] : [];
+
+        return [
+            'state' => \is_array($stored) && \is_string($stored['state'] ?? null) ? $stored['state'] : null,
+            'versions' => array_filter($versions, static fn(mixed $id, mixed $key): bool => \is_string($key) && \is_int($id), \ARRAY_FILTER_USE_BOTH),
+        ];
     }
 }

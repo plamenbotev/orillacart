@@ -6,6 +6,8 @@ namespace OrillaCart\Tests\Unit\Jobs;
 
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
+use OrillaCart\Jobs\Application\JobHandler;
+use OrillaCart\Jobs\Application\JobProgress;
 use OrillaCart\Tests\Fixtures\Jobs\RecordingHandler;
 use OrillaCart\Tests\Fixtures\Jobs\TestJobs;
 use PHPUnit\Framework\TestCase;
@@ -65,6 +67,100 @@ final class JobRunnerTest extends TestCase
 
         self::assertSame(1, $this->test->context->runs);
         self::assertEquals([$this->test->clock->now()->modify('+1800 seconds')], $held);
+    }
+
+    public function testAJobReportedDoneIsSettledBeforeTheNextRunsAndTheRestAreHeldOn(): void
+    {
+        $this->handler->lock = 60;
+        $this->handler->reports = true;
+        $this->push('a', 'b', 'c');
+        $seen = [];
+        $this->handler->before = function (QueuedJob $job) use (&$seen): void {
+            // Each job takes longer than the lock: the one before it is gone from the queue, the rest are held on.
+            $seen[(string) $job->uniqueKey] = [array_column($this->test->queue->jobs, 'key'), $this->test->queue->jobs[(int) $job->id]['lockedUntil']];
+            $this->test->clock->sleep(90);
+        };
+
+        $run = $this->test->runner->work([], 10, 'test');
+
+        self::assertSame(3, $run->done);
+        $start = new \DateTimeImmutable('2030-01-01 12:00:00');
+        self::assertEquals([
+            'a' => [['a', 'b', 'c'], $start->modify('+60 seconds')],
+            'b' => [['b', 'c'], $start->modify('+90 seconds +60 seconds')],
+            'c' => [['c'], $start->modify('+180 seconds +60 seconds')],
+        ], $seen);
+        self::assertSame([], $this->test->queue->jobs);
+    }
+
+    public function testAHandlerThatReportsSomeJobsAndThrowsHasOnlyTheRestRunAgain(): void
+    {
+        $this->handler->reports = true;
+        $this->push('a', 'b', 'c');
+        $this->handler->outcomes['b'] = new \RuntimeException('B is broken.');
+
+        $run = $this->test->runner->work([], 10, 'test');
+
+        self::assertSame([2, 1, 0], [$run->done, $run->retried, $run->failed]);
+        self::assertSame([['a', 'b', 'c'], ['b'], ['c']], $this->handler->batches, 'a was done before the batch failed');
+    }
+
+    public function testTheTypesWaitingTheirTurnStayHeldWhileAnEarlierTypeRunsLong(): void
+    {
+        $other = new class implements JobHandler {
+            /** @var list<list<?string>> */
+            public array $batches = [];
+
+            public static function type(): string
+            {
+                return 'test.other';
+            }
+
+            public static function queue(): string
+            {
+                return 'test';
+            }
+
+            public function maxAttempts(): int
+            {
+                return 3;
+            }
+
+            public function retryAfter(int $attempt): int
+            {
+                return 10;
+            }
+
+            public function lockSeconds(): int
+            {
+                return 60;
+            }
+
+            public function handle(array $jobs, JobProgress $progress): array
+            {
+                $this->batches[] = array_map(static fn(QueuedJob $job): ?string => $job->uniqueKey, $jobs);
+
+                return [];
+            }
+
+            public function describe(array $payload, ?string $uniqueKey): string
+            {
+                return 'Other';
+            }
+        };
+        $this->test->with($other);
+        $this->handler->reports = true;
+        $this->push('a', 'b');
+        $this->test->jobs->push($other::type(), [], 'z');
+        $this->handler->before = fn() => $this->test->clock->sleep(200);
+
+        $this->test->runner->work([], 10, 'test');
+
+        self::assertSame([['z']], $other->batches);
+        self::assertSame([], $this->test->queue->jobs);
+        // While a and b ran for 400 seconds, z's claim of 300 was renewed when it was about to run out.
+        $held = array_values(array_filter($this->test->queue->held, static fn(array $hold): bool => $hold[0] === ['z']));
+        self::assertEquals([['z'], new \DateTimeImmutable('2030-01-01 12:00:00 +200 seconds +300 seconds')], $held[0] ?? null, 'held for another 300 seconds once less than half of the claim was left');
     }
 
     public function testWithoutAServerThatAnswersFirstARequestLeavesItsJobsToCron(): void

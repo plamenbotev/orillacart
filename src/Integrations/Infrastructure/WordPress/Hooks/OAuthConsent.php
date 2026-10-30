@@ -15,15 +15,22 @@ use OrillaCart\Shared\WordPress\AsHook;
  * says whether an AI assistant's app may work in the shop as them, and whether it may change things or only read.
  * The request is checked before the screen is drawn: an error about the request goes back to the app's address,
  * one about the app or its address is shown here. The answer is a form with a nonce, sent to admin-post.php.
+ *
+ * The check runs on the screen's own load hook, which admin.php fires after the menu's capability check, and
+ * only for a logged-in shop manager: anyone else sent here with a client of their own must not be redirected
+ * on by the shop, nor make it fetch a client document (admin_init would run it for admin-ajax.php too, before
+ * any login check).
  */
 #[AsHook('admin_menu', method: 'register')]
-#[AsHook('admin_init', method: 'check')]
+#[AsHook(self::LOAD, method: 'check')]
 #[AsHook('admin_post_' . self::ACTION, method: 'answer')]
 #[AsHook('admin_title', method: 'title', filter: true)]
 final class OAuthConsent
 {
     public const string PAGE = 'orillacart-connect';
     public const string ACTION = 'orillacart_connect';
+    /** The screen's load hook: load-{hook name of a submenu page without a parent}. */
+    public const string LOAD = 'load-admin_page_' . self::PAGE;
 
     /** The OAuth parameters the screen carries through to the answer. */
     private const array PARAMETERS = ['response_type', 'client_id', 'redirect_uri', 'state', 'scope', 'code_challenge', 'code_challenge_method', 'resource'];
@@ -43,10 +50,10 @@ final class OAuthConsent
         return ($_GET['page'] ?? null) === self::PAGE && \is_string($title) ? __('Connect an app', 'orillacart') . $title : $title;
     }
 
-    /** Before the screen is drawn: a redirectable error goes back to the app now. */
+    /** Before the screen is drawn, for the shop manager who may see it: a redirectable error goes back to the app now. */
     public function check(): void
     {
-        if (($_GET['page'] ?? null) !== self::PAGE) {
+        if (!is_user_logged_in() || !current_user_can(Capability::MANAGE_SHOP) || ($_GET['page'] ?? null) !== self::PAGE) {
             return;
         }
         $this->request = $this->checked(self::parameters($_GET));

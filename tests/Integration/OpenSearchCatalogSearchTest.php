@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Search\Application\Dto\SearchQuery;
 use OrillaCart\Search\Application\ShopSearch;
+use OrillaCart\Search\Infrastructure\OpenSearch\OpenSearchServer;
 use OrillaCart\Search\Infrastructure\WordPress\OptionEngineSettingsRepository;
 
 /**
@@ -51,6 +52,24 @@ final class OpenSearchCatalogSearchTest extends CatalogSearchContract
 
         self::assertFalse($refused['works']);
         self::assertSame([self::host(), true], [$refused['host'], $refused['ready']], 'the working server stays');
+    }
+
+    public function testAnIndexHoldingAnotherShopsProductsIsRefused(): void
+    {
+        $this->actAs('administrator');
+        $own = $this->data($this->request('GET', '/search-engine'));
+        self::assertTrue($own['ready'], 'the shop prepared the index for itself');
+        $mapping = json_decode((string) wp_remote_retrieve_body(wp_remote_get(self::host() . '/' . self::INDEX . '/_mapping')), true);
+        self::assertIsArray($mapping);
+        self::assertSame(OpenSearchServer::owner(), OpenSearchServer::ownerOf($mapping, self::INDEX), 'the index remembers whose it is');
+
+        // Another shop (another database or prefix) prepared this index before.
+        wp_remote_request(self::host() . '/' . self::INDEX . '/_mapping', ['method' => 'PUT', 'headers' => ['Content-Type' => 'application/json'], 'body' => (string) wp_json_encode(['_meta' => ['orillacart' => 'other:wp_7_orillacart_']])]);
+        $refused = $this->data($this->request('PUT', '/search-engine', ['engine' => 'opensearch', 'host' => self::host(), 'index' => self::INDEX], nonce: true));
+
+        self::assertFalse($refused['works']);
+        self::assertIsString($refused['message']);
+        self::assertStringContainsString('another shop', $refused['message']);
     }
 
     public function testWordsAreFoundByTheirStemInTheirLanguage(): void

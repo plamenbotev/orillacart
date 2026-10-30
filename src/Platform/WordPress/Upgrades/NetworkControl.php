@@ -151,15 +151,19 @@ final class NetworkControl
         );
     }
 
-    /** Whether the main site runs this: the shop on for the whole network, or OrillaCart Network. */
+    /** Whether the main site runs this: the shop on for the whole network or on the main site itself, or OrillaCart Network. */
     private static function controlled(): bool
     {
         \assert(self::$pluginFile !== null);
         if (!\function_exists('is_plugin_active_for_network')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
+        $shop = plugin_basename(self::$pluginFile);
+        if (is_plugin_active_for_network($shop) || is_plugin_active_for_network(plugin_basename(\dirname(self::$pluginFile) . '/network.php'))) {
+            return true;
+        }
+        $main = get_blog_option(get_main_site_id(), 'active_plugins');
 
-        return is_plugin_active_for_network(plugin_basename(self::$pluginFile))
-            || is_plugin_active_for_network(plugin_basename(\dirname(self::$pluginFile) . '/network.php'));
+        return \is_array($main) && \in_array($shop, $main, true);
     }
 }

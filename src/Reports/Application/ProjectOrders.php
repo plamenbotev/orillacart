@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Reports\Application;
 
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
+use OrillaCart\Jobs\Application\JobProgress;
 use OrillaCart\Jobs\Application\KeepsFailures;
 use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
@@ -66,7 +67,7 @@ final readonly class ProjectOrders implements KeepsFailures
         return 300;
     }
 
-    public function handle(array $jobs): array
+    public function handle(array $jobs, JobProgress $progress): array
     {
         $ids = array_values(array_unique(array_map(static fn(QueuedJob $job): int => (int) $job->uniqueKey, $jobs)));
         $facts = [];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Translations\Application;
 
+use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Translations\Application\Dto\TranslationPackage;
 use OrillaCart\Translations\Domain\TranslationRuleViolation;
 
@@ -16,10 +17,14 @@ use OrillaCart\Translations\Domain\TranslationRuleViolation;
  */
 final readonly class TranslationPackages
 {
+    /** Up to this many strings are sent as the object is saved; more go to the service in the background. */
+    public const int SENT_NOW = 10;
+
     public function __construct(
         private TranslationPackageSources $sources,
         private TranslationService $service,
         private ContentTranslations $translations,
+        private ?Jobs $jobs = null,
     ) {}
 
     public function active(): bool
@@ -41,22 +46,50 @@ final readonly class TranslationPackages
             return;
         }
         $this->service->register($package, $source->title());
+        // A package of many strings (a product with its attributes' options) is a query per string at the service:
+        // more than a save should wait for.
+        if ($this->jobs !== null && \count($package->strings) > self::SENT_NOW) {
+            $this->jobs->push(SyncTranslationPackages::TYPE, ['kind' => $kind, 'id' => $id], SyncTranslationPackages::sendKey($kind, $id));
+
+            return;
+        }
         $this->send($package, $source);
+    }
+
+    /** The object's translations to the service, in the background (SyncTranslationPackages). */
+    public function sendChanged(string $kind, int $id): void
+    {
+        $source = $this->sources->get($kind);
+        $package = $source === null || !$this->service->active() ? null : $source->package($id);
+        if ($source !== null && $package !== null && $package->strings !== []) {
+            $this->send($package, $source);
+        }
     }
 
     /**
      * Gives the service the translations the shop's screens changed: a word the shop has that differs from what
      * the service last gave, where the service's own has not changed since. One its translators changed since
-     * is theirs, taken at the next pull, never overwritten.
+     * is theirs, taken at the next pull, never overwritten. The shop's words and the service's copies are read
+     * once per type, not once per string.
      */
     private function send(TranslationPackage $package, TranslationPackageSource $source): void
     {
         $kindTitle = $source->title();
         $theirs = $this->service->translated($package, $kindTitle);
         $kept = $source instanceof KeepsItsTranslations ? $source->translationsOf($package) : null;
+        $idsByType = [];
         foreach ($package->strings as $string) {
-            $ours = $kept === null ? ($this->translations->of($string->type, [$string->id])[$string->id][$string->field] ?? []) : ($kept[$string->key()] ?? []);
-            $copies = $this->translations->serviceCopies($string->type, $string->id)[$string->field] ?? [];
+            $idsByType[$string->type][] = $string->id;
+        }
+        $oursByType = [];
+        $copiesByType = [];
+        foreach ($idsByType as $type => $ids) {
+            $oursByType[$type] = $kept === null ? $this->translations->of($type, array_values(array_unique($ids))) : [];
+            $copiesByType[$type] = $this->translations->serviceCopiesOf($type, $ids);
+        }
+        foreach ($package->strings as $string) {
+            $ours = $kept === null ? ($oursByType[$string->type][$string->id][$string->field] ?? []) : ($kept[$string->key()] ?? []);
+            $copies = $copiesByType[$string->type][$string->id][$string->field] ?? [];
             $sent = [];
             foreach ($ours as $locale => $value) {
                 $their = $theirs[$string->key()][$locale] ?? null;

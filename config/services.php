@@ -110,10 +110,13 @@ use OrillaCart\Invoicing\Domain\InvoiceSettingsRepository;
 use OrillaCart\Invoicing\Infrastructure\Doctrine\DoctrineInvoiceRepository;
 use OrillaCart\Invoicing\Infrastructure\WordPress\OptionInvoiceSettingsRepository;
 use OrillaCart\Invoicing\Infrastructure\WordPress\WordPressInvoiceLinks;
+use OrillaCart\Jobs\Application\Hold;
 use OrillaCart\Jobs\Application\JobContext;
 use OrillaCart\Jobs\Application\JobHandlers;
+use OrillaCart\Jobs\Application\JobProgress;
 use OrillaCart\Jobs\Application\JobQueue;
 use OrillaCart\Jobs\Application\JobSites;
+use OrillaCart\Jobs\Application\SiteTurnFailed;
 use OrillaCart\Jobs\Application\WorkerRegistry;
 use OrillaCart\Jobs\Infrastructure\Doctrine\DbalJobQueue;
 use OrillaCart\Jobs\Infrastructure\LocatedJobHandlers;
@@ -282,9 +285,11 @@ use OrillaCart\Tax\Domain\ImportRegistrationsRepository;
 use OrillaCart\Tax\Domain\NexusThresholdsRepository;
 use OrillaCart\Tax\Domain\TaxExemptionRepository;
 use OrillaCart\Tax\Domain\TaxGroupRepository;
+use OrillaCart\Tax\Domain\TaxRefundReports;
 use OrillaCart\Tax\Domain\TaxSettingsRepository;
 use OrillaCart\Tax\Infrastructure\Doctrine\DoctrineTaxExemptionRepository;
 use OrillaCart\Tax\Infrastructure\Doctrine\DoctrineTaxGroupRepository;
+use OrillaCart\Tax\Infrastructure\Doctrine\DoctrineTaxRefundReports;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionImportRegistrationsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionNexusThresholdsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
@@ -346,6 +351,10 @@ return static function (ContainerConfigurator $container): void {
         ->public();
     // Made per shopper by PriceResolver, not a service.
     $services->remove(ShopperPricing::class);
+    // Made per batch by the JobRunner, not services.
+    $services->remove(JobProgress::class);
+    $services->remove(Hold::class);
+    $services->remove(SiteTurnFailed::class);
 
     // The shop's own payment gateways, in this order; add-ons register theirs after them (WordPressExtensions).
     $services->set(CashOnDelivery::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 40]);
@@ -379,6 +388,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ImportRegistrationsRepository::class, OptionImportRegistrationsRepository::class);
     $services->alias(TaxQuoteCache::class, TransientTaxQuoteCache::class);
     $services->alias(TaxExemptionRepository::class, DoctrineTaxExemptionRepository::class);
+    $services->alias(TaxRefundReports::class, DoctrineTaxRefundReports::class);
     $services->alias(ProductRepository::class, DoctrineProductRepository::class);
     $services->alias(AttributeSetRepository::class, DoctrineAttributeSetRepository::class);
     $services->alias(FormRepository::class, DoctrineFormRepository::class);

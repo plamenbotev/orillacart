@@ -24,5 +24,7 @@ final readonly class CartContents
         public array $giftCards = [],
         /** The customer pays with their store credit, as far as it goes. */
         public bool $useStoreCredit = false,
+        /** The cart as read (Cart::fingerprint()): an order is placed from this cart, and from no other since. */
+        public string $fingerprint = '',
     ) {}
 }

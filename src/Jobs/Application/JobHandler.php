@@ -9,8 +9,9 @@ use OrillaCart\Jobs\Application\Dto\QueuedJob;
 
 /**
  * Does one type of job. Workers hand it the jobs of its type they claimed together, so it can read and write
- * for many at once. A handler that throws has its batch run again job by job, so only the bad job is retried.
- * Tagged by the Kernel, so the container finds every handler.
+ * for many at once; one that does them one by one reports each as it finishes it (JobProgress), so it is settled
+ * at once and the rest stay held. A handler that throws has its batch run again job by job, so only the bad job
+ * is retried. Tagged by the Kernel, so the container finds every handler.
  */
 interface JobHandler
 {
@@ -29,17 +30,20 @@ interface JobHandler
     public function retryAfter(int $attempt): int;
 
     /**
-     * Seconds a worker holds a batch of these jobs while it runs them: longer than the slowest batch takes, as
-     * another worker takes the jobs over after it, and shorter than needed only delays a worker that died.
+     * Seconds a worker holds these jobs while it runs them, extended as each job is reported done: longer than the
+     * slowest job takes when the handler reports its jobs one by one, longer than the slowest batch when it does
+     * them in one go, as another worker takes the jobs over after it; shorter than needed only delays a worker that died.
      */
     public function lockSeconds(): int;
 
     /**
-     * @param non-empty-list<QueuedJob> $jobs of this handler's type
+     * @param non-empty-list<QueuedJob> $jobs     of this handler's type
+     * @param JobProgress               $progress told of each job as it is finished, by a handler that does them
+     *                                            one by one
      *
-     * @return array<string, JobOutcome> by job id; a job left out is done
+     * @return array<string, JobOutcome> by job id, for the jobs not reported to $progress; a job left out is done
      */
-    public function handle(array $jobs): array;
+    public function handle(array $jobs, JobProgress $progress): array;
 
     /**
      * What a job is for, for the overview: "Order #1042: order received email".

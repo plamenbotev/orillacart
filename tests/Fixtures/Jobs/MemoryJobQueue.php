@@ -21,6 +21,8 @@ final class MemoryJobQueue implements JobQueue
     public MemoryFailedJobs $failed;
     /** @var array<string, array<string, array{done: int, retried: int, failed: int, ms: int}>> by hour, then type */
     public array $stats = [];
+    /** @var list<array{list<?string>, \DateTimeImmutable}> each hold: the keys held and until when */
+    public array $held = [];
     private int $nextId = 1;
 
     public function __construct()
@@ -56,6 +58,7 @@ final class MemoryJobQueue implements JobQueue
 
     public function hold(array $jobs, \DateTimeImmutable $until): void
     {
+        $this->held[] = [array_map(static fn(QueuedJob $job): ?string => $job->uniqueKey, $jobs), $until];
         foreach ($jobs as $job) {
             if (isset($this->jobs[(int) $job->id])) {
                 $this->set((int) $job->id, ['lockedUntil' => $until]);

@@ -6,7 +6,8 @@ namespace OrillaCart\Returns\Domain;
 
 interface ReturnRepository
 {
-    public function find(int $id): ?ItemReturn;
+    /** @param bool $lock read again under a write lock, inside a transaction: for a change to it */
+    public function find(int $id, bool $lock = false): ?ItemReturn;
 
     /** @return list<ItemReturn> the order's, oldest first */
     public function forOrder(int $orderId): array;

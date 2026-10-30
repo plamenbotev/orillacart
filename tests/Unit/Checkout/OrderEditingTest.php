@@ -136,4 +136,13 @@ final class OrderEditingTest extends TestCase
 
         return $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $line[0] === 10 ? 'rate:' . $this->rate : null, payment: 'bank_transfer'));
     }
+
+    public function testAnEditedUnitPriceWithMoreDecimalsThanTheCurrencyIsTakenInCents(): void
+    {
+        $order = $this->place([20, 1]);
+
+        $edited = $this->shop->editing->edit($order->number, new EditOrderItems([new EditedItem(20, 3, unitPrice: '1.2345')]), 7);
+
+        self::assertSame(['1.23', '3.69', '4.43'], [$edited->lines[0]->unitPrice, $edited->lines[0]->total, $edited->total]);
+    }
 }

@@ -207,9 +207,10 @@ final readonly class OrderPricing
             $imported = $import->applies() && $quote->type === 'physical';
             // A bundle is taxed per item: its price shared out by what its items cost, each share at its item's rates.
             $parts = [];
-            // A price given for the line (one the order kept, or the shop's own) is what this customer pays already.
+            // A price given for the line (one the order kept, or the shop's own) is what this customer pays already;
+            // in the currency's cents, as the shop can charge it: 1.2345 given is 1.23.
             $given = isset($line['unit_price']);
-            $unitPrice = $given ? Money::of($line['unit_price']) : $this->currencies->price(Money::of($quote->unitPrice), $currency);
+            $unitPrice = $given ? Money::of($line['unit_price'])->rounded($decimals) : $this->currencies->price(Money::of($quote->unitPrice), $currency);
             $units = self::shares($unitPrice, $quote->contents === [] ? [Money::of('1')] : array_map(static fn(QuotedBundleItem $item): Money => Money::of($item->price), $quote->contents));
             foreach ($quote->contents === [] ? [[$quote->taxable, $quote->taxGroupId, $quote->taxCode]] : array_map(static fn(QuotedBundleItem $item): array => [$item->taxable, $item->taxGroupId, $item->taxCode], $quote->contents) as $index => [$taxable, $groupId, $taxCode]) {
                 $taxes = $taxable && !($quote->type === 'physical' ? $goodsReverse : $reverseCharge) && (!$imported || $import->charges) ? $this->taxes($groupId, $shipping, $billing, $exempt, atShipping: $imported) : [];
@@ -296,22 +297,45 @@ final readonly class OrderPricing
                 $shares = null;
                 if ($asItems !== null && $option->taxable && !$free) {
                     // Taxed as the items it carries: each share of the price at the rates of the items it is for.
-                    $shares = [];
+                    // In the currency's cents, as the items are: each share rounded, and what rounding leaves of the
+                    // rounded price goes to the largest share, so the shares still add up to the price.
+                    $rounded = [];
+                    $ratesOf = [];
+                    $exact = Money::zero();
+                    $largest = 0;
                     foreach (self::shares($price, array_column($asItems, 'weight')) as $index => $share) {
                         // The rates of the items' group that apply to shipping; none for untaxed items.
                         $shareTaxes = $goodsReverse || $asItems[$index]['taxes'] === [] ? [] : $this->taxes($asItems[$index]['group'], $shipping, $billing, $exempt, true);
-                        $shares[] = [$inclusive ? Tax::asPaid($share, $shareTaxes, $this->shopTaxes($asItems[$index]['group'], true), $samePrice) : $share, $shareTaxes];
+                        $paid = $inclusive ? Tax::asPaid($share, $shareTaxes, $this->shopTaxes($asItems[$index]['group'], true), $samePrice) : $share;
+                        $exact = $exact->add($paid);
+                        $rounded[] = $paid->rounded($decimals);
+                        $ratesOf[] = $shareTaxes;
+                        if ($asItems[$index]['weight']->compare($asItems[$largest]['weight']) > 0) {
+                            $largest = $index;
+                        }
                     }
-                    $price = array_reduce($shares, static fn(Money $sum, array $share): Money => $sum->add($share[0]), Money::zero());
+                    $price = $exact->rounded($decimals);
+                    $rounded[$largest] = $rounded[$largest]->add($price->subtract(array_reduce($rounded, static fn(Money $sum, Money $share): Money => $sum->add($share), Money::zero())));
+                    $shares = array_map(static fn(Money $share, array $rates): array => [$share, $rates], $rounded, $ratesOf);
                     $taxes = [];
-                } elseif ($inclusive && $option->taxable && !$free) {
-                    $price = Tax::asPaid($price, $taxes, $this->shopTaxes($option->taxGroupId, true), $samePrice);
+                } else {
+                    if ($inclusive && $option->taxable && !$free) {
+                        // A price including tax: what this customer pays for it, as the shop chose (Tax::asPaid()).
+                        $price = Tax::asPaid($price, $taxes, $this->shopTaxes($option->taxGroupId, true), $samePrice);
+                    }
+                    // In the currency's cents: 5.00 with 20 % in it is 4.17 to a customer not charged it, not 4.1667.
+                    $price = $price->rounded($decimals);
                 }
-                $tax = $shares === null
-                    ? array_reduce(Tax::parts($price, $taxes, $inclusive), static fn(Money $sum, Money $part): Money => $sum->add($part->rounded($decimals)), Money::zero())
-                    : array_reduce($shares, static fn(Money $sum, array $share): Money => array_reduce(Tax::parts($share[0], $share[1], $inclusive), static fn(Money $sum, Money $part): Money => $sum->add($part), $sum), Money::zero())->rounded($decimals);
-                $total = $inclusive ? $price->rounded($decimals) : $price->rounded($decimals)->add($tax);
-                $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price->rounded($decimals), (string) $tax, (string) $total, $option->toPickupPoint, $option->collectAt);
+                // Each rate's tax rounded once over the shares it applies to, as the bill charges it (Bill::billed()).
+                $byRate = [];
+                foreach ($shares ?? [[$price, $taxes]] as [$share, $shareTaxes]) {
+                    foreach (Tax::parts($share, $shareTaxes, $inclusive) as $index => $part) {
+                        $byRate[$shareTaxes[$index]->key] = ($byRate[$shareTaxes[$index]->key] ?? Money::zero())->add($part);
+                    }
+                }
+                $tax = array_reduce($byRate, static fn(Money $sum, Money $part): Money => $sum->add($part->rounded($decimals)), Money::zero());
+                $total = $inclusive ? $price : $price->add($tax);
+                $view = new ShippingChoiceView($option->id, $option->carrier, $option->name, (string) $price, (string) $tax, (string) $total, $option->toPickupPoint, $option->collectAt);
                 $options[] = $view;
                 // The customer's choice when it is offered, otherwise the first rate, so the totals include shipping.
                 if ($chosen === null || $option->id === $shippingOption) {

@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace OrillaCart\Platform;
 
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
+use OrillaCart\Shared\Lifecycle\OutsideTheSite;
 
 /**
  * What the plugin compiles once and reads on every request, in wp-content/cache/orillacart/<kind>/<version>: the
  * Twig templates and Doctrine's mapping. Older versions' folders go after an update, and the whole folder when
  * the plugin is deleted, with the development container a read-only plugin folder caches in container/<folder>
- * (Kernel), which rebuilds itself when its sources change. Nothing of the shop's is kept there, so it goes whatever the shop chose.
+ * (Kernel), which rebuilds itself when its sources change. Nothing of the shop's is kept there, so it goes whatever the shop chose;
+ * it is the network's, so a site deleted from a network leaves it be.
  */
-final readonly class CacheFolders implements LifecycleListener
+final readonly class CacheFolders implements LifecycleListener, OutsideTheSite
 {
     public const array KINDS = ['twig', 'twig-emails', 'doctrine', 'pdf-fonts'];
 

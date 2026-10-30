@@ -42,8 +42,8 @@ final readonly class RunJobs implements ScheduledTask
         if ($lanes === []) {
             return;
         }
-        // A slow batch (PDFs, the search index) may run past twenty seconds: the host's limit must not stop it halfway,
-        // or every job in it counts a failed try.
+        // A slow batch (PDFs, the search index) may run past twenty seconds: the host's limit must not stop it halfway.
+        // Each job is settled as it is done, so a kill costs the job it was on one try, not the whole batch.
         if (\function_exists('set_time_limit')) {
             set_time_limit(self::SECONDS + 60);
         }

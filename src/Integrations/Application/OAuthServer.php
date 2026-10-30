@@ -24,7 +24,9 @@ use Psr\Clock\ClockInterface;
  * - the owner says yes on a screen in wp-admin; the yes is an API key under their name with the scope they chose,
  *   listed and revoked with the others;
  * - a code is good once for ten minutes; an access token for an hour, at the MCP endpoint only; a refresh token
- *   for thirty days, and once: it gives a new pair.
+ *   for thirty days, and once: it gives a new pair. The one it replaced, presented again, ends the pair: someone
+ *   else has it (OAuth 2.1 §6.1);
+ * - a client that registered itself and was never connected is forgotten after a day.
  */
 final readonly class OAuthServer
 {
@@ -34,6 +36,8 @@ final readonly class OAuthServer
     private const int CODE_SECONDS = 600;
     private const int ACCESS_SECONDS = 3600;
     private const int REFRESH_SECONDS = 30 * 86400;
+    /** How long a self-registered client may wait for the owner's yes before it is forgotten. */
+    private const int UNCONNECTED_CLIENT_SECONDS = 86400;
     private const string ACCESS_PREFIX = 'oat_';
     private const string REFRESH_PREFIX = 'ort_';
 
@@ -277,6 +281,17 @@ final readonly class OAuthServer
         return new AuthenticatedKey($key->id(), $key->userId(), $key->scope(), $key->name(), $key->assistant(), true);
     }
 
+    /**
+     * Forgets the clients that registered themselves more than a day ago and never got the owner's yes:
+     * anyone may register one, so they must not pile up.
+     *
+     * @return int how many went
+     */
+    public function forgetUnconnectedClients(): int
+    {
+        return $this->clients->removeUnconnected($this->clock->now()->modify('-' . self::UNCONNECTED_CLIENT_SECONDS . ' seconds'));
+    }
+
     /** A client the shop knows: one that registered, or one its metadata document describes. */
     public function client(string $clientId): ?OAuthClientView
     {
@@ -343,8 +358,18 @@ final readonly class OAuthServer
     private function refresh(array $form, string $clientId): array
     {
         $given = \is_string($form['refresh_token'] ?? null) ? $form['refresh_token'] : '';
-        $token = preg_match('/^ort_[a-f0-9]{48}$/', $given) === 1 ? $this->tokens->withRefreshHash(hash('sha256', $given)) : null;
+        $hash = preg_match('/^ort_[a-f0-9]{48}$/', $given) === 1 ? hash('sha256', $given) : null;
+        $token = $hash === null ? null : $this->tokens->withRefreshHash($hash);
         $now = $this->clock->now();
+        if ($token === null && $hash !== null) {
+            // A refresh token already rotated away comes again: it leaked, or the client lost the new one. Either
+            // way the pair it belongs to ends; the app connects again through the owner.
+            $replaced = $this->tokens->withPreviousRefreshHash($hash);
+            if ($replaced !== null) {
+                $this->tokens->remove($replaced);
+                throw new OAuthError('invalid_grant', 'The refresh token was used already; the shop ended this connection\'s tokens. Connect again.');
+            }
+        }
         if ($token === null || $token->clientId() !== $clientId || $token->refreshExpiresAt() <= $now) {
             throw new OAuthError('invalid_grant', 'The refresh token is not one the shop gave this app, or it ran out or was used.');
         }

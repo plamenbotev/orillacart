@@ -41,7 +41,7 @@ abstract class RestTestCase extends TestCase
         self::assertInstanceOf(\wpdb::class, $wpdb);
         $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_jobs WHERE queue = 'mail'");
         // What earlier tests and runs counted against the rate limits: each test starts within them.
-        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '\\_transient\\_orillacart\\_rl\\_%' OR option_name LIKE '\\_transient\\_timeout\\_orillacart\\_rl\\_%'");
+        $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_rate_limits");
         wp_cache_flush();
         // One closure, kept, so remove_filter() finds the same one.
         $this->mailCatcher = $this->catchMail(...);
