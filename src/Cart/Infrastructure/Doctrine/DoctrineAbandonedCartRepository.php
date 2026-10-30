@@ -25,6 +25,11 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
         $this->entityManager->flush();
     }
 
+    public function ofOrder(int $orderId): ?AbandonedCart
+    {
+        return $this->entityManager->getRepository(AbandonedCart::class)->findOneBy(['orderId' => $orderId]);
+    }
+
     public function leftSince(\DateTimeImmutable $before, int $limit): array
     {
         /** @var list<Cart> */
@@ -52,9 +57,10 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
                 'COUNT(a.id) AS abandoned',
                 'COALESCE(SUM(a.subtotal), 0) AS value',
                 'COALESCE(SUM(CASE WHEN a.remindedAt IS NOT NULL THEN 1 ELSE 0 END), 0) AS reminded',
-                'COALESCE(SUM(CASE WHEN a.orderId IS NOT NULL THEN 1 ELSE 0 END), 0) AS recovered',
-                'COALESCE(SUM(a.orderTotal), 0) AS recovered_value',
-                'COALESCE(SUM(CASE WHEN a.orderId IS NOT NULL AND a.remindedAt IS NOT NULL THEN 1 ELSE 0 END), 0) AS recovered_after_reminder',
+                // Recovered once the order placed from it was paid, not when it was placed.
+                'COALESCE(SUM(CASE WHEN a.recoveredAt IS NOT NULL THEN 1 ELSE 0 END), 0) AS recovered',
+                'COALESCE(SUM(CASE WHEN a.recoveredAt IS NOT NULL THEN a.orderTotal ELSE 0 END), 0) AS recovered_value',
+                'COALESCE(SUM(CASE WHEN a.recoveredAt IS NOT NULL AND a.remindedAt IS NOT NULL THEN 1 ELSE 0 END), 0) AS recovered_after_reminder',
             )
             ->from(AbandonedCart::class, 'a')
             ->where('a.abandonedAt >= :from')

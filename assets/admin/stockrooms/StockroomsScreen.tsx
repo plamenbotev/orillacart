@@ -24,6 +24,7 @@ import {
 	type StockroomInput,
 } from '../inventory/api';
 import { errorMessage } from '../shared/api';
+import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -36,6 +37,19 @@ const EMPTY: StockroomInput = {
 	active: true,
 	low_stock_threshold: null,
 };
+
+/**
+ * What a stockroom's form edits of it, for comparing a draft with what is saved.
+ *
+ * @param stockroom The stockroom, or a draft of one.
+ */
+const editable = ( stockroom: StockroomInput ): StockroomInput =>
+	Object.fromEntries(
+		( Object.keys( EMPTY ) as ( keyof StockroomInput )[] ).map( ( key ) => [
+			key,
+			stockroom[ key ],
+		] )
+	) as StockroomInput;
 
 /**
  * The Shop → Stockrooms screen: the places the shop keeps stock and ships from.
@@ -149,6 +163,10 @@ function StockroomCard( {
 		stockroom ?? EMPTY
 	);
 	const [ confirming, setConfirming ] = useState( false );
+	// A draft not saved keeps the page from being left without asking; a saved one is the stockroom's copy.
+	useUnsavedChanges(
+		differs( editable( draft ), editable( stockroom ?? EMPTY ) )
+	);
 	const days = ( value: string ) =>
 		Math.max( 0, Number.parseInt( value, 10 ) || 0 );
 	const perUnit = draft.delivery_unit === 'weeks' ? 7 : 1;

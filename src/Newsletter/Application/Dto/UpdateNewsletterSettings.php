@@ -19,5 +19,7 @@ final readonly class UpdateNewsletterSettings
         public string $consent = '',
         #[Assert\All([new Assert\Type('string')])]
         public array $lists = [],
+        /** Whether a new sign-up counts only once confirmed from the email (double opt-in). */
+        public bool $confirmNew = true,
     ) {}
 }

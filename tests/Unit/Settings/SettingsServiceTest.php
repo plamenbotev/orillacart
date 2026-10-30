@@ -58,7 +58,7 @@ final class SettingsServiceTest extends TestCase
     public function testAShopThatNeverSavedRunsOnTheDefaults(): void
     {
         self::assertEquals(
-            new SettingsView('EUR', 2, 'kg', 'cm', null, null, ['kg', 'g', 'lb', 'oz'], ['cm', 'm', 'mm', 'in'], currencyPositions: ['before', 'before_space', 'after', 'after_space']),
+            new SettingsView('EUR', 2, 'kg', 'cm', null, null, ['kg', 'g', 'lb', 'oz'], ['cm', 'm', 'mm', 'in'], currencyPositions: ['before', 'before_space', 'after', 'after_space'], reportDays: ['paid', 'placed']),
             $this->service()->current(),
         );
     }

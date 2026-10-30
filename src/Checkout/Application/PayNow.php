@@ -7,6 +7,7 @@ namespace OrillaCart\Checkout\Application;
 use OrillaCart\Checkout\Application\Dto\PayOrder;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Coupons\Domain\CouponRuleViolation;
 use OrillaCart\Inventory\Domain\InsufficientStock;
 use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -74,7 +75,8 @@ final readonly class PayNow
      * @throws OrderNotFound              for a receipt link the shop never made
      * @throws ReceiptLinkExpired         for one too old
      * @throws CheckoutRuleViolation      for an order that cannot be paid now, a method the shop does not offer
-     *                                    for it, or a failed order whose items sold out since
+     *                                    for it, or a failed order whose items sold out or whose coupon was
+     *                                    used up since
      * @throws PaymentProviderUnavailable when the payment cannot start; the order stays as it was
      */
     public function pay(string $receipt, PayOrder $command): PlacedOrderView
@@ -93,8 +95,13 @@ final readonly class PayNow
             throw new CheckoutRuleViolation('Some of the items sold out since: this order cannot be paid any more. Order them again from the shop.', 'orillacart_out_of_stock');
         } catch (OrderRuleViolation $e) {
             throw new CheckoutRuleViolation($e->text, 'orillacart_order_not_payable', $e);
+        } catch (CouponRuleViolation $e) {
+            // Its coupon was used up since it failed: paying it now would take a use past the limit.
+            throw new CheckoutRuleViolation($e->text, $e->errorCode, $e);
         }
         $receiptUrl = $this->links->receiptUrl($order->number);
+        // A failed order opened again may now owe more: gift cards that no longer had their share left it to pay.
+        $order = $this->orders->order($order->number);
         try {
             $payment = $this->payments->start(StartPayment::forOrder($order, $command->payment));
         } catch (PaymentProviderUnavailable $e) {

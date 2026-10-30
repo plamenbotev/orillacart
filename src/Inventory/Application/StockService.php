@@ -139,14 +139,21 @@ final readonly class StockService
     }
 
     /**
-     * Changes single levels of many items together, as the stock sheet saves them: a quantity sets the
-     * stockroom's level, null removes it. Nothing changes when one change is refused.
+     * Changes single levels of many items together, as the stock sheet and the product editor save them, under the
+     * levels' lock: a quantity sets the stockroom's level when it is still the level the change was loaded with
+     * (`was`, null for no level), null removes it, and a change adds to the level as it is (below zero to take).
+     * Nothing changes when one change is refused, or when a level moved since it was loaded (a sale took from it):
+     * the save is refused naming those levels as they are now. The history is written in the same transaction.
      *
      * @param list<ChangeStockLevel> $changes
+     * @param bool                   $overwrite set quantities whatever the levels are now, as a bulk edit's "set to"
+     *                                          does: `was` is not compared
      *
-     * @throws InventoryRuleViolation for a stockroom that does not exist, or a cell changed twice
+     * @throws InventoryRuleViolation for a stockroom that does not exist, a cell changed twice, or a level that
+     *                                would go below zero
+     * @throws StockChangedMeanwhile  for levels that are no longer what was loaded
      */
-    public function changeLevels(array $changes, StockNote $note = new StockNote()): void
+    public function changeLevels(array $changes, StockNote $note = new StockNote(), bool $overwrite = false): void
     {
         $byItem = [];
         foreach ($changes as $change) {
@@ -154,80 +161,119 @@ final readonly class StockService
             if (\array_key_exists($change->stockroomId, $byItem[$key] ?? [])) {
                 throw new InventoryRuleViolation('The level of %1$s in stockroom %2$d is changed twice.', 'orillacart_duplicate_stockroom', values: [$key, $change->stockroomId]);
             }
-            $byItem[$key][$change->stockroomId] = $change->quantity;
+            if ($change->quantity !== null && $change->change !== null) {
+                throw new InventoryRuleViolation('The level of %1$s in stockroom %2$d is given a quantity and a change: give one.', 'orillacart_invalid_stock_change', values: [$key, $change->stockroomId]);
+            }
+            $byItem[$key][$change->stockroomId] = $change;
         }
         $stockrooms = [];
         foreach ($changes as $change) {
             $stockrooms[$change->stockroomId] ??= $this->stockrooms->find($change->stockroomId)
                 ?? throw new InventoryRuleViolation('There is no stockroom %d.', 'orillacart_unknown_stockroom', values: [$change->stockroomId]);
         }
-
-        $items = array_map(StockItem::fromString(...), array_keys($byItem));
-        $stocks = $this->levels->stockOf($items);
-        $before = self::availableOf($stocks);
-        $was = self::levelsBy($stocks);
-        foreach ($this->levels->stockOf($items) as $stock) {
-            $wanted = $byItem[(string) $stock->item];
-            $removed = [];
-            foreach ($stock->levels() as $level) {
-                $stockroomId = $level->stockroom()->id();
-                if (!\array_key_exists($stockroomId, $wanted)) {
-                    continue;
-                }
-                if ($wanted[$stockroomId] === null) {
-                    $removed[] = $level;
-                } else {
-                    $level->set($wanted[$stockroomId]);
-                }
-                unset($wanted[$stockroomId]);
-            }
-            $added = array_filter($wanted, static fn(?int $quantity): bool => $quantity !== null);
-            $this->remove($stock, $removed, $added !== []);
-            foreach ($added as $stockroomId => $quantity) {
-                $this->levels->add(new StockLevel($stockrooms[$stockroomId], $stock->item, $quantity));
-            }
+        if ($byItem === []) {
+            return;
         }
-        $this->levels->flush();
-        $this->log($was, $items, $note);
+        // Locked in one order, as lock() does: two saves of the same items never wait for each other.
+        ksort($byItem);
+        $items = array_map(StockItem::fromString(...), array_keys($byItem));
+
+        $before = [];
+        $this->levels->lockedStockOf($items, function (array $stocks) use ($byItem, $stockrooms, $overwrite, $note, &$before): void {
+            /** @var list<Stock> $stocks */
+            $before = self::availableOf($stocks);
+            // Everything is checked before anything changes: all of it, or none.
+            $moved = [];
+            foreach ($stocks as $stock) {
+                $now = self::levelsBy([$stock])[(string) $stock->item] ?? [];
+                foreach ($byItem[(string) $stock->item] as $stockroomId => $change) {
+                    $current = $now[$stockroomId] ?? null;
+                    if ($change->change !== null) {
+                        // Below zero only by what is owed already: units coming in lower what is owed.
+                        if ($change->change < 0 && ($current ?? 0) + $change->change < 0) {
+                            throw new InventoryRuleViolation('The stock of %1$s in stockroom %2$d would be below zero.', 'orillacart_invalid_quantity', values: [(string) $stock->item, $stockroomId]);
+                        }
+                    } elseif (!$overwrite && $current !== $change->was) {
+                        $moved[] = ['kind' => $stock->item->kind->value, 'id' => $stock->item->id, 'stockroom_id' => $stockroomId, 'quantity' => $current];
+                    }
+                }
+            }
+            if ($moved !== []) {
+                throw new StockChangedMeanwhile($moved);
+            }
+            $moves = [];
+            foreach ($stocks as $stock) {
+                $wanted = $byItem[(string) $stock->item];
+                $was = self::levelsBy([$stock])[(string) $stock->item] ?? [];
+                $removed = [];
+                $after = [];
+                foreach ($stock->levels() as $level) {
+                    $stockroomId = $level->stockroom()->id();
+                    $change = $wanted[$stockroomId] ?? null;
+                    if ($change === null) {
+                        continue;
+                    }
+                    if ($change->change !== null) {
+                        $level->change($change->change);
+                    } elseif ($change->quantity === null) {
+                        $removed[] = $level;
+                    } else {
+                        $level->set($change->quantity);
+                    }
+                    unset($wanted[$stockroomId]);
+                }
+                $added = [];
+                foreach ($wanted as $stockroomId => $change) {
+                    $quantity = $change->change ?? $change->quantity;
+                    if ($quantity !== null) {
+                        $added[$stockroomId] = new StockLevel($stockrooms[$stockroomId], $stock->item, $quantity);
+                    }
+                }
+                $this->remove($stock, $removed, $added !== []);
+                foreach ($stock->levels() as $level) {
+                    $after[$level->stockroom()->id()] = \in_array($level, $removed, true) && $level->quantity() !== 0 ? null : $level->quantity();
+                }
+                foreach ($added as $stockroomId => $level) {
+                    $this->levels->add($level);
+                    $after[$stockroomId] = $level->quantity();
+                }
+                foreach ($byItem[(string) $stock->item] as $stockroomId => $change) {
+                    $delta = ($after[$stockroomId] ?? 0) - ($was[$stockroomId] ?? 0);
+                    if ($delta !== 0) {
+                        $moves[] = [$stock->item, $stockroomId, $delta, $after[$stockroomId] ?? 0];
+                    }
+                }
+            }
+            $this->keep($moves, $note);
+        });
+        // Levels made anew are not in the locked copies: ask again.
         $this->announce($before, self::availableOf($this->levels->stockOf($items)));
     }
 
     /**
+     * Replaces an item's levels with the ones given, as an import does, under the levels' lock: stockrooms not
+     * listed hold none of it afterwards (one is held at 0 when none would be left). The quantities are set whatever
+     * the levels are now; a change in place of one is added to the level as it is.
+     *
      * @throws InventoryRuleViolation for a stockroom that does not exist, or one listed twice
      */
     public function setLevels(StockItemRef $ref, SetStockLevels $command, StockNote $note = new StockNote()): StockView
     {
         $item = $ref->toItem();
-        $wanted = [];
+        $listed = [];
         foreach ($command->levels as $level) {
-            if (isset($wanted[$level->stockroomId])) {
+            if (isset($listed[$level->stockroomId])) {
                 throw new InventoryRuleViolation('Stockroom %d is listed twice.', 'orillacart_duplicate_stockroom', values: [$level->stockroomId]);
             }
-            $wanted[$level->stockroomId] = $level->quantity;
+            $listed[$level->stockroomId] = new ChangeStockLevel($ref->kind, $ref->id, $level->stockroomId, $level->change === null ? ($level->quantity ?? 0) : null, change: $level->change);
         }
-
-        $stock = $this->levels->stockOf([$item])[0];
-        $before = self::availableOf([$stock]);
-        $was = self::levelsBy([$stock]);
-        $removed = [];
-        foreach ($stock->levels() as $level) {
-            $stockroomId = $level->stockroom()->id();
-            if (\array_key_exists($stockroomId, $wanted)) {
-                $level->set($wanted[$stockroomId]);
-                unset($wanted[$stockroomId]);
-            } else {
-                $removed[] = $level;
+        $changes = array_values($listed);
+        foreach ($this->levels->stockOf([$item])[0]->levels() as $level) {
+            if (!isset($listed[$level->stockroom()->id()])) {
+                $changes[] = new ChangeStockLevel($ref->kind, $ref->id, $level->stockroom()->id(), null);
             }
         }
-        $this->remove($stock, $removed, $wanted !== []);
-        foreach ($wanted as $stockroomId => $quantity) {
-            $stockroom = $this->stockrooms->find($stockroomId)
-                ?? throw new InventoryRuleViolation('There is no stockroom %d.', 'orillacart_unknown_stockroom', values: [$stockroomId]);
-            $this->levels->add(new StockLevel($stockroom, $item, $quantity));
-        }
-        $this->levels->flush();
-        $this->log($was, [$item], $note);
-        $this->announce($before, self::availableOf($this->levels->stockOf([$item])));
+        $this->changeLevels($changes, $note, overwrite: true);
 
         return $this->stock($ref);
     }
@@ -540,31 +586,6 @@ final readonly class StockService
         }
 
         return $levels;
-    }
-
-    /**
-     * Keeps what the shop changed by hand: each stockroom's level that moved, from what it was.
-     *
-     * @param array<string, array<int, int>> $was
-     * @param list<StockItem>                $items
-     */
-    private function log(array $was, array $items, StockNote $note): void
-    {
-        if ($this->movements === null) {
-            return;
-        }
-        $now = self::levelsBy($this->levels->stockOf($items));
-        $moves = [];
-        foreach ($items as $item) {
-            $key = (string) $item;
-            foreach (array_keys(($was[$key] ?? []) + ($now[$key] ?? [])) as $room) {
-                $delta = ($now[$key][$room] ?? 0) - ($was[$key][$room] ?? 0);
-                if ($delta !== 0) {
-                    $moves[] = [$item, $room, $delta, $now[$key][$room] ?? 0];
-                }
-            }
-        }
-        $this->keep($moves, $note);
     }
 
     /**

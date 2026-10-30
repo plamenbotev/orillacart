@@ -45,5 +45,12 @@ final readonly class CreateOrder
         /** The office or locker to deliver to, for a service to one (the courier's id). */
         #[Assert\Length(max: 64)]
         public ?string $pickupPoint = null,
+        /**
+         * A business customer's VAT number: checked as checkout checks it, for the reverse charge of an EU business
+         * in another country, or kept on the order and the invoice.
+         */
+        #[Assert\Length(max: 20)]
+        #[Assert\Regex(pattern: '/^[A-Za-z0-9 .\-]*$/', message: 'A VAT number has letters, digits, spaces, dots and dashes.')]
+        public ?string $vatNumber = null,
     ) {}
 }

@@ -11,4 +11,6 @@ enum ImportStatus: string
     /** A job is importing it, a batch of rows at a time. */
     case Running = 'running';
     case Done = 'done';
+    /** Stopped before the end, by a fault the job could not get past: what was imported stays. */
+    case Failed = 'failed';
 }

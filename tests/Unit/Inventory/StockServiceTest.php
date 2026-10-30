@@ -10,6 +10,7 @@ use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
+use OrillaCart\Inventory\Application\StockChangedMeanwhile;
 use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Inventory\Domain\Event\StockChanged;
@@ -46,8 +47,8 @@ final class StockServiceTest extends TestCase
         $this->events->events = [];
 
         $this->stock->changeLevels([
-            new ChangeStockLevel('product', 10, $this->sofia, 6),
-            new ChangeStockLevel('product', 10, $this->berlin, null),
+            new ChangeStockLevel('product', 10, $this->sofia, 6, was: 4),
+            new ChangeStockLevel('product', 10, $this->berlin, null, was: 2),
             new ChangeStockLevel('variation', 20, $this->berlin, 0),
         ]);
 
@@ -75,6 +76,49 @@ final class StockServiceTest extends TestCase
             }
         }
         self::assertSame(['product:10' => [$this->sofia => 4]], $this->stock->levelsOf([StockItemRef::product(10)]));
+    }
+
+    public function testALevelSoldFromSinceItWasLoadedRefusesTheWholeSave(): void
+    {
+        $this->stock->setLevels(StockItemRef::product(10), new SetStockLevels([new SetStockLevel($this->sofia, 5), new SetStockLevel($this->berlin, 2)]));
+        // The sheet loads 5 and 2; a sale takes one meanwhile.
+        $this->stock->take([StockItemRef::product(10)], 1);
+        self::assertSame(['product:10' => [$this->sofia => 4, $this->berlin => 2]], $this->stock->levelsOf([StockItemRef::product(10)]), 'the fastest stockroom sold it');
+
+        try {
+            $this->stock->changeLevels([
+                new ChangeStockLevel('product', 10, $this->sofia, 8, was: 5),
+                new ChangeStockLevel('product', 10, $this->berlin, 9, was: 2),
+                new ChangeStockLevel('product', 11, $this->berlin, 3, was: 1),
+            ]);
+            self::fail('A level that moved refuses the save.');
+        } catch (StockChangedMeanwhile $e) {
+            self::assertSame('orillacart_stock_changed', $e->errorCode);
+            self::assertSame([
+                ['kind' => 'product', 'id' => 10, 'stockroom_id' => $this->sofia, 'quantity' => 4],
+                ['kind' => 'product', 'id' => 11, 'stockroom_id' => $this->berlin, 'quantity' => null],
+            ], $e->cells, 'each moved level as it is now; null: none');
+        }
+        self::assertSame(['product:10' => [$this->sofia => 4, $this->berlin => 2]], $this->stock->levelsOf([StockItemRef::product(10)]), 'nothing was saved');
+    }
+
+    public function testAChangeIsAddedToTheLevelAsItIsAndNeverTakesBelowZero(): void
+    {
+        $this->stock->setLevels(StockItemRef::product(10), new SetStockLevels([new SetStockLevel($this->sofia, 1)]));
+        $this->stock->take([StockItemRef::product(10)], 3, backorders: true);
+
+        $this->stock->changeLevels([new ChangeStockLevel('product', 10, $this->sofia, change: 5), new ChangeStockLevel('product', 10, $this->berlin, change: 2)]);
+        self::assertSame(['product:10' => [$this->sofia => 3, $this->berlin => 2]], $this->stock->levelsOf([StockItemRef::product(10)]), 'five in: the two owed are covered');
+
+        foreach ([[new ChangeStockLevel('product', 10, $this->sofia, change: -4)], [new ChangeStockLevel('product', 10, $this->sofia, 1, change: 1)]] as $changes) {
+            try {
+                $this->stock->changeLevels($changes);
+                self::fail('Refused.');
+            } catch (InventoryRuleViolation $e) {
+                self::assertContains($e->errorCode, ['orillacart_invalid_quantity', 'orillacart_invalid_stock_change']);
+            }
+        }
+        self::assertSame(['product:10' => [$this->sofia => 3, $this->berlin => 2]], $this->stock->levelsOf([StockItemRef::product(10)]));
     }
 
     public function testDeliveryTimesInWeeksAreWholeWeeksKeptInDays(): void
@@ -299,7 +343,7 @@ final class StockServiceTest extends TestCase
     {
         $this->stock->setLevels(StockItemRef::product(5), new SetStockLevels([new SetStockLevel($this->sofia, 1)]));
         $this->stock->take([StockItemRef::product(5)], 3, backorders: true);
-        $this->stock->changeLevels([new ChangeStockLevel('product', 5, $this->berlin, 5)]);
+        $this->stock->changeLevels([new ChangeStockLevel('product', 5, $this->berlin, change: 5)]);
         self::assertSame(3, $this->stock->available([StockItemRef::product(5)]), 'Sofia owes two of Berlin\'s five');
 
         $taken = $this->stock->take([StockItemRef::product(5)], 4, backorders: true);

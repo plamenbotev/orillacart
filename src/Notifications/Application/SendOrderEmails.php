@@ -117,7 +117,7 @@ final readonly class SendOrderEmails implements JobHandler
     }
 
     /**
-     * @return array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>, credit?: string|null}|null
+     * @return array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>, credit?: string|null, credit_note?: string|null}|null
      */
     private static function refund(mixed $refund): ?array
     {
@@ -131,6 +131,6 @@ final readonly class SendOrderEmails implements JobHandler
             }
         }
 
-        return ['amount' => $refund['amount'], 'full' => ($refund['full'] ?? false) === true, 'quantities' => $quantities, 'credit' => \in_array($refund['credit'] ?? null, ['store_credit', 'gift_card'], true) ? $refund['credit'] : null];
+        return ['amount' => $refund['amount'], 'full' => ($refund['full'] ?? false) === true, 'quantities' => $quantities, 'credit' => \in_array($refund['credit'] ?? null, ['store_credit', 'gift_card'], true) ? $refund['credit'] : null, 'credit_note' => \is_string($refund['credit_note'] ?? null) ? $refund['credit_note'] : null];
     }
 }

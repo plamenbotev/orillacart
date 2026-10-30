@@ -69,7 +69,7 @@ final readonly class AttributeSetService
 
     /**
      * @throws AttributeSetNotFound
-     * @throws CatalogRuleViolation when a variation uses an option this would remove
+     * @throws CatalogRuleViolation when a variation uses an option this would remove, or of a set turned off
      */
     public function update(int $id, SaveAttributeSet $command): AttributeSetView
     {
@@ -78,6 +78,10 @@ final readonly class AttributeSetService
         $removed = $set->optionIdsRemovedBy($drafts);
         if ($removed !== [] && $this->products->isAnyOptionUsedByVariations($removed)) {
             throw new CatalogRuleViolation('A product variation uses an option this would remove; change or remove the variation first.', 'orillacart_option_in_use');
+        }
+        // Off, its options are no longer offered: variations made of them could not be sold, as when it is deleted.
+        if ($set->isActive() && !$command->active && $this->products->isSetUsedByVariations($set)) {
+            throw new CatalogRuleViolation('Product variations use options of "%s"; change or remove them before turning it off.', 'orillacart_attribute_set_in_use', values: [$set->name()]);
         }
         $texts = $this->texts->check($command->attributes);
         [$attributesBefore, $optionsBefore] = AttributeTexts::ids($set->ownAttributes());

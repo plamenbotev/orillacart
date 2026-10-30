@@ -45,11 +45,14 @@ final readonly class PriceHistory
         }
         $latest = $this->points->latest(array_keys($prices));
         $now = $this->clock->now();
+        $changed = [];
         foreach ($prices as $item => $price) {
             if (!isset($latest[$item]) || !$latest[$item]->price()->equals($price)) {
-                $this->points->add(new PricePoint($item, $price, $now));
+                $changed[] = new PricePoint($item, $price, $now);
             }
         }
+        // Saved together: one write for the batch, not one per price.
+        $this->points->add($changed);
     }
 
     /**

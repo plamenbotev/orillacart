@@ -9,6 +9,7 @@ use OrillaCart\GiftCards\Application\GiftCardService;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
@@ -16,6 +17,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** A new gift card; the answer holds its code, shown this once. */
+#[Tool(risk: Tool::MONEY)]
 #[Route('/gift-cards', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class IssueGiftCardAction implements RequestHandlerInterface
 {

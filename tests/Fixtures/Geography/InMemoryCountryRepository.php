@@ -20,7 +20,9 @@ final class InMemoryCountryRepository implements CountryRepository
         foreach ([
             ['BG', 'BGR', 'Bulgaria', true, []],
             ['CA', 'CAN', 'Canada', false, ['ON' => 'Ontario', 'QC' => 'Quebec']],
+            ['CH', 'CHE', 'Switzerland', false, []],
             ['DE', 'DEU', 'Germany', true, []],
+            ['FR', 'FRA', 'France', true, []],
             ['GR', 'GRC', 'Greece', true, []],
             ['GB', 'GBR', 'United Kingdom', false, []],
             ['IT', 'ITA', 'Italy', true, ['MI' => 'Milano', 'RM' => 'Roma']],

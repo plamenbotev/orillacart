@@ -8,38 +8,51 @@ import type { ApiResult, Violation } from './api';
 /**
  * Replaces the page's regions with the same regions rendered anew: the server's templates stay the only
  * place that knows how the shop looks.
- * @param names Regions to replace.
- * @param url   The page to render them from.
+ * @param names  Regions to replace.
+ * @param url    The page to render them from.
+ * @param signal Stops the call (a newer one replaces it): it then throws, and nothing on the page changes.
+ * @return The regions on the page the fresh page did not have (a cart emptied meanwhile renders a page without
+ *         the checkout's summary): those are left as they were, and the caller decides what to do.
  */
 export async function reloadRegions(
 	names: string[],
-	url: string = window.location.href
-): Promise< void > {
+	url: string = window.location.href,
+	signal?: AbortSignal
+): Promise< string[] > {
 	const response = await fetch( url, {
 		credentials: 'same-origin',
 		cache: 'no-store',
+		signal: signal ?? null,
 	} );
 	if ( ! response.ok ) {
 		// An error page has none of the regions: say so rather than leave the page as it was.
 		throw new Error( `The page answered ${ response.status }.` );
 	}
-	const fresh = new DOMParser().parseFromString(
-		await response.text(),
-		'text/html'
-	);
+	const html = await response.text();
+	// Stopped while the page was read: a newer call draws the regions.
+	if ( signal?.aborted ) {
+		throw new DOMException( 'Replaced by a newer call.', 'AbortError' );
+	}
+	const fresh = new DOMParser().parseFromString( html, 'text/html' );
+	const missing: string[] = [];
 	for ( const name of names ) {
 		const selector = `[data-orillacart-region="${ name }"]`;
 		const replacements = fresh.querySelectorAll( selector );
 		document.querySelectorAll( selector ).forEach( ( region, index ) => {
 			const replacement = replacements[ index ];
-			if ( replacement ) {
-				const next = document.importNode( replacement, true );
-				const restore = keepTyping( region, next );
-				region.replaceWith( next );
-				restore();
+			if ( ! replacement ) {
+				if ( ! missing.includes( name ) ) {
+					missing.push( name );
+				}
+				return;
 			}
+			const next = document.importNode( replacement, true );
+			const restore = keepTyping( region, next );
+			region.replaceWith( next );
+			restore();
 		} );
 	}
+	return missing;
 }
 
 /**
@@ -160,13 +173,42 @@ export function showMessage(
 	}
 }
 
+/**
+ * Adds an id to, or takes it from, the ids an attribute lists (aria-describedby), keeping the others: a field's
+ * help text stays described when an error comes and goes.
+ * @param element   The field.
+ * @param attribute The attribute.
+ * @param id        The id.
+ * @param add       Whether to add it, or take it away.
+ */
+function toggleToken(
+	element: Element,
+	attribute: string,
+	id: string,
+	add: boolean
+): void {
+	const ids = ( element.getAttribute( attribute ) ?? '' )
+		.split( /\s+/ )
+		.filter( ( token ) => token !== '' && token !== id );
+	if ( add ) {
+		ids.push( id );
+	}
+	if ( ids.length > 0 ) {
+		element.setAttribute( attribute, ids.join( ' ' ) );
+	} else {
+		element.removeAttribute( attribute );
+	}
+}
+
 export function clearErrors( form: HTMLElement ): void {
-	form.querySelectorAll( '.orillacart-field__error' ).forEach( ( error ) =>
-		error.remove()
-	);
+	form.querySelectorAll( '.orillacart-field__error' ).forEach( ( error ) => {
+		form.querySelectorAll( '[aria-describedby]' ).forEach( ( field ) =>
+			toggleToken( field, 'aria-describedby', error.id, false )
+		);
+		error.remove();
+	} );
 	form.querySelectorAll( '[aria-invalid]' ).forEach( ( field ) => {
 		field.removeAttribute( 'aria-invalid' );
-		field.removeAttribute( 'aria-describedby' );
 	} );
 }
 
@@ -193,7 +235,7 @@ export function showErrors(
 		error.id = `orillacart-error-${ index }`;
 		error.textContent = violation.message;
 		field.setAttribute( 'aria-invalid', 'true' );
-		field.setAttribute( 'aria-describedby', error.id );
+		toggleToken( field, 'aria-describedby', error.id, true );
 		( field.tagName === 'FIELDSET'
 			? field
 			: ( field.parentElement ?? field )

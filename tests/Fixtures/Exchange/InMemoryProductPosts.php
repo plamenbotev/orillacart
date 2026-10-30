@@ -16,6 +16,14 @@ final class InMemoryProductPosts implements ProductPosts
     public array $posts = [];
     /** @var array<int, list<ProductPostChange>> */
     public array $changes = [];
+    /** @var list<int> */
+    public array $deleted = [];
+    /** Who the work runs as now. */
+    public ?int $user = null;
+    /** @var array<int, string> the status each post was made with */
+    public array $createdAs = [];
+    /** @var array<int, ?int> who made each post */
+    public array $authors = [];
 
     public function __construct(
         private readonly ?InMemoryProductContent $content = null,
@@ -37,6 +45,8 @@ final class InMemoryProductPosts implements ProductPosts
         $id = $this->nextId++;
         $this->content?->add($id, $name);
         $this->posts[$id] = new ProductPost($status, '', '', [], [], []);
+        $this->authors[$id] = $this->user;
+        $this->createdAs[$id] = $status;
 
         return $id;
     }
@@ -44,5 +54,24 @@ final class InMemoryProductPosts implements ProductPosts
     public function change(int $id, ProductPostChange $change): void
     {
         $this->changes[$id][] = $change;
+        $post = $this->posts[$id] ?? new ProductPost('publish', '', '', [], [], []);
+        $this->posts[$id] = new ProductPost($change->status ?? $post->status, $change->description ?? $post->description, $change->shortDescription ?? $post->shortDescription, $change->categories ?? $post->categories, $change->brands ?? $post->brands, $change->tags ?? $post->tags);
+    }
+
+    public function delete(int $id): void
+    {
+        unset($this->posts[$id]);
+        $this->deleted[] = $id;
+    }
+
+    public function asUser(?int $userId, \Closure $work): mixed
+    {
+        $was = $this->user;
+        $this->user = $userId;
+        try {
+            return $work();
+        } finally {
+            $this->user = $was;
+        }
     }
 }

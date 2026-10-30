@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
+import { StockPage } from '../StockPage';
 import { StockScreen } from '../StockScreen';
 
 jest.mock( '@wordpress/api-fetch' );
@@ -91,8 +92,20 @@ describe( 'StockScreen', () => {
 			method: 'PATCH',
 			data: {
 				changes: [
-					{ kind: 'product', id: 8, stockroom_id: 1, quantity: null },
-					{ kind: 'variation', id: 20, stockroom_id: 2, quantity: 3 },
+					{
+						kind: 'product',
+						id: 8,
+						stockroom_id: 1,
+						quantity: null,
+						was: 4,
+					},
+					{
+						kind: 'variation',
+						id: 20,
+						stockroom_id: 2,
+						quantity: 3,
+						was: null,
+					},
 				],
 			},
 		} );
@@ -101,5 +114,107 @@ describe( 'StockScreen', () => {
 				selector: '.components-notice__content',
 			} )
 		).toBeVisible();
+	} );
+
+	it( 'keeps what was typed when a sale moved a level meanwhile, and saves over it once asked', async () => {
+		const patches: unknown[] = [];
+		mockedFetch.mockImplementation( ( options ) => {
+			const { path, method, data } = options as {
+				path: string;
+				method?: string;
+				data?: unknown;
+			};
+			if ( method === 'PATCH' ) {
+				patches.push( data );
+				return patches.length === 1
+					? Promise.reject( {
+							code: 'orillacart_stock_changed',
+							message:
+								'The stock changed since it was loaded: sales or another save moved it.',
+							data: {
+								status: 409,
+								changed: [
+									{
+										kind: 'product',
+										id: 8,
+										stockroom_id: 1,
+										quantity: 3,
+									},
+								],
+							},
+						} )
+					: Promise.resolve( undefined );
+			}
+			return Promise.resolve(
+				path.startsWith( '/orillacart/v1/stock-sheet' ) ? sheet : []
+			);
+		} );
+		const user = userEvent.setup();
+		render( <StockScreen /> );
+
+		const lamp = await screen.findByRole( 'spinbutton', {
+			name: 'Lamp in Berlin',
+		} );
+		await user.clear( lamp );
+		await user.type( lamp, '10' );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save 1 change' } )
+		);
+
+		expect(
+			await screen.findByText(
+				'Lamp in Berlin now holds 3; you typed 10.'
+			)
+		).toBeInTheDocument();
+		expect(
+			await screen.findByRole( 'spinbutton', { name: 'Lamp in Berlin' } )
+		).toHaveValue( 10 );
+
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save what I typed anyway' } )
+		);
+		expect( patches[ 1 ] ).toEqual( {
+			changes: [
+				{
+					kind: 'product',
+					id: 8,
+					stockroom_id: 1,
+					quantity: 10,
+					was: 3,
+				},
+			],
+		} );
+	} );
+
+	it( 'keeps the typed levels while the history shows', async () => {
+		mockedFetch.mockImplementation( ( options ) => {
+			const { path } = options as { path: string };
+			if ( path.startsWith( '/orillacart/v1/stock-history' ) ) {
+				return Promise.resolve( {
+					movements: [],
+					totals: [],
+					total: 0,
+					page: 1,
+					pages: 1,
+				} );
+			}
+			return Promise.resolve(
+				path.startsWith( '/orillacart/v1/stock-sheet' ) ? sheet : []
+			);
+		} );
+		const user = userEvent.setup();
+		render( <StockPage /> );
+
+		const lamp = await screen.findByRole( 'spinbutton', {
+			name: 'Lamp in Berlin',
+		} );
+		await user.clear( lamp );
+		await user.type( lamp, '7' );
+		await user.click( screen.getByRole( 'tab', { name: 'History' } ) );
+		await user.click( screen.getByRole( 'tab', { name: 'Levels' } ) );
+
+		expect(
+			screen.getByRole( 'spinbutton', { name: 'Lamp in Berlin' } )
+		).toHaveValue( 7 );
 	} );
 } );

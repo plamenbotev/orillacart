@@ -1,4 +1,10 @@
-import { Button, Flex, FlexItem, TextControl } from '@wordpress/components';
+import {
+	Button,
+	Flex,
+	FlexItem,
+	Notice,
+	TextControl,
+} from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -8,7 +14,7 @@ import {
 	type StockItemKind,
 	type Stockroom,
 } from '../inventory/api';
-import { changeLevels } from '../stock/api';
+import { changeLevels, changedLevels } from '../stock/api';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
 interface Props {
@@ -33,6 +39,11 @@ export function StockLevels( { kind, id, stockrooms, onError }: Props ) {
 	const [ quantities, setQuantities ] = useState< Record< number, string > >(
 		{}
 	);
+	// The levels that moved since they were loaded (a sale), as they are now, by stockroom: shown until saved.
+	const [ moved, setMoved ] = useState< Record<
+		number,
+		number | null
+	> | null >( null );
 	const savedQuantities = ( loaded: Stock ): Record< number, string > =>
 		Object.fromEntries(
 			loaded.levels.map( ( level ) => [
@@ -47,6 +58,7 @@ export function StockLevels( { kind, id, stockrooms, onError }: Props ) {
 	const show = ( loaded: Stock ) => {
 		setStock( loaded );
 		setQuantities( savedQuantities( loaded ) );
+		setMoved( null );
 	};
 
 	useEffect( () => {
@@ -69,7 +81,13 @@ export function StockLevels( { kind, id, stockrooms, onError }: Props ) {
 	}
 
 	const saved = savedQuantities( stock );
-	const save = () => {
+	const loadedLevel = ( stockroom: number ): number | null =>
+		stock.levels.find( ( level ) => level.stockroom_id === stockroom )
+			?.quantity ?? null;
+	/**
+	 * @param rebased The levels the owner saw had moved, and saves over: sent as what they were.
+	 */
+	const save = ( rebased: Record< number, number | null > = {} ) => {
 		const changes = stockrooms
 			.filter(
 				( stockroom ) =>
@@ -83,6 +101,11 @@ export function StockLevels( { kind, id, stockrooms, onError }: Props ) {
 					id,
 					stockroom_id: stockroom.id,
 					quantity: typed === '' ? null : Number( typed ),
+					// What the box loaded: a sale made since refuses the save, rather than be overwritten.
+					was:
+						stockroom.id in rebased
+							? ( rebased[ stockroom.id ] ?? null )
+							: loadedLevel( stockroom.id ),
 				};
 			} );
 		if (
@@ -103,11 +126,66 @@ export function StockLevels( { kind, id, stockrooms, onError }: Props ) {
 		changeLevels( changes )
 			.then( () => fetchStock( kind, id ) )
 			.then( show )
-			.catch( onError );
+			.catch( ( error: unknown ) => {
+				const now = changedLevels( error );
+				if ( now === null ) {
+					onError( error );
+					return;
+				}
+				// Nothing was saved: what was typed stays, beside what the stockrooms hold now.
+				setMoved(
+					Object.fromEntries(
+						now.map( ( level ) => [
+							level.stockroom_id,
+							level.quantity,
+						] )
+					)
+				);
+			} );
 	};
+	const typedIn = ( stockroom: number ): string =>
+		( quantities[ stockroom ] ?? '' ).trim();
+	const stockroomName = ( stockroom: number ) =>
+		stockrooms.find( ( candidate ) => candidate.id === stockroom )?.name ??
+		`#${ stockroom }`;
 
 	return (
 		<div className="orillacart-stock">
+			{ moved !== null && (
+				<Notice status="warning" isDismissible={ false }>
+					<p>
+						{ __(
+							'The stock changed since you opened the product: sales or another save moved it. Nothing was saved.',
+							'orillacart'
+						) }
+					</p>
+					<ul>
+						{ Object.entries( moved ).map(
+							( [ stockroom, now ] ) => (
+								<li key={ stockroom }>
+									{ sprintf(
+										/* translators: 1: stockroom name, 2: the level now, 3: what was typed */
+										__(
+											'%1$s now holds %2$s; you typed %3$s.',
+											'orillacart'
+										),
+										stockroomName( Number( stockroom ) ),
+										now === null
+											? __( 'none', 'orillacart' )
+											: String( now ),
+										typedIn( Number( stockroom ) ) === ''
+											? __( 'none', 'orillacart' )
+											: typedIn( Number( stockroom ) )
+									) }
+								</li>
+							)
+						) }
+					</ul>
+					<Button variant="secondary" onClick={ () => save( moved ) }>
+						{ __( 'Save what I typed anyway', 'orillacart' ) }
+					</Button>
+				</Notice>
+			) }
 			{ stockrooms.map( ( stockroom ) => (
 				<TextControl
 					key={ stockroom.id }

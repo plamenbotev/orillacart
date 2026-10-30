@@ -16,10 +16,14 @@ final readonly class SubscriptionView
         public ?string $unsubscribedAt,
         public string $source,
         public string $consent,
+        /** Signed up, waiting for its owner to confirm it from the email. */
+        public bool $pending = false,
+        /** When its owner confirmed it from the email; null when the shop did not ask. */
+        public ?string $confirmedAt = null,
     ) {}
 
     public static function of(Subscriber $subscriber): self
     {
-        return new self($subscriber->email(), $subscriber->isSubscribed(), $subscriber->subscribedAt()->format(\DATE_ATOM), $subscriber->unsubscribedAt()?->format(\DATE_ATOM), $subscriber->source()->value, $subscriber->consent());
+        return new self($subscriber->email(), $subscriber->isSubscribed(), $subscriber->subscribedAt()->format(\DATE_ATOM), $subscriber->unsubscribedAt()?->format(\DATE_ATOM), $subscriber->source()->value, $subscriber->consent(), $subscriber->isPending(), $subscriber->confirmedAt()?->format(\DATE_ATOM));
     }
 }

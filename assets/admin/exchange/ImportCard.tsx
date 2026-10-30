@@ -194,6 +194,30 @@ export function ImportCard( { interval = POLL }: { interval?: number } ) {
 						) }
 					</>
 				) }
+				{ current?.status === 'failed' && (
+					<>
+						<Notice status="error" isDismissible={ false }>
+							{ sprintf(
+								/* translators: 1: file name, 2: products added, 3: rows updated, 4: rows refused */
+								__(
+									'The import of %1$s stopped before its end: %2$d added, %3$d updated, %4$d refused.',
+									'orillacart'
+								),
+								current.filename,
+								current.created,
+								current.updated,
+								current.failed
+							) }
+						</Notice>
+						{ current.errors.length > 0 && (
+							<ul className="orillacart-import-errors">
+								{ current.errors.map( ( message, index ) => (
+									<li key={ index }>{ message }</li>
+								) ) }
+							</ul>
+						) }
+					</>
+				) }
 				{ current?.status !== 'ready' &&
 					current?.status !== 'running' && (
 						<FormFileUpload

@@ -14,12 +14,15 @@ use OrillaCart\Extension\Order\OrderSummary;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\OrderSummaries;
+use OrillaCart\Shared\Persistence\LoadedEntities;
 use Psr\Log\LoggerInterface;
 
 /**
  * Exports the orders the Orders screen lists, as filtered there, with the columns the shop manager chose: the
- * shop's own and the add-ons'. A batch of orders at a time, so a shop of any size exports in little memory. An
- * add-on's column that fails gives an empty cell, and is logged.
+ * shop's own and the add-ons'. A batch of orders at a time, each batch read in a few queries and forgotten once
+ * written, so a shop of any size exports in little memory; each batch starts after the last order of the one
+ * before, so orders placed or deleted meanwhile neither repeat one nor skip one. An add-on's column that fails
+ * gives an empty cell, and is logged.
  */
 final readonly class OrdersExport
 {
@@ -30,6 +33,7 @@ final readonly class OrdersExport
         private ColumnChoice $choice,
         private OrderService $orders,
         private OrderSummaries $summaries,
+        private LoadedEntities $entities,
         private LoggerInterface $logger,
     ) {}
 
@@ -55,22 +59,23 @@ final readonly class OrdersExport
 
     /**
      * Writes every order the query finds, newest first unless it says otherwise, whatever its page.
+     *
+     * @param (\Closure(): void)|null $between run after each batch, to free what else the batch kept
      */
-    public function export(OrderQuery $query, ExportFile $file): void
+    public function export(OrderQuery $query, ExportFile $file, ?\Closure $between = null): void
     {
         $columns = $this->choice->chosen(ExportKind::Orders, $this->columns->all());
         $file->start(array_map(ColumnChoice::id(...), $columns), array_map($this->choice->label(...), $columns));
-        $page = 1;
-        do {
-            $found = $this->orders->orders($query->withPage($page, self::BATCH), forShop: true);
-            foreach ($found->orders as $listed) {
-                $order = $this->summaries->find($listed->number);
-                if ($order !== null) {
-                    $file->row(array_map(fn(Column|OrderColumn $column): string => $this->value($column, $order), $columns));
-                }
+        $this->summaries->each($this->orders->search($query, forShop: true), self::BATCH, function (array $orders) use ($file, $columns, $between): void {
+            foreach ($orders as $order) {
+                $file->row(array_map(fn(Column|OrderColumn $column): string => $this->value($column, $order), $columns));
             }
-            ++$page;
-        } while ($page <= $found->pages);
+            // Nothing of the export is saved: what the batch loaded can go.
+            $this->entities->forget();
+            if ($between !== null) {
+                $between();
+            }
+        });
         $file->finish();
     }
 

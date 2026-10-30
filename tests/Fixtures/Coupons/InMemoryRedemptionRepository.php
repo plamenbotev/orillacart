@@ -12,7 +12,7 @@ final class InMemoryRedemptionRepository implements RedemptionRepository
     /** @var list<CouponRedemption> */
     public array $redemptions = [];
 
-    public function countByCustomer(int $couponId, ?int $customerId, string $email): int
+    public function countByCustomer(int $couponId, ?int $customerId, string $email, bool $current = false): int
     {
         $email = mb_strtolower($email);
 

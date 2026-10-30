@@ -15,6 +15,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { money } from '../orders/labels';
 import { useBusy } from '../shared/useBusy';
+import { useSavedCopy } from '../shared/useUnsavedChanges';
 import { fetchStates, type State } from '../shared/geography';
 import {
 	fetchNexusReport,
@@ -44,6 +45,7 @@ export function NexusCard( {
 	const [ draft, setDraft ] = useState< NexusThresholds | null >( null );
 	const [ states, setStates ] = useState< State[] >( [] );
 	const [ busy, run ] = useBusy();
+	const loaded = useSavedCopy( draft );
 	// Loaded once: the screen's handler is a new function on each render.
 	const failed = useRef( onError );
 	failed.current = onError;
@@ -57,10 +59,11 @@ export function NexusCard( {
 			.then( ( [ loadedReport, loadedThresholds, loadedStates ] ) => {
 				setReport( loadedReport );
 				setDraft( loadedThresholds );
+				loaded( loadedThresholds );
 				setStates( loadedStates );
 			} )
 			.catch( ( error: unknown ) => failed.current( error ) );
-	}, [] );
+	}, [ loaded ] );
 
 	if ( report === null || draft === null ) {
 		return (
@@ -313,6 +316,7 @@ export function NexusCard( {
 								saveNexusThresholds( draft )
 									.then( ( saved ) => {
 										setDraft( saved );
+										loaded( saved );
 										onSaved();
 										return fetchNexusReport().then(
 											setReport

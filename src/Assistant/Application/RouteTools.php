@@ -76,7 +76,7 @@ final readonly class RouteTools
                 if (isset($tools[$name])) {
                     throw new \LogicException(\sprintf('Two routes make the tool "%s": %s and %s %s. Name one with #[Tool(name: …)].', $name, $tools[$name]['path'], $method, $route->path));
                 }
-                $risk = $tool->risk ?? ($method === 'DELETE' ? Tool::DELETING : null);
+                $risk = self::risk($tool, $method);
                 $readOnly = $safe || !$route->changes;
                 $dto = $safe ? $query : $body;
                 $tools[$name] = new RouteTool(
@@ -90,7 +90,7 @@ final readonly class RouteTools
                     $whole !== null ? 'body' : ($dto === null ? null : ($safe ? 'query' : 'body')),
                     $whole === null ? InputSchemas::forRoute($route->path, $route->requirements, $dto, $file && !$safe) : InputSchemas::wholeBody($route->path, $route->requirements, $whole),
                     $readOnly,
-                    !$readOnly && ($risk !== null || $method === 'DELETE'),
+                    !$readOnly && $risk !== null,
                     $readOnly || \in_array($method, ['PUT', 'DELETE'], true),
                     $risk,
                     $route->capability,
@@ -102,6 +102,19 @@ final readonly class RouteTools
         ksort($tools);
 
         return array_values($tools);
+    }
+
+    /**
+     * What the tool risks: what its #[Tool] says, none where it says Tool::NONE, and Tool::DELETING for a DELETE
+     * that says nothing.
+     */
+    public static function risk(?Tool $tool, string $method): ?string
+    {
+        if ($tool?->risk === Tool::NONE) {
+            return null;
+        }
+
+        return $tool->risk ?? ($method === 'DELETE' ? Tool::DELETING : null);
     }
 
     /** Whether the route is a shop manager's, and its action does not leave it out. */

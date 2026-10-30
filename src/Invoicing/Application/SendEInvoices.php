@@ -107,6 +107,8 @@ final readonly class SendEInvoices implements JobHandler
             return JobOutcome::done();
         }
         $order = $document->order;
+        // The buyer as the document was issued to, not as the order reads since it was changed or erased.
+        $buyer = $document->buyer();
         try {
             $sender->send(new EInvoiceFile(
                 $number,
@@ -115,10 +117,10 @@ final readonly class SendEInvoices implements JobHandler
                 $format,
                 $this->eInvoices->filename($document),
                 $this->eInvoices->xml($document, $format),
-                $order->email,
-                $order->billing->country,
-                $order->vatNumber,
-                $order->buyerReference,
+                $buyer->email,
+                $buyer->billing->country,
+                $buyer->vatNumber,
+                $buyer->buyerReference,
                 $this->eInvoices->peppolRecipient($document, $format),
             ));
         } catch (\Throwable $e) {

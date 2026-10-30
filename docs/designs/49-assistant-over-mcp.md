@@ -63,7 +63,9 @@ describes.
 Two kinds of input need more than a DTO:
 - **A file.** A route that takes an upload (a products import, a download file) takes `file_name` and either
   `file_base64` or `file_url`. The shop fetches an address with WordPress's safe HTTP, which refuses the site's
-  own network, up to 100 MB, and hands the route a real upload.
+  own network, up to 100 MB, and hands the route a real upload. Base64 is taken up to 20 MB, as the whole request
+  is in memory; a larger file is refused with the advice to send `file_url`, and a body PHP dropped as over
+  `post_max_size` is answered with that, not "not JSON".
 - **A whole body.** The settings import reads its body whole. `#[Tool(wholeBody: …)]` makes it one argument,
   `settings_file`, as the export gives it.
 
@@ -84,8 +86,9 @@ itself.
   owner can ask for them to be checked and edited. Only those: the shop, cart, checkout and account pages and
   the legal pages its settings name. Any other page of the site is refused, and none is created; a missing legal
   page comes from the setup's legal step. `change_page` edits one that is not published; `publish_page` puts one
-  live, changes a live one or takes it down, and asks first as customers see it, naming the page and its new
-  text.
+  live, changes a live one or takes it down, and asks first as customers see it, naming the page and its whole
+  new text. `change_page` edits only a draft or a page pending review: a scheduled or private page is
+  `publish_page`'s too.
 
 **The setup as tools.** One tool per step, `setup_answer_business`, `setup_answer_tax` and so on, with the step's
 answers DTO as its schema. Add-ons' steps get theirs too. The setup's other routes are tools already:
@@ -94,12 +97,19 @@ fingerprint, so what is applied is what was shown, and `show_readiness` lists wh
 through it: ask the owner about the business, save each answer, show the plan, apply only when they agree.
 
 **Asking before.** Some tools carry a risk class:
-- **Money**: refunds, marking an order paid, gift card balances, store credit, a payment's capture.
-- **Deleting**: anything a DELETE route does.
-- **Customers hear of it**: emails sent to customers, a return approved or refused.
+- **Money**: refunds, marking an order paid, gift card balances and new cards, store credit, a payment's capture,
+  an order's price changed, a refund given up, a payment method's settings (where the money goes).
+- **Deleting**: anything a DELETE route does, unless it only clears a flag (`#[Tool(risk: Tool::NONE)]`: an order
+  off the attention list, the problems list cleared); an order's customer forgotten.
+- **Customers hear of it**: emails sent to customers, a return approved or refused, a shipment sent or arrived,
+  an order ready for pickup or picked up, a gift card's new code, a tax exemption decided.
 - **The shop opens or closes**: opening, "Opening soon", applying the setup.
-- **What customers read changes**: one of the shop's pages goes live, changes while live, or comes down. It is
-  not "customers hear of it": the owner who lets the assistant email customers has not let it publish terms.
+- **What customers read changes**: one of the shop's pages goes live, changes while live, or comes down, or the
+  legal settings name other pages. It is not "customers hear of it": the owner who lets the assistant email
+  customers has not let it publish terms.
+
+Every other tool that changes something is in a list a unit test keeps (`RouteToolsTest::UNASKED`), with why it
+need not ask: a new changing route fails that test until it is given a risk or added there.
 
 Each key says which classes need the owner's yes; by default all five do. A class added later is asked about on keys whose choices were saved before it, until the owner unticks it. A login, or an application password,
 has the defaults. A client that can ask its user (MCP
@@ -110,7 +120,11 @@ replaces or keeps and its warnings, or that the shop changed since and it will b
 what they do and the arguments they were given.
 In 2026-07-28 this is a plain retry of the same request. The question carries a state the shop signed with the
 site's secret: who asked, with which key, and a digest of the tool and its arguments. It lasts 15 minutes and
-is good once, so a yes cannot be replayed (a refund would run twice) or used for other arguments. The owner can
+is good once, so a yes cannot be replayed (a refund would run twice) or used for other arguments. Good once is
+claimed in one database statement (a row of the options inserted unless it is there), so of two identical retries
+sent at once only one runs; the approval page's yes is spent the same way. A question longer than 4,000
+characters (a legal page's whole text) is asked with its start, and the whole of it is put on the approval page,
+whose link the question gives; the owner may answer there too. The owner can
 untick a class for a key they trust. Clients of the earlier revisions cannot be asked statelessly (the SDK's client
 stops at 2025-11-25, so most apps today): their call waits on the shop's approval page in wp-admin instead, whose
 link the refusal gives the model to show the owner (the owner's report, 2026-10-29). The page shows the same
@@ -145,7 +159,8 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
 ```
 
 `OrillaCart\Extension\Assistant\AssistantTool` uses plain PHP types, since the release prefixes PSR and Symfony:
-- `name()`, which must start with the add-on's prefix and may not take a shop tool's name.
+- `name()`, which must start with the add-on's prefix (its `addOn()` in lowercase letters and digits, run
+  together or joined by underscores: `parcelco_`) and may not take any shop tool's name, the finder's included.
 - `title()` and `description()`.
 - `inputSchema()`: an array, JSON Schema 2020-12. It is checked when registered.
 - `capability()`: the WordPress capability the user needs.

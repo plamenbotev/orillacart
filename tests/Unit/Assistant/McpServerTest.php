@@ -144,6 +144,38 @@ final class McpServerTest extends TestCase
         self::assertCount(1, $this->calls);
     }
 
+    public function testOfTwoRetriesWithTheOwnersYesOnlyOneRuns(): void
+    {
+        $call = ['name' => 'refund_thing', 'arguments' => ['amount' => '5']];
+        $this->modern('tools/call', $call, ['mcp-name' => 'refund_thing']);
+        $this->approvals->answerWaiting(true);
+        // The other retry, sent at the same moment, spends the yes first.
+        $this->approvals->raced = array_keys($this->approvals->approvals);
+
+        $late = $this->modern('tools/call', $call, ['mcp-name' => 'refund_thing']);
+        self::assertTrue(self::at($late->body, 'result', 'isError'));
+        self::assertStringContainsString('used already', self::textAt($late->body, 'result', 'content', 0, 'text'));
+        self::assertSame([], $this->calls->getArrayCopy());
+    }
+
+    public function testALongQuestionIsAskedWithItsStartAndReadWholeOnTheShopsPage(): void
+    {
+        $asked = $this->asking(['name' => 'refund_thing', 'arguments' => ['id' => 4, 'long' => true]]);
+        $message = self::textAt($asked->body, 'result', 'inputRequests', 'confirm', 'params', 'message');
+        self::assertLessThan(4500, mb_strlen($message));
+        self::assertStringContainsString('The whole of it (12000 characters) is on the shop\'s page', $message);
+        self::assertStringContainsString('https://shop.test/wp-admin/admin.php?page=orillacart-approve&request=', $message);
+        $page = array_values($this->approvals->approvals);
+        self::assertCount(1, $page);
+        self::assertSame(12000, mb_strlen($page[0]->what), 'the page shows all of it');
+
+        // The owner may answer on the page: the client's same call then runs on that yes, once.
+        $this->approvals->answerWaiting(true);
+        $run = $this->asking(['name' => 'refund_thing', 'arguments' => ['id' => 4, 'long' => true]]);
+        self::assertFalse(self::at($run->body, 'result', 'isError'));
+        self::assertCount(1, $this->calls);
+    }
+
     public function testAKeyTheOwnerLetsRunsWithoutAsking(): void
     {
 
@@ -427,6 +459,10 @@ final class McpServerTest extends TestCase
                 return [new class implements CallDescription {
                     public function describe(ToolDefinition $tool, array $arguments, Caller $caller): ?string
                     {
+                        if ($tool->name === 'refund_thing' && isset($arguments['long'])) {
+                            return str_repeat('A page of terms. ', 705) . str_repeat('x', 15);
+                        }
+
                         return $tool->name === 'refund_thing' && isset($arguments['id']) ? 'Gives order #4\'s customer 5.00 back.' : null;
                     }
                 }];

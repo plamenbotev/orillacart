@@ -35,8 +35,10 @@ final readonly class ShopDashboardWidget
 
     public function render(): void
     {
-        $today = (string) wp_date('Y-m-d');
-        $weekAgo = (string) wp_date('Y-m-d', time() - 6 * DAY_IN_SECONDS);
+        // By the site's calendar days, so a week across a change of the clocks is still seven days.
+        $day = new \DateTimeImmutable('today', wp_timezone());
+        $today = $day->format('Y-m-d');
+        $weekAgo = $day->modify('-6 days')->format('Y-m-d');
         $counts = $this->toDo->counts();
         // The template escapes what it prints.
         echo $this->templates->render('admin/dashboard.html.twig', [

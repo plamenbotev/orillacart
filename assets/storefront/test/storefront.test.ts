@@ -317,6 +317,97 @@ describe( 'add to cart', () => {
 		expect( prices[ 1 ]?.textContent ).toBe( '12.00 EUR' );
 	} );
 
+	it( 'shows the product’s own price, SKU and stock again when no variation is chosen', () => {
+		const form = page();
+		const text = ( selector: string ) =>
+			document.querySelector( selector )?.textContent;
+
+		choose( form, [ '5', '8' ] );
+		expect( text( '[data-orillacart-sku]' ) ).toBe( 'H-S-RED' );
+		choose( form, [ '', '8' ] );
+
+		expect( text( '[data-orillacart-price]' ) ).toBe( 'From 38.00 EUR' );
+		expect( text( '[data-orillacart-sku]' ) ).toBe( 'H' );
+		expect( text( '[data-orillacart-stock]' ) ).toBe( '' );
+		expect( form.querySelector( 'input[name="quantity"]' ) ).toHaveProperty(
+			'max',
+			''
+		);
+
+		// A variation without a SKU of its own is sold under the product's.
+		choose( form, [ '6', '8' ] );
+		expect( text( '[data-orillacart-sku]' ) ).toBe( 'H' );
+	} );
+
+	it( 'shows a variation’s SKU when the product has none', () => {
+		document.body.innerHTML = `
+			<section class="orillacart-product">
+				<p class="orillacart-product__sku" hidden>SKU: <span data-orillacart-sku></span></p>
+				<p data-orillacart-stock></p>
+				<form data-orillacart-add-to-cart data-variations='${ JSON.stringify(
+					variations
+				) }'>
+					<select name="option_ids" data-orillacart-option><option value=""></option><option value="5">S</option><option value="6">M</option></select>
+					<select name="option_ids" data-orillacart-option><option value=""></option><option value="8">Red</option></select>
+					<button type="submit">Add</button>
+				</form>
+			</section>`;
+		const form = document.querySelector( 'form' ) as HTMLFormElement;
+		bindAddToCart( form );
+		const line = document.querySelector< HTMLElement >(
+			'.orillacart-product__sku'
+		);
+
+		choose( form, [ '5', '8' ] );
+		expect( line?.hidden ).toBe( false );
+		expect( line?.textContent ).toBe( 'SKU: H-S-RED' );
+
+		choose( form, [ '6', '8' ] );
+		expect( line?.hidden ).toBe( true );
+	} );
+
+	it( 'keeps Add to cart off for a combination not sold once a file is sent', async () => {
+		document.body.innerHTML = `
+			<section class="orillacart-product">
+				<p data-orillacart-stock></p>
+				<form data-orillacart-add-to-cart data-variations='${ JSON.stringify(
+					variations
+				) }'>
+					<input type="hidden" name="product_id" value="9">
+					<select name="option_ids" data-orillacart-option><option value=""></option><option value="5">S</option><option value="6">M</option></select>
+					<select name="option_ids" data-orillacart-option><option value=""></option><option value="8">Red</option></select>
+					<p><input type="file" data-orillacart-upload="logo"><input type="hidden" name="fields.logo"><span data-orillacart-upload-status></span></p>
+					<button type="submit">Add</button>
+				</form>
+			</section>`;
+		const form = document.querySelector( 'form' ) as HTMLFormElement;
+		bindAddToCart( form );
+		window.orillacartStorefront = {
+			api: 'https://shop.test/wp-json/orillacart/v1',
+			nonce: 'n',
+		};
+		serve( [ [ 201, { token: 't1', name: 'logo.png' } ] ] );
+		choose( form, [ '6', '8' ] );
+		const button = form.querySelector( 'button' ) as HTMLButtonElement;
+		expect( button.disabled ).toBe( true );
+
+		const upload = form.querySelector(
+			'[data-orillacart-upload]'
+		) as HTMLInputElement;
+		Object.defineProperty( upload, 'files', {
+			value: [ new File( [ 'x' ], 'logo.png' ) ],
+		} );
+		upload.dispatchEvent( new Event( 'change' ) );
+		await flush();
+		await flush();
+
+		expect(
+			form.querySelector< HTMLInputElement >( '[name="fields.logo"]' )
+				?.value
+		).toBe( 't1' );
+		expect( button.disabled ).toBe( true );
+	} );
+
 	it( 'sends the choices and shows the new count', async () => {
 		const form = page();
 		const calls = serve( [
@@ -403,5 +494,53 @@ describe( 'mini cart', () => {
 			false,
 			true,
 		] );
+	} );
+} );
+
+describe( 'a bundle whose price cannot be worked out', () => {
+	it( 'says why Add to cart is off', async () => {
+		window.orillacartStorefront = {
+			api: 'https://shop.test/wp-json/orillacart/v1',
+			nonce: 'n',
+		};
+		serve( [ [ 500, null ] ] );
+		document.body.innerHTML = `
+			<section class="orillacart-product">
+				<form data-orillacart-add-to-cart data-variations="[]" data-bundle="9">
+					<input type="hidden" name="product_id" value="9">
+					<button type="submit">Add</button>
+					<p data-orillacart-message></p>
+				</form>
+			</section>`;
+		const form = document.querySelector( 'form' ) as HTMLFormElement;
+		bindAddToCart( form );
+		await flush();
+		await flush();
+
+		expect( form.querySelector( 'button' )?.disabled ).toBe( true );
+		expect(
+			form.querySelector( '[data-orillacart-message]' )?.textContent
+		).toContain( 'could not be worked out' );
+	} );
+} );
+
+describe( 'an answer that is not JSON', () => {
+	it( 'is an error, not an answer without data', async () => {
+		window.orillacartStorefront = {
+			api: 'https://shop.test/wp-json/orillacart/v1',
+			nonce: 'n',
+		};
+		window.fetch = jest.fn( () =>
+			Promise.resolve( {
+				status: 200,
+				ok: true,
+				json: () => Promise.reject( new SyntaxError( 'Unexpected <' ) ),
+			} as Response )
+		) as typeof fetch;
+
+		const result = await api( 'POST', '/checkout', {} );
+
+		expect( result.ok ).toBe( false );
+		expect( result ).toMatchObject( { code: 'orillacart_unreadable' } );
 	} );
 } );

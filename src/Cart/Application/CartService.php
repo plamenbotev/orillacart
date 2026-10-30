@@ -21,6 +21,7 @@ use OrillaCart\Cart\Domain\CartRuleViolation;
 use OrillaCart\Cart\Domain\Event\CartItemAdded;
 use OrillaCart\Cart\Domain\Event\CartItemChanged;
 use OrillaCart\Cart\Domain\Event\CartItemRemoved;
+use OrillaCart\Cart\Domain\Event\LeftCartOrdered;
 use OrillaCart\Catalog\Application\Dto\ItemQuote;
 use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Catalog\Application\Dto\QuotedOption;
@@ -249,7 +250,7 @@ final readonly class CartService
     }
 
     /**
-     * Empties the cart an order was placed from. A cart left at checkout before is counted recovered by the order.
+     * Empties the cart an order was placed from. A cart left at checkout before is linked to the order, and counts recovered once it is paid.
      *
      * @param string|null $orderTotal    what the order costs, for the report
      * @param string|null $orderCurrency the order's currency; the report counts in the shop's
@@ -262,11 +263,12 @@ final readonly class CartService
         }
         $abandonedId = $cart->abandonedId();
         $left = $abandonedId === null || $orderId === null ? null : $this->abandoned->find($abandonedId);
-        if ($left !== null && $orderId !== null && !$left->isRecovered()) {
+        if ($left !== null && $orderId !== null && !$left->isOrdered()) {
             // The abandoned cart was kept in the shop's currency: an order in another is counted back in it.
             $total = Money::of($orderTotal ?? '0');
-            $left->recovered($orderId, ($orderCurrency === null ? $total : $this->currencies->back($total, $orderCurrency))->toFixed(), $this->clock->now());
+            $left->ordered($orderId, ($orderCurrency === null ? $total : $this->currencies->back($total, $orderCurrency))->toFixed());
             $this->abandoned->save($left);
+            $this->events->dispatch(new LeftCartOrdered($orderId));
         }
         $cart->clear($this->clock->now());
         $this->carts->save($cart);
@@ -368,11 +370,16 @@ final readonly class CartService
         }
     }
 
-    /** The order's payment could not start: the customer has the cart as it was. */
+    /** The order's payment could not start: the customer has the cart as it was, the files its lines name too. */
     public function notPlacing(int $cartId): void
     {
         $cart = $this->carts->find($cartId);
         if ($cart !== null) {
+            $orderId = $cart->placingOrderId();
+            if ($orderId !== null) {
+                // The cancelled order took them; ordered again, they would be refused as another order's.
+                $this->uploads->giveBack($orderId, $cart->fileHashes());
+            }
             $cart->notPlacing();
             $this->carts->save($cart);
         }
@@ -397,7 +404,8 @@ final readonly class CartService
         $now = $this->clock->now();
         $cart = $this->carts->findByCustomer($customerId);
         if ($cart !== null && $cart->id() !== $visitors->id()) {
-            $cart->takeFrom($visitors, $now);
+            // Within the files a cart holds: a line whose files would pass the limit stays out, as adding it would.
+            $cart->takeFrom($visitors, $now, FormUploads::MAX_HELD);
             $this->carts->remove($visitors);
         } else {
             $cart = $visitors;
@@ -406,6 +414,8 @@ final readonly class CartService
         $token = self::token();
         $cart->rekey($token);
         $this->carts->save($cart);
+        // The files it names last as long as the cart does from now.
+        $this->uploads->holdNamed($cart->fileHashes());
 
         return [$cart, $token];
     }
@@ -448,6 +458,8 @@ final readonly class CartService
         foreach ($cart->lines() as $line) {
             $ofProduct[$line->productId()] = ($ofProduct[$line->productId()] ?? 0) + $line->quantity();
         }
+        // The cart's products read at once, not a query a line.
+        $this->quotes->warm(array_keys($ofProduct));
         foreach ($cart->lines() as $line) {
             $answers = $this->answersOf($line);
             try {

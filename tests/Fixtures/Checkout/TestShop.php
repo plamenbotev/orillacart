@@ -63,6 +63,7 @@ use OrillaCart\Forms\Application\FormTexts;
 use OrillaCart\Forms\Application\FormTranslations;
 use OrillaCart\Forms\Application\FormUploads;
 use OrillaCart\Forms\Application\ShopForms;
+use OrillaCart\Forms\Infrastructure\Events\KeepOrderUploads;
 use OrillaCart\Forms\Infrastructure\SafeUploadInspector;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\GiftCards\Application\GiftCardPayments;
@@ -84,6 +85,7 @@ use OrillaCart\Notifications\Application\CartReminders;
 use OrillaCart\Notifications\Application\EmailWriter;
 use OrillaCart\Notifications\Application\OrderEmails;
 use OrillaCart\Notifications\Application\SendCartReminder;
+use OrillaCart\Notifications\Application\SendNewsletterConfirmation;
 use OrillaCart\Notifications\Application\SendOrderEmails;
 use OrillaCart\Notifications\Application\WithdrawalEmails;
 use OrillaCart\Notifications\Infrastructure\Events\AcknowledgeWithdrawal;
@@ -98,6 +100,7 @@ use OrillaCart\Ordering\Domain\Event\OrderMarkingPaid;
 use OrillaCart\Ordering\Domain\Event\OrderNeedsAttention;
 use OrillaCart\Ordering\Domain\Event\OrderNoteAdded;
 use OrillaCart\Ordering\Domain\Event\OrderPaid;
+use OrillaCart\Ordering\Domain\Event\OrderPlaced;
 use OrillaCart\Ordering\Domain\Event\OrderReaddressing;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderRepricing;
@@ -221,6 +224,7 @@ use OrillaCart\Tests\Fixtures\Invoicing\SofiaCalendar;
 use OrillaCart\Tests\Fixtures\Jobs\TestJobs;
 use OrillaCart\Tests\Fixtures\Newsletter\InMemoryNewsletterSettings;
 use OrillaCart\Tests\Fixtures\Newsletter\InMemorySubscribers;
+use OrillaCart\Tests\Fixtures\Newsletter\RecordingConfirmations;
 use OrillaCart\Tests\Fixtures\Notifications\FakeSite;
 use OrillaCart\Tests\Fixtures\Notifications\InMemoryEmailSettingsRepository;
 use OrillaCart\Tests\Fixtures\Notifications\InMemoryEmailTemplates;
@@ -438,7 +442,7 @@ final class TestShop
         $this->taxGroups = new TaxGroupService($taxGroupRecords, $this->taxSettings, $geography, $this->events, new TaggedTaxGroupUses([new ProductTaxGroups($productRecords), new ShippingTaxGroups($carrierRecords)]));
         $this->taxRatesCsv = new TaxRatesCsv($taxGroupRecords, $geography, $this->events);
         $this->accounts = new InMemoryAccounts();
-        $this->taxExemptions = new TaxExemptions(new InMemoryTaxExemptionRepository(), $this->accounts, $this->clock);
+        $this->taxExemptions = new TaxExemptions(new InMemoryTaxExemptionRepository(), $this->accounts, $this->clock, new SofiaCalendar());
         $this->taxCalculator = $taxes = new TaxCalculator($taxGroupRecords, $this->taxSettings, $settings, $geography, $this->taxExemptions);
 
         $classRecords = new InMemoryShippingClassRepository();
@@ -524,14 +528,16 @@ final class TestShop
         $this->customerSettings = new InMemoryCustomerSettingsRepository();
         $this->pendingAccounts = new InMemoryPendingAccounts();
         $this->accountMail = new RecordingAccountMail();
-        $this->newsletter = new Newsletter($this->subscribers = new InMemorySubscribers(), $this->newsletterSettings = new InMemoryNewsletterSettings(), $extensions, $this->jobs->jobs, $this->clock);
+        $this->newsletter = new Newsletter($this->subscribers = new InMemorySubscribers(), $this->newsletterSettings = new InMemoryNewsletterSettings(), $extensions, $this->jobs->jobs, $this->clock, $this->languages);
         $this->jobs->with(new SyncSubscriber($this->newsletter, $this->logger));
         $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders, $this->customerGroupRecords, $this->events, $this->pendingAccounts, $this->accountMail, $this->accountMail, $this->clock, $settings, $this->customerNoteRecords = new InMemoryCustomerNotes(), $this->newsletter);
         $this->customerNotes = new CustomerNotes($this->customerNoteRecords, $this->accounts, new FixedUserNames(), $this->clock);
         $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCustomers($this->orders)(...));
-        $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)(...));
-        $this->events->addListener(CustomerErased::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)->erased(...));
-        $this->events->addListener(PersonErased::class, new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts)->personErased(...));
+        $this->events->addListener(OrderPlaced::class, new KeepOrderUploads($this->uploads, $this->orders)->placed(...));
+        $forgetCarts = new ForgetDeletedCarts($this->cartRecords, $this->abandonedCarts, $this->uploads);
+        $this->events->addListener(CustomerDeleted::class, $forgetCarts(...));
+        $this->events->addListener(CustomerErased::class, $forgetCarts->erased(...));
+        $this->events->addListener(PersonErased::class, $forgetCarts->personErased(...));
         $this->personalData = new PersonalData($this->orders, $this->customers, $this->customerNotes, $this->newsletter, $this->accounts, $this->catalog, sources: new TaggedPersonalDataSources([new AbandonedCartPersonalData($this->abandonedCartRecords), new GiftCardPersonalData($this->giftCardRecords)]));
         $this->customerGroups = new CustomerGroups($this->customerGroupRecords, $this->accounts);
         $this->shippingQuotes = $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger, $this->shippingTexts);
@@ -552,9 +558,10 @@ final class TestShop
         $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
         $this->taxServices = new TaxServices($this->taxSettings, $extensions, $this->logger, $this->failures, $taxGroupRecords, $this->taxQuotes = new MemoryTaxQuoteCache());
         $this->importSchemes = new ImportSchemes(new InMemoryImportRegistrations(), $settings, $geography);
-        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures, $this->importSchemes, $this->shopForms);
-        $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts, $this->languages);
-        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures, $this->languages);
+        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures, $this->importSchemes, $this->shopForms, new SofiaCalendar());
+        $vatNumbers = new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography);
+        $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts, $this->languages, $vatNumbers);
+        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures, $this->languages, $vatNumbers);
         $this->checkout = new CheckoutService(
             $this->carts,
             $this->pricing,
@@ -569,7 +576,7 @@ final class TestShop
             $this->logger,
             $this->discounts,
             new CheckoutFields($extensions, $this->logger, $this->failures, $this->shopForms, $this->fieldAnswers),
-            new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography),
+            $vatNumbers,
             $this->languages,
             $this->failures,
             $fees,
@@ -611,10 +618,11 @@ final class TestShop
         $this->events->addListener(OrderDeleting::class, $withPayments->deleting(...));
         $this->events->addListener(OrderRepricing::class, $withPayments->repricing(...));
         $this->events->addListener(OrderMarkingPaid::class, $withPayments->markingPaid(...));
-        $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger, $this->events, $this->paymentOptions);
+        $this->consignments = new Consignments($this->consignmentRecords, $carrierRecords, $shippingMethodList, $this->orders, $quotes, $settings, $this->clock, $this->logger, $this->events, $this->paymentOptions, $this->transactions, $this->orderRecords);
         $this->sentEmails = new InMemorySentEmails();
         $this->writer = new EmailWriter($this->emailTemplates, $this->emailSettings, $this->site = new FakeSite(), $this->languages);
-        $this->eInvoices = new EInvoices($this->invoiceSettings, $settings, $geography, $this->writer);
+        $this->jobs->with(new SendNewsletterConfirmation($this->newsletter, new RecordingConfirmations(), $this->writer, $this->mail));
+        $this->eInvoices = new EInvoices($this->invoiceSettings, $settings, $geography, $this->writer, new SofiaCalendar());
         $this->sendEInvoices = new SendEInvoices($this->invoices, $this->eInvoices, $this->extensions, $this->jobs->jobs);
         $this->jobs->with($this->sendEInvoices);
         $issuing = new IssueInvoices($this->invoices, $this->sendEInvoices);

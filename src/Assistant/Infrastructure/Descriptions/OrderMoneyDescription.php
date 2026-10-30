@@ -16,7 +16,8 @@ use OrillaCart\Shared\Domain\NotFound;
 
 /**
  * Money an order moves, as the owner weighs it: a refund with its amount, the order and customer, how the money
- * goes back and what else it does; a refund tried again; an order's status changed; an order the shop places.
+ * goes back and what else it does; a refund tried again; an order's status changed; an order the shop places; an
+ * order marked paid; an order's customer forgotten.
  */
 final readonly class OrderMoneyDescription implements CallDescription
 {
@@ -40,6 +41,8 @@ final readonly class OrderMoneyDescription implements CallDescription
                 'retry_refund' => $this->retry($arguments),
                 'change_order_status' => $this->status($arguments),
                 'create_order' => $this->placed($arguments),
+                'mark_order_paid' => $this->paid($arguments),
+                'anonymise_order' => $this->anonymised($arguments),
                 default => null,
             };
         } catch (NotFound) {
@@ -147,6 +150,38 @@ final readonly class OrderMoneyDescription implements CallDescription
         $lines[] = 'The items are taken from stock.';
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     */
+    private function paid(array $arguments): ?string
+    {
+        $id = Words::int($arguments, 'id');
+        if ($id === null) {
+            return null;
+        }
+        $order = $this->orders->order($id);
+        $lines = ['Records ' . Words::order($order) . " as paid: {$order->total} {$order->currency} came to the shop outside checkout, as cash or a bank transfer. No money is taken by this."];
+        $lines[] = $order->status === 'on_hold' || $order->status === 'pending_payment' ? 'The order then moves on to be fulfilled, and the customer gets that status\'s email.' : 'Its status stays ' . (self::STATUSES[$order->status] ?? $order->status) . '.';
+        if (Words::string($arguments, 'note') !== '') {
+            $lines[] = 'Note: ' . Words::quoted(Words::string($arguments, 'note'));
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     */
+    private function anonymised(array $arguments): ?string
+    {
+        $id = Words::int($arguments, 'id');
+        if ($id === null) {
+            return null;
+        }
+
+        return 'Forgets the customer of ' . Words::order($this->orders->order($id)) . ' for good: their name, email, addresses and answers are wiped from it, and cannot come back. Its sums stay for the books.';
     }
 
     /**

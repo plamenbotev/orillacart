@@ -64,6 +64,17 @@ final class InMemoryAbandonedCartRepository implements AbandonedCartRepository
         return \array_slice($left, 0, $limit);
     }
 
+    public function ofOrder(int $orderId): ?AbandonedCart
+    {
+        foreach ($this->abandoned as $left) {
+            if ($left->orderId() === $orderId) {
+                return $left;
+            }
+        }
+
+        return null;
+    }
+
     public function totals(\DateTimeImmutable $from, \DateTimeImmutable $until, string $currency): array
     {
         $totals = ['abandoned' => 0, 'value' => Money::zero(), 'reminded' => 0, 'recovered' => 0, 'recovered_value' => Money::zero(), 'recovered_after_reminder' => 0];

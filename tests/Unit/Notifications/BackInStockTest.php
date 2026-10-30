@@ -15,6 +15,7 @@ use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Domain\Event\StockChanged;
 use OrillaCart\Notifications\Application\BackInStock;
 use OrillaCart\Notifications\Application\Dto\AskBackInStock;
+use OrillaCart\Notifications\Application\EmailNotSent;
 use OrillaCart\Notifications\Application\SendBackInStock;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailRuleViolation;
@@ -82,6 +83,44 @@ final class BackInStockTest extends TestCase
         $this->shop->emailSettings->save(new EmailSettings(disabled: [EmailKind::BackInStock]));
         $this->expectException(EmailRuleViolation::class);
         $this->backInStock->ask(new AskBackInStock(11, 'ada@example.com', $this->small), null);
+    }
+
+    public function testARecipientTheMailSystemRefusesIsPassedByAndLetGoAfterThreeRefusals(): void
+    {
+        $this->backInStock->ask(new AskBackInStock(10, 'bounced@example.com'), null);
+        $this->backInStock->ask(new AskBackInStock(10, 'ada@example.com'), null);
+        $this->shop->mail->refusesFor = 'bounced@example.com';
+        $this->shop->jobs->immediate = false;
+        $this->shop->stock->setLevels(StockItemRef::product(10), new SetStockLevels([new SetStockLevel($this->room, 3)]));
+
+        for ($try = 1; $try <= BackInStock::MAX_REFUSALS; ++$try) {
+            try {
+                $this->backInStock->send('product:10');
+                self::fail('refused');
+            } catch (EmailNotSent $e) {
+                self::assertStringContainsString('1 back in stock email(s) were not sent', $e->getMessage());
+            }
+            self::assertSame(['ada@example.com: [Lamp Shop] Lamp is back in stock'], $this->shop->mail->summary(), 'the others are written to');
+        }
+
+        self::assertSame([], $this->requests->requests, 'refused three times, let go');
+        self::assertFalse($this->backInStock->send('product:10'));
+    }
+
+    public function testNothingGoesWhileTheEmailIsOffOrOnceTheItemSoldOutAgain(): void
+    {
+        $this->backInStock->ask(new AskBackInStock(10, 'ada@example.com'), null);
+        $this->shop->jobs->immediate = false;
+        $this->shop->stock->setLevels(StockItemRef::product(10), new SetStockLevels([new SetStockLevel($this->room, 3)]));
+
+        $this->shop->emailSettings->save(new EmailSettings(disabled: [EmailKind::BackInStock]));
+        self::assertFalse($this->backInStock->send('product:10'));
+        $this->shop->emailSettings->save(new EmailSettings());
+        $this->shop->stock->setLevels(StockItemRef::product(10), new SetStockLevels([new SetStockLevel($this->room, 0)]));
+        self::assertFalse($this->backInStock->send('product:10'));
+
+        self::assertSame([], $this->shop->mail->emails);
+        self::assertCount(1, $this->requests->requests, 'still waiting for its next return');
     }
 
     public function testRequestsAreForgottenWithThePersonAndAfterHalfAYear(): void

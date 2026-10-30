@@ -28,4 +28,19 @@ interface ProductPosts
 
     /** Changes what the change names; the rest stays. Categories missing are made, with their parents. */
     public function change(int $id, ProductPostChange $change): void;
+
+    /** Deletes a post the import made for a row it then refused. */
+    public function delete(int $id): void;
+
+    /**
+     * Runs the work as the user, and as who ran before after it: WordPress writes posts as theirs (their name as
+     * the author, the HTML they may use). Nobody (null) runs it as no user.
+     *
+     * @template T
+     *
+     * @param \Closure(): T $work
+     *
+     * @return T
+     */
+    public function asUser(?int $userId, \Closure $work): mixed;
 }

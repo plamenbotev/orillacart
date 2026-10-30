@@ -18,6 +18,12 @@ interface JobSites
      */
     public function sites(): array;
 
+    /**
+     * Whether the plugin's files on disk are another build than the one this process runs: the plugin was updated,
+     * so a long-running worker stops for its supervisor to start it on the new code.
+     */
+    public function outdated(): bool;
+
     /** The network's own work a worker for it does between rounds, such as bringing its shops up to date. */
     public function chores(): void;
 

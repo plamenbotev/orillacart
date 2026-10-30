@@ -9,6 +9,7 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\CouponCode;
+use OrillaCart\Checkout\Application\Dto\PayOrder;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
@@ -75,6 +76,56 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $card = $this->shop->giftCards->card($issued->card->id);
         self::assertSame('30', $card->card->balance, 'the failed order gave it back');
         self::assertSame(['30', '-30', '30'], array_reverse(array_map(static fn($entry): string => $entry->amount, $card->entries)));
+    }
+
+    public function testPayNowAsksForTheShareAGiftCardSpentElsewhereNoLongerPays(): void
+    {
+        [$placed, $issued] = $this->failedWithACard();
+        $this->shop->giftCards->adjust($issued->card->id, new AdjustBalance('-30', 'Spent in the shop downstairs'), 1);
+
+        $this->shop->payNow->pay($this->shop->receipts->issue($placed->number), new PayOrder('paypal'));
+
+        self::assertSame('54.00', $this->shop->payPalApi->created[1]->amount, 'the provider is asked for what is really left');
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame(['pending_payment', '0', '54'], [$order->status, $order->giftCardTotal, $order->amountDue]);
+        self::assertStringContainsString('had spent 30 EUR of it', (string) $order->attention);
+    }
+
+    public function testPayNowAsksForTheRestWhenAGiftCardHasPartOfItsShareLeft(): void
+    {
+        [$placed, $issued] = $this->failedWithACard();
+        $this->shop->giftCards->adjust($issued->card->id, new AdjustBalance('-20', 'Spent in the shop downstairs'), 1);
+
+        $this->shop->payNow->pay($this->shop->receipts->issue($placed->number), new PayOrder('paypal'));
+
+        self::assertSame('44.00', $this->shop->payPalApi->created[1]->amount);
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame(['10', '44'], [$order->giftCardTotal, $order->amountDue]);
+        self::assertSame('10', $order->giftCards[0]['amount']);
+        self::assertSame('0', $this->shop->giftCards->card($issued->card->id)->card->balance);
+    }
+
+    public function testALatePaymentCountsAsPaidOnlyWhatCame(): void
+    {
+        [$placed, $issued] = $this->failedWithACard();
+        $this->shop->giftCards->adjust($issued->card->id, new AdjustBalance('-30', 'Spent in the shop downstairs'), 1);
+
+        self::assertTrue($this->shop->orders->paidAfterClosing($placed->number, 'TX-LATE', '', '24'));
+
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame(['processing', '0', '24', '54'], [$order->status, $order->giftCardTotal, $order->refundable, $order->total]);
+        self::assertStringContainsString('had spent 30 EUR of it', (string) $order->attention);
+    }
+
+    public function testALatePaymentWithTheCardStillThereCountsTheCard(): void
+    {
+        [$placed, $issued] = $this->failedWithACard();
+
+        self::assertTrue($this->shop->orders->paidAfterClosing($placed->number, 'TX-LATE', '', '24'));
+
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame(['30', '54', null], [$order->giftCardTotal, $order->refundable, $order->attention]);
+        self::assertSame('0', $this->shop->giftCards->card($issued->card->id)->card->balance);
     }
 
     public function testAGiftCardThatPaysEverythingLeavesNothingToPay(): void
@@ -167,6 +218,19 @@ final class GiftCardsAtCheckoutTest extends TestCase
         self::assertSame([['ada@example.com', '25'], ['ada@example.com', '25']], array_map(static fn(array $sent): array => [$sent['to'], $sent['amount']], $this->shop->giftCardMail->sent), 'once per order');
         $cards = $this->shop->giftCards->page(new \OrillaCart\GiftCards\Application\Dto\GiftCardQuery())->cards;
         self::assertSame([[$placed->number, '25', $this->shop->clock->now()->modify('+12 months')->format('Y-m-d')]], array_values(array_unique(array_map(static fn($card): array => [$card->orderId, $card->balance, substr($card->expiresAt ?? '', 0, 10)], $cards), \SORT_REGULAR)));
+    }
+
+    public function testAGiftCardBoughtInAnOrderGoesInTheOrdersLanguageNotTheShopManagers(): void
+    {
+        $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));
+        $this->shop->languages->locale = 'de_DE';
+        $placed = $this->shop->checkout->placeOrder($this->cart([20, 1]), $this->order('bank_transfer', null));
+        self::assertSame('de_DE', $this->shop->orders->order($placed->number)->locale);
+
+        $this->shop->languages->locale = 'bg_BG';
+        $this->shop->orders->markPaidByShop($placed->number, '', 7);
+
+        self::assertSame(['de_DE'], $this->shop->giftCardMail->locales);
     }
 
     public function testARefundGoesBackAsStoreCreditOrForAGuestAsAGiftCard(): void
@@ -275,6 +339,23 @@ final class GiftCardsAtCheckoutTest extends TestCase
         usort($cards, static fn($a, $b): int => $a->id <=> $b->id);
 
         return $cards;
+    }
+
+    /**
+     * @return array{0: \OrillaCart\Checkout\Application\Dto\PlacedOrderView, 1: \OrillaCart\GiftCards\Application\Dto\IssuedGiftCardView}
+     */
+    private function failedWithACard(): array
+    {
+        $issued = $this->shop->giftCards->issue(new IssueGiftCard('30'), 1);
+        $owner = $this->cart([10, 1]);
+        $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order('paypal'));
+        $this->shop->payPalApi->captureStatus = 'DECLINED';
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
+        $this->shop->payPalApi->captureStatus = 'COMPLETED';
+        self::assertSame('30', $this->shop->giftCards->card($issued->card->id)->card->balance);
+
+        return [$placed, $issued];
     }
 
     /**

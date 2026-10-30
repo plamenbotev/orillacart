@@ -63,4 +63,45 @@ describe( 'the shop page', () => {
 			document.querySelector( '.orillacart-products__grid' )?.textContent
 		).toBe( 'After' );
 	} );
+
+	it( 'shows the products of the last change, whichever answer comes last', async () => {
+		document.body.innerHTML = page( '<li>Before</li>' );
+		window.history.replaceState( {}, '', '/shop/' );
+		const pending: ( ( html: string ) => void )[] = [];
+		window.fetch = jest.fn(
+			() =>
+				new Promise( ( resolve ) => {
+					pending.push( ( html ) =>
+						resolve( {
+							ok: true,
+							text: () => Promise.resolve( html ),
+						} as Response )
+					);
+				} )
+		) as typeof fetch;
+		jest.spyOn( window.history, 'pushState' ).mockImplementation(
+			() => undefined
+		);
+		bindShop();
+
+		const stock = document.querySelector(
+			'[name="in_stock"]'
+		) as HTMLInputElement;
+		stock.checked = true;
+		stock.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+		stock.checked = false;
+		stock.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+		await flush();
+		// The answer to the last change comes first, the older one after it.
+		pending[ pending.length - 1 ]?.( page( '<li>Last</li>' ) );
+		await flush();
+		await flush();
+		pending[ 0 ]?.( page( '<li>Older</li>' ) );
+		await flush();
+		await flush();
+
+		expect(
+			document.querySelector( '.orillacart-products__grid' )?.textContent
+		).toBe( 'Last' );
+	} );
 } );

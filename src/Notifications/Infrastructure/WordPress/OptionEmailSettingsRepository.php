@@ -10,6 +10,7 @@ use OrillaCart\Notifications\Domain\EmailSettingsRepository;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
+use OrillaCart\Shared\WordPress\AutoloadedOption;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -57,12 +58,19 @@ final readonly class OptionEmailSettingsRepository implements EmailSettingsRepos
             'reminder_days' => $settings->reminderDays,
             'cart_reminder_hours' => $settings->cartReminderHours,
             'cart_reminder_coupon' => $settings->cartReminderCoupon,
-        ], false);
+        ], true);
     }
 
-    public function activate(): void {}
+    public function activate(): void
+    {
+        $this->upgrade(null);
+    }
 
-    public function upgrade(?string $fromVersion): void {}
+    /** Read on every storefront request: stored with its defaults, autoloaded, so reading it costs no query. */
+    public function upgrade(?string $fromVersion): void
+    {
+        AutoloadedOption::keep(self::OPTION, fn() => $this->save($this->load()));
+    }
 
     public function deactivate(): void {}
 

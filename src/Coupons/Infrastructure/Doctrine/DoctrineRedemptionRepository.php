@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Coupons\Infrastructure\Doctrine;
 
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Coupons\Domain\CouponRedemption;
 use OrillaCart\Coupons\Domain\RedemptionRepository;
@@ -12,7 +13,7 @@ final readonly class DoctrineRedemptionRepository implements RedemptionRepositor
 {
     public function __construct(private EntityManagerInterface $entityManager) {}
 
-    public function countByCustomer(int $couponId, ?int $customerId, string $email): int
+    public function countByCustomer(int $couponId, ?int $customerId, string $email, bool $current = false): int
     {
         $builder = $this->entityManager->createQueryBuilder()->select('COUNT(r.id)')->from(CouponRedemption::class, 'r')
             ->where('r.couponId = :coupon')->setParameter('coupon', $couponId);
@@ -27,7 +28,12 @@ final readonly class DoctrineRedemptionRepository implements RedemptionRepositor
         } else {
             return 0;
         }
-        $count = $builder->getQuery()->getSingleScalarResult();
+        $query = $builder->getQuery();
+        if ($current) {
+            // A locking read sees the uses another order committed while this one waited for the coupon's lock.
+            $query->setLockMode(LockMode::PESSIMISTIC_READ);
+        }
+        $count = $query->getSingleScalarResult();
 
         return is_numeric($count) ? (int) $count : 0;
     }

@@ -8,6 +8,7 @@ use OrillaCart\Exchange\Application\CsvFile;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Shared\Domain\PostcodePattern;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Domain\TextEncoding;
 use OrillaCart\Tax\Application\Dto\ImportTaxRates;
 use OrillaCart\Tax\Application\Dto\TaxGroupView;
 use OrillaCart\Tax\Domain\Event\TaxRatesChanged;
@@ -110,6 +111,12 @@ final readonly class TaxRatesCsv
      */
     private function read(string $csv): array
     {
+        $csv = TextEncoding::utf8($csv) ?? throw new RuleViolation('The file is not text in UTF-8 or Windows-1252: save it as "CSV UTF-8".', 'orillacart_invalid_tax_rates_file');
+        if (str_contains($csv, "\u{FFFD}")) {
+            // Read as UTF-8 before it came, as a browser reads a file: what it could not read is gone (São Paulo
+            // as S�o Paulo), and a city would never match.
+            throw new RuleViolation('The file has characters that could not be read: it was saved in another encoding. Save it as "CSV UTF-8" and import it again.', 'orillacart_invalid_tax_rates_file');
+        }
         $stream = fopen('php://temp', 'w+');
         \assert(\is_resource($stream));
         fwrite($stream, preg_replace('/^\x{FEFF}/u', '', $csv) ?? $csv);
@@ -218,9 +225,15 @@ final readonly class TaxRatesCsv
         if ($wholeState($a) || $wholeState($b)) {
             return $a->state === $b->state || $a->state === null || $b->state === null;
         }
-        $places = static fn(TaxRateDetails $rate): string => $rate->state . '|' . implode(';', array_map(strval(...), $rate->postcodes)) . '|' . implode(';', $rate->cities);
+        if ($a->state !== null && $b->state !== null && $a->state !== $b->state) {
+            return false;
+        }
+        // An address both would match: a postcode both patterns take (902* and 90210), and a city both name; a
+        // rate without postcodes or cities takes any.
+        $postcodes = $a->postcodes === [] || $b->postcodes === [] || array_any($a->postcodes, static fn(PostcodePattern $one): bool => array_any($b->postcodes, static fn(PostcodePattern $two): bool => $one->overlaps($two)));
+        $cities = $a->cities === [] || $b->cities === [] || array_intersect($a->cities, $b->cities) !== [];
 
-        return $places($a) === $places($b);
+        return $postcodes && $cities;
     }
 
     /**

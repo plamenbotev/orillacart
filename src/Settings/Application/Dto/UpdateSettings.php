@@ -6,6 +6,7 @@ namespace OrillaCart\Settings\Application\Dto;
 
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
+use OrillaCart\Settings\Domain\ReportDay;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -54,5 +55,8 @@ final readonly class UpdateSettings
         /** The least the items may come to, after discounts; null or empty for no least. */
         #[Assert\Regex('/^(\d{1,11}(\.\d{1,4})?)?$/', message: 'Use an amount with up to four decimals, such as 19.90.')]
         public ?string $minimumOrder = null,
+        /** The day the reports count an order on: paid or placed. */
+        #[Assert\Choice(callback: [ReportDay::class, 'values'])]
+        public string $reportDay = 'paid',
     ) {}
 }

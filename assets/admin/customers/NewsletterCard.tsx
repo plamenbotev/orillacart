@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { exportUrl } from '../shared/exports';
+import { useSavedCopy } from '../shared/useUnsavedChanges';
 import {
 	fetchNewsletterSettings,
 	type NewsletterSettings,
@@ -35,13 +36,17 @@ export function NewsletterCard( {
 		null
 	);
 	const [ busy, setBusy ] = useState( false );
+	const loaded = useSavedCopy( settings );
 	const failed = useRef( onError );
 	failed.current = onError;
 	useEffect( () => {
 		fetchNewsletterSettings()
-			.then( setSettings )
+			.then( ( found ) => {
+				setSettings( found );
+				loaded( found );
+			} )
 			.catch( ( error: unknown ) => failed.current( error ) );
-	}, [] );
+	}, [ loaded ] );
 	if ( settings === null ) {
 		return null;
 	}
@@ -61,6 +66,21 @@ export function NewsletterCard( {
 					checked={ settings.offered }
 					onChange={ ( offered ) =>
 						setSettings( { ...settings, offered } )
+					}
+				/>
+				<ToggleControl
+					__nextHasNoMarginBottom
+					label={ __(
+						'Confirm new subscribers by email',
+						'orillacart'
+					) }
+					help={ __(
+						'Each new sign-up gets a link to confirm it, and counts (and goes to the mailing lists) only once followed: nobody signs up an address that is not theirs, as the GDPR expects you to be able to show.',
+						'orillacart'
+					) }
+					checked={ settings.confirm_new }
+					onChange={ ( confirmNew ) =>
+						setSettings( { ...settings, confirm_new: confirmNew } )
 					}
 				/>
 				<TextareaControl
@@ -130,12 +150,14 @@ export function NewsletterCard( {
 						saveNewsletterSettings( {
 							offered: settings.offered,
 							consent: settings.consent,
+							confirm_new: settings.confirm_new,
 							lists: settings.lists
 								.filter( ( list ) => list.on )
 								.map( ( list ) => list.id ),
 						} )
 							.then( ( saved ) => {
 								setSettings( saved );
+								loaded( saved );
 								onSaved();
 							} )
 							.catch( onError )

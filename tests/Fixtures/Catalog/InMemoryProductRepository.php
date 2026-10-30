@@ -39,6 +39,23 @@ final class InMemoryProductRepository implements ProductRepository
         return array_values(array_filter($ids, fn(int $id): bool => isset($this->products[$id])));
     }
 
+    public function withSku(string $sku): ?array
+    {
+        // As MySQL's collation: letter case aside.
+        foreach ($this->products as $product) {
+            if (strcasecmp($product->details()->sku ?? '', $sku) === 0) {
+                return [$product->id(), null];
+            }
+            foreach ($product->variations() as $variation) {
+                if (strcasecmp($variation->sku() ?? '', $sku) === 0) {
+                    return [$product->id(), $variation->id()];
+                }
+            }
+        }
+
+        return null;
+    }
+
     public function idsWithSku(string $text): array
     {
         $ids = [];
@@ -279,6 +296,11 @@ final class InMemoryProductRepository implements ProductRepository
     public function findMany(array $ids): array
     {
         return array_values(array_filter(array_map(fn(int $id): ?Product => $this->products[$id] ?? null, $ids)));
+    }
+
+    public function lockedUpdatedAt(int $id): ?string
+    {
+        return isset($this->products[$id]) ? $this->products[$id]->updatedAt() : null;
     }
 
     public function save(Product $product): void

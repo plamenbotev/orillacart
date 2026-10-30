@@ -168,6 +168,56 @@ final readonly class FormUploads
     }
 
     /**
+     * A cart holds the files its lines name, by their hashes as a cart keeps them: as when a visitor's cart joins
+     * the account's at login.
+     *
+     * @param list<string> $tokenHashes
+     */
+    public function holdNamed(array $tokenHashes): void
+    {
+        foreach (array_unique($tokenHashes) as $hash) {
+            $upload = $this->uploads->withTokenHash($hash);
+            if ($upload !== null && $upload->orderId() === null) {
+                $upload->hold($this->clock->now());
+                $this->uploads->save($upload);
+            }
+        }
+    }
+
+    /**
+     * The order did not go ahead, as when its payment could not start, and the cart it came from is kept: the files
+     * the cart names are the cart's again, to order once more, rather than kept for an order that never will be.
+     *
+     * @param list<string> $tokenHashes the files the cart names
+     */
+    public function giveBack(int $orderId, array $tokenHashes): void
+    {
+        foreach (array_unique($tokenHashes) as $hash) {
+            $upload = $this->uploads->withTokenHash($hash);
+            if ($upload !== null && $upload->orderId() === $orderId) {
+                $upload->givenBack($this->clock->now());
+                $this->uploads->save($upload);
+            }
+        }
+    }
+
+    /**
+     * Deletes at once the files a cart names that no order took, as when its customer is erased: not left for the
+     * week a held file waits.
+     *
+     * @param list<string> $tokenHashes
+     */
+    public function forgetNamed(array $tokenHashes): void
+    {
+        foreach (array_unique($tokenHashes) as $hash) {
+            $upload = $this->uploads->withTokenHash($hash);
+            if ($upload !== null && $upload->orderId() === null) {
+                $this->delete($upload);
+            }
+        }
+    }
+
+    /**
      * The file for the order screen: its path, name and type; null when it is gone or not the order's.
      *
      * @return array{path: string, name: string, type: string}|null

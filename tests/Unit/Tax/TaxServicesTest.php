@@ -92,6 +92,29 @@ final class TaxServicesTest extends TestCase
         $this->shop->taxGroups->rename($this->group, new SaveTaxGroup('Standard', 'not a code'));
     }
 
+    public function testTheServiceHearsNoneForWhatTheShopDoesNotTaxAndItStaysUntaxed(): void
+    {
+        $this->shop->content->add(12, 'Gift wrap');
+        $this->shop->products->save(12, new SaveProduct('5', weight: '1', taxable: false, stockMode: 'always_available'));
+        $owner = $this->cart();
+        $this->shop->carts->add($owner, new AddToCart(12));
+        $address = new AddressData('Ada', 'Lovelace', '1 Main St', 'Los Angeles', '90012', 'US', '+1 213 000 0000', 'CA');
+        $order = $this->shop->orders->order($this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', $address, shippingOption: "rate:{$this->rate}", payment: 'bank_transfer'))->number);
+
+        $asked = array_pop($this->service->asked);
+        self::assertNotNull($asked);
+        self::assertSame(['item:0' => null, 'item:1' => 'none'], \array_slice(array_column(array_map(static fn($line): array => ['id' => $line->id, 'code' => $line->taxCode], $asked->lines), 'code', 'id'), 0, 2));
+        self::assertSame(['8', '0'], [$order->lines[0]->tax, $order->lines[1]->tax], 'the gift wrap is not taxed, though the service would tax it');
+    }
+
+    public function testTheServiceIsAskedForTheShopsDay(): void
+    {
+        $this->shop->clock->modify('2026-10-23 22:30:00');
+        $this->place();
+
+        self::assertSame('2026-10-24', end($this->service->asked)->date ?? null, '01:30 on the 24th in Sofia');
+    }
+
     public function testTheServicesAnswerIsKeptAFewMinutesForTheSameLines(): void
     {
         $this->place();
@@ -142,7 +165,7 @@ final class TaxServicesTest extends TestCase
     public function testAServiceTakesPricesEnteredWithoutTax(): void
     {
         $this->expectExceptionMessage('A tax service works out the tax on prices entered without it');
-        new TaxSettingsService($this->shop->taxSettings, $this->shop->taxGroupRecords, $this->shop->extensions)->update(new UpdateTaxSettings('shipping_address', $this->group, pricesIncludeTax: true, provider: 'fake_tax'));
+        new TaxSettingsService($this->shop->taxSettings, $this->shop->taxGroupRecords, $this->shop->extensions, $this->shop->settingsService, $this->shop->currencies)->update(new UpdateTaxSettings('shipping_address', $this->group, pricesIncludeTax: true, provider: 'fake_tax'));
     }
 
     public function testTheServiceIsToldOfTheSaleItsRefundsAndCancellations(): void

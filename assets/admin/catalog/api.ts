@@ -134,6 +134,11 @@ export interface Product {
 	downloads: Download[];
 	/** What it is made of when it is a bundle; null for a product of its own. */
 	bundle: Bundle | null;
+	/**
+	 * When its details were last saved; null for a product never saved. Sent back with a save, which a product
+	 * saved since refuses (409 orillacart_product_changed).
+	 */
+	updated_at?: string | null;
 }
 
 export interface BundleItem {
@@ -181,6 +186,7 @@ export type ProductInput = Omit<
 	| 'offered'
 	| 'variations'
 	| 'downloads'
+	| 'updated_at'
 > & { attributes: AttributeInput[] };
 
 const BASE = '/orillacart/v1';
@@ -270,15 +276,42 @@ export function fetchProduct( id: number ): Promise< Product > {
 	return apiFetch< Product >( { path: `${ BASE }/products/${ id }` } );
 }
 
+/**
+ * @param id        The product.
+ * @param input     Its details.
+ * @param updatedAt The product's updated_at as it was loaded: a product saved since is refused with 409
+ *                  orillacart_product_changed (see changedProduct), rather than overwritten.
+ */
 export function saveProduct(
 	id: number,
-	input: ProductInput
+	input: ProductInput,
+	updatedAt: string | null
 ): Promise< Product > {
 	return apiFetch< Product >( {
 		path: `${ BASE }/products/${ id }`,
 		method: 'PUT',
-		data: input,
+		data: { ...input, updated_at: updatedAt },
 	} );
+}
+
+/**
+ * The product as it is now, when a save was refused because it was saved since it was loaded (409
+ * orillacart_product_changed); null for another failure.
+ *
+ * @param error Whatever the save rejected with.
+ */
+export function changedProduct( error: unknown ): Product | null {
+	if (
+		typeof error !== 'object' ||
+		error === null ||
+		( error as { code?: unknown } ).code !== 'orillacart_product_changed'
+	) {
+		return null;
+	}
+	const product = ( error as { data?: { product?: unknown } } ).data?.product;
+	return typeof product === 'object' && product !== null
+		? ( product as Product )
+		: null;
 }
 
 export function saveVariation(

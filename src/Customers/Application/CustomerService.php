@@ -260,7 +260,8 @@ final readonly class CustomerService
     }
 
     /**
-     * The visitor followed the link and chose a password: the account is made, with the orders placed while
+     * The visitor followed the link and chose a password: the account is made (on a network, a user of another of
+     * its shops joins this one instead, keeping their password), with the orders placed while
      * asking for it (and, as the shop chooses, the earlier guest orders of the email) and the addresses of the
      * latest placed while asking, or else of the latest guest order; and the browser is logged in to it.
      *
@@ -273,15 +274,22 @@ final readonly class CustomerService
         if ($account === null || $account->isExpired($this->clock->now())) {
             throw new RuleViolation('This link does not work any more. Sign up again for a new one.', 'orillacart_invalid_link');
         }
-        if (mb_strlen($command->password) < CustomerSettings::MIN_PASSWORD_LENGTH) {
-            throw new RuleViolation('Choose a password of at least %d characters.', 'orillacart_weak_password', values: [CustomerSettings::MIN_PASSWORD_LENGTH]);
-        }
         if ($this->accounts->isRegistered($account->email())) {
             $this->pending->remove($account);
 
             throw new RuleViolation('This email has an account: log in instead.', 'orillacart_account_exists');
         }
-        $id = $this->accounts->register($account->email(), $command->password, $account->firstName(), $account->lastName());
+        // On a network, a customer of another of its shops: the email proved it is theirs, so they become this
+        // shop's customer too, their password and details as they are; the one typed here is not theirs to change.
+        $id = $this->accounts->elsewhere($account->email());
+        if ($id !== null) {
+            $this->accounts->join($id);
+        } else {
+            if (mb_strlen($command->password) < CustomerSettings::MIN_PASSWORD_LENGTH) {
+                throw new RuleViolation('Choose a password of at least %d characters.', 'orillacart_weak_password', values: [CustomerSettings::MIN_PASSWORD_LENGTH]);
+            }
+            $id = $this->accounts->register($account->email(), $command->password, $account->firstName(), $account->lastName());
+        }
         // The addresses the customer gave last: an order of years ago may be from a home they left.
         $addressedBy = $account->orderIds() !== [] ? max($account->orderIds()) : null;
         $addressed = false;

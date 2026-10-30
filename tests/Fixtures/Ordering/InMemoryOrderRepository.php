@@ -31,7 +31,7 @@ final class InMemoryOrderRepository implements OrderRepository
     public function find(int $id, bool $lock = false): ?Order
     {
         if ($lock) {
-            $this->transactions?->requireOpen();
+            $this->transactions?->locked("order:{$id}");
         }
 
         return $this->orders[$id] ?? null;
@@ -161,6 +161,17 @@ final class InMemoryOrderRepository implements OrderRepository
         });
 
         return [\array_slice($found, $offset, $limit), \count($found)];
+    }
+
+    public function searchAfter(OrderSearch $search, ?Order $after, int $limit): array
+    {
+        [$found] = $this->search($search, 0, \count($this->orders));
+        if ($after !== null) {
+            $position = array_search($after->id(), array_map(static fn(Order $order): int => $order->id(), $found), true);
+            $found = $position === false ? [] : \array_slice($found, $position + 1);
+        }
+
+        return \array_slice($found, 0, $limit);
     }
 
     public function mark(int $orderId, string $mark): bool

@@ -359,20 +359,61 @@ class Cart
 
     /**
      * Adds what another cart holds, as far as this one has room: the same item adds to its line, up to
-     * MAX_QUANTITY; new lines up to MAX_LINES. Codes join, up to ten.
+     * MAX_QUANTITY; new lines up to MAX_LINES, and the files they name up to $maxFiles in all. Codes join, up to ten.
      */
-    public function takeFrom(self $other, \DateTimeImmutable $now): void
+    public function takeFrom(self $other, \DateTimeImmutable $now, int $maxFiles): void
     {
+        $files = \count($this->fileHashes());
         foreach ($other->lines() as $line) {
             $mine = $this->lineFor($line->productId(), $line->optionIds(), $line->bundleChoices(), $line->answers());
+            $named = \count(self::filesOf($line->answers()));
             if ($mine !== null) {
                 $mine->setQuantity(min(self::MAX_QUANTITY, $mine->quantity() + $line->quantity()));
-            } elseif ($this->lines->count() < self::MAX_LINES) {
+            } elseif ($this->lines->count() < self::MAX_LINES && $files + $named <= $maxFiles) {
                 $this->add($line->productId(), $line->optionIds(), $line->quantity(), $now, $line->bundleChoices(), $line->answers());
+                $files += $named;
             }
         }
         $this->useCoupons([...$this->coupons, ...$other->coupons()], $now);
         $this->useGiftCards([...$this->giftCards, ...$other->giftCards()], $now);
+    }
+
+    /**
+     * The files the lines name, by their tokens' hashes as answers keep them ("#<hash>").
+     *
+     * @return list<string>
+     */
+    public function fileHashes(): array
+    {
+        $hashes = [];
+        foreach ($this->lines() as $line) {
+            array_push($hashes, ...self::filesOf($line->answers()));
+        }
+
+        return $hashes;
+    }
+
+    /**
+     * @param array<string, string> $answers
+     *
+     * @return list<string>
+     */
+    private static function filesOf(array $answers): array
+    {
+        $hashes = [];
+        foreach ($answers as $value) {
+            if (preg_match('/^#([a-f0-9]{64})$/', $value, $match) === 1) {
+                $hashes[] = $match[1];
+            }
+        }
+
+        return $hashes;
+    }
+
+    /** The order being placed from the cart, however long ago; null when none is. */
+    public function placingOrderId(): ?int
+    {
+        return $this->placingOrderId;
     }
 
     /** An order was saved from the cart; its payment is about to start. */

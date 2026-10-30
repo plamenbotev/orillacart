@@ -59,12 +59,13 @@ final readonly class TaxSettings
          */
         public bool $shippingTaxedAsItems = false,
         /**
-         * The EU's threshold of sales to consumers in other EU countries in a calendar year, €10,000, in the shop's
-         * currency: below it a shop in the EU may charge its own VAT; above it, the customer's country's (OSS).
+         * The EU's threshold of sales to consumers in other EU countries in a calendar year, in the shop's currency:
+         * below it a shop in the EU may charge its own VAT; above it, the customer's country's (OSS). Null for the
+         * law's €10,000 (EU_THRESHOLD), converted to the shop's currency when it is another.
          */
-        public string $euThreshold = self::EU_THRESHOLD,
+        public ?string $euThreshold = null,
     ) {
-        if (preg_match('/^\d{1,12}(\.\d{1,2})?$/', $euThreshold) !== 1) {
+        if ($euThreshold !== null && preg_match('/^\d{1,12}(\.\d{1,2})?$/', $euThreshold) !== 1) {
             throw new RuleViolation('The EU threshold is an amount such as 10000.', 'orillacart_invalid_tax_settings');
         }
         foreach ([$shownInShop, $shownInCart] as $shown) {
@@ -95,6 +96,7 @@ final readonly class TaxSettings
     public const string WITHOUT_TAX = 'without_tax';
     public const array SHOWN = [self::AS_ENTERED, self::WITH_TAX, self::WITHOUT_TAX];
     public const int SUFFIX_LENGTH = 80;
+    /** The EU's threshold, in euros. */
     public const string EU_THRESHOLD = '10000';
 
     /** A country's code and one of its states': "US-TX". */
@@ -123,7 +125,7 @@ final readonly class TaxSettings
         return $shown === self::AS_ENTERED ? $this->pricesIncludeTax : $shown === self::WITH_TAX;
     }
 
-    public function withEuThreshold(string $threshold): self
+    public function withEuThreshold(?string $threshold): self
     {
         return new self($this->basis, $this->defaultGroupId, $this->pricesIncludeTax, $this->reverseCharge, $this->roundsEachLine, $this->originRegions, $this->provider, $this->whenProviderFails, $this->acceptsCertificates, $this->shownInShop, $this->shownInCart, $this->priceSuffix, $this->samePriceEverywhere, $this->shippingTaxedAsItems, $threshold);
     }

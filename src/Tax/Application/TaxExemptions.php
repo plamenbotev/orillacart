@@ -6,6 +6,7 @@ namespace OrillaCart\Tax\Application;
 
 use OrillaCart\Customers\Application\Accounts;
 use OrillaCart\Customers\Domain\CustomerNotFound;
+use OrillaCart\Reports\Application\ShopCalendar;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Tax\Application\Dto\SaveTaxExemption;
 use OrillaCart\Tax\Application\Dto\TaxExemptionView;
@@ -25,6 +26,7 @@ final readonly class TaxExemptions
         private TaxExemptionRepository $exemptions,
         private Accounts $accounts,
         private ClockInterface $clock,
+        private ShopCalendar $calendar,
     ) {}
 
     /** @return list<TaxExemptionView> newest first */
@@ -67,14 +69,15 @@ final readonly class TaxExemptions
     }
 
     /**
-     * The exemption covering a customer's sale taxed at the address today: the newest that holds there.
+     * The exemption covering a customer's sale taxed at the address today, the shop's day: the newest that holds
+     * there. Its last day ends at the shop's midnight, not at UTC's.
      */
     public function covering(?int $customerId, TaxLocation $location): ?TaxExemptionView
     {
         if ($customerId === null) {
             return null;
         }
-        $today = $this->clock->now();
+        $today = $this->clock->now()->setTimezone($this->calendar->timezone());
         foreach ($this->exemptions->ofCustomer($customerId) as $exemption) {
             if ($exemption->covers($location, $today)) {
                 return TaxExemptionView::fromExemption($exemption);

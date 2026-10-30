@@ -19,6 +19,8 @@ use Doctrine\DBAL\Types\SmallIntType;
 use Doctrine\DBAL\Types\TextType;
 use Doctrine\Migrations\MigratorConfiguration;
 use Doctrine\ORM\Tools\SchemaTool;
+use OrillaCart\GiftCards\Infrastructure\WordPress\OptionGiftCardSettingsRepository;
+use OrillaCart\Notifications\Infrastructure\WordPress\OptionEmailSettingsRepository;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\DatabaseMigrator;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
@@ -26,6 +28,12 @@ use OrillaCart\Platform\Doctrine\MigrationsFactory;
 use OrillaCart\Platform\Kernel;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Reviews\Infrastructure\WordPress\OptionReviewSettingsRepository;
+use OrillaCart\Search\Infrastructure\EngineCatalogSearch;
+use OrillaCart\Search\Infrastructure\WordPress\OptionEngineSettingsRepository;
+use OrillaCart\Settings\Infrastructure\WordPress\OptionCurrencySettingsRepository;
+use OrillaCart\Storefront\Infrastructure\WordPress\OptionOpeningRepository;
+use OrillaCart\Storefront\Infrastructure\WordPress\OptionStorefrontSettingsRepository;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -196,6 +204,60 @@ final class PluginDatabaseTest extends TestCase
         $again->upgradeIfNeeded();
         self::assertSame($build, get_option(PluginLifecycle::VERSION_OPTION));
         self::assertContains($this->database->tablePrefix . 'migrations', $this->connection->createSchemaManager()->listTableNames());
+    }
+
+    public function testTheUpgradeStoresTheSettingsEveryRequestReadsAutoloaded(): void
+    {
+        $options = [
+            OptionStorefrontSettingsRepository::OPTION,
+            OptionGiftCardSettingsRepository::OPTION,
+            OptionReviewSettingsRepository::OPTION,
+            OptionCurrencySettingsRepository::OPTION,
+            OptionOpeningRepository::OPTION,
+            OptionEmailSettingsRepository::OPTION,
+            OptionEngineSettingsRepository::OPTION,
+            EngineCatalogSearch::OUTAGE_OPTION,
+        ];
+        $kept = array_map(static fn(string $option): mixed => get_option($option), $options);
+        try {
+            foreach ($options as $option) {
+                delete_option($option);
+            }
+            // An earlier build saved these two without autoload.
+            update_option(OptionEmailSettingsRepository::OPTION, ['from_name' => 'Shop'], false);
+            update_option(OptionEngineSettingsRepository::OPTION, ['engine' => 'database', 'index' => 'orillacart'], false);
+            update_option(PluginLifecycle::VERSION_OPTION, '1.0.0');
+
+            $lifecycle = $this->kernel->container()->get(PluginLifecycle::class);
+            self::assertInstanceOf(PluginLifecycle::class, $lifecycle);
+            $lifecycle->upgradeIfNeeded();
+
+            global $wpdb;
+            \assert($wpdb instanceof \wpdb);
+            $autoload = [];
+            $rows = $wpdb->get_results($wpdb->prepare('SELECT option_name, autoload FROM %i WHERE option_name IN (' . implode(', ', array_fill(0, \count($options), '%s')) . ')', $wpdb->options, ...$options), ARRAY_N);
+            self::assertIsArray($rows);
+            foreach ($rows as [$name, $value]) {
+                self::assertIsString($name);
+                $autoload[$name] = \in_array($value, wp_autoload_values_to_autoload(), true);
+            }
+            ksort($autoload);
+            $expected = array_fill_keys($options, true);
+            ksort($expected);
+            self::assertSame($expected, $autoload, 'each is there and autoloaded: reading it costs no query');
+            self::assertSame('0', get_option(OptionOpeningRepository::OPTION), 'not opening soon is stored, not left missing');
+            self::assertSame('Shop', \is_array($emails = get_option(OptionEmailSettingsRepository::OPTION)) ? $emails['from_name'] ?? null : null, 'what was stored stays');
+
+            $opening = new OptionOpeningRepository();
+            $opening->save(true);
+            $opening->save(false);
+            self::assertSame('0', get_option(OptionOpeningRepository::OPTION), 'opening again stores no, it does not delete the option');
+        } finally {
+            foreach ($options as $i => $option) {
+                $kept[$i] === false ? delete_option($option) : update_option($option, $kept[$i], true);
+            }
+            update_option(PluginLifecycle::VERSION_OPTION, new PluginContext(\dirname(__DIR__, 2) . '/orillacart.php', ORILLACART_VERSION)->build);
+        }
     }
 
     public function testEachMigrationRunsOnTablesThatHoldRows(): void

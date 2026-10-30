@@ -7,9 +7,11 @@ namespace OrillaCart\Ordering\Infrastructure\Doctrine;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\MarkedOrder;
 use OrillaCart\Ordering\Domain\Order;
+use OrillaCart\Ordering\Domain\OrderFacet;
 use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Domain\OrderSearch;
@@ -100,13 +102,15 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         return $booked;
     }
 
-    public function search(OrderSearch $search, int $offset, int $limit): array
+    /** The orders the search finds, as a query with no select yet. */
+    private function filtered(OrderSearch $search): QueryBuilder
     {
         $query = $this->entityManager->createQueryBuilder()->from(Order::class, 'o');
         $text = $search->text;
         $lines = 'SELECT 1 FROM ' . OrderLine::class . ' %1$s WHERE %1$s.order = o AND (%2$s)';
         if ($search->attentionOnly) {
-            $query->andWhere('o.attention IS NOT NULL');
+            // Set and cleared with the reason, and indexed.
+            $query->andWhere('o.attentionSince IS NOT NULL');
         }
         if ($search->statuses !== []) {
             $query->andWhere('o.status IN (:statuses)')->setParameter('statuses', array_map(static fn(OrderStatus $status): string => $status->value, $search->statuses));
@@ -197,6 +201,12 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             $query->andWhere(implode(' OR ', $matches))->setParameter('text', $like);
         }
 
+        return $query;
+    }
+
+    public function search(OrderSearch $search, int $offset, int $limit): array
+    {
+        $query = $this->filtered($search);
         $total = (int) (clone $query)->select('COUNT(o.id)')->getQuery()->getSingleScalarResult();
         $direction = $search->ascending ? 'ASC' : 'DESC';
         if ($search->sortBy === OrderSearch::BY_TOTAL) {
@@ -210,8 +220,75 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+        // A list shows how many items each order has: their lines in one query, not one per row.
+        $this->load($orders, ['lines']);
 
         return [$orders, $total];
+    }
+
+    public function searchAfter(OrderSearch $search, ?Order $after, int $limit): array
+    {
+        $query = $this->filtered($search);
+        $direction = $search->ascending ? 'ASC' : 'DESC';
+        $beyond = $search->ascending ? '>' : '<';
+        if ($search->sortBy === OrderSearch::BY_TOTAL) {
+            $query->orderBy('o.total', $direction)->addOrderBy('o.id', $direction);
+            if ($after !== null) {
+                $query->andWhere("o.total {$beyond} :afterTotal OR (o.total = :afterTotal AND o.id {$beyond} :afterId)")
+                    ->setParameter('afterTotal', $after->total()->toFixed())
+                    ->setParameter('afterId', $after->id());
+            }
+        } else {
+            $query->orderBy('o.id', $direction);
+            if ($after !== null) {
+                $query->andWhere("o.id {$beyond} :afterId")->setParameter('afterId', $after->id());
+            }
+        }
+        /** @var list<Order> $orders */
+        $orders = $query->select('o')->setMaxResults($limit)->getQuery()->getResult();
+        $this->load($orders, ['lines', 'notes']);
+        $this->loadLines($orders);
+
+        return $orders;
+    }
+
+    /**
+     * Loads the orders' collections in one query each, instead of one per order as each is read.
+     *
+     * @param list<Order>  $orders
+     * @param list<string> $collections
+     */
+    private function load(array $orders, array $collections): void
+    {
+        if ($orders === []) {
+            return;
+        }
+        $ids = array_map(static fn(Order $order): int => $order->id(), $orders);
+        foreach ($collections as $collection) {
+            $this->entityManager->createQueryBuilder()->select('o', 'c')->from(Order::class, 'o')
+                ->leftJoin("o.{$collection}", 'c')
+                ->where('o.id IN (:ids)')->setParameter('ids', $ids)
+                ->getQuery()->getResult();
+        }
+    }
+
+    /**
+     * Loads the taxes and adjustments of the orders' lines, one query each.
+     *
+     * @param list<Order> $orders
+     */
+    private function loadLines(array $orders): void
+    {
+        if ($orders === []) {
+            return;
+        }
+        $ids = array_map(static fn(Order $order): int => $order->id(), $orders);
+        foreach (['taxes', 'adjustments'] as $collection) {
+            $this->entityManager->createQueryBuilder()->select('l', 'c')->from(OrderLine::class, 'l')
+                ->leftJoin("l.{$collection}", 'c')
+                ->where('IDENTITY(l.order) IN (:ids)')->setParameter('ids', $ids)
+                ->getQuery()->getResult();
+        }
     }
 
     public function mark(int $orderId, string $mark): bool
@@ -249,30 +326,34 @@ final readonly class DoctrineOrderRepository implements OrderRepository
 
     public function facets(): array
     {
-        $distinct = fn(string $field): array => array_values(array_filter(
-            $this->entityManager->createQueryBuilder()->select("DISTINCT {$field} AS value")->from(Order::class, 'o')->where("{$field} IS NOT NULL AND {$field} <> ''")->orderBy('value')->getQuery()->getSingleColumnResult(),
-            \is_string(...),
-        ));
-        $countries = array_values(array_unique([...$distinct('o.billing.country'), ...$distinct('o.shippingAddress.country')]));
-        sort($countries);
+        $facets = [OrderFacet::SHIPPING => [], OrderFacet::COUNTRY => [], OrderFacet::CURRENCY => []];
+        foreach ($this->entityManager->getConnection()->fetchAllAssociative('SELECT kind, value FROM ' . $this->facetTable() . ' ORDER BY kind, value') as $row) {
+            if (\is_string($row['kind'] ?? null) && \is_string($row['value'] ?? null) && isset($facets[$row['kind']])) {
+                $facets[$row['kind']][] = $row['value'];
+            }
+        }
 
-        return ['shipping' => $distinct(self::SHOP_SHIPPING), 'countries' => $countries, 'currencies' => $distinct('o.currency')];
+        return ['shipping' => $facets[OrderFacet::SHIPPING], 'countries' => $facets[OrderFacet::COUNTRY], 'currencies' => $facets[OrderFacet::CURRENCY]];
     }
 
     public function ofPerson(string $email, ?int $customerId, int $offset, int $limit): array
     {
-        $query = $this->entityManager->createQueryBuilder()->select('o')->from(Order::class, 'o')
-            ->where($customerId === null ? 'o.email = :email' : 'o.email = :email OR o.customerId = :customer')
-            ->setParameter('email', $email)
-            ->orderBy('o.id', 'ASC')
-            ->setFirstResult($offset)
-            ->setMaxResults($limit);
+        // By email and by account apart, each by its index, then the page of their ids together.
+        $ids = $this->ids('o.email = :email', ['email' => $email]);
         if ($customerId !== null) {
-            $query->setParameter('customer', $customerId);
+            $ids = array_values(array_unique([...$ids, ...$this->ids('o.customerId = :customer', ['customer' => $customerId])]));
+        }
+        sort($ids);
+        $ids = \array_slice($ids, $offset, $limit);
+        if ($ids === []) {
+            return [];
         }
 
         /** @var list<Order> */
-        return $query->getQuery()->getResult();
+        return $this->entityManager->createQueryBuilder()->select('o')->from(Order::class, 'o')
+            ->where('o.id IN (:ids)')->setParameter('ids', $ids)
+            ->orderBy('o.id', 'ASC')
+            ->getQuery()->getResult();
     }
 
     public function remove(Order $order): void
@@ -333,19 +414,20 @@ final readonly class DoctrineOrderRepository implements OrderRepository
 
     public function hasStandingOrder(?int $customerId, string $email, ?int $exceptOrderId = null): bool
     {
-        $query = $this->entityManager->createQueryBuilder()->select('o.id')->from(Order::class, 'o')
-            ->where('o.status NOT IN (:closed)')->setParameter('closed', [OrderStatus::Cancelled, OrderStatus::Failed])
-            ->andWhere($customerId === null ? 'o.email = :email' : 'o.email = :email OR o.customerId = :customer')
-            ->setParameter('email', $email)
-            ->setMaxResults(1);
-        if ($customerId !== null) {
-            $query->setParameter('customer', $customerId);
-        }
-        if ($exceptOrderId !== null) {
-            $query->andWhere('o.id <> :except')->setParameter('except', $exceptOrderId);
-        }
+        // The email and the account each by its index: one query with OR between them reads every order.
+        $standing = function (string $who, string $name, int|string $value) use ($exceptOrderId): bool {
+            $query = $this->entityManager->createQueryBuilder()->select('o.id')->from(Order::class, 'o')
+                ->where($who)->setParameter($name, $value)
+                ->andWhere('o.status NOT IN (:closed)')->setParameter('closed', [OrderStatus::Cancelled, OrderStatus::Failed])
+                ->setMaxResults(1);
+            if ($exceptOrderId !== null) {
+                $query->andWhere('o.id <> :except')->setParameter('except', $exceptOrderId);
+            }
 
-        return $query->getQuery()->getOneOrNullResult() !== null;
+            return $query->getQuery()->getOneOrNullResult() !== null;
+        };
+
+        return $standing('o.email = :email', 'email', $email) || ($customerId !== null && $standing('o.customerId = :customer', 'customer', $customerId));
     }
 
     public function boughtProducts(?int $customerId, string $email, array $productIds): array
@@ -353,17 +435,22 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         if ($productIds === []) {
             return [];
         }
-        $query = $this->entityManager->createQueryBuilder()->select('DISTINCT l.productId')->from(OrderLine::class, 'l')->join('l.order', 'o')
+        // The person's orders by each index apart, then their lines.
+        $orders = $this->ids('o.email = :email', ['email' => $email]);
+        if ($customerId !== null) {
+            $orders = array_values(array_unique([...$orders, ...$this->ids('o.customerId = :customer', ['customer' => $customerId])]));
+        }
+        if ($orders === []) {
+            return [];
+        }
+        $ids = $this->entityManager->createQueryBuilder()->select('DISTINCT l.productId')->from(OrderLine::class, 'l')->join('l.order', 'o')
             ->where('l.productId IN (:products)')->setParameter('products', $productIds)
+            ->andWhere('o.id IN (:orders)')->setParameter('orders', $orders)
             ->andWhere('o.paidAt IS NOT NULL')
             ->andWhere('o.status NOT IN (:closed)')->setParameter('closed', [OrderStatus::Cancelled, OrderStatus::Failed])
-            ->andWhere($customerId === null ? 'o.email = :email' : '(o.email = :email OR o.customerId = :customer)')
-            ->setParameter('email', $email);
-        if ($customerId !== null) {
-            $query->setParameter('customer', $customerId);
-        }
+            ->getQuery()->getSingleColumnResult();
 
-        return array_values(array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $query->getQuery()->getSingleColumnResult()));
+        return array_values(array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $ids));
     }
 
     public function idsAfter(int $afterId, int $limit): array
@@ -380,5 +467,41 @@ final readonly class DoctrineOrderRepository implements OrderRepository
     {
         $this->entityManager->persist($order);
         $this->entityManager->flush();
+        $this->keepFacets($order);
+    }
+
+    /**
+     * The order's values for the Orders screen's filters, added where they are new, in one statement: in the
+     * order's transaction, so they go when it rolls back.
+     */
+    private function keepFacets(Order $order): void
+    {
+        $facets = OrderFacet::of($order);
+        $this->entityManager->getConnection()->executeStatement(
+            'INSERT IGNORE INTO ' . $this->facetTable() . ' (kind, value) VALUES ' . implode(', ', array_fill(0, \count($facets), '(?, ?)')),
+            array_merge(...array_map(static fn(OrderFacet $facet): array => [$facet->kind, $facet->value], $facets)),
+        );
+    }
+
+    private function facetTable(): string
+    {
+        return $this->entityManager->getClassMetadata(OrderFacet::class)->getTableName();
+    }
+
+    /**
+     * The ids of the orders matching one indexed condition.
+     *
+     * @param array<string, int|string> $parameters
+     *
+     * @return list<int>
+     */
+    private function ids(string $condition, array $parameters): array
+    {
+        $query = $this->entityManager->createQueryBuilder()->select('o.id')->from(Order::class, 'o')->where($condition);
+        foreach ($parameters as $name => $value) {
+            $query->setParameter($name, $value);
+        }
+
+        return array_values(array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $query->getQuery()->getSingleColumnResult()));
     }
 }

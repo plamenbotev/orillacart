@@ -47,7 +47,7 @@ final class CheckoutRestTest extends RestTestCase
             ['name' => 'Finish', 'options' => [['name' => 'Plain'], ['name' => 'Brass', 'adjustment' => '5']]],
         ]], nonce: true)->get_status());
         $stockroom = $this->id($this->request('POST', '/stockrooms', ['name' => 'Sofia'], nonce: true));
-        $this->request('PUT', "/stock/product/{$this->product}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 3]]], nonce: true);
+        $this->setStock('product', $this->product, [$stockroom => 3]);
 
         $carrier = $this->request('POST', '/carriers', ['name' => 'Courier', 'rates' => [['name' => 'Bulgaria', 'price' => '5', 'regions' => ['BG'], 'weight' => ['min' => '0', 'max' => '20']]]], nonce: true);
         self::assertSame(201, $carrier->get_status(), (string) wp_json_encode($carrier->get_data()));
@@ -105,9 +105,9 @@ final class CheckoutRestTest extends RestTestCase
         $this->actAs('administrator');
         $bulky = $this->id($this->request('POST', '/shipping-classes', ['name' => 'Bulky'], nonce: true));
         self::assertSame(422, $this->request('POST', '/shipping-classes', ['name' => 'Bulky'], nonce: true)->get_status(), 'names are unique');
-        self::assertSame(200, $this->request('PUT', "/products/{$this->product}", ['price' => '33.33', 'weight' => '2.5', 'shipping_class_id' => $bulky], nonce: true)->get_status());
+        self::assertSame(200, $this->request('PUT', "/products/{$this->product}", ['price' => '33.33', 'weight' => '2.5', 'shipping_class_id' => $bulky] + $this->loaded($this->product), nonce: true)->get_status());
         self::assertSame($bulky, $this->data($this->request('GET', "/products/{$this->product}"))['shipping_class_id']);
-        self::assertSame(422, $this->request('PUT', "/products/{$this->product}", ['price' => '1', 'shipping_class_id' => 999999], nonce: true)->get_status());
+        self::assertSame(422, $this->request('PUT', "/products/{$this->product}", ['price' => '1', 'shipping_class_id' => 999999] + $this->loaded($this->product), nonce: true)->get_status());
         $freight = $this->request('POST', '/carriers', ['name' => 'Freight', 'rates' => [['name' => 'Pallet', 'price' => '40', 'shipping_classes' => [$bulky]]]], nonce: true);
         self::assertSame(201, $freight->get_status(), (string) wp_json_encode($freight->get_data()));
         self::assertSame([$bulky], $this->rows($this->data($freight)['rates'])[0]['shipping_classes']);
@@ -172,6 +172,12 @@ final class CheckoutRestTest extends RestTestCase
         $placed = $this->request('POST', '/checkout', $this->order('cash_on_delivery'), nonce: true);
         self::assertSame(201, $placed->get_status(), (string) wp_json_encode($placed->get_data()));
         $this->actAs('administrator');
+        // Cash on delivery is not paid yet: the cart is recovered once its order is.
+        $unpaid = $this->data($this->request('GET', '/reports/carts?compare=none'));
+        self::assertIsArray($unpaid['totals']);
+        self::assertSame([1, 1, 0, 0], [$unpaid['totals']['abandoned'], $unpaid['totals']['reminded'], $unpaid['totals']['recovered'], $unpaid['totals']['recovered_after_reminder']]);
+        $paid = $this->request('POST', '/orders/' . $this->data($placed)['number'] . '/paid', [], nonce: true);
+        self::assertSame(200, $paid->get_status(), (string) wp_json_encode($paid->get_data()));
         $report = $this->data($this->request('GET', '/reports/carts?compare=none'));
         self::assertIsArray($report['totals']);
         self::assertSame([1, 1, 1, 1], [$report['totals']['abandoned'], $report['totals']['reminded'], $report['totals']['recovered'], $report['totals']['recovered_after_reminder']]);

@@ -14,6 +14,7 @@ use OrillaCart\Integrations\Domain\OAuthClientRepository;
 use OrillaCart\Integrations\Domain\OAuthError;
 use OrillaCart\Integrations\Domain\OAuthToken;
 use OrillaCart\Integrations\Domain\OAuthTokenRepository;
+use OrillaCart\Shared\Persistence\Transactions;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -40,6 +41,8 @@ final readonly class OAuthServer
     private const int UNCONNECTED_CLIENT_SECONDS = 86400;
     private const string ACCESS_PREFIX = 'oat_';
     private const string REFRESH_PREFIX = 'ort_';
+    /** How soon after a rotation the refresh token it replaced is refused without ending the grant: a parallel refresh. */
+    private const int PARALLEL_REFRESH_SECONDS = 60;
 
     public function __construct(
         private OAuthEndpoints $endpoints,
@@ -50,6 +53,7 @@ final readonly class OAuthServer
         private ApiKeys $keys,
         private ApiKeyRepository $keyRecords,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {}
 
     /** Whether the site can offer OAuth: it has an issuer address. */
@@ -359,25 +363,43 @@ final readonly class OAuthServer
     {
         $given = \is_string($form['refresh_token'] ?? null) ? $form['refresh_token'] : '';
         $hash = preg_match('/^ort_[a-f0-9]{48}$/', $given) === 1 ? hash('sha256', $given) : null;
-        $token = $hash === null ? null : $this->tokens->withRefreshHash($hash);
-        $now = $this->clock->now();
-        if ($token === null && $hash !== null) {
-            // A refresh token already rotated away comes again: it leaked, or the client lost the new one. Either
-            // way the pair it belongs to ends; the app connects again through the owner.
-            $replaced = $this->tokens->withPreviousRefreshHash($hash);
-            if ($replaced !== null) {
-                $this->tokens->remove($replaced);
-                throw new OAuthError('invalid_grant', 'The refresh token was used already; the shop ended this connection\'s tokens. Connect again.');
+        $unknown = new OAuthError('invalid_grant', 'The refresh token is not one the shop gave this app, or it ran out or was used.');
+        if ($hash === null) {
+            throw $unknown;
+        }
+        // The token's row is locked until the answer is written, so two refreshes of it run one after the other;
+        // a refusal is returned, not thrown, so what the transaction ended is kept.
+        $answer = $this->transactions->run(function () use ($hash, $clientId, $unknown): array|OAuthError {
+            $token = $this->tokens->forRefresh($hash);
+            $now = $this->clock->now();
+            if ($token === null || $token->clientId() !== $clientId) {
+                return $unknown;
             }
-        }
-        if ($token === null || $token->clientId() !== $clientId || $token->refreshExpiresAt() <= $now) {
-            throw new OAuthError('invalid_grant', 'The refresh token is not one the shop gave this app, or it ran out or was used.');
-        }
-        [$access, $refresh] = [self::secret(self::ACCESS_PREFIX), self::secret(self::REFRESH_PREFIX)];
-        $token->rotate(hash('sha256', $access), $now->modify('+' . self::ACCESS_SECONDS . ' seconds'), hash('sha256', $refresh), $now->modify('+' . self::REFRESH_SECONDS . ' seconds'));
-        $this->tokens->save($token);
+            if (!$token->refreshes($hash)) {
+                if ($token->replacedJustNow($hash, $now, self::PARALLEL_REFRESH_SECONDS)) {
+                    // Sent at the same time as the refresh that rotated it: the client holds the new pair already.
+                    return new OAuthError('invalid_grant', 'The refresh token was just used by another request; use the tokens it gave.');
+                }
+                // A refresh token rotated away a while ago comes again: it leaked, or the client lost the new one.
+                // Either way the pair it belongs to ends; the app connects again through the owner.
+                $this->tokens->remove($token);
 
-        return self::answer($access, $refresh, $token->key()->scope());
+                return new OAuthError('invalid_grant', 'The refresh token was used already; the shop ended this connection\'s tokens. Connect again.');
+            }
+            if ($token->refreshExpiresAt() <= $now) {
+                return $unknown;
+            }
+            [$access, $refresh] = [self::secret(self::ACCESS_PREFIX), self::secret(self::REFRESH_PREFIX)];
+            $token->rotate(hash('sha256', $access), $now->modify('+' . self::ACCESS_SECONDS . ' seconds'), hash('sha256', $refresh), $now->modify('+' . self::REFRESH_SECONDS . ' seconds'), $now);
+            $this->tokens->save($token);
+
+            return self::answer($access, $refresh, $token->key()->scope());
+        });
+        if ($answer instanceof OAuthError) {
+            throw $answer;
+        }
+
+        return $answer;
     }
 
     /** @return array<string, mixed> */

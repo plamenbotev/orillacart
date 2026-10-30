@@ -9,6 +9,7 @@ use OrillaCart\GiftCards\Domain\GiftCardSettings;
 use OrillaCart\GiftCards\Domain\GiftCardSettingsRepository;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
+use OrillaCart\Shared\WordPress\AutoloadedOption;
 
 final readonly class OptionGiftCardSettingsRepository implements GiftCardSettingsRepository, LifecycleListener, RemovesShopData
 {
@@ -36,9 +37,16 @@ final readonly class OptionGiftCardSettingsRepository implements GiftCardSetting
         update_option(self::OPTION, ['product_ids' => $settings->productIds, 'valid_months' => $settings->validMonths], true);
     }
 
-    public function activate(): void {}
+    public function activate(): void
+    {
+        $this->upgrade(null);
+    }
 
-    public function upgrade(?string $fromVersion): void {}
+    /** Read on every storefront request: stored with its defaults, autoloaded, so reading it costs no query. */
+    public function upgrade(?string $fromVersion): void
+    {
+        AutoloadedOption::keep(self::OPTION, fn() => $this->save($this->load()));
+    }
 
     public function deactivate(): void {}
 

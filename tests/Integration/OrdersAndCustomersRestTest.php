@@ -38,7 +38,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $this->lamp = $this->product('Lamp', ['price' => '30', 'type' => 'virtual']);
         $this->guide = $this->product('Guide', ['price' => '8', 'type' => 'virtual', 'download_limit' => 2]);
         $stockroom = $this->id($this->request('POST', '/stockrooms', ['name' => 'Sofia'], nonce: true));
-        $this->request('PUT', "/stock/product/{$this->lamp}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 3]]], nonce: true);
+        $this->setStock('product', $this->lamp, [$stockroom => 3]);
         $this->request('PUT', '/payment-methods/bank_transfer', ['name' => 'Bank transfer', 'active' => true], nonce: true);
         wp_set_current_user(0);
     }
@@ -263,7 +263,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
         $this->actAs('administrator');
-        $settings = $this->request('PUT', '/newsletter-settings', ['offered' => true, 'consent' => 'News and offers.', 'lists' => []], nonce: true);
+        $settings = $this->request('PUT', '/newsletter-settings', ['offered' => true, 'consent' => 'News and offers.', 'lists' => [], 'confirm_new' => false], nonce: true);
         self::assertSame(200, $settings->get_status(), (string) wp_json_encode($settings->get_data()));
         self::assertSame(422, $this->request('PUT', '/newsletter-settings', ['offered' => true, 'consent' => 'News.', 'lists' => ['nobody']], nonce: true)->get_status(), 'a list no add-on brings');
 
@@ -915,7 +915,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     {
         global $wpdb;
         self::assertInstanceOf(\wpdb::class, $wpdb);
-        foreach (['newsletter_subscribers', 'customer_notes', 'pending_accounts', 'invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'consignments', 'returns', 'order_lines', 'orders', 'shipping_rates', 'carriers', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
+        foreach (['newsletter_subscribers', 'customer_notes', 'pending_accounts', 'invoices', 'price_rules', 'customer_group_members', 'customer_groups', 'download_grants', 'order_notes', 'refunds', 'payments', 'payment_methods', 'consignments', 'returns', 'order_lines', 'orders', 'order_facets', 'shipping_rates', 'carriers', 'cart_lines', 'carts', 'product_downloads', 'stock_levels', 'stockrooms', 'variations', 'products'] as $table) {
             $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_{$table}");
         }
     }

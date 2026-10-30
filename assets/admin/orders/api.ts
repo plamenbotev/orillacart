@@ -670,6 +670,10 @@ export interface OrderQuote {
 	/** What it pays besides its items and shipping, such as for the way to pay. */
 	fees: { label: string; amount: string }[];
 	fees_tax: string;
+	/** Sold under the reverse charge to a business with a VAT number VIES confirms. */
+	reverse_charge?: boolean;
+	/** Why a VAT number given does not take the reverse charge, when it does not. */
+	vat_message?: string | null;
 }
 
 export interface QuoteQuery {
@@ -686,6 +690,8 @@ export interface QuoteQuery {
 	email: string | null;
 	/** The way it is paid, for its fee. */
 	payment: string | null;
+	/** A business customer's VAT number, for the reverse charge; null for none. */
+	vat_number: string | null;
 }
 
 /**
@@ -713,6 +719,8 @@ export interface NewOrder {
 	/** Whether the customer gets the order received or confirmed email; the shop never does. */
 	email_customer: boolean;
 	pickup_point: string | null;
+	/** A business customer's VAT number, checked as checkout checks it, for the reverse charge. */
+	vat_number: string | null;
 }
 
 /**

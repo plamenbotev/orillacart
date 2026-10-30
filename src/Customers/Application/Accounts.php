@@ -13,7 +13,20 @@ interface Accounts
 {
     public function find(int $id): ?CustomerRecord;
 
+    /** Whether the email has an account at this shop: on a network, a user of this site. */
     public function isRegistered(string $email): bool;
+
+    /**
+     * The user of the email on the network who is not one of this site's: a customer of another shop of it.
+     * Always null on a single site.
+     */
+    public function elsewhere(string $email): ?int;
+
+    /**
+     * Makes a user of another shop of the network a customer of this one, with the customer role here, after they
+     * confirmed from the email. Their password and details stay as they are.
+     */
+    public function join(int $id): void;
 
     /** The account of the email, if any: a WordPress user may be another role's. */
     public function idOf(string $email): ?int;

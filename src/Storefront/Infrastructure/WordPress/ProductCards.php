@@ -6,6 +6,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
 use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Application\ShopCatalog;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Checkout\Application\ShownPrices;
 use OrillaCart\Reviews\Application\Reviews;
 
@@ -32,10 +33,22 @@ final readonly class ProductCards
      */
     public function cards(array $ids, bool $excerpts = false): array
     {
+        self::prime($ids);
         $ids = array_values(array_filter($ids, static fn(int $id): bool => get_post_status($id) === 'publish'));
         if ($ids === []) {
             return [];
         }
+        // The text in the shopper's language, from the product's translation (design 51).
+        $shown = [];
+        foreach ($ids as $id) {
+            $shown[$id] = $this->translations->shown($id);
+        }
+        self::prime(array_values(array_diff($shown, $ids)));
+        $pictures = [];
+        foreach ($ids as $id) {
+            $pictures[$id] = has_post_thumbnail($shown[$id]) ? $shown[$id] : $id;
+        }
+        self::primePictures(array_values($pictures));
         $offers = $this->shownPrices->offers($this->catalog->offers($ids, $this->shopper->customerId()), $this->shopper->customerId());
         $urls = $this->links->products($ids);
         $ratings = $this->reviews->ratings($ids);
@@ -44,19 +57,52 @@ final readonly class ProductCards
             if (!isset($offers[$id])) {
                 continue;
             }
-            // The text in the shopper's language, from the product's translation (design 51).
-            $shown = $this->translations->shown($id);
             $cards[] = [
                 'offer' => $offers[$id],
                 'simple' => $offers[$id]->isSimple(),
                 'url' => $urls[$id] ?? '',
-                'image' => get_the_post_thumbnail(has_post_thumbnail($shown) ? $shown : $id, 'medium', ['class' => 'orillacart-product-card__image', 'loading' => 'lazy']),
+                'image' => get_the_post_thumbnail($pictures[$id], 'medium', ['class' => 'orillacart-product-card__image', 'loading' => 'lazy']),
                 'rating' => $ratings[$id] ?? null,
-                'excerpt' => $excerpts ? self::excerpt($shown) : '',
+                'excerpt' => $excerpts ? self::excerpt($shown[$id]) : '',
             ];
         }
 
         return $cards;
+    }
+
+    /**
+     * Reads the products' posts, fields and terms for the whole listing at once: each card would otherwise ask for
+     * its post's status, fields and categories one query at a time.
+     *
+     * @param list<int> $ids
+     */
+    public static function prime(array $ids): void
+    {
+        if ($ids === []) {
+            return;
+        }
+        _prime_post_caches($ids, false, false);
+        update_postmeta_cache($ids);
+        update_object_term_cache($ids, ProductPostType::NAME);
+    }
+
+    /**
+     * The posts' pictures, with their fields (sizes, alternative text), read at once.
+     *
+     * @param list<int> $ids posts whose pictures are shown, their fields read already
+     */
+    private static function primePictures(array $ids): void
+    {
+        $pictures = [];
+        foreach ($ids as $id) {
+            $picture = (int) get_post_thumbnail_id($id);
+            if ($picture > 0) {
+                $pictures[$picture] = $picture;
+            }
+        }
+        if ($pictures !== []) {
+            _prime_post_caches(array_values($pictures), false, true);
+        }
     }
 
     /**

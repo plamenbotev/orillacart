@@ -40,6 +40,21 @@ final class CustomerAccountsTest extends TestCase
         $this->address = new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000');
     }
 
+    public function testOnANetworkACustomerOfAnotherShopBecomesOneOfThisShopAfterConfirming(): void
+    {
+        $this->shop->accounts->elsewhere[500] = new \OrillaCart\Customers\Application\Dto\CustomerRecord(500, 'ada@example.com', 'Augusta', 'King', '2025-01-01T00:00:00+00:00');
+        $order = $this->place(new CartOwner(null), createAccount: true);
+        self::assertSame([['confirm', 'ada@example.com']], array_map(static fn(array $mail): array => [$mail['kind'], $mail['to']], $this->shop->accountMail->sent), 'a link, not word to log in to an account that is not this shop\'s');
+
+        $customer = $this->shop->customers->confirmAccount(new ConfirmAccount($this->shop->accountMail->tokenFor('ada@example.com'), ''));
+
+        self::assertSame([500, 500], [$customer->id, $this->shop->accounts->loggedIn]);
+        self::assertTrue($this->shop->accounts->isRegistered('ada@example.com'), 'a customer of this shop now');
+        self::assertArrayNotHasKey(500, $this->shop->accounts->passwords, 'their password is not changed');
+        self::assertSame(['Augusta', 'King'], [$customer->firstName, $customer->lastName], 'nor their details');
+        self::assertSame($order->number, $this->shop->orders->customerOrder(500, $order->number)->number);
+    }
+
     public function testAVisitorAsksForAnAccountWithTheOrderAndGetsItWithTheLink(): void
     {
         $order = $this->place(new CartOwner(null), createAccount: true);

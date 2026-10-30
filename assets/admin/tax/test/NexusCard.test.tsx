@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import { NexusCard } from '../NexusCard';
+import { hasUnsavedChanges } from '../../shared/useUnsavedChanges';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -94,6 +95,8 @@ describe( 'NexusCard', () => {
 		const sales = screen.getAllByLabelText( 'Sales in a year' );
 		await userEvent.clear( sales[ 1 ]! );
 		await userEvent.type( sales[ 1 ]!, '500000' );
+		// Changes not saved keep the page from being left without asking.
+		expect( hasUnsavedChanges() ).toBe( true );
 		await userEvent.click(
 			screen.getByRole( 'button', { name: 'Save thresholds' } )
 		);
@@ -107,5 +110,6 @@ describe( 'NexusCard', () => {
 			} )
 		);
 		expect( onSaved ).toHaveBeenCalled();
+		expect( hasUnsavedChanges() ).toBe( false );
 	} );
 } );

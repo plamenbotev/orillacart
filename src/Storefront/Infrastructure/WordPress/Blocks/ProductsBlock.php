@@ -15,6 +15,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\ProductCategories;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
+use OrillaCart\Storefront\Infrastructure\WordPress\PageWindow;
 use OrillaCart\Storefront\Infrastructure\WordPress\ProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\ProductParts;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
@@ -85,10 +86,8 @@ final readonly class ProductsBlock implements BlockDefinition
 
         $base = remove_query_arg(['category', 'tag', 'q', 'sort', ...ShopListing::FILTER_ARGUMENTS], ShopListing::pageUrl(1));
         $pages = (int) ceil($result->total / $perPage);
-        $pageUrls = [];
-        for ($number = 1; $number <= $pages; ++$number) {
-            $pageUrls[$number] = ShopListing::pageUrl($number);
-        }
+        // The first, the last and those around this one: not a link to every page of a large shop.
+        $pageLinks = PageWindow::links($choices['page'], $pages, ShopListing::pageUrl(...));
         // A category's link is its own page, keeping only how the shopper sees the products.
         $keep = static fn(string $url): string => $choices['view'] === '' ? $url : add_query_arg('view', $choices['view'], $url);
 
@@ -145,7 +144,7 @@ final readonly class ProductsBlock implements BlockDefinition
             ],
             'page' => $choices['page'],
             'pages' => $pages,
-            'page_urls' => $pageUrls,
+            'page_links' => $pageLinks,
             'columns' => $columns,
             'layout' => $layout,
             'layout_urls' => [

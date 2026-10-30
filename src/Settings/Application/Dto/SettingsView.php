@@ -6,6 +6,7 @@ namespace OrillaCart\Settings\Application\Dto;
 
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
+use OrillaCart\Settings\Domain\ReportDay;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 
@@ -48,6 +49,10 @@ final readonly class SettingsView
         public ?int $unpaidHoldDays = null,
         public ?int $returnDays = null,
         public ?string $minimumOrder = null,
+        /** The day the reports count an order on: paid or placed. */
+        public string $reportDay = 'paid',
+        /** @var list<string> */
+        public array $reportDays = [],
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -76,6 +81,8 @@ final readonly class SettingsView
             $settings->unpaidHoldDays,
             $settings->returnDays,
             $settings->minimumOrder === null ? null : (string) $settings->minimumOrder,
+            $settings->reportDay->value,
+            ReportDay::values(),
         );
     }
 }

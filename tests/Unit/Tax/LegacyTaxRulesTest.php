@@ -18,6 +18,7 @@ use OrillaCart\Tax\Domain\TaxRateDetails;
 use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryAccounts;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
+use OrillaCart\Tests\Fixtures\Invoicing\SofiaCalendar;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
@@ -94,7 +95,7 @@ final class LegacyTaxRulesTest extends TestCase
                     new GeographyService(new InMemoryCountryRepository()),
                 ),
                 new GeographyService(new InMemoryCountryRepository()),
-                new TaxExemptions(new InMemoryTaxExemptionRepository(), new InMemoryAccounts(), new MockClock()),
+                new TaxExemptions(new InMemoryTaxExemptionRepository(), new InMemoryAccounts(), new MockClock(), new SofiaCalendar()),
             );
             $result = $calculator->taxes(new TaxQuery(
                 $case['group'] === null ? null : $groupIds[$case['group']],

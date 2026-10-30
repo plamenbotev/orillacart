@@ -52,8 +52,18 @@ final readonly class RouteDocumentation
 
         `{"code": "orillacart_…", "message": "…", "data": {"status": 422}}`, with `data.violations`
         (`[{"field", "message"}]`) for fields that are not valid. 401: log in, or a key the shop has not;
-        403: not allowed, or the nonce is missing or expired; 404: no such thing; 422: refused, as the message says;
-        429: too many tries, see `Retry-After`.
+        403: not allowed, or the nonce is missing or expired; 404: no such thing; 409: changed since it was loaded,
+        nothing saved (`orillacart_stock_changed` lists the levels as they are now in `data.changed`,
+        `orillacart_product_changed` has the product in `data.product`): show it and save again; 422: refused, as
+        the message says; 429: too many tries, see `Retry-After`.
+
+        Saves that would overwrite what others changed send what they loaded. Stock levels (`PATCH /stock-levels`,
+        `PUT /stock/{kind}/{id}`): each cell is either `{"stockroom_id", "quantity", "was"}`, the level to set and the
+        level loaded (`null` when the stockroom had none; a `quantity` of `null` removes the level), set only while
+        the level is still `was`, or `{"stockroom_id", "change"}`, added to the level as it is (below zero to take,
+        never below zero). A product's details (`PUT /products/{id}`): `updated_at` as `GET /products/{id}` gave it
+        (`null` for one never saved); the assistant may leave it out, and its save then overwrites (the last save
+        wins).
 
         MD;
 

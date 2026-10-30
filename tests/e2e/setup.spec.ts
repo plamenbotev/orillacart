@@ -34,7 +34,12 @@ async function removeLeftovers( requestUtils: RequestUtils ) {
 	const tax = await requestUtils.rest< Record< string, unknown > >( {
 		path: '/orillacart/v1/tax/settings',
 	} );
-	const { bases: _bases, providers: _providers, ...settings } = tax;
+	const {
+		bases: _bases,
+		providers: _providers,
+		eu_threshold_is_default: _euThresholdIsDefault,
+		...settings
+	} = tax;
 	await requestUtils.rest( {
 		method: 'PUT',
 		path: '/orillacart/v1/tax/settings',
@@ -123,7 +128,12 @@ test.afterEach( async ( { requestUtils } ) => {
 	} );
 	expect( Object.keys( restored.refused ) ).toEqual( [] );
 	// The groups the setup made are not the default any more, so they can go.
-	const { bases: _bases, providers: _providers, ...tax } = before.tax;
+	const {
+		bases: _bases,
+		providers: _providers,
+		eu_threshold_is_default: _euThresholdIsDefault,
+		...tax
+	} = before.tax;
 	await requestUtils.rest( {
 		method: 'PUT',
 		path: '/orillacart/v1/tax/settings',

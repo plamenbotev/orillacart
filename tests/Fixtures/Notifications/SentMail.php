@@ -18,11 +18,16 @@ final class SentMail implements Mailer
     public bool $accepts = true;
     /** A recipient whose emails break the mail system with an error, as an add-on's filter might. */
     public ?string $breaksFor = null;
+    /** A recipient the mail system refuses, as a bounced or blocked address. */
+    public ?string $refusesFor = null;
 
     public function send(Email $email): bool
     {
         if ($this->breaksFor !== null && $email->to === $this->breaksFor) {
             throw new \RuntimeException('The mail system broke.');
+        }
+        if ($this->refusesFor !== null && $email->to === $this->refusesFor) {
+            return false;
         }
         if ($this->accepts) {
             $this->emails[] = $email;

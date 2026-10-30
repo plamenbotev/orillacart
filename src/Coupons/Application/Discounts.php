@@ -171,10 +171,12 @@ final readonly class Discounts
         $locked = $this->coupons->findByCodes(array_map(static fn(AppliedCoupon $coupon): string => $coupon->code, $coupons), true);
         foreach ($coupons as $applied) {
             $coupon = $locked[$applied->code] ?? throw new CouponRuleViolation('The code %s is no longer valid.', 'orillacart_coupon_refused', values: [$applied->code]);
-            $terms = $coupon->terms();
-            if ($terms->usageLimit !== null && $coupon->uses() >= $terms->usageLimit
-                || $terms->perCustomerLimit !== null && $this->redemptions->countByCustomer($coupon->id(), $customerId, $email) >= $terms->perCustomerLimit) {
+            if ($this->usedUp($coupon, $customerId, $email)) {
                 throw new CouponRuleViolation('The code %s was just used up. Remove it and try again.', 'orillacart_coupon_used_up', values: [$coupon->code()]);
+            }
+            // Two first orders placed at once: the one that counted its use first is the first order.
+            if ($coupon->terms()->firstOrderOnly && ($this->redemptions->countByCustomer($coupon->id(), $customerId, $email, true) > 0 || $this->orders->hasOrdered($customerId, $email, $orderId))) {
+                throw new CouponRuleViolation('The code %s is for a first order only. Remove it and try again.', 'orillacart_coupon_used_up', values: [$coupon->code()]);
             }
             $coupon->use();
             $this->coupons->save($coupon);
@@ -183,10 +185,12 @@ final readonly class Discounts
     }
 
     /**
-     * Counts again the uses of an order that was cancelled or failed and opened again, paid: the customer paid
-     * the discounted price, so the uses count even past a limit reached in the meantime.
+     * Counts again the uses of an order that was cancelled or failed and opened again. Paid, the customer paid the
+     * discounted price, so the uses count even past a limit reached in the meantime; to be paid now, as Pay now
+     * opens a failed order, each coupon must still have a use left for it.
      *
      * @throws OrderNotFound
+     * @throws CouponRuleViolation for an order to be paid now whose coupon was used up since
      */
     public function reclaim(int $orderId): void
     {
@@ -201,10 +205,24 @@ final readonly class Discounts
                 // Deleted since: nothing left to count.
                 continue;
             }
+            if ($order->paidAt === null && $this->usedUp($coupon, $order->customerId, $order->email)) {
+                throw new CouponRuleViolation('The code %s was used up since this order failed, so it cannot be paid now. Order again from the shop.', 'orillacart_coupon_used_up', values: [$coupon->code()]);
+            }
             $coupon->use();
             $this->coupons->save($coupon);
             $this->redemptions->save(new CouponRedemption($coupon->id(), $orderId, $order->customerId, $order->email, Money::of($discount->amount), $this->clock->now()));
         }
+    }
+
+    /**
+     * Whether a locked coupon has no use left: in all, or for this customer, counted as they stand now.
+     */
+    private function usedUp(Coupon $coupon, ?int $customerId, string $email): bool
+    {
+        $terms = $coupon->terms();
+
+        return $terms->usageLimit !== null && $coupon->uses() >= $terms->usageLimit
+            || $terms->perCustomerLimit !== null && $this->redemptions->countByCustomer($coupon->id(), $customerId, $email, true) >= $terms->perCustomerLimit;
     }
 
     /**

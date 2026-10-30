@@ -29,6 +29,7 @@ use OrillaCart\Platform\Pdf\DompdfInvoicePdfs;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Invoicing\FixedInvoiceFonts;
 use PHPUnit\Framework\TestCase;
 
 final class InvoicesTest extends TestCase
@@ -169,6 +170,22 @@ final class InvoicesTest extends TestCase
         self::assertSame(['CN-2026-00001.pdf'], array_map(static fn(EmailAttachment $file): string => $file->filename, $this->lastCustomerEmail()->attachments));
     }
 
+    public function testEachRefundsEmailCarriesItsOwnCreditNote(): void
+    {
+        $order = $this->place(2);
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->jobs->immediate = false;
+        $sent = \count($this->shop->mail->emails);
+
+        $this->shop->refunds->refund($order->number, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
+        $this->shop->refunds->refund($order->number, new MakeRefund('4'), 7);
+        // Both emails go once both credit notes are issued, as a queue that ran late sends them.
+        $this->shop->jobs->runAll();
+
+        $refunds = array_values(array_filter(\array_slice($this->shop->mail->emails, $sent), static fn(Email $email): bool => $email->kind === 'order_refunded'));
+        self::assertSame([['CN-2026-00001.pdf'], ['CN-2026-00002.pdf']], array_map(static fn(Email $email): array => array_map(static fn(EmailAttachment $file): string => $file->filename, $email->attachments), $refunds));
+    }
+
     public function testTheShopTurnsTheAttachmentOffAndAFailedPrintSendsTheEmailWithout(): void
     {
         $order = $this->place();
@@ -192,10 +209,46 @@ final class InvoicesTest extends TestCase
         $document = $this->shop->invoices->latest($order->number, InvoiceKind::Invoice);
         self::assertNotNull($document);
 
-        $pdf = new DompdfInvoicePdfs($this->shop->templates, new PluginContext(\dirname(__DIR__, 3) . '/orillacart.php', 'test'), $this->shop->languages)->pdf($document);
+        $pdf = new DompdfInvoicePdfs($this->shop->templates, new PluginContext(\dirname(__DIR__, 3) . '/orillacart.php', 'test'), $this->shop->languages, new FixedInvoiceFonts())->pdf($document);
 
         self::assertStringStartsWith('%PDF-', $pdf);
         self::assertStringContainsString('DejaVu', $pdf, 'the font that prints Cyrillic is embedded');
+    }
+
+    public function testAPageWithChineseLettersPrintsInTheFontTheSiteNamedForThem(): void
+    {
+        $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('灯具有限公司'));
+        $order = $this->place();
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $document = $this->shop->invoices->latest($order->number, InvoiceKind::Invoice);
+        self::assertNotNull($document);
+        $context = new PluginContext(\dirname(__DIR__, 3) . '/orillacart.php', 'test');
+
+        $without = new FixedInvoiceFonts();
+        new DompdfInvoicePdfs($this->shop->templates, $context, $this->shop->languages, $without)->pdf($document);
+        self::assertSame([false], $without->printed, 'remembered for Site Health');
+
+        // Any TrueType font stands in for a CJK one: what is under test is that the page asks for it.
+        $font = \dirname(__DIR__, 3) . '/vendor/dompdf/dompdf/lib/fonts/DejaVuSansMono.ttf';
+        $fonts = new FixedInvoiceFonts([['family' => 'Test CJK', 'normal' => $font, 'bold' => null]]);
+        $pdf = new DompdfInvoicePdfs($this->shop->templates, $context, $this->shop->languages, $fonts)->pdf($document);
+
+        self::assertSame([true], $fonts->printed);
+        self::assertStringContainsString('DejaVuSansMono', $pdf, 'the font named for CJK letters is embedded');
+    }
+
+    public function testRightToLeftTextIsMarkedSoRunByRun(): void
+    {
+        $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('שלום בע"מ'));
+        $order = $this->place();
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $document = $this->shop->invoices->latest($order->number, InvoiceKind::Invoice);
+        self::assertNotNull($document);
+
+        $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $document, 'locale' => 'he', 'pdf' => true]);
+
+        self::assertStringContainsString('<strong><span dir="rtl">שלום בע&quot;מ</span></strong>', $html);
+        self::assertStringNotContainsString('<span dir="rtl">Lamp', $html, 'left-to-right text stays as it is');
     }
 
     private function lastCustomerEmail(): Email

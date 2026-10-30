@@ -13,7 +13,7 @@ use OrillaCart\Integrations\Infrastructure\WordPress\Hooks\OAuthConsent;
 /**
  * OAuth 2.1 for AI assistants' apps that log in instead of taking a key: a client registers or describes itself,
  * the owner says yes, the code and its PKCE verifier give tokens for the MCP endpoint only, and a refresh token
- * gives a new pair once: presented again, it ends the pair. The consent screen's check answers only a logged-in
+ * gives a new pair once: presented again, it ends the pair, unless it comes within a minute (a parallel refresh). The consent screen's check answers only a logged-in
  * shop manager; clients that registered and were never connected are forgotten.
  */
 final class OAuthTest extends RestTestCase
@@ -96,7 +96,12 @@ final class OAuthTest extends RestTestCase
         self::assertNull($server->authenticate($tokens['access_token']), 'the old access token ends with the refresh');
         self::assertNotNull($server->authenticate($renewed['access_token']));
         self::assertSame('invalid_grant', $this->refused(static fn() => $server->token(['grant_type' => 'refresh_token', 'refresh_token' => $tokens['refresh_token'], 'client_id' => $client['client_id']])), 'a refresh token is good once');
-        self::assertNull($server->authenticate($renewed['access_token']), 'the old refresh token presented again means it leaked: the pair it was rotated into ends too (OAuth 2.1 §6.1)');
+        self::assertNotNull($server->authenticate($renewed['access_token']), 'within a minute of the rotation the old refresh token is a parallel refresh: refused, the grant kept');
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        $wpdb->query("UPDATE {$wpdb->prefix}orillacart_oauth_tokens SET rotated_at = rotated_at - INTERVAL 2 MINUTE");
+        self::assertSame('invalid_grant', $this->refused(static fn() => $server->token(['grant_type' => 'refresh_token', 'refresh_token' => $tokens['refresh_token'], 'client_id' => $client['client_id']])), 'refused again later');
+        self::assertNull($server->authenticate($renewed['access_token']), 'the old refresh token presented again a while later means it leaked: the pair it was rotated into ends too (OAuth 2.1 §6.1)');
         self::assertSame('invalid_grant', $this->refused(static fn() => $server->token(['grant_type' => 'refresh_token', 'refresh_token' => $renewed['refresh_token'], 'client_id' => $client['client_id']])), 'the new refresh token ended with it');
 
         $keys = self::kernel()->container()->get(ApiKeys::class);

@@ -43,6 +43,26 @@ final readonly class ProductQuotes
     ) {}
 
     /**
+     * Reads the products about to be quoted, and the items of the bundles among them, in two queries: quoting a
+     * cart's lines one by one then finds them read.
+     *
+     * @param list<int> $productIds their posts', translations' too
+     */
+    public function warm(array $productIds): void
+    {
+        $products = $this->products->findMany(array_values(array_unique($this->translations->originals($productIds))));
+        $items = [];
+        foreach ($products as $product) {
+            foreach ($product->bundle()->items ?? [] as $item) {
+                $items[$item->productId] = $item->productId;
+            }
+        }
+        if ($items !== []) {
+            $this->products->findMany(array_values($items));
+        }
+    }
+
+    /**
      * @throws ProductNotFound  also for a product post whose commerce details were never saved
      * @throws InvalidSelection
      */

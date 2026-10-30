@@ -119,6 +119,17 @@ final class ImportSchemesTest extends TestCase
         self::assertNull($this->summary('DE')->importScheme, 'IOSS is not for a shop inside the EU');
     }
 
+    public function testGoodsForNorthernIrelandFromTheEuAreNoImportIntoTheUk(): void
+    {
+        $this->shop->settings->save(new StoreSettings(new Currency('EUR'), 2, WeightUnit::Kilogram, DimensionUnit::Centimetre, 'DE'));
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::EuDestination, $this->vat));
+        $this->schemes(new SaveImportRegistration('uk', 'GB123456789', '135'));
+        $belfast = $this->shop->checkout->summary($this->owner, new CheckoutDetails('GB', shippingPostcode: 'BT1 1AA'));
+
+        self::assertSame([null, [['VAT', '20', '2']]], [$belfast->importScheme, array_map(static fn($tax): array => [$tax->name, $tax->percent, $tax->shipping], $belfast->taxes)], 'a sale inside the EU for goods: the destination\'s VAT under the One-Stop-Shop');
+        self::assertSame('uk', $this->summary('GB')->importScheme, 'Great Britain is still an import');
+    }
+
     public function testTheUksLimitIsForTheWholeConsignment(): void
     {
         $this->schemes(new SaveImportRegistration('uk', 'GB123456789', '135'));

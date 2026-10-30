@@ -28,8 +28,18 @@ endpoint takes it too. Admin routes take and give every language in `translation
 
 `{"code": "orillacart_…", "message": "…", "data": {"status": 422}}`, with `data.violations`
 (`[{"field", "message"}]`) for fields that are not valid. 401: log in, or a key the shop has not;
-403: not allowed, or the nonce is missing or expired; 404: no such thing; 422: refused, as the message says;
-429: too many tries, see `Retry-After`.
+403: not allowed, or the nonce is missing or expired; 404: no such thing; 409: changed since it was loaded,
+nothing saved (`orillacart_stock_changed` lists the levels as they are now in `data.changed`,
+`orillacart_product_changed` has the product in `data.product`): show it and save again; 422: refused, as
+the message says; 429: too many tries, see `Retry-After`.
+
+Saves that would overwrite what others changed send what they loaded. Stock levels (`PATCH /stock-levels`,
+`PUT /stock/{kind}/{id}`): each cell is either `{"stockroom_id", "quantity", "was"}`, the level to set and the
+level loaded (`null` when the stockroom had none; a `quantity` of `null` removes the level), set only while
+the level is still `was`, or `{"stockroom_id", "change"}`, added to the level as it is (below zero to take,
+never below zero). A product's details (`PUT /products/{id}`): `updated_at` as `GET /products/{id}` gave it
+(`null` for one never saved); the assistant may leave it out, and its save then overwrites (the last save
+wins).
 
 ## /account
 
@@ -1175,6 +1185,7 @@ Changes whether the shop offers its newsletter, the words people agree to, and t
   - `offered` (bool): default false
   - `consent` (string): not empty; at most 500 characters
   - `lists` (list<string>)
+  - `confirm_new` (bool): default true
 
 ## /oauth
 
@@ -1276,6 +1287,7 @@ The shop takes an order itself, as on the phone or in person: it is priced and t
   - `note` (string): at most 2000 characters
   - `email_customer` (bool): default false
   - `pickup_point` (string|null): at most 64 characters
+  - `vat_number` (string|null): at most 20 characters; matches `/^[A-Za-z0-9 .\-]*$/`
 
 ### `GET /orders/facets`
 
@@ -1300,6 +1312,7 @@ Prices an order the shop is taking, before it creates it. POST, since the items 
   - `customer_id` (int|null): more than 0
   - `email` (string|null): at most 100 characters
   - `payment` (string|null): matches `/^[a-z][a-z0-9_]{0,39}$/`
+  - `vat_number` (string|null): at most 20 characters; matches `/^[A-Za-z0-9 .\-]*$/`
 
 ### `GET /orders/{id}`
 
@@ -1647,7 +1660,7 @@ The cards of published products, by id (?ids=12,30), as the shop's lists show th
 
 ### `GET /product-choices`
 
-Products for a picker: ?search=words finds them by name in any language, ?include=12,40 names those given; each by the product's own id, named in the admin's language. Anyone who edits pages picks products in blocks.
+Products for a picker: ?search=words finds them by name in any language, ?include=12,40 names those given; each by the product's own id, named in the admin's language. Anyone who edits pages picks products in blocks; drafts, private and scheduled products are listed only to those who may edit others' products and read private ones.
 
 - Who: users who can edit_posts
 - Query:
@@ -1664,7 +1677,7 @@ One product's shop details, with its attributes and variations; nothing changes.
 
 ### `PUT /products/{id}`
 
-Saves a product's shop details all at once: price, sale, tax, stock, shipping, its own attributes and the attribute sets it offers. Variations are saved on their own.
+Saves a product's shop details all at once: price, sale, tax, stock, shipping, its own attributes and the attribute sets it offers. Variations are saved on their own. Send the updated_at the product was loaded with (null for one never saved): a product saved since is refused with 409 orillacart_product_changed, the product as it is now in data.product, and a save without it is refused the same way once the product was saved. The assistant may leave updated_at out: its save then goes over whatever is there (the last save wins).
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1692,6 +1705,7 @@ Saves a product's shop details all at once: price, sale, tax, stock, shipping, i
   - `bundle` (SaveBundle|null)
   - `low_stock_threshold` (int|null): 0 or more
   - `tax_code` (string|null): matches `/^[A-Za-z0-9][A-Za-z0-9._:-]{0,39}$/`
+  - `updated_at` (string|null)
 
 ### `POST /products/{id}/bundle-quote`
 
@@ -2138,6 +2152,7 @@ Replaces all the shop's settings in one go, so every field must be sent. It can 
   - `unpaid_hold_days` (int|null): 1 to 365
   - `return_days` (int|null): 1 to 365
   - `minimum_order` (string|null): matches `/^(\d{1,11}(\.\d{1,4})?)?$/`
+  - `report_day` (string): one of paid, placed; default 'paid'
 
 ## /settings-archive
 
@@ -2329,7 +2344,7 @@ Every move of a stock level, newest first, with who made it and why, and the tot
 
 ### `PATCH /stock-levels`
 
-Saves the cells of the stock sheet that changed, all or none.
+Saves the cells of the stock sheet that changed, all or none. Each cell gives a quantity with the quantity it was loaded with (was, null when the stockroom had none), or a change to add (below zero to take). A level that moved since it was loaded, as a sale moves it, refuses the whole save with 409 orillacart_stock_changed, naming each such level as it is now.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -2361,7 +2376,7 @@ How many of a product, variation or option each stockroom holds; nothing changes
 
 ### `PUT /stock/{kind}/{id}`
 
-Sets how many of a product, variation or option each stockroom holds; stockrooms left out hold none, and an empty list means stock no longer limits it. When it comes back in stock, customers who asked are emailed.
+Changes how many of a product, variation or option the stockrooms listed hold; the others keep their levels. Each level gives a quantity with the quantity it was loaded with (was, null when the stockroom had none; a quantity of null removes the level), or a change to add (below zero to take). A level that moved since it was loaded, as a sale moves it, refuses the save with 409 orillacart_stock_changed, naming each such level as it is now. When it comes back in stock, customers who asked are emailed.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -2706,7 +2721,9 @@ The objects fields above take.
 - `kind` (string): required; one of product, variation, option
 - `id` (int): required; more than 0
 - `stockroom_id` (int): required; more than 0
-- `quantity` (int|null): required; 0 or more
+- `quantity` (int|null): 0 or more
+- `was` (int|null)
+- `change` (int|null)
 
 ### EditedItem
 
@@ -2875,7 +2892,9 @@ The objects fields above take.
 ### SetStockLevel
 
 - `stockroom_id` (int): required; more than 0
-- `quantity` (int): required; 0 or more
+- `quantity` (int|null): 0 or more
+- `was` (int|null)
+- `change` (int|null)
 
 ### ShipItem
 

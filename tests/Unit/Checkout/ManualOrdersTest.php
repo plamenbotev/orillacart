@@ -65,6 +65,28 @@ final class ManualOrdersTest extends TestCase
         self::assertSame(['bank_transfer'], array_map(static fn(PaymentOptionView $option): string => $option->gateway, $quote->paymentOptions));
     }
 
+    public function testABusinessVatNumberTakesTheReverseChargeAsAtCheckout(): void
+    {
+        $vat = $this->shop->taxGroups->groups()[0]->id;
+        $this->shop->taxGroups->addRate($vat, new SaveTaxRate('DE', null, '19', 'MwSt'));
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::ShippingAddress, $vat, false, true));
+        $this->shop->vies->known = ['DE123456789' => 'Muster GmbH'];
+
+        $quote = $this->shop->manualOrders->quote(new QuoteOrder([new EditedItem(20, 1)], 'DE', vatNumber: 'DE 123 456 789'));
+        self::assertSame([true, null, '10'], [$quote->reverseCharge, $quote->vatMessage, $quote->total]);
+        $unknown = $this->shop->manualOrders->quote(new QuoteOrder([new EditedItem(20, 1)], 'DE', vatNumber: 'DE999999999'));
+        self::assertSame([false, 'The EU does not know this VAT number, so VAT is charged.', '11.9'], [$unknown->reverseCharge, $unknown->vatMessage, $unknown->total]);
+
+        $berlin = new AddressData('Max', 'Muster', 'Hauptstr. 1', 'Berlin', '10115', 'DE', '+49 30 000000');
+        $order = $this->shop->manualOrders->create(new CreateOrder('einkauf@muster.de', $berlin, [new EditedItem(20, 1)], vatNumber: 'DE123456789'), 7);
+        self::assertSame([true, 'DE123456789', '10'], [$order->reverseCharge, $order->vatNumber, $order->total]);
+
+        // The lamp delivered in Sofia is a sale at home: VAT on it, the e-book still under the reverse charge.
+        $sofia = new AddressData('Max', 'Muster', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000');
+        $mixed = $this->shop->manualOrders->create(new CreateOrder('einkauf@muster.de', $berlin, [new EditedItem(10, 1), new EditedItem(20, 1)], $sofia, shippingOption: 'rate:' . $this->rate, vatNumber: 'DE123456789'), 7);
+        self::assertSame([true, '6', '1'], [$mixed->reverseCharge, $mixed->itemsTax, $mixed->shippingTax]);
+    }
+
     public function testTheShopsAutomaticDiscountsHoldForOrdersItTakes(): void
     {
         $discount = $this->shop->coupons->create(new SaveCoupon('', 'percent', '10', '10 % off orders over 40', minSubtotal: '40', automatic: true));

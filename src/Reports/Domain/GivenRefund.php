@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\Money;
 
 /**
- * Money given back, on the shop's calendar day it went: refunds lower the sales of the day they were made, not of
+ * Money given back for an order the reports count, on the shop's calendar day it went: refunds lower the sales of the day they were made, not of
  * the day the order was placed.
  */
 #[ORM\Entity]
@@ -27,11 +27,14 @@ class GivenRefund
         public readonly \DateTimeImmutable $day,
         #[ORM\Column(length: 3)]
         public readonly string $currency,
-        /** Before tax, as the sales are. */
+        /** The money given back, its tax included: what total sales lose. */
         #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS)]
         public readonly string $amount,
         /** The tax given back with it. */
         #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
         public readonly string $tax = '0',
+        /** The items' share of it before tax: what net sales lose; shipping and fees given back are not in it. */
+        #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+        public readonly string $items = '0',
     ) {}
 }

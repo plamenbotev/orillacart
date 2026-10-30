@@ -358,6 +358,9 @@ return static function (ContainerConfigurator $container): void {
     $services->remove(JobProgress::class);
     $services->remove(Hold::class);
     $services->remove(SiteTurnFailed::class);
+    // Refusals of a save that read stale data, not services.
+    $services->remove(\OrillaCart\Catalog\Application\ProductChangedMeanwhile::class);
+    $services->remove(\OrillaCart\Inventory\Application\StockChangedMeanwhile::class);
 
     // The shop's own payment gateways, in this order; add-ons register theirs after them (WordPressExtensions).
     $services->set(CashOnDelivery::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 40]);
@@ -504,7 +507,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(JobSites::class, NetworkJobSites::class);
 
     $services->alias(Transactions::class, DoctrineTransactions::class);
-    $services->alias(LoadedEntities::class, DoctrineLoadedEntities::class);
+    // Public for the integration tests, which forget what earlier tests loaded as a new request would.
+    $services->alias(LoadedEntities::class, DoctrineLoadedEntities::class)->public();
     $services->alias(AfterResponse::class, ShutdownWork::class);
     $services->set(Signatures::class)->factory([SiteSignatures::class, 'create']);
     $services->set(Secrets::class)->factory([SiteSignatures::class, 'createSecrets']);

@@ -72,7 +72,7 @@ final readonly class GiftCardSales
         });
         $unsent = [];
         foreach ($made as [$code, $card]) {
-            if (!$this->mail->send($card->recipientEmail(), (string) $code, (string) $card->initial(), $card->currency(), $card->expiresAt()?->format('Y-m-d'), $card->recipientName(), '')) {
+            if (!$this->mail->send($card->recipientEmail(), (string) $code, (string) $card->initial(), $card->currency(), $card->expiresAt()?->format('Y-m-d'), $card->recipientName(), '', $order->locale)) {
                 $unsent[] = '····' . $card->codeEnd();
             }
         }

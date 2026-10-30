@@ -21,9 +21,11 @@ use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
+use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Payment\Application\PaymentOptions;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\Dto\BookShipment;
 use OrillaCart\Shipping\Application\Dto\ConsignmentView;
 use OrillaCart\Shipping\Application\Dto\LabelView;
@@ -70,6 +72,8 @@ final readonly class Consignments
         private LoggerInterface $logger,
         private EventDispatcherInterface $events,
         private PaymentOptions $payments,
+        private Transactions $transactions,
+        private OrderRepository $orderRecords,
     ) {}
 
     /**
@@ -161,6 +165,29 @@ final readonly class Consignments
      */
     public function book(int $orderId, BookShipment $command, ?int $userId): ConsignmentView
     {
+        // Under the order's lock, what is left to send read inside it: a second booking of the same items, sent
+        // at once from another tab, waits for this one and is then refused instead of booking them twice.
+        return $this->underOrderLock($orderId, fn(): ConsignmentView => $this->booked($orderId, $command, $userId));
+    }
+
+    /**
+     * @param \Closure(): ConsignmentView $work
+     *
+     * @param-immediately-invoked-callable $work
+     *
+     * @throws OrderNotFound
+     */
+    private function underOrderLock(int $orderId, \Closure $work): ConsignmentView
+    {
+        return $this->transactions->run(function () use ($orderId, $work): ConsignmentView {
+            $this->orderRecords->find($orderId, true) ?? throw new OrderNotFound();
+
+            return $work();
+        });
+    }
+
+    private function booked(int $orderId, BookShipment $command, ?int $userId): ConsignmentView
+    {
         $order = $this->orders->order($orderId);
         $booking = $this->booking($order) ?? throw new ShippingRuleViolation('The order\'s way to ship does not book shipments with a courier.', 'orillacart_shipment_not_bookable');
         $items = $this->sending($order, $command->items);
@@ -214,6 +241,11 @@ final readonly class Consignments
      * @throws ShippingRuleViolation for an order that does not ship, or items it does not have left to send
      */
     public function send(int $orderId, SendShipment $command, ?int $userId): ConsignmentView
+    {
+        return $this->underOrderLock($orderId, fn(): ConsignmentView => $this->sent($orderId, $command, $userId));
+    }
+
+    private function sent(int $orderId, SendShipment $command, ?int $userId): ConsignmentView
     {
         $order = $this->orders->order($orderId);
         if ($order->shippingAddress === null) {

@@ -14,7 +14,8 @@ use OrillaCart\Exchange\Application\ProductPosts;
 
 /**
  * Products' posts for the products file: a batch's posts in one query, their terms primed with them; and the
- * import's changes to them.
+ * import's changes to them. WordPress takes the slashes off what it is given to save, so what goes to it is
+ * slashed first: a backslash in a description stays.
  */
 final readonly class WordPressProductPosts implements ProductPosts
 {
@@ -44,7 +45,7 @@ final readonly class WordPressProductPosts implements ProductPosts
 
     public function create(string $name, string $status): int
     {
-        $id = wp_insert_post(['post_type' => ProductPostType::NAME, 'post_title' => $name, 'post_status' => $status], true);
+        $id = wp_insert_post(wp_slash(['post_type' => ProductPostType::NAME, 'post_title' => $name, 'post_status' => $status]), true);
         if ($id instanceof \WP_Error) {
             throw new \RuntimeException($id->get_error_message());
         }
@@ -61,7 +62,7 @@ final readonly class WordPressProductPosts implements ProductPosts
             'post_excerpt' => $change->shortDescription,
         ], static fn(?string $value): bool => $value !== null);
         if ($post !== []) {
-            $updated = wp_update_post(['ID' => $id] + $post, true);
+            $updated = wp_update_post(wp_slash(['ID' => $id] + $post), true);
             if ($updated instanceof \WP_Error) {
                 throw new \RuntimeException($updated->get_error_message());
             }
@@ -70,11 +71,33 @@ final readonly class WordPressProductPosts implements ProductPosts
             wp_set_object_terms($id, array_map(self::category(...), $change->categories), ProductCategoryTaxonomy::NAME);
         }
         if ($change->brands !== null) {
-            wp_set_object_terms($id, $change->brands, ProductBrandTaxonomy::NAME);
+            wp_set_object_terms($id, array_map(self::term(...), $change->brands), ProductBrandTaxonomy::NAME);
         }
         if ($change->tags !== null) {
-            wp_set_object_terms($id, $change->tags, ProductTagTaxonomy::NAME);
+            wp_set_object_terms($id, array_map(self::term(...), $change->tags), ProductTagTaxonomy::NAME);
         }
+    }
+
+    public function delete(int $id): void
+    {
+        wp_delete_post($id, true);
+    }
+
+    public function asUser(?int $userId, \Closure $work): mixed
+    {
+        $was = get_current_user_id();
+        wp_set_current_user($userId ?? 0);
+        try {
+            return $work();
+        } finally {
+            wp_set_current_user($was);
+        }
+    }
+
+    /** A brand or tag by name, made where missing; its name slashed for WordPress, which unslashes it. */
+    private static function term(string $name): string
+    {
+        return wp_slash($name);
     }
 
     /** The category a path names, made with its parents where missing. */
@@ -82,9 +105,9 @@ final readonly class WordPressProductPosts implements ProductPosts
     {
         $parent = 0;
         foreach (array_filter(array_map(trim(...), explode('>', $path)), static fn(string $name): bool => $name !== '') as $name) {
-            $found = term_exists($name, ProductCategoryTaxonomy::NAME, $parent);
+            $found = term_exists(wp_slash($name), ProductCategoryTaxonomy::NAME, $parent);
             if (!\is_array($found)) {
-                $found = wp_insert_term($name, ProductCategoryTaxonomy::NAME, ['parent' => max(0, $parent)]);
+                $found = wp_insert_term(wp_slash($name), ProductCategoryTaxonomy::NAME, ['parent' => max(0, $parent)]);
                 if ($found instanceof \WP_Error) {
                     throw new \RuntimeException($found->get_error_message());
                 }

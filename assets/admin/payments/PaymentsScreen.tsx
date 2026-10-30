@@ -112,7 +112,10 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 	const [ draft, setDraft ] = useState< PaymentMethodInput >(
 		inputOf( method )
 	);
-	useUnsavedChanges( differs( draft, inputOf( method ) ) );
+	// The fees compare as numbers: "2.5" typed is "2.50" saved.
+	useUnsavedChanges(
+		differs( draft, inputOf( method ), [ 'fee', 'fee_percent' ] )
+	);
 	const languages = useOtherLanguages();
 	const translate = (
 		field: keyof PaymentTranslations,
@@ -147,7 +150,12 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 					: draft.fee_percent.trim(),
 		} )
 			.then( ( saved ) => {
-				setDraft( { ...draft, settings: saved.settings } );
+				setDraft( {
+					...draft,
+					settings: saved.settings,
+					fee: saved.fee,
+					fee_percent: saved.fee_percent,
+				} );
 				onSaved( saved );
 			} )
 			.catch( onError );

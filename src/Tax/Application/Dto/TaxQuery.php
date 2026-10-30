@@ -18,5 +18,7 @@ final readonly class TaxQuery
         public bool $forShipping = false,
         /** Taxed at the shipping address whatever the shop's basis, as goods under an import scheme are. */
         public bool $atShipping = false,
+        /** For goods: Northern Ireland is then in the EU (NorthernIreland). Services, downloads: false. */
+        public bool $goods = true,
     ) {}
 }

@@ -22,6 +22,10 @@ class BackInStockRequest
     #[ORM\Column]
     private ?int $id = null;
 
+    /** How often the mail system refused its email. */
+    #[ORM\Column(type: 'smallint', options: ['default' => 0])]
+    private int $refused = 0;
+
     public function __construct(
         /** As stock names it: "product:12", "variation:40". */
         #[ORM\Column(length: 40)]
@@ -59,5 +63,15 @@ class BackInStockRequest
     public function locale(): ?string
     {
         return $this->locale;
+    }
+
+    /**
+     * The mail system refused its email once more.
+     *
+     * @return int how often in all
+     */
+    public function refused(): int
+    {
+        return ++$this->refused;
     }
 }

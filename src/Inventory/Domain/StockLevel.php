@@ -66,6 +66,18 @@ class StockLevel
     }
 
     /**
+     * Adds to the level as it is, below zero to take: never below zero by taking, but units coming in to a level
+     * that owes (below zero) lower what it owes.
+     */
+    public function change(int $by): void
+    {
+        if ($by < 0 && $this->quantity + $by < 0) {
+            throw new InventoryRuleViolation('A stock level cannot be below zero.', 'orillacart_invalid_quantity');
+        }
+        $this->quantity += $by;
+    }
+
+    /**
      * @internal for Stock::take()
      */
     public function take(int $quantity): void

@@ -5,8 +5,16 @@
  # document: {invoice: {number, kind, amount, currency, issued_at}, seller: {legal_name, address, vat_number,
  # company_number, bank_details, footer}, order (as on the receipt), lines (the order lines a credit note gives
  # back: {line, quantity}), corrects (the invoice a credit note corrects), taxes (the tax a credit note gives
- # back: {name, percent, amount})}; locale; pdf (optional): printed to a PDF to attach to an email.
+ # back: {name, percent, amount})}; locale; pdf (optional): printed to a PDF to attach to an email; pdf_fonts
+ # (optional): the font families to print in before DejaVu Sans, as for Chinese, Japanese or Korean letters.
  #}
+{#
+ # A run of text in Arabic or Hebrew letters, marked right to left: a PDF prints it aligned so, though dompdf
+ # neither shapes Arabic letters nor reorders mixed text.
+ #}
+{% macro run(text) -%}
+    {%- if text matches '/[\\x{0590}-\\x{08FF}\\x{FB1D}-\\x{FDFF}\\x{FE70}-\\x{FEFF}]/u' -%}<span dir="rtl">{{ text }}</span>{%- else -%}{{ text }}{%- endif -%}
+{%- endmacro %}
 {% set invoice = document.invoice %}
 {% set seller = document.seller %}
 {% set order = document.order %}
@@ -46,7 +54,8 @@
     {% if pdf|default(false) %}
     {# Printed to a PDF for an email, by dompdf: no flexbox, and DejaVu Sans for every alphabet. #}
     <style>
-        body { background: #fff; font-family: "DejaVu Sans", sans-serif; font-size: 11px; }
+        body { background: #fff; font-family: {% for family in pdf_fonts|default([]) %}"{{ family|replace({'"': '', '\\': ''}) }}", {% endfor %}"DejaVu Sans", sans-serif; font-size: 11px; }
+        [dir="rtl"] { direction: rtl; unicode-bidi: embed; }
         .sheet { margin: 0; max-width: none; padding: 0; }
         .actions { display: none; }
         header, .parties { display: table; width: 100%; }
@@ -67,7 +76,7 @@
                 {% if buyer.buyer_reference %}<div>{{ __('Your reference') }}: {{ buyer.buyer_reference }}</div>{% endif %}
             </div>
             <div>
-                <strong>{{ seller.legal_name }}</strong>
+                <strong>{{ _self.run(seller.legal_name) }}</strong>
                 {% if seller.address %}<div class="note">{{ seller.address }}</div>{% endif %}
                 {% if seller.vat_number %}<div>{{ __('VAT number') }}: {{ seller.vat_number }}</div>{% endif %}
                 {% if seller.company_number %}<div>{{ __('Company number') }}: {{ seller.company_number }}</div>{% endif %}
@@ -79,14 +88,14 @@
         <div class="parties">
             <div>
                 <div class="label">{{ __('Billed to') }}</div>
-                {% for line in buyer.billing|address_lines %}{{ not loop.first ? '<br>' }}{{ line }}{% endfor %}
+                {% for line in buyer.billing|address_lines %}{{ not loop.first ? '<br>' }}{{ _self.run(line) }}{% endfor %}
                 <br>{{ buyer.email }}
                 {% if buyer.vat_number %}<br>{{ tax_number_label(buyer.billing.country) }}: {{ buyer.vat_number }}{% endif %}
             </div>
             {% if buyer.shipping_address %}
                 <div>
                     <div class="label">{{ __('Shipped to') }}</div>
-                    {% for line in buyer.shipping_address|address_lines %}{{ not loop.first ? '<br>' }}{{ line }}{% endfor %}
+                    {% for line in buyer.shipping_address|address_lines %}{{ not loop.first ? '<br>' }}{{ _self.run(line) }}{% endfor %}
                 </div>
             {% endif %}
         </div>
@@ -97,7 +106,7 @@
                 <tbody>
                     {% for given in document.lines %}
                         {% set line = order.lines[given.line] ?? null %}
-                        {% if line %}<tr><td>{{ line.name }} &times; {{ given.quantity }}</td><td class="amount"></td></tr>{% endif %}
+                        {% if line %}<tr><td>{{ _self.run(line.name) }} &times; {{ given.quantity }}</td><td class="amount"></td></tr>{% endif %}
                     {% endfor %}
                     {# translators: %s: the order number -#}
                     <tr><td>{{ __('Refund of order #%s')|format(order.number) }}</td><td class="amount">−{{ invoice.amount|money(invoice.currency) }}</td></tr>
@@ -123,7 +132,7 @@
                 <tbody>
                     {% for line in order.lines %}
                         <tr>
-                            <td>{{ line.name }}{% if line.sku %} <small>({{ line.sku }})</small>{% endif %}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}{% for answer in line.personalisation|default([]) %}{% if answer.answer != '' %}<br><small>{{ answer.label }}: {{ answer.answer }}</small>{% endif %}{% endfor %}</td>
+                            <td>{{ _self.run(line.name) }}{% if line.sku %} <small>({{ line.sku }})</small>{% endif %}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}{% for answer in line.personalisation|default([]) %}{% if answer.answer != '' %}<br><small>{{ answer.label }}: {{ answer.answer }}</small>{% endif %}{% endfor %}</td>
                             <td class="amount">{{ line.quantity }}</td>
                             <td class="amount">{{ line.unit_price|money(order.currency) }}</td>
                             <td class="amount">{{ line.total|money(order.currency) }}</td>

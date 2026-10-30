@@ -24,9 +24,28 @@ final readonly class PluginContext
         public string $version,
     ) {
         $this->dir = \dirname($pluginFile);
-        $migrations = glob($this->dir . '/migrations/Version*.php');
+        $this->build = self::buildOf($this->dir, $version);
+    }
+
+    /**
+     * The build of the files on disk now, read again from the plugin's header and migrations: another than $build
+     * once the plugin was updated under a process that started before, such as a worker that runs for hours.
+     */
+    public function filesBuild(): string
+    {
+        clearstatcache();
+        $head = @file_get_contents($this->pluginFile, false, null, 0, 8192);
+        $version = \is_string($head) && preg_match('/^[ \t\/*#@]*Version:(.*)$/mi', $head, $match) === 1 ? trim($match[1]) : $this->version;
+
+        return self::buildOf($this->dir, $version);
+    }
+
+    private static function buildOf(string $dir, string $version): string
+    {
+        $migrations = glob($dir . '/migrations/Version*.php');
         $migrations = $migrations === false ? [] : $migrations;
-        $this->build = $migrations === [] ? $version : $version . '+' . substr(basename((string) max($migrations), '.php'), \strlen('Version'));
+
+        return $migrations === [] ? $version : $version . '+' . substr(basename((string) max($migrations), '.php'), \strlen('Version'));
     }
 
     public function path(string $relative): string

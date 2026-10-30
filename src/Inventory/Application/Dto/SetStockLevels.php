@@ -7,8 +7,8 @@ namespace OrillaCart\Inventory\Application\Dto;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Command: replace an item's stock levels. Stockrooms not listed hold none of it afterwards;
- * an empty list means stock no longer limits the item.
+ * Command: an item's stock levels, at most one per stockroom. Saved through the stock route, the stockrooms listed
+ * change and the others keep their levels; an import (StockService::setLevels()) replaces them all.
  */
 final readonly class SetStockLevels
 {

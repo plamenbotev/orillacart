@@ -44,8 +44,8 @@ final class InMemoryPriceHistory implements PriceHistoryRepository
         return $all;
     }
 
-    public function add(PricePoint $point): void
+    public function add(array $points): void
     {
-        $this->points[] = $point;
+        array_push($this->points, ...$points);
     }
 }

@@ -13,6 +13,7 @@ use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Catalog\Application\Dto\VariationView;
+use OrillaCart\Catalog\Domain\Attribute;
 use OrillaCart\Catalog\Domain\AttributeOption;
 use OrillaCart\Catalog\Domain\AttributeSet;
 use OrillaCart\Catalog\Domain\AttributeSetRepository;
@@ -40,6 +41,7 @@ use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\ShippingClassService;
 use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Translations\Application\TranslationPackages;
+use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -58,6 +60,7 @@ final readonly class ProductService
         private AttributeTexts $texts,
         private Transactions $transactions,
         private TranslationPackages $packages,
+        private ?ClockInterface $clock = null,
     ) {}
 
     /**
@@ -73,15 +76,44 @@ final readonly class ProductService
     }
 
     /**
-     * Creates or replaces the product's commerce details, own attributes and attribute sets.
+     * Creates or replaces the product's commerce details, own attributes and attribute sets. With the updatedAt it
+     * was loaded with (or with $asLoaded, which takes a missing one for "never saved"), a product saved since is
+     * refused, under its row's lock, and nothing changes; without, the save goes over whatever is there.
      *
-     * @throws ProductNotFound     when there is no product post with this id
+     * @throws ProductNotFound         when there is no product post with this id
+     * @throws ProductChangedMeanwhile when it was saved since it was loaded
      * @throws CatalogRuleViolation
      */
-    public function save(int $id, SaveProduct $command): ProductView
+    public function save(int $id, SaveProduct $command, bool $asLoaded = false): ProductView
     {
         $id = $this->translations->original($id);
+
         $name = $this->name($id);
+        [$product, $removedOptions] = $this->transactions->run(function () use ($id, $command, $asLoaded): array {
+            // Checked before anything changes: the product loaded meanwhile stays as the database has it.
+            if (($asLoaded || $command->updatedAt !== null) && $this->products->lockedUpdatedAt($id) !== $command->updatedAt) {
+                throw new ProductChangedMeanwhile($id);
+            }
+
+            return $this->saveDetails($id, $command);
+        });
+        $this->packages->changed(ProductAttributePackages::KIND, $id);
+
+        $this->events->dispatch(new ProductChanged($id));
+        if ($removedOptions !== []) {
+            $this->events->dispatch(new CatalogItemsRemoved(optionIds: $removedOptions));
+        }
+
+        return ProductView::fromProduct($product, $name, $this->itemName(...), $this->texts->of($product->attributes()));
+    }
+
+    /**
+     * @return array{Product, list<int>} the product saved, and the ids of the options it no longer has
+     *
+     * @throws CatalogRuleViolation
+     */
+    private function saveDetails(int $id, SaveProduct $command): array
+    {
         if ($command->sku !== null && $this->products->isSkuTaken($command->sku, exceptProductId: $id)) {
             throw new CatalogRuleViolation('Another product or variation has the SKU "%s".', 'orillacart_duplicate_sku', values: [$command->sku]);
         }
@@ -121,6 +153,16 @@ final readonly class ProductService
         );
         $texts = $this->texts->check($command->attributes);
         $product = $this->products->find($id);
+        // A bundle holds it as it is: one that is a bundle itself, or asks the customer to choose, cannot be sold
+        // in it. Refused before anything changes.
+        if ($command->bundle !== null) {
+            $this->refuseIfBundled($id, '%1$s is in the bundles %2$s: a bundle cannot hold a bundle. Take it out of them first.');
+        }
+        $required = array_any($command->attributes, static fn(SaveAttribute $attribute): bool => $attribute->required)
+            || array_any($sets, static fn(AttributeSet $set): bool => $set->isActive() && array_any($set->ownAttributes(), static fn(Attribute $attribute): bool => $attribute->isRequired()));
+        if ($required && !($product?->hasVariations() ?? false) && !($product !== null && self::asksToChoose($product))) {
+            $this->refuseIfBundled($id, '%1$s is in the bundles %2$s, which cannot ask the customer to choose: take it out of them before making an attribute required.');
+        }
         if ($product === null) {
             $product = new Product($id, $details);
         } else {
@@ -131,19 +173,12 @@ final readonly class ProductService
         [$attributesBefore, $optionsBefore] = AttributeTexts::ids($product->ownAttributes());
         $product->replaceAttributes($drafts, $sets);
         $product->makeBundle($command->bundle === null ? null : $this->bundle($command->bundle));
-        // The details and their names' translations together, or neither.
-        $this->transactions->run(function () use ($product, $texts, $attributesBefore, $optionsBefore): void {
-            $this->products->save($product);
-            $this->texts->write($texts, $product->ownAttributes(), $attributesBefore, $optionsBefore);
-        });
-        $this->packages->changed(ProductAttributePackages::KIND, $id);
+        $product->touch($this->clock?->now() ?? new \DateTimeImmutable());
+        // The details and their names' translations together, or neither (in save()'s transaction).
+        $this->products->save($product);
+        $this->texts->write($texts, $product->ownAttributes(), $attributesBefore, $optionsBefore);
 
-        $this->events->dispatch(new ProductChanged($id));
-        if ($removedOptions !== []) {
-            $this->events->dispatch(new CatalogItemsRemoved(optionIds: $removedOptions));
-        }
-
-        return ProductView::fromProduct($product, $name, $this->itemName(...), $this->texts->of($product->attributes()));
+        return [$product, $removedOptions];
     }
 
     /**
@@ -173,6 +208,7 @@ final readonly class ProductService
         }
         $details = $product->details();
         $product->change($details->withPrice(new Pricing(Money::of($price), $details->pricing->sale())));
+        $product->touch($this->clock?->now() ?? new \DateTimeImmutable());
         $this->products->save($product);
         $this->events->dispatch(new ProductChanged($id));
     }
@@ -214,7 +250,11 @@ final readonly class ProductService
     {
         $productId = $this->translations->original($productId);
         $product = $this->get($productId);
-        $this->refuseTakenSku($command->sku, $productId, null);
+        // Any product or variation may already have the SKU, the product itself too: the variation is another item.
+        $this->refuseTakenSku($command->sku, null, null);
+        if (!$product->hasVariations()) {
+            $this->refuseIfBundled($productId, '%1$s is in the bundles %2$s, which hold it without variations: take it out of them before adding variations.');
+        }
         $details = $this->variationDetails($command);
         $names = $this->optionNames($product, $details->optionIds);
 
@@ -235,13 +275,15 @@ final readonly class ProductService
 
     /**
      * A copy of the product to start another from: a draft, "(copy)" after its name, with its texts, terms and
-     * pictures, its prices, attributes and variations, but no SKUs (they are each one item's), no stock and no
+     * pictures, its prices, attributes and variations (their texts and pictures too), but no SKUs (they are each one item's), no stock and no
      * downloads (their files are the product's own).
      *
      * @throws ProductNotFound
      */
     public function duplicate(int $id): ProductView
     {
+        // A translation's row copies the product: its translations are texts of the original (design 51).
+        $id = $this->translations->original($id);
         $original = $this->product($id);
         $copy = $this->content->copy($id);
         $attributes = array_map(static fn(AttributeView $attribute): SaveAttribute => new SaveAttribute(
@@ -264,7 +306,8 @@ final readonly class ProductService
         }
         foreach ($original->variations as $variation) {
             $optionIds = array_map(static fn(int $option): int => $options[$option] ?? $option, $variation->optionIds);
-            $this->addVariation($copy, SaveVariation::unchanged($variation, ['optionIds' => $optionIds, 'sku' => null]));
+            $added = $this->addVariation($copy, SaveVariation::unchanged($variation, ['optionIds' => $optionIds, 'sku' => null]));
+            $this->content->copyVariation($variation->id, $added->id);
         }
 
         return $this->product($copy);
@@ -295,6 +338,13 @@ final readonly class ProductService
     {
         $productId = $this->translations->original($productId);
         $product = $this->get($productId);
+        $holding = array_values(array_filter(
+            $this->bundles($productId),
+            static fn(Product $bundle): bool => array_any($bundle->bundle()->items ?? [], static fn(BundleItem $item): bool => $item->productId === $productId && \in_array($variationId, $item->variationIds, true)),
+        ));
+        if ($holding !== []) {
+            throw new CatalogRuleViolation('The bundles %1$s hold this variation of %2$s: take it out of them first.', 'orillacart_bundled_item', values: [$this->names($holding), $this->content->name($productId)]);
+        }
         $product->removeVariation($variationId);
         $this->products->save($product);
         $this->content->deleteVariation($variationId);
@@ -407,6 +457,41 @@ final readonly class ProductService
         }
 
         return new Bundle($items, $command->pricing, $command->discount === null || $command->discount === '' ? null : Money::of($command->discount));
+    }
+
+    /**
+     * Refuses to change a product that bundles hold so that they could no longer sell it: checkout would fail.
+     *
+     * @param string $message with the product's name and the bundles'
+     *
+     * @throws CatalogRuleViolation
+     */
+    private function refuseIfBundled(int $productId, string $message): void
+    {
+        $bundles = $this->bundles($productId);
+        if ($bundles !== []) {
+            throw new CatalogRuleViolation($message, 'orillacart_bundled_item', values: [$this->content->name($productId), $this->names($bundles)]);
+        }
+    }
+
+    /** @return list<Product> the bundles holding the product, the product itself left out */
+    private function bundles(int $productId): array
+    {
+        $ids = array_values(array_diff($this->products->bundlesHolding([$productId]), [$productId]));
+
+        return $ids === [] ? [] : $this->products->findMany($ids);
+    }
+
+    /** @param list<Product> $products */
+    private function names(array $products): string
+    {
+        return implode(', ', array_map(fn(Product $product): string => '"' . $this->content->name($product->id()) . '"', $products));
+    }
+
+    /** Whether the customer must choose an option of it: a product without variations with a required attribute. */
+    private static function asksToChoose(Product $product): bool
+    {
+        return !$product->hasVariations() && array_any($product->offeredOptions(), static fn(array $offered): bool => $offered[0]->isRequired());
     }
 
     /**

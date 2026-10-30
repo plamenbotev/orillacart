@@ -25,6 +25,14 @@ interface ProductRepository
     public function findMany(array $ids): array;
 
     /**
+     * The product or variation whose SKU is this one, as the database tells SKUs apart (letter case aside, as
+     * its unique index does); SKUs are unique across both.
+     *
+     * @return array{int, ?int}|null its product's id, and the variation's for a variation
+     */
+    public function withSku(string $sku): ?array;
+
+    /**
      * Products whose SKU, or one of whose variations' SKU, contains the text.
      *
      * @return list<int>
@@ -129,6 +137,12 @@ interface ProductRepository
     public function save(Product $product): void;
 
     public function remove(Product $product): void;
+
+    /**
+     * Locks the product's row until the transaction it runs in ends, and says when its details were last saved
+     * (Product::updatedAt()) as the database has it now; null for a product whose details were never saved.
+     */
+    public function lockedUpdatedAt(int $id): ?string;
 
     /** The products in this shipping class leave it. */
     public function forgetShippingClass(int $shippingClassId): void;

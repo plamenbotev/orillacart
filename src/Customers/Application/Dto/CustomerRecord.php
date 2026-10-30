@@ -20,5 +20,7 @@ final readonly class CustomerRecord
         public AddressBook $addresses = new AddressBook(),
         /** Whether checkout offers to remind them of a cart they leave, the box ticked. */
         public bool $cartReminders = true,
+        /** The language their profile names; null for the site's. */
+        public ?string $locale = null,
     ) {}
 }

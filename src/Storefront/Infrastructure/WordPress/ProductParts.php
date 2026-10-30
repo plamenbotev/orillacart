@@ -239,9 +239,12 @@ final class ProductParts
         if ($page->rating === null && !$invitation->open && \in_array($invitation->reason, [ReviewInvitationView::OFF, ReviewInvitationView::CLOSED], true)) {
             return '';
         }
+        // The page before and the one after: the reviews link to those only.
         $pageUrls = [];
-        for ($number = 1; $number <= $page->pages; ++$number) {
-            $pageUrls[$number] = $number === 1 ? remove_query_arg('review-page') : add_query_arg('review-page', $number);
+        foreach ([$page->page - 1, $page->page + 1] as $number) {
+            if ($number >= 1 && $number <= $page->pages) {
+                $pageUrls[$number] = $number === 1 ? remove_query_arg('review-page') : add_query_arg('review-page', $number);
+            }
         }
 
         return $this->templates->render('storefront/reviews.html.twig', [

@@ -14,16 +14,20 @@ final class SentGiftCards implements GiftCardMail
     /** As when the gift card email is turned off, or the mail fails. */
     public bool $refuse = false;
 
+    /** @var list<?string> the language each card was sent in */
+    public array $locales = [];
+
     /** @var list<?string> the last day of each card sent */
     public array $expiries = [];
 
-    public function send(string $to, string $code, string $amount, string $currency, ?string $expiresOn, string $recipientName, string $message): bool
+    public function send(string $to, string $code, string $amount, string $currency, ?string $expiresOn, string $recipientName, string $message, ?string $locale = null): bool
     {
         if ($this->refuse) {
             return false;
         }
         $this->sent[] = ['to' => $to, 'code' => $code, 'amount' => $amount];
         $this->expiries[] = $expiresOn;
+        $this->locales[] = $locale;
 
         return true;
     }

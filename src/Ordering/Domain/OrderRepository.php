@@ -37,6 +37,17 @@ interface OrderRepository
     public function search(OrderSearch $search, int $offset, int $limit): array;
 
     /**
+     * The next orders the search finds after the given one, in the search's order, uncounted: for walking every
+     * match a batch at a time, so an order neither repeats nor is skipped as orders come and go meanwhile. Their
+     * lines, with their taxes and adjustments, and notes are loaded with them, a query each.
+     *
+     * @param Order|null $after the last of the batch before; null for the first
+     *
+     * @return list<Order>
+     */
+    public function searchAfter(OrderSearch $search, ?Order $after, int $limit): array;
+
+    /**
      * Whether the customer, by account or by email, has an order that was not cancelled or did not fail.
      *
      * @param int|null $exceptOrderId an order not to count: the one being priced again

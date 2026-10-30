@@ -12,10 +12,13 @@ use OrillaCart\Assistant\Infrastructure\WordPress\Hooks\CallApprovalPage;
 /**
  * Approvals kept as transients for as long as they last: one by its token, for the page, and one pointing to it
  * by the caller and the call, for the call made again. An approval lost early (an evicted object cache) is asked
- * again, never taken as a yes.
+ * again, never taken as a yes. Spending one is claimed in the database first, so of two retries sent at once only
+ * one runs.
  */
 final readonly class TransientCallApprovals implements CallApprovals
 {
+    public function __construct(private OnceClaims $claims) {}
+
     private const string BY_TOKEN = 'orillacart_mcp_approval_';
     private const string BY_CALL = 'orillacart_mcp_approval_call_';
 
@@ -64,10 +67,13 @@ final readonly class TransientCallApprovals implements CallApprovals
         $this->save($approval->answered($yes));
     }
 
-    public function spend(CallApproval $approval): void
+    public function spend(CallApproval $approval): bool
     {
+        $claimed = $this->claims->claim('mcp-approval|' . $approval->token, $approval->expiresAt + 1);
         delete_transient(self::BY_TOKEN . $approval->token);
         delete_transient(self::BY_CALL . self::callKey($approval->userId, $approval->keyId, $approval->call));
+
+        return $claimed;
     }
 
     public function url(CallApproval $approval): string

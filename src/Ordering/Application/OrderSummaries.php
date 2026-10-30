@@ -14,8 +14,10 @@ use OrillaCart\Ordering\Application\Dto\OrderFieldView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Domain\MarkedOrder;
+use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRepository;
+use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Shared\Domain\Money;
 
 /**
@@ -54,6 +56,27 @@ final readonly class OrderSummaries implements Orders
         } catch (OrderNotFound) {
             return null;
         }
+    }
+
+    /**
+     * Every order the search finds, in its order, a batch at a time: each batch's orders are read in a few queries
+     * and handed over together, and the next batch starts after the last of them, so an order placed or deleted
+     * meanwhile neither repeats one nor skips one. Forget what was loaded between batches, as $write may.
+     *
+     * @param \Closure(list<OrderSummary>): void $write
+     */
+    public function each(OrderSearch $search, int $batch, \Closure $write): void
+    {
+        $after = null;
+        do {
+            $orders = $this->records->searchAfter($search, $after, $batch);
+            if ($orders === []) {
+                return;
+            }
+            // A summary shows no downloads: their links are not made.
+            $write(array_map(static fn(Order $order): OrderSummary => self::summary(OrderView::fromOrder($order, true)), $orders));
+            $after = $orders[\count($orders) - 1];
+        } while (\count($orders) === $batch);
     }
 
     public static function summary(OrderView $order): OrderSummary

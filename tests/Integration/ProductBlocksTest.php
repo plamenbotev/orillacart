@@ -137,6 +137,40 @@ final class ProductBlocksTest extends RestTestCase
         self::assertStringContainsString('orillacart-product-card__name', do_blocks('<!-- wp:orillacart/products /-->'), 'without a card, the shop\'s own');
     }
 
+    public function testTheShopsListReadsAsManyTimesForTwelveCardsAsForThree(): void
+    {
+        $this->actAs('administrator');
+        $made = [];
+        $queries = [];
+        foreach ([2, 11] as $more) {
+            for ($i = \count($made); $i < $more; ++$i) {
+                $id = wp_insert_post(['post_type' => ProductPostType::NAME, 'post_title' => "Lamp {$i}", 'post_excerpt' => 'Warm.', 'post_status' => 'publish']);
+                self::assertIsInt($id);
+                $made[] = $id;
+                self::assertSame(200, $this->request('PUT', "/products/{$id}", ['price' => (string) (10 + $i), 'stock_mode' => 'always_available'], nonce: true)->get_status());
+                wp_set_object_terms($id, [$this->category], ProductCategoryTaxonomy::NAME);
+            }
+            $runner = self::kernel()->container()->get(JobRunner::class);
+            self::assertInstanceOf(JobRunner::class, $runner);
+            while ($runner->work(['search'], 100, 'test')->count() > 0);
+            // Read as a visitor's page would: nothing cached from saving them.
+            wp_set_current_user(0);
+            wp_cache_flush();
+            global $wpdb;
+            \assert($wpdb instanceof \wpdb);
+            $before = $wpdb->num_queries;
+            $html = do_blocks('<!-- wp:orillacart/products {"perPage":12} /-->');
+            $queries[] = $wpdb->num_queries - $before;
+            self::assertSame($more + 1, substr_count($html, 'orillacart-product-card__name'), (string) $more);
+            $this->actAs('administrator');
+        }
+        // A card reads nothing of its own: the posts, fields, terms and pictures are read for the whole list.
+        self::assertLessThanOrEqual($queries[0] + 3, $queries[1], 'queries for 3 and 12 cards: ' . implode(', ', $queries));
+        foreach ($made as $id) {
+            wp_delete_post($id, true);
+        }
+    }
+
     public function testTheShopsPatternsAreMadeOfBlocksThatExist(): void
     {
         $patterns = [];

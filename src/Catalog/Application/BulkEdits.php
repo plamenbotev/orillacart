@@ -11,12 +11,13 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveSale;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Catalog\Application\Dto\VariationView;
+use OrillaCart\Catalog\Domain\Bundle;
 use OrillaCart\Catalog\Domain\CatalogRuleViolation;
 use OrillaCart\Inventory\Application\Dto\ChangeStockLevel;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\StockNote;
-use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Inventory\Domain\InventoryRuleViolation;
 use OrillaCart\Inventory\Domain\StockReason;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
@@ -60,16 +61,17 @@ final readonly class BulkEdits
                 if (!$product->saved) {
                     continue;
                 }
-                [$levels, $received] = $this->levels($product, $edit);
+                $levels = $this->levels($product, $edit);
                 // All of it or none: a variation that cannot take its price leaves the product's own unchanged too.
-                $this->transactions->run(function () use ($product, $edit, $levels, $received, $userId): void {
+                $this->transactions->run(function () use ($product, $edit, $levels, $userId): void {
                     $this->prices($product, $edit);
-                    $note = new StockNote(StockReason::BulkEdit, null, $userId);
-                    if ($levels !== []) {
-                        $this->stock->changeLevels($levels, $note);
+                    if ($levels === []) {
+                        return;
                     }
-                    if ($received !== []) {
-                        $this->stock->giveBack($received, $note);
+                    try {
+                        $this->stock->changeLevels($levels, new StockNote(StockReason::BulkEdit, null, $userId), overwrite: true);
+                    } catch (InventoryRuleViolation $e) {
+                        throw $e->errorCode === 'orillacart_invalid_quantity' ? new CatalogRuleViolation('the stock would be below zero.', $e->errorCode, $e) : $e;
                     }
                 });
             } catch (RuleViolation $e) {
@@ -86,12 +88,17 @@ final readonly class BulkEdits
             return;
         }
         // Every price is worked out first: one that cannot be leaves the product, variations and all, as it was.
-        [$price, $sale] = $this->priced($product->price, $product->sale, $edit);
+        // The product's own price is left alone where it is not what it sells for, as quick edit leaves it: its
+        // variations have theirs, or a bundle adds up its items'.
+        $ownPrice = $product->variations === [] && $product->bundle?->pricing !== Bundle::SUM;
+        [$price, $sale] = $ownPrice ? $this->priced($product->price, $product->sale, $edit) : [null, null];
         $variations = [];
         foreach ($product->variations as $variation) {
             $variations[] = [$variation, ...$this->priced($variation->price, $variation->sale, $edit)];
         }
-        $this->products->save($product->id, SaveProduct::unchanged($product, ['price' => $price, 'sale' => $sale]));
+        if ($price !== null) {
+            $this->products->save($product->id, SaveProduct::unchanged($product, ['price' => $price, 'sale' => $sale]));
+        }
         foreach ($variations as [$variation, $variationPrice, $variationSale]) {
             $this->products->changeVariation($product->id, $variation->id, SaveVariation::unchanged($variation, ['price' => $variationPrice, 'sale' => $variationSale]));
         }
@@ -129,41 +136,38 @@ final readonly class BulkEdits
     }
 
     /**
-     * The level the change gives the product's items in the stockroom, worked out before anything is saved; and
-     * what comes in where items are owed, added to what is owed rather than set (a level is never set below zero).
+     * The change to each of the product's items in the stockroom: "set" sets the level whatever it is now, "add"
+     * adds to the level as it is when it is saved, under its lock, so units sold meanwhile stay sold; adding to an
+     * item owed on backorder lowers what it owes.
      *
-     * @return array{list<ChangeStockLevel>, list<TakenStock>}
+     * @return list<ChangeStockLevel>
      *
-     * @throws CatalogRuleViolation for stock that would go below zero
+     * @throws CatalogRuleViolation for stock that would be set below zero
      */
     private function levels(ProductView $product, BulkEdit $edit): array
     {
         if ($edit->stock === null || $edit->stockroomId === null) {
-            return [[], []];
+            return [];
+        }
+        if ($edit->stock === 'set' && $edit->stockBy < 0) {
+            throw new CatalogRuleViolation('the stock would be below zero.', 'orillacart_invalid_quantity');
         }
         $items = $product->variations === []
             ? [StockItemRef::product($product->id)]
             : array_map(static fn(VariationView $variation): StockItemRef => StockItemRef::variation($variation->id), $product->variations);
-        $levels = $this->stock->levelsOf($items);
-        $changed = [];
-        $received = [];
-        foreach ($items as $item) {
-            $now = $levels["{$item->kind}:{$item->id}"] ?? [];
-            $current = $now[$edit->stockroomId] ?? 0;
-            $quantity = $edit->stock === 'set' ? $edit->stockBy : $current + $edit->stockBy;
-            // Below zero only by what is owed already: adding units to an item owed on backorder lowers what it owes.
-            if ($quantity < 0 && ($edit->stock === 'set' || $quantity < $current)) {
-                throw new CatalogRuleViolation('the stock would be below zero.', 'orillacart_invalid_quantity');
+        if ($edit->stock === 'add' && $edit->stockBy < 0) {
+            // Refused before anything is saved, the price too; checked again under the levels' lock.
+            foreach ($this->stock->levelsOf($items) as $levels) {
+                if (($levels[$edit->stockroomId] ?? 0) + $edit->stockBy < 0) {
+                    throw new CatalogRuleViolation('the stock would be below zero.', 'orillacart_invalid_quantity');
+                }
             }
-            if ($edit->stock !== 'set' && $current < 0) {
-                $received[] = new TakenStock("{$item->kind}:{$item->id}", $edit->stockroomId, $edit->stockBy);
-                continue;
-            }
-            // That stockroom's level only: the others, and what they owe, stay as they are.
-            $changed[] = new ChangeStockLevel($item->kind, $item->id, $edit->stockroomId, $quantity);
         }
 
-        return [$changed, $received];
+        // That stockroom's level only: the others, and what they owe, stay as they are.
+        return array_map(static fn(StockItemRef $item): ChangeStockLevel => $edit->stock === 'set'
+            ? new ChangeStockLevel($item->kind, $item->id, $edit->stockroomId, $edit->stockBy)
+            : new ChangeStockLevel($item->kind, $item->id, $edit->stockroomId, change: $edit->stockBy), $items);
     }
 
     /**

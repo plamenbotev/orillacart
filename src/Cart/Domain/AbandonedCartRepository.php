@@ -10,6 +10,9 @@ interface AbandonedCartRepository
 
     public function save(AbandonedCart $abandoned): void;
 
+    /** The cart left at checkout the order was placed from, if it was. */
+    public function ofOrder(int $orderId): ?AbandonedCart;
+
     /**
      * Marks the cart reminded, unless it was already: in one statement, so of two workers sending the same
      * reminder only one goes on.
@@ -30,7 +33,7 @@ interface AbandonedCartRepository
     public function leftSince(\DateTimeImmutable $before, int $limit): array;
 
     /**
-     * What was left between the moments, in the currency.
+     * What was left between the moments, in the currency; recovered: those whose order was paid.
      *
      * @return array{abandoned: int, value: string, reminded: int, recovered: int, recovered_value: string, recovered_after_reminder: int}
      */

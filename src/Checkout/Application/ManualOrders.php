@@ -26,11 +26,15 @@ use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Tax\Application\Dto\ReverseCharge;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
+use OrillaCart\Tax\Application\VatNumbers;
 
 /**
  * Orders the shop takes itself, as on the phone or in person: priced and stocked as checkout does, for a
  * customer's account or a guest, to any country, paid already or waiting for the payment.
+ *
+ * @phpstan-import-type Priced from OrderPricing
  */
 final readonly class ManualOrders
 {
@@ -45,7 +49,29 @@ final readonly class ManualOrders
         private Discounts $discounts,
         private ExtensionFailures $failures,
         private Languages $languages,
+        private VatNumbers $vatNumbers,
     ) {}
+
+    /**
+     * The order priced as checkout prices it, with the reverse charge it decides for the VAT number: services by
+     * where the business is, goods by where they go (VatNumbers::forGoodsTo()).
+     *
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: ?string}> $items
+     *
+     * @return array{Priced, ReverseCharge}
+     */
+    private function priced(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?int $customerId, ?string $email, ?string $payment, ?string $vatNumber): array
+    {
+        $reverse = $this->vatNumbers->reverseCharge($billing?->country, $vatNumber);
+        $price = fn(?bool $goods): array => $this->pricing->price($items, $shipping, $billing, $shippingOption, $shipping?->postcode, [], $customerId, $email, reverseCharge: $reverse->applies, payment: $payment, reverseChargeGoods: $goods);
+        $priced = $price(null);
+        $goods = $this->vatNumbers->forGoodsTo($reverse, $this->pricing->goodsTo($priced, $shipping));
+        if ($goods !== $reverse) {
+            $priced = $price($goods->applies);
+        }
+
+        return [$priced, OrderPricing::underReverseCharge($reverse, $goods, $priced)];
+    }
 
     /**
      * @throws CheckoutRuleViolation for items not sold or not available in that quantity
@@ -54,7 +80,7 @@ final readonly class ManualOrders
     {
         $shipping = $query->shippingCountry === null ? null : new TaxAddress($query->shippingCountry, $query->shippingState, $query->shippingPostcode);
         $billing = $query->billingCountry === null ? $shipping : new TaxAddress($query->billingCountry, $query->billingState, $query->billingPostcode);
-        $priced = $this->pricing->price(self::items($query->items), $shipping ?? $billing, $billing, $query->shippingOption, $query->shippingPostcode, [], $query->customerId, $query->email, payment: $query->payment);
+        [$priced, $reverse] = $this->priced(self::items($query->items), $shipping ?? $billing, $billing, $query->shippingOption, $query->customerId, $query->email, $query->payment, $query->vatNumber);
         $bill = $priced['bill'];
         $currency = $this->settings->current()->currency;
 
@@ -84,6 +110,8 @@ final readonly class ManualOrders
             $this->pricing->discounts($priced),
             array_map(static fn(array $fee): CheckoutFeeView => new CheckoutFeeView($fee['label'], (string) $fee['amount']), $bill->fees()),
             (string) $bill->feesTax(),
+            $reverse->applies,
+            $reverse->message,
         );
     }
 
@@ -108,16 +136,15 @@ final readonly class ManualOrders
         $failed = $this->failures->mark();
         // In the site's language, which the order has for its emails, whichever the admin's is (design 51).
         $order = $this->languages->in(null, fn(): OrderView => $this->transactions->run(function () use ($command, $billingAddress, $shippingAddress, $currency, $userId, $failed): OrderView {
-            $priced = $this->pricing->price(
+            [$priced, $reverse] = $this->priced(
                 self::items($command->items),
                 new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode, $shippingAddress->city, $shippingAddress->street),
                 new TaxAddress($billingAddress->country, $billingAddress->state, $billingAddress->postcode, $billingAddress->city, $billingAddress->street),
                 $command->shippingOption,
-                $shippingAddress->postcode,
-                [],
                 $command->customerId,
                 $command->email,
-                payment: $command->payment,
+                $command->payment,
+                $command->vatNumber,
             );
             if ($this->failures->closedSince($failed)) {
                 throw new CheckoutRuleViolation('Some prices cannot be worked out right now: an add-on that sets them failed. Try again in a moment.', 'orillacart_prices_unavailable');
@@ -143,6 +170,8 @@ final readonly class ManualOrders
                 $command->note,
                 [],
                 $bill->includesTax(),
+                vatNumber: $reverse->number,
+                reverseCharge: $reverse->applies,
                 // The site's language, which the order was taken in: what its emails and invoices are written in.
                 locale: $this->languages->current(),
                 taxExemption: $this->pricing->exemption($priced),

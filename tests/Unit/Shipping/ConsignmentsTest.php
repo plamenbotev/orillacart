@@ -132,6 +132,25 @@ final class ConsignmentsTest extends TestCase
         $this->shop->consignments->cancel($again->id, 7);
     }
 
+    public function testABookingReadsWhatIsLeftUnderTheOrdersLockSoASecondIsRefused(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart(), $this->order('express', 'cash_on_delivery'));
+        $locks = \count($this->shop->transactions->locks);
+        $before = $this->shop->transactions->outermost;
+
+        $this->shop->consignments->book($placed->number, new BookShipment(), 7);
+
+        $taken = \array_slice($this->shop->transactions->locks, $locks);
+        self::assertSame([$before + 1, "order:{$placed->number}"], $taken[0] ?? null, 'the order is locked first, in the booking\'s own transaction');
+        try {
+            $this->shop->consignments->book($placed->number, new BookShipment(), 7);
+            self::fail('booked twice');
+        } catch (ShippingRuleViolation $e) {
+            self::assertSame('orillacart_nothing_to_ship', $e->errorCode);
+        }
+        self::assertCount(1, $this->courier->booked, 'the courier was asked once');
+    }
+
     public function testAShippingMethodThatBreaksIsAReadableRefusal(): void
     {
         $order = $this->order('office', 'cash_on_delivery', 'SOF-1');
@@ -217,6 +236,26 @@ final class ConsignmentsTest extends TestCase
         $this->courier->tracking[$back->number] = new Tracking(Tracking::RETURNED, 'Refused by the recipient');
         $this->shop->consignments->track($back->id);
         self::assertContains("The courier is bringing shipment {$back->number} back: Refused by the recipient", array_column($this->shop->orders->order($returned->number)->notes, 'text'));
+    }
+
+    public function testAnOrderForAnOfficeKeepsItsPostcodeUntilItShipsAnotherWay(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart(), $this->order('office', 'bank_transfer', 'SOF-1'));
+        $change = function (string $postcode) use ($placed): string {
+            $address = new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Plovdiv', $postcode, 'BG', '+359 2 000 0000');
+            try {
+                $this->shop->orders->changeContact($placed->number, new ChangeOrderContact('ada@example.com', $address, $address), 7);
+            } catch (RuleViolation $e) {
+                return $e->errorCode;
+            }
+
+            return 'changed';
+        };
+
+        self::assertSame('orillacart_pickup_point_stale', $change('4000'), 'the office near Sofia would stay');
+        self::assertSame('SOF-1', $this->shop->orders->order($placed->number)->pickupPointId);
+        $this->shop->editing->edit($placed->number, new EditOrderItems([new EditedItem(10, 1)], $this->option('express')), 7);
+        self::assertSame('changed', $change('4000'), 'to the door: the address may change');
     }
 
     public function testABookedOrShippedOrderKeepsItsAddressButItsPhoneAndEmailChange(): void

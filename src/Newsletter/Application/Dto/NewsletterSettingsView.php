@@ -15,5 +15,7 @@ final readonly class NewsletterSettingsView
         public array $lists,
         /** How many are subscribed now. */
         public int $subscribers,
+        /** Whether a new sign-up counts only once confirmed from the email (double opt-in). */
+        public bool $confirmNew = true,
     ) {}
 }

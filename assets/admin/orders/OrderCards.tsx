@@ -13,6 +13,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { fetchCustomers, type Customer } from '../customers/api';
+import { toLocal } from '../shared/dates';
 import {
 	assignOrder,
 	bookShipment,
@@ -174,7 +175,9 @@ function DownloadRow( {
 		download.remaining === null ? '' : String( download.remaining )
 	);
 	const [ until, setUntil ] = useState(
-		download.expires_at === null ? '' : download.expires_at.slice( 0, 10 )
+		download.expires_at === null
+			? ''
+			: toLocal( download.expires_at ).slice( 0, 10 )
 	);
 
 	return (

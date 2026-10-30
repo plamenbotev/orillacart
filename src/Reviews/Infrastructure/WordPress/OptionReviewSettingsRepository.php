@@ -9,6 +9,7 @@ use OrillaCart\Reviews\Domain\ReviewSettings;
 use OrillaCart\Reviews\Domain\ReviewSettingsRepository;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
+use OrillaCart\Shared\WordPress\AutoloadedOption;
 
 final readonly class OptionReviewSettingsRepository implements ReviewSettingsRepository, LifecycleListener, RemovesShopData
 {
@@ -27,9 +28,16 @@ final readonly class OptionReviewSettingsRepository implements ReviewSettingsRep
         update_option(self::OPTION, ['policy' => $settings->policy->value], true);
     }
 
-    public function activate(): void {}
+    public function activate(): void
+    {
+        $this->upgrade(null);
+    }
 
-    public function upgrade(?string $fromVersion): void {}
+    /** Read on every storefront request: stored with its defaults, autoloaded, so reading it costs no query. */
+    public function upgrade(?string $fromVersion): void
+    {
+        AutoloadedOption::keep(self::OPTION, fn() => $this->save($this->load()));
+    }
 
     public function deactivate(): void {}
 

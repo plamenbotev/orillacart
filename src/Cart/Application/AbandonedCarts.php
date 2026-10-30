@@ -15,7 +15,7 @@ use Psr\Clock\ClockInterface;
 /**
  * Carts left at checkout. A cart nobody changed, and whose customer was not back at checkout, for the shop's hours
  * counts abandoned once: what it held is kept for the report, and a customer who asked at checkout is reminded of
- * it. An order placed from it after counts it recovered. The email goes when the cart does.
+ * it. An order placed from it after stops the reminder, and counts it recovered once paid. The email goes when the cart does.
  */
 final readonly class AbandonedCarts
 {
@@ -63,7 +63,7 @@ final readonly class AbandonedCarts
     public function reminder(int $abandonedId): ?CartReminder
     {
         $left = $this->abandoned->find($abandonedId);
-        if ($left === null || $left->isRecovered() || $left->remindedAt() !== null) {
+        if ($left === null || $left->isOrdered() || $left->remindedAt() !== null) {
             return null;
         }
         $cart = $this->carts->find($left->cartId());
@@ -120,6 +120,16 @@ final readonly class AbandonedCarts
             'totals' => $this->abandoned->totals($from, $until, $currency),
             'latest' => array_map(AbandonedCartView::of(...), $this->abandoned->latest($from, $until, $currency, $limit)),
         ];
+    }
+
+    /** The order placed from a cart left at checkout was paid: the cart counts recovered from now. */
+    public function orderPaid(int $orderId): void
+    {
+        $left = $this->abandoned->ofOrder($orderId);
+        if ($left !== null && !$left->isRecovered()) {
+            $left->recovered($this->clock->now());
+            $this->abandoned->save($left);
+        }
     }
 
     /** Forgets an email given at checkout, as a privacy request asks. */

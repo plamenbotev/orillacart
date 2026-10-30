@@ -611,4 +611,84 @@ test.describe( 'The admin', () => {
 			);
 		}
 	} );
+
+	test( 'keeps the amounts typed on the Stock screen when a sale moved a level, and saves them once asked', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		const stockroom = await requestUtils.rest< { id: number } >( {
+			method: 'POST',
+			path: '/orillacart/v1/stockrooms',
+			data: { name: 'E2E Counting room' },
+		} );
+		const jar = await product( requestUtils, 'E2E Jar', { price: '4' } );
+		const level = async () =>
+			(
+				await requestUtils.rest< {
+					levels: { stockroom_id: number; quantity: number }[];
+				} >( { path: `/orillacart/v1/stock/product/${ jar.id }` } )
+			).levels.find( ( item ) => item.stockroom_id === stockroom.id )
+				?.quantity;
+		try {
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: `/orillacart/v1/stock/product/${ jar.id }`,
+				data: {
+					levels: [
+						{
+							stockroom_id: stockroom.id,
+							quantity: 5,
+							was: ( await level() ) ?? null,
+						},
+					],
+				},
+			} );
+			await admin.visitAdminPage( 'admin.php', 'page=orillacart-stock' );
+			await page
+				.getByRole( 'searchbox', { name: 'Search by name, SKU or ID' } )
+				.fill( 'E2E Jar' );
+			const cell = page.getByRole( 'spinbutton', {
+				name: 'E2E Jar in E2E Counting room',
+			} );
+			await expect( cell ).toHaveValue( '5' );
+			await cell.fill( '9' );
+
+			// A sale takes one meanwhile.
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: `/orillacart/v1/stock/product/${ jar.id }`,
+				data: {
+					levels: [ { stockroom_id: stockroom.id, change: -1 } ],
+				},
+			} );
+			await page.getByRole( 'button', { name: 'Save 1 change' } ).click();
+			await expect(
+				page
+					.getByText(
+						'E2E Jar in E2E Counting room now holds 4; you typed 9.'
+					)
+					.first()
+			).toBeVisible();
+			await expect( cell ).toHaveValue( '9' );
+			expect( await level() ).toBe( 4 );
+
+			await page
+				.getByRole( 'button', { name: 'Save what I typed anyway' } )
+				.click();
+			await expect(
+				page.getByText( 'Stock saved.' ).first()
+			).toBeVisible();
+			expect( await level() ).toBe( 9 );
+		} finally {
+			await remove(
+				requestUtils,
+				`/wp/v2/orillacart_product/${ jar.id }?force=true`
+			);
+			await remove(
+				requestUtils,
+				`/orillacart/v1/stockrooms/${ stockroom.id }`
+			);
+		}
+	} );
 } );

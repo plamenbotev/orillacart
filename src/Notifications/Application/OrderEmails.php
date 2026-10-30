@@ -134,7 +134,10 @@ final readonly class OrderEmails
      */
     public function refunded(int $orderId, string $amount, bool $full, array $quantities, bool $tellCustomer = true, ?string $credit = null): void
     {
-        $refund = ['amount' => $amount, 'full' => $full, 'quantities' => array_map(static fn(int $line, int $quantity): array => ['line' => $line, 'quantity' => $quantity], array_keys($quantities), array_values($quantities)), 'credit' => $credit];
+        $refund = ['amount' => $amount, 'full' => $full, 'quantities' => array_map(static fn(int $line, int $quantity): array => ['line' => $line, 'quantity' => $quantity], array_keys($quantities), array_values($quantities)), 'credit' => $credit,
+            // The credit note this refund made, issued before this runs: the email carries that one, not whichever
+            // is the order's newest when the job runs.
+            'credit_note' => $this->invoices->latestNumber($orderId, InvoiceKind::CreditNote)];
         if ($tellCustomer) {
             $this->queue($orderId, EmailKind::OrderRefunded, refund: $refund);
         }
@@ -185,7 +188,7 @@ final readonly class OrderEmails
      * @throws EmailNotSent    the mail system refused it, perhaps for a while
      *
      * @param int|null                                                                               $noteId for the customer note email: the note it brings
-     * @param array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>, credit?: string|null}|null $refund for the refund email: the refund it tells of
+     * @param array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>, credit?: string|null, credit_note?: string|null}|null $refund for the refund email: the refund it tells of
      */
     public function send(int $orderId, EmailKind $kind, ?int $noteId = null, ?array $refund = null): void
     {
@@ -244,7 +247,7 @@ final readonly class OrderEmails
     }
 
     /**
-     * @param array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>, credit?: string|null}|null $refund
+     * @param array{amount: string, full: bool, quantities: list<array{line: int, quantity: int}>, credit?: string|null, credit_note?: string|null}|null $refund
      *
      * @throws EmailNotWritten
      */
@@ -283,7 +286,7 @@ final readonly class OrderEmails
         $email = $this->writer->write($kind->template(), $kind->value, $order->email, $order->locale, $context, null, $order->number);
         $files = match ($kind) {
             EmailKind::OrderProcessing, EmailKind::OrderCompleted => $this->attachments->files($order->number, InvoiceKind::Invoice, $order->locale),
-            EmailKind::OrderRefunded => $this->attachments->files($order->number, InvoiceKind::CreditNote, $order->locale),
+            EmailKind::OrderRefunded => $this->attachments->files($order->number, InvoiceKind::CreditNote, $order->locale, $refund['credit_note'] ?? null),
             default => [],
         };
 

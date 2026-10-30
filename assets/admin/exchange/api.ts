@@ -6,7 +6,7 @@ import type { ExportColumn } from '../shared/exports';
 export interface ProductImport {
 	id: number;
 	filename: string;
-	status: 'ready' | 'running' | 'done';
+	status: 'ready' | 'running' | 'done' | 'failed';
 	/** The file's columns the import reads. */
 	columns: ExportColumn[];
 	/** The file's columns it does not: unknown, or only exported. */

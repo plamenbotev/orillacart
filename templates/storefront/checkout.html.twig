@@ -25,7 +25,8 @@
                 {% include 'storefront/_tax_exemption_form.html.twig' with {prefix: 'checkout-exemption'} %}
             </details>
         {% endif %}
-        <form class="orillacart-checkout__form" data-orillacart-checkout{{ address_checks ?? false ? ' data-orillacart-address-checks' }} novalidate>
+        {# The cart and the account, for an order refused for an emptied cart, or one that may have been placed unseen. #}
+        <form class="orillacart-checkout__form" data-orillacart-checkout{{ address_checks ?? false ? ' data-orillacart-address-checks' }} data-orillacart-cart-url="{{ links.cart }}" data-orillacart-account-url="{{ links.account }}" novalidate>
             <div class="orillacart-checkout__details">
                 {{ slot('checkout_before_details') }}
                 <fieldset class="orillacart-checkout__contact">
@@ -114,7 +115,7 @@
             {# Outside the summary, which a refresh draws again: the tick stays. #}
             {% if legal.accept_terms ?? false %}
                 <p class="orillacart-field orillacart-field--check orillacart-checkout__terms">
-                    <input id="orillacart-terms" type="checkbox" name="accepts_terms" value="1" required>
+                    <input id="orillacart-terms" type="checkbox" name="accepts_terms" value="1" required data-orillacart-field="accepts_terms">
                     <label for="orillacart-terms">
                         {%- if legal.terms -%}
                             {# translators: %s: a link to the shop's terms of sale -#}

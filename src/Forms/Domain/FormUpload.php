@@ -112,6 +112,16 @@ class FormUpload
         $this->heldAt = $now;
     }
 
+    /**
+     * The order that took it did not go ahead, its payment never starting: the cart it came from has it again, and
+     * holds it from now.
+     */
+    public function givenBack(\DateTimeImmutable $now): void
+    {
+        $this->orderId = null;
+        $this->heldAt = $now;
+    }
+
     /** The order that took it keeps it; an upload answers one order only. */
     public function takenBy(int $orderId): void
     {

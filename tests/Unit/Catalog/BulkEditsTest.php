@@ -7,6 +7,8 @@ namespace OrillaCart\Tests\Unit\Catalog;
 use OrillaCart\Catalog\Application\BulkEdits;
 use OrillaCart\Catalog\Application\Dto\BulkEdit;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
+use OrillaCart\Catalog\Application\Dto\SaveBundle;
+use OrillaCart\Catalog\Application\Dto\SaveBundleItem;
 use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveSale;
@@ -47,7 +49,18 @@ final class BulkEditsTest extends TestCase
         self::assertSame(['33', '26.4'], [$lamp->price, $lamp->sale?->price]);
         self::assertEquals(new \DateTimeImmutable('2026-10-01T00:00:00+00:00'), $lamp->sale?->from, 'the sale keeps its dates');
         $hoodie = $this->shop->products->product(11);
-        self::assertSame(['44', '45.1', '36.08'], [$hoodie->price, $hoodie->variations[0]->price, $hoodie->variations[0]->sale?->price]);
+        self::assertSame(['40', '45.1', '36.08'], [$hoodie->price, $hoodie->variations[0]->price, $hoodie->variations[0]->sale?->price], 'its variations have the prices: the product\'s own is left alone');
+    }
+
+    public function testLoweringPricesLeavesTheOwnPriceOfAProductItsVariationsOrItemsPrice(): void
+    {
+        $this->shop->products->save(11, SaveProduct::unchanged($this->shop->products->product(11), ['price' => '0']));
+        $this->shop->content->add(12, 'Kit');
+        $this->shop->products->save(12, new SaveProduct('0', bundle: new SaveBundle([new SaveBundleItem(10, 1)], 'sum')));
+
+        self::assertSame([], $this->edits->apply([11, 12], new BulkEdit(price: 'lower', priceBy: '5')), 'not refused for a price of 0 going below zero');
+        self::assertSame(['0', '36'], [$this->shop->products->product(11)->price, $this->shop->products->product(11)->variations[0]->price]);
+        self::assertSame('0', $this->shop->products->product(12)->price);
     }
 
     public function testStockAddedInOneStockroomLeavesWhatAnotherOwes(): void

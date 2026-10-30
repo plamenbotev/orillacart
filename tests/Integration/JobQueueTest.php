@@ -65,6 +65,27 @@ final class JobQueueTest extends RestTestCase
         self::assertSame(1, $this->queue->pending('test.job'));
     }
 
+    public function testWhatWaitsOfOneTypeIsCountedByItsIndexAlone(): void
+    {
+        $this->queue->push([$this->job('1'), $this->job('2'), $this->job('3')], $this->now);
+        $claimed = $this->queue->claim(['test'], 1, 'one', $this->now, $this->lockedUntil);
+        $this->queue->reschedule($this->queue->claim(['test'], 1, 'two', $this->now, $this->lockedUntil)[0], $this->now->modify('+1 day'));
+
+        $waiting = $this->queue->waitingOfType('test.job', $this->now);
+        self::assertSame([1, 1, 1], [$waiting->due, $waiting->running, $waiting->later]);
+        self::assertEquals($this->queue->waitingByType($this->now)['test.job'], $waiting, 'as the overview counts it');
+        self::assertSame([0, 0, 0], [$this->queue->waitingOfType('test.none', $this->now)->due, $this->queue->waitingOfType('test.none', $this->now)->running, $this->queue->waitingOfType('test.none', $this->now)->later]);
+        self::assertCount(1, $claimed);
+
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        $plan = $wpdb->get_row($wpdb->prepare('EXPLAIN SELECT SUM(available_at <= %s), SUM(locked_until > %s) FROM %i WHERE type = %s', '2030-01-01 12:00:00', '2030-01-01 12:00:00', $wpdb->prefix . 'orillacart_jobs', 'test.job'), ARRAY_A);
+        self::assertIsArray($plan);
+        self::assertSame('job_type_waiting', $plan['key'] ?? null, 'the type\'s rows by the index');
+        self::assertIsString($plan['Extra'] ?? null);
+        self::assertStringContainsString('Using index', $plan['Extra'], 'and the index alone');
+    }
+
     public function testAKeyPushedAgainTakesTheNewPayloadAndAHeldJobStaysTaken(): void
     {
         $this->queue->push([$this->job('1', ['price' => '10'])], $this->now);

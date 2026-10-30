@@ -24,6 +24,7 @@ use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderSummaries;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\CountedForgets;
 use OrillaCart\Tests\Fixtures\Exchange\EnglishColumnNames;
 use OrillaCart\Tests\Fixtures\Exchange\InMemoryExportChoices;
 use PHPUnit\Framework\TestCase;
@@ -32,6 +33,7 @@ final class OrdersExportTest extends TestCase
 {
     private TestShop $shop;
     private OrdersExport $export;
+    private CountedForgets $forgets;
 
     protected function setUp(): void
     {
@@ -39,7 +41,7 @@ final class OrdersExportTest extends TestCase
         $this->shop->content->add(20, 'E-book');
         $this->shop->products->save(20, new SaveProduct('8', 'virtual'));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
-        $this->export = new OrdersExport(new OrderColumns($this->shop->extensions, $this->shop->logger), new ColumnChoice(new InMemoryExportChoices(), new EnglishColumnNames()), $this->shop->orders, new OrderSummaries($this->shop->orders, $this->shop->orderRecords), $this->shop->logger);
+        $this->export = new OrdersExport(new OrderColumns($this->shop->extensions, $this->shop->logger), new ColumnChoice(new InMemoryExportChoices(), new EnglishColumnNames()), $this->shop->orders, new OrderSummaries($this->shop->orders, $this->shop->orderRecords), $this->forgets = new CountedForgets(), $this->shop->logger);
     }
 
     public function testTheChosenColumnsOfEveryOrderTheListFindsGoToTheFile(): void
@@ -78,6 +80,27 @@ final class OrdersExportTest extends TestCase
 
         self::assertSame([['number' => (string) $order->number, 'warehouse' => "W-{$order->number}", 'broken' => '']], json_decode((string) stream_get_contents($stream), true));
         self::assertStringContainsString('broken', (string) json_encode($this->shop->logger->records));
+    }
+
+    public function testAnExportOfMoreOrdersThanABatchWritesEachOnceInOrderAndForgetsEachBatch(): void
+    {
+        $numbers = [];
+        for ($i = 0; $i < 230; ++$i) {
+            $numbers[] = $this->place("buyer{$i}@example.com", 'Ada')->number;
+        }
+        $this->export->choose(new ChooseColumns(['number']));
+        $between = 0;
+        $stream = fopen('php://memory', 'w+b');
+        self::assertIsResource($stream);
+
+        $this->export->export(new OrderQuery(), new CsvFile($stream), static function () use (&$between): void {
+            ++$between;
+        });
+
+        rewind($stream);
+        $rows = array_map(intval(...), \array_slice(explode("\n", trim(substr((string) stream_get_contents($stream), \strlen("\u{FEFF}")))), 1));
+        self::assertSame(array_reverse($numbers), $rows, 'newest first, each once');
+        self::assertSame([3, 3], [$between, $this->forgets->times], 'what each batch loaded is forgotten after it');
     }
 
     public function testOnlyColumnsThereAreCanBeChosen(): void

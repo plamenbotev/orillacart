@@ -9,7 +9,8 @@ use OrillaCart\Assistant\Application\Dto\Caller;
 use OrillaCart\Assistant\Application\Dto\ToolDefinition;
 
 /**
- * Publishing a page or taking it down, as the page it is: its title, and whether its title or text changes too.
+ * Publishing a page or taking it down, as the page it is: its title, and whether its title or text changes too,
+ * with the whole new text.
  */
 final readonly class PagePublishDescription implements CallDescription
 {
@@ -31,10 +32,27 @@ final readonly class PagePublishDescription implements CallDescription
             $lines[] = "Its title changes from \"{$post->post_title}\".";
         }
         if (\is_string($arguments['content'] ?? null) && $arguments['content'] !== $post->post_content) {
-            $text = trim(preg_replace('/\s+/', ' ', wp_strip_all_tags($arguments['content'])) ?? '');
-            $lines[] = 'With this text:' . "\n" . (mb_strlen($text) > 1500 ? mb_substr($text, 0, 1500) . '…' : $text);
+            // All of it: the owner says yes to what customers will read, not to its start.
+            $lines[] = 'With this text, all of it:' . "\n" . self::text($arguments['content']);
         }
 
         return implode("\n", $lines);
+    }
+
+    /** The page's text as it reads: its blocks' markup gone, a paragraph per paragraph, a heading or a list item. */
+    public static function text(string $content): string
+    {
+        // The source's own line breaks are not the page's: only its blocks break it.
+        $flat = (string) preg_replace('/\s+/u', ' ', $content);
+        $broken = (string) preg_replace('#</(p|h[1-6]|li|div|blockquote|tr|figcaption)>|<br\s*/?>|<!-- /?wp:[^>]*-->#i', "$0\n", $flat);
+        $paragraphs = [];
+        foreach (explode("\n", wp_strip_all_tags($broken)) as $line) {
+            $line = trim((string) preg_replace('/[ \t\x{00a0}]+/u', ' ', html_entity_decode($line, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+            if ($line !== '') {
+                $paragraphs[] = $line;
+            }
+        }
+
+        return implode("\n", $paragraphs);
     }
 }

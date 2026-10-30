@@ -112,9 +112,13 @@ export function bindUploads( scope: HTMLElement, productId: number ): void {
 				body.append( 'field', input.dataset.orillacartUpload ?? '' );
 				body.append( 'file', file );
 				status.textContent = __( 'Sending the file…', 'orillacart' );
-				const buttons = scope.querySelectorAll< HTMLButtonElement >(
-					'button[type="submit"]'
-				);
+				// Only the buttons the upload turns off come back on: Add to cart stays off for a combination not
+				// sold.
+				const buttons = Array.from(
+					scope.querySelectorAll< HTMLButtonElement >(
+						'button[type="submit"]'
+					)
+				).filter( ( button ) => ! button.disabled );
 				buttons.forEach( ( button ) => ( button.disabled = true ) );
 				const result = await api< SentUpload >(
 					'POST',

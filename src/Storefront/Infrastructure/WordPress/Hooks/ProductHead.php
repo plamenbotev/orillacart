@@ -5,20 +5,17 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Catalog\Application\Dto\ProductOffer;
-use OrillaCart\Catalog\Application\ShopCatalog;
-use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\ProductGallery;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\ProductIdentifiers;
-use OrillaCart\Checkout\Application\ShownPrices;
 use OrillaCart\Reviews\Application\Dto\ReviewView;
 use OrillaCart\Reviews\Application\Reviews;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
 use OrillaCart\Storefront\Domain\SharingTags;
-use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
+use OrillaCart\Storefront\Infrastructure\WordPress\ProductParts;
 
 /**
  * What a product's page tells others in its head: search engines, through schema.org Product data (its price
@@ -34,12 +31,10 @@ final readonly class ProductHead
     private const int REVIEWS_SHOWN = 5;
 
     public function __construct(
-        private ShopCatalog $catalog,
-        private Shopper $shopper,
+        private ProductParts $parts,
         private Reviews $reviews,
         private SettingsService $shop,
         private StorefrontSettingsService $settings,
-        private ShownPrices $shownPrices,
     ) {}
 
     public function __invoke(): void
@@ -48,9 +43,9 @@ final readonly class ProductHead
             return;
         }
         $id = get_queried_object_id();
-        try {
-            $offer = $this->shownPrices->offer($this->catalog->offer($id, $this->shopper->customerId()), $this->shopper->customerId());
-        } catch (ProductNotFound) {
+        // The offer the page's blocks show, worked out once for the page.
+        $offer = $this->parts->offer($id);
+        if ($offer === null) {
             return;
         }
         $settings = $this->settings->current();

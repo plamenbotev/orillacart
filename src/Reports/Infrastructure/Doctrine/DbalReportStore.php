@@ -65,8 +65,8 @@ final readonly class DbalReportStore implements ReportStore
             $this->insert($this->tables->coupons(), ['order_id', 'day', 'counted', 'currency', 'code', 'amount'], array_map(static fn(UsedCoupon $coupon): array => [
                 $coupon->orderId, $coupon->day->format(self::DAY), (int) $coupon->counted, $coupon->currency, $coupon->code, $coupon->amount,
             ], array_merge(...array_map(static fn(OrderFacts $facts): array => $facts->coupons, $facts))));
-            $this->insert($this->tables->refunds(), ['refund_id', 'order_id', 'day', 'currency', 'amount', 'tax'], array_map(static fn(GivenRefund $refund): array => [
-                $refund->refundId, $refund->orderId, $refund->day->format(self::DAY), $refund->currency, $refund->amount, $refund->tax,
+            $this->insert($this->tables->refunds(), ['refund_id', 'order_id', 'day', 'currency', 'amount', 'tax', 'items'], array_map(static fn(GivenRefund $refund): array => [
+                $refund->refundId, $refund->orderId, $refund->day->format(self::DAY), $refund->currency, $refund->amount, $refund->tax, $refund->items,
             ], array_merge(...array_map(static fn(OrderFacts $facts): array => $facts->refunds, $facts))));
             $this->insert($this->tables->taxes(), ['order_id', 'day', 'counted', 'currency', 'country', 'region', 'level', 'code', 'jurisdiction', 'percent', 'kind', 'taxable', 'amount', 'refunded', 'exempt'], array_map(static fn(CollectedTax $tax): array => [
                 $tax->orderId, $tax->day->format(self::DAY), (int) $tax->counted, $tax->currency, $tax->country, $tax->region, $tax->level, $tax->code, $tax->jurisdiction, $tax->percent, $tax->kind, $tax->taxable, $tax->amount, $tax->refunded, (int) $tax->exempt,

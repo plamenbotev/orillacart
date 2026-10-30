@@ -31,11 +31,11 @@ final readonly class WordPressProductContent implements ProductContent
         return $this->exists($productId) ? wp_strip_all_tags(html_entity_decode(get_the_title($productId), ENT_QUOTES | ENT_HTML5, 'UTF-8')) : '';
     }
 
-    public function idsNamed(string $words, int $limit): array
+    public function idsNamed(string $words, int $limit, bool $publishedOnly = false): array
     {
         $ids = get_posts([
             'post_type' => ProductPostType::NAME,
-            'post_status' => ['publish', 'private', 'draft', 'pending', 'future'],
+            'post_status' => $publishedOnly ? ['publish'] : ['publish', 'private', 'draft', 'pending', 'future'],
             's' => $words,
             'search_columns' => ['post_title'],
             'posts_per_page' => $limit,
@@ -164,14 +164,31 @@ final readonly class WordPressProductContent implements ProductContent
                 wp_set_object_terms($id, array_map(intval(...), $terms), $taxonomy);
             }
         }
-        foreach (['_thumbnail_id', 'orillacart_gallery'] as $key) {
-            $value = get_post_meta($productId, $key, true);
-            if ($value !== '' && $value !== false) {
-                update_post_meta($id, $key, $value);
-            }
-        }
+        $this->copyPictures($productId, $id);
 
         return $id;
+    }
+
+    public function copyVariation(int $fromVariationId, int $toVariationId): void
+    {
+        $from = get_post($fromVariationId);
+        if (!$from instanceof \WP_Post || $from->post_type !== VariationPostType::NAME || get_post_type($toVariationId) !== VariationPostType::NAME) {
+            return;
+        }
+        if ($from->post_excerpt !== '') {
+            wp_update_post(['ID' => $toVariationId, 'post_excerpt' => $from->post_excerpt]);
+        }
+        $this->copyPictures($fromVariationId, $toVariationId);
+    }
+
+    private function copyPictures(int $from, int $to): void
+    {
+        foreach (['_thumbnail_id', 'orillacart_gallery'] as $key) {
+            $value = get_post_meta($from, $key, true);
+            if ($value !== '' && $value !== false) {
+                update_post_meta($to, $key, $value);
+            }
+        }
     }
 
     public function deleteVariation(int $variationId): void

@@ -6,6 +6,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
+use OrillaCart\Shared\WordPress\AutoloadedOption;
 use OrillaCart\Storefront\Domain\SharingTags;
 use OrillaCart\Storefront\Domain\StorefrontSettings;
 use OrillaCart\Storefront\Domain\StorefrontSettingsRepository;
@@ -46,9 +47,16 @@ final readonly class OptionStorefrontSettingsRepository implements StorefrontSet
         ], true);
     }
 
-    public function activate(): void {}
+    public function activate(): void
+    {
+        $this->upgrade(null);
+    }
 
-    public function upgrade(?string $fromVersion): void {}
+    /** Read on every storefront request: stored with its defaults, autoloaded, so reading it costs no query. */
+    public function upgrade(?string $fromVersion): void
+    {
+        AutoloadedOption::keep(self::OPTION, fn() => $this->save($this->load()));
+    }
 
     public function deactivate(): void {}
 

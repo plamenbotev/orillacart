@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect } from '@wordpress/element';
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useState,
+} from '@wordpress/element';
 
 /**
  * The part of the screen a leave guard looks after (useLeaveGuard): the forms inside it register there, so the
@@ -49,11 +55,52 @@ export const hasUnsavedChanges = ( scope?: symbol ): boolean =>
 		? unsaved.size > 0
 		: Array.from( unsaved.values() ).includes( scope );
 
+/** A decimal as the shop saves it or the owner types it: "2.5", "2.50", "-3", "4.". */
+const DECIMAL = /^\s*-?\d+(?:\.\d*)?\s*$/;
+
 /**
- * Whether two forms' values differ, by what they hold.
+ * Whether two forms' values differ, by what they hold. The fields named as decimals compare as numbers, at any
+ * depth ("2.5" typed is "2.50" saved); an empty one stays apart from 0.
  *
- * @param a One form's values.
- * @param b The other's.
+ * @param a        One form's values.
+ * @param b        The other's.
+ * @param decimals The keys whose string values are decimals.
  */
-export const differs = ( a: unknown, b: unknown ): boolean =>
-	JSON.stringify( a ) !== JSON.stringify( b );
+export const differs = (
+	a: unknown,
+	b: unknown,
+	decimals: readonly string[] = []
+): boolean => {
+	const replacer =
+		decimals.length === 0
+			? undefined
+			: ( key: string, value: unknown ) =>
+					decimals.includes( key ) &&
+					typeof value === 'string' &&
+					DECIMAL.test( value )
+						? String( Number( value ) )
+						: value;
+	return JSON.stringify( a, replacer ) !== JSON.stringify( b, replacer );
+};
+
+/**
+ * Guards a form against what was last loaded or saved (useUnsavedChanges): the form is unsaved while it differs
+ * from that copy.
+ *
+ * @param form  The form's values; null while it loads.
+ * @param scope The guard's part, as for useUnsavedChanges.
+ * @return The function to give each value loaded or saved, as the form is set to it.
+ */
+export function useSavedCopy< T >(
+	form: T | null,
+	scope?: symbol
+): ( saved: T | null ) => void {
+	const [ saved, setSaved ] = useState< { value: T | null } >( {
+		value: null,
+	} );
+	useUnsavedChanges(
+		form !== null && saved.value !== null && differs( form, saved.value ),
+		scope
+	);
+	return useCallback( ( value: T | null ) => setSaved( { value } ), [] );
+}

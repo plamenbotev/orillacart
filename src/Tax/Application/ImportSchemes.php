@@ -16,6 +16,7 @@ use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Domain\ImportRegistration;
 use OrillaCart\Tax\Domain\ImportRegistrationsRepository;
 use OrillaCart\Tax\Domain\ImportScheme;
+use OrillaCart\Tax\Domain\NorthernIreland;
 
 /**
  * Low-value goods shipped into a country with an import scheme (the EU's IOSS, the UK, Norway, Australia, New
@@ -72,10 +73,12 @@ final readonly class ImportSchemes
             return new ImportDecision();
         }
         $to = $this->geography->locate($shipping->country, null);
+        // Goods for Northern Ireland are goods for the EU: its import scheme (IOSS), not the United Kingdom's.
+        $northernIreland = NorthernIreland::covers($shipping->country, $shipping->postcode);
         $shop = $this->shop->current();
         $from = $shop->shopCountry === null || $shop->shopCountry === '' ? null : $this->geography->locate($shop->shopCountry, null);
         foreach ($registrations as $registration) {
-            if (!$to instanceof LocationView || !$registration->scheme->covers($to->country, $to->inEu)) {
+            if (!$to instanceof LocationView || !$registration->scheme->covers($northernIreland ? NorthernIreland::VIES_PREFIX : $to->country, $to->inEu || $northernIreland)) {
                 continue;
             }
             // A shop inside the scheme's countries sells there as at home.

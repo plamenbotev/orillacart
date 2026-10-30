@@ -39,6 +39,8 @@ export interface NewsletterSettings {
 	/** The add-ons' mailing lists, and whether the sign-ups go to each. */
 	lists: { id: string; name: string; on: boolean }[];
 	subscribers: number;
+	/** Whether a new sign-up counts only once confirmed from the email (double opt-in). */
+	confirm_new: boolean;
 }
 
 /** What the customer paid in the shop's currency, less what went back, over their paid orders. */
@@ -247,7 +249,10 @@ export function fetchNewsletterSettings(): Promise< NewsletterSettings > {
 }
 
 export function saveNewsletterSettings(
-	settings: Pick< NewsletterSettings, 'offered' | 'consent' > & {
+	settings: Pick<
+		NewsletterSettings,
+		'offered' | 'consent' | 'confirm_new'
+	> & {
 		lists: string[];
 	}
 ): Promise< NewsletterSettings > {

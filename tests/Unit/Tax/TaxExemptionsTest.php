@@ -10,6 +10,7 @@ use OrillaCart\Tax\Application\Dto\SaveTaxExemption;
 use OrillaCart\Tax\Application\TaxExemptions;
 use OrillaCart\Tax\Domain\TaxLocation;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryAccounts;
+use OrillaCart\Tests\Fixtures\Invoicing\SofiaCalendar;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -25,7 +26,7 @@ final class TaxExemptionsTest extends TestCase
         $accounts = new InMemoryAccounts();
         $this->customer = $accounts->add('buyer@example.com');
         $this->clock = new MockClock('2026-10-23 10:00:00');
-        $this->exemptions = new TaxExemptions(new InMemoryTaxExemptionRepository(), $accounts, $this->clock);
+        $this->exemptions = new TaxExemptions(new InMemoryTaxExemptionRepository(), $accounts, $this->clock, new SofiaCalendar());
     }
 
     public function testAnExemptionCoversItsStatesUntilItsLastDay(): void
@@ -37,10 +38,11 @@ final class TaxExemptionsTest extends TestCase
         self::assertNull($this->exemptions->covering($this->customer, new TaxLocation('US', 'CA')), 'another state');
         self::assertNull($this->exemptions->covering(null, new TaxLocation('US', 'TX')), 'a guest');
 
-        $this->clock->modify('2026-12-31 23:00:00');
-        self::assertNotNull($this->exemptions->covering($this->customer, new TaxLocation('US', 'TX')), 'its last day');
-        $this->clock->modify('2027-01-01 00:00:00');
-        self::assertNull($this->exemptions->covering($this->customer, new TaxLocation('US', 'TX')), 'expired');
+        // The shop's days are Sofia's, two hours ahead of UTC in winter.
+        $this->clock->modify('2026-12-31 21:59:00');
+        self::assertNotNull($this->exemptions->covering($this->customer, new TaxLocation('US', 'TX')), 'its last day, 23:59 in Sofia');
+        $this->clock->modify('2026-12-31 22:30:00');
+        self::assertNull($this->exemptions->covering($this->customer, new TaxLocation('US', 'TX')), 'expired at the shop\'s midnight, though still the 31st in UTC');
     }
 
     public function testOneWithoutRegionsHoldsEverywhereAndTheNewestCovers(): void

@@ -157,6 +157,84 @@ test.describe( 'A visitor', () => {
 		await expect( page.getByText( 'Your cart is empty.' ) ).toBeVisible();
 	} );
 
+	test( 'is shown a total that changed while the order was being placed, and orders for it', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const vase = await product( requestUtils, 'E2E Vase', {
+			price: '20',
+			stock_mode: 'always_available',
+		} );
+		try {
+			await page.goto( vase.link );
+			await page.getByRole( 'button', { name: /Add to cart/ } ).click();
+			await expect(
+				page.getByText( 'Added to your cart.' ).first()
+			).toBeVisible();
+			await page.goto( shop.urls.checkout );
+			await fillBilling( page, 'vase@example.com' );
+			await expect(
+				page.getByRole( 'radio', { name: /Bulgaria/ } )
+			).toBeChecked();
+			await page.getByRole( 'radio', { name: 'Bank transfer' } ).check();
+			const before = await page
+				.locator( '[name="expected_total"]' )
+				.inputValue();
+
+			// The price goes up; the summary that says so is still on its way when the customer clicks.
+			const loaded = await requestUtils.rest< {
+				updated_at: string | null;
+			} >( { path: `/orillacart/v1/products/${ vase.id }` } );
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: `/orillacart/v1/products/${ vase.id }`,
+				data: {
+					price: '30',
+					stock_mode: 'always_available',
+					updated_at: loaded.updated_at,
+				},
+			} );
+			let release: () => void = () => undefined;
+			const held = new Promise< void >( ( resolve ) => {
+				release = resolve;
+			} );
+			await page.route(
+				( url ) => url.searchParams.has( 'billing_city' ),
+				async ( route ) => {
+					await held;
+					await route.continue();
+				}
+			);
+			await page.locator( '#billing-city' ).fill( 'Plovdiv' );
+			await page.locator( '#billing-city' ).dispatchEvent( 'change' );
+			await page.getByRole( 'button', { name: 'Place order' } ).click();
+			release();
+
+			await expect(
+				page.getByText( /The total of your order is now/ )
+			).toBeVisible();
+			await expect( page ).toHaveURL( shop.urls.checkout );
+			expect(
+				Number(
+					await page.locator( '[name="expected_total"]' ).inputValue()
+				)
+			).toBe( Number( before ) + 10 );
+			await page.unrouteAll( { behavior: 'ignoreErrors' } );
+
+			await page.getByRole( 'button', { name: 'Place order' } ).click();
+			await expect(
+				page.getByRole( 'heading', {
+					name: 'Thank you for your order',
+				} )
+			).toBeVisible();
+		} finally {
+			await remove(
+				requestUtils,
+				`/wp/v2/orillacart_product/${ vase.id }?force=true`
+			);
+		}
+	} );
+
 	test( 'sees the mini cart follow the cart', async ( { page } ) => {
 		await page.goto( shop.miniCartUrl );
 		const miniCart = page.locator( '.orillacart-mini-cart--panel' );
@@ -382,6 +460,8 @@ test.describe( 'A visitor', () => {
 				offered: true,
 				consent: 'Send me the E2E letter.',
 				lists: [],
+				// Counted at once: the confirmation by email has tests of its own.
+				confirm_new: false,
 			},
 		} );
 		try {
@@ -1169,11 +1249,21 @@ test.describe( 'A visitor', () => {
 			price: '15',
 		} );
 		try {
+			// Sold out from whatever level the new product starts with in this stockroom.
+			const now = await requestUtils.rest< {
+				levels: { stockroom_id: number; quantity: number }[];
+			} >( { path: `/orillacart/v1/stock/product/${ lamp.id }` } );
+			const was =
+				now.levels.find(
+					( { stockroom_id: id } ) => id === stockroom.id
+				)?.quantity ?? null;
 			await requestUtils.rest( {
 				method: 'PUT',
 				path: `/orillacart/v1/stock/product/${ lamp.id }`,
 				data: {
-					levels: [ { stockroom_id: stockroom.id, quantity: 0 } ],
+					levels: [
+						{ stockroom_id: stockroom.id, quantity: 0, was },
+					],
 				},
 			} );
 			await page.goto( lamp.link );

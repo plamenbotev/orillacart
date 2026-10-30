@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import { NewsletterCard } from '../NewsletterCard';
+import { hasUnsavedChanges } from '../../shared/useUnsavedChanges';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -17,7 +18,12 @@ describe( 'NewsletterCard', () => {
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
 			const saved = request.data as
-				| { offered: boolean; consent: string; lists: string[] }
+				| {
+						offered: boolean;
+						consent: string;
+						lists: string[];
+						confirm_new: boolean;
+				  }
 				| undefined;
 			return Promise.resolve( {
 				offered: saved?.offered ?? false,
@@ -30,6 +36,7 @@ describe( 'NewsletterCard', () => {
 					},
 				],
 				subscribers: 3,
+				confirm_new: saved?.confirm_new ?? true,
 			} );
 		} );
 		const onSaved = jest.fn();
@@ -50,6 +57,14 @@ describe( 'NewsletterCard', () => {
 			)
 		);
 		await user.click( screen.getByLabelText( 'Mailchimp: Customers' ) );
+		expect(
+			screen.getByLabelText( 'Confirm new subscribers by email' )
+		).toBeChecked();
+		await user.click(
+			screen.getByLabelText( 'Confirm new subscribers by email' )
+		);
+		// Changes not saved keep the page from being left without asking.
+		expect( hasUnsavedChanges() ).toBe( true );
 		await user.click( screen.getByRole( 'button', { name: 'Save' } ) );
 
 		expect( mockedFetch ).toHaveBeenCalledWith( {
@@ -58,10 +73,12 @@ describe( 'NewsletterCard', () => {
 			data: {
 				offered: true,
 				consent: 'News and offers.',
+				confirm_new: false,
 				lists: [ 'mailchimp' ],
 			},
 		} );
 		expect( onSaved ).toHaveBeenCalled();
+		expect( hasUnsavedChanges() ).toBe( false );
 		expect(
 			screen.getByRole( 'link', { name: 'Download them (CSV)' } )
 		).toHaveAttribute(

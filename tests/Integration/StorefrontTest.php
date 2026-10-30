@@ -172,7 +172,7 @@ final class StorefrontTest extends RestTestCase
         $oak = $options[0]['options'][0]['id'];
         self::assertSame(422, $this->request('PUT', "/products/{$frame}", ['price' => '80', 'attributes' => [
             ['name' => 'Wood', 'options' => [['name' => 'Oak', 'adjustment' => '-150', 'adjustment_kind' => 'percent']]],
-        ]], nonce: true)->get_status(), 'takes off more than the price');
+        ]] + $this->loaded($frame), nonce: true)->get_status(), 'takes off more than the price');
         wp_set_current_user(0);
 
         self::assertStringContainsString('Oak (+15%)', $this->productPage($frame, ''));
@@ -186,8 +186,9 @@ final class StorefrontTest extends RestTestCase
     {
         $this->actAs('administrator');
         $stockroom = $this->data($this->request('POST', '/stockrooms', ['name' => 'Sofia'], nonce: true))['id'];
+        self::assertIsInt($stockroom);
         $guide = $this->product('Field guide', ['price' => '10', 'backorders' => 'notify']);
-        $this->request('PUT', "/stock/product/{$guide}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 0]]], nonce: true);
+        $this->setStock('product', $guide, [$stockroom => 0]);
         self::assertSame('notify', $this->data($this->request('GET', "/products/{$guide}"))['backorders']);
 
         $hoodie = $this->product('Hoodie', ['price' => '40', 'backorders' => 'notify', 'attributes' => [['name' => 'Size', 'options' => [['name' => 'S'], ['name' => 'M']]]]]);
@@ -201,7 +202,7 @@ final class StorefrontTest extends RestTestCase
         self::assertIsInt($small);
         self::assertIsInt($medium);
         foreach ([$small, $medium] as $variation) {
-            $this->request('PUT', "/stock/variation/{$variation}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 0]]], nonce: true);
+            $this->setStock('variation', $variation, [$stockroom => 0]);
         }
         wp_set_current_user(0);
 

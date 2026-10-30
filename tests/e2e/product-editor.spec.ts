@@ -4,7 +4,13 @@
  */
 import { expect, test } from '@wordpress/e2e-test-utils-playwright';
 
-import { setUpShop, tearDownShop, type Shop } from './shop';
+import {
+	product as makeProduct,
+	remove,
+	setUpShop,
+	tearDownShop,
+	type Shop,
+} from './shop';
 
 let shop: Shop;
 
@@ -99,7 +105,7 @@ test.describe( 'The product’s edit screen', () => {
 			await page.locator( '#publish' ).click();
 			await expect(
 				box.locator( '.components-notice__content' )
-			).toContainText( 'price' );
+			).toContainText( 'Price:' );
 			await expect( page ).toHaveURL( /action=edit/ );
 
 			await price.fill( '42' );
@@ -126,6 +132,71 @@ test.describe( 'The product’s edit screen', () => {
 			await page.context().clearCookies( {
 				name: 'orillacart_e2e_classic',
 			} );
+		}
+	} );
+
+	test( 'says the product changed elsewhere since it was opened, and saves over it once asked', async ( {
+		admin,
+		page,
+		requestUtils,
+	} ) => {
+		const kettle = await makeProduct( requestUtils, 'E2E Kettle', {
+			price: '20',
+			stock_mode: 'always_available',
+		} );
+		try {
+			await admin.editPost( kettle.id );
+			const box = page.locator( '#orillacart-product-data' );
+			const price = box.getByLabel( 'Price', { exact: true } );
+			await expect( price ).toHaveValue( '20' );
+			await price.fill( '22' );
+
+			// Meanwhile another save changes it.
+			const loaded = await requestUtils.rest< {
+				updated_at: string | null;
+			} >( { path: `/orillacart/v1/products/${ kettle.id }` } );
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: `/orillacart/v1/products/${ kettle.id }`,
+				data: {
+					price: '25',
+					stock_mode: 'always_available',
+					updated_at: loaded.updated_at,
+				},
+			} );
+
+			await box
+				.getByRole( 'button', { name: 'Save product details' } )
+				.click();
+			await expect(
+				page
+					.getByText( /changed elsewhere since you opened it/, {
+						exact: false,
+					} )
+					.first()
+			).toBeVisible();
+			await expect( price ).toHaveValue( '22' );
+			const between = await requestUtils.rest< { price: string } >( {
+				path: `/orillacart/v1/products/${ kettle.id }`,
+			} );
+			expect( between.price ).toBe( '25' );
+
+			await page
+				.getByRole( 'button', { name: 'Save mine over it' } )
+				.click();
+			await expect
+				.poll( async () => {
+					const saved = await requestUtils.rest< {
+						price: string;
+					} >( { path: `/orillacart/v1/products/${ kettle.id }` } );
+					return saved.price;
+				} )
+				.toBe( '22' );
+		} finally {
+			await remove(
+				requestUtils,
+				`/wp/v2/orillacart_product/${ kettle.id }?force=true`
+			);
 		}
 	} );
 } );

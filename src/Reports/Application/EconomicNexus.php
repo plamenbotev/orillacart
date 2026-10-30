@@ -69,9 +69,9 @@ final readonly class EconomicNexus
         $zone = $this->calendar->timezone();
         $today = $this->clock->now()->setTimezone($zone);
         $windows = [
-            'last_twelve_months' => Period::of($today->modify('-1 year +1 day')->format('Y-m-d'), $today->format('Y-m-d'), $zone),
+            'last_twelve_months' => Period::of(self::yearBefore($today)->modify('+1 day')->format('Y-m-d'), $today->format('Y-m-d'), $zone),
             'this_year' => Period::of($today->format('Y-01-01'), $today->format('Y-m-d'), $zone),
-            'last_year' => Period::of($today->modify('-1 year')->format('Y-01-01'), $today->modify('-1 year')->format('Y-12-31'), $zone),
+            'last_year' => Period::of(((int) $today->format('Y') - 1) . '-01-01', ((int) $today->format('Y') - 1) . '-12-31', $zone),
         ];
         $currency = $this->settings->current()->currency;
         $sales = array_map(fn(Period $period): array => $this->byState($period, $currency), $windows);
@@ -116,8 +116,21 @@ final readonly class EconomicNexus
             self::days($windows['last_year']),
             $states,
             $this->taxServices->active() !== null,
-            $waiting->due + $waiting->running + $this->jobs->pending(RebuildReports::TYPE),
+            // Orders not counted yet, those whose counting failed included: the figures are short of them.
+            $waiting->due + $waiting->running + $this->jobs->failedCount(ProjectOrders::TYPE) + $this->jobs->pending(RebuildReports::TYPE),
         );
+    }
+
+    /**
+     * The same day a year before; 29 February's is 28 February, so twelve months back start on 1 March and no day
+     * is counted twice or left out.
+     */
+    public static function yearBefore(\DateTimeImmutable $day): \DateTimeImmutable
+    {
+        $year = (int) $day->format('Y') - 1;
+        $last = (int) $day->setDate($year, (int) $day->format('n'), 1)->format('t');
+
+        return $day->setDate($year, (int) $day->format('n'), min((int) $day->format('j'), $last));
     }
 
     /** @return array{from: string, to: string} */

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace OrillaCart\Tax\Application;
 
 use OrillaCart\Extension\Tax\TaxProvider;
+use OrillaCart\Settings\Application\Currencies;
+use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use OrillaCart\Tax\Application\Dto\SaveEuThreshold;
@@ -21,11 +24,32 @@ final readonly class TaxSettingsService
         private TaxSettingsRepository $settings,
         private TaxGroupRepository $groups,
         private InstalledExtensions $extensions,
+        private SettingsService $shop,
+        private Currencies $currencies,
     ) {}
 
     public function current(): TaxSettingsView
     {
-        return TaxSettingsView::fromSettings($this->settings->load(), $this->providers());
+        return $this->view($this->settings->load());
+    }
+
+    private function view(TaxSettings $settings): TaxSettingsView
+    {
+        return TaxSettingsView::fromSettings($settings, $this->providers(), $this->defaultEuThreshold());
+    }
+
+    /**
+     * The law's €10,000 in the shop's currency: at the rate the shop keeps for euros, when it prices in another
+     * currency and offers euros; 10000 otherwise, which the shop sets to its own currency's amount.
+     */
+    private function defaultEuThreshold(): string
+    {
+        $currency = $this->shop->current()->currency;
+        if ($currency === 'EUR' || !$this->currencies->isOffered('EUR')) {
+            return TaxSettings::EU_THRESHOLD;
+        }
+
+        return (string) $this->currencies->back(Money::of(TaxSettings::EU_THRESHOLD), 'EUR')->rounded(2);
     }
 
     /**
@@ -47,7 +71,7 @@ final readonly class TaxSettingsService
         $settings = new TaxSettings(TaxBasis::from($command->basis), $command->defaultGroupId, $command->pricesIncludeTax, $command->reverseCharge, $command->roundsEachLine, array_values(array_unique($command->originRegions)), $command->provider, $command->whenProviderFails, $command->acceptsCertificates, $command->shownInShop, $command->shownInCart, trim($command->priceSuffix), $command->samePriceEverywhere, $command->shippingTaxedAsItems, $command->euThreshold ?? $this->settings->load()->euThreshold);
         $this->settings->save($settings);
 
-        return TaxSettingsView::fromSettings($settings, $this->providers());
+        return $this->view($settings);
     }
 
     /**
@@ -58,7 +82,7 @@ final readonly class TaxSettingsService
         $settings = $this->settings->load()->withEuThreshold($command->threshold);
         $this->settings->save($settings);
 
-        return TaxSettingsView::fromSettings($settings, $this->providers());
+        return $this->view($settings);
     }
 
     /** @return list<array{id: string, label: string}> */

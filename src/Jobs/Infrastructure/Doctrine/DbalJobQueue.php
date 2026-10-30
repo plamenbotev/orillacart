@@ -248,12 +248,19 @@ final readonly class DbalJobQueue implements JobQueue
         $this->tables->connection()->executeStatement("DELETE FROM {$this->tables->stats()} WHERE hour < ?", [$before->format(self::MOMENT)]);
     }
 
+    public function waitingOfType(string $type, \DateTimeImmutable $now): WaitingJobs
+    {
+        // job_type_waiting (type, available_at, locked_until) holds every column read: the type's rows only, from the index.
+        return $this->waiting('type', $now, $type)[$type] ?? new WaitingJobs();
+    }
+
     /**
      * @param 'queue'|'type' $by
+     * @param string|null    $only the one name to count, for a WHERE on its index; all when null
      *
      * @return array<string, WaitingJobs>
      */
-    private function waiting(string $by, \DateTimeImmutable $now): array
+    private function waiting(string $by, \DateTimeImmutable $now, ?string $only = null): array
     {
         $moment = $now->format(self::MOMENT);
         $rows = $this->tables->connection()->fetchAllAssociative(
@@ -263,8 +270,8 @@ final readonly class DbalJobQueue implements JobQueue
                     SUM(available_at > ? AND (locked_until IS NULL OR locked_until <= ?)) AS later,
                     MIN(CASE WHEN available_at > ? THEN available_at END) AS next_at,
                     MIN(CASE WHEN available_at <= ? THEN available_at END) AS oldest_at
-             FROM {$this->tables->jobs()} GROUP BY {$by} ORDER BY {$by}",
-            [$moment, $moment, $moment, $moment, $moment, $moment, $moment],
+             FROM {$this->tables->jobs()}" . ($only === null ? '' : " WHERE {$by} = ?") . " GROUP BY {$by} ORDER BY {$by}",
+            [$moment, $moment, $moment, $moment, $moment, $moment, $moment, ...($only === null ? [] : [$only])],
         );
         $waiting = [];
         foreach ($rows as $row) {

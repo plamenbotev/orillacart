@@ -9,11 +9,13 @@ use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartLineView;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Cart\Domain\CartRuleViolation;
+use OrillaCart\Cart\Infrastructure\Events\ForgetDeletedCustomers;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\EditOrderItems;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Customers\Domain\Event\CustomerErased;
 use OrillaCart\Forms\Application\Dto\SaveFieldChoice;
 use OrillaCart\Forms\Application\Dto\SaveFieldCondition;
 use OrillaCart\Forms\Application\Dto\SaveForm;
@@ -22,6 +24,7 @@ use OrillaCart\Forms\Application\Dto\SendUpload;
 use OrillaCart\Forms\Application\FormUploads;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
+use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
@@ -189,6 +192,82 @@ final class PersonalisedItemsTest extends TestCase
         self::assertSame(\strlen("%PDF-1.4\n%%EOF\n"), $this->shop->uploadRecords->untakenBytes(), 'only the file no cart took takes the room of new ones');
         $this->expectExceptionObject(new CartRuleViolation('A cart holds up to 10 files sent with its items.', 'orillacart_cart_files'));
         $this->shop->carts->add($owner, new AddToCart(30, personalisation: ["f{$logo}_logo" => $tokens[FormUploads::MAX_HELD]]));
+    }
+
+    public function testAnOrderCancelledAsItsPaymentCouldNotStartGivesItsFilesBackToTheCart(): void
+    {
+        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret', 'sandbox' => true]));
+        [$logo, $send] = $this->logoForm();
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(30, personalisation: ["f{$logo}_logo" => $send()]))->newToken);
+        $this->shop->payPalApi->reachable = false;
+        try {
+            $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', self::address(), payment: 'paypal'));
+            self::fail('PayPal is down');
+        } catch (PaymentProviderUnavailable) {
+        }
+        $upload = array_values($this->shop->uploadRecords->uploads)[0];
+        self::assertNull($upload->orderId(), 'the cart has it again');
+
+        $this->shop->payPalApi->reachable = true;
+        $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', self::address(), payment: 'paypal'));
+
+        self::assertSame($placed->number, $upload->orderId(), 'ordered again, with its file');
+    }
+
+    public function testAGuestsCartJoinedAtLoginKeepsToTheFileLimitAndHoldsItsFiles(): void
+    {
+        [$logo, $send] = $this->logoForm();
+        $ada = $this->shop->accounts->add('ada@example.com');
+        $account = new CartOwner(null, $ada);
+        for ($i = 0; $i < FormUploads::MAX_HELD - 1; ++$i) {
+            $account = new CartOwner($this->shop->carts->add($account, new AddToCart(30, personalisation: ["f{$logo}_logo" => $send()]))->newToken ?? $account->token, $ada);
+        }
+        $guest = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(30, personalisation: ["f{$logo}_logo" => $send()]))->newToken);
+        $guest = new CartOwner($this->shop->carts->add($guest, new AddToCart(30, personalisation: ["f{$logo}_logo" => $send()]))->newToken ?? $guest->token);
+        $this->shop->clock->modify('+6 days');
+
+        $joined = $this->shop->carts->cart(new CartOwner($guest->token, $ada));
+
+        self::assertCount(FormUploads::MAX_HELD, $joined->cart->lines, 'the line past the limit stays out');
+        $this->shop->clock->modify('+3 days');
+        self::assertSame(1, $this->shop->uploads->forgetUntaken(), 'held again at the login: only the file left out goes');
+    }
+
+    public function testErasingACustomerDeletesTheFilesOfTheirCartAtOnce(): void
+    {
+        [$logo, $send] = $this->logoForm();
+        $ada = $this->shop->accounts->add('ada@example.com');
+        $this->shop->carts->add(new CartOwner(null, $ada), new AddToCart(30, personalisation: ["f{$logo}_logo" => $send()]));
+        self::assertCount(1, $this->shop->uploadRecords->uploads);
+
+        new ForgetDeletedCustomers($this->shop->cartRecords, $this->shop->abandonedCarts, $this->shop->uploads)->erased(new CustomerErased($ada));
+
+        self::assertSame([], $this->shop->uploadRecords->uploads);
+    }
+
+    /**
+     * A form asking for a logo on the card, and a way to send one.
+     *
+     * @return array{int, \Closure(): string}
+     */
+    private function logoForm(): array
+    {
+        $logo = $this->shop->forms->create(new SaveForm('Print', scope: 'products', productIds: [30], fields: [
+            new SaveFormField('Logo', 'file', 'logo', types: ['application/pdf'], largest: 1),
+        ]))->id;
+        $sent = 0;
+
+        return [$logo, function () use ($logo, &$sent): string {
+            $path = (string) tempnam(sys_get_temp_dir(), 'logo');
+            file_put_contents($path, "%PDF-1.4\n%%EOF\n");
+
+            return $this->shop->uploads->send(new SendUpload(30, "f{$logo}_logo", $path, 'logo.pdf', '203.0.113.' . ++$sent))->token;
+        }];
+    }
+
+    private static function address(): AddressData
+    {
+        return new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000');
     }
 
     /**

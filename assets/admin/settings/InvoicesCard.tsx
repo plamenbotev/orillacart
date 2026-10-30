@@ -14,6 +14,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { errorMessage } from '../shared/api';
+import { useSavedCopy } from '../shared/useUnsavedChanges';
 import { useBusy } from '../shared/useBusy';
 import {
 	fetchInvoiceSettings,
@@ -34,17 +35,21 @@ export function InvoicesCard() {
 		text: string;
 	} | null >( null );
 	const [ busy, run ] = useBusy();
+	const loaded = useSavedCopy( settings );
 
 	useEffect( () => {
 		fetchInvoiceSettings()
-			.then( setSettings )
+			.then( ( found ) => {
+				setSettings( found );
+				loaded( found );
+			} )
 			.catch( ( failure: unknown ) =>
 				setMessage( {
 					status: 'error',
 					text: errorMessage( failure ),
 				} )
 			);
-	}, [] );
+	}, [ loaded ] );
 
 	const field = < K extends keyof InvoiceSettings >(
 		key: K,
@@ -57,6 +62,7 @@ export function InvoicesCard() {
 			saveInvoiceSettings( settings as InvoiceSettings )
 				.then( ( saved ) => {
 					setSettings( saved );
+					loaded( saved );
 					setMessage( {
 						status: 'success',
 						text: __(

@@ -20,12 +20,14 @@ use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Catalog\ProductItem;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Shared\Persistence\LoadedEntities;
 use Psr\Log\LoggerInterface;
 
 /**
  * Exports the catalog as the products file: a row for each product and one for each of its variations after it,
  * with the columns the shop manager chose, the shop's own and the add-ons'. The header names the columns by id,
- * as the import reads them back. A hundred products at a time, so a catalog of any size exports in little memory.
+ * as the import reads them back. A hundred products at a time, by id, each batch read in a few queries and
+ * forgotten once written, so a catalog of any size exports in little memory.
  */
 final readonly class ProductsExport
 {
@@ -38,6 +40,7 @@ final readonly class ProductsExport
         private ProductService $products,
         private ProductPosts $posts,
         private StockService $stock,
+        private LoadedEntities $entities,
         private LoggerInterface $logger,
     ) {}
 
@@ -59,7 +62,10 @@ final readonly class ProductsExport
         return $this->columns();
     }
 
-    public function export(ExportFile $file): void
+    /**
+     * @param (\Closure(): void)|null $between run after each batch, to free what else the batch kept
+     */
+    public function export(ExportFile $file, ?\Closure $between = null): void
     {
         $columns = $this->choice->chosen(ExportKind::Products, $this->columns->all());
         $file->start(array_map(ColumnChoice::id(...), $columns), array_map($this->choice->label(...), $columns));
@@ -67,29 +73,41 @@ final readonly class ProductsExport
         while (($ids = $this->lookup->ids($after, self::BATCH)) !== []) {
             $after = $ids[\count($ids) - 1];
             $posts = $this->posts->of($ids);
+            // The batch's products with what they hold, then their stock, a few queries for them all.
+            $this->lookup->prime($ids);
+            $products = [];
             foreach ($ids as $id) {
-                $post = $posts[$id] ?? null;
-                if ($post === null) {
+                if (!isset($posts[$id])) {
                     continue;
                 }
                 try {
-                    $product = $this->products->product($id);
+                    $products[$id] = $this->products->product($id);
                 } catch (ProductNotFound) {
                     continue;
                 }
-                foreach ($this->rows($product, $post) as $row) {
+            }
+            $levels = $products === [] ? [] : $this->stock->levelsOf(array_merge(...array_map(static fn(ProductView $product): array => [StockItemRef::product($product->id), ...array_map(static fn(VariationView $variation): StockItemRef => StockItemRef::variation($variation->id), $product->variations)], array_values($products))));
+            foreach ($products as $id => $product) {
+                foreach ($this->rows($product, $posts[$id], $levels) as $row) {
                     $file->row(array_map(fn(Column|ProductColumn $column): string => $this->value($column, $row), $columns));
                 }
+            }
+            // Nothing of the export is saved: what the batch loaded can go.
+            $this->entities->forget();
+            if ($between !== null) {
+                $between();
             }
         }
         $file->finish();
     }
 
-    /** @return list<ProductRow> the product, then its variations */
-    private function rows(ProductView $product, ProductPost $post): array
+    /**
+     * @param array<string, array<int, int>> $levels the batch's stock levels, by item, then stockroom
+     *
+     * @return list<ProductRow> the product, then its variations
+     */
+    private function rows(ProductView $product, ProductPost $post, array $levels): array
     {
-        $refs = [StockItemRef::product($product->id), ...array_map(static fn(VariationView $variation): StockItemRef => StockItemRef::variation($variation->id), $product->variations)];
-        $levels = $this->stock->levelsOf($refs);
         $rows = [new ProductRow($product, null, $post, $levels["product:{$product->id}"] ?? [])];
         foreach ($product->variations as $variation) {
             $rows[] = new ProductRow($product, $variation, $post, $levels["variation:{$variation->id}"] ?? []);

@@ -30,7 +30,7 @@ interface JobHandler
     public function retryAfter(int $attempt): int;
 
     /**
-     * Seconds a worker holds these jobs while it runs them, extended as each job is reported done: longer than the
+     * Seconds a worker holds these jobs while it runs them, held a full lock again as each job is reported done: longer than the
      * slowest job takes when the handler reports its jobs one by one, longer than the slowest batch when it does
      * them in one go, as another worker takes the jobs over after it; shorter than needed only delays a worker that died.
      */

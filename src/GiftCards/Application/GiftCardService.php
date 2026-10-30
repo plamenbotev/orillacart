@@ -164,7 +164,7 @@ final readonly class GiftCardService
      * guest a new gift card, to send them once the refund is saved. Run it in the transaction that records the
      * refund. Neither expires: it is the customer's money, not a gift.
      */
-    public function refundAsCredit(int $orderId, ?int $customerId, string $email, string $name, Money $amount, string $currency, ?int $userId): GiftCardCredit
+    public function refundAsCredit(int $orderId, ?int $customerId, string $email, string $name, Money $amount, string $currency, ?int $userId, ?string $locale = null): GiftCardCredit
     {
         $now = $this->clock->now();
         $note = \sprintf('Refund of order #%d', $orderId);
@@ -185,7 +185,7 @@ final readonly class GiftCardService
         $this->cards->save($card);
         $this->cards->add(new GiftCardEntry($card->id(), $amount, $note, $now, $orderId, $userId));
 
-        return new GiftCardCredit(\sprintf('as gift card ····%s, sent to %s', $card->codeEnd(), $email), fn(): bool => $this->send($card, $code));
+        return new GiftCardCredit(\sprintf('as gift card ····%s, sent to %s', $card->codeEnd(), $email), fn(): bool => $this->send($card, $code, $locale));
     }
 
     /**
@@ -237,9 +237,10 @@ final readonly class GiftCardService
         return new \DateTimeImmutable($at, $this->calendar->timezone());
     }
 
-    private function send(GiftCard $card, GiftCardCode $code): bool
+    /** @param string|null $locale the reader's language; null for the site's */
+    private function send(GiftCard $card, GiftCardCode $code, ?string $locale = null): bool
     {
-        return $card->recipientEmail() !== '' && $this->mail->send($card->recipientEmail(), (string) $code, (string) $card->balance(), $card->currency(), $card->expiresAt()?->format('Y-m-d'), $card->recipientName(), $card->message());
+        return $card->recipientEmail() !== '' && $this->mail->send($card->recipientEmail(), (string) $code, (string) $card->balance(), $card->currency(), $card->expiresAt()?->format('Y-m-d'), $card->recipientName(), $card->message(), $locale);
     }
 
     private function detail(GiftCard $card): GiftCardDetailView

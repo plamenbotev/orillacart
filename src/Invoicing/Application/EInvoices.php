@@ -13,6 +13,7 @@ use OrillaCart\Notifications\Application\EmailWriter;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
+use OrillaCart\Reports\Application\ShopCalendar;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
@@ -73,6 +74,7 @@ final readonly class EInvoices
         private SettingsService $shop,
         private GeographyService $geography,
         private EmailWriter $emails,
+        private ShopCalendar $calendar,
     ) {}
 
     /** The format the shop chose, InvoiceSettings::UBL or CII; null when it makes no e-invoices. */
@@ -158,13 +160,13 @@ final readonly class EInvoices
         return [
             'credit' => $credit,
             'number' => $invoice->number,
-            'issued' => substr($invoice->issuedAt, 0, 10),
+            'issued' => $this->day($invoice->issuedAt),
             'currency' => $invoice->currency,
             'decimals' => $decimals,
             'corrects' => $document->corrects,
             'buyerReference' => $billedTo->buyerReference ?? (string) $order->number,
             'salesOrder' => (string) $order->number,
-            'delivered' => substr($fulfilled, 0, 10),
+            'delivered' => $this->day($fulfilled),
             'seller' => [
                 'name' => ($seller['legal_name'] ?? '') !== '' ? $seller['legal_name'] : $this->emails->shopAddress(),
                 'street' => $street,
@@ -381,6 +383,12 @@ final readonly class EInvoices
             'paypal' => '68',
             default => '1',
         };
+    }
+
+    /** The day of a moment as the shop's calendar has it: an invoice issued at 00:30 in Sofia is of that day, not the one before. */
+    private function day(string $moment): string
+    {
+        return new \DateTimeImmutable($moment)->setTimezone($this->calendar->timezone())->format('Y-m-d');
     }
 
     /**

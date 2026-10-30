@@ -266,11 +266,11 @@ final readonly class Reports
     }
 
     /**
-     * @param array{orders: int, gross: string, discounts: string, total: string, refunds: string}|null $row
+     * @param array{orders: int, gross: string, discounts: string, total: string, refunds: string, refunded_items: string}|null $row
      */
     private static function net(?array $row): string
     {
-        return $row === null ? '0' : (string) Money::of($row['gross'])->subtract(Money::of($row['discounts']))->subtract(Money::of($row['refunds']));
+        return $row === null ? '0' : (string) Money::of($row['gross'])->subtract(Money::of($row['discounts']))->subtract(Money::of($row['refunded_items']));
     }
 
     /**

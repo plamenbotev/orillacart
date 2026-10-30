@@ -17,6 +17,7 @@ import { fetchCoupons } from '../coupons/api';
 import { EMAIL_LABELS } from '../orders/labels';
 import { errorMessage } from '../shared/api';
 import { useLeaveGuard } from '../shared/useLeaveGuard';
+import { useSavedCopy } from '../shared/useUnsavedChanges';
 import {
 	type EmailSettings,
 	type EmailTemplate,
@@ -41,6 +42,8 @@ export function EmailsScreen() {
 	const [ leaving, guard, Guarded ] = useLeaveGuard();
 	const [ message, setMessage ] = useState< Message >( null );
 	const [ coupons, setCoupons ] = useState< string[] >( [] );
+	// The settings form keeps its changes while a template is open: leaving the page asks first.
+	const loaded = useSavedCopy( settings );
 
 	// The codes that match what is typed, from all of them: the newest first while nothing is.
 	const [ couponSearch, setCouponSearch ] = useState( '' );
@@ -61,14 +64,17 @@ export function EmailsScreen() {
 
 	useEffect( () => {
 		fetchEmailSettings()
-			.then( setSettings )
+			.then( ( found ) => {
+				setSettings( found );
+				loaded( found );
+			} )
 			.catch( ( error: unknown ) =>
 				setMessage( {
 					status: 'error',
 					text: errorMessage( error ),
 				} )
 			);
-	}, [] );
+	}, [ loaded ] );
 	useEffect( () => {
 		if ( editing === null ) {
 			fetchEmailTemplates()
@@ -121,6 +127,7 @@ export function EmailsScreen() {
 		} )
 			.then( ( saved ) => {
 				setSettings( saved );
+				loaded( saved );
 				setMessage( {
 					status: 'success',
 					text: __( 'Email settings saved.', 'orillacart' ),

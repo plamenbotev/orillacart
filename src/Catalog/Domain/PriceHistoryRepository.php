@@ -24,5 +24,10 @@ interface PriceHistoryRepository
      */
     public function since(array $items, \DateTimeImmutable $since): array;
 
-    public function add(PricePoint $point): void;
+    /**
+     * Keeps the points, saved together.
+     *
+     * @param list<PricePoint> $points
+     */
+    public function add(array $points): void;
 }

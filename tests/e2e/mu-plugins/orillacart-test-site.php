@@ -60,7 +60,7 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
 
         public function addOn(): string
         {
-            return 'Test add-on';
+            return 'E2E';
         }
 
         public function title(): string

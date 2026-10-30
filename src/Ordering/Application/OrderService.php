@@ -63,6 +63,7 @@ use OrillaCart\Ordering\Domain\PriceAdjustment;
 use OrillaCart\Ordering\Domain\ShippingChoice;
 use OrillaCart\Ordering\Domain\TakenItem;
 use OrillaCart\Ordering\Domain\TaxLine;
+use OrillaCart\Reports\Application\ShopCalendar;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Domain\TaxJurisdiction;
@@ -90,6 +91,7 @@ final readonly class OrderService
         private Transactions $transactions,
         private ReceiptLinks $receipts,
         private OrderLookups $lookups,
+        private ?ShopCalendar $calendar = null,
     ) {}
 
     public function place(NewOrder $command): OrderView
@@ -270,6 +272,19 @@ final readonly class OrderService
      */
     public function orders(OrderQuery $query, bool $forShop = false): OrderPageView
     {
+        [$orders, $total] = $this->orders->search($this->search($query, $forShop), ($query->page - 1) * $query->perPage, $query->perPage);
+
+        return new OrderPageView(array_map(static fn(Order $order): OrderSummaryView => OrderSummaryView::fromOrder($order, $forShop), $orders), $total, $query->page, max(1, (int) ceil($total / $query->perPage)));
+    }
+
+    /**
+     * What the list asks the orders for: its filters as the records search them, for orders() and for an export
+     * that walks every match.
+     *
+     * @param bool $forShop as orders() has it
+     */
+    public function search(OrderQuery $query, bool $forShop = false): OrderSearch
+    {
         $search = $query->search === null || trim($query->search) === '' ? null : trim($query->search);
         // Orders keep when they were placed in UTC.
         $moment = static fn(?string $at): ?\DateTimeImmutable => $at === null ? null : new \DateTimeImmutable($at)->setTimezone(new \DateTimeZone('UTC'));
@@ -281,37 +296,31 @@ final readonly class OrderService
             // A mark no area gives finds nothing.
             $markedIds[] = $this->lookups->marked($mark) ?? [];
         }
-        [$orders, $total] = $this->orders->search(
-            new OrderSearch(
-                statuses: array_map(OrderStatus::from(...), $query->statuses()),
-                text: $search,
-                customerId: $query->customerId,
-                attentionOnly: $forShop && $query->attention,
-                placedFrom: $moment($query->placedFrom),
-                placedBefore: $moment($query->placedBefore),
-                gateway: $query->payment,
-                minTotal: $query->minTotal === null ? null : Money::of($query->minTotal),
-                maxTotal: $query->maxTotal === null ? null : Money::of($query->maxTotal),
-                who: $query->placedBy,
-                sortBy: $query->orderBy,
-                ascending: $query->order === 'asc',
-                foundIds: $search === null || !$forShop ? [] : $this->lookups->ordersMatching($search),
-                paid: $query->paid,
-                shipped: $query->shipped === null ? null : $query->shipped === 'yes',
-                shippingName: $query->shipping,
-                country: $query->country,
-                deliveryFrom: $date($query->deliveryFrom),
-                deliveryUntil: $date($query->deliveryUntil),
-                facts: array_values(array_intersect($has, OrderSearch::FACTS)),
-                markedIds: $markedIds,
-                currency: $query->currency,
-                addOnMarks: array_values(array_intersect($has, array_keys($addOnFilters))),
-            ),
-            ($query->page - 1) * $query->perPage,
-            $query->perPage,
+        return new OrderSearch(
+            statuses: array_map(OrderStatus::from(...), $query->statuses()),
+            text: $search,
+            customerId: $query->customerId,
+            attentionOnly: $forShop && $query->attention,
+            placedFrom: $moment($query->placedFrom),
+            placedBefore: $moment($query->placedBefore),
+            gateway: $query->payment,
+            minTotal: $query->minTotal === null ? null : Money::of($query->minTotal),
+            maxTotal: $query->maxTotal === null ? null : Money::of($query->maxTotal),
+            who: $query->placedBy,
+            sortBy: $query->orderBy,
+            ascending: $query->order === 'asc',
+            foundIds: $search === null || !$forShop ? [] : $this->lookups->ordersMatching($search),
+            paid: $query->paid,
+            shipped: $query->shipped === null ? null : $query->shipped === 'yes',
+            shippingName: $query->shipping,
+            country: $query->country,
+            deliveryFrom: $date($query->deliveryFrom),
+            deliveryUntil: $date($query->deliveryUntil),
+            facts: array_values(array_intersect($has, OrderSearch::FACTS)),
+            markedIds: $markedIds,
+            currency: $query->currency,
+            addOnMarks: array_values(array_intersect($has, array_keys($addOnFilters))),
         );
-
-        return new OrderPageView(array_map(static fn(Order $order): OrderSummaryView => OrderSummaryView::fromOrder($order, $forShop), $orders), $total, $query->page, max(1, (int) ceil($total / $query->perPage)));
     }
 
     /**
@@ -529,6 +538,25 @@ final readonly class OrderService
     }
 
     /**
+     * The gift cards that paid part of an order opened again no longer had all of it: the order asks the
+     * customer's way to pay for that share, counts as paid only what came, and the shop looks at it.
+     *
+     * @throws OrderNotFound
+     */
+    public function giftCardsFellShort(int $id, Money $short): void
+    {
+        $this->changing($id, function (Order $order) use ($short): void {
+            $reason = \sprintf('The gift cards that paid this order had spent %s %s of it since it was closed: that share is now left to pay.', $short, $order->currency());
+            if ($order->giftCardsFellShort($short, $reason, $this->clock->now())->isZero()) {
+                return;
+            }
+            $order->addNote($reason, NoteAuthor::System, false, $this->clock->now());
+            $this->orders->save($order);
+            $this->events->dispatch(new OrderNeedsAttention($order->id(), $reason));
+        });
+    }
+
+    /**
      * The shop looked at what the order needed attention for.
      *
      * @throws OrderNotFound
@@ -696,7 +724,8 @@ final readonly class OrderService
         return $this->changing($id, function (Order $order) use ($grantId, $command, $userId): OrderView {
             foreach ($order->grants() as $grant) {
                 if ($grant->id() === $grantId) {
-                    $expires = $command->expiresAt === null ? null : new \DateTimeImmutable($command->expiresAt . ' 23:59:59', new \DateTimeZone('UTC'));
+                    // The last day the buyer may download, in the shop's calendar: until the end of that day there.
+                    $expires = $command->expiresAt === null ? null : new \DateTimeImmutable($command->expiresAt . ' 23:59:59', $this->calendar?->timezone() ?? new \DateTimeZone('UTC'))->setTimezone(new \DateTimeZone('UTC'));
                     $grant->allow($command->remaining, $expires);
                     $order->addNote(
                         \sprintf('Downloads of %s: %s left, %s.', $grant->name(), $command->remaining ?? 'no limit', $command->expiresAt === null ? 'no end' : 'until ' . $command->expiresAt),

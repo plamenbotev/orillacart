@@ -17,6 +17,7 @@ import {
 	showMessage,
 } from './dom';
 import { bindConditions } from './forms';
+import { navigate, reloadPage } from './navigation';
 
 type PlacedOrder = { receipt_url: string; redirect_url: string | null };
 
@@ -87,46 +88,144 @@ export function bindCheckout( form: HTMLFormElement ): void {
 
 	form.addEventListener( 'submit', async ( event ) => {
 		event.preventDefault();
-		const button = form.querySelector< HTMLButtonElement >(
-			'button[type="submit"]'
-		);
 		clearErrors( form );
-		if ( button ) {
-			button.disabled = true;
-		}
+		// The total the customer saw when they chose to order: a refresh still on its way may change it.
+		const seen = expectedTotal( form );
+		placing( form, true );
 		await summary;
 		const body = formBody( form, { flags: [ 'create_account' ] } );
 		delete body.ship_elsewhere;
 		delete body.remind_cart;
 		body.remember_addresses = body.remember_addresses === true;
 		confirmAddresses( form, body );
+		const now = expectedTotal( form );
+		if ( seen !== null && now !== null && seen !== now ) {
+			// The order costs something else than the page showed when they clicked (a new address, or a
+			// suggested one taken): they see the new total, and place the order again for it.
+			placing( form, false );
+			showMessage(
+				form,
+				sprintf(
+					/* translators: %s: the order's new total, with its currency */
+					__(
+						'The total of your order is now %s. Check it and place the order again.',
+						'orillacart'
+					),
+					shownTotal( form ) ?? now
+				),
+				'error'
+			);
+			return;
+		}
 		if ( ! ( await addressesConfirmed( form, body ) ) ) {
-			if ( button ) {
-				button.disabled = false;
-			}
+			placing( form, false );
 			return;
 		}
 		const result = await api< PlacedOrder >( 'POST', '/checkout', body );
 		if ( result.ok ) {
-			window.location.assign(
-				result.data.redirect_url ?? result.data.receipt_url
-			);
+			navigate( result.data.redirect_url ?? result.data.receipt_url );
 			return;
 		}
-		if ( button ) {
-			button.disabled = false;
+		if ( result.code === 'orillacart_cart_empty' ) {
+			// Nothing to order any more: the cart says why (an item no longer sold, a cart emptied in another tab).
+			navigate( form.dataset.orillacartCartUrl || window.location.href );
+			return;
 		}
 		if ( result.code === 'orillacart_cart_changed' ) {
-			// The summary shows what the order costs now; the message goes in after it is drawn.
+			// The summary shows what the order costs now; the message goes in after it is drawn. A page that
+			// cannot show it any more (an item no longer sold) is loaded anew by the refresh, and says why.
 			summary = refreshSummary( form );
 			await summary;
 		}
+		placing( form, false );
+		if (
+			result.code === 'orillacart_unreadable' ||
+			result.code === 'orillacart_network'
+		) {
+			// The order may have been placed: where to find it is said, rather than inviting a second one.
+			const orders = form.dataset.orillacartAccountUrl;
+			showMessage(
+				form,
+				result.message +
+					' ' +
+					__( 'Your order may have been placed.', 'orillacart' ),
+				'error',
+				orders
+					? {
+							url: orders,
+							label: __( 'See your orders', 'orillacart' ),
+						}
+					: undefined
+			);
+			return;
+		}
+		const violations =
+			result.code === 'orillacart_terms_not_accepted' &&
+			result.violations.length === 0
+				? [ { field: 'accepts_terms', message: result.message } ]
+				: result.violations;
 		showMessage(
 			form,
-			failure( result, showErrors( form, result.violations ) ),
+			failure( result, showErrors( form, violations ) ),
 			'error'
 		);
 	} );
+
+	// A page the browser kept and shows again (Back after paying elsewhere) comes as it was left: the button
+	// placing the order off, and the totals of then.
+	window.addEventListener( 'pageshow', ( event ) => {
+		if ( ! event.persisted || ! form.isConnected ) {
+			return;
+		}
+		placing( form, false );
+		summary = summary.then( () => refreshSummary( form ) );
+	} );
+}
+
+/**
+ * Turns the order button off while the order is being placed, or back on; a summary drawn anew meanwhile
+ * brings a button of its own, which follows.
+ * @param form The checkout form.
+ * @param on   Whether the order is being placed.
+ */
+function placing( form: HTMLFormElement, on: boolean ): void {
+	if ( on ) {
+		form.dataset.orillacartPlacing = '1';
+	} else {
+		delete form.dataset.orillacartPlacing;
+	}
+	form.querySelectorAll< HTMLButtonElement >(
+		'button[type="submit"]'
+	).forEach( ( button ) => {
+		button.disabled = on;
+	} );
+}
+
+/**
+ * The total the summary on the page priced, as it sends it.
+ * @param form The checkout form.
+ */
+function expectedTotal( form: HTMLFormElement ): string | null {
+	return (
+		form.querySelector< HTMLInputElement >( '[name="expected_total"]' )
+			?.value ?? null
+	);
+}
+
+/**
+ * The total as the summary shows it, with its currency.
+ * @param form The checkout form.
+ */
+function shownTotal( form: HTMLFormElement ): string | null {
+	const fresh = form.querySelector(
+		'[data-orillacart-region="checkout-summary"]'
+	);
+	return (
+		(
+			fresh?.querySelector( '.orillacart-amount-due td' ) ??
+			fresh?.querySelector( '.orillacart-total td' )
+		)?.textContent?.trim() || null
+	);
 }
 
 /** A saved address as the page has it, keyed as the address fields are named. */
@@ -299,10 +398,21 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 	const summary = form.querySelector(
 		'[data-orillacart-region="checkout-summary"]'
 	);
+	// Read before the summary is drawn anew, to say only what the new one refuses.
+	// eslint-disable-next-line @wordpress/no-unused-vars-before-return -- a page reloaded needs it not
 	const refusedBefore = refusals( form );
 	summary?.setAttribute( 'aria-busy', 'true' );
 	try {
-		await reloadRegions( [ 'checkout-summary' ], url.toString() );
+		const missing = await reloadRegions(
+			[ 'checkout-summary' ],
+			url.toString()
+		);
+		if ( missing.length > 0 ) {
+			// The page renders the checkout no more (the cart emptied, an item no longer sold): it is loaded
+			// anew, and says why, rather than leave totals that no longer hold.
+			reloadPage();
+			return;
+		}
 	} catch {
 		showMessage(
 			form,
@@ -317,11 +427,16 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 		'[data-orillacart-region="checkout-summary"]'
 	);
 	fresh?.removeAttribute( 'aria-busy' );
+	// The summary's new button stays off while the order is being placed.
+	if ( form.dataset.orillacartPlacing === '1' ) {
+		fresh
+			?.querySelectorAll< HTMLButtonElement >( 'button[type="submit"]' )
+			.forEach( ( button ) => {
+				button.disabled = true;
+			} );
+	}
 	const said = form.querySelector( '[data-orillacart-total-said]' );
-	const total = (
-		fresh?.querySelector( '.orillacart-amount-due td' ) ??
-		fresh?.querySelector( '.orillacart-total td' )
-	)?.textContent?.trim();
+	const total = shownTotal( form );
 	const saying = total
 		? sprintf(
 				/* translators: %s: the order's total, with its currency */

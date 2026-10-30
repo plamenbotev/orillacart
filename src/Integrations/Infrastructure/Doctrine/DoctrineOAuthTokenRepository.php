@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Integrations\Infrastructure\Doctrine;
 
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Integrations\Domain\OAuthToken;
 use OrillaCart\Integrations\Domain\OAuthTokenRepository;
@@ -17,14 +18,17 @@ final readonly class DoctrineOAuthTokenRepository implements OAuthTokenRepositor
         return $this->entityManager->getRepository(OAuthToken::class)->findOneBy(['accessHash' => $hash]);
     }
 
-    public function withRefreshHash(string $hash): ?OAuthToken
+    public function forRefresh(string $hash): ?OAuthToken
     {
-        return $this->entityManager->getRepository(OAuthToken::class)->findOneBy(['refreshHash' => $hash]);
-    }
+        $repository = $this->entityManager->getRepository(OAuthToken::class);
+        $token = $repository->findOneBy(['refreshHash' => $hash]) ?? $repository->findOneBy(['previousRefreshHash' => $hash]);
+        if ($token === null) {
+            return null;
+        }
+        // Read again under the row's lock: a refresh that ran meanwhile may have rotated it.
+        $this->entityManager->refresh($token, LockMode::PESSIMISTIC_WRITE);
 
-    public function withPreviousRefreshHash(string $hash): ?OAuthToken
-    {
-        return $this->entityManager->getRepository(OAuthToken::class)->findOneBy(['previousRefreshHash' => $hash]);
+        return $token;
     }
 
     public function save(OAuthToken $token): void

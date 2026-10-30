@@ -1,10 +1,11 @@
 import '@testing-library/jest-dom';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import { SettingsScreen } from '../SettingsScreen';
 import { lastWrite } from '../../shared/testing';
+import { hasUnsavedChanges } from '../../shared/useUnsavedChanges';
 import { forgetContentLanguages } from '../../shared/Translations';
 
 jest.mock( '@wordpress/api-fetch' );
@@ -246,6 +247,81 @@ describe( 'SettingsScreen', () => {
 		} );
 		// Many fields to type, on a screen of many cards: slower than most when the machine is busy.
 	}, 15000 );
+
+	it( 'loads the settings anew after a file is imported, so a save does not put the old ones back', async () => {
+		let current = stored;
+		serve( () => {
+			current = { ...stored, currency: 'USD' };
+			return Promise.resolve( { imported: [ 'general' ], refused: {} } );
+		} );
+		const fetchSettings = mockedFetch.getMockImplementation();
+		mockedFetch.mockImplementation( ( options ) =>
+			( options as { path: string } ).path === '/orillacart/v1/settings'
+				? Promise.resolve( current )
+				: ( fetchSettings as typeof apiFetch )( options )
+		);
+		const user = userEvent.setup();
+		render( <SettingsScreen /> );
+
+		expect( await screen.findByLabelText( 'Currency' ) ).toHaveValue(
+			'EUR'
+		);
+		const file = new File( [ '{"general":{}}' ], 'settings.json', {
+			type: 'application/json',
+		} );
+		Object.defineProperty( file, 'text', {
+			value: () => Promise.resolve( '{"general":{}}' ),
+		} );
+		await user.upload(
+			screen.getByLabelText( 'Import a settings file' ),
+			file
+		);
+
+		expect(
+			await screen.findByText( 'Imported: general.', NOTICE )
+		).toBeVisible();
+		await waitFor( () =>
+			expect( screen.getByLabelText( 'Currency' ) ).toHaveValue( 'USD' )
+		);
+	} );
+
+	it.each( [
+		[ 'Currencies', 'Offered currency', 'GBP' ],
+		[ 'Invoices', 'Legal name', 'Lamp Shop Ltd' ],
+	] )(
+		'asks before leaving the page with the %s card changed',
+		async ( _card, label, typed ) => {
+			serve();
+			const user = userEvent.setup();
+			render( <SettingsScreen /> );
+
+			const field = await screen.findByLabelText( label );
+			expect( hasUnsavedChanges() ).toBe( false );
+			await user.clear( field );
+			await user.type( field, typed );
+
+			expect( hasUnsavedChanges() ).toBe( true );
+		}
+	);
+
+	it.each( [
+		[ 'Shop pages', 'Shop', '' ],
+		[ 'Legal', 'The order button says', 'buy_now' ],
+	] )(
+		'asks before leaving the page with the %s card changed',
+		async ( _card, label, chosen ) => {
+			serve();
+			const user = userEvent.setup();
+			render( <SettingsScreen /> );
+
+			await screen.findByLabelText( 'Currency' );
+			const select = await screen.findByLabelText( label );
+			await waitFor( () => expect( hasUnsavedChanges() ).toBe( false ) );
+			await user.selectOptions( select, chosen );
+
+			expect( hasUnsavedChanges() ).toBe( true );
+		}
+	);
 
 	it( 'offers the states of the shop country', async () => {
 		serve( () => Promise.resolve( stored ) );

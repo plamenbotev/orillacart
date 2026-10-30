@@ -20,14 +20,14 @@ final readonly class DoctrineSubscriberRepository implements SubscriberRepositor
     public function countSubscribed(): int
     {
         return (int) $this->entityManager->createQueryBuilder()->select('COUNT(s.id)')->from(Subscriber::class, 's')
-            ->where('s.unsubscribedAt IS NULL')->getQuery()->getSingleScalarResult();
+            ->where('s.unsubscribedAt IS NULL')->andWhere('s.pending = false')->getQuery()->getSingleScalarResult();
     }
 
     public function subscribed(int $afterId, int $limit): array
     {
         /** @var list<Subscriber> */
         return $this->entityManager->createQueryBuilder()->select('s')->from(Subscriber::class, 's')
-            ->where('s.unsubscribedAt IS NULL')->andWhere('s.id > :after')->setParameter('after', $afterId)
+            ->where('s.unsubscribedAt IS NULL')->andWhere('s.pending = false')->andWhere('s.id > :after')->setParameter('after', $afterId)
             ->orderBy('s.id', 'ASC')->setMaxResults($limit)->getQuery()->getResult();
     }
 

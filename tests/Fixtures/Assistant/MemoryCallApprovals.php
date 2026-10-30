@@ -16,6 +16,9 @@ final class MemoryCallApprovals implements CallApprovals
     /** @var array<string, CallApproval> by token */
     public array $approvals = [];
 
+    /** @var list<string> tokens another request spends at the same moment, before this one can */
+    public array $raced = [];
+
     public function find(Caller $caller, string $call): ?CallApproval
     {
         foreach ($this->approvals as $approval) {
@@ -44,9 +47,12 @@ final class MemoryCallApprovals implements CallApprovals
         $this->approvals[$approval->token] = $approval->answered($yes);
     }
 
-    public function spend(CallApproval $approval): void
+    public function spend(CallApproval $approval): bool
     {
+        $spent = isset($this->approvals[$approval->token]) && !\in_array($approval->token, $this->raced, true);
         unset($this->approvals[$approval->token]);
+
+        return $spent;
     }
 
     public function url(CallApproval $approval): string

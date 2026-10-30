@@ -17,7 +17,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\UniqueConstraint(name: 'job_unique', columns: ['type', 'unique_key'])]
 #[ORM\Index(name: 'job_due', columns: ['queue', 'available_at'])]
 #[ORM\Index(name: 'job_available', columns: ['available_at'])]
-#[ORM\Index(name: 'job_type', columns: ['type'])]
+#[ORM\Index(name: 'job_type_waiting', columns: ['type', 'available_at', 'locked_until'])]
 class Job
 {
     public const int MAX_TYPE_LENGTH = 80;

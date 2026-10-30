@@ -54,9 +54,9 @@ final class InMemoryProductContent implements ProductContent
         return $this->posts[$productId][0] ?? '';
     }
 
-    public function idsNamed(string $words, int $limit): array
+    public function idsNamed(string $words, int $limit, bool $publishedOnly = false): array
     {
-        $ids = array_keys(array_filter($this->posts, static fn(array $post): bool => mb_stripos($post[0], $words) !== false));
+        $ids = array_keys(array_filter($this->posts, static fn(array $post): bool => mb_stripos($post[0], $words) !== false && (!$publishedOnly || $post[1])));
         rsort($ids);
 
         return \array_slice($ids, 0, $limit);
@@ -90,5 +90,13 @@ final class InMemoryProductContent implements ProductContent
     public function deleteVariation(int $variationId): void
     {
         unset($this->variations[$variationId]);
+    }
+
+    /** @var array<int, int> copied variation => the one it was copied from */
+    public array $copiedVariations = [];
+
+    public function copyVariation(int $fromVariationId, int $toVariationId): void
+    {
+        $this->copiedVariations[$toVariationId] = $fromVariationId;
     }
 }

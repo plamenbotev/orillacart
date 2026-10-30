@@ -57,6 +57,8 @@ final readonly class StoreSettings
         public ?int $returnDays = null,
         /** The least the items may come to, after discounts, for the customer to order; null for no least. */
         public ?Money $minimumOrder = null,
+        /** The day the reports count an order on: paid, or placed. Changing it counts every order again. */
+        public ReportDay $reportDay = ReportDay::Paid,
     ) {
         if ($minimumOrder !== null && ($minimumOrder->isNegative() || $minimumOrder->isZero())) {
             throw new RuleViolation('A minimum order is more than nothing; leave it empty for none.', 'orillacart_invalid_minimum_order');
@@ -129,6 +131,7 @@ final readonly class StoreSettings
             && $this->lowStockThreshold === $other->lowStockThreshold
             && $this->unpaidHoldDays === $other->unpaidHoldDays
             && $this->returnDays === $other->returnDays
-            && $this->minimumOrder?->toFixed() === $other->minimumOrder?->toFixed();
+            && $this->minimumOrder?->toFixed() === $other->minimumOrder?->toFixed()
+            && $this->reportDay === $other->reportDay;
     }
 }

@@ -24,8 +24,11 @@ interface CallApprovals
 
     public function answer(CallApproval $approval, bool $yes): void;
 
-    /** The call ran, or was refused: its approval is spent. */
-    public function spend(CallApproval $approval): void;
+    /**
+     * The call runs, or is refused: its approval is spent. True for the one call that spent it; false when another
+     * did first (two retries at once), which must then not run.
+     */
+    public function spend(CallApproval $approval): bool;
 
     /** Where its owner answers. */
     public function url(CallApproval $approval): string;

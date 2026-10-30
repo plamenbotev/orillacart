@@ -17,6 +17,8 @@ final class InMemoryAccounts implements Accounts
     public ?int $loggedIn = null;
     /** @var array<int, list<int>> */
     public array $wishlists = [];
+    /** @var array<int, CustomerRecord> users of another shop of the network, by id */
+    public array $elsewhere = [];
     private int $nextId = 100;
 
     public function add(string $email, string $firstName = 'Ada', string $lastName = 'Lovelace'): int
@@ -41,6 +43,23 @@ final class InMemoryAccounts implements Accounts
         }
 
         return null;
+    }
+
+    public function elsewhere(string $email): ?int
+    {
+        foreach ($this->elsewhere as $id => $account) {
+            if (strcasecmp($account->email, $email) === 0) {
+                return $id;
+            }
+        }
+
+        return null;
+    }
+
+    public function join(int $id): void
+    {
+        $this->accounts[$id] = $this->elsewhere[$id] ?? throw new \LogicException("User {$id} is no other shop's.");
+        unset($this->elsewhere[$id]);
     }
 
     public function isRegistered(string $email): bool
@@ -70,13 +89,13 @@ final class InMemoryAccounts implements Accounts
     public function saveAddresses(int $id, AddressBook $addresses): void
     {
         $account = $this->accounts[$id];
-        $this->accounts[$id] = new CustomerRecord($id, $account->email, $account->firstName, $account->lastName, $account->registeredAt, $addresses, $account->cartReminders);
+        $this->accounts[$id] = new CustomerRecord($id, $account->email, $account->firstName, $account->lastName, $account->registeredAt, $addresses, $account->cartReminders, $account->locale);
     }
 
     public function saveCartReminders(int $id, bool $on): void
     {
         $account = $this->accounts[$id];
-        $this->accounts[$id] = new CustomerRecord($id, $account->email, $account->firstName, $account->lastName, $account->registeredAt, $account->addresses, $on);
+        $this->accounts[$id] = new CustomerRecord($id, $account->email, $account->firstName, $account->lastName, $account->registeredAt, $account->addresses, $on, $account->locale);
     }
 
     public function wishlist(int $id): array

@@ -85,6 +85,10 @@ class Product
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $bundle = null;
 
+    /** When its details were last saved, in microseconds since 1970: one more than before at least, so every save moves it. */
+    #[ORM\Column(type: 'bigint', options: ['default' => 0])]
+    private int|string $updatedAt = 0;
+
     /** @var Collection<int, DownloadFile> */
     #[ORM\OneToMany(targetEntity: DownloadFile::class, mappedBy: 'product', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['id' => 'ASC'])]
@@ -176,6 +180,29 @@ class Product
         $this->backorderLimit = $details->backorderLimit;
         $this->lowStockThreshold = $details->lowStockThreshold;
         $this->taxCode = $details->taxCode;
+    }
+
+    /**
+     * When its details were last saved, to send back with the next save: a product saved since is refused
+     * (ProductService::save()). Microseconds, in UTC: "2026-10-30T09:15:02.123456Z".
+     */
+    public function updatedAt(): string
+    {
+        return self::stamp((int) $this->updatedAt);
+    }
+
+    /** Its details are saved now: when they were moves on, by a microsecond at least. */
+    public function touch(\DateTimeImmutable $now): void
+    {
+        $this->updatedAt = max((int) $now->format('Uu'), (int) $this->updatedAt + 1);
+    }
+
+    /** A product's updatedAt() from the microseconds stored. */
+    public static function stamp(int $microseconds): string
+    {
+        $seconds = intdiv($microseconds, 1_000_000);
+
+        return gmdate('Y-m-d\TH:i:s', $seconds) . \sprintf('.%06dZ', $microseconds - $seconds * 1_000_000);
     }
 
     /** Its shipping class is gone; it ships as an item without one. */

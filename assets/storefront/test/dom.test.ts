@@ -1,4 +1,4 @@
-import { reloadRegions } from '../dom';
+import { clearErrors, reloadRegions, showErrors } from '../dom';
 
 const answering = ( html: string ) =>
 	jest.fn( () =>
@@ -69,5 +69,43 @@ describe( 'reloading a region', () => {
 		expect(
 			( document.querySelector( '#coupon' ) as HTMLInputElement ).value
 		).toBe( 'NEW' );
+	} );
+} );
+
+describe( 'a region the fresh page has not', () => {
+	it( 'is reported, and left as it was', async () => {
+		document.body.innerHTML = region( '10.00' );
+		window.fetch = answering( '<p>The cart is empty.</p>' );
+
+		const missing = await reloadRegions( [ 'summary' ] );
+
+		expect( missing ).toEqual( [ 'summary' ] );
+		expect( document.querySelector( '.total' )?.textContent ).toBe(
+			'10.00'
+		);
+	} );
+} );
+
+describe( 'field errors', () => {
+	( globalThis as { CSS?: { escape: ( value: string ) => string } } ).CSS ??=
+		{ escape: ( value: string ) => value };
+
+	it( 'keep the help text the field is described by, as they come and go', () => {
+		document.body.innerHTML = `
+			<form>
+				<p><input name="vat_number" data-orillacart-field="vat_number" aria-describedby="vat-help"></p>
+				<small id="vat-help">For the reverse charge.</small>
+			</form>`;
+		const form = document.querySelector( 'form' ) as HTMLFormElement;
+		const field = form.querySelector( 'input' ) as HTMLInputElement;
+
+		showErrors( form, [ { field: 'vat_number', message: 'Not valid.' } ] );
+		expect( field.getAttribute( 'aria-describedby' ) ).toBe(
+			'vat-help orillacart-error-0'
+		);
+
+		clearErrors( form );
+		expect( field.getAttribute( 'aria-describedby' ) ).toBe( 'vat-help' );
+		expect( field.hasAttribute( 'aria-invalid' ) ).toBe( false );
 	} );
 } );

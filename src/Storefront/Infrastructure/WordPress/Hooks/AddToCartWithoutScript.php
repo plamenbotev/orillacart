@@ -56,7 +56,7 @@ final readonly class AddToCartWithoutScript
         $token = $result->newToken ?? $this->shopper->cart()->token;
         if ($token !== null) {
             $days = new \DateInterval(CartService::KEEP_FOR)->d;
-            setcookie(CartOwner::COOKIE, $token, ['expires' => time() + $days * DAY_IN_SECONDS, 'path' => SiteCookies::path(), 'domain' => SiteCookies::domain(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
+            setcookie(CartOwner::COOKIE, $token, ['expires' => time() + $days * DAY_IN_SECONDS, 'path' => SiteCookies::path(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
         }
         wp_safe_redirect($this->links->pages()['cart'] ?? home_url('/'), 303);
         exit;

@@ -34,12 +34,52 @@ export interface StockSheetQuery {
 	page: number;
 }
 
-export interface LevelChange {
+/** A stockroom's level of an item, which cell of the sheet it is. */
+export interface StockItemRef {
 	kind: StockItemKind;
 	id: number;
 	stockroom_id: number;
-	/** Null removes the stockroom's level of the item. */
+}
+
+/** One stockroom's level of one item: what to set it to, with what it was when loaded; or how many to add. */
+export type LevelChange = StockItemRef &
+	(
+		| {
+				/** Null removes the stockroom's level of the item. */
+				quantity: number | null;
+				/** The level the screen loaded, null for none: a level moved since (a sale) refuses the save. */
+				was: number | null;
+		  }
+		| {
+				/** Added to the level as it is then, below zero to take. */
+				change: number;
+		  }
+	);
+
+/** A level that moved since the screen loaded it, as it is now (null: the stockroom holds none). */
+export interface ChangedLevel {
+	kind: StockItemKind;
+	id: number;
+	stockroom_id: number;
 	quantity: number | null;
+}
+
+/**
+ * The levels a save was refused for because they moved since they were loaded (409 orillacart_stock_changed), or
+ * null for another failure.
+ *
+ * @param error Whatever the save rejected with.
+ */
+export function changedLevels( error: unknown ): ChangedLevel[] | null {
+	if (
+		typeof error !== 'object' ||
+		error === null ||
+		( error as { code?: unknown } ).code !== 'orillacart_stock_changed'
+	) {
+		return null;
+	}
+	const changed = ( error as { data?: { changed?: unknown } } ).data?.changed;
+	return Array.isArray( changed ) ? ( changed as ChangedLevel[] ) : [];
 }
 
 const BASE = '/orillacart/v1';

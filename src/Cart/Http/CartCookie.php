@@ -16,8 +16,8 @@ use Psr\Http\Message\ServerRequestInterface;
  * The browser's cart cookie: who owns a cart, and handing out a new token. The cookie is HttpOnly, so scripts
  * cannot read it, and SameSite=Lax, so other sites cannot make the browser change the cart or order from it;
  * Secure on a site served over HTTPS. Every change to the cart gives it again, so a cart in use does not expire
- * in the browser before the shop forgets it. It is set at the site's own cookie path (SiteCookies), so two
- * shops of a network in folders of one domain each keep a cart of their own.
+ * in the browser before the shop forgets it. It is set at the site's own cookie path for the host alone
+ * (SiteCookies), so two shops of a network, in folders of one domain or on subdomains, each keep a cart of their own.
  */
 final readonly class CartCookie
 {
@@ -42,9 +42,8 @@ final readonly class CartCookie
             return $response;
         }
         $secure = $request->getUri()->getScheme() === 'https' ? '; Secure' : '';
-        $domain = SiteCookies::domain() === '' ? '' : '; Domain=' . SiteCookies::domain();
         $days = new \DateInterval(CartService::KEEP_FOR)->d;
 
-        return $response->withAddedHeader('Set-Cookie', \sprintf('%s=%s; Path=%s%s; Max-Age=%d; HttpOnly; SameSite=Lax%s', self::NAME, $token, SiteCookies::path(), $domain, $days * 86400, $secure));
+        return $response->withAddedHeader('Set-Cookie', \sprintf('%s=%s; Path=%s; Max-Age=%d; HttpOnly; SameSite=Lax%s', self::NAME, $token, SiteCookies::path(), $days * 86400, $secure));
     }
 }

@@ -14,8 +14,9 @@ use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The cart cookie is set at the site's own cookie path, so the shops of a network in folders of one domain do not
- * overwrite each other's cart.
+ * The cart cookie is set at the site's own cookie path for the host alone, so the shops of a network, in folders of
+ * one domain or on subdomains sharing COOKIE_DOMAIN, do not overwrite each other's cart; forgetting it expires it
+ * everywhere an earlier build set it too.
  */
 final class CartCookieTest extends TestCase
 {
@@ -23,7 +24,7 @@ final class CartCookieTest extends TestCase
     {
         self::assertFalse(\defined('COOKIEPATH'), 'unit tests load no WordPress');
         self::assertSame('/', SiteCookies::path());
-        self::assertSame('', SiteCookies::domain());
+        self::assertSame([['path' => '/', 'domain' => '']], SiteCookies::everywhere());
 
         $header = $this->give(str_repeat('a', 64), 'http://shop.example/wp-json/orillacart/v1/cart');
 
@@ -35,14 +36,22 @@ final class CartCookieTest extends TestCase
 
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
-    public function testASiteInAFolderOfTheDomainSetsTheCookieAtItsOwnPath(): void
+    public function testASiteInAFolderOfTheDomainSetsTheCookieAtItsOwnPathForTheHostAloneWhateverTheCookieDomain(): void
     {
         \define('COOKIEPATH', '/shop-b/');
-        \define('COOKIE_DOMAIN', 'network.example');
+        // A network sharing its login across subdomains or mapped domains: the shops must not share a cart.
+        \define('COOKIE_DOMAIN', '.network.example');
 
         self::assertSame('/shop-b/', SiteCookies::path());
-        self::assertSame('network.example', SiteCookies::domain());
-        self::assertStringContainsString('; Path=/shop-b/; Domain=network.example; Max-Age=', $this->give(str_repeat('b', 64), 'http://network.example/shop-b/wp-json/orillacart/v1/cart'));
+        $header = $this->give(str_repeat('b', 64), 'http://network.example/shop-b/wp-json/orillacart/v1/cart');
+        self::assertStringContainsString('; Path=/shop-b/; Max-Age=', $header);
+        self::assertStringNotContainsString('Domain=', $header);
+        self::assertSame([
+            ['path' => '/shop-b/', 'domain' => ''],
+            ['path' => '/', 'domain' => ''],
+            ['path' => '/shop-b/', 'domain' => '.network.example'],
+            ['path' => '/', 'domain' => '.network.example'],
+        ], SiteCookies::everywhere(), 'logging out expires it here and wherever an earlier build set it');
     }
 
     #[RunInSeparateProcess]
@@ -65,7 +74,7 @@ final class CartCookieTest extends TestCase
         \define('COOKIE_DOMAIN', false);
 
         self::assertSame('/', SiteCookies::path());
-        self::assertSame('', SiteCookies::domain());
+        self::assertSame([['path' => '/', 'domain' => '']], SiteCookies::everywhere());
     }
 
     private function give(string $token, string $url): string

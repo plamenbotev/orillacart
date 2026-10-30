@@ -25,6 +25,7 @@ final readonly class OptionNewsletterSettingsRepository implements NewsletterSet
                 ($stored['offered'] ?? false) === true,
                 \is_string($stored['consent'] ?? null) ? $stored['consent'] : NewsletterSettings::DEFAULT_CONSENT,
                 \is_array($stored['lists'] ?? null) ? array_values(array_filter($stored['lists'], 'is_string')) : [],
+                ($stored['confirm_new'] ?? true) !== false,
             );
         } catch (NewsletterRuleViolation) {
             return new NewsletterSettings();
@@ -33,7 +34,7 @@ final readonly class OptionNewsletterSettingsRepository implements NewsletterSet
 
     public function save(NewsletterSettings $settings): void
     {
-        update_option(self::OPTION, ['offered' => $settings->offered, 'consent' => $settings->consent, 'lists' => $settings->lists], true);
+        update_option(self::OPTION, ['offered' => $settings->offered, 'consent' => $settings->consent, 'lists' => $settings->lists, 'confirm_new' => $settings->confirmNew], true);
     }
 
     public function activate(): void {}

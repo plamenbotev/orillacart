@@ -41,5 +41,9 @@ final readonly class OrderQuoteView
         public array $discounts = [],
         public array $fees = [],
         public string $feesTax = '0',
+        /** Sold under the reverse charge to a business with a VAT number VIES confirms. */
+        public bool $reverseCharge = false,
+        /** Why a VAT number given does not take the reverse charge, when it does not. */
+        public ?string $vatMessage = null,
     ) {}
 }

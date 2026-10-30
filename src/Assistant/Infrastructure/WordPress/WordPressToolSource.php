@@ -101,7 +101,7 @@ final readonly class WordPressToolSource implements ToolSource
                 'content' => ['description' => 'Blocks or HTML after the patterns.', 'type' => 'string', 'maxLength' => 200000],
             ], ['title'], false),
             self::tool('show_page', 'Show page', 'One of the shop\'s pages with its whole text; nothing changes.', ['id' => $id], ['id'], true),
-            self::tool('change_page', 'Change page', 'Changes the title or text of one of the shop\'s pages that is not published, such as a legal draft the setup made. A published page changes, or is taken down, with publish_page.', [
+            self::tool('change_page', 'Change page', 'Changes the title or text of one of the shop\'s pages that is a draft or pending review, such as a legal draft the setup made. A published, scheduled or private page changes, or is taken down, with publish_page.', [
                 'id' => $id,
                 'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 200],
                 'content' => ['description' => 'The whole text, HTML or blocks; replaces what it had.', 'type' => 'string', 'maxLength' => 200000],
@@ -537,8 +537,8 @@ final readonly class WordPressToolSource implements ToolSource
     }
 
     /**
-     * A page's title or text, and with publish_page its state: change_page leaves a published page to
-     * publish_page, which asks the owner first.
+     * A page's title or text, and with publish_page its state: change_page edits only a draft or a page pending
+     * review, and leaves any other (published, scheduled, private) to publish_page, which asks the owner first.
      *
      * @param array<string, mixed> $arguments
      *
@@ -548,8 +548,10 @@ final readonly class WordPressToolSource implements ToolSource
     {
         $id = self::id($arguments);
         $current = $this->page($id, false);
-        if ($status === null && $current['status'] === 'publish') {
-            throw new \InvalidArgumentException("Page {$id} is published: customers see it. Change it with publish_page, which asks the owner first.");
+        // Only a page nobody but the shop sees: a published one, a scheduled one (it goes live by itself) and a
+        // private one (as a legal page, read by whom it is for) are publish_page's, which asks the owner first.
+        if ($status === null && !\in_array($current['status'], ['draft', 'pending'], true)) {
+            throw new \InvalidArgumentException(\sprintf('Page %d is %s: change_page edits only a draft or a page pending review. Change it with publish_page, which asks the owner first.', $id, \is_string($current['status']) ? $current['status'] : 'not a draft'));
         }
         if (!current_user_can('edit_page', $id) || ($status === 'publish' && !current_user_can('publish_pages'))) {
             throw new \InvalidArgumentException('The key\'s shop manager may not edit that page.');

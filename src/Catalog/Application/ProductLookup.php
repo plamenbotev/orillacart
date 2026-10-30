@@ -83,23 +83,23 @@ final readonly class ProductLookup
     }
 
     /**
-     * The product or variation whose SKU is exactly this one; SKUs are unique across both.
+     * Loads a batch of products with what they hold in a few queries, so reading each of them after asks nothing
+     * more: for an export, a batch at a time.
+     *
+     * @param list<int> $ids
+     */
+    public function prime(array $ids): void
+    {
+        $this->products->findMany($ids);
+    }
+
+    /**
+     * The product or variation whose SKU this is, as the database tells SKUs apart: one query, by its index.
      *
      * @return array{int, ?int}|null its product's id, and the variation's for a variation
      */
     public function withSku(string $sku): ?array
     {
-        foreach ($this->products->findMany($this->products->idsWithSku($sku)) as $product) {
-            if ($product->details()->sku === $sku) {
-                return [$product->id(), null];
-            }
-            foreach ($product->variations() as $variation) {
-                if ($variation->sku() === $sku) {
-                    return [$product->id(), $variation->id()];
-                }
-            }
-        }
-
-        return null;
+        return $sku === '' ? null : $this->products->withSku($sku);
     }
 }

@@ -152,6 +152,20 @@ async function call< T >(
 		data = await readJson( response );
 	}
 
+	if ( response.ok && data === NOT_JSON ) {
+		// A 200 that is not the shop's JSON (a proxy's page, a plugin's notice before it): what happened is not
+		// known, and the caller must not read an answer that is not there.
+		return {
+			ok: false,
+			status: response.status,
+			code: 'orillacart_unreadable',
+			message: __(
+				'The shop answered in a way this page cannot read. Check your account before trying again.',
+				'orillacart'
+			),
+			violations: [],
+		};
+	}
 	if ( response.ok ) {
 		return { ok: true, status: response.status, data: data as T };
 	}
@@ -167,7 +181,7 @@ async function call< T >(
 			violations: [],
 		};
 	}
-	const error = ( data ?? {} ) as {
+	const error = ( data === NOT_JSON || data === null ? {} : data ) as {
 		code?: unknown;
 		message?: unknown;
 		data?: { violations?: unknown };
@@ -183,6 +197,9 @@ async function call< T >(
 	};
 }
 
+/** What readJson gives for an answer that is not JSON. */
+const NOT_JSON = Symbol( 'not JSON' );
+
 async function readJson( response: Response ): Promise< unknown > {
 	if ( response.status === 204 ) {
 		return null;
@@ -190,7 +207,7 @@ async function readJson( response: Response ): Promise< unknown > {
 	try {
 		return await response.json();
 	} catch {
-		return null;
+		return NOT_JSON;
 	}
 }
 

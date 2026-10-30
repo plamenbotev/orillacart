@@ -28,6 +28,25 @@ final readonly class DoctrineProductImports implements ProductImportRepository
         $this->entityManager->flush();
     }
 
+    public function progress(ProductImport $import): void
+    {
+        $this->entityManager->getConnection()->update(
+            $this->entityManager->getClassMetadata(ProductImport::class)->getTableName(),
+            [
+                'status' => $import->status()->value,
+                'position' => $import->position(),
+                'line' => $import->line(),
+                'done' => $import->done(),
+                'created' => $import->created(),
+                'updated' => $import->updated(),
+                'failed' => $import->failed(),
+                'errors' => (string) json_encode($import->errors(), \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_UNICODE),
+                'finished_at' => $import->finishedAt()?->format('Y-m-d H:i:s'),
+            ],
+            ['id' => $import->id()],
+        );
+    }
+
     public function remove(ProductImport $import): void
     {
         $this->entityManager->remove($import);

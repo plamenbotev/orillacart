@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import { StockroomsScreen } from '../StockroomsScreen';
+import { hasUnsavedChanges } from '../../shared/useUnsavedChanges';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -65,6 +66,8 @@ describe( 'StockroomsScreen', () => {
 		const longest = last( screen.getAllByLabelText( 'At most' ) );
 		await user.clear( longest );
 		await user.type( longest, '2' );
+		// A draft not saved keeps the page from being left without asking.
+		expect( hasUnsavedChanges() ).toBe( true );
 		await user.click(
 			screen.getByRole( 'button', { name: 'Add stockroom' } )
 		);
@@ -88,6 +91,7 @@ describe( 'StockroomsScreen', () => {
 		expect(
 			await screen.findByRole( 'heading', { name: 'Berlin' } )
 		).toBeVisible();
+		expect( hasUnsavedChanges() ).toBe( false );
 	} );
 
 	it( 'deletes a stockroom after a second click', async () => {

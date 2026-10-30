@@ -9,13 +9,14 @@ use OrillaCart\Shared\Domain\Money;
 
 /**
  * A cart left at checkout: what it held when the shop counted it abandoned, whether its customer was reminded,
- * and the order placed from it after, if any. Kept for the report after the cart is gone; the email only while
+ * the order placed from it after, if any, and when that order was paid: only then is the cart recovered. Kept for the report after the cart is gone; the email only while
  * the cart is kept.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'abandoned_carts')]
 #[ORM\Index(name: 'abandoned_at', columns: ['abandoned_at'])]
 #[ORM\Index(name: 'abandoned_email', columns: ['email'])]
+#[ORM\Index(name: 'abandoned_order', columns: ['order_id'])]
 class AbandonedCart
 {
     #[ORM\Id]
@@ -113,9 +114,16 @@ class AbandonedCart
         return $this->recoveredAt;
     }
 
-    public function isRecovered(): bool
+    /** An order was placed from it: no reminder goes any more. */
+    public function isOrdered(): bool
     {
         return $this->orderId !== null;
+    }
+
+    /** The order placed from it was paid: the sale was won back. */
+    public function isRecovered(): bool
+    {
+        return $this->recoveredAt !== null;
     }
 
     public function reminded(\DateTimeImmutable $now): void
@@ -123,12 +131,19 @@ class AbandonedCart
         $this->remindedAt = $now;
     }
 
-    /** An order was placed from the cart after it was left. */
-    public function recovered(int $orderId, string $total, \DateTimeImmutable $now): void
+    /** An order was placed from the cart after it was left; it is recovered once that order is paid. */
+    public function ordered(int $orderId, string $total): void
     {
         $this->orderId = $orderId;
         $this->orderTotal = $total;
-        $this->recoveredAt = $now;
+    }
+
+    /** The order placed from it was paid. */
+    public function recovered(\DateTimeImmutable $now): void
+    {
+        if ($this->orderId !== null) {
+            $this->recoveredAt ??= $now;
+        }
     }
 
     public function forgetEmail(): void

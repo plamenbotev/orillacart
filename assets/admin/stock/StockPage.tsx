@@ -5,7 +5,9 @@ import { HistoryTab } from './HistoryTab';
 import { StockScreen } from './StockScreen';
 
 /**
- * Shop → Stock: the levels every stockroom holds, to count and correct, and the history of how they moved.
+ * Shop → Stock: the levels every stockroom holds, to count and correct, and the history of how they moved. The
+ * levels stay on the page while the history shows, hidden: amounts typed and not yet saved are there on the way
+ * back, rather than dropped by a look at the history.
  */
 export function StockPage() {
 	return (
@@ -15,16 +17,19 @@ export function StockPage() {
 				{ name: 'history', title: __( 'History', 'orillacart' ) },
 			] }
 		>
-			{ ( tab ) =>
-				tab.name === 'history' ? (
-					<>
-						<h1>{ __( 'Stock history', 'orillacart' ) }</h1>
-						<HistoryTab />
-					</>
-				) : (
-					<StockScreen />
-				)
-			}
+			{ ( tab ) => (
+				<>
+					<div hidden={ tab.name !== 'levels' }>
+						<StockScreen />
+					</div>
+					{ tab.name === 'history' && (
+						<>
+							<h1>{ __( 'Stock history', 'orillacart' ) }</h1>
+							<HistoryTab />
+						</>
+					) }
+				</>
+			) }
 		</TabPanel>
 	);
 }

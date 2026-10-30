@@ -23,9 +23,12 @@ final readonly class ProductChoices
     ) {}
 
     /**
+     * @param bool $publishedOnly for those who cannot edit products: drafts, private and scheduled ones are not
+     *                            theirs to see
+     *
      * @return list<ProductChoice>
      */
-    public function find(ProductChoiceQuery $query): array
+    public function find(ProductChoiceQuery $query, bool $publishedOnly = false): array
     {
         $ids = $query->ids();
         if ($ids === []) {
@@ -34,12 +37,12 @@ final readonly class ProductChoices
                 return [];
             }
             // More posts than shown: a product's translations are found with it, and count once.
-            $ids = \array_slice(array_values(array_unique($this->translations->originals($this->content->idsNamed($words, self::SHOWN * 4)))), 0, self::SHOWN);
+            $ids = \array_slice(array_values(array_unique($this->translations->originals($this->content->idsNamed($words, self::SHOWN * 4, $publishedOnly)))), 0, self::SHOWN);
         }
 
         return array_values(array_map(
             fn(int $id): ProductChoice => new ProductChoice($id, $this->content->name($this->translations->shown($id))),
-            array_filter($ids, $this->content->exists(...)),
+            array_filter($ids, $publishedOnly ? $this->content->isPublished(...) : $this->content->exists(...)),
         ));
     }
 }

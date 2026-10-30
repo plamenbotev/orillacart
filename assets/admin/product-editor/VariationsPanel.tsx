@@ -129,6 +129,9 @@ const variationInput = ( variation: Variation | null ): VariationInput => ( {
 	height: variation?.height ?? null,
 } );
 
+/** The variation's fields that hold decimals, the sale's price among them. */
+const VARIATION_DECIMALS = [ 'price', 'weight', 'length', 'width', 'height' ];
+
 function VariationRow( {
 	productId,
 	attributes,
@@ -144,8 +147,9 @@ function VariationRow( {
 	const [ content, setContent ] = useState< VariationContent >( NO_CONTENT );
 	const [ savedContent, setSavedContent ] =
 		useState< VariationContent >( NO_CONTENT );
+	// Prices and sizes compare as numbers: "2.5" typed is "2.50" saved.
 	useUnsavedChanges(
-		differs( draft, variationInput( variation ) ) ||
+		differs( draft, variationInput( variation ), VARIATION_DECIMALS ) ||
 			differs( content, savedContent )
 	);
 	const variationId = variation?.id;

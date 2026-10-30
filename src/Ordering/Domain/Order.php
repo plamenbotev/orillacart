@@ -21,6 +21,9 @@ use OrillaCart\Shared\Domain\Text;
 #[ORM\Index(name: 'order_status', columns: ['status', 'placed_at'])]
 #[ORM\Index(name: 'order_customer', columns: ['customer_id'])]
 #[ORM\Index(name: 'order_delivery', columns: ['delivery_key', 'delivery_date'])]
+#[ORM\Index(name: 'order_email', columns: ['email'])]
+#[ORM\Index(name: 'order_attention', columns: ['attention_since'])]
+#[ORM\Index(name: 'order_total', columns: ['total', 'id'])]
 class Order
 {
     public const int MAX_NOTE_LENGTH = 2000;
@@ -608,6 +611,36 @@ class Order
         $this->giftCards = array_map(static fn(array $card): array => ['label' => mb_substr($card['label'], 0, 100), 'amount' => $card['amount']->toFixed()], $cards);
     }
 
+    /**
+     * The gift cards that paid part of the order no longer had all of it when it was opened again: what they could
+     * not pay again is left to pay the customer's way, the cards' share and what was paid count only what came,
+     * and the shop looks at it.
+     *
+     * @return Money the share the cards no longer pay
+     */
+    public function giftCardsFellShort(Money $short, string $reason, \DateTimeImmutable $at): Money
+    {
+        $short = $short->compare($this->giftCardTotal()) > 0 ? $this->giftCardTotal() : $short;
+        if ($short->isZero() || $short->isNegative()) {
+            return Money::zero();
+        }
+        $this->giftCardTotal = $this->giftCardTotal()->subtract($short)->toFixed();
+        // Taken off the cards last listed first, as each paid what the ones before it left.
+        $left = $short;
+        foreach (array_reverse(array_keys($this->giftCards)) as $index) {
+            $amount = Money::of($this->giftCards[$index]['amount']);
+            $off = $left->compare($amount) > 0 ? $amount : $left;
+            $this->giftCards[$index]['amount'] = $amount->subtract($off)->toFixed();
+            $left = $left->subtract($off);
+        }
+        if ($this->paidAmount !== null) {
+            $this->paidAmount = $this->paidAmount()->subtract($short)->atLeastZero()->toFixed();
+        }
+        $this->needsAttention($reason, $at);
+
+        return $short;
+    }
+
     /** What the changes to the items' prices took off, in all: coupons and the shop's. */
     public function discountTotal(): Money
     {
@@ -1061,6 +1094,12 @@ class Order
         $readdressed = $this->shipsElsewhere($shippingAddress);
         if ($readdressed && \in_array($this->status, [OrderStatus::Shipped, OrderStatus::Completed], true)) {
             throw new OrderRuleViolation('The order shipped already: its address cannot change. The email and phone still can.', 'orillacart_order_shipped');
+        }
+        // A courier's office or locker chosen near the old address, and the price and tax for there, would stay.
+        $postcode = static fn(Address $address): string => strtoupper((string) preg_replace('/[\s-]+/', '', $address->postcode()));
+        if ($shippingAddress !== null && $this->pickupPointId !== null && !str_starts_with($this->shippingOption ?? '', 'pickup:')
+            && ($shippingAddress->country() !== $this->shippingAddress->country() || $postcode($shippingAddress) !== $postcode($this->shippingAddress))) {
+            throw new OrderRuleViolation('The order goes to an office or locker near its old address. Change how it ships to a service to the door first, then the address, then choose an office near the new one.', 'orillacart_pickup_point_stale');
         }
         $this->email = $email;
         $this->billing = $billing;

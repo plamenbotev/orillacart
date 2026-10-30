@@ -81,9 +81,10 @@ final readonly class ExportCommand implements CliCommand
         }
         try {
             $file = self::file($stream, $format, $what === 'products');
+            LongExport::start();
             match ($what) {
-                'orders' => $this->orders->export($this->download->orderQuery($filters), $file),
-                'products' => $this->products->export($file),
+                'orders' => $this->orders->export($this->download->orderQuery($filters), $file, LongExport::between(...)),
+                'products' => $this->products->export($file, LongExport::between(...)),
                 default => $this->subscribers->export($file),
             };
         } catch (HttpException $e) {

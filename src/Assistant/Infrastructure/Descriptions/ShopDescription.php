@@ -10,8 +10,7 @@ use OrillaCart\Assistant\Application\Dto\ToolDefinition;
 
 /**
  * What changes for the whole shop: opening it, an "opening soon" page, settings with what each was and becomes, a
- * settings file taken in, the sample data, problems and failed jobs cleared, an order taken off the attention list,
- * an email template set back.
+ * settings file taken in, the sample data and failed jobs cleared, an email template set back.
  */
 final readonly class ShopDescription implements CallDescription
 {
@@ -25,9 +24,7 @@ final readonly class ShopDescription implements CallDescription
             'update_settings' => $this->settings($tool, $arguments),
             'import_settings' => $this->archive($arguments),
             'remove_sample_data' => 'Deletes the sample products, categories, customers and orders the shop added, for good; what you made yourself stays.',
-            'clear_problems' => $this->problems($tool, $arguments),
             'delete_failed_jobs' => $this->failedJobs($tool, $arguments),
-            'mark_order_handled' => $this->handled($tool, $arguments),
             'reset_email_template' => $this->template($tool, $arguments),
             default => null,
         };
@@ -76,24 +73,6 @@ final readonly class ShopDescription implements CallDescription
     /**
      * @param array<string, mixed> $arguments
      */
-    private function problems(ToolDefinition $tool, array $arguments): string
-    {
-        $route = $this->reads->tool($tool->name);
-        $listed = $route === null ? null : $this->reads->read($route->path, $route, $arguments);
-        $problems = \is_array($listed['problems'] ?? null) ? $listed['problems'] : [];
-        $lines = ['Clears the ' . \count($problems) . ' problems the shop lists; they come back if they happen again.'];
-        foreach (\array_slice($problems, 0, 10) as $problem) {
-            if (\is_array($problem) && \is_string($problem['message'] ?? null)) {
-                $lines[] = '• ' . $problem['message'];
-            }
-        }
-
-        return implode("\n", $lines);
-    }
-
-    /**
-     * @param array<string, mixed> $arguments
-     */
     private function failedJobs(ToolDefinition $tool, array $arguments): string
     {
         $route = $this->reads->tool('list_failed_jobs');
@@ -109,21 +88,6 @@ final readonly class ShopDescription implements CallDescription
         }
 
         return implode("\n", $lines);
-    }
-
-    /**
-     * @param array<string, mixed> $arguments
-     */
-    private function handled(ToolDefinition $tool, array $arguments): ?string
-    {
-        $route = $this->reads->tool($tool->name);
-        $order = $route === null ? null : $this->reads->read('/orders/{id}', $route, $arguments);
-        if ($order === null) {
-            return null;
-        }
-        $attention = \is_string($order['attention'] ?? null) ? $order['attention'] : '';
-
-        return 'Takes order #' . (\is_int($order['number'] ?? null) ? $order['number'] : '?') . ' off the list of orders that need the shop' . ($attention === '' ? '.' : ': ' . Words::quoted($attention));
     }
 
     /**

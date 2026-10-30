@@ -37,6 +37,11 @@ final readonly class NetworkJobSites implements JobSites
         return array_keys(array_filter($this->upgrades->shops(), fn(string $stored): bool => $stored === $this->context->build));
     }
 
+    public function outdated(): bool
+    {
+        return $this->context->filesBuild() !== $this->context->build;
+    }
+
     public function chores(): void
     {
         // A batch of the network's walk after an update, short so the queues are not kept waiting.

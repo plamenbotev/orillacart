@@ -26,6 +26,8 @@ final readonly class BackInStock
     public const string KEEP = 'P6M';
     /** Emails a job sends before it comes back for the rest. */
     private const int BATCH = 50;
+    /** Refusals of one recipient's email after which the request is let go. */
+    public const int MAX_REFUSALS = 3;
 
     public function __construct(
         private BackInStockRequests $requests,
@@ -75,16 +77,24 @@ final readonly class BackInStock
     }
 
     /**
-     * Writes to the next batch of those waiting for the item, forgetting each once its email went.
+     * Writes to the next batch of those waiting for the item, forgetting each once its email went. Nothing goes
+     * while the shop has these emails off, or once the item sold out again: those waiting go on waiting for its
+     * next return. One the mail system refused is passed by, for the others, and let go once refused
+     * MAX_REFUSALS times.
      *
      * @return bool whether some are left
      *
-     * @throws EmailNotSent the mail system refused one; the rest wait for the job's next try
+     * @throws EmailNotSent the mail system refused some; the others went, and the refused wait for the job's next try
      * @throws EmailNotWritten
      */
     public function send(string $item): bool
     {
+        if (!$this->settings->load()->sends(EmailKind::BackInStock)) {
+            return false;
+        }
         $requests = $this->requests->forItem($item, self::BATCH);
+        $refused = 0;
+        $checked = false;
         foreach ($requests as $request) {
             try {
                 $offer = $this->catalog->offer($request->productId());
@@ -97,14 +107,28 @@ final readonly class BackInStock
                 $id = (int) substr($item, \strlen('variation:'));
                 $variation = array_values(array_filter($offer->variations, static fn(OfferedVariation $offered): bool => $offered->id === $id))[0] ?? null;
             }
+            // As it stands now, not as it stood when the job was queued: sold out again, nobody is told it is back.
+            if (!$checked && ($variation->soldOut ?? $offer->soldOut)) {
+                return false;
+            }
+            $checked = true;
             // The product's page in the language of the one who asked.
             $email = $this->writer->write(EmailKind::BackInStock->template(), EmailKind::BackInStock->value, $request->email(), $request->locale(), fn(): array => [
                 'product' => ['name' => $offer->name, 'variation' => $variation?->label, 'url' => $this->site->productUrl($request->productId()) ?? $this->site->url()],
             ]);
-            if (!$this->mailer->send($email)) {
-                throw new EmailNotSent('The back in stock email was not sent: the mail system refused it.');
+            if ($this->mailer->send($email)) {
+                $this->requests->remove($request);
+                continue;
             }
-            $this->requests->remove($request);
+            ++$refused;
+            if ($request->refused() >= self::MAX_REFUSALS) {
+                $this->requests->remove($request);
+            } else {
+                $this->requests->save($request);
+            }
+        }
+        if ($refused > 0) {
+            throw new EmailNotSent(\sprintf('%d back in stock email(s) were not sent: the mail system refused them. The others went.', $refused));
         }
 
         return \count($requests) === self::BATCH;

@@ -56,7 +56,7 @@ final readonly class OptionTaxSettingsRepository implements TaxSettingsRepositor
             \is_string($stored['price_suffix'] ?? null) && mb_strlen($stored['price_suffix']) <= TaxSettings::SUFFIX_LENGTH && preg_match('/[<>\x00-\x1F]/', $stored['price_suffix']) !== 1 ? $stored['price_suffix'] : '',
             ($stored['same_price_everywhere'] ?? true) !== false,
             ($stored['shipping_taxed_as_items'] ?? false) === true,
-            \is_string($stored['eu_threshold'] ?? null) && preg_match('/^\d{1,12}(\.\d{1,2})?$/', $stored['eu_threshold']) === 1 ? $stored['eu_threshold'] : TaxSettings::EU_THRESHOLD,
+            \is_string($stored['eu_threshold'] ?? null) && preg_match('/^\d{1,12}(\.\d{1,2})?$/', $stored['eu_threshold']) === 1 ? $stored['eu_threshold'] : null,
         );
     }
 

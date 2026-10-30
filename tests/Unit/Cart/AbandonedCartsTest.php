@@ -8,6 +8,8 @@ use OrillaCart\Cart\Application\Dto\AbandonedCartView;
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Cart\Application\Dto\CheckoutContact;
+use OrillaCart\Cart\Domain\Event\LeftCartOrdered;
+use OrillaCart\Cart\Infrastructure\Events\RecoverPaidCarts;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
@@ -15,6 +17,7 @@ use OrillaCart\Customers\Domain\Event\PersonErased;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailSettings;
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Domain\Event\OrderPaid;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
@@ -30,6 +33,9 @@ final class AbandonedCartsTest extends TestCase
         $this->shop->content->add(20, 'Desk lamp');
         $this->shop->products->save(20, new SaveProduct('40', 'virtual'));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
+        $recovering = new RecoverPaidCarts($this->shop->abandonedCarts, $this->shop->orderRecords);
+        $this->shop->events->addListener(OrderPaid::class, $recovering->paid(...));
+        $this->shop->events->addListener(LeftCartOrdered::class, $recovering->ordered(...));
     }
 
     public function testAVisitorWhoAskedIsRemindedOnceAndTheLinkBringsTheCartBack(): void
@@ -55,7 +61,11 @@ final class AbandonedCartsTest extends TestCase
         $order = $this->shop->checkout->placeOrder(new CartOwner($token), new PlaceOrder('ada@example.com', $this->address(), payment: 'bank_transfer'));
         [$from, $until] = $this->today();
         $report = $this->shop->abandonedCarts->report($from, $until, 'EUR', 10);
-        self::assertSame(['abandoned' => 1, 'value' => '40', 'reminded' => 1, 'recovered' => 1, 'recovered_value' => (string) Money::of($order->total), 'recovered_after_reminder' => 1], $report['totals']);
+        self::assertSame(['abandoned' => 1, 'value' => '40', 'reminded' => 1, 'recovered' => 0, 'recovered_value' => '0', 'recovered_after_reminder' => 0], $report['totals'], 'ordered, not paid yet: nothing won back so far');
+
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $report = $this->shop->abandonedCarts->report($from, $until, 'EUR', 10);
+        self::assertSame(['abandoned' => 1, 'value' => '40', 'reminded' => 1, 'recovered' => 1, 'recovered_value' => (string) Money::of($order->total), 'recovered_after_reminder' => 1], $report['totals'], 'recovered once its money came');
         self::assertSame($order->number, $report['latest'][0]->orderId);
         self::assertSame('ada@example.com', $report['latest'][0]->email);
         self::assertNull($this->shop->carts->recover($link[1]), 'the cart was ordered: the link is done');

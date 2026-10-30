@@ -5,6 +5,7 @@ import apiFetch from '@wordpress/api-fetch';
 
 import { EmailsScreen } from '../EmailsScreen';
 import { lastWrite } from '../../shared/testing';
+import { hasUnsavedChanges } from '../../shared/useUnsavedChanges';
 import { forgetContentLanguages } from '../../shared/Translations';
 
 jest.mock( '@wordpress/api-fetch' );
@@ -75,6 +76,8 @@ describe( 'EmailsScreen', () => {
 		await user.click(
 			await screen.findByRole( 'option', { name: 'COMEBACK' } )
 		);
+		// Changes not saved keep the page from being left without asking.
+		expect( hasUnsavedChanges() ).toBe( true );
 		await user.click( screen.getByRole( 'button', { name: 'Save' } ) );
 
 		expect(
@@ -82,6 +85,7 @@ describe( 'EmailsScreen', () => {
 				selector: '.components-notice__content',
 			} )
 		).toBeVisible();
+		expect( hasUnsavedChanges() ).toBe( false );
 		expect( lastWrite( mockedFetch ) ).toEqual( {
 			path: '/orillacart/v1/email-settings',
 			method: 'PUT',

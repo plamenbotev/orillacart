@@ -15,9 +15,10 @@ import { searchProducts } from '../orders/products';
 import { errorMessage } from '../shared/api';
 import {
 	changeLevels,
+	changedLevels,
 	fetchCategories,
 	fetchStockSheet,
-	type LevelChange,
+	type StockItemRef,
 	type StockSheet,
 	type StockSheetQuery,
 } from './api';
@@ -30,11 +31,17 @@ const MODES: Record< string, string > = {
 	unavailable: __( 'Not for sale', 'orillacart' ),
 };
 
-/** A changed cell: the typed text, '' for "no level". */
+/**
+ * A changed cell: the typed text, '' for "no level"; the level the screen showed when it was typed (sent as `was`,
+ * so a sale made meanwhile is not overwritten), and the item's name, for saying which cell moved.
+ */
 type Edits = Record<
 	string,
-	{ change: Omit< LevelChange, 'quantity' >; text: string }
+	{ change: StockItemRef; text: string; was: number | null; name: string }
 >;
+
+/** Cells whose level moved since they were loaded, as they are now, by cell. */
+type Moved = Record< string, number | null >;
 
 const cellKey = ( kind: string, id: number, stockroom: number ) =>
 	`${ kind }:${ id }:${ stockroom }`;
@@ -66,6 +73,7 @@ export function StockScreen() {
 	const [ status, setStatus ] = useState<
 		| { kind: 'idle' | 'saving' | 'saved' }
 		| { kind: 'error'; message: string }
+		| { kind: 'moved'; message: string; moved: Moved }
 	>( { kind: 'idle' } );
 
 	useEffect( () => {
@@ -122,12 +130,13 @@ export function StockScreen() {
 		( edit ) => edit.text !== '' && ! /^\d+$/.test( edit.text )
 	);
 
-	const save = () => {
+	const save = ( sending: Edits = edits ) => {
 		setStatus( { kind: 'saving' } );
 		changeLevels(
-			Object.values( edits ).map( ( edit ) => ( {
+			Object.values( sending ).map( ( edit ) => ( {
 				...edit.change,
 				quantity: edit.text === '' ? null : Number( edit.text ),
+				was: edit.was,
 			} ) )
 		)
 			.then( () => {
@@ -135,13 +144,46 @@ export function StockScreen() {
 				setStatus( { kind: 'saved' } );
 				setQuery( ( current ) => ( { ...current } ) );
 			} )
-			.catch( ( error: unknown ) =>
+			.catch( ( error: unknown ) => {
+				const changedNow = changedLevels( error );
+				if ( changedNow === null ) {
+					setStatus( {
+						kind: 'error',
+						message: errorMessage( error ),
+					} );
+					return;
+				}
+				// Nothing was saved: what was typed stays, the cells that moved say what they hold now, and the
+				// sheet shows the levels as they are.
 				setStatus( {
-					kind: 'error',
+					kind: 'moved',
 					message: errorMessage( error ),
-				} )
-			);
+					moved: Object.fromEntries(
+						changedNow.map( ( level ) => [
+							cellKey( level.kind, level.id, level.stockroom_id ),
+							level.quantity,
+						] )
+					),
+				} );
+				setQuery( ( current ) => ( { ...current } ) );
+			} );
 	};
+
+	// The owner has seen the levels that moved and keeps what they typed: those cells are saved over the new levels.
+	const saveOverMoved = ( moved: Moved ) => {
+		const rebased = Object.fromEntries(
+			Object.entries( edits ).map( ( [ key, edit ] ) => [
+				key,
+				key in moved ? { ...edit, was: moved[ key ] ?? null } : edit,
+			] )
+		);
+		setEdits( rebased );
+		save( rebased );
+	};
+
+	const stockroomName = ( id: number ) =>
+		sheet?.stockrooms.find( ( stockroom ) => stockroom.id === id )?.name ??
+		`#${ id }`;
 
 	return (
 		<>
@@ -155,6 +197,47 @@ export function StockScreen() {
 			{ status.kind === 'error' && (
 				<Notice status="error" isDismissible={ false }>
 					{ status.message }
+				</Notice>
+			) }
+			{ status.kind === 'moved' && (
+				<Notice status="warning" isDismissible={ false }>
+					<p>{ status.message }</p>
+					<ul>
+						{ Object.entries( status.moved ).map(
+							( [ key, now ] ) => {
+								const edit = edits[ key ];
+								const stockroom = Number(
+									key.split( ':' )[ 2 ]
+								);
+								return (
+									<li key={ key }>
+										{ sprintf(
+											/* translators: 1: item name, 2: stockroom name, 3: the level now, 4: what was typed */
+											__(
+												'%1$s in %2$s now holds %3$s; you typed %4$s.',
+												'orillacart'
+											),
+											edit?.name ?? key,
+											stockroomName( stockroom ),
+											now === null
+												? __( 'none', 'orillacart' )
+												: String( now ),
+											edit === undefined ||
+												edit.text === ''
+												? __( 'none', 'orillacart' )
+												: edit.text
+										) }
+									</li>
+								);
+							}
+						) }
+					</ul>
+					<Button
+						variant="secondary"
+						onClick={ () => saveOverMoved( status.moved ) }
+					>
+						{ __( 'Save what I typed anyway', 'orillacart' ) }
+					</Button>
 				</Notice>
 			) }
 			{ status.kind === 'saved' && (
@@ -450,6 +533,15 @@ export function StockScreen() {
 																				stockroom.id,
 																		},
 																		text: value,
+																		// What the screen showed when first typed.
+																		was:
+																			current[
+																				key
+																			]
+																				?.was ??
+																			saved ??
+																			null,
+																		name: row.name,
 																	};
 																}
 																return next;
@@ -478,7 +570,7 @@ export function StockScreen() {
 									status.kind === 'saving'
 								}
 								isBusy={ status.kind === 'saving' }
-								onClick={ save }
+								onClick={ () => save() }
 							>
 								{ changed === 0
 									? __( 'Save changes', 'orillacart' )

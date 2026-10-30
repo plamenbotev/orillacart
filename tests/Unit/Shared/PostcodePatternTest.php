@@ -17,6 +17,13 @@ final class PostcodePatternTest extends TestCase
     public static function postcodes(): iterable
     {
         yield 'the postcode itself' => ['1000', '1000', true];
+        yield 'a Lithuanian postcode with its country' => ['01100', 'LT-01100', true];
+        yield 'in a range' => ['01000-01999', 'LT-01100', true];
+        yield 'a Latvian one by its start' => ['10*', 'LV-1050', true];
+        yield 'a Luxembourg one, its country one letter' => ['1000-1999', 'L-1009', true];
+        yield 'a Moldovan one' => ['2001', 'md-2001', true];
+        yield 'a pattern written with the country' => ['LT-01100', '01100', true];
+        yield 'not another postcode' => ['01100', 'LT-01101', false];
         yield 'another postcode' => ['1000', '1001', false];
         yield 'case and spaces do not matter' => ['sw1a 1aa', 'SW1A1AA', true];
         yield 'a start' => ['SW1*', 'sw1a 1aa', true];
@@ -47,6 +54,31 @@ final class PostcodePatternTest extends TestCase
     public function testMatching(string $pattern, string $postcode, bool $matches): void
     {
         self::assertSame($matches, PostcodePattern::of($pattern)->matches($postcode));
+    }
+
+    /**
+     * @return iterable<string, array{string, string, bool}>
+     */
+    public static function overlapping(): iterable
+    {
+        yield 'a start and a postcode it takes' => ['902*', '90210', true];
+        yield 'a start and one it does not' => ['902*', '90310', false];
+        yield 'two starts, one inside the other' => ['9*', '902*', true];
+        yield 'two starts apart' => ['SW1*', 'SW2*', false];
+        yield 'two ranges that meet' => ['1000-1999', '1999-2999', true];
+        yield 'two ranges apart' => ['1000-1999', '2000-2999', false];
+        yield 'a range and a start inside it' => ['90000-90999', '902*', true];
+        yield 'a range is of whole numbers, not of starts' => ['900-999', '9021*', false];
+        yield 'a range and a start outside it' => ['1000-1999', '25*', false];
+        yield 'a range and letters' => ['1000-1999', 'SW1*', false];
+        yield 'the same postcode written two ways' => ['10-200', '10200', true];
+        yield 'two postcodes' => ['1000', '1001', false];
+    }
+
+    #[DataProvider('overlapping')]
+    public function testOverlapping(string $one, string $two, bool $overlap): void
+    {
+        self::assertSame([$overlap, $overlap], [PostcodePattern::of($one)->overlaps(PostcodePattern::of($two)), PostcodePattern::of($two)->overlaps(PostcodePattern::of($one))]);
     }
 
     public function testPatternsAreKeptNormalized(): void

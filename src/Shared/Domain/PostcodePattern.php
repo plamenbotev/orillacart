@@ -15,7 +15,8 @@ namespace OrillaCart\Shared\Domain;
  * the US "94103-1234" in "94000-94999", the Portuguese "1000-001" in "1000-1999". Two groups of digits in the shape of
  * a postcode with a dash (two and three digits for Poland, three and four for Japan, four and three for Portugal,
  * five and three for Brazil, five and four for the US) are that one postcode, not a range; written with three dots
- * ("10...200", as WooCommerce writes ranges) they are always a range.
+ * ("10...200", as WooCommerce writes ranges) they are always a range. A country written before the postcode, as
+ * Lithuania, Latvia, Luxembourg and Moldova write it ("LT-01100", "L-1009"), is left out, of postcodes and patterns.
  */
 final readonly class PostcodePattern implements \Stringable
 {
@@ -84,6 +85,53 @@ final readonly class PostcodePattern implements \Stringable
         return $this->prefix !== null ? str_starts_with($postcode, $this->prefix) : $postcode === str_replace('-', '', $this->pattern);
     }
 
+    /**
+     * Whether some postcode is matched by both patterns: "902*" and "90210" are, "1000-1999" and "15*" are, "SW1*"
+     * and "SW2*" are not.
+     */
+    public function overlaps(self $other): bool
+    {
+        if ($this->from !== null && $other->from !== null) {
+            return $this->from <= (int) $other->to && $other->from <= (int) $this->to;
+        }
+        if ($this->from !== null || $other->from !== null) {
+            [$range, $pattern] = $this->from !== null ? [$this, $other] : [$other, $this];
+
+            return $pattern->prefix === null ? $range->matches($pattern->pattern) : $range->rangeMeetsStart($pattern->prefix);
+        }
+        $one = str_replace('-', '', $this->prefix ?? $this->pattern);
+        $two = str_replace('-', '', $other->prefix ?? $other->pattern);
+        if ($this->prefix !== null && $other->prefix !== null) {
+            return str_starts_with($one, $two) || str_starts_with($two, $one);
+        }
+        if ($this->prefix !== null || $other->prefix !== null) {
+            return $this->prefix !== null ? str_starts_with($two, $one) : str_starts_with($one, $two);
+        }
+
+        return $one === $two;
+    }
+
+    /** Whether a postcode starting so can be in this range: its leading digits, with more digits after them. */
+    private function rangeMeetsStart(string $start): bool
+    {
+        if (preg_match('/^\d+/', $start, $digits) !== 1) {
+            return false;
+        }
+        $number = (int) $digits[0];
+        if ($digits[0] !== $start) {
+            // Letters follow: the postcode's number is those digits.
+            return $number >= (int) $this->from && $number <= (int) $this->to;
+        }
+        // All digits: the postcode's number is those, or those followed by more (up to ten digits in all).
+        for ($more = 0, $step = 1; \strlen($digits[0]) + $more <= 10; ++$more, $step *= 10) {
+            if ($number * $step <= (int) $this->to && ($number + 1) * $step - 1 >= (int) $this->from) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function __toString(): string
     {
         return $this->pattern;
@@ -92,6 +140,10 @@ final readonly class PostcodePattern implements \Stringable
     private static function normalize(string $value): string
     {
         // A range may be written with a dash, as hints show it.
-        return strtoupper(str_replace(['–', '—'], '-', (string) preg_replace('/\s+/u', '', $value)));
+        $value = strtoupper(str_replace(['–', '—'], '-', (string) preg_replace('/\s+/u', '', $value)));
+
+        // Without the country some countries write before it (LT-01100, LV-1050, L-1009, MD-2001): the digits
+        // are the postcode.
+        return (string) preg_replace('/^[A-Z]{1,2}-(?=\d)/', '', $value);
     }
 }

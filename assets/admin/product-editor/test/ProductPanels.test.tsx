@@ -96,6 +96,7 @@ const product = {
 	download_limit: null,
 	download_expiry_days: null,
 	downloads: [],
+	updated_at: '2026-10-30T08:00:00+00:00',
 };
 
 type Request = { path: string; method?: string; data?: unknown };
@@ -277,10 +278,214 @@ describe( 'ProductPanels', () => {
 				data: expect.objectContaining( {
 					price: '12.5',
 					sale: { price: '9', from: null, until: null },
+					updated_at: '2026-10-30T08:00:00+00:00',
 				} ),
 			} )
 		);
 		expect( notices() ).toEqual( [] );
+	} );
+
+	it( 'sends nothing when the post is saved and the details did not change', async () => {
+		serve( ( request ) =>
+			Promise.resolve( { ...product, ...( request.data as object ) } )
+		);
+		const user = userEvent.setup();
+		render( <ProductPanels /> );
+
+		// Typed and put back: the same details.
+		const price = await screen.findByLabelText( 'Price' );
+		await user.clear( price );
+		await user.type( price, '10.00' );
+
+		await act( async () => editorState( { saving: true } ) );
+		await act( async () => editorState( { saving: false } ) );
+
+		expect( mockedFetch ).not.toHaveBeenCalledWith(
+			expect.objectContaining( { method: 'PUT' } )
+		);
+	} );
+
+	it( 'says the product changed elsewhere, and saves over it or loads it as asked', async () => {
+		const now = {
+			...product,
+			price: '15',
+			sku: 'MUG-2',
+			updated_at: '2026-10-30T09:00:00+00:00',
+		};
+		const puts: Request[] = [];
+		serve( ( request ) => {
+			puts.push( request );
+			return puts.length === 1
+				? Promise.reject( {
+						code: 'orillacart_product_changed',
+						message: 'The product was changed since it was loaded.',
+						data: { status: 409, product: now },
+					} )
+				: Promise.resolve( { ...now, ...( request.data as object ) } );
+		} );
+		const user = userEvent.setup();
+		render( <ProductPanels /> );
+
+		const price = await screen.findByLabelText( 'Price' );
+		await user.clear( price );
+		await user.type( price, '12' );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save product details' } )
+		);
+
+		expect(
+			await screen.findByText( /changed elsewhere since you opened it/, {
+				selector: 'p',
+			} )
+		).toBeVisible();
+		expect( screen.getByLabelText( 'Price' ) ).toHaveValue( '12' );
+
+		// Loading it asks first, as what was typed goes.
+		await user.click(
+			screen.getByRole( 'button', { name: 'Load it as it is now' } )
+		);
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Cancel' } )
+		);
+		expect( screen.getByLabelText( 'Price' ) ).toHaveValue( '12' );
+
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save mine over it' } )
+		);
+		expect( puts[ 1 ]?.data ).toEqual(
+			expect.objectContaining( {
+				price: '12',
+				updated_at: '2026-10-30T09:00:00+00:00',
+			} )
+		);
+		await screen.findByRole( 'button', { name: 'Save product details' } );
+		expect(
+			screen.queryByText( /changed elsewhere since you opened it/, {
+				selector: 'p',
+			} )
+		).not.toBeInTheDocument();
+	} );
+
+	it( 'loads the product as it is now once the owner agrees to lose their changes', async () => {
+		const now = {
+			...product,
+			price: '15',
+			updated_at: '2026-10-30T09:00:00+00:00',
+		};
+		serve( () =>
+			Promise.reject( {
+				code: 'orillacart_product_changed',
+				message: 'The product was changed since it was loaded.',
+				data: { status: 409, product: now },
+			} )
+		);
+		const user = userEvent.setup();
+		render( <ProductPanels /> );
+
+		const price = await screen.findByLabelText( 'Price' );
+		await user.clear( price );
+		await user.type( price, '12' );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save product details' } )
+		);
+		await user.click(
+			await screen.findByRole( 'button', {
+				name: 'Load it as it is now',
+			} )
+		);
+		await user.click(
+			await screen.findByRole( 'button', {
+				name: 'Load it, losing my changes',
+			} )
+		);
+
+		expect( screen.getByLabelText( 'Price' ) ).toHaveValue( '15' );
+	} );
+
+	it( 'keeps the details typed and not saved when a download is removed', async () => {
+		let removed = false;
+		const withFile = {
+			...product,
+			stock_mode: 'always_available',
+			downloads: [
+				{
+					id: 3,
+					name: 'manual.pdf',
+					mime_type: 'application/pdf',
+					size: 2048,
+				},
+			],
+		};
+		mockedFetch.mockImplementation( ( options ) => {
+			const request = options as Request;
+			if ( request.method === 'DELETE' ) {
+				removed = true;
+				return Promise.resolve( undefined );
+			}
+			if ( request.path === '/orillacart/v1/products/10' ) {
+				return Promise.resolve(
+					removed
+						? {
+								...product,
+								stock_mode: 'always_available',
+								sku: 'MUG-NEW',
+								updated_at: '2026-10-30T09:00:00+00:00',
+							}
+						: withFile
+				);
+			}
+			return Promise.resolve( [] );
+		} );
+		const user = userEvent.setup();
+		render( <ProductPanels /> );
+
+		const price = await screen.findByLabelText( 'Price' );
+		await user.clear( price );
+		await user.type( price, '12' );
+		await user.click( screen.getByRole( 'tab', { name: 'Downloads' } ) );
+		await user.click( screen.getByRole( 'button', { name: 'Remove' } ) );
+		await user.click(
+			within( await screen.findByRole( 'dialog' ) ).getByRole( 'button', {
+				name: 'Remove',
+			} )
+		);
+
+		expect( await screen.findByLabelText( 'SKU' ) ).toHaveValue(
+			'MUG-NEW'
+		);
+		expect( screen.getByLabelText( 'Price' ) ).toHaveValue( '12' );
+		expect( screen.queryByText( 'manual.pdf' ) ).not.toBeInTheDocument();
+	} );
+
+	it( 'names a refused field as the box does', async () => {
+		serve( () =>
+			Promise.reject( {
+				code: 'orillacart_invalid_input',
+				message: 'Some fields are not valid.',
+				data: {
+					status: 422,
+					violations: [
+						{
+							field: 'sale.until',
+							message: 'A sale has to end after it starts.',
+						},
+					],
+				},
+			} )
+		);
+		const user = userEvent.setup();
+		render( <ProductPanels /> );
+
+		await user.click(
+			await screen.findByRole( 'button', {
+				name: 'Save product details',
+			} )
+		);
+
+		await screen.findByRole( 'button', { name: 'Save product details' } );
+		expect( notices() ).toEqual( [
+			'Some fields are not valid. Sale ends: A sale has to end after it starts.',
+		] );
 	} );
 
 	it( 'reports what the server refused', async () => {
@@ -310,7 +515,7 @@ describe( 'ProductPanels', () => {
 
 		await screen.findByRole( 'button', { name: 'Save product details' } );
 		expect( notices() ).toEqual( [
-			'Some fields are not valid. price: Use an amount of zero or more.',
+			'Some fields are not valid. Price: Use an amount of zero or more.',
 		] );
 	} );
 
@@ -387,13 +592,15 @@ describe( 'ProductPanels', () => {
 			const user = userEvent.setup();
 			classic();
 
-			await screen.findByLabelText( 'Price' );
+			const price = await screen.findByLabelText( 'Price' );
+			await user.clear( price );
+			await user.type( price, '-1' );
 			await user.click( screen.getByDisplayValue( 'Update' ) );
 
 			// In the box: the reason is also spoken, outside it.
 			expect(
 				await screen.findByText(
-					'Some fields are not valid. price: Use an amount of zero or more.',
+					'Some fields are not valid. Price: Use an amount of zero or more.',
 					{ selector: '.components-notice__content' }
 				)
 			).toBeVisible();

@@ -519,8 +519,10 @@ if ($registry->version() >= 15) {
 }
 ```
 
-- **The name** starts with the add-on's own prefix. One the shop's tools have, or one that is not lowercase
-  letters, digits and underscores, is left out and logged, as is a schema that is not an object's.
+- **The name** starts with the add-on's own prefix: `addOn()` in lowercase letters and digits, its words run
+  together or joined by underscores, then an underscore ("Parcel Co": `parcelco_` or `parcel_co_`). One without
+  it, one any of the shop's tools has (its routes', WordPress's, the setup's, `find_tools`…), or one that is not
+  lowercase letters, digits and underscores, is left out and logged, as is a schema that is not an object's.
 - **The description** is what the model reads first: say what the tool does and what it changes.
 - **The shop checks before `run()`**: the user's capability, the key's scope (a read-only key is offered only
   tools whose `readOnly()` is true), and the owner's choices for the key. A tool with a `risk()` the owner wants

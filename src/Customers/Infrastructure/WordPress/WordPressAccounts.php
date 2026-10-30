@@ -43,7 +43,24 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
 
     public function isRegistered(string $email): bool
     {
-        return email_exists($email) !== false;
+        $id = email_exists($email);
+
+        return \is_int($id) && (!is_multisite() || is_user_member_of_blog($id));
+    }
+
+    public function elsewhere(string $email): ?int
+    {
+        $id = email_exists($email);
+
+        return \is_int($id) && is_multisite() && !is_user_member_of_blog($id) ? $id : null;
+    }
+
+    public function join(int $id): void
+    {
+        $joined = add_user_to_blog(get_current_blog_id(), $id, self::ROLE);
+        if ($joined instanceof \WP_Error) {
+            throw new RuleViolation($joined->get_error_message(), 'orillacart_registration_failed');
+        }
     }
 
     public function idOf(string $email): ?int
@@ -188,6 +205,7 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
             (string) mysql2date(\DATE_ATOM, $user->user_registered, false),
             $this->addressBook($user->ID),
             get_user_meta($user->ID, self::key(self::NO_CART_REMINDERS), true) !== '1',
+            \is_string($user->locale) && $user->locale !== '' ? $user->locale : null,
         );
     }
 

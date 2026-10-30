@@ -14,7 +14,10 @@ use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Domain\TaxNumber;
 use OrillaCart\Tax\Domain\TaxSettings;
+use Twig\Environment;
 use Twig\Extension\AbstractExtension;
+use Twig\Extension\SandboxExtension;
+use Twig\Sandbox\SecurityNotAllowedFunctionError;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
 
@@ -50,7 +53,7 @@ final class ShopExtension extends AbstractExtension
             new TwigFunction('price_suffix', $this->priceSuffix(...), ['is_safe' => ['html']]),
             // {{ tax_number_label(order.billing.country) }}: "ABN", "VAT number"
             new TwigFunction('tax_number_label', static fn(?string $country): string => \function_exists('__') ? __(TaxNumber::label($country ?? ''), 'orillacart') : TaxNumber::label($country ?? '')),
-            new TwigFunction('slot', $this->slot(...), ['is_safe' => ['html'], 'is_variadic' => true]),
+            new TwigFunction('slot', $this->slot(...), ['is_safe' => ['html'], 'is_variadic' => true, 'needs_environment' => true]),
             // The currency switcher: {% for code in shop_currencies() %}, and the one the shopper is in.
             new TwigFunction('shop_currencies', fn(): array => $this->currencies?->codes() ?? [$this->settings->current()->currency]),
             new TwigFunction('shopper_currency', fn(): string => $this->currencies?->current() ?? $this->settings->current()->currency),
@@ -180,12 +183,17 @@ final class ShopExtension extends AbstractExtension
 
     /**
      * Runs the action orillacart_<name> with the arguments and gives what its callbacks printed. Add-ons are
-     * trusted code, like any plugin hooked into WordPress, so the output is not escaped.
+     * trusted code, like any plugin hooked into WordPress, so the output is not escaped. An email's template runs
+     * in the sandbox, written by whoever edits emails in the admin: it reaches only the email_ slots, never the
+     * shop's other actions (orillacart_order_paid and the like, which would act).
      *
      * @param array<array-key, mixed> $arguments
      */
-    public function slot(string $name, array $arguments = []): string
+    public function slot(Environment $twig, string $name, array $arguments = []): string
     {
+        if ($twig->hasExtension(SandboxExtension::class) && $twig->getExtension(SandboxExtension::class)->isSandboxedGlobally() && !str_starts_with($name, 'email_')) {
+            throw new SecurityNotAllowedFunctionError(\sprintf('An email reaches only the email_ slots, not "%s".', $name), 'slot');
+        }
         if (!\function_exists('do_action')) {
             return '';
         }

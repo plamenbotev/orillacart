@@ -35,6 +35,9 @@ export interface Settings {
 	return_days: number | null;
 	/** The least the items may come to, after discounts, to order; null for no least. */
 	minimum_order: string | null;
+	/** The day the reports count an order on: paid or placed; a change counts every order again. */
+	report_day: 'paid' | 'placed';
+	report_days: ( 'paid' | 'placed' )[];
 	weight_units: string[];
 	dimension_units: string[];
 	currency_positions: string[];
@@ -61,6 +64,7 @@ export type SettingsInput = Pick<
 	| 'unpaid_hold_days'
 	| 'return_days'
 	| 'minimum_order'
+	| 'report_day'
 >;
 
 /**
@@ -87,6 +91,7 @@ export function settingsInput( settings: Settings ): SettingsInput {
 		unpaid_hold_days: settings.unpaid_hold_days,
 		return_days: settings.return_days,
 		minimum_order: settings.minimum_order,
+		report_day: settings.report_day,
 		sell_to: settings.sell_to,
 	};
 }

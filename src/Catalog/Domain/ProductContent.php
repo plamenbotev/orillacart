@@ -18,12 +18,12 @@ interface ProductContent
     public function name(int $productId): string;
 
     /**
-     * Product posts whose name holds the words, in every language the site has: drafts and private ones too,
-     * the newest first. A translation's post is found by its own name.
+     * Product posts whose name holds the words, in every language the site has: drafts and private ones too
+     * unless only published ones are asked for, the newest first. A translation's post is found by its own name.
      *
      * @return list<int>
      */
-    public function idsNamed(string $words, int $limit): array;
+    public function idsNamed(string $words, int $limit, bool $publishedOnly = false): array;
 
     /**
      * The product's category and brand ids, each with every term above it, so a rule about a category holds
@@ -59,4 +59,7 @@ interface ProductContent
      * @return int the copy's id
      */
     public function copy(int $productId): int;
+
+    /** A copied variation's post takes the original's text, picture and gallery. */
+    public function copyVariation(int $fromVariationId, int $toVariationId): void;
 }

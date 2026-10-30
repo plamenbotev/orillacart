@@ -58,6 +58,8 @@ final readonly class ProductView
         public ?int $lowStockThreshold = null,
         /** What tax services call it, over its tax group's code. */
         public ?string $taxCode = null,
+        /** When its details were last saved, to send back with the next save; null while they never were. */
+        public ?string $updatedAt = null,
     ) {}
 
     /**
@@ -100,6 +102,7 @@ final readonly class ProductView
             $details->backorderLimit,
             $details->lowStockThreshold,
             $details->taxCode,
+            $product->updatedAt(),
         );
     }
 

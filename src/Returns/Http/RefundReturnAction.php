@@ -10,6 +10,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
@@ -19,6 +20,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Gives the money back for the items that came back, and puts them back in stock.
  */
+#[Tool(risk: Tool::MONEY)]
 #[Route('/returns/{id}/refund', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class RefundReturnAction implements RequestHandlerInterface
 {

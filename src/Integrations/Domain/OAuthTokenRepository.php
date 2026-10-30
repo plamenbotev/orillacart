@@ -8,10 +8,11 @@ interface OAuthTokenRepository
 {
     public function withAccessHash(string $hash): ?OAuthToken;
 
-    public function withRefreshHash(string $hash): ?OAuthToken;
-
-    /** The token whose last rotation replaced the refresh token with this hash. */
-    public function withPreviousRefreshHash(string $hash): ?OAuthToken;
+    /**
+     * The token whose refresh token has this hash, or whose last rotation replaced it, locked against another
+     * refresh until the transaction ends: two refreshes of one token run one after the other. Inside a transaction.
+     */
+    public function forRefresh(string $hash): ?OAuthToken;
 
     public function save(OAuthToken $token): void;
 

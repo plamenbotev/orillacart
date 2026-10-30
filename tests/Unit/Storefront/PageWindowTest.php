@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Tests\Unit\Storefront;
+
+use OrillaCart\Storefront\Infrastructure\WordPress\PageWindow;
+use PHPUnit\Framework\TestCase;
+
+final class PageWindowTest extends TestCase
+{
+    public function testAListOfManyPagesLinksTheFirstTheLastAndThoseAroundThisOne(): void
+    {
+        self::assertSame([1, 98, 99, 100, 101, 102, 834], PageWindow::numbers(100, 834));
+        self::assertSame([1, 2, 3, 4, 5, 6, 7], PageWindow::numbers(4, 7), 'a gap of one page is that page');
+        self::assertSame([1, 2, 3, 834], PageWindow::numbers(1, 834));
+        self::assertSame([1, 832, 833, 834], PageWindow::numbers(834, 834));
+        self::assertSame([1], PageWindow::numbers(1, 1));
+        self::assertSame([], PageWindow::numbers(1, 0));
+        self::assertSame([1, 4, 5, 6], PageWindow::numbers(99, 6), 'a page past the last is the last');
+    }
+
+    public function testAGapIsALinkWithoutANumber(): void
+    {
+        self::assertSame([
+            ['number' => 1, 'url' => '/shop/'],
+            ['number' => null, 'url' => ''],
+            ['number' => 8, 'url' => '/shop/page/8/'],
+            ['number' => 9, 'url' => '/shop/page/9/'],
+            ['number' => 10, 'url' => '/shop/page/10/'],
+        ], PageWindow::links(10, 10, static fn(int $number): string => $number === 1 ? '/shop/' : "/shop/page/{$number}/"));
+    }
+}

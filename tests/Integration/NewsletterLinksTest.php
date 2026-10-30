@@ -19,7 +19,7 @@ final class NewsletterLinksTest extends RestTestCase
         $newsletter = $container->get(Newsletter::class);
         self::assertInstanceOf(Newsletter::class, $newsletter);
         $links = new NewsletterUnsubscribeLinks($newsletter, SiteSignatures::create());
-        $newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', []));
+        $newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', [], confirmNew: false));
         $email = 'guest-' . bin2hex(random_bytes(4)) . '@example.com';
         self::assertNull($links->for($email), 'not subscribed: no link');
 

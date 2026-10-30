@@ -215,7 +215,7 @@ class Refund
             return false;
         }
         $this->status = RefundStatus::Done;
-        $this->providerReference = mb_substr($providerReference, 0, 100);
+        $this->providerReference = self::reference($providerReference) ?? $this->providerReference;
         $this->error = null;
         $this->settledAt = $at;
 
@@ -233,7 +233,7 @@ class Refund
             return false;
         }
         $this->status = RefundStatus::Accepted;
-        $this->providerReference = mb_substr($providerReference, 0, 100);
+        $this->providerReference = self::reference($providerReference);
         $this->error = null;
 
         return true;
@@ -268,6 +268,17 @@ class Refund
     /** For a refund made at the provider: its id there. */
     public function refer(string $providerReference): void
     {
-        $this->providerReference = mb_substr($providerReference, 0, 100);
+        $this->providerReference = self::reference($providerReference);
+    }
+
+    /**
+     * A gateway that names no reference gives none: stored as none, as (gateway, reference) is unique and
+     * RefundsPayments promises no reference, let alone a unique one.
+     */
+    private static function reference(string $providerReference): ?string
+    {
+        $providerReference = trim($providerReference);
+
+        return $providerReference === '' ? null : mb_substr($providerReference, 0, 100);
     }
 }

@@ -51,6 +51,8 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 	const [ emailCustomer, setEmailCustomer ] = useState( false );
 	const [ pickupPoint, setPickupPoint ] = useState( '' );
 	const [ note, setNote ] = useState( '' );
+	const [ vatNumber, setVatNumber ] = useState( '' );
+	const vat = vatNumber.trim() === '' ? null : vatNumber.trim();
 	const [ quote, setQuote ] = useState< OrderQuote | null >( null );
 	const [ error, setError ] = useState< string | null >( null );
 	const [ saving, setSaving ] = useState( false );
@@ -82,6 +84,7 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 		customerId,
 		email,
 		payment,
+		vat,
 	] );
 	useEffect( () => {
 		if ( items.length === 0 ) {
@@ -104,6 +107,7 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 					customer_id: customerId,
 					email: email || null,
 					payment: payment === '' ? null : payment,
+					vat_number: vat,
 				} )
 			)
 				.then( ( priced ) => {
@@ -148,6 +152,7 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 				( quote?.pickup_points.length ?? 0 ) > 0 && pickupPoint !== ''
 					? pickupPoint
 					: null,
+			vat_number: vat,
 		} )
 			.then( ( order ) => onCreated( order.number ) )
 			.catch( ( reason: unknown ) => {
@@ -197,6 +202,17 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 						label={ __( 'Email', 'orillacart' ) }
 						value={ email }
 						onChange={ setEmail }
+					/>
+					<TextControl
+						__next40pxDefaultSize
+						label={ __( 'VAT number', 'orillacart' ) }
+						help={ __(
+							'A business’s, for the reverse charge within the EU. Empty for none.',
+							'orillacart'
+						) }
+						maxLength={ 20 }
+						value={ vatNumber }
+						onChange={ setVatNumber }
 					/>
 					<h3>{ __( 'Billing address', 'orillacart' ) }</h3>
 					<AddressFields
@@ -349,6 +365,24 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 								) }
 							</p>
 						) ) }
+						{ quote.reverse_charge === true && (
+							<p>
+								{ __(
+									'Reverse charge: the customer accounts for the VAT, which the order does not charge.',
+									'orillacart'
+								) }
+							</p>
+						) }
+						{ vat !== null &&
+							! quote.reverse_charge &&
+							( quote.vat_message ?? '' ) !== '' && (
+								<Notice
+									status="warning"
+									isDismissible={ false }
+								>
+									{ quote.vat_message }
+								</Notice>
+							) }
 						{ quote.discounts.map( ( discount ) => (
 							<p key={ discount.code }>
 								{ sprintf(

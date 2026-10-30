@@ -68,7 +68,7 @@ final readonly class CartFromReminder implements CartLinks
             return;
         }
         $days = new \DateInterval(CartService::KEEP_FOR)->d;
-        setcookie(CartOwner::COOKIE, $token, ['expires' => time() + $days * DAY_IN_SECONDS, 'path' => SiteCookies::path(), 'domain' => SiteCookies::domain(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
+        setcookie(CartOwner::COOKIE, $token, ['expires' => time() + $days * DAY_IN_SECONDS, 'path' => SiteCookies::path(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
         $_COOKIE[CartOwner::COOKIE] = $token;
     }
 }

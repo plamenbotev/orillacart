@@ -102,7 +102,7 @@ final class StockSheetTest extends RestTestCase
 
     public function testTakingStockReadsTheLevelsAgainUnderTheLock(): void
     {
-        $this->request('PATCH', '/stock-levels', ['changes' => [['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'quantity' => 1]]], nonce: true);
+        $this->request('PATCH', '/stock-levels', ['changes' => $this->asLoaded([['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'quantity' => 1]])], nonce: true);
         $stock = self::kernel()->container()->get(StockService::class);
         self::assertInstanceOf(StockService::class, $stock);
         $lamp = StockItemRef::product($this->lamp);
@@ -121,10 +121,10 @@ final class StockSheetTest extends RestTestCase
     {
         $variation = $this->sheet("parent={$this->hoodie}")['rows'][0]['id'];
 
-        $saved = $this->request('PATCH', '/stock-levels', ['changes' => [
+        $saved = $this->request('PATCH', '/stock-levels', ['changes' => $this->asLoaded([
             ['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'quantity' => 5],
             ['kind' => 'variation', 'id' => $variation, 'stockroom_id' => $this->berlin, 'quantity' => 0],
-        ]], nonce: true);
+        ])], nonce: true);
         self::assertSame(204, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
 
         $rows = $this->sheet('')['rows'];
@@ -143,6 +143,34 @@ final class StockSheetTest extends RestTestCase
         self::assertSame([(string) $this->sofia => 5], $this->sheet('')['rows'][0]['levels'], 'nothing changed');
     }
 
+    public function testASaveFromLevelsThatMovedIsRefusedAndAChangeAddsToTheLevelAsItIs(): void
+    {
+        $loaded = $this->asLoaded([['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'quantity' => 7]]);
+        // A sale takes two meanwhile.
+        $this->request('PATCH', '/stock-levels', ['changes' => [['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'change' => 5]]], nonce: true);
+        $stock = self::kernel()->container()->get(StockService::class);
+        self::assertInstanceOf(StockService::class, $stock);
+        $stock->take([StockItemRef::product($this->lamp)], 2);
+
+        $refused = $this->request('PATCH', '/stock-levels', ['changes' => $loaded], nonce: true);
+        self::assertSame(409, $refused->get_status(), (string) wp_json_encode($refused->get_data()));
+        self::assertSame('orillacart_stock_changed', $this->data($refused)['code']);
+        $data = $this->data($refused)['data'];
+        self::assertIsArray($data);
+        self::assertSame([['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'quantity' => 3]], $data['changed'], 'the level as it is now');
+        self::assertSame(409, $this->request('PATCH', '/stock-levels', ['changes' => [['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'quantity' => 7]]], nonce: true)->get_status(), 'without was: loaded as none');
+        self::assertSame(409, $this->request('PUT', "/stock/product/{$this->lamp}", ['levels' => [['stockroom_id' => $this->sofia, 'quantity' => 7, 'was' => 5]]], nonce: true)->get_status(), 'the stock route too');
+
+        $added = $this->request('PATCH', '/stock-levels', ['changes' => [['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'change' => 4]]], nonce: true);
+        self::assertSame(204, $added->get_status(), (string) wp_json_encode($added->get_data()));
+        self::assertSame([(string) $this->sofia => 7], $this->sheet('')['rows'][0]['levels'], 'the sale kept: three left, four in');
+        $history = $this->data($this->request('GET', "/stock-history?product={$this->lamp}"));
+        self::assertIsArray($history['movements']);
+        self::assertIsArray($history['movements'][0]);
+        self::assertSame([4, 7], [$history['movements'][0]['delta'], $history['movements'][0]['after']], 'the history has what moved');
+        self::assertSame(422, $this->request('PATCH', '/stock-levels', ['changes' => [['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'change' => -8]]], nonce: true)->get_status(), 'never below zero');
+    }
+
     public function testTheLowStockIsFoundOnTheDatabaseWithEachThreshold(): void
     {
         $sheet = $this->sheet("parent={$this->hoodie}")['rows'];
@@ -150,12 +178,12 @@ final class StockSheetTest extends RestTestCase
         $this->request('PUT', "/products/{$this->hoodie}/variations/{$small}", ['option_ids' => [$this->sheet('kind=options')['rows'][0]['id']], 'price' => '40', 'sku' => 'HOOD-0', 'low_stock_threshold' => 6], nonce: true);
         $this->request('PUT', "/stockrooms/{$this->berlin}", ['name' => 'Berlin', 'low_stock_threshold' => 9], nonce: true);
         $option = $this->sheet('kind=options')['rows'][1]['id'];
-        $saved = $this->request('PATCH', '/stock-levels', ['changes' => [
+        $saved = $this->request('PATCH', '/stock-levels', ['changes' => $this->asLoaded([
             ['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->sofia, 'quantity' => 3],
             ['kind' => 'product', 'id' => $this->lamp, 'stockroom_id' => $this->berlin, 'quantity' => 9],
             ['kind' => 'variation', 'id' => $small, 'stockroom_id' => $this->sofia, 'quantity' => 5],
             ['kind' => 'option', 'id' => $option, 'stockroom_id' => $this->sofia, 'quantity' => 1],
-        ]], nonce: true);
+        ])], nonce: true);
         self::assertSame(204, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
 
         $low = self::kernel()->container()->get(LowStock::class);

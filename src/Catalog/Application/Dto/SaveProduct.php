@@ -80,6 +80,12 @@ final readonly class SaveProduct
         /** What tax services call it, over its tax group's code; null for the group's. */
         #[Assert\Regex(TaxCode::PATTERN, message: TaxCode::MESSAGE)]
         public ?string $taxCode = null,
+        /**
+         * The product's updated_at as it was loaded, null for one never saved: a product saved since is refused (409
+         * orillacart_product_changed) rather than overwritten. The assistant may leave it out to save over whatever
+         * is there now.
+         */
+        public ?string $updatedAt = null,
     ) {}
 
     /**

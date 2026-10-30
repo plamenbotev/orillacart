@@ -85,11 +85,136 @@ final class RouteToolsTest extends TestCase
         self::assertStringNotContainsString('"properties":[]', $encoded, 'An empty list where JSON Schema wants an object.');
     }
 
+    /**
+     * The tools that change something and run without the owner's yes, each with why: a change that moves no
+     * money, tells no customer, deletes nothing, does not open or close the shop and changes no page customers
+     * read. A new changing route is asked about until it is added here, so leaving one out is a choice.
+     */
+    private const array UNASKED = [
+        'add_customer_address' => 'an address on a customer\'s account, nobody told',
+        'add_customer_note' => 'a note for the shop only',
+        'add_eu_standard_rates' => 'tax rates added to a group',
+        'add_sample_data' => 'sample products and orders, removed with remove_sample_data (which asks)',
+        'add_tax_exemption' => 'an exemption the shop records from a certificate; nobody is emailed',
+        'assign_order' => 'which account an order is under; nobody is emailed',
+        'cancel_shipment' => 'a booking cancelled with the courier before pickup; the customer is not told',
+        'change_customer_address' => 'an address on a customer\'s account, nobody told',
+        'change_download_allowance' => 'downloads left of a bought file',
+        'change_download_delivery' => 'how downloads are delivered',
+        'change_gift_card' => 'whether a gift card pays and until when; its balance stays',
+        'change_order_contact' => 'corrects an order\'s addresses; nobody is emailed',
+        'change_search_engine' => 'which search engine the shop uses',
+        'change_stock_levels' => 'stock counts',
+        'choose_order_columns' => 'columns of an export',
+        'choose_product_columns' => 'columns of an export',
+        'clear_problems' => 'only clears the problems list (Tool::NONE)',
+        'create_attribute_set' => 'catalog setup',
+        'create_carrier' => 'shipping setup',
+        'create_coupon' => 'a coupon nobody has yet',
+        'create_customer_group' => 'customer setup',
+        'create_form' => 'a checkout form',
+        'create_price_rule' => 'catalog pricing, as the admin sets it',
+        'create_search_filter' => 'storefront search setup',
+        'create_shipping_class' => 'shipping setup',
+        'create_stockroom' => 'inventory setup',
+        'create_tax_group' => 'tax setup',
+        'create_tax_rate' => 'tax setup',
+        'create_variation' => 'catalog',
+        'edit_order_items' => 'an unpaid order on hold, priced from the catalog; nothing is charged',
+        'finish_setup' => 'only stops the admin offering the setup',
+        'import_tax_rates' => 'tax setup',
+        'mark_order_handled' => 'only takes an order off the attention list (Tool::NONE)',
+        'rebuild_reports' => 'reports worked out again',
+        'rebuild_search_index' => 'the search index built again',
+        'receive_return' => 'notes that returned items came back; the customer is not told',
+        'rename_customer_group' => 'a name',
+        'rename_download' => 'a name',
+        'rename_shipping_class' => 'a name',
+        'restart_workers' => 'background workers restarted',
+        'restock_order' => 'refunded items back in stock',
+        'retry_failed_jobs' => 'jobs that failed run as they would have',
+        'run_order_action' => 'an add-on\'s own order action, which the add-on answers for',
+        'save_email_template' => 'a template saved; nothing is sent',
+        'save_product' => 'catalog',
+        'send_test_email' => 'goes to the manager who asks, not to customers',
+        'set_customer_groups' => 'customer setup',
+        'start_product_import' => 'an import the manager uploaded',
+        'update_attribute_set' => 'catalog setup',
+        'update_carrier' => 'shipping setup',
+        'update_coupon' => 'coupon setup',
+        'update_currencies' => 'currency setup',
+        'update_customer_settings' => 'settings',
+        'update_email_settings' => 'settings',
+        'update_eu_threshold' => 'tax setup',
+        'update_form' => 'a checkout form',
+        'update_gift_card_settings' => 'settings',
+        'update_import_schemes' => 'tax setup',
+        'update_invoice_settings' => 'settings',
+        'update_newsletter_settings' => 'settings',
+        'update_nexus_thresholds' => 'tax setup',
+        'update_price_rule' => 'catalog pricing, as the admin sets it',
+        'update_review_settings' => 'settings',
+        'update_search_filter' => 'storefront search setup',
+        'update_shop_pages' => 'which published pages the cart and checkout are on',
+        'update_stock' => 'stock counts',
+        'update_stockroom' => 'inventory setup',
+        'update_storefront_settings' => 'settings',
+        'update_tax_group' => 'tax setup',
+        'update_tax_rate' => 'tax setup',
+        'update_tax_settings' => 'settings',
+        'update_variation' => 'catalog',
+        'upload_download' => 'a file for a product',
+        'upload_product_import' => 'a file for an import, which start_product_import runs',
+    ];
+
+    public function testEveryChangeTheOwnerIsNotAskedAboutIsChosen(): void
+    {
+        $unasked = [];
+        foreach (self::catalogue()->all() as $tool) {
+            if (!$tool->readOnly && $tool->risk === null) {
+                $unasked[] = $tool->name;
+            }
+        }
+
+        self::assertSame(array_keys(self::UNASKED), $unasked, 'A tool that changes something has no risk: give its action #[Tool(risk: …)], or add it to UNASKED with why it need not ask.');
+    }
+
+    public function testTheRisksAsTheOwnerWeighsThem(): void
+    {
+        $risks = [
+            'mark_order_paid' => Tool::MONEY, 'refund_return' => Tool::MONEY, 'issue_gift_card' => Tool::MONEY,
+            'adjust_order_price' => Tool::MONEY, 'give_up_refund' => Tool::MONEY, 'update_payment_method' => Tool::MONEY,
+            'approve_return' => Tool::CUSTOMERS, 'refuse_return' => Tool::CUSTOMERS, 'send_shipment' => Tool::CUSTOMERS,
+            'ready_for_pickup' => Tool::CUSTOMERS, 'picked_up' => Tool::CUSTOMERS, 'shipment_arrived' => Tool::CUSTOMERS,
+            'new_gift_card_code' => Tool::CUSTOMERS, 'approve_tax_exemption' => Tool::CUSTOMERS, 'refuse_tax_exemption' => Tool::CUSTOMERS,
+            'anonymise_order' => Tool::DELETING, 'update_legal_settings' => Tool::PUBLISHING,
+            'mark_order_handled' => null, 'clear_problems' => null,
+        ];
+        foreach ($risks as $name => $risk) {
+            $tool = self::catalogue()->get($name);
+            self::assertNotNull($tool, $name);
+            self::assertSame($risk, $tool->risk, $name);
+            self::assertSame($risk !== null, $tool->destructive, "{$name}: destructive is what asks");
+        }
+    }
+
+    public function testNoneIsARiskOnlyARouteCanSay(): void
+    {
+        self::assertNull(RouteTools::risk(new Tool(risk: Tool::NONE), 'DELETE'));
+        self::assertSame(Tool::DELETING, RouteTools::risk(null, 'DELETE'));
+        self::assertSame(Tool::MONEY, RouteTools::risk(new Tool(risk: Tool::MONEY), 'POST'));
+        self::assertNotContains(Tool::NONE, Tool::RISKS, 'the owner has nothing to tick for it');
+        $this->expectException(\InvalidArgumentException::class);
+        new Tool(risk: 'sometimes');
+    }
+
     #[DataProvider('tools')]
     public function testItsRiskIsTheRoutes(RouteTool $tool): void
     {
         if ($tool->method === 'DELETE') {
-            self::assertNotNull($tool->risk, "{$tool->name} deletes, or says what else it risks.");
+            $route = array_values(array_filter(self::routes()->all(), static fn($route): bool => $route->path === $tool->path))[0];
+            $said = RouteTools::attribute($route->action, $route->path, 'DELETE')?->risk;
+            self::assertTrue($tool->risk !== null || $said === Tool::NONE, "{$tool->name} deletes, or says what else it risks, or that it risks nothing (Tool::NONE).");
         }
         self::assertFalse($tool->readOnly && $tool->destructive, "{$tool->name} only reads, so it destroys nothing.");
         self::assertTrue($tool->risk === null || \in_array($tool->risk, Tool::RISKS, true));

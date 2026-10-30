@@ -13,16 +13,18 @@ use OrillaCart\Catalog\Application\Dto\VariationView;
 use OrillaCart\Catalog\Application\ProductLookup;
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Domain\Backorders;
+use OrillaCart\Exchange\Application\Dto\Column;
 use OrillaCart\Exchange\Application\Dto\ProductPostChange;
 use OrillaCart\Exchange\Application\Dto\ProductRow;
 use OrillaCart\Exchange\Domain\ExchangeRuleViolation;
 use OrillaCart\Extension\Catalog\ImportsProductColumn;
-use OrillaCart\Inventory\Application\Dto\SetStockLevel;
-use OrillaCart\Inventory\Application\Dto\SetStockLevels;
+use OrillaCart\Extension\Catalog\ProductColumn;
+use OrillaCart\Inventory\Application\Dto\ChangeStockLevel;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\StockNote;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Inventory\Domain\StockReason;
+use OrillaCart\Reports\Application\ShopCalendar;
 use OrillaCart\Shared\Domain\TaxCode;
 
 /**
@@ -30,7 +32,11 @@ use OrillaCart\Shared\Domain\TaxCode;
  * changes only the columns the file has: an empty cell clears what may be empty (a SKU, a sale, a measure, a
  * stockroom's level) and keeps what may not (a price, a name). A row that finds nothing adds a product, which
  * needs a name and a price; variations are made on the product's screen, and a row only changes them. Add-ons'
- * importable columns save their value once the shop saved the row.
+ * importable columns save their value once the shop saved the row. Every cell is read before anything is written,
+ * so a refused row changes nothing; a new product's post stays a draft until its details are saved, and goes
+ * again when they are refused. Stock changes only in the stockrooms the file has a column of; the backorders an
+ * item owes (a level below zero, as the export writes it) stay as they are unless the cell changes them, which
+ * is refused. Dates without an offset are the shop's.
  */
 final readonly class ProductRows
 {
@@ -42,44 +48,72 @@ final readonly class ProductRows
         private ProductPosts $posts,
         private StockService $stock,
         private ProductColumns $columns,
+        private ShopCalendar $calendar,
     ) {}
 
     /**
-     * @param array<string, string> $row the row's cells by column id, as the file has them
+     * @param array<string, string>                                     $row     the row's cells by column id, as the file has them
+     * @param array<string, Column<ProductRow>|ProductColumn>|null $columns the file's columns, ProductColumns::all(), built once for many rows
      *
-     * @return bool whether it added a product
+     * @return array{bool, ?string} whether it added a product, and what add-ons refused of a row saved otherwise
      *
      * @throws \OrillaCart\Shared\Domain\RuleViolation|\InvalidArgumentException why the row is refused
      */
-    public function import(array $row, ?int $userId = null): bool
+    public function import(array $row, ?int $userId = null, ?array $columns = null): array
     {
+        $columns ??= $this->columns->all();
         $row = array_map(self::cell(...), $row);
+        $zone = $this->calendar->timezone();
         [$productId, $variationId] = $this->target($row);
-        $created = false;
+        // Every cell is read first: a row refused for any of them changes nothing.
+        $status = self::status($row);
         if ($productId === null) {
             $name = $row['name'] ?? '';
             if ($name === '' || ($row['price'] ?? '') === '') {
                 throw new \InvalidArgumentException('A new product needs a name and a price.');
             }
-            $productId = $this->posts->create($name, self::status($row) ?? 'publish');
-            $created = true;
+            $product = null;
+            $changes = self::productChanges($row, null, $zone);
+            $levels = $this->levels(null, $row);
+        } else {
+            $product = $this->products->product($productId);
+            if ($variationId === null) {
+                $changes = self::productChanges($row, $product->sale, $zone);
+                $levels = $this->levels(StockItemRef::product($productId), $row);
+            } else {
+                $variation = self::variation($product, $variationId);
+                $changes = self::variationChanges($row, $variation, $zone);
+                $levels = $this->levels(StockItemRef::variation($variationId), $row);
+            }
         }
-        $product = $this->products->product($productId);
+        $lists = self::lists($row);
+
+        if ($product === null) {
+            // A draft until its details are saved: a refused row leaves no product without them in the shop.
+            $productId = $this->posts->create($row['name'] ?? '', 'draft');
+            try {
+                $saved = $this->products->save($productId, SaveProduct::unchanged($this->products->product($productId), $changes));
+                $this->posts->change($productId, new ProductPostChange(null, $status ?? 'publish', $row['description'] ?? null, $row['short_description'] ?? null, ...$lists));
+                $this->changeLevels(StockItemRef::product($productId), $levels, $userId);
+            } catch (\Throwable $e) {
+                $this->posts->delete($productId);
+
+                throw $e;
+            }
+            return [true, $this->addOns($row, $saved, null, $columns)];
+        }
         if ($variationId === null) {
-            $product = $this->products->save($productId, SaveProduct::unchanged($product, self::productChanges($row, $product)));
-            $post = self::postChange($row, $created);
+            $this->products->save($productId, SaveProduct::unchanged($product, $changes));
+            $post = $this->postChange($productId, $product, $row, $status, $lists);
             if (!$post->isEmpty()) {
                 $this->posts->change($productId, $post);
             }
-            $this->levels(StockItemRef::product($productId), $row, $userId);
+            $this->changeLevels(StockItemRef::product($productId), $levels, $userId);
         } else {
-            $variation = self::variation($product, $variationId);
-            $this->products->changeVariation($productId, $variationId, SaveVariation::unchanged($variation, self::variationChanges($row, $variation)));
-            $this->levels(StockItemRef::variation($variationId), $row, $userId);
+            $this->products->changeVariation($productId, $variationId, SaveVariation::unchanged(self::variation($product, $variationId), $changes));
+            $this->changeLevels(StockItemRef::variation($variationId), $levels, $userId);
         }
-        $this->addOns($row, $this->products->product($productId), $variationId);
-
-        return $created;
+        return [false, $this->addOns($row, $this->products->product($productId), $variationId, $columns)];
     }
 
     /**
@@ -112,9 +146,9 @@ final readonly class ProductRows
      *
      * @return array{price?: string, type?: string, sale?: ?SaveSale, sku?: ?string, taxable?: bool, stockMode?: string, purchasable?: bool, featured?: bool, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: string, backorderLimit?: ?int, lowStockThreshold?: ?int, taxCode?: ?string}
      */
-    private static function productChanges(array $row, ProductView $product): array
+    private static function productChanges(array $row, ?SaleView $sale, \DateTimeZone $zone): array
     {
-        $changes = self::common($row, $product->sale);
+        $changes = self::common($row, $sale, $zone);
         if (($row['type'] ?? '') !== '') {
             $changes['type'] = self::choice($row['type'], SaveProduct::types(), 'type');
         }
@@ -143,9 +177,9 @@ final readonly class ProductRows
      *
      * @return array{price?: string, sale?: ?SaveSale, sku?: ?string, stockMode?: string, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorders?: ?string, backorderLimit?: ?int, lowStockThreshold?: ?int}
      */
-    private static function variationChanges(array $row, VariationView $variation): array
+    private static function variationChanges(array $row, VariationView $variation, \DateTimeZone $zone): array
     {
-        $changes = self::common($row, $variation->sale);
+        $changes = self::common($row, $variation->sale, $zone);
         if (\array_key_exists('backorders', $row)) {
             // Empty: as its product.
             $changes['backorders'] = $row['backorders'] === '' ? null : self::choice($row['backorders'], Backorders::values(), 'backorders');
@@ -161,7 +195,7 @@ final readonly class ProductRows
      *
      * @return array{price?: string, sale?: ?SaveSale, sku?: ?string, stockMode?: string, weight?: ?string, length?: ?string, width?: ?string, height?: ?string, backorderLimit?: ?int, lowStockThreshold?: ?int}
      */
-    private static function common(array $row, ?SaleView $sale): array
+    private static function common(array $row, ?SaleView $sale, \DateTimeZone $zone): array
     {
         $changes = [];
         if (($row['price'] ?? '') !== '') {
@@ -172,11 +206,9 @@ final readonly class ProductRows
         }
         if (\array_key_exists('sale_price', $row) || \array_key_exists('sale_from', $row) || \array_key_exists('sale_until', $row)) {
             $price = \array_key_exists('sale_price', $row) ? $row['sale_price'] : ($sale->price ?? '');
-            $changes['sale'] = $price === '' ? null : new SaveSale(
-                self::amount($price, 'sale_price'),
-                \array_key_exists('sale_from', $row) ? self::moment($row['sale_from'], 'sale_from') : $sale?->from,
-                \array_key_exists('sale_until', $row) ? self::moment($row['sale_until'], 'sale_until') : $sale?->until,
-            );
+            $from = \array_key_exists('sale_from', $row) ? self::moment($row['sale_from'], 'sale_from', $zone) : $sale?->from;
+            $until = \array_key_exists('sale_until', $row) ? self::moment($row['sale_until'], 'sale_until', $zone) : $sale?->until;
+            $changes['sale'] = $price === '' ? null : new SaveSale(self::amount($price, 'sale_price'), $from, $until);
         }
         if (($row['stock_mode'] ?? '') !== '') {
             $changes['stockMode'] = self::choice($row['stock_mode'], SaveProduct::stockModes(), 'stock_mode');
@@ -196,61 +228,125 @@ final readonly class ProductRows
         return $changes;
     }
 
-    /** @param array<string, string> $row */
-    private static function postChange(array $row, bool $created): ProductPostChange
+    /**
+     * The categories, brands and tags the row lists, each null when the file has no such column.
+     *
+     * @param array<string, string> $row
+     *
+     * @return array{categories: ?list<string>, brands: ?list<string>, tags: ?list<string>}
+     */
+    private static function lists(array $row): array
     {
         $list = static fn(string $column): ?array => \array_key_exists($column, $row)
             ? array_values(array_filter(array_map(trim(...), explode('|', $row[$column])), static fn(string $item): bool => $item !== ''))
             : null;
 
+        return ['categories' => $list('categories'), 'brands' => $list('brands'), 'tags' => $list('tags')];
+    }
+
+    /**
+     * What the row changes of an existing product's post: only what differs from it, so texts it leaves as they
+     * are go through no filter again.
+     *
+     * @param array<string, string>                                                $row
+     * @param array{categories: ?list<string>, brands: ?list<string>, tags: ?list<string>} $lists
+     */
+    private function postChange(int $productId, ProductView $product, array $row, ?string $status, array $lists): ProductPostChange
+    {
+        $post = $this->posts->of([$productId])[$productId] ?? null;
+        $name = ($row['name'] ?? '') === '' || $row['name'] === $product->name ? null : $row['name'];
+        if ($post === null) {
+            return new ProductPostChange($name, $status, $row['description'] ?? null, $row['short_description'] ?? null, ...$lists);
+        }
+        $text = static fn(?string $value, string $was): ?string => $value === null || $value === trim($was) ? null : $value;
+
         return new ProductPostChange(
-            $created || ($row['name'] ?? '') === '' ? null : $row['name'],
-            $created ? null : self::status($row),
-            $row['description'] ?? null,
-            $row['short_description'] ?? null,
-            $list('categories'),
-            $list('brands'),
-            $list('tags'),
+            $name,
+            $status === $post->status ? null : $status,
+            $text($row['description'] ?? null, $post->description),
+            $text($row['short_description'] ?? null, $post->shortDescription),
+            self::differing($lists['categories'], $post->categories),
+            self::differing($lists['brands'], $post->brands),
+            self::differing($lists['tags'], $post->tags),
         );
     }
 
     /**
-     * Sets the levels of the stockrooms the row has a column of; the others stay. An empty cell removes the
-     * stockroom's level.
+     * The terms wanted, or null when they are the ones the post has, in whatever order.
      *
-     * @param array<string, string> $row
+     * @param list<string>|null $wanted
+     * @param list<string>      $was
+     *
+     * @return list<string>|null
      */
-    private function levels(StockItemRef $item, array $row, ?int $userId): void
+    private static function differing(?array $wanted, array $was): ?array
     {
-        $changed = false;
-        $levels = $this->stock->levelsOf([$item])["{$item->kind}:{$item->id}"] ?? [];
+        if ($wanted === null) {
+            return null;
+        }
+        $sorted = $wanted;
+        sort($sorted);
+        sort($was);
+
+        return $sorted === $was ? null : $wanted;
+    }
+
+    /**
+     * The levels the row changes, read before anything is written: only the stockrooms it has a column of, and
+     * of them those whose level the cell changes. An empty cell removes the stockroom's level. A level below zero
+     * is what the item owes on backorders: as it is, it stays; changed, it is refused.
+     *
+     * @param StockItemRef|null    $item    null for a new product, which has no levels yet
+     * @param array<string, string> $row
+     *
+     * @return array<int, array{?int, ?int}> by stockroom: the level wanted (null: none), and the one read
+     */
+    private function levels(?StockItemRef $item, array $row): array
+    {
+        $now = $item === null ? [] : ($this->stock->levelsOf([$item])["{$item->kind}:{$item->id}"] ?? []);
+        $changes = [];
         foreach ($row as $column => $value) {
             if (!str_starts_with($column, ProductColumns::STOCK)) {
                 continue;
             }
             $room = (int) substr($column, \strlen(ProductColumns::STOCK));
-            $changed = true;
-            if ($value === '') {
-                unset($levels[$room]);
-            } else {
-                $levels[$room] = self::number($value, $column, 0) ?? 0;
+            $wanted = self::number($value, $column, \PHP_INT_MIN);
+            $was = $now[$room] ?? null;
+            if ($wanted === $was) {
+                continue;
             }
+            if ($wanted !== null && $wanted < 0) {
+                throw new \InvalidArgumentException(\sprintf('%1$s: "%2$s" is below zero; a level below zero is the backorders the item owes, which an import leaves as they are (%3$s now).', $column, $value, $was === null ? 'none' : (string) $was));
+            }
+            $changes[$room] = [$wanted, $was];
         }
-        if ($changed) {
-            $this->stock->setLevels($item, new SetStockLevels(array_map(static fn(int $room, int $quantity): SetStockLevel => new SetStockLevel($room, $quantity), array_keys($levels), array_values($levels))), new StockNote(StockReason::Import, null, $userId));
+
+        return $changes;
+    }
+
+    /** @param array<int, array{?int, ?int}> $levels by stockroom: the level wanted, and the one read */
+    private function changeLevels(StockItemRef $item, array $levels, ?int $userId): void
+    {
+        if ($levels === []) {
+            return;
         }
+        $this->stock->changeLevels(
+            array_map(static fn(int $room, array $level): ChangeStockLevel => new ChangeStockLevel($item->kind, $item->id, $room, quantity: $level[0], was: $level[1]), array_keys($levels), array_values($levels)),
+            new StockNote(StockReason::Import, null, $userId),
+        );
     }
 
     /**
-     * @param array<string, string> $row
+     * @param array<string, string>                                $row
+     * @param array<string, Column<ProductRow>|ProductColumn> $columns
      *
-     * @throws \InvalidArgumentException when an add-on refused its value; the row is saved
+     * @return string|null what add-ons refused; the row is saved all the same
      */
-    private function addOns(array $row, ProductView $product, ?int $variationId): void
+    private function addOns(array $row, ProductView $product, ?int $variationId, array $columns): ?string
     {
         $item = ProductsExport::item(new ProductRow($product, $variationId === null ? null : self::variation($product, $variationId), new Dto\ProductPost('', '', '', [], [], []), []));
         $refused = [];
-        foreach ($this->columns->all() as $id => $column) {
+        foreach ($columns as $id => $column) {
             if (!$column instanceof ImportsProductColumn || !\array_key_exists($id, $row)) {
                 continue;
             }
@@ -260,9 +356,8 @@ final readonly class ProductRows
                 $refused[] = "{$column->label()}: {$e->getMessage()}";
             }
         }
-        if ($refused !== []) {
-            throw new \InvalidArgumentException('Saved, but ' . implode('; ', $refused));
-        }
+
+        return $refused === [] ? null : 'Saved, but ' . implode('; ', $refused);
     }
 
     private static function variation(ProductView $product, int $variationId): VariationView
@@ -332,7 +427,7 @@ final readonly class ProductRows
             return null;
         }
         if (preg_match('/^-?\d{1,9}$/', $value) !== 1 || (int) $value < $least) {
-            throw new \InvalidArgumentException(\sprintf('%s: "%s" is not a whole number of %d or more.', $column, $value, $least));
+            throw new \InvalidArgumentException($least === \PHP_INT_MIN ? \sprintf('%s: "%s" is not a whole number.', $column, $value) : \sprintf('%s: "%s" is not a whole number of %d or more.', $column, $value, $least));
         }
 
         return (int) $value;
@@ -347,13 +442,14 @@ final readonly class ProductRows
         };
     }
 
-    private static function moment(string $value, string $column): ?\DateTimeImmutable
+    /** A date and time; without an offset, in the shop's time zone. */
+    private static function moment(string $value, string $column, \DateTimeZone $zone): ?\DateTimeImmutable
     {
         if ($value === '') {
             return null;
         }
         try {
-            return new \DateTimeImmutable($value);
+            return new \DateTimeImmutable($value, $zone);
         } catch (\Exception) {
             throw new \InvalidArgumentException(\sprintf('%s: "%s" is not a date.', $column, $value));
         }

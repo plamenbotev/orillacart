@@ -93,6 +93,24 @@ final class JobRunnerTest extends TestCase
         self::assertSame([], $this->test->queue->jobs);
     }
 
+    public function testTheNextJobStartsWithAFullLockHoweverMuchOfTheLockTheOneBeforeTook(): void
+    {
+        $this->handler->lock = 60;
+        $this->handler->reports = true;
+        $this->push('a', 'b');
+        $locks = [];
+        $this->handler->before = function (QueuedJob $job) use (&$locks): void {
+            $locks[(string) $job->uniqueKey] = $this->test->queue->jobs[(int) $job->id]['lockedUntil'];
+            // Less than half the lock: renewed only once less than half was left, b would start with 36 seconds of 60.
+            $this->test->clock->sleep(24);
+        };
+
+        $this->test->runner->work([], 10, 'test');
+
+        $start = new \DateTimeImmutable('2030-01-01 12:00:00');
+        self::assertEquals(['a' => $start->modify('+60 seconds'), 'b' => $start->modify('+24 seconds +60 seconds')], $locks);
+    }
+
     public function testAHandlerThatReportsSomeJobsAndThrowsHasOnlyTheRestRunAgain(): void
     {
         $this->handler->reports = true;

@@ -19,7 +19,9 @@ interface ReportQueries
     /**
      * Sales by group of days, keyed by the group's first day (Y-m-d); groups without sales are left out.
      *
-     * @return array<string, array{orders: int, gross: string, discounts: string, total: string, refunds: string}>
+     * Refunds: the money given back with its tax; refunded_items: the items' share of it before tax.
+     *
+     * @return array<string, array{orders: int, gross: string, discounts: string, total: string, refunds: string, refunded_items: string}>
      */
     public function series(Period $period, Interval $interval, string $currency): array;
 
@@ -91,7 +93,7 @@ interface ReportQueries
 
     /**
      * The period's sales before tax and orders in each state of a country, for economic nexus, by currency: what
-     * the customers paid, before refunds. Rated: the sales are in the shop's currency already, each order at the
+     * the customers paid, less what refunds made in the period gave back, both before tax. Rated: the sales are in the shop's currency already, each order at the
      * exchange rate it was priced at; otherwise in the row's currency (the shop's, or orders before rates were kept).
      *
      * @return list<array{currency: string, state: string, sales: string, orders: int, rated: bool}>
@@ -99,8 +101,9 @@ interface ReportQueries
     public function stateSales(Period $period, string $country): array;
 
     /**
-     * What the shop sold to consumers in each of these countries before tax (reverse charge sales left out), by
-     * currency, for the EU's threshold of distance sales; rated as stateSales() has it.
+     * What the shop sold to consumers in each of these countries before tax (reverse charge sales left out), less
+     * what refunds made in the period gave back, by currency, for the EU's threshold of distance sales; rated as
+     * stateSales() has it.
      *
      * @param list<string> $countries
      *

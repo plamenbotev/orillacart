@@ -177,14 +177,16 @@ final readonly class Invoices
     }
 
     /**
-     * The document of the order's invoice, or of its latest credit note, for the shop's own emails; null when it has
-     * none.
+     * The document of the order's invoice, or of a credit note, for the shop's own emails; null when it has none.
+     *
+     * @param string|null $number one of the order's documents of the kind, as a refund's credit note; null for its
+     *                            latest
      */
-    public function latest(int $orderId, InvoiceKind $kind): ?InvoiceDocument
+    public function latest(int $orderId, InvoiceKind $kind, ?string $number = null): ?InvoiceDocument
     {
         $latest = null;
         foreach ($this->invoices->ofOrder($orderId) as $issued) {
-            if ($issued->kind() === $kind) {
+            if ($issued->kind() === $kind && ($number === null || $issued->number() === $number)) {
                 $latest = $issued;
             }
         }
@@ -193,6 +195,19 @@ final readonly class Invoices
         }
 
         return $this->document($latest->number(), $this->receipts->issue($orderId));
+    }
+
+    /** The number of the order's latest document of the kind; null when it has none. */
+    public function latestNumber(int $orderId, InvoiceKind $kind): ?string
+    {
+        $latest = null;
+        foreach ($this->invoices->ofOrder($orderId) as $issued) {
+            if ($issued->kind() === $kind) {
+                $latest = $issued->number();
+            }
+        }
+
+        return $latest;
     }
 
     public function settings(): InvoiceSettingsView

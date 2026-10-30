@@ -84,6 +84,29 @@ final class ReverseChargeTest extends TestCase
     {
         self::assertTrue($this->shop->checkout->summary($this->owner, new CheckoutDetails(null, null, 'GR', vatNumber: 'EL094014201'))->reverseCharge);
         self::assertTrue($this->shop->checkout->summary($this->owner, new CheckoutDetails(null, null, 'GR', vatNumber: '094014201'))->reverseCharge);
+        self::assertTrue($this->shop->checkout->summary($this->owner, new CheckoutDetails(null, null, 'GR', vatNumber: 'GR094014201'))->reverseCharge, 'written with the ISO code');
+        self::assertSame('EL094014201', end($this->shop->vies->asked));
+    }
+
+    public function testGoodsForNorthernIrelandAreSoldAsInTheEu(): void
+    {
+        $this->shop->taxGroups->addRate($this->vat, new SaveTaxRate('GB', null, '20', 'UK VAT'));
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::EuDestination, $this->vat, false, true));
+        $this->shop->vies->known['XI123456789'] = 'Belfast Ltd';
+        $this->shop->content->add(10, 'Lamp');
+        $this->shop->products->save(10, new SaveProduct('30', weight: '1'));
+        $rate = $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('UK', '5', taxable: false, regions: ['GB'])]))->rates[0]->id;
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        $to = static fn(string $postcode, ?string $number = null): CheckoutDetails => new CheckoutDetails('GB', null, 'GB', null, "rate:{$rate}", $postcode, vatNumber: $number);
+
+        $consumer = $this->shop->checkout->summary($owner, $to('BT1 1AA'));
+        self::assertSame([['UK VAT', '6']], array_map(static fn($tax): array => [$tax->name, $tax->total], $consumer->taxes), 'Belfast: the destination\'s VAT, as in the EU');
+        self::assertSame([], $this->shop->checkout->summary($owner, $to('SW1A 1AA'))->taxes, 'London: an export');
+
+        $business = $this->shop->checkout->summary($owner, $to('BT1 1AA', 'XI 123 456 789'));
+        self::assertSame([true, []], [$business->reverseCharge, $business->taxes], 'an XI number VIES confirms');
+        self::assertSame('XI123456789', end($this->shop->vies->asked));
+        self::assertFalse($this->shop->checkout->summary($owner, $to('SW1A 1AA', 'XI123456789'))->reverseCharge, 'goods for Great Britain leave the EU');
     }
 
     public function testANumberVatIsNotSureOfPaysVatAndSaysWhy(): void

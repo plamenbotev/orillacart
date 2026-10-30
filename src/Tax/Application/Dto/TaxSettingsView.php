@@ -31,14 +31,17 @@ final readonly class TaxSettingsView
         public string $priceSuffix = '',
         public bool $samePriceEverywhere = true,
         public bool $shippingTaxedAsItems = false,
+        /** In the shop's currency: the shop's own, or the law's €10,000 converted (euThresholdIsDefault). */
         public string $euThreshold = TaxSettings::EU_THRESHOLD,
+        /** The threshold is the law's €10,000, converted to the shop's currency, not one the shop set. */
+        public bool $euThresholdIsDefault = true,
     ) {}
 
     /**
      * @param list<array{id: string, label: string}> $providers
      */
-    public static function fromSettings(TaxSettings $settings, array $providers = []): self
+    public static function fromSettings(TaxSettings $settings, array $providers = [], string $defaultThreshold = TaxSettings::EU_THRESHOLD): self
     {
-        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine, $settings->originRegions, $settings->provider, $settings->whenProviderFails, $providers, $settings->acceptsCertificates, $settings->shownInShop, $settings->shownInCart, $settings->priceSuffix, $settings->samePriceEverywhere, $settings->shippingTaxedAsItems, $settings->euThreshold);
+        return new self($settings->basis->value, $settings->defaultGroupId, TaxBasis::values(), $settings->pricesIncludeTax, $settings->reverseCharge, $settings->roundsEachLine, $settings->originRegions, $settings->provider, $settings->whenProviderFails, $providers, $settings->acceptsCertificates, $settings->shownInShop, $settings->shownInCart, $settings->priceSuffix, $settings->samePriceEverywhere, $settings->shippingTaxedAsItems, $settings->euThreshold ?? $defaultThreshold, $settings->euThreshold === null);
     }
 }

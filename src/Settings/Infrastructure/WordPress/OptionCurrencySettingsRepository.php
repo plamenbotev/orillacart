@@ -12,6 +12,7 @@ use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
+use OrillaCart\Shared\WordPress\AutoloadedOption;
 
 final readonly class OptionCurrencySettingsRepository implements CurrencySettingsRepository, LifecycleListener, RemovesShopData
 {
@@ -43,9 +44,16 @@ final readonly class OptionCurrencySettingsRepository implements CurrencySetting
         update_option(self::OPTION, ['offered' => array_map(static fn(OfferedCurrency $offered): array => ['code' => $offered->currency->code, 'rate' => $offered->rate, 'rounding' => $offered->rounding->value], $settings->offered)], true);
     }
 
-    public function activate(): void {}
+    public function activate(): void
+    {
+        $this->upgrade(null);
+    }
 
-    public function upgrade(?string $fromVersion): void {}
+    /** Read on every storefront request: stored with its defaults, autoloaded, so reading it costs no query. */
+    public function upgrade(?string $fromVersion): void
+    {
+        AutoloadedOption::keep(self::OPTION, fn() => $this->save($this->load()));
+    }
 
     public function deactivate(): void {}
 

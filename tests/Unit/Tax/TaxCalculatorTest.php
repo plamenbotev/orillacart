@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Unit\Tax;
 
 use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\Settings\Application\Currencies;
+use OrillaCart\Settings\Application\Dto\CurrencySettingsView;
+use OrillaCart\Settings\Application\Dto\OfferedCurrencyView;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Settings\Domain\StoreSettings;
+use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Tax\Application\Dto\AppliedTaxesView;
 use OrillaCart\Tax\Application\Dto\AppliedTaxView;
 use OrillaCart\Tax\Application\Dto\JurisdictionView;
+use OrillaCart\Tax\Application\Dto\SaveEuThreshold;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
@@ -22,9 +27,12 @@ use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tax\Application\TaxSettingsService;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryAccounts;
 use OrillaCart\Tests\Fixtures\Geography\InMemoryCountryRepository;
+use OrillaCart\Tests\Fixtures\Invoicing\SofiaCalendar;
 use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
 use OrillaCart\Tests\Fixtures\RecordingDispatcher;
+use OrillaCart\Tests\Fixtures\Settings\ChosenCurrency;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
+use OrillaCart\Tests\Fixtures\Settings\MemoryCurrencySettings;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxGroupRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
@@ -53,8 +61,9 @@ final class TaxCalculatorTest extends TestCase
         $service->addRate($this->standard, new SaveTaxRate('DE', null, '19', 'MwSt'));
         $service->addRate($this->reduced, new SaveTaxRate('BG', null, '9', 'VAT'));
 
-        $this->settings = new TaxSettingsService($taxSettings, $groups, new FixedExtensions());
-        $this->calculator = new TaxCalculator($groups, $taxSettings, new SettingsService($shop, new RecordingDispatcher(), $geography), $geography, new TaxExemptions(new InMemoryTaxExemptionRepository(), new InMemoryAccounts(), new MockClock()));
+        $shopSettings = new SettingsService($shop, new RecordingDispatcher(), $geography);
+        $this->settings = new TaxSettingsService($taxSettings, $groups, new FixedExtensions(), $shopSettings, new Currencies(new MemoryCurrencySettings(), $shopSettings, new ChosenCurrency()));
+        $this->calculator = new TaxCalculator($groups, $taxSettings, $shopSettings, $geography, new TaxExemptions(new InMemoryTaxExemptionRepository(), new InMemoryAccounts(), new MockClock(), new SofiaCalendar()));
     }
 
     public function testARegionTaxingAtTheSellersAddressTaxesSalesWithinItThereAndOthersAtTheBuyers(): void
@@ -70,8 +79,9 @@ final class TaxCalculatorTest extends TestCase
         $service->addRate($group, new SaveTaxRate('US', 'TX', '2', 'Austin', postcodes: ['787*'], code: 'TX-2227013'));
         $service->addRate($group, new SaveTaxRate('US', 'TX', '1', 'Houston', postcodes: ['770*']));
         $service->addRate($group, new SaveTaxRate('US', 'CA', '7.25', 'California'));
-        $settings = new TaxSettingsService($taxSettings, $groups, new FixedExtensions());
-        $calculator = new TaxCalculator($groups, $taxSettings, new SettingsService($shop, new RecordingDispatcher(), $geography), $geography, new TaxExemptions(new InMemoryTaxExemptionRepository(), new InMemoryAccounts(), new MockClock()));
+        $shopSettings = new SettingsService($shop, new RecordingDispatcher(), $geography);
+        $settings = new TaxSettingsService($taxSettings, $groups, new FixedExtensions(), $shopSettings, new Currencies(new MemoryCurrencySettings(), $shopSettings, new ChosenCurrency()));
+        $calculator = new TaxCalculator($groups, $taxSettings, $shopSettings, $geography, new TaxExemptions(new InMemoryTaxExemptionRepository(), new InMemoryAccounts(), new MockClock(), new SofiaCalendar()));
         $houston = new TaxQuery($group, new TaxAddress('US', 'TX', '77002'));
         $california = new TaxQuery($group, new TaxAddress('US', 'CA', '90001'));
 
@@ -134,12 +144,29 @@ final class TaxCalculatorTest extends TestCase
 
     public function testAGroupGetsTheStandardRateOfEveryEuCountryItHasNoneFor(): void
     {
-        // The test geography knows Bulgaria, Germany, Greece and Italy in the EU; BG and DE have rates already.
-        self::assertSame(2, $this->service->addEuStandardRates($this->standard));
+        // The test geography knows Bulgaria, France, Germany, Greece and Italy in the EU; BG and DE have rates already.
+        self::assertSame(3, $this->service->addEuStandardRates($this->standard));
         self::assertSame(0, $this->service->addEuStandardRates($this->standard), 'once');
 
         $this->settings->update(new UpdateTaxSettings('eu_destination', $this->standard));
         self::assertSame(['19', '22', '24'], [$this->calculator->taxes(new TaxQuery($this->standard, new TaxAddress('DE')))->total, $this->calculator->taxes(new TaxQuery($this->standard, new TaxAddress('IT')))->total, $this->calculator->taxes(new TaxQuery($this->standard, new TaxAddress('GR')))->total], 'its own rates kept');
+    }
+
+    public function testTheEuThresholdIsTheLawsTenThousandEurosInTheShopsCurrency(): void
+    {
+        self::assertSame(['10000', true], [$this->settings->current()->euThreshold, $this->settings->current()->euThresholdIsDefault], 'a shop in euros');
+
+        $taxSettings = new InMemoryTaxSettingsRepository();
+        $geography = new GeographyService(new InMemoryCountryRepository());
+        $defaults = StoreSettings::defaults();
+        $shop = new SettingsService(new InMemorySettingsRepository(new StoreSettings(new Currency('PLN'), 2, $defaults->weightUnit, $defaults->dimensionUnit, 'PL')), new RecordingDispatcher(), $geography);
+        $currencies = new Currencies(new MemoryCurrencySettings(), $shop, new ChosenCurrency());
+        $currencies->save(new CurrencySettingsView([new OfferedCurrencyView('EUR', '0.2341')]));
+        $settings = new TaxSettingsService($taxSettings, new InMemoryTaxGroupRepository(), new FixedExtensions(), $shop, $currencies);
+
+        self::assertSame('42716.79', $settings->current()->euThreshold, '10 000 EUR at 0.2341 EUR to the złoty');
+        $own = $settings->changeEuThreshold(new SaveEuThreshold('42000'));
+        self::assertSame(['42000', false], [$own->euThreshold, $own->euThresholdIsDefault], 'the shop\'s own amount, as its law sets it');
     }
 
     public function testADeletedGroupTaxesNothing(): void

@@ -90,6 +90,33 @@ final class ReportQueriesTest extends RestTestCase
         self::assertSame([2, '0'], [$this->queries->totals($march, 'EUR')->orders, $this->queries->totals($march, 'EUR')->refunds], 'a deleted order takes its refunds with it');
     }
 
+    public function testTotalSalesLoseRefundsWithTheirTaxAndNetOnlyTheItemsShare(): void
+    {
+        // 100 of items, 22 of tax: 122 paid; 44 given back, 4 of it tax and 10 of it shipping, so 30 of items.
+        $this->store->replace(self::ORDERS, [$this->facts(990001, '2030-03-02', 'c7', '100', tax: '22', refund: ['2030-03-10', '44', '4', '30'])]);
+        $march = new Period(new \DateTimeImmutable('2030-03-01'), new \DateTimeImmutable('2030-03-31'));
+
+        $totals = $this->queries->totals($march, 'EUR');
+        self::assertSame(['44', '70', '78'], [$totals->refunds, $totals->net, $totals->totalSales], 'net loses the items\' 30 only; total sales the 44 that went back');
+        $week = $this->queries->series($march, Interval::Month, 'EUR')['2030-03-01'];
+        self::assertSame(['44', '30'], [$week['refunds'], $week['refunded_items']]);
+    }
+
+    public function testRefundsLowerTheTaxBaseAndTheSalesForOssAndNexusOnTheirOwnDay(): void
+    {
+        $tax = static fn(int $order, string $day, string $taxable, string $amount, string $refunded = '0'): CollectedTax => new CollectedTax($order, new \DateTimeImmutable($day), true, 'EUR', 'DE', null, 'country', 'DE', 'Germany', '19', 'item', $taxable, $amount, $refunded);
+        $this->store->replace(self::ORDERS, [
+            $this->facts(990001, '2030-03-02', 'c7', '100', country: 'DE', tax: '19', refund: ['2030-04-03', '59.5', '9.5', '50'], taxes: [$tax(990001, '2030-03-02', '100', '19'), $tax(990001, '2030-04-03', '0', '0', '9.5'), $tax(990001, '2030-04-03', '-50', '0')]),
+            $this->facts(990002, '2030-04-05', 'c8', '40', currency: 'USD', country: 'US', region: 'TX', refund: ['2030-04-06', '10']),
+        ]);
+        $april = new Period(new \DateTimeImmutable('2030-04-01'), new \DateTimeImmutable('2030-04-30'));
+
+        self::assertSame([['DE', 0, '-50', '0', '9.5']], array_map(static fn(array $row): array => [$row['code'], $row['orders'], $row['taxable'], $row['tax'], $row['refunded']], $this->queries->taxes($april, 'EUR')), 'April gives back the tax and the base of what it refunded; the order counts in March');
+        self::assertSame([['currency' => 'EUR', 'country' => 'DE', 'sales' => '-50', 'orders' => 0, 'rated' => false]], $this->queries->consumerSales($april, ['DE']), 'distance sales less what was given back before tax');
+        self::assertSame([['currency' => 'EUR', 'country' => 'DE', 'sales' => '100', 'orders' => 1, 'rated' => false]], $this->queries->consumerSales(new Period(new \DateTimeImmutable('2030-03-01'), new \DateTimeImmutable('2030-03-31')), ['DE']));
+        self::assertSame([['currency' => 'USD', 'state' => 'TX', 'sales' => '30', 'orders' => 1, 'rated' => false]], $this->queries->stateSales($april, 'US'), 'nexus sales less refunds');
+    }
+
     public function testAYearBeforeComparesEachDayWithTheSameDayOverALeapDay(): void
     {
         $this->store->replace(self::ORDERS, [
@@ -166,7 +193,7 @@ final class ReportQueriesTest extends RestTestCase
     }
 
     /**
-     * @param array{string, string}|null $refund
+     * @param array{0: string, 1: string, 2?: string, 3?: string}|null $refund the day, the money given back, its tax, the items' share before tax
      * @param array{string, string}|null $coupon
      * @param list<CollectedTax>         $taxes
      */
@@ -179,7 +206,7 @@ final class ReportQueriesTest extends RestTestCase
             new SoldOrder($id, $date, $date->setTime(10, 0), $counted, $counted ? 'processing' : 'pending_payment', $currency, $customer, str_starts_with($customer, 'c') ? (int) substr($customer, 1) : null, 'Ada Lovelace', $country, 'Bank transfer', '', 2, $gross, $discount, '0', $tax, (string) Money::of($gross)->add(Money::of($tax)), $region, false, $rate),
             [new SoldLine($id, $date, $counted, $currency, $this->product, null, 'Report lamp', 2, (string) ((float) $gross - (float) $discount))],
             $coupon === null ? [] : [new UsedCoupon($id, $date, $counted, $currency, $coupon[0], $coupon[1])],
-            $refund === null ? [] : [new GivenRefund($id, $id, new \DateTimeImmutable($refund[0]), $currency, $refund[1])],
+            $refund === null ? [] : [new GivenRefund($id, $id, new \DateTimeImmutable($refund[0]), $currency, $refund[1], $refund[2] ?? '0', $refund[3] ?? $refund[1])],
             $taxes,
         );
     }

@@ -135,6 +135,20 @@ final class MultiCurrencyTest extends TestCase
         $this->shop->currencies->save(new CurrencySettingsView([new OfferedCurrencyView('EUR', '1')]));
     }
 
+    public function testAThresholdIsReachedByTheAmountThePageShowsForIt(): void
+    {
+        $this->shop->currencies->save(new CurrencySettingsView([new OfferedCurrencyView('BGN', '1.95583')]));
+        $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Free from 50', '0', regions: ['BG'], subtotal: new SaveRange('50'))]));
+        $this->shop->products->save(10, new SaveProduct('50', weight: '1'));
+        $this->shop->chosenCurrency->currency = 'BGN';
+
+        $summary = $this->shop->checkout->summary($this->cart(1), new CheckoutDetails('BG'));
+
+        // 50 EUR is shown as 97.79 BGN; 97.79 BGN back is 49.9992 EUR, which is no less than the 50 it stands for.
+        self::assertSame('97.79', $summary->subtotal);
+        self::assertContains('Free from 50', array_map(static fn($option): string => $option->name, $summary->shippingOptions));
+    }
+
     private function cart(int $quantity): CartOwner
     {
         return new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10, quantity: $quantity))->newToken);

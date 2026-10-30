@@ -7,12 +7,12 @@ namespace OrillaCart\Notifications\Application;
 use OrillaCart\GiftCards\Application\GiftCardMail;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
-use OrillaCart\Shared\Lifecycle\Languages;
 use Psr\Log\LoggerInterface;
 
 /**
  * The email that brings a gift card to whom it is for. Sent once, when the card is made or its code replaced:
- * the shop keeps no code to send again.
+ * the shop keeps no code to send again. In the language of the order that bought it or was refunded with it; a
+ * card the shop made by hand, in the site's: not in whatever language the shop manager's screen is in.
  */
 final readonly class GiftCardEmails implements GiftCardMail
 {
@@ -20,18 +20,17 @@ final readonly class GiftCardEmails implements GiftCardMail
         private EmailWriter $writer,
         private Mailer $mailer,
         private EmailSettingsRepository $settings,
-        private Languages $languages,
         private Site $site,
         private LoggerInterface $logger,
     ) {}
 
-    public function send(string $to, string $code, string $amount, string $currency, ?string $expiresOn, string $recipientName, string $message): bool
+    public function send(string $to, string $code, string $amount, string $currency, ?string $expiresOn, string $recipientName, string $message, ?string $locale = null): bool
     {
         if (!$this->settings->load()->sends(EmailKind::GiftCard)) {
             return false;
         }
         try {
-            $email = $this->writer->write(EmailKind::GiftCard->template(), EmailKind::GiftCard->value, $to, $this->languages->current(), ['card' => [
+            $email = $this->writer->write(EmailKind::GiftCard->template(), EmailKind::GiftCard->value, $to, $locale, ['card' => [
                 'code' => $code,
                 'amount' => $amount,
                 'currency' => $currency,

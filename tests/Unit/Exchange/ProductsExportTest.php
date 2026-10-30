@@ -22,6 +22,7 @@ use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\CountedForgets;
 use OrillaCart\Tests\Fixtures\Exchange\EnglishColumnNames;
 use OrillaCart\Tests\Fixtures\Exchange\InMemoryExportChoices;
 use OrillaCart\Tests\Fixtures\Exchange\InMemoryProductPosts;
@@ -46,6 +47,7 @@ final class ProductsExportTest extends TestCase
             $this->shop->products,
             $this->posts,
             $this->shop->stock,
+            new CountedForgets(),
             $this->shop->logger,
         );
     }

@@ -19,8 +19,8 @@ use OrillaCart\Shared\Domain\Money;
  */
 final readonly class DbalReportQueries implements ReportQueries
 {
-    /** Sales before tax, in the shop's currency where the order kept its exchange rate. */
-    private const string SALES = 'ROUND(SUM(CASE WHEN exchange_rate > 0 THEN (total - tax) / exchange_rate ELSE total - tax END), 4) AS sales';
+    /** An amount of an order's currency, in the shop's where the order kept its exchange rate. */
+    private const string RATED = 'CASE WHEN o.exchange_rate > 0 THEN (%1$s) / o.exchange_rate ELSE %1$s END';
 
     private const string DAY = 'Y-m-d';
 
@@ -39,18 +39,20 @@ final readonly class DbalReportQueries implements ReportQueries
             [$currency, ...$this->days($period)],
         );
         $row = $row === false ? [] : $row;
+        [$refunds, $refundedItems] = $this->refunds($period, $currency);
 
         return new SalesTotals(
             self::int($row['orders'] ?? 0),
             self::int($row['items'] ?? 0),
             self::money($row['gross'] ?? 0),
             self::money($row['discounts'] ?? 0),
-            $this->refunds($period, $currency),
+            $refunds,
             self::money($row['shipping'] ?? 0),
             self::money($row['taxes'] ?? 0),
             self::money($row['total'] ?? 0),
             self::int($row['customers'] ?? 0),
             self::int($row['new_customers'] ?? 0),
+            $refundedItems,
         );
     }
 
@@ -64,17 +66,17 @@ final readonly class DbalReportQueries implements ReportQueries
              GROUP BY bucket",
             [$currency, ...$this->days($period)],
         ) as $row) {
-            $series[self::string($row['bucket'])] = ['orders' => self::int($row['orders']), 'gross' => self::money($row['gross']), 'discounts' => self::money($row['discounts']), 'total' => self::money($row['total']), 'refunds' => '0'];
+            $series[self::string($row['bucket'])] = ['orders' => self::int($row['orders']), 'gross' => self::money($row['gross']), 'discounts' => self::money($row['discounts']), 'total' => self::money($row['total']), 'refunds' => '0', 'refunded_items' => '0'];
         }
         foreach ($this->tables->connection()->fetchAllAssociative(
-            "SELECT {$this->bucket($interval, 'r.day')} AS bucket, SUM(r.amount) AS refunds
+            "SELECT {$this->bucket($interval, 'r.day')} AS bucket, SUM(r.amount) AS refunds, SUM(r.items) AS refunded_items
              FROM {$this->tables->refunds()} r
              WHERE r.currency = ? AND r.day BETWEEN ? AND ?
              GROUP BY bucket",
             [$currency, ...$this->days($period)],
         ) as $row) {
             $bucket = self::string($row['bucket']);
-            $series[$bucket] = ['refunds' => self::money($row['refunds'])] + ($series[$bucket] ?? ['orders' => 0, 'gross' => '0', 'discounts' => '0', 'total' => '0']);
+            $series[$bucket] = ['refunds' => self::money($row['refunds']), 'refunded_items' => self::money($row['refunded_items'])] + ($series[$bucket] ?? ['orders' => 0, 'gross' => '0', 'discounts' => '0', 'total' => '0']);
         }
         ksort($series);
 
@@ -232,12 +234,17 @@ final readonly class DbalReportQueries implements ReportQueries
         ));
     }
 
-    private function refunds(Period $period, string $currency): string
+    /** @return array{string, string} the money given back with its tax, and the items' share of it before tax */
+    private function refunds(Period $period, string $currency): array
     {
-        return self::money($this->tables->connection()->fetchOne(
-            "SELECT COALESCE(SUM(r.amount), 0) FROM {$this->tables->refunds()} r WHERE r.currency = ? AND r.day BETWEEN ? AND ?",
+        $row = $this->tables->connection()->fetchAssociative(
+            "SELECT COALESCE(SUM(r.amount), 0) AS amount, COALESCE(SUM(r.items), 0) AS items FROM {$this->tables->refunds()} r WHERE r.currency = ? AND r.day BETWEEN ? AND ?",
             [$currency, ...$this->days($period)],
-        ));
+        );
+
+        $row = $row === false ? [] : $row;
+
+        return [self::money($row['amount'] ?? 0), self::money($row['items'] ?? 0)];
     }
 
     /**
@@ -299,8 +306,9 @@ final readonly class DbalReportQueries implements ReportQueries
             'tax' => self::money($row['tax']),
             'refunded' => self::money($row['refunded']),
         ], $this->tables->connection()->fetchAllAssociative(
-            // A refund's rows count the tax it gave back on its own day, not as an order of that period.
-            "SELECT t.country, t.region, t.level, t.code, MAX(t.jurisdiction) AS jurisdiction, t.percent, COUNT(DISTINCT CASE WHEN t.taxable <> 0 OR t.amount <> 0 THEN t.order_id END) AS orders,
+            // A refund's rows count on its own day, not as an order of that period: the tax it gave back, and the base
+            // it lowered by what it refunded.
+            "SELECT t.country, t.region, t.level, t.code, MAX(t.jurisdiction) AS jurisdiction, t.percent, COUNT(DISTINCT CASE WHEN t.taxable > 0 OR t.amount <> 0 THEN t.order_id END) AS orders,
                     SUM(CASE WHEN t.exempt = 1 THEN 0 ELSE t.taxable END) AS taxable, SUM(CASE WHEN t.exempt = 1 THEN t.taxable ELSE 0 END) AS exempt,
                     SUM(t.amount) AS tax, SUM(t.refunded) AS refunded
              FROM {$this->tables->taxes()} t
@@ -320,12 +328,11 @@ final readonly class DbalReportQueries implements ReportQueries
             'orders' => self::int($row['orders']),
             'rated' => self::int($row['rated']) === 1,
         ], $this->tables->connection()->fetchAllAssociative(
-            'SELECT currency, region, COUNT(*) AS orders, ' . self::SALES . ", exchange_rate IS NOT NULL AS rated
-             FROM {$this->tables->orders()}
-             WHERE counted = 1 AND country = ? AND region IS NOT NULL AND day BETWEEN ? AND ?
-             GROUP BY currency, region, exchange_rate IS NOT NULL
-             ORDER BY region, currency",
-            [$country, ...$this->days($period)],
+            "SELECT x.currency, x.region, SUM(x.orders) AS orders, ROUND(SUM(x.sales), 4) AS sales, x.rated
+             FROM ({$this->salesAndRefunds('o.counted = 1 AND o.country = ? AND o.region IS NOT NULL', 'o.region')}) x
+             GROUP BY x.currency, x.region, x.rated
+             ORDER BY x.region, x.currency",
+            [$country, ...$this->days($period), $country, ...$this->days($period)],
         ));
     }
 
@@ -337,19 +344,38 @@ final readonly class DbalReportQueries implements ReportQueries
 
         return array_map(static fn(array $row): array => [
             'currency' => self::string($row['currency']),
-            'country' => self::string($row['country']),
+            'country' => self::string($row['region']),
             'sales' => self::money($row['sales']),
             'orders' => self::int($row['orders']),
             'rated' => self::int($row['rated']) === 1,
         ], $this->tables->connection()->fetchAllAssociative(
-            'SELECT currency, country, COUNT(*) AS orders, ' . self::SALES . ", exchange_rate IS NOT NULL AS rated
-             FROM {$this->tables->orders()}
-             WHERE counted = 1 AND reverse_charge = 0 AND day BETWEEN ? AND ? AND country IN (?)
-             GROUP BY currency, country, exchange_rate IS NOT NULL
-             ORDER BY country, currency",
-            [...$this->days($period), $countries],
-            [ParameterType::STRING, ParameterType::STRING, ArrayParameterType::STRING],
+            "SELECT x.currency, x.region, SUM(x.orders) AS orders, ROUND(SUM(x.sales), 4) AS sales, x.rated
+             FROM ({$this->salesAndRefunds('o.counted = 1 AND o.reverse_charge = 0 AND o.country IN (?)', 'o.country')}) x
+             GROUP BY x.currency, x.region, x.rated
+             ORDER BY x.region, x.currency",
+            [$countries, ...$this->days($period), $countries, ...$this->days($period)],
+            [ArrayParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ArrayParameterType::STRING, ParameterType::STRING, ParameterType::STRING],
         ));
+    }
+
+    /**
+     * The orders the condition picks that count in the period, before tax, and less what refunds of them gave back
+     * before tax in the period, each on its own day: rows of currency, region (the place grouped by), orders, sales
+     * and rated. Its parameters: the condition's, the period's two days, then both again.
+     */
+    private function salesAndRefunds(string $condition, string $place): string
+    {
+        $sales = \sprintf(self::RATED, 'o.total - o.tax');
+        $refunded = \sprintf(self::RATED, 'r.amount - r.tax');
+
+        return "SELECT o.currency, {$place} AS region, 1 AS orders, {$sales} AS sales, o.exchange_rate IS NOT NULL AS rated
+                FROM {$this->tables->orders()} o
+                WHERE {$condition} AND o.day BETWEEN ? AND ?
+                UNION ALL
+                SELECT o.currency, {$place} AS region, 0 AS orders, -({$refunded}) AS sales, o.exchange_rate IS NOT NULL AS rated
+                FROM {$this->tables->refunds()} r
+                JOIN {$this->tables->orders()} o ON o.order_id = r.order_id
+                WHERE {$condition} AND r.day BETWEEN ? AND ?";
     }
 
     /** @return array{string, string} */

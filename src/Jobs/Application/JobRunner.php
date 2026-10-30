@@ -105,14 +105,15 @@ final readonly class JobRunner
             return $counts;
         }
         $held = new Hold($this->queue, $runnable, $this->clock->now(), $handler->lockSeconds());
-        $held->extend($this->clock->now());
+        $held->renew($this->clock->now());
         $settle = function (QueuedJob $job, JobOutcome $outcome) use ($handler, $held, &$counts): void {
             $held->release([$job]);
             ++$counts[$this->settle($handler, $job, $outcome)];
         };
+        // Once a job is reported the next one starts: the jobs still to run get a full lock again.
         $holdOn = function () use ($held, $waiting): void {
             $now = $this->clock->now();
-            $held->extend($now);
+            $held->renew($now);
             $waiting->extend($now);
         };
 
@@ -137,6 +138,8 @@ final readonly class JobRunner
             }
         }
 
+        // The batch returned: the jobs it did not report are only being settled, so no lock is renewed for them.
+        $held->release($runnable);
         foreach ($runnable as $job) {
             if (!$progress->reported($job)) {
                 $progress->done($job, $outcomes[$job->id] ?? null);

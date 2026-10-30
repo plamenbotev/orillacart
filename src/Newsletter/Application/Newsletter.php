@@ -17,6 +17,7 @@ use OrillaCart\Newsletter\Domain\SignUpSource;
 use OrillaCart\Newsletter\Domain\Subscriber;
 use OrillaCart\Newsletter\Domain\SubscriberRepository;
 use OrillaCart\Shared\Extension\InstalledExtensions;
+use OrillaCart\Shared\Lifecycle\Languages;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -26,6 +27,9 @@ use Psr\Clock\ClockInterface;
  */
 final readonly class Newsletter
 {
+    /** The job that emails the link confirming a sign-up (SendNewsletterConfirmation). */
+    public const string CONFIRM_JOB = 'mail.newsletter_confirm';
+
     /** How many sign-ups a job lot sends a newly turned-on list. */
     private const int BATCH = 500;
 
@@ -35,6 +39,7 @@ final readonly class Newsletter
         private InstalledExtensions $extensions,
         private Jobs $jobs,
         private ClockInterface $clock,
+        private Languages $languages,
     ) {}
 
     public function settings(): NewsletterSettingsView
@@ -46,6 +51,7 @@ final readonly class Newsletter
             $settings->consent,
             array_map(static fn(MailingList $list): MailingListView => new MailingListView($list->id(), $list->name(), \in_array($list->id(), $settings->lists, true)), $this->extensions->mailingLists()),
             $this->subscribers->countSubscribed(),
+            $settings->confirmNew,
         );
     }
 
@@ -63,7 +69,7 @@ final readonly class Newsletter
         }
         $before = $this->settings->load();
         $lists = array_values(array_unique($command->lists));
-        $this->settings->save(new NewsletterSettings($command->offered, trim($command->consent), $lists));
+        $this->settings->save(new NewsletterSettings($command->offered, trim($command->consent), $lists, $command->confirmNew));
         foreach (array_diff($lists, $before->lists) as $list) {
             $this->sendEveryone($list);
         }
@@ -93,21 +99,54 @@ final readonly class Newsletter
 
     /**
      * Someone ticked the box: they are subscribed, with the words the box had, and the lists hear of it. Signing
-     * up again while subscribed changes nothing.
+     * up again while subscribed changes nothing. When the shop confirms new sign-ups by email (the default, as the
+     * GDPR expects one to prove it), they are asked to, and only once they followed the link are they on the
+     * newsletter and do the lists hear of them: nobody signs up an address that is not theirs.
      *
      * @throws NewsletterRuleViolation when the shop does not offer the newsletter
      */
     public function subscribe(string $email, string $firstName, string $lastName, SignUpSource $source, ?int $customerId = null): void
     {
         $consent = $this->offer() ?? throw new NewsletterRuleViolation('The shop has no newsletter to sign up for.', 'orillacart_no_newsletter');
+        $confirm = $this->settings->load()->confirmNew;
         $subscriber = $this->subscribers->findByEmail($email);
         if ($subscriber === null) {
-            $subscriber = new Subscriber($email, $firstName, $lastName, $consent, $source, $this->clock->now(), $customerId);
-        } elseif (!$subscriber->subscribe($firstName, $lastName, $consent, $source, $this->clock->now(), $customerId)) {
+            $subscriber = new Subscriber($email, $firstName, $lastName, $consent, $source, $this->clock->now(), $customerId, $confirm);
+        } elseif (!$subscriber->subscribe($firstName, $lastName, $consent, $source, $this->clock->now(), $customerId, $confirm)) {
             return;
         }
         $this->subscribers->save($subscriber);
+        if ($subscriber->isPending()) {
+            // Asked in the language they signed up in, by a job in the mail lane, as the shop's other emails.
+            $this->jobs->push(self::CONFIRM_JOB, ['email' => $subscriber->email(), 'locale' => $this->languages->current()], "confirm:{$subscriber->email()}");
+
+            return;
+        }
         $this->sync($subscriber->email());
+    }
+
+    /**
+     * The owner of the email followed the link that confirms their sign-up: they are on the newsletter, and the
+     * lists hear of it.
+     *
+     * @return bool false for an email not waiting to be confirmed: confirmed already, unsubscribed or unknown
+     */
+    public function confirm(string $email): bool
+    {
+        $subscriber = $this->subscribers->findByEmail($email);
+        if ($subscriber === null || !$subscriber->confirm($this->clock->now())) {
+            return false;
+        }
+        $this->subscribers->save($subscriber);
+        $this->sync($subscriber->email());
+
+        return true;
+    }
+
+    /** Whether the email signed up and has yet to confirm it. */
+    public function isPending(string $email): bool
+    {
+        return $this->subscribers->findByEmail($email)?->isPending() ?? false;
     }
 
     public function unsubscribe(string $email): void
@@ -148,12 +187,31 @@ final readonly class Newsletter
         $this->unsubscribe($email);
     }
 
-    /** The person changed their email address: the sign-up follows it, and the lists hear of both addresses. */
+    /**
+     * The person changed their email address: the sign-up follows it, and the lists hear of both addresses. One the
+     * new address had already is merged with it: the subscribed one of the two stays, the new address's when both
+     * are, and the old address is off the newsletter either way.
+     */
     public function changeEmail(string $from, string $to): void
     {
         $subscriber = $this->subscribers->findByEmail($from);
-        if ($subscriber === null || Subscriber::normalize($from) === Subscriber::normalize($to) || $this->subscribers->findByEmail($to) !== null) {
+        if ($subscriber === null || Subscriber::normalize($from) === Subscriber::normalize($to)) {
             return;
+        }
+        $existing = $this->subscribers->findByEmail($to);
+        if ($existing !== null) {
+            // The old address's sign-up takes the new one's place only when it holds more: subscribed where the new
+            // address's is not, or waiting to be confirmed where the new address's was left.
+            $moves = $subscriber->isSubscribed() && !$existing->isSubscribed() || $subscriber->isPending() && !$existing->isSubscribed() && !$existing->isPending();
+            if (!$moves) {
+                // The new address's own sign-up stands: the old one's goes.
+                $this->subscribers->remove($subscriber);
+                $this->sync(Subscriber::normalize($from));
+                $this->sync($existing->email());
+
+                return;
+            }
+            $this->subscribers->remove($existing);
         }
         $subscriber->changeEmail($to);
         $this->subscribers->save($subscriber);

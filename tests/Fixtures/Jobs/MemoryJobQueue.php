@@ -132,6 +132,11 @@ final class MemoryJobQueue implements JobQueue
         return $this->waiting('type', $now);
     }
 
+    public function waitingOfType(string $type, \DateTimeImmutable $now): WaitingJobs
+    {
+        return $this->waiting('type', $now)[$type] ?? new WaitingJobs();
+    }
+
     public function scheduled(\DateTimeImmutable $now, int $limit): array
     {
         $later = array_filter($this->jobs, static fn(array $job): bool => $job['at'] > $now && ($job['lockedUntil'] === null || $job['lockedUntil'] <= $now));

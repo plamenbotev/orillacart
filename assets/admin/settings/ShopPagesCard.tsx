@@ -12,6 +12,7 @@ import { __ } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
 import { errorMessage } from '../shared/api';
+import { useSavedCopy } from '../shared/useUnsavedChanges';
 import {
 	fetchPageChoices,
 	fetchShopPages,
@@ -65,11 +66,13 @@ export function ShopPagesCard() {
 	const [ form, setForm ] = useState< ShopPages | null >( null );
 	const [ choices, setChoices ] = useState< PageChoice[] >( [] );
 	const [ status, setStatus ] = useState< Status >( { kind: 'idle' } );
+	const loaded = useSavedCopy( form );
 
 	useEffect( () => {
 		Promise.all( [ fetchShopPages(), fetchPageChoices() ] )
 			.then( ( [ pages, list ] ) => {
 				setForm( pages );
+				loaded( pages );
 				setChoices( list );
 			} )
 			.catch( ( error: unknown ) =>
@@ -78,7 +81,7 @@ export function ShopPagesCard() {
 					message: errorMessage( error ),
 				} )
 			);
-	}, [] );
+	}, [ loaded ] );
 
 	const submit = ( event: FormEvent ) => {
 		event.preventDefault();
@@ -89,6 +92,7 @@ export function ShopPagesCard() {
 		saveShopPages( form )
 			.then( ( saved ) => {
 				setForm( saved );
+				loaded( saved );
 				setStatus( { kind: 'saved' } );
 			} )
 			.catch( ( error: unknown ) =>

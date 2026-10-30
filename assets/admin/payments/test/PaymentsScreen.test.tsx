@@ -5,6 +5,7 @@ import apiFetch from '@wordpress/api-fetch';
 
 import { PaymentsScreen } from '../PaymentsScreen';
 import { lastWrite } from '../../shared/testing';
+import { hasUnsavedChanges } from '../../shared/useUnsavedChanges';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -127,5 +128,40 @@ describe( 'PaymentsScreen', () => {
 				fee_percent: '0',
 			},
 		} );
+	} );
+
+	it( 'compares the fees as numbers, so a saved fee is not a change', async () => {
+		mockedFetch.mockImplementation( ( options ) => {
+			const request = options as Request;
+			const data = request.data as { fee: string } | undefined;
+			return request.method === undefined
+				? Promise.resolve( [ cash ] )
+				: Promise.resolve( {
+						...cash,
+						...( data as object ),
+						// The shop keeps four places.
+						fee: Number( data?.fee ).toFixed( 4 ),
+						fee_percent: '0.0000',
+					} );
+		} );
+		const user = userEvent.setup();
+		render( <PaymentsScreen /> );
+
+		const fee = await screen.findByLabelText( 'Fixed amount' );
+		await user.clear( fee );
+		await user.type( fee, '0.00' );
+		expect( hasUnsavedChanges() ).toBe( false );
+
+		await user.clear( fee );
+		await user.type( fee, '2.5' );
+		expect( hasUnsavedChanges() ).toBe( true );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save Cash on delivery' } )
+		);
+
+		expect(
+			await screen.findByText( 'Cash on delivery saved.', NOTICE )
+		).toBeVisible();
+		expect( hasUnsavedChanges() ).toBe( false );
 	} );
 } );

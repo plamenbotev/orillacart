@@ -173,7 +173,7 @@ final readonly class JobsCommand implements CliCommand
                 $maxJobs !== null && $done >= $maxJobs => "ran {$done} jobs",
                 $maxTime !== null && microtime(true) - $started >= $maxTime => "ran {$maxTime} seconds",
                 memory_get_usage(true) > $memory => 'reached its memory limit',
-                $restart => 'asked to restart',
+                $restart => 'asked to restart, or the plugin was updated',
                 !$loop && $ran === 0 => null,
                 default => false,
             };
@@ -217,6 +217,12 @@ final readonly class JobsCommand implements CliCommand
                         \WP_CLI::log(\sprintf('Done %d, to retry %d, failed %d.', $run->done, $run->retried, $run->failed));
                     }
                     $done += $run->count();
+                }
+                // Once a round the worker looks for itself whether it should stop: a network worker that served no
+                // site (none at its build after an update) never read the restart flag, and one asked for nothing
+                // would run the old code for hours after the plugin was updated under it.
+                if ($reason === false && $loop && !$restart) {
+                    $restart = $this->sites->outdated() || ($network && $this->workers->shouldRestart($startedAt));
                 }
                 if ($reason === false) {
                     $reason = $why($restart, $run->count());

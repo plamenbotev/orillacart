@@ -12,8 +12,8 @@ use OrillaCart\Shared\Lifecycle\Languages;
 use Psr\Log\LoggerInterface;
 
 /**
- * The PDFs the customer's emails carry, unless the shop said not to: the order's invoice, or its latest credit
- * note, in the customer's language, and the same as an e-invoice when the shop makes them. One that cannot be
+ * The PDFs the customer's emails carry, unless the shop said not to: the order's invoice, or the credit note of
+ * the refund told of, in the customer's language, and the same as an e-invoice when the shop makes them. One that cannot be
  * printed is logged, and the email goes without it.
  */
 final readonly class InvoiceAttachments
@@ -29,16 +29,18 @@ final readonly class InvoiceAttachments
 
     /**
      * @param string|null $locale the customer's language; null for the site's
+     * @param string|null $number the document to attach, as a refund's email names its own credit note; null for
+     *                            the order's latest of the kind
      *
      * @return list<InvoiceFile> the PDF, and the e-invoice
      */
-    public function files(int $orderId, InvoiceKind $kind, ?string $locale): array
+    public function files(int $orderId, InvoiceKind $kind, ?string $locale, ?string $number = null): array
     {
         if (!$this->settings->load()->attachToEmails) {
             return [];
         }
         try {
-            $document = $this->invoices->latest($orderId, $kind);
+            $document = $this->invoices->latest($orderId, $kind, $number);
             if ($document === null) {
                 return [];
             }

@@ -84,6 +84,9 @@ interface JobQueue
      */
     public function waitingByType(\DateTimeImmutable $now): array;
 
+    /** What waits of one type: read by its index alone, for a handler that asks after every batch. */
+    public function waitingOfType(string $type, \DateTimeImmutable $now): WaitingJobs;
+
     /**
      * The jobs scheduled ahead, soonest first.
      *

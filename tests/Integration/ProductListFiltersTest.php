@@ -51,7 +51,7 @@ final class ProductListFiltersTest extends RestTestCase
             self::assertIsArray($option);
             $variation = $this->id($this->request('POST', "/products/{$shirt}/variations", ['option_ids' => [$option['id']], 'price' => $index === 0 ? '25' : '45', 'sku' => $index === 0 ? 'SHIRT-S' : null], nonce: true));
             if ($index === 0) {
-                $this->request('PUT', "/stock/variation/{$variation}", ['levels' => [['stockroom_id' => $this->plovdiv, 'quantity' => 4]]], nonce: true);
+                $this->setStock('variation', $variation, [$this->plovdiv => 4]);
             }
         }
         $this->product('Poster', ['price' => '0', 'price_visibility' => 'hidden', 'purchasable' => false], [$this->sofia => 0]);
@@ -207,8 +207,7 @@ final class ProductListFiltersTest extends RestTestCase
         $saved = $this->request('PUT', "/products/{$id}", $details, nonce: true);
         self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
         if ($stock !== []) {
-            $levels = array_map(static fn(int $room, int $quantity): array => ['stockroom_id' => $room, 'quantity' => $quantity], array_keys($stock), $stock);
-            self::assertSame(200, $this->request('PUT', "/stock/product/{$id}", ['levels' => $levels], nonce: true)->get_status());
+            self::assertSame(200, $this->setStock('product', $id, $stock)->get_status());
         }
 
         return $id;

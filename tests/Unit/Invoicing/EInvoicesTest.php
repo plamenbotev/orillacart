@@ -272,6 +272,41 @@ final class EInvoicesTest extends TestCase
         self::assertSame([$sent[0]->number . '.pdf', $sent[0]->number . '.xml'], array_map(static fn(InvoiceFile $file): string => $file->filename, $this->shop->invoiceAttachments->files($order->number, InvoiceKind::Invoice, null)));
     }
 
+    public function testTheDatesAreTheShopsDaysAndTheAddOnGetsTheBuyerAsIssued(): void
+    {
+        $sender = new class implements EInvoiceSender {
+            /** @var list<EInvoiceFile> */
+            public array $sent = [];
+
+            public function id(): string
+            {
+                return 'peppol_test';
+            }
+
+            public function label(): string
+            {
+                return 'Peppol test';
+            }
+
+            public function send(EInvoiceFile $file): void
+            {
+                $this->sent[] = $file;
+            }
+        };
+        $this->shop->extensions->eInvoiceSenders[] = $sender;
+        // 22:30 in UTC is half past one the next morning in Sofia.
+        $this->shop->clock->modify('2026-10-17 22:30:00 UTC');
+        $this->shop->jobs->immediate = false;
+        $order = $this->paid(1, vatNumber: 'DE123456789');
+        $this->shop->orders->anonymise($order->number, 7);
+        $this->shop->jobs->runAll();
+
+        $xml = $this->xpath($this->xml($order), ['cbc' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2', 'cac' => 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2']);
+        self::assertSame(['2026-10-18', '2026-10-18'], [$xml->evaluate('string(//cbc:IssueDate)'), $xml->evaluate('string(//cac:Delivery/cbc:ActualDeliveryDate)')]);
+        self::assertCount(1, $sender->sent);
+        self::assertSame(['max@example.de', 'DE', 'DE123456789'], [$sender->sent[0]->buyerEmail, $sender->sent[0]->buyerCountry, $sender->sent[0]->buyerTaxNumber], 'erased since, the buyer goes as the invoice names them');
+    }
+
     public function testWithoutAFormatNothingIsMadeOrSent(): void
     {
         $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Lamps Ltd', eInvoices: 'none'));

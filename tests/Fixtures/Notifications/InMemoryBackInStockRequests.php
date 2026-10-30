@@ -29,6 +29,9 @@ final class InMemoryBackInStockRequests implements BackInStockRequests
 
     public function save(BackInStockRequest $request): void
     {
+        if (\in_array($request, $this->requests, true)) {
+            return;
+        }
         $this->requests[] = $request;
     }
 

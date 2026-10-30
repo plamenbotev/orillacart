@@ -50,7 +50,8 @@ final readonly class DownloadExport
         } catch (RuleViolation $e) {
             wp_die(esc_html($this->translations->text($e->text)), esc_html__('Export', 'orillacart'), ['response' => 422, 'back_link' => true]);
         }
-        $this->orders->export($query, $this->file('orders'));
+        LongExport::start();
+        $this->orders->export($query, $this->file('orders'), LongExport::between(...));
         exit;
     }
 
@@ -58,7 +59,8 @@ final readonly class DownloadExport
     public function products(): void
     {
         $this->authorize();
-        $this->products->export($this->file('products', csvOnly: true));
+        LongExport::start();
+        $this->products->export($this->file('products', csvOnly: true), LongExport::between(...));
         exit;
     }
 

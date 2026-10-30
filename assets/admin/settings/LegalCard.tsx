@@ -13,6 +13,7 @@ import { __ } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
 import { errorMessage } from '../shared/api';
+import { useSavedCopy } from '../shared/useUnsavedChanges';
 import {
 	fetchLegalSettings,
 	fetchPageChoices,
@@ -86,17 +87,19 @@ export function LegalCard() {
 	const [ form, setForm ] = useState< LegalSettings | null >( null );
 	const [ choices, setChoices ] = useState< PageChoice[] >( [] );
 	const [ status, setStatus ] = useState< Status >( { kind: 'idle' } );
+	const loaded = useSavedCopy( form );
 
 	useEffect( () => {
 		Promise.all( [ fetchLegalSettings(), fetchPageChoices( true ) ] )
 			.then( ( [ settings, list ] ) => {
 				setForm( settings );
+				loaded( settings );
 				setChoices( list );
 			} )
 			.catch( ( error: unknown ) =>
 				setStatus( { kind: 'error', message: errorMessage( error ) } )
 			);
-	}, [] );
+	}, [ loaded ] );
 
 	const submit = ( event: FormEvent ) => {
 		event.preventDefault();
@@ -107,6 +110,7 @@ export function LegalCard() {
 		saveLegalSettings( form )
 			.then( ( saved ) => {
 				setForm( saved );
+				loaded( saved );
 				setStatus( { kind: 'saved' } );
 			} )
 			.catch( ( error: unknown ) =>

@@ -16,6 +16,8 @@ final class ImmediateTransactions implements Transactions
     /** How many transactions were begun outside any other: what the database would commit. */
     public int $outermost = 0;
     public int $depth = 0;
+    /** @var list<array{int, string}> the rows locked, by the outermost transaction they were locked in: [n, 'order:5'] */
+    public array $locks = [];
 
     public function run(callable $work): mixed
     {
@@ -34,6 +36,15 @@ final class ImmediateTransactions implements Transactions
     public function runRetrying(callable $work): mixed
     {
         return $this->run($work);
+    }
+
+    /**
+     * A repository locked a row, as SELECT … FOR UPDATE would: kept, to check the order rows are locked in.
+     */
+    public function locked(string $row): void
+    {
+        $this->requireOpen();
+        $this->locks[] = [$this->outermost, $row];
     }
 
     /**

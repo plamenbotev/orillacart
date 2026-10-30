@@ -38,6 +38,16 @@ final readonly class JsonResponder
         return $this->json($this->normalizer->normalize($data, 'json', $context), $status);
     }
 
+    /**
+     * A view as the answer's JSON holds it, for an error's details: the same normalizing ok() does.
+     *
+     * @param object|list<object>|array<string, mixed> $data
+     */
+    public function normalized(object|array $data): mixed
+    {
+        return $this->normalizer->normalize($data, 'json');
+    }
+
     public function noContent(): ResponseInterface
     {
         return $this->responses->createResponse(204);

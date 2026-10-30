@@ -41,7 +41,7 @@ final class NewsletterTest extends TestCase
         $this->order('ada@example.com');
         self::assertSame(0, $this->shop->newsletter->settings()->subscribers, 'no newsletter offered, no sign-up');
 
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'Send me the monthly letter.', ['test_list']));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'Send me the monthly letter.', ['test_list'], confirmNew: false));
         $this->order('ADA@example.com');
         $this->shop->jobs->runAll();
 
@@ -53,12 +53,12 @@ final class NewsletterTest extends TestCase
 
     public function testACustomerLeavesAndComesBackFromTheirAccountAgreeingAnew(): void
     {
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News and offers.', ['test_list']));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News and offers.', ['test_list'], confirmNew: false));
         $ada = $this->shop->accounts->add('ada@example.com');
 
         $customer = $this->shop->customers->chooseEmails($ada, new ChooseEmails(false, true));
         self::assertSame([false, true, 'account'], [$customer->cartReminders, $customer->newsletter?->subscribed, $customer->newsletter?->source]);
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'Monthly news.', ['test_list']));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'Monthly news.', ['test_list'], confirmNew: false));
         $this->shop->customers->chooseEmails($ada, new ChooseEmails(true, true));
         self::assertSame('News and offers.', $this->shop->newsletter->subscription('ada@example.com')?->consent, 'still subscribed: the first words stand');
 
@@ -72,13 +72,13 @@ final class NewsletterTest extends TestCase
 
     public function testAListTurnedOnGetsEveryoneSoFarAndOneThatIsDownIsAskedAgain(): void
     {
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.'));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', confirmNew: false));
         $this->order('ada@example.com');
         $this->order('grace@example.com');
         self::assertSame([], $this->list->heard, 'the list is not on yet');
 
         $this->list->down = true;
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list']));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list'], confirmNew: false));
         $this->shop->jobs->runAll();
         self::assertSame([], $this->list->heard);
 
@@ -91,12 +91,12 @@ final class NewsletterTest extends TestCase
     public function testOnlyAListAnAddOnBringsIsChosen(): void
     {
         $this->expectException(NewsletterRuleViolation::class);
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['mailchimp']));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['mailchimp'], confirmNew: false));
     }
 
     public function testThePrivacyToolsExportTheSignUpAndEraseItEverywhere(): void
     {
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list']));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list'], confirmNew: false));
         $this->order('ada@example.com');
 
         $export = $this->shop->personalData->export('ada@example.com', 1);
@@ -113,7 +113,7 @@ final class NewsletterTest extends TestCase
     {
         $forgetting = new ForgettingMailingList();
         $this->shop->extensions->mailingLists[] = $forgetting;
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list']));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list'], confirmNew: false));
         $this->order('ada@example.com');
         $this->shop->jobs->runAll();
 
@@ -126,14 +126,14 @@ final class NewsletterTest extends TestCase
 
     public function testOneWhoLeftAtTheListIsOffTheShopsNewsletterAndNoListSignsThemUpAgain(): void
     {
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list']));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list'], confirmNew: false));
         $this->order('ada@example.com');
         $this->shop->jobs->runAll();
 
         $this->shop->newsletter->unsubscribedAtList('ada@example.com');
         $other = new RecordingMailingList('other_list');
         $this->shop->extensions->mailingLists[] = $other;
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list', 'other_list']));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list', 'other_list'], confirmNew: false));
         $this->shop->jobs->runAll();
 
         self::assertFalse($this->shop->newsletter->isSubscribed('ada@example.com'));
@@ -142,7 +142,7 @@ final class NewsletterTest extends TestCase
 
     public function testASignUpFollowsAChangedEmail(): void
     {
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list']));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list'], confirmNew: false));
         $this->order('ada@example.com');
         $this->shop->jobs->runAll();
 
@@ -152,6 +152,75 @@ final class NewsletterTest extends TestCase
         self::assertTrue($this->shop->newsletter->isSubscribed('ada@new.example'));
         self::assertFalse($this->shop->newsletter->isSubscribed('ada@example.com'));
         self::assertSame(['ada@new.example'], array_keys($this->list->members), 'the old address left the list, the new one joined');
+    }
+
+    public function testANewSignUpWaitsForItsOwnerToConfirmItFromTheEmailBeforeAnyListHears(): void
+    {
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list']));
+        self::assertTrue($this->shop->newsletter->settings()->confirmNew, 'on unless the shop turns it off');
+        $this->shop->languages->locale = 'de_DE';
+        $this->order('ada@example.com');
+        $this->shop->jobs->runAll();
+
+        self::assertFalse($this->shop->newsletter->isSubscribed('ada@example.com'));
+        self::assertTrue($this->shop->newsletter->isPending('ada@example.com'));
+        self::assertSame(0, $this->shop->newsletter->settings()->subscribers);
+        self::assertSame([], $this->list->heard, 'no list hears of an address nobody proved is theirs');
+        $asked = array_values(array_filter($this->shop->mail->emails, static fn($email): bool => $email->kind === 'newsletter_confirm'));
+        self::assertSame(['ada@example.com'], array_map(static fn($email): string => $email->to, $asked), 'asked to confirm');
+        self::assertStringContainsString('orillacart_confirm_newsletter=ada%40example.com', $asked[0]->html);
+        self::assertContains('de_DE', $this->shop->languages->switched, 'in the language they signed up in');
+        self::assertTrue($this->shop->newsletter->subscription('ada@example.com')?->pending);
+
+        self::assertTrue($this->shop->newsletter->confirm('ADA@example.com'));
+        self::assertFalse($this->shop->newsletter->confirm('ada@example.com'), 'once');
+        $this->shop->jobs->runAll();
+
+        self::assertTrue($this->shop->newsletter->isSubscribed('ada@example.com'));
+        self::assertSame(['+ada@example.com'], $this->list->heard);
+        self::assertNotNull($this->shop->newsletter->subscription('ada@example.com')?->confirmedAt);
+    }
+
+    public function testAnUnsubscribedSignUpIsNotConfirmedByAnOldLink(): void
+    {
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list']));
+        $this->order('ada@example.com');
+        $this->shop->newsletter->unsubscribe('ada@example.com');
+
+        self::assertFalse($this->shop->newsletter->confirm('ada@example.com'));
+        self::assertFalse($this->shop->newsletter->isSubscribed('ada@example.com'));
+    }
+
+    public function testAnEmailChangedToOneAlreadySignedUpLeavesTheOldAddressOff(): void
+    {
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list'], confirmNew: false));
+        $this->order('ada@example.com');
+        $this->order('ada@new.example');
+        $this->shop->jobs->runAll();
+
+        $this->shop->newsletter->changeEmail('ada@example.com', 'ada@new.example');
+        $this->shop->jobs->runAll();
+
+        self::assertFalse($this->shop->newsletter->isSubscribed('ada@example.com'), 'not left subscribed at the address given up');
+        self::assertNull($this->shop->newsletter->subscription('ada@example.com'));
+        self::assertTrue($this->shop->newsletter->isSubscribed('ada@new.example'));
+        self::assertSame(['ada@new.example'], array_keys($this->list->members));
+    }
+
+    public function testAnEmailChangedToOneThatLeftMovesTheSubscriptionThere(): void
+    {
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list'], confirmNew: false));
+        $this->order('ada@new.example');
+        $this->shop->newsletter->unsubscribe('ada@new.example');
+        $this->order('ada@example.com');
+        $this->shop->jobs->runAll();
+
+        $this->shop->newsletter->changeEmail('ada@example.com', 'ada@new.example');
+        $this->shop->jobs->runAll();
+
+        self::assertNull($this->shop->newsletter->subscription('ada@example.com'));
+        self::assertTrue($this->shop->newsletter->isSubscribed('ada@new.example'), 'the subscribed sign-up moved to the new address');
+        self::assertSame(['ada@new.example'], array_keys($this->list->members));
     }
 
     private function order(string $email): void
@@ -164,7 +233,7 @@ final class NewsletterTest extends TestCase
     {
         $other = new RecordingMailingList('other_list');
         $this->shop->extensions->mailingLists[] = $other;
-        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list', 'other_list']));
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list', 'other_list'], confirmNew: false));
         $this->order('ada@example.com');
         $this->shop->jobs->runAll();
         [$heard, $otherHeard] = [\count($this->list->heard), \count($other->heard)];

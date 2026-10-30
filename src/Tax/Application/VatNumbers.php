@@ -8,7 +8,9 @@ use OrillaCart\Geography\Application\Dto\LocationView;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Tax\Application\Dto\ReverseCharge;
+use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Application\Dto\VatCheck;
+use OrillaCart\Tax\Domain\NorthernIreland;
 use OrillaCart\Tax\Domain\TaxNumber;
 use OrillaCart\Tax\Domain\TaxSettingsRepository;
 
@@ -40,16 +42,20 @@ final readonly class VatNumbers
      * Goods sold under the reverse charge leave for another EU country: delivered in the shop's own country they
      * are a sale at home, VAT due; sent out of the EU they are an export, taxed as the rates there say.
      *
-     * @param string|null $country where the goods go; null when nothing ships
+     * Northern Ireland is in the EU for goods (NorthernIreland).
+     *
+     * @param TaxAddress|null $to where the goods go; null when nothing ships
      */
-    public function forGoodsTo(ReverseCharge $reverse, ?string $country): ReverseCharge
+    public function forGoodsTo(ReverseCharge $reverse, ?TaxAddress $to): ReverseCharge
     {
+        $country = $to?->country;
         if (!$reverse->applies || $country === null) {
             return $reverse;
         }
         $shopCountry = $this->shop->current()->shopCountry;
         $location = $this->geography->locate($country, null);
-        if ($location instanceof LocationView && $location->inEu && $country !== $shopCountry) {
+        $inEu = ($location instanceof LocationView && $location->inEu) || NorthernIreland::covers($country, $to?->postcode);
+        if ($inEu && $country !== $shopCountry) {
             return $reverse;
         }
 
@@ -63,7 +69,9 @@ final readonly class VatNumbers
             return ReverseCharge::none();
         }
         $location = $this->geography->locate($billingCountry, null);
-        if (!$location instanceof LocationView || !$location->inEu) {
+        // A business in Northern Ireland has an XI number for its goods, which VIES checks.
+        $northernIreland = $billingCountry === 'GB' && str_starts_with($entered, NorthernIreland::VIES_PREFIX);
+        if (!$northernIreland && (!$location instanceof LocationView || !$location->inEu)) {
             // Outside the EU the number goes on the order and the invoice, once its check digit holds.
             $checked = TaxNumber::check($billingCountry, $entered);
 
@@ -71,8 +79,8 @@ final readonly class VatNumbers
                 ? new ReverseCharge(false, null, \sprintf('This is not a valid %s, so it is not on the order. Check it and try again, or leave it out.', TaxNumber::label($billingCountry)))
                 : new ReverseCharge(false, $checked);
         }
-        $prefix = self::PREFIXES[$billingCountry] ?? $billingCountry;
-        $number = str_starts_with($entered, $prefix) ? substr($entered, \strlen($prefix)) : $entered;
+        $prefix = $northernIreland ? NorthernIreland::VIES_PREFIX : (self::PREFIXES[$billingCountry] ?? $billingCountry);
+        $number = self::withoutPrefix($entered, $prefix, $billingCountry);
         if (preg_match('/^[0-9A-Z]{2,12}$/', $number) !== 1) {
             return new ReverseCharge(false, $entered, 'This is not a VAT number of the billing country, so VAT is charged.');
         }
@@ -97,17 +105,30 @@ final readonly class VatNumbers
     public function checkSeller(string $country, string $entered): VatCheck
     {
         $typed = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $entered));
-        if ($this->geography->locate($country, null)?->inEu !== true) {
+        $northernIreland = $country === 'GB' && str_starts_with($typed, NorthernIreland::VIES_PREFIX);
+        if (!$northernIreland && $this->geography->locate($country, null)?->inEu !== true) {
             $checked = TaxNumber::check($country, $typed);
 
             return new VatCheck($checked === null ? VatCheck::INVALID : VatCheck::VALID, $checked ?? $typed);
         }
-        $prefix = self::PREFIXES[$country] ?? $country;
-        $number = str_starts_with($typed, $prefix) ? substr($typed, \strlen($prefix)) : $typed;
+        $prefix = $northernIreland ? NorthernIreland::VIES_PREFIX : (self::PREFIXES[$country] ?? $country);
+        $number = self::withoutPrefix($typed, $prefix, $country);
         if (preg_match('/^[0-9A-Z]{2,12}$/', $number) !== 1) {
             return new VatCheck(VatCheck::INVALID, $typed);
         }
 
         return $this->registry->check($prefix, $number);
+    }
+
+    /** The number without the prefix VIES knows the country by, or its ISO code: a Greek EL… or GR… alike. */
+    private static function withoutPrefix(string $entered, string $prefix, string $country): string
+    {
+        foreach (array_unique([$prefix, $country]) as $start) {
+            if (str_starts_with($entered, $start)) {
+                return substr($entered, \strlen($start));
+            }
+        }
+
+        return $entered;
     }
 }

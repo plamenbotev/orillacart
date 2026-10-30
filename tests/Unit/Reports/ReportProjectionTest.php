@@ -7,8 +7,10 @@ namespace OrillaCart\Tests\Unit\Reports;
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Ordering\Application\Dto\AddressData;
@@ -24,7 +26,10 @@ use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Reports\Application\ProjectOrders;
 use OrillaCart\Reports\Application\RebuildReports;
 use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Reports\Infrastructure\Events\CountAgainOnReportDay;
 use OrillaCart\Reports\Infrastructure\Events\CountChangedOrders;
+use OrillaCart\Settings\Application\Dto\UpdateSettings;
+use OrillaCart\Settings\Domain\SettingsChanged;
 use OrillaCart\Shared\Security\Signatures;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\Dto\SaveTaxRate;
@@ -56,7 +61,7 @@ final class ReportProjectionTest extends TestCase
                 return new \DateTimeZone('America/New_York');
             }
         };
-        $this->shop->jobs->with(new ProjectOrders($this->shop->orders, $this->shop->refunds, $this->store, $calendar, new Signatures('test secret')), new RebuildReports($this->shop->orders, $this->shop->jobs->jobs));
+        $this->shop->jobs->with(new ProjectOrders($this->shop->orders, $this->shop->refunds, $this->store, $calendar, new Signatures('test secret'), $this->shop->settingsService), new RebuildReports($this->shop->orders, $this->shop->jobs->jobs));
         $counting = new CountChangedOrders($this->shop->jobs->jobs);
         $this->shop->events->addListener(OrderPlaced::class, $counting->placed(...));
         $this->shop->events->addListener(OrderStatusChanged::class, $counting->statusChanged(...));
@@ -65,26 +70,64 @@ final class ReportProjectionTest extends TestCase
         $this->shop->events->addListener(OrderDeleted::class, $counting->deleted(...));
     }
 
-    public function testAnOrderCountsOnceItIsPaidOnTheShopsDayAndRefundsOnTheirs(): void
+    public function testAnOrderCountsOnTheShopsDayItWasPaidOnAndRefundsOnTheirs(): void
     {
         $this->shop->clock->modify('2030-01-01 03:00:00');
         $order = $this->place(2);
         $facts = $this->store->facts[$order->number];
         self::assertSame([false, '2029-12-31', '16', 2], [$facts->order->counted, $facts->order->day->format('Y-m-d'), $facts->order->gross, $facts->order->items], 'three in the morning in UTC is the evening before in New York; on hold is not a sale yet');
 
+        $this->shop->clock->modify('+2 days');
         $this->shop->orders->markPaidByShop($order->number, '', 7);
-        self::assertTrue($this->store->facts[$order->number]->order->counted);
-        self::assertSame([[20, 2, '16']], array_map(static fn($line): array => [$line->productId, $line->quantity, $line->net], $this->store->facts[$order->number]->lines));
+        $facts = $this->store->facts[$order->number];
+        self::assertSame([true, '2030-01-02'], [$facts->order->counted, $facts->order->day->format('Y-m-d')], 'a sale of the day its money came, as filed periods want');
+        self::assertSame([[20, 2, '16', '2030-01-02']], array_map(static fn($line): array => [$line->productId, $line->quantity, $line->net, $line->day->format('Y-m-d')], $facts->lines));
 
         $this->shop->clock->modify('+3 days');
         $this->shop->refunds->refund($order->number, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
         $refunds = $this->store->facts[$order->number]->refunds;
-        self::assertSame([['8', '2030-01-03']], array_map(static fn($refund): array => [$refund->amount, $refund->day->format('Y-m-d')], $refunds), 'on the day the money went back');
-        self::assertSame('2029-12-31', $this->store->facts[$order->number]->order->day->format('Y-m-d'), 'the order keeps its day');
+        self::assertSame([['8', '0', '8', '2030-01-05']], array_map(static fn($refund): array => [$refund->amount, $refund->tax, $refund->items, $refund->day->format('Y-m-d')], $refunds), 'on the day the money went back');
+        self::assertSame('2030-01-02', $this->store->facts[$order->number]->order->day->format('Y-m-d'), 'the order keeps its day');
 
         $this->shop->orders->changeContact($order->number, new ChangeOrderContact('ada@example.com', new AddressData('Ada', 'King', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000')), 7);
         self::assertSame('Ada King', $this->store->facts[$order->number]->order->customerName, 'an edited order is counted again');
         self::assertMatchesRegularExpression('/^e[a-f0-9]{32}$/', $this->store->facts[$order->number]->order->customerKey, 'a guest is told apart by a keyed hash, not by the email');
+
+        // The shop counts orders on the day they were placed instead: every order is counted again.
+        $counting = new CountAgainOnReportDay($this->shop->jobs->jobs);
+        $this->shop->events->addListener(SettingsChanged::class, $counting(...));
+        $this->shop->settingsService->update(new UpdateSettings('EUR', 2, 'kg', 'cm', 'BG', null, reportDay: 'placed'));
+        self::assertSame('2029-12-31', $this->store->facts[$order->number]->order->day->format('Y-m-d'), 'counted again, on the day it was placed');
+    }
+
+    public function testARefundKeepsTheMoneyWithItsTaxAndTheItemsShareBeforeIt(): void
+    {
+        $vat = $this->shop->taxGroups->create(new SaveTaxGroup('Standard'))->id;
+        $this->shop->taxGroups->addRate($vat, new SaveTaxRate('BG', null, '20', 'VAT'));
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::BillingAddress, $vat));
+        $order = $this->place(2);
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->refunds->refund($order->number, new MakeRefund('9.6', [new RefundLine(0, 1)]), 7);
+        $this->shop->jobs->jobs->push(ProjectOrders::TYPE, [], (string) $order->number);
+
+        self::assertSame([['9.6', '1.6', '8']], array_map(static fn($refund): array => [$refund->amount, $refund->tax, $refund->items], $this->store->facts[$order->number]->refunds), 'the money with its tax, and the items\' share before it');
+    }
+
+    public function testPricesWithTaxGiveItUpFromTheGrossAndTheDiscountsAlike(): void
+    {
+        $vat = $this->shop->taxGroups->create(new SaveTaxGroup('Standard'))->id;
+        $this->shop->taxGroups->addRate($vat, new SaveTaxRate('BG', null, '20', 'VAT'));
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::BillingAddress, $vat, pricesIncludeTax: true));
+        $this->shop->products->save(20, new SaveProduct('12', 'virtual'));
+        $this->shop->coupons->create(new SaveCoupon('TEN', 'percent', '10', '10 % off'));
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20, quantity: 2))->newToken);
+        $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'));
+        $order = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
+
+        $facts = $this->store->facts[$order->number];
+        self::assertSame(['20', '2', '3.6', '21.6'], [$facts->order->gross, $facts->order->discount, $facts->order->tax, $facts->order->total], '24 with tax is 20 before it, and its 2.40 off is 2 before tax: net 18');
+        self::assertSame([['TEN', '2']], array_map(static fn($coupon): array => [$coupon->code, $coupon->amount], $facts->coupons));
+        self::assertSame(['18'], array_map(static fn($line): string => $line->net, $facts->lines));
     }
 
     public function testADeletedOrderIsForgottenAndARebuildCountsEveryOrder(): void
@@ -114,13 +157,18 @@ final class ReportProjectionTest extends TestCase
 
         // Here the report's job runs at once, inside the refund's transaction; a shop's runs after it, as this does.
         $this->shop->jobs->jobs->push(ProjectOrders::TYPE, ['order' => $order->number], (string) $order->number);
-        $taxes = array_map(static fn($tax): array => [$tax->day->format('Y-m-d'), $tax->amount, $tax->refunded], $this->store->facts[$order->number]->taxes);
-        self::assertSame([['2030-03-30', '3.2', '0'], ['2030-04-04', '0', '1.6']], $taxes, 'March charged it; April gave part back, and March stays as filed');
+        $taxes = array_map(static fn($tax): array => [$tax->day->format('Y-m-d'), $tax->taxable, $tax->amount, $tax->refunded], $this->store->facts[$order->number]->taxes);
+        self::assertSame([['2030-03-30', '16', '3.2', '0'], ['2030-04-04', '0', '0', '1.6'], ['2030-04-04', '-8', '0', '0']], $taxes, 'March charged it; April gave part back and lowered the base, and March stays as filed');
 
         $this->shop->vies->known = ['DE123456789' => 'Muster GmbH'];
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
         $business = $this->shop->checkout->placeOrder($owner, new PlaceOrder('max@example.de', new AddressData('Max', 'Muster', 'Hauptstr. 1', 'Berlin', '10115', 'DE', '+49 30 000000'), payment: 'bank_transfer', vatNumber: 'DE123456789'));
         self::assertSame([['DE-RC', '8', '0']], array_map(static fn($tax): array => [$tax->code, $tax->taxable, $tax->amount], $this->store->facts[$business->number]->taxes), 'its base, for the intra-EU supplies');
+
+        $this->shop->orders->markPaidByShop($business->number, '', 7);
+        $this->shop->refunds->refund($business->number, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
+        $this->shop->jobs->jobs->push(ProjectOrders::TYPE, [], (string) $business->number);
+        self::assertSame([['DE-RC', '8', '0'], ['DE-RC', '-8', '0']], array_map(static fn($tax): array => [$tax->code, $tax->taxable, $tax->amount], $this->store->facts[$business->number]->taxes), 'a credit under the reverse charge takes its base off again');
     }
 
     private function place(int $quantity): PlacedOrderView

@@ -35,7 +35,7 @@ final class RefundReferenceTest extends TestCase
 
     protected function tearDown(): void
     {
-        $this->connection->executeStatement("DELETE FROM {$this->table} WHERE provider_reference = 'TEST-REF-239'");
+        $this->connection->executeStatement("DELETE FROM {$this->table} WHERE provider_reference = 'TEST-REF-239' OR order_id = 999999239");
         $this->connection->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
     }
 
@@ -51,7 +51,38 @@ final class RefundReferenceTest extends TestCase
         $this->insert('paypal', 'TEST-REF-239');
     }
 
-    private function insert(string $gateway, string $reference): void
+    public function testTheIndexIsMadeWhereANotificationSentTwiceRecordedARefundTwice(): void
+    {
+        // As a site that ran the old migrations: the index not unique, and the rows the double notification made.
+        $this->connection->executeStatement("DROP INDEX refund_reference ON {$this->table}");
+        $this->connection->executeStatement("CREATE INDEX refund_reference ON {$this->table} (gateway, provider_reference)");
+        $this->connection->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
+        $first = $this->insert('paypal', 'TEST-DUP-266');
+        $second = $this->insert('paypal', 'TEST-DUP-266');
+        $third = $this->insert('paypal', 'TEST-DUP-266');
+        $other = $this->insert('stripe', 'TEST-DUP-266');
+        $empty = [$this->insert('manual', ''), $this->insert('manual', '')];
+        $this->connection->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+        $migrations = DatabaseConfig::fromWordPress()->tablePrefix . 'migrations';
+        self::assertSame(1, $this->connection->executeStatement("DELETE FROM {$migrations} WHERE version LIKE '%Version20261030112606'"));
+
+        $this->migrator()->migrate();
+
+        $references = $this->connection->fetchAllKeyValue("SELECT id, provider_reference FROM {$this->table} WHERE order_id = 999999239 ORDER BY id");
+        self::assertSame(['TEST-DUP-266', null, null, 'TEST-DUP-266', null, null], array_values(array_map(static fn(mixed $reference): ?string => \is_string($reference) ? $reference : null, $references)));
+        self::assertSame([$first, $second, $third, $other, ...$empty], array_map(intval(...), array_keys($references)));
+        self::assertEquals(0, $this->connection->fetchOne("SELECT NON_UNIQUE FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = 'refund_reference' LIMIT 1", [$this->table]), 'the index is unique now');
+    }
+
+    private function migrator(): DatabaseMigrator
+    {
+        $migrator = new Kernel(new PluginContext(\dirname(__DIR__, 2) . '/orillacart.php', ORILLACART_VERSION))->container()->get(DatabaseMigrator::class);
+        self::assertInstanceOf(DatabaseMigrator::class, $migrator);
+
+        return $migrator;
+    }
+
+    private function insert(string $gateway, string $reference): int
     {
         $this->connection->insert($this->table, [
             'order_id' => 999_999_239,
@@ -71,5 +102,7 @@ final class RefundReferenceTest extends TestCase
             'tax' => '0.0000',
             'taxes' => '[]',
         ]);
+
+        return (int) $this->connection->lastInsertId();
     }
 }

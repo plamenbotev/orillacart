@@ -14,7 +14,9 @@ let waiting = 0;
 let failed: string | null = null;
 
 export function bindCart( root: Document ): void {
-	bindCoupons( root, () => reloadRegions( [ 'cart', 'mini-cart' ] ) );
+	bindCoupons( root, async () => {
+		await reloadRegions( [ 'cart', 'mini-cart' ] );
+	} );
 
 	root.addEventListener( 'change', ( event ) => {
 		const input = event.target;

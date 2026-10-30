@@ -15,7 +15,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
  * An order that is cancelled or fails gives its gift cards and store credit back what they paid; one opened
- * again, paid after all, takes it again. A paid order makes the gift cards it bought.
+ * again takes it again, and what the cards no longer have is left to pay the customer's way. A paid order makes the gift cards it bought.
  */
 final readonly class GiftCardsWithOrders
 {
@@ -34,7 +34,8 @@ final readonly class GiftCardsWithOrders
         } elseif (\in_array($event->previous, $closed, true)) {
             $short = $this->payments->reclaim($event->orderId);
             if (!$short->isZero()) {
-                $this->orders->note($event->orderId, \sprintf('The gift cards that paid this order had spent %s of it since it was cancelled: settle it with the customer.', $short), false);
+                // What the cards no longer pay is asked of the customer's way to pay, as Pay now does.
+                $this->orders->giftCardsFellShort($event->orderId, $short);
             }
         }
     }

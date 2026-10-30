@@ -14,9 +14,12 @@ use OrillaCart\Reports\Infrastructure\Doctrine\ReportTables;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Application\Dto\TaxQuery;
+use OrillaCart\Tax\Application\Dto\VatCheck;
 use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionNexusThresholdsRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
+use OrillaCart\Tax\Infrastructure\WordPress\ViesVatRegistry;
+use Psr\Log\NullLogger;
 
 /**
  * Tax groups, rates and settings through the REST routes, stored by Doctrine in the plugin's tables.
@@ -43,6 +46,34 @@ final class TaxRestTest extends RestTestCase
         remove_action('orillacart_tax_rates_changed', $this->listener);
         $this->clean();
         parent::tearDown();
+    }
+
+    public function testAVatNumberViesCannotCheckIsNotAskedAgainForAWhileAndPaysVat(): void
+    {
+        $asked = [];
+        $down = static function (mixed $preempt, array $arguments, string $url) use (&$asked): mixed {
+            if (!str_contains($url, '/vies/')) {
+                return $preempt;
+            }
+            $asked[] = $arguments['timeout'] ?? null;
+
+            return new \WP_Error('http_request_failed', 'Operation timed out');
+        };
+        add_filter('pre_http_request', $down, 10, 3);
+        $key = 'orillacart_vies_' . substr(hash('sha256', 'DE' . '123456789'), 0, 32);
+        delete_transient($key);
+        try {
+            $vies = new ViesVatRegistry(new NullLogger());
+            self::assertSame(VatCheck::UNAVAILABLE, $vies->check('DE', '123456789')->status);
+            self::assertSame(VatCheck::UNAVAILABLE, $vies->check('DE', '123456789')->status, 'still not trusted');
+            self::assertSame([4], $asked, 'asked once, waiting four seconds at most');
+            $timeout = get_option('_transient_timeout_' . $key);
+            self::assertIsNumeric($timeout);
+            self::assertLessThanOrEqual(time() + 300, (int) $timeout, 'remembered for five minutes');
+        } finally {
+            remove_filter('pre_http_request', $down);
+            delete_transient($key);
+        }
     }
 
     public function testOnlyShopManagersReachTheTaxRoutes(): void
@@ -76,7 +107,7 @@ final class TaxRestTest extends RestTestCase
 
         $settings = $this->request('PUT', '/tax/settings', ['basis' => 'shipping_address', 'default_group_id' => $group], nonce: true);
         self::assertSame(200, $settings->get_status());
-        self::assertSame(['basis' => 'shipping_address', 'default_group_id' => $group, 'bases' => ['shipping_address', 'billing_address', 'shop_address', 'eu_origin', 'eu_destination'], 'prices_include_tax' => false, 'reverse_charge' => false, 'rounds_each_line' => false, 'origin_regions' => [], 'provider' => null, 'when_provider_fails' => 'shop_rates', 'providers' => [], 'accepts_certificates' => false, 'shown_in_shop' => 'as_entered', 'shown_in_cart' => 'as_entered', 'price_suffix' => '', 'same_price_everywhere' => true, 'shipping_taxed_as_items' => false, 'eu_threshold' => '10000'], $this->data($settings));
+        self::assertSame(['basis' => 'shipping_address', 'default_group_id' => $group, 'bases' => ['shipping_address', 'billing_address', 'shop_address', 'eu_origin', 'eu_destination'], 'prices_include_tax' => false, 'reverse_charge' => false, 'rounds_each_line' => false, 'origin_regions' => [], 'provider' => null, 'when_provider_fails' => 'shop_rates', 'providers' => [], 'accepts_certificates' => false, 'shown_in_shop' => 'as_entered', 'shown_in_cart' => 'as_entered', 'price_suffix' => '', 'same_price_everywhere' => true, 'shipping_taxed_as_items' => false, 'eu_threshold' => '10000', 'eu_threshold_is_default' => true], $this->data($settings));
 
         $calculator = self::kernel()->container()->get(TaxCalculator::class);
         self::assertInstanceOf(TaxCalculator::class, $calculator);

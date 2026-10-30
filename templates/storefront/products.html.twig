@@ -3,7 +3,7 @@
  #
  # products: [{offer, url, image (HTML), simple}]; categories: [{name, url, current, image (HTML or empty)}], the top ones,
  # current "page" for the one chosen, "true" above it; subcategories: [{name, url, current}], below the one chosen (or beside it); all_url, all_current; search; sort;
- # sorts: {value: label}; page; pages; page_urls: {number: url}; columns; cart_url (null without a cart page);
+ # sorts: {value: label}; page; pages; page_links: [{number (null: a gap), url}]; columns; cart_url (null without a cart page);
  # show_filters; panel (see _filters.html.twig); hidden: [{name, value}] the choices kept without the panel;
  # filtered (anything chosen); layout: grid or list; layout_urls: {grid, list}; view: the shopper's own, kept by the form;
  # card_html: [{id, html}] each product's card from the shop's own card blocks, else null for the shop's card;
@@ -91,8 +91,12 @@
         {% if pages > 1 and (show.pagination ?? true) %}
             <nav class="orillacart-pagination" aria-label="{{ __('Product pages') }}">
                 <ul>
-                    {% for number, url in page_urls %}
-                        <li>{% if number == page %}<span aria-current="page">{{ number }}</span>{% else %}<a href="{{ url }}">{{ number }}</a>{% endif %}</li>
+                    {% for link in page_links %}
+                        {% if link.number is null %}
+                            <li class="orillacart-pagination__gap" aria-hidden="true">…</li>
+                        {% else %}
+                            <li>{% if link.number == page %}<span aria-current="page">{{ link.number }}</span>{% else %}<a href="{{ link.url }}">{{ link.number }}</a>{% endif %}</li>
+                        {% endif %}
                     {% endfor %}
                 </ul>
             </nav>

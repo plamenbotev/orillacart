@@ -15,6 +15,7 @@ use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxLocation;
 use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryAccounts;
+use OrillaCart\Tests\Fixtures\Invoicing\SofiaCalendar;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxExemptionRepository;
 use OrillaCart\Tests\Fixtures\Tax\InMemoryTaxSettingsRepository;
 use OrillaCart\Tests\Fixtures\Tax\RecordingExemptionMail;
@@ -49,7 +50,7 @@ final class ExemptionCertificatesTest extends TestCase
         $this->files = new TemporaryPrivateFiles();
         $this->mail = new RecordingExemptionMail();
         $this->certificates = new ExemptionCertificates($records, $this->settings, $accounts, $this->files, new SafeUploadInspector(), $this->mail, $this->clock);
-        $this->exemptions = new TaxExemptions($records, $accounts, $this->clock);
+        $this->exemptions = new TaxExemptions($records, $accounts, $this->clock, new SofiaCalendar());
     }
 
     public function testASentCertificateExemptsOnceTheShopApprovesIt(): void

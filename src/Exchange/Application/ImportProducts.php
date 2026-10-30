@@ -14,7 +14,7 @@ use Psr\Clock\ClockInterface;
 /**
  * Imports a products file a batch of rows at a time, in a lane of its own: each run imports a batch and comes
  * back for the next at once, so other jobs are not kept waiting behind a large file. Each job is reported as its
- * batch is imported.
+ * batch is imported. A batch that fails is tried again; on its last attempt the import ends as failed.
  */
 final readonly class ImportProducts implements JobHandler
 {
@@ -73,6 +73,14 @@ final readonly class ImportProducts implements JobHandler
             }
         } catch (ImportNotFound) {
             // Discarded since.
+        } catch (\Throwable $e) {
+            if ($job->attempts < $this->maxAttempts()) {
+                return JobOutcome::retry($e->getMessage());
+            }
+            // Its last attempt: the import ends, rather than show as running for ever.
+            $this->imports->fail($id, $e->getMessage());
+
+            return JobOutcome::fail($e->getMessage());
         }
 
         return JobOutcome::done();

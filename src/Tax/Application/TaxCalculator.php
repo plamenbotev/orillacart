@@ -12,6 +12,7 @@ use OrillaCart\Tax\Application\Dto\TaxAddress;
 use OrillaCart\Tax\Application\Dto\TaxExemptionView;
 use OrillaCart\Tax\Application\Dto\TaxQuery;
 use OrillaCart\Tax\Domain\AppliedTaxes;
+use OrillaCart\Tax\Domain\NorthernIreland;
 use OrillaCart\Tax\Domain\TaxGroupRepository;
 use OrillaCart\Tax\Domain\TaxLocation;
 use OrillaCart\Tax\Domain\TaxSettingsRepository;
@@ -120,19 +121,22 @@ final readonly class TaxCalculator
         }
 
         $shop = $this->shop->current();
-        $location = $query->atShipping ? $this->locate($query->shipping) : $settings->locate(
-            $this->locate($query->shipping),
-            $this->locate($query->billing),
+        $location = $query->atShipping ? $this->locate($query->shipping, $query->goods) : $settings->locate(
+            $this->locate($query->shipping, $query->goods),
+            $this->locate($query->billing, $query->goods),
             $this->locate(new TaxAddress($shop->shopCountry, $shop->shopState, $shop->shopPostcode)),
         );
 
         return $location === null ? AppliedTaxes::none() : $group->taxesAt($location, $query->forShipping);
     }
 
-    private function locate(?TaxAddress $address): ?TaxLocation
+    /**
+     * @param bool $goods for goods, Northern Ireland is in the EU (NorthernIreland)
+     */
+    private function locate(?TaxAddress $address, bool $goods = false): ?TaxLocation
     {
         $location = $address === null ? null : $this->geography->locate($address->country, $address->state);
 
-        return $location instanceof LocationView ? new TaxLocation($location->country, $location->state, $location->inEu, $address?->postcode, $address?->city) : null;
+        return $location instanceof LocationView ? new TaxLocation($location->country, $location->state, $location->inEu || ($goods && NorthernIreland::covers($location->country, $address?->postcode)), $address?->postcode, $address?->city) : null;
     }
 }

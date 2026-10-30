@@ -7,9 +7,10 @@ namespace OrillaCart\Jobs\Application;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 
 /**
- * The jobs a worker holds while a batch runs, and until when. Each time a job finishes the hold is extended for
- * the jobs still to run, once less than half of it is left: a batch that takes longer than one job's lock is kept
- * from other workers for as long as it goes on, without a write to the queue after every job.
+ * The jobs a worker holds while a batch runs, and until when. Before each job of a batch the jobs still to run are
+ * held for a full lock again (renew), so the next job has all of its handler's lock however long the earlier ones
+ * took: one write per job. The jobs of the types waiting their turn are extended only once less than half of their
+ * hold is left (extend), as they need to be held, not given a job's time.
  */
 final class Hold
 {
@@ -47,11 +48,27 @@ final class Hold
     /** Holds the jobs left for $seconds from now, when less than half of their hold is left. */
     public function extend(\DateTimeImmutable $now): void
     {
-        if ($this->jobs === []) {
-            return;
+        if ($this->left($now) * 2 < $this->seconds) {
+            $this->holdFrom($now);
         }
-        $left = $this->until->getTimestamp() - $now->getTimestamp();
-        if ($left * 2 >= $this->seconds) {
+    }
+
+    /** Holds the jobs left for the full $seconds from now, unless they are held that long already: a job starts. */
+    public function renew(\DateTimeImmutable $now): void
+    {
+        if ($this->left($now) < $this->seconds) {
+            $this->holdFrom($now);
+        }
+    }
+
+    private function left(\DateTimeImmutable $now): int
+    {
+        return $this->until->getTimestamp() - $now->getTimestamp();
+    }
+
+    private function holdFrom(\DateTimeImmutable $now): void
+    {
+        if ($this->jobs === []) {
             return;
         }
         $this->until = $now->modify(\sprintf('+%d seconds', $this->seconds));

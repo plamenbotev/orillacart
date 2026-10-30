@@ -6,8 +6,13 @@ namespace OrillaCart\Coupons\Domain;
 
 interface RedemptionRepository
 {
-    /** How often a customer used the coupon: by account, or by email for a guest. */
-    public function countByCustomer(int $couponId, ?int $customerId, string $email): int;
+    /**
+     * How often a customer used the coupon: by account, or by email for a guest.
+     *
+     * @param bool $current counted as committed now, under a shared lock, rather than as the transaction first
+     *                      saw them: for a count taken while the coupon is locked
+     */
+    public function countByCustomer(int $couponId, ?int $customerId, string $email, bool $current = false): int;
 
     /** @return list<CouponRedemption> */
     public function ofOrder(int $orderId): array;

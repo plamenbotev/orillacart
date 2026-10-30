@@ -20,7 +20,7 @@ final class InputSchemas
     /** The arguments a tool sends a file with, in place of a multipart upload. */
     public const array FILE = [
         'file_name' => ['description' => 'The file\'s name, with its extension: "products.csv".', 'type' => 'string', 'minLength' => 1, 'maxLength' => 200],
-        'file_base64' => ['description' => 'The file\'s contents, base64-encoded. Give this or file_url.', 'type' => 'string', 'contentEncoding' => 'base64'],
+        'file_base64' => ['description' => 'The file\'s contents, base64-encoded, up to 20 MB of base64 (about 15 MB of file). Give this or file_url; a larger file only as file_url.', 'type' => 'string', 'contentEncoding' => 'base64'],
         'file_url' => ['description' => 'An http(s) address the shop fetches the file from. Give this or file_base64.', 'type' => 'string', 'format' => 'uri'],
     ];
 

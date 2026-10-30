@@ -7,13 +7,16 @@ namespace OrillaCart\Search\Infrastructure\WordPress;
 use OrillaCart\Search\Domain\EngineSettings;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchEngine;
+use OrillaCart\Search\Infrastructure\EngineCatalogSearch;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use OrillaCart\Shared\Security\HoldsSealedValues;
 use OrillaCart\Shared\Security\Secrets;
+use OrillaCart\Shared\WordPress\AutoloadedOption;
 
 /**
- * The engine settings in one WordPress option, read when the shop searches or indexes; the password sealed.
+ * The engine settings in one WordPress option, read when the shop searches or indexes; the password sealed, so the
+ * option is autoloaded like the other settings every listing reads.
  */
 final readonly class OptionEngineSettingsRepository implements EngineSettingsRepository, LifecycleListener, RemovesShopData, HoldsSealedValues
 {
@@ -54,7 +57,9 @@ final readonly class OptionEngineSettingsRepository implements EngineSettingsRep
             'password' => $this->secrets->seal($settings->password),
             'index' => $settings->index,
             'ready' => $settings->ready,
-        ], false);
+        ], true);
+        // Settings saved anew (another server, an index built): an outage remembered of the old ones is forgotten.
+        update_option(EngineCatalogSearch::OUTAGE_OPTION, '0', true);
     }
 
     public function sealedValues(): array
@@ -70,14 +75,25 @@ final readonly class OptionEngineSettingsRepository implements EngineSettingsRep
         $this->save($this->load());
     }
 
-    public function activate(): void {}
+    public function activate(): void
+    {
+        $this->upgrade(null);
+    }
 
-    public function upgrade(?string $fromVersion): void {}
+    /** Read on every storefront request: stored with its defaults, autoloaded, so reading it costs no query. */
+    public function upgrade(?string $fromVersion): void
+    {
+        AutoloadedOption::keep(self::OPTION, fn() => $this->save($this->load()));
+        AutoloadedOption::keep(EngineCatalogSearch::OUTAGE_OPTION, static function (): void {
+            add_option(EngineCatalogSearch::OUTAGE_OPTION, '0', '', true);
+        });
+    }
 
     public function deactivate(): void {}
 
     public function uninstall(): void
     {
         delete_option(self::OPTION);
+        delete_option(EngineCatalogSearch::OUTAGE_OPTION);
     }
 }

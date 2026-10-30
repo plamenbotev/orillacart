@@ -113,7 +113,7 @@ final class CatalogRestTest extends RestTestCase
         self::assertSame('orillacart_duplicate_variation', $this->data($duplicate)['code']);
 
         $stockroom = $this->id($this->request('POST', '/stockrooms', ['name' => 'Sofia', 'min_delivery_days' => 1, 'max_delivery_days' => 2], nonce: true));
-        $levels = $this->request('PUT', "/stock/variation/{$variation['id']}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 4]]], nonce: true);
+        $levels = $this->setStock('variation', $variation['id'], [$stockroom => 4]);
         self::assertSame(200, $levels->get_status(), (string) wp_json_encode($levels->get_data()));
         self::assertSame(['item' => "variation:{$variation['id']}", 'levels' => [['stockroom_id' => $stockroom, 'quantity' => 4]], 'available' => 4], $this->data($levels));
 
@@ -152,7 +152,7 @@ final class CatalogRestTest extends RestTestCase
         self::assertInstanceOf(\wpdb::class, $wpdb);
         $claims = static fn(): array => $wpdb->get_col($wpdb->prepare('SELECT sku FROM %i ORDER BY sku', $wpdb->prefix . 'orillacart_skus'));
         self::assertContains('CUP', $claims());
-        $this->request('PUT', "/products/{$other}", ['price' => '1', 'sku' => 'CUP-2'], nonce: true);
+        $this->request('PUT', "/products/{$other}", ['price' => '1', 'sku' => 'CUP-2'] + $this->loaded($other), nonce: true);
         $bowl = $this->post('Bowl');
         self::assertSame(200, $this->request('PUT', "/products/{$bowl}", ['price' => '1', 'sku' => 'CUP'], nonce: true)->get_status());
         self::assertSame(['CUP', 'CUP-2'], array_values(array_intersect($claims(), ['CUP', 'CUP-2'])));
@@ -170,7 +170,7 @@ final class CatalogRestTest extends RestTestCase
         $post = $this->post('Mug');
         $this->request('PUT', "/products/{$post}", ['price' => '10', 'attributes' => [['name' => 'Colour', 'options' => [['name' => 'Red']]]]], nonce: true);
         $stockroom = $this->id($this->request('POST', '/stockrooms', ['name' => 'Sofia'], nonce: true));
-        $this->request('PUT', "/stock/product/{$post}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 3]]], nonce: true);
+        $this->setStock('product', $post, [$stockroom => 3]);
         self::assertSame('1', $this->rows('products'));
 
         wp_trash_post($post);
@@ -198,9 +198,37 @@ final class CatalogRestTest extends RestTestCase
         self::assertIsArray($bundle['items']);
         self::assertSame([['Camera', 1], ['Battery', 2]], array_map(static fn(mixed $item): array => \is_array($item) ? [$item['name'], $item['quantity']] : [], $bundle['items']));
 
-        $nested = $this->request('PUT', "/products/{$camera}", ['price' => '300', 'bundle' => ['items' => [['product_id' => $kit, 'quantity' => 1]]]], nonce: true);
+        $nested = $this->request('PUT', "/products/{$camera}", ['price' => '300', 'bundle' => ['items' => [['product_id' => $kit, 'quantity' => 1]]]] + $this->loaded($camera), nonce: true);
         self::assertSame(422, $nested->get_status(), 'a bundle holds no bundle');
-        self::assertSame(422, $this->request('PUT', "/products/{$kit}", ['price' => '0', 'bundle' => ['items' => []]], nonce: true)->get_status(), 'a bundle holds something');
+        self::assertSame('orillacart_bundled_item', $this->data($nested)['code'], 'the kit holds the camera: it cannot become a bundle');
+        self::assertSame(422, $this->request('PUT', "/products/{$kit}", ['price' => '0', 'bundle' => ['items' => []]] + $this->loaded($kit), nonce: true)->get_status(), 'a bundle holds something');
+    }
+
+    public function testASaveFromAProductChangedSinceIsRefusedWithTheProductAsItIs(): void
+    {
+        $this->actAs('administrator');
+        $post = $this->post('Lamp');
+        self::assertNull($this->loaded($post)['updated_at'], 'never saved');
+        $first = $this->request('PUT', "/products/{$post}", ['price' => '10'], nonce: true);
+        self::assertSame(200, $first->get_status(), (string) wp_json_encode($first->get_data()));
+        $loaded = $this->data($first)['updated_at'];
+        self::assertIsString($loaded);
+        self::assertSame($loaded, $this->loaded($post)['updated_at'], 'the view gives what the save did');
+
+        // Another tab saves meanwhile.
+        $other = $this->request('PUT', "/products/{$post}", ['price' => '12', 'updated_at' => $loaded], nonce: true);
+        self::assertSame(200, $other->get_status());
+        self::assertNotSame($loaded, $this->data($other)['updated_at'], 'every save moves it');
+
+        foreach ([['price' => '15', 'updated_at' => $loaded], ['price' => '15']] as $stale) {
+            $refused = $this->request('PUT', "/products/{$post}", $stale, nonce: true);
+            self::assertSame(409, $refused->get_status(), (string) wp_json_encode($refused->get_data()));
+            self::assertSame('orillacart_product_changed', $this->data($refused)['code']);
+            $data = $this->data($refused)['data'];
+            self::assertIsArray($data);
+            self::assertIsArray($data['product']);
+            self::assertSame(['12', $this->data($other)['updated_at']], [$data['product']['price'], $data['product']['updated_at']], 'the product as it is now');
+        }
     }
 
     public function testTheCatalogScreensAreInTheShopMenu(): void

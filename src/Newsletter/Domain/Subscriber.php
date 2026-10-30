@@ -47,14 +47,24 @@ class Subscriber
     #[ORM\Column(nullable: true)]
     private ?int $customerId;
 
+    /** Signed up, waiting for its owner to confirm from the email: not on the newsletter yet. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $pending = false;
+
+    /** When its owner confirmed it from the email; null for one the shop did not ask to confirm. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $confirmedAt = null;
+
     /**
+     * @param bool $confirm whether it waits for its owner to confirm it from the email
+     *
      * @throws NewsletterRuleViolation without the words they agreed to
      */
-    public function __construct(string $email, string $firstName, string $lastName, string $consent, SignUpSource $source, \DateTimeImmutable $at, ?int $customerId)
+    public function __construct(string $email, string $firstName, string $lastName, string $consent, SignUpSource $source, \DateTimeImmutable $at, ?int $customerId, bool $confirm = false)
     {
         $this->email = self::normalize($email);
         $this->customerId = $customerId;
-        $this->signUp($firstName, $lastName, $consent, $source, $at);
+        $this->signUp($firstName, $lastName, $consent, $source, $at, $confirm);
     }
 
     public static function normalize(string $email): string
@@ -63,25 +73,54 @@ class Subscriber
     }
 
     /**
-     * They sign up again: one who left agrees anew, to these words and from now; one still subscribed keeps
-     * what they first agreed to.
+     * They sign up again: one who left agrees anew, to these words and from now, as one still waiting to confirm
+     * does; one subscribed keeps what they first agreed to.
      *
-     * @return bool whether they were away
+     * @param bool $confirm whether it waits for its owner to confirm it from the email
+     *
+     * @return bool whether they were not subscribed
      *
      * @throws NewsletterRuleViolation without the words they agreed to
      */
-    public function subscribe(string $firstName, string $lastName, string $consent, SignUpSource $source, \DateTimeImmutable $at, ?int $customerId): bool
+    public function subscribe(string $firstName, string $lastName, string $consent, SignUpSource $source, \DateTimeImmutable $at, ?int $customerId, bool $confirm = false): bool
     {
         $this->customerId ??= $customerId;
         if ($this->isSubscribed()) {
             return false;
         }
-        $this->signUp($firstName, $lastName, $consent, $source, $at);
+        $this->signUp($firstName, $lastName, $consent, $source, $at, $confirm);
 
         return true;
     }
 
-    private function signUp(string $firstName, string $lastName, string $consent, SignUpSource $source, \DateTimeImmutable $at): void
+    /**
+     * Its owner followed the link emailed to them: on the newsletter from now.
+     *
+     * @return bool false for one not waiting to be confirmed
+     */
+    public function confirm(\DateTimeImmutable $at): bool
+    {
+        if (!$this->isPending()) {
+            return false;
+        }
+        $this->pending = false;
+        $this->confirmedAt = $at;
+
+        return true;
+    }
+
+    /** Signed up and waiting for its owner to confirm it from the email. */
+    public function isPending(): bool
+    {
+        return $this->unsubscribedAt === null && $this->pending;
+    }
+
+    public function confirmedAt(): ?\DateTimeImmutable
+    {
+        return $this->confirmedAt;
+    }
+
+    private function signUp(string $firstName, string $lastName, string $consent, SignUpSource $source, \DateTimeImmutable $at, bool $confirm): void
     {
         $consent = trim($consent);
         if ($consent === '' || mb_strlen($consent) > self::MAX_CONSENT_LENGTH) {
@@ -93,12 +132,14 @@ class Subscriber
         $this->source = $source;
         $this->subscribedAt = $at;
         $this->unsubscribedAt = null;
+        $this->pending = $confirm;
+        $this->confirmedAt = null;
     }
 
-    /** Whether it changed anything. */
+    /** Whether it changed anything: one waiting to be confirmed is withdrawn, and its link confirms nothing. */
     public function unsubscribe(\DateTimeImmutable $at): bool
     {
-        if (!$this->isSubscribed()) {
+        if ($this->unsubscribedAt !== null) {
             return false;
         }
         $this->unsubscribedAt = $at;
@@ -112,9 +153,10 @@ class Subscriber
         $this->email = self::normalize($email);
     }
 
+    /** On the newsletter: signed up, confirmed when the shop asked for it, and not left. */
     public function isSubscribed(): bool
     {
-        return $this->unsubscribedAt === null;
+        return $this->unsubscribedAt === null && !$this->pending;
     }
 
     public function id(): int

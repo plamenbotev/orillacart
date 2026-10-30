@@ -8,6 +8,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Tax\Application\Dto\RefuseTaxExemption;
 use OrillaCart\Tax\Application\ExemptionCertificates;
@@ -16,6 +17,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** The shop refuses a certificate the customer sent, and tells them why. */
+#[Tool(risk: Tool::CUSTOMERS)]
 #[Route('/customers/{id}/tax-exemptions/{exemption}/refuse', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'exemption' => '\d+'])]
 final readonly class RefuseTaxExemptionAction implements RequestHandlerInterface
 {

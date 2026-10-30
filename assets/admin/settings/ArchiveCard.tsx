@@ -13,8 +13,15 @@ import { fetchSettingsArchive, importSettingsArchive } from './archive';
 
 /**
  * The shop's settings as a file, to keep or to take to another site, and a file of them taken in.
+ *
+ * @param props
+ * @param props.onImported Called once a file put something in: the screen loads its settings anew.
  */
-export function ArchiveCard() {
+export function ArchiveCard( {
+	onImported,
+}: {
+	onImported?: () => void;
+} = {} ) {
 	const [ message, setMessage ] = useState< {
 		status: 'success' | 'warning' | 'error';
 		text: string;
@@ -45,6 +52,9 @@ export function ArchiveCard() {
 			.then( ( text ) => importSettingsArchive( JSON.parse( text ) ) )
 			.then( ( result ) => {
 				const refused = Object.entries( result.refused );
+				if ( result.imported.length > 0 ) {
+					onImported?.();
+				}
 				setMessage( {
 					status: refused.length === 0 ? 'success' : 'warning',
 					text: [

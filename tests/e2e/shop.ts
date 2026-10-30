@@ -309,6 +309,7 @@ export async function takeReturns(
 		currency_positions: currencyPositions,
 		price_decimals: decimals,
 		currency_decimals: currencyDecimals,
+		report_days: reportDays,
 		...settings
 	} = await requestUtils.rest< Record< string, unknown > >( {
 		path: '/orillacart/v1/settings',
@@ -335,6 +336,7 @@ async function shopIn(
 		currency_positions: currencyPositions,
 		price_decimals: decimals,
 		currency_decimals: currencyDecimals,
+		report_days: reportDays,
 		...settings
 	} = await requestUtils.rest< Record< string, unknown > >( {
 		path: '/orillacart/v1/settings',

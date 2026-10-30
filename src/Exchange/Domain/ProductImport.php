@@ -29,6 +29,10 @@ class ProductImport
     #[ORM\Column(type: 'bigint')]
     private int $position;
 
+    /** The file's line the next row starts on, blank lines counted (the header is line 1). */
+    #[ORM\Column(options: ['default' => 2])]
+    private int $line = 2;
+
     #[ORM\Column]
     private int $done = 0;
 
@@ -105,6 +109,11 @@ class ProductImport
         return $this->position;
     }
 
+    public function line(): int
+    {
+        return $this->line;
+    }
+
     public function done(): int
     {
         return $this->done;
@@ -157,6 +166,11 @@ class ProductImport
         $this->status = ImportStatus::Running;
     }
 
+    public function isRunning(): bool
+    {
+        return $this->status === ImportStatus::Running;
+    }
+
     public function createdRow(): void
     {
         ++$this->done;
@@ -179,15 +193,26 @@ class ProductImport
         }
     }
 
-    /** A batch ended here in the file. */
-    public function reached(int $position): void
+    /** The next row starts here in the file: the byte, and the line. */
+    public function reached(int $position, int $line): void
     {
         $this->position = $position;
+        $this->line = $line;
     }
 
     public function finish(\DateTimeImmutable $at): void
     {
         $this->status = ImportStatus::Done;
         $this->finishedAt = $at;
+    }
+
+    /** It stopped before the end, for this reason; the rows imported before stay. */
+    public function fail(string $why, \DateTimeImmutable $at): void
+    {
+        $this->status = ImportStatus::Failed;
+        $this->finishedAt = $at;
+        if (\count($this->errors) < self::MAX_ERRORS + 1) {
+            $this->errors[] = \sprintf('Row %1$d: the import stopped here: %2$s', $this->line, $why);
+        }
     }
 }

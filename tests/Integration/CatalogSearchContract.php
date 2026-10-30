@@ -385,7 +385,7 @@ abstract class CatalogSearchContract extends RestTestCase
     {
         $this->actAs('administrator');
         $tomorrow = new \DateTimeImmutable('tomorrow', new \DateTimeZone('UTC'));
-        $saved = $this->request('PUT', "/products/{$this->lamp}", ['price' => '40', 'sku' => 'LAMP-1', 'stock_mode' => 'always_available', 'sale' => ['price' => '30', 'from' => $tomorrow->format(DATE_ATOM)]], nonce: true);
+        $saved = $this->request('PUT', "/products/{$this->lamp}", ['price' => '40', 'sku' => 'LAMP-1', 'stock_mode' => 'always_available', 'sale' => ['price' => '30', 'from' => $tomorrow->format(DATE_ATOM)]] + $this->loaded($this->lamp), nonce: true);
         self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
         wp_set_current_user(0);
         $this->work();
@@ -400,17 +400,18 @@ abstract class CatalogSearchContract extends RestTestCase
     {
         $this->actAs('administrator');
         $stockroom = $this->data($this->request('POST', '/stockrooms', ['name' => 'Sofia'], nonce: true))['id'];
-        $this->request('PUT', "/products/{$this->tv}", ['price' => '120', 'stock_mode' => 'tracked'], nonce: true);
-        $this->request('PUT', "/stock/product/{$this->tv}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 0]]], nonce: true);
+        self::assertIsInt($stockroom);
+        $this->request('PUT', "/products/{$this->tv}", ['price' => '120', 'stock_mode' => 'tracked'] + $this->loaded($this->tv), nonce: true);
+        $this->setStock('product', $this->tv, [$stockroom => 0]);
         $this->work();
         self::assertNotContains($this->tv, $this->ids(new SearchQuery(inStockOnly: true)));
 
-        $this->request('PUT', "/stock/product/{$this->tv}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 3]]], nonce: true);
+        $this->setStock('product', $this->tv, [$stockroom => 3]);
         self::assertSame(1, $this->indexing()->status()->due);
         $this->work();
         self::assertContains($this->tv, $this->ids(new SearchQuery(inStockOnly: true)));
 
-        $this->request('PUT', "/stock/product/{$this->tv}", ['levels' => [['stockroom_id' => $stockroom, 'quantity' => 5]]], nonce: true);
+        $this->setStock('product', $this->tv, [$stockroom => 5]);
         wp_set_current_user(0);
         self::assertSame(0, $this->indexing()->status()->due, 'still in stock: nothing the index shows changed');
     }

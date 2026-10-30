@@ -169,8 +169,89 @@ describe( 'NewOrder', () => {
 				note: '',
 				email_customer: false,
 				pickup_point: null,
+				vat_number: null,
 			},
 		} );
 		expect( onCreated ).toHaveBeenCalledWith( 12 );
+	} );
+
+	it( 'sends a business’s VAT number with the quote and the order, and says whether the reverse charge applies', async () => {
+		let reverse = false;
+		mockedFetch.mockImplementation( ( options ) => {
+			const request = options as Request;
+			if ( request.path.startsWith( '/orillacart/v1/customers' ) ) {
+				return Promise.resolve( {
+					customers: [],
+					total: 0,
+					page: 1,
+					pages: 1,
+				} );
+			}
+			if ( request.path.startsWith( '/orillacart/v1/product-choices' ) ) {
+				return Promise.resolve( [ { id: 10, name: 'Lamp' } ] );
+			}
+			if ( request.path === '/orillacart/v1/products/10' ) {
+				return Promise.resolve( {
+					id: 10,
+					name: 'Lamp',
+					offered: [],
+					variations: [],
+				} );
+			}
+			if ( request.path === '/orillacart/v1/orders/quote' ) {
+				const given = ( request.data as { vat_number: string | null } )
+					.vat_number;
+				reverse = given === 'DE123456789';
+				return Promise.resolve( {
+					...quote,
+					reverse_charge: reverse,
+					vat_message:
+						given !== null && ! reverse
+							? 'VIES does not know this VAT number.'
+							: null,
+				} );
+			}
+			return Promise.resolve( { number: 13 } );
+		} );
+		const user = userEvent.setup();
+		render( <NewOrder onCreated={ jest.fn() } onBack={ jest.fn() } /> );
+
+		await user.type(
+			screen.getByLabelText( 'Email' ),
+			'buyer@example.com'
+		);
+		await user.type( screen.getByLabelText( 'Add a product' ), 'Lam' );
+		await user.click(
+			await screen.findByRole( 'option', { name: 'Lamp' } )
+		);
+		await user.click( screen.getByRole( 'button', { name: 'Add' } ) );
+
+		await user.type( screen.getByLabelText( 'VAT number' ), 'DE000' );
+		expect(
+			await screen.findByText( 'VIES does not know this VAT number.' )
+		).toBeVisible();
+
+		await user.clear( screen.getByLabelText( 'VAT number' ) );
+		await user.type( screen.getByLabelText( 'VAT number' ), 'DE123456789' );
+		expect(
+			await screen.findByText( /Reverse charge: the customer accounts/ )
+		).toBeVisible();
+		expect(
+			screen.queryByText( 'VIES does not know this VAT number.', {
+				selector: '.components-notice__content',
+			} )
+		).not.toBeInTheDocument();
+
+		await user.click(
+			screen.getByRole( 'button', { name: 'Create the order' } )
+		);
+		const created = mockedFetch.mock.calls.find(
+			( [ request ] ) =>
+				request.path === '/orillacart/v1/orders' &&
+				request.method === 'POST'
+		);
+		expect( created?.[ 0 ].data ).toEqual(
+			expect.objectContaining( { vat_number: 'DE123456789' } )
+		);
 	} );
 } );

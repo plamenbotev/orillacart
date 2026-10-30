@@ -4,25 +4,32 @@ declare(strict_types=1);
 
 namespace OrillaCart\Exchange\Application;
 
+use OrillaCart\Exchange\Application\Dto\Column;
 use OrillaCart\Exchange\Application\Dto\ColumnView;
 use OrillaCart\Exchange\Application\Dto\ImportView;
+use OrillaCart\Exchange\Application\Dto\ProductRow;
 use OrillaCart\Exchange\Domain\ExchangeRuleViolation;
 use OrillaCart\Exchange\Domain\ImportNotFound;
-use OrillaCart\Exchange\Domain\ImportStatus;
 use OrillaCart\Exchange\Domain\ProductImport;
 use OrillaCart\Exchange\Domain\ProductImportRepository;
+use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Domain\TextEncoding;
 use OrillaCart\Shared\Files\PrivateFiles;
+use OrillaCart\Shared\Persistence\Transactions;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 
 /**
  * Imports a products file, as the products export writes it. The upload is read first, and the shop manager sees
  * which columns it changes before starting; a job then imports it a batch of rows at a time, so a file of any
- * size never runs into a request's time. A refused row is reported with why, and the others go on. The file is
- * kept privately while it is imported, and deleted after.
+ * size never runs into a request's time. A refused row is reported with why, by its line in the file, and the
+ * others go on. Each row runs in a transaction of its own, as the user who uploaded the file, and how far the
+ * import got is written with it: a worker stopped mid-batch goes on after the last row it imported. A file in
+ * Windows-1252, as Excel saves CSV on Windows, is read as such. The file is kept privately while it is imported,
+ * and deleted after; an import that fails for good ends as failed, and its file goes too.
  */
 final readonly class ProductImports
 {
@@ -39,8 +46,10 @@ final readonly class ProductImports
         private ProductColumns $columns,
         private ColumnChoice $choice,
         private ProductRows $rows,
+        private ProductPosts $posts,
         private PrivateFiles $files,
         private Jobs $jobs,
+        private Transactions $transactions,
         private ClockInterface $clock,
         private LoggerInterface $logger,
     ) {}
@@ -51,6 +60,44 @@ final readonly class ProductImports
      * @throws ExchangeRuleViolation for a file that is not a products file
      */
     public function upload(string $path, string $filename, ?int $userId): ImportView
+    {
+        $converted = $this->utf8($path);
+        try {
+            return $this->uploaded($converted ?? $path, $filename, $userId);
+        } finally {
+            if ($converted !== null) {
+                @unlink($converted);
+            }
+        }
+    }
+
+    /**
+     * A copy of the file in UTF-8 when it is in Windows-1252; null when it is in UTF-8 already.
+     *
+     * @throws ExchangeRuleViolation for a file in neither
+     */
+    private function utf8(string $path): ?string
+    {
+        $bytes = @file_get_contents($path);
+        if ($bytes === false) {
+            throw new ExchangeRuleViolation('The file could not be read.', 'orillacart_invalid_import');
+        }
+        $text = TextEncoding::utf8($bytes) ?? throw new ExchangeRuleViolation('The file is not text in UTF-8 or Windows-1252: save it as "CSV UTF-8".', 'orillacart_invalid_import');
+        if ($text === $bytes) {
+            return null;
+        }
+        $copy = tempnam(sys_get_temp_dir(), 'orillacart-import');
+        if ($copy === false || file_put_contents($copy, $text) === false) {
+            throw new ExchangeRuleViolation('The file could not be read.', 'orillacart_invalid_import');
+        }
+
+        return $copy;
+    }
+
+    /**
+     * @throws ExchangeRuleViolation
+     */
+    private function uploaded(string $path, string $filename, ?int $userId): ImportView
     {
         $handle = fopen($path, 'rb');
         if ($handle === false) {
@@ -73,7 +120,8 @@ final readonly class ProductImports
         } finally {
             fclose($handle);
         }
-        $readable = array_values(array_filter($header, $this->reads(...)));
+        $all = $this->columns->all();
+        $readable = array_values(array_filter($header, static fn(string $column): bool => self::reads($all, $column)));
         if (array_intersect($readable, ['id', 'variation_id', 'sku', 'name']) === []) {
             throw new ExchangeRuleViolation('The file\'s first row names no column the import knows, such as id, sku or name: export the products to see them.', 'orillacart_invalid_import');
         }
@@ -107,46 +155,75 @@ final readonly class ProductImports
      */
     public function continue(int $id): bool
     {
-        $import = $this->get($id);
-        if ($import->status() !== ImportStatus::Running) {
+        // A copy the entity manager does not hold: what the batch changes is written by progress() alone.
+        $import = clone $this->get($id);
+        if (!$import->isRunning()) {
             return false;
         }
         $path = $this->files->path($import->fileKey());
         $handle = $path === null ? false : fopen($path, 'rb');
         if ($handle === false) {
-            $import->failedRow($import->done() + 2, 'The file is gone; upload it again.');
-            $import->finish($this->clock->now());
-            $this->imports->save($import);
+            $this->failed($import, 'The file is gone; upload it again.');
 
             return false;
         }
         $started = $this->clock->now()->getTimestamp();
-        $columns = $import->columns();
+        $header = $import->columns();
+        // Built once for the batch: the shop's columns, the stockrooms' and the add-ons'.
+        $all = $this->columns->all();
         try {
             fseek($handle, $import->position());
-            for ($count = 0; $count < self::BATCH && $this->clock->now()->getTimestamp() - $started < self::BUDGET; ++$count) {
-                $row = fgetcsv($handle, null, ',', '"', '');
-                if ($row === false) {
+            for ($count = 0; $count < self::BATCH && $this->clock->now()->getTimestamp() - $started < self::BUDGET;) {
+                $cells = fgetcsv($handle, null, ',', '"', '');
+                if ($cells === false) {
                     break;
                 }
-                if (self::blank($row)) {
-                    --$count;
+                $line = $import->line();
+                // A row spans a line, and one more for each line break in its quoted cells.
+                $next = $line + 1 + array_sum(array_map(static fn(?string $cell): int => substr_count((string) $cell, "\n"), $cells));
+                $position = (int) ftell($handle);
+                if (self::blank($cells)) {
+                    // Counted for the next row's number; written with it.
+                    $import->reached($position, $next);
                     continue;
                 }
-                $this->row($import, $columns, $row);
+                ++$count;
+                $import = $this->row($import, $header, $all, $cells, $line, $position, $next);
             }
-            $import->reached((int) ftell($handle));
             $finished = fgetcsv($handle, null, ',', '"', '') === false && feof($handle);
         } finally {
             fclose($handle);
         }
         if ($finished) {
+            $import = clone $import;
             $import->finish($this->clock->now());
+        }
+        // Blank lines at the batch's end, or the end itself.
+        $this->imports->progress($import);
+        if ($finished) {
             $this->files->delete($import->fileKey());
         }
-        $this->imports->save($import);
 
         return !$finished;
+    }
+
+    /**
+     * The import's job failed for good: the import ends as failed, with why, and its file goes. The rows imported
+     * before stay.
+     */
+    public function fail(int $id, string $why): void
+    {
+        $import = $this->imports->find($id);
+        if ($import !== null && $import->isRunning()) {
+            $this->failed($import, $why);
+        }
+    }
+
+    private function failed(ProductImport $import, string $why): void
+    {
+        $import->fail($why, $this->clock->now());
+        $this->imports->progress($import);
+        $this->files->delete($import->fileKey());
     }
 
     /**
@@ -166,7 +243,8 @@ final readonly class ProductImports
     }
 
     /**
-     * Forgets an import that is not running, and its file.
+     * Forgets an import that is not running, and its file. One left running with no job to go on with it (its
+     * worker stopped for good) is forgotten too.
      *
      * @throws ImportNotFound
      * @throws ExchangeRuleViolation while it runs
@@ -174,7 +252,7 @@ final readonly class ProductImports
     public function discard(int $id): void
     {
         $import = $this->get($id);
-        if ($import->status() === ImportStatus::Running) {
+        if ($import->isRunning() && $this->jobs->pending(ImportProducts::TYPE) > 0) {
             throw new ExchangeRuleViolation('The import is running; it ends by itself.', 'orillacart_import_running');
         }
         $this->files->delete($import->fileKey());
@@ -182,42 +260,75 @@ final readonly class ProductImports
     }
 
     /**
-     * @param list<string>       $columns
-     * @param array<int, ?string> $cells
+     * Imports one row in a transaction of its own, as the user who uploaded the file, and writes how far the
+     * import got with it. The import's entity is never saved again after a row: a row rolled back makes the
+     * entity manager forget it, and saving it would make a new record.
+     *
+     * @param list<string>                                       $header
+     * @param array<string, Column<ProductRow>|ProductColumn> $all
+     * @param array<int, ?string>                                $cells
+     *
+     * @return ProductImport with the row counted
      */
-    private function row(ProductImport $import, array $columns, array $cells): void
+    private function row(ProductImport $import, array $header, array $all, array $cells, int $line, int $position, int $next): ProductImport
     {
-        $line = $import->done() + 2;
+        $counted = clone $import;
+        $counted->reached($position, $next);
+        if (\count($cells) !== \count($header)) {
+            $counted->failedRow($line, \sprintf('The row has %1$d cells; the header names %2$d columns.', \count($cells), \count($header)));
+            $this->imports->progress($counted);
+
+            return $counted;
+        }
         $row = [];
-        foreach ($columns as $index => $column) {
-            if ($this->reads($column)) {
+        foreach ($header as $index => $column) {
+            if (self::reads($all, $column)) {
                 $row[$column] = (string) ($cells[$index] ?? '');
             }
         }
         try {
-            $this->rows->import($row, $import->userId()) ? $import->createdRow() : $import->updatedRow();
+            $this->posts->asUser($import->userId(), fn() => $this->transactions->run(function () use ($counted, $row, $all, $line): void {
+                [$created, $refused] = $this->rows->import($row, $counted->userId(), $all);
+                match (true) {
+                    $refused !== null => $counted->failedRow($line, $refused),
+                    $created => $counted->createdRow(),
+                    default => $counted->updatedRow(),
+                };
+                $this->imports->progress($counted);
+            }));
+
+            return $counted;
         } catch (InvalidFields $e) {
-            $import->failedRow($line, implode(' ', array_map(static fn(array $violation): string => "{$violation['field']}: {$violation['message']}", $e->violations)));
+            $why = implode(' ', array_map(static fn(array $violation): string => "{$violation['field']}: {$violation['message']}", $e->violations));
         } catch (RuleViolation|\InvalidArgumentException $e) {
-            $import->failedRow($line, $e->getMessage());
+            $why = $e->getMessage();
         } catch (\Throwable $e) {
             $this->logger->error('Row {line} of products import {import} failed: {message}', ['line' => $line, 'import' => $import->id(), 'message' => $e->getMessage(), 'exception' => $e]);
-            $import->failedRow($line, 'It could not be saved; the shop\'s log says why.');
+            $why = 'It could not be saved; the shop\'s log says why.';
         }
+        // Rolled back: counted from the import as it was before the row.
+        $counted = clone $import;
+        $counted->reached($position, $next);
+        $counted->failedRow($line, $why);
+        $this->imports->progress($counted);
+
+        return $counted;
     }
 
-    /** Whether the import reads the column: one naming the row, or one it changes. */
-    private function reads(string $column): bool
+    /**
+     * Whether the import reads the column: one naming the row, or one it changes.
+     *
+     * @param array<string, Column<ProductRow>|ProductColumn> $all
+     */
+    private static function reads(array $all, string $column): bool
     {
-        $all = $this->columns->all();
-
         return \in_array($column, self::NAMING, true) || (isset($all[$column]) && ColumnChoice::importable($all[$column]));
     }
 
     private function view(ProductImport $import): ImportView
     {
         $all = $this->columns->all();
-        $read = array_values(array_filter($import->columns(), $this->reads(...)));
+        $read = array_values(array_filter($import->columns(), static fn(string $column): bool => self::reads($all, $column)));
         $views = array_values(array_map(fn(string $column): ColumnView => $this->choice->view($all[$column], true), array_filter($read, static fn(string $column): bool => isset($all[$column]))));
 
         return ImportView::fromImport($import, $views, array_values(array_diff($import->columns(), $read)));

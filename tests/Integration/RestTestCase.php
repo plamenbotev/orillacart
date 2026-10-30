@@ -8,6 +8,7 @@ use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Platform\Kernel;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Shared\Persistence\LoadedEntities;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -43,6 +44,10 @@ abstract class RestTestCase extends TestCase
         // What earlier tests and runs counted against the rate limits: each test starts within them.
         $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_rate_limits");
         wp_cache_flush();
+        // As a new request would: what earlier tests loaded, and what was read once per request, is read again.
+        $entities = self::kernel()->container()->get(LoadedEntities::class);
+        self::assertInstanceOf(LoadedEntities::class, $entities);
+        $entities->forget();
         // One closure, kept, so remove_filter() finds the same one.
         $this->mailCatcher = $this->catchMail(...);
         add_filter('pre_wp_mail', $this->mailCatcher, 10, 2);
@@ -182,6 +187,60 @@ abstract class RestTestCase extends TestCase
 
         /** @var list<array{field: string, message: string}> */
         return $data['violations'];
+    }
+
+    /**
+     * Gives an item these levels and no others, as one who loaded its stock saves it: each with the level it has
+     * now (`was`), so a level that moved meanwhile is refused (409).
+     *
+     * @param array<int, ?int> $levels by stockroom
+     */
+    protected function setStock(string $kind, int $id, array $levels): \WP_REST_Response
+    {
+        $now = $this->levelsNow($kind, $id);
+        $cells = [];
+        foreach ($levels + array_fill_keys(array_keys($now), null) as $stockroom => $quantity) {
+            $cells[] = ['stockroom_id' => $stockroom, 'quantity' => $quantity, 'was' => $now[$stockroom] ?? null];
+        }
+
+        return $this->request('PUT', "/stock/{$kind}/{$id}", ['levels' => $cells], nonce: true);
+    }
+
+    /**
+     * What a product's save sends of the product as it was loaded: its updated_at, without which a product saved
+     * before is refused (409).
+     *
+     * @return array{updated_at: mixed}
+     */
+    protected function loaded(int $productId): array
+    {
+        return ['updated_at' => $this->data($this->request('GET', "/products/{$productId}"))['updated_at'] ?? null];
+    }
+
+    /**
+     * The stock sheet's cells with the level each has now, as the sheet sends them.
+     *
+     * @param list<array{kind: string, id: int, stockroom_id: int, quantity: ?int}> $cells
+     *
+     * @return list<array{kind: string, id: int, stockroom_id: int, quantity: ?int, was: ?int}>
+     */
+    protected function asLoaded(array $cells): array
+    {
+        return array_map(fn(array $cell): array => $cell + ['was' => $this->levelsNow($cell['kind'], $cell['id'])[$cell['stockroom_id']] ?? null], $cells);
+    }
+
+    /** @return array<int, int> by stockroom */
+    private function levelsNow(string $kind, int $id): array
+    {
+        $now = [];
+        $levels = $this->data($this->request('GET', "/stock/{$kind}/{$id}"))['levels'] ?? [];
+        foreach (\is_array($levels) ? $levels : [] as $level) {
+            if (\is_array($level) && is_numeric($level['stockroom_id'] ?? null) && is_numeric($level['quantity'] ?? null)) {
+                $now[(int) $level['stockroom_id']] = (int) $level['quantity'];
+            }
+        }
+
+        return $now;
     }
 
     protected function actAs(string $role): int

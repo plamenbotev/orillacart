@@ -40,5 +40,9 @@ final readonly class QuoteOrder
         /** The way it is paid, for its fee. */
         #[Assert\Regex(pattern: '/^[a-z][a-z0-9_]{0,39}$/')]
         public ?string $payment = null,
+        /** A business customer's VAT number, for the reverse charge, as checkout decides it. */
+        #[Assert\Length(max: 20)]
+        #[Assert\Regex(pattern: '/^[A-Za-z0-9 .\-]*$/', message: 'A VAT number has letters, digits, spaces, dots and dashes.')]
+        public ?string $vatNumber = null,
     ) {}
 }

@@ -25,6 +25,7 @@ use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
 use OrillaCart\Storefront\Domain\WishlistPolicy;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
+use OrillaCart\Storefront\Infrastructure\WordPress\PageWindow;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
@@ -126,16 +127,13 @@ final readonly class AccountBlock implements BlockDefinition
     private function orderList(int $customerId, string $here): array
     {
         $page = $this->orders->orders(new OrderQuery(customerId: $customerId, page: max(1, self::number('orders-page')), perPage: self::ORDERS_PER_PAGE));
-        $pageUrls = [];
-        for ($number = 1; $number <= $page->pages; ++$number) {
-            $pageUrls[$number] = $number === 1 ? $here : add_query_arg('orders-page', $number, $here);
-        }
+        $pageLinks = PageWindow::links($page->page, $page->pages, static fn(int $number): string => $number === 1 ? $here : add_query_arg('orders-page', $number, $here));
         $orderUrls = [];
         foreach ($page->orders as $order) {
             $orderUrls[$order->number] = add_query_arg('order', $order->number, $here);
         }
 
-        return ['orders' => $page, 'order_urls' => $orderUrls, 'page_urls' => $pageUrls];
+        return ['orders' => $page, 'order_urls' => $orderUrls, 'page_links' => $pageLinks];
     }
 
     /**

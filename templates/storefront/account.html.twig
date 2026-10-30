@@ -6,7 +6,7 @@
  # logged_in; accounts: optional | required | disabled; login_form (HTML); lost_password_url; confirm_token: the
  # token of an emailed link to make the account, for choosing its password; section: orders |
  # order | downloads | addresses | emails; urls: {orders, downloads, addresses, emails, logout}; orders (a page of them, with
- # order_urls and page_urls); order (null when not theirs); downloads; customer (with its address book);
+ # order_urls and page_links); order (null when not theirs); downloads; customer (with its address book);
  # max_addresses; default_country: where a new address starts; countries; states; newsletter: the words of its
  # box, when there is one to choose; subscribed; cart_reminders: whether the shop sends them.
  #}
@@ -204,8 +204,12 @@
                     {% if orders.pages > 1 %}
                         <nav class="orillacart-pagination" aria-label="{{ __('Order pages') }}">
                             <ul>
-                                {% for number, url in page_urls %}
-                                    <li>{% if number == orders.page %}<span aria-current="page">{{ number }}</span>{% else %}<a href="{{ url }}">{{ number }}</a>{% endif %}</li>
+                                {% for link in page_links %}
+                                    {% if link.number is null %}
+                                        <li class="orillacart-pagination__gap" aria-hidden="true">…</li>
+                                    {% else %}
+                                        <li>{% if link.number == orders.page %}<span aria-current="page">{{ link.number }}</span>{% else %}<a href="{{ link.url }}">{{ link.number }}</a>{% endif %}</li>
+                                    {% endif %}
                                 {% endfor %}
                             </ul>
                         </nav>

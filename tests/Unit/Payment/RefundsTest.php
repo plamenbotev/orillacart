@@ -229,6 +229,78 @@ final class RefundsTest extends TestCase
         self::assertStringContainsString('PayPal refunded 16 EUR of the order from its own dashboard: if items came back, put them back in stock', (string) $this->shop->orders->order($order)->attention, 'the shop is asked about the items');
     }
 
+    public function testEveryPathLocksTheOrderBeforeTheRefund(): void
+    {
+        $locks = $this->shop->transactions;
+        $paths = [];
+        $order = $this->paidWithPayPal(3);
+
+        $mark = \count($locks->locks);
+        $this->shop->refunds->refund($order, new MakeRefund('8'), 7);
+        $paths['the shop\'s refund'] = \array_slice($locks->locks, $mark);
+
+        $this->shop->payPalApi->answerLost = true;
+        try {
+            $this->shop->refunds->refund($order, new MakeRefund('4'), 7);
+        } catch (PaymentRuleViolation) {
+        }
+        $this->shop->payPalApi->answerLost = false;
+        $mark = \count($locks->locks);
+        $this->shop->refunds->retry($this->shop->refunds->forOrder($order)->refunds[1]->id, 7);
+        $paths['a retry'] = \array_slice($locks->locks, $mark);
+
+        $this->shop->payPalApi->answerLost = true;
+        try {
+            $this->shop->refunds->refund($order, new MakeRefund('2'), 7);
+        } catch (PaymentRuleViolation) {
+        }
+        $mark = \count($locks->locks);
+        $this->shop->outcomes->notified('paypal', $this->refunded('REFUND-9', '2.00', $this->shop->refundRecords->ofOrder($order)[2]->idempotencyKey()));
+        $paths['the webhook'] = \array_slice($locks->locks, $mark);
+        $this->shop->payPalApi->answerLost = false;
+
+        $this->shop->payPalApi->refundStatus = 'PENDING';
+        $mark = \count($locks->locks);
+        $this->shop->refunds->refund($order, new MakeRefund('2'), 7);
+        $paths['an accepted refund'] = \array_slice($locks->locks, $mark);
+        $this->shop->payPalApi->refundStatus = 'COMPLETED';
+        $mark = \count($locks->locks);
+        self::assertSame(1, $this->shop->refunds->reconcile());
+        $paths['the reconciling job'] = \array_slice($locks->locks, $mark);
+
+        $this->shop->payPalApi->refundStatus = 'PENDING';
+        $this->shop->refunds->refund($order, new MakeRefund('2'), 7);
+        $this->shop->payPalApi->refundStatus = 'FAILED';
+        $mark = \count($locks->locks);
+        $this->shop->refunds->reconcile();
+        $paths['a refund given up by the provider'] = \array_slice($locks->locks, $mark);
+
+        foreach ($paths as $path => $taken) {
+            $refundLocks = array_filter($taken, static fn(array $lock): bool => str_starts_with($lock[1], 'refund:'));
+            self::assertNotEmpty($refundLocks, $path);
+            foreach ($refundLocks as $at => [$transaction]) {
+                $before = array_filter(\array_slice($taken, 0, $at), static fn(array $lock): bool => $lock === [$transaction, "order:{$order}"]);
+                self::assertNotEmpty($before, "{$path}: the order is locked before the refund");
+            }
+        }
+        self::assertSame(['done', 'done', 'done', 'done', 'failed'], array_map(static fn($refund): string => $refund->status, $this->shop->refunds->forOrder($order)->refunds));
+    }
+
+    public function testAGatewaysEmptyReferenceIsStoredAsNone(): void
+    {
+        $order = $this->paidWithPayPal(2);
+        $refund = new \OrillaCart\Payment\Domain\Refund($order, null, 'paypal', \OrillaCart\Payment\Domain\RefundMethod::Provider, \OrillaCart\Shared\Domain\Money::of('8'), 'EUR', [], false, false, '', null, new \DateTimeImmutable());
+        self::assertTrue($refund->accept('  '));
+        self::assertNull($refund->providerReference());
+        self::assertTrue($refund->complete('', new \DateTimeImmutable()));
+        self::assertNull($refund->providerReference());
+
+        $named = new \OrillaCart\Payment\Domain\Refund($order, null, 'paypal', \OrillaCart\Payment\Domain\RefundMethod::Provider, \OrillaCart\Shared\Domain\Money::of('8'), 'EUR', [], false, false, '', null, new \DateTimeImmutable());
+        $named->accept('R-1');
+        $named->complete('', new \DateTimeImmutable());
+        self::assertSame('R-1', $named->providerReference(), 'an empty answer keeps the reference it had');
+    }
+
     public function testItemsOfAnOrderRefundedByAmountGoBackInStockWhenTheyComeBack(): void
     {
         $order = $this->paidWithPayPal(3);

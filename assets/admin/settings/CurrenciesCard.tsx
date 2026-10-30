@@ -14,6 +14,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { errorMessage } from '../shared/api';
+import { useSavedCopy } from '../shared/useUnsavedChanges';
 import {
 	type CurrencySettings,
 	fetchCurrencies,
@@ -49,9 +50,16 @@ export function CurrenciesCard( { currency }: { currency: string } ) {
 	const fail = ( failure: unknown ) =>
 		setMessage( { status: 'error', text: errorMessage( failure ) } );
 
+	const loaded = useSavedCopy( settings );
+
 	useEffect( () => {
-		fetchCurrencies().then( setSettings ).catch( fail );
-	}, [] );
+		fetchCurrencies()
+			.then( ( found ) => {
+				setSettings( found );
+				loaded( found );
+			} )
+			.catch( fail );
+	}, [ loaded ] );
 
 	const change = ( index: number, changed: Partial< OfferedCurrency > ) =>
 		settings !== null &&
@@ -95,6 +103,7 @@ export function CurrenciesCard( { currency }: { currency: string } ) {
 							saveCurrencies( settings )
 								.then( ( saved ) => {
 									setSettings( saved );
+									loaded( saved );
 									setMessage( {
 										status: 'success',
 										text: __(

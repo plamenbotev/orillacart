@@ -11,9 +11,11 @@ use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\EditOrderItems;
+use OrillaCart\Checkout\Application\Dto\PayOrder;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Discounts;
+use OrillaCart\Coupons\Application\Dto\AppliedCoupon;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Coupons\Domain\CouponRuleViolation;
 use OrillaCart\Ordering\Application\Dto\AddressData;
@@ -129,6 +131,43 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->shop->orders->changeStatus($placed->number, new ChangeOrderStatus('cancelled'), 1);
         self::assertSame(0, $this->shop->coupons->coupon(1)->uses);
         self::assertSame('on_hold', $this->shop->checkout->placeOrder($second, $this->order())->status);
+    }
+
+    public function testPayNowOnAFailedOrderWhoseCodeWasUsedUpSinceIsRefused(): void
+    {
+        $placed = $this->failedWithACodeUsedUpSince();
+
+        try {
+            $this->shop->payNow->pay($this->shop->receipts->issue($placed->number), new PayOrder('bank_transfer'));
+            self::fail('used up');
+        } catch (CheckoutRuleViolation $e) {
+            // The transaction that opened it again rolls back: it stays failed, as the database keeps it.
+            self::assertSame(['orillacart_coupon_used_up', 'The code ONCE was used up since this order failed, so it cannot be paid now. Order again from the shop.'], [$e->errorCode, $e->getMessage()]);
+        }
+        self::assertSame(1, $this->shop->coupons->coupon(1)->uses);
+    }
+
+    public function testALatePaymentOfAFailedOrderCountsItsCodePastTheLimit(): void
+    {
+        $placed = $this->failedWithACodeUsedUpSince();
+
+        self::assertTrue($this->shop->orders->paidAfterClosing($placed->number, 'TX-LATE'));
+
+        self::assertSame(['processing', 2], [$this->shop->orders->order($placed->number)->status, $this->shop->coupons->coupon(1)->uses], 'the money came: its use counts');
+    }
+
+    public function testOfTwoFirstOrdersPlacedAtOnceOnlyOneCountsAFirstOrderCode(): void
+    {
+        $this->coupon('WELCOME', 'percent', '10', firstOrderOnly: true);
+        $owner = $this->cart([10, 1]);
+        $this->shop->checkout->applyCoupon($owner, new CouponCode('WELCOME'));
+        // Priced as a first order before the other was placed, counted after it.
+        $priced = new AppliedCoupon('WELCOME', '', '4', false, [0 => '4']);
+        $this->shop->checkout->placeOrder($owner, $this->order());
+
+        $this->expectException(CouponRuleViolation::class);
+        $this->expectExceptionMessage('The code WELCOME is for a first order only. Remove it and try again.');
+        $this->shop->transactions->run(fn() => $this->shop->discounts->redeem(999, [$priced], null, 'ada@example.com'));
     }
 
     public function testACodeForFirstOrdersOrOncePerCustomerKnowsTheCustomerByEmail(): void
@@ -391,6 +430,22 @@ final class CouponsAtCheckoutTest extends TestCase
         $seen = $this->shop->checkout->summary($again, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
         $placed = $this->shop->checkout->placeOrder($again, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$this->rate}", payment: 'bank_transfer', expectedTotal: $seen->total));
         self::assertSame($seen->total, $this->shop->orders->order($placed->number)->total, 'coming back, she orders at what she saw, not a "total changed" loop');
+    }
+
+    private function failedWithACodeUsedUpSince(): \OrillaCart\Checkout\Application\Dto\PlacedOrderView
+    {
+        $this->coupon('ONCE', 'percent', '10', usageLimit: 1);
+        $owner = $this->cart([10, 1]);
+        $this->shop->checkout->applyCoupon($owner, new CouponCode('ONCE'));
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order());
+        $this->shop->orders->fail($placed->number, 'The payment failed.');
+        self::assertSame(0, $this->shop->coupons->coupon(1)->uses);
+        $other = $this->cart([20, 1]);
+        $this->shop->checkout->applyCoupon($other, new CouponCode('ONCE'));
+        $this->shop->checkout->placeOrder($other, new PlaceOrder('grace@example.com', new AddressData('Grace', 'Hopper', '2 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0001'), shippingOption: "rate:{$this->rate}", payment: 'bank_transfer'));
+        self::assertSame(1, $this->shop->coupons->coupon(1)->uses);
+
+        return $placed;
     }
 
     /**

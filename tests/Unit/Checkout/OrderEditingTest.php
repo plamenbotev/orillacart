@@ -137,6 +137,23 @@ final class OrderEditingTest extends TestCase
         return $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $line[0] === 10 ? 'rate:' . $this->rate : null, payment: 'bank_transfer'));
     }
 
+    public function testAnEditKeepsGoodsDeliveredAtHomeOutOfTheReverseCharge(): void
+    {
+        $vat = $this->shop->taxGroups->groups()[0]->id;
+        $this->shop->taxGroups->addRate($vat, new SaveTaxRate('DE', null, '19', 'MwSt'));
+        $this->shop->taxSettings->save(new TaxSettings(TaxBasis::ShippingAddress, $vat, false, true));
+        $this->shop->vies->known = ['DE123456789' => 'Muster GmbH'];
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        $this->shop->carts->add($owner, new AddToCart(20));
+        $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder('einkauf@muster.de', new AddressData('Max', 'Muster', 'Hauptstr. 1', 'Berlin', '10115', 'DE', '+49 30 000000'), new AddressData('Max', 'Muster', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: 'rate:' . $this->rate, payment: 'bank_transfer', vatNumber: 'DE123456789'));
+        $order = $this->shop->orders->order($placed->number);
+        self::assertSame([true, '6', '1'], [$order->reverseCharge, $order->itemsTax, $order->shippingTax], 'the e-book under the reverse charge; the lamp, taken in Sofia, with VAT');
+
+        self::assertSame(['1'], array_map(static fn($option): string => $option->tax, $this->shop->editing->shippingOptions($order->number)));
+        $edited = $this->shop->editing->adjust($order->number, new AdjustOrderPrice('-1', 'Goodwill', 0), 7);
+        self::assertSame([true, '5.8', '1'], [$edited->reverseCharge, $edited->itemsTax, $edited->shippingTax], 'priced again as checkout prices it: 29 for the lamp, 20 % of it');
+    }
+
     public function testAnEditedUnitPriceWithMoreDecimalsThanTheCurrencyIsTakenInCents(): void
     {
         $order = $this->place([20, 1]);

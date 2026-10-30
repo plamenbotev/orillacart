@@ -210,10 +210,30 @@ async function showBundle(
 	const product = form.closest( '.orillacart-product' );
 	const stock = product?.querySelector( '[data-orillacart-stock]' );
 	if ( ! result.ok ) {
+		// Not sold without a price: the customer is told why the button is off, and may choose again.
 		if ( button ) {
 			button.disabled = true;
 		}
+		form.dataset.orillacartBundleFailed = '1';
+		showMessage(
+			form,
+			result.message ||
+				__(
+					'The price of these choices could not be worked out. Choose again, or reload the page.',
+					'orillacart'
+				),
+			'error'
+		);
 		return;
+	}
+	if ( form.dataset.orillacartBundleFailed === '1' ) {
+		// The message about the quote that failed no longer holds.
+		delete form.dataset.orillacartBundleFailed;
+		const box = form.querySelector( '[data-orillacart-message]' );
+		if ( box ) {
+			box.className = 'orillacart-message';
+			box.textContent = '';
+		}
 	}
 	// The price may be a block of its own, elsewhere on the page.
 	findIn( productParts( form ), '[data-orillacart-price]' ).forEach(
@@ -245,6 +265,25 @@ async function showBundle(
 	}
 	if ( button ) {
 		button.disabled = ! result.data.for_sale;
+	}
+}
+
+/** What the product's price, SKU and stock showed as the page came, by element. */
+const asRendered = new WeakMap< Element, string >();
+
+/**
+ * Shows the SKU line when there is a SKU to show: the variation's, or the product's own.
+ * @param sku       The SKU's element.
+ * @param variation The chosen variation's SKU, if any.
+ */
+function showSku(
+	sku: HTMLElement | null | undefined,
+	variation: string | null
+): void {
+	const line = sku?.closest< HTMLElement >( '.orillacart-product__sku' );
+	if ( sku && line ) {
+		line.hidden =
+			! variation && ( asRendered.get( sku ) ?? '' ).trim() === '';
 	}
 }
 
@@ -302,7 +341,33 @@ function showVariation(
 		variation?.id ?? null,
 		variation?.sold_out ?? false
 	);
+	const prices = findIn( productParts( form ), '[data-orillacart-price]' );
+	const sku = product?.querySelector< HTMLElement >(
+		'[data-orillacart-sku]'
+	);
+	// The product's own price, SKU and stock, as the page came, for when no variation is chosen.
+	[ ...prices, sku, stock ].forEach( ( part ) => {
+		if ( part && ! asRendered.has( part ) ) {
+			asRendered.set( part, part.innerHTML );
+		}
+	} );
+	const quantity = form.querySelector< HTMLInputElement >(
+		'input[name="quantity"]'
+	);
+	if ( quantity && quantity.dataset.orillacartMax === undefined ) {
+		quantity.dataset.orillacartMax = quantity.max;
+	}
 	if ( ! variation ) {
+		// What the variation chosen before showed goes: the product's own price, SKU and stock come back.
+		[ ...prices, sku, stock ].forEach( ( part ) => {
+			if ( part ) {
+				part.innerHTML = asRendered.get( part ) ?? '';
+			}
+		} );
+		showSku( sku, null );
+		if ( quantity ) {
+			quantity.max = quantity.dataset.orillacartMax ?? '';
+		}
 		if ( stock && chosen.length > 0 && chosen.length === choices ) {
 			stock.textContent = __(
 				'This combination is not sold.',
@@ -314,18 +379,18 @@ function showVariation(
 		}
 		return;
 	}
-	const sku = product?.querySelector( '[data-orillacart-sku]' );
-	const quantity = form.querySelector< HTMLInputElement >(
-		'input[name="quantity"]'
-	);
 	// Rendered by the shop's own template (escaped there): the variation's price as the page shows prices.
-	findIn( productParts( form ), '[data-orillacart-price]' ).forEach(
-		( price ) => {
-			price.innerHTML = variation.price;
+	prices.forEach( ( price ) => {
+		price.innerHTML = variation.price;
+	} );
+	if ( sku ) {
+		// A variation without a SKU of its own is sold under the product's.
+		if ( variation.sku ) {
+			sku.textContent = variation.sku;
+		} else {
+			sku.innerHTML = asRendered.get( sku ) ?? '';
 		}
-	);
-	if ( sku && variation.sku ) {
-		sku.textContent = variation.sku;
+		showSku( sku, variation.sku );
 	}
 	if ( stock ) {
 		if ( ! variation.for_sale ) {

@@ -14,6 +14,7 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveSale;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Catalog\Application\OptionTranslations;
+use OrillaCart\Catalog\Application\ProductChangedMeanwhile;
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Domain\CatalogRuleViolation;
@@ -113,6 +114,31 @@ final class ProductServiceTest extends TestCase
         self::assertEquals([new ProductChanged(10), new ProductChanged(10), new CatalogItemsRemoved(optionIds: [$view->attributes[0]->options[0]->id])], $this->events->events);
     }
 
+    public function testASaveFromWhatWasLoadedBeforeAnotherSaveIsRefused(): void
+    {
+        $first = $this->products->save(10, new SaveProduct('10'), asLoaded: true);
+        self::assertNotNull($first->updatedAt, 'saved: the view says when');
+        self::assertNull($this->products->product(11)->updatedAt, 'never saved: null');
+
+        // Two people load it; one saves.
+        $second = $this->products->save(10, new SaveProduct('12', updatedAt: $first->updatedAt), asLoaded: true);
+        self::assertNotSame($first->updatedAt, $second->updatedAt, 'every save moves it, the same microsecond too');
+
+        foreach ([new SaveProduct('15', updatedAt: $first->updatedAt), new SaveProduct('15')] as $stale) {
+            try {
+                $this->products->save(10, $stale, asLoaded: true);
+                self::fail('The other save is not overwritten.');
+            } catch (ProductChangedMeanwhile $e) {
+                self::assertSame('orillacart_product_changed', $e->errorCode);
+            }
+        }
+        self::assertSame(['12', $second->updatedAt], [$this->products->product(10)->price, $this->products->product(10)->updatedAt], 'nothing changed');
+
+        self::assertSame('20', $this->products->save(10, new SaveProduct('20'))->price, 'without asLoaded and updatedAt, as the assistant may: the last save wins');
+        $this->expectException(ProductChangedMeanwhile::class);
+        $this->products->save(10, new SaveProduct('25', updatedAt: $second->updatedAt));
+    }
+
     public function testASkuBelongsToOneProductOrVariation(): void
     {
         $this->products->save(10, new SaveProduct('1', sku: 'SKU-1'));
@@ -158,6 +184,13 @@ final class ProductServiceTest extends TestCase
             self::fail('An option a variation uses was removed.');
         } catch (CatalogRuleViolation $e) {
             self::assertSame('orillacart_option_in_use', $e->errorCode);
+        }
+        $options = array_map(static fn($option): SaveOption => new SaveOption($option->name, id: $option->id), $set->attributes[0]->options);
+        try {
+            $this->sets->update($set->id, new SaveAttributeSet('Clothing', active: false, attributes: [new SaveAttribute('Size', $options, id: $set->attributes[0]->id)]));
+            self::fail('A set the variations use was turned off.');
+        } catch (CatalogRuleViolation $e) {
+            self::assertSame('orillacart_attribute_set_in_use', $e->errorCode);
         }
 
         $this->events->events = [];

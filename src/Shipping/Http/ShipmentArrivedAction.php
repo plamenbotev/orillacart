@@ -8,6 +8,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shipping\Application\Consignments;
@@ -19,6 +20,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * A shipment the shop sent itself arrived, or came back.
  */
+#[Tool(risk: Tool::CUSTOMERS)]
 #[Route('/shipments/{id}/arrived', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ShipmentArrivedAction implements RequestHandlerInterface
 {

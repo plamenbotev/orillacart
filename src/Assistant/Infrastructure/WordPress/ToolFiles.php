@@ -14,6 +14,12 @@ final readonly class ToolFiles
     public const int MOST = 100 * 1024 * 1024;
 
     /**
+     * The most base64 a call may carry: about 15 MB of file. The whole request is in memory, and the file again
+     * decoded, so a larger one comes as an address the shop fetches to disk.
+     */
+    public const int MOST_BASE64 = 20 * 1024 * 1024;
+
+    /**
      * @param array<string, mixed> $arguments the tool's file_base64 or file_url
      *
      * @return string the temporary file; the caller deletes it
@@ -48,8 +54,8 @@ final readonly class ToolFiles
 
     private static function decode(string $base64, string $temporary): void
     {
-        if (\strlen($base64) > (int) ceil(self::MOST / 3) * 4) {
-            throw new \InvalidArgumentException('The file is larger than 100 MB.');
+        if (\strlen($base64) > self::MOST_BASE64) {
+            throw new \InvalidArgumentException('file_base64 is larger than 20 MB, too much to send in a call: put the file where the shop can fetch it and give its address as file_url (up to 100 MB).');
         }
         $contents = base64_decode(preg_replace('/\s+/', '', $base64) ?? '', true);
         if ($contents === false || $contents === '') {

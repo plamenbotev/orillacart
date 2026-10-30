@@ -45,6 +45,9 @@ final readonly class McpServer
     /** How long the owner has to answer whether a risky tool may run, in seconds. */
     private const int ASK_TTL = 900;
 
+    /** The most of what a call would do a client's question carries; the shop's approval page shows all of it. */
+    private const int ASK_MOST = 4000;
+
     /** The owner's yes, as the client's form asks for it. */
     private const string CONFIRM = 'confirm';
 
@@ -102,9 +105,12 @@ final readonly class McpServer
     ];
 
     /** The three tools a key that finds its tools on demand is offered. */
-    private const string FIND = 'find_tools';
-    private const string DESCRIBE = 'describe_tool';
-    private const string RUN = 'run_tool';
+    public const string FIND = 'find_tools';
+    public const string DESCRIBE = 'describe_tool';
+    public const string RUN = 'run_tool';
+
+    /** The finder's names, which no other tool may take. */
+    public const array FINDER = [self::FIND, self::DESCRIBE, self::RUN];
 
     /** The risks in words, for the question the owner is asked. */
     private const array RISK_WORDS = [
@@ -485,7 +491,9 @@ final readonly class McpServer
         $capabilities = \is_array($meta[self::META_CAPABILITIES] ?? null) ? $meta[self::META_CAPABILITIES] : [];
         $elicitation = $capabilities['elicitation'] ?? null;
         $digest = hash('sha256', $tool->name . "\n" . json_encode(self::sorted($arguments)));
-        if (!$modern || !\is_array($elicitation) || ($elicitation !== [] && !isset($elicitation['form']))) {
+        $page = $this->approvals->find($caller, $digest);
+        if (!$modern || !\is_array($elicitation) || ($elicitation !== [] && !isset($elicitation['form'])) || ($page !== null && $page->state !== CallApproval::WAITING)) {
+            // Answered on the shop's page (where a long question is read whole), that answer holds.
             return $this->approvalPage($tool, $arguments, $caller, $digest, $modern);
         }
         $responses = \is_array($params['inputResponses'] ?? null) ? $params['inputResponses'] : [];
@@ -504,6 +512,12 @@ final readonly class McpServer
         }
 
         $what = $this->what($tool, $arguments, $caller);
+        $risk = self::RISK_WORDS[$tool->risk ?? ''] ?? '';
+        if (mb_strlen($what) > self::ASK_MOST) {
+            // Too long for a client's question: its start there, the whole of it on the shop's page.
+            $page ??= $this->approvals->ask($caller, $digest, $tool->title, $risk, $what, self::ASK_TTL);
+            $what = mb_substr($what, 0, self::ASK_MOST) . "…\n\nThis is the start of it. The whole of it (" . mb_strlen($what) . ' characters) is on the shop\'s page, to read before answering, here or there: ' . $this->approvals->url($page);
+        }
 
         return [
             'resultType' => 'input_required',
@@ -511,7 +525,7 @@ final readonly class McpServer
                 'method' => 'elicitation/create',
                 'params' => [
                     'mode' => 'form',
-                    'message' => "The assistant wants to: {$tool->title}. " . (self::RISK_WORDS[$tool->risk ?? ''] ?? '') . "\n\n{$what}",
+                    'message' => "The assistant wants to: {$tool->title}. {$risk}\n\n{$what}",
                     'requestedSchema' => [
                         'type' => 'object',
                         'properties' => [self::CONFIRM => ['type' => 'boolean', 'title' => 'Yes, do it', 'default' => false]],
@@ -535,9 +549,8 @@ final readonly class McpServer
     {
         $approval = $this->approvals->find($caller, $digest);
         if ($approval?->state === CallApproval::APPROVED) {
-            $this->approvals->spend($approval);
-
-            return null;
+            // Claimed before it runs: of two retries sent at once, one runs and the other is told.
+            return $this->approvals->spend($approval) ? null : self::toolResult(ToolOutcome::refused("The owner's yes was used already: the call ran once on it. If it should run again, call it again for a new yes."), $modern);
         }
         if ($approval?->state === CallApproval::REFUSED) {
             $this->approvals->spend($approval);

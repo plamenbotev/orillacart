@@ -10,6 +10,7 @@ use OrillaCart\Settings\Application\Dto\ShopLocation;
 use OrillaCart\Settings\Application\Dto\UpdateSettings;
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
+use OrillaCart\Settings\Domain\ReportDay;
 use OrillaCart\Settings\Domain\SettingsChanged;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Domain\StoreSettings;
@@ -68,6 +69,7 @@ final readonly class SettingsService
             $command->unpaidHoldDays,
             $command->returnDays,
             $command->minimumOrder === null || $command->minimumOrder === '' ? null : Money::of($command->minimumOrder),
+            ReportDay::from($command->reportDay),
         );
 
         if (!$current->equals($previous)) {
@@ -107,6 +109,7 @@ final readonly class SettingsService
             $current->unpaidHoldDays,
             $current->returnDays,
             $current->minimumOrder,
+            $current->reportDay,
         ));
     }
 
@@ -140,6 +143,7 @@ final readonly class SettingsService
             $current->unpaidHoldDays,
             $current->returnDays,
             $current->minimumOrder,
+            $current->reportDay,
         ));
     }
 
@@ -172,6 +176,7 @@ final readonly class SettingsService
             $current->unpaidHoldDays,
             $returnDays,
             $current->minimumOrder,
+            $current->reportDay,
         ));
     }
 }

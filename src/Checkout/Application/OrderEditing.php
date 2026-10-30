@@ -25,13 +25,17 @@ use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\Dto\PickupPointView;
 use OrillaCart\Shipping\Application\ShippingQuotes;
+use OrillaCart\Tax\Application\Dto\ReverseCharge;
 use OrillaCart\Tax\Application\Dto\TaxAddress;
+use OrillaCart\Tax\Application\VatNumbers;
 
 /**
  * The shop changes the items of an order that waits for an offline payment, as when the customer calls:
  * the order's stock is put back, the new items are priced as checkout prices them (with the shop's own unit
  * prices where it set them) and their stock is taken, all at once or not at all. The order keeps its coupons,
  * priced again; one that no longer holds is dropped, and the history says why.
+ *
+ * @phpstan-import-type Priced from OrderPricing
  */
 final readonly class OrderEditing
 {
@@ -42,7 +46,29 @@ final readonly class OrderEditing
         private ShippingQuotes $shipping,
         private Discounts $discounts,
         private Languages $languages,
+        private VatNumbers $vatNumbers,
     ) {}
+
+    /**
+     * The order priced again as checkout prices it: under its reverse charge for services, and for goods only
+     * where they go to another EU country (VatNumbers::forGoodsTo()), not when they stay at home or leave the EU.
+     *
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
+     * @param list<string> $codes
+     * @param list<string> $automatic
+     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
+     *
+     * @return Priced
+     */
+    private function priced(OrderView $order, array $items, TaxAddress $shipping, TaxAddress $billing, ?string $shippingOption, array $codes, array $automatic, array $changes = []): array
+    {
+        $price = fn(?bool $goods): array => $this->pricing->price($items, $shipping, $billing, $shippingOption, $shipping->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, $order->paymentGateway, $order->currency, $changes, $automatic, $goods);
+        $priced = $price(null);
+        $reverse = new ReverseCharge($order->reverseCharge, $order->vatNumber);
+        $goods = $this->vatNumbers->forGoodsTo($reverse, $this->pricing->goodsTo($priced, $shipping));
+
+        return $goods->applies === $reverse->applies ? $priced : $price($goods->applies);
+    }
 
     /**
      * The ways an order on hold can ship to its address, with its items as they are: the choices the shop has
@@ -61,7 +87,7 @@ final readonly class OrderEditing
 
         [$codes, $automatic] = self::discountsOf($order);
 
-        return $this->pricing->price($items, new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode, $shippingAddress->city, $shippingAddress->street), $billing, $order->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, $order->paymentGateway, $order->currency, automatic: $automatic)['options'];
+        return $this->priced($order, $items, new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode, $shippingAddress->city, $shippingAddress->street), $billing, $order->shippingOption, $codes, $automatic)['options'];
     }
 
     /**
@@ -191,7 +217,7 @@ final readonly class OrderEditing
             // Its own uses do not count against the limits while it is priced again.
             $this->discounts->release($orderId);
             // In the order's currency, with its own automatic discounts: not ones the shop started since.
-            $priced = $this->pricing->price($items, $shipping, $billing, $command->shippingOption, $shippingAddress->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, $order->paymentGateway, $order->currency, $changes, $automatic);
+            $priced = $this->priced($order, $items, $shipping, $billing, $command->shippingOption, $codes, $automatic, $changes);
             if ($priced['needs_shipping'] && $priced['chosen']?->id !== $command->shippingOption) {
                 throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to its address.' : 'Choose how the order ships.', 'orillacart_shipping_required');
             }

@@ -7,9 +7,13 @@ namespace OrillaCart\Tests\Integration;
 use OrillaCart\Assistant\Application\AssistantTools;
 use OrillaCart\Assistant\Application\Dto\AssistantChoices;
 use OrillaCart\Assistant\Application\Dto\Caller;
-use OrillaCart\Assistant\Application\RouteTools;
+use OrillaCart\Assistant\Application\Dto\ToolDefinition;
+use OrillaCart\Assistant\Application\Dto\ToolOutcome;
+use OrillaCart\Assistant\Application\ToolSource;
 use OrillaCart\Assistant\Infrastructure\AddOnToolSource;
+use OrillaCart\Assistant\Infrastructure\WordPress\OnceClaims;
 use OrillaCart\Assistant\Infrastructure\WordPress\SignedRequestStates;
+use OrillaCart\Assistant\Infrastructure\WordPress\TransientCallApprovals;
 use OrillaCart\Audit\Application\ChangeLog;
 use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Assistant\ToolCall;
@@ -153,7 +157,7 @@ final class AssistantMcpTest extends RestTestCase
         delete_option('orillacart_e2e_stamp');
     }
 
-    public function testAnAddOnToolWithAShopToolsNameIsLeftOutAndLogged(): void
+    public function testAnAddOnToolWithoutItsPrefixOrWithAShopToolsNameIsLeftOutAndLogged(): void
     {
         global $wp_filter;
         self::assertIsArray($wp_filter);
@@ -162,55 +166,84 @@ final class AssistantMcpTest extends RestTestCase
         $logger = new MemoryLogger();
         $registry = new WordPressExtensions([], $logger, static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'), static fn() => throw new \LogicException('not read'));
         $container = self::kernel()->container();
-        $routeTools = $container->get(RouteTools::class);
+        $all = $container->get(AssistantTools::class);
         $log = $container->get(ChangeLog::class);
-        self::assertInstanceOf(RouteTools::class, $routeTools);
+        self::assertInstanceOf(AssistantTools::class, $all);
         self::assertInstanceOf(ChangeLog::class, $log);
+        // The shop's own tools, every source's.
+        $shop = new readonly class (array_values(array_filter($all->all(), static fn(ToolDefinition $tool): bool => !str_starts_with($tool->name, 'e2e_')))) implements ToolSource {
+            /** @param list<ToolDefinition> $tools */
+            public function __construct(private array $tools) {}
+
+            public function tools(): array
+            {
+                return $this->tools;
+            }
+
+            public function run(ToolDefinition $tool, array $arguments, Caller $caller): ToolOutcome
+            {
+                return ToolOutcome::refused('not run');
+            }
+        };
         try {
             remove_all_actions(WordPressExtensions::ACTION);
             add_action(WordPressExtensions::ACTION, static function (Registry $registry): void {
-                $registry->assistantTool(new class implements AssistantTool {
-                    public function name(): string
-                    {
-                        return 'list_orders';
-                    }
-                    public function addOn(): string
-                    {
-                        return 'Copycat';
-                    }
-                    public function title(): string
-                    {
-                        return 'Orders';
-                    }
-                    public function description(): string
-                    {
-                        return 'Not the shop\'s.';
-                    }
-                    public function inputSchema(): array
-                    {
-                        return ['type' => 'object'];
-                    }
-                    public function capability(): string
-                    {
-                        return 'manage_orillacart';
-                    }
-                    public function readOnly(): bool
-                    {
-                        return true;
-                    }
-                    public function risk(): ?string
-                    {
-                        return null;
-                    }
-                    public function run(array $arguments, ToolCall $call): array
-                    {
-                        return [];
-                    }
-                });
+                // A route's name, WordPress's, the setup's and the finder's, each with the add-on's prefix; one
+                // without it; and one as it should be.
+                foreach ([['list_orders', 'List'], ['find_products', 'Find'], ['setup_answer_tax', 'Setup'], ['find_tools', 'Find'], ['orders_today', 'Copycat'], ['copycat_orders', 'Copycat']] as [$name, $addOn]) {
+                    $registry->assistantTool(new readonly class ($name, $addOn) implements AssistantTool {
+                        public function __construct(private string $toolName, private string $addOnName) {}
+
+                        public function name(): string
+                        {
+                            return $this->toolName;
+                        }
+
+                        public function addOn(): string
+                        {
+                            return $this->addOnName;
+                        }
+
+                        public function title(): string
+                        {
+                            return 'Orders';
+                        }
+
+                        public function description(): string
+                        {
+                            return 'Not the shop\'s.';
+                        }
+
+                        public function inputSchema(): array
+                        {
+                            return ['type' => 'object'];
+                        }
+
+                        public function capability(): string
+                        {
+                            return 'manage_orillacart';
+                        }
+
+                        public function readOnly(): bool
+                        {
+                            return true;
+                        }
+
+                        public function risk(): ?string
+                        {
+                            return null;
+                        }
+
+                        public function run(array $arguments, ToolCall $call): array
+                        {
+                            return [];
+                        }
+                    });
+                }
             });
-            $source = new AddOnToolSource($registry, $routeTools, $log, $logger);
-            self::assertSame([], $source->tools());
-            self::assertSame([], $source->tools());
+            $source = new AddOnToolSource($registry, [$shop], $log, $logger);
+            self::assertSame(['copycat_orders'], array_map(static fn(ToolDefinition $tool): string => $tool->name, $source->tools()));
+            self::assertCount(1, $source->tools());
         } finally {
             if ($before === null) {
                 unset($wp_filter[WordPressExtensions::ACTION]);
@@ -219,8 +252,12 @@ final class AssistantMcpTest extends RestTestCase
             }
         }
 
-        self::assertCount(1, $logger->records, 'logged once, not on every list');
-        self::assertStringContainsString('left out', $logger->records[0]['message']);
+        self::assertCount(5, $logger->records, 'each logged once, not on every list');
+        $problems = array_map(static fn(array $record): string => $record['message'] . ' ' . (string) json_encode($record['context']), $logger->records);
+        foreach (['list_orders', 'find_products', 'setup_answer_tax', 'find_tools'] as $i => $name) {
+            self::assertStringContainsString('the shop has a tool of that name', $problems[$i], $name);
+        }
+        self::assertStringContainsString('prefix (copycat_)', $problems[4]);
     }
 
     public function testWhatWordPressKeepsHasItsOwnTools(): void
@@ -288,11 +325,33 @@ final class AssistantMcpTest extends RestTestCase
         $question = $this->mcp('tools/call', ['name' => 'publish_page', 'arguments' => ['id' => $page, 'content' => '<p>Final terms.</p>'], '_meta' => ['io.modelcontextprotocol/protocolVersion' => '2026-07-28', 'io.modelcontextprotocol/clientCapabilities' => ['elicitation' => ['form' => new \stdClass()]]]]);
         $message = self::textAt($question, 'result', 'inputRequests', 'confirm', 'params', 'message');
         self::assertStringContainsString('Puts the page "Terms" live for customers', $message);
-        self::assertStringContainsString("With this text:\nFinal terms.", $message);
+        self::assertStringContainsString("With this text, all of it:\nFinal terms.", $message);
+        // A long text is read whole: its start in the question, all of it on the shop's page.
+        $long = implode('', array_map(static fn(int $n): string => "<!-- wp:paragraph --><p>Clause {$n}: the buyer and the shop agree on this, as written here.</p><!-- /wp:paragraph -->\n", range(1, 120)));
+        $longQuestion = $this->mcp('tools/call', ['name' => 'publish_page', 'arguments' => ['id' => $page, 'content' => $long], '_meta' => ['io.modelcontextprotocol/protocolVersion' => '2026-07-28', 'io.modelcontextprotocol/clientCapabilities' => ['elicitation' => ['form' => new \stdClass()]]]]);
+        $longMessage = self::textAt($longQuestion, 'result', 'inputRequests', 'confirm', 'params', 'message');
+        self::assertStringNotContainsString('Clause 120:', $longMessage);
+        self::assertMatchesRegularExpression('#on the shop\'s page, to read before answering, here or there: \S+page=orillacart-approve&request=([a-f0-9]{32})#', $longMessage);
+        $token = preg_match('#request=([a-f0-9]{32})#', $longMessage, $found) === 1 ? $found[1] : '';
+        $approvals = new TransientCallApprovals(new OnceClaims());
+        $onPage = $approvals->byToken($token);
+        self::assertNotNull($onPage);
+        self::assertStringContainsString("Clause 1: the buyer and the shop agree on this, as written here.\nClause 2:", $onPage->what, 'a paragraph a line');
+        self::assertStringContainsString('Clause 120: the buyer', $onPage->what, 'the whole text');
+        $approvals->spend($onPage);
         wp_update_post(['ID' => $page, 'post_status' => 'publish']);
         $published = $this->mcp('tools/call', ['name' => 'change_page', 'arguments' => ['id' => $page, 'content' => 'Quietly.']]);
         self::assertStringContainsString('publish_page', self::textAt($published, 'result', 'content', 0, 'text'), 'a published page is not changed without asking');
         self::assertSame('New terms.', get_post_field('post_content', $page));
+        // Nor a scheduled page, which goes live by itself, or a private one: only a draft or one pending review.
+        foreach (['private' => null, 'future' => gmdate('Y-m-d H:i:s', time() + 86400)] as $status => $date) {
+            wp_update_post(['ID' => $page, 'post_status' => $status] + ($date === null ? [] : ['post_date_gmt' => $date, 'post_date' => get_date_from_gmt($date)]));
+            self::assertSame($status, get_post_status($page));
+            $refused = $this->mcp('tools/call', ['name' => 'change_page', 'arguments' => ['id' => $page, 'content' => 'Quietly.']]);
+            self::assertStringContainsString("is {$status}: change_page edits only a draft", self::textAt($refused, 'result', 'content', 0, 'text'));
+        }
+        wp_update_post(['ID' => $page, 'post_status' => 'pending']);
+        self::assertSame('Pending.', self::at($this->mcp('tools/call', ['name' => 'change_page', 'arguments' => ['id' => $page, 'content' => 'Pending.']]), 'result', 'structuredContent', 'content'));
 
         global $wpdb;
         \assert($wpdb instanceof \wpdb);
@@ -337,9 +396,33 @@ final class AssistantMcpTest extends RestTestCase
         self::assertSame(-32602, self::at($this->mcp('tools/call', ['name' => 'create_tax_group', 'arguments' => ['name' => 'Books']]), 'error', 'code'));
     }
 
+    public function testWhatIsGoodOnceIsClaimedOnceInTheDatabase(): void
+    {
+        $claims = new OnceClaims();
+        $what = 'test|' . wp_generate_password(12, false);
+
+        self::assertTrue($claims->claim($what, time() + 60));
+        self::assertFalse($claims->claim($what, time() + 60), 'claimed already: a second retry does not run');
+        // A claim that ran out is cleared on the next one.
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        $stale = 'test|' . wp_generate_password(12, false);
+        self::assertTrue($claims->claim($stale, time() - 1));
+        $claims->claim('test|' . wp_generate_password(12, false), time() + 60);
+        self::assertSame('0', $wpdb->get_var((string) $wpdb->prepare('SELECT COUNT(*) FROM %i WHERE option_name = %s', $wpdb->options, '_orillacart_once_' . hash('sha256', $stale))));
+
+        // An approval spent twice, as by two retries: only the first spends it.
+        $approvals = new TransientCallApprovals($claims);
+        $approval = $approvals->ask(new Caller(1, null, false), 'digest', 'Refund order', 'Money moves.', 'Gives 5.00 back.', 60);
+        $approvals->answer($approval, true);
+        self::assertTrue($approvals->spend($approval));
+        self::assertFalse($approvals->spend($approval));
+        self::assertNull($approvals->byToken($approval->token));
+    }
+
     public function testTheOwnersYesIsSignedAndGoodOnce(): void
     {
-        $states = new SignedRequestStates();
+        $states = new SignedRequestStates(new OnceClaims());
 
         $state = $states->issue(['user' => 1, 'call' => 'abc'], 60);
         [$body, $signature] = explode('.', $state);
@@ -446,6 +529,20 @@ final class AssistantMcpTest extends RestTestCase
         $response = $this->post(['jsonrpc' => '2.0', 'id' => 9, 'method' => 'ping'], ['MCP-Protocol-Version' => '2025-06-18']);
 
         self::assertSame('{"jsonrpc":"2.0","id":9,"result":{}}', wp_json_encode($response->get_data()));
+    }
+
+    public function testABodyPhpDroppedAsTooLargeIsSaidToBe(): void
+    {
+        $this->connect('read_write');
+        $request = new \WP_REST_Request('POST', self::NAMESPACE . '/mcp');
+        $request->set_header('Content-Type', 'application/json');
+        $request->set_header('Content-Length', (string) (300 * 1024 * 1024));
+        $response = rest_do_request($request);
+
+        self::assertSame(413, $response->get_status());
+        $message = self::textAt(json_decode((string) wp_json_encode($response->get_data()), true), 'error', 'message');
+        self::assertStringContainsString('post_max_size', $message);
+        self::assertStringContainsString('file_url', $message);
     }
 
     private function connect(string $scope): void

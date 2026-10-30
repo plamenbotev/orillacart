@@ -8,12 +8,12 @@ use OrillaCart\Assistant\Application\RequestStates;
 
 /**
  * Request states signed with the site's own secret (wp_salt and the site's id, as every site of a network
- * shares the salts), their time limit inside what is signed, and each remembered once used until it would have
- * run out.
+ * shares the salts), their time limit inside what is signed, and each claimed once used, in one statement so two
+ * retries sent at once cannot both redeem it, until it would have run out.
  */
 final readonly class SignedRequestStates implements RequestStates
 {
-    private const string USED = 'orillacart_mcp_state_';
+    public function __construct(private OnceClaims $claims) {}
 
     public function issue(array $payload, int $seconds): string
     {
@@ -32,11 +32,9 @@ final readonly class SignedRequestStates implements RequestStates
         if (!\is_array($data) || !\is_int($data['e'] ?? null) || !\is_array($data['p'] ?? null) || $data['e'] < time()) {
             return null;
         }
-        $used = self::USED . hash('sha256', $state);
-        if (get_transient($used) !== false) {
+        if (!$this->claims->claim('mcp-state|' . $state, $data['e'] + 1)) {
             return null;
         }
-        set_transient($used, 1, max(1, $data['e'] - time() + 1));
 
         return array_filter($data['p'], \is_string(...), ARRAY_FILTER_USE_KEY);
     }

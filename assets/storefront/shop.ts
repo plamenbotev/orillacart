@@ -35,14 +35,25 @@ export function filtersUrl( form: HTMLFormElement ): string {
 	return url.toString();
 }
 
+/** The latest filters asked for, and the way to stop the one before: an older answer arriving late is dropped. */
+let latest: AbortController | null = null;
+
 async function show( url: string ): Promise< void > {
+	latest?.abort();
+	const asked = new AbortController();
+	latest = asked;
 	document
 		.querySelectorAll( '[data-orillacart-region="products"]' )
 		.forEach( ( region ) => region.setAttribute( 'aria-busy', 'true' ) );
 	try {
-		await reloadRegions( REGIONS, url );
+		await reloadRegions( REGIONS, url, asked.signal );
 	} catch {
-		window.location.assign( url );
+		if ( ! asked.signal.aborted ) {
+			window.location.assign( url );
+		}
+		return;
+	}
+	if ( asked.signal.aborted ) {
 		return;
 	}
 	hideApplyButtons();

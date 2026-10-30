@@ -103,7 +103,8 @@ final readonly class EuDistanceSales
             Money::of($totals['this_year']['sales'])->compare($threshold) > 0 || Money::of($totals['last_year']['sales'])->compare($threshold) > 0,
             \in_array($tax->basis, [TaxBasis::EuOrigin->value, TaxBasis::ShopAddress->value], true),
             $converted,
-            $waiting->due + $waiting->running + $this->jobs->pending(RebuildReports::TYPE),
+            // Orders not counted yet, those whose counting failed included: the figures are short of them.
+            $waiting->due + $waiting->running + $this->jobs->failedCount(ProjectOrders::TYPE) + $this->jobs->pending(RebuildReports::TYPE),
         );
     }
 }

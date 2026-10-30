@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Catalog\Infrastructure\Doctrine;
 
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Catalog\Domain\Attribute;
 use OrillaCart\Catalog\Domain\AttributeOption;
@@ -58,6 +59,32 @@ final readonly class DoctrineProductRepository implements ProductRepository
         }
 
         return $products;
+    }
+
+    public function withSku(string $sku): ?array
+    {
+        $product = $this->entityManager->createQueryBuilder()
+            ->select('p.id')
+            ->from(Product::class, 'p')
+            ->where('p.sku = :sku')
+            ->setParameter('sku', $sku)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getSingleColumnResult();
+        if (is_numeric($product[0] ?? null)) {
+            return [(int) $product[0], null];
+        }
+        $variation = $this->entityManager->createQueryBuilder()
+            ->select('IDENTITY(v.product) AS product, v.id AS variation')
+            ->from(Variation::class, 'v')
+            ->where('v.sku = :sku')
+            ->setParameter('sku', $sku)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getScalarResult();
+        $row = $variation[0] ?? null;
+
+        return \is_array($row) && is_numeric($row['product'] ?? null) && is_numeric($row['variation'] ?? null) ? [(int) $row['product'], (int) $row['variation']] : null;
     }
 
     public function idsWithSku(string $text): array
@@ -508,6 +535,17 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->setParameter('set', $set)
             ->getQuery()
             ->getSingleScalarResult() > 0;
+    }
+
+    public function lockedUpdatedAt(int $id): ?string
+    {
+        $found = $this->entityManager->createQuery('SELECT p.updatedAt FROM ' . Product::class . ' p WHERE p.id = :id')
+            ->setParameter('id', $id)
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->getScalarResult();
+        $value = \is_array($found[0] ?? null) ? ($found[0]['updatedAt'] ?? null) : null;
+
+        return is_numeric($value) ? Product::stamp((int) $value) : null;
     }
 
     /**

@@ -79,7 +79,7 @@ final readonly class Jobs
     /** What of the type waits: due, running, scheduled ahead. */
     public function waiting(string $type): WaitingJobs
     {
-        return $this->queue->waitingByType($this->clock->now())[$type] ?? new WaitingJobs();
+        return $this->queue->waitingOfType($type, $this->clock->now());
     }
 
     /** How many of the type's jobs failed and wait to be retried. */

@@ -33,6 +33,11 @@ final class SiteTurnsTest extends TestCase
                 return [1, 2, 3];
             }
 
+            public function outdated(): bool
+            {
+                return false;
+            }
+
             public function chores(): void {}
 
             public function on(int $site, \Closure $work): mixed

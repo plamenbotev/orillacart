@@ -20,7 +20,7 @@ final class InMemoryRefundRepository implements RefundRepository
     public function find(int $id, bool $lock = false): ?Refund
     {
         if ($lock) {
-            $this->transactions?->requireOpen();
+            $this->transactions?->locked("refund:{$id}");
         }
 
         return $this->refunds[$id] ?? null;

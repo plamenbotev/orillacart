@@ -9,7 +9,7 @@ import {
 	Spinner,
 	TextControl,
 } from '@wordpress/components';
-import { useEffect, useState } from '@wordpress/element';
+import { Fragment, useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
@@ -88,6 +88,9 @@ export function SettingsScreen() {
 	const [ form, setForm ] = useState< SettingsInput | null >( null );
 	const [ violations, setViolations ] = useState< Violation[] >( [] );
 	const [ status, setStatus ] = useState< Status >( { kind: 'idle' } );
+	// Counts the settings files imported: each loads the screen's settings anew, so a save after it does not put
+	// back what the file changed.
+	const [ imports, setImports ] = useState( 0 );
 	useUnsavedChanges(
 		form !== null &&
 			settings !== null &&
@@ -107,7 +110,7 @@ export function SettingsScreen() {
 					message: errorMessage( error ),
 				} )
 			);
-	}, [] );
+	}, [ imports ] );
 
 	const fieldError = ( field: keyof SettingsInput ) =>
 		violationOf( violations, field );
@@ -454,6 +457,37 @@ export function SettingsScreen() {
 									)
 								}
 							/>
+							<SelectControl
+								__next40pxDefaultSize
+								label={ __(
+									'Reports count an order on',
+									'orillacart'
+								) }
+								help={ __(
+									'The day its money came suits periods you file; the day it was placed shows when customers ordered. Changing it counts every order again.',
+									'orillacart'
+								) }
+								value={ form.report_day }
+								options={ [
+									{
+										value: 'paid',
+										label: __(
+											'The day it was paid',
+											'orillacart'
+										),
+									},
+									{
+										value: 'placed',
+										label: __(
+											'The day it was placed',
+											'orillacart'
+										),
+									},
+								] }
+								onChange={ ( value ) =>
+									update( 'report_day', value )
+								}
+							/>
 							<CheckboxControl
 								label={ __(
 									'Remove all shop data when the plugin is deleted',
@@ -480,18 +514,23 @@ export function SettingsScreen() {
 					</CardBody>
 				</Card>
 			) }
-			{ settings !== null && (
-				<CurrenciesCard currency={ settings.currency } />
-			) }
-			<ShopPagesCard />
-			<LegalCard />
-			<InvoicesCard />
-			<ReviewsCard />
-			<StorefrontCard />
-			<DownloadDeliveryCard />
-			<FiltersCard />
-			<SearchEngineCard />
-			<ArchiveCard />
+			{ /* Drawn anew after an import: each card loads what the file put in. */ }
+			<Fragment key={ imports }>
+				{ settings !== null && (
+					<CurrenciesCard currency={ settings.currency } />
+				) }
+				<ShopPagesCard />
+				<LegalCard />
+				<InvoicesCard />
+				<ReviewsCard />
+				<StorefrontCard />
+				<DownloadDeliveryCard />
+				<FiltersCard />
+				<SearchEngineCard />
+			</Fragment>
+			<ArchiveCard
+				onImported={ () => setImports( ( count ) => count + 1 ) }
+			/>
 		</>
 	);
 }

@@ -21,7 +21,7 @@ final readonly class DeletionDescription implements CallDescription
     private const array NAMES = ['name', 'title', 'label', 'code', 'number', 'email', 'file_name'];
 
     /** Described by others, with more than a name. */
-    private const array ELSEWHERE = ['clear_problems', 'delete_failed_jobs', 'remove_sample_data', 'mark_order_handled', 'reset_email_template'];
+    private const array ELSEWHERE = ['anonymise_order', 'delete_failed_jobs', 'remove_sample_data', 'reset_email_template'];
 
     public function __construct(private RouteReads $reads) {}
 

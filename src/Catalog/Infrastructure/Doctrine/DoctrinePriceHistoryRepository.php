@@ -41,9 +41,14 @@ final readonly class DoctrinePriceHistoryRepository implements PriceHistoryRepos
             ->getResult();
     }
 
-    public function add(PricePoint $point): void
+    public function add(array $points): void
     {
-        $this->entityManager->persist($point);
+        if ($points === []) {
+            return;
+        }
+        foreach ($points as $point) {
+            $this->entityManager->persist($point);
+        }
         $this->entityManager->flush();
     }
 }
