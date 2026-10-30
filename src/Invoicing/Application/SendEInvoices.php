@@ -16,8 +16,8 @@ use OrillaCart\Shared\Extension\InstalledExtensions;
 
 /**
  * Hands each invoice and credit note, once issued, to the add-ons that send e-invoices on (a Peppol access point,
- * a country's platform), one job for each, in the background. A sender that fails is tried again later, then the
- * job is failed for the shop to look at.
+ * a country's platform), one job for each, in the background, and reports each as it is handed on. A sender that
+ * fails is tried again later, then the job is failed for the shop to look at.
  */
 final readonly class SendEInvoices implements JobHandler
 {
@@ -62,6 +62,7 @@ final readonly class SendEInvoices implements JobHandler
         return 60 * 2 ** ($attempt - 1);
     }
 
+    /** One document to one sender. */
     public function lockSeconds(): int
     {
         return 120;
@@ -69,12 +70,12 @@ final readonly class SendEInvoices implements JobHandler
 
     public function handle(array $jobs, JobProgress $progress): array
     {
-        $outcomes = [];
+        // Each document is settled as its sender took it, so a worker killed mid-batch hands none on twice.
         foreach ($jobs as $job) {
-            $outcomes[$job->id] = $this->run($job);
+            $progress->done($job, $this->run($job));
         }
 
-        return $outcomes;
+        return [];
     }
 
     public function describe(array $payload, ?string $uniqueKey): string

@@ -10,6 +10,7 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Extension\Payment\Notification;
+use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
 use OrillaCart\Notifications\Application\PaymentReminders;
@@ -255,14 +256,27 @@ final class OrderEmailsTest extends TestCase
         $order = $this->place('bank_transfer');
         $sent = \count($this->shop->mail->emails);
         $this->shop->mail->breaksFor = 'owner@shop.test';
-        $customer = new QueuedJob('101', 'mail', SendOrderEmails::TYPE, null, ['order' => $order->number, 'kind' => 'order_received'], 1, 1);
-        $shop = new QueuedJob('102', 'mail', SendOrderEmails::TYPE, null, ['order' => $order->number, 'kind' => 'new_order'], 1, 1);
+        $customer = new QueuedJob('customer', 'mail', SendOrderEmails::TYPE, null, ['order' => $order->number, 'kind' => 'order_received'], 1, 1);
+        $shop = new QueuedJob('shop', 'mail', SendOrderEmails::TYPE, null, ['order' => $order->number, 'kind' => 'new_order'], 1, 1);
 
         $progress = new RecordedProgress();
-        $outcomes = $progress->with($this->shop->jobs->get(SendOrderEmails::TYPE)->handle([$customer, $shop], $progress->progress));
+        self::assertSame([], $this->shop->jobs->get(SendOrderEmails::TYPE)->handle([$customer, $shop], $progress->progress), 'each job is reported as its mail went');
 
-        self::assertCount(1, $outcomes, 'only the broken one is tried again');
-        self::assertTrue(($outcomes[$shop->id] ?? null)?->isRetry());
+        self::assertSame(['customer' => 'done', 'shop' => 'retry'], array_map(static fn(JobOutcome $outcome): string => $outcome->kind, $progress->outcomes), 'the customer\'s was settled before the shop\'s was tried, and only the broken one is tried again');
+        self::assertCount($sent + 1, $this->shop->mail->emails);
+    }
+
+    public function testAnEmailJobWithoutAnOrderIsFailedAndTheOthersStillGo(): void
+    {
+        $order = $this->place('bank_transfer');
+        $sent = \count($this->shop->mail->emails);
+        $good = new QueuedJob('good', 'mail', SendOrderEmails::TYPE, null, ['order' => $order->number, 'kind' => 'order_received'], 1, 1);
+        $bad = new QueuedJob('bad', 'mail', SendOrderEmails::TYPE, null, ['kind' => 'order_received'], 1, 1);
+
+        $progress = new RecordedProgress();
+        $this->shop->jobs->get(SendOrderEmails::TYPE)->handle([$good, $bad], $progress->progress);
+
+        self::assertSame(['good' => 'done', 'bad' => 'fail'], array_map(static fn(JobOutcome $outcome): string => $outcome->kind, $progress->outcomes));
         self::assertCount($sent + 1, $this->shop->mail->emails);
     }
 

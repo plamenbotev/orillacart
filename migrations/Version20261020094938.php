@@ -20,8 +20,11 @@ final class Version20261020094938 extends Migration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE {prefix}carriers ADD pickup_locations JSON DEFAULT NULL');
-        $this->addSql('UPDATE {prefix}carriers SET pickup_locations = \'[]\'');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('carriers', 'pickup_locations')) {
+            $this->addSql('ALTER TABLE {prefix}carriers ADD pickup_locations JSON DEFAULT NULL');
+        }
+        $this->addSql('UPDATE {prefix}carriers SET pickup_locations = \'[]\' WHERE pickup_locations IS NULL');
         $this->addSql('ALTER TABLE {prefix}carriers MODIFY pickup_locations JSON NOT NULL');
     }
 

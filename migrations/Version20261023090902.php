@@ -19,8 +19,13 @@ final class Version20261023090902 extends Migration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE {prefix}report_orders ADD region VARCHAR(3) DEFAULT NULL');
-        $this->addSql('CREATE INDEX report_order_region ON {prefix}report_orders (country, region, day)');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('report_orders', 'region')) {
+            $this->addSql('ALTER TABLE {prefix}report_orders ADD region VARCHAR(3) DEFAULT NULL');
+        }
+        if (!$this->hasIndex('report_orders', 'report_order_region')) {
+            $this->addSql('CREATE INDEX report_order_region ON {prefix}report_orders (country, region, day)');
+        }
     }
 
     public function down(Schema $schema): void

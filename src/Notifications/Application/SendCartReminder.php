@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace OrillaCart\Notifications\Application;
 
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
+use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Jobs\Application\JobHandler;
 use OrillaCart\Jobs\Application\JobProgress;
 
 /**
  * Reminds a customer of the cart they left at checkout, in the mail lane. A mail the mail system refused is tried
- * again after a while; one sent is not sent again.
+ * again after a while; one sent is not sent again. Each reminder is reported as it is sent.
  */
 final readonly class SendCartReminder implements JobHandler
 {
@@ -38,6 +39,7 @@ final readonly class SendCartReminder implements JobHandler
         return 60 * 4 ** ($attempt - 1);
     }
 
+    /** One mail, with a slow mail server. */
     public function lockSeconds(): int
     {
         return 120;
@@ -45,23 +47,30 @@ final readonly class SendCartReminder implements JobHandler
 
     public function handle(array $jobs, JobProgress $progress): array
     {
-        $outcomes = [];
+        // Each reminder is settled as it is sent, so a worker killed mid-batch leaves one to do again.
         foreach ($jobs as $job) {
-            $id = $job->payload['abandoned'] ?? null;
-            if (!\is_int($id)) {
-                $outcomes[$job->id] = JobOutcome::fail('The job names no abandoned cart.');
-                continue;
-            }
-            try {
-                $this->reminders->send($id);
-            } catch (EmailNotWritten $e) {
-                $outcomes[$job->id] = JobOutcome::fail($e->getMessage());
-            } catch (EmailNotSent $e) {
-                $outcomes[$job->id] = JobOutcome::retry($e->getMessage());
-            }
+            $progress->done($job, $this->remind($job));
         }
 
-        return $outcomes;
+        return [];
+    }
+
+    /** One job's reminder. */
+    private function remind(QueuedJob $job): JobOutcome
+    {
+        $id = $job->payload['abandoned'] ?? null;
+        if (!\is_int($id)) {
+            return JobOutcome::fail('The job names no abandoned cart.');
+        }
+        try {
+            $this->reminders->send($id);
+        } catch (EmailNotWritten $e) {
+            return JobOutcome::fail($e->getMessage());
+        } catch (EmailNotSent $e) {
+            return JobOutcome::retry($e->getMessage());
+        }
+
+        return JobOutcome::done();
     }
 
     public function describe(array $payload, ?string $uniqueKey): string

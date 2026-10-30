@@ -74,25 +74,31 @@ final class SiteUpgradesTest extends TestCase
 
     public function testAMigrationThatFailsIsKeptForTheAdminAndTheMigrationsRunAgainWhenForced(): void
     {
-        // The first migration forgotten while its tables stay: running it again makes its tables twice and fails.
-        $connection = new EntityManagerFactory(DatabaseConfig::fromWordPress(), $this->context)->create()->getConnection();
-        $newest = $connection->fetchAssociative(\sprintf('SELECT * FROM %s ORDER BY version ASC LIMIT 1', $this->migrations));
-        self::assertIsArray($newest);
-        $connection->delete($this->migrations, ['version' => $newest['version']]);
+        // A migration forgotten while something else took the name of the table it makes: the migrations guard
+        // what they made before a cut, but a view of that name is not their table, and making the table fails.
+        $database = DatabaseConfig::fromWordPress();
+        $connection = new EntityManagerFactory($database, $this->context)->create()->getConnection();
+        $forgotten = $connection->fetchAssociative(\sprintf('SELECT * FROM %s WHERE version LIKE %s', $this->migrations, $connection->quote('%Version20261030093000')));
+        self::assertIsArray($forgotten, 'the migration that makes the rate_limits table');
+        $table = $database->tablePrefix . 'rate_limits';
+        $connection->delete($this->migrations, ['version' => $forgotten['version']]);
+        $connection->executeStatement(\sprintf('RENAME TABLE %s TO %s_kept', $table, $table));
+        $connection->executeStatement(\sprintf('CREATE VIEW %s AS SELECT 1 AS bucket', $table));
         update_option(PluginLifecycle::VERSION_OPTION, '1.0.0');
         $log = ini_set('error_log', '/dev/null');
         try {
             $outcome = $this->upgrades->upgradeHere(new Kernel($this->context));
 
             self::assertTrue($outcome->isFailed());
-            // A table made twice, or a column added twice, as the first migration does.
-            self::assertMatchesRegularExpression('/already exists|Duplicate column/', $outcome->error);
+            self::assertMatchesRegularExpression('/already exists/', $outcome->error);
             $failed = get_option(PluginLifecycle::UPGRADE_FAILED_OPTION);
             self::assertIsArray($failed);
             self::assertSame($this->context->build, $failed['version']);
             self::assertSame('1.0.0', get_option(PluginLifecycle::VERSION_OPTION));
         } finally {
-            $connection->insert($this->migrations, $newest);
+            $connection->executeStatement(\sprintf('DROP VIEW IF EXISTS %s', $table));
+            $connection->executeStatement(\sprintf('RENAME TABLE %s_kept TO %s', $table, $table));
+            $connection->insert($this->migrations, $forgotten);
         }
 
         // WP-CLI runs the migrations even when the site says it is at the build; a success clears the failure.

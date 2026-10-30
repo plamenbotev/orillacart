@@ -13,6 +13,8 @@ use OrillaCart\Checkout\Application\Dto\EditOrderItems;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Extension\Shipping\Tracking;
+use OrillaCart\Jobs\Application\Dto\JobOutcome;
+use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
@@ -33,6 +35,7 @@ use OrillaCart\Shipping\Application\TrackConsignments;
 use OrillaCart\Shipping\Domain\ShippingRuleViolation;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Extension\TestShipMethod;
+use OrillaCart\Tests\Fixtures\Jobs\RecordedProgress;
 use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
 use PHPUnit\Framework\TestCase;
 
@@ -350,5 +353,21 @@ final class ConsignmentsTest extends TestCase
     private static function address(): AddressData
     {
         return new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000');
+    }
+
+    public function testEachShipmentIsReportedAsItsCourierAnsweredAndOneTheCourierCannotPlaceWaitsAlone(): void
+    {
+        $placed = $this->shop->checkout->placeOrder($this->cart(), $this->order('express', 'bank_transfer'));
+        $first = $this->shop->consignments->book($placed->number, new BookShipment(), 7);
+        $second = $this->shop->consignments->book($this->shop->checkout->placeOrder($this->cart(), $this->order('express', 'bank_transfer'))->number, new BookShipment(), 7);
+        $this->courier->trackingDown = $second->number;
+        $job = static fn(string $id, int $consignment): QueuedJob => new QueuedJob($id, 'shipping', TrackConsignments::TYPE, (string) $consignment, [], 1, 1);
+
+        $progress = new RecordedProgress();
+        self::assertSame([], $this->shop->jobs->get(TrackConsignments::TYPE)->handle([$job('first', $first->id), $job('second', $second->id), $job('third', 999)], $progress->progress));
+
+        self::assertSame(['first' => 'done', 'second' => 'retry', 'third' => 'done'], array_map(static fn(JobOutcome $outcome): string => $outcome->kind, $progress->outcomes), 'the first was settled before the second was asked; a shipment gone is nothing to ask about');
+        self::assertStringContainsString('The tracking service is down.', $progress->outcomes['second']->error);
+        self::assertSame('on_the_way', $this->shop->consignments->forOrder($placed->number)->shipments[0]->status);
     }
 }

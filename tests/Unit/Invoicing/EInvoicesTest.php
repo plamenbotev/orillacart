@@ -13,7 +13,10 @@ use OrillaCart\Extension\Invoice\EInvoiceFile;
 use OrillaCart\Extension\Invoice\EInvoiceSender;
 use OrillaCart\Invoicing\Application\Dto\InvoiceFile;
 use OrillaCart\Invoicing\Application\Dto\UpdateInvoiceSettings;
+use OrillaCart\Invoicing\Application\SendEInvoices;
 use OrillaCart\Invoicing\Domain\InvoiceKind;
+use OrillaCart\Jobs\Application\Dto\JobOutcome;
+use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
@@ -27,6 +30,7 @@ use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Jobs\RecordedProgress;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -321,5 +325,45 @@ final class EInvoicesTest extends TestCase
         }
 
         return $xpath;
+    }
+
+    public function testEachDocumentIsReportedAsItsSenderTookItAndOneTheSenderRefusesWaitsAlone(): void
+    {
+        $sender = new class implements EInvoiceSender {
+            /** @var list<string> */
+            public array $sent = [];
+            public ?string $refuses = null;
+
+            public function id(): string
+            {
+                return 'peppol_test';
+            }
+
+            public function label(): string
+            {
+                return 'Peppol test';
+            }
+
+            public function send(EInvoiceFile $file): void
+            {
+                if ($file->number === $this->refuses) {
+                    throw new \RuntimeException('The access point is down.');
+                }
+                $this->sent[] = $file->number;
+            }
+        };
+        $this->shop->extensions->eInvoiceSenders[] = $sender;
+        $first = $this->shop->invoices->ofOrder($this->paid(1)->number)[0]->number;
+        $second = $this->shop->invoices->ofOrder($this->paid(2)->number)[0]->number;
+        $sender->sent = [];
+        $sender->refuses = $second;
+        $job = static fn(string $id, mixed $number): QueuedJob => new QueuedJob($id, 'invoices', SendEInvoices::TYPE, null, ['number' => $number, 'sender' => 'peppol_test'], 1, 1);
+
+        $progress = new RecordedProgress();
+        self::assertSame([], $this->shop->sendEInvoices->handle([$job('first', $first), $job('second', $second), $job('third', 7)], $progress->progress));
+
+        self::assertSame(['first' => 'done', 'second' => 'retry', 'third' => 'fail'], array_map(static fn(JobOutcome $outcome): string => $outcome->kind, $progress->outcomes), 'the first was settled before the second was tried');
+        self::assertSame(['The access point is down.', 'The job names no document or sender.'], [$progress->outcomes['second']->error, $progress->outcomes['third']->error]);
+        self::assertSame([$first], $sender->sent);
     }
 }

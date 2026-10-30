@@ -20,8 +20,13 @@ final class Version20261019153839 extends Migration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE {prefix}products ADD backorder_limit INT DEFAULT NULL');
-        $this->addSql('ALTER TABLE {prefix}variations ADD backorder_limit INT DEFAULT NULL');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('products', 'backorder_limit')) {
+            $this->addSql('ALTER TABLE {prefix}products ADD backorder_limit INT DEFAULT NULL');
+        }
+        if (!$this->hasColumn('variations', 'backorder_limit')) {
+            $this->addSql('ALTER TABLE {prefix}variations ADD backorder_limit INT DEFAULT NULL');
+        }
     }
 
     public function down(Schema $schema): void

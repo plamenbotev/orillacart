@@ -20,9 +20,16 @@ final class Version20261020032258 extends Migration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE {prefix}products ADD low_stock_threshold INT DEFAULT NULL');
-        $this->addSql('ALTER TABLE {prefix}stockrooms ADD low_stock_threshold INT DEFAULT NULL');
-        $this->addSql('ALTER TABLE {prefix}variations ADD low_stock_threshold INT DEFAULT NULL');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('products', 'low_stock_threshold')) {
+            $this->addSql('ALTER TABLE {prefix}products ADD low_stock_threshold INT DEFAULT NULL');
+        }
+        if (!$this->hasColumn('stockrooms', 'low_stock_threshold')) {
+            $this->addSql('ALTER TABLE {prefix}stockrooms ADD low_stock_threshold INT DEFAULT NULL');
+        }
+        if (!$this->hasColumn('variations', 'low_stock_threshold')) {
+            $this->addSql('ALTER TABLE {prefix}variations ADD low_stock_threshold INT DEFAULT NULL');
+        }
     }
 
     public function down(Schema $schema): void

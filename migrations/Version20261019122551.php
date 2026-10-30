@@ -20,9 +20,16 @@ final class Version20261019122551 extends Migration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('CREATE TABLE {prefix}skus (sku VARCHAR(64) NOT NULL, product_id INT NOT NULL, variation_id INT DEFAULT NULL, INDEX IDX_3EDC16594584665A (product_id), INDEX IDX_3EDC16595182BFD8 (variation_id), PRIMARY KEY (sku)) DEFAULT CHARACTER SET utf8mb4');
-        $this->addSql('ALTER TABLE {prefix}skus ADD CONSTRAINT FK_1255E53F0778647E FOREIGN KEY (product_id) REFERENCES {prefix}products (id) ON DELETE CASCADE');
-        $this->addSql('ALTER TABLE {prefix}skus ADD CONSTRAINT FK_1B6C4FD7F892D769 FOREIGN KEY (variation_id) REFERENCES {prefix}variations (id) ON DELETE CASCADE');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasTable('skus')) {
+            $this->addSql('CREATE TABLE {prefix}skus (sku VARCHAR(64) NOT NULL, product_id INT NOT NULL, variation_id INT DEFAULT NULL, INDEX IDX_3EDC16594584665A (product_id), INDEX IDX_3EDC16595182BFD8 (variation_id), PRIMARY KEY (sku)) DEFAULT CHARACTER SET utf8mb4');
+        }
+        if (!$this->hasForeignKey('skus', 'FK_1255E53F0778647E')) {
+            $this->addSql('ALTER TABLE {prefix}skus ADD CONSTRAINT FK_1255E53F0778647E FOREIGN KEY (product_id) REFERENCES {prefix}products (id) ON DELETE CASCADE');
+        }
+        if (!$this->hasForeignKey('skus', 'FK_1B6C4FD7F892D769')) {
+            $this->addSql('ALTER TABLE {prefix}skus ADD CONSTRAINT FK_1B6C4FD7F892D769 FOREIGN KEY (variation_id) REFERENCES {prefix}variations (id) ON DELETE CASCADE');
+        }
         // The SKUs there are; of two that clash already, the first stays claimed.
         $this->addSql('INSERT IGNORE INTO {prefix}skus (sku, product_id, variation_id) SELECT sku, id, NULL FROM {prefix}products WHERE sku IS NOT NULL ORDER BY id');
         $this->addSql('INSERT IGNORE INTO {prefix}skus (sku, product_id, variation_id) SELECT sku, product_id, id FROM {prefix}variations WHERE sku IS NOT NULL ORDER BY id');

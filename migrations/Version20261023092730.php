@@ -20,9 +20,12 @@ final class Version20261023092730 extends Migration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE {prefix}tax_exemptions ADD status VARCHAR(20) NOT NULL, ADD refusal VARCHAR(200) DEFAULT NULL, ADD reviewed_at DATETIME DEFAULT NULL, ADD reminded_at DATETIME DEFAULT NULL, ADD file_key VARCHAR(64) DEFAULT NULL, ADD file_name VARCHAR(200) DEFAULT NULL, ADD file_type VARCHAR(100) DEFAULT NULL');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('tax_exemptions', 'status')) {
+            $this->addSql('ALTER TABLE {prefix}tax_exemptions ADD status VARCHAR(20) NOT NULL, ADD refusal VARCHAR(200) DEFAULT NULL, ADD reviewed_at DATETIME DEFAULT NULL, ADD reminded_at DATETIME DEFAULT NULL, ADD file_key VARCHAR(64) DEFAULT NULL, ADD file_name VARCHAR(200) DEFAULT NULL, ADD file_type VARCHAR(100) DEFAULT NULL');
+        }
         // Those the shop entered itself hold as they were.
-        $this->addSql("UPDATE {prefix}tax_exemptions SET status = 'approved'");
+        $this->addSql("UPDATE {prefix}tax_exemptions SET status = 'approved' WHERE status = ''");
     }
 
     public function down(Schema $schema): void

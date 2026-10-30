@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Notifications\Application;
 
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
+use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Jobs\Application\JobHandler;
 use OrillaCart\Jobs\Application\JobProgress;
 use OrillaCart\Notifications\Domain\EmailKind;
@@ -17,7 +18,7 @@ use Psr\Log\LoggerInterface;
 /**
  * Sends the order emails queued by OrderEmails. A mail the mail system refused is tried again after 1, 4, 16 and
  * 64 minutes, then failed for the shop to look at; one whose template fails is failed at once. Each job is
- * marked sent as soon as its mail went out, and anything that goes wrong stays with its job: a job run again
+ * reported as its mail went out and marked sent, and anything that goes wrong stays with its job: a job run again
  * (its worker stopped, or the batch was retried) never sends a mail twice.
  */
 final readonly class SendOrderEmails implements JobHandler
@@ -53,43 +54,51 @@ final readonly class SendOrderEmails implements JobHandler
         return 60 * 4 ** ($attempt - 1);
     }
 
-    /** A batch of mails, each a while with a slow mail server. */
+    /** One mail, a while with a slow mail server; the hold is extended as the batch goes on. */
     public function lockSeconds(): int
     {
-        return 600;
+        return 300;
     }
 
     public function handle(array $jobs, JobProgress $progress): array
     {
-        $outcomes = [];
+        // Each mail is settled as it goes out: a worker killed mid-batch leaves one job to do again, not the batch.
         foreach ($jobs as $job) {
-            $kind = EmailKind::tryFrom(\is_string($job->payload['kind'] ?? null) ? $job->payload['kind'] : '');
-            $order = $job->payload['order'] ?? null;
-            if ($kind === null || !\is_int($order)) {
-                $outcomes[$job->id] = JobOutcome::fail('The job does not name an order and a kind of email.');
-                continue;
-            }
-            $mark = "{$job->id}:{$job->version}";
-            try {
-                if ($this->sent->wasSent($mark)) {
-                    continue;
-                }
-                $this->emails->send($order, $kind, \is_int($job->payload['note'] ?? null) ? $job->payload['note'] : null, self::refund($job->payload['refund'] ?? null));
-                $this->sent->remember(new SentEmail($mark, $this->clock->now()));
-            } catch (OrderNotFound) {
-                // Deleted since: nobody to write to about it.
-            } catch (EmailNotWritten $e) {
-                $outcomes[$job->id] = JobOutcome::fail($e->getMessage());
-            } catch (EmailNotSent $e) {
-                $outcomes[$job->id] = JobOutcome::retry($e->getMessage());
-            } catch (\Throwable $e) {
-                // Anything else (the database, an add-on's filter): this job tries again, the others went out.
-                $this->logger->error('The {kind} email of order {order} failed: {message}', ['kind' => $kind->value, 'order' => $order, 'message' => $e->getMessage(), 'exception' => $e]);
-                $outcomes[$job->id] = JobOutcome::retry($e->getMessage());
-            }
+            $progress->done($job, $this->send($job));
         }
 
-        return $outcomes;
+        return [];
+    }
+
+    /** One job's mail. */
+    private function send(QueuedJob $job): JobOutcome
+    {
+        $kind = EmailKind::tryFrom(\is_string($job->payload['kind'] ?? null) ? $job->payload['kind'] : '');
+        $order = $job->payload['order'] ?? null;
+        if ($kind === null || !\is_int($order)) {
+            return JobOutcome::fail('The job does not name an order and a kind of email.');
+        }
+        $mark = "{$job->id}:{$job->version}";
+        try {
+            if ($this->sent->wasSent($mark)) {
+                return JobOutcome::done();
+            }
+            $this->emails->send($order, $kind, \is_int($job->payload['note'] ?? null) ? $job->payload['note'] : null, self::refund($job->payload['refund'] ?? null));
+            $this->sent->remember(new SentEmail($mark, $this->clock->now()));
+        } catch (OrderNotFound) {
+            // Deleted since: nobody to write to about it.
+        } catch (EmailNotWritten $e) {
+            return JobOutcome::fail($e->getMessage());
+        } catch (EmailNotSent $e) {
+            return JobOutcome::retry($e->getMessage());
+        } catch (\Throwable $e) {
+            // Anything else (the database, an add-on's filter): this job tries again, the others went out.
+            $this->logger->error('The {kind} email of order {order} failed: {message}', ['kind' => $kind->value, 'order' => $order, 'message' => $e->getMessage(), 'exception' => $e]);
+
+            return JobOutcome::retry($e->getMessage());
+        }
+
+        return JobOutcome::done();
     }
 
     /**

@@ -9,11 +9,15 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Customers\Application\Dto\ChooseEmails;
+use OrillaCart\Jobs\Application\Dto\JobOutcome;
+use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Newsletter\Application\Dto\UpdateNewsletterSettings;
+use OrillaCart\Newsletter\Application\SyncSubscriber;
 use OrillaCart\Newsletter\Domain\NewsletterRuleViolation;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Jobs\RecordedProgress;
 use OrillaCart\Tests\Fixtures\Newsletter\ForgettingMailingList;
 use OrillaCart\Tests\Fixtures\Newsletter\RecordingMailingList;
 use PHPUnit\Framework\TestCase;
@@ -154,5 +158,23 @@ final class NewsletterTest extends TestCase
     {
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
         $this->shop->checkout->placeOrder($owner, new PlaceOrder($email, new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer', newsletter: true));
+    }
+
+    public function testEachListIsReportedAsItIsToldAndOneThatIsDownWaitsAlone(): void
+    {
+        $other = new RecordingMailingList('other_list');
+        $this->shop->extensions->mailingLists[] = $other;
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list', 'other_list']));
+        $this->order('ada@example.com');
+        $this->shop->jobs->runAll();
+        [$heard, $otherHeard] = [\count($this->list->heard), \count($other->heard)];
+        $other->down = true;
+        $job = static fn(string $id, string $list): QueuedJob => new QueuedJob($id, 'mail', SyncSubscriber::TYPE, null, ['email' => 'ada@example.com', 'list' => $list], 1, 1);
+
+        $progress = new RecordedProgress();
+        self::assertSame([], $this->shop->jobs->get(SyncSubscriber::TYPE)->handle([$job('first', 'test_list'), $job('second', 'other_list'), $job('third', 'gone_list')], $progress->progress));
+
+        self::assertSame(['first' => 'done', 'second' => 'retry', 'third' => 'done'], array_map(static fn(JobOutcome $outcome): string => $outcome->kind, $progress->outcomes), 'the first list was settled before the second was asked; a list gone is left alone');
+        self::assertSame([['+ada@example.com'], []], [\array_slice($this->list->heard, $heard), \array_slice($other->heard, $otherHeard)]);
     }
 }

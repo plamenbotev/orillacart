@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 
-use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\CurrencyChoice;
+use OrillaCart\Shared\Http\SiteCookies;
 use OrillaCart\Shared\WordPress\AsHook;
 use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
@@ -48,7 +48,7 @@ final readonly class ShopperCurrency implements CurrencyChoice
         }
         $currencies = ($this->currencies)();
         if (preg_match('/^[A-Z]{3}$/', $asked) === 1 && $currencies->isOffered($asked)) {
-            setcookie(self::COOKIE, $asked, ['expires' => time() + YEAR_IN_SECONDS, 'path' => CartCookie::path(), 'domain' => CartCookie::domain(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
+            setcookie(self::COOKIE, $asked, ['expires' => time() + YEAR_IN_SECONDS, 'path' => SiteCookies::path(), 'domain' => SiteCookies::domain(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
             $_COOKIE[self::COOKIE] = $asked;
         }
         wp_safe_redirect(remove_query_arg(self::PARAMETER), 303);

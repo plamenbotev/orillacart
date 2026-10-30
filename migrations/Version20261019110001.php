@@ -20,9 +20,16 @@ final class Version20261019110001 extends Migration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('DROP INDEX order_key ON {prefix}orders');
-        $this->addSql('ALTER TABLE {prefix}orders DROP order_key');
-        $this->addSql('ALTER TABLE {prefix}payments DROP receipt_url');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if ($this->hasIndex('orders', 'order_key')) {
+            $this->addSql('DROP INDEX order_key ON {prefix}orders');
+        }
+        if ($this->hasColumn('orders', 'order_key')) {
+            $this->addSql('ALTER TABLE {prefix}orders DROP order_key');
+        }
+        if ($this->hasColumn('payments', 'receipt_url')) {
+            $this->addSql('ALTER TABLE {prefix}payments DROP receipt_url');
+        }
     }
 
     public function down(Schema $schema): void

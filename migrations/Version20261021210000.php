@@ -19,8 +19,13 @@ final class Version20261021210000 extends Migration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('CREATE TABLE {prefix}search_category_filters (category_id INT NOT NULL, filter_ids JSON NOT NULL, PRIMARY KEY (category_id)) DEFAULT CHARACTER SET utf8mb4');
-        $this->addSql('ALTER TABLE {prefix}search_filters DROP category_ids, DROP category_positions');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasTable('search_category_filters')) {
+            $this->addSql('CREATE TABLE {prefix}search_category_filters (category_id INT NOT NULL, filter_ids JSON NOT NULL, PRIMARY KEY (category_id)) DEFAULT CHARACTER SET utf8mb4');
+        }
+        if ($this->hasColumn('search_filters', 'category_ids')) {
+            $this->addSql('ALTER TABLE {prefix}search_filters DROP category_ids, DROP category_positions');
+        }
     }
 
     public function down(Schema $schema): void

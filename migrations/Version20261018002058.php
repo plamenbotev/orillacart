@@ -20,11 +20,18 @@ final class Version20261018002058 extends Migration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('CREATE TABLE {prefix}shipping_classes (id INT AUTO_INCREMENT NOT NULL, name VARCHAR(100) NOT NULL, PRIMARY KEY (id)) DEFAULT CHARACTER SET utf8mb4');
-        $this->addSql('ALTER TABLE {prefix}products ADD shipping_class_id INT DEFAULT NULL');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasTable('shipping_classes')) {
+            $this->addSql('CREATE TABLE {prefix}shipping_classes (id INT AUTO_INCREMENT NOT NULL, name VARCHAR(100) NOT NULL, PRIMARY KEY (id)) DEFAULT CHARACTER SET utf8mb4');
+        }
+        if (!$this->hasColumn('products', 'shipping_class_id')) {
+            $this->addSql('ALTER TABLE {prefix}products ADD shipping_class_id INT DEFAULT NULL');
+        }
         // MySQL refuses a literal default on a JSON column: add it empty, fill it, then require it.
-        $this->addSql('ALTER TABLE {prefix}shipping_rates ADD classes JSON DEFAULT NULL');
-        $this->addSql('UPDATE {prefix}shipping_rates SET classes = \'[]\'');
+        if (!$this->hasColumn('shipping_rates', 'classes')) {
+            $this->addSql('ALTER TABLE {prefix}shipping_rates ADD classes JSON DEFAULT NULL');
+        }
+        $this->addSql('UPDATE {prefix}shipping_rates SET classes = \'[]\' WHERE classes IS NULL');
         $this->addSql('ALTER TABLE {prefix}shipping_rates MODIFY classes JSON NOT NULL');
     }
 

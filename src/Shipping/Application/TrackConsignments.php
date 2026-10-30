@@ -10,7 +10,8 @@ use OrillaCart\Jobs\Application\JobProgress;
 
 /**
  * Asks the couriers where shipments are, one job per shipment on its way, queued every hour (TrackShipments). A
- * courier that cannot answer is asked again after 5, 10 and 20 minutes; the next hour queues it afresh anyway.
+ * courier that cannot answer is asked again after 5, 10 and 20 minutes; the next hour queues it afresh anyway. Each
+ * shipment is reported as its courier answered.
  */
 final readonly class TrackConsignments implements JobHandler
 {
@@ -38,24 +39,26 @@ final readonly class TrackConsignments implements JobHandler
         return 300 * 2 ** ($attempt - 1);
     }
 
-    /** Each consignment asks its courier, who may be slow to answer. */
+    /** One consignment asks its courier, who may be slow to answer. */
     public function lockSeconds(): int
     {
-        return 600;
+        return 120;
     }
 
     public function handle(array $jobs, JobProgress $progress): array
     {
-        $outcomes = [];
+        // Each shipment is settled as its courier answered, so a worker killed mid-batch asks one again, not all.
         foreach ($jobs as $job) {
             try {
                 $this->consignments->track((int) $job->uniqueKey);
             } catch (\Throwable $e) {
-                $outcomes[$job->id] = JobOutcome::retry($e->getMessage());
+                $progress->done($job, JobOutcome::retry($e->getMessage()));
+                continue;
             }
+            $progress->done($job);
         }
 
-        return $outcomes;
+        return [];
     }
 
     public function describe(array $payload, ?string $uniqueKey): string

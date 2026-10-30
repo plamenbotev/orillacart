@@ -44,6 +44,7 @@ final class Version20261017133600 extends Migration
     private function insert(string $into, array $rows): void
     {
         $row = '(' . implode(', ', array_fill(0, \count($rows[0]), '?')) . ')';
-        $this->addSql('INSERT INTO ' . $into . ' VALUES ' . implode(', ', array_fill(0, \count($rows), $row)), array_merge(...$rows));
+        // INSERT IGNORE: a run cut off halfway has some of the rows already, and goes on past them when it runs again.
+        $this->addSql('INSERT IGNORE INTO ' . $into . ' VALUES ' . implode(', ', array_fill(0, \count($rows), $row)), array_merge(...$rows));
     }
 }

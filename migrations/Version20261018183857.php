@@ -20,10 +20,19 @@ final class Version20261018183857 extends Migration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE {prefix}orders ADD attention LONGTEXT DEFAULT NULL, ADD attention_since DATETIME DEFAULT NULL');
-        $this->addSql('ALTER TABLE {prefix}payments ADD checked_at DATETIME DEFAULT NULL');
-        $this->addSql('CREATE INDEX payment_open ON {prefix}payments (status, checked_at)');
-        $this->addSql('ALTER TABLE {prefix}refunds DROP provider_pending');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('orders', 'attention')) {
+            $this->addSql('ALTER TABLE {prefix}orders ADD attention LONGTEXT DEFAULT NULL, ADD attention_since DATETIME DEFAULT NULL');
+        }
+        if (!$this->hasColumn('payments', 'checked_at')) {
+            $this->addSql('ALTER TABLE {prefix}payments ADD checked_at DATETIME DEFAULT NULL');
+        }
+        if (!$this->hasIndex('payments', 'payment_open')) {
+            $this->addSql('CREATE INDEX payment_open ON {prefix}payments (status, checked_at)');
+        }
+        if ($this->hasColumn('refunds', 'provider_pending')) {
+            $this->addSql('ALTER TABLE {prefix}refunds DROP provider_pending');
+        }
     }
 
     public function down(Schema $schema): void

@@ -6,6 +6,7 @@ namespace OrillaCart\Forms\Http;
 
 use OrillaCart\Forms\Application\Dto\SendUpload;
 use OrillaCart\Forms\Application\FormUploads;
+use OrillaCart\Forms\Application\TemporaryUploads;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
@@ -24,6 +25,7 @@ final readonly class SendFormUploadAction implements RequestHandlerInterface
 {
     public function __construct(
         private FormUploads $uploads,
+        private TemporaryUploads $temporaries,
         private JsonResponder $responder,
     ) {}
 
@@ -40,10 +42,7 @@ final readonly class SendFormUploadAction implements RequestHandlerInterface
         if (($file->getSize() ?? PHP_INT_MAX) > FormUploads::MAX_MEGABYTES * 1024 * 1024) {
             throw HttpException::invalidInput([['field' => 'file', 'message' => \sprintf('The file is larger than %d MB.', FormUploads::MAX_MEGABYTES)]]);
         }
-        $temporary = tempnam(sys_get_temp_dir(), FormUploads::TEMPORARY_PREFIX);
-        if ($temporary === false) {
-            throw new \RuntimeException('No temporary file for the upload.');
-        }
+        $temporary = $this->temporaries->create();
         $file->moveTo($temporary);
 
         return $this->responder->ok($this->uploads->send(new SendUpload($productId, $field, $temporary, $file->getClientFilename() ?? 'file', ClientAddress::of($request->getServerParams()))), 201);

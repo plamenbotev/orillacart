@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Unit\Cart;
 use Nyholm\Psr7\Response;
 use Nyholm\Psr7\ServerRequest;
 use OrillaCart\Cart\Http\CartCookie;
+use OrillaCart\Shared\Http\SiteCookies;
 use OrillaCart\Tests\Fixtures\Http\FakeAuthorization;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
@@ -21,8 +22,8 @@ final class CartCookieTest extends TestCase
     public function testWithoutASitePathTheCookieCoversTheHost(): void
     {
         self::assertFalse(\defined('COOKIEPATH'), 'unit tests load no WordPress');
-        self::assertSame('/', CartCookie::path());
-        self::assertSame('', CartCookie::domain());
+        self::assertSame('/', SiteCookies::path());
+        self::assertSame('', SiteCookies::domain());
 
         $header = $this->give(str_repeat('a', 64), 'http://shop.example/wp-json/orillacart/v1/cart');
 
@@ -39,9 +40,21 @@ final class CartCookieTest extends TestCase
         \define('COOKIEPATH', '/shop-b/');
         \define('COOKIE_DOMAIN', 'network.example');
 
-        self::assertSame('/shop-b/', CartCookie::path());
-        self::assertSame('network.example', CartCookie::domain());
+        self::assertSame('/shop-b/', SiteCookies::path());
+        self::assertSame('network.example', SiteCookies::domain());
         self::assertStringContainsString('; Path=/shop-b/; Domain=network.example; Max-Age=', $this->give(str_repeat('b', 64), 'http://network.example/shop-b/wp-json/orillacart/v1/cart'));
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testOnANetworkTheSitesOwnFolderIsUsedNotTheNetworksCookiePath(): void
+    {
+        // WordPress's COOKIEPATH on a network is the network's path: one login for every site, but one cart too.
+        \define('COOKIEPATH', '/');
+        eval('function is_multisite(): bool { return true; } function get_site(): object { return (object) ["path" => "/shop-b/"]; }');
+
+        self::assertSame('/shop-b/', SiteCookies::path());
+        self::assertStringContainsString('; Path=/shop-b/; Max-Age=', $this->give(str_repeat('c', 64), 'http://network.example/shop-b/wp-json/orillacart/v1/cart'));
     }
 
     #[RunInSeparateProcess]
@@ -51,8 +64,8 @@ final class CartCookieTest extends TestCase
         \define('COOKIEPATH', '');
         \define('COOKIE_DOMAIN', false);
 
-        self::assertSame('/', CartCookie::path());
-        self::assertSame('', CartCookie::domain());
+        self::assertSame('/', SiteCookies::path());
+        self::assertSame('', SiteCookies::domain());
     }
 
     private function give(string $token, string $url): string

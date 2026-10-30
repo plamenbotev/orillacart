@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Forms\Infrastructure;
 
 use OrillaCart\Forms\Application\FormUploads;
+use OrillaCart\Forms\Application\TemporaryUploads;
 use OrillaCart\Forms\Domain\FormRuleViolation;
 use OrillaCart\Forms\Domain\UploadInspector;
 
@@ -20,14 +21,17 @@ final readonly class SafeUploadInspector implements UploadInspector
     public const int MAX_SIDE = 10_000;
     /** The largest photo turned upright as its camera noted. */
     public const int MAX_TURNED = 12_000_000;
-    /** What temporary files of uploads are called, for sweeping those a failed request left. */
-    public const string TEMPORARY_PREFIX = FormUploads::TEMPORARY_PREFIX;
     /** The most the compressed streams of a PDF may unpack to, all together. */
     private const int MAX_PDF_UNPACKED = 64 * 1024 * 1024;
     /** The most streams a PDF may have: more is not a picture or a document to print. */
     private const int MAX_PDF_STREAMS = 10_000;
     /** What runs, opens other files, sends the form, or hides what is inside; also written as #xx escapes. */
     private const string PDF_ACTIONS = '/\/(?:JavaScript|JS|Launch|EmbeddedFiles?|OpenAction|AA|RichMedia|XFA|SubmitForm|ImportData|GoToE|GoToR|Encrypt|AcroForm)(?=[\s\/\[\]<>()%{}]|$)/';
+
+    /**
+     * @param TemporaryUploads|null $temporaries where the clean copies are made; the system's temporary directory, named for no site, without
+     */
+    public function __construct(private ?TemporaryUploads $temporaries = null) {}
 
     public function type(string $path): ?string
     {
@@ -82,7 +86,7 @@ final readonly class SafeUploadInspector implements UploadInspector
             }
             imagealphablending($image, false);
             imagesavealpha($image, true);
-            $clean = self::temporary();
+            $clean = $this->temporary();
             $written = match ($type) {
                 'image/jpeg' => imagejpeg($image, $clean, 92),
                 'image/png' => imagepng($image, $clean, 6),
@@ -181,7 +185,7 @@ final readonly class SafeUploadInspector implements UploadInspector
             }
             $unpacked += self::scanInflated(rtrim(substr($bytes, $begin, $end - $begin), "\r\n"), self::MAX_PDF_UNPACKED - $unpacked);
         }
-        $clean = self::temporary();
+        $clean = $this->temporary();
         if (file_put_contents($clean, $bytes) !== \strlen($bytes)) {
             throw new \RuntimeException('The PDF could not be copied.');
         }
@@ -251,9 +255,12 @@ final readonly class SafeUploadInspector implements UploadInspector
         return preg_match(self::PDF_ACTIONS, self::plain($bytes)) === 1;
     }
 
-    private static function temporary(): string
+    private function temporary(): string
     {
-        $path = tempnam(sys_get_temp_dir(), self::TEMPORARY_PREFIX);
+        if ($this->temporaries !== null) {
+            return $this->temporaries->create();
+        }
+        $path = tempnam(sys_get_temp_dir(), FormUploads::TEMPORARY_PREFIX);
         if ($path === false) {
             throw new \RuntimeException('No temporary file for the upload.');
         }

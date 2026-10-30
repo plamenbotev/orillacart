@@ -38,6 +38,8 @@ final class TestShipMethod implements ShippingMethod, OffersPickupPoints, Create
     public array $pickedUp = [];
     /** @var array<string, Tracking> by shipment number */
     public array $tracking = [];
+    /** A shipment whose courier cannot say where it is. */
+    public ?string $trackingDown = null;
 
     public function id(): string
     {
@@ -123,6 +125,10 @@ final class TestShipMethod implements ShippingMethod, OffersPickupPoints, Create
 
     public function track(string $shipmentNumber, Settings $settings): Tracking
     {
+        if ($shipmentNumber === $this->trackingDown) {
+            throw new ProviderUnavailable('Test Ship', 'The tracking service is down.');
+        }
+
         return $this->tracking[$shipmentNumber] ?? new Tracking(Tracking::ON_THE_WAY, 'At the depot');
     }
 }

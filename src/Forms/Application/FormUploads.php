@@ -26,7 +26,7 @@ use Psr\Clock\ClockInterface;
  */
 final readonly class FormUploads
 {
-    /** What temporary files of uploads are called. */
+    /** What temporary files of uploads are called, before the site's id: see temporaryPrefix(). */
     public const string TEMPORARY_PREFIX = 'orillacart-upload';
     /** The largest file any field takes. */
     public const int MAX_MEGABYTES = FormField::MAX_MEGABYTES;
@@ -44,6 +44,15 @@ final readonly class FormUploads
     public const string HELD_FOR = '-7 days';
 
     private const array EXTENSIONS = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif', 'application/pdf' => 'pdf'];
+
+    /**
+     * What one site's temporary files of uploads are called: the sweeper of one site touches only its own, though
+     * every site of the host shares the temporary directory.
+     */
+    public static function temporaryPrefix(int $siteId): string
+    {
+        return self::TEMPORARY_PREFIX . '-' . $siteId . '-';
+    }
 
     public function __construct(
         private ShopForms $forms,

@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Unit\Platform\WordPress;
 
 use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Platform\WordPress\Security\SiteSignatures;
+use OrillaCart\Shared\Security\Secrets;
 use OrillaCart\Shared\Security\Signatures;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -46,5 +47,20 @@ final class SiteSignaturesTest extends TestCase
         self::assertSame('salt|1', SiteSignatures::secret('salt', 1));
         self::assertNotSame(SiteSignatures::secret('salt', 1), SiteSignatures::secret('salt', 12));
         self::assertNotSame(SiteSignatures::secret('salt|1', 2), SiteSignatures::secret('salt', 1));
+    }
+
+    public function testTheEarlierSecretIsTheSaltAloneAndStillOpensWhatItSealed(): void
+    {
+        $salt = 'the salt every site of the network shares';
+
+        self::assertSame([$salt], SiteSignatures::earlierSecrets($salt));
+        self::assertNotContains(SiteSignatures::secret($salt, 1), SiteSignatures::earlierSecrets($salt));
+
+        $before = new Secrets(new Signatures($salt));
+        $now = new Secrets(new Signatures(SiteSignatures::secret($salt, 1)), array_map(static fn(string $secret): Signatures => new Signatures($secret), SiteSignatures::earlierSecrets($salt)));
+
+        self::assertSame('paypal-secret', $now->open($before->seal('paypal-secret')));
+        self::assertFalse($now->sealedWithCurrentKey($before->seal('paypal-secret')));
+        self::assertTrue($now->sealedWithCurrentKey($now->seal('paypal-secret')));
     }
 }

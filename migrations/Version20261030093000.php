@@ -20,9 +20,16 @@ final class Version20261030093000 extends Migration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE {prefix}oauth_tokens ADD previous_refresh_hash VARCHAR(64) DEFAULT NULL');
-        $this->addSql('CREATE INDEX oauth_previous_refresh_hash ON {prefix}oauth_tokens (previous_refresh_hash)');
-        $this->addSql('CREATE TABLE {prefix}rate_limits (bucket VARCHAR(64) NOT NULL, hits INT NOT NULL, expires_at DATETIME NOT NULL, INDEX rate_limit_expires (expires_at), PRIMARY KEY (bucket)) DEFAULT CHARACTER SET utf8mb4');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('oauth_tokens', 'previous_refresh_hash')) {
+            $this->addSql('ALTER TABLE {prefix}oauth_tokens ADD previous_refresh_hash VARCHAR(64) DEFAULT NULL');
+        }
+        if (!$this->hasIndex('oauth_tokens', 'oauth_previous_refresh_hash')) {
+            $this->addSql('CREATE INDEX oauth_previous_refresh_hash ON {prefix}oauth_tokens (previous_refresh_hash)');
+        }
+        if (!$this->hasTable('rate_limits')) {
+            $this->addSql('CREATE TABLE {prefix}rate_limits (bucket VARCHAR(64) NOT NULL, hits INT NOT NULL, expires_at DATETIME NOT NULL, INDEX rate_limit_expires (expires_at), PRIMARY KEY (bucket)) DEFAULT CHARACTER SET utf8mb4');
+        }
     }
 
     public function down(Schema $schema): void

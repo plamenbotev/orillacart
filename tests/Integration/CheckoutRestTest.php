@@ -10,6 +10,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Notifications\Application\CartReminders;
+use OrillaCart\Shared\Http\SiteCookies;
 use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\ShopperCurrency;
 
 /**
@@ -656,7 +657,7 @@ final class CheckoutRestTest extends RestTestCase
     {
         $header = $response->get_headers()['Set-Cookie'] ?? '';
         self::assertIsString($header);
-        self::assertMatchesRegularExpression('/^orillacart_cart=[a-f0-9]{64}; Path=' . preg_quote(CartCookie::path(), '/') . '; Max-Age=\d+; HttpOnly; SameSite=Lax/', $header, 'at the site\'s own cookie path');
+        self::assertMatchesRegularExpression('/^orillacart_cart=[a-f0-9]{64}; Path=' . preg_quote(SiteCookies::path(), '/') . '; Max-Age=\d+; HttpOnly; SameSite=Lax/', $header, 'at the site\'s own cookie path');
         $_COOKIE[CartCookie::NAME] = substr($header, \strlen(CartCookie::NAME) + 1, 64);
     }
 

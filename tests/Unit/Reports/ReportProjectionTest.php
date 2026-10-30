@@ -9,6 +9,8 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Jobs\Application\Dto\JobOutcome;
+use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
@@ -29,6 +31,7 @@ use OrillaCart\Tax\Application\Dto\SaveTaxRate;
 use OrillaCart\Tax\Domain\TaxBasis;
 use OrillaCart\Tax\Domain\TaxSettings;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Jobs\RecordedProgress;
 use OrillaCart\Tests\Fixtures\Reports\InMemoryReportStore;
 use PHPUnit\Framework\TestCase;
 
@@ -125,5 +128,31 @@ final class ReportProjectionTest extends TestCase
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20, quantity: $quantity))->newToken);
 
         return $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
+    }
+
+    public function testEveryOrderOfABatchIsReportedOnceItsFactsAreWrittenAndEachRebuildStepAsItQueued(): void
+    {
+        $first = $this->place(1);
+        $second = $this->place(2);
+        $this->store->facts = [];
+
+        $progress = new RecordedProgress();
+        self::assertSame([], $this->shop->jobs->get(ProjectOrders::TYPE)->handle([self::job('first', ProjectOrders::TYPE, (string) $first->number), self::job('second', ProjectOrders::TYPE, (string) $second->number)], $progress->progress));
+        self::assertSame(['first' => 'done', 'second' => 'done'], array_map(static fn(JobOutcome $outcome): string => $outcome->kind, $progress->outcomes), 'both reported after the one write');
+        self::assertSame([$first->number, $second->number], array_keys($this->store->facts));
+
+        $this->store->facts = [];
+        $progress = new RecordedProgress();
+        self::assertSame([], $this->shop->jobs->get(RebuildReports::TYPE)->handle([self::job('third', RebuildReports::TYPE, RebuildReports::KEY, ['after' => 0]), self::job('fourth', RebuildReports::TYPE, RebuildReports::KEY, ['after' => $first->number])], $progress->progress));
+        self::assertSame(['third' => 'done', 'fourth' => 'done'], array_map(static fn(JobOutcome $outcome): string => $outcome->kind, $progress->outcomes), 'each step reported as its orders were queued');
+        self::assertSame([$first->number, $second->number], array_keys($this->store->facts));
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private static function job(string $id, string $type, ?string $key, array $payload = []): QueuedJob
+    {
+        return new QueuedJob($id, 'reports', $type, $key, $payload, 1, 1);
     }
 }

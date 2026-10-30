@@ -63,7 +63,7 @@ final readonly class EntityManagerFactory
             Type::addType(SealedStringType::NAME, SealedStringType::class);
         }
         // The site's key; tools without WordPress (the schema, the build check) seal nothing they keep.
-        $secrets = $this->secrets ?? new Secrets(\defined('ABSPATH') ? SiteSignatures::create() : new Signatures(random_bytes(32)));
+        $secrets = $this->secrets ?? (\defined('ABSPATH') ? SiteSignatures::createSecrets() : new Secrets(new Signatures(random_bytes(32))));
         // A value sealed with salts the site no longer has reads as empty: the shop hears it should enter it again.
         $logger = $this->logger;
         $unreadable = $logger === null ? null : static function () use ($logger): void {

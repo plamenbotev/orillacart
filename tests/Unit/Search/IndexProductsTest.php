@@ -7,6 +7,8 @@ namespace OrillaCart\Tests\Unit\Search;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\ProductLookup;
 use OrillaCart\Inventory\Domain\Event\StockChanged;
+use OrillaCart\Jobs\Application\Dto\JobOutcome;
+use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Search\Application\DocumentBuilder;
 use OrillaCart\Search\Application\IndexProducts;
 use OrillaCart\Search\Application\SearchIndexing;
@@ -16,6 +18,7 @@ use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchEngine;
 use OrillaCart\Search\Infrastructure\Events\QueueChangedProducts;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Jobs\RecordedProgress;
 use OrillaCart\Tests\Fixtures\Jobs\TestJobs;
 use OrillaCart\Tests\Fixtures\Search\FixedProductTexts;
 use OrillaCart\Tests\Fixtures\Search\MemorySearchIndex;
@@ -150,6 +153,29 @@ final class IndexProductsTest extends TestCase
         $listener->stockChanged(new StockChanged('product:10', -2, -3));
         self::assertCount(1, $this->jobs->queue->jobs, 'one more owed');
     }
+
+    public function testEveryJobOfTheBatchIsReportedOnceTheIndexHasThemAndNoneBefore(): void
+    {
+        $lamp = new QueuedJob('lamp', 'search', IndexProducts::TYPE, '10', [], 1, 1);
+        $bulb = new QueuedJob('bulb', 'search', IndexProducts::TYPE, '11', [], 1, 1);
+
+        $progress = new RecordedProgress();
+        self::assertSame([], $this->handler->handle([$lamp, $bulb], $progress->progress));
+        self::assertSame(['lamp' => 'done', 'bulb' => 'done'], array_map(static fn(JobOutcome $outcome): string => $outcome->kind, $progress->outcomes), 'each reported after the one write');
+        self::assertSame([2], $this->index->writes);
+
+        // The batch is one write: a product that breaks it leaves nothing reported, and the runner tries each alone.
+        $this->texts->broken = 11;
+        $progress = new RecordedProgress();
+        try {
+            $this->handler->handle([$lamp, $bulb], $progress->progress);
+            self::fail('the batch broke');
+        } catch (\RuntimeException $e) {
+            self::assertSame('Product 11 is broken.', $e->getMessage());
+        }
+        self::assertSame([], $progress->outcomes);
+    }
+
 }
 
 /** OpenSearch as a server that is prepared, or answers with what is wrong. */
@@ -164,4 +190,5 @@ final class PreparedServer implements SearchServer
 
         return $this->problem;
     }
+
 }

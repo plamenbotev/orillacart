@@ -26,6 +26,25 @@ final class SecretsTest extends TestCase
         self::assertSame('', $secrets->seal(''));
     }
 
+    public function testWhatAnEarlierKeySealedOpensUntilSealedAgain(): void
+    {
+        $earlier = new Secrets(new Signatures('the salt alone'));
+        $secrets = new Secrets(new Signatures('the salt alone|1'), [new Signatures('the salt alone')]);
+        $sealedBefore = $earlier->seal('client-secret-123');
+
+        self::assertSame('client-secret-123', $secrets->open($sealedBefore), 'sealed before the site took part in the key');
+        self::assertFalse($secrets->sealedWithCurrentKey($sealedBefore));
+
+        $sealedAgain = $secrets->seal('client-secret-123');
+
+        self::assertTrue($secrets->sealedWithCurrentKey($sealedAgain));
+        self::assertSame('client-secret-123', $secrets->open($sealedAgain));
+        self::assertNull($earlier->open($sealedAgain), 'the earlier key alone no longer opens it');
+        self::assertNull($secrets->open(new Secrets(new Signatures('a salt the site never had'))->seal('x')), 'no key the site had');
+        self::assertFalse($secrets->sealedWithCurrentKey('plain'), 'never sealed: to seal');
+        self::assertFalse($secrets->sealedWithCurrentKey(substr($sealedAgain, 0, -4) . 'AAAA'), 'tampered with');
+    }
+
     public function testEachPurposeHasItsOwnKey(): void
     {
         $signatures = new Signatures('the site salt');

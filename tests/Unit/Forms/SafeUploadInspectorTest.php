@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Forms;
 
+use OrillaCart\Forms\Application\FormUploads;
+use OrillaCart\Forms\Application\TemporaryUploads;
 use OrillaCart\Forms\Domain\FormRuleViolation;
 use OrillaCart\Forms\Infrastructure\SafeUploadInspector;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -37,6 +39,33 @@ final class SafeUploadInspectorTest extends TestCase
         $clean = new SafeUploadInspector()->clean($this->file($pdf), 'application/pdf');
         $this->paths[] = $clean;
 
+        self::assertSame($pdf, file_get_contents($clean));
+    }
+
+    public function testTheCleanCopyIsATemporaryFileOfTheSite(): void
+    {
+        $prefix = FormUploads::temporaryPrefix(3);
+        self::assertSame('orillacart-upload-3-', $prefix);
+        self::assertStringStartsNotWith($prefix, FormUploads::temporaryPrefix(31), 'site 31\'s files are not site 3\'s');
+        $temporaries = new class ($prefix) implements TemporaryUploads {
+            public function __construct(private readonly string $prefix) {}
+
+            public function prefix(): string
+            {
+                return $this->prefix;
+            }
+
+            public function create(): string
+            {
+                return (string) tempnam(sys_get_temp_dir(), $this->prefix);
+            }
+        };
+
+        $pdf = "%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n%%EOF\n";
+        $clean = new SafeUploadInspector($temporaries)->clean($this->file($pdf), 'application/pdf');
+        $this->paths[] = $clean;
+
+        self::assertStringStartsWith($prefix, basename($clean));
         self::assertSame($pdf, file_get_contents($clean));
     }
 

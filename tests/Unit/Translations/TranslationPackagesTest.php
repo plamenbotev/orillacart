@@ -7,11 +7,15 @@ namespace OrillaCart\Tests\Unit\Translations;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Jobs\Application\Dto\JobOutcome;
+use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Shared\I18n\Language;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SavePickupLocation;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Jobs\RecordedProgress;
+use OrillaCart\Translations\Application\SyncTranslationPackages;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -129,5 +133,25 @@ final class TranslationPackagesTest extends TestCase
         $this->shop->translationService->active = true;
         self::assertSame(1, $this->shop->translationPackages->registerAll());
         self::assertArrayHasKey("carrier:{$carrier->id}", $this->shop->translationService->packages);
+    }
+
+    public function testEachPackagesJobIsReportedAsItIsDone(): void
+    {
+        $carrier = $this->shop->carriers->create(new SaveCarrier('Courier'));
+        $this->shop->translationService->packages = [];
+
+        $progress = new RecordedProgress();
+        self::assertSame([], $this->shop->jobs->get(SyncTranslationPackages::TYPE)->handle([self::job('first', SyncTranslationPackages::REGISTER), self::job('second', SyncTranslationPackages::PULL), self::job('third', SyncTranslationPackages::sendKey('carrier', $carrier->id), ['kind' => 'carrier', 'id' => $carrier->id])], $progress->progress));
+
+        self::assertSame(['first' => 'done', 'second' => 'done', 'third' => 'done'], array_map(static fn(JobOutcome $outcome): string => $outcome->kind, $progress->outcomes), 'each reported in turn');
+        self::assertArrayHasKey("carrier:{$carrier->id}", $this->shop->translationService->packages);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private static function job(string $id, string $key, array $payload = []): QueuedJob
+    {
+        return new QueuedJob($id, 'translations', SyncTranslationPackages::TYPE, $key, $payload, 1, 1);
     }
 }

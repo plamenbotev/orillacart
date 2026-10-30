@@ -15,8 +15,8 @@ use OrillaCart\Search\Domain\SearchEngine;
 
 /**
  * Builds the search documents of products that changed, a batch at a time: the catalog's offers and the site's
- * content read in a few queries, and one write for all of them. A product with a sale ahead is built again when
- * the sale starts or ends.
+ * content read in a few queries, and one write for all of them, after which every job of the batch is reported. A
+ * product with a sale ahead is built again when the sale starts or ends.
  */
 final readonly class IndexProducts implements JobHandler
 {
@@ -50,6 +50,7 @@ final readonly class IndexProducts implements JobHandler
         return 60 * 2 ** ($attempt - 1);
     }
 
+    /** One batch: a few reads and one write for all its products, as the batch is what the index takes. */
     public function lockSeconds(): int
     {
         return 300;
@@ -62,18 +63,18 @@ final readonly class IndexProducts implements JobHandler
         $this->put(array_values(array_filter($documents)));
         $this->index->remove(array_map(intval(...), array_keys(array_filter($documents, static fn(?SearchDocument $document): bool => $document === null))));
 
-        $outcomes = [];
+        // The index has them all: each job is settled now, before anything else that could go wrong.
         foreach ($jobs as $job) {
             $at = $documents[(int) $job->uniqueKey]?->priceChangesAt;
-            $outcomes[$job->id] = $at === null ? JobOutcome::done() : JobOutcome::reschedule($at);
+            $progress->done($job, $at === null ? null : JobOutcome::reschedule($at));
         }
         // This batch was the last of the index: nothing else due, running with another worker, or failed.
         $waiting = $this->jobs->waiting(self::TYPE);
-        if ($waiting->due === 0 && $waiting->running <= \count($jobs) && $this->jobs->failed(self::TYPE, 1) === []) {
+        if ($waiting->due === 0 && $waiting->running === 0 && $this->jobs->failed(self::TYPE, 1) === []) {
             $this->markBuilt();
         }
 
-        return $outcomes;
+        return [];
     }
 
     /**

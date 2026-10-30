@@ -16,6 +16,7 @@ use OrillaCart\Setup\Application\ReadinessCheck;
 use OrillaCart\Setup\Application\SetupStep;
 use OrillaCart\Shared\Http\Routing\ActionDispatcher;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Security\HoldsSealedValues;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Tax\Application\TaxGroupUse;
 use OrillaCart\Translations\Application\TranslatableType;
@@ -104,6 +105,8 @@ final class Kernel
         $builder->registerForAutoconfiguration(ReadinessCheck::class)->addTag(ReadinessCheck::TAG);
         $builder->registerForAutoconfiguration(ToolSource::class)->addTag(ToolSource::TAG);
         $builder->registerForAutoconfiguration(CallDescription::class)->addTag(CallDescription::TAG);
+        // Shared\Security is not scanned for services, so its interface's tag is given here.
+        $builder->registerForAutoconfiguration(HoldsSealedValues::class)->addTag(HoldsSealedValues::SEALED_VALUES_TAG);
 
         $builder->addCompilerPass(new RoutePass());
         $builder->addCompilerPass(new HookPass());

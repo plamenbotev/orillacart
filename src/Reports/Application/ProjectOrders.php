@@ -26,13 +26,13 @@ use OrillaCart\Shared\Security\Signatures;
 /**
  * Keeps the reports' facts of orders that changed, a batch at a time, in one write: the reports read only these,
  * never the orders, so they stay quick however many orders the shop has. Placed, paid, edited, refunded or
- * deleted, an order is written again from scratch, so the facts never drift from it.
+ * deleted, an order is written again from scratch, so the facts never drift from it. Every job of the batch is
+ * reported once the write is in.
  */
 final readonly class ProjectOrders implements KeepsFailures
 {
     public const string TYPE = 'reports.order';
     private const string GUEST_PURPOSE = 'report-guest';
-
 
     public function __construct(
         private OrderService $orders,
@@ -62,6 +62,7 @@ final readonly class ProjectOrders implements KeepsFailures
         return 30 * 2 ** ($attempt - 1);
     }
 
+    /** One batch: its orders read and one write for all their facts, as the write is what takes the batch. */
     public function lockSeconds(): int
     {
         return 300;
@@ -79,6 +80,10 @@ final readonly class ProjectOrders implements KeepsFailures
             }
         }
         $this->store->replace($ids, $facts);
+        // The facts are written: every job of the batch is done now.
+        foreach ($jobs as $job) {
+            $progress->done($job);
+        }
 
         return [];
     }

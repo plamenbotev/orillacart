@@ -12,6 +12,7 @@ use OrillaCart\Jobs\Application\JobProgress;
  * Gives back money that came for an order which closed unpaid and could not open again (see
  * Refunds::giveBackUnclaimed()). A job, so the provider is asked outside the transaction that settled the
  * payment, with nothing locked. A refund the provider did not answer waits on the order screen to be tried again.
+ * Each job is reported as its provider answered.
  */
 final readonly class GiveBackLatePayments implements JobHandler
 {
@@ -39,6 +40,7 @@ final readonly class GiveBackLatePayments implements JobHandler
         return 60;
     }
 
+    /** One refund asked of the provider. */
     public function lockSeconds(): int
     {
         return 300;
@@ -46,17 +48,18 @@ final readonly class GiveBackLatePayments implements JobHandler
 
     public function handle(array $jobs, JobProgress $progress): array
     {
-        $outcomes = [];
+        // Each payment is settled as its refund is asked for, so a worker killed mid-batch asks for one again, not all.
         foreach ($jobs as $job) {
             $payment = $job->payload['payment'] ?? null;
             if (!\is_int($payment)) {
-                $outcomes[$job->id] = JobOutcome::fail('The job does not name a payment.');
+                $progress->done($job, JobOutcome::fail('The job does not name a payment.'));
                 continue;
             }
             $this->refunds->giveBackUnclaimed($payment);
+            $progress->done($job);
         }
 
-        return $outcomes;
+        return [];
     }
 
     public function describe(array $payload, ?string $uniqueKey): string

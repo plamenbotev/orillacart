@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace OrillaCart\Translations\Application;
 
-use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\JobHandler;
 use OrillaCart\Jobs\Application\JobProgress;
 use OrillaCart\Jobs\Application\Jobs;
@@ -13,6 +12,7 @@ use OrillaCart\Jobs\Application\Jobs;
  * Registers every object with the translation service, or takes back what its translators finished, in the
  * background: a shop's whole catalog of words is more than a request should wait for. Queued once however often
  * asked before it runs. Also one object's translations to the service, when its save had too many to send then.
+ * Each job is reported as it is done.
  */
 final readonly class SyncTranslationPackages implements JobHandler
 {
@@ -47,6 +47,7 @@ final readonly class SyncTranslationPackages implements JobHandler
         return 120 * $attempt;
     }
 
+    /** One job: the whole catalog registered, or everything finished taken back. */
     public function lockSeconds(): int
     {
         return 600;
@@ -73,7 +74,7 @@ final readonly class SyncTranslationPackages implements JobHandler
 
     public function handle(array $jobs, JobProgress $progress): array
     {
-        $outcomes = [];
+        // Each job is settled as its exchange with the service is over, so a worker killed mid-batch repeats one.
         foreach ($jobs as $job) {
             $payload = $job->payload;
             if ($job->uniqueKey === self::REGISTER) {
@@ -83,10 +84,10 @@ final readonly class SyncTranslationPackages implements JobHandler
             } else {
                 $this->packages->pull();
             }
-            $outcomes[$job->id] = JobOutcome::done();
+            $progress->done($job);
         }
 
-        return $outcomes;
+        return [];
     }
 
     public function describe(array $payload, ?string $uniqueKey): string

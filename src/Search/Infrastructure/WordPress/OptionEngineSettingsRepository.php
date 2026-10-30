@@ -9,12 +9,13 @@ use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\SearchEngine;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
+use OrillaCart\Shared\Security\HoldsSealedValues;
 use OrillaCart\Shared\Security\Secrets;
 
 /**
  * The engine settings in one WordPress option, read when the shop searches or indexes; the password sealed.
  */
-final readonly class OptionEngineSettingsRepository implements EngineSettingsRepository, LifecycleListener, RemovesShopData
+final readonly class OptionEngineSettingsRepository implements EngineSettingsRepository, LifecycleListener, RemovesShopData, HoldsSealedValues
 {
     public const string OPTION = 'orillacart_search_engine';
 
@@ -54,6 +55,19 @@ final readonly class OptionEngineSettingsRepository implements EngineSettingsRep
             'index' => $settings->index,
             'ready' => $settings->ready,
         ], false);
+    }
+
+    public function sealedValues(): array
+    {
+        $stored = get_option(self::OPTION);
+        $password = \is_array($stored) ? $stored['password'] ?? null : null;
+
+        return \is_string($password) && $password !== '' ? [$password] : [];
+    }
+
+    public function resealValues(): void
+    {
+        $this->save($this->load());
     }
 
     public function activate(): void {}

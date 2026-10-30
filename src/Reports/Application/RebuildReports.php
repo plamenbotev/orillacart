@@ -47,7 +47,7 @@ final readonly class RebuildReports implements JobHandler
         return 30 * 2 ** ($attempt - 1);
     }
 
-    /** A rebuild reads every order of a stretch of days. */
+    /** One step reads a thousand order ids and queues a job for each. */
     public function lockSeconds(): int
     {
         return 1800;
@@ -55,8 +55,10 @@ final readonly class RebuildReports implements JobHandler
 
     public function handle(array $jobs, JobProgress $progress): array
     {
+        // Each step is settled as soon as its orders are queued: run again, it would queue them twice.
         foreach ($jobs as $job) {
             $this->step($job);
+            $progress->done($job);
         }
 
         return [];

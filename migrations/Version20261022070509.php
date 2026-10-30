@@ -16,8 +16,13 @@ final class Version20261022070509 extends Migration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE {prefix}form_uploads ADD sender VARCHAR(64) DEFAULT \'\' NOT NULL');
-        $this->addSql('CREATE INDEX form_upload_sender ON {prefix}form_uploads (sender, created_at)');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('form_uploads', 'sender')) {
+            $this->addSql('ALTER TABLE {prefix}form_uploads ADD sender VARCHAR(64) DEFAULT \'\' NOT NULL');
+        }
+        if (!$this->hasIndex('form_uploads', 'form_upload_sender')) {
+            $this->addSql('CREATE INDEX form_upload_sender ON {prefix}form_uploads (sender, created_at)');
+        }
     }
 
     public function down(Schema $schema): void

@@ -24,11 +24,14 @@ use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
+use OrillaCart\Jobs\Application\Dto\JobOutcome;
+use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Exchange\EnglishColumnNames;
 use OrillaCart\Tests\Fixtures\Exchange\InMemoryExportChoices;
 use OrillaCart\Tests\Fixtures\Exchange\InMemoryProductImports;
 use OrillaCart\Tests\Fixtures\Exchange\InMemoryProductPosts;
+use OrillaCart\Tests\Fixtures\Jobs\RecordedProgress;
 use PHPUnit\Framework\TestCase;
 
 final class ProductImportsTest extends TestCase
@@ -154,5 +157,22 @@ final class ProductImportsTest extends TestCase
         file_put_contents($path, $csv);
 
         return $this->imports->upload($path, 'products.csv', 7);
+    }
+
+    public function testEachImportJobIsReportedAsItsBatchIsDoneAndABadOneDoesNotHoldTheOthers(): void
+    {
+        $first = $this->upload("sku,price\nX,1\n");
+        $second = $this->upload("sku,price\nY,2\n");
+        $handler = $this->shop->jobs->get(ImportProducts::TYPE);
+        $job = static fn(string $id, mixed $import): QueuedJob => new QueuedJob($id, 'imports', ImportProducts::TYPE, null, ['import' => $import], 1, 1);
+
+        $progress = new RecordedProgress();
+        self::assertSame([], $handler->handle([$job('first', $first->id), $job('second', $second->id)], $progress->progress));
+        self::assertSame(['first' => 'done', 'second' => 'done'], array_map(static fn(JobOutcome $outcome): string => $outcome->kind, $progress->outcomes), 'neither was started: nothing to go on with');
+
+        $progress = new RecordedProgress();
+        $handler->handle([$job('third', $first->id), $job('fourth', 'nope')], $progress->progress);
+        self::assertSame(['third' => 'done', 'fourth' => 'fail'], array_map(static fn(JobOutcome $outcome): string => $outcome->kind, $progress->outcomes), 'the first was settled before the second was looked at');
+        self::assertSame('The job names no import.', $progress->outcomes['fourth']->error);
     }
 }

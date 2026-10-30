@@ -21,8 +21,11 @@ final class Version20261018003024 extends Migration
     {
         // this up() migration is auto-generated, please modify it to your needs
         // MySQL refuses a literal default on a JSON column: add them empty, fill them, then require them.
-        $this->addSql('ALTER TABLE {prefix}shipping_rates ADD excluded_regions JSON DEFAULT NULL, ADD excluded_postcodes JSON DEFAULT NULL');
-        $this->addSql('UPDATE {prefix}shipping_rates SET excluded_regions = \'[]\', excluded_postcodes = \'[]\'');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('shipping_rates', 'excluded_regions')) {
+            $this->addSql('ALTER TABLE {prefix}shipping_rates ADD excluded_regions JSON DEFAULT NULL, ADD excluded_postcodes JSON DEFAULT NULL');
+        }
+        $this->addSql('UPDATE {prefix}shipping_rates SET excluded_regions = \'[]\', excluded_postcodes = \'[]\' WHERE excluded_regions IS NULL');
         $this->addSql('ALTER TABLE {prefix}shipping_rates MODIFY excluded_regions JSON NOT NULL, MODIFY excluded_postcodes JSON NOT NULL');
     }
 

@@ -20,8 +20,13 @@ final class Version20261029191124 extends Migration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE {prefix}search_documents ADD locale VARCHAR(20) DEFAULT \'\' NOT NULL, ADD original TINYINT DEFAULT 1 NOT NULL, DROP PRIMARY KEY, ADD PRIMARY KEY (product_id, locale)');
-        $this->addSql('ALTER TABLE {prefix}search_values ADD labels JSON DEFAULT NULL');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('search_documents', 'locale')) {
+            $this->addSql('ALTER TABLE {prefix}search_documents ADD locale VARCHAR(20) DEFAULT \'\' NOT NULL, ADD original TINYINT DEFAULT 1 NOT NULL, DROP PRIMARY KEY, ADD PRIMARY KEY (product_id, locale)');
+        }
+        if (!$this->hasColumn('search_values', 'labels')) {
+            $this->addSql('ALTER TABLE {prefix}search_values ADD labels JSON DEFAULT NULL');
+        }
     }
 
     public function down(Schema $schema): void

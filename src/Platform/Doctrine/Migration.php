@@ -40,12 +40,37 @@ abstract class Migration extends AbstractMigration
      * The guards below look at the schema as it is when the migration runs: MySQL commits each DDL statement by
      * itself, so a migration of several statements that failed halfway (the host's time limit, a lost connection)
      * is run again from the start, and what is there already must be skipped, not fail the retry.
+     *
+     * up() queues its statements and they run after it returns, so every guard sees the schema as the retry finds
+     * it, before any of the migration's statements: a guard decides from that state alone (a column added by an
+     * earlier statement of the same migration is not there yet in a clean run). Each guard asks the server afresh;
+     * nothing is cached between them. A data statement after a guarded one is written to be harmless when run
+     * twice (WHERE the value is not set yet, INSERT IGNORE), since whether it ran before the cut is unknown.
      */
 
     /** Whether the plugin's table (its name without the prefix) is there. */
     protected function hasTable(string $table): bool
     {
         return $this->connection->createSchemaManager()->tablesExist([$this->table($table)]);
+    }
+
+    /**
+     * Whether the plugin's table has the foreign key, by the name the migration gives it: the site's own name
+     * when its prefix is not the generated one, as addSql() writes it.
+     */
+    protected function hasForeignKey(string $table, string $foreignKey): bool
+    {
+        if (!$this->hasTable($table)) {
+            return false;
+        }
+        $name = self::foreignKeys($foreignKey, $this->tablePrefix ?? throw new \LogicException(static::class . ' runs without a table prefix.'));
+        foreach ($this->connection->createSchemaManager()->listTableForeignKeys($this->table($table)) as $found) {
+            if (strcasecmp($found->getName(), $name) === 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Whether the plugin's table has the column. */
@@ -63,15 +88,15 @@ abstract class Migration extends AbstractMigration
         return false;
     }
 
-    /** Whether the plugin's table has the index, by name. */
-    protected function hasIndex(string $table, string $index): bool
+    /** Whether the plugin's table has the index, by name; with $unique, one that is (or is not) unique. */
+    protected function hasIndex(string $table, string $index, ?bool $unique = null): bool
     {
         if (!$this->hasTable($table)) {
             return false;
         }
         foreach ($this->connection->createSchemaManager()->listTableIndexes($this->table($table)) as $found) {
             if (strcasecmp($found->getName(), $index) === 0) {
-                return true;
+                return $unique === null || $found->isUnique() === $unique;
             }
         }
 

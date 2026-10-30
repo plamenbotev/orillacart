@@ -20,11 +20,16 @@ final class Version20261020092307 extends Migration
     public function up(Schema $schema): void
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE {prefix}orders ADD fees JSON DEFAULT NULL, ADD fees_total NUMERIC(19, 4) DEFAULT \'0.0000\' NOT NULL, ADD fees_tax NUMERIC(19, 4) DEFAULT \'0.0000\' NOT NULL');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('orders', 'fees')) {
+            $this->addSql('ALTER TABLE {prefix}orders ADD fees JSON DEFAULT NULL, ADD fees_total NUMERIC(19, 4) DEFAULT \'0.0000\' NOT NULL, ADD fees_tax NUMERIC(19, 4) DEFAULT \'0.0000\' NOT NULL');
+        }
         // Orders placed before had no fees.
-        $this->addSql('UPDATE {prefix}orders SET fees = \'[]\'');
+        $this->addSql('UPDATE {prefix}orders SET fees = \'[]\' WHERE fees IS NULL');
         $this->addSql('ALTER TABLE {prefix}orders MODIFY fees JSON NOT NULL');
-        $this->addSql('ALTER TABLE {prefix}payment_methods ADD fee NUMERIC(19, 4) DEFAULT \'0.0000\' NOT NULL, ADD fee_percent NUMERIC(7, 4) DEFAULT \'0.0000\' NOT NULL, ADD fee_label VARCHAR(100) DEFAULT \'\' NOT NULL');
+        if (!$this->hasColumn('payment_methods', 'fee')) {
+            $this->addSql('ALTER TABLE {prefix}payment_methods ADD fee NUMERIC(19, 4) DEFAULT \'0.0000\' NOT NULL, ADD fee_percent NUMERIC(7, 4) DEFAULT \'0.0000\' NOT NULL, ADD fee_label VARCHAR(100) DEFAULT \'\' NOT NULL');
+        }
     }
 
     public function down(Schema $schema): void

@@ -7,9 +7,9 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 use OrillaCart\Cart\Application\CartLinks;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\CartOwner;
-use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Shared\Http\Security\ClientAddress;
 use OrillaCart\Shared\Http\Security\RateLimiter;
+use OrillaCart\Shared\Http\SiteCookies;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
@@ -68,7 +68,7 @@ final readonly class CartFromReminder implements CartLinks
             return;
         }
         $days = new \DateInterval(CartService::KEEP_FOR)->d;
-        setcookie(CartOwner::COOKIE, $token, ['expires' => time() + $days * DAY_IN_SECONDS, 'path' => CartCookie::path(), 'domain' => CartCookie::domain(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
+        setcookie(CartOwner::COOKIE, $token, ['expires' => time() + $days * DAY_IN_SECONDS, 'path' => SiteCookies::path(), 'domain' => SiteCookies::domain(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
         $_COOKIE[CartOwner::COOKIE] = $token;
     }
 }

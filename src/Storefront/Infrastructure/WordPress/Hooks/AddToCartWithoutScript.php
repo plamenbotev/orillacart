@@ -8,10 +8,10 @@ use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Cart\Domain\Cart;
-use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Http\SiteCookies;
 use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
@@ -56,7 +56,7 @@ final readonly class AddToCartWithoutScript
         $token = $result->newToken ?? $this->shopper->cart()->token;
         if ($token !== null) {
             $days = new \DateInterval(CartService::KEEP_FOR)->d;
-            setcookie(CartOwner::COOKIE, $token, ['expires' => time() + $days * DAY_IN_SECONDS, 'path' => CartCookie::path(), 'domain' => CartCookie::domain(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
+            setcookie(CartOwner::COOKIE, $token, ['expires' => time() + $days * DAY_IN_SECONDS, 'path' => SiteCookies::path(), 'domain' => SiteCookies::domain(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
         }
         wp_safe_redirect($this->links->pages()['cart'] ?? home_url('/'), 303);
         exit;

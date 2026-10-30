@@ -20,8 +20,11 @@ final class Version20261021112908 extends Migration
     public function up(Schema $schema): void
     {
         // MySQL refuses a literal default on a JSON column: add it empty, fill it, then require it.
-        $this->addSql('ALTER TABLE {prefix}tax_rates ADD postcodes JSON DEFAULT NULL, ADD compound TINYINT DEFAULT 0 NOT NULL');
-        $this->addSql('UPDATE {prefix}tax_rates SET postcodes = \'[]\'');
+        // Guarded, so a run cut off halfway goes on from where it stopped when it runs again.
+        if (!$this->hasColumn('tax_rates', 'postcodes')) {
+            $this->addSql('ALTER TABLE {prefix}tax_rates ADD postcodes JSON DEFAULT NULL, ADD compound TINYINT DEFAULT 0 NOT NULL');
+        }
+        $this->addSql('UPDATE {prefix}tax_rates SET postcodes = \'[]\' WHERE postcodes IS NULL');
         $this->addSql('ALTER TABLE {prefix}tax_rates MODIFY postcodes JSON NOT NULL');
     }
 

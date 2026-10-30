@@ -7,7 +7,14 @@ Status: built (2026-10-21), PLAN item 95.
 - `wp orillacart doctor [--fix]`: the shop's checks as Site Health runs them (`ShopHealth`, shared by Site
   Health, the Status screen and this), with a new one for the search index; an error on a critical finding,
   for deploy scripts. `--fix` runs the changes to the tables that have not run, clears what the shop compiled,
-  makes deleted shop pages again and rebuilds the search index, then checks.
+  makes deleted shop pages again, seals the saved credentials again with the site's key and rebuilds the search
+  index, then checks. Sealed credentials (`Secrets`: a webhook's secret, a payment method's and a carrier's
+  credentials, the search server's password) open with the site's key or with one the shop sealed with before
+  (`SiteSignatures::earlierSecrets()`: the salt alone, before the site's id took part), and are sealed again with
+  the site's on their next save; `SealedValues` finds them all through Doctrine's mapping (the `sealed_string` and
+  `sealed_json` columns) and the `HoldsSealedValues` services (options), so `--fix` seals them again at once, and
+  without `--fix` the doctor warns how many are left. One that no key opens is left as it is and counted, for the
+  owner to enter again: only those say the salts changed.
 - `wp orillacart export orders|products|subscribers [--format] [--file] [--<filter>=…]`: as the Export screens,
   streamed to a file or the standard output; orders take the Orders screen's filters.
 - `wp orillacart anonymise <email> | --order=<number>`: a person erased as a privacy request does, or the
