@@ -12,6 +12,7 @@ use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Domain\Charge;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\RefundView;
@@ -125,7 +126,7 @@ final readonly class Returns
         }
         foreach ($items as $line => $quantity) {
             if ($quantity > ($left[$line] ?? 0)) {
-                throw new ReturnRuleViolation('%1$d of "%2$s" can go back.', 'orillacart_invalid_return_items', values: [$left[$line] ?? 0, $order->lines[$line]->name ?? (string) ($line + 1)]);
+                throw new ReturnRuleViolation('%1$d of "%2$s" can go back.', 'orillacart_invalid_return_items', values: [$left[$line] ?? 0, self::lineAt($order, $line)->name ?? (string) ($line + 1)]);
             }
         }
         ksort($items);
@@ -134,6 +135,7 @@ final readonly class Returns
                 throw new ReturnRuleViolation('Send back %1$d of "%2$s" too: it came free with the items you return.', 'orillacart_return_free_items', values: [$units, $order->lines[$position]->name]);
             }
         }
+        $items = $this->withCharges($order, $items);
         $return = new ItemReturn($order->number, $items, ReturnReason::from($command->reason), $command->comment, $this->clock->now());
         $this->returns->save($return);
         // The shop reads the items in its own words, the customer in theirs (design 51).
@@ -154,7 +156,7 @@ final readonly class Returns
         $order = $this->ordered($command->number, $command->email);
         $lines = [];
         foreach ($this->withdrawableItems($order) as $line => $quantity) {
-            $lines[] = ['line' => $line, 'name' => $order->lines[$line]->name ?? '', 'quantity' => $quantity];
+            $lines[] = ['line' => $line, 'name' => self::lineAt($order, $line)->name ?? '', 'quantity' => $quantity];
         }
 
         return new WithdrawableOrderView($order->number, $order->placedAt, trim($order->billing->firstName . ' ' . $order->billing->lastName), $lines);
@@ -182,7 +184,7 @@ final readonly class Returns
             }
             foreach ($items as $line => $quantity) {
                 if ($quantity > ($left[$line] ?? 0)) {
-                    throw new ReturnRuleViolation('%1$d of "%2$s" are left to withdraw from.', 'orillacart_invalid_return_items', values: [$left[$line] ?? 0, $order->lines[$line]->name ?? (string) ($line + 1)]);
+                    throw new ReturnRuleViolation('%1$d of "%2$s" are left to withdraw from.', 'orillacart_invalid_return_items', values: [$left[$line] ?? 0, self::lineAt($order, $line)->name ?? (string) ($line + 1)]);
                 }
             }
             // None chosen: the whole contract.
@@ -190,7 +192,7 @@ final readonly class Returns
             if ($items === []) {
                 throw new ReturnRuleViolation('Nothing of this order is left to withdraw from.', 'orillacart_nothing_to_withdraw');
             }
-            ksort($items);
+            $items = $this->withCharges($order, $items);
             $now = $this->clock->now();
             $name = trim($command->name);
             $confirmation = trim($command->confirmationEmail);
@@ -199,7 +201,7 @@ final readonly class Returns
             $this->orders->needsAttention($order->number, \sprintf('The customer withdrew from %s (declared by %s on %s).', self::listed($this->orders->order($order->number), $items), $name, $now->format('Y-m-d H:i T')));
             $listed = [];
             foreach ($items as $line => $quantity) {
-                $listed[] = ['name' => $order->lines[$line]->name ?? '', 'quantity' => $quantity];
+                $listed[] = ['name' => self::lineAt($order, $line)->name ?? '', 'quantity' => $quantity];
             }
             // The acknowledgement goes out from a job, not from inside the order's lock: a slow mail server holds
             // no order up, and the mail goes only once the withdrawal is saved.
@@ -401,7 +403,7 @@ final readonly class Returns
         return new OrderReturnsView(
             $this->accepting($order) && $left !== [],
             $until?->format('Y-m-d'),
-            array_map(static fn(int $line, int $quantity): ReturnedItemView => new ReturnedItemView($line, $order->lines[$line]->name ?? '', $quantity), array_keys($left), $left),
+            array_map(static fn(int $line, int $quantity): ReturnedItemView => new ReturnedItemView($line, self::lineAt($order, $line)->name ?? '', $quantity), array_keys($left), $left),
             array_map(fn(ItemReturn $return): ReturnView => $this->returnView($order, $return), $this->returns->forOrder($order->number)),
         );
     }
@@ -457,7 +459,7 @@ final readonly class Returns
         return new ReturnView(
             $return->id(),
             $return->status()->value,
-            array_map(static fn(int $line, int $quantity): ReturnedItemView => new ReturnedItemView($line, $order->lines[$line]->name ?? '', $quantity), array_keys($items), $items),
+            array_map(static fn(int $line, int $quantity): ReturnedItemView => new ReturnedItemView($line, self::lineAt($order, $line)->name ?? '', $quantity), array_keys($items), $items),
             $return->reason()->value,
             $return->reason()->label(),
             $return->comment(),
@@ -493,8 +495,8 @@ final readonly class Returns
             }
         }
         foreach ($items as $position => $quantity) {
-            $line = $order->lines[$position] ?? null;
-            if (!$line instanceof OrderLineView || $line->quantity < 1) {
+            $line = self::lineAt($order, $position);
+            if ($line === null || $line->quantity < 1) {
                 continue;
             }
             if (isset($shares[$position])) {
@@ -505,6 +507,53 @@ final readonly class Returns
         }
 
         return ($amount->isNegative() ? Money::zero() : $amount)->rounded($decimals);
+    }
+
+    /** The order's item or charge at the place, as refunds name them: the items first, at their places, then the charges. */
+    private static function lineAt(OrderView $order, int $position): ?OrderLineView
+    {
+        return $order->lines[$position] ?? array_find($order->charges, static fn(OrderLineView $line): bool => $line->type === 'charge' && $line->position === $position);
+    }
+
+    /**
+     * The items going back with the charges for them: of a charge for some products (a deposit for the bottles),
+     * the share of it those of them that went back, go back and are going back come to, less what of it did.
+     *
+     * @param array<int, int> $items quantities by line position, going back now
+     *
+     * @return array<int, int> with the charges' places, in order
+     */
+    private function withCharges(OrderView $order, array $items): array
+    {
+        $back = $items;
+        foreach ($this->returns->forOrder($order->number) as $other) {
+            if ($other->status()->holdsItems()) {
+                foreach ($other->items() as $position => $quantity) {
+                    $back[$position] = ($back[$position] ?? 0) + $quantity;
+                }
+            }
+        }
+        foreach ($order->charges as $charge) {
+            $for = $charge->charge['for_product_ids'] ?? [];
+            if ($charge->type !== 'charge' || $for === []) {
+                continue;
+            }
+            $of = 0;
+            $gone = 0;
+            foreach ($order->lines as $position => $line) {
+                if (\in_array($line->productId, $for, true)) {
+                    $of += $line->quantity;
+                    $gone += $line->refundedQuantity + ($back[$position] ?? 0);
+                }
+            }
+            $owed = Charge::share(min($gone, $of), $of, $charge->quantity) - $charge->refundedQuantity - ($back[$charge->position] ?? 0);
+            if ($owed > 0) {
+                $items[$charge->position] = ($items[$charge->position] ?? 0) + $owed;
+            }
+        }
+        ksort($items);
+
+        return $items;
     }
 
     /** What the customer paid for the line: its total less its discount, with its tax unless the prices include it. */
@@ -603,7 +652,7 @@ final readonly class Returns
      */
     private static function listed(OrderView $order, array $items): string
     {
-        return implode(', ', array_map(static fn(int $line, int $quantity): string => \sprintf('%d × %s', $quantity, $order->lines[$line]->name ?? (string) ($line + 1)), array_keys($items), $items));
+        return implode(', ', array_map(static fn(int $line, int $quantity): string => \sprintf('%d × %s', $quantity, self::lineAt($order, $line)->name ?? (string) ($line + 1)), array_keys($items), $items));
     }
 
     private function get(int $id): ItemReturn

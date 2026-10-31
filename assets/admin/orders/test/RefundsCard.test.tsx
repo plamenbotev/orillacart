@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import type { Order, OrderRefunds } from '../api';
-import { RefundsCard, suggestedAmount } from '../RefundsCard';
+import { RefundsCard, suggestedAmount, withCharges } from '../RefundsCard';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -67,6 +67,42 @@ describe( 'RefundsCard', () => {
 	it( 'suggests what the chosen items and shipping cost, tax included', () => {
 		expect( suggestedAmount( order, { 0: 2 }, true ) ).toBe( 30 );
 		expect( suggestedAmount( order, {}, false ) ).toBe( 0 );
+	} );
+
+	it( 'sends a deposit back with the bottles it is for', () => {
+		const bottles = {
+			...order,
+			lines: [
+				{
+					product_id: 10,
+					name: 'Bottle',
+					quantity: 6,
+					total: '18',
+					tax: '0',
+					refunded_quantity: 0,
+				},
+			],
+			charges: [
+				{
+					type: 'charge',
+					position: 1,
+					name: 'Bottle deposit',
+					quantity: 6,
+					total: '1.5',
+					tax: '0',
+					refunded_quantity: 0,
+					charge: {
+						source: 'add_on:deposit',
+						taxable: false,
+						tax_group_id: null,
+						for_product_ids: [ 10 ],
+					},
+				},
+			],
+		} as unknown as Order;
+
+		expect( withCharges( bottles, { 0: 2 } ) ).toEqual( { 0: 2, 1: 2 } );
+		expect( suggestedAmount( bottles, { 0: 2, 1: 2 }, false ) ).toBe( 6.5 );
 		// With prices that include tax, it is in them already: two thirds of 30, and 5 of shipping.
 		expect(
 			suggestedAmount(

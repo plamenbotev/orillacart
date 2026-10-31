@@ -18,6 +18,13 @@ class ChargeLine extends CartLine
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, nullable: true)]
     private ?string $chargeAmount;
 
+    /** @var list<int>|null the products it is charged for; none for the whole order */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $chargeFor = null;
+
+    /**
+     * @param list<int> $forProductIds the products it is charged for; none for the whole order
+     */
     public function __construct(
         Cart $cart,
         int $quantity,
@@ -33,9 +40,17 @@ class ChargeLine extends CartLine
         private ?int $chargeTaxGroupId,
         #[ORM\Column(nullable: true)]
         private ?bool $removable,
+        array $forProductIds = [],
     ) {
         parent::__construct($cart, null, [], $quantity, $position);
         $this->chargeAmount = $amount->toFixed();
+        $this->chargeFor = self::normalized($forProductIds);
+    }
+
+    /** @return list<int> the products it is charged for; none for the whole order */
+    public function forProductIds(): array
+    {
+        return $this->chargeFor ?? [];
     }
 
     public function type(): string
@@ -86,8 +101,12 @@ class ChargeLine extends CartLine
     }
 
     /** @internal for Cart */
-    public function keepAs(int $quantity, Money $amount, bool $taxable, ?int $taxGroupId, bool $removable): void
+    /**
+     * @param list<int> $forProductIds
+     */
+    public function keepAs(int $quantity, Money $amount, bool $taxable, ?int $taxGroupId, bool $removable, array $forProductIds = []): void
     {
+        $this->chargeFor = self::normalized($forProductIds);
         $this->setQuantity($quantity);
         $this->chargeAmount = $amount->toFixed();
         $this->chargeTaxable = $taxable;

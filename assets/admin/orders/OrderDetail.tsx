@@ -58,6 +58,7 @@ import { AccountCard, DownloadsCard, ShipmentsCard } from './OrderCards';
 import { ReturnsCard } from './ReturnsCard';
 import { type ItemRow, ItemRows } from './ItemRows';
 import { RefundsCard } from './RefundsCard';
+import { fetchGroups, type TaxGroup } from '../tax/api';
 import { useOtherLanguages } from '../shared/Translations';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
@@ -1031,7 +1032,16 @@ function ChargesCard( { order, onSaved, onError }: CardProps ) {
 	const [ label, setLabel ] = useState( '' );
 	const [ amount, setAmount ] = useState( '' );
 	const [ quantity, setQuantity ] = useState( '1' );
-	const [ taxable, setTaxable ] = useState( true );
+	// '' for the shop's default tax group, 'none' for no tax, else a group's id.
+	const [ tax, setTax ] = useState( '' );
+	const [ groups, setGroups ] = useState< TaxGroup[] >( [] );
+	useEffect( () => {
+		fetchGroups()
+			.then( ( found ) =>
+				setGroups( Array.isArray( found ) ? found : [] )
+			)
+			.catch( () => setGroups( [] ) );
+	}, [] );
 	const charges = ( order.charges ?? [] ).filter(
 		( line ) => line.type === 'charge'
 	);
@@ -1122,10 +1132,28 @@ function ChargesCard( { order, onSaved, onError }: CardProps ) {
 					value={ quantity }
 					onChange={ setQuantity }
 				/>
-				<CheckboxControl
-					label={ __( 'Taxed', 'orillacart' ) }
-					checked={ taxable }
-					onChange={ setTaxable }
+				<SelectControl
+					__next40pxDefaultSize
+					label={ __( 'Tax', 'orillacart' ) }
+					value={ tax }
+					options={ [
+						{
+							label: __(
+								'The shop’s default tax group',
+								'orillacart'
+							),
+							value: '',
+						},
+						...groups.map( ( group ) => ( {
+							label: group.name,
+							value: String( group.id ),
+						} ) ),
+						{
+							label: __( 'Not taxed', 'orillacart' ),
+							value: 'none',
+						},
+					] }
+					onChange={ setTax }
 				/>
 				<Button
 					variant="secondary"
@@ -1137,7 +1165,11 @@ function ChargesCard( { order, onSaved, onError }: CardProps ) {
 								label: label.trim(),
 								amount: amount.trim(),
 								quantity: Number( quantity ),
-								taxable,
+								taxable: tax !== 'none',
+								tax_group_id:
+									tax === '' || tax === 'none'
+										? null
+										: Number( tax ),
 							} )
 								.then( ( saved ) => {
 									setLabel( '' );

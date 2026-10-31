@@ -29,7 +29,7 @@ final readonly class CartContents
         public ?int $customerId = null,
         /** @var list<string> the discounts whose items the shopper removed, by code */
         public array $declined = [],
-        /** @var list<array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string}> prices of their own add-ons keep, so much each as the shop's prices are */
+        /** @var list<array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, for_product_ids: list<int>}> prices of their own add-ons keep, so much each as the shop's prices are */
         public array $charges = [],
     ) {}
 }

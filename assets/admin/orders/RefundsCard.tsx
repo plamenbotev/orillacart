@@ -67,6 +67,49 @@ export function byQuantity(
 	];
 }
 
+/**
+ * The quantities with the charges for the items set to go with them: of a charge for some products (a deposit
+ * for the bottles), the share of it the items of those refunded before and now come to, less what of it was.
+ *
+ * @param order      The order.
+ * @param quantities Items to refund by line position.
+ */
+export function withCharges(
+	order: Order,
+	quantities: Record< number, number >
+): Record< number, number > {
+	const next = { ...quantities };
+	for ( const charge of order.charges ?? [] ) {
+		const forProducts = charge.charge?.for_product_ids ?? [];
+		if ( charge.type !== 'charge' || forProducts.length === 0 ) {
+			continue;
+		}
+		let of = 0;
+		let gone = 0;
+		order.lines.forEach( ( line, position ) => {
+			if ( forProducts.includes( line.product_id ) ) {
+				of += line.quantity;
+				gone +=
+					line.refunded_quantity + ( quantities[ position ] ?? 0 );
+			}
+		} );
+		const share =
+			of < 1
+				? 0
+				: Math.min(
+						charge.quantity,
+						Math.floor(
+							( Math.min( gone, of ) * charge.quantity ) / of
+						)
+					);
+		next[ charge.position ?? 0 ] = Math.max(
+			0,
+			share - charge.refunded_quantity
+		);
+	}
+	return next;
+}
+
 export function suggestedAmount(
 	order: Order,
 	quantities: Record< number, number >,
@@ -292,7 +335,7 @@ export function RefundsCard( {
 										quantities[ position ] ?? 0
 									) }
 									onChange={ ( count ) => {
-										setQuantities( {
+										const changed = {
 											...quantities,
 											[ position ]: Math.max(
 												0,
@@ -303,7 +346,13 @@ export function RefundsCard( {
 													)
 												)
 											),
-										} );
+										};
+										// An item's deposit follows it; a charge set by hand stays as set.
+										setQuantities(
+											line.type === 'charge'
+												? changed
+												: withCharges( order, changed )
+										);
 										setAmount( null );
 									} }
 								/>

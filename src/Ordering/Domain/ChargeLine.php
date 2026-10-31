@@ -24,12 +24,17 @@ class ChargeLine extends OrderLine
     #[ORM\Column(nullable: true)]
     private ?int $chargeTaxGroupId = null;
 
+    /** @var list<int>|null */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $chargeFor = null;
+
     public function __construct(Order $order, LineDraft $draft, int $position)
     {
         parent::__construct($order, $draft, $position);
         $this->chargeSource = mb_substr($draft->charge->source ?? '', 0, 50);
         $this->chargeTaxable = $draft->charge->taxable ?? true;
         $this->chargeTaxGroupId = $draft->charge?->taxGroupId;
+        $this->chargeFor = array_values($draft->charge->forProductIds ?? []);
     }
 
     public function type(): LineType
@@ -39,7 +44,7 @@ class ChargeLine extends OrderLine
 
     public function charge(): Charge
     {
-        return new Charge($this->chargeSource ?? '', $this->chargeTaxable ?? true, $this->chargeTaxGroupId);
+        return new Charge($this->chargeSource ?? '', $this->chargeTaxable ?? true, $this->chargeTaxGroupId, $this->chargeFor ?? []);
     }
 
     protected function check(LineDraft $draft): void

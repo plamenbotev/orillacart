@@ -67,5 +67,7 @@ final readonly class NewOrderLine
         public ?string $chargeSource = null,
         public bool $chargeTaxable = true,
         public ?int $chargeTaxGroupId = null,
+        /** @var list<int> for a charge: the products it is charged for; none for the whole order */
+        public array $chargeFor = [],
     ) {}
 }

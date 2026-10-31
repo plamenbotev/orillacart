@@ -1078,7 +1078,7 @@ final readonly class OrderService
             $line->shopWords,
             $line->givenCode === null ? null : new GivenBy($line->givenCode, $line->givenDescription),
             $line->addOnType === null ? null : new KeptBy($line->addOnType, $line->addOnLabel),
-            $line->chargeSource === null ? null : new Charge($line->chargeSource, $line->chargeTaxable, $line->chargeTaxGroupId),
+            $line->chargeSource === null ? null : new Charge($line->chargeSource, $line->chargeTaxable, $line->chargeTaxGroupId, $line->chargeFor),
         ), $lines);
     }
 

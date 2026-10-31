@@ -93,6 +93,8 @@ export interface OrderLine {
 		source: string;
 		taxable: boolean;
 		tax_group_id: number | null;
+		/** The products it is charged for; none for the whole order. */
+		for_product_ids: number[];
 	} | null;
 	/** For an item given: the discount that gave it. */
 	given_by?: { code: string; description: string } | null;
@@ -578,6 +580,8 @@ export interface NewCharge {
 	amount: string;
 	quantity: number;
 	taxable: boolean;
+	/** Null for the shop's default tax group. */
+	tax_group_id: number | null;
 }
 
 export function addCharge( id: number, charge: NewCharge ): Promise< Order > {

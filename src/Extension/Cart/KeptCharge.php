@@ -16,6 +16,8 @@ final readonly class KeptCharge
      *                             when the shop's prices include tax): "0.25"; zero or less is no charge
      * @param bool     $taxable    taxed as items of the tax group are, where the order is taxed
      * @param int|null $taxGroupId null for the shop's default tax group
+     * @param list<int> $forProductIds the products it is charged for (the bottles a deposit is for): when some of
+     *                                 them go back, their share of it goes back too; none for the whole order
      */
     public function __construct(
         public string $label,
@@ -23,5 +25,6 @@ final readonly class KeptCharge
         public int $quantity = 1,
         public bool $taxable = true,
         public ?int $taxGroupId = null,
+        public array $forProductIds = [],
     ) {}
 }

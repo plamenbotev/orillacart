@@ -95,6 +95,28 @@ final class ChargesTest extends TestCase
         self::assertSame(2, $refunded->refundedQuantity, 'two bottles back, and their deposits');
     }
 
+    public function testAReturnOfBottlesTakesBackTheirDeposits(): void
+    {
+        $this->shop->settings->save(new \OrillaCart\Settings\Domain\StoreSettings(new \OrillaCart\Shared\Domain\Currency('EUR'), 2, \OrillaCart\Settings\Domain\WeightUnit::Kilogram, \OrillaCart\Settings\Domain\DimensionUnit::Centimetre, 'BG', returnDays: 30));
+        $this->deposit();
+        $number = $this->place($this->cart(6));
+        $this->shop->orders->markPaid($number, null);
+        $this->shop->orders->changeStatus($number, new \OrillaCart\Ordering\Application\Dto\ChangeOrderStatus('shipped'), 7);
+        $receipt = $this->shop->receipts->issue($number);
+
+        $return = $this->shop->returns->request($receipt, new \OrillaCart\Returns\Application\Dto\RequestReturn([new \OrillaCart\Returns\Application\Dto\ReturnItem(0, 2)], 'no_longer_needed'));
+        self::assertSame([['Bottle', 2], ['Bottle deposit', 2]], array_map(static fn($item): array => [$item->name, $item->quantity], $return->items));
+        self::assertSame('6.5', $return->amount, 'two bottles at 3, and their deposits at 0.25');
+
+        $more = $this->shop->returns->request($receipt, new \OrillaCart\Returns\Application\Dto\RequestReturn([new \OrillaCart\Returns\Application\Dto\ReturnItem(0, 1)], 'no_longer_needed'));
+        self::assertSame([['Bottle', 1], ['Bottle deposit', 1]], array_map(static fn($item): array => [$item->name, $item->quantity], $more->items), 'counted with the return before');
+    }
+
+    public function testAChargesShareIsWholeAndNeverMoreThanItHolds(): void
+    {
+        self::assertSame([2, 1, 4, 1], [\OrillaCart\Ordering\Domain\Charge::share(2, 6, 6), \OrillaCart\Ordering\Domain\Charge::share(3, 6, 2), \OrillaCart\Ordering\Domain\Charge::share(9, 6, 4), \OrillaCart\Ordering\Domain\Charge::share(5, 6, 2)]);
+    }
+
     public function testTheShopAddsAndTakesOffACharge(): void
     {
         $number = $this->place($this->cart(2));
@@ -174,7 +196,7 @@ final class ChargesTest extends TestCase
             {
                 $bottles = array_sum(array_map(static fn(CheckedLine $line): int => $line->productId === 10 ? $line->quantity : 0, $cart->lines));
 
-                return $bottles === 0 ? [] : [new KeptCharge('Bottle deposit', '0.25', $bottles, false)];
+                return $bottles === 0 ? [] : [new KeptCharge('Bottle deposit', '0.25', $bottles, false, forProductIds: [10])];
             }
         }];
     }

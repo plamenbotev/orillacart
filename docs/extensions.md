@@ -267,7 +267,7 @@ final class BottleDeposit implements CartLineType
     {
         $bottles = array_sum(array_map(fn(CheckedLine $line): int => $this->isBottle($line) ? $line->quantity : 0, $cart->lines));
 
-        return $bottles === 0 ? [] : [new KeptCharge(__('Bottle deposit', 'acme'), '0.25', $bottles)];
+        return $bottles === 0 ? [] : [new KeptCharge(__('Bottle deposit', 'acme'), '0.25', $bottles, forProductIds: $this->bottleIds())];
     }
 }
 ```
@@ -276,7 +276,10 @@ final class BottleDeposit implements CartLineType
   now, each of two kinds:
   - `KeptCharge`: a price of its own with no product, so much each in the shop's currency as its prices are (with
     tax or without), how many, and how it is taxed (`taxable`, `taxGroupId`; the shop's default group for none).
-    A type's charges are told apart by their labels. No coupon takes anything off them.
+    A type's charges are told apart by their labels. No coupon takes anything off them. `forProductIds` names the
+    products a charge is for: when some of them go back, their share of it goes back with them (6 deposits for 6
+    bottles, 2 bottles returned: 2 deposits), on a customer's return and as the shop's refund suggests; none for a
+    charge on the whole order.
   - `KeptItem`: a catalog product for sale, with its options (a variation's for a product with variations) and how
     many, priced as the catalog prices it.
 - The cart is kept in step whenever it changes: lines added, changed and removed.

@@ -76,8 +76,8 @@ use Psr\Log\LoggerInterface;
  * The items coupons give (GivenItems) are items like any other: the coupon that gives one takes its price off.
  *
  * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, given: ?string, add_on: array{type: string, label: string}|null, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
- * @phpstan-type FeeLine array{type: string, quantity: int, unit: Money, source: ?string, taxable: bool, tax_group_id: ?int, as_line: bool}
- * @phpstan-type Charge array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool}
+ * @phpstan-type FeeLine array{type: string, quantity: int, unit: Money, source: ?string, taxable: bool, tax_group_id: ?int, as_line: bool, for_product_ids?: list<int>}
+ * @phpstan-type Charge array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool, for_product_ids?: list<int>}
  * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, import: ImportDecision, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, changes: array<int, list<AdjustmentView>>, free_from: ?string, ships_from: ?string, shop_shipping: array{carrier: string, rate: string, collect_at: ?PickupPointView}|null, shop_fees: list<string>, fee_lines: list<FeeLine>}
  */
 final readonly class OrderPricing
@@ -530,7 +530,7 @@ final readonly class OrderPricing
             $bill->addFee($charge['label'], $unit->times($charge['quantity']), $taxes);
             $shopFees[] = $charge['label'];
             $asked[] = ['kind' => TaxRequestLine::FEE, 'code' => $taxed ? $charge['tax_group_id'] : 'none', 'quantity' => $charge['quantity'], 'product' => null, 'sku' => null, 'tax_code' => null];
-            $feeLines[] = ['type' => 'charge', 'quantity' => $charge['quantity'], 'unit' => $unit, 'source' => $charge['source'], 'taxable' => $charge['taxable'], 'tax_group_id' => $charge['tax_group_id'], 'as_line' => true];
+            $feeLines[] = ['type' => 'charge', 'quantity' => $charge['quantity'], 'unit' => $unit, 'source' => $charge['source'], 'taxable' => $charge['taxable'], 'tax_group_id' => $charge['tax_group_id'], 'as_line' => true, 'for_product_ids' => $charge['for_product_ids'] ?? []];
         }
     }
 
@@ -642,7 +642,7 @@ final readonly class OrderPricing
         foreach ($bill->charges(BilledCharge::FEE) as $index => $charge) {
             $fee = $priced['fee_lines'][$index] ?? null;
             if ($fee !== null && $fee['type'] === 'charge') {
-                $lines[] = new NewOrderLine(null, null, [], [], $charge->label, null, $fee['quantity'], (string) $fee['unit'], (string) $charge->amount, self::lineTaxes($charge->taxes), false, [], type: 'charge', chargeSource: $fee['source'], chargeTaxable: $fee['taxable'], chargeTaxGroupId: $fee['tax_group_id']);
+                $lines[] = new NewOrderLine(null, null, [], [], $charge->label, null, $fee['quantity'], (string) $fee['unit'], (string) $charge->amount, self::lineTaxes($charge->taxes), false, [], type: 'charge', chargeSource: $fee['source'], chargeTaxable: $fee['taxable'], chargeTaxGroupId: $fee['tax_group_id'], chargeFor: $fee['for_product_ids'] ?? []);
                 continue;
             }
             $lines[] = self::chargeLine($charge, 'fee', [], $priced['shop_fees'][$index] ?? null);

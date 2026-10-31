@@ -59,7 +59,7 @@ final readonly class OrderEditing
      * @param list<string> $codes
      * @param list<string> $automatic
      * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
-     * @param list<array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool}> $charges
+     * @param list<array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool, for_product_ids?: list<int>}> $charges
      *
      * @return Priced
      */
@@ -237,14 +237,14 @@ final readonly class OrderEditing
      * The order's charges as pricing takes them again: so much each as the customer pays it, but the one at the
      * place left out.
      *
-     * @return list<array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool}>
+     * @return list<array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool, for_product_ids?: list<int>}>
      */
     private static function chargesOf(OrderView $order, ?int $without = null): array
     {
         $charges = [];
         foreach ($order->charges as $line) {
             if ($line->type === 'charge' && $line->charge !== null && $line->position !== $without) {
-                $charges[] = ['label' => $line->name, 'amount' => $line->unitPrice, 'quantity' => $line->quantity, 'taxable' => $line->charge['taxable'], 'tax_group_id' => $line->charge['tax_group_id'], 'source' => $line->charge['source'], 'given' => true];
+                $charges[] = ['label' => $line->name, 'amount' => $line->unitPrice, 'quantity' => $line->quantity, 'taxable' => $line->charge['taxable'], 'tax_group_id' => $line->charge['tax_group_id'], 'source' => $line->charge['source'], 'given' => true, 'for_product_ids' => $line->charge['for_product_ids']];
             }
         }
 
@@ -253,7 +253,7 @@ final readonly class OrderEditing
 
     /**
      * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
-     * @param list<array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool}>|null $charges null for the order's own
+     * @param list<array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool, for_product_ids?: list<int>}>|null $charges null for the order's own
      */
     private function reprice(OrderView $order, EditOrderItems $command, array $changes, ?int $userId, ?array $charges = null): OrderView
     {

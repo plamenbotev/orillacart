@@ -225,6 +225,19 @@ class Cart
         return $line;
     }
 
+    /**
+     * @param list<int> $ids
+     *
+     * @return list<int>
+     */
+    private static function sorted(array $ids): array
+    {
+        $ids = array_values(array_unique($ids));
+        sort($ids);
+
+        return $ids;
+    }
+
     private function nextPosition(): int
     {
         $position = 0;
@@ -318,7 +331,7 @@ class Cart
      * keepGiven() does. A type whose lines the shopper removed keeps none until it keeps nothing, or they ask.
      *
      * @param list<array{productId: int, optionIds: list<int>, quantity: int}> $items
-     * @param list<array{label: string, amount: Money, quantity: int, taxable: bool, taxGroupId: ?int}> $charges told apart by their labels
+     * @param list<array{label: string, amount: Money, quantity: int, taxable: bool, taxGroupId: ?int, forProductIds?: list<int>}> $charges told apart by their labels
      *
      * @return bool whether the cart changed
      */
@@ -342,15 +355,15 @@ class Cart
             if ($charge === null) {
                 $this->lines->removeElement($line);
                 $changed = true;
-            } elseif ($charge['quantity'] !== $line->quantity() || !$charge['amount']->equals($line->amount()) || $charge['taxable'] !== $line->taxable() || $charge['taxGroupId'] !== $line->taxGroupId() || $removable !== $line->removable()) {
-                $line->keepAs($charge['quantity'], $charge['amount'], $charge['taxable'], $charge['taxGroupId'], $removable);
+            } elseif ($charge['quantity'] !== $line->quantity() || !$charge['amount']->equals($line->amount()) || $charge['taxable'] !== $line->taxable() || $charge['taxGroupId'] !== $line->taxGroupId() || $removable !== $line->removable() || self::sorted($charge['forProductIds'] ?? []) !== $line->forProductIds()) {
+                $line->keepAs($charge['quantity'], $charge['amount'], $charge['taxable'], $charge['taxGroupId'], $removable, $charge['forProductIds'] ?? []);
                 $changed = true;
             }
         }
         foreach ($charges as $charge) {
             $have = array_any($this->lines(), static fn(CartLine $line): bool => $line instanceof ChargeLine && $line->addOnType() === $type && $line->label() === $charge['label']);
             if (!$have && $this->lines->count() < self::MAX_LINES) {
-                $this->lines->add(new ChargeLine($this, $charge['quantity'], $this->nextPosition(), mb_substr($type, 0, 40), mb_substr($charge['label'], 0, 100), $charge['amount'], $charge['taxable'], $charge['taxGroupId'], $removable));
+                $this->lines->add(new ChargeLine($this, $charge['quantity'], $this->nextPosition(), mb_substr($type, 0, 40), mb_substr($charge['label'], 0, 100), $charge['amount'], $charge['taxable'], $charge['taxGroupId'], $removable, $charge['forProductIds'] ?? []));
                 $changed = true;
             }
         }

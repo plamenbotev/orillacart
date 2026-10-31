@@ -232,7 +232,7 @@ final readonly class CartService
         $charges = [];
         foreach ($cart->lines() as $line) {
             if ($line instanceof ChargeLine) {
-                $charges[] = ['label' => $line->label(), 'amount' => (string) $line->amount(), 'quantity' => $line->quantity(), 'taxable' => $line->taxable(), 'tax_group_id' => $line->taxGroupId(), 'source' => Cart::ADD_ON . $line->addOnType()];
+                $charges[] = ['label' => $line->label(), 'amount' => (string) $line->amount(), 'quantity' => $line->quantity(), 'taxable' => $line->taxable(), 'tax_group_id' => $line->taxGroupId(), 'source' => Cart::ADD_ON . $line->addOnType(), 'for_product_ids' => $line->forProductIds()];
                 continue;
             }
             $answers = $this->answersOf($line);
@@ -720,7 +720,7 @@ final readonly class CartService
                 if ($item instanceof KeptCharge) {
                     $label = trim($item->label);
                     if ($label !== '' && mb_strlen($label) <= 100 && $item->quantity >= 1 && $item->quantity <= Cart::MAX_QUANTITY && preg_match('/^\d{1,11}(\.\d{1,' . Money::DECIMALS . '})?$/', $item->amount) === 1 && !Money::of($item->amount)->isZero()) {
-                        $charges[] = ['label' => $label, 'amount' => Money::of($item->amount), 'quantity' => $item->quantity, 'taxable' => $item->taxable, 'taxGroupId' => $item->taxGroupId];
+                        $charges[] = ['label' => $label, 'amount' => Money::of($item->amount), 'quantity' => $item->quantity, 'taxable' => $item->taxable, 'taxGroupId' => $item->taxGroupId, 'forProductIds' => array_values(array_filter($item->forProductIds, \is_int(...)))];
                     } else {
                         $this->logger->error('The cart line type {type} kept a charge "{label}: {amount}" that is not a label of up to 100 characters, an amount and a quantity; it is left out.', ['type' => $type->id(), 'label' => $item->label, 'amount' => $item->amount]);
                     }
